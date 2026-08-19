@@ -155,8 +155,7 @@ public sealed class CachingAudioFrameFormatter : IMessagePackFormatter<AudioFram
             scratch.Dispose();
         }
 
-        // Single-writer by design — SerializedData is populated at ingress (RPC receive loop
-        // or legacy SignalR StreamHub.ProcessAudioChunks path).
+        // Single-writer by design — SerializedData is populated at ingress (RPC receive loop).
         if (frame.SerializedData.IsEmpty)
             frame.SerializedData = bytes;
     }

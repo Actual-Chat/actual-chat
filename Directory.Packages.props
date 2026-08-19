@@ -23,7 +23,6 @@
          UnsafeAccessor, and preview 7 replaced that field, so a multi-handler event inside
          StackExchange.Redis throws MissingFieldException on a thread pool thread and kills the process -->
     <RedisVersion>3.1.13</RedisVersion>
-    <SignalRVersion>$(DotNetVersion)</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.15.3</OpenTelemetryVersion>
     <OpenTelemetryInstrumentationAspNetCoreVersion>1.15.1</OpenTelemetryInstrumentationAspNetCoreVersion>
@@ -175,8 +174,6 @@
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="$(BlazorVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="$(AspNetCoreVersion)" />
-    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="$(SignalRVersion)" />
-    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="$(SignalRVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.StaticFiles" Version="$(MicrosoftAspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="$(EntityFrameworkCoreVersion)" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Abstractions" Version="$(EntityFrameworkCoreVersion)" />

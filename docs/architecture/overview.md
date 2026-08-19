@@ -26,7 +26,7 @@ flowchart TB
         UI --> ClientFrontend
     end
 
-    ClientFrontend -->|"RPC (SignalR/WebSocket)"| ServerFrontend
+    ClientFrontend -->|"Fusion RPC (WebSocket)"| ServerFrontend
 
     subgraph Server [" Server "]
         direction TB
