@@ -112,7 +112,8 @@ export class ItemHeightController {
                 return;
             }
 
-            if (existing.isControlled && Number.isFinite(existing.applied)) {
+            if (existing.isControlled && Number.isFinite(existing.applied)
+                && isSameContentKind(existing.contentRef, itemRef.firstElementChild)) {
                 // Where the old element stood, which mid-transition is not the height it was given:
                 // adopting the target would land the swap at the end of a movement the reader is still
                 // watching. Read only then, so an ordinary render pays no layout for it.
@@ -706,6 +707,15 @@ function getContentRef(key: string, itemRef: HTMLElement): HTMLElement | null {
 function parseDelay(value: string | undefined, fallback: number): number {
     const parsed = Number.parseInt(value ?? '', 10);
     return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+// Whether a replaced element is the same thing rendered again, or the item changing form. Only the
+// first may carry its predecessor's height across: a conversation being collapsed swaps the expanded
+// header's element for the card's under the same key, and carrying 76px of header into a 300px card
+// makes the block grow at the moment it was asked to shrink. Anything in doubt is left to be written
+// at its own height, which is what happens for an item the controller has never seen.
+function isSameContentKind(before: HTMLElement, after: Element | null): boolean {
+    return after != null && before.tagName === after.tagName && before.className === after.className;
 }
 
 // `data-vl-h-transition` names the only animation the item wants: "change" for an item that is always
