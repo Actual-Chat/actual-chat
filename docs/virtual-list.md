@@ -1399,6 +1399,15 @@ already obvious — while costing a full-height transition per item. Two details
   waiting out its settle delay, or transitioning. A counter would have to be given back along a good
   half-dozen paths — settling, being applied instantly, suspension, the item going away — and one
   missed release would silently stop the list animating anything ever again.
+- **An appearance outranks a height change already in flight**, and takes a slot from one when none is
+  free (`takeSlotFromChange`). First-come was the wrong order for the case that matters most: a live
+  conversation is never still — its card and its newest transcript are both mid-transition whenever
+  expand is pressed — so the messages the expansion reveals lost every slot to a line of transcript
+  finishing its growth. Measured with two items already transitioning: **1 of 3 revealed messages grew
+  in before, 3 of 3 after**, with the peak number animating at once unchanged at 3. The change that
+  gives up its slot is the one nearest its end, so what it forfeits is the tail of a transition rather
+  than the whole of one; an item still waiting out its settle delay is taken only when nothing is
+  transitioning, since it has shown none of its change yet.
 
 Measured on expanding a conversation, items with a height in flight on the same frame: **5 with the cap
 lifted, 3 with it in place.** Collapsing the same conversation animates none — it removes items rather

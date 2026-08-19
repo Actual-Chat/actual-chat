@@ -187,7 +187,9 @@ export class ItemHeightController {
     public beginAppearance(key: string, itemRef: HTMLElement, startHeight: number): boolean {
         this.track(key, itemRef);
         const state = this.states.get(key);
-        if (state == null || this.isSuspended || !this.hasAnimationSlot(state))
+        if (state == null || this.isSuspended)
+            return false;
+        if (!this.hasAnimationSlot(state) && !this.takeSlotFromChange())
             return false;
 
         state.isAppearing = true;
@@ -553,6 +555,36 @@ export class ItemHeightController {
             if (++used >= MaxAnimatedItems)
                 return false;
         }
+        return true;
+    }
+
+    // An appearance outranks a height change already in flight. A live conversation is never still -
+    // its card and its newest transcript are both mid-transition whenever expand is pressed - so a
+    // budget handed out first-come leaves the messages the expansion reveals to pop in while a line of
+    // transcript finishes growing. The change that gives up its slot is the one nearest its end, so
+    // what it gives up is the tail of a transition rather than the whole of one.
+    private takeSlotFromChange(): boolean {
+        const now = performance.now();
+        let victim: ItemHeightState | null = null;
+        let leastLeft = Number.POSITIVE_INFINITY;
+        for (const state of this.states.values()) {
+            if (state.isAppearing || !isAnimationPending(state))
+                continue;
+
+            // Nothing is on screen yet for an item still waiting out its settle delay, so snapping one
+            // costs the whole change rather than its tail - taken only when nothing is transitioning.
+            const left = state.animatingUntil > now ? state.animatingUntil - now : Number.MAX_SAFE_INTEGER;
+            if (left >= leastLeft)
+                continue;
+
+            victim = state;
+            leastLeft = left;
+        }
+        if (victim == null)
+            return false;
+
+        const chosen = victim;
+        this.applyInstantly(state => state === chosen);
         return true;
     }
 
