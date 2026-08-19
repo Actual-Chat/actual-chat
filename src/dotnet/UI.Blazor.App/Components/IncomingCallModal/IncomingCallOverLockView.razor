@@ -7,11 +7,18 @@
         return;
 }
 
-<div class="incoming-call-overlock">
+<div class="incoming-call-overlock @(m.Phase == CallPhase.InCall ? "in-call" : "")">
     <div class="c-body">
         <ChatIcon Chat="@chat" Size="SquareSize.Size30" IsSquare="@true" HideTitle="@true"/>
         <div class="c-title">@chat.Title</div>
-        <div class="c-subtitle">@m.StatusText</div>
+        <div class="c-subtitle">
+            @if (m is { Phase: CallPhase.InCall, JoinedAt: { } joinedAt }) {
+                <LiveDuration StartedAt="@joinedAt"/>
+            }
+            else {
+                @m.StatusText
+            }
+        </div>
     </div>
     <div class="c-buttons">
         @if (m.Phase == CallPhase.Ringing) {
@@ -35,7 +42,6 @@
 
 @code {
     private bool _shownOverLock;
-
     private IncomingCallUI IncomingCallUI => Hub.IncomingCallUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ILogger Log => field ??= Hub.LogFor(GetType());
@@ -85,12 +91,30 @@
 
         var inCall = await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
         if (inCall) {
-            DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → InCall", chatId);
-            return new() { Chat = chat, Phase = CallPhase.InCall };
+            var joinedAt = await GetJoinedAt(chatId, cancellationToken).ConfigureAwait(false);
+            DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → InCall, joinedAt={JoinedAt}",
+                chatId, joinedAt);
+            return new() { Chat = chat, Phase = CallPhase.InCall, JoinedAt = joinedAt };
         }
 
-        DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → None (ring not confirmed, not in call)", chatId);
+        DebugLog?.LogInformation(
+            "CALL_TRACE: OverLockView.ComputeState #{ChatId} → None (ring not confirmed, not in call)", chatId);
         return ComputedModel.None;
+    }
+
+    private async Task<Moment?> GetJoinedAt(ChatId chatId, CancellationToken cancellationToken) {
+        // The session itself can predate the call - an ambient one gets promoted - so the timer
+        // counts from my own join, not from LiveSession.StartedAt.
+        var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (live is null)
+            return null;
+
+        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (ownAuthor is null)
+            return null;
+
+        var me = live.Members.FirstOrDefault(m => m.AuthorId == ownAuthor.Id);
+        return me is null || me.JoinedAt == default ? null : me.JoinedAt;
     }
 
     private Task OnAcceptClick()
@@ -111,11 +135,10 @@
 
     public sealed record ComputedModel {
         public static readonly ComputedModel None = new();
-
         public Chat? Chat { get; init; }
         public CallPhase Phase { get; init; }
         public bool HasVideo { get; init; }
-
+        public Moment? JoinedAt { get; init; }
         public string StatusText => Phase == CallPhase.InCall
             ? "In call"
             : HasVideo ? "Incoming video call" : "Incoming call";

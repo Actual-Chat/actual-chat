@@ -1,0 +1,33 @@
+@namespace ActualChat.UI.Blazor.Components
+@inherits ComputedStateComponent<UIHub, string>
+@{
+    var m = State.Value;
+}
+
+<span class="@Class live-duration">@m</span>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter, EditorRequired] public Moment StartedAt { get; set; }
+    [Parameter] public TimeSpan UpdatePeriod { get; set; } = TimeSpan.FromSeconds(1);
+
+    public static string Format(TimeSpan elapsed)
+        // A clock skew putting StartedAt in the future would otherwise count up from a negative
+        // delta, so anything at or before zero reads as the very start of the call.
+        => elapsed <= TimeSpan.Zero
+            ? "0:00"
+            : elapsed < TimeSpan.FromHours(1)
+                ? $"{elapsed.Minutes}:{elapsed.Seconds:D2}"
+                : $"{(int)elapsed.TotalHours}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
+
+    protected override ComputedState<string>.Options GetStateOptions()
+        => new() {
+            InitialValue = Format(Hub.Clocks.SystemClock.Now - StartedAt),
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<string> ComputeState(CancellationToken cancellationToken) {
+        var now = await Hub.FusionTime.Now(UpdatePeriod).ConfigureAwait(false);
+        return Format(now - StartedAt);
+    }
+}
