@@ -97,10 +97,6 @@
 .c-live-card .c-lc-summary {
     @apply text-01 text-caption-4 leading-4;
     overflow: hidden;
-    animation: lc-fade-in 200ms ease;
-}
-@keyframes lc-fade-in {
-    from { opacity: 0; }
 }
 .c-live-card .c-lc-summary ul {
     @apply ml-4;

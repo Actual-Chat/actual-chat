@@ -55,7 +55,7 @@
                expanded reads as a plain conversation, so the description box drops out once expanded. *@
             @if (hasDescription && !state.IsExpanded) {
                 <div class="c-lc-summary-box">
-                    <div class="c-lc-summary" @key="@m.Description.Markup.ToReadableText()">
+                    <div class="c-lc-summary">
                         <CascadingValue Value="@_fakeEntry" IsFixed="true">
                             <MarkupView Markup="@m.Description.Markup"/>
                         </CascadingValue>
