@@ -13,19 +13,21 @@ var assembly = typeof(Program).Assembly;
 if (args is ["profile", ..]) {
     var sample = args.Length > 1 ? Enum.Parse<MarkupSampleKind>(args[1], true) : MarkupSampleKind.Long;
     var duration = TimeSpan.FromSeconds(args.Length > 2 ? double.Parse(args[2]) : 20);
-    var text = MarkupSamples.Get(sample);
+    var texts = MarkupSamples.Get(sample);
+    var length = MarkupSamples.GetLength(sample);
     var parser = new MarkupParser();
-    Console.WriteLine($"Parsing {sample} ({text.Length} chars) for {duration.TotalSeconds}s...");
+    Console.WriteLine($"Parsing {sample} ({length} chars) for {duration.TotalSeconds}s...");
     var count = 0L;
     var stopwatch = Stopwatch.StartNew();
     while (stopwatch.Elapsed < duration) {
         for (var i = 0; i < 16; i++) // The clock check itself is not free, so amortize it
-            _ = parser.Parse(text);
+            foreach (var text in texts)
+                _ = parser.Parse(text);
         count += 16;
     }
     stopwatch.Stop();
-    var charsPerSecond = count * text.Length / stopwatch.Elapsed.TotalSeconds;
-    Console.WriteLine($"{count} parses in {stopwatch.Elapsed.TotalSeconds:N1}s, {charsPerSecond:N0} chars/s.");
+    var charsPerSecond = count * length / stopwatch.Elapsed.TotalSeconds;
+    Console.WriteLine($"{count} rounds in {stopwatch.Elapsed.TotalSeconds:N1}s, {charsPerSecond:N0} chars/s.");
     return 0;
 }
 

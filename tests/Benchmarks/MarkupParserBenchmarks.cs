@@ -8,35 +8,57 @@ using BenchmarkDotNet.Running;
 namespace ActualChat.Benchmarks;
 
 /// <summary>
-/// <see cref="MarkupParser"/> throughput on two real Voxt messages - see <see cref="MarkupSamples"/>.
+/// <see cref="MarkupParser"/> throughput on real Voxt messages - see <see cref="MarkupSamples"/>.
 /// The "Chars/s" column is the number the parser is judged by; a second parser implementation
-/// should show up here as another [Benchmark] method rather than another run.
+/// should show up here as another [Benchmark] method rather than another run. One operation
+/// parses every part of a sample - only <see cref="MarkupSampleKind.PlainShort"/> has several.
 /// Run: dotnet run -c Release --project tests/Benchmarks -- MarkupParserBenchmarks
 /// </summary>
 [Config(typeof(Config))]
 [MemoryDiagnoser]
 public class MarkupParserBenchmarks
 {
-    private string _text = "";
+    private string[] _texts = [];
     private MarkupParser _parser = null!;
-    [Params(MarkupSampleKind.Regular, MarkupSampleKind.Table, MarkupSampleKind.Long)]
+
+    [Params(
+        MarkupSampleKind.PlainShort,
+        MarkupSampleKind.PlainEnglish,
+        MarkupSampleKind.PlainRussian,
+        MarkupSampleKind.Regular,
+        MarkupSampleKind.Table,
+        MarkupSampleKind.Long,
+        MarkupSampleKind.VideoStats,
+        MarkupSampleKind.VideoStatsFenced,
+        MarkupSampleKind.ConsoleLog,
+        MarkupSampleKind.ConsoleLogFenced)]
     public MarkupSampleKind Sample { get; set; }
 
     [GlobalSetup]
     public void Setup()
     {
-        _text = MarkupSamples.Get(Sample);
+        _texts = MarkupSamples.Get(Sample);
         _parser = new MarkupParser();
     }
 
     [Benchmark(Baseline = true)]
     public Markup Parse()
+    {
         // What the app actually calls: parse + simplify.
-        => _parser.Parse(_text);
+        var result = MarkupParser.EmptyResult;
+        foreach (var text in _texts)
+            result = _parser.Parse(text);
+        return result;
+    }
 
     [Benchmark]
     public Markup ParseRawOnly()
-        => MarkupParser.ParseRaw(_text);
+    {
+        var result = MarkupParser.EmptyResult;
+        foreach (var text in _texts)
+            result = MarkupParser.ParseRaw(text);
+        return result;
+    }
 
     // Nested types
 
@@ -77,7 +99,7 @@ public class MarkupParserBenchmarks
             if (kind is not { } sample)
                 return "?";
 
-            var charsPerSecond = MarkupSamples.Get(sample).Length / (mean / 1e9);
+            var charsPerSecond = MarkupSamples.GetLength(sample) / (mean / 1e9);
             return charsPerSecond.ToString("N0");
         }
     }

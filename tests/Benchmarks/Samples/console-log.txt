@@ -1,0 +1,244 @@
+logging-init.ts:62 Logging: logLevels are restored
+Utils.js:148 [2026-08-19T16:07:57.374Z] Information: Normalizing '_blazor' to 'https://local.voxt.ai/_blazor'.
+Utils.js:148 [2026-08-19T16:07:57.498Z] Information: WebSocket connected to wss://local.voxt.ai/_blazor?id=X8QIb2DxkIJ77-NqTTrWng.
+logging.ts:117 [MainThreadDiagnostics] installLongAnimationFrameReporter: installed (entryType=long-animation-frame, threshold=400ms, dedupeWindow=5000ms)
+logging.ts:117 [MainThreadDiagnostics] installMutationObserverStormDetector: installed (threshold=100/1000ms, cooldown=5000ms)
+logging.ts:117 [MainThreadDiagnostics] installHeapSampler: installed (period=10000ms, max=30)
+logging.ts:117 [MainThreadDiagnostics] installFrameWatchdog: installed (stallThreshold=1000ms, checkPeriod=250ms)
+logging.ts:117 [MainThreadDiagnostics] init: enabled monitors: longAnimationFrame, mutationStorm, heapSampler, watchdog
+audio-context-source.ts:855 AudioContext is: Object , its currentTime: 0
+audio-context-source.ts:855 AudioContext is: Object , its currentTime: 0
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg:1  Failed to load resource: the server responded with a status of 403 ()
+/chat:1 Access to fetch at 'https://media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg' from origin 'https://local.voxt.ai' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg:1  Failed to load resource: net::ERR_FAILED
+/chat:1 Access to fetch at 'https://media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg' from origin 'https://local.voxt.ai' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg:1  Failed to load resource: net::ERR_FAILED
+/chat:1 Access to fetch at 'https://media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg' from origin 'https://local.voxt.ai' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg:1  Failed to load resource: net::ERR_FAILED
+/chat:1 Access to fetch at 'https://media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg' from origin 'https://local.voxt.ai' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg:1  Failed to load resource: net::ERR_FAILED
+image-skeleton.lit.ts:125   Uncaught (in promise) TypeError: Failed to fetch
+    at ImageSkeleton.reloadImage (image-skeleton.lit.ts:125:36)
+    at L.handleEvent (lit-html.ts:2109:29)
+reloadImage @ image-skeleton.lit.ts:125
+handleEvent @ lit-html.ts:2109
+image-skeleton.lit.ts:125   Uncaught (in promise) TypeError: Failed to fetch
+    at ImageSkeleton.reloadImage (image-skeleton.lit.ts:125:36)
+    at L.handleEvent (lit-html.ts:2109:29)
+reloadImage @ image-skeleton.lit.ts:125
+handleEvent @ lit-html.ts:2109
+image-skeleton.lit.ts:125   Uncaught (in promise) TypeError: Failed to fetch
+    at ImageSkeleton.reloadImage (image-skeleton.lit.ts:125:36)
+    at L.handleEvent (lit-html.ts:2109:29)
+reloadImage @ image-skeleton.lit.ts:125
+handleEvent @ lit-html.ts:2109
+image-skeleton.lit.ts:125   Uncaught (in promise) TypeError: Failed to fetch
+    at ImageSkeleton.reloadImage (image-skeleton.lit.ts:125:36)
+    at L.handleEvent (lit-html.ts:2109:29)
+reloadImage @ image-skeleton.lit.ts:125
+handleEvent @ lit-html.ts:2109
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg:1  Failed to load resource: the server responded with a status of 403 ()
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/fZYXE06VzZRHqL0fcPKWcGdLQ8vrnWNLd2tyGWQ7uHU/laWfzq8V2v.png:1  Failed to load resource: the server responded with a status of 403 ()
+/chat:1 Access to fetch at 'https://media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg' from origin 'https://local.voxt.ai' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg:1  Failed to load resource: net::ERR_FAILED
+/chat:1 Access to fetch at 'https://media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/fZYXE06VzZRHqL0fcPKWcGdLQ8vrnWNLd2tyGWQ7uHU/laWfzq8V2v.png' from origin 'https://local.voxt.ai' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/fZYXE06VzZRHqL0fcPKWcGdLQ8vrnWNLd2tyGWQ7uHU/laWfzq8V2v.png:1  Failed to load resource: net::ERR_FAILED
+image-skeleton.lit.ts:125   Uncaught (in promise) TypeError: Failed to fetch
+    at ImageSkeleton.reloadImage (image-skeleton.lit.ts:125:36)
+    at L.handleEvent (lit-html.ts:2109:29)
+reloadImage @ image-skeleton.lit.ts:125
+handleEvent @ lit-html.ts:2109
+image-skeleton.lit.ts:125   Uncaught (in promise) TypeError: Failed to fetch
+    at ImageSkeleton.reloadImage (image-skeleton.lit.ts:125:36)
+    at L.handleEvent (lit-html.ts:2109:29)
+reloadImage @ image-skeleton.lit.ts:125
+handleEvent @ lit-html.ts:2109
+ [rpc.RpcPeer] 'wss://local.voxt.ai/rpc/ws?kind=audio&f=msgpack6ck': Started (Client)
+ [rpc.RpcPeer] 'wss://local.voxt.ai/rpc/ws?kind=audio&f=msgpack6ck': Connecting to wss://local.voxt.ai/rpc/ws?kind=audio&f=msgpack6ck&clientId=%3Credacted%3E
+audio-context-source.ts:855 AudioContext is: Object , its currentTime: 1.0906666666666667
+logging.ts:117 [rpc.RpcPeer] 'wss://local.voxt.ai/rpc/ws?kind=audio&f=msgpack6ck': WS open
+audio-context-source.ts:855 AudioContext is: Object , its currentTime: 1.112
+logging.ts:117 [rpc.RpcPeer] 'wss://local.voxt.ai/rpc/ws?kind=audio&f=msgpack6ck': Handshake succeeded, peerChanged=false
+logging.ts:120 [ServiceWorker] updateFound: updated service worker detected
+(anonymous) @ logging.ts:120
+(anonymous) @ service-worker.ts:28
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+debug-ui.ts:127 getUserId: 4An15V
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg:1  Failed to load resource: the server responded with a status of 403 ()
+/chat:1 Access to fetch at 'https://media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg' from origin 'https://local.voxt.ai' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg:1  Failed to load resource: net::ERR_FAILED
+image-skeleton.lit.ts:125   Uncaught (in promise) TypeError: Failed to fetch
+    at ImageSkeleton.reloadImage (image-skeleton.lit.ts:125:36)
+    at L.handleEvent (lit-html.ts:2109:29)
+reloadImage @ image-skeleton.lit.ts:125
+handleEvent @ lit-html.ts:2109
+animation-sync.ts:272 AnimationSync: div.recorder-wrapper.record-off declares ::before, but the animation is on the element itself
+warn @ animation-sync.ts:272
+validate @ animation-sync.ts:205
+phaseOf @ animation-sync.ts:157
+sync @ animation-sync.ts:112
+syncStarted @ animation-sync.ts:125
+(anonymous) @ animation-sync.ts:306
+animation-sync.ts:272 AnimationSync: div.recorder-wrapper.record-off declares ::before, but the animation is on the element itself
+warn @ animation-sync.ts:272
+validate @ animation-sync.ts:205
+phaseOf @ animation-sync.ts:157
+sync @ animation-sync.ts:112
+syncStarted @ animation-sync.ts:125
+(anonymous) @ animation-sync.ts:306
+animation-sync.ts:272 AnimationSync: div.recorder-wrapper.record-off declares ::before, but the animation is on the element itself
+warn @ animation-sync.ts:272
+validate @ animation-sync.ts:205
+phaseOf @ animation-sync.ts:157
+sync @ animation-sync.ts:112
+syncStarted @ animation-sync.ts:125
+(anonymous) @ animation-sync.ts:306
+animation-sync.ts:272 AnimationSync: div.recorder-wrapper.record-off declares ::before, but the animation is on the element itself
+warn @ animation-sync.ts:272
+validate @ animation-sync.ts:205
+phaseOf @ animation-sync.ts:157
+sync @ animation-sync.ts:112
+syncStarted @ animation-sync.ts:125
+(anonymous) @ animation-sync.ts:306
+markup-editor.ts:368 addRange(): The given range isn't in document.
+moveCursorToTheEnd @ markup-editor.ts:368
+setHtml @ markup-editor.ts:273
+restoreDraft @ chat-message-editor.ts:532
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg:1  Failed to load resource: the server responded with a status of 403 ()
+the-actual-one:1 Access to fetch at 'https://media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg' from origin 'https://local.voxt.ai' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg:1  Failed to load resource: net::ERR_FAILED
+the-actual-one:1 Access to fetch at 'https://media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg' from origin 'https://local.voxt.ai' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg:1  Failed to load resource: net::ERR_FAILED
+the-actual-one:1 Access to fetch at 'https://media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg' from origin 'https://local.voxt.ai' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg:1  Failed to load resource: net::ERR_FAILED
+the-actual-one:1 Access to fetch at 'https://media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg' from origin 'https://local.voxt.ai' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg:1  Failed to load resource: net::ERR_FAILED
+image-skeleton.lit.ts:125   Uncaught (in promise) TypeError: Failed to fetch
+    at ImageSkeleton.reloadImage (image-skeleton.lit.ts:125:36)
+    at L.handleEvent (lit-html.ts:2109:29)
+reloadImage @ image-skeleton.lit.ts:125
+handleEvent @ lit-html.ts:2109
+image-skeleton.lit.ts:125   Uncaught (in promise) TypeError: Failed to fetch
+    at ImageSkeleton.reloadImage (image-skeleton.lit.ts:125:36)
+    at L.handleEvent (lit-html.ts:2109:29)
+reloadImage @ image-skeleton.lit.ts:125
+handleEvent @ lit-html.ts:2109
+image-skeleton.lit.ts:125   Uncaught (in promise) TypeError: Failed to fetch
+    at ImageSkeleton.reloadImage (image-skeleton.lit.ts:125:36)
+    at L.handleEvent (lit-html.ts:2109:29)
+reloadImage @ image-skeleton.lit.ts:125
+handleEvent @ lit-html.ts:2109
+image-skeleton.lit.ts:125   Uncaught (in promise) TypeError: Failed to fetch
+    at ImageSkeleton.reloadImage (image-skeleton.lit.ts:125:36)
+    at L.handleEvent (lit-html.ts:2109:29)
+reloadImage @ image-skeleton.lit.ts:125
+handleEvent @ lit-html.ts:2109
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg:1  Failed to load resource: the server responded with a status of 403 ()
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/fZYXE06VzZRHqL0fcPKWcGdLQ8vrnWNLd2tyGWQ7uHU/laWfzq8V2v.png:1  Failed to load resource: the server responded with a status of 403 ()
+the-actual-one:1 Access to fetch at 'https://media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg' from origin 'https://local.voxt.ai' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/aFu6ZUYMv5I9LSHSkF8jmczqzTlnfpfS8dW1UznwhTE/XwVfQUjg9g.jpg:1  Failed to load resource: net::ERR_FAILED
+the-actual-one:1 Access to fetch at 'https://media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/fZYXE06VzZRHqL0fcPKWcGdLQ8vrnWNLd2tyGWQ7uHU/laWfzq8V2v.png' from origin 'https://local.voxt.ai' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+media.local.voxt.ai/128/https://cdn.local.voxt.ai/media/fZYXE06VzZRHqL0fcPKWcGdLQ8vrnWNLd2tyGWQ7uHU/laWfzq8V2v.png:1  Failed to load resource: net::ERR_FAILED
+image-skeleton.lit.ts:125   Uncaught (in promise) TypeError: Failed to fetch
+    at ImageSkeleton.reloadImage (image-skeleton.lit.ts:125:36)
+    at L.handleEvent (lit-html.ts:2109:29)
+reloadImage @ image-skeleton.lit.ts:125
+handleEvent @ lit-html.ts:2109
+image-skeleton.lit.ts:125   Uncaught (in promise) TypeError: Failed to fetch
+    at ImageSkeleton.reloadImage (image-skeleton.lit.ts:125:36)
+    at L.handleEvent (lit-html.ts:2109:29)
+reloadImage @ image-skeleton.lit.ts:125
+handleEvent @ lit-html.ts:2109
+sw.js?config=eyJhcGlLZXkiOiJBSXphU3lCeXZtNm5rbVQ4ZE53TkpJWEJUNDk3UFdCZmpSUEM1UjAiLCJhdXRoRG9tYWluIjoiYWN0dWFsLWNoYXQtYXBwLWRldi5maXJlYmFzZWFwcC5jb20iLCJwcm9qZWN0SWQiOiJhY3R1YWwtY2hhdC1hcHAtZGV2Iiwic3RvcmFnZUJ1Y2tldCI6ImFjdHVhbC1jaGF0LWFwcC1kZXYuZmlyZWJhc2VzdG9yYWdlLmFwcCIsIm1lc3NhZ2luZ1NlbmRlcklkIjoiMzY3MDQ2NjcyNDU2IiwiYXBwSWQiOiIxOjM2NzA0NjY3MjQ1Njp3ZWI6YzQwMGE1MjUxNDFkN2M2MmZiOTg3ZCIsIm1lYXN1cmVtZW50SWQiOiJHLUswMTNWRlY0TjQifQ==:3194 Uncaught (in promise) FirebaseError: Messaging: This browser doesn't support the API's required to use the Firebase SDK. (messaging/unsupported-browser).
+    at sw.js?config=eyJhcGlLZXkiOiJBSXphU3lCeXZtNm5rbVQ4ZE53TkpJWEJUNDk3UFdCZmpSUEM1UjAiLCJhdXRoRG9tYWluIjoiYWN0dWFsLWNoYXQtYXBwLWRldi5maXJlYmFzZWFwcC5jb20iLCJwcm9qZWN0SWQiOiJhY3R1YWwtY2hhdC1hcHAtZGV2Iiwic3RvcmFnZUJ1Y2tldCI6ImFjdHVhbC1jaGF0LWFwcC1kZXYuZmlyZWJhc2VzdG9yYWdlLmFwcCIsIm1lc3NhZ2luZ1NlbmRlcklkIjoiMzY3MDQ2NjcyNDU2IiwiYXBwSWQiOiIxOjM2NzA0NjY3MjQ1Njp3ZWI6YzQwMGE1MjUxNDFkN2M2MmZiOTg3ZCIsIm1lYXN1cmVtZW50SWQiOiJHLUswMTNWRlY0TjQifQ==:3194:28
