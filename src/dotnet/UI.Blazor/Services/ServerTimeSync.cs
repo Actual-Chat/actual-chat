@@ -1,88 +1,112 @@
+using ActualLab.Rpc;
+using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class ServerTimeSync : WorkerBase
+/// <summary>
+/// Maintains <see cref="ServerClock"/>'s offset: targets a fixed precision and
+/// derives its cadence from it, rather than syncing on a fixed schedule.
+/// See <c>docs/architecture/server-clock-sync.md</c>.
+/// </summary>
+public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
 {
-    private const int BurstSize = 4;
-    private const double RttToleranceFactor = 1.5;
-    private const int MaxRejectStreak = 3;
-    private static readonly TimeSpan StaleThreshold = TimeSpan.FromMinutes(11);
-    private static readonly TimeSpan SteadyStateDelay = TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan DriftCheckPeriod = TimeSpan.FromSeconds(15);
-    private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan StartupDelay = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan TargetPrecision = TimeSpan.FromMilliseconds(50);
+    private static readonly TimeSpan PrecisionCeiling = TimeSpan.FromMilliseconds(250);
+    // Oscillator drift is unmeasurable at this cadence and precision, so it's assumed.
+    // 50 ppm covers commodity hardware with a temperature swing; being conservative here
+    // only syncs more often than necessary.
+    private const double AssumedDriftRate = 50e-6;
+    private static readonly TimeSpan DriftBudget = TimeSpan.FromMilliseconds(20);
+    private static readonly TimeSpan SteadyInterval =
+        TimeSpan.FromSeconds(DriftBudget.TotalSeconds / AssumedDriftRate)
+            .Clamp(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(30));
+    private static readonly RetryDelaySeq ConvergingDelays = RetryDelaySeq.Exp(1, 60);
+    private const int ConvergingBurstSize = 8;
+    private const int SteadyBurstSize = 4;
+    private const int MinUsableProbes = 3;
+    private static readonly TimeSpan ProbeSpacing = TimeSpan.FromMilliseconds(75);
+    private static readonly TimeSpan ProbeTimeout = TimeSpan.FromMilliseconds(400);
+    // A real round trip can't be sub-millisecond: below this the timer resolved nothing,
+    // which must read as "unmeasurable" rather than "excellent" - otherwise min-RTT
+    // latches onto a granularity artifact and reports zero precision.
+    private static readonly TimeSpan PhysicalRttFloor = TimeSpan.FromMilliseconds(1);
+    private static readonly TimeSpan TimerGranularity = TimeSpan.FromMilliseconds(1);
+    private static readonly TimeSpan MaxProbeRtt = TimeSpan.FromSeconds(2);
+    private const double RttSelectionFactor = 1.5;
+    private const double SmallCorrectionFactor = 2;
+    private const double ConfirmFactor = 2;
+    private static readonly TimeSpan ConfirmSpacing = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan SlewStep = TimeSpan.FromMilliseconds(250);
+    // Must stay below 100%, or a negative correction makes ServerClock.Now run backwards.
+    private const double MaxSlewRate = 0.1;
+    private static readonly TimeSpan StalenessRelaxTime = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan SuspendDriftThreshold = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan ConnectWait = TimeSpan.FromSeconds(5);
 
-    private readonly RunningEma _rttEma = new(0f, 1, 0.3);
     private readonly SemaphoreSlim _syncLock = new(1, 1);
-    private int _rejectStreak;
-    private Moment _lastUpdatedWallAt;
+    private readonly RunningEma _minRttEma = new(0f, 1, 0.3);
+    private CancellationTokenSource? _slewTokenSource;
+    private TimeSpan _appliedOffset;
+    private TimeSpan _precision = PrecisionCeiling;
+    private TimeSpan _connectedElapsed;
+    private Moment _nextSyncAt;
+    private Moment _lastAttemptAt;
+    private Moment _lastAcceptedAt;
+    private Moment _lastAcceptedWallAt;
+    private ServerClockSyncMode _mode = ServerClockSyncMode.Converging;
+    private int _attempt;
+    private int _epoch;
 
-    private ILogger Log { get; }
-    private MomentClockSet Clocks { get; }
+    private IServiceProvider Services { get; } = services;
+    private MomentClockSet Clocks { get; } = services.Clocks();
     private MomentClock CpuClock => Clocks.CpuClock;
-    private HostInfo HostInfo { get; }
-    private ISystemProperties SystemProperties { get; set; }
-    private IJSRuntime JS { get; }
-    private ServerClockSyncStats Stats { get; }
-    public TimeSpan LastOffset { get; private set; }
-    public TimeSpan LastPrecision { get; private set; } = TimeSpan.FromHours(1);
-    public TimeSpan RttEma => TimeSpan.FromSeconds(_rttEma.Value);
-    public Moment LastUpdatedAt { get; private set; }
-    public int SyncAttemptCount { get; private set; }
-    public int SyncCount { get; private set; }
-    // Precision "auto-grows" by 1 second per day
-    public TimeSpan Precision => LastPrecision + TimeSpan.FromSeconds((CpuClock.Now - LastUpdatedAt).TotalDays);
+    private bool IsServer { get; } = services.HostInfo().HostKind.IsServer();
+    private ISystemProperties SystemProperties { get; } = services.GetRequiredService<ISystemProperties>();
+    private IJSRuntime JS { get; } = services.JSRuntime();
+    private ServerClockSyncStats Stats { get; } = services.GetRequiredService<ServerClockSyncStats>();
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
-    public ServerTimeSync(IServiceProvider services)
-    {
-        Log = services.LogFor(GetType());
-        Clocks = services.Clocks();
-        HostInfo = services.HostInfo();
-        SystemProperties = services.GetRequiredService<ISystemProperties>();
-        JS = services.JSRuntime();
-        Stats = services.GetRequiredService<ServerClockSyncStats>();
-        LastUpdatedAt = Clocks.CpuClock.Now - TimeSpan.FromDays(1);
-        _lastUpdatedWallAt = Clocks.SystemClock.Now - TimeSpan.FromDays(1);
-    }
+    public int SyncCount { get; private set; }
 
     public async Task EnsureSynced(CancellationToken cancellationToken)
     {
-        // Forces a sync on demand; call before using server timestamps (e.g. video
-        // startedAtMs). Re-syncs after a detected suspend or wall-clock step too —
-        // whichever of the two clocks the offset rides, one of those broke it.
-        if (SyncCount > 0 && GetSuspendDrift() < SuspendDriftThreshold)
+        // Wall-vs-monotonic divergence is a reason to re-measure, never evidence that
+        // a correction is legitimate - the two clocks disagree on sleep and on a wall
+        // step alike, and which one lies is platform-dependent.
+        if (SyncCount > 0 && _precision <= TargetPrecision && GetSuspendDrift() < SuspendDriftThreshold)
             return;
 
         await Sync(cancellationToken).ConfigureAwait(false);
     }
 
+    // Protected/internal methods
+
     protected override Task OnRun(CancellationToken cancellationToken)
         => AsyncChain.From(Sync)
-            .RetryForever(RetryDelaySeq.Exp(0.5, 60))
+            .RetryForever(ConvergingDelays)
             .AppendDelay(GetNextSyncDelay)
             .CycleForever()
             .Log(LogLevel.Debug, Log)
-            .PrependDelay(TimeSpan.FromSeconds(3))
+            .PrependDelay(StartupDelay)
             .RunIsolated(cancellationToken);
 
-    private TimeSpan GetNextSyncDelay()
-    {
-        if (SyncAttemptCount <= 2)
-            return TimeSpan.FromSeconds(0.25);
-        if (SyncCount <= 2 && SyncAttemptCount <= 5)
-            return TimeSpan.FromSeconds(0.5);
+    // Private methods
 
-        // Short cadence, but most ticks are cheap no-ops: SyncUnsafe runs a real
-        // burst only when SteadyStateDelay elapsed or a device suspend is detected.
-        return DriftCheckPeriod;
-    }
+    private TimeSpan GetNextSyncDelay()
+        => (_nextSyncAt - CpuClock.Now).Positive();
 
     private async Task Sync(CancellationToken cancellationToken)
     {
-        // Serialize the on-demand EnsureSynced path against the background loop.
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
             await SyncUnsafe(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            // A failed sync must not surface to EnsureSynced's callers - a recording
+            // start shouldn't fail because the clock probe did.
+            Log.LogWarning(e, "Sync failed");
+            OnAttemptFailed(ServerClockSyncOutcome.BurstDiscarded);
         }
         finally {
             _syncLock.Release();
@@ -91,139 +115,338 @@ public class ServerTimeSync : WorkerBase
 
     private async Task SyncUnsafe(CancellationToken cancellationToken)
     {
-        var isSuspendSuspected = GetSuspendDrift() >= SuspendDriftThreshold;
-        var isDue = CpuClock.Now - LastUpdatedAt >= SteadyStateDelay;
-        if (SyncCount > 2 && !isDue && !isSuspendSuspected)
-            return; // Drift-check tick, nothing to do
-
-        SyncAttemptCount++;
-
-        // The remote being measured differs by host kind. Server mode: C# runs on
-        // the server and the browser is across the SignalR circuit, so we NTP-probe
-        // the browser's Date.now() over the interop channel — this compensates the
-        // circuit latency (gap the old serverNow one-way push left uncorrected).
-        // WASM/MAUI: C# runs in the browser, so we NTP-probe the remote server via
-        // RPC. Either way `before`/`after` are the LOCAL clock around the round trip —
-        // specifically ServerClock's own base clock, so the measured offset is valid
-        // for whatever base the host configured (clients use a wall-clock base, which
-        // keeps ServerClock correct across suspends; see ClientStartup.Initialize).
-        var isServer = HostInfo.HostKind.IsServer();
-        var offsetBaseClock = isServer ? CpuClock : Clocks.ServerClock.BaseClock;
-
-        // RTT is the wall-clock (CpuClock) span of the whole burst, not a per-call
-        // Stopwatch delta: in the browser the Stopwatch/performance.now granularity
-        // makes a single fast sample read ~0, and min-RTT then latches onto it,
-        // zeroing precision. The burst window over real network awaits can't be 0.
-        var burstStart = CpuClock.Now;
-        var offsets = new List<double>(BurstSize); // server − client, in ms
-        for (var i = 0; i < BurstSize; i++) {
-            var before = offsetBaseClock.Now.EpochOffset.TotalMilliseconds;
-            double remoteMs;
-            try {
-                // ProbeTimeout keeps a probe hung on a half-dead connection from
-                // wedging this worker forever (it holds _syncLock while awaiting).
-                remoteMs = isServer
-                    ? await JS.InvokeAsync<double>("SharedSettings.getClientTimeMs", cancellationToken)
-                        .AsTask().WaitAsync(ProbeTimeout, cancellationToken).ConfigureAwait(false)
-                    : await SystemProperties.GetTime(cancellationToken)
-                        .WaitAsync(ProbeTimeout, cancellationToken).ConfigureAwait(false) * 1000;
-            }
-            catch (TimeoutException) {
-                continue; // Hung probe — skip the sample
-            }
-            catch (Exception e) when (isServer && e is JSDisconnectedException or ObjectDisposedException) {
-                return; // Blazor circuit is gone
-            }
-            var after = offsetBaseClock.Now.EpochOffset.TotalMilliseconds;
-            if (after < before) // A wall-clock base stepped back mid-probe
-                continue;
-            if (after - before > 2000) // This call took too long
-                continue;
-            var localMid = 0.5 * (before + after);
-            offsets.Add(isServer ? localMid - remoteMs : remoteMs - localMid);
-        }
-        if (offsets.Count == 0)
-            return; // every call took too long
-
-        var avgRtt = (CpuClock.Now - burstStart).TotalSeconds / offsets.Count;
-        var offsetMs = Median(offsets);
-        var offset = TimeSpan.FromMilliseconds(offsetMs);
-        var precision = TimeSpan.FromSeconds(0.5 * avgRtt);
-
-        // Tolerance gate against the EMA baseline captured BEFORE folding in this
-        // sample: rejects a momentary RTT spike, yet a sustained increase raises
-        // the baseline over the next cycles so we never lock out forever.
-        var baseline = _rttEma.Value;
-        _rttEma.AppendSample(avgRtt);
-        var isStale = CpuClock.Now - LastUpdatedAt > StaleThreshold;
-        var accept = SyncCount == 0
-            || isStale
-            || isSuspendSuspected
-            || _rejectStreak >= MaxRejectStreak
-            || avgRtt <= baseline * RttToleranceFactor;
-        if (!accept) {
-            _rejectStreak++;
+        AccrueStaleness();
+        var burst = await RunBurst(cancellationToken).ConfigureAwait(false);
+        if (burst == null) {
+            OnAttemptFailed(ServerClockSyncOutcome.BurstDiscarded);
             return;
         }
-        _rejectStreak = 0;
 
+        if (burst.Precision > GetAcceptablePrecision()) {
+            OnAttemptFailed(ServerClockSyncOutcome.RejectNoisy);
+            return;
+        }
+
+        if (SyncCount == 0) {
+            Accept(burst, ServerClockSyncOutcome.Step);
+            return;
+        }
+
+        var correction = (burst.Offset - _appliedOffset).Duration();
+        if (correction <= SmallCorrectionFactor * TimeSpanExt.Max(burst.Precision, _precision)) {
+            Accept(burst, ServerClockSyncOutcome.Refinement);
+            return;
+        }
+
+        // A large correction is either a real clock step or a bad sample, and local
+        // clocks can't tell them apart. Repeating the measurement can: a step persists,
+        // a bad sample doesn't. This also catches a server-side step or a reroute onto
+        // a pod with a different clock, which no local inspection could explain.
+        await CpuClock.Delay(ConfirmSpacing, cancellationToken).ConfigureAwait(false);
+        var confirmation = await RunBurst(cancellationToken).ConfigureAwait(false);
+        if (confirmation == null || confirmation.Precision > GetAcceptablePrecision()) {
+            OnAttemptFailed(ServerClockSyncOutcome.BurstDiscarded);
+            return;
+        }
+
+        var agreement = (confirmation.Offset - burst.Offset).Duration();
+        if (agreement > ConfirmFactor * TimeSpanExt.Max(burst.Precision, confirmation.Precision)) {
+            OnAttemptFailed(ServerClockSyncOutcome.RejectTransient);
+            return;
+        }
+
+        Accept(confirmation, ServerClockSyncOutcome.Step);
+    }
+
+    private async Task<BurstResult?> RunBurst(CancellationToken cancellationToken)
+    {
+        var offsetBaseClock = IsServer ? CpuClock : Clocks.ServerClock.BaseClock;
+        var peer = IsServer ? null : Services.RpcHub().GetClientPeer(RpcRef.Default);
+        RpcPeerConnectionState? connectionState = null;
+        if (peer != null) {
+            // Probing while disconnected parks the call until reconnect, and a probe that
+            // resumes afterwards reports a server reading taken near `after` rather than
+            // the midpoint - biasing the offset positive by half the outage.
+            try {
+                await peer.WhenConnected(ConnectWait, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+                return null;
+            }
+
+            connectionState = peer.ConnectionState.Value;
+        }
+
+        var burstSize = _mode == ServerClockSyncMode.Steady ? SteadyBurstSize : ConvergingBurstSize;
+        var samples = new List<Sample>(burstSize);
+        for (var i = 0; i < burstSize; i++) {
+            if (i != 0)
+                await CpuClock.Delay(ProbeSpacing, cancellationToken).ConfigureAwait(false);
+
+            Sample? sample;
+            try {
+                sample = await Probe(offsetBaseClock, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is JSDisconnectedException or ObjectDisposedException) {
+                return null; // The circuit is gone - the whole burst is void
+            }
+
+            if (sample is { } usableSample)
+                samples.Add(usableSample);
+        }
+
+        if (peer != null && !IsSameConnection(connectionState!, peer.ConnectionState.Value))
+            return null;
+        if (samples.Count < MinUsableProbes)
+            return null;
+
+        return Reduce(samples);
+    }
+
+    private async Task<Sample?> Probe(MomentClock offsetBaseClock, CancellationToken cancellationToken)
+    {
+        using var cts = cancellationToken.CreateLinkedTokenSource();
+        cts.CancelAfter(ProbeTimeout);
+        var before = offsetBaseClock.Now;
+        double remoteMs;
+        try {
+            remoteMs = IsServer
+                ? await JS.InvokeAsync<double>("SharedSettings.getClientTimeMs", cts.Token).ConfigureAwait(false)
+                : await SystemProperties.GetTime(cts.Token).ConfigureAwait(false) * 1000;
+        }
+        catch (Exception e) when (e is not (JSDisconnectedException or ObjectDisposedException)
+                                  && !e.IsCancellationOf(cancellationToken)) {
+            return null; // Timed out or failed: this sample is unusable, the burst isn't
+        }
+
+        var after = offsetBaseClock.Now;
+        var rtt = after - before;
+        if (rtt < PhysicalRttFloor || rtt > MaxProbeRtt)
+            return null;
+
+        var localMidMs = 0.5 * (before.EpochOffset.TotalMilliseconds + after.EpochOffset.TotalMilliseconds);
+        return new Sample(rtt, IsServer ? localMidMs - remoteMs : remoteMs - localMidMs);
+    }
+
+    private void Accept(BurstResult burst, ServerClockSyncOutcome outcome)
+    {
+        var correction = (burst.Offset - _appliedOffset).Duration();
         SyncCount++;
-        LastOffset = offset;
-        LastPrecision = precision;
-        LastUpdatedAt = CpuClock.Now;
-        _lastUpdatedWallAt = Clocks.SystemClock.Now;
-        Log.LogInformation("Offset = {Offset} ± {Precision} (rtt ema {RttEma})",
-            offset.ToShortString(), precision.ToShortString(), RttEma.ToShortString());
+        _attempt = 0;
+        _connectedElapsed = TimeSpan.Zero;
+        _precision = burst.Precision;
+        _lastAcceptedAt = CpuClock.Now;
+        _lastAcceptedWallAt = Clocks.SystemClock.Now;
+        _minRttEma.AppendSample((float)burst.MinRtt.TotalSeconds);
+        _mode = burst.Precision <= TargetPrecision
+            ? ServerClockSyncMode.Steady
+            : ServerClockSyncMode.Converging;
+        if (outcome == ServerClockSyncOutcome.Step)
+            ApplyStep(burst.Offset);
+        else
+            StartSlew(burst.Offset);
 
-        if (!isServer) {
-            // C# runs in the browser here, so its own ServerClock needs the offset too.
-            // In server mode the offset is the browser's, not the server's — leave the
-            // server-side ServerClock at zero and only push the value to the browser.
+        Log.LogInformation(
+            "{Outcome}: offset = {Offset} ± {Precision}, correction = {Correction}, minRtt = {MinRtt}, epoch = {Epoch}",
+            outcome, burst.Offset.ToShortString(), burst.Precision.ToShortString(),
+            correction.ToShortString(), burst.MinRtt.ToShortString(), _epoch);
+        SetNextSyncAt();
+        UpdateStats(outcome, burst, correction);
+    }
+
+    private void OnAttemptFailed(ServerClockSyncOutcome outcome)
+    {
+        _attempt++;
+        _mode = ServerClockSyncMode.Converging;
+        SetNextSyncAt();
+        UpdateStats(outcome, null, TimeSpan.Zero);
+    }
+
+    private void SetNextSyncAt()
+        => _nextSyncAt = CpuClock.Now + (_mode == ServerClockSyncMode.Steady
+            ? SteadyInterval
+            : ConvergingDelays[_attempt]);
+
+    private TimeSpan GetAcceptablePrecision()
+    {
+        if (SyncCount == 0)
+            return PrecisionCeiling;
+
+        var relaxation = 1 + (_connectedElapsed.TotalSeconds / StalenessRelaxTime.TotalSeconds);
+        return TimeSpanExt.Min(relaxation * TargetPrecision, PrecisionCeiling);
+    }
+
+    private void AccrueStaleness()
+    {
+        // Staleness must accrue in connected time only: a client returning from an hour
+        // offline would otherwise arrive with a fully relaxed precision bound and swallow
+        // the first sample it gets - which is the one most likely to be reconnect-poisoned.
+        var now = CpuClock.Now;
+        if (_lastAttemptAt != default) {
+            var scheduled = _mode == ServerClockSyncMode.Steady ? SteadyInterval : ConvergingDelays[_attempt];
+            _connectedElapsed += TimeSpanExt.Min((now - _lastAttemptAt).Positive(), scheduled);
+        }
+
+        _lastAttemptAt = now;
+    }
+
+    private void ApplyStep(TimeSpan offset)
+    {
+        _epoch++;
+        CancelSlew();
+        SetOffset(offset);
+    }
+
+    private void StartSlew(TimeSpan target)
+    {
+        CancelSlew();
+        var slewTokenSource = _slewTokenSource = StopToken.CreateLinkedTokenSource();
+        _ = BackgroundTask.Run(
+            () => Slew(target, slewTokenSource),
+            Log, "Server clock slew failed", CancellationToken.None);
+    }
+
+    private async Task Slew(TimeSpan target, CancellationTokenSource slewTokenSource)
+    {
+        var cancellationToken = slewTokenSource.Token;
+        var maxStep = MaxSlewRate * SlewStep;
+        while (!cancellationToken.IsCancellationRequested) {
+            var delta = target - _appliedOffset;
+            if (delta.Duration() <= maxStep) {
+                SetOffsetFromSlew(target, slewTokenSource);
+                return;
+            }
+
+            SetOffsetFromSlew(_appliedOffset + (delta > TimeSpan.Zero ? maxStep : -maxStep), slewTokenSource);
+            await CpuClock.Delay(SlewStep, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private void SetOffsetFromSlew(TimeSpan offset, CancellationTokenSource slewTokenSource)
+    {
+        // Cancellation alone can't stop a write already past its check: prove ownership too.
+        if (!ReferenceEquals(_slewTokenSource, slewTokenSource))
+            return;
+
+        SetOffset(offset);
+    }
+
+    private void CancelSlew()
+    {
+        _slewTokenSource.CancelAndDisposeSilently();
+        _slewTokenSource = null;
+    }
+
+    private void SetOffset(TimeSpan offset)
+    {
+        _appliedOffset = offset;
+        if (!IsServer) {
+            // In server mode the measured offset is the browser's, so the server-side
+            // ServerClock stays at zero and only the pushed value matters.
             var serverClock = Clocks.ServerClock;
             serverClock.Offset = offset;
             if (MomentClockSet.Default.ServerClock != serverClock)
                 MomentClockSet.Default.ServerClock.Offset = offset;
         }
 
-        Stats.Set(new ServerClockSyncStats.Snapshot(
-            LastOffset, LastPrecision, RttEma, TimeSpan.FromSeconds(avgRtt),
-            LastUpdatedAt, _lastUpdatedWallAt, SyncCount));
+        _ = PushToJS();
+    }
 
+    private async Task PushToJS()
+    {
         try {
-            // Always a Date-relative offset, never an absolute server timestamp: an
-            // absolute value is converted against Date.now() at APPLY time, so any
-            // delay between this call and its JS-side execution (doze, frozen
-            // WebView) would skew the JS clock by exactly that delay.
-            var jsOffsetMs = isServer
-                ? offsetMs
+            // Always a Date-relative offset, never an absolute server timestamp: an absolute
+            // value is converted against Date.now() at APPLY time, so any delay between this
+            // call and its JS-side execution would skew the JS clock by exactly that delay.
+            var offsetMs = IsServer
+                ? _appliedOffset.TotalMilliseconds
                 : (Clocks.ServerClock.Now - Clocks.SystemClock.Now).TotalMilliseconds;
-            await JS.InvokeVoidAsync("SharedSettings.setServerClockOffsetMs", cancellationToken, jsOffsetMs)
+            await JS.InvokeVoidAsync("SharedSettings.setServerClockOffsetMs", StopToken, offsetMs, _epoch)
                 .ConfigureAwait(false);
         }
         catch (Exception e) when (e is JSDisconnectedException or ObjectDisposedException) {
-            // Blazor circuit is gone — safe to ignore
+            // The circuit is gone - nothing to push to
+        }
+        catch (Exception e) when (!e.IsCancellationOf(StopToken)) {
+            Log.LogWarning(e, "Failed to push the server clock offset to JS");
         }
     }
 
+    private void UpdateStats(ServerClockSyncOutcome outcome, BurstResult? burst, TimeSpan correction)
+        => Stats.Set(new ServerClockSyncStats.Snapshot(
+            _appliedOffset,
+            _precision,
+            TimeSpan.FromSeconds(_minRttEma.Value),
+            burst?.MinRtt ?? TimeSpan.Zero,
+            _lastAcceptedAt,
+            _lastAcceptedWallAt,
+            SyncCount) {
+            Dispersion = burst?.Dispersion ?? TimeSpan.Zero,
+            Correction = correction,
+            Epoch = _epoch,
+            Mode = _mode,
+            Staleness = _connectedElapsed,
+            Outcome = outcome,
+        });
+
     private TimeSpan GetSuspendDrift()
     {
-        // The wall clock keeps running through a device suspend while CpuClock
-        // (Stopwatch / CLOCK_MONOTONIC) does not, so a gap between the two elapsed
-        // spans since the last accepted sync means a suspend or a wall-clock step
-        // happened — either way the offset deserves a fresh measurement. Magnitude,
-        // not the signed value: a backward NTP step yields a negative gap, and the
-        // callers' >= threshold comparisons would never see it.
-        var wallElapsed = Clocks.SystemClock.Now - _lastUpdatedWallAt;
-        var cpuElapsed = CpuClock.Now - LastUpdatedAt;
+        // The wall clock keeps running through a device suspend while CpuClock does not,
+        // so a gap between the two elapsed spans means a suspend or a wall-clock step.
+        // Magnitude, not the signed value: a backward NTP step yields a negative gap.
+        var wallElapsed = Clocks.SystemClock.Now - _lastAcceptedWallAt;
+        var cpuElapsed = CpuClock.Now - _lastAcceptedAt;
         return (wallElapsed - cpuElapsed).Duration();
     }
 
-    private static double Median(List<double> values)
+    private static BurstResult Reduce(List<Sample> samples)
     {
-        values.Sort();
-        var n = values.Count;
-        return (n & 1) == 1
-            ? values[n / 2]
-            : 0.5 * (values[(n / 2) - 1] + values[n / 2]);
+        // 0.5 * RTT bounds the asymmetry error, and the lowest-RTT sample has the least
+        // queuing in both directions - so selecting on min-RTT beats averaging, which
+        // can't reach the target on a link whose average RTT exceeds 2 * target.
+        var minRtt = samples[0].Rtt;
+        for (var i = 1; i < samples.Count; i++)
+            minRtt = TimeSpanExt.Min(minRtt, samples[i].Rtt);
+
+        var selected = new List<double>(samples.Count);
+        foreach (var sample in samples)
+            if (sample.Rtt <= RttSelectionFactor * minRtt)
+                selected.Add(sample.OffsetMs);
+        selected.Sort();
+
+        var dispersion = TimeSpan.FromMilliseconds(selected[^1] - selected[0]);
+        var precision = TimeSpanExt.Max(TimeSpanExt.Max(0.5 * minRtt, dispersion), TimerGranularity);
+        return new BurstResult(TimeSpan.FromMilliseconds(Median(selected)), precision, minRtt, dispersion);
     }
+
+    private static bool IsSameConnection(RpcPeerConnectionState before, RpcPeerConnectionState after)
+    {
+        if (before.Kind != RpcPeerConnectionStateKind.Connected)
+            return false;
+        if (after.Kind != RpcPeerConnectionStateKind.Connected)
+            return false;
+        if (before.ConnectionAttemptIndex != after.ConnectionAttemptIndex)
+            return false;
+
+        // A reroute can land on a different server instance, hence a different clock domain.
+        return after.Handshake?.GetPeerChangeKind(before.Handshake) is null or RpcPeerChangeKind.Unchanged;
+    }
+
+    private static double Median(List<double> sortedValues)
+    {
+        var n = sortedValues.Count;
+        return (n & 1) == 1
+            ? sortedValues[n / 2]
+            : 0.5 * (sortedValues[(n / 2) - 1] + sortedValues[n / 2]);
+    }
+
+    // Nested types
+
+    private sealed record Sample(TimeSpan Rtt, double OffsetMs);
+
+    private sealed record BurstResult(
+        TimeSpan Offset,
+        TimeSpan Precision,
+        TimeSpan MinRtt,
+        TimeSpan Dispersion);
 }

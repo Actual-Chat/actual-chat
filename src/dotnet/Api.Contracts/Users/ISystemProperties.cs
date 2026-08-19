@@ -1,11 +1,14 @@
-﻿namespace ActualChat.Users;
+﻿using ActualLab.Rpc;
+
+namespace ActualChat.Users;
 
 /// <summary>
 /// Service for system properties, version checking, and maintenance operations.
 /// </summary>
 public interface ISystemProperties : IComputeService
 {
-    // Not a [ComputeMethod]!
+    // Not a [ComputeMethod]! ConnectTimeout stops a clock probe from parking until reconnect.
+    [RpcMethod(ConnectTimeout = 0.5)]
     Task<double> GetTime(CancellationToken cancellationToken);
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<ServerApiInfo> GetServerApiInfo(string expectedVersion, CancellationToken cancellationToken);

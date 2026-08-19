@@ -105,11 +105,17 @@ export class MonotonicClock {
 
 // Offset in ms: serverNow ≈ Date.now() + offset
 let offsetMs = 0;
-type OffsetListener = (offsetMs: number) => void;
+let epoch = 0;
+type OffsetListener = (offsetMs: number, epoch: number) => void;
 const listeners: OffsetListener[] = [];
 
 export class ServerClock {
     static get offsetMs(): number { return offsetMs; }
+
+    /** Bumped when the offset moved by a confirmed clock step rather than a small
+     *  refinement. Holders of absolute anchors (A/V sync, presentation lag) must
+     *  rebase when it changes — a slewed refinement never bumps it. */
+    static get epoch(): number { return epoch; }
 
     /** Returns server-aligned epoch ms */
     static now(): number { return Date.now() + offsetMs; }
@@ -117,9 +123,10 @@ export class ServerClock {
     /** Accepts the current server time (epoch ms); same-realm callers only —
      *  converting an absolute timestamp across a realm/interop boundary skews
      *  the offset by the delivery delay (see SharedSettings.setServerClockOffsetMs). */
-    static updateOffset(serverNowMs: number): void {
+    static updateOffset(serverNowMs: number, newEpoch: number = epoch): void {
         offsetMs = serverNowMs - Date.now();
-        for (const fn of listeners) fn(offsetMs);
+        epoch = newEpoch;
+        for (const fn of listeners) fn(offsetMs, epoch);
     }
 
     /** Subscribe to offset changes. Returns unsubscribe function. */
