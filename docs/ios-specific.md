@@ -828,6 +828,37 @@ To prove where a cost lives: kill the app (does it vanish?), fresh-launch withou
 the feature (is it absent?), then exercise it. That three-point chain localises an owner far
 faster than reasoning about the code.
 
+### A configuration change stops the engine, and `start()` does not repair it
+
+Anything that changes the hardware format or the route under a running `AVAudioEngine` - a
+session category switch, disabling voice processing, AirPods flipping between HFP and A2DP -
+makes AVFoundation log `iounit configuration changed > stopping the engine` and post
+`AVAudioEngineConfigurationChange`. Note **`stop`**, not `pause`: the graph comes down with it.
+
+Restarting the engine is not enough. Measured on device, stopping a recording while a message
+was playing:
+
+| attempted repair | result |
+|---|---|
+| `engine.Start()` alone | engine runs, renders silence |
+| reading `MainMixerNode` | no effect - it does **not** rebuild the connection |
+| `player.Play()` again | no effect; `Playing` still reports `true`, so it isn't even a signal |
+| **`engine.Connect(player, MainMixerNode, format)`** | **sound returns** |
+
+So the repair is the one a freshly built player node performs anyway - which is why the symptom
+was "silence until the next message", the next message being the thing that ran `ConnectToMainMixer`.
+`AudioEngine.Reconnect()` does this for every live player node, then restates `Play()` on each.
+
+### An interruption that never ends wedges all audio
+
+`AVAudioSessionInterruptionType.Began` is not guaranteed a matching `Ended` - a Bluetooth device
+connecting produced a `Began` with nothing after it, for the life of the process. Treating the
+flag as a latch meant every mode change was deferred forever: no playback, and a microphone whose
+`InstallTapOnBus` failed with `IsFormatSampleRateAndChannelCountValid(format)` on every retry,
+because the session had never been activated and the input node reported 0 Hz. Only killing the
+app cleared it. The flag now expires (see `InterruptionEndTimeout`) rather than waiting for a
+notification that may not come.
+
 ## WebKit rendering cost during a call
 
 WebContent is **~94% main thread** - there is no large hidden worker bucket. Inclusive

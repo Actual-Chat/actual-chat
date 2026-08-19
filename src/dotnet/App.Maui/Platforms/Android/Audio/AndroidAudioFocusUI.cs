@@ -33,11 +33,11 @@ public class AndroidAudioFocusUI : MauiAudioFocusUI
         return Task.CompletedTask;
     }
 
-    public override async Task EnsureOutputRoute()
+    public override async Task EnsureOutputRoute(CancellationToken cancellationToken = default)
     {
-        using var releaser = await OperationLock.Lock(CancellationToken.None).ConfigureAwait(false);
+        using var releaser = await OperationLock.Lock(cancellationToken).ConfigureAwait(false);
         releaser.MarkLockedLocally();
-        await _focusHelper.EnsureCommunicationRoute().ConfigureAwait(false);
+        await _focusHelper.EnsureCommunicationRoute(cancellationToken).ConfigureAwait(false);
     }
 
     public override async Task WarmUp()

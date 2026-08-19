@@ -61,8 +61,8 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     public Task<AudioSessionSetup> Reactivate(AudioFocusMode mode)
         => DispatchToMainThread(() => ReactivateUnsafe(mode));
 
-    public Task EnsureCorrectOutputRoute()
-        => DispatchToMainThread(EnsureCorrectOutputRouteUnsafe);
+    public Task ApplyOutputRoute(AudioFocusMode mode)
+        => DispatchToMainThread(() => ApplyOutputRouteUnsafe(mode));
 
     public AppleAudioSessionDiagnostics? GetDiagnostics()
     {
@@ -209,6 +209,7 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
             error.Assert("Failed to re-activate audio session after retry");
         }
 
+        ApplyOutputRouteUnsafe(mode);
         return new AudioSessionSetup(isConfigured, true);
     }
 
@@ -226,6 +227,7 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
                 // The framework's session is already active, and SetCategory on an active session
                 // is what lets an in-app recording get PlayAndRecord during a live wake playback.
                 ConfigureUnsafe(session, minMode);
+                ApplyOutputRouteUnsafe(minMode);
             }
 
             return new AudioSessionSetup(isConfigured, false);
@@ -237,6 +239,7 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
         session.SetActive(false, deactivateOptions).Assert("Failed to deactivate session");
         ConfigureUnsafe(session, minMode);
         session.SetActive(true).Assert("Failed to activate session");
+        ApplyOutputRouteUnsafe(minMode);
         return new AudioSessionSetup(true, true);
     }
 
@@ -254,31 +257,43 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
             Log.LogWarning("Failed to deactivate audio session: {Error}", error.LocalizedDescription);
     }
 
-    private void EnsureCorrectOutputRouteUnsafe()
+    private void ApplyOutputRouteUnsafe(AudioFocusMode mode)
     {
+        if (!AudioSessionOwnership.MayConfigure(Owner, mode))
+            return;
+        // PlayAndRecord is the only category with a route to pick: Playback and Ambient always
+        // reach the speaker, and an override on either is rejected. See ConfigureUnsafe.
+        if (mode is not AudioFocusMode.Recording)
+            return;
+
         var session = AVAudioSession.SharedInstance();
         var outputs = session.CurrentRoute.Outputs;
         if (outputs.Length == 0) {
-            Log.LogWarning("EnsureCorrectOutputRoute: no output ports found");
+            Log.LogWarning("ApplyOutputRoute: no output ports found");
             return;
         }
 
-        // If any output is an external device, don't override — let iOS route to it
-        foreach (var output in outputs) {
-            if (IsExternalPort(output.PortType)) {
-                Log.LogInformation("EnsureCorrectOutputRoute: external device ({PortType}), skipping", output.PortType);
-                return;
-            }
-        }
+        if (GetPortOverride(outputs) is not { } portOverride)
+            return;
 
-        // If output is the receiver (earpiece), override to speaker
-        foreach (var output in outputs) {
-            if (output.PortType == AVAudioSession.PortBuiltInReceiver) {
-                Log.LogInformation("EnsureCorrectOutputRoute: receiver detected, overriding to speaker");
-                if (!session.OverrideOutputAudioPort(AVAudioSessionPortOverride.Speaker, out var error))
-                    Log.LogWarning("EnsureCorrectOutputRoute: override failed: {Error}", error.LocalizedDescription);
-                return;
-            }
+        Log.LogInformation("ApplyOutputRoute: mode={Mode}, outputs={Outputs} -> {Override}",
+            mode, string.Join(", ", outputs.Select(x => x.PortType)), portOverride);
+        if (!session.OverrideOutputAudioPort(portOverride, out var error))
+            Log.LogWarning("ApplyOutputRoute: override failed: {Error}", error.LocalizedDescription);
+        return;
+
+        // Null means the route is already where it should be - which also covers Macs, where
+        // there's no receiver to be pushed off.
+        static AVAudioSessionPortOverride? GetPortOverride(AVAudioSessionPortDescription[] outputs) {
+            // An external device is the user's own choice of where to listen, so it outranks the
+            // speaker default - and clearing the override is also what hands the route back to a
+            // headset plugged in while the speaker was forced.
+            if (outputs.Any(x => IsExternalPort(x.PortType)))
+                return AVAudioSessionPortOverride.None;
+
+            return outputs.Any(x => x.PortType == AVAudioSession.PortBuiltInReceiver)
+                ? AVAudioSessionPortOverride.Speaker
+                : null;
         }
     }
 

@@ -9,6 +9,9 @@ namespace ActualChat.App.Maui.Audio;
 public sealed class AppleAudioFocusUI : AudioFocusUI
 {
     private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.2, 3);
+    // iOS may never post the interruption end - a Bluetooth device connecting can leave a Began
+    // with nothing after it - so the latch expires rather than waiting for a notification.
+    private static readonly TimeSpan InterruptionEndTimeout = TimeSpan.FromSeconds(10);
 
     private readonly AsyncLock _lock = new(LockReentryMode.CheckedFail);
     private readonly ActiveScopes _activeScopes;
@@ -17,11 +20,12 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     private readonly Disposable<NSObject> _mediaServicesResetSubscription;
     private readonly Disposable<NSObject> _routeChangeSubscription;
     private readonly TaskSerializer _interruptionQueue = new();
-    private bool _isInterrupted;
+    private long _interruptedAt;
     private bool _isSuspended;
     private bool _isSessionConfigured;
     private bool _isSessionActivated;
 
+    private bool IsInterrupted => Volatile.Read(ref _interruptedAt) != 0;
     private AppUIHub Hub { get; }
     private AudioSession AudioSession => field ??= Hub.Services.GetRequiredService<AudioSession>();
     private AudioEngines AudioEngines => field ??= Hub.Services.GetRequiredService<AudioEngines>();
@@ -106,11 +110,21 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
             .ConfigureAwait(false);
     }
 
+    public override async Task EnsureOutputRoute(CancellationToken cancellationToken = default)
+    {
+        using var cts = cancellationToken.LinkWith(StopToken);
+        using var _1 = await _lock.Lock(cts.Token).ConfigureAwait(false);
+        if (_activeScopes.IsEmpty)
+            return;
+
+        await AudioSession.ApplyOutputRoute(_activeScopes.GetMode()).ConfigureAwait(false);
+    }
+
     public override AudioFocusDiagnostics GetDiagnostics()
         => new (
             IsSupported: true,
             ActiveMode: _activeScopes.GetMode(),
-            IsInterrupted: Volatile.Read(ref _isInterrupted),
+            IsInterrupted: IsInterrupted,
             IsSuspended: _isSuspended,
             IsSessionConfigured: _isSessionConfigured,
             Scopes: _activeScopes.GetScopeInfos(),
@@ -143,11 +157,23 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     private async Task SetModeUnsafe(AudioFocusMode mode)
     {
         Log.LogInformation("SetMode: {Mode}", mode);
-        if (Volatile.Read(ref _isInterrupted)) {
-            // iOS rejects SetActive(true) while an interruption is in progress; RecoverInternal
-            // reactivates in the latest mode once the interruption ends.
-            Log.LogInformation("SetMode: {Mode} deferred - interruption in progress", mode);
-            return;
+        // One read: a Began landing between a flag test and a timestamp read would make a fresh
+        // interruption look like an expired one.
+        var interruptedAt = Volatile.Read(ref _interruptedAt);
+        if (interruptedAt != 0) {
+            if (new CpuTimestamp(interruptedAt).Elapsed < InterruptionEndTimeout) {
+                // iOS rejects SetActive(true) while an interruption is in progress; RecoverInternal
+                // reactivates in the latest mode once the interruption ends.
+                Log.LogInformation("SetMode: {Mode} deferred - interruption in progress", mode);
+                return;
+            }
+
+            // An end that never came would otherwise defer every mode change for the rest of the
+            // process: no playback, and a mic whose InstallTapOnBus fails on a 0 Hz input format
+            // because the session was never activated.
+            Log.LogWarning("SetMode: {Mode} - no interruption end in {Timeout}, proceeding anyway",
+                mode, InterruptionEndTimeout);
+            Volatile.Write(ref _interruptedAt, 0);
         }
 
         // GetMode() reports Tune both for a live tune scope and for no scopes at all, so the
@@ -165,7 +191,18 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         if (mustBounceEngines)
             AudioEngines.Pause();
 
-        var setup = await AudioSession.Reconfigure(mode).ConfigureAwait(false);
+        AudioSessionSetup setup;
+        try {
+            setup = await AudioSession.Reconfigure(mode).ConfigureAwait(false);
+        }
+        catch (Exception) {
+            // Nothing else resumes the engines, so a session call that fails - which is what a
+            // real interruption still in progress looks like - would leave them paused for good.
+            if (mustBounceEngines)
+                AudioEngines.Resume(mode);
+            throw;
+        }
+
         // setup.IsActivated covers an owner flip between the snapshot above and ReconfigureUnsafe
         // running: the session went through a deactivate/activate pair with the engines never paused.
         if (mustBounceEngines || setup.IsActivated)
@@ -233,7 +270,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         _ = BackgroundTask.Run(async () => {
             using var _1 = await _lock.Lock(StopToken).ConfigureAwait(false);
             if (!_activeScopes.IsEmpty && !_isSuspended)
-                AudioEngines.Resume(_activeScopes.GetMode());
+                AudioEngines.Reconnect(_activeScopes.GetMode());
         }, Log, "Failed to handle configuration change", StopToken);
     }
 
@@ -243,7 +280,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         // observes this, so without a full rebuild audio stays dead while the UI still
         // thinks it's listening (headphones button stays on).
         Log.LogWarning("Media services were reset - rebuilding audio session");
-        Volatile.Write(ref _isInterrupted, false);
+        Volatile.Write(ref _interruptedAt, 0);
         _ = _interruptionQueue.Enqueue(_ => RebuildAfterMediaServicesReset());
     }
 
@@ -281,14 +318,25 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     private void OnRouteChange(object? sender, AVAudioSessionRouteChangeEventArgs e)
     {
         var reason = e.Reason;
-        _ = _interruptionQueue.Enqueue(_ => MaybeRecoverOnRouteChange(reason));
+        _ = _interruptionQueue.Enqueue(_ => HandleRouteChange(reason));
     }
 
-    private async Task MaybeRecoverOnRouteChange(AVAudioSessionRouteChangeReason reason)
+    private async Task HandleRouteChange(AVAudioSessionRouteChangeReason reason)
     {
         bool shouldRecover;
-        using (await _lock.Lock(StopToken).ConfigureAwait(false))
-            shouldRecover = _isSuspended && !Volatile.Read(ref _isInterrupted) && !_activeScopes.IsEmpty;
+        using (await _lock.Lock(StopToken).ConfigureAwait(false)) {
+            if (_activeScopes.IsEmpty)
+                return;
+
+            shouldRecover = _isSuspended && !IsInterrupted;
+            if (!shouldRecover) {
+                // A headset that just arrived or left changes which port the session should be
+                // on, and the speaker override that outlived it has to be restated or dropped.
+                Log.LogInformation("Route change ({Reason}) - re-applying the output route", reason);
+                await AudioSession.ApplyOutputRoute(_activeScopes.GetMode()).ConfigureAwait(false);
+            }
+        }
+
         if (!shouldRecover)
             return;
 
@@ -309,12 +357,12 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
             switch (type) {
             case AVAudioSessionInterruptionType.Began:
                 using (await _lock.Lock(StopToken).ConfigureAwait(false)) {
-                    Volatile.Write(ref _isInterrupted, true);
+                    Volatile.Write(ref _interruptedAt, CpuTimestamp.Now.Value);
                     InvokeLostFocusUnsafe(true, false);
                 }
                 break;
             case AVAudioSessionInterruptionType.Ended:
-                Volatile.Write(ref _isInterrupted, false);
+                Volatile.Write(ref _interruptedAt, 0);
                 // ShouldResume is unreliable for phone calls, so always recover.
                 await TryRecover().ConfigureAwait(false);
                 break;
