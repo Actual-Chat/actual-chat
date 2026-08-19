@@ -1,0 +1,130 @@
+STREAMS
+>---<
+Camera
+Status
+recording
+Source
+Camera: camera 1, facing front
+Input
+768x1024 @ 24.01fps
+Duration
+38s
+ENCODER
+Codec
+hev1.1.6.L120.B0 (hevc, HW)
+Available
+hevc, h264
+Frames
+16 enc, 0 drop
+Encode time
+16.0ms (8.3ms LMax)
+Bitrate
+0 kbps (sum across layers)
+Throughput
+0 bundles/s · 0 kbps <->
+DEMAND
+Requested
+none (nobody / all paused)
+Viewers
+no aggregate from server yet
+Active layers
+1 (recvCap —, healthCap 1)
+Target fps
+24
+QUALITY CONTROL
+Target
+target=1, effective=1
+Verdict
+-1 (bad)
+Caps
+enc=2 (g2/b0), bw=1 (+0/-6) · binding=bandwidth
+Bandwidth
+ceiling=1950 kbps, current=0 kbps
+Probe
+idle (failures 0), gate ≤120ms
+Signals
+encDeficit=0.9%, encQueueDepth=0.01, ackAge=n/a, minRtt=n/a, ringDepth=0.0, dropRatioEma=0.00, connected=no
+QUALITY CONTROL
+Ceiling
+1949 kbps
+Current
+0 kbps
+Signal
+0.00 (Bad)
+Wire drop ratio
+0.000
+Ack age
+n/a
+Enc throughput deficit
+0.9% / bad >20%
+Enc queue depth
+0.01 / bad >4.5
+Enc restarts (60s)
+0 / bad >=2
+Downscale time
+0.1 ms (max 1)
+Encode time
+16.0 ms
+Encoding cap
+camera 2/2
+Bandwidth cap
+camera 1/2
+Thermal cap
+Nominal (no cap)
+DECISION LOG
+09:08:29
+Enc:G
+Up:B
+BW:B
+uplink: queue+flood
+enc: def=1% q=0.0 rs=0
+up: ack=n/a rtt=n/a drop=0.00 qd=12.1 ring=0.0 flood=25.0 bad=[queue+flood 0/10]
+bw: ↓1949/cur 0 kbps
+09:08:23
+Enc:G
+Up:B
+BW:B
+uplink: queue+flood
+enc: def=1% q=0.0 rs=0
+up: ack=n/a rtt=n/a drop=0.00 qd=12.1 ring=0.0 flood=24.0 bad=[queue+flood 0/10]
+bw: ↓2131/cur 0 kbps
+09:08:18
+Enc:G
+Up:B
+BW:B
+uplink: queue+flood
+enc: def=1% q=0.0 rs=0
+up: ack=n/a rtt=n/a drop=0.00 qd=12.1 ring=0.0 flood=24.0 bad=[queue+flood 0/10]
+bw: ↓2315/cur 0 kbps
+09:08:12
+Enc:M
+Up:B
+BW:B
+uplink: queue+flood
+enc: def=1% q=0.0 rs=0
+up: ack=n/a rtt=n/a drop=0.00 qd=12.1 ring=0.0 flood=25.0 bad=[queue+flood 0/10]
+bw: ↓2497/cur 0 kbps
+09:08:07
+Enc:M
+Up:B
+BW:B
+camera 2→1 (bw) · uplink: queue+flood
+enc: def=1% q=0.0 rs=0
+up: ack=n/a rtt=n/a drop=0.00 qd=12.1 ring=0.0 flood=24.0 bad=[queue+flood 0/10]
+bw: ↓2675/cur 0 kbps
+09:08:01
+Enc:M
+Up:B
+BW:B
+uplink: queue+flood
+enc: def=1% q=0.0 rs=0
+up: ack=n/a rtt=n/a drop=0.00 qd=12.1 ring=0.0 flood=25.0 bad=[queue+flood 0/10]
+bw: ↓2844/cur 0 kbps
+09:07:57
+Enc:M
+Up:M
+BW:G
+BW ↑ 3000 kbps
+enc: def=1% q=0.0 rs=0
+up: ack=n/a rtt=n/a drop=0.00 qd=12.1 ring=0.0 flood=25.0
+bw: ↑3000/cur 0 kbps
