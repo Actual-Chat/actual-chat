@@ -54,16 +54,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     private ICommander Commander => field ??= Services.Commander();
     private FlowHub FlowHub => field ??= Services.FlowHub();
 
-    // Wake the summary flow so it runs its final pass at once instead of on its next throttled resume -
-    // that's what makes a closing block finalize (and dissolve) promptly. By FlowId string name so the
-    // streaming backend needn't reference the Chat.Service flow type. WithDelay(0, 0) is immediate AND
-    // un-quantized - without the zero quantum the resume inherits the flow's 15s DelayQuanta and rounds
-    // up to the next 15s boundary, coalescing with the throttle (defeating the whole point).
-    private Task WakeSummaryFlow(ChatId chatId)
-        => FlowHub.NewResumeEvent(new FlowId(LiveFlows.SummaryFlowName, chatId.Value))
-            .WithDelay(TimeSpan.Zero, TimeSpan.Zero)
-            .Schedule(CancellationToken.None);
-
     public LiveSessionsBackend(IServiceProvider services)
         : base(services, ShardScheme.LiveBackend)
     {
@@ -789,6 +779,16 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     }
 
     // Private methods
+
+    private Task WakeSummaryFlow(ChatId chatId)
+        // Runs the flow's final pass at once rather than on its next throttled resume, which is what
+        // makes a closing block finalize promptly. The zero quantum keeps the Uuid unquantized: under
+        // the flow's own 15s DelayQuanta this wake would share a Uuid with that slot's throttled
+        // resume and be dropped as a duplicate - not delayed to it, dropped. FlowId is built by name
+        // so the streaming backend needn't reference the Chat.Service flow type.
+        => FlowHub.NewResumeEvent(new FlowId(LiveFlows.SummaryFlowName, chatId.Value))
+            .WithDelay(TimeSpan.Zero, TimeSpan.Zero)
+            .Schedule(CancellationToken.None);
 
     private async Task ReassignHost(ChatId chatId, LiveSessionState state, CancellationToken cancellationToken)
     {
