@@ -167,7 +167,6 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.MessageNotification>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.Notification>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.NotificationAction>();
-        CodeKeeper.KeepSerializable<global::ActualChat.Notifications.NotificationDelta>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.NotificationMessage>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.ReactionNotification>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.ReplyNotification>();
@@ -867,9 +866,6 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.NotificationAction[]>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.NotificationAction[]>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.NotificationAction[]>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.NotificationDelta>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.NotificationDelta>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.NotificationDelta>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.NotificationMessage>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.NotificationMessage>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.NotificationMessage>>>>();
@@ -1762,7 +1758,6 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+MessageNotificationFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+NotificationActionFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+NotificationActionKindFormatter, ActualChat.Api");
-        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+NotificationDeltaFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+NotificationFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+NotificationMessageFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+ReactionNotificationFormatter, ActualChat.Api");
@@ -1978,7 +1973,6 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Notifications.MessageNotification), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notifications.Notification), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notifications.NotificationAction), AotTypeKind.Serializable),
-            (typeof(global::ActualChat.Notifications.NotificationDelta), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notifications.NotificationMessage), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notifications.ReactionNotification), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notifications.ReplyNotification), AotTypeKind.Serializable),

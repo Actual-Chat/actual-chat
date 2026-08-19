@@ -18,7 +18,6 @@ public class DbUserNotifications : IHasId<string>, IHasVersion<long>, IRequireme
     [DbKey] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
     public byte[] Data { get; set; } = [];
-    public bool HasUnsentDelta { get; set; }
     public bool IsDormant { get; set; }
 
     public UserNotificationInfo ToModel()
@@ -36,7 +35,6 @@ public class DbUserNotifications : IHasId<string>, IHasVersion<long>, IRequireme
         Id = model.UserId.Value;
         Version = model.Version;
         Data = buffer.ToArray();
-        HasUnsentDelta = !model.UnsentDelta.IsEmpty;
         IsDormant = model.IsDormant;
     }
 
