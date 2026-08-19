@@ -32,6 +32,13 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
     // The transcript window: last MaxRecentMessages unread messages, oldest -> newest.
     [DataMember(Order = 18), Key(18)]
     public ApiArray<NotificationMessage> RecentMessages { get; init; }
+    // The voice context of the newest message in the window - the live session it belongs to, or
+    // its author when there is none; empty for typed text, which keeps the plain beep back-off.
+    // A beep fires when it differs from LastBeepGroup, and then only per VoiceReAlertInterval.
+    [DataMember(Order = 19), Key(19)]
+    public string BeepGroup { get; init; } = "";
+    [DataMember(Order = 20), Key(20)]
+    public string LastBeepGroup { get; init; } = "";
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
@@ -63,10 +70,16 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
         var existingUnread = Math.Max(1, e.UnreadCount);
         var recentMessages = MergeRecentMessages(e, this);
         var newestIsIncoming = EntryLid >= e.EntryLid;
+        var beepGroup = newestIsIncoming ? BeepGroup : e.BeepGroup;
 
         // A gap between messages long enough to count as a conversation lull resets the beep
         // back-off, so this fresh message alerts immediately instead of inheriting the back-off.
-        var isLull = SentAt - e.SentAt >= Constants.Notification.BeepResetPeriod;
+        // Spoken messages measure the lull against the longer voice interval: at BeepResetPeriod
+        // an ordinary pause mid-monologue would re-arm the beep on the very next utterance.
+        var lullPeriod = beepGroup.IsNullOrEmpty()
+            ? Constants.Notification.BeepResetPeriod
+            : Constants.Notification.VoiceReAlertInterval;
+        var isLull = SentAt - e.SentAt >= lullPeriod;
         return this with {
             Version = e.Version,
             CreatedAt = e.CreatedAt,
@@ -83,8 +96,10 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
             RecentMessages = recentMessages,
             LeadText = recentMessages.IsEmpty ? "" : recentMessages[^1].Text,
             LeadCount = 1,
+            BeepGroup = beepGroup,
             BeepCount = isLull ? 0 : e.BeepCount,
             LastBeepAt = isLull ? default : e.LastBeepAt,
+            LastBeepGroup = isLull ? "" : e.LastBeepGroup,
         };
     }
 
