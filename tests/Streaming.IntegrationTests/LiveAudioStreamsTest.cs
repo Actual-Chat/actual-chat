@@ -164,6 +164,55 @@ public class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out
         // Should not throw
     }
 
+    [Fact(Timeout = 60_000)]
+    public async Task SkipToLiveSkipsWhatTheProducerAlreadyProduced()
+    {
+        // arrange
+        var appHost = AppHost;
+        var services = appHost.Services;
+        var commander = services.Commander();
+        var session = Session.New();
+        _ = await appHost.SignIn(session, new AccountFull("Bobby"));
+        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
+            Create = new ChatDiff {
+                Title = "SkipToLiveTest",
+                Kind = ChatKind.Group,
+            },
+        }));
+        chat.Require();
+        await services.UserSettingsUI(session)
+            .ChatUserSettings(chat.Id)
+            .Set(new ChatUserSettings { VoiceMode = VoiceMode.JustVoice }, CancellationToken.None);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
+        var record = new AudioRecord(
+            StreamId.New(services.MeshWatcher().ThisNode.Ref),
+            session,
+            chat.Id,
+            SystemClock.Instance.Now.EpochOffset.TotalSeconds,
+            null);
+        var streamId = OpenAudioSegment.GetStreamId(record, 0).Value;
+        var processTask = BackgroundTask.Run(
+            () => backend.ProcessAudio(record, 0, new RpcStream<AudioFrame>(GetFrames()), cts.Token),
+            cts.Token);
+        _ = await WaitForStream(liveStreams, session, streamId, cts.Token);
+        await Task.Delay(TimeSpan.FromMilliseconds(200), cts.Token);
+
+        // act
+        var stream = await liveStreams.GetStream(session, streamId, Constants.Audio.SkipToLive, cts.Token);
+        var firstDataFrame = await stream!
+            .FirstAsync(f => f.Offset >= TimeSpan.Zero, cts.Token);
+
+        // assert
+        firstDataFrame.Offset.Should().BeGreaterThan(TimeSpan.FromMilliseconds(100),
+            "frames produced before the request must not be replayed");
+
+        await cts.CancelAsync();
+        await processTask.SilentAwait(false);
+    }
+
     // Private methods
 
     private static async Task<RpcStream<AudioFrame>?> WaitForStream(

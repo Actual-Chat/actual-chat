@@ -148,8 +148,7 @@ public sealed class ChatReplayPlayer : ChatPlayer
                         TargetBufferSize = targetBufferSize,
                         StreamId = streamInfo.StreamId,
                     };
-                var playAt = Clocks.CpuClock.Now;
-                var process = playback.Play(trackInfo, audioSource, playAt, cancellationToken);
+                var process = playback.Play(trackInfo, audioSource, cancellationToken);
                 await process.WhenCompleted.ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {

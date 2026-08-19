@@ -12,6 +12,8 @@ public sealed class ListeningStreamProcessor : WorkerBase
 {
     private static bool DebugMode => Constants.DebugMode.LiveStreaming;
 
+    private ResilientStream<MuxedAudioStreamItem>? _itemStream;
+
     private ILogger Log { get; }
     private ILogger? DebugLog { get; }
 
@@ -38,6 +40,10 @@ public sealed class ListeningStreamProcessor : WorkerBase
         CatchUpFrom = catchUpFrom;
     }
 
+    public void Break()
+        // Acquire: _itemStream is published by OnRun on the worker, read here from the caller's thread.
+        => Volatile.Read(ref _itemStream)?.Break();
+
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var liveStreams = Services.GetRequiredService<ILiveAudioStreams>();
@@ -61,6 +67,8 @@ public sealed class ListeningStreamProcessor : WorkerBase
             ResetItem = Option.Some<MuxedAudioStreamItem>(new MuxedAudioStreamReset()),
             IsInfinite = true,
         };
+        // Release: Break() reads this from the caller's thread.
+        Volatile.Write(ref _itemStream, itemStream);
 
         var demuxer = new AudioStreamDemuxer(itemStream, demuxerLog, cancellationToken.CreateLinkedTokenSource());
         await using var _ = demuxer.ConfigureAwait(false);

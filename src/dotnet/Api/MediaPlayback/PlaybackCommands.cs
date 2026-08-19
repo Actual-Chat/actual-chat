@@ -23,6 +23,5 @@ public sealed class PlayTrackCommand(TrackInfo trackInfo, IMediaSource source) :
 
     public TrackInfo TrackInfo { get; } = trackInfo;
     public IMediaSource Source { get; } = source;
-    public Moment PlayAt { get; init; } // rel. to CpuClock.Now
     public Symbol TrackId => TrackInfo.TrackId;
 }

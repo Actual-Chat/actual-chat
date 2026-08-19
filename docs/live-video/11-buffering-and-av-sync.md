@@ -284,32 +284,25 @@ master timeline during degradation. See the audio-latency registry
    same `AuthorId` ⇒ same snapshot.
    - File: `src/dotnet/UI.Blazor.App/Services/PlaybackLagTracker.cs`
 
-3. **Catch-up policy**
-   `LiveAudioCatchUpPolicy.GetDesiredCatchUp(authorId)`:
+3. **Hold policy**
+   `AudioTrackPlayer.AdjustBufferHold(authorId)`:
    ```
-   snapshot = PlaybackLagTracker.GetSnapshot(authorId)
-   desired  = snapshot.AudioLag - snapshot.VideoLag - AudioCatchUpBaselineDelta
-   apply deadband (200 ms), clamp to ≥ 0
+   hold = clamp(videoLag + AudioCatchUpBaselineDelta,
+                PlaybackTargetBufferSizeWithVideo,
+                PlaybackTargetBufferSizeWithVideo + AudioSyncMaxHold)
    ```
-   The baseline delta is `-100 ms`: audio is intentionally kept slightly
-   ahead of video to account for decoder/output latency on the audio side.
+   `AudioCatchUpBaselineDelta` is `0`: it was `-100 ms` to compensate unmeasured
+   audio output latency, but the audio lag metric already includes it, so a
+   negative baseline made audio genuinely lead video.
 
-4. **Audio worker primitives**
-   The Opus decoder worker exposes two RPC handlers on its encoded-frame
-   buffer:
-   - `skipUntil(ms)` — drops frames with `sourceOffsetMs < ms`.
-   - `speedUpUntil(ms, dropEveryN)` — drops every Nth frame until reaching
-     `ms`.
-
-5. **Application logic in `AudioTrackPlayer`**
-   `ApplyAudioSync()` is called every 10th audio frame:
-   - Reads `desired` from the policy.
-   - If `desired ≥ PlaybackHardSkipThreshold (2 s)` → call
-     `_playbackEngine.SkipUntil(targetMs)`.
-   - Else if `desired > 0` → compute
-     `speedUpDuration = min(desired × dropEveryN, PlaybackMaxSpeedUpDuration)`
-     and call `_playbackEngine.SpeedUpUntil(targetMs, dropEveryN)`.
-   - Cooldown of `PlaybackCatchUpCommandCooldown = 1 s` between commands.
+4. **Application logic in `AudioTrackPlayer`**
+   `ApplyAudioSync()` runs every 10th audio frame and calls `AdjustBufferHold`,
+   which moves `TargetBufferSize` with 50 ms hysteresis and a 500 ms rate limit.
+   **No audio frame is ever dropped or sped up** — the hold is additive delay,
+   and video paces to the audio position instead (`skip-to-audio`).
+   `SetTargetBufferSize` is implemented on the web engine only, so the runtime
+   half of this is web-only; every engine honours `TrackInfo.TargetBufferSize` at
+   `Play()`.
 
 #### The kill switch
 
@@ -341,27 +334,27 @@ chain runs.
 | Origin time on every frame | Yes (`Offset` + `OffsetEpoch` for video, `Offset` for audio) |
 | Per-author pairing | Yes (`AuthorId`-keyed) |
 | Video establishes target, audio adapts | Yes (audio reads video lag, computes correction) |
-| Speed-up drop pattern | Yes (`PlaybackSpeedUpDropEveryNFrames = 4`) |
-| Hard-skip on large drift | Yes (`PlaybackHardSkipThreshold = 2 s`) |
-| Speed-up bounded duration | Yes (`PlaybackMaxSpeedUpDuration = 5 s`) |
-| Deadband / baseline | Yes (`AudioCatchUpDeadband = 200 ms`, `AudioCatchUpBaselineDelta = -100 ms`) |
-| Cooldown between commands | Yes (`PlaybackCatchUpCommandCooldown = 1 s`) |
+| Speed-up drop pattern | **No** — dropped; audio always plays at 1x |
+| Hard-skip on large drift | **No** — the hold is the only lever |
+| Bounded correction | Yes (`AudioSyncMaxHold = 1 s` over the base buffer) |
+| Deadband / baseline | Yes (50 ms hysteresis, `AudioCatchUpBaselineDelta = 0`) |
+| Rate limit between adjustments | Yes (500 ms) |
 | Production-enabled | **Yes.** `IsAudioSyncEnabled = true` (default) |
 
 #### Practical implications
 
-If you turn on `IsAudioSyncEnabled` today:
-
-- The hooks fire on every audio playback session for any chat author who is
-  also publishing video on a camera stream.
-- The first `ApplyAudioSync` call within any conversation runs ~10 frames
-  (≈ 200 ms) into playback — that's the sample period.
-- Drift > 2 s ⇒ audio jumps forward. Drift between 200 ms and 2 s ⇒ audio
-  speeds up by dropping 1 in 4 frames until aligned. Drift below 200 ms ⇒
-  no action (deadband).
+- The hook fires on every audio playback session for any chat author who is also
+  publishing video on a camera stream, and never on your own stream.
+- The first `ApplyAudioSync` call runs ~10 frames (≈ 200 ms) into playback.
+- A hold change lands at the next track start — raising a buffer target cannot
+  retroactively insert delay into audio already playing. Since utterances are
+  VAD-segmented, per-utterance is the real granularity of this correction.
 - It only runs for live audio; archived ("replay") audio is on a different
   player path.
 
-The `NOTE(AY): Needs testing!` comment is the truthful summary of the
-current state: structurally complete, semantically untested at scale, no UX
-to enable it, and not yet exercised in production.
+Known gap: `AdjustBufferHold` sets `hold = videoLag`, which is open-loop.
+`videoLag` is path latency plus video's own buffer, and audio's path is
+approximately the same, so the hold double-counts it and biases audio late by
+roughly one path latency. The closed-loop form corrects on `videoLag − audioLag`,
+which cancels both path latency and clock error since both lags are measured
+against the same client `ServerClock`.

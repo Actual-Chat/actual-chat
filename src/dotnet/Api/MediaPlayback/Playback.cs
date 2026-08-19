@@ -68,12 +68,11 @@ public sealed class Playback : ProcessorBase
     public IMessageProcess<PlayTrackCommand> Play(
         TrackInfo trackInfo,
         IMediaSource source,
-        Moment playAt, // By CpuClock
         CancellationToken cancellationToken)
     {
         lock (_stateUpdateLock)
             _isPlaying.Value = true;
-        var command = new PlayTrackCommand(trackInfo, source) { PlayAt = playAt };
+        var command = new PlayTrackCommand(trackInfo, source);
         return _messageProcessor.Enqueue(command, cancellationToken);
     }
 

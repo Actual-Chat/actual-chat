@@ -19,7 +19,6 @@ change.
 |---|---|---|
 | Audio stream origin | `ClientStartAt`, becomes the chat entry's `BeginsAt` | [audio-streamer.ts](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/UI.Blazor.App/Components/AudioRecorder/workers/audio-streamer.ts) |
 | Video stream origin | `sourceStartedAtMs` | [recorder-worker-host.ts](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/UI.Blazor.App/Services/Video/sender/recorder-worker-host.ts) |
-| Audio playback trim | `skipTo` — how much of an incoming message's head to discard | [ChatListeningPlayer.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/UI.Blazor.App/Services/Playback/ChatListeningPlayer.cs) |
 | Presentation lag | A/V sync signal, reported at ~2 Hz | [feeder-audio-worklet-processor.ts](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/UI.Blazor.App/Components/AudioPlayer/worklets/feeder-audio-worklet-processor.ts) |
 
 Both stream origins are stamped from the **same** `ServerClock` on the **same**
@@ -33,10 +32,10 @@ this spec follows from treating 50 ms as a precision target and deriving cadence
 from it, rather than picking a cadence and accepting whatever precision falls
 out.
 
-::: warning
-`skipTo` also reads `ServerClock`, and an offset that reads high inflates it —
-which silently discards the head of an incoming message, or the whole message if
-it is short. That path should stop using absolute time altogether; see
+::: tip
+Live audio playback used to read `ServerClock` too: `skipTo` discarded the head
+of every incoming message, and an offset reading high could discard the whole
+message. That path no longer reads absolute time at all — see
 [Open questions](#open-questions).
 :::
 
@@ -74,7 +73,8 @@ Six specific defects:
    `.WaitAsync(...)` wrapper abandons the await while the call stays in flight.
    A probe that resumes after a reconnect returns a server reading taken near
    `after` rather than the midpoint, biasing the offset **positive** by roughly
-   half the outage — the exact direction that inflates `skipTo`.
+   half the outage — and a reconnect is exactly when a client is most likely to
+   probe.
 
 ## Design goals
 
@@ -396,10 +396,10 @@ bumps an epoch on divergence, and the sender's epoch travels on the wire as
 
 The zero-offset rule for server mode is set in
 [BlazorUICoreModule.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/UI.Blazor/Module/BlazorUICoreModule.cs).
-Because `ChatListeningPlayer` runs server-side under Blazor Server, an SSB
-listener has **zero receiver-side clock error** — the clock-error term in
-`skipTo` exists only for WASM and MAUI clients. That makes host kind a useful
-discriminator when diagnosing playback problems.
+An SSB listener therefore has **zero receiver-side clock error**, which makes
+host kind a useful discriminator whenever a symptom might be clock-related: if
+it skews toward WASM and MAUI, clocks are in play; if SSB listeners hit it
+equally, the receiver clock is exonerated.
 
 Blazor circuit reconnection parks JS interop the same way RPC parks calls, so the
 server-mode branch needs its own generation guard rather than relying on
@@ -465,11 +465,18 @@ way to tell whether the 50 ms target is being met.
 
 1. **What should an in-flight stream do when the epoch bumps mid-playback** —
    rebase its anchor, or ride out on the old one? Video has an answer; audio has
-   no concept of an epoch today.
+   no concept of an epoch today. Still open, but narrower than it was: audio's
+   only remaining `ServerClock` consumer is the presentation-lag signal, and the
+   A/V-sync correction built on it is a *difference* of two lags measured against
+   the same clock, so a step is common-mode. What is left is making sure an EMA
+   never straddles one — i.e. tagging lag samples with the epoch.
 2. **Does the 50 ms target apply to Blazor Server?** That branch measures circuit
    latency rather than network-to-server, and it is also the mode where receiver
    clock error is already zero.
-3. **`skipTo` should stop reading absolute time entirely.** What it needs is "how
-   much backlog is queued for me right now", which is measurable locally from
-   frame arrival and per-frame `Offset` — no sender clock, no server clock, no
-   sync. Better clock sync reduces that bug; it does not remove it.
+3. ~~**`skipTo` should stop reading absolute time entirely.**~~ **Done.** The
+   receiver no longer trims: the server serves a stream from the producer's
+   current position when a listener's muxer first sees it, and whole afterwards.
+   "Live edge" is the memoizer's tail — a position, not an arithmetic result — so
+   no clock is involved on either side. The listener's only remaining lever is
+   the queue depth of its own demuxer channel, which bounds how far a track may
+   lag and is likewise clock-free.
