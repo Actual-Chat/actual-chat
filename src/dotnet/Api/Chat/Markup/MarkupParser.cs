@@ -18,6 +18,7 @@ public sealed partial class MarkupParser : IMarkupParser
     public bool UseUnparsedTextMarkup { get; init; }
     public bool MustSimplify { get; init; } = true;
     public bool AllowIncompleteMarkup { get; init; }
+
     public Markup Parse(string text)
     {
         // The shortcut produces what Simplify() would; the raw tree splits the text per word.
@@ -53,12 +54,15 @@ public sealed partial class MarkupParser : IMarkupParser
         return result.Success ? result.Value : EmptyResult;
     }
 
+    // Picked from real chats: transcribed messages never carry markup and almost all fit under it
+    private const int MaxPlainTextLength = 1024;
+
     private static bool IsPlainText(string text)
     {
         // A single line leaves only a list/quote/header marker out of the block elements, and none
         // of the three tolerates indentation; every inline element starts with a MarkupStartChars
         // char; and a url needs a literal "://" or "www." - UrlRegex is case-sensitive.
-        if (text.Length == 0 || text[0] is '-' or '>')
+        if (text.Length is 0 or > MaxPlainTextLength || text[0] is '-' or '>')
             return false;
         if (text.AsSpan().ContainsAny(MarkupStartChars))
             return false;
@@ -332,7 +336,6 @@ public sealed partial class MarkupParser : IMarkupParser
     // A single paragraph line (can be empty - 0 or more chars)
     private static readonly Parser<char, string> ParagraphLine = CharRun.String(IsNotEndOfLineChar);
 
-
     private static readonly Parser<char, string> QuoteContentLine =
         Char('>').Then(WhitespaceChar).Then(ParagraphLine);
 
@@ -593,18 +596,21 @@ public sealed partial class MarkupParser : IMarkupParser
                 var currIsEmptyPara = MarkupSeqFormatHelper.IsEmptyPara(item);
 
                 int minSep;
-                if (currIsEmptyPara)
+                if (currIsEmptyPara) {
                     // For a trailing/intervening empty paragraph the EmptyPara itself
                     // already accounts for one newline; pair it with the paragraph
                     // break when the predecessor is a non-empty paragraph, otherwise
                     // a single block boundary newline is enough.
                     minSep = prevIsNonEmptyPara ? 2 : 1;
-                else if (prevIsNonEmptyPara && currIsNonEmptyPara)
+                }
+                else if (prevIsNonEmptyPara && currIsNonEmptyPara) {
                     // Adjacent non-empty paragraphs require a paragraph break.
                     minSep = 2;
-                else
+                }
+                else {
                     // Any other transition needs exactly one block boundary newline.
                     minSep = 1;
+                }
 
                 var emptyParas = Math.Max(0, leadingNewlines - minSep);
                 for (var i = 0; i < emptyParas; i++) {

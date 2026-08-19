@@ -61,3 +61,9 @@ edited. The reason can be as short as whose decision it was.
 - L18 `public class MarkupParserBenchmarks`
   — type not sealed — required: BenchmarkDotNet's in-process toolchain rejects a
   sealed benchmark class ("Declaring type must be unsealed") and refuses to run it
+
+## src/dotnet/Api/Chat/Markup/MarkupParser.cs
+
+- L450 `private class InternalParsers(bool useUnparsedTextMarkup)`
+  — type not sealed — required: `IncompleteInternalParsers` derives from it and
+  overrides its `protected virtual` factory methods, so sealing it is CS0509
