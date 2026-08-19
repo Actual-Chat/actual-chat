@@ -7,7 +7,7 @@ namespace ActualChat.Users;
 public class SystemProperties(IServiceProvider services)
     : DbServiceBase<UsersDbContext>(services), ISystemProperties
 {
-    private static readonly Version MinCompatibleVersion = new(2, 5);
+    private static readonly Version MinCompatibleVersion = new(2, 15);
     private static readonly Version MinReportableClientVersion = MinCompatibleVersion;
 
     // Not a [ComputeMethod]!
@@ -43,7 +43,6 @@ public class SystemProperties(IServiceProvider services)
             ApiConstants.DisplayVersionString,
             MinReportableClientVersion.ToString()));
     }
-
 
     // [CommandHandler]
     public virtual async Task OnInvalidateEverything(
