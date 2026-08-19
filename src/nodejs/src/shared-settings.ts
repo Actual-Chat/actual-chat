@@ -4,30 +4,28 @@ import { ServerClock } from 'clocks';
 
 export interface SharedSettingsSnapshot {
     serverClockOffsetMs: number;
+    // Bumped on a confirmed clock step, never on a slewed refinement — holders of
+    // absolute anchors rebase when it changes.
+    serverClockEpoch: number;
     apiUrl?: string;
     appConstants?: AppConstants;
-    /** Session token for worker-side RPC peer auth. Mirrors what
-     *  `Api.getSessionToken()` returns on the main thread. Workers
-     *  observe updates via {@link SharedSettings.changed} and pass
-     *  this string into the `?s=` query parameter when dialing the
-     *  RPC WebSocket — no per-request round-trip needed. */
+    // Mirrors Api.getSessionToken() from the main thread; workers pass it as the `?s=`
+    // query parameter when dialing the RPC WebSocket, avoiding a per-request round trip.
     sessionToken?: string;
-    /** Screen orientation angle (degrees CW from natural portrait,
-     *  one of {0, 90, 180, 270}). Mirrors `screen.orientation.angle`
-     *  from the main thread. */
+    // screen.orientation.angle from the main thread: degrees CW from natural portrait,
+    // one of {0, 90, 180, 270}.
     screenOrientation?: number;
-    /** Device-pose quarter-turn (0..3, CW). Set by the main thread's
-     *  {@link DeviceOrientation}; overridden by `debugUI.setDeviceOrientation`.
-     *  Workers read this via the same `DeviceOrientation.current`. */
+    // Device-pose quarter-turn (0..3, CW), set by DeviceOrientation and overridable via
+    // debugUI.setDeviceOrientation.
     deviceOrientation?: number;
-    /** Device-pose angle in degrees CW from natural portrait, quantized to
-     *  10-degree steps to avoid excessive worker updates. Workers read this
-     *  via `DeviceOrientation.angle`. */
+    // Device-pose angle, degrees CW from natural portrait, quantized to 10-degree steps
+    // to avoid excessive worker updates.
     deviceOrientationAngle?: number;
 }
 
 let current: SharedSettingsSnapshot = {
     serverClockOffsetMs: ServerClock.offsetMs,
+    serverClockEpoch: ServerClock.epoch,
 };
 let appConstants: AppConstants | undefined;
 
@@ -36,7 +34,7 @@ function clone(settings: SharedSettingsSnapshot): SharedSettingsSnapshot {
 }
 
 function applyToLocalRealm(settings: SharedSettingsSnapshot): void {
-    ServerClock.updateOffset(Date.now() + settings.serverClockOffsetMs);
+    ServerClock.updateOffset(Date.now() + settings.serverClockOffsetMs, settings.serverClockEpoch);
     if (settings.appConstants) {
         appConstants ??= settings.appConstants;
         initAppConstants(appConstants);
@@ -73,8 +71,8 @@ export class SharedSettings {
     // C# always pushes a Date-relative offset, never an absolute server timestamp:
     // an absolute would be converted against Date.now() at APPLY time, so a delayed
     // interop execution (doze, frozen WebView) would skew the clock by that delay.
-    public static setServerClockOffsetMs(offsetMs: number): void {
-        SharedSettings.update({ serverClockOffsetMs: offsetMs });
+    public static setServerClockOffsetMs(offsetMs: number, epoch: number): void {
+        SharedSettings.update({ serverClockOffsetMs: offsetMs, serverClockEpoch: epoch });
     }
 
     public static getClientTimeMs(): number {
