@@ -43,19 +43,25 @@ jobs:
           NUM: ${{ github.event.workflow_run.run_number }}
           BRANCH: ${{ github.event.workflow_run.head_branch }}
           SHA: ${{ github.event.workflow_run.head_sha }}
-          ACTOR: ${{ github.event.workflow_run.triggering_actor.login }}
+          TRIGGERING_ACTOR: ${{ github.event.workflow_run.triggering_actor.login }}
           URL: ${{ github.event.workflow_run.html_url }}
           COMMIT_MSG: ${{ github.event.workflow_run.head_commit.message }}
+          COMMIT_AUTHOR: ${{ github.event.workflow_run.head_commit.author.name }}
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           short_sha="${SHA:0:7}"
           commit_title="$(printf '%s' "$COMMIT_MSG" | head -n1)"
-          # Voxt user mention (@`Name`u:<userId>) when the actor is mapped; plain login otherwise
-          actor_ref="$(jq -r --arg login "$ACTOR" \
+          # Blame the author of the commit under test, not the triggering actor: a
+          # scheduled run is credited to whoever last touched the workflow file, which
+          # has nothing to do with what's failing.
+          author="$(gh api "repos/$REPO/commits/$SHA" -q '.author.login // empty' 2>/dev/null || true)"
+          # Voxt user mention (@`Name`u:<userId>) when the author is mapped; login,
+          # then the raw commit author name, then the triggering actor otherwise.
+          actor_ref="$(jq -r --arg login "$author" \
             '.[$login] // empty | "@`\(.name)`u:\(.userId)"' \
             configs/ci/github-voxt-users.json 2>/dev/null || true)"
-          actor_ref="${actor_ref:-$ACTOR}"
+          actor_ref="${actor_ref:-${author:-${COMMIT_AUTHOR:-$TRIGGERING_ACTOR}}}"
           failed_jobs="$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" --paginate \
             -q '.jobs[] | select(.conclusion == "failure") | .name')"
           {
