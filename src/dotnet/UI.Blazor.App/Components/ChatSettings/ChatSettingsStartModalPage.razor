@@ -14,7 +14,7 @@
 
     Context.ContextItems.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
     var isPlaceChat = m.IsPlace;
-    var publicChatLabel = !isPlaceChat ? "Public" : "Place";
+    var publicChatLabel = !isPlaceChat ? L.Chat_Public : L.Chat_TypePlace;
     var isThread = m.Chat.Id.IsThread();
     var canEditChatPic = !isThread;
     var canEditChatType = !isThread && m.IsOwner;
@@ -68,13 +68,13 @@
     }
 
     <FormBlock>
-        <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true" Label="Chat title">
+        <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true" Label="@L.Form_ChatTitle">
             <TextBox
                 @bind-Value="@_form.Title"
                 Id="@_form.TitleId"
                 ClearButton="true"/>
         </FormSection>
-        <FormSection Class="field-chat-title" For="() => _form.Description" InputId="@_form.DescriptionId" IsLabelInsideInput="true" Label="Chat description">
+        <FormSection Class="field-chat-title" For="() => _form.Description" InputId="@_form.DescriptionId" IsLabelInsideInput="true" Label="@L.Form_ChatDescription">
             <TextBox
                 @bind-Value="@_form.Description"
                 Id="@_form.DescriptionId"
@@ -89,10 +89,10 @@
                     <i class="icon-key text-xl"></i>
                 </Icon>
                 <Content>
-                    Chat type
+                    @L.Chat_TypeTitle
                 </Content>
                 <Right>
-                    @(m.IsPublic ? $"{publicChatLabel}" : "Private")
+                    @(m.IsPublic ? publicChatLabel : L.Chat_Private)
                 </Right>
             </TileItem>
         }
@@ -104,7 +104,7 @@
                         <i class="icon-people"></i>
                     </Icon>
                     <Content>
-                        @m.MemberCount Members
+                        @L.Place_MembersLabel(m.MemberCount, m.MemberCount)
                     </Content>
                     <Right>
                         <i class="icon-chevron-right text-3xl"></i>
@@ -116,10 +116,10 @@
                         <i class="icon-people"></i>
                     </Icon>
                     <Content>
-                        @m.MemberCount Members
+                        @L.Place_MembersLabel(m.MemberCount, m.MemberCount)
                     </Content>
                     <Caption>
-                        Use place settings to edit members
+                        @L.ChatSettings_UsePlaceSettingsForMembers
                     </Caption>
                 </TileItem>
             }
@@ -127,19 +127,19 @@
             @if (m is { IsOwner: true, Chat: not null } && !_isPlaceWelcomeChat) {
                 <TileItem Class="item-archive-chat item-danger" Click="@(() => OnArchiveChatClick(m.Chat))">
                     <Icon><i class="icon-history"></i></Icon>
-                    <Content>Archive chat</Content>
+                    <Content>@L.Chat_ArchiveTitle</Content>
                 </TileItem>
 
                 <TileItem Class="item-leave-group item-danger" Click="@(() => OnDeleteChatClick(m.Chat))">
                     <Icon><i class="icon-log-out"></i></Icon>
-                    <Content>Leave chat & delete</Content>
+                    <Content>@L.ChatSettings_LeaveChatAndDelete</Content>
                 </TileItem>
             }
         }
         else if (m.CanRemoveThread) {
             <TileItem Class="item-leave-group item-danger" Click="@(() => OnDeleteThreadClick(m.Chat))">
                 <Icon><i class="icon-trash02"></i></Icon>
-                <Content>Delete thread</Content>
+                <Content>@L.LeaveConfirm_DeleteThreadTitle</Content>
             </TileItem>
         }
     </div>
@@ -166,14 +166,14 @@
 
     protected override void OnInitialized() {
         ChatId = Context.GetModel<ChatId>();
-        Context.Title = "Chat settings";
+        Context.Title = L.Chat_SettingsTitle;
         if (ChatId is PeerChatId)
             throw StandardError.NotSupported("Peer chat is not supported.");
 
         _avatarKind = AvatarKind.Marble;
         _avatarKey = ChatId.Value;
-        _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
-        Context.Buttons = [DialogButtonInfo.CancelButton, _submitButtonInfo];
+        _submitButtonInfo = DialogButtonInfo.CreateSubmitButton(L.Common_Save, OnSubmit);
+        Context.Buttons = [DialogButtonInfo.CreateCancelButton(L), _submitButtonInfo];
     }
 
     protected override async Task OnInitializedAsync() {
@@ -286,7 +286,7 @@
 
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
     public sealed class FormModel {
-        [Required, MinLength(1)]
+        [Required]
         public string Title { get; set; } = "";
 
         public string Description { get; set; } = "";

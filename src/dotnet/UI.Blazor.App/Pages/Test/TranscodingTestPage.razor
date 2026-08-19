@@ -125,8 +125,7 @@
     private async Task OnFileSelected(UploadSource source) {
         const int maxSize = Constants.Attachments.FileSizeLimit;
         if (source.Metadata.Length > maxSize) {
-            var sizeStr = FileSizeFormatter.Format(maxSize);
-            UICommander.ShowError(StandardError.Constraint($"File is too big. Max file size: {sizeStr}."));
+            UICommander.ShowError(StandardError.Upload.FileTooBig(maxSize));
             await _picker.ClearSelection();
         } else {
             _pendingSource = source;

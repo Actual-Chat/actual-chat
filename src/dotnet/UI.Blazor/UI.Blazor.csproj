@@ -6,10 +6,19 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.Extensions.Localization" />
     <PackageReference Include="OpenTelemetry" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="ActualLab.Fusion.Blazor" />
     <PackageReference Include="Serilog" />
+  </ItemGroup>
+
+  <!-- Embed JSON translation files as resources in the main assembly.
+       WithCulture=false prevents MSBuild from treating "Strings.es.json" etc. as culture
+       satellite resources (the ".es." in the filename would otherwise trigger that). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Strings.*.json" LogicalName="%(Filename)%(Extension)" WithCulture="false" />
+    <EmbeddedResource Include="Resources\Messages.*.json" LogicalName="%(Filename)%(Extension)" WithCulture="false" />
   </ItemGroup>
 
   <ItemGroup>

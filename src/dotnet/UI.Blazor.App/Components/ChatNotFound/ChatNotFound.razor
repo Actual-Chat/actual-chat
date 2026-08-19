@@ -1,15 +1,16 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 
 <div class="chat-not-found-container">
     <div class="c-wrapper">
         <chat-not-found-svg/>
         <div class="text-wrapper">
             @if (Target is TargetKind.Chat) {
-                <p>Chat not found.</p>
-                <p>Choose another one.</p>
+                <p>@L.ChatNotFound_Chat</p>
+                <p>@L.ChatNotFound_ChooseAnother</p>
             } else {
-                <p>Place not found.</p>
-                <p>Choose another one.</p>
+                <p>@L.ChatNotFound_Place</p>
+                <p>@L.ChatNotFound_ChooseAnother</p>
             }
         </div>
     </div>
@@ -18,7 +19,7 @@
 @if (ShowSignIn) {
     <RenderIntoSlot Name="@LayoutSlots.MainFooter">
         <div class="flex-x items-center justify-center gap-x-2">
-            <span>You can try to sign in to see it</span>
+            <span>@L.ChatNotFound_SignIn</span>
             <SignInButton/>
         </div>
     </RenderIntoSlot>

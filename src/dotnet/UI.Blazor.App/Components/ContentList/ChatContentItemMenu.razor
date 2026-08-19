@@ -8,13 +8,13 @@
 <div class="message-menu">
     <MenuEntry
         Icon="icon-message-ellipse"
-        Text="Go to message"
+        Text="@L.Content_GoToMessage"
         Click="@OnGoToMessage">
     </MenuEntry>
     @if (!m.BlobId.IsNullOrEmpty()) {
         <MenuEntry
             Icon="icon-download"
-            Text="Download"
+            Text="@L.MessageMenu_Download"
             Click="@OnDownload">
         </MenuEntry>
     }

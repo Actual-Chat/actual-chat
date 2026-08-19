@@ -1,17 +1,19 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IBannerView<SwitchToWasmBanner.Model>
+@inherits ComponentBase<UIHub>
 
 <Banner ShowDismissButton="true">
     <Icon>
         <i class="icon-checkmark-circle"></i>
     </Icon>
-    <Body>@CoreConstants.AppName is ready to restart in the optimized mode</Body>
+    <Body>@L.Banner_ReadyToRestart_Format(CoreConstants.AppName)</Body>
     <Buttons>
-        <Button Class="btn-transparent on unhovered">Restart</Button>
+        <Button Class="btn-transparent on unhovered">@L.Common_Restart</Button>
     </Buttons>
 </Banner>
 
 @code {
+
     [Parameter] public Model BannerModel { get; set; } = null!;
 
     public sealed record Model;

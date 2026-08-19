@@ -12,7 +12,7 @@
     if (_form == null)
         return;
 
-    Context.Title = "Place Type";
+    Context.Title = L.Place_TypeTitle;
     Context.ContextItems.Set(nameof(PlaceSettingsOwnerModalPage.ComputedModel.Place.IsPublic), m.IsPublic);
     var canEditProperties = m.Place.Rules.IsOwner();
 }
@@ -23,7 +23,7 @@
     }
     <DataAnnotationsValidator />
     <FormBlock Class="with-input-radio first">
-        <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
+        <InputRadioGroup Name="chat_type" DisplayName="@L.Place_TypeTitle" @bind-Value="_form.IsPublic">
             <TileItem
                 Class="@(_form.IsPublic ? "selected" : "")"
                 Click="@(() => OnPublicChatClick(true))">
@@ -31,10 +31,10 @@
                     <FormRadio Id="@_form.IsPublicTrueFormId" IsDisabled="@(!canEditProperties)" Value="@true" />
                 </Icon>
                 <Content>
-                    <Label InputId="@_form.IsPublicTrueFormId" Text="Public" IsRequired="true"></Label>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="@L.Place_Public" IsRequired="true"></Label>
                 </Content>
                 <Caption>
-                    Anyone can join this place by navigating to its URL
+                    @L.Place_PublicHint
                 </Caption>
             </TileItem>
             <TileItem
@@ -44,10 +44,10 @@
                     <FormRadio Id="@_form.IsPublicFalseFormId" IsDisabled="@(!canEditProperties)" Value="@false"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_form.IsPublicFalseFormId" Text="Private" IsRequired="true"></Label>
+                    <Label InputId="@_form.IsPublicFalseFormId" Text="@L.Place_Private" IsRequired="true"></Label>
                 </Content>
                 <Caption>
-                    Can be joined only if you are invited / have an invite link
+                    @L.Place_PrivateHint
                 </Caption>
             </TileItem>
         </InputRadioGroup>
@@ -62,12 +62,13 @@
                 <Content>
                     <FormSection For="() => _form.ActualAliasId"
                                  InputId="@_form.AliasIdFormId"
-                                 Label="Custom link"
+                                 Label="@L.Form_CustomLink"
                                  IsLabelInsideInput="true">
-                        <ValidationMessage>
+                        <ValidationMessage Context="fieldLabel">
                             <AliasValidationMessage
                                 For="@(() => _form.ActualAliasId)"
                                 Scope="@AliasValidationMessage.AliasScope.Place"
+                                FieldLabel="@fieldLabel"
                                 CurrentAliasId="@_form.CurrentAliasId"
                                 AliasIdReader="@(() => _form.ActualAliasId)" />
                         </ValidationMessage>
@@ -91,7 +92,7 @@
             </TileItem>
         </FormBlock>
     } else if (m.Place.Rules.CanInvite()) {
-        <FormBlock Title="Manage links" Class="first last">
+        <FormBlock Title="@L.Invite_ManageLinks" Class="first last">
             @if (m.Invites.Count > 0) {
                 <InviteList
                     Invites="m.Invites"
@@ -101,7 +102,7 @@
             }
             <Button IsDisabled="@(m.Invites.Count >= MaxInviteCount)" Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
                 <Icon><i class="icon-plus text-xl"></i></Icon>
-                <Title>New private join link</Title>
+                <Title>@L.Invite_NewPrivateLink</Title>
             </Button>
         </FormBlock>
     }
@@ -128,9 +129,9 @@
 
     protected override void OnInitialized() {
         PlaceId = Context.GetModel<PlaceId>();
-        Context.Title = "Edit place settings";
-        _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
-        Context.Buttons = [DialogButtonInfo.CancelButton, _submitButtonInfo];
+        Context.Title = L.Place_EditSettingsTitle;
+        _submitButtonInfo = DialogButtonInfo.CreateSubmitButton(L.Common_Save, OnSubmit);
+        Context.Buttons = [DialogButtonInfo.CreateCancelButton(L), _submitButtonInfo];
         _aliasTextBoxRefSetter = c => {
             _aliasTextBoxRef = c;
             StateHasChanged();
@@ -223,7 +224,7 @@
         public bool IsPublic { get; set; }
 
         public string CurrentAliasId { get; set; } = "";
-        [AliasId, Display(Name = "Short name")]
+        [AliasId]
         public string ActualAliasId => IsPublic ? AliasId : "";
 
         public string FormId { get; }

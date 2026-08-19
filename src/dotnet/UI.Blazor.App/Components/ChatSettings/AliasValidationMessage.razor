@@ -6,19 +6,20 @@
     var messages = CurrentEditContext.GetValidationMessages(_fieldIdentifier).ToList();
     var isInvalid = messages.Any();
     var validationCls = "";
-    var message = "";
-    if (isInvalid) {
+    var hint = isInvalid ? null : ToHint(_aliasIsAvailable);
+    if (isInvalid)
         validationCls = "invalid";
-        message = messages.First();
-    } else {
-        var hint = ToHint(_aliasIsAvailable);
-        if (hint != null) {
-            validationCls = hint.Class;
-            message = hint.Message;
-        }
-    }
+    else if (hint != null)
+        validationCls = hint.Class;
 }
-<div class="form-section-validation @validationCls">@message</div>
+<div class="form-section-validation @validationCls">
+    @if (isInvalid) {
+        <LocalizedMessage Text="@messages.First()" FieldLabel="@FieldLabel"/>
+    }
+    else if (hint != null) {
+        @hint.Message
+    }
+</div>
 
 @code {
     private readonly EventHandler<ValidationStateChangedEventArgs>? _validationStateChangedHandler;
@@ -31,6 +32,7 @@
 
     [Parameter, EditorRequired] public Expression<Func<string>>? For { get; set; }
     [Parameter, EditorRequired] public AliasScope Scope { get; set; } = null!;
+    [Parameter] public string FieldLabel { get; set; } = "";
     [Parameter] public string CurrentAliasId { get; set; } = "";
     [Parameter, EditorRequired] public Func<string> AliasIdReader { get; set; } = null!;
 
@@ -98,14 +100,14 @@
         StateHasChanged();
     }
 
-    private static FormSectionHint? ToHint(bool? aliasIsAvailableHint)
+    private FormSectionHint? ToHint(bool? aliasIsAvailableHint)
     {
         if (!aliasIsAvailableHint.HasValue)
             return null;
 
         return aliasIsAvailableHint.Value
-            ? new FormSectionHint("This link is available.", "success")
-            : new FormSectionHint("This link is already in use.", "invalid");
+            ? new FormSectionHint(L.Alias_LinkAvailable, "success")
+            : new FormSectionHint(L.Alias_LinkInUse, "invalid");
     }
 
     private record FormSectionHint(string Message, string Class = "");

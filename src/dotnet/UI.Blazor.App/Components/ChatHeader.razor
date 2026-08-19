@@ -47,7 +47,7 @@
             <div class="chat-header-title">
                 <div class="c-title-wrapper">
                     <div class="c-title">
-                        @NoChatTitle
+                        @(NoChatTitle ?? L.Common_Loading)
                     </div>
                 </div>
             </div>
@@ -82,7 +82,7 @@
     [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter] public bool IsLeftNavigateButtonVisible { get; set; } = true;
     [Parameter] public bool IsRightNavigateButtonVisible { get; set; } = true;
-    [Parameter] public string NoChatTitle { get; set; } = "Loading...";
+    [Parameter] public string? NoChatTitle { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

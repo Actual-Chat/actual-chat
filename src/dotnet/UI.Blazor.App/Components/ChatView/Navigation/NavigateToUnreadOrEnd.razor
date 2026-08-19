@@ -9,7 +9,7 @@
     if (_animator.MustHideComponent)
         return;
 
-    var tooltip = m.ReadEntryLid.HasValue ? "Go to the unread part" : "Go to the last message";
+    var tooltip = m.ReadEntryLid.HasValue ? L.ChatView_GoToUnread : L.ChatView_GoToLastMessage;
 }
 
 <div class="navigate-to-end @_animator.Class">

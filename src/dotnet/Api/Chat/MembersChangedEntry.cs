@@ -14,15 +14,4 @@ public sealed partial record MembersChangedEntry : SystemEntry
 
     [SerializationConstructor]
     public MembersChangedEntry(ChatEntryId id, long version = 0) : base(id, version) { }
-
-    public override Markup ToMarkup()
-    {
-        var authorName = TargetAuthorName.NullIfEmpty() ?? "Someone";
-        var verb = HasLeft ? "left" : "joined";
-        return TargetAuthorId is null
-            ? new PlainTextMarkup($"{authorName} has {verb} the chat.")
-            : new MarkupSeq(
-                new AuthorMention(MentionRef.NewAuthor(TargetAuthorId), authorName),
-                new PlainTextMarkup($" has {verb} the chat."));
-    }
 }

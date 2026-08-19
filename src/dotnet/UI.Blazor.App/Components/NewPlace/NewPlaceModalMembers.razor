@@ -14,7 +14,7 @@
         Changed="StateHasChanged"
         SearchQuery="_searchQuery">
         <SearchBox
-            Placeholder="Whom would you like to add?"
+            Placeholder="@L.Place_WhomToAdd"
             Class="icon-align-right"
             MaxLength="@Constants.Chat.MaxSearchFilterLength"
             TextChanged="@OnFilter"/>
@@ -28,13 +28,13 @@
         <Button
             Class="btn-modal btn-primary"
             Click="@OnAdd">
-            Add @(selectedChatIds.Count) @("member".Pluralize(selectedChatIds.Count))
+            @L.Place_AddCount(selectedChatIds.Count, selectedChatIds.Count)
         </Button>
     } else {
         <Button
             Class="btn-modal btn-primary"
             Click="@(() => Skipped.InvokeAsync(false))">
-            Skip
+            @L.Common_Skip
         </Button>
     }
 </RenderIntoSlot>

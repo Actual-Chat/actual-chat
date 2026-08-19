@@ -14,7 +14,7 @@
         return;
     }
 
-    var name = IsOwn ? "You" : Avatar?.Name ?? "";
+    var name = IsOwn ? L.ChatView_You : Avatar?.Name ?? "";
     var extraClass = Click.HasDelegate ? " cursor-pointer" : "";
     var flexClass = IsOwn || name.Length < 10 ? "non-shrinkable" : "shrinkable";
 }

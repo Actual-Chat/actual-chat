@@ -1,16 +1,16 @@
-@using ActualChat.UI.Blazor.Components
+@inherits ComponentBase<AppUIHub>
 
 <TabPanel
     Class="docs-panel"
     BottomHill="true">
 
-    <Tab @key="@("docs-privacy-tab")" Id="docs-privacy-policy" Title="Privacy Policy" Order="0">
+    <Tab @key="@("docs-privacy-tab")" Id="docs-privacy-policy" Title="@L.Documents_PrivacyPolicy" Order="0">
         <DocsPrivacyContent/>
     </Tab>
-    <Tab @key="@("docs-terms-tab")" Id="docs-terms-conditions" Title="Terms & Conditions" Order="1">
+    <Tab @key="@("docs-terms-tab")" Id="docs-terms-conditions" Title="@L.Documents_TermsConditions" Order="1">
         <DocsTermsContent/>
     </Tab>
-    <Tab @key="@("docs-cookies-tab")" Id="docs-cookies" Title="Cookies" Order="2">
+    <Tab @key="@("docs-cookies-tab")" Id="docs-cookies" Title="@L.Documents_Cookies" Order="2">
         <DocsCookiesContent/>
     </Tab>
 </TabPanel>

@@ -8,13 +8,13 @@
 
 <div>
     @if (Stepper.CurrentStepIndex == 0) {
-        <p class="step-title">Welcome to @CoreConstants.AppName!</p>
+        <p class="step-title">@L.Onboarding_Welcome_Format(CoreConstants.AppName)</p>
     }
     <p class="step-subtitle">
-        Please confirm your email
+        @L.Onboarding_PleaseConfirmEmail
     </p>
     <p class="step-comment">
-        We collect this information to send you notifications about latest activities.
+        @L.Onboarding_EmailCollectionReason
     </p>
     <Form
         @ref="_formRef"
@@ -24,7 +24,7 @@
         <FormSection
             For="() => _model.Email"
             InputId="email"
-            Label="Email"
+            Label="@L.Form_Email"
             Class="grow"
             IsRequired="true"
             IsLabelInsideInput="true">

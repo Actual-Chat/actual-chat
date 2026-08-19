@@ -2,17 +2,17 @@
 @inherits BubbleBase
 
 <BubbleContent Bubble="@(this)">
-    <Title>Text message panel</Title>
+    <Title>@L.Bubble_TextMessagePanelTitle</Title>
     <Body>
     <p>
-        If you prefer to text, enter your text messages here. Use:
+        @L.Bubble_TextMessagePanelBody
     </p>
     <ul>
-        <li><pre>@@</pre> character to mention anyone who joined the chat here</li>
-        <li><pre>*</pre><em>italic</em><pre>*</pre>,
-            <pre>**</pre><strong>bold</strong><pre>**</pre>,
-            <pre>`</pre>fixed-width<pre>`</pre></li>
-        <li><pre>```</pre> placed on individual line starts & ends code block.</li>
+        <li>@L.Bubble_TextMessagePanelMention_Prefix<pre>@@</pre>@L.Bubble_TextMessagePanelMention_Suffix</li>
+        <li><pre>*</pre><em>@L.Bubble_TextMessagePanelItalic</em><pre>*</pre>,
+            <pre>**</pre><strong>@L.Bubble_TextMessagePanelBold</strong><pre>**</pre>,
+            <pre>`</pre>@L.Bubble_TextMessagePanelFixedWidth<pre>`</pre></li>
+        <li>@L.Bubble_TextMessagePanelCodeBlock_Prefix<pre>```</pre>@L.Bubble_TextMessagePanelCodeBlock_Suffix</li>
     </ul>
     </Body>
 </BubbleContent>

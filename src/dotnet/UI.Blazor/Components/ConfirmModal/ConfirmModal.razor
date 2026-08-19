@@ -1,26 +1,27 @@
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 @implements IModalView<ConfirmModal.Model>
 
 @{
     var isDestructive = ModalModel.IsDestructive;
     var title = ModalModel.Title;
     if (title.IsNullOrEmpty())
-        title = isDestructive ? "Discard changes" : "Confirm changes";
+        title = isDestructive ? L.Confirm_DiscardTitle : L.Confirm_ConfirmTitle;
     var text = ModalModel.Text;
     if (text.IsNullOrEmpty())
         text = isDestructive
-            ? "Are you sure you want to discard all changes?"
-            : "Are you sure you want to confirm all changes?";
+            ? L.Confirm_DiscardText
+            : L.Confirm_ConfirmText;
     var additionalContent = ModalModel.AdditionalContent;
     var markupTitle = ModalModel.MarkupTitle;
     var btnCls = isDestructive ? "btn-danger" : "btn-primary";
     btnCls = "btn-modal " + btnCls;
     var btnText = ModalModel.ConfirmButtonText;
     if (btnText.IsNullOrEmpty())
-        btnText = isDestructive ? "Discard" : "Confirm";
+        btnText = isDestructive ? L.Confirm_Discard : L.Confirm_Confirm;
     var cancelText = ModalModel.CancelButtonText;
     if (cancelText.IsNullOrEmpty())
-        cancelText = "Cancel";
+        cancelText = L.Common_Cancel;
     var cls = $"confirm-modal modal-sm {ModalModel.Class}";
 }
 

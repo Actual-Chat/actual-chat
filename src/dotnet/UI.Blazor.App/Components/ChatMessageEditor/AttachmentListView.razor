@@ -8,9 +8,9 @@
 @if (attachments.Count > 0) {
     <div class="attachment-list-wrapper">
         <div class="c-btn-group">
-            <span class="c-count">@attachments.Count @("file".Pluralize(attachments.Count))</span>
+            <span class="c-count">@L.Editor_Files(attachments.Count, attachments.Count)</span>
             <Button Class="attachment-list-btn btn-danger btn-transparent unhovered c-remove btn-sm" Click="_ => Clear()">
-                Remove all
+                @L.Editor_RemoveAll
             </Button>
         </div>
         <HeaderButton Class="remove-all-btn" Click="_ => Clear()">

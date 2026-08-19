@@ -59,7 +59,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         var cancellationToken = cts.Token;
 
         // act
-        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [], cancellationToken);
+        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [], cancellationToken: cancellationToken);
         WriteLine($"Translated text:\n {translated}");
 
         // assert
@@ -86,7 +86,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         var cancellationToken = cts.Token;
 
         // act
-        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [new TranslationResult( context, translatedContext)], cancellationToken);
+        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [new TranslationResult( context, translatedContext)], cancellationToken: cancellationToken);
         WriteLine($"Translated text: \n{translated}");
 
         // assert
@@ -118,7 +118,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
 
         // act
         var translated = await Translator.Translate(
-            "I saw a bank", Language.Parse(targetLanguage), [context1], cancellationToken);
+            "I saw a bank", Language.Parse(targetLanguage), [context1], cancellationToken: cancellationToken);
         WriteLine($"Translated text: \n{translated}");
 
         // assert
@@ -136,7 +136,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         var cancellationToken = cts.Token;
 
         // act
-        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [], cancellationToken);
+        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [], cancellationToken: cancellationToken);
 
         // assert
         translated.Should().Be(text);
@@ -162,7 +162,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         var cancellationToken = cts.Token;
 
         // act
-        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [ new TranslationResult(context, translatedContext)], cancellationToken);
+        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [ new TranslationResult(context, translatedContext)], cancellationToken: cancellationToken);
         WriteLine($"Translated text: \n{translated}");
 
         // assert
@@ -184,7 +184,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         var cancellationToken = cts.Token;
 
         // act
-        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [], cancellationToken);
+        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [], cancellationToken: cancellationToken);
         WriteLine($"Translated text:\n {translated}");
 
         // assert
@@ -203,7 +203,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         var cancellationToken = cts.Token;
 
         // act
-        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [], cancellationToken);
+        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [], cancellationToken: cancellationToken);
         WriteLine($"Translated text:\n {translated}");
 
         // assert
@@ -223,7 +223,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         var cancellationToken = cts.Token;
 
         // act
-        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [], cancellationToken);
+        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [], cancellationToken: cancellationToken);
         WriteLine($"Translated text:\n {translated}");
 
         // assert

@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 
 <TabPanel
     @key="@ChatId.Value"
@@ -8,7 +9,7 @@
     <Tab @key="@("chat")" Id="chat" Order="0">
         <TitleContent>
             <i class="icon-message-ellipse"></i>
-            <span>Chat</span>
+            <span>@L.SearchTabs_Chat</span>
         </TitleContent>
         <ChildContent>
             <ToBeDone/>
@@ -18,7 +19,7 @@
     <Tab @key="@("tags")" Id="tags" Order="1">
         <TitleContent>
             <i class="icon-hash-fill"></i>
-            <span>Tags</span>
+            <span>@L.SearchTabs_Tags</span>
         </TitleContent>
         <ChildContent>
             <ToBeDone/>
@@ -28,7 +29,7 @@
     <Tab @key="@("contacts")" Id="contacts" Order="2">
         <TitleContent>
             <i class="icon-person"></i>
-            <span>Contacts</span>
+            <span>@L.SearchTabs_Contacts</span>
         </TitleContent>
         <ChildContent>
             <ToBeDone/>
@@ -38,7 +39,7 @@
     <Tab @key="@("date")" Id="date" Order="3">
         <TitleContent>
             <i class="icon-calendar"></i>
-            <span>Date</span>
+            <span>@L.SearchTabs_Date</span>
         </TitleContent>
         <ChildContent>
             <ToBeDone/>

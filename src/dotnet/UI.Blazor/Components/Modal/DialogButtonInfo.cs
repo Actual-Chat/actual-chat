@@ -1,21 +1,23 @@
-﻿namespace ActualChat.UI.Blazor.Components;
+﻿using ActualChat.UI.Blazor.Resources;
+using Microsoft.Extensions.Localization;
+
+namespace ActualChat.UI.Blazor.Components;
 
 public class DialogButtonInfo
 {
-    public static readonly DialogButtonInfo BackButton = new() {
-        Title = "Back",
-        IsCancel = true
+    // Titles are read per call rather than cached: the UI language can change at runtime
+    public static DialogButtonInfo CreateBackButton(IStringLocalizer l) => new() {
+        Title = l.Common_Back,
+        IsCancel = true,
     };
-    public static readonly DialogButtonInfo CancelButton = new() {
-        Title = "Cancel",
-        IsCancel = true
+    public static DialogButtonInfo CreateCancelButton(IStringLocalizer l) => new() {
+        Title = l.Common_Cancel,
+        IsCancel = true,
     };
-    public static readonly DialogButtonInfo CloseButton = new() {
-        Title = "Close",
-        IsCancel = true
+    public static DialogButtonInfo CreateCloseButton(IStringLocalizer l) => new() {
+        Title = l.Common_Close,
+        IsCancel = true,
     };
-
-    private bool _canExecute = true;
 
     public static DialogButtonInfo CreateSubmitButton(string title, Func<Task> execute) => new() {
         Title = title,
@@ -34,14 +36,15 @@ public class DialogButtonInfo
     public Func<Task>? Execute { get; init; }
 
     public bool CanExecute {
-        get => _canExecute;
+        get;
         set {
-            if (_canExecute == value)
+            if (field == value)
                 return;
-            _canExecute = value;
+
+            field = value;
             RaiseCanExecuteChanged();
         }
-    }
+    } = true;
 
     public event EventHandler? CanExecuteChanged;
 

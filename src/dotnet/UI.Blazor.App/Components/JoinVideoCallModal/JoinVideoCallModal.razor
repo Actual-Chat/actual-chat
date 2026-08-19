@@ -27,20 +27,20 @@
                 <i class="icon-video text-5xl text-03"></i>
                 @switch (_permission) {
                     case CameraPermissionState.Denied:
-                        <div class="c-text">Camera access is blocked.</div>
+                        <div class="c-text">@L.Call_CameraBlocked</div>
                         <div class="c-hint">
                             @if (HostInfo.HostKind.IsMauiApp()) {
-                                <text>Open settings below and allow camera access for @CoreConstants.AppName, then click Request permission.</text>
+                                <text>@L.Call_CameraBlockedAppHint_Format(CoreConstants.AppName)</text>
                             } else {
-                                <text>Click the camera or lock icon in your browser's address bar, set Camera to Allow, then click Request permission.</text>
+                                <text>@L.Call_CameraBlockedWebHint</text>
                             }
                         </div>
                         break;
                     case CameraPermissionState.Prompt:
-                        <div class="c-text">We need access to your camera to start the video preview.</div>
+                        <div class="c-text">@L.Call_CameraPromptHint</div>
                         break;
                     default:
-                        <div class="c-text">Checking camera access…</div>
+                        <div class="c-text">@L.Call_CheckingCamera</div>
                         break;
                 }
             </div>
@@ -98,7 +98,7 @@
                     </ButtonRound>
 
                     @* Mirror toggle *@
-                    <ButtonRound Class="@MirrorBtnClass()" Click="@OnMirrorToggle" Tooltip="Mirror preview">
+                    <ButtonRound Class="@MirrorBtnClass()" Click="@OnMirrorToggle" Tooltip="@L.Call_MirrorPreview">
                         <i class="icon-mirror-video text-2xl"></i>
                     </ButtonRound>
                 </div>
@@ -127,7 +127,7 @@
                     </ButtonRound>
 
                     @* Mirror toggle *@
-                    <ButtonRound Class="@MirrorBtnClass()" Click="@OnMirrorToggle" Tooltip="Mirror preview">
+                    <ButtonRound Class="@MirrorBtnClass()" Click="@OnMirrorToggle" Tooltip="@L.Call_MirrorPreview">
                         <i class="icon-mirror-video text-2xl"></i>
                     </ButtonRound>
                 </div>
@@ -140,9 +140,9 @@
             var closeBtnClass = _permission == CameraPermissionState.Granted
                 ? "btn-modal btn-primary"
                 : "btn-modal";
-            <Button Class="@closeBtnClass" Click="@OnCloseSettingsClick">Close</Button>
+            <Button Class="@closeBtnClass" Click="@OnCloseSettingsClick">@L.Common_Close</Button>
         } else {
-            <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
+            <Button Class="btn-modal" Click="@(_ => Modal.Close())">@L.Common_Cancel</Button>
             @if (_permission == CameraPermissionState.Granted) {
                 <Button Class="btn-modal btn-primary"
                         Click="@OnJoinClick"
@@ -151,9 +151,9 @@
         }
         @if (_permission is CameraPermissionState.Prompt or CameraPermissionState.Denied) {
             @if (_permission == CameraPermissionState.Denied && HostInfo.HostKind.IsMauiApp()) {
-                <Button Class="btn-modal" Click="@OnOpenSettingsClick">Open settings</Button>
+                <Button Class="btn-modal" Click="@OnOpenSettingsClick">@L.Call_OpenSettings</Button>
             }
-            <Button Class="btn-modal btn-primary" Click="@OnAllowCameraClick">Proceed</Button>
+            <Button Class="btn-modal btn-primary" Click="@OnAllowCameraClick">@L.Call_Proceed</Button>
         }
     </Buttons>
 </DialogFrame>

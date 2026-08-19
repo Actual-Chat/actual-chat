@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Resources;
 using System.Collections.Frozen;
 using ActualChat.UI.Blazor.App.Services;
 
@@ -50,6 +51,7 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
 
         var uploadProgress = await UploadSessionsState.GetProgress(sessionId, cancellationToken).ConfigureAwait(false);
         var stageInfo = GetStateInfo(uploadProgress.Stage);
+        var stageDetails = GetStageDetails(uploadProgress.Stage);
         var overallProgress = stageInfo.BaseProgress
             + (int)(uploadProgress.StageProgress * stageInfo.StageWidth / 100);
 
@@ -60,8 +62,8 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
         var isFailed = uploadProgress.IsFailed;
         var details = (isReady, isFailed) switch {
             (true, _) => "",
-            (_, true) => "Failed: " + (uploadProgress.ErrorMessage.NullIfEmpty() ?? stageInfo.Details),
-            _ => stageInfo.Details,
+            (_, true) => L.Attachment_Failed_Format(uploadProgress.ErrorMessage.NullIfEmpty() ?? stageDetails),
+            _ => stageDetails,
         };
         return new AttachmentProgress(overallProgress, details) {
             IsInProgress = !isReady && !isFailed,
@@ -102,27 +104,38 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
     private static StageProgressInfo GetStateInfo(UploadStage stage)
     {
         var info = StageProgressMap.GetValueOrDefault(stage);
-        return info ?? new StageProgressInfo(30, 0, "Unknown stage");
+        return info ?? new StageProgressInfo(30, 0);
     }
+
+    private string GetStageDetails(UploadStage stage)
+        => stage switch {
+            UploadStage.New => "",
+            UploadStage.ClientProcessing => L.Attachment_ClientProcessing,
+            UploadStage.Uploading => L.Attachment_Uploading,
+            UploadStage.Uploaded => L.Attachment_Uploaded,
+            UploadStage.ServerProcessing => L.Attachment_ServerProcessing,
+            UploadStage.Completed => L.Attachment_Ready,
+            _ => L.Attachment_UnknownStage,
+        };
 
     private static FrozenDictionary<UploadStage, StageProgressInfo> BuildStageProgressMap()
     {
-        // Only BaseProgress and Details are specified — StageWidth is computed automatically
-        var stages = new (UploadStage Stage, int BaseProgress, string Details)[] {
-            (UploadStage.New, 0, ""),
-            (UploadStage.ClientProcessing, 2, "Client processing"),
-            (UploadStage.Uploading, 25, "Uploading"),
-            (UploadStage.Uploaded, 70, "Uploaded"),
-            (UploadStage.ServerProcessing, 70, "Server processing"),
-            (UploadStage.Completed, 100, "Ready"),
+        // Only BaseProgress is specified — StageWidth is computed automatically
+        var stages = new (UploadStage Stage, int BaseProgress)[] {
+            (UploadStage.New, 0),
+            (UploadStage.ClientProcessing, 2),
+            (UploadStage.Uploading, 25),
+            (UploadStage.Uploaded, 70),
+            (UploadStage.ServerProcessing, 70),
+            (UploadStage.Completed, 100),
         };
 
         var result = new Dictionary<UploadStage, StageProgressInfo>();
         for (var i = 0; i < stages.Length; i++) {
-            var (stage, baseProgress, details) = stages[i];
+            var (stage, baseProgress) = stages[i];
             var nextBaseProgress = i + 1 < stages.Length ? stages[i + 1].BaseProgress : 100;
             var stageWidth = nextBaseProgress - baseProgress;
-            result[stage] = new StageProgressInfo(baseProgress, stageWidth, details);
+            result[stage] = new StageProgressInfo(baseProgress, stageWidth);
         }
         return result.ToFrozenDictionary();
     }
@@ -130,5 +143,5 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
     // Nested types
     protected sealed record AttachmentInfo(string UploadSessionId);
 
-    private sealed record StageProgressInfo(int BaseProgress, int StageWidth, string Details);
+    private sealed record StageProgressInfo(int BaseProgress, int StageWidth);
 }

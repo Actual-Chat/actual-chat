@@ -2,9 +2,6 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public class AttachmentList : IAttachmentList
 {
-    public static Exception FileTooBigError()
-        => StandardError.Constraint($"File is too big. Max file size: {Constants.Attachments.FileSizeLimit / 1024 / 1024}Mb.");
-
     private ImmutableList<Attachment> _attachments = ImmutableList<Attachment>.Empty;
     private IAttachmentListEventsListener? _listener;
 

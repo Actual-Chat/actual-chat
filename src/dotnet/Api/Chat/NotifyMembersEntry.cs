@@ -11,14 +11,4 @@ public sealed partial record NotifyMembersEntry(ChatEntryId Id, long Version = 0
     [DataMember, Key(21)] public string TargetAuthorName { get; init; } = "";
 
     public NotifyMembersEntry() : this(null!, 0) { }
-
-    public override Markup ToMarkup()
-    {
-        var authorName = TargetAuthorName.NullIfEmpty() ?? "Someone";
-        return TargetAuthorId is null
-            ? new PlainTextMarkup($"{authorName} asked for attention.")
-            : new MarkupSeq(
-                new AuthorMention(MentionRef.NewAuthor(TargetAuthorId), authorName),
-                new PlainTextMarkup(" asked for attention."));
-    }
 }

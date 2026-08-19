@@ -7,7 +7,7 @@
     var readablePhone = account.Phone?.ToReadable() ?? "";
 }
 
-<TileTopic Topic="Information"/>
+<TileTopic Topic="@L.YourAccount_Information"/>
 
 <Tile Class="your-account-tile">
     <TileItem Class="first-tile-item" Click="@(() => OnEditClick(AccountField.Name))">
@@ -21,7 +21,7 @@
             @account.Name
         </Content>
         <Caption>
-            Name
+            @L.YourAccount_Name
         </Caption>
     </TileItem>
 
@@ -34,7 +34,7 @@
                 @("@" + aliasId.Value)
             </Content>
             <Caption>
-                User link
+                @L.YourAccount_UserLink
             </Caption>
             <Right>
                 <div class="c-actions" @onclick:stopPropagation="true">
@@ -54,7 +54,7 @@
             @account.Email
         </Content>
         <Caption>
-            Email
+            @L.YourAccount_Email
         </Caption>
         <Right>
             <div class="c-actions" @onclick:stopPropagation="true">
@@ -86,7 +86,7 @@
             @account.Phone?.ToReadable()
         </Content>
         <Caption>
-            Phone
+            @L.YourAccount_Phone
         </Caption>
     </TileItem>
 
@@ -95,10 +95,10 @@
             <i class="icon-globe"></i>
         </Icon>
         <Content>
-            @(_timeZoneName ?? "Not set")
+            @(_timeZoneName ?? L.YourAccount_TimeZoneNotSet)
         </Content>
         <Caption>
-            Time zone (for digest)
+            @L.YourAccount_TimeZone
         </Caption>
     </TileItem>
 
@@ -107,10 +107,10 @@
             <i class="icon-edit"></i>
         </Icon>
         <Content>
-            Edit or Delete
+            @L.YourAccount_EditOrDelete
         </Content>
         <Caption>
-            Edit name, email, phone, or delete account
+            @L.YourAccount_EditOrDeleteCaption
         </Caption>
     </TileItem>
 
@@ -119,15 +119,15 @@
             <i class="icon-share"></i>
         </Icon>
         <Content>
-            Share
+            @L.YourAccount_Share
         </Content>
         <Caption>
-            Share your contact
+            @L.YourAccount_ShareYourContact
         </Caption>
     </TileItem>
 </Tile>
 
-<TileTopic Topic="My avatars"/>
+<TileTopic Topic="@L.YourAccount_MyAvatars"/>
 
 <OwnAvatarList Account="@account"/>
 

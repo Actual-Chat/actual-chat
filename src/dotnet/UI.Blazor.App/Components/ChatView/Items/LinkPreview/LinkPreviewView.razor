@@ -49,7 +49,7 @@
     </CopyTrigger>
     @if (m.LocalLink is null) {
         <HeaderButton
-            Tooltip="Forward"
+            Tooltip="@L.MessageMenu_Forward"
             Click="@(() => SelectionUI.Forward(m.Entry.Id))">
             <i class="icon-share"></i>
         </HeaderButton>

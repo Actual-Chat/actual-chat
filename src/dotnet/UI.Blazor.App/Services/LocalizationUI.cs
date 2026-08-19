@@ -1,0 +1,59 @@
+using ActualChat.Concurrency;
+using ActualChat.UI.Blazor.Resources;
+using ActualChat.UI.Blazor.Services;
+
+namespace ActualChat.UI.Blazor.App.Services;
+
+/// <summary>
+/// Localizes server-composed message text (e.g. error/exception messages that cross RPC) into the
+/// device UI language: catalogued messages resolve through <see cref="MessageIndex"/>, the rest
+/// fall back to AI translation behind <see cref="ITranslations.GetTranslatedUIText"/>, whose
+/// compute cache dedups them; concurrent calls are throttled by a <see cref="ConcurrentProcessor{TKey,TResult}"/>.
+/// </summary>
+public class LocalizationUI : UIServiceBase<AppUIHub>, IUITextLocalizer, IComputeService, IAsyncDisposable
+{
+    private const int ConcurrencyLevel = 10;
+    private readonly ConcurrentProcessor<Key, string> _localizations;
+
+    private ITranslations Translator => Hub.Translations;
+    private LanguageUI LanguageUI => Hub.LanguageUI;
+    IServiceProvider IHasServices.Services => Hub.Services;
+
+    public LocalizationUI(AppUIHub hub) : base(hub)
+        => _localizations = new(ConcurrencyLevel, Localize, log: hub.LogFor<ConcurrentProcessor<Key, string>>());
+
+    public ValueTask DisposeAsync()
+        => _localizations.DisposeSilentlyAsync($"{GetType().GetName()}._localizations", Log);
+
+    [ComputeMethod]
+    public virtual async Task<string> Get(string message, CancellationToken cancellationToken = default)
+    {
+        if (message.IsNullOrWhiteSpace())
+            return message;
+
+        var language = await LanguageUI.UILanguage.Use(cancellationToken).ConfigureAwait(false);
+        if (language.IsAnyEnglish)
+            return message;
+
+        var localized = L.ForRuntimeMessage(message);
+        if (localized != null)
+            return localized;
+
+        var item = _localizations.Enqueue(new Key(language, message));
+        return await item.ResultTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private async Task<string> Localize(Key key, CancellationToken cancellationToken)
+    {
+        var translated = await Translator
+            .GetTranslatedUIText(Session, key.Message, key.Language, UITextKind.ErrorMessage, cancellationToken)
+            .ConfigureAwait(false);
+        return translated.NullIfEmpty() ?? key.Message;
+    }
+
+    // Nested types
+
+    private sealed record Key(Language Language, string Message);
+}

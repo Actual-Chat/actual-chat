@@ -4,7 +4,8 @@
     var tooltip = "";
     if (Moment.HasValue) {
         var localTime = Hub.DateTimeConverter.ToLocalTime(Moment.GetValueOrDefault());
-        tooltip = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
+        tooltip = L.Date_At_Format(
+            localTime.ToString("dddd, dd MMMM yyyy", DateFormatter), localTime.ToString("t", DateFormatter));
     }
     var text = IsCapitalized ? m.Capitalize() : m;
 }

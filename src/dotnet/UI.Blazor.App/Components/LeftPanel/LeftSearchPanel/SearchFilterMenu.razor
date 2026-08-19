@@ -8,19 +8,19 @@
 
 <div class="search-filter-menu">
     <div class="c-section">
-        <div class="c-section-title">Search location</div>
-        @RenderLocation(SearchLocationFilter.Anywhere, "Anywhere")
-        @RenderLocation(SearchLocationFilter.Chat, "In this chat")
+        <div class="c-section-title">@L.Search_LocationTitle</div>
+        @RenderLocation(SearchLocationFilter.Anywhere, L.Search_LocationAnywhere)
+        @RenderLocation(SearchLocationFilter.Chat, L.Search_LocationInChat)
         @if (hasPlace) {
-            @RenderLocation(SearchLocationFilter.Place, "In this place")
+            @RenderLocation(SearchLocationFilter.Place, L.Search_LocationInPlace)
         }
     </div>
     <div class="c-section">
-        <div class="c-section-title">Result type</div>
-        @RenderType(SearchTypeFilter.Anything, "Anything")
-        @RenderType(SearchTypeFilter.People, "People")
-        @RenderType(SearchTypeFilter.Groups, "Groups")
-        @RenderType(SearchTypeFilter.Messages, "Messages")
+        <div class="c-section-title">@L.Search_TypeTitle</div>
+        @RenderType(SearchTypeFilter.Anything, L.Search_TypeAnything)
+        @RenderType(SearchTypeFilter.People, L.Search_TypePeople)
+        @RenderType(SearchTypeFilter.Groups, L.Search_TypeGroups)
+        @RenderType(SearchTypeFilter.Messages, L.Search_TypeMessages)
     </div>
 </div>
 

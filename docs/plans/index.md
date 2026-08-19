@@ -61,6 +61,20 @@ the provider, and health-based auto-ejection built on a new general
 offline) and Gemini 3 (offline), upgrades Google to Chirp 3 and OpenAI to
 `gpt-transcribe` / `gpt-live-transcribe`.
 
+### Localization
+
+[Localization: what's left](./localization-remaining.md) — the app UI, server
+errors, validation and dates shipped in #3721; the App-language picker stays
+behind `EnableIncompleteUI` on purpose until the rest lands, so a user can't
+switch to a half-translated app. UI language is device-local by design, so the
+remaining surfaces localize where they render: push notifications composed on
+the device (which needs an iOS Notification Service Extension first), the
+digest emails, and the native shells (iOS share extension, Android dialogs,
+`Info.plist`, local notifications). Those two gate the flag. The 44 untouched
+landing/legal pages do not: they sit before sign-in, the marketing half needs
+per-language routes before translation pays off, and the legal half is a
+liability decision.
+
 ### On-premises instances
 
 [On-premises instances](./on-prem-instances.md) — let customers run their own

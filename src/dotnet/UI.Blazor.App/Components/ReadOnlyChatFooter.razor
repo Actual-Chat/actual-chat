@@ -1,9 +1,11 @@
+@inherits ComponentBase<AppUIHub>
+
 <div class="chat-footer readonly">
     <div class="c-content">
-        @Text
+        @(Text ?? L.ChatFooter_ReadOnly)
     </div>
 </div>
 
 @code {
-    [Parameter] public string Text { get; set; } = "This chat is read-only";
+    [Parameter] public string? Text { get; set; }
 }

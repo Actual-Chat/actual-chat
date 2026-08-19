@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 @implements IModalView<ForwardMessageModal.Model>
 
 @using ActualChat.Search
@@ -34,7 +35,7 @@
             Type="@ButtonType.Button"
             Class="btn-modal"
             Click="@(() => Modal.Close())">
-            Cancel
+            @L.Common_Cancel
         </Button>
         <Button
             Type="@ButtonType.Submit"
@@ -76,9 +77,9 @@
 
         public IReadOnlySet<ChatId> ExcludedChatIds { get; } = excludedChatIds;
         public ImmutableHashSet<ChatId> SelectedChatIds { get; set; } = ImmutableHashSet<ChatId>.Empty;
-        public string Title { get; init; } = "Forward message";
-        public string SubmitTitle { get; init; } = "Send";
-        public string SearchPlaceholder { get; init; } = "Who would you like to share with";
+        public required string Title { get; init; } = "";
+        public required string SubmitTitle { get; init; } = "";
+        public required string SearchPlaceholder { get; init; } = "";
 
         public Model(ChatId chatId) : this(ImmutableHashSet.Create(chatId)) { }
     };

@@ -7,7 +7,8 @@ public class Translations(IServiceProvider services) : ITranslations
 {
     private ITranslationsBackend Backend => field ??= services.GetRequiredService<ITranslationsBackend>();
     private IChats Chats => field ??= services.GetRequiredService<IChats>();
-    private IChatEntryLanguagesBackend ChatEntryLanguagesBackend => field ??= services.GetRequiredService<IChatEntryLanguagesBackend>();
+    private IChatEntryLanguagesBackend ChatEntryLanguagesBackend
+        => field ??= services.GetRequiredService<IChatEntryLanguagesBackend>();
 
     // [ComputeMethod]
     public virtual async Task<Translation?> Get(
@@ -29,5 +30,21 @@ public class Translations(IServiceProvider services) : ITranslations
     {
         _ = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         return await ChatEntryLanguagesBackend.GetTile(chatId, lidTileRange, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<string?> GetTranslatedUIText(
+        Session session,
+        string text,
+        Language language,
+        UITextKind kind,
+        CancellationToken cancellationToken)
+    {
+        if (text.IsNullOrWhiteSpace() || language.IsAnyEnglish)
+            return text;
+        if (text.Length > Constants.Translation.MaxTextTranslationLength)
+            return null;
+
+        return await Backend.GetTranslatedUIText(text, language, kind, cancellationToken).ConfigureAwait(false);
     }
 }

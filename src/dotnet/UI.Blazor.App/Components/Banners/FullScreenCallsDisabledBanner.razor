@@ -23,13 +23,14 @@
             <i class="icon-phone"></i>
         </Icon>
         <Body>
-            Let @CoreConstants.AppName show <strong>calls on the lock screen</strong>
+            @L.Banner_LockScreenCalls_Prefix(CoreConstants.AppName)<strong
+                >@L.Banner_LockScreenCallsTarget</strong>@L.Banner_LockScreenCalls_Suffix
         </Body>
         <Buttons>
             <Button
                 Class="btn-transparent unhovered"
                 Click="@OnConfigureClick">
-                Settings
+                @L.Common_Settings
             </Button>
         </Buttons>
     </Banner>

@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -14,6 +15,6 @@ public class ChatPinsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         var result = await UICommander.Run(new Chats_SetPinned(Session, entryId, mustPin)).ConfigureAwait(true);
         if (result.HasError)
             return; // The command pipeline surfaces the error (e.g. the cap message).
-        ToastUI.Show(mustPin ? "Message pinned" : "Message unpinned", ToastDismissDelay.Short);
+        ToastUI.Show(mustPin ? L.Pin_MessagePinned : L.Pin_MessageUnpinned, ToastDismissDelay.Short);
     }
 }

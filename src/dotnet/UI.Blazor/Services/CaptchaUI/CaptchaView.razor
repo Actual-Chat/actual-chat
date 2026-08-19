@@ -14,9 +14,11 @@
         </div>
     } else if (CaptchaUI.IsAvailable) {
         <div class="c-recaptcha-info">
-            This site is protected by reCAPTCHA and the Google
-            <a class="recaptcha-link" href="https://policies.google.com/privacy">Privacy Policy</a> and
-            <a class="recaptcha-link" href="https://policies.google.com/terms">Terms of Service</a> apply.
+            @L.Captcha_Protected_Prefix<a
+                class="recaptcha-link"
+                href="https://policies.google.com/privacy">@L.Onboarding_PrivacyPolicy</a>@L.Captcha_And<a
+                class="recaptcha-link"
+                href="https://policies.google.com/terms">@L.Onboarding_TermsOfService</a>@L.Captcha_Protected_Suffix
         </div>
     }
 }

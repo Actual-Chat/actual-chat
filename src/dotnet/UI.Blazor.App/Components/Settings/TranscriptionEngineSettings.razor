@@ -14,7 +14,7 @@
     <FormBlock>
         <InputRadioGroup
             Name="transcriber"
-            DisplayName="Transcriber"
+            DisplayName="@L.Transcription_Engines"
             @bind-Value="_formModel.SelectedId">
 
             @foreach (var option in Options) {
@@ -38,20 +38,21 @@
 </Form>
 
 @code {
-    private static readonly Option[] Options = [
-        new("", "Automatic"),
-        new(TranscriberId.SonioxStream.Value, "Soniox, no re-transcription"),
+    // Transcriber names are brands, so only the composition around them is localized.
+    private Option[] Options => field ??= [
+        new("", L.Transcription_Automatic),
+        new(TranscriberId.SonioxStream.Value, L.Transcription_NoRetranscription_Format("Soniox")),
         new(TranscriberId.NewPair(TranscriberId.SonioxStream, TranscriberId.SonioxOffline).Value,
-            "Soniox + Soniox re-transcription"),
+            L.Transcription_Retranscription_Format("Soniox", "Soniox")),
         new(TranscriberId.NewPair(TranscriberId.SonioxStream, TranscriberId.OpenAIOffline).Value,
-            "Soniox + OpenAI re-transcription"),
+            L.Transcription_Retranscription_Format("Soniox", "OpenAI")),
         // new(TranscriberId.NewPair(TranscriberId.SonioxStream, TranscriberId.ElevenLabsOffline).Value,
-        //     "Soniox + ElevenLabs re-transcription"),
+        //     L.Transcription_Retranscription_Format("Soniox", "ElevenLabs")),
         new(TranscriberId.NewPair(TranscriberId.DeepgramStream, TranscriberId.OpenAIOffline).Value,
-            "Deepgram + OpenAI re-transcription"),
-        // new(TranscriberId.ElevenLabsStream.Value, "ElevenLabs, no re-transcription"),
+            L.Transcription_Retranscription_Format("Deepgram", "OpenAI")),
+        // new(TranscriberId.ElevenLabsStream.Value, L.Transcription_NoRetranscription_Format("ElevenLabs")),
         // new(TranscriberId.NewPair(TranscriberId.ElevenLabsStream, TranscriberId.ElevenLabsOffline).Value,
-        //     "ElevenLabs + ElevenLabs re-transcription"),
+        //     L.Transcription_Retranscription_Format("ElevenLabs", "ElevenLabs")),
         new(TranscriberId.GoogleStream.Value, "Google Cloud"),
     ];
 

@@ -5,8 +5,10 @@
     if (State.IsInitial(out var isEnabled))
         return;
     if (!isEnabled) {
-        <div>Local logs are disabled. To enable go to
-            <Button Class="btn-transparent unhovered compact" Click="@OnSettingsClick">settings</Button>
+        <div>
+            @L.LogView_Disabled_Prefix<Button
+                Class="btn-transparent unhovered compact"
+                Click="@OnSettingsClick">@L.LogView_DisabledSettingsLink</Button>@L.LogView_Disabled_Suffix
         </div>
         return;
     }

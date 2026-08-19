@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<UIHub>
 
 <ButtonTile Class="btn-outline"
         Click="OnClick"
@@ -7,10 +8,11 @@
         data-bubble-placement="@(FloatingPosition.LeftStart.ToPositionString())">
     <Icon><i class="icon-plus text-xl"></i></Icon>
     <Content>
-        <div class="c-text">Add avatar</div>
+        <div class="c-text">@L.Avatar_AddAvatar</div>
     </Content>
 </ButtonTile>
 
 @code{
+
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
 }

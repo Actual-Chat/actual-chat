@@ -15,7 +15,7 @@
                 <TextInput
                     @ref="_inputRef"
                     Class="w-full dialog-unstyled"
-                    Placeholder="@Placeholder"
+                    Placeholder="@(Placeholder ?? L.Common_Search)"
                     MaxLength="@MaxLength"
                     TextChanged="OnSearchInputTextChanged">
                 </TextInput>
@@ -40,7 +40,7 @@
 
     [Parameter] public SearchPanelSide Side { get; set; } = SearchPanelSide.Right;
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public string Placeholder { get; set; } = "Search";
+    [Parameter] public string? Placeholder { get; set; }
     [Parameter] public int? MaxLength { get; set; }
     [Parameter] public bool ShowCloseButton { get; set; }
     [Parameter] public bool ShouldFocus { get; set; }

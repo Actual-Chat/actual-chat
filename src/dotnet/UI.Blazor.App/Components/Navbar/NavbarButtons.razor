@@ -1,9 +1,10 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 
 <NavbarGroupSelectionButton
     Id="@NavbarGroupIds.Chats"
     Title="@NavbarGroupIds.ChatsTitle"
-    Tooltip="Chats">
+    Tooltip="@L.Navbar_Chats">
     <ChildContent>
         <i class="icon-message-ellipse text-2xl font-medium"></i>
     </ChildContent>

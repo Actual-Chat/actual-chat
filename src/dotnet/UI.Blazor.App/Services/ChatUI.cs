@@ -2,6 +2,7 @@
 using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.App.Events;
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 using MathExt = ActualLab.Mathematics.MathExt;
@@ -170,7 +171,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             var threadChat = await threadChatTask.ConfigureAwait(false);
             var threadCreator = await threadCreatorTask.ConfigureAwait(false);
             return new ChatPreview {
-                Text = threadChat is not null ? $"Thread '{threadChat.Title}'" : "",
+                Text = threadChat is not null ? L.ChatList_Thread_Format(threadChat.Title) : "",
                 Thread = threadChat,
                 ThreadCreator = threadCreator,
             };
@@ -178,7 +179,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
         if (lastTextEntry is { HasLocation: true, LocationId: { } locationId }) {
             var isOneTime = await LocationUI.IsOneTime(chatId, locationId, cancellationToken).ConfigureAwait(false);
-            return new ChatPreview { Text = isOneTime ? "Sent a location" : "Shared live location" };
+            return new ChatPreview { Text = isOneTime ? L.ChatList_SentLocation : L.ChatList_SharedLiveLocation };
         }
 
         var emoji = Emojis.TryGetByIdOrSymbol(lastTextEntry.Content.Trim());
@@ -385,11 +386,11 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     public void LeaveChat(Chat.Chat chat)
-        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, "chat",
+        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, LeaveChatConfirmationModal.TargetKind.Chat,
             m => _ = DeleteOrLeaveChatInternal(chat, false, m)));
 
     public void DeleteChat(Chat.Chat chat)
-        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true, "chat",
+        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true, LeaveChatConfirmationModal.TargetKind.Chat,
             m => _ = DeleteOrLeaveChatInternal(chat, true, m)));
 
     public void DeleteThread(Chat.Chat chat)
@@ -398,26 +399,26 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             throw new ArgumentOutOfRangeException(nameof(chat), "Given chat should be a thread");
 
         _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true,
-            "thread",
+            LeaveChatConfirmationModal.TargetKind.Thread,
             m => _ = DeleteOrLeaveChatInternal(chat, true, m)));
     }
 
     public void DeletePlace(PlaceId placeId, Func<Task> onBeforeExecuteCommand)
-        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true, "place",
+        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true, LeaveChatConfirmationModal.TargetKind.Place,
             m => _ = DeleteOrLeavePlaceInternal(placeId, true, onBeforeExecuteCommand, m)));
 
     public void LeavePlace(PlaceId placeId)
-        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, "place",
+        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, LeaveChatConfirmationModal.TargetKind.Place,
             m => _ = DeleteOrLeavePlaceInternal(placeId, false, () => Task.CompletedTask, m)));
 
     public void ArchiveChat(Chat.Chat chat)
     {
-        var warning = $"You are going to archive chat '{chat.Title}'. Nobody will be able to access it except owners, who can still access it with direct link.";
+        var warning = L.Chat_ArchiveWarning_Format(chat.Title);
         _ = ModalUI.Show(new ConfirmModal.Model(true,
             warning,
             () => _ = ArchiveChatInternal(chat.Id)) {
-            Title = "Archive chat",
-            ConfirmButtonText = "Archive"
+            Title = L.Chat_ArchiveTitle,
+            ConfirmButtonText = L.Chat_Archive
         });
     }
 

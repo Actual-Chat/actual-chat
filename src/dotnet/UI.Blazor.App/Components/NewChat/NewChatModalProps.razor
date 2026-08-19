@@ -7,10 +7,8 @@
 
     var isPlaceChat = PlaceId is not null;
     var canChangeChatType = PlaceId is null || _place != null && _place.Rules.CanApplyPublicChatType();
-    var publicChatLabel = !isPlaceChat ? "Public chat" : "Place chat";
-    var publicChatHint = !isPlaceChat ?
-        "Anyone can join this chat by navigating to its URL" :
-        "All members of this Place will see it in Place's chat list and will be able to talk there";
+    var publicChatLabel = !isPlaceChat ? L.Chat_PublicChat : L.Chat_PlaceChat;
+    var publicChatHint = !isPlaceChat ? L.Chat_PublicChatHint : L.Chat_PlaceChatHint;
 }
 
 <Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
@@ -29,7 +27,7 @@
 
         <FormSection
             For="() => _form.Title"
-            Label="Title"
+            Label="@L.Form_Title"
             InputId="@_form.TitleId"
             IsLabelInsideInput="true"
             Class="!mt-0 grow"
@@ -42,7 +40,7 @@
         </FormSection>
         <FormSection
             For="() => _form.Description"
-            Label="Description"
+            Label="@L.Form_Description"
             InputId="@_form.DescriptionId"
             IsLabelInsideInput="true"
             Class="!mt-0 grow">
@@ -53,8 +51,8 @@
                 Autocomplete="off"/>
         </FormSection>
     </FormBlock>
-    <FormBlock Title="Chat type" Class="with-input-radio">
-        <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
+    <FormBlock Title="@L.Chat_TypeTitle" Class="with-input-radio">
+        <InputRadioGroup Name="chat_type" DisplayName="@L.Chat_TypeTitle" @bind-Value="_form.IsPublic">
             <TileItem
                 Class="@(_form.IsPublic ? "transparent selected" : "transparent")"
                 Click="@(() => OnPublicChatClick(true))">
@@ -75,10 +73,10 @@
                     <FormRadio Id="@_form.IsPublicFalseFormId" IsDisabled="@(!canChangeChatType)" Value="@false"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_form.IsPublicFalseFormId" Text="Private chat" IsRequired="true"></Label>
+                    <Label InputId="@_form.IsPublicFalseFormId" Text="@L.Chat_PrivateChat" IsRequired="true"></Label>
                 </Content>
                 <Caption>
-                    Can be joined only if you are invited / have an invite link
+                    @L.Chat_PrivateChatHint
                 </Caption>
             </TileItem>
         </InputRadioGroup>
@@ -91,10 +89,10 @@
                         <i class="icon-guest"></i>
                     </Icon>
                     <Content>
-                        <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Visitors can join without signing in" IsRequired="true"></Label>
+                        <Label InputId="@_form.AllowGuestAuthorsFormId" Text="@L.Chat_AllowGuests" IsRequired="true"></Label>
                     </Content>
                     <Caption>
-                        Spam messages are more likely if this option is enabled
+                        @L.Chat_AllowGuestsHint
                     </Caption>
                     <Right>
                         <ToggleEdit Id="@_form.AllowGuestAuthorsFormId" @bind-Value="_form.AllowGuestAuthors"/>
@@ -107,10 +105,10 @@
                         <i class="icon-question-mark-bubble"></i>
                     </Icon>
                     <Content>
-                        <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously" IsRequired="true"></Label>
+                        <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="@L.Chat_AllowAnonymous" IsRequired="true"></Label>
                     </Content>
                     <Caption>
-                        Signed-in users can join this chat without revealing their identity
+                        @L.Chat_AllowAnonymousHint
                     </Caption>
                     <Right>
                         <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
@@ -218,7 +216,7 @@
 
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
     public sealed class FormModel {
-        [Required, MinLength(1)]
+        [Required]
         public string Title { get; set; } = "";
 
         public string Description { get; set; } = "";

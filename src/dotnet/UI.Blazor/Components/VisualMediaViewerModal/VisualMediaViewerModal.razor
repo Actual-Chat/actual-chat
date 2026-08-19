@@ -129,19 +129,19 @@
             var media = selectedAttachment.Media;
             <div class="media-info">
                 <div class="c-item">
-                    <span class="c-key">File name:</span>
+                    <span class="c-key">@L.MediaInfo_FileName</span>
                     <span class="c-value">@media.FileName</span>
                 </div>
                 <div class="c-item">
-                    <span class="c-key">Size:</span>
+                    <span class="c-key">@L.MediaInfo_Size</span>
                     <span class="c-value">@FormatSize(media.Length)</span>
                 </div>
                 <div class="c-item">
-                    <span class="c-key">Dimensions:</span>
+                    <span class="c-key">@L.MediaInfo_Dimensions</span>
                     <span class="c-value">@media.Width × @media.Height</span>
                 </div>
                 <div class="c-item">
-                    <span class="c-key">Content type:</span>
+                    <span class="c-key">@L.MediaInfo_ContentType</span>
                     <span class="c-value">@media.ContentType</span>
                 </div>
             </div>

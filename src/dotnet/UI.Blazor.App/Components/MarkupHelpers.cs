@@ -1,5 +1,7 @@
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
@@ -7,42 +9,23 @@ public class MarkupHelpers(AppUIHub hub)
 {
     private AppUIHub Hub { get; } = hub;
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
+    private DateFormatter DateFormatter => Hub.DateFormatter;
+    private IStringLocalizer L => Hub.StringLocalizer;
     private MomentClockSet Clocks => Hub.Clocks;
 
     public MarkupString LastEntryTime(Moment? moment)
     {
-        var isToday = false;
-        var isYesterday = false;
-        var inWeek = false;
-
         var timestamp = "";
         if (moment.HasValue) {
             var now = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now);
             var beginsAt = DateTimeConverter.ToLocalTime(moment.Value);
-            var delta = (now.Date - beginsAt.Date).Days;
-
-            switch (delta) {
-            case 0:
-                isToday = true;
-                break;
-            case 1:
-                isYesterday = true;
-                break;
-            case < 8:
-                inWeek = true;
-                break;
-            }
-
-            if (isToday)
-                timestamp = beginsAt.ToShortTimeString();
-            else if (isYesterday)
-                timestamp = $"Yesterday, {beginsAt.ToShortTimeString()}";
-            else if (inWeek)
-                timestamp = beginsAt.ToString("ddd, HH:mm", null);
-            else if (now.Year == beginsAt.Year)
-                timestamp = beginsAt.ToString("MMM dd", null);
-            else
-                timestamp = beginsAt.ToString("MMM dd, yyyy", null);
+            var date = DateFormatter.FormatRelativeDate(beginsAt, now);
+            var daysDelta = (now.Date - beginsAt.Date).Days;
+            timestamp = daysDelta switch {
+                0 => beginsAt.ToString("t", DateFormatter),
+                < 8 and > 0 => L.Date_Parts_Format(date, beginsAt.ToString("t", DateFormatter)),
+                _ => date,
+            };
         }
         return new MarkupString($"<div class=\"last-entry-time\">{timestamp}</div>");
     }

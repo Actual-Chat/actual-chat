@@ -37,7 +37,7 @@
                        min="0" max="1" step="0.001"
                        value="@fractionText"
                        disabled="@(m.Duration is null)"
-                       aria-label="Seek"
+                       aria-label="@L.Content_Seek"
                        @oninput="OnSeek"
                        @onclick:stopPropagation />
             </div>
@@ -110,14 +110,6 @@
         return Player.Seek(d * fraction).AsTask();
     }
 
-    private string FormatDate(Moment at) {
-        var date = DateTimeConverter.ToLocalTime(at);
-        var today = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now);
-        return date.Year == today.Year
-            ? date.ToString("d MMM, HH:mm")
-            : date.ToString("d MMM yyyy, HH:mm");
-    }
-
     private static string FormatTime(TimeSpan t) {
         if (t < TimeSpan.Zero)
             t = TimeSpan.Zero;
@@ -136,4 +128,7 @@
         public TimeSpan Position { get; init; }
         public TimeSpan? Duration { get; init; }
     }
+
+    private string FormatDate(Moment at)
+        => ContentListPlumbing.GetItemDate(at, Hub);
 }

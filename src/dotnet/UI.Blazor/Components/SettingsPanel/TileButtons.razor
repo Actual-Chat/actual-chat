@@ -4,7 +4,7 @@
 @{
     var m = State.Value;
     var cls = m ? "btn-xs btn-transparent selected" : "btn-xs btn-transparent text-03 hover:text-02";
-    var setDefaultBtnTooltip = m ? "" : "Set default";
+    var setDefaultBtnTooltip = m ? "" : L.Avatar_MakeDefault;
 }
 
 @if (SetDefaultClick.HasDelegate) {
@@ -19,7 +19,7 @@
 @if (EditClick.HasDelegate) {
     <ButtonRound
         Class="btn-xs btn-transparent tile-btn"
-        Tooltip="Edit"
+        Tooltip="@L.Common_Edit"
         TooltipPosition="FloatingPosition.Top"
         Click="EditClick">
         <i class="icon-edit text-xl"></i>
@@ -28,7 +28,7 @@
 @if (CloseClick.HasDelegate) {
     <ButtonRound
         Class="btn-xs btn-transparent"
-        Tooltip="Close"
+        Tooltip="@L.Common_Close"
         TooltipPosition="FloatingPosition.Top"
         Click="@CloseClick">
         <i class="icon-close text-xl @cls"></i>

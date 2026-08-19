@@ -9,15 +9,15 @@
 <div class="empty-chat-content">
     <empty-chat-svg />
     <div class="c-text">
-        <span>No messages here yet.</span>
+        <span>@L.ChatView_NoMessagesYet</span>
         @if (m.PeerAccount is { } peerAccount) {
             <div class="c-truncated-text">
-                <span>Say "Hi" to&nbsp;</span>
+                <span class="c-part">@L.ChatView_SayHiTo_Prefix</span>
                 <AccountName UserId="@peerAccount.Id"/>
-                <span>!</span>
+                <span class="c-part">@L.ChatView_SayHiTo_Suffix</span>
             </div>
         } else {
-            <span>Post the first one!</span>
+            <span>@L.ChatView_PostTheFirstMessage</span>
         }
     </div>
 </div>

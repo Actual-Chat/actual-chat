@@ -15,26 +15,26 @@
                     TabsClass="left-panel-tabs wide-left-panel-tabs"
                     BottomHill="true">
 
-                    <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0">
+                    <Tab @key="@("chats")" Id="chats" Title="@L.Navbar_Chats" Order="0">
                         <div class="c-container">
                             <ChatSearchTab Place="@Place"/>
                         </div>
                     </Tab>
-                    <Tab @key="@("ai-search")" Id="ai-search" Title="Search" Order="1">
+                    <Tab @key="@("ai-search")" Id="ai-search" Title="@L.Common_Search" Order="1">
                         <div class="c-container">
                             <RecentlyViewedGroups
-                                Title="Recent searches"
+                                Title="@L.Search_RecentSearches"
                                 ListKind="@ChatUsageListKind.SearchChats"
                                 Place="@Place"/>
                         </div>
                     </Tab>
-                    <Tab @key="@("threads")" Id="Threads" Title="Threads" Order="2">
+                    <Tab @key="@("threads")" Id="Threads" Title="@L.RightPanel_TabThreads" Order="2">
                         <ToBeDone/>
                     </Tab>
-                    <Tab @key="@("tags")" Id="tags" Title="Tags" Order="3">
+                    <Tab @key="@("tags")" Id="tags" Title="@L.Search_TabTags" Order="3">
                         <ToBeDone/>
                     </Tab>
-                    <Tab @key="@("media")" Id="media" Title="Media" Order="4">
+                    <Tab @key="@("media")" Id="media" Title="@L.RightPanel_TabMedia" Order="4">
                         <ToBeDone/>
                     </Tab>
                 </TabPanel>

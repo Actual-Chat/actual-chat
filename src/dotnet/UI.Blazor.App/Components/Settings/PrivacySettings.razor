@@ -8,13 +8,13 @@
 }
 
 @if (hasSensors && m.EnableIncompleteUI) {
-    <TileTopic Topic="Microphone"/>
+    <TileTopic Topic="@L.Privacy_MicrophoneTopic"/>
 
     <Tile>
         <TileItem Click="@OnToggleFaceDownStop">
             <Icon><i class="icon-mic-off text-2xl"></i></Icon>
-            <Content>Stop recording when face down</Content>
-            <Caption>Turning the phone face down or pocketing it closes the mic</Caption>
+            <Content>@L.Privacy_FaceDownStop</Content>
+            <Caption>@L.Privacy_FaceDownStopCaption</Caption>
             <Right>
                 <Toggle IsChecked="@m.IsFaceDownMicStopEnabled" IsCheckedChanged="@(_ => OnToggleFaceDownStop())"/>
             </Right>
@@ -22,14 +22,14 @@
     </Tile>
 }
 
-<TileTopic Topic="Blocked users"/>
+<TileTopic Topic="@L.Privacy_BlockedUsers"/>
 
 <Tile>
     <TileItem Click="@(m.Items.Count == 0 ? default : EventCallback.Factory.Create(this, OnToggleExpand))">
         <Icon>
             <i class="icon-slash-circle text-2xl"></i>
         </Icon>
-        <Content>Blocked users</Content>
+        <Content>@L.Privacy_BlockedUsers</Content>
         <Right>
             <span class="text-03">@m.Items.Count</span>
             @if (m.Items.Count > 0) {
@@ -53,7 +53,7 @@
                     <Right>
                         <ButtonRound
                             Class="btn-xs btn-danger"
-                            Tooltip="Unblock"
+                            Tooltip="@L.PeerContact_Unblock"
                             Click="@(() => OnUnblock(item.ContactId))">
                             <i class="icon-minus-circle text-2xl"></i>
                         </ButtonRound>

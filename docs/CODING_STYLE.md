@@ -824,13 +824,138 @@ Full detail — the verified per-serializer behavior matrix, the MemoryPack clos
 cutoff, unions, constructor attributes, and the test helpers that catch shape divergence — is in
 [`architecture/serialization.md`](architecture/serialization.md).
 
+### Localization (UI Strings)
+
+**Never hardcode user-visible English text in UI code.** Every static string
+a user can see (titles, labels, menu items, toasts, tooltips) comes from the
+string catalog. The catalog is a set of embedded JSON files —
+`src/dotnet/UI.Blazor/Resources/Strings.<lang>.json` — resolved at
+runtime by `AppStringLocalizer` (a custom `IStringLocalizer<Strings>` in
+`UI.Blazor.App`; `.resx`/`CultureInfo` localization does not work under
+`InvariantGlobalization`). English is the fallback and defines the key set.
+
+**Adding a key** means three edits, all enforced by `AppLocalizationTest`:
+
+1. Add it to `Strings.en.json` **and every other shipped `Strings.*.json`**
+   (all languages must define exactly the English key set).
+2. Add the matching typed member to `LocalizedStringsLocalizerExt.cs` (one member per key,
+   names must match exactly).
+3. Use it from code (see below).
+
+**Key naming:** `Group_Name` in PascalCase, where the group mirrors the
+component/page/feature (`ChatMenu_Pin`, `Settings_Title`, `ErrorToast_ActionFailed`).
+Format strings get a `_Format` suffix and use `{0}`-style placeholders — every
+translation must keep the placeholder.
+
+**Counted text** (`{0} member`, `Delete message?`) is a single key whose value
+lists that language's plural forms separated by `|`, in the order `PluralRules`
+indexes them — one, few, many:
+
+```json
+"en": "{0} member|{0} members",
+"ru": "{0} участник|{0} участника|{0} участников",
+"ja": "メンバー {0} 人"
+```
+
+A language lists only as many forms as it needs; the index is clamped to the
+last one, which is also where the English fallback lands. The typed member takes
+the count first — `L.Chat_Members(count, count)` — because the value formatted in
+is not always the count itself (`ChatMemberCounter` passes `"1.2K"`). Do not go
+back to `_One`/`_Other` key pairs picked by a `count == 1 ?` at the call site:
+that renders Russian and Ukrainian as "2 участников".
+
+**Agreement is the translator's problem, and English hides it.** A key whose
+value is a bare adjective or participle can only be shared where the noun it
+agrees with is the same — `Chat_Public` and `Place_Public` are separate keys
+because *чат* is masculine and *пространство* is neuter, and Italian needs
+*pubblica* for one and *pubblico* for the other. Text about a person must not
+assume their gender ("Прочитано", not "Прочитал"); and a name spliced into a
+sentence has to land where no inflection is required — in Russian and Ukrainian
+that means after a colon, not after a preposition that would demand a case.
+
+**Consuming strings** — always through the typed `LocalizedStringsLocalizerExt` extension
+members (`src/dotnet/UI.Blazor/Resources/LocalizedStringsLocalizerExt.cs`), never the raw
+`L["..."]` indexer — the typed members are compile-time-safe against typos:
+
+- **Components** — use the `L` property the `UIHub` base classes already expose:
+  `@L.ChatMenu_Pin`, `L.Settings_Quit_Format(appName)`. **If the component has no
+  such base, give it one — do NOT add `[Inject] private IStringLocalizer L`.**
+  Every base in `src/dotnet/UI.Blazor/BaseTypes/` exposes `L` (plus `Hub` and the
+  usual service shortcuts), so pick the one matching what the component already does:
+
+  | Component currently | Change `@inherits` to |
+  |---|---|
+  | plain `ComponentBase` / no `@inherits` | `ComponentBase<UIHub>` |
+  | `FusionComponentBase` | `FusionComponentBase<UIHub>` |
+  | `ComputedStateComponent<TState>` | `ComputedStateComponent<UIHub, TState>` |
+  | `ComputedRenderStateComponent<TState>` | `ComputedRenderStateComponent<UIHub, TState>` |
+
+  In `UI.Blazor.App` use `AppUIHub` instead of `UIHub`. Swapping the base is a
+  one-line change and costs nothing at runtime — `L` is just `Hub.StringLocalizer`.
+
+  **When no wrapper fits** (the component is stuck on a framework or Fusion base),
+  do *not* write a new `<THub, …>` wrapper for a single consumer — each wrapper
+  re-declares ~20 shortcut properties, so one is only worth it once several
+  components share the base. Instead:
+  - If the base derives from `CircuitHubComponentBase`, the hub is **already
+    injected** — just type it, the same way `ComputedStateComponent<THub, TState>`
+    does internally. Two lines, no new type:
+    ```csharp
+    private UIHub Hub => field ??= (UIHub)CircuitHub;
+    private IStringLocalizer L => Hub.StringLocalizer;
+    ```
+    (`ReconnectBanner` on Fusion's `StatefulComponentBase<TState>` is the only case.)
+  - Only if the base has no hub at all — a plain Blazor input base — fall back to
+    `[Inject] private IStringLocalizer L { get; init; } = null!;`. Today that is
+    `TextBox : InputText` and nothing else. Add a one-line comment saying why the
+    base is forced.
+- **Services** — derive from `UIServiceBase<THub>`, which exposes `L` the same way.
+  Only a service with no `UIServiceBase` base should lazy-resolve:
+  `private IStringLocalizer L => field ??= Services.GetRequiredService<IStringLocalizer>();`
+  A `static` helper taking a hub reads it off the hub: `var l = hub.StringLocalizer;`
+
+**Dynamic text** (server-composed messages that cross RPC, e.g. exception
+messages) is not catalog material — it's localized at runtime via
+`LocalizationUI.Get` (AI translation); see `LocalizingUIActionFailureTracker`
+for the pattern.
+
+**Error messages are the exception to "use `L`", and they live in `.cs`.**
+Anything raised as an exception and surfaced through `UICommander.ShowError`
+must keep its **English** literal at the throw site:
+`LocalizingUIActionFailureTracker` localizes it via `LocalizationUI.Get`, which
+matches against the *English* `MessageIndex`. Calling `L` there produces a
+pre-translated message that misses the index and gets queued for an AI
+translation of already-translated text — a wasted call and unreviewed wording
+replacing the catalog's.
+
+To make such a message translatable, add the English text as an `Error_*` key in
+`Messages.<lang>.json` and put the literal in a `StandardError` helper —
+`StandardError.Upload.FileTooBig(maxSizeMb)` is the worked example.
+**Never write the literal inline in a `.razor` file:**
+`ServerErrorLocalizationTest` anchors every `Error_*` key to a literal in `*.cs`
+only, so a message thrown from markup cannot be catalogued at all. The scan is
+narrow on purpose — an inline message gets copied to the next call site rather
+than shared, which is how the file-size error acquired four different spellings.
+
 ### Test Conventions
 
 #### Test Method Naming
 - **Use PascalCase without underscores** for test method names
 - Test names should clearly describe the scenario being tested
-- Good: `ReportShouldScaleToFullRange`, `ForkEqualPartsShouldDivideRangeEqually`
+- **Prefer the `Should` phrasing** — name the test after the expected
+  behavior, embedding `Should` (or `ShouldNot`) in the name: `<Subject>Should<ExpectedBehavior>`.
+- Good: `ReportShouldScaleToFullRange`, `ForkEqualPartsShouldDivideRangeEqually`,
+  `EveryShippedTranslationShouldTranslateEveryEnglishKey`
 - Bad: `Report_Should_Scale_To_Full_Range`, `Fork_EqualParts_ShouldDivideRangeEqually`
+  (underscores), `EnglishFallbackIsComplete` (states a fact instead of the
+  expected behavior — prefer `EnglishFallbackShouldBeComplete`)
+
+#### Assertions
+- **Use FluentAssertions** — assert with the `.Should()` API
+  (`actual.Should().Be(expected)`, `collection.Should().BeEquivalentTo(...)`),
+  not raw xUnit `Assert.*`.
+- Always pass the `because` reason argument when the failure isn't
+  self-explanatory, so a red test names what invariant broke.
 
 #### AAA Pattern (Arrange-Act-Assert)
 All tests must use the AAA (Arrange-Act-Assert) pattern with lowercase comments:

@@ -14,7 +14,7 @@
 @if (place is null) {
     if (m == Model.NoPlaceSelected) {
         <div class="no-chat-body">
-            Select a place.
+            @L.Place_SelectPlace
         </div>
     } else {
         <ChatNotFound ShowSignIn="@false" Target="@ChatNotFound.TargetKind.Place" />

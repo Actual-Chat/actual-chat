@@ -1,15 +1,16 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 
 <div class="web-splash no-scrollbar">
     <div class="c-wrapper">
         <div class="bg-wrapper">
-            <img draggable="false" class="wide-image" src="/dist/images/voxt-galaxy-horizontal.svg" alt="voxt">
-            <img draggable="false" class="narrow-image" src="/dist/images/voxt-galaxy-vertical.svg" alt="voxt">
+            <img draggable="false" class="wide-image" src="/dist/images/voxt-galaxy-horizontal.svg" alt="@CoreConstants.AppName">
+            <img draggable="false" class="narrow-image" src="/dist/images/voxt-galaxy-vertical.svg" alt="@CoreConstants.AppName">
         </div>
 
         <div class="c-content">
-            <img draggable="false" src="/dist/images/splashscreen-voxt.svg" alt="Loading...">
+            <img draggable="false" src="/dist/images/splashscreen-voxt.svg" alt="@L.Common_Loading">
             <div class="progress">
                 <div class="progress-value"></div>
             </div>

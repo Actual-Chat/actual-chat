@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
@@ -16,7 +17,8 @@ public static class CopyChatToPlaceUI
         var session = hub.Session;
         var chat = await hub.Chats.Get(session, sourceChatId, default).Require();
         var place = await hub.Places.Get(session, placeId, cancellationToken).Require();
-        var message = $"You are about to copy chat '{chat.Title}' to place '{place.Title}'. Do you want to proceed?";
+        var l = hub.StringLocalizer;
+        var message = l.Place_CopyChatConfirm_Format(chat.Title, place.Title);
         await hub.ModalUI
             .Show(new ConfirmModal.Model(false, message, () => _ = CopyInternal()), cancellationToken)
             .ConfigureAwait(false); // Ok (pre-exit)
@@ -33,8 +35,8 @@ public static class CopyChatToPlaceUI
 
             if (!result.HasErrors) {
                 var info = result.HasChanges
-                    ? $"Chat '{chat.Title}' was successfully copied to place '{place.Title}'."
-                    : $"Nothing has been done on coping chat '{chat.Title}' to place '{place.Title}'.";
+                    ? l.Place_CopyChatSuccess_Format(chat.Title, place.Title)
+                    : l.Place_CopyChatNoChanges_Format(chat.Title, place.Title);
                 hub.ToastUI.Show(info, ToastDismissDelay.Long);
             } else {
                 var model = new CopyChatToPlaceErrorModal.Model(correlationId, result.HasChanges, chat.Title, place.Title);
@@ -57,7 +59,8 @@ public static class CopyChatToPlaceUI
         placeChatId.Require();
 
         var place = await hub.Places.Get(session, placeChatId.PlaceId, default).Require();
-        var message = $"You are about to publish copied chat '{newChat.Title}' from place '{place.Title}'. Do you want to proceed?";
+        var l = hub.StringLocalizer;
+        var message = l.Place_PublishChatConfirm_Format(newChat.Title, place.Title);
         await hub.ModalUI
             .Show(new ConfirmModal.Model(false, message, () => _ = PublishInternal()), cancellationToken)
             .ConfigureAwait(false); // Ok (pre-exit)
@@ -69,7 +72,7 @@ public static class CopyChatToPlaceUI
             if (error != null)
                 return;
 
-            hub.ToastUI.Show($"Chat '{newChat.Title}' was successfully published.", ToastDismissDelay.Long);
+            hub.ToastUI.Show(l.Place_PublishChatSuccess_Format(newChat.Title), ToastDismissDelay.Long);
         }
     }
 }

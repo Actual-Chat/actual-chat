@@ -10,6 +10,12 @@ public static partial class StandardError
             => new OffsetConflictException(message);
         public static Exception TransientFailure(string? message = null)
             => new UploadTransientException(message);
+        public static Exception FileTooBig(long maxSizeBytes)
+            => Constraint($"File is too big. Max file size: {FileSizeFormatter.Format(maxSizeBytes)}.");
+        public static Exception TooManyFiles(int maxCount)
+            => Constraint($"Too many files. Max allowed number is {maxCount}.");
+        public static Exception CropExportFailed()
+            => Constraint("Failed to export cropped image.");
     }
 }
 

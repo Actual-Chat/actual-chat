@@ -23,7 +23,7 @@
             } else if (m.MustRequestPermission) {
                 <button type="button" class="c-permission-prompt" @onclick="@OnEnablePermission">
                     <i class="icon-marker-pin"></i>
-                    <span>Enable location permission to show map.</span>
+                    <span>@L.Location_EnablePermission</span>
                 </button>
             }
             @if (m.IsPicking) {
@@ -56,7 +56,7 @@
                 <ButtonTile Class="c-send-place" Click="@OnSendPicked">
                     <Icon><i class="icon-map-point"></i></Icon>
                     <Content>
-                        <div class="c-text">Send this location</div>
+                        <div class="c-text">@L.Location_SendThisLocation</div>
                         <div class="c-caption">@m.PickedText</div>
                     </Content>
                 </ButtonTile>
@@ -74,22 +74,22 @@
                         }
                     </Icon>
                     <Content>
-                        <div class="c-text">Send my current location</div>
+                        <div class="c-text">@L.Location_SendCurrentLocation</div>
                         <div class="c-caption">@m.AccuracyText</div>
                     </Content>
                 </ButtonTile>
                 <ButtonTile Class="c-share-live" Click="@OnShareLive">
                     <Icon><marker-pin-live-svg></marker-pin-live-svg></Icon>
                     <Content>
-                        <div class="c-text">Share my location for…</div>
-                        <div class="c-caption">Updated in real time as you move</div>
+                        <div class="c-text">@L.Location_ShareForDuration</div>
+                        <div class="c-caption">@L.Location_ShareForDurationCaption</div>
                     </Content>
                 </ButtonTile>
                 <ButtonTile Class="c-pick-place" Click="@OnPickPlace">
                     <Icon><i class="icon-map-point"></i></Icon>
                     <Content>
-                        <div class="c-text">Choose a place on the map</div>
-                        <div class="c-caption">Any point — not necessarily where you are</div>
+                        <div class="c-text">@L.Location_ChoosePlaceOnMap</div>
+                        <div class="c-caption">@L.Location_ChoosePlaceCaption</div>
                     </Content>
                 </ButtonTile>
             </div>

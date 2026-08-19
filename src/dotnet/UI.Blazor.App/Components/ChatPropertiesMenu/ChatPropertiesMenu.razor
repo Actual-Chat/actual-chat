@@ -8,17 +8,17 @@
     var chat = m.Chat;
     var rules = chat.Rules;
     var shareChatTitle = chat.Id is PeerChatId
-        ? $"Share {chat.Title}'s contact"
+        ? L.Share_ContactOf_Format(chat.Title)
         : chat.IsPublic
-            ? "Share chat"
-            : "Share chat join link";
+            ? L.Share_Chat
+            : L.Share_ChatJoinLink;
 }
 
 <CascadingValue Value="m">
     <MenuEntry
         Icon="icon-layout"
         Class="important-item"
-        Text="Open right panel"
+        Text="@L.Chat_OpenRightPanel"
         Click="@OnOpenRightPanelClick">
     </MenuEntry>
 @*

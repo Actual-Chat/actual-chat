@@ -1,4 +1,4 @@
-import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
+import { chromium, type Browser, type BrowserContext, type Locator, type Page } from 'playwright';
 import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
@@ -361,4 +361,44 @@ export async function newUserContext(
     page.on('console', m => { if (m.type() === 'error') console.log(`CONSOLE.ERROR[${email}]:`, m.text()); });
     await ensureSignedIn(page, email);
     return { context, page };
+}
+
+/** Opens Settings → User interface and returns the UI-language <select>. The tab is located by
+ *  its icon rather than its title, which is itself localized and therefore unusable as a handle. */
+export async function openLanguageSelect(page: Page): Promise<Locator> {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        await page.goto(`${BASE_URL}/settings`, { waitUntil: 'domcontentloaded' });
+        await waitForAppReady(page);
+        await dismissCookieConsent(page);
+        const visible = await page.locator('.settings-modal').waitFor({ state: 'visible', timeout: 15_000 })
+            .then(() => true, () => false);
+        if (visible)
+            break;
+
+        if (attempt === 3)
+            throw new Error('settings-modal did not become visible after 3 goto attempts');
+    }
+
+    const uiTab = page.locator('.settings-tab-item:has(i.icon-interface)').first();
+    await uiTab.waitFor({ state: 'visible', timeout: 15_000 });
+    await uiTab.click({ force: true });
+
+    const select = page.locator('.settings-tab-content select.c-language-select').first();
+    await select.waitFor({ state: 'visible', timeout: 10_000 });
+    return select;
+}
+
+/** Sets the UI language and returns the previous code, so a test can restore it — the CDP
+ *  browser profile is shared across specs. */
+export async function setUILanguage(page: Page, code: string): Promise<string> {
+    const select = await openLanguageSelect(page);
+    const previous = await select.inputValue();
+    if (previous === code)
+        return previous;
+
+    // OnLanguageChanged persists the value and calls History.ForceReload.
+    await select.selectOption(code);
+    await page.waitForLoadState('domcontentloaded');
+    await waitForAppReady(page);
+    return previous;
 }

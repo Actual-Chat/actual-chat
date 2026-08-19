@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Hosting
 @using ActualLab.Rpc
-@inherits ComputedStateComponent<ServerApiInfo>
+@inherits ComputedStateComponent<UIHub, ServerApiInfo>
 @if (State.LastNonErrorValue is not { CompatibilityLevel: CompatibilityLevel.Incompatible } serverApiInfo) {
     @ChildContent
     return;
@@ -16,24 +16,25 @@
     <div class="c-content">
         <upgrade-app-cat-svg/>
         <div class="c-title">
-            Please update @CoreConstants.AppName
+            @L.ClientUpgrade_Title_Format(CoreConstants.AppName)
         </div>
         <div class="c-text">
             <p>
-                You are using @CoreConstants.AppName client
-                <span class="whitespace-nowrap font-bold">v@(ApiConstants.VersionString)</span>,
-                and it is incompatible with the current server API
-                <span class="whitespace-nowrap font-bold">v@(serverApiInfo.VersionString)</span>.
+                @L.ClientUpgrade_Version_Prefix(CoreConstants.AppName)<span
+                    class="whitespace-nowrap font-bold"
+                    >v@(ApiConstants.VersionString)</span>@L.ClientUpgrade_Version_Middle<span
+                    class="whitespace-nowrap font-bold"
+                    >v@(serverApiInfo.VersionString)</span>@L.ClientUpgrade_Version_Suffix
             </p>
         </div>
         <div class="c-button">
             @if (!_appLink.IsNullOrEmpty()) {
                 <Button Class="btn-primary btn-w-full" data-href="@_appLink">
-                    Update
+                    @L.Common_Update
                 </Button>
             } else {
                 <Button Class="btn-primary btn-w-full" Click="@(() => ReloadUI.Reload())">
-                    Update
+                    @L.Common_Update
                 </Button>
             }
         </div>
@@ -43,8 +44,6 @@
 @code {
     private string? _appLink;
 
-    [Inject] private UIHub Hub { get; set; } = null!;
-    private HostInfo HostInfo => Hub.HostInfo;
     private ISystemProperties SystemProperties => Hub.SystemProperties;
     private ReloadUI ReloadUI => Hub.ReloadUI;
 

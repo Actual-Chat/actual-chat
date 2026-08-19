@@ -1,11 +1,14 @@
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
 public class IncomingShareAfterSendMessageHandler(AppUIHub hub) : IAfterSendMessageHandler
 {
     private ToastUI ToastUI => hub.ToastUI;
+    private IStringLocalizer L => hub.StringLocalizer;
     private ILogger Log => field ??= hub.LogFor<IncomingShareAfterSendMessageHandler>();
 
     public void Invoke(string args, Result<ChatEntry?> result)
@@ -24,21 +27,22 @@ public class IncomingShareAfterSendMessageHandler(AppUIHub hub) : IAfterSendMess
             attachments = result.Value?.Attachments;
 
         if (attachments is null || attachments.Length == 0) {
-            var info1 = $"Failed to share {expectedUploadedFilesNumber} files";
-            ToastUI.Show(info1, "icon-alert-circle", ToastDismissDelay.Long);
+            var failure = L.IncomingShare_Failed(expectedUploadedFilesNumber, expectedUploadedFilesNumber);
+            ToastUI.Show(failure, "icon-alert-circle", ToastDismissDelay.Long);
             return;
         }
 
-        int attachmentsLength = attachments.Length;
-        var info = expectedUploadedFilesNumber == attachmentsLength
-            ? attachmentsLength.ToString()
-            : $"{attachmentsLength} of {expectedUploadedFilesNumber}";
+        var attachmentsLength = attachments.Length;
+        var count = expectedUploadedFilesNumber == attachmentsLength
+            ? attachmentsLength.ToString(CultureInfo.InvariantCulture)
+            : L.IncomingShare_CountOfTotal_Format(attachmentsLength, expectedUploadedFilesNumber);
         var isImage = attachments.All(c => c.IsSupportedImage());
         var isVideo = attachments.All(c => c.IsSupportedVideo());
-        var fileText = isImage ? "image" : isVideo ? "video" : "file";
-        if (expectedUploadedFilesNumber > 1)
-            fileText += "s";
-        info = info + " " + fileText + " shared";
+        var info = isImage
+            ? L.IncomingShare_ImagesShared(expectedUploadedFilesNumber, count)
+            : isVideo
+                ? L.IncomingShare_VideosShared(expectedUploadedFilesNumber, count)
+                : L.IncomingShare_FilesShared(expectedUploadedFilesNumber, count);
         ToastUI.Show(info, "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 }

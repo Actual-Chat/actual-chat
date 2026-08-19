@@ -33,11 +33,11 @@
         }
         @if (m.IsOwnSharing) {
             <ButtonRound Class="btn-stop-sharing" Click="@OnStopSharing"
-                         Tooltip="Stop sharing" TooltipPosition="FloatingPosition.Top">
+                         Tooltip="@L.MapPanel_StopSharing" TooltipPosition="FloatingPosition.Top">
                 <marker-pin-off-svg></marker-pin-off-svg>
             </ButtonRound>
         } else {
-            <Button Class="btn-share-location" Click="@OnShare">Share your location</Button>
+            <Button Class="btn-share-location" Click="@OnShare">@L.MapPanel_ShareYourLocation</Button>
         }
     </div>
     @* Outside .map-panel — its overflow-hidden would clip the menu at the panel's bottom edge *@
@@ -46,11 +46,11 @@
         <div class="c-menu">
             <button type="button" class="c-menu-item" @onclick="@OnLocate">
                 <i class="icon-navigation-pointer"></i>
-                <span>Locate me</span>
+                <span>@L.MapPanel_LocateMe</span>
             </button>
             <button type="button" class="c-menu-item" @onclick="@OnHide">
                 <i class="icon-eye-off"></i>
-                <span>Hide</span>
+                <span>@L.Common_Hide</span>
             </button>
         </div>
     }

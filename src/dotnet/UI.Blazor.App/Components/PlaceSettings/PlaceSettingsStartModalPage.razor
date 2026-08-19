@@ -11,7 +11,7 @@
 
     Context.ContextItems.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
     var isOwner = m.IsOwner;
-    var status = m.Place.IsPublic ? "Public" : "Private";
+    var status = m.Place.IsPublic ? L.Place_Public : L.Place_Private;
 }
 
 <div class="chat-settings-header place">
@@ -54,7 +54,7 @@
                 <ButtonRound
                     Class="btn-sm"
                     TooltipPosition="@FloatingPosition.Bottom"
-                    Tooltip="Notifications">
+                    Tooltip="@L.Place_Notifications">
                     <i class="icon-bell text-2xl"></i>
                 </ButtonRound>
             }
@@ -62,7 +62,7 @@
                 <ButtonRound
                     Class="btn-sm"
                     TooltipPosition="@FloatingPosition.Bottom"
-                    Tooltip="Add member"
+                    Tooltip="@L.Place_AddMember"
                     Click="@OnInviteMembersClick">
                     <i class="icon-person-add text-2xl"></i>
                 </ButtonRound>
@@ -71,7 +71,7 @@
                 <ButtonRound
                     Class="btn-sm"
                     TooltipPosition="@FloatingPosition.Bottom"
-                    Tooltip="Edit Place"
+                    Tooltip="@L.Place_EditPlace"
                     Click="@OnOwnerSettingsClick">
                     <i class="icon-edit text-2xl"></i>
                 </ButtonRound>
@@ -99,18 +99,18 @@
             TabsClass="left-panel-tabs wide-left-panel-tabs"
             BottomHill="true">
 
-            <Tab @key="@("members")" Id="members" Title="Members" Order="0">
+            <Tab @key="@("members")" Id="members" Title="@L.Place_TabMembers" Order="0">
                 <AuthorList PlaceId="@PlaceId"/>
             </Tab>
 
             @if (m.EnableIncompleteUI) {
-                <Tab @key="@("media")" Id="media" Title="Media" Order="1">
+                <Tab @key="@("media")" Id="media" Title="@L.Place_TabMedia" Order="1">
                     <ToBeDone/>
                 </Tab>
-                <Tab @key="@("files")" Id="files" Title="Files" Order="2">
+                <Tab @key="@("files")" Id="files" Title="@L.Place_TabFiles" Order="2">
                     <ToBeDone/>
                 </Tab>
-                <Tab @key="@("links")" Id="links" Title="Links" Order="3">
+                <Tab @key="@("links")" Id="links" Title="@L.Place_TabLinks" Order="3">
                     <ToBeDone/>
                 </Tab>
             }
@@ -127,7 +127,7 @@
 
     protected override void OnInitialized() {
         PlaceId = Context.GetModel<PlaceId>();
-        Context.Title = "Place Info";
+        Context.Title = L.Place_InfoTitle;
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()

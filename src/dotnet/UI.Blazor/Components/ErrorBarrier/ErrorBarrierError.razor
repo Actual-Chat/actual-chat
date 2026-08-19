@@ -7,12 +7,12 @@
         return;
 
     var text = Kind == ErrorBarrierKind.Full
-        ? "Something went wrong while displaying this area."
-        : "Something went wrong...";
-    var buttonText = "Reload";
+        ? L.Error_BarrierFullText
+        : L.Error_BarrierText;
+    var buttonText = L.Error_Reload;
     if (_reloadAt is { } reloadAt) {
         var remaining = (int)(reloadAt - CpuNow).TotalSeconds;
-        buttonText += $" in {remaining}s";
+        buttonText = L.Error_ReloadIn_Format(remaining);
     }
     var cls = Kind switch {
         ErrorBarrierKind.Full => "full",
@@ -29,7 +29,7 @@
         </div>
     }
     <div class="c-text">
-        <p class="c-header">Aw, Snap!</p>
+        <p class="c-header">@L.Error_AwSnap</p>
         <p>@text</p>
     </div>
     <Button Class="btn-outline" Click="OnReloadClicked">@buttonText</Button>

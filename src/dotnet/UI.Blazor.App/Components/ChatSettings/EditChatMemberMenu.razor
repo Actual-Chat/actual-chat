@@ -4,7 +4,7 @@
     var m = State.Value;
     if (m == null)
         return;
-    var statusText = m.IsOwner ? "Owner" : m.IsModerator ? "Moderator" : null;
+    var statusText = m.IsOwner ? L.Members_Owner : m.IsModerator ? L.Members_Moderator : null;
 }
 
 <div class="edit-member-menu edit-chat-member-menu">
@@ -17,7 +17,7 @@
     @if (m.CanPromoteToOwner) {
         <MenuEntry
             Icon="icon-crown"
-            Text="Promote to Owner"
+            Text="@L.Account_PromoteToOwner"
             Click="@(() => OnPromoteToOwnerClick(m.Author))">
         </MenuEntry>
     }
@@ -25,7 +25,7 @@
     @if (m.CanSetModerator) {
         <MenuEntry
             Icon="icon-shield"
-            Text="@(m.IsModerator ? "Remove Moderator" : "Make Moderator")"
+            Text="@(m.IsModerator ? L.Account_RemoveModerator : L.Account_MakeModerator)"
             Click="@(() => OnSetModeratorClick(m.Author, !m.IsModerator))">
         </MenuEntry>
     }
@@ -35,7 +35,7 @@
         <MenuEntry
             Class="warning-item"
             Icon="icon-minus-circle"
-            Text="Remove from group"
+            Text="@L.Account_RemoveFromGroup"
             Click="@(() => OnRemoveFromGroupClick(m.Author))">
         </MenuEntry>
     }

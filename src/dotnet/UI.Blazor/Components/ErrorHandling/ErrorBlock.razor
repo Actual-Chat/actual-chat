@@ -10,18 +10,18 @@
     <SignInBlock/>
 } else if (Failures.Errors.Any(e => e is SuspendedAccountException)) {
     <SignOutOrSignInBlock Account="@account">
-        <b>Your account is suspended.</b><br/>
-        Please feel free to contact us &ndash; we'll try to help.
+        <b>@L.Error_AccountSuspendedTitle</b><br/>
+        @L.Error_AccountSuspendedText
     </SignOutOrSignInBlock>
 } else if (Failures.Errors.Any(e => e is InactiveAccountException)) {
     <SignOutOrSignInBlock Account="@account">
-        You're successfully signed in, but your account is inactive.<br/>
-        We activate new accounts when we're ready to onboard more people.<br/>
-        If you have an invite code, you can use it now.
+        @L.Error_AccountInactive1<br/>
+        @L.Error_AccountInactive2<br/>
+        @L.Error_AccountInactive3
     </SignOutOrSignInBlock>
 } else if (Failures.Errors.Any(e => e is NonAdminAccountException)) {
     <SignOutOrSignInBlock Account="@account">
-        Sorry, but only service administrators can perform this action.
+        @L.Error_AdminOnly
     </SignOutOrSignInBlock>
 } else {
     <RequirementFailureBlock Failures="@Failures" Account="@account"/>

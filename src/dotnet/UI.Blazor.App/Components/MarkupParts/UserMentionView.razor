@@ -9,12 +9,12 @@
         ?? Markup.NameOrNotAvailable;
     var isMember = m.IsMember;
     var tooltip = !isMember
-        ? "Not a member of this chat"
+        ? L.Markup_NotAMember
         : m.HasRead == null
             ? null
             : m.HasRead.Value
-                ? "Has read"
-                : "Has not read";
+                ? L.Markup_HasRead
+                : L.Markup_HasNotRead;
 }
 
 <MentionBadge

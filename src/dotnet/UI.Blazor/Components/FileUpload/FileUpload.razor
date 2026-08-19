@@ -20,9 +20,8 @@
 
     private async Task OnFileSelected(UploadSource source) {
         try {
-            if (MaxSize.HasValue && source.Metadata.Length > MaxSize.Value) {
-                var sizeStr = FileSizeFormatter.Format(MaxSize.Value);
-                UICommander.ShowError(StandardError.Constraint($"File is too big. Max file size: {sizeStr}."));
+            if (MaxSize is { } maxSize && source.Metadata.Length > maxSize) {
+                UICommander.ShowError(StandardError.Upload.FileTooBig(maxSize));
                 return;
             }
 

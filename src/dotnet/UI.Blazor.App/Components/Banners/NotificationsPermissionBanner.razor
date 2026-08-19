@@ -22,13 +22,14 @@
                 <i class="icon-bell"></i>
             </Icon>
             <Body>
-                @CoreConstants.AppName can <strong>notify</strong> you about new messages
+                @L.Banner_Notify_Prefix(CoreConstants.AppName)<strong
+                    >@L.Banner_NotifyTarget</strong>@L.Banner_Notify_Suffix
             </Body>
             <Buttons>
                 <Button
                     Class="btn-transparent unhovered"
                     Click="@OnConfigureClick"
-                    Rendered="@OnConfigureRendered">Configure</Button>
+                    Rendered="@OnConfigureRendered">@L.Common_Configure</Button>
             </Buttons>
         </Banner>
     </RenderIntoSlot>

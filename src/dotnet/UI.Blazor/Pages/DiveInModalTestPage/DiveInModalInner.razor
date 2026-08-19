@@ -1,4 +1,5 @@
-﻿<div class="grow flex-y justify-center items-center">
+﻿@inherits ComponentBase<UIHub>
+<div class="grow flex-y justify-center items-center">
     <h3>DiveInModalInner</h3>
 </div>
 
@@ -7,6 +8,6 @@
 
     protected override void OnInitialized() {
         Context.Title = "Dive-in modal (Inner)";
-        Context.Buttons = [DialogButtonInfo.BackButton];
+        Context.Buttons = [DialogButtonInfo.CreateBackButton(L)];
     }
 }

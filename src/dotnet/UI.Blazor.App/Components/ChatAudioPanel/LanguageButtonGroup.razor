@@ -13,14 +13,20 @@
 <div class="language-btn-group">
     @if (languages.Count < 2) {
         <div class="c-settings-hint">
-            You secondary language is not selected. You can add it in
-            <a class="link" @onclick="@OnConfigureSecondLanguage" @onclick:preventDefault="true">Settings</a>.
+            @L.VoiceSettings_SecondLanguageHint_Prefix<a
+                class="link"
+                @onclick="@OnConfigureSecondLanguage"
+                @onclick:preventDefault="true">@L.Common_Settings</a>@L.VoiceSettings_SecondLanguageHint_Suffix
         </div>
     }
     <div class="c-title">
-        Transcription language@**@
+        @L.VoiceSettings_TranscriptionLanguage@**@
         @if (languages.Count > 1) {
-            <span @onclick="@OnConfigureSecondLanguage" class="c-edit" role="button" tabindex="0"> (setup)</span>
+            <span
+                @onclick="@OnConfigureSecondLanguage"
+                class="c-edit"
+                role="button"
+                tabindex="0">@L.VoiceSettings_Setup</span>
         }
         @**@:
     </div>
@@ -34,7 +40,7 @@
         }
         @if (languages.Count == 1) {
             <button @onclick="@OnConfigureSecondLanguage">
-                + Add
+                @L.VoiceSettings_AddLanguage
             </button>
         }
     </div>

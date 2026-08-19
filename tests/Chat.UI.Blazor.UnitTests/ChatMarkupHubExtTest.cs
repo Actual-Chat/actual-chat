@@ -1,5 +1,7 @@
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Resources;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
@@ -113,7 +115,12 @@ public class ChatMarkupHubExtTest
     public void ShouldGetNotifyMembersMarkupWithoutTargetAuthorId()
     {
         // arrange
-        using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
+        var localizer = new TestStringLocalizer(StringCatalogs.LoadStrings(Languages.English)!);
+        using var services = new ServiceCollection()
+            .AddTransient<IMarkupParser, MarkupParser>()
+            .AddSingleton<IStringLocalizer>(localizer)
+            .AddSingleton<SystemEntryMarkupBuilder>(c => new LocalizedSystemEntryMarkupBuilder(c))
+            .BuildServiceProvider();
         var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
         var chatEntryId = ChatEntryId.New(chatId, 1);

@@ -16,10 +16,12 @@
     </div>
     <div class="c-bottom">
         @if (m.MemberCount.HasValue) {
-            <span>@m.MemberCount @("Member".Pluralize(m.MemberCount.Value))</span>
+            <span>
+                @L.Place_MembersLabel(m.MemberCount.Value, m.MemberCount.Value)
+            </span>
             <DotSeparator/>
         }
-        <span>@(m.Place.IsPublic ? "Public" : "Private")</span>
+        <span>@(m.Place.IsPublic ? L.Place_Public : L.Place_Private)</span>
     </div>
 </div>
 @if (m.ShowPlaceMenu) {
@@ -35,7 +37,7 @@
     <div class="c-right">
         <ButtonRound Class="btn-sm join-btn" ContentClass="gap-x-2" Click="OnJoinPlace">
             <i class="icon-person-add text-xl"></i>
-            <span>Join</span>
+            <span>@L.LeftPanel_JoinPlace</span>
         </ButtonRound>
     </div>
 }

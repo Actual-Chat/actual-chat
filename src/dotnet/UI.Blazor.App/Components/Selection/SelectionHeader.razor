@@ -7,7 +7,7 @@
 }
 
 <SelectionHost Selected="@m.Selection.First().Value" />
-<Hotkey Keys="escape" AriaLabel="Cancel selection" OnTrigger="OnCancel"/>
+<Hotkey Keys="escape" AriaLabel="@L.Selection_Cancel" OnTrigger="OnCancel"/>
 
 @if (ScreenSize.IsNarrow()) {
     <div class="selection-header">
@@ -18,7 +18,7 @@
             </HeaderButton>
         </div>
         <div class="selection-header-title">
-            @(m.Selection.Count) @("message".Pluralize(m.Selection.Count))
+            @L.Selection_Messages(m.Selection.Count, m.Selection.Count)
         </div>
         <div class="selection-header-buttons">
             @if (m.CanDelete) {
@@ -36,14 +36,14 @@
             <ButtonRound
                 Class="btn-sm btn-primary"
                 Click="@(() => SelectionUI.StartThread())"
-                Tooltip="Convert to thread"
+                Tooltip="@L.Selection_ConvertToThread"
                 TooltipPosition="FloatingPosition.Bottom">
                 <i class="icon-thread text-primary text-2xl"></i>
             </ButtonRound>
             <ButtonRound
                 Class="btn-sm btn-primary"
                 Click="@(() => SelectionUI.Forward())"
-                Tooltip="Forward selected"
+                Tooltip="@L.Selection_ForwardSelected"
                 TooltipPosition="FloatingPosition.Bottom">
                 <i class="icon-share text-primary text-2xl"></i>
             </ButtonRound>
@@ -63,7 +63,7 @@
     </div>
 
     <div class="selection-header-title">
-        @(m.Selection.Count) @("message".Pluralize(m.Selection.Count))
+        @L.Selection_Messages(m.Selection.Count, m.Selection.Count)
     </div>
 
     <div class="selection-header-buttons">
@@ -71,7 +71,7 @@
             <ButtonRound
                 Class="btn-xs btn-danger"
                 Click="@(() => SelectionUI.Delete())"
-                Tooltip="Delete selected"
+                Tooltip="@L.Selection_DeleteSelected"
                 TooltipPosition="FloatingPosition.Bottom">
                 <i class="icon-trash03 text-xl text-danger"></i>
             </ButtonRound>
@@ -79,21 +79,21 @@
         <ButtonRound
             Class="btn-xs btn-primary"
             Click="@(() => SelectionUI.CopyToClipboard())"
-            Tooltip="Copy selected as text"
+            Tooltip="@L.Selection_CopySelectedAsText"
             TooltipPosition="FloatingPosition.Bottom">
             <i class="icon-copy text-xl text-primary"></i>
         </ButtonRound>
         <ButtonRound
             Class="btn-xs btn-primary start-thread-btn"
             Click="@(() => SelectionUI.StartThread())"
-            Tooltip="Convert to thread"
+            Tooltip="@L.Selection_ConvertToThread"
             TooltipPosition="FloatingPosition.Bottom">
             <i class="icon-conversation text-xl text-primary"></i>
         </ButtonRound>
         <ButtonRound
             Class="btn-xs btn-primary"
             Click="@(() => SelectionUI.Forward())"
-            Tooltip="Forward selected"
+            Tooltip="@L.Selection_ForwardSelected"
             TooltipPosition="FloatingPosition.Bottom">
             <i class="icon-share text-xl text-primary"></i>
         </ButtonRound>

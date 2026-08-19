@@ -7,7 +7,7 @@
 
 <div class="activity-pill" @onclick="@OnClick" @onclick:stopPropagation="true">
     <span class="c-live-dot"></span>
-    <span>Live</span>
+    <span>@L.Call_Live</span>
     @if (hasOwnActivity) {
         <span class="c-divider"></span>
         @if (m.IsOwnCameraStreaming) {

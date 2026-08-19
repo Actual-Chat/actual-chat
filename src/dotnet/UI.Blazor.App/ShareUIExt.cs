@@ -1,4 +1,5 @@
 using ActualChat.Invite;
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App;
@@ -47,6 +48,7 @@ public static class ShareUIExt
         var hub = shareUI.Hub;
         var services = hub.Services;
         var session = hub.Session;
+        var l = hub.StringLocalizer;
         var chats = services.GetRequiredService<IChats>();
         var chat = await chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null || chat.HasSingleAuthor)
@@ -80,7 +82,7 @@ public static class ShareUIExt
             var localUrl = Links.Chat(chat.AliasInfo, place?.AliasInfo);
             return new ShareModalModel(
                 ShareKind.Chat,
-                "Share chat",
+                l.Share_Chat,
                 targetTitle,
                 new (text, localUrl),
                 null);
@@ -95,7 +97,7 @@ public static class ShareUIExt
         var shareModalSelectorPrefs = ShareWithPlaceMembersOnly.GetFor(chat, place);
         return new ShareModalModel(
             ShareKind.ChatInvite,
-            "Share private chat join link",
+            l.Share_PrivateChatJoinLink,
             targetTitle,
             new (text, Links.Invite(InviteLinkFormat.PrivateChat, invite.Id)),
             shareModalSelectorPrefs);
@@ -107,6 +109,7 @@ public static class ShareUIExt
         var hub = shareUI.Hub;
         var services = hub.Services;
         var session = hub.Session;
+        var l = hub.StringLocalizer;
         var places = services.GetRequiredService<IPlaces>();
         var place = await places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
         if (place == null)
@@ -121,7 +124,7 @@ public static class ShareUIExt
 
             return new ShareModalModel(
                 ShareKind.Place,
-                "Share place",
+                l.Share_Place,
                 place.Title,
                 new (text, Links.Chat(welcomeChatId)),
                 null);
@@ -134,7 +137,7 @@ public static class ShareUIExt
 
         return new ShareModalModel(
             ShareKind.PlaceInvite,
-            "Share private place join link",
+            l.Share_PrivatePlaceJoinLink,
             place.Title,
             new(text, Links.Invite(InviteLinkFormat.PrivatePlace, invite.Id)),
             null);
@@ -180,7 +183,7 @@ public static class ShareUIExt
             return null;
 
         var name = ownAccount.Avatar.Name;
-        var title = "Share your contact";
+        var title = shareUI.Hub.StringLocalizer.YourAccount_ShareYourContact;
         var text = $"{name} on {CoreConstants.AppName}";
         return new ShareModalModel(
             ShareKind.Contact, title, name,

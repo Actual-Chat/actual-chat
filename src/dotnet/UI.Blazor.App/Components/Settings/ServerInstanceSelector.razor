@@ -1,4 +1,5 @@
 @using ActualChat.UI.App.Services
+@inherits ComponentBase<AppUIHub>
 @{
 #pragma warning disable IL2091
 }
@@ -9,7 +10,7 @@
     <FormBlock>
         <InputRadioGroup
             Name="host"
-            DisplayName="Host"
+            DisplayName="@L.DevTools_Host"
             @bind-Value="_formModel.Host">
 
             <TileItem>
@@ -42,10 +43,10 @@
                     <i class="icon-alert-triangle text-warning text-2xl"></i>
                 </Icon>
                 <Content>
-                    Host has been changed.
+                    @L.ServerInstance_HostChanged
                 </Content>
                 <Caption>
-                    Changes will be applied after app restart. Please sign in again.
+                    @L.ServerInstance_HostChangedCaption
                 </Caption>
             </TileItem>
         }

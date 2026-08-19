@@ -11,4 +11,5 @@ public interface IChatMarkupHub : IHasServices
     IMentionResolver MentionResolver { get; }
     IChatMentionResolver ChatMentionResolver { get; }
     IMarkupFormatter EditorHtmlConverter { get; }
+    SystemEntryMarkupBuilder SystemEntryMarkupBuilder { get; }
 }

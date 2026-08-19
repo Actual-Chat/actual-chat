@@ -17,7 +17,7 @@
                     <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>
                     <i class="copied-hint icon-checkmark-simple text-xl" aria-hidden="true"></i>
                 </Icon>
-                <Title>Copy Place Invite link</Title>
+                <Title>@L.Place_CopyInviteLink</Title>
             </Button>
         </CopyTrigger>
         <ShareExternallyButton Request="@_shareRequest"/>
@@ -45,7 +45,7 @@
         DisposeTokenSource = new();
         DisposeToken = DisposeTokenSource.Token;
 
-        _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Add", OnAdd);
+        _submitButtonInfo = DialogButtonInfo.CreateSubmitButton(L.Common_Add, OnAdd);
         _submitButtonInfo.CanExecute = false;
         if (Context.Model is ChatId chatId)
             _backend = new NewChatMemberSelector(Hub, chatId);
@@ -55,9 +55,9 @@
             _placeLink = _shareRequest.GetShareLink(UrlMapper);
         } else
             throw StandardError.NotSupported("Not supported model type");
-        Context.Title = "Add members";
+        Context.Title = L.AddMember_Title;
         Context.Class = "add-member-modal-content";
-        Context.Buttons = [DialogButtonInfo.CancelButton, _submitButtonInfo];
+        Context.Buttons = [DialogButtonInfo.CreateCancelButton(L), _submitButtonInfo];
     }
 
     protected override async Task OnInitializedAsync() {

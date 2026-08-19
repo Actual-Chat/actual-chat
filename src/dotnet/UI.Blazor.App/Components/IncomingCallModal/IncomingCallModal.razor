@@ -18,7 +18,7 @@
 }
 
 <DialogFrame
-    Title="@(call.HasVideo ? "Incoming video call" : "Incoming call")"
+    Title="@(call.HasVideo ? L.Call_IncomingVideo : L.Call_Incoming)"
     Class="author-modal modal-sm incoming-call-modal wide-dialog-buttons"
     HasCloseButton="true">
     <Body>
@@ -29,11 +29,11 @@
     <Buttons>
         <Button Class="btn-modal btn-danger" Click="@OnDeclineClick">
             <Icon><i class="icon-close text-xl"></i></Icon>
-            <Title>Decline</Title>
+            <Title>@L.Common_Decline</Title>
         </Button>
         <Button Class="btn-modal btn-primary" Click="@OnAcceptClick">
             <Icon><i class="icon-phone text-xl"></i></Icon>
-            <Title>Accept</Title>
+            <Title>@L.Common_Accept</Title>
         </Button>
     </Buttons>
 </DialogFrame>

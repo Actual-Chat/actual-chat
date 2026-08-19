@@ -1,34 +1,35 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<UIHub>
 
 <div class="c-hero">
-    <img draggable="false" src="/dist/images/guide/mic-access.svg" alt="Microphone access is blocked">
+    <img draggable="false" src="/dist/images/guide/mic-access.svg" alt="@L.MicGuide_BlockedImageAlt">
 </div>
 <div class="c-title">
-    Microphone access is blocked, but you can fix this!
+    @L.MicGuide_Title
 </div>
 <div class="c-intro">
-    @CoreConstants.AppName requires microphone access to record and transcribe your messages.
-    To enable it in Google Chrome (mobile):
+    @L.MicGuide_Intro_Format(CoreConstants.AppName)
+    @L.Guide_EnableInMobileChrome
 </div>
 <ol class="c-steps">
     <li>
-        Tap on "⋮"
+        @L.MicGuide_MobileChromeStep1
         <img draggable="false" src="/dist/images/guide/android-chrome-01.png" alt="Android/Chrome/01">
     </li>
     <li>
-        Click "Settings"
+        @L.MicGuide_MobileChromeStep2
         <img draggable="false" src="/dist/images/guide/android-chrome-02.png" alt="Android/Chrome/02">
     </li>
     <li>
-        Open "Site settings"
+        @L.MicGuide_MobileChromeStep3
         <img draggable="false" src="/dist/images/guide/android-chrome-03.png" alt="Android/Chrome/03">
     </li>
     <li>
-        Tap on "Microphone"
+        @L.MicGuide_MobileChromeStep4
         <img draggable="false" src="/dist/images/guide/android-chrome-04.png" alt="Android/Chrome/04">
     </li>
     <li>
-        Enable "Ask first before allowing sites to use your microphone" option
+        @L.MicGuide_MobileChromeStep5
         <img draggable="false" src="/dist/images/guide/android-chrome-05.png" alt="Android/Chrome/05">
     </li>
 </ol>

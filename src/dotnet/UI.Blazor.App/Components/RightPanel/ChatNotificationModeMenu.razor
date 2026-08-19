@@ -12,12 +12,12 @@
 
 <div class="chat-notification-mode-menu">
     <div class="c-title">
-        Notifications:
+        @L.NotificationMode_Title
     </div>
     <Divider/>
-    @RenderEntry(ChatNotificationMode.Default, "icon-bell", "All messages")
-    @RenderEntry(ChatNotificationMode.ImportantOnly, "icon-bell-check", "Important only")
-    @RenderEntry(ChatNotificationMode.Muted, "icon-bell-off", "Muted")
+    @RenderEntry(ChatNotificationMode.Default, "icon-bell", L.NotificationMode_AllMessages)
+    @RenderEntry(ChatNotificationMode.ImportantOnly, "icon-bell-check", L.NotificationMode_ImportantOnly)
+    @RenderEntry(ChatNotificationMode.Muted, "icon-bell-off", L.NotificationMode_Muted)
 </div>
 
 @code {

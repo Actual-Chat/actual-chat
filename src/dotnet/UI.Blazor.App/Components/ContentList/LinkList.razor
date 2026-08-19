@@ -13,7 +13,7 @@
     <Item>
         @{ var item = context; }
         @if (item.IsEmptyPlaceholder) {
-            <div class="c-empty">No links yet</div>
+            <div class="c-empty">@L.Content_NoLinks</div>
         }
         else if (item.IsHeader) {
             <div class="c-group-header">@item.GroupTitle</div>
@@ -34,7 +34,7 @@
                                 <FileAttachmentTitle Title="@url"/>
                             }
                             else {
-                                <span class="c-title">[link unavailable]</span>
+                                <span class="c-title">@L.Content_LinkUnavailable</span>
                             }
                         </div>
                     </a>

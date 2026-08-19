@@ -16,16 +16,16 @@
     </Icon>
     <Body>
         @if (m.Kind == RpcPeerStateKind.JustConnected) {
-            <div class="c-main-text">Connected!</div>
+            <div class="c-main-text">@L.Banner_Connected</div>
         } else { // JustDisconnected or Disconnected
-            <div class="c-main-text desktop">Connection lost.</div>
+            <div class="c-main-text desktop">@L.Banner_ConnectionLost</div>
             @if (m.ReconnectsIn == default) {
-                <div class="c-secondary-text">Connecting...</div>
+                <div class="c-secondary-text">@L.Banner_Connecting</div>
             } else if (isOffline) {
-                <div class="c-secondary-text">You're offline.</div>
+                <div class="c-secondary-text">@L.Banner_Offline</div>
             } else {
                 <div class="c-secondary-text">
-                    Will reconnect in
+                    @L.Banner_WillReconnectIn
                     <Countdown
                         Class="reconnect-countdown"
                         EndsAt="@(ReconnectUI.SystemNow + m.ReconnectsIn)"/>
@@ -35,7 +35,9 @@
     </Body>
     <Buttons>
         @if (m.ReconnectsIn != default && !isOffline) {
-            <Button Class="btn-transparent unhovered on" Click="@(_ => ReconnectUI.ReconnectIfDisconnected())">Retry</Button>
+            <Button
+                Class="btn-transparent unhovered on"
+                Click="@(_ => ReconnectUI.ReconnectIfDisconnected())">@L.Common_Retry</Button>
         }
     </Buttons>
 </Banner>
@@ -45,6 +47,10 @@
     private bool _isVisible;
 
     [Inject] private ReconnectUI ReconnectUI { get; init; } = null!;
+
+    // StatefulComponentBase adopts ReconnectUI's State, so no UIHub base fits; CircuitHub is already injected
+    private UIHub Hub => field ??= (UIHub)CircuitHub;
+    private IStringLocalizer L => Hub.StringLocalizer;
 
     protected override void OnInitialized()
         => SetState(ReconnectUI.State);

@@ -8,37 +8,37 @@
         && HostInfo.AppKind is AppKind.Android or AppKind.Ios or AppKind.MacOS) {
         <MenuEntry
             Icon="icon-image"
-            Text="Choose Photo"
+            Text="@L.Editor_ChoosePhoto"
             Click="@(() => OnAttachClick("image/*"))"/>
 
         <MenuEntry
             Icon="icon-video"
-            Text="Select Video"
+            Text="@L.Editor_SelectVideo"
             Click="@(() => OnAttachClick("video/*"))"/>
     }
     <MenuEntry
         Icon="icon-status"
-        Text="Add Emoji"
+        Text="@L.Editor_AddEmoji"
         Click="@OnEmojiClick"/>
 
     <MenuEntry
         Icon="icon-gif"
-        Text="Add GIF"
+        Text="@L.Editor_AddGif"
         Click="@OnGifClick"/>
 
     <MenuEntry
         Icon="icon-file"
-        Text="Attach File"
+        Text="@L.Editor_AttachFile"
         Click="@(() => OnAttachClick())"/>
 
     <MenuEntry
         Icon="icon-map-point"
-        Text="Location"
+        Text="@L.Editor_Location"
         Click="@OnShareLocationClick"/>
 
     <MenuEntry
         Icon="icon-at"
-        Text="Mention"
+        Text="@L.Editor_Mention"
         Click="@OnMentionClick"/>
 </div>
 

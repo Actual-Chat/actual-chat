@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 
 <div class="stepper @Class">
     <CascadingValue Value="@this" IsFixed="true">
@@ -78,8 +79,8 @@
         ? CurrentStepIndex > 0 && _steps.Take(CurrentStepIndex).Any(s => !s.IsCompleted)
         : CurrentStepIndex > 0;
     public bool CanSkip => _currentStep is { CanSkip: true };
-    public string SkipTitle => _currentStep?.SkipTitle ?? "Skip";
-    public string NextTitle => _currentStep?.NextTitle ?? "Next";
+    public string SkipTitle => _currentStep?.SkipTitle ?? L.Common_Skip;
+    public string NextTitle => _currentStep?.NextTitle ?? L.Common_Next;
     public IStep? CurrentStep => _currentStep;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

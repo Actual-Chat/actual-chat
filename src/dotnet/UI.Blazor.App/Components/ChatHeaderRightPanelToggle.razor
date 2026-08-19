@@ -14,7 +14,7 @@
             data-menu="@(MenuRef.New<ChatPropertiesMenu>(chat.Id.Value).ToString())"
             data-menu-trigger="@MenuTrigger.Primary"
             data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())"
-            Tooltip="Chat properties"
+            Tooltip="@L.ChatHeader_ChatProperties"
             TooltipPosition="FloatingPosition.Bottom">
             <i class="icon-more-vertical"></i>
         </HeaderButton>
@@ -24,7 +24,7 @@
             data-bubble-priority="401"
             data-bubble-placement="@(FloatingPosition.BottomEnd.ToPositionString())"
             Click="Click"
-            Tooltip="Chat properties"
+            Tooltip="@L.ChatHeader_ChatProperties"
             TooltipPosition="FloatingPosition.Bottom">
             <i class="icon-layout"></i>
         </HeaderButton>
@@ -36,7 +36,7 @@
             data-bubble-priority="401"
             data-bubble-placement="@(FloatingPosition.BottomEnd.ToPositionString())"
             Click="Click"
-            Tooltip="Chat properties"
+            Tooltip="@L.ChatHeader_ChatProperties"
             TooltipPosition="FloatingPosition.Bottom">
             <i class="icon-layout"></i>
         </HeaderButton>

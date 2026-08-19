@@ -8,7 +8,7 @@
 @implements IAttachmentWebFilePickerBackend
 @implements IAsyncDisposable
 @{
-    var placeholder = ScreenSize.IsNarrow() || (ScreenSize.IsLarge() && _isRightPanelVisible) ? "Message..." : "Write a message - or simply record one!";
+    var placeholder = ScreenSize.IsNarrow() || (ScreenSize.IsLarge() && _isRightPanelVisible) ? L.Editor_PlaceholderShort : L.Editor_Placeholder;
 
     RenderFragment RenderAttachmentListView() =>
         @<AttachmentListView
@@ -25,7 +25,7 @@
 <OnUIEvent TEvent="@EmojiButtonClickEvent" Handler="OnEmojiButtonClickEvent" />
 <OnUIEvent TEvent="@ShareLocationButtonClickEvent" Handler="OnShareLocationButtonClickEvent" />
 <div @ref="Ref" class="chat-message-editor has-safe-area-bottom">
-    <Hotkey Keys="ctrl+e" AriaLabel="Focus message editor" OnTrigger="OnFocusEditorRequested"/>
+    <Hotkey Keys="ctrl+e" AriaLabel="@L.Shortcuts_FocusEditor" OnTrigger="OnFocusEditorRequested"/>
     <input class="attachment-web-file-picker" type="file" multiple tabindex="-1"/>
     <MentionListManager @key="@MentionListManagerKey">
         <div class="c-content">
@@ -296,13 +296,12 @@
 
     [JSInvokable]
     public async Task<bool> OnLargeTextPasted(int textLength) {
-        var text = $"The pasted text is {textLength:N0} characters long. "
-            + "Do you want to send it as a .txt file or keep it as a regular text message?";
+        var text = L.Editor_LargeTextMessage_Format(textLength.ToString("N0", null));
         var confirmed = false;
         var model = new ConfirmModal.Model(false, text, () => confirmed = true) {
-            Title = "Large text pasted",
-            ConfirmButtonText = "Send as file",
-            CancelButtonText = "Keep as text",
+            Title = L.Editor_LargeTextTitle,
+            ConfirmButtonText = L.Editor_SendAsFile,
+            CancelButtonText = L.Editor_KeepAsText,
         };
         var modalRef = await ModalUI.Show(model);
         await modalRef.WhenClosed;

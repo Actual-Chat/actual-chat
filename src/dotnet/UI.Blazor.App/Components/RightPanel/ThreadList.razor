@@ -6,7 +6,7 @@
 
 <div class="thread-list-tab">
     @if (m is { ThreadChats.Count: 0 }) {
-        <div class="c-empty">No threads yet</div>
+        <div class="c-empty">@L.RightPanel_NoThreadsYet</div>
     } else if (m is not null) {
         <div class="c-content" role="listbox">
             @foreach (var item in m.ThreadChats) {

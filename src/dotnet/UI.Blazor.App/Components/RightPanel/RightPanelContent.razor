@@ -27,28 +27,28 @@
                         BottomHill="true">
 
                         @if (m.ShowCallTab) {
-                            <Tab @key="@("call")" Id="call" Title="Call" Order="-1">
+                            <Tab @key="@("call")" Id="call" Title="@L.RightPanel_TabCall" Order="-1">
                                 <CallList ChatId="@chat.Id"/>
                             </Tab>
                         }
                         @if (m.ShowMembersTab) {
-                            <Tab @key="@("members")" Id="members" Title="Members" Order="0">
+                            <Tab @key="@("members")" Id="members" Title="@L.RightPanel_TabMembers" Order="0">
                                 <AuthorList ChatId="@chat.Id"/>
                             </Tab>
                         }
                         @if (m.ShowThreads) {
-                            <Tab @key="@("threads")" Id="threads" Title="Threads" Order="1">
+                            <Tab @key="@("threads")" Id="threads" Title="@L.RightPanel_TabThreads" Order="1">
                                 <ThreadList ChatId="@chat.Id"/>
                             </Tab>
                         }
                         @if (m.ShowContentItemsTab) {
-                            <Tab @key="@("media")" Id="media" Title="Media" Order="3">
+                            <Tab @key="@("media")" Id="media" Title="@L.RightPanel_TabMedia" Order="3">
                                 <VisualMediaList ChatId="@chat.Id"/>
                             </Tab>
-                            <Tab @key="@("files")" Id="files" Title="Files" Order="6">
+                            <Tab @key="@("files")" Id="files" Title="@L.RightPanel_TabFiles" Order="6">
                                 <FileList ChatId="@chat.Id"/>
                             </Tab>
-                            <Tab @key="@("links")" Id="links" Title="Links" Order="9">
+                            <Tab @key="@("links")" Id="links" Title="@L.RightPanel_TabLinks" Order="9">
                                 <LinkList ChatId="@chat.Id"/>
                             </Tab>
                         }

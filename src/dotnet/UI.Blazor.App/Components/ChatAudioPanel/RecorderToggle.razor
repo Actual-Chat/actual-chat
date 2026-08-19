@@ -15,7 +15,7 @@
         (_, false, _) => (true, "Starting recording...", false),
         (_, _, false) => (true, "Reconnecting...", false),
         // (true, true, true) => ...
-        _ => (true , language == null ? "Recording" : $"Recording - {language.Title}", true),
+        _ => (true , language == null ? L.Call_Recording : L.Call_RecordingLanguage_Format(language.Title), true),
     };
     // start endless animation when auto hide is not needed
     var hasNoAnimation = _tooltipAnimator.AnimationEndsAt > _tooltipAnimator.Clock.Now + TimeSpan.FromDays(1);
@@ -37,7 +37,7 @@
         recBtnCls += "record-on-btn";
     } else
         recBtnCls += "record-off-btn";
-    var tooltip = m.IsRecordingHere ? "Stop recording" : "Start recording";
+    var tooltip = m.IsRecordingHere ? L.ChatMenu_StopRecording : L.ChatMenu_StartRecording;
     var mustKeepAwake = !m.IsRecordingHere;
     if (!hasMicrophonePermission) {
         recBtnCls = "mic-disabled";

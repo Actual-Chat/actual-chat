@@ -19,20 +19,20 @@
             @switch (m.MessageType) {
                 case MessageType.Notes:
                     <div class="c-content">
-                        Welcome! You can store your notes in this chat, including recorded ones.
+                        @L.ChatWelcome_Notes
                     </div>
                     break;
                 case MessageType.Contact:
-                    <div class="c-content">
-                        <span class="c-incut">To share</span>
+                    <div class="c-content c-contact-share">
+                        <span class="c-incut">@L.ChatWelcome_ShareContact_Prefix</span>
                         <span class="c-contact">@m.ShareModel?.TargetTitle</span>
-                        <span class="c-incut">'s contact, use:</span>
+                        <span class="c-incut">@L.ChatWelcome_ShareContact_Suffix</span>
                     </div>
                     break;
                 default:
                     var welcomeText = m.ShareModel is not null
-                        ? "Welcome! Share the link to this chat to invite more people here:"
-                        : "Welcome!";
+                        ? L.ChatWelcome_ShareLink
+                        : L.ChatWelcome_Default;
                     <div class="c-content">@welcomeText</div>
                     break;
             }
@@ -40,8 +40,8 @@
             @if (m.ShareModel is { } shareModel) {
                 var link = shareModel.Request.Link.GetValueOrDefault();
                 var linkKind = link.IsPrivateChatInvite()
-                    ? "Private join link"
-                    : "Public link";
+                    ? L.ChatWelcome_PrivateJoinLink
+                    : L.ChatWelcome_PublicLink;
                 var copyText = shareModel.Request.GetShareLink(UrlMapper);
                 <div class="chat-link">
                     <div class="c-link-url">
@@ -62,7 +62,7 @@
                         </CopyTrigger>
                         <ButtonRound
                             Class="md:btn-sm"
-                            Tooltip="Share"
+                            Tooltip="@L.Common_Share"
                             Click="@(() => OnShareClick(shareModel))">
                             <i class="icon-share"></i>
                         </ButtonRound>

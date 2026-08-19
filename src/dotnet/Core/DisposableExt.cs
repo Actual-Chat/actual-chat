@@ -24,6 +24,7 @@ public static class DisposableExt
     {
         if (disposable == null)
             return;
+
         try {
             disposable.Dispose();
         }
@@ -38,8 +39,29 @@ public static class DisposableExt
     {
         if (disposable == null)
             return;
+
         try {
             await disposable.DisposeAsync().ConfigureAwait(false);
+        }
+#pragma warning disable RCS1075 // Avoid empty catch clause that catches System.Exception.
+        catch (Exception) {
+            // Intended
+        }
+#pragma warning restore RCS1075 // Avoid empty catch clause that catches System.Exception.
+    }
+
+    public static async ValueTask DisposeSilentlyAsync(
+        this IAsyncDisposable? disposable, string name, ILogger? log = null)
+    {
+        if (disposable == null)
+            return;
+
+        var timeout = CoreConstants.DisposeTimeout;
+        try {
+            await disposable.DisposeAsync().AsTask().WaitAsync(timeout).ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            log?.LogWarning("{Name} didn't dispose in {Timeout}, proceeding", name, timeout);
         }
 #pragma warning disable RCS1075 // Avoid empty catch clause that catches System.Exception.
         catch (Exception) {

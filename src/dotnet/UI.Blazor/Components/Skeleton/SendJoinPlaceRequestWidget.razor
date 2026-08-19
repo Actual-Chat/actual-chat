@@ -1,10 +1,11 @@
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 
 <div class="inaccessible-place-request">
     <not-member-yet-svg/>
-    <span class="c-title">Not member yet</span>
-    <span class="c-text">Send a join request and admins will consider you for addition to the Place</span>
+    <span class="c-title">@L.JoinRequest_NotMember</span>
+    <span class="c-text">@L.JoinRequest_Text</span>
     <Button Class="btn-primary btn-w-full">
-        Send Request
+        @L.JoinRequest_Send
     </Button>
 </div>

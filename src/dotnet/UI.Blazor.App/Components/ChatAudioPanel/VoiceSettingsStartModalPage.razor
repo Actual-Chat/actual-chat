@@ -3,10 +3,10 @@
 @{
     var m = State.Value;
     var voiceStatus = !m.CanChangeMustStreamVoice
-        ? "Disabled for anonymous users"
+        ? L.VoiceSettings_DisabledForAnonymous
         : m.MustStreamVoice
-            ? "On"
-            : "Off";
+            ? L.VoiceSettings_On
+            : L.VoiceSettings_Off;
 }
 
 <FormBlock Class="first last">
@@ -14,7 +14,7 @@
 
     <TileItem Click="@OnVoiceStreamingClick">
         <Icon><i class="icon-voice-01 text-2xl"></i></Icon>
-        <Content>Voice streaming</Content>
+        <Content>@L.VoiceSettings_VoiceStreaming</Content>
         <Caption>@voiceStatus</Caption>
         <Right>
             <Toggle
@@ -26,15 +26,15 @@
 
     @if (m.ShowPtt) {
         var pttCaption = m.PttEnabledAt is null
-            ? "Not enabled in this chat"
+            ? L.VoiceSettings_PttNotEnabled
             : m.IsPtt
-                ? "Wakes this device when someone speaks"
+                ? L.VoiceSettings_PttOn
                 : m.IsAtPttCapacity
-                    ? $"Already on in {UserPttSettings.MaxChatCount} chats"
-                    : "Off";
+                    ? L.VoiceSettings_PttAtCapacity_Format(UserPttSettings.MaxChatCount)
+                    : L.VoiceSettings_Off;
         <TileItem Click="@OnPttClick">
             <Icon><i class="icon-talking text-2xl"></i></Icon>
-            <Content>Push-to-talk</Content>
+            <Content>@L.VoiceSettings_Ptt</Content>
             <Caption>@pttCaption</Caption>
             <Right>
                 <Toggle
@@ -54,7 +54,7 @@
 
     protected override void OnInitialized() {
         ChatId = Context.GetModel<ChatId>();
-        Context.Title = "Voice settings";
+        Context.Title = L.VoiceSettings_Title;
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
