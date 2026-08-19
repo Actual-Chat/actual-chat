@@ -23,7 +23,10 @@ internal static class ParserExt
 
     // Extensions
 
-    public static Parser<char, Markup> ToTextMarkup(this Parser<char, string> parser, TextMarkupKind textMarkupKind, bool parseNewLines)
+    public static Parser<char, Markup> ToTextMarkup(
+        this Parser<char, string> parser,
+        TextMarkupKind textMarkupKind,
+        bool parseNewLines)
         => parser.Select(s => TextMarkup.New(textMarkupKind, s, parseNewLines));
 
     public static Parser<char, char> OrEnd(this Parser<char, char> parser)
@@ -62,7 +65,7 @@ internal static class ParserExt
     public static readonly Parser<char, Unit> Nothing = new NothingParser();
 
     public static Parser<char, T> SafeTryOneOf<T>(params Parser<char, T>[] parsers) where T: class
-        => OneOf(parsers.Select(Try));
+        => new SafeOneOfParser<T>(parsers.Select(Try).ToArray());
 
     public static Parser<char, T> TryOneOf<T>(params Parser<char, T>[] parsers) where T: class
     {
@@ -72,6 +75,7 @@ internal static class ParserExt
             var parser = parsers[i];
             newParsers[i] = i == lastIndex ? parser : Try(parser);
         }
+
         return OneOf(newParsers);
     }
 
@@ -79,7 +83,10 @@ internal static class ParserExt
 
     private class NothingParser : Parser<char, Unit>
     {
-        public override bool TryParse(ref ParseState<char> state, ref PooledList<Expected<char>> expecteds, out Unit result)
+        public override bool TryParse(
+            ref ParseState<char> state,
+            ref PooledList<Expected<char>> expecteds,
+            out Unit result)
             => true;
     }
 }

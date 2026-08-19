@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Pidgin;
+using Pidgin.Configuration;
 using static Pidgin.Parser;
 using static Pidgin.Parser<char>;
 using static ActualChat.Chat.ParserExt;
@@ -42,27 +43,30 @@ public sealed partial class MarkupParser : IMarkupParser
             (false, true) => IncompleteMarkup,
             (true, true) => IncompleteWithUnparsedMarkup,
         };
-        var result = parser.Parse(text);
+        var result = parser.Parse(text, ParserConfiguration);
 
         return result.Success ? result.Value : EmptyResult;
     }
 
+    // Everything Pidgin rents goes through our own pool - see ParserArrayPoolProvider
+    private static readonly IConfiguration<char> ParserConfiguration =
+        Pidgin.Configuration.Configuration.Default<char>()
+            .WithArrayPoolProvider(ParserArrayPoolProvider.Instance);
+
     // Character classes
 
     private static readonly Parser<char, char> WhitespaceChar =
-        Token(c => c is not ('\r' or '\n' or '\u2028') && char.IsWhiteSpace(c)).Labelled("whitespace");
+        Token(c => c is not ('\r' or '\n' or '\u2028') && char.IsWhiteSpace(c));
     private static readonly Parser<char, char> EndOfLineChar =
-        Token(c => c is '\r' or '\n').Labelled("line separator");
+        Token(c => c is '\r' or '\n');
     private static readonly Parser<char, char> NotEndOfLineChar =
-        Token(c => c is not ('\r' or '\n' or '\u2028')).Labelled("not line separator");
+        Token(c => c is not ('\r' or '\n' or '\u2028'));
     private static readonly Parser<char, char> IdChar =
-        Token(c => char.IsLetterOrDigit(c) || c is '_' or '-' or ':' or '.' or '%' or '~')
-            .Labelled("letter, digit, '_', '-', ':', '.', '%', or '~'");
+        Token(c => char.IsLetterOrDigit(c) || c is '_' or '-' or ':' or '.' or '%' or '~');
     private static readonly Parser<char, char> SpecialChar =
-        Token(c => c is '*' or '`' or '@' or '|').Labelled("'*', '`', '@', or '|'");
+        Token(c => c is '*' or '`' or '@' or '|');
     private static readonly Parser<char, char> NotSpecialOrWhitespaceChar =
-        Token(c => !(char.IsWhiteSpace(c) || c is '*' or '`' or '@' or '|'))
-            .Labelled("not whitespace, line separator, '_', '*', '`', '@', or '|'");
+        Token(c => !(char.IsWhiteSpace(c) || c is '*' or '`' or '@' or '|'));
 
     // Tokens
 
@@ -80,8 +84,7 @@ public sealed partial class MarkupParser : IMarkupParser
     // author-mention prefix in a multi-message copy) and "@`Name`u:id. Next" parse the mention and
     // leave the punctuation to the surrounding text.
     private static readonly Parser<char, char> IdBodyChar =
-        Token(c => char.IsLetterOrDigit(c) || c is '_' or '-' or '%' or '~')
-            .Labelled("letter, digit, '_', '-', '%', or '~'");
+        Token(c => char.IsLetterOrDigit(c) || c is '_' or '-' or '%' or '~');
     private static readonly Parser<char, string> Id =
         OneOf(IdBodyChar, Try(Token(c => c is ':' or '.').Before(Lookahead(IdChar)))).AtLeastOnceString();
     private static readonly Parser<char, string> QuotedName =
@@ -91,9 +94,9 @@ public sealed partial class MarkupParser : IMarkupParser
 
     private static readonly UInt128 FirstUrlCharBits;
     private static readonly Parser<char, char> FirstUrlChar =
-        Token(c => FirstUrlCharBits.IsBitSet(c)).Labelled("First URL character");
+        Token(c => FirstUrlCharBits.IsBitSet(c));
     private static readonly Parser<char, char> UrlChar =
-        Token(c => char.IsLetterOrDigit(c) || @":;/\?&#+=%$@*[](){}_.,\-~'!|".Contains(c)).Labelled("URL character");
+        Token(c => char.IsLetterOrDigit(c) || @":;/\?&#+=%$@*[](){}_.,\-~'!|".Contains(c));
 
     private const string UrlProtoRe = @"(http|ftp)s?\:\/\/";
     private const string UrlHostRe = @"[0-9a-zA-Z](?>[-.\w]*[0-9a-zA-Z])*";
@@ -112,9 +115,9 @@ public sealed partial class MarkupParser : IMarkupParser
 
     private static readonly UInt128 FirstEmailCharBits;
     private static readonly Parser<char, char> FirstEmailChar =
-        Token(c => FirstEmailCharBits.IsBitSet(c)).Labelled("First e-mail character");
+        Token(c => FirstEmailCharBits.IsBitSet(c));
     private static readonly Parser<char, char> EmailChar =
-        Token(c => char.IsLetterOrDigit(c) || ":;/?&#+=%$_.,\\-~'@".Contains(c)).Labelled("E-mail character");
+        Token(c => char.IsLetterOrDigit(c) || ":;/?&#+=%$_.,\\-~'@".Contains(c));
 
     private const string EmailNameRe = @"[A-Za-z0-9!#$%&'*+\-\/=?\^_`{|}~][A-Za-z0-9!#$%&'*+\-\/=?\^_`{|}~.]*";
     private const string ShortEmailRe = $"{EmailNameRe}@{UrlHostRe}";
@@ -203,9 +206,9 @@ public sealed partial class MarkupParser : IMarkupParser
     // then backtracks into a single plain-text run.
     private const int MaxHashtagLength = 64;
     private static readonly Parser<char, char> HashtagFirstChar =
-        Token(c => char.IsLetter(c) || c is '_').Labelled("letter or '_'");
+        Token(c => char.IsLetter(c) || c is '_');
     private static readonly Parser<char, char> HashtagChar =
-        Token(c => char.IsLetterOrDigit(c) || c is '_' or '-').Labelled("letter, digit, '_', or '-'");
+        Token(c => char.IsLetterOrDigit(c) || c is '_' or '-');
     private static readonly Parser<char, Markup> Hashtag = (
         from head in Char('#').Then(HashtagFirstChar)
         from tail in HashtagChar.ManyString()
@@ -431,20 +434,28 @@ public sealed partial class MarkupParser : IMarkupParser
             var textMarkupKind = UseUnparsedTextMarkup ? TextMarkupKind.Unparsed : TextMarkupKind.Plain;
 
             var preformattedText = CreatePreformattedText();
-            var nonStylizedMarkup = SafeTryOneOf(Mention, preformattedText, Url, Hashtag, NonWhitespaceText).Debug("T");
             var boldMarkup = CreateStylized(Try(BoldToken), TextStyle.Bold).Debug("**");
             var italicMarkup = CreateStylized(ItalicToken, TextStyle.Italic).Debug("*");
             var spoilerMarkup = CreateStylized(Try(SpoilerToken), TextStyle.Spoiler).Debug("||");
 
+            // One flat alternative list rather than Mention/Url/nonStylized nested inside it.
+            // Pidgin's OneOf rents two Expected buffers from the array pool per invocation, and
+            // this list is tried at every element, so each nesting level cost a rent/return pair.
+            // The order is exactly what the nested form tried, and every alternative backtracks.
+            Parser<char, Markup>[] inlineElements = [
+                boldMarkup, italicMarkup, spoilerMarkup,
+                NamedMention, UnnamedMention, preformattedText, WwwUrl, Email, Hashtag, NonWhitespaceText,
+            ];
+
             // Text block for single-line content (list items) - no newlines allowed
             var textBlockSingleLine =
-                SafeTryOneOf(boldMarkup, italicMarkup, spoilerMarkup, nonStylizedMarkup, StraySpecialText)
+                SafeTryOneOf([.. inlineElements, StraySpecialText])
                     .AtLeastOnceSingleLineMarkup()
                     .Debug("<TextSingleLine>");
 
             // Text block (includes inline newlines for multi-line styled text in paragraphs)
             TextBlock =
-                SafeTryOneOf(boldMarkup, italicMarkup, spoilerMarkup, nonStylizedMarkup, InlineNewLine)
+                SafeTryOneOf([.. inlineElements, InlineNewLine])
                     .AtLeastOnceInlineMarkup()
                     .Debug("<Text>");
 
@@ -591,11 +602,11 @@ public sealed partial class MarkupParser : IMarkupParser
         {
             // Concatenate all content (restParts already include newlines)
             var content = firstLine + string.Concat(restParts);
-            return new ParagraphMarkup(inlineParser.ParseOrThrow(content));
+            return new ParagraphMarkup(inlineParser.ParseOrThrow(content, ParserConfiguration));
         }
 
         private static Markup BuildHeader(int level, string line, Parser<char, Markup> inlineParser)
-            => new HeaderMarkup(level, inlineParser.ParseOrThrow(line));
+            => new HeaderMarkup(level, inlineParser.ParseOrThrow(line, ParserConfiguration));
 
         private static Markup BuildBlockQuote(
             string firstLine,
@@ -603,7 +614,7 @@ public sealed partial class MarkupParser : IMarkupParser
             Parser<char, Markup> inlineParser)
         {
             var content = firstLine + string.Concat(restLines);
-            return new BlockQuoteMarkup(inlineParser.ParseOrThrow(content));
+            return new BlockQuoteMarkup(inlineParser.ParseOrThrow(content, ParserConfiguration));
         }
 
         private static Markup? TryBuildTable(
@@ -627,7 +638,7 @@ public sealed partial class MarkupParser : IMarkupParser
             var cells = new TableCellMarkup[columnCount];
             for (var i = 0; i < columnCount; i++) {
                 var cellText = i < cellTexts.Count ? cellTexts[i] : "";
-                cells[i] = new TableCellMarkup(inlineParser.ParseOrThrow(cellText));
+                cells[i] = new TableCellMarkup(inlineParser.ParseOrThrow(cellText, ParserConfiguration));
             }
 
             return new TableRowMarkup(cells);
