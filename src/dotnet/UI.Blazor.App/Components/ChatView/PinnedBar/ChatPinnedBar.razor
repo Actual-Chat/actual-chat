@@ -10,24 +10,31 @@
     var entry = m.Entries[index];
     var markupHub = ChatMarkupHubFactory[Chat.Id];
     var text = markupHub.GetMarkup(entry, MarkupConsumer.QuoteView).ToReadableText(MarkupConsumer.QuoteView);
+    var menuRef = MenuRef.New<ChatPinnedBarMenu>(entry.Id.Value).ToString();
 }
 
-<button type="button" class="pinned-bar" @onclick="OnBarClick">
-    <div class="c-indicator">
-        @for (var i = 0; i < count; i++) {
-            <span class="c-seg @(i == index ? "active" : "")"></span>
-        }
-    </div>
-    <div class="c-center">
-        <div class="c-title">
-            <span class="c-label">Pinned message</span>
-            @if (count > 1) {
-                <span class="c-counter">#@(index + 1)/@count</span>
+<div class="pinned-bar">
+    <button type="button" class="c-cycle" @onclick="OnBarClick">
+        <div class="c-indicator">
+            @for (var i = 0; i < count; i++) {
+                <span class="c-seg @(i == index ? "active" : "")"></span>
             }
         </div>
         <div class="c-text">@text</div>
-    </div>
-</button>
+    </button>
+    @if (m.CanManage) {
+        <HeaderButton
+            Class="c-pin-btn btn-sm"
+            data-menu="@menuRef"
+            data-menu-trigger="@MenuTrigger.Primary"
+            data-menu-placement="@(FloatingPosition.BottomEnd.ToPositionString())">
+            <i class="icon-pin"></i>
+        </HeaderButton>
+    }
+    else {
+        <i class="c-pin-icon icon-pin"></i>
+    }
+</div>
 
 @code {
     // Reactive cursor: ComputeState reads it via .Use(), so advancing it recomputes the model
@@ -70,9 +77,13 @@
         if (entries.Count == 0)
             return Model.None;
 
+        // Same gate as the message menu's Pin item: moderators/owners, or any peer-chat participant.
+        var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var canManage = rules.CanModerate() || chatId.Kind == ChatKind.Peer;
+
         var cursor = await _cursor.Use(cancellationToken).ConfigureAwait(false);
         var index = ((cursor % entries.Count) + entries.Count) % entries.Count;
-        return new Model { Entries = entries.ToApiArray(), Index = index };
+        return new Model { Entries = entries.ToApiArray(), Index = index, CanManage = canManage };
     }
 
     private void OnBarClick() {
@@ -88,5 +99,6 @@
         public static readonly Model None = new();
         public ApiArray<ChatEntry> Entries { get; init; }
         public int Index { get; init; }
+        public bool CanManage { get; init; }
     }
 }
