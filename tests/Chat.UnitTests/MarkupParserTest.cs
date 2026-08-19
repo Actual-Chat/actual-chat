@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 namespace ActualChat.Chat.UnitTests;
 
 public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
@@ -1750,6 +1752,34 @@ code
         var trimmedTable = trimmed.Should().BeOfType<TableMarkup>().Subject;
         trimmedTable.Rows.Length.Should().BeLessThan(t.Rows.Length);
         trimmedTable.Rows.Should().AllSatisfy(r => r.Cells.Length.Should().Be(trimmedTable.ColumnCount));
+    }
+
+    [Fact]
+    public void ConcurrentParsesProduceTheSameMarkup()
+    {
+        // The parser hands Pidgin thread-static buffer pools, so a bug there would only show up
+        // with several threads parsing at once - which nothing else in this suite does.
+        // arrange
+        var texts = new[] {
+            "plain text with several words",
+            "**bold** and *italic* and ||spoiler|| and `code`",
+            "hi @u:userId, see https://example.com/x and #tag",
+            "# Header\n- a\n- b\n\n> quote\n\n```\ncode\n```",
+            "| a | b |\n| --- | :-: |\n| 1 | 2 |",
+        };
+        var parser = new MarkupParser();
+        var expected = texts.Select(x => MarkupFormatter.Default.Format(parser.Parse(x))).ToArray();
+
+        // act
+        var results = new ConcurrentBag<(int Index, string Formatted)>();
+        Parallel.For(0, 200, _ => {
+            for (var i = 0; i < texts.Length; i++)
+                results.Add((i, MarkupFormatter.Default.Format(parser.Parse(texts[i]))));
+        });
+
+        // assert
+        results.Should().HaveCount(200 * texts.Length);
+        results.Should().AllSatisfy(x => x.Formatted.Should().Be(expected[x.Index]));
     }
 
     // Helpers
