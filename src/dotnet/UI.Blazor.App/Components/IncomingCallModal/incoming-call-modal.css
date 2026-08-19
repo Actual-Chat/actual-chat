@@ -30,3 +30,11 @@ body.narrow .incoming-call-modal .dialog-buttons {
     @apply w-16 h-16;
     @apply rounded-full;
 }
+.incoming-call-overlock.in-call {
+    background: linear-gradient(to bottom, var(--violet-70), var(--indigo-70));
+}
+/* The gradient is fixed, so the theme-aware text tokens above would vanish into it in a light theme. */
+.incoming-call-overlock.in-call .c-title,
+.incoming-call-overlock.in-call .c-subtitle {
+    @apply text-white;
+}
