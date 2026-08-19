@@ -7,12 +7,17 @@ internal class ThreadIdEnricher : ILogEventEnricher
 {
     public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
     {
-        var managedThreadId = Environment.CurrentManagedThreadId.ToString("D4");
-        var threadId = managedThreadId;
+        // An enricher must never throw: on Android MyTid() is a JNI call that can fail, and the throw
+        // would propagate into the logging pipeline and re-enter it via FirstChanceException.
+        try {
+            var threadId = Environment.CurrentManagedThreadId.ToString("D4");
 #if ANDROID
-        var myTid = Android.OS.Process.MyTid();
-        threadId = threadId + "-" + myTid;
+            threadId = threadId + "-" + Android.OS.Process.MyTid();
 #endif
-        logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("ThreadID", threadId));
+            logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("ThreadID", threadId));
+        }
+        catch {
+            // Intentionally ignored
+        }
     }
 }

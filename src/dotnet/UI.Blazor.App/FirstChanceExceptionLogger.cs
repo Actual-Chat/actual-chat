@@ -7,6 +7,8 @@ namespace ActualChat.UI.Blazor.App;
 public static class FirstChanceExceptionLogger
 {
     private static readonly ILogger Log = StaticLog.Factory.CreateLogger("FCE");
+    [ThreadStatic]
+    private static bool _isInHandler;
 
     public static Func<Exception, bool> ShouldSkip { get; set; } = _ => false;
     public static bool IsActivated { get; private set; }
@@ -18,13 +20,29 @@ public static class FirstChanceExceptionLogger
             LogLevel = logLevel;
         if (IsActivated)
             return;
+
         IsActivated = true;
         AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
     }
 
     private static void OnFirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
     {
-        var error = e.Exception;
+        // Every throw below - in a ShouldSkip callback, an enricher, or a sink - re-enters this handler.
+        // Without this guard that recursion continues until the thread's stack overflows.
+        if (_isInHandler)
+            return;
+
+        _isInHandler = true;
+        try {
+            LogFirstChanceException(e.Exception);
+        }
+        finally {
+            _isInHandler = false;
+        }
+    }
+
+    private static void LogFirstChanceException(Exception error)
+    {
         if (error is OperationCanceledException or WebSocketException or HttpRequestException or SocketException)
             return; // This one has to be skipped
         if (error is IOException { InnerException: SocketException })
