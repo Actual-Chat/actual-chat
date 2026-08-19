@@ -1,0 +1,57 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedMenuBase<AppUIHub, ChatPinnedBarMenu.Model>
+
+<div class="message-menu">
+    <MenuEntry
+        Icon="icon-share"
+        Text="Forward"
+        Click="@OnForward">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-unpin"
+        Text="Unpin message"
+        Click="@OnUnpin">
+    </MenuEntry>
+</div>
+
+@code {
+    private ChatEntryId _entryId;
+
+    private ChatPinsUI ChatPinsUI => Hub.ChatPinsUI;
+    private SelectionUI SelectionUI => Hub.SelectionUI;
+
+    protected override void OnParametersSet() {
+        switch (Arguments) {
+        case [var sEntryId]:
+            _entryId = ChatEntryId.Parse(sEntryId);
+            break;
+        default:
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+        }
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override Task<Model> ComputeState(CancellationToken cancellationToken)
+        => Task.FromResult(Model.None);
+
+    private async Task OnForward() {
+        await WhenClosed.ConfigureAwait(true);
+        await SelectionUI.Forward(_entryId).ConfigureAwait(false);
+    }
+
+    private async Task OnUnpin() {
+        await WhenClosed.ConfigureAwait(true);
+        await ChatPinsUI.Unpin(_entryId).ConfigureAwait(false);
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new();
+    }
+}
