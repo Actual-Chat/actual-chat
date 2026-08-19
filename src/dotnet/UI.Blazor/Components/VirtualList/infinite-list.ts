@@ -885,14 +885,22 @@ export class InfiniteList extends VirtualList {
     // Where the chain sits in the fixed scroll space, and the only writer of it. The spacer stands
     // between the container's edge and the first item, so it comes out of the same number.
     private writeChainPosition(): void {
-        if (!this.isReverse) {
+        // Which end is anchored is which end has to stay put. Following the newest content, that is the
+        // bottom, taken from the model rather than from offsetHeight: the model carries settled heights,
+        // so what is flush with the fold stays flush while an item animates instead of drifting with
+        // what the DOM has managed to render so far.
+        //
+        // Reading above the end it is the reader, i.e. the top - and a bottom-anchored container hangs
+        // its top edge lower by exactly what the render is still behind by, which drags everything above
+        // an animating item down and back as the animation lands. Measured: a 40px growth below the
+        // reader moved them 40px, then 33, 24, 16, 7, 0. Anchoring the top instead is the same placement
+        // arithmetic seen from the other end - a chain grows downward from a fixed top - so the browser
+        // holds it every frame with nothing to compute, and the two agree wherever nothing is animating.
+        if (!this.isReverse || this.pinnedEdge == null) {
             this.containerRef.style.bottom = '';
             this.containerRef.style.top = `${this.chainStart - this.startSpacerSize}px`;
         }
         else {
-            // Anchored by its bottom, and from the model rather than from offsetHeight: while an item
-            // animates the container's rendered height lags what the model says, and reading it back
-            // would place the chain by that shortfall and drag every item with it.
             this.containerRef.style.top = '';
             this.containerRef.style.bottom =
                 `${this.wrapperSize - this.chainEnd - this.endSpacerSize - this.endAnchorSize}px`;
@@ -993,10 +1001,28 @@ export class InfiniteList extends VirtualList {
     // Mirrored onto the root element so the pinned state is visible in the DOM - to the eye while
     // debugging, and to any rule that wants to style a list that is following its edge.
     private setPinnedEdge(edge: VirtualListEdge | null): void {
+        const wasPinned = this.pinnedEdge;
         this.pinnedEdge = edge;
         const isStickyEnd = edge === VirtualListEdge.End;
         if (isStickyEnd !== this.ref.classList.contains('sticky-end'))
             this.ref.classList.toggle('sticky-end', isStickyEnd);
+        if (wasPinned !== edge)
+            this.repinChainAnchor(wasPinned);
+    }
+
+    // Letting go of an edge holds what is on screen; taking one hands the placement back to the model.
+    private repinChainAnchor(wasPinned: VirtualListEdge | null): void {
+        if (!this.isReverse || this.items.length === 0 || !this.stability.isAnimating)
+            return;
+
+        const viewTop = this.ref.getBoundingClientRect().top;
+        const before = this.containerRef.getBoundingClientRect().top - viewTop;
+        this.writeChainPosition();
+        if (this.pinnedEdge != null || wasPinned == null)
+            return;
+
+        this.chainStart += before - (this.containerRef.getBoundingClientRect().top - viewTop);
+        this.writeChainPosition();
     }
 
     // Re-derived from geometry, and only from a user scroll or a settled list: a render that appends to

@@ -402,7 +402,7 @@ the folklore is about.
 | | natural | reverse |
 |---|---|---|
 | a render that changes the model | identical — `reanchor` holds the item at the viewport top regardless of direction, and both container anchors then place the chain to match. Measured: content moved by exactly 0 in both. | identical |
-| a height transition in flight, i.e. the DOM taller or shorter than the model | the container's *top* is pinned, so the growing item extends below the fold until the next re-layout or re-pin catches it. Measured: −213…+22px | the container's *bottom* is pinned by the model's settled `chainEnd`, so the growth eats upward and the newest content never leaves the fold. Measured: ±0.12px over 1593 frames |
+| a height transition in flight, i.e. the DOM taller or shorter than the model | the container's *top* is pinned, so the growing item extends below the fold until the next re-layout or re-pin catches it. Measured: −213…+22px | the container's *bottom* is pinned by the model's settled `chainEnd` **while the list follows an edge**, so the growth eats upward and the newest content never leaves the fold (measured ±0.12px over 1593 frames); reading above the end the container is anchored by its *top* instead, so the reader is what stays put (§3.10) |
 | the viewport itself resizing — editor growing, keyboard opening | the browser keeps the top anchored. Measured: shrinking the scroller by 60px moved content 0px | keeps the bottom anchored. Measured: −60px |
 
 The second row is the case the chat view lives in, and it is why the chat view is pinned to reverse.
@@ -581,8 +581,9 @@ permanent clip would cut off the hover menu.
 ### 3.6 Which term may move when
 
 *`scrollTop` is written only as a jump, at a standstill, or inside the compensated iOS handoff after
-native motion has been frozen; the container's position only at a render; the transform whenever
-something continuous has to move. No path animates `scrollTop` frame by frame.*
+native motion has been frozen; the container's position at a render, and on the scroll that changes
+which end of the chain is anchored; the transform whenever something continuous has to move. No path
+animates `scrollTop` frame by frame.*
 
 Historically, a `scrollTop` write also ended a slowed WebKit fling, while a fast fling ignored several
 writes; Safari/iOS 27 removes even that stop semantic (§4.3). Either way, a JavaScript scroll-position
@@ -591,7 +592,7 @@ animation racing the compositor is not a usable continuous-motion primitive.
 | term | when it may change | cost |
 |---|---|---|
 | `scrollTop` | **jumps, follows and compensated handoffs** — never interpolated towards a target | may end or race native inertia unless overflow is already locked |
-| `container.top` / `bottom` | **at a render**, which is paying for layout anyway | one layout pass |
+| `container.top` / `bottom` | **at a render**, which is paying for layout anyway, and when the pin changes which end is anchored (§3.10) | one layout pass |
 | `transform` | **the rubber band only**, and it is `ScrollController`'s (§3.7) | composite only |
 
 So the permitted `scrollTop` writers in the list are exactly the cases where a jump is what the user
@@ -1342,6 +1343,38 @@ recognised under a different key — is not implemented, because nothing was fou
 message. `ChatMessageKey` is `<lid><suffix-for-kind>`, and a chat entry keeps `Kind = None` whether or
 not it sits inside a conversation, so its key is the bare lid either way. Measured on a live page:
 three collapse/expand cycles and a Summarize off/on cycle produced no renamed key at all.
+
+**Which end of the chain is anchored is which end has to stay put.** The model is placed from *settled*
+heights, so while a transition runs the rendered chain is shorter than the model says it is. Anchored by
+its bottom — which is what keeps the newest content flush while the list follows it — the container's
+top edge hangs lower by exactly that difference, so everything above an animating item goes down with it
+and comes back as it lands. Measured: a 40px growth below the reader moved them 40px, then 33, 24, 16,
+7, 0. On a narrow viewport it fires far more often, because a streaming message gains a whole line.
+
+So reading above the end (`pinnedEdge == null`), the container is placed by its `top` instead — the same
+line the forward direction uses. A chain that grows downward from a fixed top leaves everything above
+the growth alone, held by the browser every frame with nothing here to compute. The two placements are
+one piece of arithmetic seen from opposite ends: a bottom-anchored container plus the render's shortfall
+*is* `chainStart − startSpacerSize`, since the container's rendered height is the spacers plus what the
+chain has actually rendered. They therefore agree wherever nothing is animating, and the regimes meet
+with no step at the pin.
+
+Measured after: **0.00px on every frame** of a 40px growth and of an 80px growth below the reader, and
+0.00px across two items growing 60px 30ms apart.
+
+**The pin changing is itself a re-placement.** The two anchors agree only where nothing is animating, so
+a pin that changes mid-transition has to move the chain to the other end there and then —  nothing else
+writes the container's position between renders. Left alone, the old anchor stays and drags the reader
+over the rest of the animation: measured at 66.6px against a 120px growth, when scrolling away from the
+end while it was still growing. The two directions are not symmetric (`repinChainAnchor`). *Letting go*
+of an edge holds what is on screen: the chain's rendered top is what the new anchor is given, because
+the reader is looking at it and a step under their finger is the whole complaint. *Taking* an edge hands
+the placement back to the model, because the model is what puts the newest content flush with the fold,
+and the re-pin the change schedules lands it inside a frame. That last case is why subtracting the shortfall from
+the bottom is not equivalent in practice: the `chainEnd` it subtracts from is rebuilt by a 64ms throttle
+while the shortfall moves every frame, so a second change landing inside that window is counted against
+a model that has not caught up with the first — measured at **66.75px** of reader displacement, against
+0.00px for the anchored top.
 
 **At most `MaxAnimatedItems` (3) items animate at once**, in either direction, and everything past that
 is written to its real height on the spot. Expanding a conversation turns one item into a whole thread;
