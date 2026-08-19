@@ -9,9 +9,4 @@
     <ProjectReference Include="..\Streaming.Contracts\Streaming.Contracts.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
-  </ItemGroup>
-
 </Project>

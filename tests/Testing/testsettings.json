@@ -44,7 +44,6 @@
       // AddTestLogging overrides it for TestAppHosts.
       "Default": "Trace",
       "Microsoft": "Warning",
-      "Microsoft.AspNetCore.SignalR.Internal": "Warning",
       "Microsoft.EntityFrameworkCore.Database": "Warning",
       // "Microsoft.EntityFrameworkCore.Database.Command": "Debug",
       "ActualLab": "Warning",

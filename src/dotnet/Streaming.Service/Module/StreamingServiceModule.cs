@@ -2,48 +2,26 @@ using ActualChat.Audio;
 using ActualChat.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Streaming.Services;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 
 namespace ActualChat.Streaming.Module;
 
 public sealed class StreamingServiceModule(IServiceProvider moduleServices)
-    : HostModule<StreamingSettings>(moduleServices), IWebServerModule
+    : HostModule<StreamingSettings>(moduleServices)
 {
-    public void ConfigureApp(WebApplication app)
-    {
-        if (!HostInfo.HasRole(HostRole.Api))
-            return;
-
-        // SignalR hub endpoints
-        app.MapHub<StreamHub>("/api/hub/streams");
-    }
-
     protected override void InjectServices(IServiceCollection services)
     {
         // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
         var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IAudioStreamingBackend>() is ServiceMode.Client;
 
-        // SignalR hub — audio-only legacy endpoint (video has moved to Fusion RPC)
-        if (rpcHost.IsApiHost) {
-            var signalR = services.AddSignalR(options => {
-                options.StreamBufferCapacity = 20;
-                options.EnableDetailedErrors = HostInfo.IsDevelopmentInstance;
-                options.StatefulReconnectBufferSize = 2000;
-            });
-            signalR.AddJsonProtocol();
-            signalR.AddMessagePackProtocol();
-            services.AddScoped<StreamHub>();
-        }
-
         rpcHost.AddApi<ILiveAudioStreams, LiveAudioStreams>();
         rpcHost.AddApi<ILiveVideoStreams, LiveVideoStreams>();
         rpcHost.AddApi<ILiveSessions, LiveSessions>();
         rpcHost.AddBackend<IAudioStreamingBackend, AudioStreamingBackend>();
         rpcHost.AddBackend<IVideoStreamingBackend, VideoStreamingBackend>();
-		rpcHost.AddBackend<ILiveAudioBackend, LiveAudioBackend>();
+        rpcHost.AddBackend<ILiveAudioBackend, LiveAudioBackend>();
         rpcHost.AddBackend<ILiveVideoBackend, LiveVideoBackend>();
         rpcHost.AddBackend<ILiveSessionsBackend, LiveSessionsBackend>();
         services.AddSingleton<LiveStreamAccess>();
@@ -62,6 +40,5 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<StreamingContext>(services);
-
     }
 }

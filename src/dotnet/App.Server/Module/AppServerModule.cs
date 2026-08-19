@@ -435,7 +435,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                     "/_blazor",
                     "/_framework",
                     "/healthz",
-                    "/api/hub/streams",
                     "/rpc/ws",
                     "/backend/rpc/ws",
                     "/rpc/http",
