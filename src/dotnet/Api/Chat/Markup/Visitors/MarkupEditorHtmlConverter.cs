@@ -43,6 +43,26 @@ public record MarkupEditorHtmlConverter : MarkupHtmlFormatterBase
         AddHtml("&#8203</span>&#8203", ref state);
     }
 
+    protected override void VisitStylized(StylizedMarkup markup, ref StringBuilder state)
+        => AddText(markup.Format(), ref state);
+
+    protected override void VisitCodeBlock(CodeBlockMarkup markup, ref StringBuilder state)
+        => AddText(markup.Format(), ref state);
+
+    protected override void VisitHeader(HeaderMarkup markup, ref StringBuilder state)
+        => AddText(markup.Format(), ref state);
+
+    protected override void VisitBlockQuote(BlockQuoteMarkup markup, ref StringBuilder state)
+        => AddText(markup.Format(), ref state);
+
+    protected override void VisitTable(TableMarkup markup, ref StringBuilder state)
+        => AddText(markup.Format(), ref state);
+
+    protected override void VisitPreformattedText(PreformattedTextMarkup markup, ref StringBuilder state)
+        => AddText(markup.Format(), ref state);
+
+    // Private methods
+
     private void VisitEmojiBody(EmojiMention emoji, ref StringBuilder state)
     {
         var resolved = Emojis.TryGetByIdOrSymbol(emoji.EmojiRef.Text);
@@ -67,23 +87,6 @@ public record MarkupEditorHtmlConverter : MarkupHtmlFormatterBase
 
         AddText(":" + emoji.EmojiRef.Text + ":", ref state);
     }
-
-    protected override void VisitStylized(StylizedMarkup markup, ref StringBuilder state)
-        => AddText(markup.Format(), ref state);
-
-    protected override void VisitCodeBlock(CodeBlockMarkup markup, ref StringBuilder state)
-        => AddText(markup.Format(), ref state);
-
-    protected override void VisitHeader(HeaderMarkup markup, ref StringBuilder state)
-        => AddText(markup.Format(), ref state);
-
-    protected override void VisitBlockQuote(BlockQuoteMarkup markup, ref StringBuilder state)
-        => AddText(markup.Format(), ref state);
-
-    protected override void VisitPreformattedText(PreformattedTextMarkup markup, ref StringBuilder state)
-        => AddText(markup.Format(), ref state);
-
-    // Private methods
 
     private static void AddHiddenText(string text, ref StringBuilder state)
     {

@@ -12,6 +12,7 @@ public abstract record AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
                 newItems.Add(newItem);
             isUnchanged &= newItem == item;
         }
+
         return isUnchanged ? markup
             : new MarkupSeq(newItems.ToArray());
     }
@@ -29,8 +30,55 @@ public abstract record AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
             else
                 isUnchanged = false;
         }
+
         return isUnchanged ? markup
             : new ListMarkup(newItems);
+    }
+
+    protected override async ValueTask<Markup> VisitTable(TableMarkup markup, CancellationToken cancellationToken)
+    {
+        // A rewrite that drops a row or a cell would break the table's rectangular shape,
+        // so anything but a row-for-row, cell-for-cell result leaves the table as it was.
+        var header = await VisitTableRow(markup.Header, cancellationToken).ConfigureAwait(false);
+        if (header is not TableRowMarkup newHeader)
+            return markup;
+
+        var isUnchanged = ReferenceEquals(newHeader, markup.Header);
+        var newRows = new TableRowMarkup[markup.Rows.Length];
+        for (var i = 0; i < markup.Rows.Length; i++) {
+            var row = markup.Rows[i];
+            if (await VisitTableRow(row, cancellationToken).ConfigureAwait(false) is not TableRowMarkup newRow)
+                return markup;
+
+            newRows[i] = newRow;
+            isUnchanged &= ReferenceEquals(newRow, row);
+        }
+
+        return isUnchanged ? markup : new TableMarkup(newHeader, markup.Alignments, newRows);
+    }
+
+    protected override async ValueTask<Markup> VisitTableRow(TableRowMarkup markup, CancellationToken cancellationToken)
+    {
+        var newCells = new TableCellMarkup[markup.Cells.Length];
+        var isUnchanged = true;
+        for (var i = 0; i < markup.Cells.Length; i++) {
+            var cell = markup.Cells[i];
+            if (await VisitTableCell(cell, cancellationToken).ConfigureAwait(false) is not TableCellMarkup newCell)
+                return markup;
+
+            newCells[i] = newCell;
+            isUnchanged &= ReferenceEquals(newCell, cell);
+        }
+
+        return isUnchanged ? markup : new TableRowMarkup(newCells);
+    }
+
+    protected override async ValueTask<Markup> VisitTableCell(
+        TableCellMarkup markup,
+        CancellationToken cancellationToken)
+    {
+        var newContent = await Visit(markup.Content, cancellationToken).ConfigureAwait(false);
+        return newContent == markup.Content ? markup : new TableCellMarkup(newContent);
     }
 
     protected override async ValueTask<Markup> VisitListItem(ListItemMarkup markup, CancellationToken cancellationToken)
@@ -47,7 +95,9 @@ public abstract record AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
             : new StylizedMarkup(newMarkup, markup.Style);
     }
 
-    protected override async ValueTask<Markup> VisitParagraph(ParagraphMarkup markup, CancellationToken cancellationToken)
+    protected override async ValueTask<Markup> VisitParagraph(
+        ParagraphMarkup markup,
+        CancellationToken cancellationToken)
     {
         var newContent = await Visit(markup.Content, cancellationToken).ConfigureAwait(false);
         return newContent == markup.Content ? markup : new ParagraphMarkup(newContent);
@@ -59,7 +109,9 @@ public abstract record AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
         return newContent == markup.Content ? markup : new HeaderMarkup(markup.Level, newContent);
     }
 
-    protected override async ValueTask<Markup> VisitBlockQuote(BlockQuoteMarkup markup, CancellationToken cancellationToken)
+    protected override async ValueTask<Markup> VisitBlockQuote(
+        BlockQuoteMarkup markup,
+        CancellationToken cancellationToken)
     {
         var newContent = await Visit(markup.Content, cancellationToken).ConfigureAwait(false);
         return newContent == markup.Content ? markup : new BlockQuoteMarkup(newContent);
@@ -74,9 +126,13 @@ public abstract record AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
 
     protected override ValueTask<Markup> VisitPlainText(PlainTextMarkup markup, CancellationToken cancellationToken)
         => new (markup);
-    protected override ValueTask<Markup> VisitPlayableText(PlayableTextMarkup markup, CancellationToken cancellationToken)
+    protected override ValueTask<Markup> VisitPlayableText(
+        PlayableTextMarkup markup,
+        CancellationToken cancellationToken)
         => new (markup);
-    protected override ValueTask<Markup> VisitPreformattedText(PreformattedTextMarkup markup, CancellationToken cancellationToken)
+    protected override ValueTask<Markup> VisitPreformattedText(
+        PreformattedTextMarkup markup,
+        CancellationToken cancellationToken)
         => new (markup);
     protected override ValueTask<Markup> VisitNewLine(NewLineMarkup markup, CancellationToken cancellationToken)
         => new (markup);

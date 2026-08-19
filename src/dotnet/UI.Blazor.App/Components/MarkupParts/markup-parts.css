@@ -419,3 +419,30 @@ ul.list-markup li::before {
     @apply py-0 pl-2;
     border-left: 2px solid var(--quote-markup-border);
 }
+
+/* Table: scrolls on its own so a wide table never widens the message. Cell alignment comes
+   from an inline text-align style written by TableMarkupView / MarkupHtmlFormatterBase. */
+.table-markup {
+    @apply my-1;
+    @apply max-w-full;
+    @apply overflow-x-auto custom-scrollbar-x;
+}
+.table-markup table {
+    @apply border-collapse;
+}
+.table-markup th,
+.table-markup td {
+    @apply px-2 py-1;
+    @apply border border-separator;
+    @apply align-top text-left;
+    word-break: break-word;
+}
+.table-markup th {
+    @apply bg-03;
+}
+/* Same reason as .header-markup: ".chat-message-markup span" bakes in font-weight:400,
+   so the weight has to be set on the descendant span rather than inherited from <th>. */
+.chat-message-markup .table-markup th span,
+.table-markup th span {
+    @apply font-medium;
+}

@@ -14,6 +14,7 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
     public string MentionClass { get; init; } = "markup-mention";
     public string CodeBlockClass { get; init; } = "markup-code";
     public string ParagraphClass { get; init; } = "markup-paragraph";
+    public string TableClass { get; init; } = "markup-table";
     public string HeaderClass { get; init; } = "markup-header";
     public string PreformattedTextClass { get; init; } = "markup-preformatted-text";
     public string NewLineHtml { get; init; } = "<br/>";
@@ -26,6 +27,7 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
             AddText(StylizedMarkup.Mask(markup.Content.ToReadableText()), ref state);
             return;
         }
+
         var startTag = markup.Style switch {
             TextStyle.Italic => "<em>",
             TextStyle.Bold => "<strong>",
@@ -97,14 +99,23 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
         AddHtml("</blockquote>", ref state);
     }
 
-    // protected override void VisitParagraph(ParagraphMarkup markup, ref StringBuilder state)
-    // {
-    //     AddHtml("<p", ref state);
-    //     AddAttribute("class", ParagraphClass, false, ref state);
-    //     AddHtml(">", ref state);
-    //     Visit(markup.Content, ref state);
-    //     AddHtml("</p>", ref state);
-    // }
+    protected override void VisitTable(TableMarkup markup, ref StringBuilder state)
+    {
+        AddHtml("<table", ref state);
+        AddAttribute("class", TableClass, false, ref state);
+        AddHtml("><thead>", ref state);
+        AddTableRow(markup.Header, markup.Alignments, "th", ref state);
+        AddHtml("</thead><tbody>", ref state);
+        foreach (var row in markup.Rows)
+            AddTableRow(row, markup.Alignments, "td", ref state);
+        AddHtml("</tbody></table>", ref state);
+    }
+
+    protected override void VisitTableRow(TableRowMarkup markup, ref StringBuilder state)
+        => AddTableRow(markup, null, "td", ref state);
+
+    protected override void VisitTableCell(TableCellMarkup markup, ref StringBuilder state)
+        => Visit(markup.Content, ref state);
 
     protected override void VisitPreformattedText(PreformattedTextMarkup markup, ref StringBuilder state)
         => AddTextSpan(markup.Text, PreformattedTextClass, ref state);
@@ -132,6 +143,27 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
     protected void AddMarkup(Markup markup, ref StringBuilder state)
         => AddText(markup.Format(), ref state);
 
+    protected void AddTableRow(
+        TableRowMarkup row,
+        TableColumnAlignment[]? alignments,
+        string cellTag,
+        ref StringBuilder state)
+    {
+        AddHtml("<tr>", ref state);
+        for (var i = 0; i < row.Cells.Length; i++) {
+            AddHtml("<", ref state);
+            AddHtml(cellTag, ref state);
+            if (alignments?[i].ToTextAlignStyle() is { } textAlign)
+                AddAttribute("style", textAlign, false, ref state);
+            AddHtml(">", ref state);
+            VisitTableCell(row.Cells[i], ref state);
+            AddHtml("</", ref state);
+            AddHtml(cellTag, ref state);
+            AddHtml(">", ref state);
+        }
+        AddHtml("</tr>", ref state);
+    }
+
     protected void AddTextSpan(string text, string @class, ref StringBuilder state)
     {
         AddHtml("<span", ref state);
@@ -152,10 +184,10 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
             text = NewLineRegex.Replace(text, "\n");
         }
         var html = text.HtmlEncode();
-        if (NewLineReplacement != null && !string.Equals(NewLineReplacement, "\n", StringComparison.Ordinal)) {
+        if (NewLineReplacement != null && NewLineReplacement != "\n") {
             // HtmlEncode produced "&#xA;" for every \n; swap them for the desired HTML
             // (e.g. "<br/>") in one pass.
-            html = html.Replace("&#xA;", NewLineReplacement, StringComparison.Ordinal);
+            html = html.Replace("&#xA;", NewLineReplacement);
         }
         AddHtml(html, ref state);
     }

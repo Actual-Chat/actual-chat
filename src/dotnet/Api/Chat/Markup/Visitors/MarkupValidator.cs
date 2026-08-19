@@ -31,6 +31,21 @@ public sealed record MarkupValidator : MarkupVisitor<bool>
             ? Visit(markup.Content) && _predicate(markup)
             : Visit(markup.Content) || _predicate(markup);
 
+    protected override bool VisitTable(TableMarkup markup)
+        => _aggregationMode == AggregationMode.All
+            ? VisitTableRow(markup.Header) && markup.Rows.All(VisitTableRow) && _predicate(markup)
+            : VisitTableRow(markup.Header) || markup.Rows.Any(VisitTableRow) || _predicate(markup);
+
+    protected override bool VisitTableRow(TableRowMarkup markup)
+        => _aggregationMode == AggregationMode.All
+            ? markup.Cells.All(VisitTableCell) && _predicate(markup)
+            : markup.Cells.Any(VisitTableCell) || _predicate(markup);
+
+    protected override bool VisitTableCell(TableCellMarkup markup)
+        => _aggregationMode == AggregationMode.All
+            ? Visit(markup.Content) && _predicate(markup)
+            : Visit(markup.Content) || _predicate(markup);
+
     protected override bool VisitSeq(MarkupSeq markup)
         => _aggregationMode == AggregationMode.All
             ? markup.Items.All(Visit)

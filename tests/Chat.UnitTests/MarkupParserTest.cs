@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Chat.UnitTests;
+namespace ActualChat.Chat.UnitTests;
 
 public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
 {
@@ -1440,6 +1440,8 @@ code
     [InlineData("> q\n> r")]
     [InlineData("```\nx\n\ny\n```")]
     [InlineData("a\n\n\n\n```\nx\n\n\ny\n```\n\nb")]
+    [InlineData("| a | b |\n| --- | :-: |\n| 1 | 2 |")]
+    [InlineData("intro\n| a |\n| --- |\n| 1 |\n\nouttro")]
     public void NewLineStyleDoesNotAffectParseResult(string lfText)
     {
         // act
@@ -1452,7 +1454,310 @@ code
         fromCr.Should().Be(fromLf);
     }
 
+    // Tables
+
+    [Fact]
+    public void TableSimpleTest()
+    {
+        var t = Parse<TableMarkup>("| Name | Age |\n| --- | --- |\n| Bob | 5 |");
+        t.ColumnCount.Should().Be(2);
+        CellText(t.Header, 0).Should().Be("Name");
+        CellText(t.Header, 1).Should().Be("Age");
+        t.Rows.Length.Should().Be(1);
+        CellText(t.Rows[0], 0).Should().Be("Bob");
+        CellText(t.Rows[0], 1).Should().Be("5");
+        t.Alignments.Should().AllBeEquivalentTo(TableColumnAlignment.None);
+    }
+
+    [Fact]
+    public void TableWithoutBodyRowsTest()
+    {
+        var t = Parse<TableMarkup>("| a | b |\n| --- | --- |");
+        t.ColumnCount.Should().Be(2);
+        t.Rows.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TableSingleColumnTest()
+    {
+        var t = Parse<TableMarkup>("| a |\n| --- |\n| 1 |");
+        t.ColumnCount.Should().Be(1);
+        t.Rows.Length.Should().Be(1);
+        CellText(t.Rows[0], 0).Should().Be("1");
+    }
+
+    [Fact]
+    public void TableAlignmentsTest()
+    {
+        var t = Parse<TableMarkup>("| a | b | c | d |\n| --- | :-- | :-: | --: |\n| 1 | 2 | 3 | 4 |");
+        t.Alignments.Should().Equal(
+            TableColumnAlignment.None,
+            TableColumnAlignment.Left,
+            TableColumnAlignment.Center,
+            TableColumnAlignment.Right);
+    }
+
+    [Theory]
+    [InlineData("| a | b |\n| :--- | ---: |", TableColumnAlignment.Left, TableColumnAlignment.Right)]
+    [InlineData("| a | b |\n| :-------: | - |", TableColumnAlignment.Center, TableColumnAlignment.None)]
+    public void TableDelimiterCellLengthDoesNotMatterTest(
+        string text,
+        TableColumnAlignment first,
+        TableColumnAlignment second)
+    {
+        var t = Parse<TableMarkup>(text, validateFormat: false);
+        t.Alignments.Should().Equal(first, second);
+    }
+
+    [Fact]
+    public void TableCellWhitespaceIsTrimmedTest()
+    {
+        var t = Parse<TableMarkup>("|   a   |b|\n|---|---|", validateFormat: false);
+        CellText(t.Header, 0).Should().Be("a");
+        CellText(t.Header, 1).Should().Be("b");
+        t.Format().Replace("\r\n", "\n").Should().Be("| a | b |\n| --- | --- |");
+    }
+
+    [Fact]
+    public void TableWithoutTrailingPipeTest()
+    {
+        var t = Parse<TableMarkup>("| a | b\n| --- | ---\n| 1 | 2", validateFormat: false);
+        t.ColumnCount.Should().Be(2);
+        CellText(t.Header, 1).Should().Be("b");
+        CellText(t.Rows[0], 1).Should().Be("2");
+    }
+
+    [Fact]
+    public void TableShortRowIsPaddedTest()
+    {
+        var t = Parse<TableMarkup>("| a | b |\n| --- | --- |\n| 1 |", validateFormat: false);
+        t.Rows[0].Cells.Length.Should().Be(2);
+        CellText(t.Rows[0], 0).Should().Be("1");
+        CellText(t.Rows[0], 1).Should().Be("");
+    }
+
+    [Fact]
+    public void TableLongRowIsTruncatedTest()
+    {
+        var t = Parse<TableMarkup>("| a | b |\n| --- | --- |\n| 1 | 2 | 3 |", validateFormat: false);
+        t.Rows[0].Cells.Length.Should().Be(2);
+        CellText(t.Rows[0], 1).Should().Be("2");
+    }
+
+    [Fact]
+    public void TableEmptyCellsTest()
+    {
+        var t = Parse<TableMarkup>("|  |  |\n| --- | --- |");
+        t.ColumnCount.Should().Be(2);
+        CellText(t.Header, 0).Should().Be("");
+        CellText(t.Header, 1).Should().Be("");
+    }
+
+    [Fact]
+    public void TableRequiresDelimiterRowTest()
+    {
+        // Without a delimiter row the pipes are just text.
+        var p = Parse<ParagraphMarkup>("| a | b |\n| 1 | 2 |", validateFormat: false);
+        p.Content.IsBlockMarkup().Should().BeFalse();
+    }
+
+    [Fact]
+    public void TableDelimiterMustMatchColumnCountTest()
+    {
+        var p = Parse<ParagraphMarkup>("| a | b |\n| --- |", validateFormat: false);
+        p.Content.IsBlockMarkup().Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("| a |\n| x |")]
+    [InlineData("| a |\n|  |")]
+    [InlineData("| a |\n| : |")]
+    [InlineData("| a |\n| -x- |")]
+    public void TableDelimiterMustBeDashesTest(string text)
+    {
+        var m = MarkupParser.ParseRaw(text, true).Simplify();
+        m.Should().NotBeOfType<TableMarkup>();
+    }
+
+    [Fact]
+    public void SpoilerLineIsNotATableTest()
+    {
+        var p = Parse<ParagraphMarkup>("||secret||");
+        p.Content.Should().BeOfType<StylizedMarkup>().Which.Style.Should().Be(TextStyle.Spoiler);
+    }
+
+    [Fact]
+    public void TableCellsKeepInlineMarkupTest()
+    {
+        var t = Parse<TableMarkup>("| **b** | @u:userId |\n| --- | --- |\n| `code` | #tag |");
+        t.Header.Cells[0].Content.Should().BeOfType<StylizedMarkup>().Which.Style.Should().Be(TextStyle.Bold);
+        t.Header.Cells[1].Content.Should().BeOfType<UserMention>();
+        t.Rows[0].Cells[0].Content.Should().BeOfType<PreformattedTextMarkup>().Which.Text.Should().Be("code");
+        t.Rows[0].Cells[1].Content.Should().BeOfType<HashtagMarkup>().Which.Text.Should().Be("#tag");
+    }
+
+    [Fact]
+    public void TableCellCannotContainBlockMarkupTest()
+    {
+        // A cell is inline-only: a '#' header or a ``` fence inside it stays text.
+        var t = Parse<TableMarkup>("| # h | ``` |\n| --- | --- |", validateFormat: false);
+        t.Header.Cells.Should().AllSatisfy(c => c.Content.IsBlockMarkup().Should().BeFalse());
+    }
+
+    [Fact]
+    public void TableEscapedPipeInCellTest()
+    {
+        var t = Parse<TableMarkup>("| a \\| b | c |\n| --- | --- |");
+        t.ColumnCount.Should().Be(2);
+        CellText(t.Header, 0).Should().Be("a | b");
+        CellText(t.Header, 1).Should().Be("c");
+    }
+
+    [Fact]
+    public void TableEndsAtBlankLineTest()
+    {
+        var seq = Parse<MarkupSeq>("| a |\n| --- |\n| 1 |\n\ntext");
+        seq.Items[0].Should().BeOfType<TableMarkup>().Which.Rows.Length.Should().Be(1);
+        seq.Items[^1].Should().BeOfType<ParagraphMarkup>();
+    }
+
+    [Fact]
+    public void TableEndsAtNonRowLineTest()
+    {
+        var seq = Parse<MarkupSeq>("| a |\n| --- |\ntext");
+        seq.Items.Length.Should().Be(2);
+        seq.Items[0].Should().BeOfType<TableMarkup>();
+        seq.Items[1].Should().BeOfType<ParagraphMarkup>();
+    }
+
+    [Fact]
+    public void ParagraphBeforeTableTest()
+    {
+        var seq = Parse<MarkupSeq>("text\n| a |\n| --- |");
+        seq.Items.Length.Should().Be(2);
+        seq.Items[0].Should().BeOfType<ParagraphMarkup>();
+        seq.Items[1].Should().BeOfType<TableMarkup>();
+    }
+
+    [Fact]
+    public void HeaderAndTableTest()
+    {
+        var seq = Parse<MarkupSeq>("# Title\n| a |\n| --- |\n## Next");
+        seq.Items[0].Should().BeOfType<HeaderMarkup>();
+        seq.Items[1].Should().BeOfType<TableMarkup>();
+        seq.Items[2].Should().BeOfType<HeaderMarkup>();
+    }
+
+    [Fact]
+    public void TwoTablesSeparatedByBlankLineTest()
+    {
+        var seq = Parse<MarkupSeq>("| a |\n| --- |\n\n| b |\n| --- |");
+        seq.Items.OfType<TableMarkup>().Count().Should().Be(2);
+    }
+
+    [Fact]
+    public void TableInListItemIsNotATableTest()
+    {
+        var list = Parse<ListMarkup>("- | a | b |\n- | --- | --- |", validateFormat: false);
+        list.Items.Length.Should().Be(2);
+        list.Items.Should().AllSatisfy(i => i.Content.IsBlockMarkup().Should().BeFalse());
+    }
+
+    [Fact]
+    public void TableInBlockQuoteIsNotATableTest()
+    {
+        var bq = Parse<BlockQuoteMarkup>("> | a | b |\n> | --- | --- |", validateFormat: false);
+        bq.Content.IsBlockMarkup().Should().BeFalse();
+    }
+
+    [Fact]
+    public void TableIsBlockMarkupTest()
+    {
+        var t = Parse<TableMarkup>("| a |\n| --- |");
+        t.Should().BeAssignableTo<BlockMarkup>();
+        t.IsBlockMarkup().Should().BeTrue();
+    }
+
+    [Fact]
+    public void TableFormatRoundTripTest()
+    {
+        // arrange
+        var table = new TableMarkup(
+            NewRow("a", "b"),
+            [TableColumnAlignment.Left, TableColumnAlignment.Right],
+            [NewRow("1", "2")]);
+
+        // act
+        var text = table.Format().Replace("\r\n", "\n");
+
+        // assert
+        text.Should().Be("| a | b |\n| :-- | --: |\n| 1 | 2 |");
+        MarkupFormatter.Default.Format(table).Replace("\r\n", "\n").Should().Be(text);
+    }
+
+    [Fact]
+    public void TableWithMismatchedRowThrowsTest()
+    {
+        // act & assert
+        var build = () => new TableMarkup(NewRow("a"), [TableColumnAlignment.None], [NewRow("1", "2")]);
+        build.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void TableCellRejectsBlockMarkupTest()
+    {
+        // act & assert
+        var build = () => new TableCellMarkup(new HeaderMarkup(1, new PlainTextMarkup("h")));
+        build.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void TableMentionsAreExtractedTest()
+    {
+        // arrange
+        var t = Parse<TableMarkup>("| @u:userId |\n| --- |\n| @u:otherId |");
+
+        // act
+        var mentions = MentionExtractor.Instance.GetMentionIds(t);
+
+        // assert
+        mentions.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void TableReadableTextSkipsDelimiterRowTest()
+    {
+        // arrange
+        var t = Parse<TableMarkup>("| a | b |\n| --- | --- |\n| 1 | 2 |");
+
+        // act
+        var readable = MarkupFormatter.ReadableUnstyled.Format(t).Replace("\r\n", "\n");
+
+        // assert
+        readable.Should().Be("| a | b |\n| 1 | 2 |");
+    }
+
+    [Fact]
+    public void TableIsTrimmedByWholeRowsTest()
+    {
+        // arrange
+        var t = Parse<TableMarkup>("| aaaa | bbbb |\n| --- | --- |\n| cccc | dddd |\n| eeee | ffff |");
+
+        // act
+        var trimmed = MarkupTrimmer.Instance.Trim(t, 10);
+
+        // assert
+        var trimmedTable = trimmed.Should().BeOfType<TableMarkup>().Subject;
+        trimmedTable.Rows.Length.Should().BeLessThan(t.Rows.Length);
+        trimmedTable.Rows.Should().AllSatisfy(r => r.Cells.Length.Should().Be(trimmedTable.ColumnCount));
+    }
+
     // Helpers
+
+    private static string CellText(TableRowMarkup row, int index)
+        => MarkupFormatter.Default.Format(row.Cells[index].Content);
+    private static TableRowMarkup NewRow(params string[] cells)
+        => new (cells.Select(c => new TableCellMarkup(new PlainTextMarkup(c))).ToArray());
 
     private TResult Parse<TResult>(string text, out string copy)
         where TResult : Markup

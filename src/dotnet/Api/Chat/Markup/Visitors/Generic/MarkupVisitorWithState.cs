@@ -15,6 +15,9 @@ public abstract record MarkupVisitorWithState<TState, TResult>
             TextMarkup textMarkup => VisitText(textMarkup, ref state),
             ListMarkup listMarkup => VisitList(listMarkup, ref state),
             ListItemMarkup listItemMarkup => VisitListItem(listItemMarkup, ref state),
+            TableMarkup tableMarkup => VisitTable(tableMarkup, ref state),
+            TableRowMarkup tableRowMarkup => VisitTableRow(tableRowMarkup, ref state),
+            TableCellMarkup tableCellMarkup => VisitTableCell(tableCellMarkup, ref state),
             _ => VisitUnknown(markup, ref state),
         };
 
@@ -31,6 +34,9 @@ public abstract record MarkupVisitorWithState<TState, TResult>
 
     protected abstract TResult VisitList(ListMarkup markup, ref TState state);
     protected abstract TResult VisitListItem(ListItemMarkup markup, ref TState state);
+    protected abstract TResult VisitTable(TableMarkup markup, ref TState state);
+    protected abstract TResult VisitTableRow(TableRowMarkup markup, ref TState state);
+    protected abstract TResult VisitTableCell(TableCellMarkup markup, ref TState state);
     protected abstract TResult VisitParagraph(ParagraphMarkup markup, ref TState state);
     protected abstract TResult VisitHeader(HeaderMarkup markup, ref TState state);
     protected virtual TResult VisitBlockQuote(BlockQuoteMarkup markup, ref TState state)
@@ -92,6 +98,15 @@ public abstract record MarkupVisitorWithState<TState>
         case ListItemMarkup listItemMarkup:
             VisitListItem(listItemMarkup, ref state);
             break;
+        case TableMarkup tableMarkup:
+            VisitTable(tableMarkup, ref state);
+            break;
+        case TableRowMarkup tableRowMarkup:
+            VisitTableRow(tableRowMarkup, ref state);
+            break;
+        case TableCellMarkup tableCellMarkup:
+            VisitTableCell(tableCellMarkup, ref state);
+            break;
         default:
             VisitUnknown(markup, ref state);
             break;
@@ -137,6 +152,20 @@ public abstract record MarkupVisitorWithState<TState>
             Visit(item, ref state);
     }
 
+    protected virtual void VisitTable(TableMarkup markup, ref TState state)
+    {
+        VisitTableRow(markup.Header, ref state);
+        foreach (var row in markup.Rows)
+            VisitTableRow(row, ref state);
+    }
+
+    protected virtual void VisitTableRow(TableRowMarkup markup, ref TState state)
+    {
+        foreach (var cell in markup.Cells)
+            VisitTableCell(cell, ref state);
+    }
+
+    protected abstract void VisitTableCell(TableCellMarkup markup, ref TState state);
     protected abstract void VisitListItem(ListItemMarkup markup, ref TState state);
     protected abstract void VisitParagraph(ParagraphMarkup markup, ref TState state);
     protected abstract void VisitHeader(HeaderMarkup markup, ref TState state);

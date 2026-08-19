@@ -15,6 +15,9 @@ public abstract record MarkupVisitor<TResult>
             TextMarkup textMarkup => VisitText(textMarkup),
             ListMarkup listMarkup => VisitList(listMarkup),
             ListItemMarkup listItemMarkup => VisitListItem(listItemMarkup),
+            TableMarkup tableMarkup => VisitTable(tableMarkup),
+            TableRowMarkup tableRowMarkup => VisitTableRow(tableRowMarkup),
+            TableCellMarkup tableCellMarkup => VisitTableCell(tableCellMarkup),
             _ => VisitUnknown(markup),
         };
 
@@ -31,6 +34,9 @@ public abstract record MarkupVisitor<TResult>
 
     protected abstract TResult VisitList(ListMarkup markup);
     protected abstract TResult VisitListItem(ListItemMarkup markup);
+    protected abstract TResult VisitTable(TableMarkup markup);
+    protected abstract TResult VisitTableRow(TableRowMarkup markup);
+    protected abstract TResult VisitTableCell(TableCellMarkup markup);
     protected abstract TResult VisitParagraph(ParagraphMarkup markup);
     protected abstract TResult VisitHeader(HeaderMarkup markup);
     protected virtual TResult VisitBlockQuote(BlockQuoteMarkup markup)
