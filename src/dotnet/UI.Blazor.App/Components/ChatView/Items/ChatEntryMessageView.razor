@@ -91,7 +91,7 @@
 }
 @{
     var showMenu = !isStateBadge;
-    var menuRef = showMenu ? MenuRef.New<MessageMenu>(entry.GetClientId(m.IsOwnMessage), bool.FalseString, "", "").ToString() : "";
+    var menuRef = showMenu ? MenuRef.New<MessageMenu>(entry.GetClientId(m.IsOwnMessage), bool.FalseString, "", "").ToString() : null;
 }
 <div class="@cls"
      data-chat-entry-id="@(isStateBadge ? null : entry.Id.Value)"
