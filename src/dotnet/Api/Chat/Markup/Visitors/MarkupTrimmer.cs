@@ -51,6 +51,31 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
             : new ListItemMarkup(newContent);
     }
 
+    protected override Markup VisitTable(TableMarkup markup, ref State state)
+    {
+        if (!state.CanAppend())
+            return Markup.EmptyText;
+
+        // Rows are dropped whole once the budget runs out: a partial row would break
+        // the table's rectangular shape, which TableMarkup doesn't allow.
+        if (VisitTableRow(markup.Header, ref state) is not TableRowMarkup newHeader)
+            return Markup.EmptyText;
+
+        var isUnchanged = ReferenceEquals(newHeader, markup.Header);
+        var newRows = new List<TableRowMarkup>();
+        foreach (var row in markup.Rows) {
+            if (!state.CanAppend() || VisitTableRow(row, ref state) is not TableRowMarkup newRow) {
+                isUnchanged = false;
+                break;
+            }
+
+            newRows.Add(newRow);
+            isUnchanged &= ReferenceEquals(newRow, row);
+        }
+
+        return isUnchanged ? markup : new TableMarkup(newHeader, markup.Alignments, newRows.ToArray());
+    }
+
     protected override Markup VisitSeq(MarkupSeq markup, ref State state)
     {
         var newItems = new List<Markup>();

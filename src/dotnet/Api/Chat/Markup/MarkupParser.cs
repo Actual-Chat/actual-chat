@@ -10,20 +10,18 @@ namespace ActualChat.Chat;
 /// Parses text into <see cref="Markup"/> using Pidgin parser combinators.
 /// </summary>
 #pragma warning disable CA1823 // Unused field ...
-
 public partial class MarkupParser : IMarkupParser
 {
     public static Markup EmptyResult => Markup.EmptyParagraph;
-
     public bool UseUnparsedTextMarkup { get; init; }
     public bool MustSimplify { get; init; } = true;
     public bool AllowIncompleteMarkup { get; init; }
-
     public Markup Parse(string text)
     {
         var markup = ParseRaw(text, UseUnparsedTextMarkup, AllowIncompleteMarkup);
         if (MustSimplify)
             markup = markup.Simplify();
+
         return markup;
     }
 
@@ -45,6 +43,7 @@ public partial class MarkupParser : IMarkupParser
             (true, true) => IncompleteWithUnparsedMarkup,
         };
         var result = parser.Parse(text);
+
         return result.Success ? result.Value : EmptyResult;
     }
 
@@ -96,7 +95,8 @@ public partial class MarkupParser : IMarkupParser
 
     private const string UrlProtoRe = @"(http|ftp)s?\:\/\/";
     private const string UrlHostRe = @"[0-9a-zA-Z](?>[-.\w]*[0-9a-zA-Z])*";
-    private const string UrlPortRe = @":(?:6553[0-5]|655[0-2][0-9]|65[0-4][0-9][0-9]|6[0-4][0-9]{3}|[1-5][0-9]{4}|[1-9][0-9]{0,3})";
+    private const string UrlPortRe =
+        @":(?:6553[0-5]|655[0-2][0-9]|65[0-4][0-9][0-9]|6[0-4][0-9]{3}|[1-5][0-9]{4}|[1-9][0-9]{0,3})";
     private const string UrlPathRe = @"[/?][a-zA-Z0-9\-\.\?\*\,\'\[\]\(\)\{\}\/\\\+&%\$#_!\|;=:@~]*";
     private const string FullUrlRe = $"{UrlProtoRe}{UrlHostRe}({UrlPortRe})?({UrlPathRe})?";
     private const string ShortUrlRe = $@"www\.{UrlHostRe}({UrlPortRe})?({UrlPathRe})?";
@@ -138,6 +138,20 @@ public partial class MarkupParser : IMarkupParser
             .Select(s => s.Length)
             .Before(Lookahead(WhitespaceChar));
 
+    // Table row: a line starting with '|'. That leading '|' is required, unlike in Markdown,
+    // because '|' is also the spoiler token here - a pipe-less "a | b" line stays ordinary text.
+    private static readonly Parser<char, string> TableRowLine =
+        Lookahead(Char(TableMarkup.CellSeparator)).Then(NotEndOfLineChar.ManyString());
+    // A table begins only where a row is followed by a delimiter row of matching cell count
+    // ("| --- | :-: |"), so any other line starting with '|' (e.g. "||spoiler||") stays text.
+    private static readonly Parser<char, char> TableStart = (
+        from headerLine in TableRowLine
+        from _ in EndOfLine
+        from delimiterLine in TableRowLine
+        select TryParseTableAlignments(headerLine, delimiterLine) != null)
+        .Where(isTableStart => isTableStart)
+        .ThenReturn(TableMarkup.CellSeparator);
+
     // Check what follows after a newline (used in lookahead)
     private static readonly Parser<char, char> ParagraphBreakAhead =
         EndOfLine.Then(EndOfLine).ThenReturn('\n'); // double newline = paragraph break
@@ -149,14 +163,17 @@ public partial class MarkupParser : IMarkupParser
         EndOfLine.Then(HeaderLevel);
     private static readonly Parser<char, char> QuoteAhead =
         EndOfLine.Then(Char('>').Before(WhitespaceChar)); // "> " block-quote line start
+    private static readonly Parser<char, char> TableAhead =
+        EndOfLine.Then(TableStart);
 
-    // Inline newline (single newline within inline content, not paragraph break or list/code/header/quote block start)
+    // Inline newline (single newline within inline content, not a paragraph break or a block start)
     private static readonly Parser<char, Markup> InlineNewLine =
         Lookahead(Not(ParagraphBreakAhead)) // not paragraph break
             .Then(Lookahead(Not(ListItemAhead))) // not list item start
             .Then(Lookahead(Not(CodeBlockAhead))) // not code block start
             .Then(Lookahead(Not(HeaderAhead))) // not header start
             .Then(Lookahead(Not(QuoteAhead))) // not block-quote start
+            .Then(Lookahead(Not(TableAhead))) // not table start
             .Then(EndOfLine)
             .ThenReturn(NewLineMarkup.Instance as Markup);
 
@@ -288,12 +305,13 @@ public partial class MarkupParser : IMarkupParser
     // A single paragraph line (can be empty - 0 or more chars)
     private static readonly Parser<char, string> ParagraphLine = NotEndOfLineChar.ManyString();
 
-    // Check if next line starts a block element (CodeBlock, ListBlock, Header, or BlockQuote)
+    // Check if next line starts a block element (CodeBlock, ListBlock, Header, BlockQuote, or Table)
     private static readonly Parser<char, char> BlockElementAhead =
         Lookahead(Try(CodeBlockToken.ThenReturn('`'))
             .Or(Try(OneOf(Char('-'), Char('*')).Before(WhitespaceChar)))
             .Or(Try(HeaderLevel.ThenReturn('#')))
-            .Or(Try(Char('>').Before(WhitespaceChar))));
+            .Or(Try(Char('>').Before(WhitespaceChar)))
+            .Or(Try(TableStart)));
 
     private static readonly Parser<char, string> QuoteContentLine =
         Char('>').Then(WhitespaceChar).Then(ParagraphLine);
@@ -321,7 +339,83 @@ public partial class MarkupParser : IMarkupParser
         }
     }
 
+    // Private methods
+
+    private static TableColumnAlignment[]? TryParseTableAlignments(string headerLine, string delimiterLine)
+    {
+        var cells = SplitTableRow(delimiterLine);
+        if (cells.Count == 0 || SplitTableRow(headerLine).Count != cells.Count)
+            return null;
+
+        var alignments = new TableColumnAlignment[cells.Count];
+        for (var i = 0; i < cells.Count; i++) {
+            if (TryParseTableAlignment(cells[i]) is not { } alignment)
+                return null;
+
+            alignments[i] = alignment;
+        }
+
+        return alignments;
+    }
+
+    // A delimiter cell is one or more '-' with an optional ':' on either side; ':' alone isn't one.
+    private static TableColumnAlignment? TryParseTableAlignment(string cell)
+    {
+        if (cell.Length == 0)
+            return null;
+
+        var hasLeftColon = cell[0] == ':';
+        var hasRightColon = cell[^1] == ':';
+        var start = hasLeftColon ? 1 : 0;
+        var end = hasRightColon ? cell.Length - 1 : cell.Length;
+        if (end <= start)
+            return null;
+
+        for (var i = start; i < end; i++)
+            if (cell[i] != '-')
+                return null;
+
+        return (hasLeftColon, hasRightColon) switch {
+            (true, true) => TableColumnAlignment.Center,
+            (true, false) => TableColumnAlignment.Left,
+            (false, true) => TableColumnAlignment.Right,
+            _ => TableColumnAlignment.None,
+        };
+    }
+
+    // Splits a "| a | b |" line (the leading '|' is required) into trimmed cell texts.
+    // The trailing '|' is optional and never produces an extra cell; "\|" is a literal '|'.
+    private static List<string> SplitTableRow(string line)
+    {
+        var cells = new List<string>();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
+        try {
+            for (var i = 1; i < line.Length; i++) {
+                var c = line[i];
+                if (c == '\\' && i + 1 < line.Length && line[i + 1] == TableMarkup.CellSeparator) {
+                    sb.Append(TableMarkup.CellSeparator);
+                    i++;
+                }
+                else if (c == TableMarkup.CellSeparator) {
+                    cells.Add(sb.ToString().Trim());
+                    sb.Clear();
+                }
+                else
+                    sb.Append(c);
+            }
+            var tail = sb.ToString().Trim();
+            if (tail.Length != 0)
+                cells.Add(tail);
+        }
+        finally {
+            sb.Release();
+        }
+
+        return cells;
+    }
+
     // Nested types
+
     private class InternalParsers(bool useUnparsedTextMarkup)
     {
         private bool UseUnparsedTextMarkup { get; } = useUnparsedTextMarkup;
@@ -408,8 +502,20 @@ public partial class MarkupParser : IMarkupParser
                 select BuildBlockQuote(firstLine, restLines, inlineParser)
                 ).Debug("<BlockQuote>");
 
-            // Any standalone block (list/code/header/quote, or paragraph including empty/inline-only).
-            var blockOrHeader = SafeTryOneOf(CodeBlock, listBlock, header, blockquote);
+            // Table: a header row, a delimiter row, and any number of body rows. Cells hold inline
+            // markup only, and a body row is padded/truncated to the header's cell count (as in GFM).
+            var table = (
+                from headerLine in TableRowLine
+                from _ in EndOfLine
+                from delimiterLine in TableRowLine
+                from bodyLines in Try(EndOfLine.Then(TableRowLine)).Many()
+                select TryBuildTable(headerLine, delimiterLine, bodyLines, inlineParser))
+                .Where(x => x != null)
+                .Select(x => x!)
+                .Debug("<Table>");
+
+            // Any standalone block (list/code/header/quote/table, or paragraph including empty/inline-only).
+            var blockOrHeader = SafeTryOneOf(CodeBlock, listBlock, header, blockquote, table);
             var block = SafeTryOneOf(blockOrHeader, paragraph);
 
             // After the first block, every subsequent block is preceded by one or more
@@ -445,7 +551,7 @@ public partial class MarkupParser : IMarkupParser
             IEnumerable<(int LeadingNewlines, Markup Item)> rest)
         {
             var items = new List<Markup> { first };
-            Markup prev = first;
+            var prev = first;
             foreach (var (leadingNewlines, item) in rest) {
                 var prevIsNonEmptyPara = MarkupSeqFormatHelper.IsNonEmptyPara(prev);
                 var currIsNonEmptyPara = MarkupSeqFormatHelper.IsNonEmptyPara(item);
@@ -473,10 +579,14 @@ public partial class MarkupParser : IMarkupParser
                 items.Add(item);
                 prev = item;
             }
+
             return Markup.Join(items);
         }
 
-        private static Markup BuildParagraph(string firstLine, IEnumerable<string> restParts, Parser<char, Markup> inlineParser)
+        private static Markup BuildParagraph(
+            string firstLine,
+            IEnumerable<string> restParts,
+            Parser<char, Markup> inlineParser)
         {
             // Concatenate all content (restParts already include newlines)
             var content = firstLine + string.Concat(restParts);
@@ -486,10 +596,40 @@ public partial class MarkupParser : IMarkupParser
         private static Markup BuildHeader(int level, string line, Parser<char, Markup> inlineParser)
             => new HeaderMarkup(level, inlineParser.ParseOrThrow(line));
 
-        private static Markup BuildBlockQuote(string firstLine, IEnumerable<string> restLines, Parser<char, Markup> inlineParser)
+        private static Markup BuildBlockQuote(
+            string firstLine,
+            IEnumerable<string> restLines,
+            Parser<char, Markup> inlineParser)
         {
             var content = firstLine + string.Concat(restLines);
             return new BlockQuoteMarkup(inlineParser.ParseOrThrow(content));
+        }
+
+        private static Markup? TryBuildTable(
+            string headerLine,
+            string delimiterLine,
+            IEnumerable<string> bodyLines,
+            Parser<char, Markup> inlineParser)
+        {
+            if (TryParseTableAlignments(headerLine, delimiterLine) is not { } alignments)
+                return null;
+
+            var columnCount = alignments.Length;
+            var header = BuildTableRow(headerLine, columnCount, inlineParser);
+            var rows = bodyLines.Select(line => BuildTableRow(line, columnCount, inlineParser)).ToArray();
+            return new TableMarkup(header, alignments, rows);
+        }
+
+        private static TableRowMarkup BuildTableRow(string line, int columnCount, Parser<char, Markup> inlineParser)
+        {
+            var cellTexts = SplitTableRow(line);
+            var cells = new TableCellMarkup[columnCount];
+            for (var i = 0; i < columnCount; i++) {
+                var cellText = i < cellTexts.Count ? cellTexts[i] : "";
+                cells[i] = new TableCellMarkup(inlineParser.ParseOrThrow(cellText));
+            }
+
+            return new TableRowMarkup(cells);
         }
     }
 

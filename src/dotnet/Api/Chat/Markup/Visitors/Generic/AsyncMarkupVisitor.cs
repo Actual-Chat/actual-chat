@@ -15,6 +15,9 @@ public abstract record AsyncMarkupVisitor<TResult>
             TextMarkup textMarkup => VisitText(textMarkup, cancellationToken),
             ListMarkup listMarkup => VisitList(listMarkup, cancellationToken),
             ListItemMarkup listItemMarkup => VisitListItem(listItemMarkup, cancellationToken),
+            TableMarkup tableMarkup => VisitTable(tableMarkup, cancellationToken),
+            TableRowMarkup tableRowMarkup => VisitTableRow(tableRowMarkup, cancellationToken),
+            TableCellMarkup tableCellMarkup => VisitTableCell(tableCellMarkup, cancellationToken),
             _ => VisitUnknown(markup, cancellationToken),
         };
 
@@ -22,7 +25,8 @@ public abstract record AsyncMarkupVisitor<TResult>
         => markup switch {
             PlainTextMarkup plainTextMarkup => VisitPlainText(plainTextMarkup, cancellationToken),
             PlayableTextMarkup playableTextMarkup => VisitPlayableText(playableTextMarkup, cancellationToken),
-            PreformattedTextMarkup preformattedTextMarkup => VisitPreformattedText(preformattedTextMarkup, cancellationToken),
+            PreformattedTextMarkup preformattedTextMarkup
+                => VisitPreformattedText(preformattedTextMarkup, cancellationToken),
             NewLineMarkup newLineMarkup => VisitNewLine(newLineMarkup, cancellationToken),
             UnparsedTextMarkup unparsedMarkup => VisitUnparsed(unparsedMarkup, cancellationToken),
             HashtagMarkup hashtagMarkup => VisitHashtag(hashtagMarkup, cancellationToken),
@@ -31,6 +35,9 @@ public abstract record AsyncMarkupVisitor<TResult>
 
     protected abstract ValueTask<TResult> VisitList(ListMarkup markup, CancellationToken cancellationToken);
     protected abstract ValueTask<TResult> VisitListItem(ListItemMarkup markup, CancellationToken cancellationToken);
+    protected abstract ValueTask<TResult> VisitTable(TableMarkup markup, CancellationToken cancellationToken);
+    protected abstract ValueTask<TResult> VisitTableRow(TableRowMarkup markup, CancellationToken cancellationToken);
+    protected abstract ValueTask<TResult> VisitTableCell(TableCellMarkup markup, CancellationToken cancellationToken);
     protected abstract ValueTask<TResult> VisitParagraph(ParagraphMarkup markup, CancellationToken cancellationToken);
     protected abstract ValueTask<TResult> VisitHeader(HeaderMarkup markup, CancellationToken cancellationToken);
     protected virtual ValueTask<TResult> VisitBlockQuote(BlockQuoteMarkup markup, CancellationToken cancellationToken)
@@ -44,8 +51,12 @@ public abstract record AsyncMarkupVisitor<TResult>
     protected abstract ValueTask<TResult> VisitCodeBlock(CodeBlockMarkup markup, CancellationToken cancellationToken);
 
     protected abstract ValueTask<TResult> VisitPlainText(PlainTextMarkup markup, CancellationToken cancellationToken);
-    protected abstract ValueTask<TResult> VisitPlayableText(PlayableTextMarkup markup, CancellationToken cancellationToken);
-    protected abstract ValueTask<TResult> VisitPreformattedText(PreformattedTextMarkup markup, CancellationToken cancellationToken);
+    protected abstract ValueTask<TResult> VisitPlayableText(
+        PlayableTextMarkup markup,
+        CancellationToken cancellationToken);
+    protected abstract ValueTask<TResult> VisitPreformattedText(
+        PreformattedTextMarkup markup,
+        CancellationToken cancellationToken);
     protected abstract ValueTask<TResult> VisitNewLine(NewLineMarkup markup, CancellationToken cancellationToken);
     protected abstract ValueTask<TResult> VisitUnparsed(UnparsedTextMarkup markup, CancellationToken cancellationToken);
     protected abstract ValueTask<TResult> VisitHashtag(HashtagMarkup markup, CancellationToken cancellationToken);

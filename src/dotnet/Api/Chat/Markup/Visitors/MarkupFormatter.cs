@@ -34,6 +34,41 @@ public abstract record MarkupFormatterBase : MarkupVisitorWithState<StringBuilde
         }
     }
 
+    protected override void VisitTable(TableMarkup markup, ref StringBuilder state)
+    {
+        VisitTableRow(markup.Header, ref state);
+        state.AppendLine();
+        state.Append(TableMarkup.CellSeparator);
+        foreach (var alignment in markup.Alignments) {
+            state.Append(' ');
+            state.Append(TableMarkup.FormatDelimiterCell(alignment));
+            state.Append(' ');
+            state.Append(TableMarkup.CellSeparator);
+        }
+        foreach (var row in markup.Rows) {
+            state.AppendLine();
+            VisitTableRow(row, ref state);
+        }
+    }
+
+    protected override void VisitTableRow(TableRowMarkup markup, ref StringBuilder state)
+    {
+        state.Append(TableMarkup.CellSeparator);
+        foreach (var cell in markup.Cells) {
+            state.Append(' ');
+            VisitTableCell(cell, ref state);
+            state.Append(' ');
+            state.Append(TableMarkup.CellSeparator);
+        }
+    }
+
+    protected override void VisitTableCell(TableCellMarkup markup, ref StringBuilder state)
+    {
+        var inner = ActualLab.Text.StringBuilderExt.Acquire();
+        Visit(markup.Content, ref inner);
+        state.Append(TableMarkup.EscapeCellText(inner.ToStringAndRelease()));
+    }
+
     protected override void VisitSeq(MarkupSeq markup, ref StringBuilder state)
     {
         // Inline sequences (e.g. paragraph content) contain no block markup; emit
@@ -169,6 +204,22 @@ public sealed record MarkupFormatter(
 
     protected override void VisitMention(MentionMarkup markup, ref StringBuilder state)
         => state.Append(MentionFormatter.Invoke(markup));
+
+    protected override void VisitTable(TableMarkup markup, ref StringBuilder state)
+    {
+        if (ShowStyleTokens) {
+            base.VisitTable(markup, ref state);
+            return;
+        }
+
+        // The delimiter row is pure syntax, so flattened text (notifications, chat-list &
+        // quote previews) leaves it out and keeps just the rows.
+        VisitTableRow(markup.Header, ref state);
+        foreach (var row in markup.Rows) {
+            state.AppendLine();
+            VisitTableRow(row, ref state);
+        }
+    }
 
     protected override void VisitStylized(StylizedMarkup markup, ref StringBuilder state)
     {

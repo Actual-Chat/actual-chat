@@ -12,6 +12,9 @@ public record LinkExtractor : MarkupVisitorWithState<HashSet<string>>
     protected override void VisitListItem(ListItemMarkup markup, ref HashSet<string> state)
         => Visit(markup.Content, ref state);
 
+    protected override void VisitTableCell(TableCellMarkup markup, ref HashSet<string> state)
+        => Visit(markup.Content, ref state);
+
     protected override void VisitParagraph(ParagraphMarkup markup, ref HashSet<string> state)
         => Visit(markup.Content, ref state);
 

@@ -1,0 +1,45 @@
+@inherits MarkupViewBase<TableMarkup>
+@{
+    var alignments = Markup.Alignments;
+    var headerCells = Markup.Header.Cells;
+    var rows = Markup.Rows;
+    var lastRowIndex = rows.Length - 1;
+}
+
+<div class="table-markup">
+    <table>
+        <thead>
+            <tr>
+                @for (var i = 0; i < headerCells.Length; i++) {
+                    <th style="@alignments[i].ToTextAlignStyle()">
+                        @RenderCell(headerCells[i], rows.Length == 0 && i == headerCells.Length - 1)
+                    </th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @for (var rowIndex = 0; rowIndex < rows.Length; rowIndex++) {
+                var cells = rows[rowIndex].Cells;
+                <tr>
+                    @for (var i = 0; i < cells.Length; i++) {
+                        <td style="@alignments[i].ToTextAlignStyle()">
+                            @RenderCell(cells[i], rowIndex == lastRowIndex && i == cells.Length - 1)
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [CascadingParameter] public RenderFragment? LastFragment { get; set; }
+    private RenderFragment RenderCell(TableCellMarkup cell, bool isLastCell)
+        // Only the very last cell may render LastFragment - otherwise the entry's status
+        // fragment (timestamp, delivery mark) would repeat in every cell of the table.
+        => isLastCell || LastFragment == null
+            ? @<MarkupView Markup="@cell.Content"/>
+            : @<CascadingValue TValue="RenderFragment" Value="@null">
+                  <MarkupView Markup="@cell.Content"/>
+              </CascadingValue>;
+}

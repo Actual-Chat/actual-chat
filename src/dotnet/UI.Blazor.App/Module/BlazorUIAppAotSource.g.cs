@@ -117,6 +117,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatNotificationBell>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatNotificationModeMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatPinnedBar>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatPinnedBarMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatPropertiesMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatQuickNavModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatSearchTab>();
@@ -134,7 +135,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ContactView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ContactsPermissionBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ContentListDateVisor>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ListeningLingerSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ConversationFooterView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ConversationHeaderView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ConversationMenu>();
@@ -225,6 +225,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LinkPreviewView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LinkRow>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ListenButtonBubble>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ListeningLingerSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ListeningTimerBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LiveActivitiesDisabledBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LiveConversationFooterView>();
@@ -262,6 +263,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.PreformattedTextMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.SpoilerMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.StylizedMarkupView>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.TableMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.UnknownMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.UrlMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.UserMentionView>();
@@ -303,6 +305,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Notifications.NotificationEntry>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Notifications.NotificationStack>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsNavbarWidget>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsPanelSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsPermissionBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsTabUnreadCount>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotifyAllButton>();
@@ -531,6 +534,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.IFileProvider>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.MauiFileProvider>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.RelatedEntryRef>();
+        CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.RetainedRead>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.SendMessageRequestEntry>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.UploadSessionSnapshot>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.WebFileProvider>();
@@ -636,6 +640,9 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.RelatedEntryRef>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.RelatedEntryRef>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.RelatedEntryRef>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.RetainedRead>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.RetainedRead>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.RetainedRead>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.SendMessageRequestEntry>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.SendMessageRequestEntry>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.SendMessageRequestEntry>>>>();
@@ -746,6 +753,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+MauiFileProviderFormatter, ActualChat.UI.Blazor.App");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+RelatedEntryKindFormatter, ActualChat.UI.Blazor.App");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+RelatedEntryRefFormatter, ActualChat.UI.Blazor.App");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+RetainedReadFormatter, ActualChat.UI.Blazor.App");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+SendMessageRequestEntryFormatter, ActualChat.UI.Blazor.App");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+UploadSessionSnapshotFormatter, ActualChat.UI.Blazor.App");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+UploadSessionStateFormatter, ActualChat.UI.Blazor.App");
@@ -856,6 +864,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatNotificationBell), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatNotificationModeMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatPinnedBar), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatPinnedBarMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatPropertiesMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatQuickNavModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatSearchTab), AotTypeKind.Component),
@@ -873,7 +882,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ContactView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ContactsPermissionBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ContentListDateVisor), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.ListeningLingerSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ConversationFooterView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ConversationHeaderView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ConversationMenu), AotTypeKind.Component),
@@ -964,6 +972,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.LinkPreviewView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LinkRow), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ListenButtonBubble), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ListeningLingerSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ListeningTimerBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LiveActivitiesDisabledBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LiveConversationFooterView), AotTypeKind.Component),
@@ -1001,6 +1010,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.PreformattedTextMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.SpoilerMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.StylizedMarkupView), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.TableMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.UnknownMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.UrlMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.UserMentionView), AotTypeKind.Component),
@@ -1042,6 +1052,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.Notifications.NotificationEntry), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Notifications.NotificationStack), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsNavbarWidget), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsPanelSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsPermissionBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsTabUnreadCount), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotifyAllButton), AotTypeKind.Component),
@@ -1270,6 +1281,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Services.IFileProvider), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.MauiFileProvider), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.RelatedEntryRef), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.UI.Blazor.App.Services.RetainedRead), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.SendMessageRequestEntry), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.UploadSessionSnapshot), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.WebFileProvider), AotTypeKind.Serializable),
