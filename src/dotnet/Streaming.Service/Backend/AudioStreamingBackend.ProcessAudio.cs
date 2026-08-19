@@ -605,7 +605,7 @@ public partial class AudioStreamingBackend
         finally {
             if (lastTranscript != null && textEntry != null) {
                 // The entry may have been removed by the user or already finalized by
-                // ChatEntryFixupFlow while we were running. Both are legitimate races
+                // StreamingEntryFixupFlow while we were running. Both are legitimate races
                 // now that streaming entries are user-removable and the fix-up flow
                 // self-heals stuck entries. Re-check before issuing the update.
                 var current = await ChatsBackend.GetEntry(textEntry.Id, CancellationToken.None).ConfigureAwait(false);

@@ -1,4 +1,5 @@
 using ActualChat.Chat.Flows;
+using ActualChat.Flows;
 using ActualChat.Queues;
 using ActualChat.Testing.Host;
 
@@ -25,7 +26,7 @@ public class StreamingEntryFixupTest(ChatCollection.AppHostFixture fixture, ITes
             content: "");
 
         // act
-        await RunFixupFlow(chatId, tester);
+        await RunFixupFlow(tester);
 
         // assert
         await ComputedTest.When(async ct => {
@@ -48,14 +49,15 @@ public class StreamingEntryFixupTest(ChatCollection.AppHostFixture fixture, ITes
             content: "partial transcript");
 
         // act
-        await RunFixupFlow(chatId, tester);
+        await RunFixupFlow(tester);
 
         // assert
         await ComputedTest.When(async ct => {
             var current = await tester.Chats.GetEntry(tester.Session, streaming.ChatEntrySlim.Id, ct);
             current.Should().NotBeNull();
             current!.IsRemoved.Should().BeFalse();
-            current.IsContentStreaming.Should().BeFalse(because: "fix-up flow must close stale streaming entries with text");
+            current.IsContentStreaming.Should()
+                .BeFalse(because: "fix-up flow must close stale streaming entries with text");
             current.EndsAt.Should().NotBeNull();
             current.Content.Should().Be("partial transcript");
         }, WaitTimeout);
@@ -70,7 +72,7 @@ public class StreamingEntryFixupTest(ChatCollection.AppHostFixture fixture, ITes
         var streaming = await tester.CreateStreamingEntry(chatId, Languages.English, content: "fresh");
 
         // act
-        await RunFixupFlow(chatId, tester);
+        await RunFixupFlow(tester);
 
         // assert
         var current = await tester.Chats.GetEntry(tester.Session, streaming.ChatEntrySlim.Id, CancellationToken.None);
@@ -87,17 +89,17 @@ public class StreamingEntryFixupTest(ChatCollection.AppHostFixture fixture, ITes
         var chatId = await CreateUserChat(tester);
         var clocks = tester.AppServices.Clocks();
         var fresh = await tester.CreateStreamingEntry(chatId, Languages.English, content: "fresh");
-        await RunFixupFlow(chatId, tester);
+        await RunFixupFlow(tester);
 
         // act
-        // The fresh entry pins the flow's cursor, so this later one is only ever
-        // reached if the next run rescans from the pinned position rather than past it.
+        // A fresh entry must not hold back a later stale one — the predecessor flow
+        // tracked a per-chat cursor that the fresh entry pinned, stalling everything behind it.
         var stale = await tester.CreateStreamingEntry(
             chatId,
             Languages.English,
             beginsAt: clocks.SystemClock.Now - StaleDelta,
             content: "stale after fresh");
-        await RunFixupFlow(chatId, tester);
+        await RunFixupFlow(tester);
 
         // assert
         await ComputedTest.When(async ct => {
@@ -108,6 +110,34 @@ public class StreamingEntryFixupTest(ChatCollection.AppHostFixture fixture, ITes
         var freshNow = await tester.Chats.GetEntry(tester.Session, fresh.ChatEntrySlim.Id, CancellationToken.None);
         freshNow.Should().NotBeNull();
         freshNow!.IsContentStreaming.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task FixupFlowKeepsRunningWithoutAnExternalKick()
+    {
+        // arrange
+        // The predecessor woke up only from a per-chat entry-creation event, so one lost event
+        // starved that chat's fix-up forever. These two traits are what make that unreachable.
+        typeof(StreamingEntryFixupFlow).Should().BeAssignableTo<IMasterFlow>();
+        typeof(StreamingEntryFixupFlow).Should().BeAssignableTo<PeriodicFlow>();
+
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var chatId = await CreateUserChat(tester);
+        var clocks = tester.AppServices.Clocks();
+        await tester.CreateStreamingEntry(
+            chatId,
+            Languages.English,
+            beginsAt: clocks.SystemClock.Now - StaleDelta,
+            content: "needs a run to be closed");
+
+        // act
+        await RunFixupFlow(tester);
+
+        // assert
+        var flow = await FlowHub.TryGet<StreamingEntryFixupFlow>("");
+        flow.Should().NotBeNull();
+        flow!.RunCount.Should().BePositive(because: "the stale entry above must have triggered a run");
+        flow.UntypedResult.Should().BeNull(because: "a completed flow would never run again");
     }
 
     [Fact]
@@ -148,10 +178,10 @@ public class StreamingEntryFixupTest(ChatCollection.AppHostFixture fixture, ITes
         return chat.Id;
     }
 
-    private async Task RunFixupFlow(ChatId chatId, IWebTester tester)
+    private async Task RunFixupFlow(IWebTester tester)
     {
-        // Immediate (no-delay) resume — bypasses the production scheduling delay.
-        await FlowHub.NewResumeEvent<ChatEntryFixupFlow>(chatId.Value)
+        // Immediate (no-delay) resume of the master flow — bypasses its run interval.
+        await FlowHub.NewResumeEvent<StreamingEntryFixupFlow>("")
             .WithDelayQuanta(TimeSpan.Zero)
             .Schedule();
         await tester.AppServices.Queues().WhenProcessing();

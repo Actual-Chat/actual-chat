@@ -109,11 +109,12 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
                 Constants.Translation.ServiceKey,
                 Settings.Translation.OpenAIModel,
                 Settings.Translation.HttpTimeout);
-            if (!Settings.Translation.RealtimeOpenAIModel.IsNullOrEmpty() && Settings.Translation.RealtimeGeminiModel.IsNullOrEmpty())
+            if (!Settings.Translation.RealtimeOpenAIModel.IsNullOrEmpty()
+                && Settings.Translation.RealtimeGeminiModel.IsNullOrEmpty())
                 AddKeyedOpenAI(services,
                     Constants.Translation.RealtimeServiceKey,
                     Settings.Translation.RealtimeOpenAIModel,
-                        Settings.Translation.HttpTimeout);
+                    Settings.Translation.HttpTimeout);
             else if (!Settings.Translation.RealtimeGeminiModel.IsNullOrEmpty())
                 AddKeyedVertexAI(services,
                     Constants.Translation.RealtimeServiceKey,
@@ -133,26 +134,34 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
         // Keyed registration for ConversationSplitFlow
         services.AddKeyedSingleton<IEntryGroupExtractor>(EntryGroupLimit.None,
-            (c, _) => new EntryGroupExtractor(c.GetRequiredService<IEmbeddingsCalculator>(), c.LogFor<EntryGroupExtractor>()));
+            (c, _) => new EntryGroupExtractor(
+                c.GetRequiredService<IEmbeddingsCalculator>(),
+                c.LogFor<EntryGroupExtractor>()));
 
         if (Settings.IsSummarizationEnabled) {
-            AddKeyedOpenAI(services, ConversationSummarizer.ServiceKey, Settings.Summarization.OpenAIModel, Settings.Summarization.HttpTimeout);
+            AddKeyedOpenAI(services,
+                ConversationSummarizer.ServiceKey,
+                Settings.Summarization.OpenAIModel,
+                Settings.Summarization.HttpTimeout);
             services.AddSingleton<IConversationSummarizer>(
                 c => new ConversationSummarizer(
                     new ConversationSummarizer.Options {
-                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.Summarization.SummarizeConversationPromptFile,
+                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir
+                            | Settings.Summarization.SummarizeConversationPromptFile,
                     },
                     c));
             services.AddSingleton<IThreadInsightExtractor, ThreadInsightExtractor>(
                 c => new ThreadInsightExtractor(
                     new ThreadInsightExtractor.Options {
-                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.Summarization.SuggestChatThreadTitlePromptFile,
+                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir
+                            | Settings.Summarization.SuggestChatThreadTitlePromptFile,
                     },
                     c));
             services.AddSingleton<IChatDigestSummarizer, ChatDigestSummarizer>(
                 c => new ChatDigestSummarizer(
                     new ChatDigestSummarizer.Options {
-                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.Summarization.SummarizeChatDigestPromptFile,
+                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir
+                            | Settings.Summarization.SummarizeChatDigestPromptFile,
                     },
                     c));
         }
@@ -173,7 +182,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             .Add<ChatEntryMigrationFlow>()
             .Add<ChatEntryMigrationFixupFlow>()
             .Add<ChatEntryEndsAtFixupFlow>()
-            .Add<ChatEntryFixupFlow>()
+            .Add<StreamingEntryFixupFlow>()
             .Add<ConversationSplitMasterFlow>()
             .Add<ConversationSplitFlow>()
             .Add<LiveConversationSummaryFlow>()
@@ -241,11 +250,18 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         });
     }
 
-    private void AddKeyedOpenAI(IServiceCollection services, string serviceKey, string openAIModel, TimeSpan? httpClientTimeout = null)
+    private void AddKeyedOpenAI(
+        IServiceCollection services,
+        string serviceKey,
+        string openAIModel,
+        TimeSpan? httpClientTimeout = null)
     {
-        var httpClient = new HttpClient(new OpenAIRateLimitsLoggingHandler(new OpenAIRateLimitsLoggingHandler.Options(false)) {
+        var loggingHandlerOptions = new OpenAIRateLimitsLoggingHandler.Options(false);
+        var httpClient = new HttpClient(new OpenAIRateLimitsLoggingHandler(loggingHandlerOptions) {
             InnerHandler = new HttpClientHandler {
-                Proxy = !CoreServerSettings.OpenAIProxy.IsNullOrEmpty() ? new WebProxy(CoreServerSettings.OpenAIProxy) : null,
+                Proxy = !CoreServerSettings.OpenAIProxy.IsNullOrEmpty()
+                    ? new WebProxy(CoreServerSettings.OpenAIProxy)
+                    : null,
                 UseProxy = !CoreServerSettings.OpenAIProxy.IsNullOrEmpty(),
             },
         }) {
@@ -258,7 +274,8 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
         // unlimited
         var unlimitedServiceKey = serviceKey + "_Unlimited";
-        services.AddKernel().AddOpenAIChatCompletion(openAIModel, openAIKey, serviceId: unlimitedServiceKey, httpClient: httpClient);
+        services.AddKernel().AddOpenAIChatCompletion(
+            openAIModel, openAIKey, serviceId: unlimitedServiceKey, httpClient: httpClient);
 
         // rate-limited
         var rateLimitedKey = serviceKey + "_RateLimited";
@@ -277,10 +294,16 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             (c, _) => c.GetRequiredKeyedService<IChatCompletionService>(rateLimitedKey));
     }
 
-    private void AddKeyedVertexAI(IServiceCollection services, string serviceKey, string model, TimeSpan? httpClientTimeout = null)
+    private void AddKeyedVertexAI(
+        IServiceCollection services,
+        string serviceKey,
+        string model,
+        TimeSpan? httpClientTimeout = null)
     {
         var httpClient = new HttpClient(new HttpClientHandler {
-            Proxy = !CoreServerSettings.OpenAIProxy.IsNullOrEmpty() ? new WebProxy(CoreServerSettings.OpenAIProxy) : null,
+            Proxy = !CoreServerSettings.OpenAIProxy.IsNullOrEmpty()
+                ? new WebProxy(CoreServerSettings.OpenAIProxy)
+                : null,
             UseProxy = !CoreServerSettings.OpenAIProxy.IsNullOrEmpty(),
         });
         services.AddKeyedSingleton(serviceKey, httpClient); // for disposal
@@ -289,14 +312,16 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         if (coreSettings.GoogleProjectId.IsNullOrEmpty()) {
             var platform = Platform.Instance();
             coreSettings.GoogleProjectId = platform?.ProjectId ?? throw StandardError.NotSupported<ChatServiceModule>(
-                $"Requires GKE or explicit settings of {nameof(CoreServerSettings)}.{nameof(CoreServerSettings.GoogleProjectId)}");
+                $"Requires GKE or explicit settings of {nameof(CoreServerSettings)}."
+                + $"{nameof(CoreServerSettings.GoogleProjectId)}");
         }
         if (model.IsNullOrEmpty())
             model = "gemini-2.5-flash";
 
         // unlimited
         var unlimitedServiceKey = serviceKey + "_Unlimited";
-        var hostLifetime = ModuleServices.HostLifetime(); // TODO(AY): ModuleServices shouldn't contain IHostApplicationLifetime!
+        // TODO(AY): ModuleServices shouldn't contain IHostApplicationLifetime!
+        var hostLifetime = ModuleServices.HostLifetime();
         services.AddKernel()
             .AddVertexAIGeminiChatCompletion(model,
                 () => GetBearerToken(hostLifetime.StopToken()),

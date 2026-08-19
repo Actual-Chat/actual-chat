@@ -57,7 +57,10 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         chatEntry.Property(e => e.AudioId).UseCollation("C");
         chatEntry.Property(e => e.ForwardedAuthorId).UseCollation("C");
         chatEntry.Property(e => e.LinkPreviewIds).UseCollation("C");
-        chatEntry.HasIndex(e => e.ContentStreamId).HasFilter("\"kind\" = 0 AND \"content_stream_id\" IS NOT NULL");
+        // A finalized entry keeps an empty ContentStreamId rather than null, so an IS NOT NULL
+        // filter here indexes every entry ever streamed - orders of magnitude more rows than the
+        // handful still streaming, which is all either this index's lookups or the fixup flow want.
+        chatEntry.HasIndex(e => e.ContentStreamId).HasFilter("\"kind\" = 0 AND \"content_stream_id\" <> ''");
         chatEntry.HasIndex(e => e.AudioId).HasFilter("\"kind\" = 0 AND \"audio_id\" IS NOT NULL");
 
         var chatEntryLanguage = model.Entity<DbChatEntryLanguage>();
@@ -137,8 +140,13 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         conversation.Property(e => e.Description).UseCollation("C");
         conversation.Property(e => e.Summary).UseCollation("C");
         conversation.Property(e => e.AuthorIds).UseCollation("C");
-        conversation.HasIndex(x => new { x.ChatId, x.StartEntryLid }).IsUnique().IncludeProperties(nameof(DbConversation.EndEntryLid));
-        conversation.HasIndex(x => new { x.ChatId, x.EndEntryLid }).IsDescending(false, true).IsUnique().IncludeProperties(nameof(DbConversation.StartEntryLid));
+        conversation.HasIndex(x => new { x.ChatId, x.StartEntryLid })
+            .IsUnique()
+            .IncludeProperties(nameof(DbConversation.EndEntryLid));
+        conversation.HasIndex(x => new { x.ChatId, x.EndEntryLid })
+            .IsDescending(false, true)
+            .IsUnique()
+            .IncludeProperties(nameof(DbConversation.StartEntryLid));
 
         var sharedLocation = model.Entity<DbSharedLocation>();
         sharedLocation.Property(e => e.Id).UseCollation("C");

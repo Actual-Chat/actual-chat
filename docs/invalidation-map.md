@@ -547,7 +547,7 @@ ChatsBackend.OnChangeEntry(Create)
    ├─ MentionsBackend                     → GetLast(chat, mention)  → ChatUI.Get for mentioned users
    ├─ NotificationsBackend                → GetUserNotificationInfo(user) per recipient
    ├─ ChatUsagesBackend, SearchBackend, LinkPreviewsBackend, ChatEntryLanguagesBackend
-   └─ flows: ChatEntryFixupFlow, ConversationSplitFlow, LiveConversationSummaryFlow
+   └─ flows: ConversationSplitFlow, LiveConversationSummaryFlow
 ```
 
 Amplification: **per chat member currently subscribed**. In a 500-member place chat

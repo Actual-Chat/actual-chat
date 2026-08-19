@@ -2106,11 +2106,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return; // It just spawns other commands, so nothing to do here
 
         var (entry, _, kind, _) = eventCommand;
-        if (kind == ChangeKind.Create)
-            await FlowHub.NewResumeEvent<ChatEntryFixupFlow>(entry.ChatId.Value)
-                .WithDelay(Constants.Chat.StreamingEntryFixupDelay + TimeSpan.FromSeconds(1))
-                .Schedule(cancellationToken).ConfigureAwait(false);
-
         await ResumeContentIndexing(eventCommand, cancellationToken).ConfigureAwait(false);
 
         if (entry.IsContentStreaming)
@@ -2119,8 +2114,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await Summarize().ConfigureAwait(false);
         return;
 
-        async Task Summarize()
-        {
+        async Task Summarize() {
             if (!Settings.IsSummarizationEnabled)
                 return;
 
@@ -2134,7 +2128,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var endsAt = Moment.Max(entry.GetEndsAt(), Clocks.SystemClock.Now);
             await FlowHub
                 .NewResumeEvent<ConversationSplitFlow>(chat.Id.Value)
-                .WithDelay(endsAt + Settings.Summarization.ChatEntrySummarizationDelay, Settings.Summarization.ChatEntrySummarizationDelayQuanta)
+                .WithDelay(
+                    endsAt + Settings.Summarization.ChatEntrySummarizationDelay,
+                    Settings.Summarization.ChatEntrySummarizationDelayQuanta)
                 .Schedule(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -2142,7 +2138,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             // no-ops and completes when there's no active live conversation for the chat.
             if (entry.HasAudio)
                 await FlowHub.NewResumeEvent<LiveConversationSummaryFlow>(chat.Id.Value)
-                    .WithDelay(Settings.Summarization.ChatEntrySummarizationDelayQuanta, Settings.Summarization.ChatEntrySummarizationDelayQuanta)
+                    .WithDelay(
+                        Settings.Summarization.ChatEntrySummarizationDelayQuanta,
+                        Settings.Summarization.ChatEntrySummarizationDelayQuanta)
                     .Schedule(cancellationToken)
                     .ConfigureAwait(false);
         }
