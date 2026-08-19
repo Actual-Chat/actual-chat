@@ -83,9 +83,9 @@ public class ChatMarkupHubExtTest
     }
 
     [Theory]
-    [InlineData(MarkupConsumer.Notification, "Sent a location")]
-    [InlineData(MarkupConsumer.ChatListItemText, "Sent a location")]
-    [InlineData(MarkupConsumer.QuoteView, "Sent a location")]
+    [InlineData(MarkupConsumer.Notification, "\U0001F4CD Sent a location")]
+    [InlineData(MarkupConsumer.ChatListItemText, "\U0001F4CD Sent a location")]
+    [InlineData(MarkupConsumer.QuoteView, "\U0001F4CD Sent a location")]
     [InlineData(MarkupConsumer.ReactionNotification, "your location")]
     public void ShouldGetLocationMarkupInsteadOfOldClientFallbackContent(
         MarkupConsumer consumer, string expectedMarkupText)
