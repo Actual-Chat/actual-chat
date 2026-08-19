@@ -223,7 +223,10 @@ export class ActiveRecordingSvg extends LitElement {
                 </svg>
             `;
         } else {
-            if (getComputedStyle(this).display === 'none')
+            // Gate on the reactive isVisible, not getComputedStyle(display): a plain
+            // display:none -> flex reveal via ancestor classes is not a Lit input, so a
+            // computed-style gate leaves a stale empty render until audio re-renders it.
+            if (!this.isVisible)
                 return html``;
 
             const shouldAnimate = isVoiceActive && isVisible;

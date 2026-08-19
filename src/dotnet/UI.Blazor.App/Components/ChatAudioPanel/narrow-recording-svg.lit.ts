@@ -46,12 +46,16 @@ export class NarrowRecordingSvg extends LitElement {
 
     private recorderStateChangedSubscription: Subscription;
     private signalPowerSubscription: Subscription;
+    private observer: IntersectionObserver;
 
     @state()
     private opacity: number | null = null;
 
     @state()
     private isVoiceActive = false;
+
+    @state()
+    private isVisible = false;
 
     private _isRecording: boolean;
     @property({ type: Boolean })
@@ -65,6 +69,11 @@ export class NarrowRecordingSvg extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
+
+        this.observer = new IntersectionObserver(entries => {
+            this.isVisible = entries.some(e => e.isIntersecting);
+        });
+        this.observer.observe(this);
 
         const minOpacity = 60;
         const maxOpacity = 100;
@@ -110,6 +119,7 @@ export class NarrowRecordingSvg extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
 
+        this.observer.disconnect();
         this.recorderStateChangedSubscription.unsubscribe();
         this.signalPowerSubscription.unsubscribe();
     }
@@ -131,7 +141,10 @@ export class NarrowRecordingSvg extends LitElement {
         if (!this._isRecording)
             return this.renderIcon(0.75, 'idle-overlay', '');
 
-        if (getComputedStyle(this).display === 'none')
+        // Gate on the reactive isVisible, not getComputedStyle(display): a plain
+        // display:none -> flex reveal via ancestor classes is not a Lit input, so a
+        // computed-style gate leaves a stale empty render until audio re-renders it.
+        if (!this.isVisible)
             return html``;
 
         const opacity = this.opacity ?? 0.7;
