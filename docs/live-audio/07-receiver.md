@@ -58,10 +58,12 @@ decoder → feeder via a per-track `MessagePort` pair.
    - `LiveStreamDemuxer` parses the `RpcStream<LiveStreamItem>` and fires
      `StreamStarted` per author.
 4. **Per author**: `OnStreamStarted(streamInfo, audioFrames)` constructs an
-   `AudioSource`, computes `playAt` = `max(streamInfo.BeginsAt,
-   serverNow - PlaybackTargetBufferSizeWithVideo)`, and calls
+   `AudioSource` over the frames exactly as they arrive and calls
    `Playback.Play(ChatAudioTrackInfo, AudioSource)`. That spins up an
-   `AudioTrackPlayer`.
+   `AudioTrackPlayer`. **The receiver never trims.** The server serves a stream
+   from the producer's current position when a listener's muxer first sees it and
+   whole afterwards, so every frame that arrives is meant to be heard - see
+   [`06-server-fanout-and-replay.md`](06-server-fanout-and-replay.md).
 5. `AudioTrackPlayer` calls `WebAudioPlaybackEngine.Play()` which calls
    the JS `AudioPlayer.create(...)`.
 
@@ -80,6 +82,20 @@ the same.
 `RpcStream<LiveStreamItem>` paced server-side; the client doesn't add
 its own playback delay logic. Wall-clock tracking via `CpuTimestamp`
 corrects for sleep and pauses.
+
+### Bounding how far a track may lag
+
+Removing the trim means a track whose wire stalled and then burst stays behind
+for the rest of its life, and the muxer plays authors concurrently - so a track
+seconds behind would be mixed over whoever is speaking now. `AudioStreamDemuxer`
+bounds that at utterance boundaries: when a new stream starts, any other track
+whose queued-but-unplayed audio exceeds `Constants.Audio.MaxTrackBacklog` (2 s)
+is drained and completed.
+
+The metric is the demuxer channel's queue depth - no clock, near zero on a
+healthy link, and blind to genuine overlap, since two people talking at once each
+queue nothing. Nothing else in the receiver ever discards audio; a long monologue
+over a bad link stays late until it ends rather than being cut mid-sentence.
 
 ## C# side: `AudioTrackPlayer` and `WebAudioPlaybackEngine`
 
@@ -113,24 +129,21 @@ The first 30 ms gets a burst so the feeder can light up; the next
 queue before the worklet is even scheduled. After 200 ms,
 flow-control via `isBufferLow` takes over.
 
-### A/V sync hook (currently disabled)
+### A/V sync hook
 
-Every 10 frames (~200 ms), `ApplyAudioSync()` runs:
+Every 10 frames (~200 ms), `ApplyAudioSync()` runs. It never drops or speeds up
+audio - the only lever is the playback-buffer hold, raised toward video's
+presentation lag so audio doesn't lead it:
 
 ```csharp
-if (!ChatAudioUI.IsAudioSyncEnabled) return;       // FALSE in production
-var desired = await CatchUpPolicy.GetDesiredCatchUp(authorId, ct);
-if (desired >= Constants.Audio.PlaybackHardSkipThreshold)  // ≈ 2 s
-    _playbackEngine.SkipUntil(targetMs);
-else if (desired > 0)
-    _playbackEngine.SpeedUpUntil(targetMs, dropEveryN: 4);
+if (!ChatAudioUI.IsAudioSyncEnabled || _isOwnStream) return;   // enabled by default
+AdjustBufferHold(authorId);   // target buffer <- videoLag, clamped by AudioSyncMaxHold
 ```
 
-`LiveAudioCatchUpPolicy` reads `PlaybackLagTracker` (which fuses video and
-audio lag samples from `OnPresentationLag` callbacks) to compute a
-desired correction. The flag `IsAudioSyncEnabled` defaults to `false`
-(`// NOTE(AY): Needs testing!`); toggle via `DebugUI.EnableAudioSync(true)`
-on a dev instance.
+`AdjustBufferHold` reads `PlaybackLagTracker`, which fuses video and audio lag
+samples from `OnPresentationLag` callbacks. `SetTargetBufferSize` is implemented
+on the web engine only, so the runtime part of the hold is web-only today; all
+engines honour `TrackInfo.TargetBufferSize` at `Play()`.
 
 For full design, see
 [`live-video/11-buffering-and-av-sync.md`](../live-video/11-buffering-and-av-sync.md).
@@ -230,27 +243,24 @@ One per track. State machine:
 | `targetDurationMs > 0` | warming up: need at least N ms buffered before releasing first frame | gated |
 | post-warmup | normal jitter buffer | `shiftReady` returns frame if buffered ≥ `targetDurationMs` |
 
-Two control inputs from main:
+One control input from main: `setTargetDuration(ms)`, the prebuffer gate.
+`shiftReady()` releases nothing until the buffer first reaches target, then
+streams freely.
 
-- `skipUntil(sourceOffsetMs)` — drop all frames with offset < target.
-- `speedUpUntil(sourceOffsetMs, dropEveryN)` — counter-based speed-up;
-  drop every Nth frame until reaching target.
-
-These are the audio side of A/V sync. They live in the worker (not the
-worklet) because dropping encoded frames is much cheaper than dropping
-PCM samples.
+There is no drop or speed-up path. Earlier designs had `skipUntil` /
+`speedUpUntil` here for A/V catch-up; both are gone, and the only correction is
+the additive hold this target implements. Audio always plays at 1x, and the
+receiver discards audio in exactly one place - the demuxer's boundary drop.
 
 ### Decode loop
 
 For each `EncodedFrame`:
 
-1. If `skipUntilMs` is active and `sourceOffsetMs < skipUntilMs`, drop.
-2. If `speedUpUntilMs` is active and the frame counter says "drop", drop.
-3. `decoder.decode(EncodedAudioChunk)`.
-4. Forward decoded PCM samples to feeder via `MessagePort` along with
+1. `decoder.decode(EncodedAudioChunk)`.
+2. Forward decoded PCM samples to feeder via `MessagePort` along with
    `sourceRecordedAtMs`, `sourceOffsetMs`, and `presentationLagMs`
    metadata.
-5. Pool the input `ArrayBuffer` back to main via `transfer`.
+3. Pool the input `ArrayBuffer` back to main via `transfer`.
 
 The decoder is either the system `AudioDecoder` (WebCodecs) or a libopus
 WASM build, picked at `create()` time.
@@ -288,12 +298,12 @@ asks the decoder for more frames. Above this it stays quiet. The actual
 jitter buffer is upstream (decoder's `EncodedFrameBuffer`), and is
 configured via `targetBufferSizeMs` from C#.
 
-For audio-only tracks, `targetBufferSizeMs = 0` (no extra delay needed).
-For audio paired with video, `targetBufferSizeMs =
-PlaybackTargetBufferSizeWithVideo` so the audio buffer matches the video
-buffer's natural delay — this is the original "audio adopts video's
-target delay" plan, applied at buffer level even before the A/V sync
-catch-up policy kicks in.
+`ChatAudioUI.GetPlaybackTargetBufferSize` returns
+`PlaybackTargetBufferSize` (240 ms) for audio-only tracks and
+`PlaybackTargetBufferSizeWithVideo` (280 ms) when the chat has video, so the
+audio buffer matches the video buffer's natural delay — "audio adopts video's
+target delay", applied at buffer level before the runtime hold adjusts it.
+Docs claiming 0 ms for audio-only are stale.
 
 ## Audio context — `AudioContextSource`
 

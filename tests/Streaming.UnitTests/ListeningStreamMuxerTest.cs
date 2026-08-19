@@ -107,7 +107,55 @@ public class ListeningStreamMuxerTest
         h.GetActiveStreamId(Author2).Should().Be("stream-b");
     }
 
+    [Fact]
+    public void GetSkipToRequestsLiveEdgeForAPreexistingStream()
+    {
+        // arrange
+        var streamInfo = StreamInfo(Author1, "stream-1", Now());
+
+        // act
+        var skipTo = ListeningStreamMuxer.GetSkipTo(true, streamInfo, default);
+
+        // assert
+        skipTo.Should().Be(Constants.Audio.SkipToLive);
+    }
+
+    [Fact]
+    public void GetSkipToKeepsAStreamThatStartedWhileWatching()
+    {
+        // arrange
+        var streamInfo = StreamInfo(Author1, "stream-1", Now());
+
+        // act
+        var skipTo = ListeningStreamMuxer.GetSkipTo(false, streamInfo, default);
+
+        // assert
+        skipTo.Should().Be(TimeSpan.Zero);
+    }
+
+    [Fact]
+    public void GetSkipToServesACatchUpTargetFromItsStart()
+    {
+        // arrange
+        var beginsAt = Now();
+        var streamInfo = StreamInfo(Author1, "stream-1", beginsAt);
+
+        // act
+        var skipTo = ListeningStreamMuxer.GetSkipTo(true, streamInfo, beginsAt);
+
+        // assert
+        skipTo.Should().Be(TimeSpan.Zero);
+    }
+
     private static Moment Now() => new(DateTime.UtcNow);
+
+    private static LiveAudioStreamInfo StreamInfo(AuthorId authorId, string streamId, Moment beginsAt)
+        => new() {
+            ChatId = TestChatId,
+            AuthorId = authorId,
+            StreamId = streamId,
+            BeginsAt = beginsAt,
+        };
 
     // Test harness
 

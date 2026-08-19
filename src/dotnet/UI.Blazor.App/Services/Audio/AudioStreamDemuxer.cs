@@ -13,8 +13,12 @@ public sealed class AudioStreamDemuxer(
     CancellationTokenSource? stopTokenSource = null)
     : WorkerBase(stopTokenSource)
 {
+    private static readonly int MaxTrackBacklogFrames =
+        (int)(Constants.Audio.MaxTrackBacklog / Constants.Audio.OpusFrameDuration);
+
+    private readonly ConcurrentDictionary<int, StreamEntry> _streams = new();
+
     private static bool DebugMode => Constants.DebugMode.LiveStreaming;
-    private readonly ConcurrentDictionary<int, Channel<AudioFrame>> _streams = new();
 
     private IAsyncEnumerable<MuxedAudioStreamItem> Input { get; } = input;
     private ILogger? Log { get; } = log;
@@ -34,24 +38,30 @@ public sealed class AudioStreamDemuxer(
                     FlushAllStreams();
                     continue;
                 case MuxedAudioStreamStart start:
-                    var startChannel = _streams.GetValueOrDefault(start.StreamIndex);
-                    if (startChannel is not null) {
+                    var startEntry = _streams.GetValueOrDefault(start.StreamIndex);
+                    if (startEntry is not null) {
                         Log?.LogWarning("StreamStart N{StreamIndex}: duplicate!", start.StreamIndex);
                         continue;
                     }
-                    DebugLog?.LogDebug("StreamStart N{StreamIndex}: stream #{StreamId}", start.StreamIndex, start.StreamInfo.StreamId);
-                    startChannel = Channel.CreateUnbounded<AudioFrame>(ChannelExt.UnboundedPipeOptions);
-                    _streams[start.StreamIndex] = startChannel;
+                    DebugLog?.LogDebug("StreamStart N{StreamIndex}: stream #{StreamId}",
+                        start.StreamIndex, start.StreamInfo.StreamId);
+                    DropBacklogged(start.StreamIndex);
+                    // FanOut, not Pipe: the backlog drop reads this channel from the demuxer
+                    // while the player may be reading it too, and SingleReader also makes
+                    // Reader.Count - the backlog metric - throw.
+                    startEntry = new StreamEntry(
+                        Channel.CreateUnbounded<AudioFrame>(ChannelExt.UnboundedFanOutOptions));
+                    _streams[start.StreamIndex] = startEntry;
 
                     // Note: We don't use StopToken here because the audio frames should remain
                     // readable until the channel is naturally completed (when StreamEnd is received).
                     // Using StopToken would cancel the enumeration when the demuxer stops.
-                    var audioFrames = ToAsyncEnumerable(startChannel.Reader, CancellationToken.None);
+                    var audioFrames = ToAsyncEnumerable(startEntry.Channel.Reader, CancellationToken.None);
                     StreamStarted?.Invoke(start.StreamInfo, start.PlaysAt, audioFrames);
                     break;
                 case MuxedAudioFrame frame:
-                    var frameChannel = _streams.GetValueOrDefault(frame.StreamIndex);
-                    if (frameChannel is null)
+                    var frameEntry = _streams.GetValueOrDefault(frame.StreamIndex);
+                    if (frameEntry is null || frameEntry.IsEnded)
                         continue;
                     if (frame.Offset < TimeSpan.Zero)
                         continue;
@@ -61,16 +71,20 @@ public sealed class AudioStreamDemuxer(
                         Offset = frame.Offset,
                         Duration = Constants.Audio.OpusFrameDuration,
                     };
-                    if (!frameChannel.Writer.TryWrite(audioFrame))
+                    if (!frameEntry.Channel.Writer.TryWrite(audioFrame))
                         Log?.LogWarning("Failed to write frame for stream {StreamIndex}", frame.StreamIndex);
+                    frameEntry.OnFrameWritten();
                     continue;
                 case MuxedAudioStreamEnd end:
                     DebugLog?.LogDebug("StreamEnd #{StreamIndex}", end.StreamIndex);
-                    var endChannel = _streams.GetValueOrDefault(end.StreamIndex);
-                    if (endChannel is null)
+                    var endEntry = _streams.GetValueOrDefault(end.StreamIndex);
+                    if (endEntry is null)
                         continue;
-                    if (_streams.TryRemove(end.StreamIndex, endChannel))
-                        endChannel.Writer.TryComplete();
+
+                    // The entry outlives StreamEnd until drained - an ended track with seconds
+                    // still queued is exactly the stale one worth dropping.
+                    endEntry.IsEnded = true;
+                    endEntry.Channel.Writer.TryComplete();
                     break;
                 }
             }
@@ -88,10 +102,57 @@ public sealed class AudioStreamDemuxer(
         }
     }
 
+    // Private methods
+
+    private void DropBacklogged(int startingStreamIndex)
+    {
+        foreach (var (index, entry) in _streams) {
+            if (index == startingStreamIndex)
+                continue;
+
+            var backlogFrames = entry.Channel.Reader.Count;
+            entry.OnBacklogSampled(backlogFrames);
+            if (entry.IsEnded && backlogFrames == 0) {
+                Report(index, entry, false);
+                _streams.TryRemove(index, entry);
+                continue;
+            }
+
+            if (backlogFrames <= MaxTrackBacklogFrames)
+                continue;
+
+            // Information, not debug: DebugMode.LiveStreaming is false in production, and a
+            // dropped track is the one thing here a listener can actually hear.
+            Log?.LogInformation(
+                "Dropping stream N{StreamIndex}: {BacklogMs}ms queued exceeds {LimitMs}ms",
+                index,
+                backlogFrames * Constants.Audio.FrameDurationMs,
+                Constants.Audio.MaxTrackBacklog.TotalMilliseconds);
+            while (entry.Channel.Reader.TryRead(out _)) { }
+            entry.IsEnded = true;
+            entry.Channel.Writer.TryComplete();
+            Report(index, entry, true);
+            _streams.TryRemove(index, entry);
+        }
+    }
+
+    // Peak backlog is what sizes MaxTrackBacklog, and DebugMode is off in production - so this
+    // is the one per-track line that has to survive there.
+    private void Report(int streamIndex, StreamEntry entry, bool isDropped)
+        => Log?.LogInformation(
+            "Stream N{StreamIndex} done: {FrameCount} frames, peak backlog {PeakBacklogMs}ms, dropped={IsDropped}",
+            streamIndex,
+            entry.WrittenFrameCount,
+            entry.PeakBacklogFrames * Constants.Audio.FrameDurationMs,
+            isDropped);
+
     private void FlushAllStreams()
     {
-        foreach (var (_, channel) in _streams)
-            channel.Writer.TryComplete();
+        foreach (var (index, entry) in _streams) {
+            entry.OnBacklogSampled(entry.Channel.Reader.Count);
+            Report(index, entry, false);
+            entry.Channel.Writer.TryComplete();
+        }
         _streams.Clear();
     }
 
@@ -101,5 +162,23 @@ public sealed class AudioStreamDemuxer(
     {
         await foreach (var item in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             yield return item;
+    }
+
+    // Nested types
+
+    private sealed record StreamEntry(Channel<AudioFrame> Channel)
+    {
+        public bool IsEnded { get; set; }
+        public int WrittenFrameCount { get; private set; }
+        public int PeakBacklogFrames { get; private set; }
+
+        public void OnFrameWritten()
+            => WrittenFrameCount++;
+
+        public void OnBacklogSampled(int backlogFrames)
+        {
+            if (backlogFrames > PeakBacklogFrames)
+                PeakBacklogFrames = backlogFrames;
+        }
     }
 }

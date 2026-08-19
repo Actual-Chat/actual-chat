@@ -26,6 +26,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private TimeSpan _currentTargetBufferSize;
     private CpuTimestamp _lastBufferAdjustAt;
     private bool _isOwnStream;
+    private int _underrunCount;
 
     private IServiceProvider Services { get; }
 
@@ -99,7 +100,9 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             case PlayCommand:
                 var trackInfo = (ChatAudioTrackInfo)TrackInfo;
                 _isOwnStream = await IsOwnStream(trackInfo, cancellationToken).ConfigureAwait(false);
-                await MediaMetadataUI.SetPlayback(MediaMetadata.FromTrack(trackInfo), trackInfo.IsStreaming).ConfigureAwait(false);
+                await MediaMetadataUI
+                    .SetPlayback(MediaMetadata.FromTrack(trackInfo), trackInfo.IsStreaming)
+                    .ConfigureAwait(false);
                 var heldTrackInfo = ApplyAvSyncHold(trackInfo);
                 _currentTargetBufferSize = heldTrackInfo.TargetBufferSize;
                 _playbackEngine = Factory.Create(_id, heldTrackInfo, Source, this);
@@ -156,12 +159,15 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             var audioFrame = (AudioFrame)frame;
             ApplyAudioSync();
             await _playbackEngine.PushFrame(audioFrame, cancellationToken).ConfigureAwait(false);
-            await _whenBufferLowSource.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
+            await _whenBufferLowSource.Task
+                .WaitAsync(TimeSpan.FromSeconds(10), cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (TimeoutException e) {
             Log.LogError(
                 e,
-                "[AudioTrackPlayer #{AudioTrackPlayerId}] ProcessMediaFrame: ready-to-buffer wait timed out, offset={FrameOffset}",
+                "[AudioTrackPlayer #{AudioTrackPlayerId}] ProcessMediaFrame: "
+                + "ready-to-buffer wait timed out, offset={FrameOffset}",
                 _id,
                 frame.Offset);
         }
@@ -173,6 +179,13 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             await base.PlayInternal(cancellationToken).ConfigureAwait(false);
         }
         finally {
+            // Underruns size the jitter target the same way the demuxer's backlog line sizes
+            // MaxTrackBacklog - both are unreadable behind DebugMode, which is off in production.
+            if (_underrunCount > 0)
+                Log.LogInformation(
+                    "[AudioTrackPlayer #{AudioTrackPlayerId}] Ended after {PlayDuration}, "
+                    + "{UnderrunCount} underruns",
+                    _id, _playDuration.ToShortString(), _underrunCount);
             await _playbackEngine.DisposeSilentlyAsync().ConfigureAwait(false);
         }
     }
@@ -266,8 +279,11 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 
     private void UpdateBufferState(bool isBufferLow)
     {
-        if (isBufferLow)
+        if (isBufferLow) {
+            if (!_whenBufferLowSource.Task.IsCompleted)
+                _underrunCount++;
             _whenBufferLowSource.TrySetResult();
+        }
         else {
             if (!_whenBufferLowSource.Task.IsCompleted)
                 return;

@@ -34,8 +34,8 @@ the capture → publish → fan-out → playback path described in docs 02–07.
 For the design-intent vs. current-shape discussion of buffering and A/V
 sync — that's in
 [`live-video/11-buffering-and-av-sync.md`](../live-video/11-buffering-and-av-sync.md);
-the receiver-side audio half of it (`SkipUntil`, `SpeedUpUntil`,
-`PlaybackLagTracker`, `LiveAudioCatchUpPolicy`) is summarised in
+the receiver-side audio half of it (the playback-buffer hold,
+`PlaybackLagTracker`, and the demuxer's backlog bound) is summarised in
 [07-receiver.md](./07-receiver.md) here.
 
 ## Top-level architecture

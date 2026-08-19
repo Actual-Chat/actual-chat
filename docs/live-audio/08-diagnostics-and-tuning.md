@@ -64,9 +64,13 @@ JS-side state lives in `OpusMediaRecorder.state` and the
 ### Player side
 
 `PlaybackLagTracker` — per-author EMAs of audio and video presentation
-lag, fed by `OnPresentationLag` callbacks. Used by
-`LiveAudioCatchUpPolicy` even when sync is disabled (the EMAs are
-still maintained).
+lag, fed by `OnPresentationLag` callbacks, read by `AudioTrackPlayer`'s
+buffer hold. The EMAs are maintained whether or not sync is enabled.
+
+Per-track lines, at `Information` so they survive in production: the demuxer logs
+each track's frame count, peak backlog and whether it was dropped; the player
+logs its underrun count. Those two numbers are what size `MaxTrackBacklog` and
+the jitter target.
 
 Feeder worklet emits state changes for `playbackState` (`playing` /
 `starving` / `ended` / `paused`) and `bufferState` (`ok` / `low`).
@@ -154,7 +158,7 @@ All in `src/dotnet/Api/Constants.Audio.cs` unless noted.
 | `MaxEntryDuration` | (per `Constants.Chat`) | chat-entry duration cap |
 | `StreamExpirationDelay` (`AudioSettings`) | 10 s | StreamStore idle expiry |
 | `StreamTtl` (`LiveAudioBackend`) | 3 min | Redis state TTL = 5 min |
-| `StaleAudioTrimWindow` (`LiveStreamMuxer`) | 3 s | live trim |
+| `SkipToLive` (`ListeningStreamMuxer`) | sentinel | serve a pre-existing stream from the live edge |
 | `EvictionDelay` (`LiveStreamMuxer`) | 4 s | post-end stream removal |
 | `ReconnectDelay` (`LiveStreamMuxer`) | 1 s | List-watch retry |
 
@@ -175,10 +179,9 @@ All in `src/dotnet/Api/Constants.Audio.cs` unless noted.
 | `MinBufferSize` | 2 frames | hysteresis floor |
 | `BufferHysteresisSize` | 3 frames | hysteresis width |
 | `PlaybackTargetBufferSizeWithVideo` | (a few × 100 ms) | extra buffer for A/V-paired tracks |
-| `PlaybackHardSkipThreshold` | 2 s | A/V sync hard skip (gated by `IsAudioSyncEnabled`) |
-| `PlaybackMaxSpeedUpDuration` | 5 s | A/V sync speed-up bound |
-| `PlaybackSpeedUpDropEveryNFrames` | 4 | speed-up drop pattern |
-| `PlaybackCatchUpCommandCooldown` | 1 s | between sync corrections |
+| `AudioSyncMaxHold` | 1 s | max extra A/V hold over the base buffer |
+| `AudioCatchUpBaselineDelta` | 0 | target audio-vs-video lag offset |
+| `MaxTrackBacklog` | 2 s | queued audio at which a stale track is dropped |
 | `PlaybackLagStaleAfter` | ~1.5 s | lag sample freshness |
 | `AudioCatchUpDeadband` | 200 ms | sync no-op band |
 | `AudioCatchUpBaselineDelta` | -100 ms | "audio slightly ahead" target |

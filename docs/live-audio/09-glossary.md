@@ -87,7 +87,7 @@ live-audio docs.
 | `AudioProcessorBase` | same | Base for transcription processors |
 | `AudioSourceDownloader` | `Core.Server/Blobs/` | Blob → AudioSource read path |
 | `Transcribers/{TranscriberFactory,GoogleTranscriber,DeepgramTranscriber,FakeTranscriber,OpenAITranscriber}` | `Streaming.Service/Services/Transcribers/` | Transcription providers |
-| `IAudioCatchUpPolicy` / `LiveAudioCatchUpPolicy` | `UI.Blazor.App/Services/Playback/` | A/V sync correction policy |
+| `PlaybackLagTracker` | `UI.Blazor.App/Services/` | Per-author audio/video presentation-lag EMAs feeding the A/V hold |
 | `PlaybackLagTracker` | `UI.Blazor.App/Services/` | EMAs of audio + video presentation lag, keyed by author |
 | `ChatPlayer` / `ChatListener` / `ChatReplayer` | `UI.Blazor.App/Services/Playback/` | Per-chat playback orchestrators |
 | `ChatAudioUI` (+ `.Players`, `.StateSync`) | `UI.Blazor.App/Services/` | Top-level toggle + state |

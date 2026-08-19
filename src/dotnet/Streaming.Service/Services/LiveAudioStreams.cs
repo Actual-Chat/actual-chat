@@ -229,9 +229,9 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     {
         var store = RemoteAudioCache.Store;
 
-        var stream = await store.Get(streamId, false, cancellationToken).ConfigureAwait(false);
-        if (stream != null)
-            return AudioStreamingBackend.SkipTo(stream, skipTo, cancellationToken);
+        var memoizer = await store.GetMemoizer(streamId, false, cancellationToken).ConfigureAwait(false);
+        if (memoizer != null)
+            return Trim(memoizer);
 
         // Dedupe so concurrent viewers on this node share a single
         // cross-shard fetch (mirrors RemoteVideoStreamCache).
@@ -241,8 +241,17 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         if (!fetched)
             return null;
 
-        stream = await store.Get(streamId, true, cancellationToken).ConfigureAwait(false);
-        return stream == null ? null : AudioStreamingBackend.SkipTo(stream, skipTo, cancellationToken);
+        memoizer = await store.GetMemoizer(streamId, true, cancellationToken).ConfigureAwait(false);
+        return memoizer == null ? null : Trim(memoizer);
+
+        IAsyncEnumerable<AudioFrame> Trim(AsyncMemoizer<AudioFrame> source)
+        {
+            if (skipTo == Constants.Audio.SkipToLive)
+                return AudioStreamingBackend.SkipToLive(source, cancellationToken);
+
+            var replay = source.Replay(cancellationToken);
+            return AudioStreamingBackend.SkipTo(replay, skipTo, cancellationToken);
+        }
 
         async Task<bool> FetchAndPublish(StreamId sid) {
             // CT.None deliberately: detaches the cached source from this

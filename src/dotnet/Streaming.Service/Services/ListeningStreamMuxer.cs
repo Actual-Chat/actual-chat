@@ -28,8 +28,6 @@ public sealed class ListeningStreamMuxer : WorkerBase
     private Moment CatchUpFrom { get; }
     private ILiveAudioStreams LiveAudioStreams => field ??= Services.GetRequiredService<ILiveAudioStreams>();
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
-    private MomentClockSet Clocks => field ??= Services.Clocks();
-    private MomentClock SystemClock => Clocks.SystemClock;
     private ILogger Log => field ??= Services.LogFor<ListeningStreamMuxer>();
 
     public ChannelReader<MuxedAudioStreamItem> Output => _output.Reader;
@@ -53,15 +51,19 @@ public sealed class ListeningStreamMuxer : WorkerBase
 
     // Protected methods
 
+    // internal for tests
+    internal static TimeSpan GetSkipTo(bool isPreexisting, LiveAudioStreamInfo streamInfo, Moment catchUpFrom)
+        => streamInfo.IsCatchUpTarget(catchUpFrom) || !isPreexisting
+            ? TimeSpan.Zero
+            : Constants.Audio.SkipToLive;
+
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         // Two tricky races handled here:
-        // 1) A stream's playback ended, but it's still listed as active — the
-        //    producer's LiveAudioBackend.Unregister runs after its audio blob save,
-        //    which can take seconds for long messages. Fixed by two things:
-        //    coarse stale-audio trimming in ProcessStream (so a restart replays
-        //    at most a short tail) and the EvictionDelay on pruning below (so
-        //    the common case doesn't restart in the first place).
+        // 1) A stream's playback ended, but it's still listed as active. The EvictionDelay
+        //    on pruning below keeps the common case from restarting at all; a stream that
+        //    does get restarted is served from the live edge (see GetSkipTo), so a listener
+        //    never receives speech that is already in the past.
         // 2) One author pushes several streams effectively at once — typically
         //    an offline backlog flushed on reconnect. They aren't ordered by
         //    length, and we have no duration until each stream ends, so we
@@ -76,6 +78,10 @@ public sealed class ListeningStreamMuxer : WorkerBase
                 try {
                     Log.LogInformation("OnRun: Watching computed List for {ChatId}", ChatId);
 
+                    // Scoped to the connect attempt, not to the muxer: a stream that started
+                    // while the watch was down is new to us on re-establish, and replaying it
+                    // from its start would hand the listener a stale monologue.
+                    var isColdSnapshot = true;
                     while (true) {
                         var computed = await Computed.Capture(
                             () => LiveAudioBackend.List(ChatId, cancellationToken),
@@ -94,12 +100,15 @@ public sealed class ListeningStreamMuxer : WorkerBase
                             var streamEntry = new StreamEntry(
                                 Interlocked.Increment(ref _nextStreamIndex),
                                 streamInfo,
-                                cancellationToken.CreateLinkedTokenSource());
+                                cancellationToken.CreateLinkedTokenSource()) {
+                                IsPreexisting = isColdSnapshot,
+                            };
                             Log.LogDebug(
                                 "Starting stream #{StreamIndex} for {AuthorId} stream #{StreamId}",
                                 streamEntry.Index, streamInfo.AuthorId, streamInfo.StreamId);
                             _ = ProcessStream(streamEntry, cancellationToken);
                         }
+                        isColdSnapshot = false;
 
                         var retryTask = _whenRetryNeededSource.Task;
                         var invalidatedTask = computed.WhenInvalidated(cancellationToken);
@@ -115,6 +124,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
                 catch (Exception e) {
                     if (e.IsCancellationOf(cancellationToken))
                         throw;
+
                     Log.LogWarning(e, "OnRun: List watching failed for {ChatId}, reconnecting in {Delay}...",
                         ChatId, ReconnectDelay);
                 }
@@ -143,14 +153,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
             if (!TryRegister(streamEntry))
                 return; // See `finally` block below
 
-            // Coarse server-side stale-audio trim. This keeps reconnect/backlog
-            // bursts and late joins from streaming long-past speech just so the
-            // client can drop it. Fine A/V alignment still belongs to the client
-            // audio buffer; this only caps how much old audio we send.
-            var skipTo = SystemClock.Now - streamInfo.BeginsAt;
-            skipTo = (skipTo - Constants.Audio.MaxRealtimeStreamDrift).Positive();
-            if (streamInfo.IsCatchUpTarget(CatchUpFrom))
-                skipTo = TimeSpan.Zero;
+            var skipTo = GetSkipTo(streamEntry.IsPreexisting, streamInfo, CatchUpFrom);
             var rpcStream = await LiveAudioStreams
                 .GetStream(Session, streamId, skipTo, streamStopToken)
                 .ConfigureAwait(false);
@@ -307,6 +310,9 @@ public sealed class ListeningStreamMuxer : WorkerBase
         LiveAudioStreamInfo StreamInfo,
         CancellationTokenSource StopTokenSource)
     {
+        // Per-entry rather than per-muxer: a pre-start retry re-runs ProcessStream up to
+        // MaxPreStartRetryCount times, and each retry must still ask for the live edge.
+        public bool IsPreexisting { get; init; }
         public string StreamId => StreamInfo.StreamId;
         public AuthorId AuthorId => StreamInfo.AuthorId;
         public Moment BeginsAt => StreamInfo.BeginsAt;

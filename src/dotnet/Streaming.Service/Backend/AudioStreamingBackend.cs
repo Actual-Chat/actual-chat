@@ -89,6 +89,13 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
+        if (skipTo == Constants.Audio.SkipToLive) {
+            var memoizer = await _audioStreams.GetMemoizer(streamId, true, cancellationToken).ConfigureAwait(false);
+            return memoizer == null
+                ? null
+                : StandardRpcStream.NewAudioDelivery(SkipToLive(memoizer, cancellationToken));
+        }
+
         var stream = await _audioStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
         if (stream == null)
             return null;
@@ -205,7 +212,49 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             .PrependOne(headerTask);
     }
 
+    internal static IAsyncEnumerable<AudioFrame> SkipToLive(
+        AsyncMemoizer<AudioFrame> memoizer,
+        CancellationToken cancellationToken)
+    {
+        // Pinning the tail here rather than inside the iterator makes the live edge the
+        // moment of the request, not the moment the consumer starts enumerating.
+        // SplitHead is deliberately not used: it pumps its entire source into an unbounded
+        // channel, which is right when the tail it makes is the returned stream, but here
+        // that tail would be dropped and the pump would buffer a live stream forever.
+        var tail = memoizer.Replay(0, cancellationToken);
+        return WithHeader(memoizer, tail, cancellationToken);
+    }
+
     // Private methods
+
+    private static async IAsyncEnumerable<AudioFrame> WithHeader(
+        AsyncMemoizer<AudioFrame> memoizer,
+        IAsyncEnumerable<AudioFrame> tail,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var header = await ReadHeader(memoizer, cancellationToken).ConfigureAwait(false);
+        if (header != null)
+            yield return header;
+
+        // Replay(0) starts at the memoizer's tail, so it yields only future frames - except
+        // when nothing was buffered yet, where the tail is still the sentinel and the header
+        // arrives as a "future" frame. The offset filter is what keeps it from being emitted twice.
+        await foreach (var frame in tail.WithCancellation(cancellationToken).ConfigureAwait(false))
+            if (frame.Offset >= TimeSpan.Zero)
+                yield return frame;
+    }
+
+    private static async Task<AudioFrame?> ReadHeader(
+        AsyncMemoizer<AudioFrame> memoizer,
+        CancellationToken cancellationToken)
+    {
+        await using var enumerator = memoizer
+            .Replay(int.MaxValue, cancellationToken)
+            .GetAsyncEnumerator(cancellationToken);
+        return await enumerator.MoveNextAsync().ConfigureAwait(false)
+            ? enumerator.Current
+            : null;
+    }
 
     private void ForgetChatIdIfUnused(StreamId streamId)
     {

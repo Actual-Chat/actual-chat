@@ -75,18 +75,30 @@ LiveStreamEnd   { StreamIndex }
 The client's `LiveStreamDemuxer` matches frames to `StreamIndex` and
 routes them to per-author audio tracks.
 
-### Stale audio trim (3 s)
+### Live-edge trim
 
 ```csharp
-var lag = SystemClock.Now - streamInfo.BeginsAt;
-var skipTo = (lag - StaleAudioTrimWindow).Positive();    // 3 s
+var skipTo = GetSkipTo(streamEntry.IsPreexisting, streamInfo, CatchUpFrom);
+// preexisting -> Constants.Audio.SkipToLive, otherwise TimeSpan.Zero
 ```
 
-When subscribing to a stream that's already been live for a while, the
-muxer skips forward to no more than 3 s ago. If a viewer joins 30 s into
-someone's monologue they don't get 30 s of replay first — the live feed
-is "almost-live", not "from-the-start". (Replay-mode subscribers use
-`GetReplayStream` instead.)
+A stream the muxer finds in the **first snapshot after it establishes its watch**
+is served from the producer's current position; anything that starts while the
+muxer is already watching is served whole. So a listener joining 30 s into
+someone's monologue hears it from now, not from its start, while every utterance
+that begins after they joined arrives complete.
+
+"Live edge" is a position, not a timestamp: `AudioStreamingBackend.SkipToLive`
+replays from the memoizer's tail (`Replay(0)`), so no clock is read on either
+side. The stream header is prepended so the delivered shape is unchanged.
+
+The flag is scoped to the connect attempt rather than the muxer's lifetime — a
+stream that began during a watch outage is new to the muxer on re-establish, and
+serving it whole would deliver a stale monologue. This is also what makes the
+client's sleep/resume re-subscribe work: it builds a new muxer, whose first
+snapshot is cold by construction.
+
+(Replay-mode subscribers use `GetReplayStream` instead.)
 
 One exception: `GetListeningStream` takes a `catchUpFrom` moment (default =
 none), and streams whose `BeginsAt` is at/after it are served from t=0 with no
