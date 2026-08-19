@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.0.11116.177
@@ -466,7 +466,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "e2e", "e2e", "{A1B2C3D4-555
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.VideoLoadTest", "src\dotnet\App.VideoLoadTest\App.VideoLoadTest.csproj", "{6A98D32D-E702-4F3D-BD3C-BF3376383C4F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.Benchmarks", "tests\Core.Benchmarks\Core.Benchmarks.csproj", "{B6041FCE-3882-43F2-A696-505E5C165002}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Benchmarks", "tests\Benchmarks\Benchmarks.csproj", "{B6041FCE-3882-43F2-A696-505E5C165002}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.AotHelper", "src\dotnet\App.AotHelper\App.AotHelper.csproj", "{C305F956-31CE-477F-8C9C-39D62437424C}"
 EndProject

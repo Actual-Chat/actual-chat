@@ -55,3 +55,9 @@ edited. The reason can be as short as whose decision it was.
   — switch case labels not indented relative to `switch` — required: the
   repo's eslint `indent` rule is configured with `SwitchCase: 0` and fails the
   build on the indented form, so eslint wins over the style guide here
+
+## tests/Benchmarks/MarkupParserBenchmarks.cs
+
+- L18 `public class MarkupParserBenchmarks`
+  — type not sealed — required: BenchmarkDotNet's in-process toolchain rejects a
+  sealed benchmark class ("Declaring type must be unsealed") and refuses to run it

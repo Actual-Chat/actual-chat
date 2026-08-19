@@ -1,0 +1,110 @@
+Here's my review while Codex finishes.
+
+## Review: PR #4195 — `fix(audio): keep iPhone audio on the speaker, and let a headset take it`
+
+The consolidation is right: one `ApplyOutputRoute` invoked from every point that can move a route is a much better shape than a single fixup call at capture start. The three-way decision is readable and the `AudioSessionOwnership.MayConfigure` gate is correctly placed. Four things I'd want addressed before this lands.
+
+### 1. `Play` can now throw `OperationCanceledException`, and the track never reaches its end state — blocking
+
+`AppleAudioPlaybackEngine.cs:49` and `AndroidAudioPlaybackEngine.cs:54` now `await EnsureOutputRoute(cancellationToken)` as the **first** thing in `Play`. Both implementations start with `Lock(cancellationToken)`, and `SemaphoreSlim.WaitAsync` returns a cancelled task on an already-cancelled token even when uncontended. So `Play` is now failable, and previously it was not (iOS returned `Task.CompletedTask`; Android passed `CancellationToken.None`).
+
+That matters because of how `TrackPlayer.PlayInternal` is written (`src/dotnet/Api/MediaPlayback/TrackPlayer.cs:99`):
+
+```csharp
+var playTask = ProcessCommand(PlayCommand.Instance, cancellationToken);  // not awaited here
+...
+finally {
+    if (exception != null && !WhenCompleted.IsCompleted) {
+        try {
+            if (!isPlayCommandProcessed)
+                await playTask.AsTask().WaitAsync(...);   // ← throws
+            var abortResult = await ProcessCommand(AbortCommand.Instance, ...);  // ← never reached
+```
+
+Failure scenario: user stops listening (or the chat player is aborted) within the first ~2 s of a track on Android — `PlayToken` cancels, `SetCommunicationDeviceAsync` is now cancelled mid-SCO-wait, `Play` faults, the frame enumeration also faults, and the `finally` re-awaits the faulted `playTask` and throws before ever sending `AbortCommand`. `SetEndState` is never called, so `TrackPlayer.WhenCompleted` never completes and `Playback._isPlaying` (set to `true` in `Playback.Play`) is only cleared on an `IsEnded` transition — it stays stuck true. Today that path self-heals because `Play` always succeeded.
+
+The route fixup is best-effort; it shouldn't be able to fail a track. Simplest fix is to swallow cancellation at the call site in both engines, or inside `EnsureOutputRoute` itself.
+
+Related, same line: `playTask` is a `ValueTask` that gets consumed twice on this path (line 107 and line 147). Benign today because a non-completed `async ValueTask` is Task-backed, but it's only reachable now that `Play` can fault.
+
+### 2. `ReactivateUnsafe` skips the route application in exactly the case it was added for — should-fix
+
+`AudioSession.cs:195-212`:
+
+```csharp
+var isConfigured = AudioSessionOwnership.MayConfigure(owner, mode);
+if (isConfigured)
+    ConfigureUnsafe(session, mode);
+if (!AudioSessionOwnership.MayActivate(owner))
+    return new AudioSessionSetup(isConfigured, false);   // ← returns before ApplyOutputRouteUnsafe
+...
+ApplyOutputRouteUnsafe(mode);
+```
+
+`ReconfigureUnsafe` handles the same state (`AudioSession.cs:224-231`) by calling `ApplyOutputRouteUnsafe(minMode)` inside the not-activatable branch. `Reactivate` doesn't.
+
+Under `PttPlayback`, `MayConfigure(owner, Recording)` is `true` while `MayActivate` is `false` — so: user is recording during a live PTT playback, a phone call interrupts, the call ends → `TryRecover` → `RecoverInternal` → `Reactivate` → `ConfigureUnsafe` re-applies `PlayAndRecord` + `VoiceChat` mode (the thing that grabs the earpiece) and returns without touching the route. Audio stays on the receiver until some unrelated route change happens to fire. That's the original bug, in a path this PR was meant to close.
+
+### 3. The decision reads only `CurrentRoute.Outputs` — the one thing the override masks
+
+`AudioSession.cs:270-286`. The PR description says the observed failure was "plugging in a headset mid-recording left the forced speaker in place." That's only fixable from `CurrentRoute.Outputs` if iOS reports the headset as the current output while audio is actually still on the speaker. If instead the override is genuinely in force and `Outputs` reports `BuiltInSpeaker`, then `isExternal` is false, there's no receiver, and the code hits `else return; // Already on the speaker` — the override is never cleared and the headset stays silent. The logic is blind to precisely the state it's trying to undo.
+
+Since this is explicitly **not device-verified**, I'd make it robust rather than rely on which of the two iOS actually does: on `NewDeviceAvailable`, clear the override first (`OverrideOutputAudioPort(.none)`), then re-read `CurrentRoute` and decide. Alternatively consult the notification's `AVAudioSessionRouteChangePreviousRouteKey` / available outputs instead of only the current route.
+
+### 4. `HandleRouteChange` answers every reason, including the ones we cause — should-fix
+
+`AppleAudioFocusUI.cs:297-311` re-applies on all reasons. `ConfigureUnsafe`'s `SetCategory` posts `CategoryChange`, and `OverrideOutputAudioPort` posts `Override` — and `Reconfigure`/`Reactivate` already apply the route inline, so each of those produces a redundant queued pass that takes `_lock` and hops to the main thread. It converges (the second pass hits the "already on speaker" return), so it isn't a loop, but it is self-inflicted churn plus an Information-level log line per event.
+
+This is the same class of problem the Android side already learned — `AndroidAudioFocusHelper.cs:106` carries a comment about a "permanent re-assert loop (13 in 100s, measured)" and deliberately does *not* drive off the device-changed callback. Filtering to `NewDeviceAvailable` / `OldDeviceUnavailable` (the two the comment actually describes) would match that lesson. Minor related point: the log line claims "re-applying the output route" even when the mode isn't `Recording` and `ApplyOutputRoute` returns immediately.
+
+### Smaller notes
+
+- **Cost per track for a no-op.** `ApplyOutputRouteUnsafe` returns early unless the mode is `Recording`, so the new `EnsureOutputRoute` in `AppleAudioPlaybackEngine.Play` does nothing in pure-listening mode — but still costs a `_lock` acquisition plus a main-thread dispatch on every track (Voxt starts one per utterance). Worse, `_lock` may be held by `SetModeUnsafe` doing a full deactivate/activate + engine bounce, so track start now queues behind session reconfiguration.
+- **New lock ordering.** `AppleAudioCapture.cs:117` previously called `AudioSession.EnsureCorrectOutputRoute()`, which never touched `AppleAudioFocusUI._lock`; it now goes through `EnsureOutputRoute` and does. I traced the paths and found no deadlock (`AudioEngine`'s sync lock is always released before the capture loop reaches this call), but capture start can now block on the focus lock.
+- **Untested decision logic.** `AudioSessionOwnership` was deliberately put outside the platform project "so [the rules] can be tested." The route decision is the same kind of pure rule (`isExternal`/`hasReceiver`/mode → override) buried in a platform class, and this PR ships it unverified on device. Extracting it next to `AudioSessionOwnership` in `UI.Blazor/Services` and unit-testing the table from the PR description would cost very little.
+- **Stale comment.** `AudioFocusUI.cs:48-51` — the base method's comment explains only Android's reason ("Android hands the communication route back to its earpiece default…"), but iOS now overrides it for a different reason.
+- **Style.** No violations found — the new comments all explain *why*, no `Async` suffixes, no XML docs on members.
+
+**Verdict:** #1 and #2 are concrete and worth fixing before merge. #3 is the question that decides whether the PR fixes the reported bug at all, and the author's own "not verified on device — a Bluetooth headset connecting and disconnecting mid-recording is worth a pass on a real iPhone" note is exactly right; that test should gate the merge.
+
+I'll report Codex's independent findings when its run completes.
+
+--
+
+Codex's review is in, and I verified its two substantive claims. It found one thing I missed that's more important than anything on my list.
+
+## Codex's blocking finding — confirmed real
+
+**`AudioSession.cs:262` — the `MayConfigure` gate removes the receiver correction during a PTT transmit reply.**
+
+`AudioSessionOwnership.MayConfigure` returns `false` for *every* mode under `PttTransmit` (`AudioSessionOwnership.cs:48`). The old `EnsureCorrectOutputRouteUnsafe` had no ownership gate at all — it always ran.
+
+I traced the path Codex cites and it holds: `IosPtt.cs:213` / `:387` set the owner to `PttTransmit`, and both then call `StartTransmitReply` — which starts the **app's own** capture through `AppleAudioCapture.CaptureInternal` (that's why `PttPreRoll.TryTake()` is at the top of it). That method calls `engine.Input.SetVoiceProcessingEnabled(true)` at line 79, and the comment at line 116 — the one the PR left in place — says voice processing activation can route audio to the earpiece. Line 117 then calls `EnsureOutputRoute`, which now returns immediately because `MayConfigure(PttTransmit, Recording)` is false.
+
+So a PTT reply whose voice processing lands on the earpiece stays there for the whole transmission, and on release with live playback the owner becomes `PttPlayback`, where `MayConfigure` only permits `Recording` — so a subsequent playback-mode call is gated out too.
+
+The PR describes the gate as deliberate ("so it stays out of the PushToTalk framework's session"), and staying out of `SetCategory` is clearly right. But `OverrideOutputAudioPort` is a much narrower operation than the category/mode changes the ownership model exists to protect, and this gate silently drops the one correction that the ungated old code performed on the app's own capture. Worth deciding explicitly rather than inheriting from `MayConfigure`.
+
+## Correction to my finding #1
+
+I said the Android trigger window included the ~2 s Bluetooth SCO wait. That's wrong — Codex checked the router internals and both implementations swallow the cancellation: the API 31+ path catches it in the broad `catch (Exception)` at `AndroidAudioFocusHelper.cs:272-275` and returns `false`, and the legacy path catches it at `:383` as an "SCO connection timeout". So `SetCommunicationDeviceAsync` never throws.
+
+The finding itself stands on both platforms, via the already-cancelled-token route: `SemaphoreSlim.WaitAsync` returns a cancelled task even uncontended, so `OperationLock.Lock(cancellationToken)` (`AndroidAudioFocusUI.cs:38`) and `_lock.Lock(cts.Token)` (`AppleAudioFocusUI.cs:112`) both throw when a queued track's `PlayToken` is already cancelled — which is what "stop listening" does. The abort path is still skipped and the track still never reaches its end state.
+
+Codex also flagged a real bug it found while looking there, unrelated to this PR: the legacy SCO path assigns `_audioManager.BluetoothScoOn = true` at line 368, then on timeout checks that same flag at line 386 and reports success ("Bluetooth SCO was already on") for a connection that was never confirmed.
+
+## Where Codex and I disagree
+
+Codex's nit on `AppleAudioFocusUI.cs:306-307` says the comment ("the speaker override that outlived it") is factually wrong, citing Apple QA1754: a route change resets a temporary speaker override. If that's right, the author's stated premise for the whole headset fix is a misdiagnosis. That's the same doubt as my finding #3, from the opposite direction — I argued the code can't *see* a masked headset; Codex argues there's no masking to see. Both point at the same action: this needs the device pass the author already said it needs.
+
+Codex found no deadlock or lock re-entry, matching my own trace.
+
+## Style items Codex caught that I didn't
+
+`AndroidAudioFocusHelper.cs` has pre-existing violations with no entry in `.claude/style-bypasses.md`: `Async`-suffixed methods (`SetCommunicationDeviceAsync`, `RequestFocusAsync`, `HandleDevicesChangedAsync`, `OnDevicesChangedAsync`) against the rule at `CODING_STYLE.md:195`, and `///` XML docs on the three `IAudioDeviceRouter` members against `CODING_STYLE.md:74`. I verified both rules and the absent bypass entry. Per CLAUDE.md these get fixed by default since the file is edited here — though the `Async` renames touch the interface, so that may be worth its own commit.
+
+Codex's remaining nit — `IsExternalPort` omitting `LineOut`, `DisplayPort`, `Thunderbolt` etc. — is fair but that method is untouched by this PR.
+
+## Merged verdict
+
+Fix before merge: the PTT-transmit gate regression (Codex), the `Play`-can-throw / stuck-track issue, and the `ReactivateUnsafe` asymmetry. Resolve the override-persistence question on a real iPhone before trusting the headset logic either way. The `HandleRouteChange` reason filtering, the per-track lock cost, and the style items are cleanup.
