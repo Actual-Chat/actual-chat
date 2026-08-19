@@ -40,6 +40,27 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     }
 
     [Fact]
+    public void BeepGroupSurvivesRoundtrip()
+    {
+        // arrange
+        var authorId = AuthorId.New(TestChatId, 5);
+        var notification = MessageNotification.New(TestUserId, TestChatId, 100, authorId) with {
+            Version = 1,
+            Title = "Bob @ Good chat",
+            Text = "Sent a voice message",
+            BeepGroup = "s:" + TestChatId.Value + ":90",
+            LastBeepGroup = "a:" + authorId.Value,
+        };
+
+        // act
+        var deserialized = AssertMessagePackRoundtrip(notification);
+
+        // assert
+        deserialized.BeepGroup.Should().Be(notification.BeepGroup);
+        deserialized.LastBeepGroup.Should().Be(notification.LastBeepGroup);
+    }
+
+    [Fact]
     public void Notification_PerKind()
     {
         var entryId = ChatEntryId.New(TestChatId, 1);

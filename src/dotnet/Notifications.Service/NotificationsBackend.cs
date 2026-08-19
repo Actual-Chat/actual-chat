@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using ActualChat.Contacts;
 using ActualChat.Db;
 using ActualChat.Flows;
+using ActualChat.Live;
 using ActualChat.Notifications.Db;
 using ActualChat.Notifications.Module;
 using ActualChat.Queues;
@@ -609,7 +610,13 @@ public class NotificationsBackend(IServiceProvider services)
             && entry.LocalId >= lc.StartEntryLid && lc.AuthorIds.Contains(entry.AuthorId))
             return;
 
-        await SendChatMessageNotification(entry, author, cancellationToken).ConfigureAwait(false);
+        // ShouldNotify lets a Create through only when it is not streaming (typed text) and an
+        // Update only on the streaming -> finalized transition, which is exactly what an utterance
+        // looks like. That transition is the only "spoken" signal that survives JustText (it never
+        // sets Audio) and a voice message whose audio failed to save.
+        var isSpoken = changeKind == ChangeKind.Update;
+        await SendChatMessageNotification(entry, author, live, isSpoken, cancellationToken)
+            .ConfigureAwait(false);
         return;
 
         // - plain typed text: Create already carries the full content → push immediately;
@@ -658,7 +665,7 @@ public class NotificationsBackend(IServiceProvider services)
         var similarityKey = entry.ChatId.Value;
         await EnqueueMessageRelatedNotifications(
             entry.ChatId, entry.Id, reactionAuthor, text, NotificationKind.Reaction,
-            similarityKey, userIds, cancellationToken)
+            similarityKey, "", userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -685,7 +692,8 @@ public class NotificationsBackend(IServiceProvider services)
 
         var text = $"Thread '{chat.Title}' has been created";
         await EnqueueMessageRelatedNotifications(
-                parentChatId, null, creator, text, NotificationKind.Thread, similarityKey, userIds, cancellationToken)
+                parentChatId, null, creator, text, NotificationKind.Thread, similarityKey, "",
+                userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -807,6 +815,8 @@ public class NotificationsBackend(IServiceProvider services)
     private async Task SendChatMessageNotification(
         ChatEntry entry,
         AuthorFull author,
+        LiveSessionState? live,
+        bool isSpoken,
         CancellationToken cancellationToken)
     {
         var freshEntry = await ChatsBackend
@@ -824,22 +834,30 @@ public class NotificationsBackend(IServiceProvider services)
         var userIds = await ListSubscribedUserIds(chatId, NotificationImportance.Important, cancellationToken)
             .ConfigureAwait(false);
         // Don't interrupt users who are actively in this chat's live call — they're present.
-        var live = await LiveSessionsBackend.GetState(chatId, cancellationToken).ConfigureAwait(false);
         if (live is { SessionStartedAt: not null }) {
             var active = await GetActiveParticipantUserIds(chatId, cancellationToken).ConfigureAwait(false);
             if (active.Count != 0)
                 userIds = userIds.Where(x => !active.Contains(x)).ToList();
         }
 
+        // The voice context the beep policy groups by: a live session is one conversation however
+        // many utterances it holds, and outside one a single speaker's run is a monologue. The
+        // prefixes keep a session id from ever colliding with an author id.
+        var beepGroup = !isSpoken ? ""
+            : live is { } liveSession && entry.LocalId >= liveSession.StartEntryLid
+                ? "s:" + liveSession.RingConversationId.Value
+                : "a:" + author.Id.Value;
+
         // Users personally @mentioned in the text get a Mention notification (delivered under
         // ImportantOnly, individually per entry); everyone else gets the plain coalescing Message
-        // notification (Default mode only).
+        // notification (Default mode only). Mentions are per-entry, so they alert once on their
+        // own and never need the voice grouping.
         var mentionedUserIds = await GetMentionedUserIds(chatId, mentionIds, cancellationToken).ConfigureAwait(false);
         var mentioned = userIds.Where(mentionedUserIds.Contains).ToList();
         if (mentioned.Count > 0)
             await EnqueueMessageRelatedNotifications(
                 chatId, entryId, author, text, NotificationKind.Mention,
-                entryId.Value, mentioned, cancellationToken)
+                entryId.Value, "", mentioned, cancellationToken)
                 .ConfigureAwait(false);
 
         var others = userIds.Where(x => !mentionedUserIds.Contains(x)).ToList();
@@ -848,7 +866,7 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
         await EnqueueMessageRelatedNotifications(
             chatId, entryId, author, text, NotificationKind.Message,
-            chatId.Value, ordinaryUserIds, cancellationToken)
+            chatId.Value, beepGroup, ordinaryUserIds, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -1140,6 +1158,7 @@ public class NotificationsBackend(IServiceProvider services)
         string content,
         NotificationKind kind,
         string similarityKey,
+        string beepGroup,
         IReadOnlyList<UserId> userIds,
         CancellationToken cancellationToken)
     {
@@ -1185,6 +1204,7 @@ public class NotificationsBackend(IServiceProvider services)
                     }.ToApiArray(),
                     LeadText = content,
                     LeadCount = 1,
+                    BeepGroup = beepGroup,
                 };
             await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken)
                 .ConfigureAwait(false);
@@ -1224,7 +1244,7 @@ public class NotificationsBackend(IServiceProvider services)
         var lastEntryId = ChatEntryId.New(chatId, textEntryLid);
         await EnqueueMessageRelatedNotifications(
             chatId, lastEntryId, author, content, NotificationKind.Attention,
-            similarityKey, userIds, cancellationToken)
+            similarityKey, "", userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -1513,9 +1533,10 @@ public class NotificationsBackend(IServiceProvider services)
             }
 
             // For each notification the batch changed, decide whether its push audibly alerts or
-            // updates silently. Coalescing chat notifications follow the beep back-off (composing
-            // their summary text along the way); other kinds alert when first shown and update
-            // silently on same-tag replacement — except ringers, which always alert.
+            // updates silently. Coalescing chat notifications follow the beep policy (composing
+            // their summary text along the way): spoken ones alert once per voice context, typed
+            // ones back off. Other kinds alert when first shown and update silently on same-tag
+            // replacement — except ringers, which always alert.
             var silentById = new Dictionary<NotificationId, bool>();
             foreach (var id in changedIds) {
                 var displayed = current.Displayed.First(n => n.Id == id);
@@ -1525,13 +1546,13 @@ public class NotificationsBackend(IServiceProvider services)
                     continue;
                 }
 
-                var shouldBeep = NotificationBeepPolicy.ShouldBeep(
-                    related.Kind, related.BeepCount, related.LastBeepAt, now);
+                var shouldBeep = NotificationBeepPolicy.ShouldBeep(related, now);
                 var text = NotificationHelper.ComposeAggregatedText(related);
                 var updated = related with {
                     Text = text,
                     BeepCount = shouldBeep ? related.BeepCount + 1 : related.BeepCount,
                     LastBeepAt = shouldBeep ? now : related.LastBeepAt,
+                    LastBeepGroup = shouldBeep ? related.BeepGroup : related.LastBeepGroup,
                 };
                 current = current with { Displayed = current.Displayed.WithUpdate(n => n.Id == id, _ => updated) };
                 silentById[id] = !shouldBeep;

@@ -388,6 +388,155 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
         result.Actions[1].Target.Should().Be("/chat/x");
     }
 
+    [Fact]
+    public void SpokenMessageBeepsOncePerVoiceContext()
+    {
+        // arrange
+        var t0 = Moment.Now;
+        var session = "s:" + TestChatId.Value + ":100";
+        var first = NewSpoken(100, AuthorId.New(TestChatId, 1), "hi", session);
+
+        // act & assert
+        NotificationBeepPolicy.ShouldBeep(first, t0).Should().BeTrue();
+
+        var beeped = first with { LastBeepGroup = session, LastBeepAt = t0, BeepCount = 1 };
+        NotificationBeepPolicy.ShouldBeep(beeped, t0 + TimeSpan.FromMinutes(9)).Should().BeFalse();
+        NotificationBeepPolicy.ShouldBeep(beeped, t0 + Constants.Notification.VoiceReAlertInterval)
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public void SpokenMessageBeepsWhenTheSpeakerChanges()
+    {
+        // arrange
+        var t0 = Moment.Now;
+        var author1 = AuthorId.New(TestChatId, 1);
+        var author2 = AuthorId.New(TestChatId, 2);
+        var handover = NewSpoken(101, author2, "my turn", "a:" + author2.Value) with {
+            LastBeepGroup = "a:" + author1.Value,
+            LastBeepAt = t0,
+            BeepCount = 3,
+        };
+
+        // act & assert: the interval only throttles a run by one speaker
+        NotificationBeepPolicy.ShouldBeep(handover, t0 + TimeSpan.FromSeconds(1)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void MonologueBeepsOnlyOncePerInterval()
+    {
+        // arrange
+        var t0 = Moment.Now;
+        var author = AuthorId.New(TestChatId, 1);
+        var group = "a:" + author.Value;
+        var monologue = NewSpoken(101, author, "still talking", group) with {
+            LastBeepGroup = group,
+            LastBeepAt = t0,
+        };
+
+        // act & assert
+        NotificationBeepPolicy.ShouldBeep(monologue, t0 + TimeSpan.FromMinutes(5)).Should().BeFalse();
+        NotificationBeepPolicy.ShouldBeep(monologue, t0 + Constants.Notification.VoiceReAlertInterval)
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public void TypedMessageKeepsTheBeepBackoff()
+    {
+        // arrange
+        var t0 = Moment.Now;
+        var typed = NewMessage(101, AuthorId.New(TestChatId, 1), "typed") with {
+            BeepCount = 1,
+            LastBeepAt = t0,
+        };
+
+        // act & assert
+        typed.BeepGroup.Should().BeEmpty();
+        NotificationBeepPolicy.ShouldBeep(typed, t0 + TimeSpan.FromSeconds(5)).Should().BeFalse();
+        NotificationBeepPolicy.ShouldBeep(typed, t0 + TimeSpan.FromSeconds(10)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void PreBeepGroupBlobsBehaveAsTyped()
+    {
+        // arrange: a blob written before keys 19/20 deserializes them as null, not ""
+        var t0 = Moment.Now;
+        var legacy = NewMessage(101, AuthorId.New(TestChatId, 1), "old") with {
+            BeepGroup = null!,
+            LastBeepGroup = null!,
+            BeepCount = 1,
+            LastBeepAt = t0,
+        };
+
+        // act & assert
+        NotificationBeepPolicy.ShouldBeep(legacy, t0 + TimeSpan.FromSeconds(5)).Should().BeFalse();
+        NotificationBeepPolicy.ShouldBeep(legacy, t0 + TimeSpan.FromSeconds(10)).Should().BeTrue();
+        var merged = (MessageNotification)NewMessage(102, AuthorId.New(TestChatId, 1), "next").MergeWith(legacy);
+        merged.BeepGroup.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void MergeTracksTheNewestMessageBeepGroup()
+    {
+        // arrange
+        var t0 = Moment.Now;
+        var author1 = AuthorId.New(TestChatId, 1);
+        var author2 = AuthorId.New(TestChatId, 2);
+        var group1 = "a:" + author1.Value;
+        var group2 = "a:" + author2.Value;
+        var existing = NewSpoken(100, author1, "first", group1) with {
+            SentAt = t0,
+            LastBeepGroup = group1,
+            LastBeepAt = t0,
+        };
+
+        // act & assert: the newer message decides the group, the last-beeped one carries over
+        var newer = NewSpoken(101, author2, "second", group2) with { SentAt = t0 + TimeSpan.FromMinutes(1) };
+        var merged = (MessageNotification)newer.MergeWith(existing);
+        merged.BeepGroup.Should().Be(group2);
+        merged.LastBeepGroup.Should().Be(group1);
+        NotificationBeepPolicy.ShouldBeep(merged, merged.SentAt).Should().BeTrue();
+
+        // an out-of-order earlier message leaves the group alone
+        var older = NewSpoken(99, author2, "earlier", group2) with { SentAt = t0 - TimeSpan.FromMinutes(1) };
+        ((MessageNotification)older.MergeWith(existing)).BeepGroup.Should().Be(group1);
+    }
+
+    [Fact]
+    public void MergeResetsTheBeepGroupAfterAVoiceLull()
+    {
+        // arrange
+        var t0 = Moment.Now;
+        var author = AuthorId.New(TestChatId, 1);
+        var group = "a:" + author.Value;
+        var existing = NewSpoken(100, author, "first", group) with {
+            SentAt = t0,
+            BeepCount = 3,
+            LastBeepAt = t0,
+            LastBeepGroup = group,
+        };
+
+        // act & assert: BeepResetPeriod is not enough for a spoken run - an ordinary pause
+        // mid-monologue must not re-arm the beep
+        var pause = NewSpoken(101, author, "second", group) with {
+            SentAt = t0 + Constants.Notification.BeepResetPeriod,
+        };
+        var afterPause = (MessageNotification)pause.MergeWith(existing);
+        afterPause.LastBeepGroup.Should().Be(group);
+        NotificationBeepPolicy.ShouldBeep(afterPause, afterPause.SentAt).Should().BeFalse();
+
+        var lull = NewSpoken(101, author, "second", group) with {
+            SentAt = t0 + Constants.Notification.VoiceReAlertInterval,
+        };
+        var afterLull = (MessageNotification)lull.MergeWith(existing);
+        afterLull.LastBeepGroup.Should().BeEmpty();
+        NotificationBeepPolicy.ShouldBeep(afterLull, afterLull.SentAt).Should().BeTrue();
+    }
+
+    private static MessageNotification NewSpoken(
+        long entryLid, AuthorId authorId, string text, string beepGroup)
+        => NewMessage(entryLid, authorId, text) with { BeepGroup = beepGroup };
+
     private static MessageNotification NewMessage(long entryLid, AuthorId authorId, string text, string authorName = "")
         => MessageNotification.New(TestUserId, TestChatId, entryLid, authorId) with {
             Text = text,

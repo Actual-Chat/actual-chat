@@ -381,6 +381,10 @@ public static partial class Constants
         // After this much silence the beep back-off resets, so the next message alerts immediately
         // (a fresh burst should be reactable ASAP rather than inheriting the previous burst's back-off).
         public static readonly TimeSpan BeepResetPeriod = TimeSpan.FromMinutes(5);
+        // Spoken messages alert on change of "voice context" - the live session they belong to, or
+        // their author when there is none - and then no more often than this. A monologue or a long
+        // session is one conversation to the listener, not one per utterance.
+        public static readonly TimeSpan VoiceReAlertInterval = TimeSpan.FromMinutes(10);
         // Unread mentions re-alert on this fixed interval (they never coalesce with chat messages),
         // at most MaxMentionReAlerts times per mention.
         public static readonly TimeSpan MentionReAlertInterval = TimeSpan.FromMinutes(10);
