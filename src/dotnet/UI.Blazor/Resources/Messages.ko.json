@@ -1,0 +1,130 @@
+// Translations of Messages.en.json. The English file's values must byte-match what the
+// app produces at runtime; these don't - they are ordinary translations.
+// Keep the {named} placeholders identical to the English ones.
+{
+  "Validation_Required_Format": "'{field}'은(는) 필수 항목입니다.",
+  "Validation_MinLength_Format": "'{field}'은(는) {min}자 이상이어야 합니다.",
+  "Validation_EmailAddress_Format": "'{field}'은(는) 유효한 이메일 주소가 아닙니다.",
+  "Validation_DeleteConfirmationRequired": "삭제 확인이 필요합니다",
+  "Validation_DeleteConfirmationInvalid": "확인하려면 DELETE를 입력하세요",
+
+  // Generic errors, composed by StandardError / the exception types themselves
+  "Error_NotEnoughPermissions": "이 작업을 수행할 권한이 없습니다.",
+  "Error_NotEnoughPermissions_Format": "이 작업을 수행할 권한이 없습니다. 필요한 권한: {permission}",
+  "Error_TooManyRequests": "요청이 너무 많습니다.",
+  "Error_TooManyRequests_Format": "요청이 너무 많습니다. {seconds}초 후에 다시 시도하세요.",
+  "Error_VersionMismatch": "데이터가 변경되었습니다. 다시 시도하세요.",
+  "Error_ChatNotFound": "채팅을 찾을 수 없습니다.",
+  "Error_ChatEntryNotFound": "메시지를 찾을 수 없습니다.",
+  "Error_AccountNotFound": "계정을 찾을 수 없습니다.",
+  "Error_AuthorNotFound": "참가자를 찾을 수 없습니다.",
+  "Error_AvatarNotFound": "프로필을 찾을 수 없습니다.",
+  "Error_ContactNotFound": "연락처를 찾을 수 없습니다.",
+  "Error_MediaNotFound": "파일을 찾을 수 없습니다.",
+  "Error_UploadNotFound": "업로드를 찾을 수 없습니다.",
+
+  // Sign-in and account
+  "Error_RegistrationExpired": "이 가입 요청이 만료되었습니다. 다시 로그인해 주세요.",
+  "Error_SessionExpired": "세션이 만료되었거나 해제되었습니다. 앱을 다시 시작해 주세요.",
+  "Error_AlreadySignedIn": "이미 로그인되어 있습니다.",
+  "Error_PhoneTaken": "이 전화번호는 다른 계정에서 이미 사용 중입니다.",
+  "Error_EmailTaken": "이 이메일은 다른 계정에서 이미 사용 중입니다.",
+  "Error_SmsNotDelivered": "입력한 전화번호로 메시지를 보내지 못했습니다.",
+  "Error_CannotDeactivateCurrentSession": "현재 세션은 해제할 수 없습니다.",
+  "Error_PhoneFormatInvalid": "전화번호 형식이 올바르지 않습니다.",
+  "Error_CannotChangeOwnStatus": "자신의 상태는 변경할 수 없습니다.",
+  "Error_ApiKeyExpirationRange_Format": "API 키 유효 기간은 1일에서 {days}일 사이여야 합니다.",
+
+  // Chat members and roles
+  "Error_OnlyOwnerCannotLeave": "이 채팅의 유일한 소유자이므로 나갈 수 없습니다. 다른 소유자를 먼저 추가하세요.",
+  "Error_CannotRemoveSelf": "자신을 채팅 멤버에서 제외할 수 없습니다.",
+  "Error_CannotRemoveChatOwner": "이 채팅의 소유자를 멤버에서 제외할 수 없습니다.",
+  "Error_CannotRemoveSearchBot": "AI 검색 봇을 채팅 멤버에서 제외할 수 없습니다.",
+  "Error_OwnerCannotBeDemoted": "채팅 소유자의 권한은 낮출 수 없습니다.",
+  "Error_AuthorAlreadyLeft": "선택한 참가자는 이미 채팅에서 나갔습니다.",
+  "Error_AutomaticRoleMembership": "이 시스템 역할의 멤버는 자동으로 결정됩니다.",
+  "Error_ManageMembershipInPlace": "스페이스 공개 채팅의 멤버는 스페이스 설정에서 관리하세요.",
+  "Error_AnonymousAvatarRequired": "익명으로 참여하려면 익명 프로필이 필요합니다.",
+  "Error_GuestJoinNotAllowed": "이 채팅은 게스트 계정으로 참여할 수 없습니다.",
+  "Error_AnonymousJoinNotAllowed": "이 채팅은 익명으로 참여할 수 없습니다.",
+  "Error_OwnersRoleCannotBeEmpty": "「소유자」 역할에는 최소 한 명이 남아 있어야 합니다.",
+  "Error_OnlyOwnersAllowed": "이 작업은 이 채팅의 「소유자」 역할 멤버만 수행할 수 있습니다.",
+
+  // Messages
+  "Error_CannotSendMessages": "이 채팅에는 메시지를 보낼 수 없습니다.",
+  "Error_EmptyMessage": "빈 메시지는 보낼 수 없습니다.",
+  "Error_CanEditOwnMessagesOnly": "자신의 메시지만 편집할 수 있습니다.",
+  "Error_OnlyTextCanBeEdited": "텍스트 메시지만 편집할 수 있습니다.",
+  "Error_StreamingCannotBeEdited": "녹음 중인 메시지는 편집할 수 없습니다.",
+  "Error_ForwardedCannotBeEdited": "전달된 메시지는 편집할 수 없습니다.",
+  "Error_MessageNoLongerExists": "이 메시지는 더 이상 존재하지 않습니다.",
+  "Error_CannotRemoveMessage": "이 메시지를 삭제할 권한이 없습니다.",
+  "Error_CannotRemoveOwnerMessage": "소유자의 메시지를 삭제할 권한이 없습니다.",
+  "Error_CannotRestoreMessage": "이 메시지를 복원할 권한이 없습니다.",
+  "Error_CannotRestoreOwnerMessage": "소유자의 메시지를 복원할 권한이 없습니다.",
+  "Error_RootChatCannotHoldMessages": "스페이스의 기본 채팅에는 메시지를 올릴 수 없습니다 — 스페이스의 다른 채팅에 올려 주세요.",
+  "Error_CanAttachOwnLocationsOnly": "이 채팅에서는 자신이 공유한 위치만 첨부할 수 있습니다.",
+  "Error_NonContactMessageLimit_Format": "상대가 회원님을 연락처에 추가하거나 답장할 때까지 최대 {limit}개의 메시지를 보낼 수 있습니다.",
+  "Error_OnlyOwnersOrModeratorsCanPin": "메시지는 채팅 소유자와 모더레이터만 고정할 수 있습니다.",
+  "Error_PinLimit_Format": "메시지는 최대 {limit}개까지 고정할 수 있습니다.",
+
+  // Chats and places
+  "Error_ChatTitleEmpty": "채팅 제목은 비워 둘 수 없습니다.",
+  "Error_ThreadTitleEmpty": "스레드 제목은 비워 둘 수 없습니다.",
+  "Error_PlaceTitleEmpty": "스페이스 제목은 비워 둘 수 없습니다.",
+  "Error_PlaceUnavailable": "요청한 스페이스를 사용할 수 없습니다.",
+  "Error_OnlyPlaceMembersCanAddChats": "스페이스 멤버만 채팅을 추가할 수 있습니다.",
+  "Error_CannotMakeChatPublic": "채팅을 공개로 전환할 권한이 없습니다.",
+  "Error_CustomLinkNotAllowed": "스페이스 채팅에는 사용자 지정 링크를 사용할 수 없습니다.",
+  "Error_CustomLinkTaken_Format": "링크 「{link}」는 같은 스페이스의 다른 채팅에서 이미 사용 중입니다.",
+  "Error_WelcomeChatCannotBePrivate": "「Welcome」 채팅은 비공개로 전환할 수 없습니다.",
+  "Error_WelcomeChatCannotBeRemoved": "「Welcome」 채팅은 삭제할 수 없습니다.",
+  "Error_OnlyGroupOrPlaceChatCanBeCopied": "스페이스로는 그룹 채팅이나 스페이스 채팅만 복사할 수 있습니다.",
+  "Error_CannotCopyToSamePlace": "스페이스 채팅을 같은 스페이스로 복사할 수 없습니다.",
+  "Error_MigrationRequiresChatOwner": "이전하려면 이 채팅의 소유자여야 합니다.",
+  "Error_MigrationRequiresPlaceOwner": "채팅을 스페이스로 복사하려면 해당 스페이스의 소유자여야 합니다.",
+  "Error_OperationRequiresChatOwner": "이 작업을 수행하려면 이 채팅의 소유자여야 합니다.",
+  "Error_OperationRequiresPlaceOwner": "이 작업을 수행하려면 채팅이 속한 스페이스의 소유자여야 합니다.",
+
+  // Threads and contacts
+  "Error_ThreadRequiresContact": "상대가 회원님을 연락처에 추가하거나 답장한 후에 스레드를 시작할 수 있습니다.",
+  "Error_SignInToFollowThread": "스레드를 팔로우하려면 로그인하세요.",
+  "Error_OnlyPeerContactCanBeBlocked": "개인 연락처만 차단할 수 있습니다.",
+  "Error_SignInToChat": "다른 사용자와 채팅하려면 로그인하세요.",
+  "Error_CannotChatWithUnauthenticated": "로그인하지 않은 사용자와는 채팅할 수 없습니다.",
+
+  // Calls
+  "Error_OnlyParticipantCanBecomeHost": "통화 참가자만 통화 호스트가 될 수 있습니다.",
+  "Error_CannotMuteOwner": "소유자의 마이크는 끌 수 없습니다.",
+  "Error_OnlyHostOrOwnerCanChangeHost": "호스트는 현재 통화 호스트나 채팅 소유자만 변경할 수 있습니다.",
+  "Error_CallRequiresContact": "상대가 회원님을 연락처에 추가하거나 답장한 후에 통화할 수 있습니다.",
+  "Error_CannotMuteInPeerChat": "일대일 채팅에서는 상대의 마이크를 끌 수 없습니다.",
+  "Error_OnlyHostOwnerOrModeratorCanManageCall": "통화는 통화 호스트, 채팅 소유자 또는 모더레이터만 관리할 수 있습니다.",
+  "Error_VoiceStreamingModeLocked": "이 채팅에서는 음성 전송 모드를 변경할 수 없습니다.",
+
+  // Notifications
+  "Error_NotifyMembersNotAllowed": "공개 채팅에서는 멤버에게 알릴 수 없습니다.",
+  "Error_AlertEveryoneUnavailable": "10명이 넘는 채팅에서는 모두에게 긴급 알림을 보낼 수 없습니다.",
+  "Error_NobodyToNotify": "알릴 대상이 없습니다.",
+  "Error_OnlyAuthorCanNotify": "언급된 사람에게는 메시지 작성자만 알릴 수 있습니다.",
+
+  // Media and uploads
+  "Error_NoMediaAccess": "이 파일에 접근할 권한이 없습니다.",
+  "Error_FileTooBig": "파일이 너무 큽니다.",
+  "Error_CropExportFailed": "자른 이미지를 내보내지 못했습니다.",
+  "Error_FileTooBig_Format": "파일이 너무 큽니다. 최대 크기: {size}.",
+  "Error_TooManyFiles_Format": "파일이 너무 많습니다. 최대 허용 개수는 {count}개입니다.",
+
+  // Invites
+  "Error_InviteAlreadyUsed": "이 초대 링크는 이미 사용되었습니다.",
+  "Error_InviteNotActive": "이 초대 링크는 더 이상 유효하지 않습니다.",
+  "Error_InviteCodeNotFound": "해당 코드의 초대를 찾을 수 없습니다.",
+  "Error_OnlyPlaceMembersCanUseCode": "이 코드는 스페이스 멤버만 사용할 수 있습니다.",
+  "Error_UserInvitesRemoved": "사용자 초대 기능은 더 이상 지원되지 않습니다.",
+
+  // Live location
+  "Error_JoinChatToShareLocation": "위치를 공유하려면 먼저 채팅에 참여하세요.",
+  "Error_CanChangeOwnLocationsOnly": "이 채팅에서는 자신이 공유한 위치만 변경할 수 있습니다.",
+  "Error_LocationSharingLimit_Format": "이 채팅에서 실시간 위치를 공유할 수 있는 최대 인원 {limit}명에 이미 도달했습니다.",
+  "Error_FailedToAddFileAttachment": "파일 첨부에 실패했습니다."
+}

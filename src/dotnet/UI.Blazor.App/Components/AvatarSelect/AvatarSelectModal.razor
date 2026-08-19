@@ -10,9 +10,9 @@
             ? Mode.Join
             : Mode.Change;
     var title = mode switch {
-        Mode.Join =>  "Choose your avatar",
-        Mode.Reveal => "Reveal yourself",
-        _ => "Change your avatar",
+        Mode.Join =>  L.AvatarSelect_ChooseTitle,
+        Mode.Reveal => L.AvatarSelect_RevealTitle,
+        _ => L.AvatarSelect_ChangeTitle,
         };
 }
 
@@ -27,15 +27,15 @@
         <div class="avatar-select" role="listbox">
             @if (mode == Mode.Change) {
                 <div class="c-hint">
-                    Change your avatar in this chat:
+                    @L.AvatarSelect_ChangeHint
                 </div>
             }
             else if (mode == Mode.Reveal) {
                 <div class="c-hint danger">
-                    You're going to reveal your real account. This action can't be undone.
+                    @L.AvatarSelect_RevealWarning
                 </div>
                 <div class="c-hint">
-                    The avatar to use after the reveal:
+                    @L.AvatarSelect_RevealHint
                 </div>
             }
             @foreach (var avatar in m.Avatars) {
@@ -59,7 +59,7 @@
                 var avatar = m.Anonymous;
                 <div class="flex-y">
                     <div class="flex-x text-sm font-normal border-t-2 py-1">
-                        You can use anonymous avatar:
+                        @L.AvatarSelect_AnonymousHint
                     </div>
                     <Tile Click="_ => OnAnonymousSelected(avatar)" Class="avatar-select-item">
                         <TileItem>
@@ -75,7 +75,9 @@
                         </TileItem>
                     </Tile>
                     <div class="flex-x text-sm font-normal">
-                        <button class="underline mt-2" @onclick="@RegenerateAnonymousAvatar">Regenerate anonymous avatar</button>
+                        <button
+                            class="underline mt-2"
+                            @onclick="@RegenerateAnonymousAvatar">@L.AvatarSelect_RegenerateAnonymous</button>
                     </div>
                 </div>
             }
@@ -83,7 +85,7 @@
     </FormBlock>
     </Body>
     <Buttons>
-        <Button Class="btn-modal" Click="@OnCancel">Close</Button>
+        <Button Class="btn-modal" Click="@OnCancel">@L.Common_Close</Button>
     </Buttons>
 </DialogFrame>
 

@@ -1,0 +1,130 @@
+// Translations of Messages.en.json. The English file's values must byte-match what the
+// app produces at runtime; these don't - they are ordinary translations.
+// Keep the {named} placeholders identical to the English ones.
+{
+  "Validation_Required_Format": "{field} फ़ील्ड ज़रूरी है।",
+  "Validation_MinLength_Format": "{field} फ़ील्ड में कम से कम {min} अक्षर होने चाहिए।",
+  "Validation_EmailAddress_Format": "{field} एक मान्य ईमेल पता नहीं है।",
+  "Validation_DeleteConfirmationRequired": "मिटाने की पुष्टि ज़रूरी है",
+  "Validation_DeleteConfirmationInvalid": "पुष्टि के लिए DELETE लिखें",
+
+  // Generic errors, composed by StandardError / the exception types themselves
+  "Error_NotEnoughPermissions": "इस कार्रवाई के लिए आपके पास पर्याप्त अनुमति नहीं है।",
+  "Error_NotEnoughPermissions_Format": "इस कार्रवाई के लिए आपके पास पर्याप्त अनुमति नहीं है। आवश्यक अनुमति: {permission}",
+  "Error_TooManyRequests": "बहुत अधिक अनुरोध।",
+  "Error_TooManyRequests_Format": "बहुत अधिक अनुरोध। {seconds} सेकंड बाद फिर कोशिश करें।",
+  "Error_VersionMismatch": "डेटा बदल गया है। फिर कोशिश करें।",
+  "Error_ChatNotFound": "चैट नहीं मिली।",
+  "Error_ChatEntryNotFound": "संदेश नहीं मिला।",
+  "Error_AccountNotFound": "खाता नहीं मिला।",
+  "Error_AuthorNotFound": "प्रतिभागी नहीं मिला।",
+  "Error_AvatarNotFound": "प्रोफ़ाइल नहीं मिली।",
+  "Error_ContactNotFound": "संपर्क नहीं मिला।",
+  "Error_MediaNotFound": "फ़ाइल नहीं मिली।",
+  "Error_UploadNotFound": "अपलोड नहीं मिला।",
+
+  // Sign-in and account
+  "Error_RegistrationExpired": "यह पंजीकरण अनुरोध समाप्त हो चुका है। कृपया फिर से साइन इन करें।",
+  "Error_SessionExpired": "आपका सत्र समाप्त हो चुका है या बंद कर दिया गया है। कृपया ऐप फिर से शुरू करें।",
+  "Error_AlreadySignedIn": "आप पहले से साइन इन हैं।",
+  "Error_PhoneTaken": "यह फ़ोन नंबर पहले से किसी दूसरे खाते में उपयोग हो रहा है।",
+  "Error_EmailTaken": "यह ईमेल पहले से किसी दूसरे खाते में उपयोग हो रहा है।",
+  "Error_SmsNotDelivered": "हम दिए गए फ़ोन नंबर पर संदेश नहीं भेज सके।",
+  "Error_CannotDeactivateCurrentSession": "मौजूदा सत्र बंद नहीं किया जा सकता।",
+  "Error_PhoneFormatInvalid": "फ़ोन नंबर का प्रारूप गलत है।",
+  "Error_CannotChangeOwnStatus": "आप अपनी स्थिति नहीं बदल सकते।",
+  "Error_ApiKeyExpirationRange_Format": "API कुंजी की अवधि 1 से {days} दिन के बीच होनी चाहिए।",
+
+  // Chat members and roles
+  "Error_OnlyOwnerCannotLeave": "आप इस चैट को नहीं छोड़ सकते क्योंकि आप इसके एकमात्र स्वामी हैं। पहले कोई दूसरा स्वामी जोड़ें।",
+  "Error_CannotRemoveSelf": "आप खुद को चैट सदस्यों से नहीं हटा सकते।",
+  "Error_CannotRemoveChatOwner": "आप इस चैट के स्वामी को सदस्यों से नहीं हटा सकते।",
+  "Error_CannotRemoveSearchBot": "आप AI सर्च बॉट को चैट सदस्यों से नहीं हटा सकते।",
+  "Error_OwnerCannotBeDemoted": "चैट के स्वामी का दर्जा कम नहीं किया जा सकता।",
+  "Error_AuthorAlreadyLeft": "चुना गया प्रतिभागी चैट पहले ही छोड़ चुका है।",
+  "Error_AutomaticRoleMembership": "इस सिस्टम भूमिका में सदस्यता अपने आप तय होती है।",
+  "Error_ManageMembershipInPlace": "स्पेस की सार्वजनिक चैट की सदस्यता स्पेस सेटिंग्स में प्रबंधित करें।",
+  "Error_AnonymousAvatarRequired": "गुमनाम रूप से शामिल होने के लिए गुमनाम प्रोफ़ाइल चाहिए।",
+  "Error_GuestJoinNotAllowed": "यह चैट अतिथि खाते से शामिल होने की अनुमति नहीं देती।",
+  "Error_AnonymousJoinNotAllowed": "यह चैट गुमनाम रूप से शामिल होने की अनुमति नहीं देती।",
+  "Error_OwnersRoleCannotBeEmpty": "«स्वामी» भूमिका में कम से कम एक उपयोगकर्ता होना चाहिए।",
+  "Error_OnlyOwnersAllowed": "यह कार्रवाई केवल इस चैट की «स्वामी» भूमिका के सदस्य कर सकते हैं।",
+
+  // Messages
+  "Error_CannotSendMessages": "आप इस चैट में संदेश नहीं भेज सकते।",
+  "Error_EmptyMessage": "खाली संदेश नहीं भेजा जा सकता।",
+  "Error_CanEditOwnMessagesOnly": "आप केवल अपने संदेश संपादित कर सकते हैं।",
+  "Error_OnlyTextCanBeEdited": "केवल टेक्स्ट संदेश संपादित किए जा सकते हैं।",
+  "Error_StreamingCannotBeEdited": "रिकॉर्ड हो रहे संदेश संपादित नहीं किए जा सकते।",
+  "Error_ForwardedCannotBeEdited": "अग्रेषित संदेश संपादित नहीं किए जा सकते।",
+  "Error_MessageNoLongerExists": "यह संदेश अब मौजूद नहीं है।",
+  "Error_CannotRemoveMessage": "आपको यह संदेश हटाने की अनुमति नहीं है।",
+  "Error_CannotRemoveOwnerMessage": "आपको स्वामी का संदेश हटाने की अनुमति नहीं है।",
+  "Error_CannotRestoreMessage": "आपको यह संदेश वापस लाने की अनुमति नहीं है।",
+  "Error_CannotRestoreOwnerMessage": "आपको स्वामी का संदेश वापस लाने की अनुमति नहीं है।",
+  "Error_RootChatCannotHoldMessages": "स्पेस की मुख्य चैट में संदेश नहीं भेजे जा सकते — स्पेस की किसी चैट में भेजें।",
+  "Error_CanAttachOwnLocationsOnly": "इस चैट से आप केवल अपनी साझा की गई लोकेशन संलग्न कर सकते हैं।",
+  "Error_NonContactMessageLimit_Format": "जब तक यह व्यक्ति आपको संपर्कों में नहीं जोड़ता या जवाब नहीं देता, आप अधिकतम {limit} संदेश भेज सकते हैं।",
+  "Error_OnlyOwnersOrModeratorsCanPin": "संदेश केवल चैट के स्वामी और मॉडरेटर ही पिन कर सकते हैं।",
+  "Error_PinLimit_Format": "आप अधिकतम {limit} संदेश पिन कर सकते हैं।",
+
+  // Chats and places
+  "Error_ChatTitleEmpty": "चैट का शीर्षक खाली नहीं हो सकता।",
+  "Error_ThreadTitleEmpty": "थ्रेड का शीर्षक खाली नहीं हो सकता।",
+  "Error_PlaceTitleEmpty": "स्पेस का शीर्षक खाली नहीं हो सकता।",
+  "Error_PlaceUnavailable": "अनुरोधित स्पेस उपलब्ध नहीं है।",
+  "Error_OnlyPlaceMembersCanAddChats": "केवल स्पेस के सदस्य ही चैट जोड़ सकते हैं।",
+  "Error_CannotMakeChatPublic": "चैट को सार्वजनिक बनाने के लिए आपके पास पर्याप्त अनुमति नहीं है।",
+  "Error_CustomLinkNotAllowed": "स्पेस की चैट के लिए कस्टम लिंक की अनुमति नहीं है।",
+  "Error_CustomLinkTaken_Format": "लिंक «{link}» इसी स्पेस की किसी दूसरी चैट में पहले से उपयोग हो रहा है।",
+  "Error_WelcomeChatCannotBePrivate": "«Welcome» चैट को निजी नहीं बनाया जा सकता।",
+  "Error_WelcomeChatCannotBeRemoved": "«Welcome» चैट को हटाया नहीं जा सकता।",
+  "Error_OnlyGroupOrPlaceChatCanBeCopied": "स्पेस में केवल समूह चैट या स्पेस चैट कॉपी की जा सकती है।",
+  "Error_CannotCopyToSamePlace": "स्पेस चैट को उसी स्पेस में कॉपी नहीं किया जा सकता।",
+  "Error_MigrationRequiresChatOwner": "माइग्रेशन करने के लिए आपको इस चैट का स्वामी होना चाहिए।",
+  "Error_MigrationRequiresPlaceOwner": "चैट को स्पेस में कॉपी करने के लिए आपको उस स्पेस का स्वामी होना चाहिए।",
+  "Error_OperationRequiresChatOwner": "यह कार्रवाई करने के लिए आपको इस चैट का स्वामी होना चाहिए।",
+  "Error_OperationRequiresPlaceOwner": "यह कार्रवाई करने के लिए आपको उस स्पेस का स्वामी होना चाहिए जिसमें यह चैट है।",
+
+  // Threads and contacts
+  "Error_ThreadRequiresContact": "थ्रेड तभी शुरू किए जा सकते हैं जब यह व्यक्ति आपको संपर्कों में जोड़ ले या जवाब दे।",
+  "Error_SignInToFollowThread": "थ्रेड फ़ॉलो करने के लिए साइन इन करें।",
+  "Error_OnlyPeerContactCanBeBlocked": "केवल व्यक्तिगत संपर्क ही ब्लॉक किए जा सकते हैं।",
+  "Error_SignInToChat": "किसी दूसरे व्यक्ति से चैट करने के लिए साइन इन करें।",
+  "Error_CannotChatWithUnauthenticated": "बिना साइन इन किए उपयोगकर्ता से चैट नहीं की जा सकती।",
+
+  // Calls
+  "Error_OnlyParticipantCanBecomeHost": "कॉल का होस्ट केवल कॉल का कोई प्रतिभागी बन सकता है।",
+  "Error_CannotMuteOwner": "आप स्वामी का माइक बंद नहीं कर सकते।",
+  "Error_OnlyHostOrOwnerCanChangeHost": "होस्ट को केवल कॉल का होस्ट या चैट का स्वामी बदल सकता है।",
+  "Error_CallRequiresContact": "इस व्यक्ति को कॉल तभी किया जा सकता है जब वह आपको संपर्कों में जोड़ ले या जवाब दे।",
+  "Error_CannotMuteInPeerChat": "एक-से-एक चैट में आप दूसरे व्यक्ति का माइक बंद नहीं कर सकते।",
+  "Error_OnlyHostOwnerOrModeratorCanManageCall": "कॉल को केवल कॉल का होस्ट, चैट का स्वामी या मॉडरेटर ही प्रबंधित कर सकता है।",
+  "Error_VoiceStreamingModeLocked": "इस चैट में वॉइस ट्रांसमिशन मोड नहीं बदला जा सकता।",
+
+  // Notifications
+  "Error_NotifyMembersNotAllowed": "सार्वजनिक चैट में सदस्यों को सूचित नहीं किया जा सकता।",
+  "Error_AlertEveryoneUnavailable": "10 से अधिक लोगों वाली चैट में सभी को अलर्ट करना उपलब्ध नहीं है।",
+  "Error_NobodyToNotify": "सूचित करने के लिए कोई नहीं है।",
+  "Error_OnlyAuthorCanNotify": "उल्लेख किए गए लोगों को केवल संदेश का लेखक सूचित कर सकता है।",
+
+  // Media and uploads
+  "Error_NoMediaAccess": "आपके पास इस फ़ाइल तक पहुँचने की अनुमति नहीं है।",
+  "Error_FileTooBig": "फ़ाइल बहुत बड़ी है।",
+  "Error_CropExportFailed": "काटी गई छवि निर्यात नहीं की जा सकी.",
+  "Error_FileTooBig_Format": "फ़ाइल बहुत बड़ी है. अधिकतम आकार: {size}.",
+  "Error_TooManyFiles_Format": "बहुत सारी फ़ाइलें. अधिकतम अनुमत संख्या {count} है.",
+
+  // Invites
+  "Error_InviteAlreadyUsed": "यह आमंत्रण लिंक पहले ही उपयोग हो चुका है।",
+  "Error_InviteNotActive": "यह आमंत्रण लिंक अब सक्रिय नहीं है।",
+  "Error_InviteCodeNotFound": "इस कोड वाला कोई आमंत्रण नहीं मिला।",
+  "Error_OnlyPlaceMembersCanUseCode": "इस कोड का उपयोग केवल स्पेस के सदस्य कर सकते हैं।",
+  "Error_UserInvitesRemoved": "उपयोगकर्ता आमंत्रण अब समर्थित नहीं हैं।",
+
+  // Live location
+  "Error_JoinChatToShareLocation": "अपनी लोकेशन साझा करने से पहले चैट में शामिल हों।",
+  "Error_CanChangeOwnLocationsOnly": "इस चैट में आप केवल अपनी साझा की गई लोकेशन बदल सकते हैं।",
+  "Error_LocationSharingLimit_Format": "इस चैट में लाइव लोकेशन साझा करने वालों की अधिकतम संख्या {limit} पहले ही पूरी हो चुकी है।",
+  "Error_FailedToAddFileAttachment": "फ़ाइल अटैचमेंट जोड़ा नहीं जा सका।"
+}

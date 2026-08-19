@@ -23,7 +23,7 @@
 
         <FormSection
             For="() => _form.Title"
-            Label="Title"
+            Label="@L.Form_Title"
             InputId="@_form.TitleId"
             IsLabelInsideInput="true"
             Class="!mt-0 grow"
@@ -36,7 +36,7 @@
         </FormSection>
         <FormSection
             For="() => _form.Description"
-            Label="Description"
+            Label="@L.Form_Description"
             InputId="@_form.DescriptionId"
             IsLabelInsideInput="true"
             Class="!mt-0 grow">
@@ -47,8 +47,8 @@
                 Autocomplete="off"/>
         </FormSection>
     </FormBlock>
-    <FormBlock Title="Place type" Class="with-input-radio">
-        <InputRadioGroup Name="place_type" DisplayName="Place type" @bind-Value="_form.IsPublic">
+    <FormBlock Title="@L.Place_TypeTitle" Class="with-input-radio">
+        <InputRadioGroup Name="place_type" DisplayName="@L.Place_TypeTitle" @bind-Value="_form.IsPublic">
             <TileItem
                 Class="@(_form.IsPublic ? "transparent selected" : "transparent")"
                 Click="@(() => OnPublicChatClick(true))">
@@ -56,10 +56,10 @@
                     <FormRadio Id="@_form.IsPublicTrueFormId" Value="@true"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_form.IsPublicTrueFormId" Text="Public place" IsRequired="true"></Label>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="@L.Place_PublicPlace" IsRequired="true"></Label>
                 </Content>
                 <Caption>
-                    Anyone can join this place by navigating to its URL
+                    @L.Place_PublicHint
                 </Caption>
             </TileItem>
             <TileItem
@@ -69,10 +69,10 @@
                     <FormRadio Id="@_form.IsPublicFalseFormId" Value="@false"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_form.IsPublicFalseFormId" Text="Private place" IsRequired="true"></Label>
+                    <Label InputId="@_form.IsPublicFalseFormId" Text="@L.Place_PrivatePlace" IsRequired="true"></Label>
                 </Content>
                 <Caption>
-                    Can be joined only if you are invited / have an invite link
+                    @L.Place_PrivateHint
                 </Caption>
             </TileItem>
         </InputRadioGroup>
@@ -168,7 +168,7 @@
 
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
     public sealed class FormModel {
-        [Required, MinLength(1)]
+        [Required]
         public string Title { get; set; } = "";
 
         public string Description { get; set; } = "";

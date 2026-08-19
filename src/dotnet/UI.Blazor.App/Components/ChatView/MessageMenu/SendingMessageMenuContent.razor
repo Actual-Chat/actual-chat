@@ -12,7 +12,7 @@
 @if (canCopyText) {
     <MenuEntry
         Icon="icon-copy"
-        Text="Copy text"
+        Text="@L.MessageMenu_CopyText"
         Click="@(() => SelectionUI.CopyToClipboard(e))">
     </MenuEntry>
 }
@@ -20,14 +20,14 @@
     <MenuEntry
         Icon="icon-edit"
         FocusOnEditor="true"
-        Text="Edit"
+        Text="@L.Common_Edit"
         Click="@(() => ChatEditorUI.Edit(e))">
     </MenuEntry>
 }
 <MenuEntry
     Icon="icon-stop-fill"
     FocusOnEditor="true"
-    Text="Cancel send"
+    Text="@L.MessageMenu_CancelSend"
     Click="@(() => SendingMessages.Cancel(e.GetSendingMessage()!))">
 </MenuEntry>
 

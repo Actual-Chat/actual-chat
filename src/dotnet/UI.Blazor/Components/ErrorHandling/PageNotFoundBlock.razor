@@ -1,8 +1,9 @@
 @namespace ActualChat.UI.Blazor.Components
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "UI types are expected to be untrimmed.")]
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "UI types are expected to be untrimmed.")]
+@inherits ComponentBase<UIHub>
 
 <LayoutView Layout="@typeof(DefaultLayout)">
-    <MainHeader>Not found</MainHeader>
-    <p>Sorry, but there is nothing here.</p>
+    <MainHeader>@L.Error_NotFoundTitle</MainHeader>
+    <p>@L.Error_NotFoundText</p>
 </LayoutView>

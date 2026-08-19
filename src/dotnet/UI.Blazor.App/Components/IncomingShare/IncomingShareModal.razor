@@ -16,7 +16,7 @@
 <DialogFrame
     Class="share-incoming-modal"
     HasCloseButton="true"
-    Title="Share to"
+    Title="@L.IncomingShare_Title"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
     <Body>
         <ContactSelector
@@ -25,7 +25,7 @@
             ChatListPreOrder="@ChatListPreOrder.ChatList"
             SearchQuery="@_searchQuery">
             <SearchBoxNew
-                Placeholder="Who would you like to share with"
+                Placeholder="@L.Share_WhoToShareWith"
                 MaxLength="@Constants.Chat.MaxSearchFilterLength"
                 TextChanged="@OnFilter"/>
             <ContactSelectorPlacePicker/>
@@ -36,7 +36,7 @@
         @if (showCommentEditor) {
             <EmbeddedMessageEditor
                 Text="@_comment"
-                Placeholder="Add your comment (optional)"
+                Placeholder="@L.Share_AddComment"
                 TextChanged="OnCommentChanged"/>
         }
     </Footer>
@@ -45,7 +45,7 @@
             Class="@shareButtonClass"
             IsDisabled="@(!destinationSelected)"
             Click="@OnSendClick">
-            <span>@(willPrefillEditor ? "Next" : "Send")</span>
+            <span>@(willPrefillEditor ? L.Common_Next : L.Common_Send)</span>
         </Button>
     </Buttons>
 </DialogFrame>

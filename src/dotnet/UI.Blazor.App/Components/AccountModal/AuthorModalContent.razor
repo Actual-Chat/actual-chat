@@ -9,12 +9,9 @@
             </Icon>
             <Content>
                 @if (IsOwn) {
-                    <span>Your author is anonymous.</span>
+                    <span>@L.Account_YourAuthorAnonymous</span>
                 } else {
-                    <span>
-                        This author is anonymous,
-                        so you can't message them directly.
-                    </span>
+                    <span>@L.Account_AuthorAnonymous</span>
                 }
             </Content>
             <Caption>
@@ -34,10 +31,10 @@
                 <i class="icon-people text-2xl"></i>
             </Icon>
             <Content>
-                Member
+                @L.Account_Member
             </Content>
             <Caption>
-                Use place settings to edit membership
+                @L.Account_UsePlaceSettings
             </Caption>
         </TileItem>
     } else {
@@ -48,10 +45,10 @@
                     <i class="icon-crown text-2xl text-03"></i>
                 </Icon>
                 <Content>
-                    Promote to Owner
+                    @L.Account_PromoteToOwner
                 </Content>
                 <Caption>
-                    Owners can do anything with this chat, including deleting it. This action cannot be undone.
+                    @L.Account_PromoteToOwnerCaption
                 </Caption>
             </TileItem>
         }
@@ -62,10 +59,10 @@
                     <i class="icon-shield text-2xl text-03"></i>
                 </Icon>
                 <Content>
-                    @(m.IsModerator ? "Remove Moderator" : "Make Moderator")
+                    @(m.IsModerator ? L.Account_RemoveModerator : L.Account_MakeModerator)
                 </Content>
                 <Caption>
-                    Moderators can delete messages, manage calls and members, and edit this chat - but not delete it.
+                    @L.Account_ModeratorCaption
                 </Caption>
             </TileItem>
         }
@@ -76,7 +73,7 @@
                     <i class="icon-minus-circle text-2xl"></i>
                 </Icon>
                 <Content>
-                    Remove from group
+                    @L.Account_RemoveFromGroup
                 </Content>
             </TileItem>
         }

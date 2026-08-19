@@ -26,14 +26,14 @@
             }
             @if (m.IsOwnLive) {
                 <ButtonRound Class="btn-stop-sharing" Click="@OnStopSharing" StopPropagation="true"
-                             Tooltip="Stop sharing" TooltipPosition="FloatingPosition.Top">
+                             Tooltip="@L.LocationMessage_StopSharing" TooltipPosition="FloatingPosition.Top">
                     <marker-pin-off-svg></marker-pin-off-svg>
                 </ButtonRound>
             }
             @if (m.IsOwnLive && m.TrackingError is not null) {
                 <div class="c-tracking-error">
                     <i class="icon-alert-circle"></i>
-                    <span>Location tracking is off</span>
+                    <span>@L.LocationMessage_TrackingIsOff</span>
                 </div>
             }
         </div>
@@ -44,12 +44,12 @@
                 <i class="icon-marker-pin c-pin"></i>
             }
             <div class="c-info">
-                <div class="c-title">@m.Title</div>
+                <div class="c-title">@Title(m)</div>
                 <div class="c-caption">
                     @if (m.DistanceText.IsNullOrEmpty()) {
                         @m.Center.ToDisplayText()
                     } else {
-                        @($"{m.DistanceText} from you")
+                        @L.LocationMessage_DistanceFromYou_Format(m.DistanceText)
                     }
                 </div>
             </div>
@@ -59,7 +59,7 @@
         </div>
         @if (m is { IsLive: true, IsOwnLive: false }) {
             <Button Class="c-share-back" Click="@OnShareBack" StopPropagation="true">
-                Share your location back
+                @L.LocationMessage_ShareBack
             </Button>
         }
     }
@@ -125,6 +125,11 @@
     private Task OnShareBack()
         => LocationUI.ShowShareLocationModal(Entry.ChatId);
 
+    private string Title(Model m)
+        => m.IsPlace ? L.LocationMessage_Place
+            : m.IsLive ? L.LocationMessage_Live
+            : L.LocationMessage_Static;
+
     // Nested types
 
     public sealed record Model(
@@ -136,10 +141,5 @@
         GeoTrackingError? TrackingError = null,
         bool IsPlace = false) {
         public bool IsLive => Countdown is not null;
-        public string Title => IsPlace
-            ? "Place"
-            : IsLive
-                ? "Live location"
-                : "Location";
     }
 }

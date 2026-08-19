@@ -4,8 +4,8 @@
     var tooltip = m.HasRead == null
         ? ""
         : m.HasRead.Value
-            ? "Has read"
-            : "Has not read";
+            ? L.Markup_HasRead
+            : L.Markup_HasNotRead;
 }
 
 <AuthorBadgeTemplate AuthorId="@_authorId">

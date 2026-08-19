@@ -4,6 +4,7 @@
     @apply px-2;
     @apply rounded-full;
     @apply text-caption-2;
+    @apply whitespace-nowrap;
 }
 .status-badge.default {
     @apply px-0;

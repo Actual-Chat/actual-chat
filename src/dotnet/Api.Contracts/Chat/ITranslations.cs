@@ -14,4 +14,12 @@ public interface ITranslations : IComputeService
         ChatId chatId,
         Range<long> lidTileRange,
         CancellationToken cancellationToken);
+
+    [ComputeMethod(MinCacheDuration = 300), RemoteComputeMethod(MinCacheDuration = 300)]
+    Task<string?> GetTranslatedUIText(
+        Session session,
+        string text,
+        Language language,
+        UITextKind kind,
+        CancellationToken cancellationToken);
 }

@@ -84,6 +84,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.LiveDuration>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.LiveTimeDeltaSeconds>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.LiveTimeDeltaText>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.LocalizedMessage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.MainHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.MapView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.MenuEntry>();
@@ -596,6 +597,7 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.LiveDuration), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.LiveTimeDeltaSeconds), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.LiveTimeDeltaText), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.LocalizedMessage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.MainHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.MapView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.MenuEntry), AotTypeKind.Component),

@@ -1,3 +1,4 @@
+@inherits ComponentBase<AppUIHub>
 @{
 #pragma warning disable IL2091
 }
@@ -7,7 +8,7 @@
     <FormBlock>
         <InputRadioGroup
             Name="theme"
-            DisplayName="Theme"
+            DisplayName="@L.UserInterface_Theme"
             @bind-Value="_formModel.Theme">
 
             <TileItem
@@ -19,7 +20,7 @@
                         Value="@GetThemeKey(Theme.Light)"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_formModel.LightThemeFormId" Text="Light" IsRequired="true"></Label>
+                    <Label InputId="@_formModel.LightThemeFormId" Text="@L.ThemeSettings_Light" IsRequired="true"></Label>
                 </Content>
             </TileItem>
 
@@ -32,7 +33,7 @@
                         Value="@GetThemeKey(Theme.Ash)"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_formModel.AshThemeFormId" Text="Light, Link Water accent" IsRequired="true"></Label>
+                    <Label InputId="@_formModel.AshThemeFormId" Text="@L.ThemeSettings_LightLinkWater" IsRequired="true"></Label>
                 </Content>
             </TileItem>
 
@@ -45,7 +46,7 @@
                         Value="@GetThemeKey(Theme.Dark)"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_formModel.DarkThemeFormId" Text="Dark" IsRequired="true"></Label>
+                    <Label InputId="@_formModel.DarkThemeFormId" Text="@L.ThemeSettings_Dark" IsRequired="true"></Label>
                 </Content>
             </TileItem>
 
@@ -58,7 +59,7 @@
                         Value="@GetThemeKey(null)"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_formModel.SystemThemeFormId" Text="Match system theme" IsRequired="true"></Label>
+                    <Label InputId="@_formModel.SystemThemeFormId" Text="@L.ThemeSettings_MatchSystem" IsRequired="true"></Label>
                 </Content>
             </TileItem>
 
@@ -69,9 +70,7 @@
 @code {
     private FormModel _formModel = null!;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
     private ThemeUI ThemeUI => Hub.ThemeUI;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
     private ILogger Log => field ??= Hub.LogFor(GetType());
 

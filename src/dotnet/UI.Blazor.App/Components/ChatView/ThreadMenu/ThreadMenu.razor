@@ -14,44 +14,44 @@
 <div class="message-menu">
     <MenuEntry
         Icon="icon-thread"
-        Text="Go to thread"
-        Click="@(() => OnGoToTheThread())">
+        Text="@L.ThreadMenu_GoToThread"
+        Click="@(OnGoToTheThread)">
     </MenuEntry>
     @if (canCopyMessageLink) {
         <CopyTrigger Tooltip="" CopyText="@messageLink" Class="ac-menu-item !p-0">
             <MenuEntry
                 Icon="icon-link-2"
-                Text="Copy message link">
+                Text="@L.MessageMenu_CopyMessageLink">
             </MenuEntry>
         </CopyTrigger>
     }
     <MenuEntry
         Icon="icon-copy"
-        Text="Copy thread"
+        Text="@L.ThreadMenu_CopyThread"
         Click="@OnCopyToClipboardRequested">
     </MenuEntry>
     @if (m.EnableIncompleteUI) {
         <MenuEntry
             Icon="icon-reply"
             FocusOnEditor="true"
-            Text="Reply"
+            Text="@L.MessageMenu_Reply"
             Click="@Reply">
         </MenuEntry>
         <MenuEntry
             Icon="icon-share"
-            Text="Forward"
+            Text="@L.MessageMenu_Forward"
             Click="@Forward">
         </MenuEntry>
         <MenuEntry
             Class="warning-item"
             Icon="icon-trash03"
-            Text="Delete"
+            Text="@L.Common_Delete"
             Click="@Delete">
         </MenuEntry>
         <MenuEntrySeparator/>
         <MenuEntry
             Icon="icon-select"
-            Text="Select"
+            Text="@L.MessageMenu_Select"
             Click="@Select">
         </MenuEntry>
     }

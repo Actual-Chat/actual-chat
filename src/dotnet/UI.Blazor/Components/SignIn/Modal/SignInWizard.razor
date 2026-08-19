@@ -1,7 +1,8 @@
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 @{
     var reason = Reason.NullIfEmpty() ?? $"to {CoreConstants.AppName}";
-    var actionText = "Sign in";
+    var actionText = L.SignIn_SignIn;
 }
 
 <Stepper Context="stepper">
@@ -14,7 +15,7 @@
             <HeaderButton Click="@(_ => stepper.MoveBack())">
                 <i class="icon-arrow-left text-2xl"></i>
             </HeaderButton>
-            <div class="sign-in-modal-header">Verification code</div>
+            <div class="sign-in-modal-header">@L.SignIn_VerificationCode</div>
         }
     </Header>
     <Steps>

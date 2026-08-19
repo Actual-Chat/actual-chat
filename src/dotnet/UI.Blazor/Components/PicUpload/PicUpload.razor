@@ -5,6 +5,7 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 @implements IAsyncDisposable
+@inherits ComponentBase<UIHub>
 
 @{
     var sizeClass = $"pic-size-{(int)Size}";
@@ -40,13 +41,13 @@
         <div class="c-btn-group">
             <Button Class="btn-modal btn-sm">
                 <i class="icon-image"></i>
-                <span class="@Button.TitleSpanClass">Upload image</span>
+                <span class="@Button.TitleSpanClass">@L.PicUpload_UploadImage</span>
                 @* NOTE: Label should be on the same level as <i> and <span> inside button content *@
                 <label for="@_inputId" class="pic-upload-input-file-label absolute"></label>
             </Button>
             <Button Class="btn-modal btn-sm" Click="GenerateAvatar">
                 <Icon><i class="icon-sync"></i></Icon>
-                <Title>Generate avatar</Title>
+                <Title>@L.PicUpload_GenerateAvatar</Title>
             </Button>
         </div>
     }

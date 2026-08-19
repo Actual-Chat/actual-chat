@@ -36,8 +36,7 @@
     @if (AllItems.Length == 0 && ListSource.CandidateListKind == CandidateListKind.Contacts) {
         <div class="c-no-contacts">
             <div class="c-text">
-                You don't have any contacts yet.
-                Share your own account with your friends to see them here.
+                @L.MemberSelector_NoContacts
             </div>
             <div class="c-share">
                 <ShareOwnAccountTileItem AvatarSize="SquareSize.Size10"/>

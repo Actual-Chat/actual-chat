@@ -27,7 +27,7 @@
             <FormSection
                 For="() => _model.SelectedTimeZoneName"
                 InputId="timeZone"
-                Label="Time zone"
+                Label="@L.Form_TimeZone"
                 Class="grow"
                 IsRequired="true"
                 IsLabelInsideInput="true">
@@ -110,7 +110,7 @@
     }
 
     public class Model {
-        [Required, Display(Name = "Time zone")]
+        [Required]
         public string SelectedTimeZoneId { get; set; } = "";
         public string SelectedTimeZoneName { get; set; } = "";
         public string BrowserTimeZoneId { get; set; } = "";

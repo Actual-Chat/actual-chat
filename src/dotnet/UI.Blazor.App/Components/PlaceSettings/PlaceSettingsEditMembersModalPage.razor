@@ -3,18 +3,18 @@
 @inherits ComputedStateComponent<AppUIHub, PlaceSettingsEditMembersModalPage.ComputedModel>
 @{
     var m = State.Value;
-    Context.Title = $"{m.MemberCount} members";
+    Context.Title = L.Place_Members(m.MemberCount, m.MemberCount);
     Context.ContextItems.Set(nameof(PlaceSettingsStartModalPage.ComputedModel.MemberCount), m.MemberCount);
 }
 
 <TileItem Click="@OnInviteClick">
     <Icon><i class="text-2xl icon-person-add text-primary"></i></Icon>
-    <Content><span class="text-primary">Add members</span></Content>
+    <Content><span class="text-primary">@L.Place_AddMembers</span></Content>
 </TileItem>
 
 <SearchBox
     Class="icon-align-right"
-    Placeholder="Search"
+    Placeholder="@L.Common_Search"
     MaxLength="@Constants.Chat.MaxSearchFilterLength"
     TextChanged="@OnFilter"/>
 
@@ -59,7 +59,7 @@
     protected override void OnInitialized() {
         PlaceId = Context.GetModel<PlaceId>();
         Context.Class = "edit-members";
-        Context.Buttons = [DialogButtonInfo.BackButton];
+        Context.Buttons = [DialogButtonInfo.CreateBackButton(L)];
     }
 
     private void OnFilter(string filter) {

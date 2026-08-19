@@ -13,7 +13,10 @@
 
     protected override void OnInitialized() {
         Context.Title = "Dive-in modal (Start)";
-        Context.Buttons = [DialogButtonInfo.CancelButton, DialogButtonInfo.CreateSubmitButton("Save", OnSubmit)];
+        Context.Buttons = [
+            DialogButtonInfo.CreateCancelButton(L),
+            DialogButtonInfo.CreateSubmitButton(L.Common_Save, OnSubmit),
+        ];
     }
 
     private void OnSubmit() {

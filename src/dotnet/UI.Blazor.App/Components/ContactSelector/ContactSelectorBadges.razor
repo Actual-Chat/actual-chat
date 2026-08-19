@@ -15,7 +15,7 @@
             <div @key="@chatId" class="c-contact" role="button" tabindex="0" @onclick="() => Selector.Remove(contact.Id)">
                 <div class="c-remove">
                     <i class="icon-close c-close"></i>
-                    <span class="c-text">Remove</span>
+                    <span class="c-text">@L.Common_Remove</span>
                 </div>
                 <ChatIcon Chat="@contact.Chat" Size="SquareSize.Size6"/>
                 <div class="c-name">

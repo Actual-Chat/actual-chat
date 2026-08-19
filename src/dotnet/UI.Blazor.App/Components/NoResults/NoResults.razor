@@ -9,11 +9,11 @@
     <div class="c-wrapper">
         <no-search-results-svg />
         <div class="text-wrapper">
-            <p>No results.</p>
+            <p>@L.NoResults_Title</p>
             @if (!isPlace) {
-                <p>Try another request.</p>
+                <p>@L.NoResults_TryAnotherRequest</p>
             } else {
-                <Button Class="btn-transparent" Click="@SelectChatsNavbarItem">Try searching outside the place.</Button>
+                <Button Class="btn-transparent" Click="@SelectChatsNavbarItem">@L.NoResults_SearchOutsidePlace</Button>
             }
         </div>
     </div>

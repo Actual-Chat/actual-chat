@@ -42,7 +42,7 @@
                 @if (m.CanJoinPlace) {
                     <ButtonRound Class="btn-sm join-btn" ContentClass="gap-x-2" Click="OnJoinPlace">
                         <i class="icon-person-add text-xl"></i>
-                        <span>Join</span>
+                        <span>@L.Common_Join</span>
                     </ButtonRound>
                 }
                 @if (m.EnableIncompleteUI) {
@@ -61,9 +61,11 @@
             @place.Title
         </div>
         <div class="c-info">
-            <span>@m.MemberCount @("Member".Pluralize(m.MemberCount))</span>
+            <span>
+                @L.Place_MembersLabel(m.MemberCount, m.MemberCount)
+            </span>
             <DotSeparator/>
-            <span>@(isPublic ? "Public" : "Private")</span>
+            <span>@(isPublic ? L.Place_Public : L.Place_Private)</span>
             @if (isPublic) {
                 <i class="icon-globe"></i>
             } else {
@@ -108,10 +110,10 @@
             TabsClass="left-panel-tabs wide-left-panel-tabs"
             BottomHill="true">
 
-            <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0" Class="no-scrollbar">
+            <Tab @key="@("chats")" Id="chats" Title="@L.Place_TabChats" Order="0" Class="no-scrollbar">
                 <ChatList @key="@ChatList.GetKey(place.Id, m.IsPlaceMember, null)" PlaceId="@place.Id" UsePlaceChatListSettings="@m.IsPlaceMember" />
             </Tab>
-            <Tab @key="@("members")" Id="members" Title="Members" Order="1" Class="no-scrollbar">
+            <Tab @key="@("members")" Id="members" Title="@L.Place_TabMembers" Order="1" Class="no-scrollbar">
                 <PlaceInfoMembersTab Data="@m"/>
             </Tab>
         </TabPanel>

@@ -11,13 +11,13 @@
 
         <FormBlock>
             <p class="c-description">
-                How long the mic stays open in silence.
+                @L.Ptt_ReplyWindowCaption
             </p>
             <FormSection
                 For="() => _formModel.Seconds"
                 InputId="@_formModel.SecondsFormId"
                 IsLabelInsideInput="true"
-                Label="Keep the mic open"
+                Label="@L.Ptt_KeepMicOpen"
                 IsRequired="true"
                 HideValidationMessage="true">
                 <InputSelect
@@ -55,12 +55,11 @@
             .Update(x => x with { HotWindow = TimeSpan.FromSeconds(seconds) }, CancellationToken.None);
     }
 
-    private static string GetLabel(int seconds)
+    private string GetLabel(int seconds)
         => seconds switch {
-            30 => "30 seconds",
-            60 => "1 minute",
-            120 => "2 minutes",
-            _ => $"{seconds} seconds",
+            60 => L.Ptt_OneMinute,
+            120 => L.Ptt_TwoMinutes,
+            _ => L.Ptt_Seconds_Format(seconds),
         };
 
     // Nested types

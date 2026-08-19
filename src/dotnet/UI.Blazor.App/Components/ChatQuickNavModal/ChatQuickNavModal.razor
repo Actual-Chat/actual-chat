@@ -14,7 +14,7 @@
         <input @ref="InputRef"
                class="c-input"
                type="text"
-               placeholder="Jump to…"
+               placeholder="@L.QuickNav_Placeholder"
                autocomplete="off"
                autocapitalize="off"
                spellcheck="false"
@@ -23,7 +23,7 @@
     @if (hasQuery) {
         <div @ref="ListRef" class="c-list custom-scrollbar">
             @if (results.Length == 0) {
-                <div class="c-item c-no-match">No matches</div>
+                <div class="c-item c-no-match">@L.QuickNav_NoMatches</div>
             }
             @foreach (var item in results) {
                 var cls = item == selection ? "c-item selected" : "c-item";

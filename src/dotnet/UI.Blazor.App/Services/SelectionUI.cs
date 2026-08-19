@@ -1,4 +1,5 @@
 using System.Net;
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -152,13 +153,13 @@ public class SelectionUI : UIServiceBase<AppUIHub>
 
         var otherAuthorCount = await GetOtherAuthorEntryCount(chatId, selection).ConfigureAwait(true);
         if (otherAuthorCount > 0) {
-            var word = "message".Pluralize(otherAuthorCount);
+            var messages = L.Selection_Messages(otherAuthorCount, otherAuthorCount);
             var confirmed = false;
             var model = new ConfirmModal.Model(true,
-                $"You're about to delete {otherAuthorCount} {word} written by other users. Continue?",
+                L.Selection_DeleteOthersConfirm_Format(messages),
                 () => { confirmed = true; }) {
-                Title = $"Delete {word}?",
-                ConfirmButtonText = "Delete",
+                Title = L.Selection_DeleteTitle(otherAuthorCount),
+                ConfirmButtonText = L.Common_Delete,
             };
             var modalRef = await ModalUI.Show(model).ConfigureAwait(true);
             await modalRef.WhenClosed.ConfigureAwait(true);
@@ -169,7 +170,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         var removeCommand = new Chats_RemoveEntries(Session, chatId, localIds);
         await UICommander.Run(removeCommand).ConfigureAwait(true);
 
-        ToastUI.Show("Messages deleted", Restore, "Undo", ToastDismissDelay.Long);
+        ToastUI.Show(L.Selection_MessagesDeleted, Restore, L.Selection_Undo, ToastDismissDelay.Long);
         Clear();
 
         void Restore() {
@@ -199,7 +200,11 @@ public class SelectionUI : UIServiceBase<AppUIHub>
             return;
 
         var chatId = selection.First().ChatId;
-        var modalModel = new ForwardMessageModal.Model(chatId);
+        var modalModel = new ForwardMessageModal.Model(chatId) {
+            Title = L.Selection_ForwardTitle,
+            SubmitTitle = L.Selection_ForwardSubmit,
+            SearchPlaceholder = L.Selection_ForwardSearchPlaceholder,
+        };
         await (await ModalUI.Show(modalModel).ConfigureAwait(true)).WhenClosed.ConfigureAwait(true);
         var selectedChatIds = modalModel.SelectedChatIds;
         if (selectedChatIds.Count == 0)
@@ -213,7 +218,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         await UICommander.Run(cmd, CancellationToken.None).ConfigureAwait(true);
         var firstChatId = selectedChatIds.First();
         var info = await BuildInfoMessage().ConfigureAwait(true);
-        ToastUI.Show(info, NavigateAction, "Navigate", ToastDismissDelay.Long);
+        ToastUI.Show(info, NavigateAction, L.Selection_Navigate, ToastDismissDelay.Long);
         Clear();
         return;
 
@@ -222,26 +227,13 @@ public class SelectionUI : UIServiceBase<AppUIHub>
 
         async Task<string> BuildInfoMessage()
         {
-            var sb = ActualLab.Text.StringBuilderExt.Acquire();
-            sb.Append("Forwarded ");
-            sb.Append(selection.Count);
-            sb.Append(' ');
-            sb.Append("message".Pluralize(selection.Count));
-            sb.Append(" to ");
-            Chat.Chat? chat = null;
-
-            if (selectedChatIds.Count == 1)
-                chat = await Chats.Get(Session, firstChatId, default).ConfigureAwait(true);
-            if (chat != null) {
-                sb.Append('\'');
-                sb.Append(chat.Title);
-                sb.Append("\' chat");
-            }
-            else {
-                sb.Append(selectedChatIds.Count);
-                sb.Append(" chats");
-            }
-            return sb.ToStringAndRelease();
+            var messages = L.Selection_Messages(selection.Count, selection.Count);
+            var chat = selectedChatIds.Count == 1
+                ? await Chats.Get(Session, firstChatId, default).ConfigureAwait(true)
+                : null;
+            return chat != null
+                ? L.Selection_ForwardedToChat_Format(messages, chat.Title)
+                : L.Selection_ForwardedToChats_Format(messages, selectedChatIds.Count);
         }
     }
 

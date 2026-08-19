@@ -6,11 +6,11 @@
 @inherits ComponentBase<AppUIHub>
 
 <div class="c-gif-tab">
-    <SearchBox Placeholder="Search KLIPY" ClearButton="true" TextChanged="@OnSearch"/>
+    <SearchBox Placeholder="@L.Emoji_SearchGifs" ClearButton="true" TextChanged="@OnSearch"/>
     <div class="c-gif-scroll no-scrollbar">
         @if (_recentGifs.Count > 0 && _searchQuery.IsNullOrEmpty()) {
             <div class="c-gif-recent">
-                <div class="c-gif-recent-label">Recent</div>
+                <div class="c-gif-recent-label">@L.Emoji_Recent</div>
                 <div class="c-gif-recent-list no-scrollbar">
                     @foreach (var gif in _recentGifs) {
                         @GifButton(gif, "c-gif-recent-item", false)
@@ -32,7 +32,7 @@
             }
         </div>
         @if (_gifItems.Count == 0 && _showEmpty) {
-            <div class="c-gif-status">No GIFs found</div>
+            <div class="c-gif-status">@L.Emoji_NoGifsFound</div>
         }
     </div>
 </div>

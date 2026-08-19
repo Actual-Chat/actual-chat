@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<UIHub>
 @{
     var location = Participant.Location;
     var menuRef = MenuRef.New<LocationParticipantMenu>(location.AuthorId.ChatId.Value, location.Id.Value).ToString();
@@ -17,7 +18,7 @@
             }
         </div>
         <div class="c-status">
-            <span>Updated&nbsp;</span><LiveTimeDeltaText Moment="@Participant.Location.ModifiedAt" NullText=""/>
+            <span>@L.Location_Updated</span><LiveTimeDeltaText Moment="@Participant.Location.ModifiedAt" NullText=""/>
             @if (!distanceText.IsNullOrEmpty()) {
                 <span> · @distanceText from you</span>
             }
@@ -35,6 +36,7 @@
 </div>
 
 @code {
+
     [Parameter, EditorRequired] public LocationParticipant Participant { get; set; } = null!;
     [Parameter] public GeoPoint? OwnPoint { get; set; }
     [Parameter] public EventCallback Click { get; set; }

@@ -56,7 +56,7 @@
                 <div class="attachment-upload-size">@FileSizeFormatter.Format(progress.UploadSize)</div>
             }
             @if (isFailed) {
-                <span class="attachment-error">Error</span>
+                <span class="attachment-error">@L.Common_Error</span>
             }
         </div>
         @if (isFile) {

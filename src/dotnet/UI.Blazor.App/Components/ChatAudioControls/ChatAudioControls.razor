@@ -33,7 +33,7 @@
                 StopPropagation="true"
                 PreventDefault="true"
                 Click="@OnStopRecording"
-                Tooltip="Stop"
+                Tooltip="@L.Common_Stop"
                 TooltipPosition="FloatingPosition.Top">
                 <i class="icon-mic-2"></i>
             </HeaderButton>
@@ -43,7 +43,7 @@
             StopPropagation="true"
             PreventDefault="true"
             Click="@OnHangUp"
-            Tooltip="Hang up"
+            Tooltip="@L.Call_HangUp"
             TooltipPosition="FloatingPosition.Top">
             <i class="icon-phone-off"></i>
         </HeaderButton>
@@ -62,7 +62,7 @@
                 StopPropagation="true"
                 PreventDefault="true"
                 Click="@OnStopListening"
-                Tooltip="Listening..."
+                Tooltip="@L.Call_ListeningCountdown"
                 TooltipPosition="FloatingPosition.Top">
                 <span class="c-timer-swap">
                     <i class="icon-listen swap-a"></i>
@@ -76,7 +76,7 @@
             StopPropagation="true"
             PreventDefault="true"
             Click="@OnHangUp"
-            Tooltip="Hang up"
+            Tooltip="@L.Call_HangUp"
             TooltipPosition="FloatingPosition.Top">
             <i class="icon-phone-off"></i>
         </HeaderButton>

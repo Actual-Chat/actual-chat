@@ -4,32 +4,32 @@
 <MenuEntry
     Class="important-item"
     Icon="icon-plus"
-    Text="New chat"
+    Text="@L.Place_NewChat"
     Click="OnCreateChatClick">
 </MenuEntry>
 @if (_canShare) {
     <MenuEntry
         Icon="icon-share text-2xl"
-        Text="Share place"
+        Text="@L.Share_Place"
         Click="OnShareClick">
     </MenuEntry>
 }
 @if (_canInvite) {
     <MenuEntry
         Icon="icon-person-add"
-        Text="Add members"
+        Text="@L.Place_AddMembers"
         Click="OnInviteMembersClick">
     </MenuEntry>
 }
 @if (_isOwner) {
     <MenuEntry
         Icon="icon-cloud-upload"
-        Text="Copy chat into this Place"
+        Text="@L.Place_CopyChatInto"
         Click="OnImportChatsClick">
     </MenuEntry>
     <MenuEntry
         Icon="icon-edit"
-        Text="Settings"
+        Text="@L.Common_Settings"
         Click="OnPlaceSettingsClick">
     </MenuEntry>
 }
@@ -38,7 +38,7 @@
     <MenuEntry
         Class="warning-item"
         Icon="icon-log-out"
-        Text="Leave place"
+        Text="@L.Place_Leave"
         Click="OnPlaceLeaveClick">
     </MenuEntry>
 }

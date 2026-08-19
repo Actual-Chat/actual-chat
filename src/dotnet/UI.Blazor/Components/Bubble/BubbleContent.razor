@@ -26,14 +26,14 @@
     </div>
     <div class="flex-x items-center">
         <div class="bubble-counter flex-1 text-xs">
-            @Bubble.Index of @Bubble.Total
+            @L.Bubble_Counter_Format(Bubble.Index, Bubble.Total)
         </div>
         <div class="bubble-buttons flex justify-end">
             @if (!Bubble.IsLastVisible) {
-                <Button Class="btn-bubble" Click="OnSkipClick">Skip</Button>
+                <Button Class="btn-bubble" Click="OnSkipClick">@L.Common_Skip</Button>
             }
             <Button Class="btn-bubble btn-next" Click="OnNextClick">
-                @(Bubble.IsLastVisible ? "Ok" : "Next")
+                @(Bubble.IsLastVisible ? L.Common_OK : L.Common_Next)
             </Button>
         </div>
     </div>

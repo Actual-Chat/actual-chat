@@ -21,39 +21,33 @@
         </div>
     };
 
+    @* Both fragments render per chat entry, so they stay fragments rather than components
+       (#2450): no instance, no parameter diff, no lifecycle. That is also why the localizer
+       is passed in - a fragment has no way to resolve one. *@
     @* '__builder' is predefined name used by RazorSourceGenerator *@
-    public static RenderFragment<(Presence, Moment?, bool)> PresenceText = tuple  => __builder => {
-        var (presence, lastCheckIn, isShort) = tuple;
+    public static RenderFragment<(Presence, Moment?, bool, IStringLocalizer)> PresenceText = tuple => __builder => {
+        var (presence, lastCheckIn, isShort, l) = tuple;
         @switch (presence)
         {
             case Presence.Online:
-                @("Online")
+                @l.Presence_Online
                 break;
             case Presence.Recording:
-                @if (isShort) {
-                    @("Speaking")
-                } else {
-                    @("Speaking...")
-                }
+                @(isShort ? l.Presence_SpeakingShort : l.Presence_Speaking)
                 break;
             case Presence.Away or Presence.Offline:
-                @if (lastCheckIn != null) {
-                    @if (isShort) {
-                        <LiveTimeDeltaText Moment="@lastCheckIn" NullText="" IsCapitalized="true"/>
-                    } else {
-                        @("Last seen ")<LiveTimeDeltaText Moment="@lastCheckIn" NullText="" />
-                    }
+                @if (lastCheckIn == null) {
+                    @l.Presence_Offline
+                } else if (isShort) {
+                    <LiveTimeDeltaText Moment="@lastCheckIn" NullText="" IsCapitalized="true"/>
                 } else {
-                    @("Offline")
+                    @l.Presence_LastSeen_Prefix<LiveTimeDeltaText Moment="@lastCheckIn" NullText=""/>
+                    @l.Presence_LastSeen_Suffix
                 }
                 break;
             case Presence.Unknown:
             default:
-                @if (isShort) {
-                    @("")
-                } else {
-                    @("...")
-                }
+                @(isShort ? "" : "...")
                 break;
         }
     };

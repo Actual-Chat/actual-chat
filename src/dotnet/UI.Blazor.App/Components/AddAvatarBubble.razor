@@ -2,15 +2,16 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
 <BubbleContent Bubble="@(this)">
-    <Title>Create new avatar</Title>
+    <Title>@L.Bubble_CreateAvatarTitle</Title>
     <Body>
     <p>
-        Avatars are your "looks" in different chats - e.g. you can use different avatars for your work & family chats.
+        @L.Bubble_CreateAvatarBody
     </p>
     <ul>
-        <li>Each avatar has distinct name, photo, and bio.</li>
-        <li>You can use a distinct avatar in each chat.</li>
-        <li>Some chats can be joined anonymously - avatars there are always randomly generated.</li>
+        <li>@L.Bubble_CreateAvatarItem1</li>
+        <li>@L.Bubble_CreateAvatarItem2</li>
+        <li>@L.Bubble_CreateAvatarItem3</li>
     </ul>
     </Body>
 </BubbleContent>
+

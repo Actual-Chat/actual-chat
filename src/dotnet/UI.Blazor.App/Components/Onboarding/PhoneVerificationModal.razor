@@ -1,10 +1,11 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<PhoneVerificationModal.Model>
+@inherits ComponentBase<AppUIHub>
 
 <DialogFrame
     Class="onboarding-modal fixed-height phone-verification-modal"
     HasHeader="true"
-    Title="Phone number verification"
+    Title="@L.Onboarding_PhoneVerificationTitle"
     HasCloseButton="true"
     NarrowViewSettings="DialogFrameNarrowViewSettings.Default">
     <Body>
@@ -12,8 +13,8 @@
             <phone-verification-cat-svg/>
         </div>
         <div class="c-content">
-            <div class="c-title">Enter code</div>
-            <div class="c-text">Please verify your phone number to be able to sign in with it and to allow your friends to find your account in their list of contacts on @CoreConstants.AppName.</div>
+            <div class="c-title">@L.Onboarding_EnterCode</div>
+            <div class="c-text">@L.Onboarding_VerifyPhoneText_Format(CoreConstants.AppName)</div>
             <TotpVerifier
                 Purpose="TotpPurpose.VerifyPhone"
                 Phone="@ModalModel.Phone"

@@ -15,7 +15,7 @@
                     Placeholder="https://dev.voxt.ai/chat/<chatId>?n=<lid>"
                     ClearButton="true"/>
             </ChildContent>
-            <ValidationMessage>
+            <ValidationMessage Context="fieldLabel">
                 @if (!string.IsNullOrEmpty(_status)) {
                     <div class="form-section-validation invalid">@_status</div>
                 }

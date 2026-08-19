@@ -28,4 +28,7 @@ public class ChatMarkupHub(IServiceProvider services, ChatId chatId) : IChatMark
 
     public IMarkupFormatter EditorHtmlConverter
         => _editorHtmlConverter ??= MarkupEditorHtmlConverter.Instance;
+
+    public SystemEntryMarkupBuilder SystemEntryMarkupBuilder
+        => field ??= Services.GetRequiredService<SystemEntryMarkupBuilder>();
 }

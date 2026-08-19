@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, ListeningLingerSettings.Model>
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "UI types are expected to be untrimmed.")]
 @{
-#pragma warning disable IL2091
     if (State.IsInitial(out var m))
         return;
 
@@ -14,7 +14,7 @@
     <FormBlock>
         <InputRadioGroup
             Name="listening-linger"
-            DisplayName="Keep listening"
+            DisplayName="@L.Transcription_KeepListening"
             @bind-Value="_formModel.SelectedId">
 
             @foreach (var option in Options) {
@@ -38,11 +38,11 @@
 </Form>
 
 @code {
-    private static readonly Option[] Options = [
-        new(nameof(ListeningLinger.None), "Off"),
-        new(nameof(ListeningLinger.For5Seconds), "5 seconds"),
-        new(nameof(ListeningLinger.For10Seconds), "10 seconds"),
-        new(nameof(ListeningLinger.For30Seconds), "30 seconds"),
+    private Option[] Options => [
+        new(nameof(ListeningLinger.None), L.ListeningLinger_Off),
+        new(nameof(ListeningLinger.For5Seconds), L.ListeningLinger_5Seconds),
+        new(nameof(ListeningLinger.For10Seconds), L.ListeningLinger_10Seconds),
+        new(nameof(ListeningLinger.For30Seconds), L.ListeningLinger_30Seconds),
     ];
 
     private FormModel _formModel = null!;

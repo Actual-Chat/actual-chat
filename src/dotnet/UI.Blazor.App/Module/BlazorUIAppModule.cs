@@ -12,9 +12,12 @@ using ActualChat.UI.Blazor.App.Pages.Test;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Services.Gestures;
 using ActualChat.UI.Blazor.App.Testing;
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
+using ActualLab.Fusion.UI;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.UI.Blazor.App.Module;
 
@@ -26,6 +29,17 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
     protected override void InjectServices(IServiceCollection services)
     {
         var fusion = services.AddFusion();
+
+        // Localization: custom JSON-based localizer (InvariantGlobalization rules out the standard .resx one)
+        services.AddScoped<IStringLocalizer<Strings>, AppStringLocalizer>();
+        services.AddScoped<IStringLocalizer>(c => c.GetRequiredService<IStringLocalizer<Strings>>());
+        fusion.AddService<LocalizationUI>(ServiceLifetime.Scoped);
+        services.AddAlias<IUITextLocalizer, LocalizationUI>(ServiceLifetime.Scoped);
+        // Replaces the base UIActionFailureTracker (registered by fusion.AddBlazor) with one that
+        // localizes failure messages before publishing them.
+        services.AddScoped<UIActionFailureTracker>(c => new
+            LocalizingUIActionFailureTracker(
+            c.GetRequiredService<UIActionFailureTracker.Options>(), c));
 
         // Singletons
         fusion.AddService<VirtualListTestService>();
@@ -41,6 +55,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(c => new AuthorUI(c.AppUIHub()));
         services.AddScoped(c => new EditMembersUI(c.AppUIHub()));
         services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
+        services.AddScoped<SystemEntryMarkupBuilder>(c => new LocalizedSystemEntryMarkupBuilder(c));
 
         // Chat UI
         fusion.AddService<ChatUI>(ServiceLifetime.Scoped);
@@ -212,7 +227,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         // Contacts
         fusion.AddService<ContactSync>(ServiceLifetime.Scoped);
         if (HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp)
-            services.AddScoped<FakeDeviceContacts>().AddAlias<DeviceContacts, FakeDeviceContacts>(ServiceLifetime.Scoped);
+            services.AddScoped<FakeDeviceContacts>()
+                .AddAlias<DeviceContacts, FakeDeviceContacts>(ServiceLifetime.Scoped);
         else
             services.AddScoped<DeviceContacts>();
 

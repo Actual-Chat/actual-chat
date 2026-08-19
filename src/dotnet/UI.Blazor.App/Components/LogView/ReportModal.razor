@@ -4,19 +4,18 @@
 
 <DialogFrame
     Class="report-modal modal-sm"
-    Title="Send a report"
+    Title="@L.Report_Title"
     HasCloseButton="true">
     <Body>
     <div class="c-container">
         <div class="c-description">
-            We'll attach the current log buffer to help diagnose the issue.
-            Add a short note describing what happened (optional).
+            @L.Report_Description
         </div>
         <textarea
             class="c-comment"
             rows="4"
             maxlength="@CommentMaxLength"
-            placeholder="What were you doing? What went wrong?"
+            placeholder="@L.Report_Placeholder"
             value="@_comment"
             @oninput="OnCommentInput">
         </textarea>
@@ -24,7 +23,7 @@
     </div>
     </Body>
     <Buttons>
-        <Button Class="btn-modal btn-primary" Click="@OnSubmit">Send</Button>
+        <Button Class="btn-modal btn-primary" Click="@OnSubmit">@L.Common_Send</Button>
     </Buttons>
 </DialogFrame>
 
@@ -50,7 +49,7 @@
         var comment = _comment.IsNullOrWhiteSpace() ? "(no comment)" : _comment;
         using var dLog = await LogUI.DumpToTempFile(Hub.StopToken);
         _ = ReportUI.Submit(comment, dLog.Resource, Hub.StopToken);
-        ToastUI.Show("Report sent — thanks!", ToastDismissDelay.Short);
+        ToastUI.Show(L.Report_Sent, ToastDismissDelay.Short);
         Modal.Close();
     }
 

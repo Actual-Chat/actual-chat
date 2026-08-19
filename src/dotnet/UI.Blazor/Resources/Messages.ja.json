@@ -1,0 +1,130 @@
+// Translations of Messages.en.json. The English file's values must byte-match what the
+// app produces at runtime; these don't - they are ordinary translations.
+// Keep the {named} placeholders identical to the English ones.
+{
+  "Validation_Required_Format": "「{field}」は必須です。",
+  "Validation_MinLength_Format": "「{field}」は{min}文字以上で入力してください。",
+  "Validation_EmailAddress_Format": "「{field}」は有効なメールアドレスではありません。",
+  "Validation_DeleteConfirmationRequired": "削除の確認が必要です",
+  "Validation_DeleteConfirmationInvalid": "確認のため DELETE と入力してください",
+
+  // Generic errors, composed by StandardError / the exception types themselves
+  "Error_NotEnoughPermissions": "この操作を行う権限がありません。",
+  "Error_NotEnoughPermissions_Format": "この操作を行う権限がありません。必要な権限: {permission}",
+  "Error_TooManyRequests": "リクエストが多すぎます。",
+  "Error_TooManyRequests_Format": "リクエストが多すぎます。{seconds}秒後にもう一度お試しください。",
+  "Error_VersionMismatch": "データが変更されました。もう一度お試しください。",
+  "Error_ChatNotFound": "チャットが見つかりません。",
+  "Error_ChatEntryNotFound": "メッセージが見つかりません。",
+  "Error_AccountNotFound": "アカウントが見つかりません。",
+  "Error_AuthorNotFound": "参加者が見つかりません。",
+  "Error_AvatarNotFound": "プロフィールが見つかりません。",
+  "Error_ContactNotFound": "連絡先が見つかりません。",
+  "Error_MediaNotFound": "ファイルが見つかりません。",
+  "Error_UploadNotFound": "アップロードが見つかりません。",
+
+  // Sign-in and account
+  "Error_RegistrationExpired": "この登録リクエストは期限切れです。もう一度サインインしてください。",
+  "Error_SessionExpired": "セッションの期限が切れたか、無効になりました。アプリを再起動してください。",
+  "Error_AlreadySignedIn": "すでにサインインしています。",
+  "Error_PhoneTaken": "この電話番号は別のアカウントで使用されています。",
+  "Error_EmailTaken": "このメールアドレスは別のアカウントで使用されています。",
+  "Error_SmsNotDelivered": "指定された電話番号にメッセージを送信できませんでした。",
+  "Error_CannotDeactivateCurrentSession": "現在のセッションは無効にできません。",
+  "Error_PhoneFormatInvalid": "電話番号の形式が正しくありません。",
+  "Error_CannotChangeOwnStatus": "自分のステータスは変更できません。",
+  "Error_ApiKeyExpirationRange_Format": "APIキーの有効期限は1〜{days}日の範囲で指定してください。",
+
+  // Chat members and roles
+  "Error_OnlyOwnerCannotLeave": "あなたはこのチャットの唯一のオーナーのため退出できません。先に別のオーナーを追加してください。",
+  "Error_CannotRemoveSelf": "自分をチャットメンバーから外すことはできません。",
+  "Error_CannotRemoveChatOwner": "このチャットのオーナーをメンバーから外すことはできません。",
+  "Error_CannotRemoveSearchBot": "AI検索ボットをチャットメンバーから外すことはできません。",
+  "Error_OwnerCannotBeDemoted": "チャットのオーナーの権限は下げられません。",
+  "Error_AuthorAlreadyLeft": "選択した参加者はすでにチャットを退出しています。",
+  "Error_AutomaticRoleMembership": "このシステムロールのメンバーは自動で決まります。",
+  "Error_ManageMembershipInPlace": "スペースの公開チャットのメンバーは、スペースの設定で管理してください。",
+  "Error_AnonymousAvatarRequired": "匿名で参加するには匿名プロフィールが必要です。",
+  "Error_GuestJoinNotAllowed": "このチャットにはゲストアカウントで参加できません。",
+  "Error_AnonymousJoinNotAllowed": "このチャットには匿名で参加できません。",
+  "Error_OwnersRoleCannotBeEmpty": "「オーナー」ロールには少なくとも1人必要です。",
+  "Error_OnlyOwnersAllowed": "この操作は、このチャットの「オーナー」ロールのメンバーだけが行えます。",
+
+  // Messages
+  "Error_CannotSendMessages": "このチャットにはメッセージを送信できません。",
+  "Error_EmptyMessage": "空のメッセージは送信できません。",
+  "Error_CanEditOwnMessagesOnly": "編集できるのは自分のメッセージだけです。",
+  "Error_OnlyTextCanBeEdited": "編集できるのはテキストメッセージだけです。",
+  "Error_StreamingCannotBeEdited": "録音中のメッセージは編集できません。",
+  "Error_ForwardedCannotBeEdited": "転送したメッセージは編集できません。",
+  "Error_MessageNoLongerExists": "このメッセージはすでに存在しません。",
+  "Error_CannotRemoveMessage": "このメッセージを削除する権限がありません。",
+  "Error_CannotRemoveOwnerMessage": "オーナーのメッセージを削除する権限がありません。",
+  "Error_CannotRestoreMessage": "このメッセージを復元する権限がありません。",
+  "Error_CannotRestoreOwnerMessage": "オーナーのメッセージを復元する権限がありません。",
+  "Error_RootChatCannotHoldMessages": "スペースのルートチャットには投稿できません。スペース内のいずれかのチャットに投稿してください。",
+  "Error_CanAttachOwnLocationsOnly": "このチャットから添付できるのは自分が共有した位置情報だけです。",
+  "Error_NonContactMessageLimit_Format": "相手があなたを連絡先に追加するか返信するまで、送信できるのは{limit}件までです。",
+  "Error_OnlyOwnersOrModeratorsCanPin": "メッセージをピン留めできるのは、チャットのオーナーとモデレーターだけです。",
+  "Error_PinLimit_Format": "ピン留めできるメッセージは{limit}件までです。",
+
+  // Chats and places
+  "Error_ChatTitleEmpty": "チャット名は空にできません。",
+  "Error_ThreadTitleEmpty": "スレッド名は空にできません。",
+  "Error_PlaceTitleEmpty": "スペース名は空にできません。",
+  "Error_PlaceUnavailable": "指定されたスペースは利用できません。",
+  "Error_OnlyPlaceMembersCanAddChats": "チャットを追加できるのはスペースのメンバーだけです。",
+  "Error_CannotMakeChatPublic": "チャットを公開にする権限がありません。",
+  "Error_CustomLinkNotAllowed": "スペースのチャットではカスタムリンクを使えません。",
+  "Error_CustomLinkTaken_Format": "リンク「{link}」は同じスペースの別のチャットで使われています。",
+  "Error_WelcomeChatCannotBePrivate": "「Welcome」チャットは非公開にできません。",
+  "Error_WelcomeChatCannotBeRemoved": "「Welcome」チャットは削除できません。",
+  "Error_OnlyGroupOrPlaceChatCanBeCopied": "スペースにコピーできるのは、グループチャットまたはスペースのチャットだけです。",
+  "Error_CannotCopyToSamePlace": "スペースのチャットを同じスペースにはコピーできません。",
+  "Error_MigrationRequiresChatOwner": "移行するには、このチャットのオーナーである必要があります。",
+  "Error_MigrationRequiresPlaceOwner": "チャットをスペースにコピーするには、そのスペースのオーナーである必要があります。",
+  "Error_OperationRequiresChatOwner": "この操作を行うには、このチャットのオーナーである必要があります。",
+  "Error_OperationRequiresPlaceOwner": "この操作を行うには、チャットが属するスペースのオーナーである必要があります。",
+
+  // Threads and contacts
+  "Error_ThreadRequiresContact": "スレッドを開始できるのは、相手があなたを連絡先に追加するか返信した後です。",
+  "Error_SignInToFollowThread": "スレッドをフォローするにはサインインしてください。",
+  "Error_OnlyPeerContactCanBeBlocked": "ブロックできるのは個人の連絡先だけです。",
+  "Error_SignInToChat": "他のユーザーとチャットするにはサインインしてください。",
+  "Error_CannotChatWithUnauthenticated": "サインインしていないユーザーとはチャットできません。",
+
+  // Calls
+  "Error_OnlyParticipantCanBecomeHost": "通話のホストになれるのは通話の参加者だけです。",
+  "Error_CannotMuteOwner": "オーナーのマイクはオフにできません。",
+  "Error_OnlyHostOrOwnerCanChangeHost": "ホストを変更できるのは、通話のホストまたはチャットのオーナーだけです。",
+  "Error_CallRequiresContact": "この相手に発信できるのは、相手があなたを連絡先に追加するか返信した後です。",
+  "Error_CannotMuteInPeerChat": "1対1のチャットでは相手のマイクをオフにできません。",
+  "Error_OnlyHostOwnerOrModeratorCanManageCall": "通話を管理できるのは、通話のホスト、チャットのオーナーまたはモデレーターだけです。",
+  "Error_VoiceStreamingModeLocked": "このチャットでは音声送信モードを変更できません。",
+
+  // Notifications
+  "Error_NotifyMembersNotAllowed": "公開チャットではメンバーに通知できません。",
+  "Error_AlertEveryoneUnavailable": "11人以上のチャットでは全員への緊急通知は使えません。",
+  "Error_NobodyToNotify": "通知する相手がいません。",
+  "Error_OnlyAuthorCanNotify": "メンションした相手に通知できるのは、メッセージの作成者だけです。",
+
+  // Media and uploads
+  "Error_NoMediaAccess": "このファイルにアクセスする権限がありません。",
+  "Error_FileTooBig": "ファイルが大きすぎます。",
+  "Error_CropExportFailed": "切り抜いた画像をエクスポートできませんでした。",
+  "Error_FileTooBig_Format": "ファイルが大きすぎます。最大サイズ: {size}。",
+  "Error_TooManyFiles_Format": "ファイルが多すぎます。許可される最大数は {count} 件です。",
+
+  // Invites
+  "Error_InviteAlreadyUsed": "この招待リンクはすでに使用されています。",
+  "Error_InviteNotActive": "この招待リンクはすでに無効です。",
+  "Error_InviteCodeNotFound": "このコードの招待は見つかりません。",
+  "Error_OnlyPlaceMembersCanUseCode": "このコードを使えるのはスペースのメンバーだけです。",
+  "Error_UserInvitesRemoved": "ユーザー招待機能は廃止されました。",
+
+  // Live location
+  "Error_JoinChatToShareLocation": "位置情報を共有する前にチャットに参加してください。",
+  "Error_CanChangeOwnLocationsOnly": "このチャットで変更できるのは自分が共有した位置情報だけです。",
+  "Error_LocationSharingLimit_Format": "このチャットでは、位置情報をリアルタイム共有できる上限の{limit}人に達しています。",
+  "Error_FailedToAddFileAttachment": "ファイルの添付に失敗しました。"
+}

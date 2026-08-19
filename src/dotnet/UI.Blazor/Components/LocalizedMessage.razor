@@ -1,0 +1,38 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services
+@inherits ComputedStateComponent<UIHub, string>
+@State.Value
+
+@code {
+    [Parameter] public string Text { get; set; } = "";
+    [Parameter] public string FieldLabel { get; set; } = "";
+
+    protected override ComputedState<string>.Options GetStateOptions()
+        => new () {
+            // The catalog lookups are synchronous, so anything catalogued - which every
+            // validation message is, and the tests keep it that way - renders on the first pass.
+            // Without this the raw Text shows until ComputeState lands, and for our own
+            // attributes that Text is a bare key like "Validation_EmailInvalid".
+            InitialValue = Localize() ?? Text,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<string> ComputeState(CancellationToken cancellationToken) {
+        // Tier 3 is a compute method, so an arriving translation invalidates this state on its
+        // own - no version counter, and no StateHasChanged from a detached continuation.
+        if (Text.IsNullOrEmpty())
+            return "";
+
+        var localized = Localize();
+        if (localized != null)
+            return localized;
+
+        return await Hub.UITextLocalizer.GetSafe(Text, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Tiers 1-2: both are plain catalog lookups, so this is the whole synchronous path.
+    private string? Localize()
+        => Text.IsNullOrEmpty()
+            ? ""
+            : L.ForValidationKey(Text, FieldLabel) ?? L.ForRuntimeMessage(Text, FieldLabel);
+}

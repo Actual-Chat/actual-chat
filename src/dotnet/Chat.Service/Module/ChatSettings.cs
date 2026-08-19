@@ -17,16 +17,18 @@ public sealed class ChatSettings
 public class TranslationSettings
 {
     public string OpenAIModel { get; set; } = "gpt-4.1";
+    public int OpenAIModelMaxTokens { get; set; } = 32768;
     public FilePath PromptFile { get; set; } = "translate.md";
+    public string RealtimeOpenAIModel { get; set; } = "gpt-4.1-mini";
+    public int RealtimeOpenAIModelMaxTokens { get; set; } = 4192;
+    public string RealtimeGeminiModel { get; set; } = "";
     public FilePath RealtimePromptFile { get; set; } = "translate-realtime.md";
+    public string UITextOpenAIModel { get; set; } = "gpt-4.1";
+    public FilePath UITextPromptFile { get; set; } = "translate-ui-text.md";
     public int ContentMinLengthWithoutContext { get; set; } = 150;
     public int ContextMessageCount { get; set; } = 5;
-    public int OpenAIModelMaxTokens { get; set; } = 32768;
-    public int RealtimeOpenAIModelMaxTokens { get; set; } = 4192;
-    public string RealtimeOpenAIModel { get; set; } = "gpt-4.1-mini";
-    public string RealtimeGeminiModel { get; set; } = "";
-    public TimeSpan HttpTimeout { get; set; } = TimeSpan.FromSeconds(30);
     public int StreamingMinContentLength { get; set; } = 50;
+    public TimeSpan HttpTimeout { get; set; } = TimeSpan.FromSeconds(30);
     public TimeSpan HangingTimeout { get; set; } = TimeSpan.FromMinutes(5);
     public TimeSpan CleanupInterval { get; set; } = TimeSpan.FromMinutes(1);
 }

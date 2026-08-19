@@ -1,22 +1,23 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<UIHub>
 
 <div class="c-hero">
-    <img draggable="false" src="/dist/images/guide/loc-access.svg" alt="Location access is blocked">
+    <img draggable="false" src="/dist/images/guide/loc-access.svg" alt="@L.LocationGuide_BlockedImageAlt">
 </div>
 <div class="c-title">
-    Location access is blocked, but you can fix this!
+    @L.LocationGuide_Title
 </div>
 <div class="c-intro">
-    @CoreConstants.AppName needs access to your location to share it with others.
-    To enable it in Microsoft Edge (mobile):
+    @L.LocationGuide_Intro_Format(CoreConstants.AppName)
+    @L.Guide_EnableInMobileEdge
 </div>
 <ol class="c-steps">
-    <li>Tap middle button on the navigation bar</li>
-    <li>Go to "Settings"</li>
-    <li>Choose "Privacy and security"</li>
-    <li>Go to "Site permissions"</li>
-    <li>Choose "Location"</li>
-    <li>Enable "Ask first before allowing sites to use your location" option</li>
-    <li>Check if Edge itself has location access permission</li>
-    <li>If not, allow Edge to use location</li>
+    <li>@L.LocationGuide_MobileEdgeStep1</li>
+    <li>@L.LocationGuide_MobileEdgeStep2</li>
+    <li>@L.LocationGuide_MobileEdgeStep3</li>
+    <li>@L.LocationGuide_MobileEdgeStep4</li>
+    <li>@L.LocationGuide_MobileEdgeStep5</li>
+    <li>@L.LocationGuide_MobileEdgeStep6</li>
+    <li>@L.LocationGuide_MobileEdgeStep7</li>
+    <li>@L.LocationGuide_MobileEdgeStep8</li>
 </ol>

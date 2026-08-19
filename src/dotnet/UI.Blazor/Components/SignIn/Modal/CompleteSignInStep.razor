@@ -15,12 +15,12 @@
         <phone-verification-cat-svg/>
     </div>
     <div class="c-text-container">
-        <p class="c-title">Enter the code</p>
+        <p class="c-title">@L.SignIn_EnterCode</p>
         <p class="c-text">
             @if (phone is not null) {
-                <text>Please verify your phone number to continue and make it discoverable to friends on @CoreConstants.AppName.</text>
+                <text>@L.SignIn_VerifyPhoneText_Format(CoreConstants.AppName)</text>
             } else {
-                <text>Please verify your email address to continue and make it discoverable to friends on @CoreConstants.AppName.</text>
+                <text>@L.SignIn_VerifyEmailText_Format(CoreConstants.AppName)</text>
             }
         </p>
     </div>

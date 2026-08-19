@@ -27,13 +27,15 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
     [IgnoreDataMember]
     public string IsoCode { get; }
     [IgnoreDataMember]
+    public string NativeName { get; }
+    [IgnoreDataMember]
     public bool IsAnyEnglish { get; }
     [IgnoreDataMember]
     public bool IsAnySpanish { get; }
 
     // Factories and constructors
 
-    internal Language(string value, string shortTitle, string title)
+    internal Language(string value, string shortTitle, string title, string? nativeName = null)
         : base(value)
     {
         ShortTitle = shortTitle;
@@ -41,6 +43,7 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
         // The primary subtag, not value[..2]: that would collapse "fil-PH" onto Finnish's "fi".
         var separatorIndex = value.IndexOf('-');
         IsoCode = (separatorIndex < 0 ? value : value[..separatorIndex]).ToLower();
+        NativeName = nativeName ?? title;
         IsAnyEnglish = shortTitle.StartsWith("en", StringComparison.OrdinalIgnoreCase);
         IsAnySpanish = shortTitle.StartsWith("es", StringComparison.OrdinalIgnoreCase);
     }

@@ -1,21 +1,22 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<CopyChatToPlaceErrorModal.Model>
+@inherits ComponentBase<AppUIHub>
 
-<DialogFrame Class="confirm-modal modal-sm" Title="Issue on copying chat">
+<DialogFrame Class="confirm-modal modal-sm" Title="@L.Place_CopyErrorTitle">
     <Body>
     <FormBlock>
         <div class="c-text">
-            <p>There was an issue on copying chat '@ModalModel.Chat' to place '@ModalModel.Place'.</p>
+            <p>@L.Place_CopyErrorText_Format(ModalModel.Chat, ModalModel.Place)</p>
             @if (ModalModel.HasChanges) {
-                <p>Copy was executed partially successful.</p>
+                <p>@L.Place_CopyPartialSuccess</p>
             }
-            <p>Use the code below to get help with administrator.</p>
+            <p>@L.Place_CopyErrorHelp</p>
             <CopyToClipboard ShowInput="true" IsSquare="true" ButtonClass="btn-sm" Text="@ModalModel.CorrelationId" />
         </div>
     </FormBlock>
     </Body>
     <Buttons>
-        <Button Class="btn-modal" Click="@(_ => Modal.Close())">Close</Button>
+        <Button Class="btn-modal" Click="@(_ => Modal.Close())">@L.Common_Close</Button>
     </Buttons>
 </DialogFrame>
 

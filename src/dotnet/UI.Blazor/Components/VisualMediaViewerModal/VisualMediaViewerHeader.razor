@@ -1,8 +1,6 @@
 @using ActualChat.Chat
-@using ActualChat.Hosting
-@using ActualChat.Media
-@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 <div class="image-viewer-header">
     @if (_chatEntry != null && _author != null) {
         <HeaderButton Class="mobile bleached" Click="CloseClick">
@@ -23,7 +21,7 @@
             <HeaderButton
                 Click="OnShareClick"
                 Class="bleached"
-                Tooltip="Share"
+                Tooltip="@L.Common_Share"
                 TooltipPosition="FloatingPosition.Bottom">
                 <i class="icon-share"></i>
             </HeaderButton>
@@ -31,7 +29,7 @@
         <HeaderButton
             Click="OnInfoClick"
             Class="desktop bleached"
-            Tooltip="Info"
+            Tooltip="@L.Common_Info"
             TooltipPosition="FloatingPosition.Bottom">
             <i class="icon-info"></i>
         </HeaderButton>
@@ -40,14 +38,14 @@
                 Class="bleached"
                 Click="@SaveMediaActionHandler.Execute"
                 IsDisabled="@SaveMediaActionHandler.IsBusy"
-                Tooltip="Download"
+                Tooltip="@L.MessageMenu_Download"
                 TooltipPosition="FloatingPosition.Bottom">
                 <i class="icon-download"></i>
             </HeaderButton>
         }
         <HeaderButton
             Class="desktop bleached"
-            Tooltip="Close"
+            Tooltip="@L.Common_Close"
             TooltipPosition="FloatingPosition.Bottom"
             Click="CloseClick">
             <i class="icon-close"></i>
@@ -59,10 +57,6 @@
     private ChatEntry? _chatEntry;
     private Author? _author;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session;
-    private ModalUI ModalUI => Hub.ModalUI;
-    private ShareUI ShareUI => Hub.ShareUI;
     private IAuthors Authors => field ??= Hub.Services.GetRequiredService<IAuthors>();
     private IChats Chats => Hub.Services.GetRequiredService<IChats>();
     private IUIActionHandler SaveMediaActionHandler { get; set; } = null!;

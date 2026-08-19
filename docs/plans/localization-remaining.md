@@ -1,0 +1,493 @@
+# Localization: what's left
+
+## Goal
+Finish app localization past the point reached in `feat/3721-app-localization`
+(#3721), which shipped the catalog mechanism plus the app UI, server errors,
+validation messages and dates. This plan is the remaining work, ordered so that
+each item's prerequisite comes before it.
+
+## Where things stand
+`Strings.<lang>.json` holds 1198 keys × 14 languages, `Messages.<lang>.json`
+holds 100; both are guarded by `AppLocalizationTest` (key/member correspondence,
+per-language completeness, placeholder preservation) and
+`ServerErrorLocalizationTest`. Consuming code goes through the typed members in
+`LocalizedStringsLocalizerExt.cs` — see `docs/CODING_STYLE.md` →
+"Localization (UI Strings)".
+
+---
+
+## 0. Deliberately dormant — enable the picker LAST
+
+`Components/Settings/UserInterface.razor:6` wraps the App-language tile in
+`@if (m.EnableIncompleteUI)`, and `LanguageUI.DetectUILanguage`
+(`Services/LanguageUI/LanguageUI.cs:131-134`) returns `DefaultUILanguage`
+unless the same feature flag is on:
+
+```csharp
+if (!await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
+    return DefaultUILanguage;
+```
+
+So today every user gets English regardless of device locale, and all 1198 keys
+are dormant. **This is intentional and stays that way until §3 and §4 are
+done.** (§5 does not gate it — see there.)
+
+The reason is that localization is only partly a per-surface job. A user who
+switches the app to Spanish today would get a translated in-app UI while their
+push notifications, the iOS share sheet, every Android permission dialog and
+the OS microphone prompt all stayed English — a worse, more confusing result
+than a consistently English app. The flag is what keeps the half-finished state
+invisible.
+
+**Do not flip it as part of an intermediate PR.** Enabling
+`Features_EnableIncompleteUI` for the language path — or ungating it
+specifically — is the *final* step, taken once push, email and the native
+shells are covered.
+
+---
+
+## 1. In-app UI — done
+
+The #3721 content passes localized attributes (`Title=`, `Text=`, `Label=`, …)
+and markup text nodes, but missed strings living inside C# expressions in the
+markup — ternaries, `??` fallbacks and locals declared in an `@{ }` block:
+
+```razor
+@{
+    var joinButtonText = "Join muted";                              // ChatActivityPanel.razor:26
+    var placeholder = ScreenSize.IsNarrow() ? "Message..." : "Write a message - or simply record one!";
+}
+<MenuEntry Text="@(IsPinned ? "Unpin message" : "Pin message")"/>   // MessageMenuContent.razor:125
+```
+
+66 such strings across 33 files were localized (37 new keys, 29 mapped onto
+existing ones) — the message editor placeholder, every audio-panel toggle
+tooltip, pin/unpin, `Owner`/`Moderator` in both member menus, read receipts on
+mentions, the incoming-call modal, the streaming badge, the video-panel menu
+and the search-result group headers.
+
+**Keep the scan below in the loop for future passes** — an attribute/text-node
+scan will not find these:
+
+```bash
+python3 - <<'PY'
+import re, os
+skip = re.compile(r'/Discover/|TestPage|Diagnostic|/Landing/|/Emails/|/Testing/|Admin|/Guides/')
+for root in ['src/dotnet/UI.Blazor', 'src/dotnet/UI.Blazor.App']:
+    for dp, _, fns in os.walk(root):
+        for fn in fns:
+            if not fn.endswith('.razor'): continue
+            p = os.path.join(dp, fn)
+            if skip.search(p): continue
+            src = open(p, encoding='utf-8').read()
+            i = src.find('\n@code')
+            body = re.sub(r'@\*.*?\*@', '', src[:i] if i > 0 else src, flags=re.S)
+            for n, l in enumerate(body.split('\n'), 1):
+                if re.search(r'Log\w*\.|Justification|@using|@inherits|viewBox|\bd=', l): continue
+                for m in re.finditer(r'(?:\?|:|=|\?\?)\s*"([A-Z][^"{}]{2,})"', l):
+                    v = m.group(1).strip()
+                    if '/' in v: continue                                    # asset ids
+                    if re.match(r'^[A-Z][A-Za-z0-9]*(\.[A-Z][A-Za-z0-9]*)+$', v): continue  # enum refs
+                    if not re.search(r'[a-z]{2}', v): continue
+                    if re.match(r'^[A-Z][a-z]*([A-Z][a-z]*)+$', v): continue  # PascalCase identifiers
+                    print(f'{p}:{n}: {v!r}')
+PY
+```
+
+Deliberately excluded and expected to stay English: brand names (`GIF`,
+`Google Play`, `App Store`, `Microsoft Store`, `KLIPY`), guide-screenshot and
+tutorial-slide `alt`s (`Web/Chrome/01`, `Tutorial slide #1` — asset
+identifiers), diagnostics entries, `CaptchaView`'s fake-reCAPTCHA branch,
+`DeveloperTools`, `PlaceInfo`'s `EnableIncompleteUI` mockup text, and the three
+`ChatPropertiesMenu` entries that sit inside a `@* … *@` comment block.
+
+### The runtime check — `ui-localization-smoke.test.ts`
+
+The scan above reads markup, so it cannot see a string built inside a `@code` block
+or defaulted on a `[Parameter]`. `tests/ts/e2e/ui-localization-smoke.test.ts` closes
+that gap from the other side: for each of the 13 non-English UI languages it switches
+the app over, walks 17 screens (chat list, three menus, chat view, right panel, nine
+settings tabs) and compares every visible text node and
+`title`/`aria-label`/`placeholder`/`data-tooltip` against the English catalog. Text
+matching an English value whose translation differs is an unlocalized string, reported
+with the key that produced it. The reverse check runs too — each screen must show some
+*translated* text — so a language that silently failed to apply fails the test instead
+of passing vacuously.
+
+```bash
+AC_E2E_SERVER=external npx vitest run tests/ts/e2e/ui-localization-smoke.test.ts --config vitest.config.e2e.ts
+# one or more languages: AC_E2E_LANGUAGES=ru,ja
+```
+
+Its first run found three misses the source scan could not have caught, all fixed
+here: `StatusBadge` composed "Public chat"/"Private chat"/"Place chat" (plus a
+concatenated " thread") and "Online"/"Away"/"Offline" in `ComputeState`;
+`LeftChatSearchInput` and `SearchPanel` defaulted `Placeholder` to `"Search"`; and
+`PresenceFragments.PresenceText` held "Speaking"/"Last seen"/"Offline".
+
+That last one is the interesting case. Both presence fragments **were** components until
+`2e085ab24b` ("optimize author presence rendering", #2450) collapsed them into static
+`RenderFragment`s — they render per chat entry, and a fragment costs no instance, no parameter
+diff and no lifecycle. A fragment also has no way to resolve a service, which is why the text
+was still English. It stays a fragment; the localizer is passed in as a fourth tuple element
+(`RenderFragment<(Presence, Moment?, bool, IStringLocalizer)>`) rather than re-componentizing
+it. **Don't "fix" that by making it a component again** — read #2450 first.
+
+Two things it cannot see: text that is hardcoded **and** absent from the catalog —
+there is nothing to match it against, and `DownloadAppBanner`'s `Get @AppName App` is
+one such string still open — and screens off the tour: a peer chat, place settings,
+most modals. Adding a screen is one entry in `TOUR`.
+
+The Notes chat title is the one deliberate exception (`KnownEnglish` in the spec):
+`ChatsBackend` creates that chat with the literal title "Notes" and the user can rename
+it, so it is data, not a string.
+
+### System entries — localized at the render site
+
+"X has joined the chat." and "X asked for attention." were the last in-app strings
+composed in C# rather than read from the catalog, and they were composed by the
+data contract itself: `SystemEntry.ToMarkup()`, implemented on `MembersChangedEntry`
+and `NotifyMembersEntry`. Nothing is persisted — `DbChatEntry` stores the structured
+payload (author id, name, `HasLeft`) and leaves `ChatEntry.Content` empty for system
+entries — so this was purely a render-site fix, and old entries re-render in whatever
+language is current.
+
+`ToMarkup()` is gone from the records. `SystemEntryMarkupBuilder`
+(`Api/Chat/Markup/`) dispatches on the entry kind — the shape the markup visitors
+in that folder already use — to one `protected virtual` method per kind, each
+building its markup directly, exactly as the old `ToMarkup()` did.
+`LocalizedSystemEntryMarkupBuilder` (UI.Blazor.App) overrides those, plus
+`SomeoneName`, reading the wording from the catalog. There is deliberately **no
+shared "build an author sentence" helper**: the two kinds resemble each other only
+by coincidence today, and a kind carrying two names, a count, or no author at all
+should not be forced through one shape.
+
+The catalog values are **suffixes only** — what follows the author name — not the
+`_Prefix`/`_Suffix` pair used elsewhere. In all 14 languages the name is the
+sentence's subject, so every prefix was empty, and an empty `PlainTextMarkup` is not
+free: `PlainTextMarkupView` is a `ComputedStateComponent` that runs a search-match
+lookup, so each one costs a component and a computed state on every system entry.
+The cost is that a translation cannot put words before the name ("Willkommen, X!");
+add the prefix back for that language's sake if it ever comes up.
+
+`IChatMarkupHub` carries the builder, non-nullable: `ChatMarkupHub` resolves the
+localized one from the circuit's services, `BackendChatMarkupHub` returns
+`SystemEntryMarkupBuilder.Default`. That leaves notifications, digests and content
+links rendering English on purpose — that language belongs to the recipient, so it
+is §3's work, not this section's — and `TranscriptionContextSource` keeps English
+deliberately, being LLM prompt text. **The builder is a hub property rather than an
+optional service** because `BackendChatMarkupHub` is a *singleton over the root
+provider*: a `Services.GetService<…>()` lookup there would either trip scope
+validation or hand back a circuit-less UI service.
+
+Four `SystemEntry_*` keys × 14 languages, carrying a `//` note for translators.
+`SystemEntryLocalizationTest` pins the **English** catalog to
+`SystemEntryMarkupBuilder.Default`, since the server paths still use it; let those
+drift and notifications and the chat view would word the same event differently. It
+also enumerates `SystemEntry`'s `[Union]` subtypes, so a new kind cannot reach the
+builder's `_ => Markup.EmptyText` arm unnoticed.
+
+---
+
+## 2. UI language is device-local — settled, no work
+
+`LanguageUI.UILanguage` is a `SyncedState` over `LocalSettings`
+(`LanguageUI.cs:34`), and **it stays there**. There is no account-level UI
+language and none is planned: a display language belongs to the device the user
+is looking at, not to the account.
+
+This was previously written up here as a prerequisite for §3 — an account field
+plus device sync, a multi-device conflict policy and a fallback. That whole item
+is dropped. §3 is not blocked on anything.
+
+The consequence for the server is that anything it composes must get the
+language from the surface it is addressing: from the device registration for
+push (§3), and from the discussion for digests (§3).
+
+---
+
+## 3. Push notifications and email
+
+Six strings, and none of them are the bulk of a push — author names, message
+text and chat titles are user content and pass through untranslated:
+
+- `Notifications.Service/NotificationHelper.cs:32,62` — `"Voice chat started"`,
+  `"{names} started a voice chat"`, `"and {n} more"`,
+  `"+{n} earlier message(s)"`
+- `Notifications.Service/NotificationsBackend.cs:539` — `"Incoming call"` /
+  `"Incoming video call"`
+
+`"Incoming call"` also exists in `IncomingCallModal.razor:21` and again as an
+English fallback in `service-worker.ts:169,172` — one shared key, not three.
+
+### Push — render client-side wherever the platform allows
+
+**Decision: the device renders the notification text, not the server.** The
+device already knows its own language (§2), so the payload should carry
+structured fields and let each platform compose. Where a platform can't, the
+device's language rides along with its registration — `DbDevice` gains a
+`Language` column, `Notifications_RegisterDevice` a matching field, and the app
+re-registers when `LanguageUI.UILanguage` changes.
+
+| Platform | Today | Work |
+|---|---|---|
+| Android | **already client-side** — `Notification = default` is deliberate (`FirebaseMessagingClient.cs:111-117`); `FirebaseMessagingService` composes via `NotificationHelper.ShowChatNotification` | replace the pre-composed `Body` key with structured ones |
+| Web | SW is ours and already calls `showNotification` itself (`service-worker.ts:211`, `:169` for calls), passing the server's title/body through | compose locally; needs the catalog in the worker and the UI language reachable from it (IndexedDB/Cache, written by the app) |
+| iOS | system renders `Aps.Alert{Title,Body}` while the app isn't running | **needs a Notification Service Extension** — the server half is ready (`MutableContent = true` is already set), the target doesn't exist |
+
+**The iOS NSE comes first, in its own PR.** It is the only genuinely new piece
+of machinery here, and it decides the shape of the rest: a .NET appex is
+constrained (separate process, ~30s budget, ~24 MB cap — compare what
+`App.Maui.IosShareExt` cost to get startup under a second), while a native
+Swift NSE with `.strings` is far lighter but duplicates the catalog outside the
+.NET pipeline and therefore outside `AppLocalizationTest`'s guarantees. Settle
+that trade-off against a real target before touching the payload format.
+
+Until the NSE exists, iOS falls back to server-rendered text keyed on the
+device's registered `Language` — which is why the `DbDevice` column is worth
+having regardless of how far client-side rendering gets.
+
+### Email — no device, so language comes from the content
+
+Already implemented for the part that matters: `EmailsBackend.cs:215` uses
+`GetDominantLanguage(chatId, …) ?? userLanguage`, so each chat's AI summary is
+generated in that chat's dominant language, falling back to
+`UserLanguageSettings.Primary`.
+
+What is not localized is the template chrome — `Users.Templates/*.razor`
+(`EmailVerification`, `Digest`, `DigestChat`, `EmailBody`, `DigestButton`):
+"Your email verification code", "Privacy Policy", "Terms and Conditions", the
+button labels. **Open:** a digest spans chats with different dominant languages,
+so the chrome needs one value the per-chat rule can't supply. Candidates are
+`UserLanguageSettings.Primary` (already computed as `userLanguage` at
+`EmailsBackend.cs:27,79`, and the only option that also covers
+`EmailVerification`, which has no discussion to derive from), the dominant
+language across the whole digest, or leaving the chrome English.
+
+---
+
+## 4. Native shells — mostly in-process, and only partly a "separate mechanism"
+
+Same principle as §3: these render on the device, which knows its own locale.
+
+The old framing here — "separate mechanisms, no catalog access" — holds for
+only about a third of the list. The catalog is a **static**
+`Dictionary<Language, Dictionary<string, string>>` built from resources embedded
+in `UI.Blazor` (`AppStringLocalizer.Translations`, and
+`StringCatalogs.Assembly => typeof(Strings).Assembly`), so any code in a process
+that loads that assembly can already read it:
+
+| Surface | Size | Process | Catalog reachable | Actual mechanism |
+|---|---|---|---|---|
+| Android dialogs | 9 strings, 3 files | main app | **yes** | plain C#; no `strings.xml` needed |
+| Local notifications / Live Activity | ~6 strings | main app | **yes** | plain C# in `App.Maui` |
+| iOS share extension (`App.Maui.IosShareExt/Components/*`) | ~18 strings | separate appex | **no** — refs `Api.Contracts` + `Maui` only | undecided, see below |
+| `Info.plist` usage descriptions | 6 iOS + 5 MacCatalyst | OS reads them, app not running | **no** | `InfoPlist.strings` per language — genuinely native |
+
+Android dialog sites: `AndroidWebChromeClient.cs:267-270`,
+`AndroidNotificationsPermission.cs:44-52`, `WebViewMissingActivity.cs:28-37`.
+Local-notification sites: `ChatAttentionService.cs:225-226`
+(`"Chat attention required"`, `"Please check chats: …"`),
+`NotificationHelper.cs:211` (`"Attention required"`) and `:43` (the `"Uploads"`
+channel name), `WalkieTalkieWakeHandler.cs:109`, `IosActivitiesBackend.cs:87`
+and `AndroidActivitiesForegroundService.cs:424,509` (`"Sharing live location"`).
+
+So for the in-process two-thirds the strings are not the blocker — the
+*language* is. `LanguageUI.UILanguage` is a `SyncedState` scoped to the Blazor
+circuit, while this code runs on the native side (foreground service, FCM
+receiver, permission dialogs, Live Activity), where no such scope exists.
+
+### Deferred to the NSE PR — do not decide here
+
+Two questions are open, and they are the same question §3 already defers,
+because the answer to the first is what makes a .NET NSE viable or not:
+
+1. **Where the catalog lives.** Extensions can't reference `UI.Blazor` — pulling
+   the whole Blazor UI assembly into an appex is the wrong dependency for a
+   target fighting startup time and bundle size (see what #4132 spent its effort
+   on). Options: extract `Strings`, `StringCatalogs` and the 28 JSON resources
+   into a small dependency-free assembly (`ActualChat.Core`, or a new
+   `ActualChat.Localization`) that both `UI.Blazor` and the extensions
+   reference; give the extensions their own `.strings` and accept a second
+   translation source outside `AppLocalizationTest`'s key and placeholder
+   guarantees; or leave the extensions English.
+2. **How native-side code reads the current UI language.** Options: have
+   `LanguageUI` publish it to a process-wide accessor on change (one owner,
+   synchronous reads); read `LocalSettings` at each call site; or pass it down
+   from the Blazor side, which doesn't help the sites the OS invokes directly.
+
+Crossing the process boundary is already solved here: the share extension reads
+the session id from `AppleSharedSecureStorage` (`SessionInitializer.cs:35`), so
+the same shared keychain / app group can carry a language.
+
+`Info.plist` is the one part that is settled — `InfoPlist.strings` per language,
+independent of everything above, and doable at any time.
+
+---
+
+## 5. Landing pages and legal docs — independent of §0, and mostly legal text
+
+`Pages/Landing/**` is completely untouched — 44 files, zero `L.` usages. The
+file count hides how lopsided it is:
+
+| Part | Files | Prose | Nature |
+|---|---|---|---|
+| Marketing pages | 26 | ~2,400 words | ordinary translation |
+| Docs chrome (nav, headers, panels) | 14 | small | ordinary translation |
+| Legal content — `DocsTermsContent`, `DocsPrivacyContent`, `DocsCookiesContent` | 3 | **~10,400 words** | liability |
+
+The legal text is over four times the marketing prose, and it is the part that
+cannot be machine-translated. Across 14 languages that is roughly 145,000 words
+of professional legal translation — the single largest cost in this whole
+effort, for the surface users read least. It stays a policy decision for
+whoever owns legal, not an engineering one; the usual answer is to publish only
+human-reviewed translations, or to keep one authoritative English version and
+link to it.
+
+### Translating marketing without per-language URLs returns nothing
+
+The value of a translated marketing page is organic search in that language,
+and nothing here is set up for that: `RootServerPage.razor:33` hardcodes
+`<html lang="en">`, there is no `hreflang` anywhere in the tree, and the routes
+are single-language (`/docs/privacy`, `/docs/terms`, …). A page that only
+translates at runtime in the visitor's browser is invisible to crawlers in every
+language but English.
+
+So the marketing half is not "ordinary translation work, just large" — it needs
+per-language routes, `hreflang` and a localized `<html lang>` before the
+translation is worth commissioning. Budget that first or skip the section.
+
+### This section does not gate §0
+
+§0's rule is that a user who switches to Spanish must not get a half-translated
+experience. Landing and legal pages sit *before* sign-in: a signed-in user
+switching the app language essentially never returns to the marketing page, and
+English-only legal documents are unremarkable. Gating the picker on this section
+would make it wait on ~145,000 words of legal translation that has nothing to do
+with the in-app experience.
+
+**§0's gate is §3 + §4.** §5 is an independent marketing/legal track that can
+run on its own schedule, or not at all.
+
+---
+
+## 6. Smaller items — deferred, but the approach is settled
+
+The old framing, "TypeScript with no localization path", is wrong for the video
+recorder: its text already crosses into C#. `describeStartError`'s result travels
+through `blazorRef.invokeMethodAsync('OnRecordingError', …)` into
+`ChatVideoUI.OnRecordingError`, and that same method is already handed a
+*localized* string by `ChatVideoUI.StateSync.cs:113`
+(`L.Video_FailedToStartRecording`) and an English one by JS. One sink, two
+languages — so this needs no TS-side catalog, only a protocol.
+
+**Agreed approach: JS sends an error code plus its argument, C# localizes.**
+Prototyped and verified (`tsc`, `eslint`, `npm run build:Verify`,
+`dotnet build`, `AppLocalizationTest` 15/15), then pulled back out to keep this
+branch docs-only. The implementation is preserved on the local branch
+`wip/l10n-video-error-codes` (commit `1e14cc0ce2`) — reuse it rather than
+redoing the work:
+
+- `video-recorder.ts` gains `RecordingErrorCodes`, a `CodedError` carrying a
+  code through a `throw`, and a `RecordingError { code, arg, message }` returned
+  by `describeStartError`; the four `OnRecordingError` call sites pass the
+  triple.
+- `ChatVideoUI.Localize(code, arg, message)` maps `cameraUnavailable` /
+  `restartRequired` onto three new keys — `Video_CameraUnavailable`,
+  `Video_CameraUnavailableNamed_Format`, `Video_RestartRequired`. The camera
+  label rides as an argument instead of being interpolated into an English
+  sentence no translation could follow.
+- The raw message still travels beside the code, because
+  `IsScreenCastAlreadyActiveError` string-matches the *untranslated* wording of
+  the server's "Another screencast is already active"
+  (`LiveVideoBackend.cs:92`) to decide whether to show the modal.
+- Errors we don't originate — browser `DOMException`s — carry an empty code and
+  reach the user as raw browser text. Not fixable from our side.
+
+**Trap worth knowing:** a file using the typed localizer members needs
+`using ActualChat.UI.Blazor.Resources;`. Without it every member is invisible and
+the compiler reports CS1061 naming the *key* ("`IStringLocalizer` does not
+contain a definition for `Video_CameraUnavailable`"), which reads like a bad
+catalog entry or a stale build. `ChatVideoUI.Recording.cs` had this exact
+failure.
+
+Still open, and not prototyped:
+
+- **`web-auth.ts:45` raises a raw `alert()`** when the sign-in popup is blocked.
+  Unlike the video errors this has no C#-ward channel — `AccountUI.cs:144` calls
+  `signIn` one-way — so it needs either a return value carrying a code or the
+  localized text passed in. Small, but it touches sign-in.
+- **`service-worker.ts:169,172`** falls back to an English `'Incoming call'`.
+  Genuinely catalog-less: no app, no DOM. §3's web push track puts the catalog
+  in the worker, which fixes this as a side effect.
+- **`App.Server` pre-language pages**: `ErrorServerPage`, `RootServerPage`
+  render before the UI language is resolved. Leave English — but note
+  `RootServerPage.razor:33` is where the hardcoded `<html lang="en">` lives that
+  §5 flags for SEO.
+
+---
+
+## 7. Errors raised from `.razor` — resolved, and the rule is now written down
+
+`ServerErrorLocalizationTest.SourceText()` enumerates `*.cs` only, and
+`EveryCatalogedErrorShouldExistInSource` fails any `Error_*` key whose English
+value it can't find there. During #3721 that read as a defect: keys for
+`PicCropModal.razor:120` and `FileUpload.razor:25` were written and then had to
+be dropped, and this section proposed widening the scan to `*.razor`.
+
+**The scan stays `*.cs`. The narrowness is load-bearing.** Both messages moved
+into `StandardError.Upload` instead — `FileTooBig(maxSizeMb)`,
+`TooManyFiles(maxCount)` and `CropExportFailed()` — and are catalogued in all 14
+languages. That closes the backlog: no user-facing error is thrown from markup
+any more. What remains in `.razor` is developer invariants (`"<Tab> component
+must be nested into <TabPanel>"`, `"This component should never be rendered."`),
+admin pages and test pages — none of it catalog material.
+
+Two pieces of evidence settled it against widening:
+
+- Running the test's own matching logic over every `.razor` file against all 97
+  `Error_*` values matches **nothing** — 0 keys would gain an anchor, and 0
+  would gain a *false* one. So widening buys nothing today, while permanently
+  admitting the failure mode it protects against: a key byte-matching display
+  text in markup instead of a real throw would stay "anchored" forever after the
+  throw was deleted, silently defeating the drift check.
+- The one time the rule was obeyed rather than worked around, it produced better
+  code. The file-size message had four spellings precisely because it was
+  written inline at each markup site; sharing it removed the duplication and a
+  hardcoded `10` sitting next to it.
+
+The real defect was that none of this was written down — the test's failure
+message said only "must byte-match a message the code still throws", which is
+why #3721 dropped the keys instead of relocating them. Now:
+
+- `ServerErrorLocalizationTest`'s header explains why the scan is `*.cs`, and its
+  failure message names the fix and points at `StandardError.Upload.FileTooBig`.
+- `docs/CODING_STYLE.md` → "Localization (UI Strings)" carries the rule, together
+  with the reason error messages keep their **English** literal at the throw site
+  rather than calling `L`: `LocalizationUI.Get` matches the English
+  `MessageIndex`, so a pre-localized message misses it and buys a redundant AI
+  translation.
+
+---
+
+## Suggested order
+1. The iOS Notification Service Extension, on its own — it is the one new piece
+   of machinery, and whether it is a .NET appex or a native Swift one decides
+   the payload format §3 can adopt. Do it before changing any payload.
+2. §3's push track — structured payload, Android and web composing locally,
+   `DbDevice.Language` as the fallback for anything that still renders
+   server-side.
+3. §3's email track — settle the chrome language, then the 5 templates.
+4. §4's `Info.plist` strings — settled and independent, doable any time.
+5. §4's in-process subset (Android dialogs, local notifications, Live Activity)
+   — needs only a native-side language accessor, no new mechanism.
+6. §4's iOS share extension — together with, or after, the NSE: both need the
+   catalog question answered the same way.
+7. §6's video error codes — the branch `wip/l10n-video-error-codes` is
+   ready to cherry-pick; then web-auth's popup alert.
+8. §0 — flip the flag once §3 and §4 are done, i.e. once a user switching
+   language gets a consistently localized app, notifications and OS prompts
+   included.
+9. §5, independently and on its own schedule — the marketing half needs SEO
+   routing before translation pays off, and the legal half needs a liability
+   decision. Neither holds up §0.

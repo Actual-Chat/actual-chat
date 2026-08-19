@@ -6,21 +6,23 @@
 <DialogFrame
     Class="photo-troubleshooter-modal guide-modal"
     BodyClass="no-scrollbar"
-    Title="Photo library access"
+    Title="@L.Photo_Title"
     HasCloseButton="true"
-    NarrowViewSettings="@DialogFrameNarrowViewSettings.ForSubmitButton(OnOkClick, "OK")">
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.ForSubmitButton(OnOkClick, L.Common_OK)">
     <Body>
     <FormBlock>
         <div class="c-intro">
-            @CoreConstants.AppName needs access to your photo library to save photos and videos.
-            Please enable it in <a @onclick="OnSettingsClick" @onclick:preventDefault class="settings-link">Settings</a>.
+            @L.Photo_Intro_Prefix(CoreConstants.AppName)<a
+                @onclick="OnSettingsClick"
+                @onclick:preventDefault
+                class="settings-link">@L.Common_Settings</a>@L.Photo_Intro_Suffix
         </div>
     </FormBlock>
     <div class="safe-area-bottom safe-area-bottom-overlay"></div>
     </Body>
     <Buttons>
         <Button Class="btn-modal btn-primary" Click="OnOkClick">
-            OK
+            @L.Common_OK
         </Button>
     </Buttons>
 </DialogFrame>

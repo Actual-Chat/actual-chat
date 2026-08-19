@@ -18,12 +18,13 @@
             ShowDismissButton="true"
             Dismiss="@OnDismiss">
             <Body>
-                @CoreConstants.AppName can import your <strong>contacts</strong> to find them here
+                @L.Banner_ImportContacts_Prefix(CoreConstants.AppName)<strong
+                    >@L.Banner_ImportContactsTarget</strong>@L.Banner_ImportContacts_Suffix
             </Body>
             <Buttons>
                 <Button
                     Class="btn-transparent unhovered"
-                    Click="@OnConfigureClick">Configure</Button>
+                    Click="@OnConfigureClick">@L.Common_Configure</Button>
             </Buttons>
         </Banner>
     </RenderIntoSlot>

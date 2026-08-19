@@ -16,13 +16,13 @@
         <Button
             Class="btn-modal btn-primary"
             Click="@OnAdd">
-            Add @(selectedUserIds.Count) @("member".Pluralize(selectedUserIds.Count))
+            @L.Chat_AddMembers(selectedUserIds.Count, selectedUserIds.Count)
         </Button>
     } else {
         <Button
             Class="btn-modal btn-primary"
             Click="@(() => Skipped.InvokeAsync(false))">
-            Skip
+            @L.Common_Skip
         </Button>
     }
 </RenderIntoSlot>

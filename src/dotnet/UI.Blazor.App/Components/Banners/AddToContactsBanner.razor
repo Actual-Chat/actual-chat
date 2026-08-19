@@ -9,11 +9,11 @@
 
 <Banner IsVisible="@m.CanAddToContacts" Severity="BannerSeverity.Default" ShowDismissButton="true" Wrap="true">
     <Body>
-        This user is not in your contact list yet
+        @L.Banner_NotInContacts
     </Body>
     <Buttons>
-        <Button Class="btn-danger btn-sm btn-modal" Click="@OnBlockClick">Block</Button>
-        <Button Class="btn-primary btn-sm btn-modal" Click="@OnAddClick">Add to contacts</Button>
+        <Button Class="btn-danger btn-sm btn-modal" Click="@OnBlockClick">@L.Common_Block</Button>
+        <Button Class="btn-primary btn-sm btn-modal" Click="@OnAddClick">@L.Banner_AddToContacts</Button>
     </Buttons>
 </Banner>
 

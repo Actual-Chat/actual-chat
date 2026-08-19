@@ -14,7 +14,7 @@
     var isOwnVideoStreaming = m.IsOwnVideoStreaming;
     var isActive = m.IsAnyoneTalking;
     var iconMode = m.HasRemoteStreams ? "video" : "audio";
-    var tooltip = isListening ? "Listening..." : "Listen";
+    var tooltip = isListening ? L.Call_ListeningCountdown : L.Common_Listen;
     var cls = isListening ? " listening" : "";
     if (m.HasRemoteStreams)
         cls += " video-streaming";
@@ -23,7 +23,7 @@
         cls += " not-participating";
     if (isWatchingHere)
         cls += " watching";
-    var joinButtonText = "Join muted";
+    var joinButtonText = L.Call_JoinMuted;
 }
 
 <div @ref="Ref"
@@ -35,7 +35,7 @@
      @onclick="@Click">
     <div class="c-pin-badge">
         <span class="c-badge-content">
-            <i class="icon-arrow-down"></i> Pin panel
+            <i class="icon-arrow-down"></i> @L.Call_PinPanel
         </span>
     </div>
     @if (m.HasRemoteStreams) {

@@ -1,17 +1,18 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<UIHub>
 
 <div class="c-hero">
-    <img draggable="false" src="/dist/images/guide/loc-access.svg" alt="Location access is blocked">
+    <img draggable="false" src="/dist/images/guide/loc-access.svg" alt="@L.LocationGuide_BlockedImageAlt">
 </div>
 <div class="c-title">
-    Location access is blocked, but you can fix this!
+    @L.LocationGuide_Title
 </div>
 <div class="c-intro">
-    @CoreConstants.AppName needs access to your location to share it with others.
-    To enable it in Safari or any other browser on iOS:
+    @L.LocationGuide_Intro_Format(CoreConstants.AppName)
+    @L.Guide_EnableInMobileSafari
 </div>
 <ol class="c-steps">
-    <li>Open iOS Settings app, then "Safari" section</li>
-    <li>Go to "Settings for websites" (section) &gt; Location</li>
-    <li>Change "Location access on all websites" to "Ask"</li>
+    <li>@L.LocationGuide_MobileSafariStep1</li>
+    <li>@L.LocationGuide_MobileSafariStep2</li>
+    <li>@L.LocationGuide_MobileSafariStep3</li>
 </ol>

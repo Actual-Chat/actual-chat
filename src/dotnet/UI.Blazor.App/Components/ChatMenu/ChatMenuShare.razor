@@ -6,10 +6,10 @@
         return;
 
     var title = chat.Id is PeerChatId
-        ? "Share contact"
+        ? L.Share_Contact
         : chat.IsPublic
-            ? "Share chat"
-            : "Share chat join link";
+            ? L.Share_Chat
+            : L.Share_ChatJoinLink;
 }
 
 <MenuEntry

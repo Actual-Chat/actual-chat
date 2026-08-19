@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Resources;
 namespace ActualChat.UI.Blazor.Services;
 
 public partial class AccountUI
@@ -172,8 +173,8 @@ public partial class AccountUI
         var commander = Services.Commander();
         var isConfirmed = false;
 
-        var identifier = info.Identifier.NullIfEmpty() ?? "this account";
-        var text = $"We didn't find an account for {identifier}. Would you like to register a new one?";
+        var identifier = info.Identifier.NullIfEmpty() ?? L.Account_RegisterThisAccount;
+        var text = L.Account_RegisterText_Format(identifier);
         var model = new ConfirmModal.Model(
             IsDestructive: false,
             Text: text,
@@ -181,8 +182,8 @@ public partial class AccountUI
                 isConfirmed = true;
                 _ = commander.Run(new Accounts_ConfirmRegister(session, info.Token), true, CancellationToken.None);
             }) {
-            Title = "Register new account?",
-            ConfirmButtonText = "Register",
+            Title = L.Account_RegisterTitle,
+            ConfirmButtonText = L.Account_Register,
         };
         var modalRef = await Hub.ModalUI.Show(model).ConfigureAwait(true);
         await modalRef.WhenClosed.ConfigureAwait(true);

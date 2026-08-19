@@ -64,6 +64,7 @@ public sealed class AppScopedServiceStarter
             Tracer.Point("BrowserInfo is ready");
 
             Hub.Services.GetRequiredService<ThemeUI>().Start();
+            _ = Hub.LanguageUI; // Touch: start language settings sync so the UI language resolves early
             var dateTimeConverter = Hub.DateTimeConverter;
             if (dateTimeConverter is ServerSideDateTimeConverter serverSideDateTimeConverter)
                 serverSideDateTimeConverter.Initialize(browserInfo.UtcOffset);

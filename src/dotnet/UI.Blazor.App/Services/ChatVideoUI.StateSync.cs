@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Resilience;
 
@@ -109,7 +110,7 @@ public partial class ChatVideoUI
                         activeChatId = intent.ChatId;
                     }
                     catch (Exception e) when (e is not OperationCanceledException) {
-                        OnRecordingError("Failed to start recording", kind);
+                        OnRecordingError(L.Video_FailedToStartRecording, kind);
                         Log.LogWarning(e, "{Kind} lifecycle: failed to start recording", kind);
                         recorder = null;
                     }

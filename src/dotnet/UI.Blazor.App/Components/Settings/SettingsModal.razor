@@ -12,7 +12,7 @@
     // Push-to-talk is a device feature; on the web it's an admin-only preview, local hosts only.
     var isPttPreview = account.IsAdmin && HostInfo.BaseUrlKind == BaseUrlKind.Local;
     var showPtt = m.EnableIncompleteUI && Ptt.IsSupported(HostInfo) && (HostInfo.HostKind.IsMauiApp() || isPttPreview);
-    var quitTitle = $"Quit {CoreConstants.AppName}";
+    var quitTitle = L.Settings_Quit_Format(CoreConstants.AppName);
 }
 
 <ModalFrame Class="settings-modal">
@@ -21,18 +21,18 @@
             <i class="icon-close text-xl"></i>
         </ButtonRound>
     }
-    <SettingsPanel Title="Settings" CloseModalClick="OnCloseClick" DefaultTabId="@m.TabId">
+    <SettingsPanel Title="@L.Settings_Title" CloseModalClick="OnCloseClick" DefaultTabId="@m.TabId">
         @if (showMyAccount) {
-            <SettingsTab @key="1" TabIndex="1" Title="Your Account" Id="@SettingsTabId.Account" IconClass="icon-person">
+            <SettingsTab @key="1" TabIndex="1" Title="@L.Settings_YourAccount" Id="@SettingsTabId.Account" IconClass="icon-person">
                 <YourAccount/>
             </SettingsTab>
         }
 
-        <SettingsTab @key="2" TabIndex="2" Title="User Interface" Id="@SettingsTabId.UserInterface" IconClass="icon-interface">
+        <SettingsTab @key="2" TabIndex="2" Title="@L.Settings_UserInterface" Id="@SettingsTabId.UserInterface" IconClass="icon-interface">
             <UserInterface/>
         </SettingsTab>
 
-        <SettingsTab @key="3" TabIndex="3" Title="Voice & Transcription" Id="@SettingsTabId.Transcription" IconClass="icon-transcription">
+        <SettingsTab @key="3" TabIndex="3" Title="@L.Settings_Transcription" Id="@SettingsTabId.Transcription" IconClass="icon-transcription">
             <TitleContent>
                 <LanguageShortcut/>
             </TitleContent>
@@ -42,41 +42,41 @@
         </SettingsTab>
 
         @if (showPtt) {
-            <SettingsTab @key="4" TabIndex="4" Title="Push-to-talk" Id="@SettingsTabId.Ptt"
+            <SettingsTab @key="4" TabIndex="4" Title="@L.Settings_Ptt" Id="@SettingsTabId.Ptt"
                 IconClass="icon-talking">
                 <PttSettings/>
             </SettingsTab>
         }
 
-        <SettingsTab @key="5" TabIndex="5" Title="Application" Id="@SettingsTabId.App" IconClass="icon-settings">
+        <SettingsTab @key="5" TabIndex="5" Title="@L.Settings_Application" Id="@SettingsTabId.App" IconClass="icon-settings">
             <AppSettings/>
         </SettingsTab>
 
         @if (showMyAccount) {
-            <SettingsTab @key="6" TabIndex="6" Title="Sessions" Id="@SettingsTabId.Sessions" IconClass="icon-lock">
+            <SettingsTab @key="6" TabIndex="6" Title="@L.Settings_Sessions" Id="@SettingsTabId.Sessions" IconClass="icon-lock">
                 <SessionSettings/>
             </SettingsTab>
-            <SettingsTab @key="7" TabIndex="7" Title="API Keys" Id="@SettingsTabId.ApiKeys" IconClass="icon-key">
+            <SettingsTab @key="7" TabIndex="7" Title="@L.Settings_ApiKeys" Id="@SettingsTabId.ApiKeys" IconClass="icon-key">
                 <ApiKeySettings/>
             </SettingsTab>
         }
 
         @if (showMyAccount) {
-            <SettingsTab @key="8" TabIndex="8" Title="Privacy" Id="@SettingsTabId.Privacy" IconClass="icon-lock">
+            <SettingsTab @key="8" TabIndex="8" Title="@L.Settings_Privacy" Id="@SettingsTabId.Privacy" IconClass="icon-lock">
                 <PrivacySettings/>
             </SettingsTab>
         }
 
-        <SettingsTab @key="90" TabIndex="90" Title="Documents" Id="@SettingsTabId.Documents" Class="docs-tab" IconClass="icon-file-text" HasSeparatorBefore="true">
+        <SettingsTab @key="90" TabIndex="90" Title="@L.Settings_Documents" Id="@SettingsTabId.Documents" Class="docs-tab" IconClass="icon-file-text" HasSeparatorBefore="true">
             <DocumentsPage/>
         </SettingsTab>
 
-        <SettingsTab @key="91" TabIndex="91" Title="Developer tools" Id="@SettingsTabId.DevTools" IconClass="icon-eye">
+        <SettingsTab @key="91" TabIndex="91" Title="@L.Settings_DeveloperTools" Id="@SettingsTabId.DevTools" IconClass="icon-eye">
             <DeveloperTools/>
         </SettingsTab>
 
         @if (m.ShowLogViewer) {
-            <SettingsTab @key="92" TabIndex="92" Title="Log Viewer" Id="@SettingsTabId.LogViewer" Class="log-viewer-tab" HeaderClass="no-scrollbar" ContentClass="no-scrollbar" IconClass="icon-info">
+            <SettingsTab @key="92" TabIndex="92" Title="@L.Settings_LogViewer" Id="@SettingsTabId.LogViewer" Class="log-viewer-tab" HeaderClass="no-scrollbar" ContentClass="no-scrollbar" IconClass="icon-info">
                 <ChildContent>
                     <div class="log-viewer-page">
                         <LogView/>
@@ -92,7 +92,7 @@
         }
 
         @if (showLogout) {
-            <SettingsTab @key="100" TabIndex="100" Title="Log out" Id="@SettingsTabId.SignOut" IconClass="icon-log-out" HasSeparatorBefore="true">
+            <SettingsTab @key="100" TabIndex="100" Title="@L.Settings_LogOut" Id="@SettingsTabId.SignOut" IconClass="icon-log-out" HasSeparatorBefore="true">
             </SettingsTab>
         }
         @if (showQuit) {
@@ -136,11 +136,11 @@
     private async Task OnCopyVisibleLogsClick() {
         var text = await JS.InvokeAsync<string>(JSGetVisibleLogsText).ConfigureAwait(true);
         if (text.IsNullOrEmpty()) {
-            ToastUI.Show("Nothing to copy", "icon-alert-circle", ToastDismissDelay.Short);
+            ToastUI.Show(L.Settings_NothingToCopy, "icon-alert-circle", ToastDismissDelay.Short);
             return;
         }
         await Hub.ClipboardUI.WriteText(text).ConfigureAwait(true);
-        ToastUI.Show("Visible log entries copied", "icon-checkmark-circle", ToastDismissDelay.Short);
+        ToastUI.Show(L.Settings_LogEntriesCopied, "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
     private static readonly string JSGetVisibleLogsText =

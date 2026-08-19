@@ -1,7 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<UIHub>
 @{
     var icon = IsVerified ? "icon-checkmark-circle-2" : "icon-alert-circle";
-    var text = IsVerified ? "Verified" : "Unverified";
+    var text = IsVerified ? L.Common_Verified : L.Common_Unverified;
     var colorCls = IsVerified ? "text-success" : "text-danger";
     var cursorCls = !IsVerified ? "cursor-pointer" : "";
 }
@@ -14,6 +15,7 @@
 
 
 @code {
+
     [Parameter, EditorRequired] public bool IsVerified { get; set; }
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback Verify { get; set; }

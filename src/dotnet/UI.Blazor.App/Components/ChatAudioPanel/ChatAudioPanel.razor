@@ -19,10 +19,10 @@
         && (isOwnVideoStreaming || isRecording || isAnyoneVideoStreaming);
     var showHeader = showHeaderVoiceSettings || showVideoControls;
     var screenCastTooltip = isVideoBlockedByRules
-        ? "Video is off for this call"
+        ? L.Call_VideoOff
         : isVideoDisabled
-            ? "Unavailable in this chat"
-            : isOwnScreenCasting ? "Stop screen share" : "Share screen";
+            ? L.Call_UnavailableInChat
+            : isOwnScreenCasting ? L.Call_StopScreenShare : L.Call_ShareScreen;
 }
 
 <OnUIEvent TEvent="@CameraSelectedEvent" Handler="OnCameraSelectedEvent"/>

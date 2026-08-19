@@ -13,7 +13,7 @@
             For="() => _formModel.Sensitivity"
             InputId="@_formModel.SensitivityFormId"
             IsLabelInsideInput="true"
-            Label="Shake sensitivity"
+            Label="@L.Ptt_ShakeSensitivity"
             IsRequired="true"
             HideValidationMessage="true">
             <InputSelect
@@ -51,11 +51,11 @@
             .Update(x => x with { ShakeSensitivity = sensitivity }, CancellationToken.None);
     }
 
-    private static string GetLabel(ShakeSensitivity sensitivity)
+    private string GetLabel(ShakeSensitivity sensitivity)
         => sensitivity switch {
-            ShakeSensitivity.Low => "Low - a firm shake",
-            ShakeSensitivity.Medium => "Medium",
-            ShakeSensitivity.High => "High - a light shake",
+            ShakeSensitivity.Low => L.Ptt_ShakeLow,
+            ShakeSensitivity.Medium => L.Ptt_ShakeMedium,
+            ShakeSensitivity.High => L.Ptt_ShakeHigh,
             _ => sensitivity.ToString(),
         };
 

@@ -11,12 +11,12 @@
         <i class="icon-talking text-2xl"></i>
     </Icon>
     <Body>
-        This chat is in Push-to-talk mode.
+        @L.Banner_PttAllow
     </Body>
     <Buttons>
         <Button
             Class="btn-transparent unhovered"
-            Click="@OnJoinClick">Allow</Button>
+            Click="@OnJoinClick">@L.Common_Allow</Button>
     </Buttons>
 </Banner>
 
@@ -80,7 +80,7 @@
         var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(CancellationToken.None).ConfigureAwait(true);
         if (pttChatIds.Count >= UserPttSettings.MaxChatCount && !pttChatIds.Contains(chat.Id)) {
             ToastUI.Show(
-                $"Push-to-talk is already on in {UserPttSettings.MaxChatCount} chats - turn one off in Settings.",
+                L.Ptt_MaxChatsReached_Format(UserPttSettings.MaxChatCount),
                 "icon-alert-circle",
                 ToastDismissDelay.Long);
             return;

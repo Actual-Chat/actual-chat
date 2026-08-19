@@ -1,13 +1,13 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<UIHub>
 
 <div class="c-hero">
-    <img draggable="false" src="/dist/images/guide/loc-access.svg" alt="Location access is blocked">
+    <img draggable="false" src="/dist/images/guide/loc-access.svg" alt="@L.LocationGuide_BlockedImageAlt">
 </div>
 <div class="c-title">
-    Location access is blocked, but you can fix this!
+    @L.LocationGuide_Title
 </div>
 <div class="c-intro">
-    @CoreConstants.AppName needs access to your location to share it with others.
-    Tap "Settings" below to open @CoreConstants.AppName settings,
-    then tap "Location" and allow location access.
+    @L.LocationGuide_Intro_Format(CoreConstants.AppName)
+    @L.LocationGuide_IosAppInstructions_Format(CoreConstants.AppName)
 </div>

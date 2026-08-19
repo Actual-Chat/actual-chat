@@ -7,14 +7,16 @@
 
 <DialogFrame
     Class="@("pic-crop-modal" + (ModalModel.IsSquare ? " square" : "") + (ModalModel.HasBlur ? " has-blur" : ""))"
-    Title="@(ModalModel.HasBlur ? "Crop wallpaper" : ModalModel.IsSquare ? "Crop place avatar" : "Crop avatar")"
+    Title="@(ModalModel.HasBlur
+        ? L.PicCrop_WallpaperTitle
+        : ModalModel.IsSquare ? L.PicCrop_PlaceAvatarTitle : L.PicCrop_AvatarTitle)"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default"
     HasCloseButton="true">
     <Body>
         @if (_hasError) {
             <div class="c-error">
                 <i class="icon-warning text-2xl"></i>
-                <span>Failed to load image</span>
+                <span>@L.PicCrop_LoadFailed</span>
             </div>
         } else {
             <div class="c-content">
@@ -24,12 +26,12 @@
                 @if (ModalModel.ViewportAspectRatio > 0) {
                     <div class="c-preview">
                         <canvas @ref="_previewRef" width="120" height="@((int)(120 / ModalModel.ViewportAspectRatio))"></canvas>
-                        <span class="c-preview-label">Preview</span>
+                        <span class="c-preview-label">@L.PicCrop_Preview</span>
                     </div>
                 } else {
                     <div class="c-preview">
                         <canvas @ref="_previewRef" width="40" height="40"></canvas>
-                        <span class="c-preview-label">Preview</span>
+                        <span class="c-preview-label">@L.PicCrop_Preview</span>
                     </div>
                 }
             </div>
@@ -37,26 +39,26 @@
                 @if (ModalModel.HasBlur) {
                     <div class="c-blur-slider">
                         <input type="range" class="blur-range" min="0" max="16" step="1" value="0" />
-                        <span class="c-blur-label">Blur</span>
+                        <span class="c-blur-label">@L.PicCrop_Blur</span>
                     </div>
                 }
                 <div class="c-buttons-row">
                     <div class="c-group">
-                        <ButtonRound Class="btn-zoom-out" Tooltip="Zoom out">
+                        <ButtonRound Class="btn-zoom-out" Tooltip="@L.PicCrop_ZoomOut">
                             <i class="icon-minus-circle text-2xl"></i>
                         </ButtonRound>
-                        <ButtonRound Class="btn-zoom-in" Tooltip="Zoom in">
+                        <ButtonRound Class="btn-zoom-in" Tooltip="@L.PicCrop_ZoomIn">
                             <i class="icon-plus-circle text-2xl"></i>
                         </ButtonRound>
                     </div>
-                    <ButtonRound Class="btn-confirm" Click="@OnConfirm" Tooltip="Apply">
+                    <ButtonRound Class="btn-confirm" Click="@OnConfirm" Tooltip="@L.PicCrop_Apply">
                         <i class="icon-checkmark-simple text-2xl"></i>
                     </ButtonRound>
                     <div class="c-group">
-                        <ButtonRound Class="btn-rotate-ccw" Tooltip="Rotate left">
+                        <ButtonRound Class="btn-rotate-ccw" Tooltip="@L.PicCrop_RotateLeft">
                             <i class="icon-refresh text-2xl c-flip"></i>
                         </ButtonRound>
-                        <ButtonRound Class="btn-rotate-cw" Tooltip="Rotate right">
+                        <ButtonRound Class="btn-rotate-cw" Tooltip="@L.PicCrop_RotateRight">
                             <i class="icon-refresh text-2xl"></i>
                         </ButtonRound>
                     </div>
@@ -115,7 +117,7 @@
         try {
             var exported = await _jsRef!.InvokeAsync<bool>("exportCrop").ConfigureAwait(true);
             if (!exported) {
-                UICommander.ShowError(StandardError.Constraint("Failed to export cropped image."));
+                UICommander.ShowError(StandardError.Upload.CropExportFailed());
                 return;
             }
 

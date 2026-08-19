@@ -20,9 +20,9 @@
         <span class="c-icon">
             <i class="icon-notify-phone-2 self-center text-xs"></i>
         </span>
-        <span class="not-mentioned">Alert mentioned</span>
+        <span class="not-mentioned">@L.Alert_AlertMentioned</span>
     } else {
-        <span class="text-primary font-semibold">You</span><span class="default-text">&nbsp;notified&nbsp;</span>
+        <span class="text-primary font-semibold">@L.ChatView_You</span><span class="default-text">&nbsp;@L.ChatView_Notified&nbsp;</span>
         @for (var i = 0; i < AuthorIds.Count; i++) {
             var isFirst = i == 0;
             var isLast = i == AuthorIds.Count - 1;
@@ -31,7 +31,7 @@
                 if (!isLast) {
                     <span class="default-text">,&nbsp;</span>
                 } else {
-                    <span class="default-text">&nbsp;and&nbsp;</span>
+                    <span class="default-text">&nbsp;@L.ChatView_And&nbsp;</span>
                 }
             }
 
@@ -87,12 +87,12 @@
     private void OnNotifyAuthorsClick()
         => _ = ModalUI.Show(new ConfirmModal.Model(
             false,
-            "Are you sure you want to Alert mentioned members?",
+            L.Alert_ConfirmMentioned,
             NotifyAuthorsInternal) {
-            Title = "Alert mentioned members",
+            Title = L.Alert_AlertMentionedMembers,
             AdditionalContent = AdditionalInfo,
             Class = "alert-confirm-modal",
-            ConfirmButtonText = "Alert",
+            ConfirmButtonText = L.Alert_Confirm,
         });
 
     private void NotifyAuthorsInternal()

@@ -12,9 +12,9 @@
 }
 
 <div class="left-chat-search-input @cls @placeCls">
-    <Hotkey Keys="ctrl+f" AriaLabel="Search" OnTrigger="OnSearchHotkey"/>
+    <Hotkey Keys="ctrl+f" AriaLabel="@L.Common_Search" OnTrigger="OnSearchHotkey"/>
     @if (m.IsOpen) {
-        <Hotkey Keys="escape" AriaLabel="Close search" OnTrigger="@(() => OnClick(false))"/>
+        <Hotkey Keys="escape" AriaLabel="@L.Search_CloseSearch" OnTrigger="@(() => OnClick(false))"/>
     }
     <div class="c-search">
         <div class="search-input">
@@ -23,7 +23,7 @@
                     @ref="_inputRef"
                     Text="@m.InitialText"
                     Class="w-full dialog-unstyled"
-                    Placeholder="@Placeholder"
+                    Placeholder="@(Placeholder ?? L.Common_Search)"
                     MaxLength="@MaxLength"
                     CloseOnBlurSelector=".left-chat-search-input"
                     OnFocus="@(_ => OnClick(true))"
@@ -71,7 +71,7 @@
     private NavbarUI NavbarUI => Hub.NavbarUI;
 
     [Parameter] public Place? Place { get; set; }
-    [Parameter] public string Placeholder { get; set; } = "Search";
+    [Parameter] public string? Placeholder { get; set; }
     [Parameter] public int? MaxLength { get; set; }
 
     public override ValueTask DisposeAsync() {

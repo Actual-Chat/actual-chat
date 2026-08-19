@@ -1,0 +1,138 @@
+// Reverse-indexed catalog: MessageIndex maps a runtime-produced English message back to
+// its key here, so the English value below MUST byte-match what the app actually produces.
+// Placeholders are named: {field} is replaced by the form label, the rest pass through.
+// Two families live here: Validation_* messages produced by BCL attributes, and Error_*
+// messages thrown by the server and shown in an error toast. Our own validation attributes
+// report a Validation_* key directly instead, so they live in Strings.*.json.
+// An Error_* value that no longer matches the code silently falls back to AI translation -
+// ServerErrorLocalizationTest is what keeps the two in sync.
+// TODO(FC): the Validation_* entries here are temporary - see MessageIndex. The .NET 11 pipeline
+// resolves IStringLocalizerFactory per call as of preview.7, so once the SDK is bumped off
+// preview.6 the BCL attributes localize forwards too and only Error_ strings remain here.
+{
+  "Validation_Required_Format": "The {field} field is required.",
+  "Validation_MinLength_Format": "The field {field} must be a string or array type with a minimum length of '{min}'.",
+  "Validation_EmailAddress_Format": "The {field} field is not a valid e-mail address.",
+  "Validation_DeleteConfirmationRequired": "Delete confirmation is required",
+  "Validation_DeleteConfirmationInvalid": "Please enter DELETE to confirm",
+
+  // Generic errors, composed by StandardError / the exception types themselves
+  "Error_NotEnoughPermissions": "You can't perform this action: not enough permissions.",
+  "Error_NotEnoughPermissions_Format": "You can't perform this action: not enough permissions. Requested permission: {permission}",
+  "Error_TooManyRequests": "Too many requests.",
+  "Error_TooManyRequests_Format": "Too many requests. Retry in {seconds}s.",
+  "Error_VersionMismatch": "Version mismatch.",
+  "Error_ChatNotFound": "Chat is not found.",
+  "Error_ChatEntryNotFound": "ChatEntry is not found.",
+  "Error_AccountNotFound": "Account is not found.",
+  "Error_AuthorNotFound": "Author is not found.",
+  "Error_AvatarNotFound": "Avatar is not found.",
+  "Error_ContactNotFound": "Contact is not found.",
+  "Error_MediaNotFound": "Media is not found.",
+  "Error_UploadNotFound": "Upload is not found.",
+
+  // Sign-in and account
+  "Error_RegistrationExpired": "This registration request has expired. Please try signing in again.",
+  "Error_SessionExpired": "Your session is expired or deactivated. Please restart the app.",
+  "Error_AlreadySignedIn": "Already signed in.",
+  "Error_PhoneTaken": "Phone number has already been taken by another account.",
+  "Error_EmailTaken": "Email has already been taken by another account.",
+  "Error_SmsNotDelivered": "We couldn't deliver the message to the specified phone number.",
+  "Error_CannotDeactivateCurrentSession": "Cannot deactivate the current session.",
+  "Error_PhoneFormatInvalid": "Incorrect phone number format.",
+  "Error_CannotChangeOwnStatus": "You can't change your own status.",
+  "Error_ApiKeyExpirationRange_Format": "API key expiration must be between 1 and {days} days.",
+
+  // Chat members and roles
+  "Error_OnlyOwnerCannotLeave": "You can't leave this chat because you are its only owner. Please add another chat owner first.",
+  "Error_CannotRemoveSelf": "You can't remove yourself from chat members.",
+  "Error_CannotRemoveChatOwner": "You can't remove an owner of this chat from chat members.",
+  "Error_CannotRemoveSearchBot": "You can't remove an AI search bot from chat members.",
+  "Error_OwnerCannotBeDemoted": "Chat owners can't be demoted.",
+  "Error_AuthorAlreadyLeft": "The selected author has already left the chat.",
+  "Error_AutomaticRoleMembership": "This system role uses automatic membership rules.",
+  "Error_ManageMembershipInPlace": "You must manage place public chat membership via place settings.",
+  "Error_AnonymousAvatarRequired": "Anonymous avatar should be used to join anonymously.",
+  "Error_GuestJoinNotAllowed": "The chat does not allow to join with guest account.",
+  "Error_AnonymousJoinNotAllowed": "The chat does not allow to join anonymously.",
+  "Error_OwnersRoleCannotBeEmpty": "There must be at least one user in Owners role.",
+  "Error_OnlyOwnersAllowed": "Only this chat's Owners role members can perform this action.",
+
+  // Messages
+  "Error_CannotSendMessages": "You cannot send messages in this chat.",
+  "Error_EmptyMessage": "Sorry, you can't post empty messages.",
+  "Error_CanEditOwnMessagesOnly": "You can edit only your own messages.",
+  "Error_OnlyTextCanBeEdited": "Only text messages can be edited.",
+  "Error_StreamingCannotBeEdited": "Streaming messages cannot be edited.",
+  "Error_ForwardedCannotBeEdited": "Forwarded messages cannot be edited.",
+  "Error_MessageNoLongerExists": "This message no longer exists.",
+  "Error_CannotRemoveMessage": "You're not allowed to remove this message.",
+  "Error_CannotRemoveOwnerMessage": "You're not allowed to remove an Owner's message.",
+  "Error_CannotRestoreMessage": "You're not allowed to restore this message.",
+  "Error_CannotRestoreOwnerMessage": "You're not allowed to restore an Owner's message.",
+  "Error_RootChatCannotHoldMessages": "A place's root chat can't hold messages — post to one of the place's chats instead.",
+  "Error_CanAttachOwnLocationsOnly": "You can attach only your own shared locations from this chat.",
+  "Error_NonContactMessageLimit_Format": "You can send up to {limit} messages until this user adds you to their contacts or replies.",
+  "Error_OnlyOwnersOrModeratorsCanPin": "You can't perform this action: not enough permissions. Requested permission: Only chat Owners and Moderators can pin messages.",
+  "Error_PinLimit_Format": "You can pin up to {limit} messages.",
+
+  // Chats and places
+  "Error_ChatTitleEmpty": "Chat title cannot be empty.",
+  "Error_ThreadTitleEmpty": "Thread chat title cannot be empty.",
+  "Error_PlaceTitleEmpty": "Place title cannot be empty.",
+  "Error_PlaceUnavailable": "Requested place is unavailable.",
+  "Error_OnlyPlaceMembersCanAddChats": "Only place members can add chats.",
+  "Error_CannotMakeChatPublic": "You can't perform this action: not enough permissions. Requested permission: Make chat public",
+  "Error_CustomLinkNotAllowed": "Custom links are not allowed for place chats.",
+  "Error_CustomLinkTaken_Format": "Custom link '{link}' is already used for another chat in the same Place.",
+  "Error_WelcomeChatCannotBePrivate": "Can't change chat type to private for 'Welcome' chat.",
+  "Error_WelcomeChatCannotBeRemoved": "It's prohibited to remove 'Welcome' chat.",
+  "Error_OnlyGroupOrPlaceChatCanBeCopied": "Only group or place chats can be copied to a Place.",
+  "Error_CannotCopyToSamePlace": "Can't copy place chat to the same Place.",
+  "Error_MigrationRequiresChatOwner": "You must be the Owner of this chat to perform the migration.",
+  "Error_MigrationRequiresPlaceOwner": "You should be place owner to perform 'copy chat to place' operation.",
+  "Error_OperationRequiresChatOwner": "You must be the Owner of this chat to perform this operation.",
+  "Error_OperationRequiresPlaceOwner": "You must be a chat's place owner to perform this operation.",
+
+  // Threads and contacts
+  "Error_ThreadRequiresContact": "Threads can be started only after this user adds you to their contacts or replies.",
+  "Error_SignInToFollowThread": "You must sign-in to follow chat thread.",
+  "Error_OnlyPeerContactCanBeBlocked": "Only peer contacts can be blocked.",
+  "Error_SignInToChat": "You must sign-in to chat with another user.",
+  "Error_CannotChatWithUnauthenticated": "You can't chat with unauthenticated user.",
+
+  // Calls
+  "Error_OnlyParticipantCanBecomeHost": "Only a call participant can become the call host.",
+  "Error_CannotMuteOwner": "You can't turn off an Owner's microphone.",
+  "Error_OnlyHostOrOwnerCanChangeHost": "Only the call host or a chat Owner can change the call host.",
+  "Error_CallRequiresContact": "You can call this user only after they add you to their contacts or reply to you.",
+  "Error_CannotMuteInPeerChat": "You cannot mute another participant in a one-on-one chat.",
+  "Error_OnlyHostOwnerOrModeratorCanManageCall": "Only the call host, a chat Owner or Moderator can manage the live session.",
+  "Error_VoiceStreamingModeLocked": "Voice streaming mode cannot be changed in this chat.",
+
+  // Notifications
+  "Error_NotifyMembersNotAllowed": "Notify members is not allowed in public accessible chats.",
+  "Error_AlertEveryoneUnavailable": "Alert everyone is unavailable in chats with more than 10 people.",
+  "Error_NobodyToNotify": "Nobody to notify.",
+  "Error_OnlyAuthorCanNotify": "Only the author is allowed to notify mentioned principals.",
+
+  // Media and uploads
+  "Error_NoMediaAccess": "You don't have permission to access this media.",
+  "Error_FileTooBig": "File is too big.",
+  "Error_CropExportFailed": "Failed to export cropped image.",
+  "Error_FileTooBig_Format": "File is too big. Max file size: {size}.",
+  "Error_TooManyFiles_Format": "Too many files. Max allowed number is {count}.",
+
+  // Invites
+  "Error_InviteAlreadyUsed": "The invite link is already used.",
+  "Error_InviteNotActive": "The invite link is no active already.",
+  "Error_InviteCodeNotFound": "Invite with the specified code is not found.",
+  "Error_OnlyPlaceMembersCanUseCode": "Only place members can use this code.",
+  "Error_UserInvitesRemoved": "User invites feature is removed.",
+
+  // Live location
+  "Error_JoinChatToShareLocation": "Please join the chat before sharing your location.",
+  "Error_CanChangeOwnLocationsOnly": "You can change only your own shared locations in this chat.",
+  "Error_LocationSharingLimit_Format": "This chat already has the maximum of {limit} people sharing their live location.",
+  "Error_FailedToAddFileAttachment": "Failed to add file attachment."
+}

@@ -24,7 +24,7 @@
         @if (!m.HasAll && !m.HasDMs && !m.HasMentions) {
             <div class="c-empty">
                 <i class="icon-checkmark-circle"></i>
-                <span>You're all caught up</span>
+                <span>@L.Notifications_AllCaughtUp</span>
             </div>
         } else {
             <TabPanel

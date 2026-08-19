@@ -7,7 +7,7 @@
 
 <div>
     @if (Stepper.CurrentStepIndex == 0) {
-        <p class="step-title">Welcome to @CoreConstants.AppName!</p>
+        <p class="step-title">@L.Onboarding_Welcome_Format(CoreConstants.AppName)</p>
     }
     <div class="analytics-step">
         <p class="c-subtitle">
@@ -15,18 +15,15 @@
         </p>
         <div class="c-content">
             <div>
-                @CoreConstants.AppName collects certain telemetry data,
-                such as critical user actions preceding errors and crashes,
-                to help us fix user experience issues faster.
-                The data is currently processed by
-                <a href="https://firebase.google.com/docs/analytics" target="_blank">Firebase Analytics</a> and
-                <a href="https://sentry.io/" target="_blank">Sentry</a>,
-                though we may use other services in the future.
+                @L.Onboarding_Telemetry_Prefix(CoreConstants.AppName)<a
+                    href="https://firebase.google.com/docs/analytics"
+                    target="_blank">Firebase Analytics</a>@L.Onboarding_Telemetry_Middle<a
+                    href="https://sentry.io/"
+                    target="_blank">Sentry</a>@L.Onboarding_Telemetry_Suffix
             </div>
             <div><br/></div>
             <div>
-                Please help us improve @CoreConstants.AppName by consenting to the collection and
-                processing of your telemetry data.
+                @L.Onboarding_TelemetryConsent_Format(CoreConstants.AppName)
             </div>
         </div>
     </div>
@@ -40,8 +37,8 @@
     [Parameter, EditorRequired] public bool IsConfigured { get; set; }
 
     public override bool CanSkip => true;
-    public override string SkipTitle => "Decline";
-    public override string NextTitle => "Enable Telemetry";
+    public override string SkipTitle => L.Onboarding_DeclineTelemetry;
+    public override string NextTitle => L.Onboarding_EnableTelemetry;
     public override bool IsCompleted
         => OnboardingUI.UserSettings.Value.IsDataCollectionStepCompleted || IsConfigured;
 

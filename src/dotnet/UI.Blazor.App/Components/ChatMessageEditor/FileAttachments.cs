@@ -83,10 +83,10 @@ public class FileAttachments : UIServiceBase<AppUIHub>
     private static Exception? CheckCanAdd(AttachmentList list, long length)
     {
         if (length > Constants.Attachments.FileSizeLimit)
-            return AttachmentList.FileTooBigError();
+            return StandardError.Upload.FileTooBig(Constants.Attachments.FileSizeLimit);
 
         if (list.Count >= Constants.Attachments.FileCountLimit)
-            return StandardError.Constraint("Too many files. Max allowed number is 10.");
+            return StandardError.Upload.TooManyFiles(Constants.Attachments.FileCountLimit);
 
         return null;
     }
@@ -131,7 +131,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
                 .WithErrorLog(Log, "Failed to cleanup file provider")
                 .SilentAwait();
             Log.LogError(ex, "Failed to add file attachment");
-            UICommander.ShowError("Failed to add file attachment.");
+            UICommander.ShowError(StandardError.Constraint("Failed to add file attachment."));
             return false;
         }
         // NOTE: Start upload immediately after adding attachments.

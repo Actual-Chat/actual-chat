@@ -1,9 +1,9 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
-
-<label for="@(InputId.NullIfEmpty() ?? "-")" class="@Class">
+@inherits FusionComponentBase<UIHub>
+<label for="@(InputId.NullIfEmpty() ?? "-")" class="@Class" title="@Text">
     <span>@Text</span>
     @if (!IsRequired) {
-        <span> (optional)</span>
+        <span>@L.Common_Optional</span>
     }
 </label>
 

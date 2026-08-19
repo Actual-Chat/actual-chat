@@ -1,4 +1,5 @@
 ﻿using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
@@ -53,12 +54,13 @@ public static class EditChatMemberCommands
 
     public static async Task OnPromoteToOwnerClick(AppUIHub hub, Author author)
     {
+        var l = hub.StringLocalizer;
         var authorName = author.Avatar.Name;
         _ = await hub.ModalUI.Show(new ConfirmModal.Model(
             false,
-            $"Are you sure you want to promote '{authorName}' to Owner? This action cannot be undone.",
+            l.Members_PromoteConfirm_Format(authorName),
             () => _ = OnPromoteToOwnerConfirmed(hub, author.Id, authorName)) {
-            Title = "Promote to Owner"
+            Title = l.Account_PromoteToOwner
         });
     }
 
@@ -70,9 +72,10 @@ public static class EditChatMemberCommands
         if (result.HasError)
             return;
 
+        var l = hub.StringLocalizer;
         var text = isModerator
-            ? $"{authorName} is now a Moderator"
-            : $"{authorName} is no longer a Moderator";
+            ? l.Members_NowModerator_Format(authorName)
+            : l.Members_NoLongerModerator_Format(authorName);
         hub.ToastUI.Show(text, "icon-shield", ToastDismissDelay.Short);
     }
 
@@ -85,6 +88,9 @@ public static class EditChatMemberCommands
         if (result.HasError)
             return;
 
-        hub.ToastUI.Show($"{authorName} is promoted to Owner", "icon-crown", ToastDismissDelay.Short);
+        hub.ToastUI.Show(
+            hub.StringLocalizer.Members_PromotedToOwner_Format(authorName),
+            "icon-crown",
+            ToastDismissDelay.Short);
     }
 }

@@ -2,14 +2,14 @@
 @inherits BubbleBase
 
 <BubbleContent Bubble="@(this)">
-    <Title>"Listen" button</Title>
+    <Title>@L.Bubble_ListenButtonTitle</Title>
     <Body>
     <p>
-        Use this button to start or stop listening in this chat.
+        @L.Bubble_ListenButtonBody
     </p>
     <ul>
-        <li>When you record in "Call" mode, the listening mode turns on as well.</li>
-        <li>And it automatically turns off if no one speaks for about 1 minute.</li>
+        <li>@L.Bubble_ListenButtonItem1</li>
+        <li>@L.Bubble_ListenButtonItem2</li>
     </ul>
     </Body>
 </BubbleContent>

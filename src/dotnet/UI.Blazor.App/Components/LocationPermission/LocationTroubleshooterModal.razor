@@ -31,13 +31,13 @@
                 type = GuideType.WebChrome;
         }
     }
-    var primaryButtonTitle = isMaui ? "Settings" : "OK";
+    var primaryButtonTitle = isMaui ? L.Common_Settings : L.Common_OK;
 }
 
 <DialogFrame
     Class="guide-modal"
     BodyClass="no-scrollbar"
-    Title="Location access"
+    Title="@L.LocationGuide_ModalTitle"
     HasCloseButton="true"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.ForSubmitButton(OnPrimaryClick, primaryButtonTitle)">
     <Body>
@@ -74,14 +74,14 @@
     <Buttons>
         @if (isMaui) {
             <Button Class="btn-modal" Click="@(() => Modal.Close())">
-                Later
+                @L.Common_Later
             </Button>
             <Button Class="btn-modal btn-primary" Click="OnPrimaryClick">
-                Settings
+                @L.Common_Settings
             </Button>
         } else {
             <Button Class="btn-modal btn-primary" Click="@(() => Modal.Close())">
-                OK
+                @L.Common_OK
             </Button>
         }
     </Buttons>

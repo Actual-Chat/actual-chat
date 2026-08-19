@@ -1,0 +1,130 @@
+// Translations of Messages.en.json. The English file's values must byte-match what the
+// app produces at runtime; these don't - they are ordinary translations.
+// Keep the {named} placeholders identical to the English ones.
+{
+  "Validation_Required_Format": "Заповніть поле «{field}».",
+  "Validation_MinLength_Format": "Поле «{field}» має містити щонайменше {min} символів.",
+  "Validation_EmailAddress_Format": "«{field}» — некоректна адреса електронної пошти.",
+  "Validation_DeleteConfirmationRequired": "Потрібне підтвердження видалення",
+  "Validation_DeleteConfirmationInvalid": "Введіть DELETE для підтвердження",
+
+  // Generic errors, composed by StandardError / the exception types themselves
+  "Error_NotEnoughPermissions": "Недостатньо прав для цієї дії.",
+  "Error_NotEnoughPermissions_Format": "Недостатньо прав для цієї дії. Потрібен дозвіл: {permission}",
+  "Error_TooManyRequests": "Забагато запитів.",
+  "Error_TooManyRequests_Format": "Забагато запитів. Повторіть через {seconds} с.",
+  "Error_VersionMismatch": "Дані змінилися. Спробуйте ще раз.",
+  "Error_ChatNotFound": "Чат не знайдено.",
+  "Error_ChatEntryNotFound": "Повідомлення не знайдено.",
+  "Error_AccountNotFound": "Обліковий запис не знайдено.",
+  "Error_AuthorNotFound": "Учасника не знайдено.",
+  "Error_AvatarNotFound": "Профіль не знайдено.",
+  "Error_ContactNotFound": "Контакт не знайдено.",
+  "Error_MediaNotFound": "Файл не знайдено.",
+  "Error_UploadNotFound": "Завантаження не знайдено.",
+
+  // Sign-in and account
+  "Error_RegistrationExpired": "Термін дії цього запиту на реєстрацію минув. Спробуйте увійти ще раз.",
+  "Error_SessionExpired": "Сесія завершилася або вимкнена. Перезапустіть застосунок.",
+  "Error_AlreadySignedIn": "Ви вже увійшли.",
+  "Error_PhoneTaken": "Цей номер телефону вже зайнятий іншим обліковим записом.",
+  "Error_EmailTaken": "Ця електронна пошта вже зайнята іншим обліковим записом.",
+  "Error_SmsNotDelivered": "Не вдалося доставити повідомлення на вказаний номер телефону.",
+  "Error_CannotDeactivateCurrentSession": "Не можна вимкнути поточну сесію.",
+  "Error_PhoneFormatInvalid": "Неправильний формат номера телефону.",
+  "Error_CannotChangeOwnStatus": "Не можна змінити власний статус.",
+  "Error_ApiKeyExpirationRange_Format": "Термін дії API-ключа має бути від 1 до {days} днів.",
+
+  // Chat members and roles
+  "Error_OnlyOwnerCannotLeave": "Не можна покинути цей чат: ви його єдиний власник. Спершу додайте іншого власника.",
+  "Error_CannotRemoveSelf": "Не можна вилучити себе з учасників чату.",
+  "Error_CannotRemoveChatOwner": "Не можна вилучити власника цього чату з учасників.",
+  "Error_CannotRemoveSearchBot": "Не можна вилучити ШІ-бота пошуку з учасників чату.",
+  "Error_OwnerCannotBeDemoted": "Не можна понизити власника чату.",
+  "Error_AuthorAlreadyLeft": "Вибраний учасник уже покинув чат.",
+  "Error_AutomaticRoleMembership": "У цій системній ролі склад учасників визначається автоматично.",
+  "Error_ManageMembershipInPlace": "Керуйте учасниками публічного чату простору в налаштуваннях простору.",
+  "Error_AnonymousAvatarRequired": "Щоб приєднатися анонімно, потрібен анонімний профіль.",
+  "Error_GuestJoinNotAllowed": "У цьому чаті не можна приєднатися з гостьовим обліковим записом.",
+  "Error_AnonymousJoinNotAllowed": "У цьому чаті не можна приєднатися анонімно.",
+  "Error_OwnersRoleCannotBeEmpty": "У ролі «Власники» має залишитися принаймні один учасник.",
+  "Error_OnlyOwnersAllowed": "Ця дія доступна лише учасникам ролі «Власники» цього чату.",
+
+  // Messages
+  "Error_CannotSendMessages": "Ви не можете надсилати повідомлення в цей чат.",
+  "Error_EmptyMessage": "Порожнє повідомлення надіслати не можна.",
+  "Error_CanEditOwnMessagesOnly": "Редагувати можна лише власні повідомлення.",
+  "Error_OnlyTextCanBeEdited": "Редагувати можна лише текстові повідомлення.",
+  "Error_StreamingCannotBeEdited": "Повідомлення, що записуються, не можна редагувати.",
+  "Error_ForwardedCannotBeEdited": "Переслані повідомлення не можна редагувати.",
+  "Error_MessageNoLongerExists": "Цього повідомлення більше немає.",
+  "Error_CannotRemoveMessage": "Вам не дозволено вилучити це повідомлення.",
+  "Error_CannotRemoveOwnerMessage": "Вам не дозволено вилучити повідомлення власника.",
+  "Error_CannotRestoreMessage": "Вам не дозволено відновити це повідомлення.",
+  "Error_CannotRestoreOwnerMessage": "Вам не дозволено відновити повідомлення власника.",
+  "Error_RootChatCannotHoldMessages": "У кореневому чаті простору не можна писати — надішліть повідомлення в один із чатів простору.",
+  "Error_CanAttachOwnLocationsOnly": "Прикріпити можна лише власне місцеперебування з цього чату.",
+  "Error_NonContactMessageLimit_Format": "Ви можете надіслати не більше ніж {limit} повідомлень, доки ця людина не додасть вас у контакти або не відповість.",
+  "Error_OnlyOwnersOrModeratorsCanPin": "Закріплювати повідомлення можуть лише власники та модератори чату.",
+  "Error_PinLimit_Format": "Можна закріпити не більше ніж {limit} повідомлень.",
+
+  // Chats and places
+  "Error_ChatTitleEmpty": "Назва чату не може бути порожньою.",
+  "Error_ThreadTitleEmpty": "Назва треду не може бути порожньою.",
+  "Error_PlaceTitleEmpty": "Назва простору не може бути порожньою.",
+  "Error_PlaceUnavailable": "Запитаний простір недоступний.",
+  "Error_OnlyPlaceMembersCanAddChats": "Додавати чати можуть лише учасники простору.",
+  "Error_CannotMakeChatPublic": "Недостатньо прав, щоб зробити чат публічним.",
+  "Error_CustomLinkNotAllowed": "Для чатів простору не можна задати власне посилання.",
+  "Error_CustomLinkTaken_Format": "Посилання «{link}» уже використовує інший чат у цьому просторі.",
+  "Error_WelcomeChatCannotBePrivate": "Чат «Welcome» не можна зробити приватним.",
+  "Error_WelcomeChatCannotBeRemoved": "Чат «Welcome» не можна вилучити.",
+  "Error_OnlyGroupOrPlaceChatCanBeCopied": "У простір можна скопіювати лише груповий чат або чат простору.",
+  "Error_CannotCopyToSamePlace": "Не можна скопіювати чат у той самий простір.",
+  "Error_MigrationRequiresChatOwner": "Для перенесення потрібно бути власником цього чату.",
+  "Error_MigrationRequiresPlaceOwner": "Щоб скопіювати чат у простір, потрібно бути власником простору.",
+  "Error_OperationRequiresChatOwner": "Для цієї дії потрібно бути власником цього чату.",
+  "Error_OperationRequiresPlaceOwner": "Для цієї дії потрібно бути власником простору, якому належить чат.",
+
+  // Threads and contacts
+  "Error_ThreadRequiresContact": "Починати треди можна лише після того, як ця людина додасть вас у контакти або відповість.",
+  "Error_SignInToFollowThread": "Щоб стежити за тредом, увійдіть в обліковий запис.",
+  "Error_OnlyPeerContactCanBeBlocked": "Блокувати можна лише особисті контакти.",
+  "Error_SignInToChat": "Щоб написати іншому користувачу, увійдіть в обліковий запис.",
+  "Error_CannotChatWithUnauthenticated": "Не можна почати чат із неавторизованим користувачем.",
+
+  // Calls
+  "Error_OnlyParticipantCanBecomeHost": "Ведучим дзвінка може стати лише його учасник.",
+  "Error_CannotMuteOwner": "Не можна вимкнути мікрофон власника.",
+  "Error_OnlyHostOrOwnerCanChangeHost": "Змінити ведучого дзвінка може лише ведучий або власник чату.",
+  "Error_CallRequiresContact": "Зателефонувати цій людині можна лише після того, як вона додасть вас у контакти або відповість.",
+  "Error_CannotMuteInPeerChat": "В особистому чаті не можна вимкнути мікрофон співрозмовника.",
+  "Error_OnlyHostOwnerOrModeratorCanManageCall": "Керувати дзвінком може лише ведучий, власник або модератор чату.",
+  "Error_VoiceStreamingModeLocked": "У цьому чаті не можна змінити режим передавання голосу.",
+
+  // Notifications
+  "Error_NotifyMembersNotAllowed": "У публічних чатах не можна сповіщати учасників.",
+  "Error_AlertEveryoneUnavailable": "Термінове сповіщення недоступне в чатах, де понад 10 учасників.",
+  "Error_NobodyToNotify": "Немає кого сповіщати.",
+  "Error_OnlyAuthorCanNotify": "Сповіщати згаданих учасників може лише автор повідомлення.",
+
+  // Media and uploads
+  "Error_NoMediaAccess": "У вас немає доступу до цього файлу.",
+  "Error_FileTooBig": "Файл завеликий.",
+  "Error_CropExportFailed": "Не вдалося експортувати обрізане зображення.",
+  "Error_FileTooBig_Format": "Файл занадто великий. Максимальний розмір: {size}.",
+  "Error_TooManyFiles_Format": "Забагато файлів. Максимально дозволена кількість — {count}.",
+
+  // Invites
+  "Error_InviteAlreadyUsed": "Це посилання-запрошення вже використано.",
+  "Error_InviteNotActive": "Це посилання-запрошення більше не активне.",
+  "Error_InviteCodeNotFound": "Запрошення з таким кодом не знайдено.",
+  "Error_OnlyPlaceMembersCanUseCode": "Використати цей код можуть лише учасники простору.",
+  "Error_UserInvitesRemoved": "Запрошення користувачів більше не підтримуються.",
+
+  // Live location
+  "Error_JoinChatToShareLocation": "Щоб ділитися місцеперебуванням, спершу приєднайтеся до чату.",
+  "Error_CanChangeOwnLocationsOnly": "У цьому чаті ви можете змінювати лише власне місцеперебування.",
+  "Error_LocationSharingLimit_Format": "У цьому чаті вже максимальна кількість людей, які діляться місцеперебуванням: {limit}.",
+  "Error_FailedToAddFileAttachment": "Не вдалося додати вкладення."
+}

@@ -19,7 +19,7 @@ public static class ChatMarkupHubExt
         Markup markup;
         switch (entry) {
         case SystemEntry systemEntry:
-            markup = systemEntry.ToMarkup();
+            markup = markupHub.SystemEntryMarkupBuilder.Build(systemEntry);
             // System entries render markup w/o mention names
             markup = await markupHub.MentionResolver.Apply(markup, cancellationToken).ConfigureAwait(false);
             break;
@@ -49,7 +49,7 @@ public static class ChatMarkupHubExt
         Markup markup;
         switch (entry) {
         case SystemEntry systemEntry:
-            markup = systemEntry.ToMarkup();
+            markup = markupHub.SystemEntryMarkupBuilder.Build(systemEntry);
             break;
         case { HasAudio: true }:
             // HasAudio covers all audio/media entries now

@@ -1,5 +1,7 @@
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
@@ -12,6 +14,7 @@ public sealed class PermissionStepModel(IServiceProvider services)
         IServiceProvider services,
         CancellationToken cancellationToken = default)
     {
+        var l = services.GetRequiredService<IStringLocalizer>();
         var hostInfo = services.HostInfo();
         var microphonePermission = services.GetRequiredService<AudioRecorder>().MicrophonePermission;
         var notificationsPermission = services.GetRequiredService<INotificationsPermission>();
@@ -33,16 +36,15 @@ public sealed class PermissionStepModel(IServiceProvider services)
         var m = new PermissionStepModel(services);
         m.Rows = [
             new PermissionRow(
-                "Microphone",
-                $"Live-transcribed voice messaging is where {CoreConstants.AppName} shines, "
-                + "but this feature won't work without microphone access.",
+                l.Permission_Microphone,
+                l.Permission_MicrophoneRationale_Format(CoreConstants.AppName),
                 "icon-mic",
                 ct => microphonePermission.CheckOrRequest(true, false, ct).AsTask()) {
                 IsVisible = !isMicrophoneGranted,
             },
             new PermissionRow(
-                "Notifications",
-                "Get notified about new messages. Any chat can be muted individually.",
+                l.Permission_Notifications,
+                l.Permission_NotificationsRationale,
                 "icon-bell",
                 async ct => {
                     await notificationsPermission.Request(ct);
@@ -51,8 +53,8 @@ public sealed class PermissionStepModel(IServiceProvider services)
                 IsVisible = isNotificationsVisible,
             },
             new PermissionRow(
-                "Background activity",
-                $"Keeps calls ringing when Android tries to put {CoreConstants.AppName} to sleep.",
+                l.Permission_BackgroundActivity,
+                l.Permission_BackgroundActivityRationale_Format(CoreConstants.AppName),
                 "icon-battery",
                 ct => batteryOptimization!.CheckOrRequest(true, false, ct).AsTask()) {
                 IsVisible = isBatteryOptimizationVisible,

@@ -1,21 +1,22 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<UIHub>
 
 <div class="c-hero">
-    <img draggable="false" src="/dist/images/guide/loc-access.svg" alt="Location access is blocked">
+    <img draggable="false" src="/dist/images/guide/loc-access.svg" alt="@L.LocationGuide_BlockedImageAlt">
 </div>
 <div class="c-title">
-    Location access is blocked, but you can fix this!
+    @L.LocationGuide_Title
 </div>
 <div class="c-intro">
-    @CoreConstants.AppName needs access to your location to share it with others.
-    To enable it in Google Chrome:
+    @L.LocationGuide_Intro_Format(CoreConstants.AppName)
+    @L.Guide_EnableInWebChrome
 </div>
 <ol class="c-steps">
-    <li>Click "More" button in the upper right corner, and then click "Settings"</li>
-    <li>Choose "Privacy and security" on the left side</li>
-    <li>Select "Site settings"</li>
-    <li>Select "Location"</li>
-    <li>Check that you allow sites to ask to use your location</li>
-    <li>If "@Constants.Hosts.Voxt" is not allowed to use location, select it</li>
-    <li>Change "Permissions" &gt; "Location" value from "Deny" to "Allow" or "Ask"</li>
+    <li>@L.LocationGuide_WebChromeStep1</li>
+    <li>@L.LocationGuide_WebChromeStep2</li>
+    <li>@L.LocationGuide_WebChromeStep3</li>
+    <li>@L.LocationGuide_WebChromeStep4</li>
+    <li>@L.LocationGuide_WebChromeStep5</li>
+    <li>@L.LocationGuide_WebChromeStep6_Format(Constants.Hosts.Voxt)</li>
+    <li>@L.LocationGuide_WebChromeStep7</li>
 </ol>

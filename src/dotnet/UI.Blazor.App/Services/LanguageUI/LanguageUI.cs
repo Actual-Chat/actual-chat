@@ -5,13 +5,21 @@ using ActualChat.UI.Blazor.Services;
 namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
-/// Manages user language preferences and per-chat language settings for transcription.
+/// Manages the user's spoken/transcription language settings (per-user and per-chat) and
+/// the device-local UI display language read by the string localizer.
 /// </summary>
 public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 {
     private static readonly string JSGetLanguagesMethod = $"{BlazorUIAppModule.ImportName}.LanguageUI.getLanguages";
+    public static readonly Language DefaultUILanguage = Languages.Main;
+    public static readonly Language[] SupportedUILanguages = [
+        Languages.English, Languages.Spanish, Languages.French, Languages.Italian, Languages.Russian, Languages.German,
+        Languages.Chinese, Languages.Hindi, Languages.Japanese, Languages.Korean, Languages.Portuguese, Languages.Turkish,
+        Languages.Ukrainian, Languages.Vietnamese,
+    ];
 
     public SyncedState<UserLanguageSettings> Settings { get; init; }
+    public SyncedState<Language> UILanguage { get; init; }
     public Task WhenReady => Settings.WhenFirstTimeRead;
 
     public LanguageUI(AppUIHub hub) : base(hub)
@@ -23,7 +31,15 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
             updateDelayer: FixedDelayer.NextTick,
             missingValueFactory: CreateLanguageSettings,
             category: StateCategories.Get(GetType(), nameof(Settings)));
+        UILanguage = StateFactory.NewKvasSynced<Language>(
+            new(hub.LocalSettings, nameof(UILanguage)) {
+                InitialValue = DefaultUILanguage,
+                Category = StateCategories.Get(GetType(), nameof(UILanguage)),
+                MissingValueFactory = DetectUILanguage,
+                UpdateDelayer = FixedDelayer.NextTick,
+            });
         _ = EnsureUserLanguageSettingsPersisted();
+        _ = EnsureUILanguagePersisted();
     }
 
     private async Task EnsureUserLanguageSettingsPersisted(CancellationToken cancellationToken = default)
@@ -36,8 +52,26 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
         await UserSettingsUI.Set(UserLanguageSettings.KvasKey, Settings.Value, cancellationToken).ConfigureAwait(false);
     }
 
+    private async Task EnsureUILanguagePersisted(CancellationToken cancellationToken = default)
+    {
+        await UILanguage.WhenFirstTimeRead.ConfigureAwait(false);
+        var storedValue = await Hub.LocalSettings.Get<Language>(nameof(UILanguage), cancellationToken).ConfigureAwait(false);
+        if (storedValue is not null)
+            return;
+
+        // While incomplete UI is off, DetectUILanguage returns the default w/o detection;
+        // persisting it would prevent detection from running once the feature is enabled.
+        if (!await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
+            return;
+
+        await Hub.LocalSettings.Set(nameof(UILanguage), UILanguage.Value, cancellationToken).ConfigureAwait(false);
+    }
+
     public void Dispose()
-        => Settings.Dispose();
+    {
+        Settings.DisposeSilently();
+        UILanguage.DisposeSilently();
+    }
 
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<Language>> ListSpoken(CancellationToken cancellationToken)
@@ -94,6 +128,18 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 
     // Private methods
 
+    private async ValueTask<Language> DetectUILanguage(CancellationToken cancellationToken)
+    {
+        if (!await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
+            return DefaultUILanguage;
+
+        var languages = await GetClientLanguages(cancellationToken).ConfigureAwait(false);
+        foreach (var language in languages)
+            if (SupportedUILanguages.FirstOrDefault(l => l.IsoCode == language.IsoCode) is { } uiLanguage)
+                return uiLanguage;
+        return DefaultUILanguage;
+    }
+
     private async ValueTask<UserLanguageSettings> CreateLanguageSettings(CancellationToken cancellationToken)
     {
         var languages = await GetClientLanguages(cancellationToken).ConfigureAwait(false);
@@ -108,9 +154,11 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     {
         try {
             var languages = await JS.InvokeAsync<string[]>(JSGetLanguagesMethod, CancellationToken.None)
-                .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
+                .AsTask()
+                .WaitAsync(cancellationToken)
+                .ConfigureAwait(false);
             return languages
-                .Select(s => Language.TryParse(s, true))
+                .Select(Language.ParseNullable)
                 .SkipNullItems()
                 .Distinct()
                 .ToList();

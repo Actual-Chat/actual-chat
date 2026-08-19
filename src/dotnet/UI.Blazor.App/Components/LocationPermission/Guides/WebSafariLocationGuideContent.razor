@@ -1,18 +1,19 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<UIHub>
 
 <div class="c-hero">
-    <img draggable="false" src="/dist/images/guide/loc-access.svg" alt="Location access is blocked">
+    <img draggable="false" src="/dist/images/guide/loc-access.svg" alt="@L.LocationGuide_BlockedImageAlt">
 </div>
 <div class="c-title">
-    Location access is blocked, but you can fix this!
+    @L.LocationGuide_Title
 </div>
 <div class="c-intro">
-    @CoreConstants.AppName needs access to your location to share it with others.
-    To enable it in Apple Safari:
+    @L.LocationGuide_Intro_Format(CoreConstants.AppName)
+    @L.Guide_EnableInWebSafari
 </div>
 <ol class="c-steps">
-    <li>Go to Safari Preferences</li>
-    <li>Choose "Websites" category</li>
-    <li>Select "Location" on the left</li>
-    <li>Change "@Constants.Hosts.Voxt" entry's value from "Deny" to "Allow" or "Ask"</li>
+    <li>@L.LocationGuide_WebSafariStep1</li>
+    <li>@L.LocationGuide_WebSafariStep2</li>
+    <li>@L.LocationGuide_WebSafariStep3</li>
+    <li>@L.LocationGuide_WebSafariStep4_Format(Constants.Hosts.Voxt)</li>
 </ol>

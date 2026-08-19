@@ -42,7 +42,7 @@
     <HeaderButton
         Class="btn-sm text-box-btn"
         Click="@OnClearClick"
-        data-tooltip="Clear"
+        data-tooltip="@L.Common_Clear"
         data-tooltip-position="@(FloatingPosition.Top.ToPositionString())">
         <i class="icon-close"></i>
     </HeaderButton>
@@ -54,6 +54,7 @@
     private DotNetObjectReference<TextBox>? _blazorRef;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private IStringLocalizer L { get; init; } = null!;
 
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }

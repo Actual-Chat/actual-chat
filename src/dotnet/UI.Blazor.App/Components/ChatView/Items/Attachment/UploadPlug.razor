@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 
 <div class="upload-plug">
     <div class="upload-plug-icons">
@@ -12,5 +13,5 @@
             <i class="icon-file"></i>
         </div>
     </div>
-    <div class="upload-plug-text">Sending attachments…</div>
+    <div class="upload-plug-text">@L.ChatView_SendingAttachments</div>
 </div>

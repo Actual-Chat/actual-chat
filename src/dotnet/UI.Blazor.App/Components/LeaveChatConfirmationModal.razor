@@ -1,21 +1,26 @@
+@inherits ComponentBase<AppUIHub>
 @implements IModalView<LeaveChatConfirmationModal.Model>
 @{
-    var action = ModalModel.IsDelete
-        ? "delete"
-        : "leave";
-
-    var title = $"{action.Capitalize()} {ModalModel.Object}";
+    var (title, question, buttonTitle) = ModalModel.Target switch {
+        TargetKind.Thread => (L.LeaveConfirm_DeleteThreadTitle, L.LeaveConfirm_DeleteThreadQuestion, L.Common_Delete),
+        TargetKind.Place when ModalModel.IsDelete
+            => (L.LeaveConfirm_DeletePlaceTitle, L.LeaveConfirm_DeletePlaceQuestion, L.Common_Delete),
+        TargetKind.Place => (L.LeaveConfirm_LeavePlaceTitle, L.LeaveConfirm_LeavePlaceQuestion, L.Common_Leave),
+        _ when ModalModel.IsDelete
+            => (L.LeaveConfirm_DeleteChatTitle, L.LeaveConfirm_DeleteChatQuestion, L.Common_Delete),
+        _ => (L.LeaveConfirm_LeaveChatTitle, L.LeaveConfirm_LeaveChatQuestion, L.Common_Leave),
+    };
 }
 
 <DialogFrame Title="@title" Class="modal-sm">
     <Body>
     <FormBlock>
-        <p>Are you sure you want to @action this @ModalModel.Object?</p>
+        <p>@question</p>
     </FormBlock>
     </Body>
     <Buttons>
-        <Button Class="btn-modal" Click="OnCancel">Cancel</Button>
-        <Button Class="btn-modal btn-danger" Click="OnLeave">@action.Capitalize()</Button>
+        <Button Class="btn-modal" Click="OnCancel">@L.Common_Cancel</Button>
+        <Button Class="btn-modal btn-danger" Click="OnLeave">@buttonTitle</Button>
     </Buttons>
 </DialogFrame>
 
@@ -29,5 +34,9 @@
     private void OnLeave()
         => ModalModel.Confirmed(Modal);
 
-    public sealed record Model(bool IsDelete, string Object, Action<Modal> Confirmed);
+    // Nested types
+
+    public enum TargetKind { Chat, Thread, Place }
+
+    public sealed record Model(bool IsDelete, TargetKind Target, Action<Modal> Confirmed);
 }

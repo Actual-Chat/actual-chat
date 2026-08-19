@@ -39,8 +39,10 @@
 <div class="@cls"
      data-menu="@(MenuRef.New<ConversationMenu>(conversation.Id.Value, false.ToString()))">
     @if (state.IsLive) {
-        var secondLine = state.IsVoiceOnly ? "Voice only" : messageCount + " message".Pluralize(messageCount);
-        var startedAt = $"Started at {startsAt:HH:mm}";
+        var secondLine = state.IsVoiceOnly
+            ? L.Conversation_VoiceOnly
+            : L.Chat_Messages(messageCount, messageCount);
+        var startedAt = L.Conversation_StartedAt_Format(startsAt.ToString("t", DateFormatter));
         var hasFoldedEntries = state.HasFoldedEntries;
         <div class="@(state.IsAnyoneTalking ? "c-live-card" : "c-live-card quiet")">
             @if (!Message.HasSplitHeader && hasLiveTitle) {
@@ -97,7 +99,7 @@
                     data-vl-hold="always"
                     @onclick="@OnRevealMore">
                     <i class="icon-chevron-up"></i>
-                    <span>Show @state.RevealBatch of @state.SwallowedCount</span>
+                    <span>@L.Conversation_ShowMore_Format(state.RevealBatch, state.SwallowedCount)</span>
                 </button>
             }
         </div>
@@ -116,7 +118,7 @@
                 <div class="c-short">
                     <MarkupView Markup="@m.Description.Markup"/>
                     @if (!_isOpen) {
-                        <span class="show-more-btn" data-vl-hold="always" @onclick="@ToggleDetails"> Show items</span>
+                        <span class="show-more-btn" data-vl-hold="always" @onclick="@ToggleDetails">&nbsp;@L.ChatView_ShowItems</span>
                     }
                 </div>
             </div>
@@ -125,7 +127,7 @@
                     <div class="c-long-content @detailsCls">
                         <MarkupView Markup="@m.Summary.Markup"/>
                         <span class="show-more-btn" data-vl-hold="keep-edge"
-                              @onclick="@ToggleDetails"> Hide items</span>
+                              @onclick="@ToggleDetails">&nbsp;@L.ChatView_HideItems</span>
                     </div>
                 </div>
             }
@@ -220,7 +222,7 @@
             && !await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(true);
         var participantsText = isLive
             ? await ConversationParticipantsFormatter
-                .GetText(Authors, Hub.Session, chatId, conversation.AuthorIds, cancellationToken)
+                .GetText(Authors, L, Hub.Session, chatId, conversation.AuthorIds, cancellationToken)
                 .ConfigureAwait(true)
             : "";
         var rawLive = await LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(true);

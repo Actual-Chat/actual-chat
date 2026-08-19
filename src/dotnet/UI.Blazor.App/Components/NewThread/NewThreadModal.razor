@@ -7,14 +7,14 @@
     <DataAnnotationsValidator/>
     <DialogFrame
         Class="new-thread-modal modal-sm"
-        Title="New thread"
+        Title="@L.Chat_NewThread"
         HasCloseButton="true"
         NarrowViewSettings="@DialogFrameNarrowViewSettings.Bottom">
         <Body>
         <FormBlock>
             <FormSection
                 For="() => _form.Title"
-                Label="Thread title"
+                Label="@L.Form_ThreadTitle"
                 InputId="@_form.TitleId"
                 IsLabelInsideInput="true"
                 Class="thread-title"
@@ -34,7 +34,7 @@
             </FormSection>
             <FormSection
                 For="() => _form.Description"
-                Label="Description"
+                Label="@L.Form_Description"
                 InputId="@_form.DescriptionId"
                 IsLabelInsideInput="true"
                 Class="thread-description">
@@ -46,8 +46,8 @@
             </FormSection>
             @if (_generatingSmartTitle) {
                 <div>
-                    <span>Busy generating smart title and description based on source messages...</span>
-                    <spam>Keep fields empty to get them filled in automatically.</spam>
+                    <span>@L.Chat_GeneratingSmartTitle</span>
+                    <spam>@L.Chat_GeneratingSmartTitleHint</spam>
                 </div>
             }
         </FormBlock>
@@ -128,7 +128,7 @@
 
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
     public sealed class FormModel {
-        [Required, MinLength(1)]
+        [Required]
         public string Title { get; set; } = "";
         public string Description { get; set; } = "";
 

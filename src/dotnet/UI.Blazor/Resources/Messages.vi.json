@@ -1,0 +1,130 @@
+// Translations of Messages.en.json. The English file's values must byte-match what the
+// app produces at runtime; these don't - they are ordinary translations.
+// Keep the {named} placeholders identical to the English ones.
+{
+  "Validation_Required_Format": "Trường “{field}” là bắt buộc.",
+  "Validation_MinLength_Format": "Trường “{field}” phải có ít nhất {min} ký tự.",
+  "Validation_EmailAddress_Format": "“{field}” không phải là địa chỉ email hợp lệ.",
+  "Validation_DeleteConfirmationRequired": "Cần xác nhận xóa",
+  "Validation_DeleteConfirmationInvalid": "Nhập DELETE để xác nhận",
+
+  // Generic errors, composed by StandardError / the exception types themselves
+  "Error_NotEnoughPermissions": "Bạn không có đủ quyền cho thao tác này.",
+  "Error_NotEnoughPermissions_Format": "Bạn không có đủ quyền cho thao tác này. Quyền cần có: {permission}",
+  "Error_TooManyRequests": "Quá nhiều yêu cầu.",
+  "Error_TooManyRequests_Format": "Quá nhiều yêu cầu. Hãy thử lại sau {seconds} giây.",
+  "Error_VersionMismatch": "Dữ liệu đã thay đổi. Hãy thử lại.",
+  "Error_ChatNotFound": "Không tìm thấy cuộc trò chuyện.",
+  "Error_ChatEntryNotFound": "Không tìm thấy tin nhắn.",
+  "Error_AccountNotFound": "Không tìm thấy tài khoản.",
+  "Error_AuthorNotFound": "Không tìm thấy người tham gia.",
+  "Error_AvatarNotFound": "Không tìm thấy hồ sơ.",
+  "Error_ContactNotFound": "Không tìm thấy liên hệ.",
+  "Error_MediaNotFound": "Không tìm thấy tệp.",
+  "Error_UploadNotFound": "Không tìm thấy tệp tải lên.",
+
+  // Sign-in and account
+  "Error_RegistrationExpired": "Yêu cầu đăng ký này đã hết hạn. Vui lòng đăng nhập lại.",
+  "Error_SessionExpired": "Phiên của bạn đã hết hạn hoặc bị vô hiệu hóa. Vui lòng khởi động lại ứng dụng.",
+  "Error_AlreadySignedIn": "Bạn đã đăng nhập rồi.",
+  "Error_PhoneTaken": "Số điện thoại này đã được tài khoản khác sử dụng.",
+  "Error_EmailTaken": "Email này đã được tài khoản khác sử dụng.",
+  "Error_SmsNotDelivered": "Chúng tôi không gửi được tin nhắn tới số điện thoại đã nhập.",
+  "Error_CannotDeactivateCurrentSession": "Không thể vô hiệu hóa phiên hiện tại.",
+  "Error_PhoneFormatInvalid": "Định dạng số điện thoại không đúng.",
+  "Error_CannotChangeOwnStatus": "Bạn không thể thay đổi trạng thái của chính mình.",
+  "Error_ApiKeyExpirationRange_Format": "Thời hạn của khóa API phải từ 1 đến {days} ngày.",
+
+  // Chat members and roles
+  "Error_OnlyOwnerCannotLeave": "Bạn không thể rời cuộc trò chuyện này vì bạn là chủ sở hữu duy nhất. Hãy thêm một chủ sở hữu khác trước.",
+  "Error_CannotRemoveSelf": "Bạn không thể tự xóa mình khỏi thành viên cuộc trò chuyện.",
+  "Error_CannotRemoveChatOwner": "Bạn không thể xóa chủ sở hữu của cuộc trò chuyện này khỏi thành viên.",
+  "Error_CannotRemoveSearchBot": "Bạn không thể xóa bot tìm kiếm AI khỏi thành viên cuộc trò chuyện.",
+  "Error_OwnerCannotBeDemoted": "Không thể hạ quyền chủ sở hữu cuộc trò chuyện.",
+  "Error_AuthorAlreadyLeft": "Người tham gia đã chọn đã rời cuộc trò chuyện.",
+  "Error_AutomaticRoleMembership": "Vai trò hệ thống này xác định thành viên tự động.",
+  "Error_ManageMembershipInPlace": "Hãy quản lý thành viên của cuộc trò chuyện công khai trong cài đặt không gian.",
+  "Error_AnonymousAvatarRequired": "Cần hồ sơ ẩn danh để tham gia ẩn danh.",
+  "Error_GuestJoinNotAllowed": "Cuộc trò chuyện này không cho phép tham gia bằng tài khoản khách.",
+  "Error_AnonymousJoinNotAllowed": "Cuộc trò chuyện này không cho phép tham gia ẩn danh.",
+  "Error_OwnersRoleCannotBeEmpty": "Vai trò «Chủ sở hữu» phải có ít nhất một người dùng.",
+  "Error_OnlyOwnersAllowed": "Chỉ thành viên vai trò «Chủ sở hữu» của cuộc trò chuyện này mới thực hiện được thao tác này.",
+
+  // Messages
+  "Error_CannotSendMessages": "Bạn không thể gửi tin nhắn trong cuộc trò chuyện này.",
+  "Error_EmptyMessage": "Bạn không thể gửi tin nhắn trống.",
+  "Error_CanEditOwnMessagesOnly": "Bạn chỉ có thể sửa tin nhắn của chính mình.",
+  "Error_OnlyTextCanBeEdited": "Chỉ tin nhắn văn bản mới sửa được.",
+  "Error_StreamingCannotBeEdited": "Không thể sửa tin nhắn đang được ghi.",
+  "Error_ForwardedCannotBeEdited": "Không thể sửa tin nhắn đã chuyển tiếp.",
+  "Error_MessageNoLongerExists": "Tin nhắn này không còn tồn tại.",
+  "Error_CannotRemoveMessage": "Bạn không được phép xóa tin nhắn này.",
+  "Error_CannotRemoveOwnerMessage": "Bạn không được phép xóa tin nhắn của chủ sở hữu.",
+  "Error_CannotRestoreMessage": "Bạn không được phép khôi phục tin nhắn này.",
+  "Error_CannotRestoreOwnerMessage": "Bạn không được phép khôi phục tin nhắn của chủ sở hữu.",
+  "Error_RootChatCannotHoldMessages": "Cuộc trò chuyện gốc của không gian không chứa tin nhắn — hãy đăng vào một trong các cuộc trò chuyện của không gian.",
+  "Error_CanAttachOwnLocationsOnly": "Bạn chỉ có thể đính kèm vị trí bạn chia sẻ từ cuộc trò chuyện này.",
+  "Error_NonContactMessageLimit_Format": "Bạn có thể gửi tối đa {limit} tin nhắn cho đến khi người này thêm bạn vào liên hệ hoặc trả lời.",
+  "Error_OnlyOwnersOrModeratorsCanPin": "Chỉ chủ sở hữu và người kiểm duyệt cuộc trò chuyện mới ghim được tin nhắn.",
+  "Error_PinLimit_Format": "Bạn có thể ghim tối đa {limit} tin nhắn.",
+
+  // Chats and places
+  "Error_ChatTitleEmpty": "Tiêu đề cuộc trò chuyện không được để trống.",
+  "Error_ThreadTitleEmpty": "Tiêu đề chủ đề không được để trống.",
+  "Error_PlaceTitleEmpty": "Tiêu đề không gian không được để trống.",
+  "Error_PlaceUnavailable": "Không gian được yêu cầu hiện không khả dụng.",
+  "Error_OnlyPlaceMembersCanAddChats": "Chỉ thành viên của không gian mới thêm được cuộc trò chuyện.",
+  "Error_CannotMakeChatPublic": "Bạn không có đủ quyền để đặt cuộc trò chuyện này ở chế độ công khai.",
+  "Error_CustomLinkNotAllowed": "Không dùng được liên kết tùy chỉnh cho cuộc trò chuyện của không gian.",
+  "Error_CustomLinkTaken_Format": "Liên kết «{link}» đã được một cuộc trò chuyện khác trong cùng không gian sử dụng.",
+  "Error_WelcomeChatCannotBePrivate": "Không thể đặt cuộc trò chuyện «Welcome» ở chế độ riêng tư.",
+  "Error_WelcomeChatCannotBeRemoved": "Không thể xóa cuộc trò chuyện «Welcome».",
+  "Error_OnlyGroupOrPlaceChatCanBeCopied": "Chỉ cuộc trò chuyện nhóm hoặc của không gian mới sao chép được vào một không gian.",
+  "Error_CannotCopyToSamePlace": "Không thể sao chép cuộc trò chuyện vào chính không gian đó.",
+  "Error_MigrationRequiresChatOwner": "Bạn phải là chủ sở hữu cuộc trò chuyện này để thực hiện việc chuyển.",
+  "Error_MigrationRequiresPlaceOwner": "Bạn phải là chủ sở hữu không gian để sao chép cuộc trò chuyện vào đó.",
+  "Error_OperationRequiresChatOwner": "Bạn phải là chủ sở hữu cuộc trò chuyện này để thực hiện thao tác này.",
+  "Error_OperationRequiresPlaceOwner": "Bạn phải là chủ sở hữu không gian chứa cuộc trò chuyện để thực hiện thao tác này.",
+
+  // Threads and contacts
+  "Error_ThreadRequiresContact": "Bạn chỉ có thể bắt đầu chủ đề sau khi người này thêm bạn vào liên hệ hoặc trả lời.",
+  "Error_SignInToFollowThread": "Hãy đăng nhập để theo dõi chủ đề.",
+  "Error_OnlyPeerContactCanBeBlocked": "Chỉ chặn được liên hệ cá nhân.",
+  "Error_SignInToChat": "Hãy đăng nhập để trò chuyện với người khác.",
+  "Error_CannotChatWithUnauthenticated": "Không thể trò chuyện với người dùng chưa đăng nhập.",
+
+  // Calls
+  "Error_OnlyParticipantCanBecomeHost": "Chỉ người tham gia cuộc gọi mới có thể trở thành người chủ trì.",
+  "Error_CannotMuteOwner": "Bạn không thể tắt micrô của chủ sở hữu.",
+  "Error_OnlyHostOrOwnerCanChangeHost": "Chỉ người chủ trì cuộc gọi hoặc chủ sở hữu cuộc trò chuyện mới đổi được người chủ trì.",
+  "Error_CallRequiresContact": "Bạn chỉ có thể gọi cho người này sau khi họ thêm bạn vào liên hệ hoặc trả lời.",
+  "Error_CannotMuteInPeerChat": "Trong cuộc trò chuyện riêng, bạn không thể tắt micrô của người kia.",
+  "Error_OnlyHostOwnerOrModeratorCanManageCall": "Chỉ người chủ trì cuộc gọi, chủ sở hữu hoặc người kiểm duyệt cuộc trò chuyện mới quản lý được cuộc gọi.",
+  "Error_VoiceStreamingModeLocked": "Không thể thay đổi chế độ truyền giọng nói trong cuộc trò chuyện này.",
+
+  // Notifications
+  "Error_NotifyMembersNotAllowed": "Không thể thông báo cho thành viên trong các cuộc trò chuyện công khai.",
+  "Error_AlertEveryoneUnavailable": "Không thể báo động cho mọi người trong cuộc trò chuyện có hơn 10 người.",
+  "Error_NobodyToNotify": "Không có ai để thông báo.",
+  "Error_OnlyAuthorCanNotify": "Chỉ tác giả tin nhắn mới thông báo được cho những người được nhắc đến.",
+
+  // Media and uploads
+  "Error_NoMediaAccess": "Bạn không có quyền truy cập tệp này.",
+  "Error_FileTooBig": "Tệp quá lớn.",
+  "Error_CropExportFailed": "Không thể xuất ảnh đã cắt.",
+  "Error_FileTooBig_Format": "Tệp quá lớn. Kích thước tối đa: {size}.",
+  "Error_TooManyFiles_Format": "Quá nhiều tệp. Số lượng tối đa cho phép là {count}.",
+
+  // Invites
+  "Error_InviteAlreadyUsed": "Liên kết mời này đã được dùng.",
+  "Error_InviteNotActive": "Liên kết mời này không còn hiệu lực.",
+  "Error_InviteCodeNotFound": "Không tìm thấy lời mời với mã này.",
+  "Error_OnlyPlaceMembersCanUseCode": "Chỉ thành viên của không gian mới dùng được mã này.",
+  "Error_UserInvitesRemoved": "Lời mời người dùng không còn được hỗ trợ.",
+
+  // Live location
+  "Error_JoinChatToShareLocation": "Hãy tham gia cuộc trò chuyện trước khi chia sẻ vị trí.",
+  "Error_CanChangeOwnLocationsOnly": "Trong cuộc trò chuyện này, bạn chỉ có thể thay đổi vị trí bạn đã chia sẻ.",
+  "Error_LocationSharingLimit_Format": "Cuộc trò chuyện này đã đạt tối đa {limit} người chia sẻ vị trí trực tiếp.",
+  "Error_FailedToAddFileAttachment": "Không thể thêm tệp đính kèm."
+}

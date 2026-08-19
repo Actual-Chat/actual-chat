@@ -63,9 +63,9 @@
         switch (parentChatId.Kind) {
             case ChatKind.Group:
                 badgeClass = ShowOnlyIcon ? "default" : "public";
-                status = isPublicChat ? "Public\u00A0chat" : "Private\u00A0chat";
-                if (isThread)
-                    status += "\u00A0thread";
+                status = isPublicChat
+                    ? isThread ? L.Chat_PublicChatThread : L.Chat_PublicChat
+                    : isThread ? L.Chat_PrivateChatThread : L.Chat_PrivateChat;
                 return new() {
                     ChatKind = ChatKind.Group,
                     Status = status,
@@ -78,9 +78,9 @@
                 if (ReferenceEquals(place, null))
                     return Model.Loading;
 
-                status = isPublicChat ? "Place\u00A0chat" : "Private\u00A0chat";
-                if (isThread)
-                    status += "\u00A0thread";
+                status = isPublicChat
+                    ? isThread ? L.Chat_PlaceChatThread : L.Chat_PlaceChat
+                    : isThread ? L.Chat_PrivateChatThread : L.Chat_PrivateChat;
                 return new () {
                     ChatKind = ChatKind.Place,
                     Status = status,
@@ -105,10 +105,9 @@
 
                 var presence = await Authors.GetPresence(Session, peerChatId, anotherAuthor.Id, cancellationToken).ConfigureAwait(false);
                 status = presence switch {
-                    Presence.Offline => "Offline",
-                    Presence.Away => "Away",
-                    Presence.Online => "Online",
-                    Presence.Recording => "Online",
+                    Presence.Offline => L.Presence_Offline,
+                    Presence.Away => L.Presence_Away,
+                    Presence.Online or Presence.Recording => L.Presence_Online,
                     _ => "",
                 };
                 if (IsColorful) {

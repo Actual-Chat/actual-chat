@@ -120,6 +120,16 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
                     Constants.Translation.RealtimeServiceKey,
                     Settings.Translation.RealtimeGeminiModel,
                     Settings.Translation.HttpTimeout);
+            if (!Settings.Translation.UITextOpenAIModel.IsNullOrEmpty())
+                AddKeyedOpenAI(services,
+                    Constants.Translation.UITextServiceKey,
+                    Settings.Translation.UITextOpenAIModel,
+                    Settings.Translation.HttpTimeout);
+            else
+                // With no dedicated UI-text model configured, it rides on the base translation
+                // client and rate-limit bucket; only the prompt differs (selected by service key)
+                services.AddKeyedSingleton<IChatCompletionService>(Constants.Translation.UITextServiceKey,
+                    (c, _) => c.GetRequiredKeyedService<IChatCompletionService>(Constants.Translation.ServiceKey));
             if (!Settings.UseFakeLanguageDetection)
                 AddKeyedOpenAI(services,
                     Constants.LanguageDetection.ServiceKey,
@@ -128,6 +138,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         }
         services.AddSingleton<Translator>();
         services.AddKeyedSingleton<Translator>(Constants.Translation.RealtimeServiceKey);
+        services.AddKeyedSingleton<Translator>(Constants.Translation.UITextServiceKey);
         services.AddSingleton<LanguageDetector>();
         services.AddAIServices();
         services.AddChatMLServices();

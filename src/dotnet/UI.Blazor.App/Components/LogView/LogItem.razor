@@ -19,7 +19,7 @@
     var text = string.IsNullOrEmpty(body) ? header : $"{header}\n{body}";
 }
 
-<CopyTrigger CopyText="@text" Tooltip="Copy to clipboard">
+<CopyTrigger CopyText="@text" Tooltip="@L.LogView_CopyToClipboard">
     <div class="log-item @levelCls">
         <div class="c-header">
             <div class="c-timestamp">@sTime</div>
