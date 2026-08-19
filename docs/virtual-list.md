@@ -1302,6 +1302,16 @@ invariant 10.
 
 Three things make this harder than it sounds, and each has a defence:
 
+- **A render can replace the element under a key.** The item is the same; its element is not, and the
+  height state is keyed to the element. Rebuilding that state from scratch loses the one thing the next
+  transition needs - what the item was showing - and a rebuilt state is neither appearing nor
+  controlled, which is exactly what `scheduleNow` refuses to animate. So the replacement adopts where
+  its predecessor stood, instantly and without a transition, and the change that follows is a change
+  from that height rather than an arrival at a new one. Mid-transition that is the height the old
+  element rendered, not the one it was written to: adopting the target would land the swap at the end
+  of a movement the reader is still watching. A conversation summary re-renders its
+  element on every update; without this it stepped between heights - measured on a live call at 455px
+  and 85px alternating about once a second, every write unanimated while the card was on screen.
 - **An item's own box says nothing once we drive it.** The intrinsic height is read from the item's
   single content child, plus everything the item is responsible for reserving around it: its own
   padding and border, and the content's margins. An item that renders two elements is a bug the

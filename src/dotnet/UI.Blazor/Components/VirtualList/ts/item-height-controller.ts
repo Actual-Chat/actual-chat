@@ -95,6 +95,9 @@ export class ItemHeightController {
 
     public track(key: string, itemRef: HTMLElement): void {
         const existing = this.states.get(key);
+        // What the item was showing before its element was replaced. The element is new; the item is
+        // not, and its height has to carry on from where it was or the swap lands as a step.
+        let adopted: number | null = null;
         if (existing != null) {
             // The content element is checked as well as the item: a render can keep the item (same
             // @key) and swap what it renders inside it, and an observer left on the detached old one
@@ -106,6 +109,13 @@ export class ItemHeightController {
                 return;
             }
 
+            if (existing.isControlled && Number.isFinite(existing.applied)) {
+                // Where the old element stood, which mid-transition is not the height it was given:
+                // adopting the target would land the swap at the end of a movement the reader is still
+                // watching. Read only then, so an ordinary render pays no layout for it.
+                const rendered = isAnimating(existing) ? existing.ref.getBoundingClientRect().height : 0;
+                adopted = rendered > 0 ? rendered : existing.applied;
+            }
             this.untrack(key);
         }
 
@@ -134,6 +144,15 @@ export class ItemHeightController {
         });
         this.contentKeys.set(contentRef, key);
         this.contentObserver.observe(contentRef, { box: 'border-box' });
+        if (adopted == null)
+            return;
+
+        // Put the replacement where its predecessor stood, without a transition, so what follows is a
+        // change from that height rather than an arrival at a new one. A conversation summary that
+        // updates re-renders its element every time; left to itself, each update was written straight
+        // in - a fresh state is neither appearing nor controlled, which is exactly what scheduleNow
+        // refuses to animate - so the card stepped between heights instead of moving between them.
+        this.write(key, this.states.get(key)!, adopted, false);
     }
 
     public untrack(key: string): void {
