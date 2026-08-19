@@ -64,6 +64,13 @@ internal static class ParserExt
 
     public static readonly Parser<char, Unit> Nothing = new NothingParser();
 
+    // Named Guard rather than Where so it can't capture LINQ query syntax by accident
+    public static Parser<char, T> Guard<T>(this Parser<char, T> parser, Func<T, bool> predicate)
+        => new GuardParser<T>(parser, predicate);
+
+    public static Parser<char, Pidgin.Unit> SafeNot<T>(this Parser<char, T> parser)
+        => new SafeNotParser<T>(parser);
+
     public static Parser<char, T> SafeTryOneOf<T>(params Parser<char, T>[] parsers) where T: class
         => new SafeOneOfParser<T>(parsers.Select(Try).ToArray());
 
