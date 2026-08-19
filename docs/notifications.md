@@ -30,13 +30,21 @@ driven by the iOS app-icon badge never updating while backgrounded.
 Data model (`src/dotnet/Api/Notifications/`): `Notification` is a MessagePack
 `[Union]` (one concrete record per `NotificationKind` — Message, Reply,
 Mention, Reaction, Invitation, Attention, Thread). `UserNotificationInfo` is
-the per-user blob (`Displayed` set + `UnsentDelta` + `IsDormant`).
+the per-user blob (`Displayed` set + `LastPushAt` + `IsDormant`).
 
 **Throttling.** Hard vs. soft updates: the first/urgent notification for a key
 commits + pushes; similar low-urgency ones during the silence window accumulate
 in an in-memory soft buffer and drain as one batched push (a busy chat costs
 ~1 DB write + 1 push per window). `IsDormant` per user is the hard cap for
 non-readers — dormant users cost zero work until any engagement clears it.
+
+**Alerting.** Every change pushes; only some pushes alert. `IsSilent` carries
+that, and `NotificationBeepPolicy` decides it: a spoken message alerts when its
+speaker changes and then at most once per `VoiceReAlertInterval` (10 min), so a
+monologue is one alert however long it runs; typed messages back off along
+`BeepBackoff`. The banner keeps updating silently to the newest message either
+way. Clients render every banner themselves — no `webpush.notification`, no
+`android.notification` — so `IsSilent` means the same thing on all three.
 
 ## Client side
 

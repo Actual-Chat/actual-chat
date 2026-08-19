@@ -22,6 +22,18 @@ public static class NotificationBeepPolicy
             || now - notification.LastBeepAt >= Constants.Notification.VoiceReAlertInterval;
     }
 
+    public static ChatEntryRelatedNotification MarkBeeped(ChatEntryRelatedNotification notification, Moment now)
+        => notification with {
+            BeepCount = notification.BeepCount + 1,
+            LastBeepAt = now,
+            // A typed message alerts on its own back-off, but it must not erase the speaker run it
+            // interrupts - the next utterance from that speaker would read as a handover and alert
+            // again, well inside VoiceReAlertInterval.
+            LastBeepGroup = notification.BeepGroup.IsNullOrEmpty()
+                ? notification.LastBeepGroup
+                : notification.BeepGroup,
+        };
+
     public static bool ShouldBeep(NotificationKind kind, int beepCount, Moment lastBeepAt, Moment now)
     {
         if (beepCount <= 0)

@@ -72,6 +72,9 @@ public class FirebaseMessagingClient(
             : isChatRelated ? UrlMapper.ToAbsolute(Links.Chat(chatId!))
             : "";
 
+        // Common data: every platform gets these, and on APNs they ride alongside aps in the same
+        // 4KB budget - so the renderer-only keys below stay out of it. iOS renders from aps.alert
+        // and reads only Link from data, so it needs none of them.
         var data = new Dictionary<string, string>() {
             { Constants.Notification.MessageDataKeys.NotificationId, notificationId.Value },
             { Constants.Notification.MessageDataKeys.Tag, tag },
@@ -81,9 +84,6 @@ public class FirebaseMessagingClient(
             { Constants.Notification.MessageDataKeys.Kind, kind.ToString() },
             { Constants.Notification.MessageDataKeys.Link, link },
             { Constants.Notification.MessageDataKeys.Silent, isSilent.ToString() },
-            { Constants.Notification.MessageDataKeys.Title, title },
-            { Constants.Notification.MessageDataKeys.Body, content },
-            { Constants.Notification.MessageDataKeys.ImageUrl, absoluteIconUrl },
             {
                 Constants.Notification.MessageDataKeys.Timestamp,
                 ((long)notification.CreatedAt.EpochOffset.TotalMilliseconds).ToString()
@@ -91,16 +91,23 @@ public class FirebaseMessagingClient(
         };
         if (lastEntryLocalId > 0)
             data.Add(Constants.Notification.MessageDataKeys.LastEntryLocalId, lastEntryLocalId.ToString());
+        // Android and web build the banner themselves, so they also need its content. Both platform
+        // blocks override the common data rather than merging into it, hence the copy.
+        var renderData = new Dictionary<string, string>(data) {
+            { Constants.Notification.MessageDataKeys.Title, title },
+            { Constants.Notification.MessageDataKeys.Body, content },
+            { Constants.Notification.MessageDataKeys.ImageUrl, absoluteIconUrl },
+        };
         if (notification is ChatEntryRelatedNotification { RecentMessages.Count: > 0 } coalesced) {
             // FCM rejects messages over 4KB, which would drop the push entirely — so the transcript
             // key gets only the space the other data values leave, and is omitted when even one
             // message can't fit (the Body fallback still renders).
-            var usedBytes = data
+            var usedBytes = renderData
                 .Sum(kv => Encoding.UTF8.GetByteCount(kv.Key) + Encoding.UTF8.GetByteCount(kv.Value));
             var budget = Math.Min(PushMessage.MaxJsonLength, MaxFcmPayloadBytes - FcmPayloadMargin - usedBytes);
             var json = PushMessage.ToJson(coalesced.RecentMessages, budget);
             if (!json.IsNullOrEmpty())
-                data.Add(Constants.Notification.MessageDataKeys.Messages, json);
+                renderData.Add(Constants.Notification.MessageDataKeys.Messages, json);
         }
         var multicastMessage = new MulticastMessage {
             Tokens = deviceIds.Select(id => id.Value).ToList(),
@@ -110,9 +117,7 @@ public class FirebaseMessagingClient(
             // copy ignores the Silent key, so even a silent content update would beep.
             Data = data,
             Android = new AndroidConfig {
-                // android.data overrides the top-level data rather than merging into it, so the
-                // full payload is repeated here - the client reads both halves out of one map.
-                Data = data,
+                Data = renderData,
                 Priority = Priority.High,
                 // CollapseKey = default, /* We don't use collapsible messages */
                 TimeToLive = TimeSpan.FromDays(10),
@@ -139,6 +144,9 @@ public class FirebaseMessagingClient(
                 FcmOptions = new ApnsFcmOptions {
                     ImageUrl = absoluteIconUrl,
                 },
+            },
+            Webpush = new WebpushConfig {
+                Data = renderData,
             },
         };
         if (isDev || enableDataCollection.GetValueOrDefault())

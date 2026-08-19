@@ -1547,12 +1547,8 @@ public class NotificationsBackend(IServiceProvider services)
 
                 var shouldBeep = NotificationBeepPolicy.ShouldBeep(related, now);
                 var text = NotificationHelper.ComposeAggregatedText(related);
-                var updated = related with {
-                    Text = text,
-                    BeepCount = shouldBeep ? related.BeepCount + 1 : related.BeepCount,
-                    LastBeepAt = shouldBeep ? now : related.LastBeepAt,
-                    LastBeepGroup = shouldBeep ? related.BeepGroup : related.LastBeepGroup,
-                };
+                var updated = (shouldBeep ? NotificationBeepPolicy.MarkBeeped(related, now) : related)
+                    with { Text = text };
                 current = current with { Displayed = current.Displayed.WithUpdate(n => n.Id == id, _ => updated) };
                 silentById[id] = !shouldBeep;
             }

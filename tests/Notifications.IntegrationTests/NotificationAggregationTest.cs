@@ -491,11 +491,12 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
             LastBeepAt = t0,
         };
 
-        // act & assert: the newer message decides the group, the last-beeped one carries over
+        // act & assert: the newer message decides the group, and a handover forgets the
+        // last-beeped speaker so the new one is still heard
         var newer = NewSpoken(101, author2, "second", group2) with { SentAt = t0 + TimeSpan.FromMinutes(1) };
         var merged = (MessageNotification)newer.MergeWith(existing);
         merged.BeepGroup.Should().Be(group2);
-        merged.LastBeepGroup.Should().Be(group1);
+        merged.LastBeepGroup.Should().BeEmpty();
         NotificationBeepPolicy.ShouldBeep(merged, merged.SentAt).Should().BeTrue();
 
         // an out-of-order earlier message leaves the group alone
@@ -532,6 +533,55 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
         var afterLull = (MessageNotification)lull.MergeWith(existing);
         afterLull.LastBeepGroup.Should().BeEmpty();
         NotificationBeepPolicy.ShouldBeep(afterLull, afterLull.SentAt).Should().BeTrue();
+    }
+
+    [Fact]
+    public void MergeKeepsAHandoverInsideOneBatchAudible()
+    {
+        // arrange: A already alerted, then B and A both speak before the soft buffer drains
+        var t0 = Moment.Now;
+        var authorA = AuthorId.New(TestChatId, 1);
+        var authorB = AuthorId.New(TestChatId, 2);
+        var groupA = "a:" + authorA.Value;
+        var groupB = "a:" + authorB.Value;
+        var displayed = NewSpoken(100, authorA, "one", groupA) with {
+            SentAt = t0,
+            BeepCount = 1,
+            LastBeepAt = t0,
+            LastBeepGroup = groupA,
+        };
+
+        // act
+        var fromB = NewSpoken(101, authorB, "two", groupB) with { SentAt = t0 + TimeSpan.FromSeconds(2) };
+        var merged = (ChatEntryRelatedNotification)fromB.MergeWith(displayed);
+        var fromA = NewSpoken(102, authorA, "three", groupA) with { SentAt = t0 + TimeSpan.FromSeconds(4) };
+        merged = (ChatEntryRelatedNotification)fromA.MergeWith(merged);
+
+        // assert: only A's group survives the merge, but B's turn still has to be heard
+        merged.BeepGroup.Should().Be(groupA);
+        NotificationBeepPolicy.ShouldBeep(merged, t0 + TimeSpan.FromSeconds(4)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void TypedAlertKeepsTheRememberedSpeaker()
+    {
+        // arrange
+        var t0 = Moment.Now;
+        var author = AuthorId.New(TestChatId, 1);
+        var group = "a:" + author.Value;
+
+        // act: the utterance alerts and is remembered
+        var afterVoice = NotificationBeepPolicy.MarkBeeped(NewSpoken(100, author, "one", group), t0);
+        afterVoice.LastBeepGroup.Should().Be(group);
+
+        // a typed message alerting mid-run must not erase it
+        var typed = afterVoice with { BeepGroup = "" };
+        var afterTyped = NotificationBeepPolicy.MarkBeeped(typed, t0 + TimeSpan.FromSeconds(30));
+
+        // assert: the next utterance from the same speaker stays silent
+        afterTyped.LastBeepGroup.Should().Be(group);
+        var nextUtterance = afterTyped with { BeepGroup = group };
+        NotificationBeepPolicy.ShouldBeep(nextUtterance, t0 + TimeSpan.FromMinutes(1)).Should().BeFalse();
     }
 
     private static MessageNotification NewSpoken(
