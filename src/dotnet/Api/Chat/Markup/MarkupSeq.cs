@@ -1,3 +1,4 @@
+using System.Text;
 using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
@@ -33,7 +34,10 @@ public sealed class MarkupSeq : Markup
             return Items[0].Simplify();
 
         var items = new List<Markup>();
+        // Consecutive PlainText merges through a StringBuilder: pairwise concatenation copies
+        // the whole run once per element, and a prose paragraph is one element per word.
         var lastPlainText = (PlainTextMarkup?)null;
+        var runBuilder = (StringBuilder?)null;
         var isSimplified = false;
 
         foreach (var originalItem in Items) {
@@ -42,25 +46,22 @@ public sealed class MarkupSeq : Markup
                 isSimplified = true;
 
             if (item is PlainTextMarkup pt) {
-                // Merge consecutive PlainText
-                if (lastPlainText == null)
+                if (lastPlainText == null) {
                     lastPlainText = pt;
+                }
                 else {
-                    lastPlainText = new PlainTextMarkup(lastPlainText.Text + pt.Text);
+                    runBuilder ??= ActualLab.Text.StringBuilderExt.Acquire().Append(lastPlainText.Text);
+                    runBuilder.Append(pt.Text);
                     isSimplified = true;
                 }
             }
             else {
-                if (lastPlainText != null) {
-                    items.Add(lastPlainText);
-                    lastPlainText = null;
-                }
+                FlushTextRun(items, ref lastPlainText, ref runBuilder);
                 items.Add(item);
             }
         }
 
-        if (lastPlainText != null)
-            items.Add(lastPlainText);
+        FlushTextRun(items, ref lastPlainText, ref runBuilder);
 
         if (!isSimplified)
             return this;
@@ -70,5 +71,19 @@ public sealed class MarkupSeq : Markup
             1 => items[0],
             _ => new MarkupSeq(items.ToArray()),
         };
+    }
+
+    // Private methods
+
+    private static void FlushTextRun(List<Markup> items, ref PlainTextMarkup? lastText, ref StringBuilder? builder)
+    {
+        if (builder != null) {
+            items.Add(new PlainTextMarkup(builder.ToStringAndRelease()));
+            builder = null;
+        }
+        else if (lastText != null)
+            items.Add(lastText);
+
+        lastText = null;
     }
 }

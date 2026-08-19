@@ -10,7 +10,7 @@ namespace ActualChat.Chat;
 /// Parses text into <see cref="Markup"/> using Pidgin parser combinators.
 /// </summary>
 #pragma warning disable CA1823 // Unused field ...
-public partial class MarkupParser : IMarkupParser
+public sealed partial class MarkupParser : IMarkupParser
 {
     public static Markup EmptyResult => Markup.EmptyParagraph;
     public bool UseUnparsedTextMarkup { get; init; }
@@ -51,6 +51,8 @@ public partial class MarkupParser : IMarkupParser
 
     private static readonly Parser<char, char> WhitespaceChar =
         Token(c => c is not ('\r' or '\n' or '\u2028') && char.IsWhiteSpace(c)).Labelled("whitespace");
+    private static readonly Parser<char, char> EndOfLineChar =
+        Token(c => c is '\r' or '\n').Labelled("line separator");
     private static readonly Parser<char, char> NotEndOfLineChar =
         Token(c => c is not ('\r' or '\n' or '\u2028')).Labelled("not line separator");
     private static readonly Parser<char, char> IdChar =
@@ -152,34 +154,32 @@ public partial class MarkupParser : IMarkupParser
         .Where(isTableStart => isTableStart)
         .ThenReturn(TableMarkup.CellSeparator);
 
-    // Check what follows after a newline (used in lookahead)
-    private static readonly Parser<char, char> ParagraphBreakAhead =
-        EndOfLine.Then(EndOfLine).ThenReturn('\n'); // double newline = paragraph break
-    private static readonly Parser<char, char> ListItemAhead =
-        EndOfLine.Then(OneOf(Char('-'), Char('*')).Before(WhitespaceChar));
-    private static readonly Parser<char, string> CodeBlockAhead =
-        EndOfLine.Then(CodeBlockToken);
-    private static readonly Parser<char, int> HeaderAhead =
-        EndOfLine.Then(HeaderLevel);
-    private static readonly Parser<char, char> QuoteAhead =
-        EndOfLine.Then(Char('>').Before(WhitespaceChar)); // "> " block-quote line start
-    private static readonly Parser<char, char> TableAhead =
-        EndOfLine.Then(TableStart);
+    // Check if next line starts a block element (CodeBlock, ListBlock, Header, BlockQuote, or Table)
+    private static readonly Parser<char, char> BlockElementAhead =
+        Lookahead(Try(CodeBlockToken.ThenReturn('`'))
+            .Or(Try(OneOf(Char('-'), Char('*')).Before(WhitespaceChar)))
+            .Or(Try(HeaderLevel.ThenReturn('#')))
+            .Or(Try(Char('>').Before(WhitespaceChar)))
+            .Or(Try(TableStart)));
+    // What ends an inline run at the start of a line: an empty line (i.e. a paragraph break),
+    // or any block element.
+    private static readonly Parser<char, char> InlineBreakAhead =
+        Try(EndOfLine.ThenReturn('\n')).Or(BlockElementAhead);
 
-    // Inline newline (single newline within inline content, not a paragraph break or a block start)
+    // Inline newline (single newline within inline content, not a paragraph break or a block start).
+    // The newline is consumed once and the guards run after it: this parser is tried at every
+    // whitespace and every element boundary, so re-parsing it per guard was the hottest thing here.
     private static readonly Parser<char, Markup> InlineNewLine =
-        Lookahead(Not(ParagraphBreakAhead)) // not paragraph break
-            .Then(Lookahead(Not(ListItemAhead))) // not list item start
-            .Then(Lookahead(Not(CodeBlockAhead))) // not code block start
-            .Then(Lookahead(Not(HeaderAhead))) // not header start
-            .Then(Lookahead(Not(QuoteAhead))) // not block-quote start
-            .Then(Lookahead(Not(TableAhead))) // not table start
+        Lookahead(EndOfLineChar)
             .Then(EndOfLine)
+            .Then(Lookahead(Not(InlineBreakAhead)))
             .ThenReturn(NewLineMarkup.Instance as Markup);
 
-    // Whitespace or newline (for inline content separators)
+    // Whitespace or newline (for inline content separators).
+    // Whitespace goes first only because it's the common case - the two can't both match,
+    // since WhitespaceChar excludes every line separator.
     internal static readonly Parser<char, Markup> WhitespaceOrNewLine =
-        SafeTryOneOf(InlineNewLine, WhitespaceText);
+        SafeTryOneOf(WhitespaceText, InlineNewLine);
 
     // Mentions
     private static Parser<char, Markup> MentionParserFactory(string name = "") =>
@@ -222,18 +222,19 @@ public partial class MarkupParser : IMarkupParser
         NotPreToken.Or(DoublePreToken).ManyString();
 
     // Url
-    private static Parser<char, Markup> WwwUrl => (
-        from head in FirstUrlChar
-        from tail in UrlChar.AtLeastOnceString()
-        select head + tail)
-        .Where(s => UrlRegex.IsMatch(s))
-        .Select(s => (Markup)new UrlMarkup(s, UrlMarkupKind.Www));
-    private static Parser<char, Markup> Email => (
-        from head in FirstEmailChar
-        from tail in EmailChar.AtLeastOnceString()
-        select head + tail)
-        .Where(s => EmailRegex.IsMatch(s))
-        .Select(s => (Markup)new UrlMarkup(s, UrlMarkupKind.Email));
+    // The consumed run is matched as a span, so a word that only looks like a candidate costs
+    // nothing but the scan: every alphanumeric word starts an e-mail attempt, and materializing
+    // it as a string just to fail the regex was the single most expensive thing per word.
+    private static readonly Parser<char, Markup> WwwUrl =
+        FirstUrlChar.Then(UrlChar.SkipAtLeastOnce())
+            .Slice((span, _) => IsUrl(span) ? new string(span) : "")
+            .Where(s => s.Length != 0)
+            .Select(s => (Markup)new UrlMarkup(s, UrlMarkupKind.Www));
+    private static readonly Parser<char, Markup> Email =
+        FirstEmailChar.Then(EmailChar.SkipAtLeastOnce())
+            .Slice((span, _) => IsEmail(span) ? new string(span) : "")
+            .Where(s => s.Length != 0)
+            .Select(s => (Markup)new UrlMarkup(s, UrlMarkupKind.Email));
     private static readonly Parser<char, Markup> Url =
         SafeTryOneOf(WwwUrl, Email).Debug("Url");
 
@@ -305,13 +306,6 @@ public partial class MarkupParser : IMarkupParser
     // A single paragraph line (can be empty - 0 or more chars)
     private static readonly Parser<char, string> ParagraphLine = NotEndOfLineChar.ManyString();
 
-    // Check if next line starts a block element (CodeBlock, ListBlock, Header, BlockQuote, or Table)
-    private static readonly Parser<char, char> BlockElementAhead =
-        Lookahead(Try(CodeBlockToken.ThenReturn('`'))
-            .Or(Try(OneOf(Char('-'), Char('*')).Before(WhitespaceChar)))
-            .Or(Try(HeaderLevel.ThenReturn('#')))
-            .Or(Try(Char('>').Before(WhitespaceChar)))
-            .Or(Try(TableStart)));
 
     private static readonly Parser<char, string> QuoteContentLine =
         Char('>').Then(WhitespaceChar).Then(ParagraphLine);
@@ -340,6 +334,14 @@ public partial class MarkupParser : IMarkupParser
     }
 
     // Private methods
+
+    private static bool IsUrl(ReadOnlySpan<char> span)
+        // The regex decides; the scan in front of it is what keeps it off every h/f/w word.
+        => (span.Contains(':') || span.StartsWith("www.")) && UrlRegex.IsMatch(span);
+
+    private static bool IsEmail(ReadOnlySpan<char> span)
+        // Both branches of EmailRe require an '@', so a word without one can't match.
+        => span.Contains('@') && EmailRegex.IsMatch(span);
 
     private static TableColumnAlignment[]? TryParseTableAlignments(string headerLine, string delimiterLine)
     {
@@ -465,7 +467,7 @@ public partial class MarkupParser : IMarkupParser
                 ).Debug("<Unparsed>");
 
             var inlineParser =
-                SafeTryOneOf(InlineNewLine, WhitespaceText, TextBlock, unparsedTextBlock).Debug("<InlineElement>")
+                SafeTryOneOf(WhitespaceText, InlineNewLine, TextBlock, unparsedTextBlock).Debug("<InlineElement>")
                     .ManyMarkup().Debug("<Inline>");
 
             // Paragraph: collect all content until paragraph break or block element, then parse as inline
@@ -474,8 +476,7 @@ public partial class MarkupParser : IMarkupParser
                 from firstLine in ParagraphLine
                 from restParts in Try(
                     from nl in EndOfLine
-                    from _ in Lookahead(Not(EndOfLine)) // not empty line (paragraph break)
-                    from __ in Lookahead(Not(BlockElementAhead)) // not block element ahead
+                    from _ in Lookahead(Not(InlineBreakAhead)) // not a paragraph break or a block start
                     from line in ParagraphLine
                     select "\n" + line // preserve newline in content
                 ).Many()
