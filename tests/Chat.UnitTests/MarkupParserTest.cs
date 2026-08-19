@@ -1834,9 +1834,9 @@ code
 
     [Theory]
     [InlineData(40)]
-    [InlineData(256)]
-    [InlineData(257)]
-    [InlineData(4000)]
+    [InlineData(4096)]
+    [InlineData(4097)]
+    [InlineData(8000)]
     public void PlainTextIsOneParagraphOfOneTextMarkup(int length)
     {
         // Past MaxPlainTextLength Parse falls back to the grammar, which has to reach the same result.

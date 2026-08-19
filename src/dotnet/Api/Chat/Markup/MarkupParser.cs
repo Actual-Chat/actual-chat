@@ -54,9 +54,9 @@ public sealed partial class MarkupParser : IMarkupParser
         return result.Success ? result.Value : EmptyResult;
     }
 
-    // Typed messages are the ones the check below can fail on, and past 256 chars only about a
-    // fifth of them are still plain - scanning further almost never buys a hit
-    private const int MaxPlainTextLength = 256;
+    // A bound on the scan below, not a tuning knob: a failing scan stops at the first special char,
+    // which costs ~4 orders of magnitude less than the parse a hit avoids, so a lower cap only loses
+    private const int MaxPlainTextLength = 4096;
 
     private static bool IsPlainText(string text)
     {
