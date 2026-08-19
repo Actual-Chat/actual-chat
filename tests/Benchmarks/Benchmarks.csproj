@@ -33,6 +33,7 @@
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
+    <PackageReference Include="ParsecSharp" />
   </ItemGroup>
 
 </Project>

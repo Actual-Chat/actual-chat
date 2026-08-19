@@ -7,18 +7,23 @@ using BenchmarkDotNet.Running;
 
 namespace ActualChat.Benchmarks;
 
+// Run: dotnet run -c Release --project tests/Benchmarks -- MarkupParserBenchmarks
+// The equivalence check alone: dotnet run -c Release --project tests/Benchmarks -- verify
+// Setup fails the run when the parsers disagree on the sample, so a timing is never reported
+// for a parser that isn't equivalent.
+
 /// <summary>
-/// <see cref="MarkupParser"/> throughput on two real Voxt messages - see <see cref="MarkupSamples"/>.
-/// The "Chars/s" column is the number the parser is judged by; a second parser implementation
-/// should show up here as another [Benchmark] method rather than another run.
-/// Run: dotnet run -c Release --project tests/Benchmarks -- MarkupParserBenchmarks
+/// Markup parser throughput on three real Voxt messages (<see cref="MarkupSamples"/>): the shipping
+/// Pidgin-based <see cref="MarkupParser"/> against the ParsecSharp port
+/// <see cref="ParsecMarkupParser"/>. "Chars/s" is the column they're judged by.
 /// </summary>
 [Config(typeof(Config))]
 [MemoryDiagnoser]
 public class MarkupParserBenchmarks
 {
     private string _text = "";
-    private MarkupParser _parser = null!;
+    private MarkupParser _pidgin = null!;
+    private ParsecMarkupParser _parsec = null!;
     [Params(MarkupSampleKind.Regular, MarkupSampleKind.Table, MarkupSampleKind.Long)]
     public MarkupSampleKind Sample { get; set; }
 
@@ -26,17 +31,30 @@ public class MarkupParserBenchmarks
     public void Setup()
     {
         _text = MarkupSamples.Get(Sample);
-        _parser = new MarkupParser();
+        _pidgin = new MarkupParser();
+        _parsec = new ParsecMarkupParser();
+        var mismatches = MarkupParserEquivalence.Verify([_text]);
+        if (mismatches.Count != 0)
+            throw new InvalidOperationException(
+                "Parser implementations disagree on this sample:" + Environment.NewLine
+                + string.Join(Environment.NewLine, mismatches));
     }
 
     [Benchmark(Baseline = true)]
-    public Markup Parse()
-        // What the app actually calls: parse + simplify.
-        => _parser.Parse(_text);
+    public Markup Pidgin()
+        => _pidgin.Parse(_text);
 
     [Benchmark]
-    public Markup ParseRawOnly()
+    public Markup Parsec()
+        => _parsec.Parse(_text);
+
+    [Benchmark]
+    public Markup PidginRaw()
         => MarkupParser.ParseRaw(_text);
+
+    [Benchmark]
+    public Markup ParsecRaw()
+        => ParsecMarkupParser.ParseRaw(_text);
 
     // Nested types
 

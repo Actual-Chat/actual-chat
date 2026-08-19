@@ -196,6 +196,7 @@
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.2" />
     <PackageVersion Include="OpusSharp.Core" Version="1.6.1.3" />
     <PackageVersion Include="OpusSharp.Natives" Version="1.6.1.3" />
+    <PackageVersion Include="ParsecSharp" Version="5.2.0" />
     <PackageVersion Include="RestEase" Version="1.6.4" />
     <PackageVersion Include="Pidgin" Version="3.5.1" />
     <PackageVersion Include="Polly" Version="8.5.2" />
