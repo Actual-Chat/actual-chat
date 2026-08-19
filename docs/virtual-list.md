@@ -110,9 +110,8 @@ in a later section looks loaded — most of them are.*
   lost `transitionend` cannot wedge the list.
 - **quiet moment** — *`watchQuietMoment`, `isWatchingStillness`, `QuietStillFrames`.* Three
   consecutive animation frames in which `scrollTop` has not changed, no finger is down and no excursion
-  is open. Stricter than "no scroll events", which a fling passes while it is still moving. Both
-  standing intents that change the list's coordinates — a re-centre and a direction restore — wait for
-  one.
+  is open. Stricter than "no scroll events", which a fling passes while it is still moving. The one
+  standing intent that changes the list's coordinates — a re-centre — waits for one.
 - **guard window** — *`lastProgrammaticScrollAt`, `ProgrammaticScrollGuardMs`; `suppressUntil` in the
   controller.* The interval after a scroll the code wrote itself, during which the resulting scroll
   event is ignored. The list's window and the controller's are separate and differently sized.
@@ -150,8 +149,6 @@ in a later section looks loaded — most of them are.*
   twice the overscroll allowance — six screens — from the chain, so nothing on screen can pull it back.
   A fault, answered by a jump to the default edge. Ranks below a navigation jump, which places the view
   itself; if that jump's target never renders it re-arms this check rather than leaving the view stranded.
-- **direction borrow** — *`setDirection`, `mustRestoreDirection`.* A reverse list rendering natural for
-  the duration of a screen-anchored interaction, and back at the next quiet moment (§3.2).
 
 ### Content bookkeeping
 
@@ -416,23 +413,24 @@ mapping to wrapper coordinates depends on the *measured* `maxScrollTop`. Natural
 identity and depends on nothing. That asymmetry is why the Chrome height clamp (§4.1) broke reverse
 and left natural untouched.
 
-#### The direction borrow
+#### A change in the middle of the list
 
 The second row of that table cuts the other way for a change *in the middle* of the list. Anchored by
 its bottom, the container's rendered top is that edge minus the rendered height, so while a block in
 the middle grows, everything above it moves — the row before it, the control that was clicked, the
 sticky badges beside them. Only a top-anchored chain leaves what is above a growing block alone.
 
-So a screen-anchored interaction (§3.9) on a reverse list **borrows natural**: `setDirection(false)`
-at the interaction, `mustRestoreDirection` set, and the configured direction put back by
-`watchQuietMoment` once the position has been still for three frames with no finger down and no
-excursion open. `setDirection` is a coordinate change, not a scroll: it cancels any excursion (its boundary belongs to the axis about to disappear), measures the
-container's screen position, flips `flex-direction`, re-lays out, and writes back exactly the drift
-that measurement shows — unclamped, because the two directions expose different limits — then resets
-the controller's motion tracking, since every `scrollTop` it remembers was on the old axis. Direction,
-chain anchor and the translated scroll all land in one task, or the browser paints a frame with
-`scrollTop` clamped into a range it has not been given yet. A list with no layout (inside a collapsed
-panel) measures zero both times and skips the write.
+A screen-anchored interaction (§3.9) gets that top anchor from the placement rather than from the
+direction: it unpins, and an unpinned chain is placed by its `top` whichever way the list renders
+(§3.10). **The direction is fixed for the list's lifetime.**
+
+It was not always. A reverse list used to flip to natural at such an interaction and flip back at the
+next quiet moment, which bought the same top anchor at the price of two coordinate changes per tap:
+flipping `flex-direction` moves the scroll origin from one end of the wrapper to the other, the
+browser clamps `scrollTop` into a range it has not been given yet, and the position has to be rebuilt
+from a measured drift. That reconstruction is exact only where scroll offsets are fractional. On iOS
+they are integer-quantized, so each round trip lost part of a pixel and every expand/collapse moved the
+view exactly 1px toward the newest message — measured on an iPhone at +1 per toggle, indefinitely.
 
 ### 3.3 The states
 
@@ -468,7 +466,7 @@ still. That is a third condition, tracked separately by `StabilityTracker`, and 
 | `isAwaitingStability` | `repinWhenStable` | animations and scrolling to stop, then re-pin, clamp, and re-run the drift check |
 | `isAwaitingOverscrollEnd` | `repinWhenOverscrollEnds` | the excursion to end, by rAF poll — the stability tracker cannot answer this (§3.6) |
 | `isAwaitingJump` | `requestJump` while animating | animations to finish, with new ones suspended meanwhile |
-| `isWatchingStillness` | `watchQuietMoment` | a quiet moment, then re-centre (`mustRecentre`) and/or restore the direction (`mustRestoreDirection`) |
+| `isWatchingStillness` | `watchQuietMoment` | a quiet moment, then re-centre (`mustRecentre`) |
 | `isWatchingScreenAnchor` | `applyScreenAnchor` | the anchored element to stop moving for `ScreenAnchorStillFrames` (12) frames while animations finish, holding it with a per-frame scroll write meanwhile |
 
 And one fault the code detects rather than stores: **stranded**, §3.6.
@@ -502,13 +500,13 @@ overscroll rows are the summary of §3.7.*
 | `scrollToKey` that *is* the newest item, end loaded | any → Pinned End | pin and re-pin, which in reverse is a follow of a few pixels or nothing at all — so a message you just posted still animates in | `scrollTop` |
 | the user scrolls away from the edge | Pinned → Free | `updatePinnedEdge` finds neither edge within `EdgeEpsilon` (4px); on desktop `onWheel` also clears the pin even inside the guard window | — |
 | a `data-vl-hold` control is clicked or tapped | Pinned → Free, interactive anchor set | the clicked item — or the first content item below it, for `data-anchor="below"` — is what the next render holds; `keep-edge` controls leave a pinned list alone; expires after 2s | — |
-| a `data-vl-hold` control inside a `data-vl-anchor` element | Pinned → Free, screen anchor set | the element's rendered screen position is recorded; a reverse list borrows natural (§3.2) | — |
+| a `data-vl-hold` control inside a `data-vl-anchor` element | Pinned → Free, screen anchor set | the element's rendered screen position is recorded; unpinning is what gives the chain its top anchor (§3.2) | — |
 | the render that follows a screen anchor | — | the chain moves so the element's *flow* position lands where its rendered one was, then a per-frame scroll write holds it there until it has been still 12 frames | `container.top`, then `scrollTop` |
 | the chain eats into the reserve | any → watching for a quiet moment | armed by `applyLayout`, and the watcher cancels itself the moment the chain is no longer off centre | — |
-| a quiet moment while armed | watching → re-centre and/or direction restore | chain moved to the middle, scroll shifted by the same amount, flagged `reanchor` and unclamped; and/or `setDirection` back to the configured one | `container.top` + `scrollTop`, cancelling |
+| a quiet moment while armed | watching → re-centre | chain moved to the middle, scroll shifted by the same amount, flagged `reanchor` and unclamped | `container.top` + `scrollTop`, cancelling |
 | a settle finds the viewport more than `2 × maxOverscroll` from the chain | any → Placing | a jump to the default edge; a queued navigation jump supersedes it, and re-arms this check if its target never arrives | `scrollTop` |
 | viewport resize | any | the list re-pins now and again when stable; the controller separately opens its guard window, ends any excursion at the boundary, and clamps to the new limits — a snap, not a return | `scrollTop` |
-| Blazor calls `reset()` | any → initial | items, offsets and caches cleared, pin and anchors dropped, direction restored, chain re-centred, the reveal watch restarted | `container.top` |
+| Blazor calls `reset()` | any → initial | items, offsets and caches cleared, pin and anchors dropped, chain re-centred, the reveal watch restarted | `container.top` |
 
 ### 3.5 The loops
 
@@ -1276,8 +1274,9 @@ per frame, by a scroll write, until the element has been still for `ScreenAnchor
 frames and no animation runs — the model reaches the settled heights before the DOM does, and
 re-laying out to them while the DOM is still transitioning moves the whole chain by what is left to
 grow (measured at 349px, arriving one frame after the tracker went quiet). A correction that runs past
-`maxOverscroll` is a loop feeding itself, and releases the anchor. On a reverse list the interaction
-also borrows natural (§3.2), because a bottom-anchored chain moves everything above a growing block.
+`maxOverscroll` is a loop feeding itself, and releases the anchor. The interaction also unpins, which
+is what gives the chain its top anchor (§3.2) - a bottom-anchored one moves everything above a growing
+block.
 
 Measured on a conversation header in view, before → after: collapse 16px → 0px, expand 124px → 0px.
 

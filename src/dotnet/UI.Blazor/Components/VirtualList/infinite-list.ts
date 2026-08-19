@@ -183,8 +183,7 @@ export class InfiniteList extends VirtualList {
     private wrapperSize = InfiniteSize;
     // The direction in force right now, which is the configured one except while an anchored element
     // is being held - see onInteractiveEvent.
-    private isReverse: boolean;
-    private mustRestoreDirection = false;
+    private readonly isReverse: boolean;
     private pinnedEdge: VirtualListEdge | null = null;
     private endAnchorSize = 0;
     private lastProgrammaticScrollAt = 0;
@@ -367,8 +366,6 @@ export class InfiniteList extends VirtualList {
         this.interactiveAnchor = null;
         this.isWatchingScreenAnchor = false;
         this.screenAnchor = null;
-        this.mustRestoreDirection = false;
-        this.setDirection(this.renderDirection === VirtualListRenderDirection.Reverse);
         this.pendingJump = null;
         this.handledScrollToKey = null;
         this.isInitiallyPlaced = false;
@@ -1363,9 +1360,7 @@ export class InfiniteList extends VirtualList {
         let stillFrames = 0;
         let lastTop = this.ref.scrollTop;
         const tick = (): void => {
-            const mustRecentre = !this.isDisposed && this.isChainOffCentre();
-            const mustRestoreDirection = !this.isDisposed && this.mustRestoreDirection;
-            if (!mustRecentre && !mustRestoreDirection) {
+            if (this.isDisposed || !this.isChainOffCentre()) {
                 this.isWatchingStillness = false;
                 return;
             }
@@ -1387,14 +1382,8 @@ export class InfiniteList extends VirtualList {
                 return;
             }
 
-            if (mustRestoreDirection) {
-                this.mustRestoreDirection = false;
-                this.setDirection(this.renderDirection === VirtualListRenderDirection.Reverse);
-            }
-            if (mustRecentre) {
-                this.mustRecentre = true;
-                this.applyLayout('recentre');
-            }
+            this.mustRecentre = true;
+            this.applyLayout('recentre');
             this.isWatchingStillness = false;
         };
         requestAnimationFrame(tick);
@@ -1691,15 +1680,6 @@ export class InfiniteList extends VirtualList {
                 isPlaced: false,
                 corrected: 0,
             };
-            // Content is about to change height in the middle of the list, and only a top-anchored
-            // chain leaves what is above it alone: anchored by the bottom, the chain's rendered top is
-            // that edge minus the rendered height, so everything above a block that grows moves with
-            // it - the row before it, the control that was clicked, and the sticky badges beside them.
-            // Natural for as long as the change is settling, then back to whatever was configured.
-            if (this.isReverse) {
-                this.mustRestoreDirection = true;
-                this.setDirection(false);
-            }
             return;
         }
 
@@ -1825,58 +1805,8 @@ export class InfiniteList extends VirtualList {
     private releaseScreenAnchor(): void {
         this.isWatchingScreenAnchor = false;
         this.screenAnchor = null;
-        // Armed rather than done here: putting the direction back moves the scroll origin from one end
-        // of the scroll space to the other, which is invisible at a standstill and a jump under a
-        // finger. The watcher fires it as soon as nothing is moving.
-        if (this.mustRestoreDirection)
-            this.watchQuietMoment();
     }
 
-    // A coordinate translation, not a scroll: the chain is absolutely positioned, so flipping the
-    // direction moves only the scroll origin - from one end of the wrapper to the other. Direction,
-    // chain anchor and the translated scroll position all have to land in one task, or the browser
-    // paints a frame with scrollTop clamped into the range it has not been given yet.
-    private setDirection(isReverse: boolean): void {
-        if (this.isReverse === isReverse)
-            return;
-
-        // Held by measurement rather than by translating the offset: flex-direction lands before
-        // anything else runs and the browser clamps scrollTop into the new range on the spot, so the
-        // offset read afterwards is already the clamped one and the wrapper it is measured against has
-        // changed size in the same breath. The chain's screen position is the one quantity neither of
-        // those touches. A list with no layout - inside a collapsed panel - measures zero both times,
-        // and correcting by that would park the scroll somewhere the panel then reopens onto.
-        const canMeasure = isLaidOut(this.ref);
-        // The two directions put the scroll origin at opposite ends, so a return still running holds a
-        // boundary from the axis about to be replaced - left alone it spends the rest of its life
-        // writing a position that clamps straight back, once per frame.
-        this.scrollController.cancelOverscroll();
-        const viewTop = this.ref.getBoundingClientRect().top;
-        const before = this.containerRef.getBoundingClientRect().top - viewTop;
-        this.isReverse = isReverse;
-        this.ref.style.flexDirection = isReverse ? 'column-reverse' : 'column';
-        this.applyLayout('direction');
-        const drift = this.containerRef.getBoundingClientRect().top - viewTop - before;
-        if (!canMeasure) {
-            // Nothing was measured, so nothing here knows where the scroll belongs - and a clamp against
-            // the incoming axis would park it exactly where the correction above declined to.
-        }
-        else if (Math.abs(drift) >= RepinEpsilon) {
-            this.lastProgrammaticScrollAt = performance.now();
-            // Unclamped: the position is valid by construction, and the two directions expose different
-            // limits, so the incoming band must not adjust it - which is why the clamp is the other
-            // branch and not the next line. Out of the new limits is an excursion, and the band answers
-            // for it; a clamp here would replace the screen-preserving position with a boundary.
-            this.scrollController.scrollTo(this.ref.scrollTop + drift, { smooth: false, clamp: false });
-        }
-        else
-            this.scrollController.clampToLimits();
-        // Every scrollTop the controller remembers was measured on the axis that just went away, and
-        // so was the follow's echo marker.
-        this.lastFollowTop = null;
-        this.scrollController.resetMotionTracking();
-        debugLog?.log(`[${this.identity}] setDirection: reverse=${isReverse}, drift=${drift}`);
-    }
 
     // Puts the anchored element back where the interaction left it. Returns whether it had to move, or
     // null when there is nothing left to hold - the anchor expired, or the correction has run away.
