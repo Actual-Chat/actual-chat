@@ -9,7 +9,9 @@
     var showMyAccount = !isGuest;
     var showLogout = !isGuest;
     var showQuit = HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Windows;
-    var showPtt = HostInfo.HostKind.IsMauiApp() && m.EnableIncompleteUI;
+    // Push-to-talk is a device feature; on the web it's an admin-only preview, local hosts only.
+    var isPttPreview = account.IsAdmin && HostInfo.BaseUrlKind == BaseUrlKind.Local;
+    var showPtt = m.EnableIncompleteUI && (HostInfo.HostKind.IsMauiApp() || isPttPreview);
     var quitTitle = $"Quit {CoreConstants.AppName}";
 }
 
