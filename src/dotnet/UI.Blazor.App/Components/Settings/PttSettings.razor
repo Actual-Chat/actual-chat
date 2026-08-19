@@ -5,34 +5,45 @@
 @{
     var m = State.Value;
     var hasSensors = HostInfo.HostKind.IsMauiApp() && GestureUI.Feed.IsAccelerometerAvailable;
-    var canAddChat = m.Chats.Count < UserPttSettings.MaxChatCount;
+    var canAllowMore = m.CanAllowMore;
 }
 
-<div class="push-to-talk-settings">
 <TileTopic Topic="Push-to-talk chats"/>
 <Tile>
-    @foreach (var chat in m.Chats) {
-        var isUnavailable = chat.Title is null;
-        <TileItem IsHoverable="false" Caption="@GetCaption(chat)">
-            <Icon><i class="@(isUnavailable ? "icon-alert-circle" : "icon-talking") text-2xl"></i></Icon>
-            <Content>@(chat.Title ?? "Unavailable chat")</Content>
+    @foreach (var chat in m.AllowedChats) {
+        <TileItem Click="@(() => OnTurnOff(chat.Id))" Caption="@GetPlaceCaption(chat)">
+            <Icon><i class="icon-talking text-2xl"></i></Icon>
+            <Content>@chat.Title</Content>
             <Right>
-                <ButtonRound Class="btn-xs btn-danger" Tooltip="Remove" Click="@(() => OnRemove(chat.Id))">
-                    <i class="icon-minus-circle text-2xl"></i>
-                </ButtonRound>
+                <Toggle IsChecked="true" IsCheckedChanged="@(_ => OnTurnOff(chat.Id))"/>
             </Right>
         </TileItem>
     }
-    @if (m.Chats.Count == 0) {
-        <p class="c-description">
-            No chats yet. A Push-to-talk chat may wake your device when someone starts speaking.
-        </p>
-    }
+    <p class="c-description">@GetAllowedDescription(m)</p>
 </Tile>
-<Button Class="add-avatar-btn" Click="@OnAddChat" IsDisabled="@(!canAddChat)">
-    <Icon><i class="icon-plus text-xl"></i></Icon>
-    <Title>@(canAddChat ? "Add chat" : $"Up to {UserPttSettings.MaxChatCount} chats")</Title>
-</Button>
+
+@if (m.AvailableChats.Count != 0) {
+    <TileTopic Topic="Available"/>
+    <Tile>
+        @foreach (var chat in m.AvailableChats) {
+            <TileItem Click="@(() => OnAllow(chat))" Caption="@GetPlaceCaption(chat)">
+                <Icon><i class="icon-talking text-2xl"></i></Icon>
+                <Content>@chat.Title</Content>
+                <Right>
+                    <Toggle
+                        IsDisabled="@(!canAllowMore)"
+                        IsChecked="false"
+                        IsCheckedChanged="@(_ => OnAllow(chat))"/>
+                </Right>
+            </TileItem>
+        }
+        <p class="c-description">
+            @(canAllowMore
+                ? "Allow a chat to let it wake your device when someone speaks."
+                : "Turn off a chat above to allow one of these.")
+        </p>
+    </Tile>
+}
 
 @if (HostInfo.HostKind.IsMauiApp()) {
     <TileTopic Topic="Answer gestures"/>
@@ -50,6 +61,9 @@
                 <Caption>Shake the phone twice</Caption>
                 <Right><Toggle IsChecked="@m.Settings.IsDoubleShakeEnabled" IsCheckedChanged="@(_ => OnToggleShake())"/></Right>
             </TileItem>
+            @if (m.Settings.IsDoubleShakeEnabled) {
+                <PttShakeSensitivitySettings/>
+            }
         }
         @if (HostInfo.AppKind == AppKind.Android) {
             <TileItem Click="@OnToggleHeadsetButton">
@@ -60,24 +74,6 @@
             </TileItem>
         }
         @if (hasSensors) {
-            @if (m.Settings.IsDoubleShakeEnabled) {
-                <TileItem IsHoverable="false">
-                    <Icon><i class="icon-settings text-2xl"></i></Icon>
-                    <Content>Shake sensitivity</Content>
-                    <Right>
-                        <div class="c-sensitivity">
-                            @foreach (var value in SensitivityOrder) {
-                                var isSelected = m.Settings.ShakeSensitivity == value;
-                                <Button
-                                    Class="@($"btn-xs {(isSelected ? "btn-primary" : "")}")"
-                                    Click="@(() => OnSetSensitivity(value))">
-                                    @value.ToString()
-                                </Button>
-                            }
-                        </div>
-                    </Right>
-                </TileItem>
-            }
             <TileItem Click="@OnToggleAlwaysOn">
                 <Icon><i class="icon-infinity text-2xl"></i></Icon>
                 <Content>Always listen for gestures</Content>
@@ -108,21 +104,7 @@
 }
 
 <TileTopic Topic="Reply window"/>
-<Tile>
-    @foreach (var window in HotWindows) {
-        var isSelected = m.Settings.HotWindow == window;
-        <TileItem Click="@(() => OnSetHotWindow(window))">
-            <Icon><i class="icon-clock-2 text-2xl"></i></Icon>
-            <Content>@($"{window.TotalSeconds:F0} seconds")</Content>
-            <Caption>How long the mic stays open in silence</Caption>
-            <Right>
-                @if (isSelected) {
-                    <i class="icon-checkmark-simple text-primary text-2xl"></i>
-                }
-            </Right>
-        </TileItem>
-    }
-</Tile>
+<PttReplyWindowSettings/>
 
 <TileTopic Topic="Cues"/>
 <Tile>
@@ -133,44 +115,79 @@
         <Right><Toggle IsChecked="@m.Settings.AreAudibleCuesEnabled" IsCheckedChanged="@(_ => OnToggleCues())"/></Right>
     </TileItem>
 </Tile>
-</div>
 
 @code {
-    private static readonly ShakeSensitivity[] SensitivityOrder =
-        [ShakeSensitivity.Low, ShakeSensitivity.Medium, ShakeSensitivity.High];
-    private static readonly TimeSpan[] HotWindows =
-        [TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(120)];
-
     private GestureUI GestureUI => Hub.GestureUI;
-    private IChats Chats => Hub.Chats;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private IPlaces Places => Hub.Places;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var settings = await UserSettingsUI.UserPttSettings().Get(cancellationToken).ConfigureAwait(false);
-        var pttChats = settings.AllPttChats;
-        var chats = new List<ChatItem>(pttChats.Length);
-        foreach (var pttChat in pttChats) {
-            var chat = await Chats.Get(Session, pttChat.ChatId, cancellationToken).ConfigureAwait(false);
-            var isArmed = chat != null && UserPttSettings.IsArmed(chat.PttEnabledAt, pttChat.JoinedAt);
-            chats.Add(new ChatItem(pttChat.ChatId, chat?.Title, isArmed));
+        var allowedChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        var allowedChatIdSet = allowedChatIds.ToHashSet();
+        var chatInfos = await ChatListUI.ListAllUnordered(cancellationToken).ConfigureAwait(false);
+        var allowedChats = new List<ChatItem>();
+        var availableChats = new List<ChatItem>();
+        foreach (var chatInfo in chatInfos.Values) {
+            var chat = chatInfo.Chat;
+            if (chat.PttEnabledAt is not { } pttEnabledAt)
+                continue;
+            if (chat.HasSingleAuthor || !chat.IsMember() || chat.Id.IsThread())
+                continue;
+
+            var placeTitle = await GetPlaceTitle(chat, cancellationToken).ConfigureAwait(false);
+            var item = new ChatItem(chat.Id, chat.Title, placeTitle, pttEnabledAt);
+            if (allowedChatIdSet.Contains(chat.Id))
+                allowedChats.Add(item);
+            else
+                availableChats.Add(item);
         }
-        return new Model(settings, chats);
+        return new Model(
+            settings,
+            allowedChatIdSet,
+            allowedChats.OrderBy(x => x.Title).ToList(),
+            availableChats.OrderBy(x => x.Title).ToList());
     }
 
-    private static RenderFragment? GetCaption(ChatItem chat)
-        => chat.Title is null || chat.IsArmed
-            ? null
-            : b => b.AddContent(0, "Not active - the chat owner hasn't enabled Push-to-talk");
+    private async Task<string?> GetPlaceTitle(Chat chat, CancellationToken cancellationToken) {
+        if (chat.Id is not PlaceChatId placeChatId)
+            return null;
 
-    private Task OnRemove(ChatId chatId)
+        var place = await Places.Get(Session, placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+        return place?.Title;
+    }
+
+    private static RenderFragment? GetPlaceCaption(ChatItem chat)
+        => chat.PlaceTitle is { } placeTitle
+            ? b => b.AddContent(0, placeTitle)
+            : null;
+
+    private static string GetAllowedDescription(Model m)
+        => m.AllowedChats.Count != 0
+            ? $"{m.AllowedChatIds.Count} of {UserPttSettings.MaxChatCount} allowed"
+            : m.AvailableChats.Count != 0
+                ? "Nothing allowed yet - pick a chat below."
+                : "No chat uses Push-to-talk yet - its owner turns it on in the chat itself.";
+
+    private Task OnTurnOff(ChatId chatId)
         => UserSettingsUI.UserPttSettings().Update(x => x.WithoutPttChat(chatId), CancellationToken.None);
 
-    private Task OnAddChat()
-        => ModalUI.Show(new PttChatPickerModal.Model(
-            State.Value.Chats.Select(c => c.Id).ToHashSet(),
-            UserPttSettings.MaxChatCount - State.Value.Chats.Count));
+    private Task OnAllow(ChatItem chat) {
+        var m = State.Value;
+        if (!m.CanAllowMore)
+            return Task.CompletedTask;
+
+        // Never a raw client clock: JoinedAt must land within the current epoch (>= PttEnabledAt).
+        var joinedAt = Moment.Max(Clocks.ServerClock.Now, chat.PttEnabledAt);
+        var allowedChatIds = m.AllowedChatIds;
+        return UserSettingsUI.UserPttSettings().Update(
+            x => x.WithOnlyPttChats(allowedChatIds).WithPttChat(chat.Id, joinedAt),
+            CancellationToken.None);
+    }
 
     private Task OnToggleFlip()
         => UserSettingsUI.UserPttSettings()
@@ -200,19 +217,16 @@
         => UserSettingsUI.UserPttSettings()
             .Update(x => x with { AreAudibleCuesEnabled = !x.AreAudibleCuesEnabled }, CancellationToken.None);
 
-    private Task OnSetSensitivity(ShakeSensitivity sensitivity)
-        => UserSettingsUI.UserPttSettings()
-            .Update(x => x with { ShakeSensitivity = sensitivity }, CancellationToken.None);
-
-    private Task OnSetHotWindow(TimeSpan hotWindow)
-        => UserSettingsUI.UserPttSettings()
-            .Update(x => x with { HotWindow = hotWindow }, CancellationToken.None);
-
     // Nested types
 
-    public sealed record Model(UserPttSettings Settings, IReadOnlyList<ChatItem> Chats) {
-        public static readonly Model None = new(new UserPttSettings(), []);
+    public sealed record Model(
+        UserPttSettings Settings,
+        IReadOnlySet<ChatId> AllowedChatIds,
+        IReadOnlyList<ChatItem> AllowedChats,
+        IReadOnlyList<ChatItem> AvailableChats) {
+        public static readonly Model None = new(new UserPttSettings(), new HashSet<ChatId>(), [], []);
+        public bool CanAllowMore => AllowedChatIds.Count < UserPttSettings.MaxChatCount;
     }
 
-    public sealed record ChatItem(ChatId Id, string? Title, bool IsArmed);
+    public sealed record ChatItem(ChatId Id, string Title, string? PlaceTitle, Moment PttEnabledAt);
 }

@@ -1,0 +1,75 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, PttShakeSensitivitySettings.Model>
+@{
+    var m = State.Value;
+    _formModel.Sensitivity = m.Sensitivity;
+}
+
+<Form Model="@_formModel">
+    <DataAnnotationsValidator/>
+
+    <FormBlock Class="ptt-shake-sensitivity-settings">
+        <FormSection
+            For="() => _formModel.Sensitivity"
+            InputId="@_formModel.SensitivityFormId"
+            IsLabelInsideInput="true"
+            Label="Shake sensitivity"
+            IsRequired="true"
+            HideValidationMessage="true">
+            <InputSelect
+                Value="_formModel.Sensitivity"
+                ValueExpression="@(() => _formModel.Sensitivity)"
+                ValueChanged="@((ShakeSensitivity sensitivity) => OnSensitivityChanged(sensitivity))">
+                @foreach (var option in Options) {
+                    <option value="@option">@GetLabel(option)</option>
+                }
+            </InputSelect>
+        </FormSection>
+    </FormBlock>
+</Form>
+
+@code {
+    private static readonly ShakeSensitivity[] Options =
+        [ShakeSensitivity.Low, ShakeSensitivity.Medium, ShakeSensitivity.High];
+
+    private FormModel _formModel = null!;
+
+    protected override void OnInitialized()
+        => _formModel = new FormModel(ComponentIdGenerator);
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var settings = await UserSettingsUI.UserPttSettings().Get(cancellationToken).ConfigureAwait(false);
+        return new(settings.ShakeSensitivity);
+    }
+
+    private Task OnSensitivityChanged(ShakeSensitivity sensitivity) {
+        _formModel.Sensitivity = sensitivity;
+        return UserSettingsUI.UserPttSettings()
+            .Update(x => x with { ShakeSensitivity = sensitivity }, CancellationToken.None);
+    }
+
+    private static string GetLabel(ShakeSensitivity sensitivity)
+        => sensitivity switch {
+            ShakeSensitivity.Low => "Low - a firm shake",
+            ShakeSensitivity.Medium => "Medium",
+            ShakeSensitivity.High => "High - a light shake",
+            _ => sensitivity.ToString(),
+        };
+
+    // Nested types
+
+    public sealed class FormModel {
+        public ShakeSensitivity Sensitivity { get; set; }
+        public string SensitivityFormId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator)
+            => SensitivityFormId = componentIdGenerator.Next("ptt-shake-sensitivity");
+    }
+
+    public sealed record Model(ShakeSensitivity Sensitivity = ShakeSensitivity.Medium) {
+        public static readonly Model None = new();
+    }
+}

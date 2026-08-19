@@ -338,10 +338,11 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceSettingsStartModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlacesTutorialStep>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaybackToggle>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttChatPickerModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttJoinBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttPracticePanel>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttReplyWindowSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttSettings>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttShakeSensitivitySettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionAuthorsMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionSelect>();
@@ -1076,10 +1077,11 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceSettingsStartModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlacesTutorialStep), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaybackToggle), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.PttChatPickerModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttJoinBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttPracticePanel), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PttReplyWindowSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttSettings), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PttShakeSensitivitySettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionAuthorsMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionSelect), AotTypeKind.Component),

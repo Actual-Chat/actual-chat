@@ -51,8 +51,8 @@ body.narrow .close-settings-btn {
     @apply font-mono;
 }
 
-.push-to-talk-settings .c-sensitivity {
-    @apply flex-x gap-x-1;
+.settings-tab .ptt-reply-window-settings .c-description {
+    @apply text-caption-6 text-03;
 }
 
 /* ── App Settings tab ── */

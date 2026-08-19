@@ -1,0 +1,79 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, PttReplyWindowSettings.Model>
+@{
+    var m = State.Value;
+    _formModel.Seconds = m.Seconds;
+}
+
+<Tile Class="ptt-reply-window-settings">
+    <Form Model="@_formModel">
+        <DataAnnotationsValidator/>
+
+        <FormBlock>
+            <p class="c-description">
+                How long the mic stays open in silence.
+            </p>
+            <FormSection
+                For="() => _formModel.Seconds"
+                InputId="@_formModel.SecondsFormId"
+                IsLabelInsideInput="true"
+                Label="Keep the mic open"
+                IsRequired="true"
+                HideValidationMessage="true">
+                <InputSelect
+                    Value="_formModel.Seconds"
+                    ValueExpression="@(() => _formModel.Seconds)"
+                    ValueChanged="@((int seconds) => OnSecondsChanged(seconds))">
+                    @foreach (var option in Options) {
+                        <option value="@option">@GetLabel(option)</option>
+                    }
+                </InputSelect>
+            </FormSection>
+        </FormBlock>
+    </Form>
+</Tile>
+
+@code {
+    private static readonly int[] Options = [30, 60, 120];
+
+    private FormModel _formModel = null!;
+
+    protected override void OnInitialized()
+        => _formModel = new FormModel(ComponentIdGenerator);
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var settings = await UserSettingsUI.UserPttSettings().Get(cancellationToken).ConfigureAwait(false);
+        return new((int)settings.HotWindow.TotalSeconds);
+    }
+
+    private Task OnSecondsChanged(int seconds) {
+        _formModel.Seconds = seconds;
+        return UserSettingsUI.UserPttSettings()
+            .Update(x => x with { HotWindow = TimeSpan.FromSeconds(seconds) }, CancellationToken.None);
+    }
+
+    private static string GetLabel(int seconds)
+        => seconds switch {
+            30 => "30 seconds",
+            60 => "1 minute",
+            120 => "2 minutes",
+            _ => $"{seconds} seconds",
+        };
+
+    // Nested types
+
+    public sealed class FormModel {
+        public int Seconds { get; set; }
+        public string SecondsFormId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator)
+            => SecondsFormId = componentIdGenerator.Next("ptt-reply-window");
+    }
+
+    public sealed record Model(int Seconds = 60) {
+        public static readonly Model None = new();
+    }
+}
