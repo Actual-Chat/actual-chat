@@ -1,6 +1,7 @@
 using System.Buffers;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Services;
 using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
@@ -38,7 +39,7 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
     public ResamplerFactory ResamplerFactory => field ??= hub.Services.GetRequiredService<ResamplerFactory>();
 
     private AudioEngines AudioEngines => field ??= hub.Services.GetRequiredService<AudioEngines>();
-    private AudioSession AudioSession => field ??= hub.Services.GetRequiredService<AudioSession>();
+    private AudioFocusUI AudioFocusUI => field ??= hub.AudioFocusUI;
     private ILogger Log => field ??= hub.Services.LogFor(GetType());
 
     public Task<IAsyncEnumerable<IMemoryOwner<float>>?> Capture(CancellationToken cancellationToken)
@@ -113,7 +114,7 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
             using var _2 = engine.Input.Tap(HandleSamples);
             engine.EnsureRunning();
             // Voice processing activation can route audio to the earpiece — fix it
-            await AudioSession.EnsureCorrectOutputRoute().ConfigureAwait(false);
+            await AudioFocusUI.EnsureOutputRoute(cancellationToken).ConfigureAwait(false);
 
             var frameLen = Constants.Audio.OpusFrameLength;
             while (!cancellationToken.IsCancellationRequested) {

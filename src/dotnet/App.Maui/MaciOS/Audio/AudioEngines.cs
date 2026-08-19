@@ -62,6 +62,18 @@ public class AudioEngines : ProcessorBase
             Recording.Resume();
     }
 
+    public void Reconnect(AudioFocusMode mode)
+    {
+        // Same gating as Resume: this replaces it on the configuration-change path, where an
+        // engine that stopped itself also needs its output graph and player nodes restored.
+        if (mode >= AudioFocusMode.Tune)
+            Tunes.Reconnect();
+        if (mode >= AudioFocusMode.Playback)
+            Playback.Reconnect();
+        if (mode >= AudioFocusMode.Recording)
+            Recording.Reconnect();
+    }
+
     private void OnConfigurationChange(object? sender, NSNotificationEventArgs e)
         => Log.LogInformation("Audio engine configuration change");
 }

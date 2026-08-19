@@ -51,7 +51,7 @@ internal sealed class AndroidAudioPlaybackEngine(
         // Before the track exists, not after: Android hands the communication route back to the
         // earpiece once it decides the focus holder is idle, and a wake takes focus seconds before
         // its first frames arrive - a track built then stays on the earpiece for its whole life.
-        await AudioFocusUI.EnsureOutputRoute().ConfigureAwait(false);
+        await AudioFocusUI.EnsureOutputRoute(cancellationToken).ConfigureAwait(false);
 
         var audioSource = (AudioSource)source;
         _remainingPreSkip = audioSource.Format.PreSkip;

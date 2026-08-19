@@ -103,13 +103,13 @@ public class AndroidAudioFocusHelper : IDisposable
             _log.LogInformation("WarmUpAudioMode: keeping InCommunication (real focus acquired)");
     }
 
-    public Task EnsureCommunicationRoute()
+    public Task EnsureCommunicationRoute(CancellationToken cancellationToken)
         // Deliberately not driven off the device-changed callback: Android re-clears the route
         // every ~6s for as long as a focus holder stays idle, and answering each one turned into a
         // permanent re-assert loop (13 in 100s, measured). Asserting only when audio is about to
         // play fixes the route where it matters and leaves an idle armed session alone.
         => _hasFocus
-            ? _deviceRouter.SetCommunicationDeviceAsync(CancellationToken.None)
+            ? _deviceRouter.SetCommunicationDeviceAsync(cancellationToken)
             : Task.FromResult(false);
 
     public void AbandonFocus()

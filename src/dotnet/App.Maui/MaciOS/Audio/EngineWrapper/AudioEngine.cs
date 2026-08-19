@@ -22,9 +22,9 @@ public class AudioEngine : IDisposable
     private readonly Lock _lock = new ();
     private readonly ComputedState<bool> _isRunning;
     private readonly Debouncer<Unit> _idleReleaseDebouncer;
+    private readonly List<PlayerNode> _playerNodes = new();
     private AVAudioEngine? _engine;
     private InputNode? _inputNode;
-    private int _playerNodeCount;
     private bool _isStarted;
     private bool _isDisposed;
     private AudioFocusMode Mode { get; }
@@ -105,6 +105,41 @@ public class AudioEngine : IDisposable
         _isRunning.Invalidate();
     }
 
+    public void Reconnect()
+    {
+        // A configuration change stops the engine itself and drops its connections to the I/O
+        // nodes; start() restores neither those nor the player nodes it stopped on the way down.
+        if (!_isStarted)
+            return;
+
+        PlayerNode[] playerNodes;
+        lock (_lock) {
+            if (!_isStarted)
+                return;
+
+            playerNodes = [.. _playerNodes];
+            var engine = EngineUnsafe;
+            if (!engine.Running) {
+                // Rebuilding player -> main mixer is what a freshly built player node does, and
+                // that's the only thing observed to bring the sound back after a change.
+                foreach (var playerNode in playerNodes)
+                    engine.Connect(playerNode.Node, engine.MainMixerNode, playerNode.Format);
+            }
+            if (!TryEnsureEngineRunningUnsafe()) {
+                Log.LogWarning("{Mode}.Reconnect: Engine failed, attempting reset", Mode);
+                ResetEngineUnsafe();
+                EnsureEngineRunningUnsafe();
+            }
+        }
+        // Outside the lock: a node takes its own lock and then this one when it's disposed.
+        var requestedCount = playerNodes.Count(x => x.IsPlayRequested);
+        var restartedCount = playerNodes.Count(x => x.RestorePlayState());
+        Log.LogInformation(
+            "{Mode}.Reconnect: restarted {RestartedCount} of {Count} player node(s), {RequestedCount} want to play",
+            Mode, restartedCount, playerNodes.Length, requestedCount);
+        _isRunning.Invalidate();
+    }
+
     // Tears the AVAudioEngine down rather than stopping it - see the note on this type. Safe to
     // call more than once, and it must never be reached through Input, which would rebuild the
     // very engine being released.
@@ -160,7 +195,7 @@ public class AudioEngine : IDisposable
     {
         var node = new PlayerNode(new AVAudioPlayerNode(), format, DisposePlayerNode, Hub);
         lock (_lock)
-            _playerNodeCount++;
+            _playerNodes.Add(node);
         AttachNode(node.Node);
         if (connectToMainOutput)
             ConnectToMainMixer(node, format);
@@ -174,7 +209,8 @@ public class AudioEngine : IDisposable
         bool isIdle;
         lock (_lock) {
             DisposeNodeUnsafe(node);
-            isIdle = --_playerNodeCount == 0;
+            _playerNodes.RemoveAll(x => ReferenceEquals(x.Node, node));
+            isIdle = _playerNodes.Count == 0;
         }
         if (isIdle)
             _idleReleaseDebouncer.Debounce(default);
@@ -185,7 +221,7 @@ public class AudioEngine : IDisposable
         lock (_lock) {
             // Re-checked here rather than by cancelling the debounce, so a player created while
             // the release was pending keeps the engine alive without any ordering assumptions.
-            if (_isDisposed || _engine is null || _playerNodeCount != 0)
+            if (_isDisposed || _engine is null || _playerNodes.Count != 0)
                 return Task.CompletedTask;
 
             Log.LogInformation("{Mode}.ReleaseIfIdle: no players left, releasing the engine", Mode);

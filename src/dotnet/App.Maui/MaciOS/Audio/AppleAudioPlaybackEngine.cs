@@ -41,9 +41,12 @@ public class AppleAudioPlaybackEngine(
         _decodeFeedTask = null;
     }
 
-    public Task Play(CancellationToken cancellationToken)
+    public async Task Play(CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation("#{PlayerId}.Play", playerId);
+        // Focus is taken seconds before the first frames arrive, and a route the session picked
+        // back then may no longer be the one this track should come out of.
+        await hub.AudioFocusUI.EnsureOutputRoute(cancellationToken).ConfigureAwait(false);
         _frames.SetTargetDuration(GetEncodedBufferDuration(info.TargetBufferSize));
 
         _voicePlayer = new VoicePlayer(playerId, hub);
@@ -55,7 +58,6 @@ public class AppleAudioPlaybackEngine(
             "Failed to decode/feed iOS audio",
             _decodeFeedCts.Token);
         _voicePlayer.Play();
-        return Task.CompletedTask;
     }
 
     public Task Pause(CancellationToken cancellationToken)
