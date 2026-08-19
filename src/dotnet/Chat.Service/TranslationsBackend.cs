@@ -417,9 +417,10 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var stopTokenSource = HostLifetime.CreateStopTokenSource();
  #pragma warning restore CA2016
         var stopToken = stopTokenSource.Token;
-        var transcriptStream = transcript
-            .SuppressExceptions(e => e is RpcReconnectFailedException, stopToken)
-            .Memoize(stopToken);
+        // A lost source stream must stay an error: suppressing it here made a truncated transcript
+        // look like a finished one, so TranslateTranscriptStream persisted a mid-sentence
+        // translation as final and ended the client's stream normally, with nothing logged.
+        var transcriptStream = transcript.Memoize(stopToken);
 
         var worker = _activePublishers.GetOrAdd(translatedStreamId,
             static (_, state) => {
