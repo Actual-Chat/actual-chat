@@ -3,20 +3,30 @@
 }
 .last-entries-preview.faded {
     width: 100%;
-    height: 8.25rem;              /* fixed: ~5 lines; incoming messages don't grow the block */
+    max-height: 8.25rem;          /* three rows and the padding; past that the box stops growing */
     overflow: hidden;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;    /* newest line fully visible at the bottom */
     padding-bottom: 0.375rem;
     gap: 0;
-    /* Fade the top rows out with a content mask (not a colour overlay), so the block's own tint shows
-       through uniformly - no fade colour to match, works over any tint in either theme. */
+}
+/* The fade is for what the cap cuts off, so it only applies once something is being cut off: at 2.5rem
+   a row, three rows and the padding fit inside the cap and the fourth is the first that cannot. Masking
+   a shorter preview would wash out the rows it is meant to show - a single-entry preview sits entirely
+   inside the gradient's transparent end.
+   :has() on a box with at most five children is the small-subtree case the presence-class rule leaves
+   alone (see app-presence-classes.ts). */
+.last-entries-preview.faded:has(> .c-message-wrapper:nth-child(4)) {
+    /* A content mask, not a colour overlay, so the block's own tint shows through uniformly - no fade
+       colour to match, and it works over any tint in either theme. */
     -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 3.75rem);
     mask-image: linear-gradient(to bottom, transparent 0, #000 3.75rem);
 }
-/* Fixed row height + a one-line clamp: the host block can't change height as entries stream in or
-   replace each other, however much anyone says. */
+/* Fixed row height + a one-line clamp, so the box's height is a count of rows rather than a function of
+   what anyone said. The block therefore grows by exactly one row per entry until the cap, and never
+   again after it - a streaming conversation settles at a stable height instead of breathing with the
+   text. */
 .last-entries-preview .c-message-wrapper {
     @apply flex-x gap-x-4 items-start;
     @apply h-10;
