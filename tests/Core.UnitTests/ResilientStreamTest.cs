@@ -55,6 +55,42 @@ public class ResilientStreamTest(ITestOutputHelper @out) : TestBase(@out)
         result.Should().Equal(1, 2, -1, 3, 4);
     }
 
+    [Fact(Timeout = 15_000)]
+    public async Task BreakReconnectsWithoutEndingTheStream()
+    {
+        // arrange
+        var attempt = 0;
+        var stream = null as ResilientStream<int>;
+        stream = new ResilientStream<int> {
+            Provider = ct => {
+                attempt++;
+                return Task.FromResult(attempt == 1
+                    ? HangAfter([1], ct)
+                    : HangAfter([2, 3], ct));
+            },
+            RetryPolicy = new RetryPolicy(3, RetryDelaySeq.Zero),
+            ResetItem = Option.Some(-1),
+            IsInfinite = true,
+        };
+
+        // act
+        var result = new List<int>();
+        var consumeTask = Task.Run(async () => {
+            await foreach (var item in stream) {
+                result.Add(item);
+                if (item == 1)
+                    stream.Break();
+                if (item == 3)
+                    break;
+            }
+        });
+        await consumeTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // assert
+        result.Should().Equal(1, -1, 2, 3);
+        attempt.Should().Be(2);
+    }
+
     [Fact]
     public async Task NonRetriableError()
     {
@@ -186,7 +222,19 @@ public class ResilientStreamTest(ITestOutputHelper @out) : TestBase(@out)
         result.Should().BeEmpty();
     }
 
-    // Helpers
+    // Private methods
+
+    // Hangs rather than completing, so an IsInfinite stream doesn't reconnect on its own and
+    // the test observes only the reconnect Break() caused.
+    private static async IAsyncEnumerable<int> HangAfter(
+        int[] values,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        foreach (var value in values)
+            yield return value;
+
+        await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+    }
 
     private static async IAsyncEnumerable<int> FailAfter(
         int[] items,
@@ -205,6 +253,7 @@ public class ResilientStreamTest(ITestOutputHelper @out) : TestBase(@out)
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         yield return 1;
+
         await Task.Delay(TimeSpan.FromMilliseconds(50), CancellationToken.None).ConfigureAwait(false);
         await cts.CancelAsync();
         await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
