@@ -11,26 +11,31 @@ public sealed class ConcurrentProcessor<TKey, TResult> : WorkerBase
     private readonly ConcurrentDictionary<TKey, Item> _queue;
     private readonly Channel<Item> _channel;
     private readonly ChannelWriter<Item> _writer;
-    private volatile int _enqueueCount;
-    private volatile int _processedCount;
+    private int _enqueueCount;
+    private int _processedCount;
 
     private ILogger? Log { get; }
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, CoreConstants.DebugMode.ConcurrentProcessor);
 
-    public int EnqueueCount => _enqueueCount;
-    public int ProcessedCount => _processedCount; // Processed or removed
+    public int EnqueueCount => Volatile.Read(ref _enqueueCount);
+    public int ProcessedCount => Volatile.Read(ref _processedCount); // Processed or removed
     public int QueueSize => _queue.Count;
     public IEnumerable<Item> Queue => _queue.Values;
+    public TimeSpan ProcessCallTimeout { get; }
 
+    // processCallTimeout is a constructor parameter rather than an init-only property because
+    // .ctor may start the processor, i.e. an initializer would set it after the first item runs.
     public ConcurrentProcessor(
         int concurrencyLevel,
         Func<TKey, CancellationToken, Task<TResult>> processor,
+        TimeSpan processCallTimeout = default,
         IEqualityComparer<TKey>? keyComparer = null,
         ILogger? log = null,
         bool mustStart = true)
     {
         Log = log;
         _processor = processor;
+        ProcessCallTimeout = processCallTimeout;
         _concurrencyGate = new SemaphoreSlim(concurrencyLevel);
         _queue = new ConcurrentDictionary<TKey, Item>(keyComparer);
         _channel = Channel.CreateUnbounded<Item>(ChannelExt.UnboundedFanInOptions);
@@ -71,38 +76,32 @@ public sealed class ConcurrentProcessor<TKey, TResult> : WorkerBase
         }
     }
 
-    public bool Remove(Item item, bool cancelRunning)
+    public bool Remove(TKey key, bool mustCancelRunning)
+        => _queue.TryGetValue(key, out var item) && Remove(item, mustCancelRunning);
+
+    public bool Remove(Item item, bool mustCancelRunning)
     {
-        if (!_queue.TryRemove(item.Key, item))
+        // An uncancelled running item holds its slot till it completes, so Process dequeues that one
+        var isRemoved = item.Remove(mustCancelRunning);
+        if (!isRemoved && !mustCancelRunning)
             return false;
 
-        // Remove wasn't called for this item yet
-        Interlocked.Increment(ref _processedCount);
-        item.Remove(cancelRunning);
+        if (_queue.TryRemove(item.Key, item))
+            Interlocked.Increment(ref _processedCount);
+
         return true;
     }
 
-    public bool Remove(TKey key, bool cancelRunning)
-    {
-        if (!_queue.TryRemove(key, out var item))
-            return false;
-
-        // Remove wasn't called for this item yet
-        Interlocked.Increment(ref _processedCount);
-        item.Remove(cancelRunning);
-        return true;
-    }
-
-    public void RemoveMany(bool cancelRunning, params ReadOnlySpan<TKey> keys)
+    public void RemoveMany(bool mustCancelRunning, params ReadOnlySpan<TKey> keys)
     {
         foreach (var key in keys)
-            Remove(key, cancelRunning);
+            Remove(key, mustCancelRunning);
     }
 
-    public void RemoveMany(bool cancelRunning, params ReadOnlySpan<Item> items)
+    public void RemoveMany(bool mustCancelRunning, params ReadOnlySpan<Item> items)
     {
         foreach (var item in items)
-            Remove(item, cancelRunning);
+            Remove(item, mustCancelRunning);
     }
 
     // Protected methods
@@ -139,12 +138,12 @@ public sealed class ConcurrentProcessor<TKey, TResult> : WorkerBase
             StopToken = _stopTokenSource.Token;
         }
 
-        internal bool Remove(bool cancelRunning)
+        internal bool Remove(bool mustCancelRunning)
         {
             var debugLog = Owner.DebugLog;
             lock (Lock) {
                 if (ProcessTask != null) {
-                    if (cancelRunning) {
+                    if (mustCancelRunning) {
                         _stopTokenSource.CancelAndDisposeSilently();
                         debugLog?.LogDebug("Cancelled already running item #{Key}", Key);
                     }
@@ -168,7 +167,7 @@ public sealed class ConcurrentProcessor<TKey, TResult> : WorkerBase
             var key = Key;
             var concurrencyGate = Owner._concurrencyGate;
             var debugLog = Owner.DebugLog;
-            var alreadyRemoved = false;
+            var isAlreadyRemoved = false;
 
             try {
                 await concurrencyGate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -180,15 +179,23 @@ public sealed class ConcurrentProcessor<TKey, TResult> : WorkerBase
 
             try {
                 var startedAt = CpuTimestamp.Now;
+                Task<TResult> processTask;
                 lock (Lock) {
-                    alreadyRemoved = ProcessTask != null;
-                    if (alreadyRemoved)
+                    isAlreadyRemoved = ProcessTask != null;
+                    if (isAlreadyRemoved)
                         return;
 
                     debugLog?.LogDebug("Processing item #{Key}", key);
-                    ProcessTask ??= Task.Run(() => Owner._processor.Invoke(key, cancellationToken), cancellationToken);
+                    processTask = ProcessTask =
+                        Task.Run(() => Owner._processor.Invoke(key, cancellationToken), cancellationToken);
                 }
-                var result = await ProcessTask.ConfigureAwait(false);
+
+                // The timeout covers processing only - the wait for a slot is unbounded by design.
+                // Timing out faults the item, and the finally below cancels what it was running.
+                var timeout = Owner.ProcessCallTimeout;
+                var result = timeout > TimeSpan.Zero
+                    ? await processTask.WaitAsync(timeout, cancellationToken).ConfigureAwait(false)
+                    : await processTask.ConfigureAwait(false);
                 _resultSource.TrySetResult(result);
                 debugLog?.LogDebug("Processed item #{Key} in {Elapsed}", key, startedAt.Elapsed.ToShortString());
             }
@@ -203,7 +210,7 @@ public sealed class ConcurrentProcessor<TKey, TResult> : WorkerBase
                 }
             }
             finally {
-                if (alreadyRemoved)
+                if (isAlreadyRemoved)
                     debugLog?.LogDebug("Skipping already removed item #{Key}", key);
                 else if (Owner._queue.TryRemove(key, this))
                     Interlocked.Increment(ref Owner._processedCount);

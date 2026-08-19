@@ -39,6 +39,16 @@ edited. The reason can be as short as whose decision it was.
   — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
   members, so they must stay `virtual`, and a sealed type can't declare one (CS0549)
 
+## src/dotnet/UI.Blazor.App/Services/TranslationUI/ThrottledTranslations.cs
+
+- L5 `public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IAsyncDisposable`
+  — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
+  members, so they must stay `virtual`, and a sealed type can't declare one (CS0549)
+- L17 `public ThrottledTranslations(AppUIHub hub) : base(hub)`
+  — explicit constructor instead of a primary one — required: both fields are built
+  from the instance methods `WhenTranslated` / `WhenLanguageDetected`, which a field
+  initializer can't reference (CS0236)
+
 ## src/nodejs/src/scroll-controller.ts
 
 - L452 `switch (this.phase) {`

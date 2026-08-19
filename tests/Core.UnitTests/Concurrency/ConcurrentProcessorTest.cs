@@ -34,8 +34,8 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
         // act - remove all
         sut.RemoveMany(cancel, ids);
 
-        // assert - queue is always empty after remove (regardless of cancel)
-        sut.QueueSize.Should().Be(0);
+        // assert - a started item we didn't cancel still holds its slot, so it stays queued
+        sut.QueueSize.Should().Be(cancel ? 0 : concurrencyLevel);
 
         // not-started items are always cancelled on remove
         await TestExt.When(() => {
@@ -56,6 +56,7 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
             await TestExt.When(() => {
                 items.Take(concurrencyLevel).Should().AllSatisfy(
                     x => x.ResultTask.IsCompletedSuccessfully.Should().BeTrue());
+                sut.QueueSize.Should().Be(0);
             }, TimeSpan.FromSeconds(5));
         }
     }
@@ -205,6 +206,50 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         sut.QueueSize.Should().Be(0);
         await TestExt.When(() => item.ResultTask.IsCanceled.Should().BeTrue(), TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task ShouldKeepUncancelledRunningItemQueued()
+    {
+        // arrange
+        var fetcher = new Fetcher().Register(["a"]);
+        await using var sut = new ConcurrentProcessor<string, string>(
+            1, fetcher.Fetch,
+            log: Out.ToLogger<ConcurrentProcessor<string, string>>());
+
+        var item = sut.Enqueue("a");
+        await TestExt.When(() => item.IsStarted.Should().BeTrue(), TimeSpan.FromSeconds(5));
+
+        // act
+        sut.Remove("a", false);
+
+        // assert - it still holds a slot, so it stays queued and Enqueue must not duplicate it
+        sut.QueueSize.Should().Be(1);
+        ReferenceEquals(sut.Enqueue("a"), item).Should().BeTrue();
+
+        fetcher.SetResult("a");
+        await TestExt.When(() => sut.QueueSize.Should().Be(0), TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task ShouldTimeOutProcessCall()
+    {
+        // arrange
+        var fetcher = new Fetcher().Register(["a", "b"]);
+        await using var sut = new ConcurrentProcessor<string, string>(
+            1, fetcher.Fetch, TimeSpan.FromMilliseconds(200),
+            log: Out.ToLogger<ConcurrentProcessor<string, string>>());
+
+        // act
+        var item = sut.Enqueue("a");
+        var next = sut.Enqueue("b");
+
+        // assert - the timed out item frees its slot, so the next one gets to start
+        await Assert.ThrowsAsync<TimeoutException>(() => item.ResultTask.WaitAsync(TimeSpan.FromSeconds(5)));
+        await TestExt.When(() => next.IsStarted.Should().BeTrue(), TimeSpan.FromSeconds(5));
+
+        fetcher.SetResult("b");
+        await TestExt.When(() => sut.QueueSize.Should().Be(0), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
