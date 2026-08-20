@@ -111,25 +111,7 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
     // Private methods
 
     private void OnItemVisibilityChanged(VirtualListItemVisibility visibility)
-    {
-        _visibility = visibility;
-        if (!UsePlaceChatListSettings)
-            return;
-
-        _ = UpdateVisibleChats(CancellationToken.None);
-        return;
-
-        async Task UpdateVisibleChats(CancellationToken cancellationToken)
-        {
-            var placeChatListSettings = ChatListUI.GetPlaceChatListSettings(PlaceId);
-            var chatSettings = await placeChatListSettings.Get(cancellationToken).ConfigureAwait(false);
-            var allChats = await ChatListUI.List(PlaceId, chatSettings, cancellationToken).ConfigureAwait(false);
-            var chatIds = visibility.VisibleKeys
-                .Select(idx => int.TryParse(idx, NumberStyles.Integer, null, out var i) ? i : -1)
-                .Where(idx => idx >= 0 && idx < allChats.Count)
-                .Select(idx => allChats[idx].Id)
-                .ToHashSet();
-            ChatListUI.UpdateVisibleChats(chatIds);
-        }
-    }
+        // The only consumer is GetData below, which anchors the next load window on what the user
+        // can actually see - reusing the rendered range instead would grow it on every recompute.
+        => _visibility = visibility;
 }

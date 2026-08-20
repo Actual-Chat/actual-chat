@@ -5,8 +5,6 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class ChatUI
 {
-    private static readonly TimeSpan PrefetchThrottle = TimeSpan.FromSeconds(5);
-
     // All state sync logic should be here
 
     protected override async Task OnRun(CancellationToken cancellationToken)
@@ -19,7 +17,6 @@ public partial class ChatUI
             AsyncChain.From(ResetHighlightedEntry),
             AsyncChain.From(PushKeepAwakeState),
             AsyncChain.From(SynchronizeSelectedChatIdAndActivePlaceId),
-            AsyncChain.From(PrefetchChatTails),
             AsyncChain.From(MonitorDetectedLanguage),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
@@ -229,53 +226,4 @@ public partial class ChatUI
 
     private bool IsRecentDetection(Moment timestamp)
         => (Clocks.SystemClock.Now - timestamp).Positive().TotalSeconds < 60;
-
-    private async Task PrefetchChatTails(CancellationToken cancellationToken)
-    {
-        // NOTE(AY): We must rewrite this logic as follow:
-        // - We don't care about visible chats - we periodically prefetch the tails of all chats
-        // - Periodically = prefech next 100 tails every 10 min (w/ 1 min startup delay)
-        // - We should iterate through every chat in user's contact list, even though
-        //   we may also end up prefetching only top 100 chats by recency in every list
-        // - Ultimately, our goal is to make sure nearly every chat is available offline.
-
-        // NOTE(AK): This is a temporary solution to prefetch chat tails
-        // - We start prefetching tails of visible chats with delay
-        // - We prefetch tails of changed chats only - ChatInfo is updated when new entries are added
-        await Clocks.CoarseSystemClock.Delay(TimeSpan.FromSeconds(20), cancellationToken).ConfigureAwait(false);
-
-        var visibleChatsChanges = ChatListUI.VisibleChats.Computed.Changes(cancellationToken);
-        var changeTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        await foreach (var cVisibleChats in visibleChatsChanges.ConfigureAwait(false)) {
-            if (cVisibleChats.Value.Count == 0)
-                continue;
-
-            changeTokenSource.CancelAndDisposeSilently();
-            changeTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            var changeToken = changeTokenSource.Token;
-            var visibleChatIds = cVisibleChats.Value;
-            foreach (var chatId in visibleChatIds)
-                _ = BackgroundTask.Run(async () => {
-                    var cGet = await Computed.Capture(() => Get(chatId, changeToken), changeToken).ConfigureAwait(false);
-                    var chatInfoChanges = cGet.Changes(changeToken);
-                    await foreach (var cChatInfo in chatInfoChanges.ConfigureAwait(false)) {
-                        var chatInfo = cChatInfo.Value;
-                        if (chatInfo == null)
-                            continue;
-
-                        var lastReadEntryLid = chatInfo.ReadEntryLid;
-                        var prefetchNearTo = lastReadEntryLid > 0
-                            ? lastReadEntryLid
-                            : chatInfo.News?.TextEntryLidRange.End ?? 0;
-                        var idTile = IdTileStack.LastLayer.GetTile(prefetchNearTo).Range;
-                        var chatDataQuery = new ChatDataQuery(idTile, -HalfLoadLimit, LoadLimit);
-                        // isPrefetch: the public overload logs as a real query and spawns a second chain.
-                        await GetChatItemsInternal(chatId, chatDataQuery, lastReadEntryLid, true, changeToken)
-                            .SilentAwait(false);
-                        // ChatInfo moves on every new entry and read-position change; Changes() coalesces.
-                        await Clocks.CoarseSystemClock.Delay(PrefetchThrottle, changeToken).ConfigureAwait(false);
-                    }
-                }, changeToken);
-        }
-    }
 }

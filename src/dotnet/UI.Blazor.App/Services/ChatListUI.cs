@@ -17,7 +17,6 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     private static readonly TimeSpan HeavyTaskCancellationDelay = TimeSpan.FromSeconds(5);
 
     private readonly MutableState<bool> _isSelectedChatUnlisted;
-    private readonly MutableState<ImmutableHashSet<ChatId>> _visibleChats;
     private readonly ConcurrentDictionary<Option<PlaceId>, LazySlim<Option<PlaceId>, ChatListUI, PlaceChatListSettings>> _placeChatLists = new();
 
     private ComputedState<Trimmed<int>>? _unreadChatCount;
@@ -36,7 +35,6 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     public IState<Trimmed<int>> UnreadChatCount => _unreadChatCount!;
 #pragma warning restore CA1721
 
-    public IState<ImmutableHashSet<ChatId>> VisibleChats => _visibleChats;
     public IState<ChatInfo?> NotesChat => _notesChat!;
 
     private Moment CpuNow => Clocks.CpuClock.Now;
@@ -46,8 +44,6 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         var type = GetType();
         _isSelectedChatUnlisted = StateFactory.NewMutable(false,
             StateCategories.Get(type, nameof(_isSelectedChatUnlisted)));
-        _visibleChats = StateFactory.NewMutable(ImmutableHashSet.Create<ChatId>(),
-            StateCategories.Get(type, nameof(_visibleChats)));
     }
 
     void INotifyInitialized.Initialized()
@@ -291,16 +287,6 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         var command = new Contacts_Change(Session, contact.Id, contact.Version, change);
         _ = TuneUI.Play(Tune.PinUnpinChat);
         await UICommander.Run(command).ConfigureAwait(false);
-    }
-
-    public void UpdateVisibleChats(IReadOnlySet<ChatId> chatIds)
-    {
-        var visibleChats = _visibleChats.Value;
-        foreach (var chatId in visibleChats.Where(chatId => !chatIds.Contains(chatId)))
-            visibleChats = visibleChats.Remove(chatId);
-        foreach (var chatId in chatIds.Where(chatId => !visibleChats.Contains(chatId)))
-            visibleChats = visibleChats.Add(chatId);
-        _visibleChats.Value = visibleChats;
     }
 
     // Protected methods
