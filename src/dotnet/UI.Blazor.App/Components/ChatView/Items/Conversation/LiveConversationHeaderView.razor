@@ -20,6 +20,7 @@
         <HeaderButton
             Class="c-lc-expand"
             data-vl-hold="@(s.IsExpanded ? "keep-edge" : "always")"
+            data-collapse-arm="@(s.IsExpanded ? Header.Conversation!.Id.Value : null)"
             Click="@Toggle">
             <i class="@(s.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
         </HeaderButton>

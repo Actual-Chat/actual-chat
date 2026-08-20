@@ -11,6 +11,7 @@
    expansion removes - so there is no key that survives either way round. *@
 <div class="@cls"
      data-vl-anchor="@Conversation.Id.Value"
+     data-vl-render-script-collapsed-header="@(IsSeparated ? null : Conversation.Id.Value)"
      data-menu="@(MenuRef.New<ConversationMenu>(Conversation.Id.Value, IsSeparated.ToString()))">
     <div class="bg-wrapper">
         @if (ShowToggle) {
@@ -18,6 +19,7 @@
                 Class="btn-summary-toggle"
                 Tooltip="@tooltip"
                 data-vl-hold="@(IsSeparated ? "keep-edge" : "always")"
+                data-collapse-arm="@(IsSeparated ? Conversation.Id.Value : null)"
                 Click="@OnConversationToggleClick">
                 @if (IsSeparated) {
                     <i class="icon-collapse"></i>

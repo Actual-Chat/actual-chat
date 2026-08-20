@@ -12,6 +12,7 @@ import { CompactLayout } from 'compact-layout';
 import { MutationProcessor } from 'mutation-processor';
 import { BrowserInit } from '../../dotnet/UI.Blazor/Services/BrowserInit/browser-init';
 import '../../dotnet/UI.Blazor.App/Services/app-presence-classes';
+import '../../dotnet/UI.Blazor.App/Services/conversation-collapse';
 
 // Before anything awaits: batches arriving until this runs are applied the old way.
 // The hook name is published because "it silently did nothing" is the failure mode here -
