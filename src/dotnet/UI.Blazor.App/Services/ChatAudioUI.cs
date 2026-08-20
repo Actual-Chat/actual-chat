@@ -117,6 +117,12 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod(MinCacheDuration = 300)] // Synced
     public virtual async Task<List<ChatId>> GetPttChatIds(CancellationToken cancellationToken)
     {
+        // Every PTT consumer - gestures, replies, the wake activity, the chat-list badge - reads
+        // this, so an unsupported host is disarmed everywhere by answering here. Deliberately
+        // dependency-free: support is a property of the build and can't change under us.
+        if (!Ptt.IsSupported(HostInfo))
+            return [];
+
         // Armed = consent within the chat's current enable-epoch; the Chats.Get dependency
         // re-arms/disarms everything downstream when an owner flips the chat's PTT toggle.
         await Hub.ChatUI.WhenReady.ConfigureAwait(false);

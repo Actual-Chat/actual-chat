@@ -709,6 +709,25 @@ jobs:
           key-value-json: '[{"CFBundleURLTypes": [{"CFBundleTypeRole": "Editor", "CFBundleURLName": "ai.voxt", "CFBundleURLSchemes": ["voxt"]}]}]'
           print-file: true
 
+      # Push to Talk ships dev-only until it's tested: Entitlements.prod.plist doesn't grant
+      # com.apple.developer.push-to-talk, so the background mode must go too - declaring a
+      # background mode the app can't use is an App Store review guideline 2.5.4 problem.
+      # App.Maui.csproj's VerifyIosProdCapabilities target fails the build if this is missed.
+      - name: PList - drop the push-to-talk background mode for prod
+        if: ${{ env.IS_DEV_MAUI == 'false' }}
+        run: |-
+          PLIST=src/dotnet/App.Maui/Platforms/iOS/Info.plist
+          # PlistBuddy indexes by position and has no "find", so locate the entry first.
+          INDEX=$(/usr/libexec/PlistBuddy -c "Print :UIBackgroundModes" "$PLIST" \
+            | grep -n '^ *push-to-talk *$' | cut -d: -f1)
+          if [ -z "$INDEX" ]; then
+            echo "push-to-talk is not in UIBackgroundModes - nothing to strip." >&2
+            exit 1
+          fi
+          # Print wraps the array in "Array {" / "}", so line N of the output is element N-2.
+          /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes:$((INDEX - 2))" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Print :UIBackgroundModes" "$PLIST"
+
       - name: Build app package
         env:
           # App.Maui.csproj picks these up as MSBuild properties and passes them to

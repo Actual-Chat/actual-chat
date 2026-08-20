@@ -24,7 +24,7 @@
         </Right>
     </TileItem>
 
-    @if (m.EnableIncompleteUI) {
+    @if (m.ShowPtt) {
         var pttCaption = m.PttEnabledAt is null
             ? "Not enabled in this chat"
             : m.IsPtt
@@ -73,14 +73,15 @@
         var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
         var isPtt = pttChatIds.Contains(chatId);
         var mustStreamVoice = settings.VoiceMode.HasVoice();
-        var isIncompleteUIEnabled = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        var showPtt = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false)
+            && Ptt.IsSupported(Hub.HostInfo);
         return new (
             mustStreamVoice,
             settings.CanChange,
             isPtt,
             !isPtt && pttChatIds.Count >= UserPttSettings.MaxChatCount,
             pttEnabledAt,
-            isIncompleteUIEnabled);
+            showPtt);
     }
 
     private async Task OnMustStreamVoiceChanged(bool mustStreamVoice) {
@@ -124,5 +125,5 @@
         bool IsPtt,
         bool IsAtPttCapacity,
         Moment? PttEnabledAt,
-        bool EnableIncompleteUI);
+        bool ShowPtt);
 }

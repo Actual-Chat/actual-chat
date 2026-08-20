@@ -462,6 +462,7 @@
     <UseShortFileNames>True</UseShortFileNames>
     <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Platforms\iOS\Entitlements.dev.plist</CodesignEntitlements>
     <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Platforms\iOS\Entitlements.prod.plist</CodesignEntitlements>
+    <VoxtIosAppManifest>$(MSBuildThisFileDirectory)Platforms\iOS\Info.plist</VoxtIosAppManifest>
     <!-- Performance-related -->
     <UseNativeHttpHandler>true</UseNativeHttpHandler>
 
@@ -500,6 +501,18 @@
     <ArchiveOnBuild>true</ArchiveOnBuild>
     <CreatePackage>false</CreatePackage>
   </PropertyGroup>
+
+  <!-- Push to Talk is dev-only until it's been tested: the prod entitlements drop
+       com.apple.developer.push-to-talk, and Info.plist's push-to-talk background mode is
+       stripped for prod by the ipa workflow. Claiming either without a working feature is what
+       App Store review guidelines 2.3.1 (hidden features) and 2.5.4 (background modes serving
+       their declared purpose) are about, and the two must agree - an entitlement-less app that
+       still declares the background mode is the mismatch a reviewer would find. -->
+  <Target Name="VerifyIosProdCapabilities" BeforeTargets="_CompileAppManifest"
+          Condition="'$(IsDevMaui)' != 'true' and $(TargetFramework.Contains('-ios'))">
+    <Error Condition="$([System.IO.File]::ReadAllText($(VoxtIosAppManifest)).Contains('push-to-talk'))"
+           Text="A prod build must not declare the push-to-talk background mode - the prod entitlements don't grant it. Strip it from Platforms/iOS/Info.plist (the ipa workflow does this)." />
+  </Target>
 
   <!-- MacCatalyst build properties -->
 

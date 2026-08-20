@@ -17,7 +17,5 @@
 	<array>
 		<string>M287G8G83F.chat.actual.app.shared</string>
     </array>
-	<key>com.apple.developer.push-to-talk</key>
-	<true/>
 </dict>
 </plist>
