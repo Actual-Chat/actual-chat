@@ -133,6 +133,11 @@ public sealed class MauiSession(IServiceProvider services)
         catch (Exception e) {
             Log.LogWarning(e, "Failed to await the RPC disconnect after a Session switch");
         }
+        // Every client call passes Session.Default, so the session id is never part of a computed's
+        // key - the server resolves it per connection. A swap thus changes no key and triggers no
+        // invalidation, and the reconnect only resets cached values when the server peer itself
+        // changed. Without this the UI keeps serving the replaced session's account until a restart.
+        ComputedRegistry.InvalidateEverything();
     }
 
     private static async Task<Session?> Read()

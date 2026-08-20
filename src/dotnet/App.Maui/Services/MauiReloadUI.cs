@@ -15,11 +15,9 @@ public class MauiReloadUI(IServiceProvider services) : ReloadUI(services)
             Log.LogInformation("Reloading...");
             try {
                 await Clear(clearCaches, clearLocalSettings).ConfigureAwait(true);
-                // Recovers a session killed elsewhere - deactivated from another device, or expired.
-                // Only the WebView is recreated here, so without this the app would keep using the
-                // dead id until it restarts, and every sign-in would fail on it. The swap itself
-                // leaves Session.Default-keyed computeds serving the old session until a restart,
-                // which is why sign-out no longer deactivates - see MauiAccountUI.
+                // Our own sign-out deactivates the session; it can also be killed elsewhere or expire.
+                // Revalidate mints a fresh one and re-binds the RPC connection, so the WebView recreated
+                // next binds every Session.Default-keyed computed to the new session, not the dead id.
                 await Services.GetRequiredService<MauiSession>().Revalidate().ConfigureAwait(true);
                 MainPage.Current.RecreateWebView();
             }
