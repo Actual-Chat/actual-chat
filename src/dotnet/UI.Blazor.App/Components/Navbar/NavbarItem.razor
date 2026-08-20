@@ -3,7 +3,7 @@
 @implements IDisposable
 @{
     _isCurrent = CalculateIsCurrent();
-    var activeClass = (IsSelected || _isCurrent) ? "active" : "inactive";
+    var activeClass = (IsSelected ?? _isCurrent) ? "active" : "inactive";
     var dataAttributes = _isCurrent
         ? new Dictionary<string, object>()
         : new() {
@@ -33,7 +33,8 @@
     private bool _isCurrent;
 
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public bool IsSelected { get; set; }
+    // null means the component has no explicit selection source, so the current URL decides
+    [Parameter] public bool? IsSelected { get; set; }
     [Parameter] public string Url { get; set; } = "";
     [Parameter] public string ReplaceOnPrefix { get; set; } = "";
     [Parameter] public string ReplaceOnPrefixExcept { get; set; } = "";

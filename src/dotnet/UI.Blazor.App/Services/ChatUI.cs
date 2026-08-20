@@ -728,9 +728,6 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return;
 
         SelectPlaceInternal(placeId);
-        if (pinnedChatId is not null)
-            SelectChatInternal(pinnedChatId);
-
         if (!e.IsUserAction)
             return;
 
@@ -760,16 +757,13 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                     "SelectLastUsedChat: PlaceId: {PlaceId} -> ChatId: {ChatId}",
                     placeId, lastSelectedChatId);
 
-                SelectChatInternal(lastSelectedChatId);
-                if (lastSelectedChatId is not null && Hub.PanelsUI.IsWide()) {
-                    // Do not navigate on a narrow screen to prevent hiding panels
-                    // Navigate to selected chat only after delay to make ChatLists update smoother.
-                    await Task.Delay(500, default).ConfigureAwait(true); // Continue on the Blazor Dispatcher
-                    if (SelectedChatId.Value == lastSelectedChatId) {
-                        var mustReplace = History.LocalUrl.IsChat();
-                        await History.NavigateTo(Links.Chat(lastSelectedChatId), mustReplace).ConfigureAwait(false);
-                    }
-                }
+                // Navigation is the only writer of SelectedChatId. A narrow screen shows either the chat
+                // list or the chat, so navigating there would replace the list the user just switched to.
+                if (lastSelectedChatId is null || !Hub.PanelsUI.IsWide())
+                    return;
+
+                var mustReplace = History.LocalUrl.IsChat();
+                await History.NavigateTo(Links.Chat(lastSelectedChatId), mustReplace).ConfigureAwait(false);
             }
             catch (Exception ex) {
                 Log.LogError(ex, "SelectLastUsedChat failed");
