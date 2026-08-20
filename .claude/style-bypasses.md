@@ -22,6 +22,13 @@ One `##` subheader per file, one bullet per bypassed violation:
   `ClientResult<AudioTranscription>` and the target type drives the implicit
   conversion, so `var` doesn't compile
 
+## tests/Chat.UnitTests/CommandMigrationSerializationTest.cs
+
+- `ArgumentList args = ArgumentList.New(default(TstCmd_RemoveEntries)!);`
+  — explicit type instead of `var` — required: `ArgumentList.New` returns a
+  derived `ArgumentList1<T>`, but `Deserialize(ref ArgumentList, …)` needs the
+  variable typed as the base `ArgumentList` for `ref args` to bind
+
 The **quoted snippet is the identity** — match on it first. The line number is
 the original start line and only a hint, since it drifts as the file changes;
 the rule is an abbreviated label, since its wording changes as the guide is
