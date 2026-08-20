@@ -27,7 +27,7 @@ public sealed class KvasarRemoteComputedCache : AppRemoteComputedCache
         : base(settings, services)
     {
         Settings = settings;
-        Kvas = new KvasarKvas(new KvasarKvas.Options() {
+        Kvas = new KvasarKvas(new KvasarKvas.Options {
             BasePath = settings.BasePath,
             EncryptionKey = settings.EncryptionKey,
             Version = settings.Version,
@@ -36,8 +36,17 @@ public sealed class KvasarRemoteComputedCache : AppRemoteComputedCache
             FlushDelay = settings.FlushDelay,
             // The whole cache is regenerable, so a power loss costs an upstream lookup, not correctness.
             Durability = KvasarDurability.Buffered,
+            // Cache keys carry Session.Default rather than the real id, so entries are only
+            // distinguishable by the folder they live in - one per session, picked by Activate.
+            RequiresActivation = true,
         }, services);
         Store = Kvas;
         WhenInitialized = Kvas.WhenInitialized;
     }
+
+    public Task Activate(Session session)
+        => Kvas.Activate(session.Hash);
+
+    public Task Deactivate(bool clear)
+        => Kvas.Deactivate(clear);
 }

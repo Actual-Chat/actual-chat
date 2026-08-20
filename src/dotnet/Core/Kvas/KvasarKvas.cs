@@ -9,7 +9,7 @@ namespace ActualChat.Kvas;
 /// </summary>
 public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
 {
-    public record Options
+    public sealed record Options
     {
         public required FilePath BasePath { get; init; }
         public required byte[] EncryptionKey { get; init; }
@@ -18,12 +18,16 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
         public long PageCacheBytes { get; init; } = 16 * 1024 * 1024;
         public TimeSpan FlushDelay { get; init; } = TimeSpan.FromSeconds(0.5);
         public KvasarDurability Durability { get; init; } = KvasarDurability.Buffered;
+
+        // Keyed stores live in "<BasePath>-<key>" folders and no-op until Activate picks the key
+        public bool RequiresActivation { get; init; }
     }
 
     private static readonly Task<KvasarStore?> NoStoreTask = Task.FromResult<KvasarStore?>(null);
 
     private readonly Lock _lock = new();
     private Task<KvasarStore?> _storeTask;
+    private string? _activeKey;
     private bool _isSuspended;
 
     private ILogger Log { get; }
@@ -37,7 +41,7 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
         Settings = settings;
         Services = services;
         Log = services.LogFor(GetType());
-        _storeTask = Open();
+        _storeTask = settings.RequiresActivation ? NoStoreTask : Open(null);
         WhenInitialized = _storeTask;
     }
 
@@ -88,6 +92,7 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
             var (key, value) = items[i];
             updates[i] = (key, ToValue(value));
         }
+
         try {
             await store.SetMany(updates, cancellationToken).ConfigureAwait(false);
         }
@@ -110,6 +115,7 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             Log.LogWarning(e, "ListAllEntries failed after {Count} entries", result.Count);
         }
+
         return result.ToArray();
     }
 
@@ -141,10 +147,52 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
         }
     }
 
-    // Closes the store so no file handle or advisory lock survives into suspension - iOS kills an app
-    // that holds one (0xdead10cc). Reads miss and writes are dropped until Resume reopens it.
+    public Task Activate(string key)
+    {
+        // Points a keyed store at "<BasePath>-<key>", so what one key wrote can't be read back under
+        // another - whether or not switching away manages to delete the old folder.
+        ArgumentException.ThrowIfNullOrEmpty(key);
+
+        Task<KvasarStore?> oldStoreTask;
+        string? oldKey;
+        Task<KvasarStore?> newStoreTask;
+        lock (_lock) {
+            if (IsDisposed)
+                return Task.CompletedTask;
+            if (_activeKey == key)
+                return _storeTask;
+
+            oldStoreTask = _storeTask;
+            oldKey = _activeKey;
+            _activeKey = key;
+            // Publication: readers pick the new task up with a Volatile.Read in GetStore.
+            newStoreTask = _isSuspended ? NoStoreTask : Open(key);
+            Volatile.Write(ref _storeTask, newStoreTask);
+        }
+
+        _ = SwitchAway(oldStoreTask, oldKey, key);
+        return newStoreTask;
+    }
+
+    public Task Deactivate(bool clear)
+    {
+        Task<KvasarStore?> oldStoreTask;
+        string? oldKey;
+        lock (_lock) {
+            oldStoreTask = _storeTask;
+            oldKey = _activeKey;
+            _activeKey = null;
+            // Publication: readers pick the new task up with a Volatile.Read in GetStore.
+            Volatile.Write(ref _storeTask, NoStoreTask);
+        }
+
+        return CloseAndDelete(oldStoreTask, clear ? oldKey : null);
+    }
+
     public Task Suspend()
     {
+        // Closes the store so no file handle or advisory lock survives into suspension - iOS kills an
+        // app that holds one (0xdead10cc). Reads miss and writes are dropped until Resume reopens it.
         Task<KvasarStore?> storeTask;
         lock (_lock) {
             if (_isSuspended)
@@ -154,6 +202,7 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
             storeTask = _storeTask;
             Volatile.Write(ref _storeTask, NoStoreTask);
         }
+
         return CloseStore(storeTask);
     }
 
@@ -164,8 +213,11 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
                 return;
 
             _isSuspended = false;
+            if (Settings.RequiresActivation && _activeKey == null)
+                return;
+
             // Publication: readers pick the new task up with a Volatile.Read in GetStore.
-            Volatile.Write(ref _storeTask, Open());
+            Volatile.Write(ref _storeTask, Open(_activeKey));
         }
     }
 
@@ -175,10 +227,16 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
         // Volatile.Read pairs with the publication in Resume.
         => Volatile.Read(ref _storeTask);
 
-    private async Task<KvasarStore?> Open()
+    private Task<KvasarStore?> Open(string? key)
+        // Deferred to the pool: callers hold _lock, and both the directory creation and Kvasar's own
+        // open path are synchronous file I/O - Activate is on the session switch path.
+        => Task.Run(() => OpenStore(key));
+
+    private async Task<KvasarStore?> OpenStore(string? key)
     {
-        var options = new KvasarOptions() {
-            BasePath = Settings.BasePath,
+        var basePath = GetBasePath(key);
+        var options = new KvasarOptions {
+            BasePath = basePath,
             EncryptionKey = Settings.EncryptionKey,
             Version = Settings.Version,
             PageSize = Settings.PageSize,
@@ -187,23 +245,86 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
             Durability = Settings.Durability,
         };
         try {
+            Directory.CreateDirectory(basePath.DirectoryPath);
             return await KvasarStore.Open(options).ConfigureAwait(false);
         }
         catch (KvasarLockException e) {
             // Deleting the files wouldn't help: someone else is using them.
-            Log.LogError(e, "Store '{BasePath}' is already open, it will be a no-op", Settings.BasePath);
+            Log.LogError(e, "Store '{BasePath}' is already open, it will be a no-op", basePath);
             return null;
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Failed to open store '{BasePath}', deleting and retrying", Settings.BasePath);
+            Log.LogWarning(e, "Failed to open store '{BasePath}', deleting and retrying", basePath);
             try {
-                DeleteStoreFiles(Settings.BasePath);
+                DeleteStoreFiles(basePath);
+                Directory.CreateDirectory(basePath.DirectoryPath);
                 return await KvasarStore.Open(options).ConfigureAwait(false);
             }
             catch (Exception e2) {
-                Log.LogError(e2, "Failed to open store '{BasePath}' after retry", Settings.BasePath);
+                Log.LogError(e2, "Failed to open store '{BasePath}' after retry", basePath);
                 return null;
             }
+        }
+    }
+
+    private FilePath GetBasePath(string? key)
+        => key == null
+            ? Settings.BasePath
+            : Settings.BasePath.DirectoryPath
+                & (Settings.BasePath.FileName + "-" + key)
+                & Settings.BasePath.FileName;
+
+    private async Task SwitchAway(Task<KvasarStore?> oldStoreTask, string? oldKey, string newKey)
+    {
+        await CloseAndDelete(oldStoreTask, oldKey).ConfigureAwait(false);
+        SweepKeyFolders(newKey);
+    }
+
+    private async Task CloseAndDelete(Task<KvasarStore?> storeTask, string? keyToDelete)
+    {
+        // The store holds an advisory lock file, so it has to be closed before its folder can go.
+        await CloseStore(storeTask).ConfigureAwait(false);
+        if (keyToDelete != null)
+            DeleteKeyFolder(keyToDelete);
+    }
+
+    private void DeleteKeyFolder(string key)
+    {
+        var folder = GetBasePath(key).DirectoryPath;
+        try {
+            if (Directory.Exists(folder))
+                Directory.Delete(folder, true);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to delete store folder '{Folder}'", folder);
+        }
+    }
+
+    private void SweepKeyFolders(string keyToKeep)
+    {
+        var root = Settings.BasePath.DirectoryPath;
+        var prefix = Settings.BasePath.FileName + "-";
+        var folderToKeep = prefix + keyToKeep;
+        try {
+            if (!Directory.Exists(root))
+                return;
+
+            foreach (var folder in Directory.EnumerateDirectories(root, prefix + "*")) {
+                var folderName = ((FilePath)folder).FileName;
+                if (folderName == folderToKeep)
+                    continue;
+
+                try {
+                    Directory.Delete(folder, true);
+                    Log.LogInformation("Swept stale store folder '{Folder}'", folder);
+                }
+                catch (Exception e) {
+                    Log.LogWarning(e, "Failed to sweep store folder '{Folder}'", folder);
+                }
+            }
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to sweep stale store folders in '{Root}'", root);
         }
     }
 
@@ -211,6 +332,7 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
     {
         lock (_lock) {
             var storeTask = _storeTask;
+            _activeKey = null;
             Volatile.Write(ref _storeTask, NoStoreTask);
             return storeTask;
         }
@@ -228,6 +350,7 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
         catch (Exception e) {
             Log.LogWarning(e, "Flush failed while closing the store");
         }
+
         try {
             await store.DisposeAsync().ConfigureAwait(false);
         }

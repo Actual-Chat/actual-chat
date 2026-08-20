@@ -1,5 +1,6 @@
 using ActualChat.Security;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.UI.Caching;
 using ActualLab.Rpc;
 
 namespace ActualChat.App.Maui.Services;
@@ -17,6 +18,8 @@ public sealed class MauiSession(IServiceProvider services)
     private IServiceProvider Services { get; } = services;
     private TrueSessionResolver TrueSessionResolver { get; } = services.GetRequiredService<TrueSessionResolver>();
     private IMobileSessions MobileSessions => field ??= Services.GetRequiredService<IMobileSessions>();
+    private KvasarRemoteComputedCache RemoteComputedCache
+        => field ??= Services.GetRequiredService<KvasarRemoteComputedCache>();
 
     private static ISecureStorage Storage
 #if IOS || MACCATALYST
@@ -45,23 +48,30 @@ public sealed class MauiSession(IServiceProvider services)
             var session = await ReadStored().ConfigureAwait(false);
             if (session == null) {
                 // No session -> create one
-                session = await MobileSessions.CreateSession(MauiSettings.AppUserAgent, CancellationToken.None).ConfigureAwait(false);
+                session = await MobileSessions
+                    .CreateSession(MauiSettings.AppUserAgent, CancellationToken.None)
+                    .ConfigureAwait(false);
                 TrueSessionResolver.Session = session;
+                // No InvalidateEverything here or below: Acquire returns early once a session is set,
+                // so nothing session-scoped has been computed yet - only the cache needs pointing.
+                await RemoteComputedCache.Activate(session).ConfigureAwait(false);
                 _ = Task.Run(() => Store(session));
                 return;
             }
 
             // Session is there -> validate it
             TrueSessionResolver.Session = session;
-            var validSession =
-                await MobileSessions.ValidateSession(session, MauiSettings.AppUserAgent, CancellationToken.None).ConfigureAwait(false);
+            await RemoteComputedCache.Activate(session).ConfigureAwait(false);
+            var validSession = await MobileSessions
+                .ValidateSession(session, MauiSettings.AppUserAgent, CancellationToken.None)
+                .ConfigureAwait(false);
             if (session == validSession)
                 return;
 
             // Session is invalid -> update it to valid + reload MAUI App
             Log.LogWarning("Stored session is invalid - will reload");
-            await Store(validSession).ConfigureAwait(false);
             await SwitchTo(validSession).ConfigureAwait(false);
+            await Store(validSession).ConfigureAwait(false);
             // Reloading mid-startup recreates the WebView while the first Blazor scope is
             // still initializing, leaving a half-disposed scope with a disconnected JS runtime
             // (=> endless JSDisconnectedException in the post-reload sign-in UI). Wait until the
@@ -77,9 +87,9 @@ public sealed class MauiSession(IServiceProvider services)
         });
     }
 
-    // Never throws: MauiReloadUI calls it on the reload path, where a failure would terminate the app
     public async Task Revalidate()
     {
+        // Never throws: MauiReloadUI's reload path terminates the app on failure
         using var _ = Tracer.MethodRegion();
         if (!TrueSessionResolver.HasSession)
             return;
@@ -93,8 +103,10 @@ public sealed class MauiSession(IServiceProvider services)
             if (session == validSession)
                 return;
 
-            await Store(validSession).ConfigureAwait(false);
+            // Switch first: it drops the cache, so a crash before Store leaves the old id with a
+            // cold cache. The other order can persist the new id over the old session's entries.
             await SwitchTo(validSession).ConfigureAwait(false);
+            await Store(validSession).ConfigureAwait(false);
             Log.LogInformation("Replaced an invalid Session");
         }
         catch (Exception e) {
@@ -133,10 +145,17 @@ public sealed class MauiSession(IServiceProvider services)
         catch (Exception e) {
             Log.LogWarning(e, "Failed to await the RPC disconnect after a Session switch");
         }
+        await OnSessionChanged(session).ConfigureAwait(false);
+    }
+
+    private async Task OnSessionChanged(Session session)
+    {
         // Every client call passes Session.Default, so the session id is never part of a computed's
-        // key - the server resolves it per connection. A swap thus changes no key and triggers no
+        // key - the server resolves it per connection. A change thus changes no key and triggers no
         // invalidation, and the reconnect only resets cached values when the server peer itself
-        // changed. Without this the UI keeps serving the replaced session's account until a restart.
+        // changed. So both caches have to be re-pointed by hand: the persistent one at the folder
+        // belonging to this session, the in-memory one by dropping every value it holds.
+        await RemoteComputedCache.Activate(session).ConfigureAwait(false);
         ComputedRegistry.InvalidateEverything();
     }
 
@@ -150,6 +169,7 @@ public sealed class MauiSession(IServiceProvider services)
                 Log.LogInformation("Successfully read stored Session");
                 return new Session(sessionId).RequireValid();
             }
+
             Log.LogInformation("No stored Session");
         }
         catch (Exception e) {
