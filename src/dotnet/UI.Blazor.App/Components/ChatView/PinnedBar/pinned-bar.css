@@ -1,6 +1,7 @@
 .pinned-bar {
     @apply flex items-stretch gap-2;
-    @apply w-full min-h-12;
+    @apply w-full lg:max-w-192 self-center;
+    @apply min-h-12;
     @apply pr-2 mb-0.5;
     @apply rounded-lg;
     @apply bg-01;
@@ -42,10 +43,10 @@ body.hoverable .pinned-bar:has(.c-cycle:hover) {
 }
 .pinned-bar > .c-pin-icon {
     @apply self-center shrink-0;
-    @apply pr-2;
+    @apply pr-2 md:pr-3.5;
     @apply text-03 text-text-1;
 }
 .pinned-bar > .c-pin-btn {
     @apply self-center shrink-0;
-    @apply pr-4 md:pr-7;
+    @apply pr-4 md:pr-5.5;
 }
