@@ -11,6 +11,6 @@ public static class ReactionOperations
             EntryId = entryId,
             Emoji = emoji,
         };
-        return tester.Commander.Call(new Reactions_React(tester.Session, reaction));
+        return tester.Commander.Call(new Reactions_React { Session = tester.Session, Reaction = reaction });
     }
 }

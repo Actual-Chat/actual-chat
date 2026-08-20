@@ -216,6 +216,6 @@
             Emoji = emoji,
         };
         _ = Hub.UserSettingsUI.UserReactionSettings().Update(s => s.WithBubbleUp(emoji.Id.Value));
-        await UICommander.Run(new Reactions_React(Session, reaction));
+        await UICommander.Run(new Reactions_React { Session = Session, Reaction = reaction });
     }
 }

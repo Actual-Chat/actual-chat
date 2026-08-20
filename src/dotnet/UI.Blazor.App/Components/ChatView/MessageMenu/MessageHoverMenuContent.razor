@@ -71,7 +71,7 @@
             EntryId = Entry.Id,
             Emoji = Emojis.ThumbsUp,
         };
-        return UICommander.Run(new Reactions_React(Session, reaction));
+        return UICommander.Run(new Reactions_React { Session = Session, Reaction = reaction });
     }
 
     // Nested types
