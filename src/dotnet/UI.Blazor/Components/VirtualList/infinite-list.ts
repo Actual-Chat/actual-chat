@@ -47,6 +47,7 @@ const AppearanceQuietMs = 300;
 // would all grow in from nothing on the first frame. The list is keyed by chat id, so this window is
 // also the first moments of a chat view.
 const InitialQuietMs = 500;
+const RenderScriptPrefix = 'data-vl-render-script-';
 // How long an item that leaves the render is remembered as having been on screen. A key that comes back
 // inside this window did not appear - the source dropped it and put it back, which happens while a
 // conversation block materializes around messages that were already there - and growing it from nothing
@@ -147,7 +148,16 @@ const JumpPriority = {
 // absolutely positioned chain of loaded items floating in it. Every position is modelled in wrapper
 // coordinates from measured intrinsic item heights, so holding an item's screen position across a
 // render is one subtraction rather than a re-measurement.
+// Runs when `data-vl-render-script-<name>` appears on an item or anything nested in one, or its value
+// changes. Unlike the MutationProcessor equivalent this runs inside the list's own render pass, before
+// appearances are decided - which is the only point early enough to still change what they do.
+export type VirtualListRenderScript = (list: InfiniteList, element: HTMLElement, value: string) => void;
+
 export class InfiniteList extends VirtualList {
+    private static readonly renderScripts = new Map<string, VirtualListRenderScript>();
+    // What each element was last run with, so a re-render that rewrites the same value is not a re-run.
+    private readonly ranRenderScripts = new WeakMap<Element, Map<string, string>>();
+
     public static isDebugEnabled = false;
     private static readonly instances = new Set<InfiniteList>();
     private static readonly pageLockOwners = new Set<InfiniteList>();
@@ -337,6 +347,10 @@ export class InfiniteList extends VirtualList {
         this.heights?.suspendUntil(whenDone);
     }
 
+    public static registerRenderScript(name: string, script: VirtualListRenderScript): void {
+        InfiniteList.renderScripts.set(name, script);
+    }
+
     public getOverlayStats(): VirtualListOverlayStats {
         const rs = this.renderState;
         return {
@@ -498,6 +512,7 @@ export class InfiniteList extends VirtualList {
         const oldHeights = new Map(this.items.map(x => [x.key, x.height]));
 
         this.rebuildItems();
+        this.runRenderScripts();
         const isFullReplacement = oldKeys.length > 0
             && this.items.length > 0
             && !oldKeys.some(key => this.indexByKey.has(key));
@@ -1447,6 +1462,41 @@ export class InfiniteList extends VirtualList {
     // from zero. Extending the loaded range on the far side from the pinned edge is neither - that is a
     // page of older messages arriving, and growing a whole page out of nothing heaves the list.
     // Returns whether anything was parked, i.e. whether the chain got shorter than the model said.
+    private runRenderScripts(): void {
+        if (InfiniteList.renderScripts.size === 0)
+            return;
+
+        // One query per registered name over the rendered window, rather than per item: the window is
+        // the only part of the transcript in the DOM, and this runs on every render.
+        for (const name of InfiniteList.renderScripts.keys()) {
+            const attribute = RenderScriptPrefix + name;
+            for (const element of this.containerRef.querySelectorAll<HTMLElement>(`[${attribute}]`))
+                this.runRenderScript(element, name, attribute);
+        }
+    }
+
+    private runRenderScript(element: HTMLElement, name: string, attribute: string): void {
+        const value = element.getAttribute(attribute);
+        if (value === null)
+            return;
+
+        let ran = this.ranRenderScripts.get(element);
+        if (ran == null) {
+            ran = new Map<string, string>();
+            this.ranRenderScripts.set(element, ran);
+        }
+        if (ran.get(name) === value)
+            return;
+
+        ran.set(name, value);
+        try {
+            InfiniteList.renderScripts.get(name)?.(this, element, value);
+        }
+        catch (error) {
+            warnLog?.log(`[${this.identity}] render script "${name}" failed:`, error);
+        }
+    }
+
     private applyAppearances(
         rs: VirtualListRenderState,
         oldKeys: string[],

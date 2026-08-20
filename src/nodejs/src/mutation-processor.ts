@@ -18,8 +18,18 @@ export interface PresenceClassRule {
     className: string;
 }
 
+// Runs when `data-render-script-<name>` appears on an element, or its value changes. The name selects
+// the script, so one element can ask for several; the value is the script's argument.
+export type RenderScript = (element: HTMLElement, value: string) => void;
+
+const RenderScriptPrefix = 'data-render-script-';
+
 const rules = new Array<PresenceClassRule>();
-const observedAttributes = ['class', 'data-side-nav'];
+const renderScripts = new Map<string, RenderScript>();
+// What each element was last run with, so a re-render that rewrites the same value is not a re-run.
+const ranRenderScripts = new WeakMap<Element, Map<string, string>>();
+const baseObservedAttributes = ['class', 'data-side-nav'];
+let observedAttributes = [...baseObservedAttributes];
 // Class tokens any rule's match selector can turn on. Records touching none of them cannot
 // change any predicate, which is nearly all of them - this app toggles classes constantly
 // for animation and hover state, and a full rescan per toggle is what we're avoiding.
@@ -72,19 +82,27 @@ export const MutationProcessor = {
             updatePresenceClasses();
     },
 
+    // Registered at import time, like presence classes: the attribute can be in the very first render.
+    registerRenderScript(name: string, script: RenderScript): void {
+        renderScripts.set(name, script);
+        // attributeFilter is fixed when observe() is called, and there is no prefix form of it - so a
+        // new name means re-observing. Observing every attribute instead would hand this callback the
+        // app's whole class churn, which is the cost this module exists to avoid.
+        observedAttributes = [...baseObservedAttributes, ...[...renderScripts.keys()].map(toAttribute)];
+        if (observer) {
+            reobserve();
+            runRenderScripts(document.body);
+        }
+    },
+
     start(): void {
         if (observer)
             return;
 
         observer = new MutationObserver(onMutated);
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: observedAttributes,
-            attributeOldValue: true,
-        });
+        reobserve();
         updatePresenceClasses();
+        runRenderScripts(document.body);
         AnimationSync.syncAll(document);
     },
 
@@ -104,8 +122,14 @@ function onMutated(records: MutationRecord[]): void {
 
     const dirty = new Set<Element>();
     for (const record of records) {
-        if (record.type === 'childList')
+        if (record.type === 'childList') {
             syncAddedAnimations(record.addedNodes);
+            for (const node of record.addedNodes)
+                if (node instanceof Element)
+                    runRenderScripts(node);
+        }
+        else if (isRenderScriptAttribute(record.attributeName))
+            runRenderScriptsOn(record.target as Element);
         if (affectsPresence(record))
             collectContainers(record, dirty);
     }
@@ -169,11 +193,69 @@ function syncAddedAnimations(nodes: NodeList): void {
     }
 }
 
+function toAttribute(name: string): string {
+    return RenderScriptPrefix + name;
+}
+
+function isRenderScriptAttribute(attributeName: string | null): boolean {
+    return attributeName?.startsWith(RenderScriptPrefix) ?? false;
+}
+
+function reobserve(): void {
+    observer?.disconnect();
+    observer?.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: observedAttributes,
+        attributeOldValue: true,
+    });
+}
+
+// `root` included, not just its descendants: an added element can carry the attribute itself.
+function runRenderScripts(root: Element): void {
+    if (renderScripts.size === 0)
+        return;
+
+    for (const name of renderScripts.keys()) {
+        const selector = `[${toAttribute(name)}]`;
+        if (root.matches(selector))
+            runRenderScript(root, name);
+        for (const element of root.querySelectorAll(selector))
+            runRenderScript(element, name);
+    }
+}
+
+function runRenderScriptsOn(element: Element): void {
+    for (const name of renderScripts.keys())
+        if (element.hasAttribute(toAttribute(name)))
+            runRenderScript(element, name);
+}
+
+function runRenderScript(element: Element, name: string): void {
+    const value = element.getAttribute(toAttribute(name));
+    if (value === null)
+        return;
+
+    let ran = ranRenderScripts.get(element);
+    if (ran == null) {
+        ran = new Map<string, string>();
+        ranRenderScripts.set(element, ran);
+    }
+    if (ran.get(name) === value)
+        return;
+
+    ran.set(name, value);
+    renderScripts.get(name)?.(element as HTMLElement, value);
+}
+
 function affectsPresence(record: MutationRecord): boolean {
     if (!matchSelector)
         return false;
 
     if (record.type === 'attributes') {
+        if (isRenderScriptAttribute(record.attributeName))
+            return false;
         if (record.attributeName !== 'class')
             return true;
 
