@@ -371,6 +371,30 @@ Some properties — SVG `stroke-dashoffset`, `stroke-dasharray`, `background-pos
 
 `steps(N)` makes the browser only update the rendered value at step boundaries, so paint frequency drops from 60 fps to `N / duration`. The motion looks like an old film projector (small discrete jumps), which usually reads as intentional and avoids a continuous 60 fps paint loop. Always pair with `contain: layout paint style` on the parent so each repaint stays inside a tiny layer.
 
+### Phase-align looping stepped animations (AnimationSync)
+
+The cost of a rendering update is dominated by a fixed per-frame overhead, not by how many elements changed. Left alone, each looping animation starts whenever its element appears, so their ticks scatter across frames — with enough of them nearly every frame contains a tick and that fixed cost is paid ~60×/s. Measured on an iPhone 13 Pro: 8 unsynchronised looping animations cost +0.45 cores over idle and 40 cost +0.59 — but the same 40 **phase-aligned** cost +0.08.
+
+`AnimationSync` (`src/nodejs/src/animation-sync.ts`) fixes this by back-dating `animation-delay` so every synced animation ticks on a shared 100 ms grid (`animationGridMs`). Alignment happens the moment an element appears — nothing is deferred.
+
+**Only looping, stepped animations benefit — and this is exactly the interaction with `steps(N)` above:**
+
+- **Stepped + looping** → register it. `steps(N)` lowers the paint rate; AnimationSync makes those paints *coincide* in the same frames. Both together is the pattern for any looping stepped animation that runs alongside others (call UI, skeletons, spinners).
+- **Continuous (not stepped)** → don't register. It changes every frame regardless of phase, so aligning can't help; AnimationSync logs a `console.warn` rather than pretending to. If it's composited (`transform`/`opacity`), it's already cheap per frame — leave it.
+- **One-shot** (a fade-in, `... forwards`) → don't register. Nothing recurring to amortise.
+
+The tick — `animation-duration / steps` — must be a multiple of 100 ms, or two animations can never share an instant (AnimationSync warns if it isn't). A 2 s `steps(20)` = 100 ms tick and a 1.5 s `steps(15)` = 100 ms tick share the grid; `steps(300)` over 30 s = 100 ms tick likewise.
+
+Three ways to register, in order of preference:
+
+1. **By class** — add the element's class to the `animationClasses` set in `animation-sync.ts`. That set is the one place that lists every synced animation; keep it that way.
+2. **By pseudo-element** — if the animation lives on `::before`/`::after` (not the element itself), also add a `class → pseudo` entry to `pseudoByClass`. A pseudo's animation is invisible in the host's computed style, so it must be declared. The phase is published as a `--anim-phase` custom property the pseudo inherits; its rule opts in with `animation-delay: var(--anim-phase, 0s)`.
+3. **By attribute** — for nodes with no registered class (notably shadow-root nodes and bare `<path>`/`<rect>` in Lit SVGs), add `data-anim-sync`. Forms: bare (grid tick), `"::before"` (name a pseudo), `"200"` (coarser tick), `"200 ::before"` (both).
+
+Triggering is automatic: **Blazor and plain-JS code call nothing** — `MutationProcessor` sweeps the document as elements arrive, and an `animationstart` listener catches elements that gain an animation later via a class change. **Lit components must call `AnimationSync.syncAll(this.renderRoot)` themselves** in render — `querySelectorAll` cannot cross a shadow boundary.
+
+When a *write* (not a CSS animation) is stream-driven — e.g. a value updated from an RPC stream — schedule it with `fastRaf10` (`src/nodejs/src/fast-raf.ts`), the same 100 ms grid, so it lands in a frame the synced animations were changing anyway instead of adding one of its own.
+
 ### Avoid SVG SMIL animations
 
 Do not use `<animateTransform>`, `<animate>`, or any other SMIL inside SVGs. SMIL animations:
