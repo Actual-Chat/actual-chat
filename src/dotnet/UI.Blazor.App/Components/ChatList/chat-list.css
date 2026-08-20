@@ -261,9 +261,6 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
     @apply min-w-0;
     @apply truncate;
 }
-.chat-list .navbar-item-content .c-last-message chat-activity-svg {
-    @apply -mb-0.5;
-}
 
 .chat-list .navbar-item .btn {
     @apply w-8 h-full;
