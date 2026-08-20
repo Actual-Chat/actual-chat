@@ -73,6 +73,33 @@ public class UserSettingsNullSetTest(AppHostFixture fixture, ITestOutputHelper @
     }
 
     [Fact]
+    public async Task GuestKeyMigrationLeavesHiddenKeysBehind()
+    {
+        // arrange
+        await Tester.SignInAsBob();
+        var account = await Tester.Accounts.GetOwn(Tester.Session, default);
+        var sessionInfo = await Tester.Accounts.GetSessionInfo(Tester.Session, default);
+        var guestId = sessionInfo.GetGuestId().Require();
+        var chatId = ChatId.Parse("testchatid1234567890");
+        var hiddenKey = ChatInviteSettings.GetKey(chatId);
+        var plainKey = ChatUserSettings.GetKey(chatId);
+        var kvasBackend = AppHost.Services.GetRequiredService<IServerKvasBackend>();
+        var guestKvas = kvasBackend.ForUser(guestId);
+        await guestKvas.Set<ChatInviteSettings>(hiddenKey, new ChatInviteSettings { InviteId = "someInviteId" });
+        await guestKvas.Set<ChatUserSettings>(plainKey, new ChatUserSettings { VoiceMode = VoiceMode.JustVoice });
+
+        // act
+        await Tester.Commander.Call(new ServerKvas_MigrateGuestKeys(Tester.Session));
+
+        // assert
+        var userKvas = kvasBackend.ForUser(account.Id);
+        var migratedHidden = await userKvas.Get<ChatInviteSettings>(hiddenKey);
+        var migratedPlain = await userKvas.Get<ChatUserSettings>(plainKey);
+        migratedHidden.Should().BeNull();
+        migratedPlain.Should().NotBeNull();
+    }
+
+    [Fact]
     public async Task HiddenKeyIsInvisibleToClient()
     {
         // arrange

@@ -2541,8 +2541,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     private async Task<bool> HasActivatedInvite(UserId userId, ChatId chatId, CancellationToken cancellationToken)
     {
-        // The key is hidden from client-facing KVAS APIs, so only OnUseForChat could have written
-        // it, and it names the chat the invite was actually used for.
+        // Two independent bindings to chatId: the key is hidden from client-facing KVAS APIs,
+        // so only OnUseForChat could have written it, and Grants re-derives the same pairing
+        // from the invite itself.
         var settings = await ServerKvasBackend.ForUser(userId)
             .Get<ChatInviteSettings>(ChatInviteSettings.GetKey(chatId), cancellationToken)
             .ConfigureAwait(false);
@@ -2550,7 +2551,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return false;
 
         var invite = await InvitesBackend.Get(settings.InviteId, cancellationToken).ConfigureAwait(false);
-        if (invite is null)
+        if (invite is null || !invite.Grants(chatId))
             return false;
 
         // Revoke() zeroes Remaining, so CanUse covers revoked, exhausted and expired alike

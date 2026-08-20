@@ -1,9 +1,12 @@
+using System.Security;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Module;
 using ActualChat.Contacts;
 using ActualChat.Testing.Host;
 using ActualChat.Invite;
+using ActualChat.Kvas;
 using ActualChat.Queues;
+using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
@@ -350,6 +353,89 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         previewBeforeExpiry.Should().NotBeNull();
         listedAfterExpiry.Should().NotContain(x => x.Id == invite.Id);
         previewAfterExpiry.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CapsGeneratedInviteRemainingAndExpiry()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueAlice();
+        var (chatId, _) = await tester.CreateChat(false);
+        var clock = tester.AppServices.GetRequiredService<MomentClockSet>().SystemClock;
+
+        // act
+        ActualChat.Invite.Invite request = ChatInvite.New(int.MaxValue, chatId) with {
+            ExpiresOn = clock.Now + TimeSpan.FromDays(3650),
+        };
+        var invite = await tester.Commander.Call(new Invites_Generate(tester.Session, request));
+
+        // assert
+        invite.Remaining.Should().Be(Constants.Invites.Defaults.ChatRemaining);
+        (invite.ExpiresOn <= clock.Now + Constants.Invites.Defaults.ExpiresIn).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task MembersCannotRevokeInvitesOfOtherMembers()
+    {
+        // arrange
+        await using var ownerTester = AppHost.NewBlazorTester(Out);
+        await ownerTester.SignInAsUniqueAlice();
+        var (chatId, ownerInviteId) = await ownerTester.CreateChat(false);
+
+        await using var memberTester = AppHost.NewBlazorTester(Out);
+        await memberTester.SignInAsUniqueBob();
+        await memberTester.JoinChat(chatId, ownerInviteId);
+        var memberRules = await memberTester.Chats.GetRules(memberTester.Session, chatId, default);
+        memberRules.CanInvite().Should().BeTrue();
+        var memberInvite = await GenerateChatInvite(memberTester, chatId, default);
+
+        // act
+        var revokeOwnerInvite = () => memberTester.Commander.Call(
+            new Invites_Revoke(memberTester.Session, ownerInviteId),
+            true);
+        var revokeOwnInvite = () => memberTester.Commander.Call(
+            new Invites_Revoke(memberTester.Session, memberInvite.Id),
+            true);
+
+        // assert
+        await revokeOwnerInvite.Should().ThrowAsync<SecurityException>();
+        await revokeOwnInvite.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task InviteGrantAppliesOnlyToTheChatItWasUsedFor()
+    {
+        // arrange
+        await using var ownerTester = AppHost.NewBlazorTester(Out);
+        await ownerTester.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await ownerTester.CreateChat(false);
+        var (otherChatId, _) = await ownerTester.CreateChat(false);
+
+        await using var otherTester = AppHost.NewBlazorTester(Out);
+        var otherAccount = await otherTester.SignInAsUniqueBob();
+        await otherTester.Commander.Call(new Invites_Use(otherTester.Session, inviteId), true);
+
+        var services = ownerTester.AppServices;
+        await ComputedTest.When(services, async ct => {
+            var rules = await otherTester.Chats.GetRules(otherTester.Session, chatId, ct);
+            rules.CanRead().Should().BeTrue();
+        });
+
+        // act
+        // Same write OnUseForChat performs, but naming a chat the invite was not used for
+        var serverKvasBackend = services.GetRequiredService<IServerKvasBackend>();
+        var otherChatKvas = serverKvasBackend.ForUser(otherAccount.Id, isOutermost: true);
+        var otherChatKey = ChatInviteSettings.GetKey(otherChatId);
+        await otherChatKvas.Set(otherChatKey, new ChatInviteSettings { InviteId = inviteId }, default);
+        await ComputedTest.When(services, async ct => {
+            var settings = await otherChatKvas.Get<ChatInviteSettings>(otherChatKey, ct);
+            settings!.InviteId.Should().Be(inviteId.Value);
+        });
+
+        // assert
+        var otherRules = await otherTester.Chats.GetRules(otherTester.Session, otherChatId, default);
+        otherRules.CanRead().Should().BeFalse();
     }
 
     [Theory]

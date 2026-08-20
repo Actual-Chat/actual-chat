@@ -14,7 +14,7 @@ public class Invites(IServiceProvider services) : IInvites
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     private ICommander Commander { get; } = services.Commander();
     private MomentClockSet Clocks => field ??= Services.GetRequiredService<MomentClockSet>();
-    private ILogger Log => field ??= Services.LogFor<Invites>();
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     // [ComputeMethod]
     public virtual async Task<Invite[]> ListChatInvites(
@@ -58,6 +58,7 @@ public class Invites(IServiceProvider services) : IInvites
                 .Call(new Invites_Generate(session, invite), true, cancellationToken)
                 .ConfigureAwait(false);
         }
+
         AutoInvalidate(invite, MinInviteLifespan);
         return invite;
     }
@@ -80,6 +81,7 @@ public class Invites(IServiceProvider services) : IInvites
                 .Call(new Invites_Generate(session, invite), true, cancellationToken)
                 .ConfigureAwait(false);
         }
+
         AutoInvalidate(invite, MinInviteLifespan);
         return invite;
     }
@@ -202,34 +204,55 @@ public class Invites(IServiceProvider services) : IInvites
         account.Require(Account.MustNotBeGuest);
         account.Require(AccountFull.MustBeActive);
 
+        var isCreatedByOwnAccount = invite.CreatedBy == account.Id.Value;
         switch (invite) {
-            case UserInvite:
-                throw StandardError.Constraint("User invites feature is removed.");
-            case ChatInvite chatInvite:
-                await RequireCanInvite(session, chatInvite.ChatId, cancellationToken).ConfigureAwait(false);
-                break;
-            case PlaceInvite placeInvite:
-                await RequireCanInvite(session, placeInvite.PlaceId, cancellationToken).ConfigureAwait(false);
-                break;
-            default:
-                throw StandardError.Format<Invite>();
+        case UserInvite:
+            throw StandardError.Constraint("User invites feature is removed.");
+        case ChatInvite chatInvite:
+            if (!isCreatedByOwnAccount)
+                await RequireCanModerate(session, chatInvite.ChatId, cancellationToken).ConfigureAwait(false);
+
+            break;
+        case PlaceInvite placeInvite:
+            if (!isCreatedByOwnAccount)
+                await RequireCanModerate(session, placeInvite.PlaceId, cancellationToken).ConfigureAwait(false);
+
+            break;
+        default:
+            throw StandardError.Format<Invite>();
         }
 
         return account;
     }
 
+    private async Task RequireCanModerate(Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chatRules = await Chats
+            .GetRules(session, chatId, cancellationToken)
+            .ConfigureAwait(false);
+        chatRules.Require(ChatPermissions.Moderate);
+    }
+
+    private async Task RequireCanModerate(Session session, PlaceId placeId, CancellationToken cancellationToken)
+    {
+        var placeRules = await Places
+            .GetRules(session, placeId, cancellationToken)
+            .ConfigureAwait(false);
+        placeRules.Require(PlacePermissions.Moderate);
+    }
+
     internal static Invite? ChooseInvite(Invite[] invites, Moment now, TimeSpan minInviteLifespan)
     {
         var minExpiresAt = now + minInviteLifespan;
-        var invite = invites
+        return invites
             .Where(x => (x.ExpiresOn == default || x.ExpiresOn > minExpiresAt) && x.Remaining >= 1)
             .MaxBy(c => c.ExpiresOn);
-        return invite;
     }
 
-    private void AutoInvalidate(Invite invite1, TimeSpan minInviteLifespan) {
+    private void AutoInvalidate(Invite invite1, TimeSpan minInviteLifespan)
+    {
+        // The delay is clamped - we don't want to reference Computed<T> for too long
         var delay = invite1.ExpiresOn - Clocks.SystemClock.Now - minInviteLifespan + TimeSpan.FromSeconds(1);
-        // We don't want to reference Computed<T> for too long
         delay = delay.Clamp(TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(10));
         Computed.GetCurrent().Invalidate(delay);
     }

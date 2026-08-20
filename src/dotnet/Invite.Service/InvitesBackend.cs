@@ -114,20 +114,27 @@ public class InvitesBackend(IServiceProvider services)
                 _ = PseudoGetAll(invInvite.GetSearchKey());
                 _ = Get(invInvite.Id, default);
             }
+
             return default!;
         }
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        var now = Clocks.SystemClock.Now;
+        var maxExpiresOn = now + Constants.Invites.Defaults.ExpiresIn;
+        var maxRemaining = command.Invite is PlaceInvite
+            ? Constants.Invites.Defaults.PlaceRemaining
+            : Constants.Invites.Defaults.ChatRemaining;
         var expiresOn = command.Invite.ExpiresOn;
-        if (expiresOn == default)
-            expiresOn = Clocks.SystemClock.Now + Constants.Invites.Defaults.ExpiresIn;
+        if (expiresOn == default || expiresOn > maxExpiresOn)
+            expiresOn = maxExpiresOn;
         var invite = command.Invite with {
             Id = DbInvite.IdGenerator.Next(),
             Version = VersionGenerator.NextVersion(),
-            CreatedAt = Clocks.SystemClock.Now,
+            CreatedAt = now,
             ExpiresOn = expiresOn,
+            Remaining = command.Invite.Remaining.Clamp(0, maxRemaining),
         };
         dbContext.Invites.Add(new DbInvite(invite));
 
@@ -149,6 +156,7 @@ public class InvitesBackend(IServiceProvider services)
                 _ = PseudoGetAll(invInvite.GetSearchKey());
                 _ = Get(invInvite.Id, default);
             }
+
             return default!;
         }
 
@@ -177,9 +185,9 @@ public class InvitesBackend(IServiceProvider services)
                     .GetRules(placeId.RootChatId, account.Id, cancellationToken)
                     .ConfigureAwait(false);
                 if (chat is { IsPublic: true })
-                    await OnUseForPlace(placeId).ConfigureAwait(false); // Activate read permission to the place.
+                    await OnUseForPlace(placeId).ConfigureAwait(false);
                 else if (placeRules.IsMember())
-                    await OnUseForChat(chatId).ConfigureAwait(false);  // Activate read permission to private place chat.
+                    await OnUseForChat(chatId).ConfigureAwait(false);
                 else
                     throw StandardError.Constraint("Only place members can use this code.");
             }
@@ -230,6 +238,7 @@ public class InvitesBackend(IServiceProvider services)
                 _ = PseudoGetAll(invInvite.GetSearchKey());
                 _ = Get(invInvite.Id, default);
             }
+
             return;
         }
 

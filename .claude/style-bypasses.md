@@ -67,3 +67,10 @@ edited. The reason can be as short as whose decision it was.
 - L450 `private class InternalParsers(bool useUnparsedTextMarkup)`
   — type not sealed — required: `IncompleteInternalParsers` derives from it and
   overrides its `protected virtual` factory methods, so sealing it is CS0509
+
+## src/dotnet/Invite.Service/InvitesBackend.cs
+
+- L8 `public class InvitesBackend(IServiceProvider services)`
+  — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
+  and `[CommandHandler]` members, so they must stay `virtual`, and a sealed type
+  can't declare one (CS0549)

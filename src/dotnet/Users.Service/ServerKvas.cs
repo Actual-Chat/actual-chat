@@ -113,9 +113,8 @@ public class ServerKvas(IServiceProvider services) : IServerKvas
         CancellationToken cancellationToken = default)
     {
         // Nothing dispatches this command anymore: its last user was invite activation, which now
-        // requires a signed-in account. Kept for now in case guest-to-user hand-off comes back -
-        // if it does, TryMigrateKeys must start skipping KvasKeys.HiddenPrefix keys, since
-        // moving those across an identity boundary would move access grants with them.
+        // requires a signed-in account. Kept for now in case guest-to-user hand-off comes back,
+        // and because released clients may still call it.
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
@@ -193,6 +192,13 @@ public class ServerKvas(IServiceProvider services) : IServerKvas
             };
             skippedKeys = new HashSet<string>();
             foreach (var (key, value) in keys) {
+                // Hidden keys record access grants, so they must not cross an identity boundary.
+                // They're still dropped from fromPrefix below.
+                if (KvasKeys.IsHidden(key)) {
+                    skippedKeys.Add(key);
+                    continue;
+                }
+
                 var userValue = await Backend.Get(toPrefix, key, cancellationToken).ConfigureAwait(false);
                 if (userValue == null)
                     movedKeys[key] = value;

@@ -8,11 +8,9 @@ namespace ActualChat.Invite;
 public sealed partial record ChatInvite(Symbol Id, long Version = 0) : Invite(Id, Version)
 {
     [DataMember, Key(10)] public ChatId ChatId { get; init; } = null!;
-
-    public ChatInvite() : this(Symbol.Empty) { }
-
     public static ChatInvite New(int remaining, ChatId chatId)
         => new(Symbol.Empty) { Remaining = remaining, ChatId = chatId };
+    public ChatInvite() : this(Symbol.Empty) { }
 
     // Keep the v2.7 string ("ChatInviteOption:...") so existing DbInvite.SearchKey
     // rows stay reachable across the union refactor.
@@ -21,4 +19,8 @@ public sealed partial record ChatInvite(Symbol Id, long Version = 0) : Invite(Id
 
     public override string GetSearchKey()
         => GetSearchKey(ChatId);
+
+    public override bool Grants(ChatId chatId)
+        => ChatId == chatId
+            || (ChatId is PlaceChatId { IsRoot: false } placeChatId && placeChatId.RootChatId == chatId);
 }

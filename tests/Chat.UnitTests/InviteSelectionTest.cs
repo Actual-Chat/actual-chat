@@ -129,6 +129,59 @@ public sealed class InviteSelectionTest
         invite!.Id.Should().Be(new Symbol("without-expiry"));
     }
 
+    [Fact]
+    public void ChatInviteGrantsItsOwnChat()
+    {
+        // arrange
+        var invite = NewInvite("chat", TimeSpan.FromHours(2));
+        var otherChatId = ChatId.Parse("mYZuMtCUnJ");
+
+        // act
+        var grantsOwnChat = invite.Grants(TestChatId);
+        var grantsOtherChat = invite.Grants(otherChatId);
+
+        // assert
+        grantsOwnChat.Should().BeTrue();
+        grantsOtherChat.Should().BeFalse();
+    }
+
+    [Fact]
+    public void PlaceChatInviteGrantsItsChatAndPlaceRootChat()
+    {
+        // arrange
+        var placeId = PlaceId.New();
+        var placeChatId = PlaceChatId.New(placeId);
+        var invite = NewInvite("place-chat", TimeSpan.FromHours(2)) with { ChatId = placeChatId };
+
+        // act
+        var grantsOwnChat = invite.Grants(placeChatId);
+        var grantsRootChat = invite.Grants(placeId.RootChatId);
+        var grantsOtherPlaceChat = invite.Grants(PlaceChatId.New(PlaceId.New()));
+
+        // assert
+        grantsOwnChat.Should().BeTrue();
+        grantsRootChat.Should().BeTrue();
+        grantsOtherPlaceChat.Should().BeFalse();
+    }
+
+    [Fact]
+    public void PlaceInviteGrantsOnlyPlaceRootChat()
+    {
+        // arrange
+        var placeId = PlaceId.New();
+        var invite = new PlaceInvite("place") { PlaceId = placeId, Remaining = 10 };
+
+        // act
+        var grantsRootChat = invite.Grants(placeId.RootChatId);
+        var grantsPlaceChat = invite.Grants(PlaceChatId.New(placeId));
+        var grantsOtherPlaceRootChat = invite.Grants(PlaceId.New().RootChatId);
+
+        // assert
+        grantsRootChat.Should().BeTrue();
+        grantsPlaceChat.Should().BeFalse();
+        grantsOtherPlaceRootChat.Should().BeFalse();
+    }
+
     // Private methods
 
     private static ChatInvite NewInvite(string id, TimeSpan lifespan, int remaining = 10)

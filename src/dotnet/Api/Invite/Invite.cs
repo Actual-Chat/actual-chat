@@ -26,6 +26,10 @@ public abstract partial record Invite(
 
     public abstract string GetSearchKey();
 
+    // True when redeeming this invite is what could have granted access to chatId -
+    // either the invite's own chat, or the root chat of its place.
+    public abstract bool Grants(ChatId chatId);
+
     public bool CanUse(int useCount = 1)
         => CanUse(Moment.Now, useCount);
 
