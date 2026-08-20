@@ -50,10 +50,12 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
         // A list that goes away has to retract what it last reported, because nothing else will: a place
         // or filter switching to an empty result destroys this component rather than rendering it with
         // no rows, so the JS side is gone before it could say so - and the consumer would go on acting
-        // on keys for rows that no longer exist.
+        // on keys for rows that no longer exist. It keeps the identity rather than reporting the Empty
+        // sentinel - consumers route by it, and ChatView drops anything that isn't its own chat id.
         if (LastReportedItemVisibility.VisibleKeys.Count != 0) {
-            LastReportedItemVisibility = VirtualListItemVisibility.Empty;
-            ItemVisibilityChanged?.Invoke(LastReportedItemVisibility);
+            var retraction = LastReportedItemVisibility with { VisibleKeys = ImmutableHashSet<string>.Empty };
+            LastReportedItemVisibility = retraction;
+            ItemVisibilityChanged?.Invoke(retraction);
         }
         await base.DisposeAsync();
         await JSRef.DisposeSilentlyAsync("dispose");
