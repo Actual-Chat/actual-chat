@@ -239,8 +239,12 @@ export class BrowserInit {
         }
     }
 
-    public static async startWebSplashRemoval(delayMs: number): Promise<void> {
-        await delayAsync(delayMs);
+    public static async startWebSplashRemoval(timeoutMs: number): Promise<void> {
+        // A WebView restart reloads the page against an already-warm .NET runtime, so the app can
+        // paint within a few hundred ms - and the Blazor-side removal doesn't reliably land there.
+        // Racing that paint against the timeout keeps the splash up only while it actually covers
+        // something; the timeout is a backstop for the case where the app never renders at all.
+        await Promise.race([this.whenAppRendered(), delayAsync(timeoutMs)]);
         this.removeWebSplash();
     }
 
@@ -285,6 +289,25 @@ export class BrowserInit {
     }
 
     // Private methods
+
+    private static whenAppRendered(): Promise<void> {
+        const app = document.getElementById('app');
+        if (app === null)
+            return new PromiseSource<void>(); // Never completes - the caller's timeout decides
+        if (app.childElementCount !== 0)
+            return Promise.resolve();
+
+        const whenRendered = new PromiseSource<void>();
+        const observer = new MutationObserver(() => {
+            if (app.childElementCount === 0)
+                return;
+
+            observer.disconnect();
+            whenRendered.resolve(undefined);
+        });
+        observer.observe(app, { childList: true });
+        return whenRendered;
+    }
 
     // body.app-ready gates the composition-layer hints, the blurred-cover filter and the skeleton
     // pulse. Each layer costs the compositor a full-screen raster and each animation tick redraws
