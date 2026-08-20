@@ -1302,7 +1302,8 @@ the final position as soon as you release the finger" symptom.
 *`ItemHeightController` owns every item's `style.height` and animates changes over 150ms after a
 100ms settle delay; the model always reads the settled height. A key diff decides which arriving items
 grow in and from what; at most three animate at once. `StabilityTracker` is what everything that
-repositions the list asks before doing so.*
+repositions the list asks before doing so. Animations can be blocked for the duration of a promise,
+and three things do it: a jump, a list's first 500ms, and a conversation collapse.*
 
 `ItemHeightController` owns `style.height` of every item in a list that animates heights (the chat
 view; the test page can turn it off). What the geometry model reads is the **settled** height, so an
@@ -1433,9 +1434,47 @@ so treating that as an arrival grows the block at the moment it was asked to shr
 
 **Stability** is the tracker both use: a height write in the settle delay, a running transition, and a
 recent scroll all count as "in flight", and everything that wants to reposition the list asks here
-first. A jump additionally *suspends* new animations while it waits, since starting more would only
-keep pushing the moment away; transitions already running are left to finish, because they are exactly
-what the jump is waiting out.
+first.
+
+#### Blocking animations for the duration of a promise
+
+`suspendUntil(promise)` blocks new height animations until the promise settles; changes that arrive
+meanwhile land instantly. Transitions already running are left to finish — for a jump they are exactly
+what it is waiting out. Blocks **stack**: the count drops only as each outstanding promise settles, so
+two overlapping callers cannot cut each other short, and a *rejected* promise still releases, so a
+block can never wedge.
+
+Three callers today:
+
+| Caller | Window | Why |
+|--------|--------|-----|
+| A pending jump | until `whenNoAnimations()` | starting more would keep pushing the moment it waits for further away |
+| A newly created list | 500ms | every item is "appearing" at once, and would grow in from nothing on the first frame. The list is keyed by chat id, so this is also a chat view's first moments |
+| A conversation collapse | 200ms | see below |
+
+#### Why a collapse has to arm, and cannot just be observed
+
+Collapsing a block removes its items; what replaces them lands on keys the list last saw somewhere
+else, and the diff has no way to tell that from an arrival — so it grows them in on the one gesture
+that only ever makes things smaller.
+
+The block cannot be armed from a `MutationObserver`, because `beginAppearance` both decides *and
+commits* the park — it writes the start height and forces a reflow — synchronously inside
+`applyRender`, before any observer sees the markup. Arriving after that can only downgrade the
+transition to an instant write once the settle delay expires, which trades a smooth grow for the item
+sitting collapsed for ~100ms and then snapping.
+
+So the click arms and the render decides. Each collapsing toggle carries `data-collapse-arm` with its
+conversation id; every collapsed header carries `data-vl-render-script-collapsed-header`. The click is
+the only point early enough to arm, and the render script — which runs inside `applyRender`, ahead of
+`applyAppearances` — spends the arm when the collapse render actually arrives. A header render that
+was not armed, which is what scrolling one into view produces, does nothing. The arm expires after 1s,
+so a click that never reaches a render leaves nothing behind for the next appearance to spend.
+
+The signal is deliberately *not* inferred from `data-vl-hold="keep-edge"`, which every shrinking
+control happens to wear today: that attribute means "keep the edge pin if there is one" — an anchoring
+instruction — and reading it as "this collapses" would break quietly the first time the two stop
+coinciding.
 
 ### 3.11 The initial reveal
 

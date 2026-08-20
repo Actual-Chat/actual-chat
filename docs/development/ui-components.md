@@ -736,6 +736,85 @@ constructor(panel: HTMLElement, blazorRef: DotNet.DotNetObject) {
 
 For defense-in-depth, add a MutationObserver on the element's class attribute that returns it to `this.home` when none of the state classes that should hold it elsewhere are present. Cheap, catches future races regardless of cause.
 
+## Document-Level Mechanisms
+
+Three mechanisms live outside the component and are opted into purely from markup. Two of them —
+presence classes and animation sync — and one of the two render-script dispatchers are driven from
+`mutation-processor.ts`, which owns the single `MutationObserver` over `document.body`: a callback
+there is delivered once per microtask checkpoint, after a render batch is applied and before paint, so
+it is both timelier and cheaper than polling. The other render-script dispatcher belongs to
+`InfiniteList` and runs in its render pass instead — see below for why that difference matters.
+
+Registration for all of them happens at **import time**, not on mount: the markup can be present in
+the very first render, and registering when a component mounts would leave a window where the
+mechanism is missing. That also means there is nothing to unregister — the set of names is fixed, and
+the callbacks take everything they need as arguments rather than capturing a component or an element.
+
+### Presence classes
+
+Replaces `container:has(descendant)`. WebKit has no descendant-direction `:has()` bits, so it re-runs a
+real match up the ancestor chain on every mutation — measured at 6-8% of WebContent's main thread
+during a call. A presence class turns that into one class toggle per actual change.
+
+Register in `app-presence-classes.ts`, never write the class in markup:
+
+```typescript
+MutationProcessor.registerPresenceClasses(
+    { container: '.list-view-layout', match: '.audio-panel-header', className: 'has-audio-panel-header' },
+);
+```
+
+Only **container subjects** belong here. A `:has()` whose subject is a small element (`.toggle`,
+`.checkbox`, `.navbar-item`) walks a tiny subtree and costs nothing worth replacing.
+
+### Animation sync
+
+Phase-aligns looping CSS animations so they tick on shared instants. Left alone, each animation starts
+when its element appears, so with enough of them nearly every frame contains a tick. On an iPhone 13
+Pro, 8 unsynchronised looping animations cost +0.45 cores over idle and 40 cost +0.59 — the same 40
+phase-aligned cost **+0.08**.
+
+A component opts in by carrying a registered class; nothing calls anything. Add the class to
+`animationClasses` in `animation-sync.ts`, and to `pseudoByClass` when the animation lives on a
+pseudo-element (a pseudo's animation is invisible in the host's computed style, so it can't be
+derived). Alignment back-dates `animation-delay`, so an element is in phase the moment it appears.
+
+Only **stepped** animations benefit — a continuous one changes every frame regardless of phase, and
+`sync` warns rather than pretending to help.
+
+### Render scripts
+
+Markup asks for a named script; the script is registered in JS. Two dispatchers, differing only in
+when they fire:
+
+| Attribute | Registered on | Fires |
+|-----------|---------------|-------|
+| `data-render-script-<name>` | `MutationProcessor` | from the DOM mutation, for anything outside a virtual list |
+| `data-vl-render-script-<name>` | `InfiniteList` | inside the list's own render pass, on items and anything nested in one |
+
+Both dedupe per element and name against the last value they ran with: a re-render that rewrites the
+same value is not a re-run, and a changed value is.
+
+The list variant exists because the mutation-driven one is **structurally too late** to change how a
+render behaves. `InfiniteList` calls `applyRender` synchronously with the DOM batch, so by the time an
+observer sees the new markup the render's decisions are already made. Measured on expanding a
+conversation block:
+
+```
+click -> mutation callback (no items yet) -> beginAppearance x16 -> mutation callback (381 items)
+```
+
+Scanning inside `applyRender` puts the script ahead of that — `click -> renderScript ->
+beginAppearance`. Use the list variant whenever the script must affect the render it arrives with; use
+the `MutationProcessor` one otherwise.
+
+**Caveat:** a render script is held for the lifetime of the page. Never register a name that varies per
+instance (`quiet-heights-${chatId}`), and never capture a component, list or element in the callback —
+both turn a fixed registry into an unbounded one that pins whatever it holds.
+
+An example of the pair in use is the conversation collapse — see
+[The virtual list](../virtual-list.md) §3.10.
+
 ## Modal Components
 
 ### Structure
