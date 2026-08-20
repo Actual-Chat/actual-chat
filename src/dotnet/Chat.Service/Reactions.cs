@@ -39,7 +39,8 @@ public class Reactions(IServiceProvider services) : IReactions
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, reaction) = command;
+        var session = command.Session;
+        var reaction = command.Reaction;
         var chatRules = await Chats.GetRules(session, reaction.EntryId.ChatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Write);
 

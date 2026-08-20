@@ -52,6 +52,6 @@
             EntryId = Entry.Id,
             Emoji = emoji,
         };
-        return UICommander.Run(new Reactions_React(Session, reaction));
+        return UICommander.Run(new Reactions_React { Session = Session, Reaction = reaction });
     }
 }

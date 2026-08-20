@@ -224,7 +224,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
             EntryId = entryId,
             Emoji = Emojis.ThumbsUp,
         };
-        var cmd = new Reactions_React(TestSession, reaction);
+        var cmd = new Reactions_React { Session = TestSession, Reaction = reaction };
         cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);

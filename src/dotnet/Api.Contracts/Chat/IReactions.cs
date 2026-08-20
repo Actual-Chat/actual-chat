@@ -20,7 +20,7 @@ public interface IReactions : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Reactions_React(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] Reaction Reaction
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Reactions_React : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required Reaction Reaction { get; init; }
+}
