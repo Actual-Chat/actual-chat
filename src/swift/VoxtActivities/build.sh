@@ -9,8 +9,12 @@ cd "$(dirname "$0")"
 CONFIG=${1:-Release}
 SDK=${2:-iphoneos}
 BUNDLE_ID=${3:-chat.actual.dev.app.widget}
-SHORT_VERSION=${4:-1.0}
-BUILD_VERSION=${5:-1}
+# ${4-} / ${5-}, not ${4:-}: an empty argument must NOT fall back to the placeholder, or a
+# caller whose version properties aren't computed yet silently ships an appex whose
+# CFBundleShortVersionString / CFBundleVersion don't match the app - which is an App Store
+# Connect ITMS-90473 rejection. The defaults are for hand runs that pass no version at all.
+SHORT_VERSION=${4-1.0}
+BUILD_VERSION=${5-1}
 DEV_TEAM=${6:-${VOXT_ACTIVITIES_TEAM:-}}
 # "Apple Development" for local device builds; pass "Apple Distribution" for TestFlight.
 IDENTITY=${7:-${VOXT_ACTIVITIES_IDENTITY:-Apple Development}}
@@ -19,6 +23,12 @@ PROFILE=${8:-${VOXT_ACTIVITIES_PROFILE:-}}
 # Relative to this folder. Xcode derives one from the profile when it's omitted, but CI
 # re-signs the embedded appex afterwards and needs the same file to sign it with.
 ENTITLEMENTS=${9:-${VOXT_ACTIVITIES_ENTITLEMENTS:-}}
+
+if [ -z "$SHORT_VERSION" ] || [ -z "$BUILD_VERSION" ]; then
+    echo "build.sh: empty version (short='$SHORT_VERSION', build='$BUILD_VERSION')." >&2
+    echo "The .appex must carry the app's versions - see ITMS-90473." >&2
+    exit 1
+fi
 
 if [ ! -d VoxtActivities.xcodeproj ] || [ project.yml -nt VoxtActivities.xcodeproj/project.pbxproj ]; then
     if ! command -v xcodegen >/dev/null 2>&1; then

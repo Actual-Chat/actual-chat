@@ -882,7 +882,15 @@
        Build: BeforeTargets fires after the anchor's DependsOnTargets, so BeforeTargets="Build"
        would land after the whole BuildDependsOn chain - past codesign, far too late. -->
   <Target Name="BuildVoxtActivities" BeforeTargets="_ExtendAppExtensionReferences"
+          DependsOnTargets="NBGV_SetVersionForMauiIOS"
           Condition="$([MSBuild]::IsOSPlatform('osx')) and $(TargetFramework.Contains('-ios'))">
+    <!-- The DependsOnTargets is load-bearing: NBGV is what fills ApplicationDisplayVersion and
+         ApplicationVersion, and it does that BeforeTargets="_CompileAppManifest" - i.e. after
+         this target's own anchors. Without it both are empty here, the appex gets build.sh's
+         1.0/1 defaults while the app gets the real version, and App Store Connect rejects the
+         upload with ITMS-90473 (CFBundleVersion / CFBundleShortVersionString mismatch). -->
+    <Error Condition="'$(ApplicationDisplayVersion)' == '' or '$(ApplicationVersion)' == ''"
+           Text="ApplicationDisplayVersion / ApplicationVersion are unset, so the widget appex would not match the app bundle (ITMS-90473)." />
     <Exec Command="sh &quot;$(VoxtActivitiesDir)build.sh&quot; &quot;$(Configuration)&quot; &quot;$(VoxtActivitiesSdk)&quot; &quot;$(VoxtActivitiesWidgetId)&quot; &quot;$(ApplicationDisplayVersion)&quot; &quot;$(ApplicationVersion)&quot; &quot;$(VoxtActivitiesTeamId)&quot; &quot;$(VoxtActivitiesIdentity)&quot; &quot;$(VoxtActivitiesProfile)&quot; &quot;$(VoxtActivitiesEntitlements)&quot;" />
   </Target>
 

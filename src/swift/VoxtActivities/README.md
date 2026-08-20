@@ -36,6 +36,12 @@ The MAUI iOS build does this for you: `App.Maui.csproj` runs the `BuildVoxtActiv
 invokes `build.sh`. The products are then consumed as a `NativeReference` (the `.a`) and an
 `AdditionalAppExtensions` item (the `.appex`).
 
+`SHORT_VERSION` / `BUILD_VERSION` must be the app's own `CFBundleShortVersionString` /
+`CFBundleVersion`: App Store Connect rejects an upload whose extension disagrees with its
+host app (ITMS-90473). The target therefore depends on `NBGV_SetVersionForMauiIOS` — the
+NBGV target that fills `ApplicationDisplayVersion` / `ApplicationVersion` — because it
+otherwise runs before it and would pass empty strings.
+
 Manually:
 
 ```sh
