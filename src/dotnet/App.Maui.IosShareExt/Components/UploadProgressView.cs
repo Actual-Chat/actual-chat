@@ -5,6 +5,8 @@ namespace ActualChat.App.Maui.IosShareExt.Components;
 
 public class UploadProgressView(IosHub hub) : ComputedStateView<UploadProgressView.Model>(hub)
 {
+    private static readonly UIColor AccentColor = UIColor.FromRGB(0x54, 0xA6, 0xFF);
+    private static readonly UIColor ProgressTrackColor = UIColor.FromRGB(0x42, 0x42, 0x4D);
     private UIProgressView _progressBar = null!;
     private ShareUI ShareUI => Hub.ShareUI;
 
@@ -12,43 +14,76 @@ public class UploadProgressView(IosHub hub) : ComputedStateView<UploadProgressVi
     {
         TranslatesAutoresizingMaskIntoConstraints = false;
 
+        // Image
+        var imageView = new UIImageView(UIImage.FromBundle("upload-progress-image.png")) {
+            TranslatesAutoresizingMaskIntoConstraints = false,
+            ContentMode = UIViewContentMode.ScaleAspectFit,
+        };
+        // The stack stretches its rows to full width, so the image keeps its own size inside this container
+        var imageContainer = new UIView {
+            TranslatesAutoresizingMaskIntoConstraints = false,
+        };
+        imageContainer.AddSubview(imageView);
+
+        // Progress bar
+        _progressBar = new UIProgressView(UIProgressViewStyle.Default) {
+            TranslatesAutoresizingMaskIntoConstraints = false,
+            ProgressTintColor = AccentColor,
+            TrackTintColor = ProgressTrackColor,
+            ClipsToBounds = true,
+        };
+        _progressBar.Layer.CornerRadius = 2;
+
         // Label
         var label = new UILabel {
             TranslatesAutoresizingMaskIntoConstraints = false,
             TextAlignment = UITextAlignment.Center,
             Text = "Uploading...",
-            Font = UIFont.SystemFontOfSize(24),
+            Font = UIFont.SystemFontOfSize(16, UIFontWeight.Medium)!,
+            TextColor = UIColor.White,
         };
-
-        // Progress bar
-        _progressBar = new UIProgressView(UIProgressViewStyle.Default) {
-            TranslatesAutoresizingMaskIntoConstraints = false,
-        };
-
-        // Cancel button
-        var cancelButton = UIButton.FromType(UIButtonType.System);
-        cancelButton.TranslatesAutoresizingMaskIntoConstraints = false;
-        cancelButton.SetTitle("Cancel", UIControlState.Normal);
-        cancelButton.TitleLabel.Font = UIFont.SystemFontOfSize(20, UIFontWeight.Semibold);
-        cancelButton.TouchUpInside += Safe(ShareUI.CancelUploading);
 
         // Vertical stack view
-        var stackView = new UIStackView([label, _progressBar, cancelButton]) {
+        var stackView = new UIStackView([imageContainer, _progressBar, label]) {
             TranslatesAutoresizingMaskIntoConstraints = false,
             Axis = UILayoutConstraintAxis.Vertical,
             Alignment = UIStackViewAlignment.Fill,
             Distribution = UIStackViewDistribution.Fill,
-            Spacing = 20,
+            Spacing = 28,
         };
+        stackView.SetCustomSpacing(17, _progressBar);
         AddSubview(stackView);
+
+        // Cancel button
+        var cancelConfiguration = UIButtonConfiguration.PlainButtonConfiguration;
+        cancelConfiguration.ContentInsets = new NSDirectionalEdgeInsets(10, 24, 10, 24);
+        cancelConfiguration.BaseForegroundColor = AccentColor;
+        cancelConfiguration.AttributedTitle = new NSAttributedString("Cancel",
+            new UIStringAttributes { Font = UIFont.SystemFontOfSize(16, UIFontWeight.Medium) });
+        var cancelButton = new UIButton {
+            TranslatesAutoresizingMaskIntoConstraints = false,
+            Configuration = cancelConfiguration,
+        };
+        cancelButton.TouchUpInside += Safe(ShareUI.CancelUploading);
+        AddSubview(cancelButton);
 
         // Layout constraints
         NSLayoutConstraint.ActivateConstraints([
-            stackView.CenterYAnchor.ConstraintEqualTo(CenterYAnchor, -25),
-            stackView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor, 24),
-            stackView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor, -24),
+            stackView.CenterYAnchor.ConstraintEqualTo(CenterYAnchor, -49),
+            stackView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor, 31),
+            stackView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor, -31),
 
-            _progressBar.HeightAnchor.ConstraintEqualTo(8),
+            imageContainer.HeightAnchor.ConstraintEqualTo(200),
+            imageView.WidthAnchor.ConstraintEqualTo(210),
+            imageView.HeightAnchor.ConstraintEqualTo(200),
+            imageView.CenterXAnchor.ConstraintEqualTo(imageContainer.CenterXAnchor),
+            imageView.CenterYAnchor.ConstraintEqualTo(imageContainer.CenterYAnchor),
+
+            _progressBar.HeightAnchor.ConstraintEqualTo(4),
+
+            cancelButton.TrailingAnchor.ConstraintEqualTo(TrailingAnchor, -16),
+            cancelButton.BottomAnchor.ConstraintEqualTo(SafeAreaLayoutGuide.BottomAnchor, -16),
+            cancelButton.HeightAnchor.ConstraintEqualTo(40),
         ]);
 
         OnStateChanged(model);

@@ -71,6 +71,7 @@
 
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <BundleResource Include="..\..\..\resources\images\converted\error-barrier-image.png" Link="%(Filename)%(Extension)" />
+    <BundleResource Include="..\..\..\resources\images\converted\upload-progress-image*.png" Link="%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- TODO: Move GoogleService-Info.plist files to Maui project and define BundleResource there,
