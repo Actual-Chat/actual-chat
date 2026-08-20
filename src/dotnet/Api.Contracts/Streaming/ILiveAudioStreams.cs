@@ -54,13 +54,18 @@ public interface ILiveAudioStreams : IComputeService
         RpcStream<AudioFrame> frameStream,
         CancellationToken cancellationToken);
 
+    // The RPC method name carries the parameter count (":3" vs ":4"), so this overload is a
+    // distinct wire method serving only already-published clients.
+    [Obsolete("2026.08: Use the avSyncError overload. Old clients only.")]
     Task ReportAudioLatency(Session session, TimeSpan latency, CancellationToken cancellationToken);
 
-    // avSyncError is null when no fresh video lag exists for the author. Both terms are measured
-    // against the same client ServerClock, so their difference carries no clock error.
-    Task ReportPlaybackLag(
+    // Latency is the capture-to-ear lag of the sample being played, the audio twin of the video
+    // lag report. avSyncError (= audio lag - video lag) is null when no fresh video lag exists for
+    // the author; both its terms share one client ServerClock, so their difference carries no
+    // clock error.
+    Task ReportAudioLatency(
         Session session,
-        TimeSpan audioPresentationLag,
+        TimeSpan latency,
         TimeSpan? avSyncError,
         CancellationToken cancellationToken);
 

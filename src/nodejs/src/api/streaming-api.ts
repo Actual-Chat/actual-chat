@@ -42,7 +42,7 @@ export const LiveAudioStreamsDef = defineRpcService('ILiveAudioStreams', {
         args: ['session', 'chatId', 'repliedChatEntryId', 'clientStartAt', 'preSkip', 'frameStream'],
         remoteExecutionMode: StreamPushMode,
     },
-    ReportAudioLatency: { args: ['session', 'latency'] },
+    ReportAudioLatency: { args: ['session', 'latency', 'avSyncError'] },
 });
 
 // --- VideoFrame TypeScript interface ---
@@ -209,7 +209,7 @@ export interface LiveAudioStreamsClient {
         sourceStartOffsetSeconds: number,
         preSkip: number,
         frameStreamRef: unknown): Promise<void>;
-    ReportAudioLatency(session: string, latencyTicks: Moment): Promise<void>;
+    ReportAudioLatency(session: string, latencyTicks: Moment, avSyncErrorTicks: Moment | null): Promise<void>;
 }
 
 /** Streaming module — pass the `streamingApi` singleton (below) to `Api.init`

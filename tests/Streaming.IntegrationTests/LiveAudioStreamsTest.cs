@@ -7,7 +7,7 @@ using ActualLab.Rpc;
 namespace ActualChat.Streaming.IntegrationTests;
 
 [Collection(nameof(StreamingCollection))]
-public class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out)
+public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact]
@@ -22,6 +22,20 @@ public class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out
         serviceNames.Should().Contain(nameof(ILiveAudioStreams));
         serviceNames.Should().Contain(nameof(ILiveVideoStreams));
         serviceNames.Should().NotContain("IStreamServer");
+    }
+
+    [Fact]
+    public void BothReportAudioLatencyOverloadsAreRegistered()
+    {
+        // act
+        var serviceDef = AppHost.Services.RpcHub().ServiceRegistry[typeof(ILiveAudioStreams)];
+        var methodNames = serviceDef.Methods.Select(x => x.Name).ToList();
+
+        // assert
+        // The wire method name carries the parameter count, and inbound dispatch is a lookup by
+        // that name - so ":3" present means already-published clients still resolve their call.
+        methodNames.Should().Contain("ReportAudioLatency:3");
+        methodNames.Should().Contain("ReportAudioLatency:4");
     }
 
     [Fact(Timeout = 60_000)]
@@ -80,8 +94,9 @@ public class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out
     }
 
     [Fact]
-    public async Task GetStream_ShouldReturnStream()
+    public async Task GetStreamReturnsAStream()
     {
+        // arrange
         var appHost = AppHost;
         var services = appHost.Services;
         var commander = services.Commander();
@@ -98,14 +113,17 @@ public class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out
 
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
 
+        // act
         var stream = await liveStreams.GetListeningStream(session, chat.Id, default, CancellationToken.None);
 
+        // assert
         stream.Should().NotBeNull();
     }
 
     [Fact]
-    public async Task GetStream_ShouldReceiveItems()
+    public async Task GetStreamReceivesItems()
     {
+        // arrange
         var appHost = AppHost;
         var services = appHost.Services;
         var commander = services.Commander();
@@ -122,8 +140,9 @@ public class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out
         chat.Require();
 
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
-
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        // act
         var stream = await liveStreams.GetListeningStream(session, chat.Id, default, cts.Token);
 
         // Stream should not throw when enumerated (even if empty)
@@ -136,13 +155,15 @@ public class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out
             // Expected - no active streams
         }
 
+        // assert
         // No items expected since we didn't start any audio recording
         items.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task UpdateConfig_ShouldNotThrow()
+    public async Task UpdateConfigDoesNotThrow()
     {
+        // arrange
         var appHost = AppHost;
         var services = appHost.Services;
         var commander = services.Commander();
@@ -160,8 +181,8 @@ public class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
         var settings = new LegacyLiveStreamSettings { StreamKindFilter = LegacyLiveStreamKind.None };
 
+        // act, assert (no throw)
         await liveStreams.LegacyChangeSettings(session, chat.Id, settings, CancellationToken.None);
-        // Should not throw
     }
 
     [Fact(Timeout = 60_000)]

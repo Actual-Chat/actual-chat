@@ -250,8 +250,9 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     {
         await using var enumerator = memoizer
             .Replay(int.MaxValue, cancellationToken)
-            .GetAsyncEnumerator(cancellationToken);
-        return await enumerator.MoveNextAsync().ConfigureAwait(false)
+            .ConfigureAwait(false)
+            .GetAsyncEnumerator();
+        return await enumerator.MoveNextAsync()
             ? enumerator.Current
             : null;
     }

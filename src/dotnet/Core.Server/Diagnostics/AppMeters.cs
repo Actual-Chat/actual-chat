@@ -6,7 +6,6 @@ namespace ActualChat.Diagnostics;
 public static class AppMeters
 {
     public static readonly Histogram<double> AudioLatency;
-    public static readonly Histogram<double> AudioPresentationLag;
     public static readonly Histogram<double> AvSyncError;
     public static readonly UpDownCounter<int> AudioStreamCount;
     public static readonly UpDownCounter<int> VideoStreamCount;
@@ -39,14 +38,29 @@ public static class AppMeters
     public static readonly Histogram<int> VideoDecoderHangRateIn60s;
     public static readonly Counter<long> VideoLayerCapWalkReason;
 
+    // The default OTel bounds have no negative buckets, and clock-skewed clients report
+    // negative lags — without these all skew magnitudes collapse into one (-inf, 0] bucket.
+    // Fine-grained through 250-2500: healthy playback sits at ~400-700 (buffer + delivery +
+    // output), the A/V hold adds up to 1s on top, and its cap saturates at ~1.5-2 — the first
+    // dev pull put half of all samples between 1000 and 2500 with no resolution inside.
+    private static readonly double[] LagBucketBoundsMs = [
+        -2500, -1000, -500, -250, -100, 0, 100, 250, 400, 550, 700, 850, 1000,
+        1200, 1400, 1600, 1800, 2000, 2500, 3500, 5000, 10000,
+    ];
+    // Finer near zero than LagBucketBoundsMs: the perceptual limits are ~-125 ms
+    // (video leads) and ~+45 ms (video trails), so both lobes need sub-100 ms resolution.
+    private static readonly double[] SyncErrorBucketBoundsMs =
+        [-5000, -2500, -1000, -750, -500, -250, -125, -50, 0, 50, 125, 250, 500, 750, 1000, 2500, 5000];
+
     static AppMeters()
     {
         var m = AppInstruments.Meter;
-        AudioLatency = m.CreateHistogram<double>("app.audio.latency", "ms", "Real-time audio recording to playback latency");
-        AudioPresentationLag = m.CreateHistogram<double>(
-            "app.audio.presentation_lag", "ms", "Capture-to-output lag of the audio sample being played");
-        AvSyncError = m.CreateHistogram<double>(
-            "app.av.sync_error", "ms", "Audio lag minus video lag for one author; >0 means video trails audio");
+        AudioLatency = m.CreateHistogram(
+            "app.audio.latency", "ms", "Capture-to-ear lag of the audio sample being played",
+            advice: new InstrumentAdvice<double> { HistogramBucketBoundaries = LagBucketBoundsMs });
+        AvSyncError = m.CreateHistogram(
+            "app.av.sync_error", "ms", "Audio lag minus video lag for one author; >0 means video leads audio",
+            advice: new InstrumentAdvice<double> { HistogramBucketBoundaries = SyncErrorBucketBoundsMs });
         AudioStreamCount = m.CreateUpDownCounter<int>("app.audio.stream.count", null, "Audio stream count");
         VideoStreamCount = m.CreateUpDownCounter<int>("app.video.stream.count", null, "Video stream count");
         MessageCount = m.CreateCounter<long>("app.message.count", null, "Chat message count");
@@ -68,22 +82,27 @@ public static class AppMeters
             "app.video.receive.aggregate_health", "ratio", "Byte-weighted aggregate playback health verdict (-1..+1)");
 
         VideoEncoderEncodeRatio = m.CreateHistogram<double>(
-            "app.video.encoder.encode_ratio", "ratio", "Encoder throughput deficit, EMA-smoothed (0 = encoder keeps pace with capture, 1 = encoder emits nothing)");
+            "app.video.encoder.encode_ratio", "ratio",
+            "Encoder throughput deficit, EMA-smoothed (0 = keeps pace with capture, 1 = emits nothing)");
         VideoEncoderQueueDepth = m.CreateHistogram<double>(
-            "app.video.encoder.queue_depth", "frames", "WebCodecs encoder pending submissions, peak across layers (EMA)");
+            "app.video.encoder.queue_depth", "frames",
+            "WebCodecs encoder pending submissions, peak across layers (EMA)");
         VideoUplinkAckAgeMs = m.CreateHistogram<double>(
             "app.video.uplink.ack_age", "ms", "Sender→server ACK staleness");
         VideoUplinkFloodSkipPerSec = m.CreateHistogram<double>(
             "app.video.uplink.flood_skip", "events/s", "Sender FloodGate skip events per second");
         VideoDownlinkLatencyMs = m.CreateHistogram<double>(
-            "app.video.downlink.latency", "ms", "Server→receiver above-floor latency (EMA, after sliding-min skew baseline)");
+            "app.video.downlink.latency", "ms",
+            "Server→receiver above-floor latency (EMA, after sliding-min skew baseline)");
         VideoDownlinkBufferUnderrunRatio = m.CreateHistogram<double>(
-            "app.video.downlink.buffer_underrun_ratio", "ratio", "Fraction of receiver buffer pushes seen below targetSpan/3 (EMA)");
+            "app.video.downlink.buffer_underrun_ratio", "ratio",
+            "Fraction of receiver buffer pushes seen below targetSpan/3 (EMA)");
         VideoDecoderDecodeRatio = m.CreateHistogram<double>(
             "app.video.decoder.decode_ratio", "ratio", "WebCodecs decode wall-clock / frame budget (receiver, EMA)");
         VideoDecoderHangRateIn60s = m.CreateHistogram<int>(
             "app.video.decoder.hang_rate", "events", "Receiver decoder hang-watchdog fires in the last 60 s");
         VideoLayerCapWalkReason = m.CreateCounter<long>(
-            "app.video.layer_cap.walk", "events", "Per-category layer-cap walks; tag `category` = encoder|uplink|downlink|decoder, `direction` = up|down");
+            "app.video.layer_cap.walk", "events",
+            "Per-category layer-cap walks; tag `category` = encoder|uplink|downlink|decoder, `direction` = up|down");
     }
 }

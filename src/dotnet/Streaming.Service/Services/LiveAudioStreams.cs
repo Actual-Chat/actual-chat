@@ -23,7 +23,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     private IAudioStreamingBackend Backend => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private RemoteAudioStreamCache RemoteAudioCache => field ??= Services.GetRequiredService<RemoteAudioStreamCache>();
-    private ILogger Log => field ??= Services.LogFor<LiveAudioStreams>();
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<LiveAudioStreamInfo>> List(
@@ -112,24 +112,27 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     }
 
     public Task ReportAudioLatency(Session session, TimeSpan latency, CancellationToken cancellationToken)
-    {
-        _ = session;
-        _ = cancellationToken;
-        AppMeters.AudioLatency.Record(ClientStats.AudioLatency(latency).TotalMilliseconds);
-        return Task.CompletedTask;
-    }
+        // Old clients report the retired delivery-leg reading here; recording it would pollute
+        // the meter's capture-to-ear semantics, so it's discarded.
+        => Task.CompletedTask;
 
-    public Task ReportPlaybackLag(
+    public Task ReportAudioLatency(
         Session session,
-        TimeSpan audioPresentationLag,
+        TimeSpan latency,
         TimeSpan? avSyncError,
         CancellationToken cancellationToken)
     {
-        _ = session;
         _ = cancellationToken;
-        AppMeters.AudioPresentationLag.Record(ClientStats.PlaybackLag(audioPresentationLag).TotalMilliseconds);
-        if (avSyncError is { } error)
-            AppMeters.AvSyncError.Record(ClientStats.PlaybackLag(error).TotalMilliseconds);
+        var lag = ClientStats.AudioLatency(latency);
+        var error = avSyncError is { } rawError ? ClientStats.AudioLatency(rawError) : (TimeSpan?)null;
+        AppMeters.AudioLatency.Record(lag.TotalMilliseconds);
+        if (error is { } e)
+            AppMeters.AvSyncError.Record(e.TotalMilliseconds);
+        // The histograms aggregate away the reporter, but per-listener attribution is what
+        // splits a bimodal lag distribution into "which client is skewed vs. genuinely late".
+        Log.LogInformation(
+            "ReportAudioLatency: session={Session}, latency={LatencyMs:F0}ms, avSyncError={AvSyncErrorMs:F0}ms",
+            session, lag.TotalMilliseconds, error?.TotalMilliseconds);
         return Task.CompletedTask;
     }
 
@@ -205,7 +208,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         ChatId chatId,
         LegacyLiveStreamSettings settings,
         CancellationToken cancellationToken)
-        => Task.CompletedTask; // No-op method
+        => Task.CompletedTask;
 
     // Private methods
 
@@ -258,8 +261,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         memoizer = await store.GetMemoizer(streamId, true, cancellationToken).ConfigureAwait(false);
         return memoizer == null ? null : Trim(memoizer);
 
-        IAsyncEnumerable<AudioFrame> Trim(AsyncMemoizer<AudioFrame> source)
-        {
+        IAsyncEnumerable<AudioFrame> Trim(AsyncMemoizer<AudioFrame> source) {
             if (skipTo == Constants.Audio.SkipToLive)
                 return AudioStreamingBackend.SkipToLive(source, cancellationToken);
 

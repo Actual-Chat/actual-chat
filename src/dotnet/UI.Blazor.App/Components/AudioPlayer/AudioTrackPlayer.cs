@@ -282,7 +282,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     }
 
     // Telemetry only: the A/V error is the difference of two lags taken against the same client
-    // ServerClock, so the clock cancels - unlike app.audio.latency, which carries it in full.
+    // ServerClock, so the clock cancels - unlike the latency itself, which carries it in full.
     private void ReportLag(AuthorId authorId, TimeSpan audioLag)
     {
         if (_isOwnStream)
@@ -296,9 +296,9 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         var videoLag = LagTracker.GetVideoLag(authorId);
         var avSyncError = videoLag is { } vLag ? audioLag - vLag : (TimeSpan?)null;
         _ = BackgroundTask.Run(
-            () => Hub.LiveAudioStreams.ReportPlaybackLag(Hub.Session, audioLag, avSyncError, CancellationToken.None),
+            () => Hub.LiveAudioStreams.ReportAudioLatency(Hub.Session, audioLag, avSyncError, CancellationToken.None),
             Log,
-            $"[AudioTrackPlayer #{_id}] Failed to report playback lag");
+            $"[AudioTrackPlayer #{_id}] Failed to report audio latency");
     }
 
     private void UpdateBufferState(bool isBufferLow)
