@@ -4,6 +4,7 @@ using ActualChat.App.Server.Flows;
 using ActualChat.App.Server.Health;
 using ActualChat.AspNetCore;
 using ActualChat.Authentication;
+using ActualChat.Commands;
 using ActualChat.Db.Diagnostics;
 using ActualChat.Diagnostics;
 using ActualChat.Kubernetes;
@@ -222,6 +223,11 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 return sessionInfo?.UserId;
             };
         });
+
+        // API command idempotency (claim -> complete over Redis, dedup by (SessionId, Uuid))
+        services.AddSingleton<IIdempotencyStore>(c => new RedisIdempotencyStore(c));
+        services.AddSingleton<ApiCommandDeduplicator>();
+        services.AddCommander().AddHandlers<ApiCommandDeduplicator>();
 
         // Mesh Locks
         var hasKube = IKubeInfo.HasKube();

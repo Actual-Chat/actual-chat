@@ -54,18 +54,21 @@ public static partial class CoreModuleInitializer
             // RPC setup
             var isServer = RuntimeInfo.IsServer;
             if (isServer) {
+                // Every inbound msgpack format is wrapped so pre-Uuid clients' commands still deserialize.
                 var messagePackV6K = new RpcSerializationFormat("msgpack6k",
-                    () => new RpcByteArgumentSerializerV4(Serializers.KeylessMessagePack),
+                    () => new ApiCommandRpcArgumentSerializer(Serializers.KeylessMessagePack),
                     peer => new RpcByteMessageSerializerV5(peer));
                 var messagePackV6CK = new RpcSerializationFormat("msgpack6ck",
-                    () => new RpcByteArgumentSerializerV4(Serializers.KeylessMessagePack),
+                    () => new ApiCommandRpcArgumentSerializer(Serializers.KeylessMessagePack),
                     peer => new RpcByteMessageSerializerV5Compact(peer));
-                RpcSerializationFormat.All = clientFormats.AddRange([
-                    RpcSerializationFormat.SystemJsonV5,
-                    RpcSerializationFormat.SystemJsonV5NP,
-                    messagePackV6K,
-                    messagePackV6CK,
-                ]);
+                RpcSerializationFormat.All = clientFormats
+                    .ConvertAll(f => WithApiCommandCompat(f, Serializers.MessagePack))
+                    .AddRange([
+                        RpcSerializationFormat.SystemJsonV5,
+                        RpcSerializationFormat.SystemJsonV5NP,
+                        messagePackV6K,
+                        messagePackV6CK,
+                    ]);
             }
             else
                 RpcSerializationFormat.All = clientFormats;
@@ -87,4 +90,14 @@ public static partial class CoreModuleInitializer
 #endif
         }
     }
+
+    // Private methods
+
+    private static RpcSerializationFormat WithApiCommandCompat(
+        RpcSerializationFormat format, IByteSerializer baseSerializer)
+        => new(format.Key,
+            () => new ApiCommandRpcArgumentSerializer(baseSerializer),
+            format.MessageSerializerFactory,
+            format.CompressionFormat,
+            format.CompressionMode);
 }
