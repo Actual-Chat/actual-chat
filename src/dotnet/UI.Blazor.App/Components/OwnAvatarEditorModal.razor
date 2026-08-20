@@ -95,6 +95,10 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override async Task OnParametersSetAsync() {
+        // Re-renders (e.g. when a nested modal closes) must not rebuild the form and discard a picked picture.
+        if (_form is { OriginalAvatar: { } currentAvatar } && currentAvatar.Id == ModalModel.AvatarId)
+            return;
+
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
         _form.OriginalAvatar = await Avatars.GetOwn(Session, ModalModel.AvatarId, default);
 
