@@ -1,5 +1,6 @@
 using ActualChat.App.Maui.IosShareExt.Services;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
+using ActualChat.Maui;
 
 namespace ActualChat.App.Maui.IosShareExt.Components;
 
@@ -18,7 +19,7 @@ public class SignInView(IosHub hub) : ComputedStateView<SignInView.Model>(hub)
 
         var circleView = new UIView {
             TranslatesAutoresizingMaskIntoConstraints = false,
-            BackgroundColor = UIColor.White.ColorWithAlpha(0.1f),
+            BackgroundColor = AppColors.Square,
         };
         circleView.Layer.CornerRadius = 50;
         iconContainer.AddSubview(circleView);
@@ -28,7 +29,7 @@ public class SignInView(IosHub hub) : ComputedStateView<SignInView.Model>(hub)
         var lockView = new UIImageView(lockImage) {
             TranslatesAutoresizingMaskIntoConstraints = false,
             ContentMode = UIViewContentMode.ScaleAspectFit,
-            TintColor = UIColor.White,
+            TintColor = AppColors.Text01,
         };
         iconContainer.AddSubview(lockView);
 
@@ -48,7 +49,7 @@ public class SignInView(IosHub hub) : ComputedStateView<SignInView.Model>(hub)
             TextAlignment = UITextAlignment.Center,
             Text = "Sign in to Voxt to share content",
             Font = UIFont.SystemFontOfSize(20),
-            TextColor = UIColor.White,
+            TextColor = AppColors.Text01,
         };
 
         // Sign In button
@@ -56,8 +57,8 @@ public class SignInView(IosHub hub) : ComputedStateView<SignInView.Model>(hub)
         signInButton.TranslatesAutoresizingMaskIntoConstraints = false;
         signInButton.SetTitle("Sign In", UIControlState.Normal);
         signInButton.TitleLabel.Font = UIFont.SystemFontOfSize(18, UIFontWeight.Semibold);
-        signInButton.SetTitleColor(UIColor.White, UIControlState.Normal);
-        signInButton.BackgroundColor = new UIColor(red: 0.27f, green: 0.42f, blue: 1.0f, alpha: 1.0f);
+        signInButton.SetTitleColor(AppColors.PrimaryTitle, UIControlState.Normal);
+        signInButton.BackgroundColor = AppColors.Primary;
         signInButton.Layer.CornerRadius = 12;
         signInButton.TouchUpInside += Safe(ShareUI.OpenMainApp);
 
@@ -66,6 +67,7 @@ public class SignInView(IosHub hub) : ComputedStateView<SignInView.Model>(hub)
         closeButton.TranslatesAutoresizingMaskIntoConstraints = false;
         closeButton.SetTitle("Close", UIControlState.Normal);
         closeButton.TitleLabel.Font = UIFont.SystemFontOfSize(16);
+        closeButton.TintColor = AppColors.Primary;
         closeButton.TouchUpInside += Safe(UIKitExt.CloseApp);
 
         // Vertical stack

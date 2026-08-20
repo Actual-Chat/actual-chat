@@ -39,7 +39,7 @@ public sealed class ContactView(Contact contact, IosHub hub) : ComputedStateView
         {
             TranslatesAutoresizingMaskIntoConstraints = false,
             Font = UIFont.SystemFontOfSize(17, UIFontWeight.Regular),
-            TextColor = UIColor.Label,
+            TextColor = AppColors.Text01,
             Text = contact.Chat.Title,
             Lines = 1,
             LineBreakMode = UILineBreakMode.TailTruncation,
@@ -50,7 +50,7 @@ public sealed class ContactView(Contact contact, IosHub hub) : ComputedStateView
         {
             TranslatesAutoresizingMaskIntoConstraints = false,
             Font = UIFont.SystemFontOfSize(14, UIFontWeight.Regular),
-            TextColor = UIColor.SecondaryLabel,
+            TextColor = AppColors.Text03,
             Lines = 1,
             LineBreakMode = UILineBreakMode.TailTruncation,
             Text = model.LastMessage,
@@ -64,7 +64,7 @@ public sealed class ContactView(Contact contact, IosHub hub) : ComputedStateView
         {
             TranslatesAutoresizingMaskIntoConstraints = false,
             ContentMode = UIViewContentMode.ScaleAspectFit,
-            TintColor = UIColor.TertiaryLabel,
+            TintColor = AppColors.Text04,
         };
         _checkbox.SetContentCompressionResistancePriority((float)UILayoutPriority.Required, UILayoutConstraintAxis.Horizontal);
         SetIsSelected(model.IsSelected);
@@ -104,11 +104,11 @@ public sealed class ContactView(Contact contact, IosHub hub) : ComputedStateView
     {
         if (isSelected) {
             _checkbox.Image = UIImage.GetSystemImage("checkmark.circle.fill");
-            _checkbox.TintColor = UIColor.SystemBlue;
+            _checkbox.TintColor = AppColors.Primary;
         }
         else {
             _checkbox.Image = UIImage.GetSystemImage("circle");
-            _checkbox.TintColor = UIColor.TertiaryLabel;
+            _checkbox.TintColor = AppColors.Text04;
         }
     }
 

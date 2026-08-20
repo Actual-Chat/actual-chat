@@ -16,7 +16,7 @@
     set outDir=resources\images\converted
     if not exist "%outDir%" mkdir "%outDir%"
 
-    for %%N in (error-barrier-image upload-progress-image) do (
+    for %%N in (error-cat-dark error-cat-light share-cat-dark share-cat-light) do (
         echo Converting %%N.svg
         rsvg-convert -o %outDir%\%%N.png %inDir%\%%N.svg || exit /b 1
         rsvg-convert -z 2 -o %outDir%\%%N@2x.png %inDir%\%%N.svg || exit /b 1
@@ -42,7 +42,7 @@ fi
 # Only the SVGs the iOS app extension bundles as PNGs - UIKit can't render SVG, unlike the
 # web, which is served every other file under $inDir as-is. Add a name here when a native
 # view needs one. @2x/@3x come from the SVG's own size, so each image keeps its dimensions.
-names="error-barrier-image upload-progress-image"
+names="error-cat-dark error-cat-light share-cat-dark share-cat-light"
 
 inDir="src/nodejs/images"
 outDir="resources/images/converted"

@@ -1,5 +1,6 @@
 using ActualChat.App.Maui.IosShareExt.Services;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
+using ActualChat.Maui;
 
 namespace ActualChat.App.Maui.IosShareExt.Components;
 
@@ -13,21 +14,19 @@ public class SuccessView(IosHub hub) : ComputedStateView<SuccessView.Model>(hub)
             TranslatesAutoresizingMaskIntoConstraints = false,
         };
 
-        // Semi-transparent white circle background (20% opacity like in SVG)
         var circleView = new UIView {
             TranslatesAutoresizingMaskIntoConstraints = false,
-            BackgroundColor = UIColor.White.ColorWithAlpha(0.1f),
+            BackgroundColor = AppColors.Square,
         };
         circleView.Layer.CornerRadius = 50; // Half of 100pt size
         iconContainer.AddSubview(circleView);
 
-        // White checkmark on top
         var config = UIImageSymbolConfiguration.Create(48, UIImageSymbolWeight.Medium);
         var checkmarkImage = UIImage.GetSystemImage("checkmark", config);
         var checkmarkView = new UIImageView(checkmarkImage) {
             TranslatesAutoresizingMaskIntoConstraints = false,
             ContentMode = UIViewContentMode.ScaleAspectFit,
-            TintColor = UIColor.White,
+            TintColor = AppColors.Text01,
         };
         iconContainer.AddSubview(checkmarkView);
 
@@ -48,7 +47,7 @@ public class SuccessView(IosHub hub) : ComputedStateView<SuccessView.Model>(hub)
             TextAlignment = UITextAlignment.Center,
             Text = "Done!",
             Font = UIFont.SystemFontOfSize(24, UIFontWeight.Semibold),
-            TextColor = UIColor.White,
+            TextColor = AppColors.Text01,
         };
 
         // Vertical stack view

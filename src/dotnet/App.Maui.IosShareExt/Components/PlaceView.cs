@@ -1,5 +1,6 @@
 using ActualChat.App.Maui.IosShareExt.Services;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
+using ActualChat.Maui;
 using ActualChat.Maui.Services;
 
 namespace ActualChat.App.Maui.IosShareExt.Components;
@@ -22,7 +23,7 @@ public sealed class PlaceView(Place? place, IosHub hub) : ComputedStateView<bool
         _underlineView = new UIView
         {
             TranslatesAutoresizingMaskIntoConstraints = false,
-            BackgroundColor = UIColor.SystemBlue,
+            BackgroundColor = AppColors.Primary,
             Layer = { CornerRadius = 1.5f }
         };
 

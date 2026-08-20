@@ -1,5 +1,6 @@
 using ActualChat.App.Maui.IosShareExt.Services;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
+using ActualChat.Maui;
 
 namespace ActualChat.App.Maui.IosShareExt.Components;
 
@@ -20,7 +21,7 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         var closeButton = new UIButton(UIButtonType.System);
         closeButton.TranslatesAutoresizingMaskIntoConstraints = false;
         closeButton.SetImage(UIImage.GetSystemImage("xmark"), UIControlState.Normal);
-        closeButton.TintColor = UIColor.White;
+        closeButton.TintColor = AppColors.Text01;
         closeButton.TouchUpInside += Safe(UIKitExt.CloseApp);
         AddSubview(closeButton);
 
@@ -30,7 +31,7 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
             TranslatesAutoresizingMaskIntoConstraints = false,
             Text = "Share with",
             Font = UIFont.SystemFontOfSize(17, UIFontWeight.Semibold)!,
-            TextColor = UIColor.White,
+            TextColor = AppColors.Text01,
             TextAlignment = UITextAlignment.Center
         };
         AddSubview(titleLabel);
@@ -40,6 +41,7 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         _sendButton.TranslatesAutoresizingMaskIntoConstraints = false;
         _sendButton.SetTitle("Send", UIControlState.Normal);
         _sendButton.TitleLabel.Font = UIFont.SystemFontOfSize(17, UIFontWeight.Semibold)!;
+        _sendButton.TintColor = AppColors.Primary;
         _sendButton.TouchUpInside += Safe(() => ShareUI.StartSending());
         AddSubview(_sendButton);
 
@@ -54,8 +56,8 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
             TranslatesAutoresizingMaskIntoConstraints = false,
             Placeholder = "Who would you like to share with",
             Font = UIFont.SystemFontOfSize(17),
-            TextColor = UIColor.White,
-            BackgroundColor = new UIColor(red: 0.18f, green: 0.18f, blue: 0.19f, alpha: 1.0f),
+            TextColor = AppColors.Text01,
+            BackgroundColor = AppColors.Input,
             LeftView = new UIView(new CGRect(0, 0, 44, 44)),
             LeftViewMode = UITextFieldViewMode.Always,
             ReturnKeyType = UIReturnKeyType.Search,
@@ -72,7 +74,7 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         var searchIcon = new UIImageView(UIImage.GetSystemImage("magnifyingglass"))
         {
             Frame = new CGRect(10, 10, 20, 20),
-            TintColor = UIColor.LightGray,
+            TintColor = AppColors.Text03,
             ContentMode = UIViewContentMode.ScaleAspectFit
         };
         searchField.LeftView.AddSubview(searchIcon);
@@ -92,8 +94,8 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
             TranslatesAutoresizingMaskIntoConstraints = false,
             Placeholder = "Add your comment (optional)",
             Font = UIFont.SystemFontOfSize(17),
-            TextColor = UIColor.White,
-            BackgroundColor = new UIColor(red: 0.18f, green: 0.18f, blue: 0.19f, alpha: 1.0f),
+            TextColor = AppColors.Text01,
+            BackgroundColor = AppColors.Input,
             LeftView = new UIView(new CGRect(0, 0, 44, 44)),
             LeftViewMode = UITextFieldViewMode.Always,
             ReturnKeyType = UIReturnKeyType.Default,
@@ -110,7 +112,7 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         var commentIcon = new UIImageView(UIImage.GetSystemImage("message"))
         {
             Frame = new CGRect(12, 12, 20, 20),
-            TintColor = UIColor.LightGray,
+            TintColor = AppColors.Text03,
             ContentMode = UIViewContentMode.ScaleAspectFit
         };
         commentField.LeftView.AddSubview(commentIcon);
