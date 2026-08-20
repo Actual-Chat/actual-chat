@@ -757,13 +757,19 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                     "SelectLastUsedChat: PlaceId: {PlaceId} -> ChatId: {ChatId}",
                     placeId, lastSelectedChatId);
 
-                // Navigation is the only writer of SelectedChatId. A narrow screen shows either the chat
-                // list or the chat, so navigating there would replace the list the user just switched to.
-                if (lastSelectedChatId is null || !Hub.PanelsUI.IsWide())
+                // Navigation is the only writer of SelectedChatId, so restoring the selection means
+                // navigating. On a narrow screen that would normally swap the chat list for the chat -
+                // but the list is what the user just asked for, so the panels stay put there.
+                if (lastSelectedChatId is null)
                     return;
 
+                var link = Links.Chat(lastSelectedChatId);
+                var panelsUI = Hub.PanelsUI;
+                if (!panelsUI.IsWide())
+                    panelsUI.KeepPanelsOn(link);
+
                 var mustReplace = History.LocalUrl.IsChat();
-                await History.NavigateTo(Links.Chat(lastSelectedChatId), mustReplace).ConfigureAwait(false);
+                await History.NavigateTo(link, mustReplace).ConfigureAwait(false);
             }
             catch (Exception ex) {
                 Log.LogError(ex, "SelectLastUsedChat failed");

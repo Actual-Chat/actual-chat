@@ -7,6 +7,8 @@ namespace ActualChat.UI.Blazor.Services;
 /// </summary>
 public partial class PanelsUI : UIWorkerBase<UIHub>
 {
+    private string? _keepPanelsUrl;
+
     public IState<ScreenSize> ScreenSize { get; }
     public LeftPanel Left { get; }
     public MiddlePanel Middle { get; }
@@ -26,6 +28,12 @@ public partial class PanelsUI : UIWorkerBase<UIHub>
         this.Start();
     }
 
+    // Suppresses the auto-hide below for one upcoming navigation to `url`. The place switch needs it:
+    // it changes the URL so the selection follows the place, but the user asked for that place's chat
+    // list, and hiding the list is the one thing that would undo what they just did.
+    public void KeepPanelsOn(LocalUrl url)
+        => _keepPanelsUrl = url.Value;
+
     public void HidePanels()
     {
         if (IsWide())
@@ -41,6 +49,11 @@ public partial class PanelsUI : UIWorkerBase<UIHub>
             return;
 
         var url = new LocalUrl(transition.Item.Url);
+        if (_keepPanelsUrl is { } keepPanelsUrl) {
+            _keepPanelsUrl = null;
+            if (string.Equals(keepPanelsUrl, url.Value, StringComparison.Ordinal))
+                return;
+        }
         if (!url.IsChatRoot()) {
             if (url.IsChat(out var chatId, out long entryLid)) {
                 var oldUrl = new LocalUrl(transition.BaseItem.Url);
