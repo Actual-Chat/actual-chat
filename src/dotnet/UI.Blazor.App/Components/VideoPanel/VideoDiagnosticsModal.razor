@@ -406,6 +406,10 @@
                 <span class="diag-label">Precision</span>
                 <span class="diag-value">±@FormatMs(clock.Precision)</span>
             </div>
+            <div class="diag-row diag-sub">
+                <span class="diag-label">drift rate</span>
+                <span class="diag-value diag-dim">@($"{clock.DriftRate * 1e6:F0} ppm")</span>
+            </div>
             <div class="diag-row">
                 <span class="diag-label">RTT (ema / last)</span>
                 <span class="diag-value">@FormatMs(clock.RttEma) / @FormatMs(clock.LastRtt)</span>

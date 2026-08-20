@@ -21,6 +21,11 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
     private static readonly TimeSpan SteadyInterval =
         TimeSpan.FromSeconds(DriftBudget.TotalSeconds / AssumedDriftRate)
             .Clamp(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(30));
+    // An undisciplined machine can drift 40x the assumption (2000 ppm measured on a dev box),
+    // so the cadence follows the measured rate when corrections exceed measurement noise.
+    // At this floor even 2000 ppm accrues only ~40 ms per interval - still a slewed refinement.
+    private static readonly TimeSpan MinSteadyInterval = TimeSpan.FromSeconds(20);
+    private const double DriftRateDecay = 0.7;
     private static readonly RetryDelaySeq ConvergingDelays = RetryDelaySeq.Exp(1, 60);
     private const int ConvergingBurstSize = 8;
     private const int SteadyBurstSize = 4;
@@ -55,6 +60,7 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
     private Moment _lastAcceptedAt;
     private Moment _lastAcceptedWallAt;
     private ServerClockSyncMode _mode = ServerClockSyncMode.Converging;
+    private double _driftRate;
     private int _attempt;
     private int _epoch;
 
@@ -74,7 +80,10 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
         // Wall-vs-monotonic divergence is a reason to re-measure, never evidence that
         // a correction is legitimate - the two clocks disagree on sleep and on a wall
         // step alike, and which one lies is platform-dependent.
-        if (SyncCount > 0 && _precision <= TargetPrecision && GetSuspendDrift() < SuspendDriftThreshold)
+        if (SyncCount > 0
+            && _precision <= TargetPrecision
+            && GetPredictedDrift() <= TargetPrecision
+            && GetSuspendDrift() < SuspendDriftThreshold)
             return;
 
         await Sync(cancellationToken).ConfigureAwait(false);
@@ -231,6 +240,7 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
     private void Accept(BurstResult burst, ServerClockSyncOutcome outcome)
     {
         var correction = (burst.Offset - _appliedOffset).Duration();
+        UpdateDriftRate(correction, burst.Precision);
         SyncCount++;
         _attempt = 0;
         _connectedElapsed = TimeSpan.Zero;
@@ -247,9 +257,10 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
             StartSlew(burst.Offset);
 
         Log.LogInformation(
-            "{Outcome}: offset = {Offset} ± {Precision}, correction = {Correction}, minRtt = {MinRtt}, epoch = {Epoch}",
+            "{Outcome}: offset = {Offset} ± {Precision}, correction = {Correction}, minRtt = {MinRtt}, "
+            + "drift = {DriftPpm:F0}ppm, epoch = {Epoch}",
             outcome, burst.Offset.ToShortString(), burst.Precision.ToShortString(),
-            correction.ToShortString(), burst.MinRtt.ToShortString(), _epoch);
+            correction.ToShortString(), burst.MinRtt.ToShortString(), _driftRate * 1e6, _epoch);
         SetNextSyncAt();
         UpdateStats(outcome, burst, correction);
     }
@@ -264,8 +275,40 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
 
     private void SetNextSyncAt()
         => _nextSyncAt = CpuClock.Now + (_mode == ServerClockSyncMode.Steady
-            ? SteadyInterval
+            ? GetSteadyInterval()
             : ConvergingDelays[_attempt]);
+
+    private TimeSpan GetSteadyInterval()
+        => _driftRate <= AssumedDriftRate
+            ? SteadyInterval
+            : TimeSpan.FromSeconds(DriftBudget.TotalSeconds / _driftRate)
+                .Clamp(MinSteadyInterval, SteadyInterval);
+
+    private void UpdateDriftRate(TimeSpan correction, TimeSpan burstPrecision)
+    {
+        if (_lastAcceptedAt == default)
+            return;
+
+        // Below MinSteadyInterval the expected drift sits under the noise floor, so the
+        // sample can neither confirm nor refute the estimate - it must not decay it either.
+        var elapsed = (CpuClock.Now - _lastAcceptedAt).TotalSeconds;
+        if (elapsed < MinSteadyInterval.TotalSeconds)
+            return;
+
+        var noise = TimeSpanExt.Max(burstPrecision, _precision);
+        var evidence = correction - noise;
+        _driftRate = evidence > TimeSpan.Zero
+            ? evidence.TotalSeconds / elapsed
+            : _driftRate * DriftRateDecay;
+    }
+
+    private TimeSpan GetPredictedDrift()
+    {
+        if (_lastAcceptedAt == default)
+            return TimeSpan.Zero;
+
+        return TimeSpan.FromSeconds(_driftRate * (CpuClock.Now - _lastAcceptedAt).TotalSeconds);
+    }
 
     private TimeSpan GetAcceptablePrecision()
     {
@@ -283,7 +326,7 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
         // the first sample it gets - which is the one most likely to be reconnect-poisoned.
         var now = CpuClock.Now;
         if (_lastAttemptAt != default) {
-            var scheduled = _mode == ServerClockSyncMode.Steady ? SteadyInterval : ConvergingDelays[_attempt];
+            var scheduled = _mode == ServerClockSyncMode.Steady ? GetSteadyInterval() : ConvergingDelays[_attempt];
             _connectedElapsed += TimeSpanExt.Min((now - _lastAttemptAt).Positive(), scheduled);
         }
 
@@ -387,6 +430,7 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
             Mode = _mode,
             Staleness = _connectedElapsed,
             Outcome = outcome,
+            DriftRate = _driftRate,
         });
 
     private TimeSpan GetSuspendDrift()

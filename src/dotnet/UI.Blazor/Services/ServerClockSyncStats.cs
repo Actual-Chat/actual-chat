@@ -41,6 +41,8 @@ public sealed class ServerClockSyncStats
         public TimeSpan Correction { get; init; }
         public TimeSpan Staleness { get; init; }
         public int Epoch { get; init; }
+        // Fraction (s/s); multiply by 1e6 for ppm
+        public double DriftRate { get; init; }
         public ServerClockSyncMode Mode { get; init; }
         public ServerClockSyncOutcome Outcome { get; init; }
     }

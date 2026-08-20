@@ -115,9 +115,11 @@ trigger** to re-measure, never as evidence that a correction is legitimate.
 | `lastAcceptedWall`, `lastAcceptedMono` | last accepted sync, on both clocks |
 | `connectedElapsed` | staleness, accrued only while connected |
 | `mode` | `Converging` or `Steady` |
+| `driftRate` | measured, evidence-gated, decays when quiet |
 | `attempt` | backoff counter within `Converging` |
 
-There is deliberately **no learned drift rate**. See
+The learned `driftRate` only ever *shortens* the cadence, on evidence beyond
+measurement noise; the assumed rate remains the model. See
 [Why drift is assumed, not measured](#why-drift-is-assumed-not-measured).
 
 ## Workflow
@@ -157,7 +159,7 @@ The next attempt runs from an explicit deadline, not a polling tick.
 
 ```
 Converging:  next = backoff(attempt)     // 1s, 2s, 4s ... capped at 60s
-Steady:      next = SteadyInterval       // derived, see Constants
+Steady:      next = SteadyInterval       // shortened while measured drift exceeds the assumption
 ```
 
 Triggers that preempt the deadline:
@@ -368,6 +370,34 @@ precision.
 Being wrong here is safe in the only direction that matters — a conservative rate
 syncs more often than needed, never less.
 
+### The escape hatch: correction-driven cadence
+
+The "NTP-disciplined by construction" model failed in the field within a day of
+deployment: a dev box with broken Windows time sync (13.8 s standing wall error)
+drifted at **2000 ppm** — 40× the assumption — accruing ~0.8 s per steady
+interval. Worse than a telemetry artifact: the inflated video-lag readings pumped
+the receiver-side A/V hold into *real* audio delay.
+
+So the assumed rate stays the model, but each accepted sync cross-checks it for
+free: `correction / elapsed-since-last-accept` is a drift-rate sample. Only the
+part of the correction that measurement noise cannot explain counts as evidence
+(`correction − max(burstPrecision, precision)`), samples taken under
+`MinSteadyInterval` are ignored entirely (expected drift sits below the noise
+floor there, so they can neither confirm nor refute), and quiet syncs decay the
+estimate by `DriftRateDecay` back toward zero. While the estimate exceeds
+`AssumedDriftRate`, the steady interval follows it:
+
+```
+SteadyInterval' = clamp(DriftBudget / measuredDriftRate, MinSteadyInterval, SteadyInterval)
+```
+
+At the 20 s floor even a 2000 ppm machine accrues only ~40 ms per interval —
+inside the small-correction band, so every correction stays a slewed refinement
+and never a step. A healthy machine never produces evidence above noise, so its
+cadence never changes. `EnsureSynced` applies the same estimate: predicted drift
+beyond `targetPrecision` forces a re-measure even when the last accepted
+precision was good.
+
 ::: info
 Path changes are not drift and must not influence this number. A Wi-Fi to
 cellular handover shifts the *measured* offset by tens of milliseconds through
@@ -446,6 +476,8 @@ way to tell whether the 50 ms target is being met.
 | `AssumedDriftRate` | 50 ppm | assumption, not measured |
 | `DriftBudget` | 20 ms | of the 50 ms target |
 | `SteadyInterval` | derived, clamped to 5–30 min | ~6.7 min at the values above |
+| `MinSteadyInterval` | 20 s | cadence floor under measured drift |
+| `DriftRateDecay` | 0.7 | per quiet sync, back toward the assumption |
 | Converging backoff | 1 s → 60 s | exponential |
 | `BurstSize` | 8 converging / 4 steady | |
 | `ProbeSpacing` | 50–100 ms | decorrelates queuing |
