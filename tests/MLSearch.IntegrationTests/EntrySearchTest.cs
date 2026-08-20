@@ -124,7 +124,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
             var expected = entryLookup[chat.Id]
                 .OrderByDescending(x => x.GetIndexedEntryDate())
                 .BuildSearchResults(["let's"], IsolationKey);
-             var searchResults = await Find("let", chatId: chat.Id, expected: expected.Count);
+            var searchResults = await Find("let", chatId: chat.Id, expected: expected.Count);
             searchResults.Should()
                 .BeEquivalentTo(expected, o => o.ExcludingSearchMatch().WithStrictOrderingFor(x => x), chat.Title);
         }
@@ -166,6 +166,24 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
             searchResults.Should()
                 .BeEquivalentTo(expected, o => o.ExcludingSearchMatch().WithStrictOrderingFor(x => x), place.Title);
         }
+    }
+
+    [Fact]
+    public async Task ShouldNotFindEntriesWhenPlaceHasNoAccessibleChats()
+    {
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chatId, _) = await Tester.CreateChat(false);
+        await CreateEntry(chatId, "Let's go outside");
+        await Find("let", expected: 1);
+
+        // act
+        await Tester.SignInAsUniqueAlice();
+        var place = await Tester.CreatePlace(false, $"empty place {IsolationKey}");
+        var searchResults = await Tester.FindEntries($"{IsolationKey} let", place.Id);
+
+        // assert
+        searchResults.Should().BeEmpty();
     }
 
     [Fact]

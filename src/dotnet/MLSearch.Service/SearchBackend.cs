@@ -444,7 +444,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     {
         if (!OpenSearchConfigurator.WhenReady.IsCompletedSuccessfully)
             await OpenSearchConfigurator.WhenReady.ConfigureAwait(false);
+
         var chatIds = await ListChatIds().ConfigureAwait(false);
+        // OpenSearch.Client omits a conditionless Terms clause, so ConfigureQuery needs a non-empty chatIds
+        if (chatIds.Count == 0)
+            return SearchResult<FoundChatEntry>.Empty;
 
         var searchResponse =
             await OpenSearchClient.SearchAsync<IndexedEntry>(searchDescriptor
@@ -454,7 +458,9 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                             .Query(q => q.Bool(ConfigureQuery))
                             .Sort(s => s.Descending(x => x.At))
                             .IgnoreUnavailable()
-                            .Highlight(h => h.Fields(f => f.Field(x => x.Content)).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag))
+                            .Highlight(h => h.Fields(f => f.Field(x => x.Content))
+                                .PreTags(HighlightsConverter.PreTag)
+                                .PostTags(HighlightsConverter.PostTag))
                             .Log(OpenSearchClient, OpenSearchDebugLog, "Entry", OpenSearchNames.EntryIndexName),
                     cancellationToken)
                 .Assert(Log)
@@ -468,25 +474,24 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         };
 
         FoundChatEntry ToSearchResult(IHit<IndexedEntry> hit)
-            => new (hit.Source!.Id, hit.GetSearchMatch()) {
+            => new(hit.Source!.Id, hit.GetSearchMatch()) {
                 HighlightedWords = hit.GetHighlightedWords().ToApiSet(StringComparer.OrdinalIgnoreCase),
             };
 
         BoolQueryDescriptor<IndexedEntry> ConfigureQuery(BoolQueryDescriptor<IndexedEntry> descriptor)
             => descriptor.Must(q
                     => q.MatchBoolPrefix(p => p.Query(query.Criteria).Field(x => x.Content).Operator(Operator.And)),
-                chatIds.Count > 0
-                    ? qc => qc.HasParent<IndexedChat>(
-                        p => p.Query(q => q.Terms(t => t.Field(x => x.Id).Terms(chatIds))))
-                    : null);
+                qc => qc.HasParent<IndexedChat>(
+                    p => p.Query(q => q.Terms(t => t.Field(x => x.Id).Terms(chatIds)))));
 
-        async Task<List<ChatId>> ListChatIds()
-        {
+        async Task<List<ChatId>> ListChatIds() {
             if (query.ChatId is not null)
                 return [query.ChatId];
 
             var contactSubset = query.PlaceId is not null ? ContactSubset.Place(query.PlaceId) : ContactSubset.All();
-            var contactIds = await ContactsBackend.ListIdsForSearch(userId, contactSubset, true, cancellationToken).ConfigureAwait(false);
+            var contactIds = await ContactsBackend
+                .ListIdsForSearch(userId, contactSubset, true, cancellationToken)
+                .ConfigureAwait(false);
             if (query.PlaceId is not { } placeId)
                 return contactIds.Select(x => x.ChatId).ToList();
 
