@@ -1,12 +1,16 @@
 using ActualChat.App.Maui.IosShareExt.Services;
+using ActualChat.App.Maui.IosShareExt.UI;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
+using ActualChat.Maui;
 
 namespace ActualChat.App.Maui.IosShareExt.Components;
 
 public class UploadProgressView(IosHub hub) : ComputedStateView<UploadProgressView.Model>(hub)
 {
-    private static readonly UIColor AccentColor = UIColor.FromRGB(0x54, 0xA6, 0xFF);
-    private static readonly UIColor ProgressTrackColor = UIColor.FromRGB(0x42, 0x42, 0x4D);
+    // The design pins the bar to the ramp rather than to --primary: blue/70 in both themes,
+    // on an ash/90 track in light and an ash/30 one in dark.
+    private static readonly UIColor ProgressColor = AppColors.Blue70;
+    private static readonly UIColor ProgressTrackColor = AppColors.Dynamic(AppColors.Ash90, AppColors.Ash30);
     private UIProgressView _progressBar = null!;
     private ShareUI ShareUI => Hub.ShareUI;
 
@@ -15,7 +19,7 @@ public class UploadProgressView(IosHub hub) : ComputedStateView<UploadProgressVi
         TranslatesAutoresizingMaskIntoConstraints = false;
 
         // Image
-        var imageView = new UIImageView(UIImage.FromBundle("upload-progress-image.png")) {
+        var imageView = new UIImageView(AppImages.ShareCat) {
             TranslatesAutoresizingMaskIntoConstraints = false,
             ContentMode = UIViewContentMode.ScaleAspectFit,
         };
@@ -28,7 +32,7 @@ public class UploadProgressView(IosHub hub) : ComputedStateView<UploadProgressVi
         // Progress bar
         _progressBar = new UIProgressView(UIProgressViewStyle.Default) {
             TranslatesAutoresizingMaskIntoConstraints = false,
-            ProgressTintColor = AccentColor,
+            ProgressTintColor = ProgressColor,
             TrackTintColor = ProgressTrackColor,
             ClipsToBounds = true,
         };
@@ -40,7 +44,7 @@ public class UploadProgressView(IosHub hub) : ComputedStateView<UploadProgressVi
             TextAlignment = UITextAlignment.Center,
             Text = "Uploading...",
             Font = UIFont.SystemFontOfSize(16, UIFontWeight.Medium)!,
-            TextColor = UIColor.White,
+            TextColor = AppColors.Text01,
         };
 
         // Vertical stack view
@@ -57,7 +61,7 @@ public class UploadProgressView(IosHub hub) : ComputedStateView<UploadProgressVi
         // Cancel button
         var cancelConfiguration = UIButtonConfiguration.PlainButtonConfiguration;
         cancelConfiguration.ContentInsets = new NSDirectionalEdgeInsets(10, 24, 10, 24);
-        cancelConfiguration.BaseForegroundColor = AccentColor;
+        cancelConfiguration.BaseForegroundColor = AppColors.Primary;
         cancelConfiguration.AttributedTitle = new NSAttributedString("Cancel",
             new UIStringAttributes { Font = UIFont.SystemFontOfSize(16, UIFontWeight.Medium) });
         var cancelButton = new UIButton {

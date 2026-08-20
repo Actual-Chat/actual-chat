@@ -1,3 +1,6 @@
+using ActualChat.App.Maui.IosShareExt.UI;
+using ActualChat.Maui;
+
 namespace ActualChat.App.Maui.IosShareExt.Components;
 
 /// <summary>
@@ -8,17 +11,17 @@ public sealed class ErrorContentView : UIView
 {
     public ErrorContentView(string message, EventHandler onClose)
     {
-        BackgroundColor = new UIColor(red: 0.11f, green: 0.11f, blue: 0.12f, alpha: 1.0f);
+        BackgroundColor = AppColors.Background01;
 
         var label = new UILabel {
             TranslatesAutoresizingMaskIntoConstraints = false,
             TextAlignment = UITextAlignment.Center,
             Text = message,
             Font = UIFont.SystemFontOfSize(24),
-            TextColor = UIColor.White,
+            TextColor = AppColors.Text01,
             Lines = 0,
         };
-        var imageView = new UIImageView(UIImage.FromBundle("error-barrier-image.png")) {
+        var imageView = new UIImageView(AppImages.ErrorCat) {
             TranslatesAutoresizingMaskIntoConstraints = false,
             ContentMode = UIViewContentMode.ScaleAspectFit,
         };
@@ -26,6 +29,7 @@ public sealed class ErrorContentView : UIView
         closeButton.TranslatesAutoresizingMaskIntoConstraints = false;
         closeButton.SetTitle("Close", UIControlState.Normal);
         closeButton.TitleLabel.Font = UIFont.SystemFontOfSize(20, UIFontWeight.Semibold);
+        closeButton.TintColor = AppColors.Primary;
         closeButton.TouchUpInside += onClose;
 
         var stackView = new UIStackView([imageView, label, closeButton]) {

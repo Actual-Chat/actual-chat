@@ -1,3 +1,5 @@
+using ActualChat.Maui;
+
 namespace ActualChat.App.Maui.IosShareExt.Components;
 
 /// <summary>
@@ -32,9 +34,9 @@ public sealed class CounterBadgeView : UILabel
     {
         TranslatesAutoresizingMaskIntoConstraints = false;
         Font = UIFont.SystemFontOfSize(12, UIFontWeight.Semibold)!;
-        TextColor = UIColor.White;
+        TextColor = AppColors.PrimaryTitle;
         TextAlignment = UITextAlignment.Center;
-        BackgroundColor = UIColor.SystemBlue;
+        BackgroundColor = AppColors.Primary;
         Layer.CornerRadius = MinSize / 2f;
         ClipsToBounds = true;
         UserInteractionEnabled = false;

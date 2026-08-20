@@ -1,6 +1,7 @@
 using ActualChat.App.Maui.IosShareExt.UI;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 using ActualChat.App.Maui.IosShareExt.Services;
+using ActualChat.Maui;
 
 namespace ActualChat.App.Maui.IosShareExt.Components;
 
@@ -16,7 +17,7 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
 
     protected override void OnInitialRender(Model model)
     {
-        BackgroundColor = new UIColor(red: 0.11f, green: 0.11f, blue: 0.12f, alpha: 1.0f);
+        BackgroundColor = AppColors.Background01;
         OnStateChanged(model);
     }
 

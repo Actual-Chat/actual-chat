@@ -25,7 +25,8 @@ public sealed class ContactIconView(IconQuery? iconQuery, UIImage? defaultImage,
         {
             TranslatesAutoresizingMaskIntoConstraints = false,
             ContentMode = UIViewContentMode.ScaleAspectFill,
-            BackgroundColor = UIColor.SystemBlue,
+            BackgroundColor = AppColors.Primary,
+            TintColor = AppColors.Primary,
             Layer = { CornerRadius = CornerRadius, MasksToBounds = true },
         };
 
@@ -34,7 +35,7 @@ public sealed class ContactIconView(IconQuery? iconQuery, UIImage? defaultImage,
         {
             TranslatesAutoresizingMaskIntoConstraints = false,
             Font = UIFont.SystemFontOfSize(Size / 2f, UIFontWeight.Medium),
-            TextColor = UIColor.White,
+            TextColor = AppColors.PrimaryTitle,
             TextAlignment = UITextAlignment.Center,
             Text = title.Length > 0 ? title[0].ToString().ToUpper() : string.Empty,
         };
@@ -64,7 +65,7 @@ public sealed class ContactIconView(IconQuery? iconQuery, UIImage? defaultImage,
             : UIImage.FromFile(model.FilePath);
         var old = _image.Image;
         if (image is null) {
-            _image.BackgroundColor = UIColor.SystemBlue;
+            _image.BackgroundColor = AppColors.Primary;
             _image.Image = null;
             _initialLabel.Hidden = false;
         }
