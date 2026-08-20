@@ -1,5 +1,6 @@
 using ActualChat.Security;
 using ActualChat.UI.Blazor.Services;
+using ActualLab.Rpc;
 
 namespace ActualChat.App.Maui.Services;
 
@@ -60,7 +61,7 @@ public sealed class MauiSession(IServiceProvider services)
             // Session is invalid -> update it to valid + reload MAUI App
             Log.LogWarning("Stored session is invalid - will reload");
             await Store(validSession).ConfigureAwait(false);
-            TrueSessionResolver.Replace(validSession);
+            await SwitchTo(validSession).ConfigureAwait(false);
             // Reloading mid-startup recreates the WebView while the first Blazor scope is
             // still initializing, leaving a half-disposed scope with a disconnected JS runtime
             // (=> endless JSDisconnectedException in the post-reload sign-in UI). Wait until the
@@ -76,6 +77,31 @@ public sealed class MauiSession(IServiceProvider services)
         });
     }
 
+    // Never throws: MauiReloadUI calls it on the reload path, where a failure would terminate the app
+    public async Task Revalidate()
+    {
+        using var _ = Tracer.MethodRegion();
+        if (!TrueSessionResolver.HasSession)
+            return;
+
+        var session = TrueSessionResolver.Session;
+        try {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var validSession = await MobileSessions
+                .ValidateSession(session, MauiSettings.AppUserAgent, cts.Token)
+                .ConfigureAwait(false);
+            if (session == validSession)
+                return;
+
+            await Store(validSession).ConfigureAwait(false);
+            await SwitchTo(validSession).ConfigureAwait(false);
+            Log.LogInformation("Replaced an invalid Session");
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to validate Session - keeping the current one");
+        }
+    }
+
     public static Task RemoveStored()
     {
         using var _ = Tracer.MethodRegion();
@@ -89,6 +115,29 @@ public sealed class MauiSession(IServiceProvider services)
             // - https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
         }
         return Task.CompletedTask;
+    }
+
+    private async Task SwitchTo(Session session)
+    {
+        lock (Lock)
+            _readSessionTask = Task.FromResult<Session?>(session);
+        TrueSessionResolver.Replace(session);
+        // Replace starts the disconnect but doesn't wait for it, and it's the reconnect that carries
+        // the new session id in the connection header. A call that beats it rides the old connection,
+        // so the server resolves Session.Default to the session we just replaced - a deactivated one,
+        // whose guest account never changes again no matter what the app signs in.
+        try {
+            var peer = Services.RpcHub().GetClientPeer(RpcRef.Default);
+            await peer.Disconnect().WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to await the RPC disconnect after a Session switch");
+        }
+        // Every client call passes Session.Default, so the session id is never part of a computed's
+        // key - the server resolves it per connection. A swap thus changes no key and triggers no
+        // invalidation, and the reconnect only resets cached values when the server peer itself
+        // changed. Without this the UI keeps serving the replaced session's account until a restart.
+        ComputedRegistry.InvalidateEverything();
     }
 
     private static async Task<Session?> Read()
