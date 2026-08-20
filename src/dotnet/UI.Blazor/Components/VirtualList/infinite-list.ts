@@ -1,4 +1,4 @@
-import { debounce, throttle } from 'actuallab-core';
+import { debounce, delayAsync, throttle } from 'actuallab-core';
 import { DotNet } from '@microsoft/dotnet-js-interop';
 import { getLogs } from 'logging';
 import { clamp } from 'math';
@@ -43,6 +43,10 @@ const RevealTimeoutMs = 1500;
 // An appearance animation on the initial population would grow a whole page out of nothing, so
 // nothing animates until the list has been on screen this long.
 const AppearanceQuietMs = 300;
+// A freshly created list renders every item at once, and each one is "appearing" - without this they
+// would all grow in from nothing on the first frame. The list is keyed by chat id, so this window is
+// also the first moments of a chat view.
+const InitialQuietMs = 500;
 // How long an item that leaves the render is remembered as having been on screen. A key that comes back
 // inside this window did not appear - the source dropped it and put it back, which happens while a
 // conversation block materializes around messages that were already there - and growing it from nothing
@@ -272,6 +276,7 @@ export class InfiniteList extends VirtualList {
                 key => this.isKeyOnScreen(key),
                 key => this.onItemHeightChanged(key))
             : null;
+        this.heights?.suspendUntil(delayAsync(InitialQuietMs));
         this.scrollController = new ScrollController(
             ref, true, this.containerRef, () => this.computeScrollLimits());
         this.scrollController.onTransform = () => this.updateStickyItems();
@@ -324,6 +329,12 @@ export class InfiniteList extends VirtualList {
         this.sizeObserver.disconnect();
         this.visibilityObserver.disconnect();
         this.skeletonObserver.disconnect();
+    }
+
+    // Blocks item height animations until `whenDone` settles - see ItemHeightController.suspendUntil.
+    // Calls stack, so a caller can hold the block open without having to know who else is holding it.
+    public suspendHeightAnimationsUntil(whenDone: PromiseLike<unknown>): void {
+        this.heights?.suspendUntil(whenDone);
     }
 
     public getOverlayStats(): VirtualListOverlayStats {
@@ -1278,10 +1289,10 @@ export class InfiniteList extends VirtualList {
             return;
 
         this.isAwaitingJump = true;
-        this.heights?.suspend();
-        void this.stability.whenNoAnimations().then(() => {
+        const whenNoAnimations = this.stability.whenNoAnimations();
+        this.heights?.suspendUntil(whenNoAnimations);
+        void whenNoAnimations.then(() => {
             this.isAwaitingJump = false;
-            this.heights?.resume();
             this.runPendingJump();
         });
     }

@@ -48,7 +48,7 @@ export class ItemHeightController {
     private readonly contentKeys = new WeakMap<Element, string>();
     private readonly deferred = new Set<string>();
     private transitionMs = 0;
-    private isSuspended = false;
+    private suspendCount = 0;
     private isBatching = false;
     private pendingRestore: HTMLElement[] | null = null;
 
@@ -192,7 +192,7 @@ export class ItemHeightController {
     public beginAppearance(key: string, itemRef: HTMLElement, startHeight: number): boolean {
         this.track(key, itemRef);
         const state = this.states.get(key);
-        if (state == null || this.isSuspended || !state.mustAnimateAppearance)
+        if (state == null || this.suspendCount !== 0 || !state.mustAnimateAppearance)
             return false;
         if (!this.hasAnimationSlot(state) && !this.takeSlotFromChange())
             return false;
@@ -220,19 +220,21 @@ export class ItemHeightController {
         this.drain(keys);
     }
 
-    // While a reposition waits for the list to stop moving, changes still to come land instantly:
-    // starting new animations would only keep pushing that moment away. Transitions already running are
-    // left to finish - they are what the reposition is waiting out.
-    public suspend(): void {
-        if (this.isSuspended)
-            return;
+    // Blocks height animations until `whenDone` settles: changes still to come land instantly instead.
+    // Used while a reposition waits for the list to stop moving - starting new animations would only
+    // keep pushing that moment away - and to sit out a fresh list's first render, where every item is
+    // "appearing" and would otherwise grow in from nothing. Transitions already running are left to
+    // finish. Blocks stack: animations resume only once every outstanding one has settled, so
+    // overlapping callers can't cut each other short.
+    public suspendUntil(whenDone: PromiseLike<unknown>): void {
+        if (++this.suspendCount === 1)
+            this.applyInstantly(state => !isAnimating(state));
 
-        this.isSuspended = true;
-        this.applyInstantly(state => !isAnimating(state));
-    }
-
-    public resume(): void {
-        this.isSuspended = false;
+        const release = () => {
+            if (this.suspendCount > 0)
+                this.suspendCount--;
+        };
+        void Promise.resolve(whenDone).then(release, release);
     }
 
     public applyAllInstantly(): void {
@@ -412,7 +414,7 @@ export class ItemHeightController {
     }
 
     private scheduleNow(key: string, state: ItemHeightState, isVisible?: boolean): void {
-        const mustAnimate = !this.isSuspended
+        const mustAnimate = this.suspendCount === 0
             && (isVisible ?? this.isVisible(key))
             && (state.isAppearing || (state.mustAnimateChanges && state.isControlled))
             && this.hasAnimationSlot(state);
