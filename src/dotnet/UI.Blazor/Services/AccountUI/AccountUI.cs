@@ -143,11 +143,14 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
     protected virtual Task SignInBackend(string schema)
         => JS.InvokeVoidAsync($"{AuthJsClassName}.signIn", schema).AsTask();
 
+    // Deactivation is what a shared machine needs: there the session id sits in a cookie the next
+    // user's browser would hand back. Hosts that own their session storage can opt out.
+    protected virtual bool MustDeactivateSessionOnSignOut => true;
+
     protected virtual Task SignOutBackend()
         // No navigation here: ProcessLoginLogout reloads once OwnAccount flips to guest.
         // UICommander, not Commander: SignOut() callers are fire-and-forget, so a throw would vanish.
-        // Deactivate, because sign-in doesn't rotate the session id - it would outlive the sign-out.
-        => Hub.UICommander.Run(new Accounts_SignOut(Session, true));
+        => Hub.UICommander.Run(new Accounts_SignOut(Session, MustDeactivateSessionOnSignOut));
 
     // Private methods
 

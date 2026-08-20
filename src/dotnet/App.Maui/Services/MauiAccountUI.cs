@@ -44,6 +44,12 @@ public class MauiAccountUI(UIHub hub) : AccountUI(hub)
         await WebSignIn($"/signIn/{schema}").ConfigureAwait(false);
     }
 
+    // The session id lives in this device's keychain, not in a cookie a second user could inherit,
+    // and the app cannot swap sessions while it runs: Session.Default is resolved per connection, so
+    // every computed captured under the old one keeps serving its data until the process restarts.
+    // A deactivated session therefore costs a live UI and buys nothing here.
+    protected override bool MustDeactivateSessionOnSignOut => false;
+
     protected override async Task SignOutBackend()
     {
 #if ANDROID
