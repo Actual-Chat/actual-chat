@@ -506,7 +506,6 @@ overscroll rows are the summary of §3.7.*
 | a quiet moment while armed | watching → re-centre | chain moved to the middle, scroll shifted by the same amount, flagged `reanchor` and unclamped | `container.top` + `scrollTop`, cancelling |
 | a settle finds the viewport more than `2 × maxOverscroll` from the chain | any → Placing | a jump to the default edge; a queued navigation jump supersedes it, and re-arms this check if its target never arrives | `scrollTop` |
 | viewport resize | any | the list re-pins now and again when stable; the controller separately opens its guard window, ends any excursion at the boundary, and clamps to the new limits — a snap, not a return | `scrollTop` |
-| Blazor calls `reset()` | any → initial | items, offsets and caches cleared, pin and anchors dropped, chain re-centred, the reveal watch restarted | `container.top` |
 
 ### 3.5 The loops
 
@@ -1488,10 +1487,10 @@ The wrapper is `visibility: hidden` from the markup (`c-initially-hidden`) and r
 `InfiniteList` polls by rAF until the content is *placed*: the `scrollToKey` item is on screen, or the
 preferred edge is within `RevealEpsilon` (8px), or — for a chain that fits — the first item is not
 clipped off the top; an empty list counts as placed once both ends are known. A `RevealTimeoutMs`
-(1500ms) backstop reveals it regardless, timed from the start of the watch so a watch restarted by
-`reset()` gets the full window. Revealing deliberately does **not** re-derive the pinned edge: on the
-timeout path the content has not finished settling, and re-deriving there would drop the pin the
-initial placement just established, leaving a freshly opened chat at the bottom but not following it.
+(1500ms) backstop reveals it regardless. Revealing deliberately does **not** re-derive the pinned
+edge: on the timeout path the content has not finished settling, and re-deriving there would drop
+the pin the initial placement just established, leaving a freshly opened chat at the bottom but not
+following it.
 
 ### 3.12 Rules that came from painful debugging
 

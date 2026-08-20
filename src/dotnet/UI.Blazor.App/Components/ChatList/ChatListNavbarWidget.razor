@@ -55,7 +55,7 @@
         @if (_showThreadsList) {
             <ThreadList PlaceId="@PlaceId" />
         } else {
-            <ChatList @key="@(PlaceId?.Value ?? "")" PlaceId="@PlaceId" UsePlaceChatListSettings="@true"/>
+            <ChatList @key="@ChatList.GetKey(PlaceId, true, null)" PlaceId="@PlaceId" UsePlaceChatListSettings="@true"/>
         }
     </div>
     <div class="c-active-chats">

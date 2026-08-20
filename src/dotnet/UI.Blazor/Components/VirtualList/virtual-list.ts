@@ -94,15 +94,6 @@ export abstract class VirtualList implements VirtualListOverlayTarget {
         this.releaseRequestDataGuard();
     }
 
-    // Called by blazor
-    public reset(): void {
-        this.renderState = EmptyRenderState;
-        this.isRevealed = false;
-        this.wrapperRef.style.visibility = '';
-        this.releaseRequestDataGuard();
-        this.onReset();
-    }
-
     // Called by blazor when the new data turned out to be identical to the rendered one
     public renderSkipped(): void {
         this.releaseRequestDataGuard();
@@ -117,7 +108,6 @@ export abstract class VirtualList implements VirtualListOverlayTarget {
 
     protected abstract onRender(rs: VirtualListRenderState): void;
     protected abstract buildDataQuery(): VirtualListDataQuery | null;
-    protected abstract onReset(): void;
 
     protected get isRequestingData(): boolean {
         return this.whenRequestDataCompleted?.isCompleted === false;

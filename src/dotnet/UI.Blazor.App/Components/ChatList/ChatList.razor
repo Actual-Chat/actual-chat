@@ -6,7 +6,6 @@
 
 @* ChatListKind.All *@
 <FiniteList
-    @ref="_virtualListRef"
     Class="chat-list chat-list-all"
     DataSource="@this"
     ExpandMultiplier="3"
@@ -29,11 +28,8 @@
 </FiniteList>
 
 @code {
-    private FiniteList<ChatListItemModel>? _virtualListRef;
     private int _skeletonCount;
-    private bool _hasParameters;
-    private PlaceId? _lastPlaceId;
-    private ChatListSettings? _lastSettings;
+    private string? _lastKey;
 
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
@@ -46,6 +42,11 @@
     [Parameter, EditorRequired] public bool UsePlaceChatListSettings { get; set; } = true;
     [Parameter] public ChatListSettings? Settings { get; set; }
 
+    public static string GetKey(PlaceId? placeId, bool usePlaceChatListSettings, ChatListSettings? settings)
+        // Every call site must @key the list with this: its item keys are list positions, so any parameter
+        // change re-points every one of them at a different chat, and the component has to be re-created.
+        => $"{placeId?.Value}|{usePlaceChatListSettings}|{settings?.FilterId.Value}|{settings?.Order}";
+
     protected override void OnInitialized() {
         DebugLog?.LogDebug("OnInitialized: {List}", ChatListKind.All);
         _skeletonCount = ScreenSize.IsNarrow() ? 10 : 15;
@@ -53,14 +54,15 @@
 
     protected override void OnParametersSet() {
         DebugLog?.LogDebug("OnParametersSet: {List}", ChatListKind.All);
-        // Reset the virtual list only when its data source context actually changes, not on every
-        // parent re-render: a bare re-render (e.g. the notifications widget updating unread counts)
-        // would otherwise re-hide the freshly revealed list and leave its items invisible.
-        if (_hasParameters && _lastPlaceId == PlaceId && _lastSettings == Settings)
-            return;
-        _hasParameters = true;
-        _lastPlaceId = PlaceId;
-        _lastSettings = Settings;
-        _ = _virtualListRef?.Reset();
+        // Failing loudly rather than re-reading the parameters: nothing here can repair the rendered
+        // list, whose keys still mean positions in the previous one, so a missing or wrong @key has to
+        // reach the developer instead of quietly showing the wrong chats.
+        var key = GetKey(PlaceId, UsePlaceChatListSettings, Settings);
+        if (_lastKey is null)
+            _lastKey = key;
+        else if (key != _lastKey)
+            throw StandardError.Internal(
+                $"{nameof(ChatList)} got new parameters ('{_lastKey}' -> '{key}') instead of being "
+                + $"re-created: its @key must be @{nameof(ChatList)}.{nameof(GetKey)}(...).");
     }
 }

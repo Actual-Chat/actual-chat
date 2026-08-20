@@ -85,11 +85,6 @@ export class FiniteList extends VirtualList {
 
     // Protected methods
 
-    protected onReset(): void {
-        this.separatorIndexes = [];
-        this.visibleKeys.clear();
-    }
-
     protected onRender(rs: VirtualListRenderState): void {
         this.observeItems();
         this.measureItemSize();

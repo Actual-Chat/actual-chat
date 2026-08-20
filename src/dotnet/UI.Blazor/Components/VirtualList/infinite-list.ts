@@ -374,35 +374,6 @@ export class InfiniteList extends VirtualList {
 
     // Protected methods
 
-    protected onReset(): void {
-        for (const item of this.items) {
-            this.visibilityObserver.unobserve(item.ref);
-            this.sizeObserver.unobserve(item.ref);
-            this.heights?.untrack(item.key);
-        }
-        this.items = [];
-        this.indexByKey = new Map<string, number>();
-        this.recentlyRemoved.clear();
-        this.offsets = [0];
-        this.visibleKeys.clear();
-        this.chainStart = Math.round(this.wrapperSize / 2);
-        this.lastFollowTop = null;
-        this.setPinnedEdge(null);
-        this.interactiveAnchor = null;
-        this.isWatchingScreenAnchor = false;
-        this.screenAnchor = null;
-        this.pendingJump = null;
-        this.handledScrollToKey = null;
-        this.isInitiallyPlaced = false;
-        this.revealedAt = 0;
-        this.lastSentQuery = null;
-        this.isChainWithinViewport = false;
-        this.stability.releaseAllAnimations();
-        // The base hides the wrapper again, and the watch that reveals it ran to completion the first
-        // time round - so without restarting it the list would stay invisible.
-        this.startRevealWatch();
-    }
-
     protected onRender(rs: VirtualListRenderState): void {
         this.isApplyingRender = true;
         this.heights?.beginBatch();
@@ -2127,8 +2098,6 @@ export class InfiniteList extends VirtualList {
     // The wrapper stays CSS-hidden until the chain is positioned, so the user never sees the frames
     // before the initial scroll lands.
     private startRevealWatch(): void {
-        // Timed from here rather than from construction, so a watch restarted by a reset gets the full
-        // window instead of finding its backstop already expired and revealing on the first frame.
         const startedAt = performance.now();
         const check = (): void => {
             if (this.isDisposed || this.isContainerRevealed)

@@ -43,7 +43,7 @@
                     }
                 </ChildContent>
             </TabPanel>
-            <ChatList @key="@_settings.FilterId.Value" PlaceId="@null" UsePlaceChatListSettings="@false" Settings="@_settings"/>
+            <ChatList @key="@ChatList.GetKey(null, false, _settings)" PlaceId="@null" UsePlaceChatListSettings="@false" Settings="@_settings"/>
         }
     </div>
 </div>
