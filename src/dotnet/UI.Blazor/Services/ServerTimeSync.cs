@@ -46,6 +46,8 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
     // Must stay below 100%, or a negative correction makes ServerClock.Now run backwards.
     private const double MaxSlewRate = 0.1;
     private static readonly TimeSpan StalenessRelaxTime = TimeSpan.FromMinutes(30);
+    // Applied to the 0.5*minRtt precision floor so mode doesn't flap when bursts land exactly on it.
+    private const double LinkFloorHeadroom = 1.2;
     private static readonly TimeSpan SuspendDriftThreshold = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan ConnectWait = TimeSpan.FromSeconds(5);
 
@@ -81,7 +83,7 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
         // a correction is legitimate - the two clocks disagree on sleep and on a wall
         // step alike, and which one lies is platform-dependent.
         if (SyncCount > 0
-            && _precision <= TargetPrecision
+            && _precision <= GetEffectiveTargetPrecision()
             && GetPredictedDrift() <= TargetPrecision
             && GetSuspendDrift() < SuspendDriftThreshold)
             return;
@@ -248,7 +250,7 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
         _lastAcceptedAt = CpuClock.Now;
         _lastAcceptedWallAt = Clocks.SystemClock.Now;
         _minRttEma.AppendSample((float)burst.MinRtt.TotalSeconds);
-        _mode = burst.Precision <= TargetPrecision
+        _mode = burst.Precision <= GetEffectiveTargetPrecision()
             ? ServerClockSyncMode.Steady
             : ServerClockSyncMode.Converging;
         if (outcome == ServerClockSyncOutcome.Step)
@@ -316,7 +318,17 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
             return PrecisionCeiling;
 
         var relaxation = 1 + (_connectedElapsed.TotalSeconds / StalenessRelaxTime.TotalSeconds);
-        return TimeSpanExt.Min(relaxation * TargetPrecision, PrecisionCeiling);
+        return TimeSpanExt.Min(relaxation * GetEffectiveTargetPrecision(), PrecisionCeiling);
+    }
+
+    // A target below the link's 0.5*minRtt floor is unattainable: every burst reads "noisy",
+    // the loop rejects sound measurements for the whole relaxation window, and the offset
+    // free-runs on exactly the links (and machines) that drift. On such links the floor is
+    // the honest target; the fixed one still governs whenever the link can do better.
+    private TimeSpan GetEffectiveTargetPrecision()
+    {
+        var linkFloor = TimeSpan.FromSeconds(0.5 * LinkFloorHeadroom * _minRttEma.Value);
+        return TimeSpanExt.Max(TargetPrecision, linkFloor);
     }
 
     private void AccrueStaleness()

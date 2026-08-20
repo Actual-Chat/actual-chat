@@ -315,9 +315,20 @@ requirement:
 
 ```
 staleness = connectedElapsed since last accept
+effectiveTarget()     = max(targetPrecision, LinkFloorHeadroom * 0.5 * minRttEma)
 acceptablePrecision() = min(PrecisionCeiling,
-                            targetPrecision * (1 + staleness / StalenessRelaxTime))
+                            effectiveTarget() * (1 + staleness / StalenessRelaxTime))
 ```
+
+`effectiveTarget` exists because a fixed 50 ms target is *unattainable* on any
+link whose RTT exceeds 100 ms — the single-measurement floor is `0.5 * minRtt`.
+Without it, such a link (measured in the field: a 152 ms-RTT dev client) rejects
+every sound ±76 ms burst as "noisy" for the entire relaxation window, accepts
+one, resets the relaxation, and repeats — the offset free-runs in ~15-minute
+reject cycles on exactly the clients that need syncing most. The same effective
+target governs Steady-mode entry, so those links reach the steady cadence
+instead of looping through Converging forever. `LinkFloorHeadroom` (1.2) keeps
+the mode from flapping when bursts land exactly on the floor.
 
 Two hard rules:
 
@@ -472,6 +483,7 @@ way to tell whether the 50 ms target is being met.
 | Knob | Value | Notes |
 |---|---|---|
 | `targetPrecision` | 50 ms | A/V perceptibility threshold |
+| `LinkFloorHeadroom` | 1.2 | on `0.5 * minRttEma`, forms the effective target |
 | `PrecisionCeiling` | 250 ms | never accepted above this |
 | `AssumedDriftRate` | 50 ppm | assumption, not measured |
 | `DriftBudget` | 20 ms | of the 50 ms target |
