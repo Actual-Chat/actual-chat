@@ -10,7 +10,7 @@ using Microsoft.Maui.Storage;
 
 namespace ActualChat.Maui.Module;
 
-public class MauiModule(IServiceProvider moduleServices)
+public sealed class MauiModule(IServiceProvider moduleServices)
     : HostModule(moduleServices), IAppModule
 {
     protected override void InjectServices(IServiceCollection services)
@@ -20,18 +20,21 @@ public class MauiModule(IServiceProvider moduleServices)
         KvasarStoreSupport.DeleteLegacyDbFiles(ModuleServices,
             appCacheDir & "CCC.db3",
             appDataDir & "LocalSettings.db3");
+        // The pre-session-scoped cache wrote these next to the per-session folders that replaced it
+        KvasarStoreSupport.DeleteLegacyStoreFiles(ModuleServices, appCacheDir & "CCC");
 
         // RemoteComputedCache
         services.AddSingleton(_ => new KvasarRemoteComputedCache.Options() {
-            BasePath = appCacheDir & "CCC",
+            BasePath = appCacheDir & "ccc",
             EncryptionKey = MauiPreferences.DbEncryptionKey,
         });
-        services.AddSingleton<IRemoteComputedCache>(c => {
+        services.AddSingleton(c => {
             var options = c.GetRequiredService<KvasarRemoteComputedCache.Options>();
             var cache = new KvasarRemoteComputedCache(options, c);
             cache.Kvas.WithSuspendHandler(c);
             return cache;
         });
+        services.AddSingleton<IRemoteComputedCache>(c => c.GetRequiredService<KvasarRemoteComputedCache>());
 
         // LocalSettings backend override
         services.AddSingleton(_ => new LocalSettings.Options() {

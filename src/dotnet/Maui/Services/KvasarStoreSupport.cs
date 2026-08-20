@@ -48,4 +48,21 @@ public static class KvasarStoreSupport
                 }
             }
     }
+
+    public static void DeleteLegacyStoreFiles(IServiceProvider services, FilePath basePath)
+    {
+        var log = services.LogFor(typeof(KvasarStoreSupport));
+        var directory = basePath.DirectoryPath;
+        if (!Directory.Exists(directory))
+            return;
+
+        foreach (var file in Directory.EnumerateFiles(directory, basePath.FileName + ".*"))
+            try {
+                File.Delete(file);
+                log.LogInformation("Deleted legacy Kvasar file: {File}", file);
+            }
+            catch (Exception e) {
+                log.LogWarning(e, "Failed to delete legacy Kvasar file: {File}", file);
+            }
+    }
 }

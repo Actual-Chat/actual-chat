@@ -156,9 +156,115 @@ public class KvasarKvasTest(ITestOutputHelper @out) : TestBase(@out), IAsyncLife
         await kvas2.Set("b", "b"); // Must not throw
     }
 
+    [Fact]
+    public async Task KeyedStoreIsInertBeforeActivateTest()
+    {
+        // arrange
+        var services = CreateServices();
+        await using var kvas = CreateKvas(services, requiresActivation: true);
+
+        // act
+        await kvas.Set("a", "a");
+
+        // assert
+        (await kvas.Get<string>("a")).Should().BeNull();
+        Directory.EnumerateFileSystemEntries(_basePath.DirectoryPath).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ActivateIsolatesEntriesByKeyTest()
+    {
+        // arrange
+        var services = CreateServices();
+        await using var kvas = CreateKvas(services, requiresActivation: true);
+        await kvas.Activate("aaaa1111");
+        await kvas.Set("a", "a");
+
+        // act
+        await kvas.Activate("bbbb2222");
+
+        // assert
+        (await kvas.Get<string>("a")).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ReactivatingSameKeyKeepsEntriesTest()
+    {
+        // arrange
+        var services = CreateServices();
+        await using var kvas = CreateKvas(services, requiresActivation: true);
+        await kvas.Activate("aaaa1111");
+        await kvas.Set("a", "a");
+        await kvas.Flush();
+
+        // act
+        await kvas.Deactivate(false);
+        await kvas.Activate("aaaa1111");
+
+        // assert
+        (await kvas.Get<string>("a")).Should().Be("a");
+    }
+
+    [Fact]
+    public async Task DeactivateWithClearDropsEntriesTest()
+    {
+        // arrange
+        var services = CreateServices();
+        await using var kvas = CreateKvas(services, requiresActivation: true);
+        await kvas.Activate("aaaa1111");
+        await kvas.Set("a", "a");
+        await kvas.Flush();
+
+        // act
+        await kvas.Deactivate(true);
+        await kvas.Activate("aaaa1111");
+
+        // assert
+        (await kvas.Get<string>("a")).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ActivateSweepsStaleKeyFoldersTest()
+    {
+        // arrange
+        var services = CreateServices();
+        await using var kvas = CreateKvas(services, requiresActivation: true);
+        await kvas.Activate("aaaa1111");
+        await kvas.Set("a", "a");
+        await kvas.Flush();
+
+        // act
+        await kvas.Activate("bbbb2222");
+
+        // assert
+        await WhenFolderNamesAre(["Store-bbbb2222"]);
+    }
+
     // Private methods
 
-    private KvasarKvas CreateKvas(IServiceProvider services, string version = "1.0")
+    private async Task WhenFolderNamesAre(string[] expected)
+    {
+        // The sweep runs in the background so switching away stays off the session-switch path
+        var endsAt = CpuTimestamp.Now + TimeSpan.FromSeconds(5);
+        while (true) {
+            var names = Directory.EnumerateDirectories(_basePath.DirectoryPath)
+                .Select(x => ((FilePath)x).FileName.Value)
+                .ToArray();
+            if (names.OrderBy(x => x).SequenceEqual(expected.OrderBy(x => x)))
+                return;
+            if (endsAt.Elapsed >= TimeSpan.Zero) {
+                names.Should().BeEquivalentTo(expected);
+                return;
+            }
+
+            await Task.Delay(50);
+        }
+    }
+
+    private KvasarKvas CreateKvas(
+        IServiceProvider services,
+        string version = "1.0",
+        bool requiresActivation = false)
         => new(new KvasarKvas.Options() {
             BasePath = _basePath,
             EncryptionKey = Key,
@@ -166,6 +272,7 @@ public class KvasarKvasTest(ITestOutputHelper @out) : TestBase(@out), IAsyncLife
             PageSize = 4 * 1024,
             PageCacheBytes = 1024 * 1024,
             FlushDelay = TimeSpan.FromMilliseconds(10),
+            RequiresActivation = requiresActivation,
         }, services);
 
     private IServiceProvider CreateServices()
