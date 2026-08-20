@@ -41,6 +41,13 @@
     [Inject] private IServiceProvider Services { get; init; } = null!;
 
     private Task OnInvalidateEverythingLocallyClick() {
+        // Under the Server render mode "locally" is the whole server process: one static registry
+        // shared by every circuit and every server-side compute service.
+        if (HostInfo.HostKind.IsServer()) {
+            UICommander.ShowError("Not available on a server - use \"On this front-end\" instead");
+            return Task.CompletedTask;
+        }
+
         ComputedRegistry.InvalidateEverything();
         return Task.CompletedTask;
     }
