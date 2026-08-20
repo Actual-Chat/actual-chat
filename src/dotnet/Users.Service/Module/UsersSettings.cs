@@ -29,7 +29,9 @@ public sealed class UsersSettings
     public string SMSToFrom { get; set; } = "SMSto";
     public string BlockedPhonePrefixes { get; set; } = "";
     public IReadOnlyDictionary<string, int> PredefinedTotps { get; set; } = ImmutableDictionary<string, int>.Empty;
-
+    // A kill switch: MauiAuthController.Start assumes every browser component the app can reach
+    // reports Sec-Fetch-Site: none. Turn this off if some platform turns out not to.
+    public bool IsMauiAuthFetchSiteCheckEnabled { get; set; } = true;
     public AccountStatus NewAccountStatus { get; set; } = AccountStatus.Active;
     public TimeSpan TotpCodeLifetime { get; set; } = TimeSpan.FromMinutes(15);
     public int TotpMaxAttemptCount { get; set; } = 5;
@@ -38,10 +40,8 @@ public sealed class UsersSettings
         && !TwilioApiKey.IsNullOrEmpty()
         && !TwilioApiSecret.IsNullOrEmpty()
         && !TwilioSmsFrom.IsNullOrEmpty();
-
     public bool IsSmtpEnabled => !SmtpHost.IsNullOrEmpty()
         && !SmtpFrom.IsNullOrEmpty();
-
     public bool IsSMSToEnabled => !SMSToApiKey.IsNullOrEmpty()
         && !SMSToFrom.IsNullOrEmpty();
 }

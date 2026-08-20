@@ -74,3 +74,10 @@ edited. The reason can be as short as whose decision it was.
   — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
   and `[CommandHandler]` members, so they must stay `virtual`, and a sealed type
   can't declare one (CS0549)
+
+## tests/Users.IntegrationTests/MauiAuthControllerTest.cs
+
+- L21 `var response = await client.GetAsync(StartUrl(sessionToken, "/signIn/Google"));`
+  — missing `.ConfigureAwait(false)` — required: the guide scopes that rule to
+  service-layer code, `tests/Directory.Build.props:36-39` suppresses CA2007 /
+  MA0004 / RCS1090 for test projects, and no other test in the repo uses it
