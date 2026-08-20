@@ -81,6 +81,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.Label>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.LeftLine>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.LeftPanelSkeleton>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.LiveDuration>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.LiveTimeDeltaSeconds>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.LiveTimeDeltaText>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.MainHeader>();
@@ -263,6 +264,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.FoundMessageListItem+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.FoundPlaceListItem+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.FoundUserListItem+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
+        CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.FullScreenCallsDisabledBanner+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.IncomingCallBanner+ComputedModel, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.IncomingCallModal+ComputedModel, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.IncomingCallOverLockView+ComputedModel, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
@@ -591,6 +593,7 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.Label), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.LeftLine), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.LeftPanelSkeleton), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.LiveDuration), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.LiveTimeDeltaSeconds), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.LiveTimeDeltaText), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.MainHeader), AotTypeKind.Component),

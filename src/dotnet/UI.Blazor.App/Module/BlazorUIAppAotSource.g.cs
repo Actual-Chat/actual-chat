@@ -191,6 +191,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FoundPlaceListItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FoundResult>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FoundUserListItem>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FullScreenCallsDisabledBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.GifPicker>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.GlobalSearchPlaceholder>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.GrantFileUploadsSubHeader>();
@@ -529,6 +530,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.ActiveChat>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.ActiveShare>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.AttachFileRequestEntry>();
+        CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.ChatTailPrefetch>();
+        CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.ChatTailPrefetchState>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.EntryRef>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.FileMetadata>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.IFileProvider>();
@@ -622,6 +625,15 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.AttachFileRequestEntry[]>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.AttachFileRequestEntry[]>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.AttachFileRequestEntry[]>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.ChatTailPrefetch>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.ChatTailPrefetch>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.ChatTailPrefetch>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.ChatTailPrefetchState>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.ChatTailPrefetchState>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.ChatTailPrefetchState>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.ChatTailPrefetch[]>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.ChatTailPrefetch[]>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.ChatTailPrefetch[]>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.EntryRef>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.EntryRef>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.EntryRef>>>>();
@@ -658,6 +670,9 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UploadId>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UploadId>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UploadId>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiArray<global::ActualChat.UI.Blazor.App.Services.ChatTailPrefetch>>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiArray<global::ActualChat.UI.Blazor.App.Services.ChatTailPrefetch>>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiArray<global::ActualChat.UI.Blazor.App.Services.ChatTailPrefetch>>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiOption<global::System.Nullable<global::System.Int64>>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiOption<global::System.Nullable<global::System.Int64>>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiOption<global::System.Nullable<global::System.Int64>>>>>>();
@@ -714,6 +729,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.SharedLocationId, ActualChat.Api]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.UploadId, ActualChat.Api]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Mathematics.Internal.LinearMapMessagePackFormatter, ActualChat.Core");
+        CodeKeeper.Keep("ActualLab.Api.Internal.ApiArrayMessagePackFormatter`1[[ActualChat.UI.Blazor.App.Services.ChatTailPrefetch, ActualChat.UI.Blazor.App]], ActualLab.Core");
+        CodeKeeper.Keep("ActualLab.Api.Internal.ApiArrayMessagePackFormatter`1[[ActualLab.Api.ApiArray`1[[ActualChat.UI.Blazor.App.Services.ChatTailPrefetch, ActualChat.UI.Blazor.App]], ActualLab.Core]], ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Api.Internal.ApiOptionMessagePackFormatter`1[[ActualLab.Api.ApiOption`1[[System.Nullable`1[[System.Int64, System.Private.CoreLib]], System.Private.CoreLib]], ActualLab.Core]], ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Api.Internal.ApiOptionMessagePackFormatter`1[[System.Nullable`1[[System.Int64, System.Private.CoreLib]], System.Private.CoreLib]], ActualLab.Core");
         CodeKeeper.Keep("ActualLab.IO.Internal.FilePathMessagePackFormatter, ActualLab.Core");
@@ -728,6 +745,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Media.LinkPreview, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Media.MediaRef, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.UI.Blazor.App.Services.AttachFileRequestEntry, ActualChat.UI.Blazor.App]], MessagePack");
+        CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.UI.Blazor.App.Services.ChatTailPrefetch, ActualChat.UI.Blazor.App]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualLab.Collections.Internal.PropertyBagItem`1[[ActualChat.Serialization.MetadataSchema, ActualChat.Core]], ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualLab.Text.Symbol, ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.NullableFormatter`1[[ActualLab.IO.FilePath, ActualLab.Core]], MessagePack");
@@ -747,6 +765,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+ActiveChatFormatter, ActualChat.UI.Blazor.App");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+ActiveShareFormatter, ActualChat.UI.Blazor.App");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+AttachFileRequestEntryFormatter, ActualChat.UI.Blazor.App");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+ChatTailPrefetchFormatter, ActualChat.UI.Blazor.App");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+ChatTailPrefetchStateFormatter, ActualChat.UI.Blazor.App");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+EntryRefFormatter, ActualChat.UI.Blazor.App");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+FileMetadataFormatter, ActualChat.UI.Blazor.App");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+IFileProviderFormatter, ActualChat.UI.Blazor.App");
@@ -938,6 +958,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.FoundPlaceListItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.FoundResult), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.FoundUserListItem), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.FullScreenCallsDisabledBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.GifPicker), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.GlobalSearchPlaceholder), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.GrantFileUploadsSubHeader), AotTypeKind.Component),
@@ -1276,6 +1297,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Services.ActiveChat), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.ActiveShare), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.AttachFileRequestEntry), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.UI.Blazor.App.Services.ChatTailPrefetch), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.UI.Blazor.App.Services.ChatTailPrefetchState), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.EntryRef), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.FileMetadata), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.IFileProvider), AotTypeKind.Serializable),
