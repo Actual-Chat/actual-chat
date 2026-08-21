@@ -27,6 +27,8 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
 
     private readonly Lock _lock = new();
     private Task<KvasarStore?> _storeTask;
+    // Closes and deletes, serialized: an open must wait for them, or it hits the store's own lock
+    private Task _maintenanceTask = Task.CompletedTask;
     private string? _activeKey;
     private long _generation;
     private bool _isSuspended;
@@ -43,7 +45,7 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
         Settings = settings;
         Services = services;
         Log = services.LogFor(GetType());
-        _storeTask = settings.RequiresActivation ? NoStoreTask : Open(null);
+        _storeTask = settings.RequiresActivation ? NoStoreTask : Open(null, null);
         WhenInitialized = _storeTask;
     }
 
@@ -169,45 +171,44 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
             oldKey = _activeKey;
             _activeKey = key;
             generation = ++_generation;
+            var pending = _maintenanceTask;
             // Publication: readers pick the new task up with a Volatile.Read in GetStore.
-            newStoreTask = _isSuspended ? NoStoreTask : Open(key);
+            newStoreTask = _isSuspended ? NoStoreTask : Open(key, pending);
             Volatile.Write(ref _storeTask, newStoreTask);
+            _maintenanceTask = SwitchAway(pending, oldStoreTask, oldKey, generation);
         }
 
-        _ = SwitchAway(oldStoreTask, oldKey, generation);
         return newStoreTask;
     }
 
     public Task Deactivate(bool clear)
     {
-        Task<KvasarStore?> oldStoreTask;
-        string? oldKey;
         lock (_lock) {
-            oldStoreTask = _storeTask;
-            oldKey = _activeKey;
+            var oldStoreTask = _storeTask;
+            var oldKey = _activeKey;
             _activeKey = null;
             // Publication: readers pick the new task up with a Volatile.Read in GetStore.
             Volatile.Write(ref _storeTask, NoStoreTask);
+            _maintenanceTask = CloseAndDelete(_maintenanceTask, oldStoreTask, clear ? oldKey : null);
+            return _maintenanceTask;
         }
-
-        return CloseAndDelete(oldStoreTask, clear ? oldKey : null);
     }
 
     public Task Suspend()
     {
         // Closes the store so no file handle or advisory lock survives into suspension - iOS kills an
         // app that holds one (0xdead10cc). Reads miss and writes are dropped until Resume reopens it.
-        Task<KvasarStore?> storeTask;
         lock (_lock) {
             if (_isSuspended)
                 return Task.CompletedTask;
 
             _isSuspended = true;
-            storeTask = _storeTask;
+            var storeTask = _storeTask;
             Volatile.Write(ref _storeTask, NoStoreTask);
+            // Chained so Resume's reopen waits for this close - the store's lock is exclusive
+            _maintenanceTask = CloseAndDelete(_maintenanceTask, storeTask, null);
+            return _maintenanceTask;
         }
-
-        return CloseStore(storeTask);
     }
 
     public void Resume()
@@ -221,7 +222,7 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
                 return;
 
             // Publication: readers pick the new task up with a Volatile.Read in GetStore.
-            Volatile.Write(ref _storeTask, Open(_activeKey));
+            Volatile.Write(ref _storeTask, Open(_activeKey, _maintenanceTask));
         }
     }
 
@@ -231,10 +232,17 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
         // Volatile.Read pairs with the publication in Resume.
         => Volatile.Read(ref _storeTask);
 
-    private Task<KvasarStore?> Open(string? key)
+    private Task<KvasarStore?> Open(string? key, Task? after)
         // Deferred to the pool: callers hold _lock, and both the directory creation and Kvasar's own
         // open path are synchronous file I/O - Activate is on the session switch path.
-        => Task.Run(() => OpenStore(key));
+        => Task.Run(async () => {
+            // A pending close still holds this key's lock file, and Kvasar opens it exclusively -
+            // reopening a key we just switched away from would otherwise degrade to a no-op store.
+            if (after != null)
+                await after.SilentAwait(false);
+
+            return await OpenStore(key).ConfigureAwait(false);
+        });
 
     private async Task<KvasarStore?> OpenStore(string? key)
     {
@@ -278,14 +286,16 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
                 & (Settings.BasePath.FileName + "-" + key)
                 & Settings.BasePath.FileName;
 
-    private async Task SwitchAway(Task<KvasarStore?> oldStoreTask, string? oldKey, long generation)
+    private async Task SwitchAway(Task pending, Task<KvasarStore?> oldStoreTask, string? oldKey, long generation)
     {
-        await CloseAndDelete(oldStoreTask, oldKey).ConfigureAwait(false);
+        await CloseAndDelete(pending, oldStoreTask, oldKey).ConfigureAwait(false);
         SweepKeyFolders(generation);
     }
 
-    private async Task CloseAndDelete(Task<KvasarStore?> storeTask, string? keyToDelete)
+    private async Task CloseAndDelete(Task pending, Task<KvasarStore?> storeTask, string? keyToDelete)
     {
+        await pending.SilentAwait(false);
+
         // The store holds an advisory lock file, so it has to be closed before its folder can go.
         await CloseStore(storeTask).ConfigureAwait(false);
         if (keyToDelete != null)
