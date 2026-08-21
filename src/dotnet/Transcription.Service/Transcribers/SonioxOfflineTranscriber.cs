@@ -9,7 +9,8 @@ namespace ActualChat.Transcription;
 /// </summary>
 public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
 {
-    private const string Model = "stt-async-v5";
+    // It's internal so the tests can create a transcription the same way this transcriber does
+    internal const string Model = "stt-async-v5";
     private static readonly TimeSpan PollPeriod = TimeSpan.FromSeconds(1);
 
     private SonioxClient Client { get; }

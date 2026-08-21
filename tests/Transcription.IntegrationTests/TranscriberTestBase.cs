@@ -6,6 +6,8 @@ namespace ActualChat.Transcription.IntegrationTests;
 public abstract class TranscriberTestBase(ITestOutputHelper @out, ILogger? log = null)
     : TestBase(@out, log)
 {
+    private const string MissingFileId = "00000000-0000-0000-0000-000000000000";
+
     protected async Task<AudioSource> GetAudio(FilePath fileName, bool? webMStream = null, bool withDelay = false)
     {
         var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, CancellationToken.None);
@@ -34,34 +36,34 @@ public abstract class TranscriberTestBase(ITestOutputHelper @out, ILogger? log =
     protected static FilePath GetAudioFilePath(FilePath fileName)
         => new FilePath(Environment.CurrentDirectory) & "data" & fileName;
 
-    // Soniox caps stored files per organization, and that cap is shared by every environment and
-    // key we own - GET /v1/files is project-scoped, so what fills it isn't even visible from here,
-    // let alone deletable. Treated like an unset key: an environment we can't fix from the test.
-    protected bool IsExternalQuotaExceeded(Exception e)
+    // Soniox caps stored files and stored transcriptions per organization, and both caps are shared
+    // by every environment and key we own - the GET endpoints are project-scoped, so what fills them
+    // isn't even visible from here, let alone deletable. A capped account is an outage, so this
+    // throws rather than quietly passing a test that never ran.
+    protected async Task RequireSonioxCapacity(SonioxClient client, FilePath audioFileName)
     {
-        if (!e.Message.Contains("limit_exceeded"))
-            return false;
-
-        WriteLine($"External quota exceeded - skipping. {e.Message}");
-        return true;
-    }
-
-    // SonioxOfflineTranscriber turns every failure into null so its failover can try the next
-    // provider, which leaves a test unable to tell a full account from a broken one. An upload is
-    // the only way to ask; it's deleted right back on the way out.
-    protected async Task<bool> IsSonioxAtCapacity(SonioxClient client, FilePath audioFileName)
-    {
+        // SonioxOfflineTranscriber turns every failure into null so its failover can try the next
+        // provider, which leaves the transcriber tests unable to tell a capped account from a broken
+        // one - hence asking the two caps here, where the answers still carry Soniox's own message.
         string fileId;
         var stream = File.OpenRead(GetAudioFilePath(audioFileName));
-        await using (stream.ConfigureAwait(false)) {
-            try {
-                fileId = await client.UploadFile(stream, "probe.opus", CancellationToken.None);
-            }
-            catch (Exception e) when (IsExternalQuotaExceeded(e)) {
-                return true;
-            }
-        }
+        await using (stream.ConfigureAwait(false))
+            fileId = await client.UploadFile(stream, "probe.opus", CancellationToken.None);
         await client.DeleteFile(fileId, CancellationToken.None);
-        return false;
+
+        // The create rejects an over-cap organization before it looks at the file id, so a
+        // nonexistent one asks about the transcription cap without creating anything. Every other
+        // rejection is that file id doing its job.
+        var request = new Dictionary<string, object?> {
+            ["file_id"] = MissingFileId,
+            ["model"] = SonioxOfflineTranscriber.Model,
+        };
+        try {
+            var transcriptionId = await client.CreateTranscription(request, CancellationToken.None);
+            await client.DeleteTranscription(transcriptionId, CancellationToken.None);
+        }
+        catch (Exception e) when (!e.Message.Contains("limit_exceeded")) {
+            WriteLine($"Transcription cap probe rejected as expected: {e.Message}");
+        }
     }
 }
