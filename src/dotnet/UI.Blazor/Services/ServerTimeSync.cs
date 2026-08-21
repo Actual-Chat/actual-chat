@@ -50,6 +50,13 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
     private const double LinkFloorHeadroom = 1.2;
     private static readonly TimeSpan SuspendDriftThreshold = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan ConnectWait = TimeSpan.FromSeconds(5);
+    // Multiplies the steady interval to bound how old an accepted sync may be before
+    // EnsureSynced stops trusting it. Its inputs (precision, drift) are frozen at the last
+    // accept, so without an age term the gate stays satisfied however long the loop fails.
+    private const int StaleSyncFactor = 2;
+    // Probe RTT beyond this multiple of the measured min-RTT is a timeout, not a slow link.
+    private const int ProbeTimeoutRttFactor = 3;
+    private const int FailureLogPeriod = 5;
 
     private readonly SemaphoreSlim _syncLock = new(1, 1);
     private readonly RunningEma _minRttEma = new(0f, 1, 0.3);
@@ -85,6 +92,7 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
         if (SyncCount > 0
             && _precision <= GetEffectiveTargetPrecision()
             && GetPredictedDrift() <= TargetPrecision
+            && GetStaleness() <= StaleSyncFactor * GetSteadyInterval()
             && GetSuspendDrift() < SuspendDriftThreshold)
             return;
 
@@ -217,7 +225,7 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
     private async Task<Sample?> Probe(MomentClock offsetBaseClock, CancellationToken cancellationToken)
     {
         using var cts = cancellationToken.CreateLinkedTokenSource();
-        cts.CancelAfter(ProbeTimeout);
+        cts.CancelAfter(GetProbeTimeout());
         var before = offsetBaseClock.Now;
         double remoteMs;
         try {
@@ -271,6 +279,10 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
     {
         _attempt++;
         _mode = ServerClockSyncMode.Converging;
+        // Rejections were entirely silent, which is why a client stuck for hours looked healthy.
+        if (_attempt % FailureLogPeriod == 0)
+            Log.LogWarning("{Outcome}: {Attempt} consecutive failures, {SyncCount} accepts so far",
+                outcome, _attempt, SyncCount);
         SetNextSyncAt();
         UpdateStats(outcome, null, TimeSpan.Zero);
     }
@@ -303,6 +315,16 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
             ? evidence.TotalSeconds / elapsed
             : _driftRate * DriftRateDecay;
     }
+
+    private TimeSpan GetProbeTimeout()
+        // A fixed timeout locks out a link that got slower for good: _minRttEma only updates on
+        // accept, so once every probe times out nothing is left to widen it.
+        => TimeSpanExt.Min(
+            MaxProbeRtt,
+            TimeSpanExt.Max(ProbeTimeout, TimeSpan.FromSeconds(ProbeTimeoutRttFactor * _minRttEma.Value)));
+
+    private TimeSpan GetStaleness()
+        => SyncCount == 0 ? TimeSpan.MaxValue : (CpuClock.Now - _lastAcceptedAt).Positive();
 
     private TimeSpan GetPredictedDrift()
     {

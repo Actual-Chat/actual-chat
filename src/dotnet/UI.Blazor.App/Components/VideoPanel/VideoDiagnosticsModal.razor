@@ -1323,6 +1323,13 @@
     {
         if (lag.AudioLag is not { } a || lag.VideoLag is not { } v)
             return "—";
+
+        // Video's DeviceLatencyMs is the pre-present tap lag, a sub-component of the rVFC
+        // on-screen lag. Without rVFC the reported lag IS the tap, so there's nothing to
+        // decompose - subtracting it zeroes the video side and reports audio lag as drift.
+        if (lag.VideoInputs.DeviceLatencyMs >= v.TotalMilliseconds)
+            return "—";
+
         var audioCtl = a.TotalMilliseconds - lag.AudioInputs.DeviceLatencyMs;
         var videoCtl = v.TotalMilliseconds - lag.VideoInputs.DeviceLatencyMs;
         return $"{audioCtl - videoCtl:+0;-0;0} ms";

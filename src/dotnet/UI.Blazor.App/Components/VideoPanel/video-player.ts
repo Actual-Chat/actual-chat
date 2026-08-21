@@ -136,6 +136,15 @@ const PLAYBACK_PRIORITY_PRIMARY = 1;
 // Lag samples beyond this mean a broken stream anchor or clock, not real
 // latency; they must never reach the A/V-sync audio hold.
 const MAX_PLAUSIBLE_LAG_MS = 30_000;
+// The rVFC lag exceeds the pre-present tap lag only by the MSTG→<video> buffer —
+// tens of ms in the field. Beyond this the two disagree about the timeline itself.
+const MAX_DISPLAY_TAP_GAP_MS = 2_000;
+// rVFC stops firing whenever the tile stops presenting, and its samples are dropped
+// once the lag passes the bound above — both freeze displayLatencyMs at its last value.
+const DISPLAY_LAG_STALE_AFTER_MS = 1_500;
+// ~1s at 30fps: long enough that a startup hiccup stays quiet, short enough to name
+// the culprit while the call is still running.
+const RVFC_REJECT_WARN_STREAK = 30;
 
 export class VideoPlayer {
     private blazorRef: DotNet.DotNetObject;
@@ -285,6 +294,8 @@ export class VideoPlayer {
     private readonly rxLatencyEma = new RunningEMA(0, 3, 0.3);
     private displayLatencyMs = 0;
     private hasDisplayLag = false;
+    private lastDisplayLagAtMs = 0;
+    private rvfcRejectStreak = 0;
     private rvfcStop = false;
 
     /** Creates a new VideoPlayer instance for Blazor interop */
@@ -408,16 +419,28 @@ export class VideoPlayer {
         const videoEl = this.videoEl;
         if (typeof videoEl.requestVideoFrameCallback !== 'function')
             return;
-        const onFrame = (_now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
+        const onFrame = (now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
             // True capture→on-screen latency: mediaTime is the displayed frame's
             // offset from stream start (we stamp chunk.timestamp = offset), so
             // now − (anchor + mediaTime) is its age on screen — this INCLUDES the
             // MSTG→<video> playback buffer that the pre-present latency-tap misses.
             const lagMs = ServerClock.now() - (this.startedAtMs + metadata.mediaTime * 1000);
-            if (Number.isFinite(lagMs) && lagMs >= 0 && lagMs < MAX_PLAUSIBLE_LAG_MS) {
+            // mediaTime must be a real, advancing timeline. WebKit's MediaStream player
+            // never assigns it, so it stays 0 and the lag above is just the stream's age -
+            // measured growing at exactly 1.0s per second until it tripped the bound below.
+            // The tap lag can't outrun capture, so it bounds what a sample may claim.
+            const isUsable = metadata.mediaTime > 0
+                && Number.isFinite(lagMs) && lagMs >= 0 && lagMs < MAX_PLAUSIBLE_LAG_MS
+                && lagMs <= this.videoLagEma.value + MAX_DISPLAY_TAP_GAP_MS;
+            if (isUsable) {
+                this.rvfcRejectStreak = 0;
                 this.displayLatencyEma.appendSample(lagMs);
                 this.displayLatencyMs = this.displayLatencyEma.value;
                 this.hasDisplayLag = true;
+                this.lastDisplayLagAtMs = now;
+            } else if (++this.rvfcRejectStreak === RVFC_REJECT_WARN_STREAK) {
+                warnLog?.log(`[${this.streamId}] rVFC lag unusable (mediaTime=`
+                    + `${metadata.mediaTime.toFixed(3)}, lag=${lagMs.toFixed(0)}ms) - using the tap lag`);
             }
             if (!this.rvfcStop)
                 videoEl.requestVideoFrameCallback(onFrame);
@@ -1422,6 +1445,14 @@ export class VideoPlayer {
         // fallback below reports it as the A/V-sync video lag.
         if (tapLagMs < MAX_PLAUSIBLE_LAG_MS)
             this.videoLagEma.appendSample(tapLagMs);
+        // A frozen display lag is worse than none: serving one pinned the A/V-sync audio
+        // hold at its cap for a whole meeting (~1.2s of real audio delay). Expire it and
+        // let the tap lag take over until rVFC produces an accepted sample again.
+        if (this.hasDisplayLag && performance.now() - this.lastDisplayLagAtMs > DISPLAY_LAG_STALE_AFTER_MS) {
+            this.hasDisplayLag = false;
+            this.displayLatencyEma.reset();
+            this.displayLatencyMs = 0;
+        }
         const videoLagMs = this.hasDisplayLag ? this.displayLatencyMs : this.videoLagEma.value;
         // Uplink (capture→server) — both server domain, skew-free. Splits the
         // sender+upload share out of the total on-screen lag.

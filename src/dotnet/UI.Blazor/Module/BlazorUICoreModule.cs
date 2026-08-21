@@ -63,7 +63,6 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         });
         services.AddScoped(c => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c));
         services.AddScoped(c => new UserSettingsUI(c, c.Session()));
-        services.AddSingleton(_ => new ServerClockSyncStats());
         if (isServer) {
             services.AddScoped<DateTimeConverter>(c => new ServerSideDateTimeConverter(c));
             MomentClockSet.Default.ServerClock.Offset = TimeSpan.Zero;
@@ -77,9 +76,14 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         // Both start the background loop from AppScopedServiceStarter.AfterFirstRender, once JS is ready;
         // EnsureSynced() additionally forces an immediate sync before the first recording.
         // WASM has a single, always-ready IJSRuntime, so a hosted service is fine there.
-        if (isServer || isMauiApp)
+        // The stats must share ServerTimeSync's lifetime: as a singleton every circuit's loop
+        // wrote the same object, so the diagnostics panel could show another circuit's clock.
+        if (isServer || isMauiApp) {
+            services.AddScoped(_ => new ServerClockSyncStats());
             services.AddScoped(c => new ServerTimeSync(c));
+        }
         else {
+            services.AddSingleton(_ => new ServerClockSyncStats());
             // Singleton + hosted alias, not AddHostedService alone: that registers only
             // IHostedService, so GetService<ServerTimeSync>() returned null in WASM and
             // every EnsureSynced call site silently skipped the sync.

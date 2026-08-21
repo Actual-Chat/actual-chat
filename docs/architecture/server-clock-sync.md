@@ -320,6 +320,18 @@ acceptablePrecision() = min(PrecisionCeiling,
                             effectiveTarget() * (1 + staleness / StalenessRelaxTime))
 ```
 
+### Staleness is the gate's third term
+
+`EnsureSynced` skips the measurement when precision and predicted drift look good — but
+both are **frozen at the last accepted sync**, so a loop whose every attempt fails keeps
+serving the same reassuring numbers. With a zero drift estimate the predicted-drift term is
+identically zero however long that has been. Field evidence, 2026-08-21: a prod client sat
+**9.3 hours** past its last accept while every `EnsureSynced` caller — recording start, video
+track start, device-awake — hit the gate and returned without measuring. So the gate also
+requires `staleness <= StaleSyncFactor * steadyInterval`, and `ProbeTimeout` now scales with
+the measured min-RTT: a fixed 400 ms timeout permanently locks out a link that got slower,
+because `minRttEma` only updates on accept and nothing else would ever widen it.
+
 `effectiveTarget` exists because a fixed 50 ms target is *unattainable* on any
 link whose RTT exceeds 100 ms — the single-measurement floor is `0.5 * minRtt`.
 Without it, such a link (measured in the field: a 152 ms-RTT dev client) rejects
@@ -484,6 +496,8 @@ way to tell whether the 50 ms target is being met.
 |---|---|---|
 | `targetPrecision` | 50 ms | A/V perceptibility threshold |
 | `LinkFloorHeadroom` | 1.2 | on `0.5 * minRttEma`, forms the effective target |
+| `StaleSyncFactor` | 2 | × steady interval — max age `EnsureSynced` trusts |
+| `ProbeTimeoutRttFactor` | 3 | × `minRttEma`, floors at `ProbeTimeout`, caps at `MaxProbeRtt` |
 | `PrecisionCeiling` | 250 ms | never accepted above this |
 | `AssumedDriftRate` | 50 ppm | assumption, not measured |
 | `DriftBudget` | 20 ms | of the 50 ms target |
