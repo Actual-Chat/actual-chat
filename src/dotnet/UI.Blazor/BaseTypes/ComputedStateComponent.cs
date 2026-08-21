@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor;
 /// <summary>
 /// Base class for Blazor components with computed state and typed <see cref="UIHub"/> access.
 /// </summary>
-public abstract class ComputedStateComponent<THub, TState> : ComputedStateComponent<TState>
+public abstract class ComputedStateComponent<THub, TState> : ComputedStateComponent<TState>, IPostponableRenderer
     where THub : UIHub
 {
     private THub? _hub;
@@ -47,4 +47,19 @@ public abstract class ComputedStateComponent<THub, TState> : ComputedStateCompon
         _hub ??= (THub)CircuitHub;
         return base.SetParametersAsync(parameters);
     }
+
+    private RenderGate RenderGate => field ??= Hub.Services.GetRequiredService<RenderGate>();
+
+    protected override bool ShouldRender()
+        => base.ShouldRender() && !RenderGate.TryPostpone(this);
+
+    void IPostponableRenderer.ResumeRender()
+        => _ = InvokeAsync(() => {
+            try {
+                StateHasChanged();
+            }
+            catch {
+                // An earlier replay in the same pass may already have removed this component
+            }
+        });
 }
