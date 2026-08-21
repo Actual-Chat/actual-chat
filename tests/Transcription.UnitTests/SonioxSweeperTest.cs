@@ -2,7 +2,7 @@ using ActualChat.Module;
 
 namespace ActualChat.Transcription.UnitTests;
 
-public class SonioxSweeperTest(ITestOutputHelper @out) : TestBase(@out)
+public sealed class SonioxSweeperTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private static readonly DateTimeOffset Now = DateTimeOffset.UtcNow;
     private static readonly DateTimeOffset Old = Now - TimeSpan.FromHours(1);
@@ -71,8 +71,8 @@ public class SonioxSweeperTest(ITestOutputHelper @out) : TestBase(@out)
             .AddFile("f2", Old);
 
         // act
-        var deleted = await NewSweeper(api, new SonioxSweeper.Options { MaxDeletesPerSweep = 3 })
-            .Sweep(CancellationToken.None);
+        var settings = new SonioxSweeper.Options { MaxDeletesPerSweep = 3, DeleteDelay = TimeSpan.Zero };
+        var deleted = await NewSweeper(api, settings).Sweep(CancellationToken.None);
 
         // assert - the budget is what's left of it by the time the file pass runs
         deleted.Should().Be(3);
@@ -89,7 +89,7 @@ public class SonioxSweeperTest(ITestOutputHelper @out) : TestBase(@out)
             api.AddTranscription($"t{i:00}", Old);
 
         // act
-        var deleted = await NewSweeper(api, new SonioxSweeper.Options { PageSize = 10 })
+        var deleted = await NewSweeper(api, new SonioxSweeper.Options { PageSize = 10, DeleteDelay = TimeSpan.Zero })
             .Sweep(CancellationToken.None);
 
         // assert - and the page size has to reach Soniox, which it doesn't under the wrong parameter
@@ -98,10 +98,71 @@ public class SonioxSweeperTest(ITestOutputHelper @out) : TestBase(@out)
         api.RequestedPageSizes.Should().OnlyContain(x => x == 10);
     }
 
+    [Fact]
+    public async Task SweepWaitsOutARateLimitAndKeepsGoing()
+    {
+        // arrange - the budget is shared with live transcription, so a 429 says "later", not "no"
+        var api = new SonioxApiMock()
+            .AddTranscription("t1", Old)
+            .AddTranscription("t2", Old);
+        api.RateLimitedDeleteCount = 1;
+        api.RetryAfter = TimeSpan.FromMilliseconds(10);
+        var settings = new SonioxSweeper.Options { DeleteDelay = TimeSpan.Zero };
+
+        // act
+        var deleted = await NewSweeper(api, settings).Sweep(CancellationToken.None);
+
+        // assert - the refused one is retried rather than written off, and both still land
+        deleted.Should().Be(2);
+        api.DeleteAttempts.Should().Equal("t1", "t1", "t2");
+        api.TranscriptionIds.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SweepGivesUpOnAnEndlessRateLimit()
+    {
+        // arrange
+        var api = new SonioxApiMock().AddTranscription("t1", Old);
+        api.RateLimitedDeleteCount = int.MaxValue;
+        api.RetryAfter = TimeSpan.FromMilliseconds(1);
+        var settings = new SonioxSweeper.Options {
+            DeleteDelay = TimeSpan.Zero,
+            MaxRateLimitRetryCount = 3,
+        };
+
+        // act
+        var deleted = await NewSweeper(api, settings).Sweep(CancellationToken.None);
+
+        // assert - the id survives for the next sweep rather than stalling this one forever
+        deleted.Should().Be(0);
+        api.DeleteAttempts.Should().HaveCount(4);
+        api.TranscriptionIds.Should().BeEquivalentTo("t1");
+    }
+
+    [Fact]
+    public async Task SweepPacesItsDeletes()
+    {
+        // arrange
+        var api = new SonioxApiMock()
+            .AddTranscription("t1", Old)
+            .AddTranscription("t2", Old);
+        var settings = new SonioxSweeper.Options { DeleteDelay = TimeSpan.FromMilliseconds(200) };
+
+        // act
+        var startedAt = CpuTimestamp.Now;
+        var deleted = await NewSweeper(api, settings).Sweep(CancellationToken.None);
+
+        // assert
+        deleted.Should().Be(2);
+        startedAt.Elapsed.Should().BeGreaterThan(TimeSpan.FromMilliseconds(300));
+    }
+
     // Private methods
 
     private SonioxSweeper NewSweeper(SonioxApiMock api, SonioxSweeper.Options? settings = null)
     {
+        // The clock is the real one, so every test that isn't about pacing turns it off.
+        settings ??= new SonioxSweeper.Options { DeleteDelay = TimeSpan.Zero };
         var services = new ServiceCollection()
             .AddSingleton(MomentClockSet.Default)
             .AddSingleton(new CoreServerSettings { SonioxKey = "test" })
@@ -109,6 +170,6 @@ public class SonioxSweeperTest(ITestOutputHelper @out) : TestBase(@out)
             .AddTestLogging(Out);
         services.AddHttpClient(SonioxClient.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(() => api);
-        return new SonioxSweeper(settings ?? new SonioxSweeper.Options(), services.BuildServiceProvider());
+        return new SonioxSweeper(settings, services.BuildServiceProvider());
     }
 }

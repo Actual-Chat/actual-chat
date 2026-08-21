@@ -14,6 +14,9 @@ public sealed class SonioxClient(IServiceProvider services)
     public const string HttpClientName = nameof(SonioxClient);
 
     private const string BaseUrl = "https://api.soniox.com/v1";
+    // Used when a 429 carries no Retry-After, and to cap the one it does carry
+    private static readonly TimeSpan DefaultRetryDelay = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(5);
     private static readonly JsonSerializerOptions JsonOptions = new() {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
@@ -77,12 +80,12 @@ public sealed class SonioxClient(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
-    // Both lists are scoped to the key's project, while the caps Soniox enforces are organization-wide -
-    // so they list what we can clean, not everything that counts against the caps.
     public Task<SonioxTranscriptionList> ListTranscriptions(
         string? cursor,
         int maxCount,
         CancellationToken cancellationToken)
+        // Both lists are scoped to the key's project, while the caps Soniox enforces are
+        // organization-wide - so they list what we can clean, not everything that counts against them.
         => ListPage<SonioxTranscriptionList>("transcriptions", cursor, maxCount, cancellationToken);
 
     public Task<SonioxFileList> ListFiles(string? cursor, int maxCount, CancellationToken cancellationToken)
@@ -152,7 +155,21 @@ public sealed class SonioxClient(IServiceProvider services)
         if (response.IsSuccessStatusCode)
             return;
 
+        // Soniox rate-limits requests per minute per organization, and both storage caps answer with
+        // the same status - so a 429 is transient here, and the callers that spend the budget in bulk
+        // need it typed to tell it apart from the failures that are worth retrying immediately.
+        if (response.StatusCode is HttpStatusCode.TooManyRequests)
+            throw new RateLimitExceededException(GetRetryDelay(response));
+
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         throw StandardError.External($"Soniox {step} failed: {(int)response.StatusCode} {body}");
+    }
+
+    private static TimeSpan GetRetryDelay(HttpResponseMessage response)
+    {
+        var retryAfter = response.Headers.RetryAfter;
+        var delay = retryAfter?.Delta
+            ?? (retryAfter?.Date is { } date ? date - DateTimeOffset.UtcNow : DefaultRetryDelay);
+        return delay <= TimeSpan.Zero ? DefaultRetryDelay : TimeSpanExt.Min(delay, MaxRetryDelay);
     }
 }
