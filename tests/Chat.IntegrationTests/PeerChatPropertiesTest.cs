@@ -21,15 +21,30 @@ public class PeerChatPropertiesTest(ChatCollection.AppHostFixture fixture, ITest
         var chats = bobTester.AppServices.GetRequiredService<IChats>();
         CancellationToken cancellationToken = default;
         await aliceTester.Commander.Call(
-            new Chats_UpsertEntry(aliceTester.Session, peerChatId, null) { Text = "Hello!" },
+            new Chats_UpsertEntry {
+                Session = aliceTester.Session,
+                ChatId = peerChatId,
+                LocalId = null,
+                Text = "Hello!",
+            },
             cancellationToken);
 
         // act
         var afterAlice = await aliceTester.Commander.Call(
-            new Chats_Change(aliceTester.Session, peerChatId, null, Change.Update(new ChatDiff { IsSummarized = true })),
+            new Chats_Change {
+                Session = aliceTester.Session,
+                ChatId = peerChatId,
+                ExpectedVersion = null,
+                Change = Change.Update(new ChatDiff { IsSummarized = true }),
+            },
             cancellationToken);
         var afterBob = await bobTester.Commander.Call(
-            new Chats_Change(bobTester.Session, peerChatId, null, Change.Update(new ChatDiff { IsSummarized = false })),
+            new Chats_Change {
+                Session = bobTester.Session,
+                ChatId = peerChatId,
+                ExpectedVersion = null,
+                Change = Change.Update(new ChatDiff { IsSummarized = false }),
+            },
             cancellationToken);
 
         // assert
@@ -55,18 +70,38 @@ public class PeerChatPropertiesTest(ChatCollection.AppHostFixture fixture, ITest
         var peerChatId = (ChatId)PeerChatId.New(alice.Id, bob.Id);
         CancellationToken cancellationToken = default;
         await aliceTester.Commander.Call(
-            new Chats_UpsertEntry(aliceTester.Session, peerChatId, null) { Text = "Hello!" },
+            new Chats_UpsertEntry {
+                Session = aliceTester.Session,
+                ChatId = peerChatId,
+                LocalId = null,
+                Text = "Hello!",
+            },
             cancellationToken);
 
         // act
         var rename = () => aliceTester.Commander.Call(
-            new Chats_Change(aliceTester.Session, peerChatId, null, Change.Update(new ChatDiff { Title = "renamed" })),
+            new Chats_Change {
+                Session = aliceTester.Session,
+                ChatId = peerChatId,
+                ExpectedVersion = null,
+                Change = Change.Update(new ChatDiff { Title = "renamed" }),
+            },
             cancellationToken);
         var archive = () => aliceTester.Commander.Call(
-            new Chats_Change(aliceTester.Session, peerChatId, null, Change.Update(new ChatDiff { IsArchived = true })),
+            new Chats_Change {
+                Session = aliceTester.Session,
+                ChatId = peerChatId,
+                ExpectedVersion = null,
+                Change = Change.Update(new ChatDiff { IsArchived = true }),
+            },
             cancellationToken);
         var remove = () => aliceTester.Commander.Call(
-            new Chats_Change(aliceTester.Session, peerChatId, null, Change.Remove(new ChatDiff())),
+            new Chats_Change {
+                Session = aliceTester.Session,
+                ChatId = peerChatId,
+                ExpectedVersion = null,
+                Change = Change.Remove(new ChatDiff()),
+            },
             cancellationToken);
 
         // assert

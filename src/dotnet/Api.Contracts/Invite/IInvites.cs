@@ -26,21 +26,21 @@ public interface IInvites : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Invites_Generate(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] Invite Invite
-) : ISessionCommand<Invite>, IApiCommand;
+public sealed partial record Invites_Generate : ApiCommand<Invite>
+{
+    [DataMember(Order = 2), Key(2)] public required Invite Invite { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Invites_Use(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] string InviteId
-) : ISessionCommand<Invite>, IApiCommand;
+public sealed partial record Invites_Use : ApiCommand<Invite>
+{
+    [DataMember(Order = 2), Key(2)] public required string InviteId { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Invites_Revoke(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] string InviteId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Invites_Revoke : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required string InviteId { get; init; }
+}

@@ -23,7 +23,9 @@ public class ChatUsages(IServiceProvider services) : IChatUsages
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, kind, chatId, _) = command;
+        var session = command.Session;
+        var kind = command.Kind;
+        var chatId = command.ChatId;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null)

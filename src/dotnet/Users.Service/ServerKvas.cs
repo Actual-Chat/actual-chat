@@ -51,7 +51,9 @@ public class ServerKvas(IServiceProvider services) : IServerKvas
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, key, value) = command;
+        var session = command.Session;
+        var key = command.Key;
+        var value = command.Value;
         RequireValidItem(key, value);
         var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
         var setManyCommand = new ServerKvasBackend_SetMany(prefix, (key, value));
@@ -79,7 +81,8 @@ public class ServerKvas(IServiceProvider services) : IServerKvas
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, items) = command;
+        var session = command.Session;
+        var items = command.Items;
         var maxItemCount = ServerKvas_SetMany.MaxItemCount;
         if (items.Length > maxItemCount)
             throw StandardError.Constraint($"A batch cannot contain more than {maxItemCount} items.");

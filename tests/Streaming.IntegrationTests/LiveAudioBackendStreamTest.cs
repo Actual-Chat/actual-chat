@@ -22,12 +22,17 @@ public class LiveAudioBackendStreamTest(AppHostFixture fixture, ITestOutputHelpe
         var session = Session.New();
         _ = await AppHost.SignIn(session, new AccountFull("StreamTester"));
 
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = "LiveAudioBackendStreamTest",
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "LiveAudioBackendStreamTest",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
         var chatId = chat.Id;
 
@@ -74,12 +79,17 @@ public class LiveAudioBackendStreamTest(AppHostFixture fixture, ITestOutputHelpe
         var session = Session.New();
         _ = await AppHost.SignIn(session, new AccountFull("StreamTester2"));
 
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = "LiveAudioBackendStreamTest2",
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "LiveAudioBackendStreamTest2",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
         var chatId = chat.Id;
 
@@ -127,12 +137,17 @@ public class LiveAudioBackendStreamTest(AppHostFixture fixture, ITestOutputHelpe
         var session = Session.New();
         _ = await AppHost.SignIn(session, new AccountFull("StreamTester3"));
 
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = "LiveAudioBackendStreamTest3",
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "LiveAudioBackendStreamTest3",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
         var chatId = chat.Id;
 
@@ -172,12 +187,17 @@ public class LiveAudioBackendStreamTest(AppHostFixture fixture, ITestOutputHelpe
         var session = Session.New();
         _ = await AppHost.SignIn(session, new AccountFull("StreamTester4"));
 
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = "LiveAudioBackendStreamTest4",
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "LiveAudioBackendStreamTest4",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
         var chatId = chat.Id;
 

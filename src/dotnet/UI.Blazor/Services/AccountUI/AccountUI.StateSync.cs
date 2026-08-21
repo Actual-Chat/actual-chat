@@ -180,7 +180,10 @@ public partial class AccountUI
             Text: text,
             Confirm: () => {
                 isConfirmed = true;
-                _ = commander.Run(new Accounts_ConfirmRegister(session, info.Token), true, CancellationToken.None);
+                _ = commander.Run(new Accounts_ConfirmRegister {
+                    Session = session,
+                    Token = info.Token,
+                }, true, CancellationToken.None);
             }) {
             Title = L.Account_RegisterTitle,
             ConfirmButtonText = L.Account_Register,
@@ -190,7 +193,10 @@ public partial class AccountUI
 
         if (!isConfirmed && _pendingRegistrationToken == info.Token) {
             // User dismissed without confirming — clear the prompt and show a sign-in error.
-            _ = commander.Run(new Accounts_CancelRegister(session, info.Token), true, CancellationToken.None);
+            _ = commander.Run(new Accounts_CancelRegister {
+                Session = session,
+                Token = info.Token,
+            }, true, CancellationToken.None);
         }
     }
 }

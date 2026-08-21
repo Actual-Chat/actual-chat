@@ -100,7 +100,10 @@ public class Contacts(IServiceProvider services) : IContacts
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
 
-        var (session, id, expectedVersion, change) = command;
+        var session = command.Session;
+        var id = command.Id;
+        var expectedVersion = command.ExpectedVersion;
+        var change = command.Change;
         id.Require();
         change.RequireValid();
 
@@ -119,7 +122,8 @@ public class Contacts(IServiceProvider services) : IContacts
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, id) = command;
+        var session = command.Session;
+        var id = command.Id;
         id.Require();
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -136,7 +140,9 @@ public class Contacts(IServiceProvider services) : IContacts
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, id, isBlocked) = command;
+        var session = command.Session;
+        var id = command.Id;
+        var isBlocked = command.IsBlocked;
         id.Require();
         if (id.ChatId is not PeerChatId)
             throw StandardError.Constraint("Only peer contacts can be blocked.");

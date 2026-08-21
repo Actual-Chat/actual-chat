@@ -74,10 +74,12 @@ public class ContactSync(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService
 
         var rootHash = existingRootHash ?? new ExternalContactsHash(UserDeviceId.New(account.Id, DeviceContacts.DeviceId));
         rootHash = rootHash with { Hash = deviceRootHash };
-        var changeHashCmd = new ExternalContactHashes_Change(Session,
-            DeviceContacts.DeviceId,
-            existingRootHash?.Version,
-            Change.Upsert(rootHash));
+        var changeHashCmd = new ExternalContactHashes_Change {
+            Session = Session,
+            DeviceId = DeviceContacts.DeviceId,
+            ExpectedVersion = existingRootHash?.Version,
+            Change = Change.Upsert(rootHash),
+        };
         await Commander.Call(changeHashCmd, cancellationToken).ConfigureAwait(false);
     }
 
@@ -125,7 +127,10 @@ public class ContactSync(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService
                 await Task.Delay(BatchInterval.Next(), cancellationToken).ConfigureAwait(false);
             try {
                 var changeResults = await Commander
-                    .Call(new ExternalContacts_BulkChange(Session, batch.ToArray()), cancellationToken)
+                    .Call(new ExternalContacts_BulkChange {
+                        Session = Session,
+                        Changes = batch.ToArray(),
+                    }, cancellationToken)
                     .ConfigureAwait(false);
                 var syncedCount = changeResults.Count(x => x.Error is null);
                 var logLevel = syncedCount != batch.Length ? LogLevel.Warning : LogLevel.Debug;

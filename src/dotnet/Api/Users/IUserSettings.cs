@@ -18,8 +18,8 @@ public interface IUserSettings : IComputeService
 /// </summary>
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public partial record UserSettings_Set(
-    [property: DataMember(Order = 0), Key(0)] Session Session,
-    [property: DataMember(Order = 1), Key(1)] string Key,
-    [property: DataMember(Order = 2), Key(2)] StoredSettings? Value
-) : ISessionCommand<Unit>, IApiCommand;
+public partial record UserSettings_Set : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required string Key { get; init; }
+    [DataMember(Order = 3), Key(3)] public required StoredSettings? Value { get; init; }
+}

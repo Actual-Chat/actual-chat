@@ -182,7 +182,7 @@
     }
 
     private void NotifyAllInternal()
-        => _ = UICommander.Call(new Notifications_NotifyMembers(Session, Chat.Id));
+        => _ = UICommander.Call(new Notifications_NotifyMembers { Session = Session, ChatId = Chat.Id });
 
     // Private methods
 

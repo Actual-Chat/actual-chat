@@ -373,12 +373,17 @@ public class LiveAudioBackendRedisStateTest(AppHostFixture fixture, ITestOutputH
     {
         var session = Session.New();
         _ = await AppHost.SignIn(session, new AccountFull(testName));
-        var chat = await Commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = $"RedisStateTest-{testName}",
-                Kind = ChatKind.Group,
+        var chat = await Commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = $"RedisStateTest-{testName}",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
         return chat.Id;
     }

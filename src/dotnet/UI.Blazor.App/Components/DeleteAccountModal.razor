@@ -76,7 +76,7 @@
         Modal.Close();
 
         await History.NavigateTo(Links.Home);
-        var deleteOwnAccountCommand = new Accounts_DeleteOwn(Session);
+        var deleteOwnAccountCommand = new Accounts_DeleteOwn { Session = Session };
         _ = UICommander.Run(deleteOwnAccountCommand);
 
         await AccountUI.SignOut();

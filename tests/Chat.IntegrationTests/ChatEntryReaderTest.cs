@@ -207,7 +207,11 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         var reader = chats.NewEntryReader(session, TestChatId);
 
         for (var i = 0; i < removeLastCount; i++)
-            await services.Commander().Call(new Chats_RemoveEntry(session, TestChatId, idRange.End - 1 - i), CancellationToken.None);
+            await services.Commander().Call(new Chats_RemoveEntry {
+                Session = session,
+                ChatId = TestChatId,
+                LocalId = idRange.End - 1 - i,
+            }, CancellationToken.None);
 
         var entry = await reader.GetLast(ourRange, x => x.AuthorId == author.Id, 0, CancellationToken.None);
         entry?.Content.Should().Be(expected);
@@ -341,7 +345,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
                 if (count-- <= 0)
                     return;
 
-                var cmd = new Chats_UpsertEntry(session, chatId, null) { Text = text };
+                var cmd = new Chats_UpsertEntry { Session = session, ChatId = chatId, LocalId = null, Text = text };
                 await commander.Call(cmd, CancellationToken.None).ConfigureAwait(false);
             }
     }

@@ -284,7 +284,12 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         var change = contact.HasVersion()
             ? new Change<Contact>() { Update = changedContact }
             : new Change<Contact>() { Create = changedContact };
-        var command = new Contacts_Change(Session, contact.Id, contact.Version, change);
+        var command = new Contacts_Change {
+            Session = Session,
+            Id = contact.Id,
+            ExpectedVersion = contact.Version,
+            Change = change,
+        };
         _ = TuneUI.Play(Tune.PinUnpinChat);
         await UICommander.Run(command).ConfigureAwait(false);
     }

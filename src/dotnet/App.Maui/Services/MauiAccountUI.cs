@@ -88,7 +88,11 @@ public class MauiAccountUI(UIHub hub) : AccountUI(hub)
 
     private Task SetSignInError(string error)
     {
-        var command = new SessionTemporals_Set(Session, Constants.SessionTemporals.SignInErrorKey, error);
+        var command = new SessionTemporals_Set {
+            Session = Session,
+            Key = Constants.SessionTemporals.SignInErrorKey,
+            Value = error,
+        };
         return Hub.Services.Commander().Run(command, true, CancellationToken.None);
     }
 }

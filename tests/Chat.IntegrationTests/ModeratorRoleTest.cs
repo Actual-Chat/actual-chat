@@ -50,7 +50,12 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         await PromoteToModerator(moderatorAuthorId);
         var afterPromote = await roles.ListModeratorIds(Owner.Session, chatId, default);
         await Owner.Commander.Call(
-            new Authors_ChangeRole(Owner.Session, moderatorAuthorId, SystemRole.Moderator, false));
+            new Authors_ChangeRole {
+                Session = Owner.Session,
+                AuthorId = moderatorAuthorId,
+                SystemRole = SystemRole.Moderator,
+                IsInRole = false,
+            });
         var afterDemote = await roles.ListModeratorIds(Owner.Session, chatId, default);
 
         // assert
@@ -67,15 +72,20 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var (chatId, moderatorAuthorId, _) = await ArrangeChat();
         await PromoteToModerator(moderatorAuthorId);
         var memberEntry = await Member.Commander.Call(
-            new Chats_UpsertEntry(Member.Session, chatId, null) { Text = "member message" });
+            new Chats_UpsertEntry {
+                Session = Member.Session,
+                ChatId = chatId,
+                LocalId = null,
+                Text = "member message",
+            });
         var ownerEntry = await Owner.Commander.Call(
-            new Chats_UpsertEntry(Owner.Session, chatId, null) { Text = "owner message" });
+            new Chats_UpsertEntry { Session = Owner.Session, ChatId = chatId, LocalId = null, Text = "owner message" });
 
         // act
         await Moderator.Commander.Call(
-            new Chats_RemoveEntry(Moderator.Session, chatId, memberEntry.LocalId));
+            new Chats_RemoveEntry { Session = Moderator.Session, ChatId = chatId, LocalId = memberEntry.LocalId });
         var removeOwnerEntry = () => Moderator.Commander
-            .Call(new Chats_RemoveEntry(Moderator.Session, chatId, ownerEntry.LocalId));
+            .Call(new Chats_RemoveEntry { Session = Moderator.Session, ChatId = chatId, LocalId = ownerEntry.LocalId });
 
         // assert
         await removeOwnerEntry.Should().ThrowAsync<Exception>();
@@ -90,11 +100,11 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         // arrange
         var (chatId, _, _) = await ArrangeChat();
         var ownerEntry = await Owner.Commander.Call(
-            new Chats_UpsertEntry(Owner.Session, chatId, null) { Text = "owner message" });
+            new Chats_UpsertEntry { Session = Owner.Session, ChatId = chatId, LocalId = null, Text = "owner message" });
 
         // act
         var removeOwnerEntry = () => Member.Commander
-            .Call(new Chats_RemoveEntry(Member.Session, chatId, ownerEntry.LocalId));
+            .Call(new Chats_RemoveEntry { Session = Member.Session, ChatId = chatId, LocalId = ownerEntry.LocalId });
 
         // assert
         await removeOwnerEntry.Should().ThrowAsync<Exception>();
@@ -107,12 +117,21 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var (chatId, moderatorAuthorId, _) = await ArrangeChat();
         await PromoteToModerator(moderatorAuthorId);
         var memberEntry = await Member.Commander.Call(
-            new Chats_UpsertEntry(Member.Session, chatId, null) { Text = "member message" });
-        await Member.Commander.Call(new Chats_RemoveEntry(Member.Session, chatId, memberEntry.LocalId));
+            new Chats_UpsertEntry {
+                Session = Member.Session,
+                ChatId = chatId,
+                LocalId = null,
+                Text = "member message",
+            });
+        await Member.Commander.Call(new Chats_RemoveEntry {
+            Session = Member.Session,
+            ChatId = chatId,
+            LocalId = memberEntry.LocalId,
+        });
 
         // act
         await Moderator.Commander.Call(
-            new Chats_RestoreEntry(Moderator.Session, chatId, memberEntry.LocalId));
+            new Chats_RestoreEntry { Session = Moderator.Session, ChatId = chatId, LocalId = memberEntry.LocalId });
 
         // assert
         var chats = Moderator.AppServices.GetRequiredService<IChats>();
@@ -129,8 +148,11 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var ownerAuthorId = (await Owner.GetOwnAuthor(chatId).Require()).Id;
 
         // act
-        await Moderator.Commander.Call(new Authors_Exclude(Moderator.Session, memberAuthorId));
-        var kickOwner = () => Moderator.Commander.Call(new Authors_Exclude(Moderator.Session, ownerAuthorId));
+        await Moderator.Commander.Call(new Authors_Exclude { Session = Moderator.Session, AuthorId = memberAuthorId });
+        var kickOwner = () => Moderator.Commander.Call(new Authors_Exclude {
+            Session = Moderator.Session,
+            AuthorId = ownerAuthorId,
+        });
 
         // assert
         await kickOwner.Should().ThrowAsync<Exception>();
@@ -154,12 +176,17 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var moderatorAuthor = await Moderator.JoinChat(chatId, inviteId);
         var anonymousAuthor = await Member.JoinChat(chatId, inviteId, true);
         await Owner.Commander.Call(
-            new Authors_ChangeRole(Owner.Session, anonymousAuthor.Id, SystemRole.Owner, true));
+            new Authors_ChangeRole {
+                Session = Owner.Session,
+                AuthorId = anonymousAuthor.Id,
+                SystemRole = SystemRole.Owner,
+                IsInRole = true,
+            });
         await PromoteToModerator(moderatorAuthor.Id);
 
         // act
         var kickAnonymousOwner = () => Moderator.Commander
-            .Call(new Authors_Exclude(Moderator.Session, anonymousAuthor.Id));
+            .Call(new Authors_Exclude { Session = Moderator.Session, AuthorId = anonymousAuthor.Id });
 
         // assert
         await kickAnonymousOwner.Should().ThrowAsync<Exception>();
@@ -180,7 +207,12 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         // act - appointed once on the place root chat
         await Owner.Commander.Call(
-            new Places_ChangeRole(Owner.Session, moderatorAuthor.Id, SystemRole.Moderator, true));
+            new Places_ChangeRole {
+                Session = Owner.Session,
+                AuthorId = moderatorAuthor.Id,
+                SystemRole = SystemRole.Moderator,
+                IsInRole = true,
+            });
 
         // assert
         var rootRules = await WaitForModerate(Moderator, placeId.RootChatId, true);
@@ -203,24 +235,37 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         await PromoteToModerator(moderatorAuthorId);
 
         // act
-        var updated = await Moderator.Commander.Call(new Chats_Change(Moderator.Session,
-            chatId,
-            null,
-            Change.Update(new ChatDiff { Title = "moderated title", Description = "moderated description" })));
-        var makePublic = () => Moderator.Commander.Call(new Chats_Change(Moderator.Session,
-            chatId,
-            null,
-            Change.Update(new ChatDiff { IsPublic = true })));
-        var archive = () => Moderator.Commander.Call(new Chats_Change(Moderator.Session,
-            chatId,
-            null,
-            Change.Update(new ChatDiff { IsArchived = true })));
-        var summarize = () => Moderator.Commander.Call(new Chats_Change(Moderator.Session,
-            chatId,
-            null,
-            Change.Update(new ChatDiff { IsSummarized = true })));
+        var updated = await Moderator.Commander.Call(new Chats_Change {
+            Session = Moderator.Session,
+            ChatId = chatId,
+            ExpectedVersion = null,
+            Change = Change.Update(new ChatDiff { Title = "moderated title", Description = "moderated description" }),
+        });
+        var makePublic = () => Moderator.Commander.Call(new Chats_Change {
+            Session = Moderator.Session,
+            ChatId = chatId,
+            ExpectedVersion = null,
+            Change = Change.Update(new ChatDiff { IsPublic = true }),
+        });
+        var archive = () => Moderator.Commander.Call(new Chats_Change {
+            Session = Moderator.Session,
+            ChatId = chatId,
+            ExpectedVersion = null,
+            Change = Change.Update(new ChatDiff { IsArchived = true }),
+        });
+        var summarize = () => Moderator.Commander.Call(new Chats_Change {
+            Session = Moderator.Session,
+            ChatId = chatId,
+            ExpectedVersion = null,
+            Change = Change.Update(new ChatDiff { IsSummarized = true }),
+        });
         var remove = () => Moderator.Commander.Call(
-            new Chats_Change(Moderator.Session, chatId, null, Change.Remove(new ChatDiff())));
+            new Chats_Change {
+                Session = Moderator.Session,
+                ChatId = chatId,
+                ExpectedVersion = null,
+                Change = Change.Remove(new ChatDiff()),
+            });
 
         // assert
         updated.Title.Should().Be("moderated title");
@@ -240,9 +285,19 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         // act
         var appointModerator = () => Moderator.Commander.Call(
-            new Authors_ChangeRole(Moderator.Session, memberAuthorId, SystemRole.Moderator, true));
+            new Authors_ChangeRole {
+                Session = Moderator.Session,
+                AuthorId = memberAuthorId,
+                SystemRole = SystemRole.Moderator,
+                IsInRole = true,
+            });
         var appointOwner = () => Moderator.Commander.Call(
-            new Authors_ChangeRole(Moderator.Session, memberAuthorId, SystemRole.Owner, true));
+            new Authors_ChangeRole {
+                Session = Moderator.Session,
+                AuthorId = memberAuthorId,
+                SystemRole = SystemRole.Owner,
+                IsInRole = true,
+            });
 
         // assert
         await appointModerator.Should().ThrowAsync<Exception>();
@@ -257,11 +312,26 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         // act
         var setAnyone = () => Owner.Commander.Call(
-            new Authors_ChangeRole(Owner.Session, moderatorAuthorId, SystemRole.Anyone, true));
+            new Authors_ChangeRole {
+                Session = Owner.Session,
+                AuthorId = moderatorAuthorId,
+                SystemRole = SystemRole.Anyone,
+                IsInRole = true,
+            });
         var setNone = () => Owner.Commander.Call(
-            new Authors_ChangeRole(Owner.Session, moderatorAuthorId, SystemRole.None, true));
+            new Authors_ChangeRole {
+                Session = Owner.Session,
+                AuthorId = moderatorAuthorId,
+                SystemRole = SystemRole.None,
+                IsInRole = true,
+            });
         var demoteOwner = () => Owner.Commander.Call(
-            new Authors_ChangeRole(Owner.Session, moderatorAuthorId, SystemRole.Owner, false));
+            new Authors_ChangeRole {
+                Session = Owner.Session,
+                AuthorId = moderatorAuthorId,
+                SystemRole = SystemRole.Owner,
+                IsInRole = false,
+            });
 
         // assert
         await setAnyone.Should().ThrowAsync<Exception>();
@@ -279,7 +349,12 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         // act
         await Owner.Commander.Call(
-            new Authors_ChangeRole(Owner.Session, moderatorAuthorId, SystemRole.Owner, true));
+            new Authors_ChangeRole {
+                Session = Owner.Session,
+                AuthorId = moderatorAuthorId,
+                SystemRole = SystemRole.Owner,
+                IsInRole = true,
+            });
 
         // assert
         var ownerIds = await roles.ListOwnerIds(Owner.Session, chatId, default);
@@ -298,7 +373,10 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var roles = Owner.AppServices.GetRequiredService<IRoles>();
 
         // act
-        await Owner.Commander.Call(new Authors_PromoteToOwner(Owner.Session, moderatorAuthorId));
+        await Owner.Commander.Call(new Authors_PromoteToOwner {
+            Session = Owner.Session,
+            AuthorId = moderatorAuthorId,
+        });
 
         // assert - the shim rewrites into Authors_ChangeRole, so it inherits its behaviour
         var ownerIds = await roles.ListOwnerIds(Owner.Session, chatId, default);
@@ -316,7 +394,7 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var roles = Owner.AppServices.GetRequiredService<IRoles>();
 
         // act
-        await Moderator.Commander.Call(new Authors_Leave(Moderator.Session, chatId));
+        await Moderator.Commander.Call(new Authors_Leave { Session = Moderator.Session, ChatId = chatId });
 
         // assert
         var moderatorIds = await roles.ListModeratorIds(Owner.Session, chatId, default);
@@ -336,7 +414,7 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         // act
         var clone = await Member.Commander.Call(
-            new Chats_GetOrCreateFromTemplate(Member.Session, templateChatId));
+            new Chats_GetOrCreateFromTemplate { Session = Member.Session, TemplateChatId = templateChatId });
 
         // assert
         clone.Id.Should().NotBe(templateChatId);
@@ -357,14 +435,18 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var (chatId, _, _) = await ArrangeChat();
 
         // act
-        var editTitle = () => Member.Commander.Call(new Chats_Change(Member.Session,
-            chatId,
-            null,
-            Change.Update(new ChatDiff { Title = "hijacked title" })));
-        var editDescription = () => Member.Commander.Call(new Chats_Change(Member.Session,
-            chatId,
-            null,
-            Change.Update(new ChatDiff { Description = "hijacked description" })));
+        var editTitle = () => Member.Commander.Call(new Chats_Change {
+            Session = Member.Session,
+            ChatId = chatId,
+            ExpectedVersion = null,
+            Change = Change.Update(new ChatDiff { Title = "hijacked title" }),
+        });
+        var editDescription = () => Member.Commander.Call(new Chats_Change {
+            Session = Member.Session,
+            ChatId = chatId,
+            ExpectedVersion = null,
+            Change = Change.Update(new ChatDiff { Description = "hijacked description" }),
+        });
 
         // assert
         await editTitle.Should().ThrowAsync<Exception>();
@@ -378,7 +460,10 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var (_, moderatorAuthorId, _) = await ArrangeChat();
 
         // act
-        var kick = () => Member.Commander.Call(new Authors_Exclude(Member.Session, moderatorAuthorId));
+        var kick = () => Member.Commander.Call(new Authors_Exclude {
+            Session = Member.Session,
+            AuthorId = moderatorAuthorId,
+        });
 
         // assert
         await kick.Should().ThrowAsync<Exception>();
@@ -390,12 +475,16 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         // arrange
         var (chatId, _, _) = await ArrangeChat();
         var ownerEntry = await Owner.Commander.Call(
-            new Chats_UpsertEntry(Owner.Session, chatId, null) { Text = "owner message" });
-        await Owner.Commander.Call(new Chats_RemoveEntry(Owner.Session, chatId, ownerEntry.LocalId));
+            new Chats_UpsertEntry { Session = Owner.Session, ChatId = chatId, LocalId = null, Text = "owner message" });
+        await Owner.Commander.Call(new Chats_RemoveEntry {
+            Session = Owner.Session,
+            ChatId = chatId,
+            LocalId = ownerEntry.LocalId,
+        });
 
         // act
         var restore = () => Member.Commander
-            .Call(new Chats_RestoreEntry(Member.Session, chatId, ownerEntry.LocalId));
+            .Call(new Chats_RestoreEntry { Session = Member.Session, ChatId = chatId, LocalId = ownerEntry.LocalId });
 
         // assert
         await restore.Should().ThrowAsync<Exception>();
@@ -409,9 +498,19 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         // act
         var appointOther = () => Member.Commander.Call(
-            new Authors_ChangeRole(Member.Session, moderatorAuthorId, SystemRole.Moderator, true));
+            new Authors_ChangeRole {
+                Session = Member.Session,
+                AuthorId = moderatorAuthorId,
+                SystemRole = SystemRole.Moderator,
+                IsInRole = true,
+            });
         var appointSelf = () => Member.Commander.Call(
-            new Authors_ChangeRole(Member.Session, memberAuthorId, SystemRole.Moderator, true));
+            new Authors_ChangeRole {
+                Session = Member.Session,
+                AuthorId = memberAuthorId,
+                SystemRole = SystemRole.Moderator,
+                IsInRole = true,
+            });
 
         // assert
         await appointOther.Should().ThrowAsync<Exception>();
@@ -446,15 +545,17 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         await PromoteToModerator(moderatorAuthorId);
 
         // act
-        var createRole = () => Moderator.Commander.Call(new Roles_Change(Moderator.Session,
-            chatId,
-            null,
-            null,
-            Change.Create(new RoleDiff {
+        var createRole = () => Moderator.Commander.Call(new Roles_Change {
+            Session = Moderator.Session,
+            ChatId = chatId,
+            RoleId = null,
+            ExpectedVersion = null,
+            Change = Change.Create(new RoleDiff {
                 Name = "escalated",
                 Permissions = ChatPermissions.Owner,
                 AuthorIds = new SetDiff<AuthorId[], AuthorId> { AddedItems = [moderatorAuthorId] },
-            })));
+            }),
+        });
 
         // assert
         await createRole.Should().ThrowAsync<Exception>();
@@ -472,7 +573,7 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         // act
         var invite = () => Moderator.Commander.Call(
-            new Authors_Invite(Moderator.Session, chatId, [outsiderAccount.Id]));
+            new Authors_Invite { Session = Moderator.Session, ChatId = chatId, UserIds = [outsiderAccount.Id] });
 
         // assert
         await invite.Should().ThrowAsync<Exception>();
@@ -485,12 +586,19 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var (placeId, _) = await ArrangePlace();
 
         // act
-        var makePrivate = () => Moderator.Commander.Call(new Places_Change(Moderator.Session,
-            placeId,
-            null,
-            Change.Update(new PlaceDiff { IsPublic = false })));
+        var makePrivate = () => Moderator.Commander.Call(new Places_Change {
+            Session = Moderator.Session,
+            PlaceId = placeId,
+            ExpectedVersion = null,
+            Change = Change.Update(new PlaceDiff { IsPublic = false }),
+        });
         var remove = () => Moderator.Commander.Call(
-            new Places_Change(Moderator.Session, placeId, null, Change.Remove(new PlaceDiff())));
+            new Places_Change {
+                Session = Moderator.Session,
+                PlaceId = placeId,
+                ExpectedVersion = null,
+                Change = Change.Remove(new PlaceDiff()),
+            });
 
         // assert
         await makePrivate.Should().ThrowAsync<Exception>();
@@ -504,10 +612,12 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var (placeId, _) = await ArrangePlace();
 
         // act
-        var updated = await Moderator.Commander.Call(new Places_Change(Moderator.Session,
-            placeId,
-            null,
-            Change.Update(new PlaceDiff { Title = "moderated place title" })));
+        var updated = await Moderator.Commander.Call(new Places_Change {
+            Session = Moderator.Session,
+            PlaceId = placeId,
+            ExpectedVersion = null,
+            Change = Change.Update(new PlaceDiff { Title = "moderated place title" }),
+        });
 
         // assert
         updated.Title.Should().Be("moderated place title");
@@ -547,7 +657,12 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         // act
         var demote = () => Owner.Commander.Call(
-            new Authors_ChangeRole(Owner.Session, moderatorAuthorId, SystemRole.Moderator, false));
+            new Authors_ChangeRole {
+                Session = Owner.Session,
+                AuthorId = moderatorAuthorId,
+                SystemRole = SystemRole.Moderator,
+                IsInRole = false,
+            });
 
         // assert
         var moderatorIds = await Settle(
@@ -579,7 +694,12 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         // act
         var appoint = () => Owner.Commander.Call(
-            new Places_ChangeRole(Owner.Session, moderatorAuthor.Id, SystemRole.Moderator, true));
+            new Places_ChangeRole {
+                Session = Owner.Session,
+                AuthorId = moderatorAuthor.Id,
+                SystemRole = SystemRole.Moderator,
+                IsInRole = true,
+            });
 
         // assert
         var rules = await Settle(
@@ -612,13 +732,23 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         await Moderator.JoinPlace(placeId);
         var moderatorAuthor = await Moderator.GetOwnAuthor(placeId.RootChatId).Require();
         await Owner.Commander.Call(
-            new Places_ChangeRole(Owner.Session, moderatorAuthor.Id, SystemRole.Moderator, true));
+            new Places_ChangeRole {
+                Session = Owner.Session,
+                AuthorId = moderatorAuthor.Id,
+                SystemRole = SystemRole.Moderator,
+                IsInRole = true,
+            });
         await WaitForModerate(Moderator, placeId.RootChatId, true);
         return (placeId, moderatorAuthor.Id);
     }
 
     private Task PromoteToModerator(AuthorId authorId)
-        => Owner.Commander.Call(new Authors_ChangeRole(Owner.Session, authorId, SystemRole.Moderator, true));
+        => Owner.Commander.Call(new Authors_ChangeRole {
+            Session = Owner.Session,
+            AuthorId = authorId,
+            SystemRole = SystemRole.Moderator,
+            IsInRole = true,
+        });
 
     private static async Task<AuthorRules> GetRules(WebClientTester tester, ChatId chatId)
     {

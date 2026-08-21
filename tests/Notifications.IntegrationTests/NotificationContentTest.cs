@@ -163,17 +163,21 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         await mediaSaver.Save(mediaId, TestImages.GetUploadedImage(TestImages.DefaultJpg), null, MediaKind.UserAvatarPicture, default);
 
         // Create avatar with custom picture for bob
-        var avatarWithPicture = await Tester.Commander.Call(new Avatars_Change(
-            Tester.Session,
-            Symbol.Empty,
-            null,
-            Change.Create(new AvatarDiff {
+        var avatarWithPicture = await Tester.Commander.Call(new Avatars_Change {
+            Session = Tester.Session,
+            AvatarId = Symbol.Empty,
+            ExpectedVersion = null,
+            Change = Change.Create(new AvatarDiff {
                 Name = "Bob with Picture",
                 MediaId = Option.Some<MediaId?>(mediaId),
-            })));
+            }),
+        });
 
         // Set as default avatar
-        await Tester.Commander.Call(new Avatars_SetDefault(Tester.Session, avatarWithPicture.Id));
+        await Tester.Commander.Call(new Avatars_SetDefault {
+            Session = Tester.Session,
+            AvatarId = avatarWithPicture.Id,
+        });
 
         var chatId = PeerChatId.New(alice.Id, bob.Id);
 

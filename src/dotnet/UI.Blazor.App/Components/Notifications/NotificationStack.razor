@@ -41,7 +41,7 @@
     }
 
     private async Task OnClose(NotificationId notificationId) {
-        var command = new Notifications_Handle(Session, notificationId);
+        var command = new Notifications_Handle { Session = Session, NotificationId = notificationId };
         await UICommander.Run(command);
     }
 

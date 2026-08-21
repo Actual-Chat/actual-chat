@@ -178,7 +178,10 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, avatarId, joinAnonymously) = command;
+        var session = command.Session;
+        var chatId = command.ChatId;
+        var avatarId = command.AvatarId;
+        var joinAnonymously = command.JoinAnonymously;
         chatId.EnsureNonThread();
 
         var author = await GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -240,7 +243,8 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId) = command;
+        var session = command.Session;
+        var chatId = command.ChatId;
         chatId.EnsureNonThread();
         var author = await GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author == null || author.HasLeft)
@@ -271,7 +275,10 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, userIds, joinAnonymously) = command;
+        var session = command.Session;
+        var chatId = command.ChatId;
+        var userIds = command.UserIds;
+        var joinAnonymously = command.JoinAnonymously;
         chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.CanInvite().RequireTrue("You can't invite members in this chat.");
@@ -304,7 +311,8 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, authorId) = command;
+        var session = command.Session;
+        var authorId = command.AuthorId;
         var chatId = authorId.ChatId;
         chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
@@ -341,7 +349,8 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, authorId) = command;
+        var session = command.Session;
+        var authorId = command.AuthorId;
         var chatId = authorId.ChatId;
         chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
@@ -360,7 +369,9 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, avatarId) = command;
+        var session = command.Session;
+        var chatId = command.ChatId;
+        var avatarId = command.AvatarId;
         chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
 
@@ -389,7 +400,10 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, authorId, systemRole, isInRole) = command;
+        var session = command.Session;
+        var authorId = command.AuthorId;
+        var systemRole = command.SystemRole;
+        var isInRole = command.IsInRole;
         if (systemRole is not (SystemRole.Owner or SystemRole.Moderator))
             throw StandardError.Constraint("This system role uses automatic membership rules.");
         if (systemRole is SystemRole.Owner && !isInRole)
@@ -424,8 +438,14 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, authorId) = command;
-        var changeRoleCommand = new Authors_ChangeRole(session, authorId, SystemRole.Owner, true);
+        var session = command.Session;
+        var authorId = command.AuthorId;
+        var changeRoleCommand = new Authors_ChangeRole {
+            Session = session,
+            AuthorId = authorId,
+            SystemRole = SystemRole.Owner,
+            IsInRole = true,
+        };
         await Commander.Call(changeRoleCommand, true, cancellationToken).ConfigureAwait(false);
     }
 

@@ -60,9 +60,11 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var session = tester.Session;
 
         var chats = services.GetRequiredService<IChats>();
-        var createChatCommand = new Chats_Change(session,
-            null, null,
-            new Change<ChatDiff> {
+        var createChatCommand = new Chats_Change {
+            Session = session,
+            ChatId = null,
+            ExpectedVersion = null,
+            Change = new Change<ChatDiff> {
                 Create = Option.Some(new ChatDiff {
                     Title = "TestChatToRemove",
                     IsPublic = false,
@@ -70,7 +72,8 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
                     AllowAnonymousAuthors = true,
                     Kind = ChatKind.Group,
                 }),
-            });
+            },
+        };
         var chat = await services.Commander().Call(createChatCommand);
         chat.Should().NotBeNull();
 
@@ -114,7 +117,7 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
                 if (count-- <= 0)
                     return entries.ToArray();
 
-                var command = new Chats_UpsertEntry(session, chatId, null) { Text = text };
+                var command = new Chats_UpsertEntry { Session = session, ChatId = chatId, LocalId = null, Text = text };
                 var entry = await commander.Call(command, CancellationToken.None).ConfigureAwait(false);
                 entries.Add(entry);
             }

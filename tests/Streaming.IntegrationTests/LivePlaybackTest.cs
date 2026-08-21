@@ -26,12 +26,17 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
             new UserLanguageSettings { Primary = Languages.Main });
 
         // Create a chat
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = "LivePlaybackTest",
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "LivePlaybackTest",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
 
         // Start Live Streams listener

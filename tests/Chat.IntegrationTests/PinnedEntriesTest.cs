@@ -27,9 +27,21 @@ public class PinnedEntriesTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var entries = await Owner.CreateTextEntries(chatId, "msg", 3);
 
         // act
-        await Owner.Commander.Call(new Chats_SetPinned(Owner.Session, entries[0].Id, true));
-        await Moderator.Commander.Call(new Chats_SetPinned(Moderator.Session, entries[1].Id, true));
-        var memberPin = () => Member.Commander.Call(new Chats_SetPinned(Member.Session, entries[2].Id, true));
+        await Owner.Commander.Call(new Chats_SetPinned {
+            Session = Owner.Session,
+            EntryId = entries[0].Id,
+            MustPin = true,
+        });
+        await Moderator.Commander.Call(new Chats_SetPinned {
+            Session = Moderator.Session,
+            EntryId = entries[1].Id,
+            MustPin = true,
+        });
+        var memberPin = () => Member.Commander.Call(new Chats_SetPinned {
+            Session = Member.Session,
+            EntryId = entries[2].Id,
+            MustPin = true,
+        });
 
         // assert
         await memberPin.Should().ThrowAsync<Exception>();
@@ -45,10 +57,14 @@ public class PinnedEntriesTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var e = await Owner.CreateTextEntries(chatId, "msg", 4);
 
         // act - pin out of order; the server sorts by message chronology
-        await Owner.Commander.Call(new Chats_SetPinned(Owner.Session, e[2].Id, true));
-        await Owner.Commander.Call(new Chats_SetPinned(Owner.Session, e[0].Id, true));
-        await Owner.Commander.Call(new Chats_SetPinned(Owner.Session, e[3].Id, true));
-        var fourth = () => Owner.Commander.Call(new Chats_SetPinned(Owner.Session, e[1].Id, true));
+        await Owner.Commander.Call(new Chats_SetPinned { Session = Owner.Session, EntryId = e[2].Id, MustPin = true });
+        await Owner.Commander.Call(new Chats_SetPinned { Session = Owner.Session, EntryId = e[0].Id, MustPin = true });
+        await Owner.Commander.Call(new Chats_SetPinned { Session = Owner.Session, EntryId = e[3].Id, MustPin = true });
+        var fourth = () => Owner.Commander.Call(new Chats_SetPinned {
+            Session = Owner.Session,
+            EntryId = e[1].Id,
+            MustPin = true,
+        });
 
         // assert
         await fourth.Should().ThrowAsync<Exception>();
@@ -65,7 +81,11 @@ public class PinnedEntriesTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         await Owner.RemoveTextEntry(entry.Id);
 
         // act
-        var pin = () => Owner.Commander.Call(new Chats_SetPinned(Owner.Session, entry.Id, true));
+        var pin = () => Owner.Commander.Call(new Chats_SetPinned {
+            Session = Owner.Session,
+            EntryId = entry.Id,
+            MustPin = true,
+        });
 
         // assert
         await pin.Should().ThrowAsync<Exception>();
@@ -77,13 +97,13 @@ public class PinnedEntriesTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         // arrange - fill the cap, then delete one of the pinned messages
         var (chatId, _, _) = await ArrangeChat();
         var e = await Owner.CreateTextEntries(chatId, "msg", 4);
-        await Owner.Commander.Call(new Chats_SetPinned(Owner.Session, e[0].Id, true));
-        await Owner.Commander.Call(new Chats_SetPinned(Owner.Session, e[1].Id, true));
-        await Owner.Commander.Call(new Chats_SetPinned(Owner.Session, e[2].Id, true));
+        await Owner.Commander.Call(new Chats_SetPinned { Session = Owner.Session, EntryId = e[0].Id, MustPin = true });
+        await Owner.Commander.Call(new Chats_SetPinned { Session = Owner.Session, EntryId = e[1].Id, MustPin = true });
+        await Owner.Commander.Call(new Chats_SetPinned { Session = Owner.Session, EntryId = e[2].Id, MustPin = true });
         await Owner.RemoveTextEntry(e[0].Id);
 
         // act - the cap looks full, but the removed pin must not block a new one
-        await Owner.Commander.Call(new Chats_SetPinned(Owner.Session, e[3].Id, true));
+        await Owner.Commander.Call(new Chats_SetPinned { Session = Owner.Session, EntryId = e[3].Id, MustPin = true });
 
         // assert - stale id dropped, new one added
         var pins = await WaitPins(Owner, chatId, 3);
@@ -96,11 +116,11 @@ public class PinnedEntriesTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         // arrange
         var (chatId, _, _) = await ArrangeChat();
         var e = await Owner.CreateTextEntries(chatId, "msg", 2);
-        await Owner.Commander.Call(new Chats_SetPinned(Owner.Session, e[0].Id, true));
-        await Owner.Commander.Call(new Chats_SetPinned(Owner.Session, e[1].Id, true));
+        await Owner.Commander.Call(new Chats_SetPinned { Session = Owner.Session, EntryId = e[0].Id, MustPin = true });
+        await Owner.Commander.Call(new Chats_SetPinned { Session = Owner.Session, EntryId = e[1].Id, MustPin = true });
 
         // act
-        await Owner.Commander.Call(new Chats_SetPinned(Owner.Session, e[0].Id, false));
+        await Owner.Commander.Call(new Chats_SetPinned { Session = Owner.Session, EntryId = e[0].Id, MustPin = false });
 
         // assert
         var pins = await WaitPins(Owner, chatId, 1);
@@ -115,8 +135,8 @@ public class PinnedEntriesTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var entry = await Owner.CreateTextEntry(chatId, "once");
 
         // act
-        await Owner.Commander.Call(new Chats_SetPinned(Owner.Session, entry.Id, true));
-        await Owner.Commander.Call(new Chats_SetPinned(Owner.Session, entry.Id, true));
+        await Owner.Commander.Call(new Chats_SetPinned { Session = Owner.Session, EntryId = entry.Id, MustPin = true });
+        await Owner.Commander.Call(new Chats_SetPinned { Session = Owner.Session, EntryId = entry.Id, MustPin = true });
 
         // assert
         var pins = await WaitPins(Owner, chatId, 1);
@@ -133,7 +153,7 @@ public class PinnedEntriesTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var entry = await Owner.CreateTextEntry(chatId, "peer message");
 
         // act
-        await Owner.Commander.Call(new Chats_SetPinned(Owner.Session, entry.Id, true));
+        await Owner.Commander.Call(new Chats_SetPinned { Session = Owner.Session, EntryId = entry.Id, MustPin = true });
 
         // assert
         var pins = await WaitPins(Owner, chatId, 1);
@@ -155,7 +175,12 @@ public class PinnedEntriesTest(ChatCollection.AppHostFixture fixture, ITestOutpu
     }
 
     private Task PromoteToModerator(AuthorId authorId)
-        => Owner.Commander.Call(new Authors_ChangeRole(Owner.Session, authorId, SystemRole.Moderator, true));
+        => Owner.Commander.Call(new Authors_ChangeRole {
+            Session = Owner.Session,
+            AuthorId = authorId,
+            SystemRole = SystemRole.Moderator,
+            IsInRole = true,
+        });
 
     private static async Task<ApiArray<ChatEntryId>> WaitPins(WebClientTester tester, ChatId chatId, int expectedCount)
     {

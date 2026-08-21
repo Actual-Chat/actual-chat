@@ -77,20 +77,30 @@ public class AuthorUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
     {
         var now = Clocks.SystemClock.Now;
         var sDate = now.ToDateTime().ToString("MM/dd/yyyy");
-        var createCommand = new Chats_Change(Session, default, null, new() {
-            Create = new ChatDiff {
-                Title = $"Anonymous chat ({sDate})",
-                Kind = ChatKind.Group,
-                IsPublic = false,
-                AllowAnonymousAuthors = true,
+        var createCommand = new Chats_Change {
+            Session = Session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = $"Anonymous chat ({sDate})",
+                    Kind = ChatKind.Group,
+                    IsPublic = false,
+                    AllowAnonymousAuthors = true,
+                },
             },
-        });
+        };
         var chatResult = await UICommander.Run(createCommand, cancellationToken).ConfigureAwait(true);
         if (chatResult.HasError)
             return;
 
         var chatId = chatResult.Value.Id;
-        var addOtherUserCommand = new Authors_Invite(Session, chatId, new[] { userId }, JoinAnonymously: true);
+        var addOtherUserCommand = new Authors_Invite {
+            Session = Session,
+            ChatId = chatId,
+            UserIds = new[] { userId },
+            JoinAnonymously = true,
+        };
         var authorResult = await UICommander.Run(addOtherUserCommand, cancellationToken).ConfigureAwait(true);
         if (authorResult.HasError)
             return;
@@ -98,7 +108,7 @@ public class AuthorUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(true);
         var authorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(true);
         var otherAuthorId = authorIds.First(id => id != ownAuthor?.Id);
-        var promoteCommand = new Authors_PromoteToOwner(Session, otherAuthorId);
+        var promoteCommand = new Authors_PromoteToOwner { Session = Session, AuthorId = otherAuthorId };
         var promoteResult = await UICommander.Run(promoteCommand, cancellationToken).ConfigureAwait(true);
         if (promoteResult.HasError)
             return;

@@ -14,9 +14,9 @@ public interface IChatUsages : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record ChatUsages_RegisterUsage(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] ChatUsageListKind Kind,
-    [property: DataMember, Key(2)] ChatId ChatId,
-    [property: DataMember, Key(3)] DateTime? AccessTime = null
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record ChatUsages_RegisterUsage : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required ChatUsageListKind Kind { get; init; }
+    [DataMember(Order = 3), Key(3)] public required ChatId ChatId { get; init; }
+    [DataMember(Order = 4), Key(4)] public DateTime? AccessTime { get; init; }
+}

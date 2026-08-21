@@ -77,7 +77,11 @@
 
     protected override async Task<bool> Save() {
         var account = await AccountUI.OwnAccount.Use();
-        var command = new Accounts_Update(Session, account with { Email = _model.Email }, account.Version);
+        var command = new Accounts_Update {
+            Session = Session,
+            Account = account with { Email = _model.Email },
+            ExpectedVersion = account.Version,
+        };
         var (_, error) = await UICommander.Run(command);
         if (error is not null)
             return false;

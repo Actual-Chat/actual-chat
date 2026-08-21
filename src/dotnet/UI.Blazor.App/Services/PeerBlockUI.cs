@@ -19,7 +19,7 @@ public class PeerBlockUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeS
     }
 
     public Task<UIActionResult<Unit>> SetBlocked(ContactId contactId, bool isBlocked)
-        => UICommander.Run(new Contacts_SetIsBlocked(Session, contactId, isBlocked));
+        => UICommander.Run(new Contacts_SetIsBlocked { Session = Session, Id = contactId, IsBlocked = isBlocked });
 }
 
 public sealed record PeerBlockState(ContactId? ContactId, bool IsBlocked, bool IsBlockedByPeer)

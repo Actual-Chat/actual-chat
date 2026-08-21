@@ -97,7 +97,12 @@ public sealed class ChunkedFileUploader(IServiceProvider services)
                 break;
 
             var timestamp = Stopwatch.GetTimestamp();
-            var appendCmd = new Uploads_Append(Session, uploadId, offset, chunkBuffer);
+            var appendCmd = new Uploads_Append {
+                Session = Session,
+                UploadId = uploadId,
+                Offset = offset,
+                Chunk = chunkBuffer,
+            };
             var newOffset = await Commander.Call(appendCmd, ct).ConfigureAwait(false);
             var elapsed = Stopwatch.GetElapsedTime(timestamp);
             offset += bytesRead;

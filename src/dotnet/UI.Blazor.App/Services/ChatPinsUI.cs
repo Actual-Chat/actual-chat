@@ -12,7 +12,11 @@ public class ChatPinsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
     // enforces the cap atomically per command, so concurrent moderators can't lose each other's pins.
     private async Task SetPinned(ChatEntryId entryId, bool mustPin)
     {
-        var result = await UICommander.Run(new Chats_SetPinned(Session, entryId, mustPin)).ConfigureAwait(true);
+        var result = await UICommander.Run(new Chats_SetPinned {
+            Session = Session,
+            EntryId = entryId,
+            MustPin = mustPin,
+        }).ConfigureAwait(true);
         if (result.HasError)
             return; // The command pipeline surfaces the error (e.g. the cap message).
         ToastUI.Show(mustPin ? L.Pin_MessagePinned : L.Pin_MessageUnpinned, ToastDismissDelay.Short);

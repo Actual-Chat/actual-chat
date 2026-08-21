@@ -54,7 +54,9 @@ public class UserSettings(IServiceProvider services) : IUserSettings
         if (Invalidation.IsActive)
             return;
 
-        var (session, key, value) = command;
+        var session = command.Session;
+        var key = command.Key;
+        var value = command.Value;
         KvasKeys.RequireNotHidden(key);
         // Null for a singleton key = an unknown union tag deserialized to null; deleting the row
         // would silently wipe the settings. Parameterized "@" keys keep null-as-delete.

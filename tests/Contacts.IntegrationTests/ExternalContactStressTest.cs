@@ -108,7 +108,10 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     private async Task Add(params ExternalContactFull[] externalContacts)
     {
         var changes = externalContacts.Select(x => new ExternalContactChange(x.Id, null, Change.Create(x)));
-        var results = await _commander.Call(new ExternalContacts_BulkChange(_tester.Session, changes.ToArray()));
+        var results = await _commander.Call(new ExternalContacts_BulkChange {
+            Session = _tester.Session,
+            Changes = changes.ToArray(),
+        });
         results.Select(x => x.Value).Should().NotContainNulls();
         var errors = results.Select(x => x.Error).SkipNullItems().ToList();
         if (errors.Count > 0)

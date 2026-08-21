@@ -22,12 +22,10 @@ public interface IServerKvas : IComputeService
 [DataContract, MessagePackObject]
 [MessagePackFormatter(typeof(Internal.ServerKvas_SetMessagePackFormatter))]
 // ReSharper disable once InconsistentNaming
-public partial record ServerKvas_Set(
-    [property: DataMember(Order = 0), Key(0)] Session Session,
-    [property: DataMember(Order = 1), Key(1)] string Key,
-    [property: DataMember(Order = 2), Key(2)] byte[]? Value
-) : ISessionCommand<Unit>, IApiCommand
+public partial record ServerKvas_Set : ApiCommand<Unit>
 {
+    [DataMember(Order = 2), Key(2)] public required string Key { get; init; }
+    [DataMember(Order = 3), Key(3)] public required byte[]? Value { get; init; }
     // Both are far above any settings record this store is meant to hold
     public const int MaxKeyLength = 1024;
     public const int MaxValueLength = 64 * 1024;
@@ -39,11 +37,9 @@ public partial record ServerKvas_Set(
 [DataContract, MessagePackObject]
 [MessagePackFormatter(typeof(Internal.ServerKvas_SetManyMessagePackFormatter))]
 // ReSharper disable once InconsistentNaming
-public partial record ServerKvas_SetMany(
-    [property: DataMember(Order = 0), Key(0)] Session Session,
-    [property: DataMember(Order = 1), Key(1)] params (string Key, byte[]? Value)[] Items
-) : ISessionCommand<Unit>, IApiCommand
+public partial record ServerKvas_SetMany : ApiCommand<Unit>
 {
+    [DataMember(Order = 2), Key(2)] public required (string Key, byte[]? Value)[] Items { get; init; }
     public const int MaxItemCount = 128;
 }
 
@@ -53,6 +49,4 @@ public partial record ServerKvas_SetMany(
 [DataContract, MessagePackObject]
 [MessagePackFormatter(typeof(Internal.ServerKvas_MigrateGuestKeysMessagePackFormatter))]
 // ReSharper disable once InconsistentNaming
-public partial record ServerKvas_MigrateGuestKeys(
-    [property: DataMember(Order = 0), Key(0)] Session Session
-) : ISessionCommand<Unit>, IApiCommand;
+public partial record ServerKvas_MigrateGuestKeys : ApiCommand<Unit>;

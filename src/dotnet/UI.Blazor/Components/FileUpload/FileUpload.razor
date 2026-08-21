@@ -26,19 +26,32 @@
             }
 
             // Reserve MediaId
-            var mediaId = await UICommander.Call(new Media_ReserveMedia(Session, Scope) { Kind = MediaKind });
+            var mediaId = await UICommander.Call(new Media_ReserveMedia {
+                Session = Session,
+                Scope = Scope,
+                Kind = MediaKind,
+            });
 
             // Create Upload
             var tag = $"FileUpload/v1/{Scope}";
             var metadata = new MetadataBag()
                 .Set("FileName", source.Metadata.FileName.Value)
                 .Set("ContentType", source.Metadata.ContentType);
-            var uploadId = await UICommander.Call(new Uploads_Create(Session, source.Metadata.Length, tag, metadata));
+            var uploadId = await UICommander.Call(new Uploads_Create {
+                Session = Session,
+                Length = source.Metadata.Length,
+                Tag = tag,
+                Metadata = metadata,
+            });
 
             await FileUploader.Upload(source.StreamSource, uploadId, null, CancellationToken.None);
 
             // Process upload
-            var mediaRef = await UICommander.Call(new Media_ProcessUpload(Session, mediaId, uploadId));
+            var mediaRef = await UICommander.Call(new Media_ProcessUpload {
+                Session = Session,
+                MediaId = mediaId,
+                UploadId = uploadId,
+            });
             await Uploaded.InvokeAsync(mediaRef);
         }
         catch (Exception e) {

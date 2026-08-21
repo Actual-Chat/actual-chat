@@ -49,63 +49,63 @@ public interface IPlaces : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Places_Change(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] PlaceId? PlaceId,
-    [property: DataMember, Key(2)] long? ExpectedVersion,
-    [property: DataMember, Key(3)] Change<PlaceDiff> Change
-) : ISessionCommand<Place>, IApiCommand;
+public sealed partial record Places_Change : ApiCommand<Place>
+{
+    [DataMember(Order = 2), Key(2)] public required PlaceId? PlaceId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required long? ExpectedVersion { get; init; }
+    [DataMember(Order = 4), Key(4)] public required Change<PlaceDiff> Change { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Places_Join(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] PlaceId PlaceId,
-    [property: DataMember, Key(2)] Symbol AvatarId = default
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Places_Join : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required PlaceId PlaceId { get; init; }
+    [DataMember(Order = 3), Key(3)] public Symbol AvatarId { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Places_Invite(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] PlaceId PlaceId,
-    [property: DataMember, Key(2)] UserId[] UserIds
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Places_Invite : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required PlaceId PlaceId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required UserId[] UserIds { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Places_Exclude(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] AuthorId AuthorId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Places_Exclude : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required AuthorId AuthorId { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Places_Restore(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] AuthorId AuthorId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Places_Restore : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required AuthorId AuthorId { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Places_ChangeRole(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] AuthorId AuthorId,
-    [property: DataMember, Key(2)] SystemRole SystemRole,
-    [property: DataMember, Key(3)] bool IsInRole
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Places_ChangeRole : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required AuthorId AuthorId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required SystemRole SystemRole { get; init; }
+    [DataMember(Order = 4), Key(4)] public required bool IsInRole { get; init; }
+}
 
 [DataContract, MessagePackObject]
 [Obsolete("2026.08: Use Places_ChangeRole. Old clients only.")]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Places_PromoteToOwner(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] AuthorId AuthorId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Places_PromoteToOwner : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required AuthorId AuthorId { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Places_Leave(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] PlaceId PlaceId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Places_Leave : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required PlaceId PlaceId { get; init; }
+}

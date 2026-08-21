@@ -27,24 +27,24 @@ public interface IContacts : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Contacts_Touch(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] ContactId Id
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Contacts_Touch : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required ContactId Id { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Contacts_SetIsBlocked(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] ContactId Id,
-    [property: DataMember, Key(2)] bool IsBlocked
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Contacts_SetIsBlocked : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required ContactId Id { get; init; }
+    [DataMember(Order = 3), Key(3)] public required bool IsBlocked { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Contacts_Change(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] ContactId Id,
-    [property: DataMember, Key(2)] long? ExpectedVersion,
-    [property: DataMember, Key(3)] Change<Contact> Change
-) : ISessionCommand<Contact?>, IApiCommand;
+public sealed partial record Contacts_Change : ApiCommand<Contact?>
+{
+    [DataMember(Order = 2), Key(2)] public required ContactId Id { get; init; }
+    [DataMember(Order = 3), Key(3)] public required long? ExpectedVersion { get; init; }
+    [DataMember(Order = 4), Key(4)] public required Change<Contact> Change { get; init; }
+}

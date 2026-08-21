@@ -109,7 +109,9 @@ public class Accounts(IServiceProvider services) : IAccounts
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, account, expectedVersion) = command;
+        var session = command.Session;
+        var account = command.Account;
+        var expectedVersion = command.ExpectedVersion;
         await this.AssertCanUpdate(session, account, cancellationToken).ConfigureAwait(false);
 
         // Clients send a whole AccountFull, but only the fields listed below are theirs to set.
@@ -217,7 +219,8 @@ public class Accounts(IServiceProvider services) : IAccounts
         if (Invalidation.IsActive)
             return;
 
-        var (session, token) = command;
+        var session = command.Session;
+        var token = command.Token;
         session.RequireValid();
 
         var pending = PendingRegistrationExt.TryDecode(SecureTokensBackend, token, session)
@@ -244,7 +247,8 @@ public class Accounts(IServiceProvider services) : IAccounts
         if (Invalidation.IsActive)
             return;
 
-        var (session, token) = command;
+        var session = command.Session;
+        var token = command.Token;
         session.RequireValid();
 
         // Requiring the token to decode for this session stops a stale prompt from cancelling a fresh one

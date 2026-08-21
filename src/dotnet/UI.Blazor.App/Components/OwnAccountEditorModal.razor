@@ -197,14 +197,15 @@
                 return;
         }
 
-        var updateAccountCommand = new Accounts_Update(
-            Session,
-            account with {
+        var updateAccountCommand = new Accounts_Update {
+            Session = Session,
+            Account = account with {
                 Name = _form.Name,
                 Phone = phone,
                 AliasId = AliasId.ParseNullable(_form.AliasId),
             },
-            account.Version);
+            ExpectedVersion = account.Version,
+        };
         var (_, error) = await Hub.UICommander.Run(updateAccountCommand);
         if (error != null)
             return;

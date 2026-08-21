@@ -103,7 +103,7 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void Contacts_Touch_Basic()
     {
         var contactId = ContactId.NewAny(TestUserId, TestChatId);
-        var cmd = new Contacts_Touch(TestSession, contactId);
+        var cmd = new Contacts_Touch { Session = TestSession, Id = contactId };
         cmd.AssertPassesThroughSerializers();
     }
 
@@ -114,7 +114,12 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var contact = new Contact(contactId, 1) {
             Chat = new Chat.Chat(TestChatId),
         };
-        var cmd = new Contacts_Change(TestSession, contactId, null, Change.Update(contact));
+        var cmd = new Contacts_Change {
+            Session = TestSession,
+            Id = contactId,
+            ExpectedVersion = null,
+            Change = Change.Update(contact),
+        };
         cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Id.Should().Be(original.Id);
@@ -129,7 +134,12 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var hash = new ExternalContactsHash(deviceId, 1) {
             Hash = new HashString("SHA256 Base16 abc123"),
         };
-        var cmd = new ExternalContactHashes_Change(TestSession, deviceId.Id, null, Change.Create(hash));
+        var cmd = new ExternalContactHashes_Change {
+            Session = TestSession,
+            DeviceId = deviceId.Id,
+            ExpectedVersion = null,
+            Change = Change.Create(hash),
+        };
         cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.DeviceId.Should().Be(original.DeviceId);

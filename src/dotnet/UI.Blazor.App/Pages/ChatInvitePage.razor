@@ -36,7 +36,7 @@
             return;
         }
 
-        var useCommand = new Invites_Use(Session, InviteId);
+        var useCommand = new Invites_Use { Session = Session, InviteId = InviteId };
         Invite invite;
         try {
             invite = await Commander.Call(useCommand);

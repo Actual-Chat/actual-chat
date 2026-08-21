@@ -287,13 +287,18 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
             IsPlace = isPlace,
         });
         var shared = await Commander.Call(
-                new SharedLocations_Change(Session, chatId, null, change),
+                new SharedLocations_Change { Session = Session, ChatId = chatId, Id = null, Change = change },
                 cancellationToken)
             .ConfigureAwait(false);
         if (shared is null)
             return;
 
-        var command = new Chats_UpsertEntry(Session, chatId, null) { LocationId = shared.Id };
+        var command = new Chats_UpsertEntry {
+            Session = Session,
+            ChatId = chatId,
+            LocalId = null,
+            LocationId = shared.Id,
+        };
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 

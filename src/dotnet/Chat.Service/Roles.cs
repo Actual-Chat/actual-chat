@@ -70,7 +70,11 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, roleId, expectedVersion, change) = command;
+        var session = command.Session;
+        var chatId = command.ChatId;
+        var roleId = command.RoleId;
+        var expectedVersion = command.ExpectedVersion;
+        var change = command.Change;
         await RequireOwner(session, chatId, cancellationToken).ConfigureAwait(false);
 
         var changeCommand = new RolesBackend_Change(chatId, roleId, expectedVersion, change);

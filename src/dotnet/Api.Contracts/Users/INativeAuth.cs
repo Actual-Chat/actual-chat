@@ -15,23 +15,21 @@ public interface INativeAuth : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record NativeAuth_SignInGoogle(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] string Code
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record NativeAuth_SignInGoogle : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required string Code { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record NativeAuth_SignInApple(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] string UserId,
-    [property: DataMember, Key(2)] string Code,
-    [property: DataMember, Key(3)] string? Email,
-    [property: DataMember, Key(4)] string? Name
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record NativeAuth_SignInApple : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required string UserId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required string Code { get; init; }
+    [DataMember(Order = 4), Key(4)] public required string? Email { get; init; }
+    [DataMember(Order = 5), Key(5)] public required string? Name { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record NativeAuth_SignOut(
-    [property: DataMember, Key(0)] Session Session
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record NativeAuth_SignOut : ApiCommand<Unit>;

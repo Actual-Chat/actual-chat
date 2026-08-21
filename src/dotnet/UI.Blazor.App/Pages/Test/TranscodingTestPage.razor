@@ -149,7 +149,9 @@
             var source = _pendingSource;
 
             // 1. Reserve MediaId
-            var mediaId = await UICommander.Call(new Media_ReserveMedia(Session, "transcoding-test") {
+            var mediaId = await UICommander.Call(new Media_ReserveMedia {
+                Session = Session,
+                Scope = "transcoding-test",
                 Kind = MediaKind.ChatEntryVideo,
             });
 
@@ -158,7 +160,12 @@
             var metadata = new MetadataBag()
                 .Set("FileName", source.Metadata.FileName.Value)
                 .Set("ContentType", source.Metadata.ContentType);
-            var uploadId = await UICommander.Call(new Uploads_Create(Session, source.Metadata.Length, tag, metadata));
+            var uploadId = await UICommander.Call(new Uploads_Create {
+                Session = Session,
+                Length = source.Metadata.Length,
+                Tag = tag,
+                Metadata = metadata,
+            });
 
             // 3. Upload
             var progress = new Progress<double>(p => {
@@ -205,10 +212,11 @@
         StateHasChanged();
 
         try {
-            var cmd = new Uploads_StartProcessUpload(
-                Session,
-                m.UploadId.Require(),
-                m.MediaId.Require());
+            var cmd = new Uploads_StartProcessUpload {
+                Session = Session,
+                UploadId = m.UploadId.Require(),
+                MediaId = m.MediaId.Require(),
+            };
             await Commander.Call(cmd);
         }
         catch (Exception e) {

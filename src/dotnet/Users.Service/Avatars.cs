@@ -46,7 +46,10 @@ public class Avatars(IServiceProvider services) : IAvatars
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
 
-        var (session, avatarId, expectedVersion, change) = command;
+        var session = command.Session;
+        var avatarId = command.AvatarId;
+        var expectedVersion = command.ExpectedVersion;
+        var change = command.Change;
         command.Change.RequireValid();
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -79,7 +82,8 @@ public class Avatars(IServiceProvider services) : IAvatars
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, avatarId) = command;
+        var session = command.Session;
+        var avatarId = command.AvatarId;
         var userSettingsUI = Services.UserSettingsUI(session);
 
         var avatar = await GetOwn(session, avatarId, cancellationToken).Require().ConfigureAwait(false);

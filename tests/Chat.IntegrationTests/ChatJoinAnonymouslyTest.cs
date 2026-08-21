@@ -117,11 +117,15 @@ public class ChatJoinAnonymouslyTest(ChatCollection.AppHostFixture fixture, ITes
         var account = await accounts.GetOwn(session, default);
         account.IsGuest.Should().BeFalse();
 
-        var command = new Avatars_Change(session, Symbol.Empty, null,
-            Change.Create(new AvatarDiff {
+        var command = new Avatars_Change {
+            Session = session,
+            AvatarId = Symbol.Empty,
+            ExpectedVersion = null,
+            Change = Change.Create(new AvatarDiff {
                 Name = "Anonymous Bob",
                 IsAnonymous = true,
-            }));
+            }),
+        };
         var anonymousAvatar = await tester.Commander.Call(command);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -138,11 +142,15 @@ public class ChatJoinAnonymouslyTest(ChatCollection.AppHostFixture fixture, ITes
         var session = tester.Session;
         var accounts = tester.AppServices.GetRequiredService<IAccounts>();
         var account = await accounts.GetOwn(session, default);
-        var command = new Avatars_Change(session, Symbol.Empty, null,
-            Change.Create(new AvatarDiff {
+        var command = new Avatars_Change {
+            Session = session,
+            AvatarId = Symbol.Empty,
+            ExpectedVersion = null,
+            Change = Change.Create(new AvatarDiff {
                 Name = RandomNameGenerator.Default.Generate(),
                 IsAnonymous = true,
-            }));
+            }),
+        };
         return await tester.Commander.Call(command).ConfigureAwait(false);
     }
 }

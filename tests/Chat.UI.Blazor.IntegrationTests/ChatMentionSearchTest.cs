@@ -49,7 +49,12 @@ public class ChatMentionSearchTest(ChatAppHostFixture fixture, ITestOutputHelper
         // Bob renames Alice's contact
         var contactId = ContactId.NewUser(bob.Id, alice.Id);
         var contact = new Contact(contactId) { PeerContactName = "MyBestie" };
-        await Tester.Commander.Call(new Contacts_Change(Tester.Session, contactId, null, Change.Create(contact)));
+        await Tester.Commander.Call(new Contacts_Change {
+            Session = Tester.Session,
+            Id = contactId,
+            ExpectedVersion = null,
+            Change = Change.Create(contact),
+        });
 
         // act - search by the contact display name Bob gave Alice
         var results = await FindMentions(chat.Id, "MyBest");
@@ -74,7 +79,12 @@ public class ChatMentionSearchTest(ChatAppHostFixture fixture, ITestOutputHelper
 
         var contactId = ContactId.NewUser(bob.Id, alice.Id);
         var contact = new Contact(contactId) { PeerContactName = "MyBestie" };
-        await Tester.Commander.Call(new Contacts_Change(Tester.Session, contactId, null, Change.Create(contact)));
+        await Tester.Commander.Call(new Contacts_Change {
+            Session = Tester.Session,
+            Id = contactId,
+            ExpectedVersion = null,
+            Change = Change.Create(contact),
+        });
 
         // act & assert - should find by account avatar name even when contact has been renamed
         var byAvatar = await FindMentions(chat.Id, "Magnol");

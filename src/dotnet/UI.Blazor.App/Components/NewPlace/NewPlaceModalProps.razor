@@ -130,14 +130,19 @@
             return;
         try {
             var session = Hub.Session;
-            var createPlaceCommand = new Places_Change(session, default, default, new Change<PlaceDiff>() {
-                Create = new PlaceDiff {
-                    Title = _form.Title,
-                    Description = _form.Description,
-                    IsPublic = _form.IsPublic,
-                    MediaId = _form.Picture?.MediaRef?.MediaId,
-                }
-            });
+            var createPlaceCommand = new Places_Change {
+                Session = session,
+                PlaceId = default,
+                ExpectedVersion = default,
+                Change = new Change<PlaceDiff>() {
+                    Create = new PlaceDiff {
+                        Title = _form.Title,
+                        Description = _form.Description,
+                        IsPublic = _form.IsPublic,
+                        MediaId = _form.Picture?.MediaRef?.MediaId,
+                    }
+                },
+            };
 
             var (place, createPlaceError) = await Hub.UICommander.Run(createPlaceCommand, CancellationToken.None);
             if (createPlaceError != null)
@@ -147,17 +152,22 @@
 
             // Create default chat. Later we should add place templates.
             var description = $"Welcome chat for {place.Title}";
-            var createChatCommand = new Chats_Change(session, default, null, new() {
-                Create = new ChatDiff {
-                    Title = "Welcome",
-                    Description = description,
-                    Kind = null,
-                    IsPublic = true,
-                    MediaId = _form.Picture?.MediaRef?.MediaId,
-                    SystemTag = Constants.Chat.SystemTags.Welcome,
-                    PlaceId = place.Id
+            var createChatCommand = new Chats_Change {
+                Session = session,
+                ChatId = default,
+                ExpectedVersion = null,
+                Change = new() {
+                    Create = new ChatDiff {
+                        Title = "Welcome",
+                        Description = description,
+                        Kind = null,
+                        IsPublic = true,
+                        MediaId = _form.Picture?.MediaRef?.MediaId,
+                        SystemTag = Constants.Chat.SystemTags.Welcome,
+                        PlaceId = place.Id
+                    },
                 },
-            });
+            };
             var (chat, _) = await Hub.UICommander.Run(createChatCommand, CancellationToken.None);
 
             PlaceCreated(place, chat);

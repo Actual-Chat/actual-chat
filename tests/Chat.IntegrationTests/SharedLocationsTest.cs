@@ -167,7 +167,12 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         var (sourceChatId, _) = await Alice.CreateChat(x => x with { Title = "Source location chat" });
         var (targetChatId, _) = await Alice.CreateChat(x => x with { Title = "Target location chat" });
         var location = await Alice.ReportLocation(sourceChatId, new GeoPoint(51.5074, -0.1278));
-        var command = new Chats_UpsertEntry(Alice.Session, targetChatId, null) { LocationId = location.Id };
+        var command = new Chats_UpsertEntry {
+            Session = Alice.Session,
+            ChatId = targetChatId,
+            LocalId = null,
+            LocationId = location.Id,
+        };
 
         // act
         var error = await Record.ExceptionAsync(() => Alice.Commander.Call(command));

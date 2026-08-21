@@ -29,7 +29,8 @@ public class NativeAuth(IServiceProvider services) : INativeAuth
         if (Invalidation.IsActive)
             return;
 
-        var (session, code) = command;
+        var session = command.Session;
+        var code = command.Code;
         try {
             code.RequireNonEmpty();
 
@@ -73,7 +74,10 @@ public class NativeAuth(IServiceProvider services) : INativeAuth
         if (Invalidation.IsActive)
             return;
 
-        var (session, userId, code, _, name) = command;
+        var session = command.Session;
+        var userId = command.UserId;
+        var code = command.Code;
+        var name = command.Name;
         try {
             userId.RequireNonEmpty();
             code.RequireNonEmpty();

@@ -40,14 +40,14 @@ public static class EditChatMemberCommands
 
     public static async Task OnRemoveFromGroupClick(AppUIHub hub, Author author)
     {
-        var result = await hub.UICommander.Run(new Authors_Exclude(hub.Session, author.Id));
+        var result = await hub.UICommander.Run(new Authors_Exclude { Session = hub.Session, AuthorId = author.Id });
         if (result.HasError)
             return;
         var authorName = author.Avatar.Name;
         hub.ToastUI.Show($"{authorName} removed", "icon-minus-circle", Undo, "Undo", ToastDismissDelay.Long);
 
         void Undo() {
-            var undoCommand = new Authors_Restore(hub.Session, author.Id);
+            var undoCommand = new Authors_Restore { Session = hub.Session, AuthorId = author.Id };
             _ = hub.UICommander.Run(undoCommand);
         }
     }
@@ -67,7 +67,12 @@ public static class EditChatMemberCommands
     public static async Task OnSetModeratorClick(AppUIHub hub, Author author, bool isModerator)
     {
         var authorName = author.Avatar.Name;
-        var command = new Authors_ChangeRole(hub.Session, author.Id, SystemRole.Moderator, isModerator);
+        var command = new Authors_ChangeRole {
+            Session = hub.Session,
+            AuthorId = author.Id,
+            SystemRole = SystemRole.Moderator,
+            IsInRole = isModerator,
+        };
         var result = await hub.UICommander.Run(command);
         if (result.HasError)
             return;
@@ -83,7 +88,12 @@ public static class EditChatMemberCommands
 
     private static async Task OnPromoteToOwnerConfirmed(AppUIHub hub, AuthorId authorId, string authorName)
     {
-        var command = new Authors_ChangeRole(hub.Session, authorId, SystemRole.Owner, true);
+        var command = new Authors_ChangeRole {
+            Session = hub.Session,
+            AuthorId = authorId,
+            SystemRole = SystemRole.Owner,
+            IsInRole = true,
+        };
         var result = await hub.UICommander.Run(command);
         if (result.HasError)
             return;

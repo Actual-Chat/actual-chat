@@ -18,7 +18,7 @@ public static class SharedLocationOperations
                 IsPlace = isPlace,
             })
             : Change.Update(new SharedLocationDiff { Point = point });
-        var cmd = new SharedLocations_Change(tester.Session, chatId, id, change);
+        var cmd = new SharedLocations_Change { Session = tester.Session, ChatId = chatId, Id = id, Change = change };
         var result = await tester.Commander.Call(cmd, cancellationToken);
         return result!;
     }
@@ -31,7 +31,12 @@ public static class SharedLocationOperations
         CancellationToken cancellationToken = default)
     {
         var location = await tester.ReportLocation(chatId, point, liveDuration, cancellationToken: cancellationToken);
-        var cmd = new Chats_UpsertEntry(tester.Session, chatId, null) { LocationId = location.Id };
+        var cmd = new Chats_UpsertEntry {
+            Session = tester.Session,
+            ChatId = chatId,
+            LocalId = null,
+            LocationId = location.Id,
+        };
         return await tester.Commander.Call(cmd, cancellationToken);
     }
 
@@ -41,7 +46,12 @@ public static class SharedLocationOperations
         SharedLocationId id,
         CancellationToken cancellationToken = default)
     {
-        var cmd = new SharedLocations_Change(tester.Session, chatId, id, Change.Remove<SharedLocationDiff>());
+        var cmd = new SharedLocations_Change {
+            Session = tester.Session,
+            ChatId = chatId,
+            Id = id,
+            Change = Change.Remove<SharedLocationDiff>(),
+        };
         return tester.Commander.Call(cmd, cancellationToken);
     }
 }

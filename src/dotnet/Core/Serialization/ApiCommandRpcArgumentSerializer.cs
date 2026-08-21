@@ -11,23 +11,21 @@ namespace ActualChat.Serialization;
 /// than <see cref="UuidVersion"/> (Session @ 0) to the current layout (Uuid @ 0) by prepending an empty Uuid.
 /// Newer peers, backend peers, and non-command args pass through the inner V4 verbatim.
 /// </summary>
-public sealed class ApiCommandRpcArgumentSerializer : RpcArgumentSerializer
+// peerVersionSource is injectable so tests can drive the legacy branch without a live RPC peer.
+public sealed class ApiCommandRpcArgumentSerializer(
+    IByteSerializer baseSerializer,
+    Func<Version?>? peerVersionSource = null
+    ) : RpcArgumentSerializer
 {
     // The API version (from the RPC handshake's per-peer RemoteApiVersionSet) that introduces ApiCommand.Uuid.
     // Pinned to the release this ships in, NOT ApiConstants.Version, which floats forward with every build.
     public static readonly Version UuidVersion = new(2, 16);
 
-    private readonly IByteSerializer _baseSerializer;
-    private readonly RpcByteArgumentSerializerV4 _inner;
-    private readonly Func<Version?> _peerVersionSource;
+    private static readonly ConcurrentDictionary<Type, bool> MustPrependUuidCache = new();
 
-    // peerVersionSource is injectable so tests can drive the legacy branch without a live RPC peer.
-    public ApiCommandRpcArgumentSerializer(IByteSerializer baseSerializer, Func<Version?>? peerVersionSource = null)
-    {
-        _baseSerializer = baseSerializer;
-        _inner = new RpcByteArgumentSerializerV4(baseSerializer);
-        _peerVersionSource = peerVersionSource ?? GetInboundApiVersion;
-    }
+    private readonly IByteSerializer _baseSerializer = baseSerializer;
+    private readonly RpcByteArgumentSerializerV4 _inner = new(baseSerializer);
+    private readonly Func<Version?> _peerVersionSource = peerVersionSource ?? GetInboundApiVersion;
 
     public override void Serialize(ArgumentList arguments, bool needsPolymorphism, ArrayPoolBuffer<byte> buffer)
         => _inner.Serialize(arguments, needsPolymorphism, buffer);
@@ -47,7 +45,8 @@ public sealed class ApiCommandRpcArgumentSerializer : RpcArgumentSerializer
                 arguments.SetCancellationToken(i, default);
                 continue;
             }
-            var item = typeof(ApiCommand).IsAssignableFrom(type)
+
+            var item = MustPrependUuid(type)
                 ? ReadMigratedCommand(ref data, type)
                 : _baseSerializer.Read(ref data, type);
             arguments.SetUntyped(i, item);
@@ -55,6 +54,13 @@ public sealed class ApiCommandRpcArgumentSerializer : RpcArgumentSerializer
     }
 
     // Private methods
+
+    private static bool MustPrependUuid(Type type)
+        // A command with its own [MessagePackFormatter] is a named-key map that already tolerates a missing
+        // Uuid; prepending an array element would corrupt it.
+        => typeof(ApiCommand).IsAssignableFrom(type)
+            && MustPrependUuidCache.GetOrAdd(type,
+                static t => t.GetCustomAttribute<MessagePackFormatterAttribute>() is null);
 
     private object? ReadMigratedCommand(ref ReadOnlyMemory<byte> data, Type type)
     {

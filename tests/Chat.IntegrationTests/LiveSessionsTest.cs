@@ -1172,7 +1172,12 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
 
         var entries = new List<ChatEntry>();
         foreach (var text in new[] { "one", "two", "three" }) {
-            var entry = await commander.Call(new Chats_UpsertEntry(session, chatId, null) { Text = text });
+            var entry = await commander.Call(new Chats_UpsertEntry {
+                Session = session,
+                ChatId = chatId,
+                LocalId = null,
+                Text = text,
+            });
             entries.Add(entry);
         }
         var contextStart = entries[0].LocalId;
@@ -1223,10 +1228,20 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         var conversationsBackend = tester.AppServices.GetRequiredService<IConversationsBackend>();
 
-        var e0 = await commander.Call(new Chats_UpsertEntry(session, chatId, null) { Text = "e0" });
+        var e0 = await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "e0",
+        });
         await backend.OnStreamRegistered(chatId, author!.Id, e0.LocalId, true, true, default); // solo, StartEntryLid = e0
-        await commander.Call(new Chats_UpsertEntry(session, chatId, null) { Text = "e1" });
-        var e2 = await commander.Call(new Chats_UpsertEntry(session, chatId, null) { Text = "e2" });
+        await commander.Call(new Chats_UpsertEntry { Session = session, ChatId = chatId, LocalId = null, Text = "e1" });
+        var e2 = await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "e2",
+        });
 
         var preLatch = new Conversation(ConversationId.New(chatId, e0.LocalId), 1) {
             Title = "Earlier", Description = "d", Summary = "s", MessageCount = 3,
@@ -1235,7 +1250,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         };
         await commander.Call(new ConversationBackend_Materialize(preLatch));
 
-        await commander.Call(new Chats_UpsertEntry(session, chatId, null) { Text = "e3" });
+        await commander.Call(new Chats_UpsertEntry { Session = session, ChatId = chatId, LocalId = null, Text = "e3" });
         await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_025), null, true, true, default); // latch
         (await backend.GetState(chatId, default))!.SessionStartedAt.Should().NotBeNull();
 

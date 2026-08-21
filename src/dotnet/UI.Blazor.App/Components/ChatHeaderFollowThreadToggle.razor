@@ -21,5 +21,8 @@
         => ChatThreads.GetThreadFollowStatus(Session, ThreadChatId, cancellationToken);
 
     private async Task OnToggle()
-        => await UICommander.Call(new ChatThreads_ToggleThreadFollowStatus(Session, ThreadChatId)).ConfigureAwait(false);
+        => await UICommander.Call(new ChatThreads_ToggleThreadFollowStatus {
+            Session = Session,
+            ThreadChatId = ThreadChatId,
+        }).ConfigureAwait(false);
 }

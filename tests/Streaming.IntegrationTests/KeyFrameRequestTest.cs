@@ -63,12 +63,17 @@ public class KeyFrameRequestTest(AppHostFixture fixture, ITestOutputHelper @out)
         var nonMemberSession = Session.New();
         _ = await appHost.SignIn(nonMemberSession, new AccountFull("Jack"));
 
-        var chat = await commander.Call(new Chats_Change(memberSession, default, null, new() {
-            Create = new ChatDiff {
-                Title = "NonMemberVideoTest",
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = memberSession,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "NonMemberVideoTest",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(45));
@@ -115,12 +120,17 @@ public class KeyFrameRequestTest(AppHostFixture fixture, ITestOutputHelper @out)
         var nonMemberSession = Session.New();
         _ = await appHost.SignIn(nonMemberSession, new AccountFull("Jack"));
 
-        var chat = await commander.Call(new Chats_Change(memberSession, default, null, new() {
-            Create = new ChatDiff {
-                Title = "PlaybackQualityTest",
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = memberSession,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "PlaybackQualityTest",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(45));

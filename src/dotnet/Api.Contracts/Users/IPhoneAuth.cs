@@ -34,39 +34,39 @@ public sealed partial record TotpSendResult(
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record PhoneAuth_SendCode(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] Phone Phone,
-    [property: DataMember, Key(2)] TotpPurpose Purpose = TotpPurpose.SignInPhone,
-    [property: DataMember, Key(3)] string? CaptchaToken = null,
-    [property: DataMember, Key(4)] string? CaptchaAction = null,
+public sealed partial record PhoneAuth_SendCode : ApiCommand<TotpSendResult>
+{
+    [DataMember(Order = 2), Key(2)] public required Phone Phone { get; init; }
+    [DataMember(Order = 3), Key(3)] public TotpPurpose Purpose { get; init; } = TotpPurpose.SignInPhone;
+    [DataMember(Order = 4), Key(4)] public string? CaptchaToken { get; init; }
+    [DataMember(Order = 5), Key(5)] public string? CaptchaAction { get; init; }
     // Reserved: the channel is picked server-side, the handler ignores whatever a client sends here
-    [property: DataMember, Key(5)] TotpChannel? Channel = null
-) : ISessionCommand<TotpSendResult>, IApiCommand;
+    [DataMember(Order = 6), Key(6)] public TotpChannel? Channel { get; init; }
+}
 
 [DataContract, MessagePackObject]
 [Obsolete("2026.08: Use PhoneAuth_SendCode. Old clients only.")]
 // ReSharper disable once InconsistentNaming
-public sealed partial record PhoneAuth_SendTotp(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] Phone Phone,
-    [property: DataMember, Key(2)] TotpPurpose Purpose = TotpPurpose.SignInPhone,
-    [property: DataMember, Key(3)] string? CaptchaToken = null,
-    [property: DataMember, Key(4)] string? CaptchaAction = null
-) : ISessionCommand<Moment>, IApiCommand;
+public sealed partial record PhoneAuth_SendTotp : ApiCommand<Moment>
+{
+    [DataMember(Order = 2), Key(2)] public required Phone Phone { get; init; }
+    [DataMember(Order = 3), Key(3)] public TotpPurpose Purpose { get; init; } = TotpPurpose.SignInPhone;
+    [DataMember(Order = 4), Key(4)] public string? CaptchaToken { get; init; }
+    [DataMember(Order = 5), Key(5)] public string? CaptchaAction { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record PhoneAuth_ValidateTotp(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] Phone Phone,
-    [property: DataMember, Key(2)] int Totp
-) : ISessionCommand<bool>, IApiCommand;
+public sealed partial record PhoneAuth_ValidateTotp : ApiCommand<bool>
+{
+    [DataMember(Order = 2), Key(2)] public required Phone Phone { get; init; }
+    [DataMember(Order = 3), Key(3)] public required int Totp { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record PhoneAuth_VerifyPhone(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] Phone Phone,
-    [property: DataMember, Key(2)] int Totp
-) : ISessionCommand<bool>, IApiCommand; // NOTE(AY): Add backend, implement IApiCommand
+public sealed partial record PhoneAuth_VerifyPhone : ApiCommand<bool>
+{
+    [DataMember(Order = 2), Key(2)] public required Phone Phone { get; init; }
+    [DataMember(Order = 3), Key(3)] public required int Totp { get; init; }
+} // NOTE(AY): Add backend, implement IApiCommand

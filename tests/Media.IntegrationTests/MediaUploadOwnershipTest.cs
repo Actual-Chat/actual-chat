@@ -18,18 +18,38 @@ public sealed class MediaUploadOwnershipTest(AppHostFixture fixture, ITestOutput
         var metadata = new MetadataBag()
             .Set("FileName", "test.txt")
             .Set("ContentType", "text/plain");
-        var uploadId = await owner.Commander.Call(new Uploads_Create(owner.Session, data.Length, "", metadata));
-        await owner.Commander.Call(new Uploads_Append(owner.Session, uploadId, 0, data));
-        var ownerMediaId = await owner.Commander.Call(new Media_ReserveMedia(owner.Session, "owner-media"));
-        var otherMediaId = await otherUser.Commander.Call(new Media_ReserveMedia(otherUser.Session, "other-media"));
+        var uploadId = await owner.Commander.Call(new Uploads_Create {
+            Session = owner.Session,
+            Length = data.Length,
+            Tag = "",
+            Metadata = metadata,
+        });
+        await owner.Commander.Call(new Uploads_Append {
+            Session = owner.Session,
+            UploadId = uploadId,
+            Offset = 0,
+            Chunk = data,
+        });
+        var ownerMediaId = await owner.Commander.Call(new Media_ReserveMedia {
+            Session = owner.Session,
+            Scope = "owner-media",
+        });
+        var otherMediaId = await otherUser.Commander.Call(new Media_ReserveMedia {
+            Session = otherUser.Session,
+            Scope = "other-media",
+        });
 
         // act
         var otherError = await Record.ExceptionAsync(
-            () => otherUser.Commander.Call(new Media_ProcessUpload(otherUser.Session, otherMediaId, uploadId)));
+            () => otherUser.Commander.Call(new Media_ProcessUpload {
+                Session = otherUser.Session,
+                MediaId = otherMediaId,
+                UploadId = uploadId,
+            }));
         MediaRef? ownerMedia = null;
         var ownerError = await Record.ExceptionAsync(async () => {
             ownerMedia = await owner.Commander.Call(
-                new Media_ProcessUpload(owner.Session, ownerMediaId, uploadId));
+                new Media_ProcessUpload { Session = owner.Session, MediaId = ownerMediaId, UploadId = uploadId });
         });
 
         // assert

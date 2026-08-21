@@ -21,7 +21,9 @@ public class SessionTemporals(IServiceProvider services) : ISessionTemporals
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, key, value) = command;
+        var session = command.Session;
+        var key = command.Key;
+        var value = command.Value;
         var backendCommand = new SessionTemporalsBackend_Set(session, ToWriteKey(key, value), value);
         await Commander.Call(backendCommand, true, cancellationToken).ConfigureAwait(false);
     }

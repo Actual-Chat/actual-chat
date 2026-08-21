@@ -111,11 +111,16 @@ public sealed class TestDataGenerator(IServiceProvider services)
     {
         var title = PlaceTitles[index % PlaceTitles.Length];
         var isPublic = index % 2 == 0;
-        var createPlaceCommand = new Places_Change(session, null, null, Change.Create(new PlaceDiff {
-            Title = title,
-            Description = $"Test place with {memberIds.Length} test users",
-            IsPublic = isPublic,
-        }));
+        var createPlaceCommand = new Places_Change {
+            Session = session,
+            PlaceId = null,
+            ExpectedVersion = null,
+            Change = Change.Create(new PlaceDiff {
+                Title = title,
+                Description = $"Test place with {memberIds.Length} test users",
+                IsPublic = isPublic,
+            }),
+        };
         var place = await Commander.Call(createPlaceCommand, true, cancellationToken).ConfigureAwait(false);
 
         await CreatePlaceChat(session, place, "Welcome", Constants.Chat.SystemTags.Welcome, true, cancellationToken)
@@ -123,11 +128,19 @@ public sealed class TestDataGenerator(IServiceProvider services)
         var privateChat = await CreatePlaceChat(session, place, "Backstage", Symbol.Empty, false, cancellationToken)
             .ConfigureAwait(false);
 
-        await Commander.Call(new Places_Invite(session, place.Id, memberIds), true, cancellationToken)
+        await Commander.Call(new Places_Invite {
+            Session = session,
+            PlaceId = place.Id,
+            UserIds = memberIds,
+        }, true, cancellationToken)
             .ConfigureAwait(false);
         // Public place chats can't be joined on someone else's behalf, so only the private
         // one gets explicit authors - that's what makes a chat-scoped mention list non-trivial.
-        await Commander.Call(new Authors_Invite(session, privateChat.Id, memberIds), true, cancellationToken)
+        await Commander.Call(new Authors_Invite {
+            Session = session,
+            ChatId = privateChat.Id,
+            UserIds = memberIds,
+        }, true, cancellationToken)
             .ConfigureAwait(false);
         return place;
     }
@@ -140,13 +153,18 @@ public sealed class TestDataGenerator(IServiceProvider services)
         bool isPublic,
         CancellationToken cancellationToken)
     {
-        var command = new Chats_Change(session, null, null, Change.Create(new ChatDiff {
-            Title = title,
-            Description = $"{title} chat of {place.Title}",
-            IsPublic = isPublic,
-            SystemTag = systemTag,
-            PlaceId = place.Id,
-        }));
+        var command = new Chats_Change {
+            Session = session,
+            ChatId = null,
+            ExpectedVersion = null,
+            Change = Change.Create(new ChatDiff {
+                Title = title,
+                Description = $"{title} chat of {place.Title}",
+                IsPublic = isPublic,
+                SystemTag = systemTag,
+                PlaceId = place.Id,
+            }),
+        };
         return Commander.Call(command, true, cancellationToken);
     }
 

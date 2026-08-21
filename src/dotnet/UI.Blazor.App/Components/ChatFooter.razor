@@ -70,7 +70,7 @@
 
         var avatarSelectionRequired = model.HasMultipleAvatars || model.CanJoinAnonymously;
         if (!avatarSelectionRequired) {
-            var command = new Authors_Join(Session, chatId);
+            var command = new Authors_Join { Session = Session, ChatId = chatId };
             await UICommander.Run(command);
             return;
         }
@@ -79,7 +79,12 @@
         return;
 
         async Task JoinWithAvatar(AvatarFull avatar) {
-            var command = new Authors_Join(Session, chatId, avatar.Id, JoinAnonymously: avatar.IsAnonymous);
+            var command = new Authors_Join {
+                Session = Session,
+                ChatId = chatId,
+                AvatarId = avatar.Id,
+                JoinAnonymously = avatar.IsAnonymous,
+            };
             await UICommander.Run(command);
         }
     }

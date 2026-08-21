@@ -396,7 +396,13 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         for (var i = 0; i < threadCount; i++) {
             var threadStart = (await CreateEntries(chatId, $"Thread start {i}")).Single();
             var threadChat = await BobTester.Commander.Call(
-                new ChatThreads_Start(BobTester.Session, chatId, $"Thread#{i}", "", [threadStart.Id]),
+                new ChatThreads_Start {
+                    Session = BobTester.Session,
+                    ParentChatId = chatId,
+                    Title = $"Thread#{i}",
+                    Description = "",
+                    EntryIds = [threadStart.Id],
+                },
                 cancellationToken);
             // Digits only: the server decides these need no translation and keeps returning null, so
             // an item can only leave the queue by being dequeued - never by completing

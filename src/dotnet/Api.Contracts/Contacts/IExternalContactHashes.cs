@@ -13,9 +13,9 @@ public interface IExternalContactHashes : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record ExternalContactHashes_Change(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] Symbol DeviceId,
-    [property: DataMember, Key(2)] long? ExpectedVersion,
-    [property: DataMember, Key(3)] Change<ExternalContactsHash> Change
-) : ISessionCommand<ExternalContactsHash?>, IApiCommand;
+public sealed partial record ExternalContactHashes_Change : ApiCommand<ExternalContactsHash?>
+{
+    [DataMember(Order = 2), Key(2)] public required Symbol DeviceId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required long? ExpectedVersion { get; init; }
+    [DataMember(Order = 4), Key(4)] public required Change<ExternalContactsHash> Change { get; init; }
+}

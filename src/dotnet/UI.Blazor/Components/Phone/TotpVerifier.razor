@@ -73,10 +73,22 @@
             _isVerifying = true;
             StateHasChanged();
             ICommand<bool> cmd = Purpose switch {
-                TotpPurpose.SignInPhone => new PhoneAuth_ValidateTotp(Session, Phone!, totp),
-                TotpPurpose.VerifyPhone => new PhoneAuth_VerifyPhone(Session, Phone!, totp),
-                TotpPurpose.SignInEmail => new EmailAuth_ValidateTotp(Session, Email!, totp),
-                TotpPurpose.VerifyEmail => new EmailAuth_VerifyEmail(Session, Email!, totp),
+                TotpPurpose.SignInPhone => new PhoneAuth_ValidateTotp {
+                    Session = Session,
+                    Phone = Phone!,
+                    Totp = totp,
+                },
+                TotpPurpose.VerifyPhone => new PhoneAuth_VerifyPhone { Session = Session, Phone = Phone!, Totp = totp },
+                TotpPurpose.SignInEmail => new EmailAuth_ValidateTotp {
+                    Session = Session,
+                    Email = Email!,
+                    Totp = totp,
+                },
+                TotpPurpose.VerifyEmail => new EmailAuth_VerifyEmail {
+                    Session = Session,
+                    Email = Email!,
+                    Token = totp,
+                },
                 _ => throw new ArgumentOutOfRangeException(nameof(Purpose)),
             };
             (isValid, error) = await UICommander.Run(cmd);

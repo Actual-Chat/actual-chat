@@ -24,7 +24,10 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         var videoId = await SaveMedia(tester, chatId, "clip.mp4", "video/mp4");
         var fileId = await tester.SaveTextFile(chatId, "notes.txt", "file content");
 
-        await commander.Call(new Chats_UpsertEntry(session, chatId, null) {
+        await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
             Text = "Message with attachments",
             Attachments = [
                 new ChatEntryAttachment { MediaId = photoId },
@@ -32,7 +35,10 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
                 new ChatEntryAttachment { MediaId = fileId },
             ],
         });
-        await commander.Call(new Chats_UpsertEntry(session, chatId, null) {
+        await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
             Text = "Check this out https://example.com/article",
         });
 
@@ -70,7 +76,10 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         var (chatId, _) = await tester.CreateChat(true);
 
         var gifId = await SaveMedia(tester, chatId, "anim.gif", "image/gif");
-        await commander.Call(new Chats_UpsertEntry(session, chatId, null) {
+        await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
             Text = "Look at this gif",
             Attachments = [new ChatEntryAttachment { MediaId = gifId }],
         });
@@ -97,11 +106,17 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         var (chatId, _) = await tester.CreateChat(true);
 
         var fileId = await tester.SaveTextFile(chatId, "report.txt", "report content");
-        var fileEntry = await commander.Call(new Chats_UpsertEntry(session, chatId, null) {
+        var fileEntry = await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
             Text = "Message with a file",
             Attachments = [new ChatEntryAttachment { MediaId = fileId }],
         });
-        var linkEntry = await commander.Call(new Chats_UpsertEntry(session, chatId, null) {
+        var linkEntry = await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
             Text = "A link https://example.org/page",
         });
 
@@ -113,8 +128,8 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
             links.Should().ContainSingle();
         }, TimeSpan.FromSeconds(30));
 
-        await commander.Call(new Chats_RemoveEntry(session, chatId, fileEntry.LocalId));
-        await commander.Call(new Chats_RemoveEntry(session, chatId, linkEntry.LocalId));
+        await commander.Call(new Chats_RemoveEntry { Session = session, ChatId = chatId, LocalId = fileEntry.LocalId });
+        await commander.Call(new Chats_RemoveEntry { Session = session, ChatId = chatId, LocalId = linkEntry.LocalId });
 
         await TriggerIndexing(chatId);
         await TestExt.When(async () => {
@@ -137,8 +152,11 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         var (chatId, _) = await tester.CreateChat(true);
 
         // Reserve a media but don't upload it — it has no BlobId yet.
-        var mediaId = await commander.Call(new Media_ReserveMedia(session, chatId.Value));
-        var entry = await commander.Call(new Chats_UpsertEntry(session, chatId, null) {
+        var mediaId = await commander.Call(new Media_ReserveMedia { Session = session, Scope = chatId.Value });
+        var entry = await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
             Text = "Message with a not-yet-uploaded file",
             Attachments = [new ChatEntryAttachment { MediaId = mediaId }],
         });
@@ -161,10 +179,21 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
             .Set("FileName", "doc.txt")
             .Set("ContentType", "text/plain");
         var uploadId = await commander.Call(
-            new Uploads_Create(session, data.Length, $"MediaUploadTest/v1/{chatId.Value}", metadata));
-        await commander.Call(new Uploads_Append(session, uploadId, 0, data));
-        await commander.Call(new Media_UpdateProgress(session, mediaId, null, MediaProcessingStage.Uploading, 100));
-        await commander.Call(new Media_ProcessUpload(session, mediaId, uploadId));
+            new Uploads_Create {
+                Session = session,
+                Length = data.Length,
+                Tag = $"MediaUploadTest/v1/{chatId.Value}",
+                Metadata = metadata,
+            });
+        await commander.Call(new Uploads_Append { Session = session, UploadId = uploadId, Offset = 0, Chunk = data });
+        await commander.Call(new Media_UpdateProgress {
+            Session = session,
+            MediaId = mediaId,
+            ExpectedVersion = null,
+            Stage = MediaProcessingStage.Uploading,
+            StageProgress = 100,
+        });
+        await commander.Call(new Media_ProcessUpload { Session = session, MediaId = mediaId, UploadId = uploadId });
 
         // On the next run the pending entry is rechecked and indexed.
         await FlowHub.NewResumeEvent<ChatMediaIndexingFlow>(chatId.Value).Schedule();
@@ -186,11 +215,17 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         var (chatId, _) = await tester.CreateChat(true);
 
         var fileId = await tester.SaveTextFile(chatId, "tile.txt", "tile content");
-        await commander.Call(new Chats_UpsertEntry(session, chatId, null) {
+        await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
             Text = "File for the period",
             Attachments = [new ChatEntryAttachment { MediaId = fileId }],
         });
-        await commander.Call(new Chats_UpsertEntry(session, chatId, null) {
+        await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
             Text = "Link for the period https://example.net/p",
         });
 
@@ -225,11 +260,17 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         var (chatId, _) = await tester.CreateChat(true);
 
         var fileId = await tester.SaveTextFile(chatId, "backfill.txt", "backfill content");
-        await commander.Call(new Chats_UpsertEntry(session, chatId, null) {
+        await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
             Text = "Pre-existing file",
             Attachments = [new ChatEntryAttachment { MediaId = fileId }],
         });
-        await commander.Call(new Chats_UpsertEntry(session, chatId, null) {
+        await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
             Text = "Pre-existing link https://example.com/backfill",
         });
 

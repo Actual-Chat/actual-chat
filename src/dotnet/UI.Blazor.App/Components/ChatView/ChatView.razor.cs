@@ -808,7 +808,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 if (chat == null)
                     return;
 
-                var command = new ChatUsages_RegisterUsage(Session, ChatUsageListKind.ViewedGroupChats, chatId);
+                var command = new ChatUsages_RegisterUsage {
+                    Session = Session,
+                    Kind = ChatUsageListKind.ViewedGroupChats,
+                    ChatId = chatId,
+                };
                 await Commander.Call(command, DisposeToken);
             },
             ex => Log.LogDebug(ex, "Failed to register view group chat"),

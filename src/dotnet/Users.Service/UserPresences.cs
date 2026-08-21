@@ -60,7 +60,8 @@ public class UserPresences(IServiceProvider services) : IUserPresences
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, isActive) = command;
+        var session = command.Session;
+        var isActive = command.IsActive;
         if (!session.IsValid())
             return; // The client has no session yet (e.g. reconnecting without a session cookie)
 

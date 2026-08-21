@@ -138,7 +138,10 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
     private async Task Add(params ExternalContactFull[] externalContacts)
     {
         var changes = externalContacts.Select(x => new ExternalContactChange(x.Id, null, Change.Create(x)));
-        var results = await _commander.Call(new ExternalContacts_BulkChange(_tester.Session, changes.ToArray()));
+        var results = await _commander.Call(new ExternalContacts_BulkChange {
+            Session = _tester.Session,
+            Changes = changes.ToArray(),
+        });
         results.Select(x => x.Value).Should().NotContainNulls();
         var errors = results.Select(x => x.Error).SkipNullItems().ToList();
         if (errors.Count > 0)
@@ -146,12 +149,16 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
     }
 
     private Task<Result<ExternalContactFull?>[]> Update(ExternalContactFull externalContactFull)
-        => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
-            [new ExternalContactChange(externalContactFull.Id, null, Change.Update(externalContactFull))]));
+        => _commander.Call(new ExternalContacts_BulkChange {
+            Session = _tester.Session,
+            Changes = [new ExternalContactChange(externalContactFull.Id, null, Change.Update(externalContactFull))],
+        });
 
     private Task<Result<ExternalContactFull?>[]> Remove(ExternalContactFull externalContactFull)
-        => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
-            [new ExternalContactChange(externalContactFull.Id, null, Change.Remove<ExternalContactFull>())]));
+        => _commander.Call(new ExternalContacts_BulkChange {
+            Session = _tester.Session,
+            Changes = [new ExternalContactChange(externalContactFull.Id, null, Change.Remove<ExternalContactFull>())],
+        });
 
     private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
         => new (ExternalContactId.New(UserDeviceId.New(owner.Id, ownerDeviceId), NewDeviceContactId()));

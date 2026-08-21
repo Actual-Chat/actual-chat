@@ -18,8 +18,8 @@ public interface IServerSettings : IComputeService
 [DataContract, MessagePackObject]
 [MessagePackFormatter(typeof(Internal.ServerSettings_SetMessagePackFormatter))]
 // ReSharper disable once InconsistentNaming
-public partial record ServerSettings_Set(
-    [property: DataMember(Order = 0), Key(0)] Session Session,
-    [property: DataMember(Order = 1), Key(1)] string Key,
-    [property: DataMember(Order = 2), Key(2)] byte[]? Value
-) : ISessionCommand<Unit>, IApiCommand;
+public partial record ServerSettings_Set : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required string Key { get; init; }
+    [DataMember(Order = 3), Key(3)] public required byte[]? Value { get; init; }
+}

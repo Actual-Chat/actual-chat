@@ -19,7 +19,7 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         var (chatId, _) = await tester.CreateChat(true);
 
         // act
-        var cmd = new Chats_UpsertEntry(session, chatId, null) { Text = "Hello!" };
+        var cmd = new Chats_UpsertEntry { Session = session, ChatId = chatId, LocalId = null, Text = "Hello!" };
         var chatEntry = await commander.Call(cmd);
 
         // assert
@@ -37,8 +37,18 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         var (chatId, _) = await tester.CreateChat(true);
         var realisticText = new string('a', 31_999);
         var oversizedText = new string('b', Constants.Chat.MaxEntryTextLength + 1);
-        var realisticCommand = new Chats_UpsertEntry(tester.Session, chatId, null) { Text = realisticText };
-        var oversizedCommand = new Chats_UpsertEntry(tester.Session, chatId, null) { Text = oversizedText };
+        var realisticCommand = new Chats_UpsertEntry {
+            Session = tester.Session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = realisticText,
+        };
+        var oversizedCommand = new Chats_UpsertEntry {
+            Session = tester.Session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = oversizedText,
+        };
 
         // act
         var realisticEntry = await tester.Commander.Call(realisticCommand);
@@ -59,11 +69,16 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         var session = tester.Session;
         var commander = tester.Commander;
         var (chatId, _) = await tester.CreateChat(true);
-        var cmd = new Chats_UpsertEntry(session, chatId, null) { Text = "Hello!" };
+        var cmd = new Chats_UpsertEntry { Session = session, ChatId = chatId, LocalId = null, Text = "Hello!" };
         var chatEntry = await commander.Call(cmd);
 
         // act
-        var cmd2 = new Chats_UpsertEntry(session, chatId, chatEntry.LocalId) { Text = "EditedMessage" };
+        var cmd2 = new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = chatEntry.LocalId,
+            Text = "EditedMessage",
+        };
         var editedChatEntry = await commander.Call(cmd2);
 
         // assert
@@ -82,11 +97,15 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         var session = tester.Session;
         var commander = tester.Commander;
         var (chatId, _) = await tester.CreateChat(true);
-        var cmd = new Chats_UpsertEntry(session, chatId, null) { Text = "Hello!" };
+        var cmd = new Chats_UpsertEntry { Session = session, ChatId = chatId, LocalId = null, Text = "Hello!" };
         var chatEntry = await commander.Call(cmd);
 
         // act
-        var cmd2 = new Chats_UpsertEntry(session, chatId, null) { Text = "Reply",
+        var cmd2 = new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "Reply",
             RepliedEntryLid = chatEntry.LocalId,
         };
         var replyChatEntry = await commander.Call(cmd2);
@@ -107,15 +126,24 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         var session = tester.Session;
         var commander = tester.Commander;
         var (chatId, _) = await tester.CreateChat(true);
-        var cmd = new Chats_UpsertEntry(session, chatId, null) { Text = "Hello!" };
+        var cmd = new Chats_UpsertEntry { Session = session, ChatId = chatId, LocalId = null, Text = "Hello!" };
         var chatEntry = await commander.Call(cmd);
-        var cmd2 = new Chats_UpsertEntry(session, chatId, null) { Text = "Reply",
+        var cmd2 = new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "Reply",
             RepliedEntryLid = chatEntry.LocalId,
         };
         var replyChatEntry = await commander.Call(cmd2);
 
         // act
-        var cmd3 = new Chats_UpsertEntry(session, chatId, replyChatEntry.LocalId) { Text = "EditedReply" };
+        var cmd3 = new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = replyChatEntry.LocalId,
+            Text = "EditedReply",
+        };
         var editedReplyChatEntry = await commander.Call(cmd3);
 
         // assert
@@ -146,7 +174,11 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
             new ChatEntryAttachment { MediaId = media2 },
             new ChatEntryAttachment { MediaId = media3 },
         };
-        var createCmd = new Chats_UpsertEntry(session, chatId, null) { Text = "Message with 3 attachments",
+        var createCmd = new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "Message with 3 attachments",
             Attachments = attachments,
         };
         var chatEntry = await commander.Call(createCmd);
@@ -166,7 +198,11 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
             new ChatEntryAttachment { MediaId = media1 },
             new ChatEntryAttachment { MediaId = media3 },
         };
-        var updateCmd = new Chats_UpsertEntry(session, chatId, chatEntry.LocalId) { Text = "Message with 2 attachments",
+        var updateCmd = new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = chatEntry.LocalId,
+            Text = "Message with 2 attachments",
             Attachments = updatedAttachments,
         };
         var updatedEntry = await commander.Call(updateCmd);
@@ -194,8 +230,18 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         await CatchUp(tester, chatId);
 
         // act
-        await commander.Call(new Chats_UpsertEntry(session, chatId, null) { Text = "First" });
-        var entry2 = await commander.Call(new Chats_UpsertEntry(session, chatId, null) { Text = "Second" });
+        await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "First",
+        });
+        var entry2 = await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "Second",
+        });
 
         // assert
         await ComputedTest.When(async ct => {
@@ -215,12 +261,22 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         var commander = tester.Commander;
         var chatPositions = tester.AppServices.GetRequiredService<IChatPositions>();
         var (chatId, _) = await tester.CreateChat(true);
-        await commander.Call(new Chats_UpsertEntry(session, chatId, null) { Text = "First" });
+        await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "First",
+        });
         await commander.Call(new ChatPositionsBackend_Set(
             account.Id, chatId, ChatPositionKind.Read, new ChatPosition(0), Force: true));
 
         // act
-        await commander.Call(new Chats_UpsertEntry(session, chatId, null) { Text = "Second" });
+        await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "Second",
+        });
 
         // assert - the advance (if any) happens synchronously inside the command handler,
         // so the position is already final here
@@ -242,11 +298,20 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         var (sourceChatId, _) = await tester.CreateChat(true);
         var (targetChatId, _) = await tester.CreateChat(true);
         await CatchUp(tester, targetChatId);
-        var entry = await commander.Call(new Chats_UpsertEntry(session, sourceChatId, null) { Text = "To forward" });
+        var entry = await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = sourceChatId,
+            LocalId = null,
+            Text = "To forward",
+        });
 
         // act
-        await commander.Call(new Chats_ForwardEntries(
-            session, sourceChatId, [ChatEntryId.New(sourceChatId, entry.LocalId)], [targetChatId]));
+        await commander.Call(new Chats_ForwardEntries {
+            Session = session,
+            ChatId = sourceChatId,
+            ChatEntries = [ChatEntryId.New(sourceChatId, entry.LocalId)],
+            DestinationChatIds = [targetChatId],
+        });
 
         // assert
         await ComputedTest.When(async ct => {
@@ -274,7 +339,11 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
             lastLid.Should().BeGreaterThan(0);
         });
         Out.WriteLine($"CatchUp: chatId={chatId}, lastLid={lastLid}");
-        await tester.Commander.Call(new ChatPositions_Set(
-            tester.Session, chatId, ChatPositionKind.Read, new ChatPosition(lastLid)));
+        await tester.Commander.Call(new ChatPositions_Set {
+            Session = tester.Session,
+            ChatId = chatId,
+            Kind = ChatPositionKind.Read,
+            Position = new ChatPosition(lastLid),
+        });
     }
 }

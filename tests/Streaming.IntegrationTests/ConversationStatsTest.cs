@@ -113,7 +113,7 @@ public class ConversationStatsTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         var otherSession = Session.New();
         _ = await AppHost.SignIn(otherSession, new AccountFull("Bobby"));
-        await AppHost.Services.Commander().Call(new Authors_Join(otherSession, chat.Id));
+        await AppHost.Services.Commander().Call(new Authors_Join { Session = otherSession, ChatId = chat.Id });
         var otherAuthor = await services.GetRequiredService<IAuthors>().GetOwn(otherSession, chat.Id, default);
         otherAuthor.Require();
 
@@ -133,13 +133,18 @@ public class ConversationStatsTest(AppHostFixture fixture, ITestOutputHelper @ou
 
     private async Task<Chat.Chat> CreateChat(Session session, string title)
     {
-        var chat = await AppHost.Services.Commander().Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = title,
-                Kind = ChatKind.Group,
-                IsPublic = true, // So the second author can join and latch the session
+        var chat = await AppHost.Services.Commander().Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = title,
+                    Kind = ChatKind.Group,
+                    IsPublic = true, // So the second author can join and latch the session
+                },
             },
-        }));
+        });
         return chat.Require();
     }
 

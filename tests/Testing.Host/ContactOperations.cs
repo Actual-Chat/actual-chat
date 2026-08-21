@@ -16,7 +16,12 @@ public static class ContactOperations
         Account other)
     {
         var id = ContactId.NewUser(owner.Id, other.Id);
-        var cmd = new Contacts_Change(tester.Session, id, null, Change.Create(new Contact(id)));
+        var cmd = new Contacts_Change {
+            Session = tester.Session,
+            Id = id,
+            ExpectedVersion = null,
+            Change = Change.Create(new Contact(id)),
+        };
         return tester.Commander.Call(cmd).Require();
     }
 }

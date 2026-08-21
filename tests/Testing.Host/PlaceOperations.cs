@@ -15,12 +15,14 @@ public static class PlaceOperations
             Title = DefaultPlaceTitle,
         });
         var commander = tester.Commander;
-        var place = await commander.Call(new Places_Change(session,
-            default,
-            null,
-            new () {
+        var place = await commander.Call(new Places_Change {
+            Session = session,
+            PlaceId = default,
+            ExpectedVersion = null,
+            Change = new () {
                 Create = placeDiff,
-            }));
+            },
+        });
         place.Require();
         if (usersToInvite.Count > 0)
             await tester.InviteToPlace(place.Id, usersToInvite);
@@ -28,26 +30,33 @@ public static class PlaceOperations
     }
 
     public static Task<Place> UpdatePlace(this IWebTester tester, PlaceId placeId, string newTitle)
-        => tester.Commander.Call(new Places_Change(tester.Session,
-            placeId,
-            null,
-            Change.Update(new PlaceDiff {
+        => tester.Commander.Call(new Places_Change {
+            Session = tester.Session,
+            PlaceId = placeId,
+            ExpectedVersion = null,
+            Change = Change.Update(new PlaceDiff {
                 Title = newTitle,
-            })));
+            }),
+        });
 
     public static Task<Place> DeletePlace(this IWebTester tester, PlaceId placeId)
-        => tester.Commander.Call(new Places_Change(tester.Session, placeId, null, Change.Remove<PlaceDiff>()));
+        => tester.Commander.Call(new Places_Change {
+            Session = tester.Session,
+            PlaceId = placeId,
+            ExpectedVersion = null,
+            Change = Change.Remove<PlaceDiff>(),
+        });
 
     public static async Task InviteToPlace(this IWebTester tester, PlaceId placeId, params UserId[] userIds)
     {
         var session = tester.Session;
         var commander = tester.Commander;
-        await commander.Call(new Places_Invite(session, placeId, userIds));
+        await commander.Call(new Places_Invite { Session = session, PlaceId = placeId, UserIds = userIds });
     }
 
     public static Task InviteToPlace(this IWebTester tester, PlaceId placeId, params IEnumerable<Account> accounts)
         => tester.InviteToPlace(placeId, accounts.Select(x => x.Id).ToArray());
 
     public static Task JoinPlace(this IWebTester tester, PlaceId placeId, Symbol avatarId = default)
-        => tester.Commander.Call(new Places_Join(tester.Session, placeId, avatarId));
+        => tester.Commander.Call(new Places_Join { Session = tester.Session, PlaceId = placeId, AvatarId = avatarId });
 }

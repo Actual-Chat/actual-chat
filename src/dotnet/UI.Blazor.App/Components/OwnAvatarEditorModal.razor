@@ -129,7 +129,12 @@
         }
         var updated = _form.OriginalAvatar.WithPicture(_form.Picture) with { Name = _form.Name, Bio = _form.Bio };
         var diff = DiffEngine.Diff<AvatarFull, AvatarDiff>(_form.OriginalAvatar, updated);
-        var command = new Avatars_Change(Session, avatarId, null, Change.Update(diff));
+        var command = new Avatars_Change {
+            Session = Session,
+            AvatarId = avatarId,
+            ExpectedVersion = null,
+            Change = Change.Update(diff),
+        };
         var (_, error) = await UICommander.Run(command);
         if (error != null)
             return;
@@ -153,7 +158,7 @@
 
     private async Task SetDefaultAvatar(Symbol avatarId)
     {
-        var command = new Avatars_SetDefault(Session, avatarId);
+        var command = new Avatars_SetDefault { Session = Session, AvatarId = avatarId };
         await UICommander.Run(command);
     }
 
@@ -166,7 +171,7 @@
         if (author == null)
             return;
 
-        var command = new Authors_SetAvatar(Session, chatId, avatarId);
+        var command = new Authors_SetAvatar { Session = Session, ChatId = chatId, AvatarId = avatarId };
         await UICommander.Run(command);
     }
 
@@ -174,7 +179,12 @@
         => CloseModal();
 
     private async Task OnDeleteAvatarClick() {
-        var command = new Avatars_Change(Session, ModalModel.AvatarId, null, Change.Remove<AvatarDiff>());
+        var command = new Avatars_Change {
+            Session = Session,
+            AvatarId = ModalModel.AvatarId,
+            ExpectedVersion = null,
+            Change = Change.Remove<AvatarDiff>(),
+        };
         await UICommander.Run(command);
         Modal.Close();
     }

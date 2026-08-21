@@ -34,7 +34,7 @@ public sealed class UserSettingsUI(IServiceProvider services, Session session)
         if (Temporals.IsReal && value is not null)
             Temporals.Set(key, value);
 
-        var command = new UserSettings_Set(Session, key, value);
+        var command = new UserSettings_Set { Session = Session, Key = key, Value = value };
         return UserSettings.GetCommander().Call(command, true, cancellationToken);
     }
 }

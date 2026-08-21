@@ -36,7 +36,13 @@ public sealed class LegacyNativeAuthController(IServiceProvider services) : Cont
             session,
             GetClientInfo(),
             $"mustExist={mustExist}");
-        var command = new NativeAuth_SignInApple(session, userId, code, email, name);
+        var command = new NativeAuth_SignInApple {
+            Session = session,
+            UserId = userId,
+            Code = code,
+            Email = email,
+            Name = name,
+        };
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -50,7 +56,7 @@ public sealed class LegacyNativeAuthController(IServiceProvider services) : Cont
             session,
             GetClientInfo(),
             $"mustExist={mustExist}");
-        var command = new NativeAuth_SignInGoogle(session, code);
+        var command = new NativeAuth_SignInGoogle { Session = session, Code = code };
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 

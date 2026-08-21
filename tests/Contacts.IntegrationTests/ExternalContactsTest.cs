@@ -398,9 +398,9 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
         // act
         var clientBatchResult = await _commander.Call(
-            new ExternalContacts_BulkChange(_tester.Session, clientBatch));
+            new ExternalContacts_BulkChange { Session = _tester.Session, Changes = clientBatch });
         var act = () => _commander.Call(
-            new ExternalContacts_BulkChange(_tester.Session, oversizedBatch));
+            new ExternalContacts_BulkChange { Session = _tester.Session, Changes = oversizedBatch });
 
         // assert
         clientBatchResult.Should().HaveCount(clientBatchSize);
@@ -421,10 +421,14 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
             .ToApiSet();
 
         // act
-        var longNameAct = () => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
-            [NewCreation(account, deviceId, x => x with { DisplayName = longName })]));
-        var manyHashesAct = () => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
-            [NewCreation(account, deviceId, x => x with { PhoneHashes = tooManyHashes })]));
+        var longNameAct = () => _commander.Call(new ExternalContacts_BulkChange {
+            Session = _tester.Session,
+            Changes = [NewCreation(account, deviceId, x => x with { DisplayName = longName })],
+        });
+        var manyHashesAct = () => _commander.Call(new ExternalContacts_BulkChange {
+            Session = _tester.Session,
+            Changes = [NewCreation(account, deviceId, x => x with { PhoneHashes = tooManyHashes })],
+        });
 
         // assert
         await longNameAct.Should().ThrowAsync<Exception>();
@@ -438,12 +442,16 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         => _externalContacts.List(_tester.Session, deviceId, CancellationToken.None);
 
     private Task<Result<ExternalContactFull?>[]> Update(ExternalContactFull externalContactFull)
-        => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
-            [new ExternalContactChange(externalContactFull.Id, null, Change.Update(externalContactFull))]));
+        => _commander.Call(new ExternalContacts_BulkChange {
+            Session = _tester.Session,
+            Changes = [new ExternalContactChange(externalContactFull.Id, null, Change.Update(externalContactFull))],
+        });
 
     private Task<Result<ExternalContactFull?>[]> Remove(ExternalContactFull externalContactFull)
-        => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
-            [new ExternalContactChange(externalContactFull.Id, null, Change.Remove<ExternalContactFull>())]));
+        => _commander.Call(new ExternalContacts_BulkChange {
+            Session = _tester.Session,
+            Changes = [new ExternalContactChange(externalContactFull.Id, null, Change.Remove<ExternalContactFull>())],
+        });
 
     private Task<List<ContactId>> ListContactIds(int expectedCount)
         => ListContactIds(_tester.Session, expectedCount);

@@ -55,7 +55,7 @@ public class Invites(IServiceProvider services) : IInvites
         if (invite == null) {
             invite = ChatInvite.New(Constants.Invites.Defaults.ChatRemaining, chatId);
             invite = await Commander
-                .Call(new Invites_Generate(session, invite), true, cancellationToken)
+                .Call(new Invites_Generate { Session = session, Invite = invite }, true, cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -78,7 +78,7 @@ public class Invites(IServiceProvider services) : IInvites
         if (invite == null) {
             invite = PlaceInvite.New(Constants.Invites.Defaults.PlaceRemaining, placeId);
             invite = await Commander
-                .Call(new Invites_Generate(session, invite), true, cancellationToken)
+                .Call(new Invites_Generate { Session = session, Invite = invite }, true, cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -102,7 +102,8 @@ public class Invites(IServiceProvider services) : IInvites
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
 
-        var (session, invite) = command;
+        var session = command.Session;
+        var invite = command.Invite;
         var account = await AssertCanGenerate(session, invite, cancellationToken).ConfigureAwait(false);
 
         invite = command.Invite with { CreatedBy = account.Id.Value };
@@ -143,7 +144,8 @@ public class Invites(IServiceProvider services) : IInvites
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, inviteId) = command;
+        var session = command.Session;
+        var inviteId = command.InviteId;
         var invite = await Backend.Get(inviteId, cancellationToken).ConfigureAwait(false);
         invite.Require();
 

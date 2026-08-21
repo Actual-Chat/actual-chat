@@ -44,7 +44,13 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
             throw new ArgumentOutOfRangeException(nameof(purpose));
 
         var (token, action) = await GetCaptchaProof(purpose, cancellationToken).ConfigureAwait(false);
-        var cmd = new PhoneAuth_SendCode(Session, phone, purpose, token, action);
+        var cmd = new PhoneAuth_SendCode {
+            Session = Session,
+            Phone = phone,
+            Purpose = purpose,
+            CaptchaToken = token,
+            CaptchaAction = action,
+        };
         var (result, error) = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
         if (error != null || result == null)
             return null;
@@ -57,7 +63,13 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
     public async Task<bool> SendCode(TotpPurpose purpose, Email email, CancellationToken cancellationToken)
     {
         var (token, action) = await GetCaptchaProof(purpose, cancellationToken).ConfigureAwait(false);
-        var cmd = new EmailAuth_SendTotp(Session, email, purpose, token, action);
+        var cmd = new EmailAuth_SendTotp {
+            Session = Session,
+            Email = email,
+            Purpose = purpose,
+            CaptchaToken = token,
+            CaptchaAction = action,
+        };
         var (totpNextSendAt, error) = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
         if (error != null)
             return false;

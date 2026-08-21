@@ -56,19 +56,22 @@ public interface IChats : IComputeService
 ### Command Definition
 
 Frontend commands:
-- Implement `ISessionCommand<TResult>` and `IApiCommand`
-- Include `Session` as first property
+- Derive from `ApiCommand<TResult>`, which carries `Uuid` (`Key 0`) and `Session` (`Key 1`)
+- Declare their own members as `required init` properties from `Key(2)` on — no positional constructor
 - Named as `{ServiceName}_{Action}`
 
 ```csharp
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record Chats_Change(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] ChatId? ChatId,
-    [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(3)] Change<ChatDiff> Change
-) : ISessionCommand<Chat>, IApiCommand;
+[DataContract, MessagePackObject]
+public sealed partial record Chats_Change : ApiCommand<Chat>
+{
+    [DataMember(Order = 2), Key(2)] public required ChatId? ChatId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required long? ExpectedVersion { get; init; }
+    [DataMember(Order = 4), Key(4)] public required Change<ChatDiff> Change { get; init; }
+}
 ```
+
+See [Command idempotency](./command-idempotency.md) for why `Uuid` occupies `Key 0` and how the
+server dedups on it.
 
 ### Implementation Pattern
 

@@ -1017,7 +1017,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var threadStart = await Tester.CreateTextEntry(chat.Id, "thread-start");
         var lastEntry = await Tester.CreateTextEntry(chat.Id, "tail-1");
         await Tester.Commander.Call(
-            new ChatThreads_Start(Tester.Session, chat.Id, "Thread", "", [threadStart.Id]),
+            new ChatThreads_Start {
+                Session = Tester.Session,
+                ParentChatId = chat.Id,
+                Title = "Thread",
+                Description = "",
+                EntryIds = [threadStart.Id],
+            },
             CancellationToken.None);
 
         // act - leave (freezing BlockEndLid at the summarized end), then a later summary stretches
@@ -1066,7 +1072,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var threadStart = await Tester.CreateTextEntry(chat.Id, "thread-start");
         (threadStart.LocalId % tileSize).Should().Be(0, "the thread must open its own tile");
         await Tester.Commander.Call(
-            new ChatThreads_Start(Tester.Session, chat.Id, "Thread", "", [threadStart.Id]),
+            new ChatThreads_Start {
+                Session = Tester.Session,
+                ParentChatId = chat.Id,
+                Title = "Thread",
+                Description = "",
+                EntryIds = [threadStart.Id],
+            },
             CancellationToken.None);
         ChatEntry lastEntry = null!;
         for (var i = 0; i < tileSize * 2 - 1; i++)

@@ -33,13 +33,18 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var commander = tester.Commander;
 
         var chatTitle = "test chat";
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff() {
-                Title = chatTitle,
-                Kind = ChatKind.Group,
-                IsPublic = isPublicChat,
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff() {
+                    Title = chatTitle,
+                    Kind = ChatKind.Group,
+                    IsPublic = isPublicChat,
+                },
             },
-        }));
+        });
         chat.Require();
         await Task.Delay(100); // Let's wait invalidations to hit the client
         chat = await chats.Get(session, chat.Id, default).Require();
@@ -300,7 +305,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         // act
         var useInvite = () => otherTester.Commander.Call(
-            new Invites_Use(otherTester.Session, invite.Id),
+            new Invites_Use { Session = otherTester.Session, InviteId = invite.Id },
             true);
 
         // assert
@@ -322,7 +327,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         // act
         var usedInvite = await otherTester.Commander.Call(
-            new Invites_Use(otherTester.Session, invite.Id),
+            new Invites_Use { Session = otherTester.Session, InviteId = invite.Id },
             true);
 
         // assert
@@ -368,7 +373,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         ActualChat.Invite.Invite request = ChatInvite.New(int.MaxValue, chatId) with {
             ExpiresOn = clock.Now + TimeSpan.FromDays(3650),
         };
-        var invite = await tester.Commander.Call(new Invites_Generate(tester.Session, request));
+        var invite = await tester.Commander.Call(new Invites_Generate { Session = tester.Session, Invite = request });
 
         // assert
         invite.Remaining.Should().Be(Constants.Invites.Defaults.ChatRemaining);
@@ -392,10 +397,10 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         // act
         var revokeOwnerInvite = () => memberTester.Commander.Call(
-            new Invites_Revoke(memberTester.Session, ownerInviteId),
+            new Invites_Revoke { Session = memberTester.Session, InviteId = ownerInviteId },
             true);
         var revokeOwnInvite = () => memberTester.Commander.Call(
-            new Invites_Revoke(memberTester.Session, memberInvite.Id),
+            new Invites_Revoke { Session = memberTester.Session, InviteId = memberInvite.Id },
             true);
 
         // assert
@@ -414,7 +419,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         await using var otherTester = AppHost.NewBlazorTester(Out);
         var otherAccount = await otherTester.SignInAsUniqueBob();
-        await otherTester.Commander.Call(new Invites_Use(otherTester.Session, inviteId), true);
+        await otherTester.Commander.Call(new Invites_Use { Session = otherTester.Session, InviteId = inviteId }, true);
 
         var services = ownerTester.AppServices;
         await ComputedTest.When(services, async ct => {
@@ -456,14 +461,14 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var authors = tester.AppServices.GetRequiredService<IAuthors>();
 
         if (!isPublicChat) {
-            await commander.Call(new Invites_Use(session, inviteId));
+            await commander.Call(new Invites_Use { Session = session, InviteId = inviteId });
             await Task.Delay(1000); // Let the command complete
         }
 
         await authors.EnsureJoined(session, chatId, default);
         await tester.AssertJoined(chatId);
 
-        var leaveCommand = new Authors_Leave(session, chatId);
+        var leaveCommand = new Authors_Leave { Session = session, ChatId = chatId };
         await commander.Call(leaveCommand);
 
         await ComputedTest.When(async ct => {
@@ -482,7 +487,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         // re-join again
         if (!isPublicChat) {
-            await commander.Call(new Invites_Use(session, inviteId));
+            await commander.Call(new Invites_Use { Session = session, InviteId = inviteId });
             await Task.Delay(1000); // Let the command complete
         }
         await authors.EnsureJoined(session, chatId, default);
@@ -537,7 +542,10 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         chat.Should().NotBeNull();
         chat!.Rules.IsOwner().Should().BeFalse();
 
-        await ownerTester.Commander.Call(new Authors_PromoteToOwner(ownerTester.Session, author.Id));
+        await ownerTester.Commander.Call(new Authors_PromoteToOwner {
+            Session = ownerTester.Session,
+            AuthorId = author.Id,
+        });
 
         ownerIds = await roles.ListOwnerIds(otherTester.Session, chatId, default);
         ownerIds.Should().Contain(author.Id);
@@ -572,7 +580,10 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         chat!.Rules.IsOwner().Should().BeFalse();
 
         await Assert.ThrowsAsync<System.Security.SecurityException>(async () => {
-            await otherTester.Commander.Call(new Authors_PromoteToOwner(otherTester.Session, author.Id));
+            await otherTester.Commander.Call(new Authors_PromoteToOwner {
+                Session = otherTester.Session,
+                AuthorId = author.Id,
+            });
         });
     }
 
@@ -588,7 +599,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var (chatId, _) = await ownerTester.CreateChat(isPublicChat);
 
         await Assert.ThrowsAsync<InvalidOperationException>(async () => {
-            await ownerTester.Commander.Call(new Authors_Leave(ownerTester.Session, chatId));
+            await ownerTester.Commander.Call(new Authors_Leave { Session = ownerTester.Session, ChatId = chatId });
         });
     }
 
@@ -608,9 +619,12 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         var author = await otherTester.JoinChat(chatId, inviteId);
 
-        await ownerTester.Commander.Call(new Authors_PromoteToOwner(ownerTester.Session, author.Id));
+        await ownerTester.Commander.Call(new Authors_PromoteToOwner {
+            Session = ownerTester.Session,
+            AuthorId = author.Id,
+        });
 
-        await ownerTester.Commander.Call(new Authors_Leave(ownerTester.Session, chatId));
+        await ownerTester.Commander.Call(new Authors_Leave { Session = ownerTester.Session, ChatId = chatId });
     }
 
     [Fact]
@@ -629,9 +643,9 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         var commander = ownerTester.Commander;
 
-        await commander.Call(new Authors_PromoteToOwner(ownerTester.Session, author.Id));
+        await commander.Call(new Authors_PromoteToOwner { Session = ownerTester.Session, AuthorId = author.Id });
 
-        await commander.Call(new Authors_Leave(ownerTester.Session, chatId));
+        await commander.Call(new Authors_Leave { Session = ownerTester.Session, ChatId = chatId });
 
         await ownerTester.JoinChat(chatId, inviteId);
 
@@ -662,7 +676,12 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         });
 
         var commander = services.Commander();
-        var removeChatCommand = new Chats_Change(session, chatId, null, new Change<ChatDiff> { Remove = true });
+        var removeChatCommand = new Chats_Change {
+            Session = session,
+            ChatId = chatId,
+            ExpectedVersion = null,
+            Change = new Change<ChatDiff> { Remove = true },
+        };
         await commander.Call(removeChatCommand);
 
         var chats = services.GetRequiredService<IChats>();
@@ -706,9 +725,14 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         });
 
         var commander = services.Commander();
-        var archiveChatCommand = new Chats_Change(session, chatId, null, Change.Update(new ChatDiff {
-            IsArchived = true
-        }));
+        var archiveChatCommand = new Chats_Change {
+            Session = session,
+            ChatId = chatId,
+            ExpectedVersion = null,
+            Change = Change.Update(new ChatDiff {
+                IsArchived = true
+            }),
+        };
         await commander.Call(archiveChatCommand);
 
         // Owner should still see the chat (e.g. with direct link)
@@ -752,7 +776,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         ActualChat.Invite.Invite invite = ChatInvite.New(Constants.Invites.Defaults.ChatRemaining, chatId) with {
             ExpiresOn = expiresOn,
         };
-        return tester.Commander.Call(new Invites_Generate(tester.Session, invite));
+        return tester.Commander.Call(new Invites_Generate { Session = tester.Session, Invite = invite });
     }
 
     private static async Task AssertNotJoined(IServiceProvider services, Session session, ChatId chatId, Account account)

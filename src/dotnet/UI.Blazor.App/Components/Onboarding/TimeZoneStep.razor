@@ -92,12 +92,13 @@
 
     protected override async Task<bool> Save() {
         var account = await Hub.Accounts.GetOwn(Session, default);
-        var command = new Accounts_Update(
-            Session,
-            account with {
+        var command = new Accounts_Update {
+            Session = Session,
+            Account = account with {
                 TimeZone = _model.SelectedTimeZoneId,
             },
-            account.Version);
+            ExpectedVersion = account.Version,
+        };
         var (_, error) = await Hub.UICommander.Run(command);
         return error is null;
     }

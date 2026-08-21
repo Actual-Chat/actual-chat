@@ -96,7 +96,10 @@
         });
 
     private void NotifyAuthorsInternal()
-        => _ = UICommander.Call(new Notifications_NotifyMentionedMembers(Session, ChatEntry.Id));
+        => _ = UICommander.Call(new Notifications_NotifyMentionedMembers {
+            Session = Session,
+            ChatEntryId = ChatEntry.Id,
+        });
 
     // Nested types
 

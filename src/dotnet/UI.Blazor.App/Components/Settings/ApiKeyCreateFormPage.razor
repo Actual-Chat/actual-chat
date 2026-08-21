@@ -45,7 +45,11 @@
     private async Task OnCreate() {
         if (!int.TryParse(_formModel.ExpiresInDaysText, out var expiresInDays) || expiresInDays <= 0)
             return;
-        var command = new Accounts_CreateApiKey(Session, _formModel.Name, expiresInDays);
+        var command = new Accounts_CreateApiKey {
+            Session = Session,
+            Name = _formModel.Name,
+            ExpiresInDays = expiresInDays,
+        };
         var result = await UICommander.Run(command);
         if (result.HasError)
             return;

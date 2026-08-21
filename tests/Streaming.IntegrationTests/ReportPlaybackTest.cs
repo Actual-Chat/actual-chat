@@ -138,12 +138,17 @@ public class ReportPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
     {
         var services = AppHost.Services;
         var commander = services.Commander();
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = title,
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = title,
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
 
         var author = await services.GetRequiredService<IAuthors>()

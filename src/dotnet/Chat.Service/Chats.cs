@@ -296,7 +296,10 @@ public partial class Chats(IServiceProvider services) : IChats
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, expectedVersion, change) = command;
+        var session = command.Session;
+        var chatId = command.ChatId;
+        var expectedVersion = command.ExpectedVersion;
+        var change = command.Change;
         var chat = chatId is null
             ? null
             : await Get(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -571,7 +574,9 @@ public partial class Chats(IServiceProvider services) : IChats
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, localId) = command;
+        var session = command.Session;
+        var chatId = command.ChatId;
+        var localId = command.LocalId;
         ThrowIfPlaceRootChat(chatId);
 
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -588,7 +593,9 @@ public partial class Chats(IServiceProvider services) : IChats
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, localId) = command;
+        var session = command.Session;
+        var chatId = command.ChatId;
+        var localId = command.LocalId;
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
@@ -608,7 +615,9 @@ public partial class Chats(IServiceProvider services) : IChats
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, localIds) = command;
+        var session = command.Session;
+        var chatId = command.ChatId;
+        var localIds = command.LocalIds;
         ThrowIfPlaceRootChat(chatId);
 
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -627,7 +636,9 @@ public partial class Chats(IServiceProvider services) : IChats
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, localIds) = command;
+        var session = command.Session;
+        var chatId = command.ChatId;
+        var localIds = command.LocalIds;
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
@@ -644,7 +655,8 @@ public partial class Chats(IServiceProvider services) : IChats
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
 
-        var (session, templateChatId) = command;
+        var session = command.Session;
+        var templateChatId = command.TemplateChatId;
         var templateChat = await Get(session, templateChatId, cancellationToken).ConfigureAwait(false);
         templateChat.Require(Chat.MustBeTemplate);
 
@@ -753,7 +765,12 @@ public partial class Chats(IServiceProvider services) : IChats
             var diff = AvatarDiff.FromFull(
                 new AvatarFull(account.Id) { Name = "Guest" }
                     .WithMissingPropertiesFrom(account.Avatar));
-            var createAvatarCommand = new Avatars_Change(session, Symbol.Empty, null, Change.Create(diff));
+            var createAvatarCommand = new Avatars_Change {
+                Session = session,
+                AvatarId = Symbol.Empty,
+                ExpectedVersion = null,
+                Change = Change.Create(diff),
+            };
             var newAvatar = await Commander.Call(createAvatarCommand, true, cancellationToken).ConfigureAwait(false);
             guestAvatar = newAvatar;
         }
@@ -776,7 +793,10 @@ public partial class Chats(IServiceProvider services) : IChats
         if (Invalidation.IsActive)
             return default; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, chatEntryIds, destinationChatIds) = command;
+        var session = command.Session;
+        var chatId = command.ChatId;
+        var chatEntryIds = command.ChatEntries;
+        var destinationChatIds = command.DestinationChatIds;
         await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Read);
@@ -814,7 +834,10 @@ public partial class Chats(IServiceProvider services) : IChats
                     forwardedAuthorName = forwardedAuthor!.Avatar.Name;
                 }
 
-                var cmd = new Chats_UpsertEntry(session, destinationChatId, null) {
+                var cmd = new Chats_UpsertEntry {
+                    Session = session,
+                    ChatId = destinationChatId,
+                    LocalId = null,
                     Text = chatEntry.Content,
                     Forwarded = new ChatEntryForwarded {
                         ChatEntryId = forwardedChatEntryId,
@@ -842,7 +865,10 @@ public partial class Chats(IServiceProvider services) : IChats
         if (Invalidation.IsActive)
             return default;
 
-        var (session, chatEntryId, attachmentIndex, destinationChatIds) = command;
+        var session = command.Session;
+        var chatEntryId = command.ChatEntryId;
+        var attachmentIndex = command.AttachmentIndex;
+        var destinationChatIds = command.DestinationChatIds;
         var sourceChatId = chatEntryId.ChatId;
         await Authors.EnsureJoined(session, sourceChatId, cancellationToken).ConfigureAwait(false);
         var sourceChat = await Get(session, sourceChatId, cancellationToken).Require().ConfigureAwait(false);
@@ -859,7 +885,10 @@ public partial class Chats(IServiceProvider services) : IChats
             await Authors.EnsureJoined(session, destinationChatId, cancellationToken).ConfigureAwait(false);
             destinationChat.Rules.Permissions.Require(ChatPermissions.Write);
 
-            var cmd = new Chats_UpsertEntry(session, destinationChatId, null) {
+            var cmd = new Chats_UpsertEntry {
+                Session = session,
+                ChatId = destinationChatId,
+                LocalId = null,
                 Text = "",
                 Attachments = [
                     new ChatEntryAttachment {
@@ -880,7 +909,10 @@ public partial class Chats(IServiceProvider services) : IChats
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
 
-        var (session, sourceChatId, placeId, correlationId) = command;
+        var session = command.Session;
+        var sourceChatId = command.SourceChatId;
+        var placeId = command.PlaceId;
+        var correlationId = command.CorrelationId;
         var hasChanges = false;
         var hasErrors = false;
         Log.LogInformation("-> OnCopyChat({CorrelationId}): copy chat '{ChatId}' to place '{PlaceId}'",
@@ -995,7 +1027,9 @@ public partial class Chats(IServiceProvider services) : IChats
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, newChatId, sourceChatId) = command;
+        var session = command.Session;
+        var newChatId = command.NewChatId;
+        var sourceChatId = command.SourceChatId;
 
         var localChatId = sourceChatId is PlaceChatId sourcePlaceChatId
             ? ChatId.Parse(sourcePlaceChatId.LocalChatId)
@@ -1015,12 +1049,14 @@ public partial class Chats(IServiceProvider services) : IChats
         var chatCopyState = await GetChatCopyState(session, newChatId, cancellationToken).ConfigureAwait(false);
 
         if (sourceChat != null && newChat.IsPublic != sourceChat.IsPublic) {
-            var changeChatCmd = new Chats_Change(session,
-                newChat.Id,
-                newChat.Version,
-                Change.Update(new ChatDiff {
+            var changeChatCmd = new Chats_Change {
+                Session = session,
+                ChatId = newChat.Id,
+                ExpectedVersion = newChat.Version,
+                Change = Change.Update(new ChatDiff {
                     IsPublic = sourceChat.IsPublic,
-                }));
+                }),
+            };
             await Commander.Call(changeChatCmd, true, cancellationToken).ConfigureAwait(false);
         }
 
@@ -1028,12 +1064,14 @@ public partial class Chats(IServiceProvider services) : IChats
         await Commander.Call(publishContactsCmd, true, cancellationToken).ConfigureAwait(false);
 
         if (sourceChat is { IsArchived: false }) {
-            var archiveChatCmd = new Chats_Change(session,
-                sourceChat.Id,
-                null,
-                Change.Update(new ChatDiff {
+            var archiveChatCmd = new Chats_Change {
+                Session = session,
+                ChatId = sourceChat.Id,
+                ExpectedVersion = null,
+                Change = Change.Update(new ChatDiff {
                     IsArchived = true,
-                }));
+                }),
+            };
             await Commander.Call(archiveChatCmd, true, cancellationToken).ConfigureAwait(false);
         }
 
@@ -1067,7 +1105,9 @@ public partial class Chats(IServiceProvider services) : IChats
         if (Invalidation.IsActive)
             return; // The nested ServerKvasBackend_SetMany handles invalidation
 
-        var (session, entryId, mustPin) = command;
+        var session = command.Session;
+        var entryId = command.EntryId;
+        var mustPin = command.MustPin;
         var chatId = entryId.ChatId;
         ThrowIfPlaceRootChat(chatId);
         if (entryId.LocalId <= 0)

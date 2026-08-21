@@ -42,57 +42,55 @@ public interface IAccounts : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Accounts_SignOut(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] bool Deactivate = false
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Accounts_SignOut : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public bool Deactivate { get; init; } = false;
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Accounts_Update(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] AccountFull Account,
-    [property: DataMember, Key(2)] long? ExpectedVersion
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Accounts_Update : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required AccountFull Account { get; init; }
+    [DataMember(Order = 3), Key(3)] public required long? ExpectedVersion { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Accounts_DeleteOwn(
-    [property: DataMember, Key(0)] Session Session
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Accounts_DeleteOwn : ApiCommand<Unit>;
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Accounts_CreateApiKey(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] string Name,
-    [property: DataMember, Key(2)] int ExpiresInDays = 365
-) : ISessionCommand<string>, IApiCommand;
+public sealed partial record Accounts_CreateApiKey : ApiCommand<string>
+{
+    [DataMember(Order = 2), Key(2)] public required string Name { get; init; }
+    [DataMember(Order = 3), Key(3)] public int ExpiresInDays { get; init; } = 365;
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Accounts_DeactivateSession(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] string IdPrefix
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Accounts_DeactivateSession : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required string IdPrefix { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Accounts_DeactivateAllSessions(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] SessionKind[] Kinds
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Accounts_DeactivateAllSessions : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required SessionKind[] Kinds { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Accounts_ConfirmRegister(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] string Token
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Accounts_ConfirmRegister : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required string Token { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Accounts_CancelRegister(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] string Token
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Accounts_CancelRegister : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required string Token { get; init; }
+}

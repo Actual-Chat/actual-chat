@@ -30,7 +30,7 @@ public class UploadOperations(AppUIHub hub)
             .Set(nameof(ActualChat.Media.Media.ContentType), fileMetadata.FileType)
             .Set(nameof(ActualChat.Media.Media.Length), fileMetadata.Length);
         var mediaScope = snapshot.MediaScope.NullIfEmpty() ?? MediaId.NewScope();
-        var command = new Media_ReserveMedia(Session, mediaScope) { Metadata = metadata };
+        var command = new Media_ReserveMedia { Session = Session, Scope = mediaScope, Metadata = metadata };
         var mediaId = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         return mediaId;
     }
@@ -66,10 +66,11 @@ public class UploadOperations(AppUIHub hub)
 
     public async Task StartServerProcessing(UploadSessionSnapshot snapshot, CancellationToken cancellationToken = default)
     {
-        var cmd = new Uploads_StartProcessUpload(
-            Session,
-            snapshot.UploadId.Require(),
-            snapshot.ReservedMediaId.Require());
+        var cmd = new Uploads_StartProcessUpload {
+            Session = Session,
+            UploadId = snapshot.UploadId.Require(),
+            MediaId = snapshot.ReservedMediaId.Require(),
+        };
         await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
     }
 
@@ -122,7 +123,10 @@ public class UploadOperations(AppUIHub hub)
     }
 
     public async Task RemoveUpload(UploadId uploadId, CancellationToken cancellationToken)
-        => await Commander.Call(new Uploads_Remove(Session, uploadId), cancellationToken).ConfigureAwait(false);
+        => await Commander.Call(new Uploads_Remove {
+            Session = Session,
+            UploadId = uploadId,
+        }, cancellationToken).ConfigureAwait(false);
 
     private async Task<UploadId> GetOrRegisterUpload(
         UploadSource source,
@@ -145,6 +149,11 @@ public class UploadOperations(AppUIHub hub)
         var metadata = new MetadataBag()
             .Set(nameof(ActualChat.Media.Media.FileName), sourceMetadata.FileName.Value)
             .Set(nameof(ActualChat.Media.Media.ContentType), sourceMetadata.ContentType);
-        return await Commander.Call(new Uploads_Create(Session, length, "", metadata), cancellationToken).ConfigureAwait(false);
+        return await Commander.Call(new Uploads_Create {
+            Session = Session,
+            Length = length,
+            Tag = "",
+            Metadata = metadata,
+        }, cancellationToken).ConfigureAwait(false);
     }
 }

@@ -187,7 +187,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
             return;
 
         var deleteTokenTask = DeviceTokenRetriever.DeleteDeviceToken(cancellationToken);
-        var command = new Notifications_DeregisterDevice(Session, deviceId);
+        var command = new Notifications_DeregisterDevice { Session = Session, DeviceId = deviceId };
         var unregisterDeviceTask = Hub.Commander.Call(command, cancellationToken);
         await Task.WhenAll(deleteTokenTask, unregisterDeviceTask).ConfigureAwait(false);
     }
@@ -234,7 +234,11 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
                             Log.LogInformation("RegisterDeviceTask. About to send register command. UserId is {UserId}", Hub.AccountUI.OwnAccount.Value.Id);
                         else
                             Log.LogInformation("RegisterDeviceTask. About to send register command");
-                        var command = new Notifications_RegisterDevice(Session, deviceId, GetDeviceType());
+                        var command = new Notifications_RegisterDevice {
+                            Session = Session,
+                            DeviceId = deviceId,
+                            DeviceType = GetDeviceType(),
+                        };
                         await Hub.Commander.Call(command, linkedToken).ConfigureAwait(false);
                         Log.LogInformation("RegisterDeviceTask. Register command has been executed");
                         return deviceId;

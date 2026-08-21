@@ -32,7 +32,8 @@ public class Conversations(IServiceProvider services) : IConversations
     // [CommandHandler]
     public virtual async Task OnReSummarize(Conversations_Summarize command, CancellationToken cancellationToken)
     {
-        var (session, conversationId) = command;
+        var session = command.Session;
+        var conversationId = command.ConversationId;
         var chatId = conversationId.ChatId;
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Owner);

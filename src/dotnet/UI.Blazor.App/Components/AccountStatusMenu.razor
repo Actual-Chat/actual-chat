@@ -14,10 +14,11 @@
 
     private async Task OnAccountStatusClick(AccountStatus newStatus) {
         var account = await Accounts.GetOwn(Session, default);
-        var command = new Accounts_Update(
-            Session,
-            account with { Status = newStatus },
-            account.Version);
+        var command = new Accounts_Update {
+            Session = Session,
+            Account = account with { Status = newStatus },
+            ExpectedVersion = account.Version,
+        };
         await UICommander.Run(command);
     }
 }

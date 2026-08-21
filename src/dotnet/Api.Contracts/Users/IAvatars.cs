@@ -20,16 +20,16 @@ public interface IAvatars : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Avatars_Change(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] Symbol AvatarId,
-    [property: DataMember, Key(2)] long? ExpectedVersion,
-    [property: DataMember, Key(3)] Change<AvatarDiff> Change
-) : ISessionCommand<AvatarFull>, IApiCommand;
+public sealed partial record Avatars_Change : ApiCommand<AvatarFull>
+{
+    [DataMember(Order = 2), Key(2)] public required Symbol AvatarId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required long? ExpectedVersion { get; init; }
+    [DataMember(Order = 4), Key(4)] public required Change<AvatarDiff> Change { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Avatars_SetDefault(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] Symbol AvatarId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Avatars_SetDefault : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required Symbol AvatarId { get; init; }
+}

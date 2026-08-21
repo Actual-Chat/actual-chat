@@ -92,7 +92,7 @@ public sealed class NativeGoogleAuth
                 var commander = Services.Commander();
                 var sessionResolver = Services.GetRequiredService<TrueSessionResolver>();
                 var session = await sessionResolver.GetSession().ConfigureAwait(true);
-                var command = new NativeAuth_SignInGoogle(session, code);
+                var command = new NativeAuth_SignInGoogle { Session = session, Code = code };
                 await commander.Call(command).ConfigureAwait(true);
             }
             catch (Exception e) {

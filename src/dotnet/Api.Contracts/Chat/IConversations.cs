@@ -21,7 +21,7 @@ public interface IConversations : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Conversations_Summarize(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] ConversationId ConversationId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Conversations_Summarize : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required ConversationId ConversationId { get; init; }
+}

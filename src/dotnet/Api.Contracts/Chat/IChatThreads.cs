@@ -32,20 +32,20 @@ public interface IChatThreads : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record ChatThreads_Start(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] ChatId ParentChatId,
-    [property: DataMember, Key(2)] string Title,
-    [property: DataMember, Key(3)] string Description,
-    [property: DataMember, Key(4)] ChatEntryId[] EntryIds
-) : ISessionCommand<Chat>, IApiCommand;
+public sealed partial record ChatThreads_Start : ApiCommand<Chat>
+{
+    [DataMember(Order = 2), Key(2)] public required ChatId ParentChatId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required string Title { get; init; }
+    [DataMember(Order = 4), Key(4)] public required string Description { get; init; }
+    [DataMember(Order = 5), Key(5)] public required ChatEntryId[] EntryIds { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record ChatThreads_ToggleThreadFollowStatus(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] ThreadChatId ThreadChatId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record ChatThreads_ToggleThreadFollowStatus : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required ThreadChatId ThreadChatId { get; init; }
+}
 
 /// <summary>
 /// Statistics for a chat thread.

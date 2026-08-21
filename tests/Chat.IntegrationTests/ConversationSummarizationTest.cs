@@ -70,7 +70,7 @@ public class ConversationSummarizationTest(ChatCollection.AppHostFixture fixture
         var messages = new[] { "Hello everyone!", "How is the project going?", "Let's discuss the roadmap." };
         var entries = new List<ChatEntry>();
         foreach (var message in messages) {
-            var cmd = new Chats_UpsertEntry(session, chatId, null) { Text = message };
+            var cmd = new Chats_UpsertEntry { Session = session, ChatId = chatId, LocalId = null, Text = message };
             var entry = await commander.Call(cmd);
             entries.Add(entry);
         }
