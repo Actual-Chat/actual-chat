@@ -263,7 +263,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
             return;
 
         var diff = new SharedLocationDiff { Point = point, LiveDuration = share.Duration };
-        var change = Change.Upsert(diff, locationId);
+        var change = Change.Update(diff);
         await Commander.Call(
                 new SharedLocations_Change {
                     Session = Session,
