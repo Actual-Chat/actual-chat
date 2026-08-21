@@ -48,14 +48,7 @@ public abstract class FusionComponentBase<THub> : FusionComponentBase, IHasCircu
         => !RenderGate.TryPostpone(this);
 
     void IPostponableRenderer.ResumeRender()
-        => _ = InvokeAsync(() => {
-            try {
-                StateHasChanged();
-            }
-            catch {
-                // An earlier replay in the same pass may already have removed this component
-            }
-        });
+        => this.NotifyStateHasChanged();
 
     // Explicit IHasFusionHub & IHasServices implementation
     CircuitHub IHasCircuitHub.CircuitHub => Hub;
