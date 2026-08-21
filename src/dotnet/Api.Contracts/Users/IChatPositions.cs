@@ -12,9 +12,12 @@ public interface IChatPositions : IComputeService
     Task OnSet(ChatPositions_Set command, CancellationToken cancellationToken);
 }
 
+// Not deduplicated: the read-position writer debounces at 1s and builds a fresh Uuid each time,
+// so dedup only adds two store round-trips per scroll.
+
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record ChatPositions_Set : ApiCommand<Unit>
+public sealed partial record ChatPositions_Set : ApiCommand<Unit>, INotDeduplicated
 {
     [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
     [DataMember(Order = 3), Key(3)] public required ChatPositionKind Kind { get; init; }

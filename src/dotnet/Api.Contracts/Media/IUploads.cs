@@ -16,7 +16,12 @@ public interface IUploads : IComputeService
     [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<long> OnAppend(Uploads_Append command, CancellationToken cancellationToken);
     [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
-    Task<long> AppendStream(Session session, UploadId uploadId, long offset, RpcStream<byte[]> dataStream, CancellationToken cancellationToken);
+    Task<long> AppendStream(
+        Session session,
+        UploadId uploadId,
+        long offset,
+        RpcStream<byte[]> dataStream,
+        CancellationToken cancellationToken);
     [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<MediaRef> OnConvertToMediaContent(Uploads_ConvertToMediaRef command, CancellationToken cancellationToken);
     [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
@@ -32,9 +37,12 @@ public sealed partial record Uploads_Create : ApiCommand<UploadId>
     [DataMember(Order = 4), Key(4)] public required MetadataBag Metadata { get; init; }
 }
 
+// Not deduplicated: one command per chunk would fill the dedup store during a single upload.
+// A resend is instead handled by the offset check in the handler.
+
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Uploads_Append : ApiCommand<long>
+public sealed partial record Uploads_Append : ApiCommand<long>, INotDeduplicated
 {
     [DataMember(Order = 2), Key(2)] public required UploadId UploadId { get; init; }
     [DataMember(Order = 3), Key(3)] public required long Offset { get; init; }

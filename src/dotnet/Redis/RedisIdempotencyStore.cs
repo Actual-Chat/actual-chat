@@ -36,15 +36,15 @@ public sealed class RedisIdempotencyStore(IServiceProvider services) : IIdempote
     public async Task<IdempotencyEntry> ClaimOrGet(
         string key, string owner, TimeSpan ttl, CancellationToken cancellationToken)
     {
+        // RedisDb.Database already applies the key prefix, so every call below passes the bare key
         var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
-        var fullKey = RedisDb.FullKey(key);
         var marker = Marker(InProgressTag, Encoding.UTF8.GetBytes(owner));
         for (var i = 0; i < 4; i++) {
-            var claimed = await db.StringSetAsync(fullKey, marker, ttl, When.NotExists).ConfigureAwait(false);
+            var claimed = await db.StringSetAsync(key, marker, ttl, When.NotExists).ConfigureAwait(false);
             if (claimed)
                 return new IdempotencyEntry(IdempotencyState.New, Owner: owner);
 
-            var raw = await db.StringGetAsync(fullKey).ConfigureAwait(false);
+            var raw = await db.StringGetAsync(key).ConfigureAwait(false);
             if (raw.IsNullOrEmpty)
                 continue; // Marker expired between SET NX and GET — retry the claim.
 
@@ -61,17 +61,16 @@ public sealed class RedisIdempotencyStore(IServiceProvider services) : IIdempote
     {
         var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
         var value = Marker(CompletedTag, resultMessage.Span);
-        await db.StringSetAsync(RedisDb.FullKey(key), value, ttl, When.Always).ConfigureAwait(false);
+        await db.StringSetAsync(key, value, ttl, When.Always).ConfigureAwait(false);
     }
 
     public async Task<ReadOnlyMemory<byte>?> WaitForResult(
         string key, TimeSpan timeout, CancellationToken cancellationToken)
     {
         var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
-        var fullKey = RedisDb.FullKey(key);
         var attempts = (int)(timeout.TotalMilliseconds / PollInterval.TotalMilliseconds) + 1;
         for (var i = 0; i < attempts; i++) {
-            var raw = await db.StringGetAsync(fullKey).ConfigureAwait(false);
+            var raw = await db.StringGetAsync(key).ConfigureAwait(false);
             if (raw.IsNullOrEmpty)
                 return null; // Marker gone without a result — owner died; caller re-claims.
 
@@ -91,7 +90,7 @@ public sealed class RedisIdempotencyStore(IServiceProvider services) : IIdempote
         var newMarker = Marker(InProgressTag, Encoding.UTF8.GetBytes(newOwner));
         var res = await db.ScriptEvaluateAsync(
             ReclaimScript,
-            [RedisDb.FullKey(key)],
+            [key],
             [expectedOwner, newMarker, (long)ttl.TotalMilliseconds]).ConfigureAwait(false);
         var arr = (RedisResult[])res!;
         return (int)arr[0] switch {
@@ -104,7 +103,7 @@ public sealed class RedisIdempotencyStore(IServiceProvider services) : IIdempote
     public async Task Release(string key, CancellationToken cancellationToken)
     {
         var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
-        await db.KeyDeleteAsync(RedisDb.FullKey(key)).ConfigureAwait(false);
+        await db.KeyDeleteAsync(key).ConfigureAwait(false);
     }
 
     // Private methods

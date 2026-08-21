@@ -24,3 +24,10 @@ public partial record ApiCommand : ISessionCommand, IApiCommand, IHasUuid
 /// Strongly-typed <see cref="ApiCommand"/> returning a result of type <typeparamref name="TResult"/>.
 /// </summary>
 public abstract partial record ApiCommand<TResult> : ApiCommand, ISessionCommand<TResult>;
+
+/// <summary>
+/// Opts a command out of <c>ApiCommandDeduplicator</c>: high-frequency commands whose repeat is
+/// harmless but whose suppression isn't, and which never resend the same <see cref="ApiCommand.Uuid"/>,
+/// pay the dedup store's two round-trips for nothing.
+/// </summary>
+public interface INotDeduplicated;

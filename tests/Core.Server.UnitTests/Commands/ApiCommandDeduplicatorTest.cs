@@ -47,7 +47,8 @@ public sealed class FakeIdempotencyStore : IIdempotencyStore
     }
 }
 
-public sealed class TestCounterService : ICommandHandler<TestCounter_Increment>
+public sealed class TestCounterService
+    : ICommandHandler<TestCounter_Increment>, ICommandHandler<TestCounter_IncrementNotDeduplicated>
 {
     private int _value;
 
@@ -55,9 +56,18 @@ public sealed class TestCounterService : ICommandHandler<TestCounter_Increment>
     public int HandlerCalls;
 
     public Task OnCommand(TestCounter_Increment command, CommandContext context, CancellationToken cancellationToken)
+        => Increment(command.Amount, context);
+
+    public Task OnCommand(
+        TestCounter_IncrementNotDeduplicated command, CommandContext context, CancellationToken cancellationToken)
+        => Increment(command.Amount, context);
+
+    // Private methods
+
+    private Task Increment(int amount, CommandContext context)
     {
         Interlocked.Increment(ref HandlerCalls);
-        var newValue = Interlocked.Add(ref _value, command.Amount);
+        var newValue = Interlocked.Add(ref _value, amount);
         context.SetResult(newValue);
         return Task.CompletedTask;
     }
@@ -145,11 +155,36 @@ public class ApiCommandDeduplicatorTest(ITestOutputHelper @out) : TestBase(@out)
         counts.GetValueOrDefault("executed").Should().Be(1);
         counts.GetValueOrDefault("replayed").Should().Be(1);
     }
+
+    [Fact]
+    public async Task NotDeduplicatedCommandRunsEveryTime()
+    {
+        // arrange
+        var services = CreateServices();
+        var commander = services.Commander();
+        var counter = services.GetRequiredService<TestCounterService>();
+        var command = new TestCounter_IncrementNotDeduplicated { Session = Session.New(), Amount = 5 };
+
+        // act — the very same command instance, i.e. the same Uuid
+        await commander.Call(command, CancellationToken.None);
+        await commander.Call(command, CancellationToken.None);
+
+        // assert
+        counter.HandlerCalls.Should().Be(2);
+        counter.Value.Should().Be(10);
+    }
 }
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record TestCounter_Increment : ApiCommand<int>
+{
+    [DataMember(Order = 2), Key(2)] public required int Amount { get; init; }
+}
+
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record TestCounter_IncrementNotDeduplicated : ApiCommand<int>, INotDeduplicated
 {
     [DataMember(Order = 2), Key(2)] public required int Amount { get; init; }
 }
