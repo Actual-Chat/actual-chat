@@ -9,12 +9,11 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
     public bool IsNone
         => ReferenceEquals(this, None);
 
-    /// <summary>
-    /// Inclusive range []
-    /// </summary>
     public Range<string> KeyRange
-        => Items.Count > 0
-            ? new Range<string>(FirstItem!.Key, LastItem!.Key)
+        // Inclusive range []. A non-empty Items isn't enough to build it: both ends resolve to null
+        // when every leaf is skip-key - e.g. a window holding just the live block's header and footer.
+        => FirstItem is { } firstItem && LastItem is { } lastItem
+            ? new Range<string>(firstItem.Key, lastItem.Key)
             : default;
 
     public IReadOnlyList<TItem> Items { get; } = items;
@@ -40,7 +39,6 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
 
     public bool HasAllItems => HasVeryFirstItem && HasVeryLastItem;
     public TItem? FirstItem => field ??= GetFirst(Items);
-
     public TItem? LastItem => field ??= GetLast(Items);
 
     public bool IsSimilarTo(VirtualListData<TItem> other)
@@ -53,7 +51,7 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
                 || (SeparatorIndexes?.SequenceEqual(other.SeparatorIndexes ?? []) ?? false))
             && Items.SequenceEqual(other.Items));
 
-    // Private members
+    // Private methods
 
     private static int CalculateCount(TItem item)
     {
