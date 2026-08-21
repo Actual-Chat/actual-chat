@@ -28,7 +28,9 @@ public sealed class MauiAppServerInstanceSelector(UIHub hub) : AppServerInstance
     {
         var hostOverride = instance != Default ? instance : null;
         MauiPreferences.HostOverride = hostOverride?.HostName;
+        // No cache clear: dropping the stored session means the next start mints a new one, and its
+        // folder is a different one - the old server's entries are swept rather than reused.
         _ = MauiSession.RemoveStored().SuppressExceptions();
-        _ = ReloadUI.Clear(true, true);
+        _ = ReloadUI.Clear(clearLocalSettings: true);
     }
 }

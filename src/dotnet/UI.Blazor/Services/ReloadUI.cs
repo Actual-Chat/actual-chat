@@ -1,20 +1,13 @@
 using ActualChat.Kvas;
-using ActualLab.Fusion.Client.Caching;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class ReloadUI
+public class ReloadUI(IServiceProvider services)
 {
-    protected IServiceProvider Services { get; }
-    protected ILogger Log { get; }
+    protected IServiceProvider Services { get; } = services;
+    protected ILogger Log => field ??= Services.LogFor(GetType());
 
-    public ReloadUI(IServiceProvider services)
-    {
-        Services = services;
-        Log = services.LogFor(GetType());
-    }
-
-    public virtual void Reload(bool clearCaches = false, bool clearLocalSettings = false)
+    public virtual void Reload(bool clearLocalSettings = false)
     {
         Log.LogInformation("Reload requested");
         var circuitHub = Services.GetRequiredService<CircuitHub>();
@@ -23,7 +16,7 @@ public class ReloadUI
             try {
                 var hostInfo = Services.HostInfo();
                 var nav = Services.GetRequiredService<NavigationManager>();
-                await Clear(clearCaches, clearLocalSettings).ConfigureAwait(true); // Nav requires UI context
+                await Clear(clearLocalSettings).ConfigureAwait(true); // Nav requires UI context
                 if (hostInfo.HostKind.IsApp())
                     AppNavigationQueue.Reset();
                 nav.NavigateTo(Links.Home, true);
@@ -34,31 +27,15 @@ public class ReloadUI
         }), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
-    public Task Clear(bool clearCaches, bool clearLocalSettings)
+    public virtual Task ReplaceSession(CancellationToken cancellationToken)
     {
-        if (!(clearCaches || clearLocalSettings))
-            return Task.CompletedTask;
-
-        var clearTasks = new List<Task>();
-        if (clearCaches)
-            clearTasks.Add(ClearCaches());
-        if (clearLocalSettings)
-            clearTasks.Add(ClearLocalSettings());
-        return Task.WhenAll(clearTasks);
+        // AuthHelper drops an invalid cookie session and issues a new one on the next request
+        Reload(clearLocalSettings: true);
+        return Task.CompletedTask;
     }
 
-    public virtual async Task ClearCaches()
-    {
-        Log.LogWarning("Cleaning caches...");
-        try {
-            var remoteComputedCache = Services.GetService<IRemoteComputedCache>();
-            if (remoteComputedCache != null)
-                await remoteComputedCache.Clear(CancellationToken.None).ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            Log.LogError(e, "ClearCaches failed");
-        }
-    }
+    public Task Clear(bool clearLocalSettings)
+        => clearLocalSettings ? ClearLocalSettings() : Task.CompletedTask;
 
     public virtual async Task ClearLocalSettings()
     {

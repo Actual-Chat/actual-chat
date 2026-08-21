@@ -6,17 +6,15 @@ namespace ActualChat.App.Maui.Services;
 /// MAUI implementation of <see cref="ReloadUI"/> that recreates the WebView on reload.
 /// </summary>
 [method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiReloadUI))]
-public class MauiReloadUI(IServiceProvider services) : ReloadUI(services)
+public sealed class MauiReloadUI(IServiceProvider services) : ReloadUI(services)
 {
-    public override void Reload(bool clearCaches = false, bool clearLocalSettings = false)
+    public override void Reload(bool clearLocalSettings = false)
     {
         Log.LogInformation("Reload requested");
         _ = DispatchToMainThread(async () => {
             Log.LogInformation("Reloading...");
             try {
-                await Clear(clearCaches, clearLocalSettings).ConfigureAwait(true);
-                // Sign-out deactivates the session - mint a replacement before the new WebView binds it.
-                await Services.GetRequiredService<MauiSession>().Revalidate().ConfigureAwait(true);
+                await Clear(clearLocalSettings).ConfigureAwait(true);
                 MainPage.Current.RecreateWebView();
             }
             catch (Exception e) {
@@ -24,6 +22,14 @@ public class MauiReloadUI(IServiceProvider services) : ReloadUI(services)
                 Quit(); // We can't do much in this case
             }
         }, allowInline: false);
+    }
+
+    public override async Task ReplaceSession(CancellationToken cancellationToken)
+    {
+        // Nothing re-issues a MAUI session for us: it lives in the keychain, so it has to be minted,
+        // switched to and stored before the WebView the reload recreates binds to it.
+        await Services.GetRequiredService<MauiSession>().Replace(cancellationToken).ConfigureAwait(false);
+        Reload(clearLocalSettings: true);
     }
 
     public override void Quit()

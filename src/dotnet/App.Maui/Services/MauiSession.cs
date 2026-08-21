@@ -13,6 +13,9 @@ public sealed class MauiSession(IServiceProvider services)
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<MauiSession>();
 
     private static readonly Lock Lock = new();
+    // Validate-and-replace can be driven from more than one place, and each call to the server mints
+    // its own session - without this two of them race and the resolver and the storage end up split.
+    private static readonly SemaphoreSlim ReplaceLock = new(1, 1);
     private static Task<Session?>? _readSessionTask;
 
     private IServiceProvider Services { get; } = services;
@@ -45,72 +48,47 @@ public sealed class MauiSession(IServiceProvider services)
         return Task.Run(async () => {
             using var _1 = Tracer.MethodRegion();
 
+            // The stored session is used as-is, without asking the server whether it's still valid:
+            // that call can't be answered offline, and AccountUI replaces the session once the
+            // server does tell us it's unusable. Startup shouldn't wait on either.
             var session = await ReadStored().ConfigureAwait(false);
             if (session == null) {
-                // No session -> create one
                 session = await MobileSessions
                     .CreateSession(MauiSettings.AppUserAgent, CancellationToken.None)
                     .ConfigureAwait(false);
-                TrueSessionResolver.Session = session;
-                // No InvalidateEverything here or below: Acquire returns early once a session is set,
-                // so nothing session-scoped has been computed yet - only the cache needs pointing.
-                await RemoteComputedCache.Activate(session).ConfigureAwait(false);
                 _ = Task.Run(() => Store(session));
-                return;
             }
 
-            // Session is there -> validate it
             TrueSessionResolver.Session = session;
+            // No InvalidateEverything: Acquire returns early once a session is set, so nothing
+            // session-scoped has been computed yet - only the cache needs pointing.
             await RemoteComputedCache.Activate(session).ConfigureAwait(false);
-            var validSession = await MobileSessions
-                .ValidateSession(session, MauiSettings.AppUserAgent, CancellationToken.None)
-                .ConfigureAwait(false);
-            if (session == validSession)
-                return;
-
-            // Session is invalid -> update it to valid + reload MAUI App
-            Log.LogWarning("Stored session is invalid - will reload");
-            await SwitchTo(validSession).ConfigureAwait(false);
-            await Store(validSession).ConfigureAwait(false);
-            // Reloading mid-startup recreates the WebView while the first Blazor scope is
-            // still initializing, leaving a half-disposed scope with a disconnected JS runtime
-            // (=> endless JSDisconnectedException in the post-reload sign-in UI). Wait until the
-            // initial scope is fully rendered so this becomes a clean, single reload instead.
-            try {
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                await AppServicesAccessor.WhenBlazorAppServicesReady(true, cts.Token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) {
-                Log.LogWarning("Timed out waiting for the app to render before reload - reloading anyway");
-            }
-            Services.GetRequiredService<ReloadUI>().Reload(true, true);
         });
     }
 
-    public async Task Revalidate()
+    public async Task Replace(CancellationToken cancellationToken)
     {
-        // Never throws: MauiReloadUI's reload path terminates the app on failure
-        using var _ = Tracer.MethodRegion();
         if (!TrueSessionResolver.HasSession)
             return;
 
-        var session = TrueSessionResolver.Session;
+        var invalidSession = TrueSessionResolver.Session;
+        await ReplaceLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var validSession = await MobileSessions
-                .ValidateSession(session, MauiSettings.AppUserAgent, cts.Token)
-                .ConfigureAwait(false);
-            if (session == validSession)
+            // Someone else replaced it while we were waiting for the lock
+            if (TrueSessionResolver.Session != invalidSession)
                 return;
 
-            // Switch first: it drops the cache, so a crash before Store leaves the old id with a
+            var session = await MobileSessions
+                .CreateSession(MauiSettings.AppUserAgent, cancellationToken)
+                .ConfigureAwait(false);
+            // Switch first: it re-points the cache, so a crash before Store leaves the old id with a
             // cold cache. The other order can persist the new id over the old session's entries.
-            await SwitchTo(validSession).ConfigureAwait(false);
-            await Store(validSession).ConfigureAwait(false);
+            await SwitchTo(session).ConfigureAwait(false);
+            await Store(session).ConfigureAwait(false);
             Log.LogInformation("Replaced an invalid Session");
         }
-        catch (Exception e) {
-            Log.LogWarning(e, "Failed to validate Session - keeping the current one");
+        finally {
+            ReplaceLock.Release();
         }
     }
 

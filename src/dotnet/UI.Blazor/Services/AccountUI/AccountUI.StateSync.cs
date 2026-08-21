@@ -10,6 +10,7 @@ public partial class AccountUI
         var chains = new[] {
             AsyncChain.From(MonitorAccountChange),
             AsyncChain.From(MonitorPendingRegistration),
+            AsyncChain.From(MonitorSessionValidity),
         };
         return Task.WhenAll(chains.Select(c => c
             .Log(LogLevel.Debug, Log)
@@ -82,6 +83,30 @@ public partial class AccountUI
         }
     }
 
+    private async Task MonitorSessionValidity(CancellationToken cancellationToken)
+    {
+        // Nothing validates the session up front - it is used optimistically, and this is what
+        // notices the server rejecting it. Sign-out deactivates it, and it can also be killed from
+        // another device or expire; whichever it is, the session has to be replaced to stay usable.
+        var cSessionInfo0 = await Computed
+            .Capture(() => Accounts.GetSessionInfo(Session, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        var changes = cSessionInfo0.Changes(FixedDelayer.NoneUnsafe, cancellationToken);
+        await foreach (var cSessionInfo in changes.ConfigureAwait(false)) {
+            var (sessionInfo, error) = cSessionInfo;
+            // An error means we couldn't ask, not that the answer is no - offline keeps the session
+            if (error != null || sessionInfo is { IsActive: true })
+                continue;
+
+            Log.LogWarning("Session is no longer valid - replacing it");
+            // Recreating the WebView while the first scope is still initializing leaves a
+            // half-disposed scope with a disconnected JS runtime, so let it finish rendering first.
+            await Hub.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await ReloadUI.ReplaceSession(cancellationToken).ConfigureAwait(false);
+            return; // The reload owns everything past this point
+        }
+    }
+
     // Private methods
 
     private void MarkReady()
@@ -107,14 +132,14 @@ public partial class AccountUI
         if (account.IsGuestOrNull()) {
             // We're signed out now
             if (!oldAccount.IsGuestOrNull())
-                ReloadUI.Reload(true, true); // And were signed in -> it's a sign-out
+                ReloadUI.Reload(clearLocalSettings: true); // And were signed in -> it's a sign-out
             return;
         }
 
         // We're signed in now
         if (!oldAccount.IsGuestOrNull()) {
             // And were signed in -> it's an account change
-            ReloadUI.Reload(true, true);
+            ReloadUI.Reload(clearLocalSettings: true);
             return;
         }
 
@@ -137,7 +162,7 @@ public partial class AccountUI
         if (_activeSignInRequest.Value != null)
             return; // No auto-navigation in this case
 
-        if (!History.LocalUrl.IsChatOrChatRoot() && !History.LocalUrl.IsSettings() )
+        if (!History.LocalUrl.IsChatOrChatRoot() && !History.LocalUrl.IsSettings())
             _ = AutoNavigationUI.NavigateTo(Links.Chats, AutoNavigationReason.SignIn);
     }
 
@@ -145,7 +170,7 @@ public partial class AccountUI
     {
         var session = Session;
         var commander = Services.Commander();
-        var confirmed = false;
+        var isConfirmed = false;
 
         var identifier = info.Identifier.NullIfEmpty() ?? "this account";
         var text = $"We didn't find an account for {identifier}. Would you like to register a new one?";
@@ -153,7 +178,7 @@ public partial class AccountUI
             IsDestructive: false,
             Text: text,
             Confirm: () => {
-                confirmed = true;
+                isConfirmed = true;
                 _ = commander.Run(new Accounts_ConfirmRegister(session, info.Token), true, CancellationToken.None);
             }) {
             Title = "Register new account?",
@@ -162,7 +187,7 @@ public partial class AccountUI
         var modalRef = await Hub.ModalUI.Show(model).ConfigureAwait(true);
         await modalRef.WhenClosed.ConfigureAwait(true);
 
-        if (!confirmed && _pendingRegistrationToken == info.Token) {
+        if (!isConfirmed && _pendingRegistrationToken == info.Token) {
             // User dismissed without confirming — clear the prompt and show a sign-in error.
             _ = commander.Run(new Accounts_CancelRegister(session, info.Token), true, CancellationToken.None);
         }
