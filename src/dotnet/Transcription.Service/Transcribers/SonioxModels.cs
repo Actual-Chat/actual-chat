@@ -49,6 +49,21 @@ public sealed class SonioxStatusResponse
     [JsonPropertyName("error_message")] public string? ErrorMessage { get; set; }
 }
 
+public sealed class SonioxTranscription
+{
+    [JsonPropertyName("id")] public string Id { get; set; } = "";
+    [JsonPropertyName("status")] public string? Status { get; set; }
+    [JsonPropertyName("file_id")] public string? FileId { get; set; }
+    [JsonPropertyName("created_at")] public DateTimeOffset? CreatedAt { get; set; }
+}
+
+public sealed class SonioxTranscriptionList
+{
+    [JsonPropertyName("transcriptions")] public SonioxTranscription[]? Transcriptions { get; set; }
+    // Opaque - valid only when passed back verbatim, so it's never parsed or rebuilt.
+    [JsonPropertyName("next_page_cursor")] public string? NextPageCursor { get; set; }
+}
+
 public sealed class SonioxFile
 {
     [JsonPropertyName("id")] public string Id { get; set; } = "";
@@ -60,6 +75,5 @@ public sealed class SonioxFile
 public sealed class SonioxFileList
 {
     [JsonPropertyName("files")] public SonioxFile[]? Files { get; set; }
-    // Opaque - valid only when passed back verbatim, so it's never parsed or rebuilt.
     [JsonPropertyName("next_page_cursor")] public string? NextPageCursor { get; set; }
 }

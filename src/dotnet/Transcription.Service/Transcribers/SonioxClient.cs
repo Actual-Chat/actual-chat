@@ -9,7 +9,7 @@ namespace ActualChat.Transcription;
 /// Soniox async REST API: uploads, transcription jobs, and the deletes that dispose of both.
 /// Shared by <see cref="SonioxOfflineTranscriber"/> and <see cref="SonioxCleaner"/>.
 /// </summary>
-public sealed class SonioxClient
+public sealed class SonioxClient(IServiceProvider services)
 {
     public const string HttpClientName = nameof(SonioxClient);
 
@@ -18,14 +18,8 @@ public sealed class SonioxClient
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    private CoreServerSettings CoreServerSettings { get; }
-    private IHttpClientFactory HttpClientFactory { get; }
-
-    public SonioxClient(IServiceProvider services)
-    {
-        CoreServerSettings = services.GetRequiredService<CoreServerSettings>();
-        HttpClientFactory = services.HttpClientFactory();
-    }
+    private CoreServerSettings CoreServerSettings { get; } = services.GetRequiredService<CoreServerSettings>();
+    private IHttpClientFactory HttpClientFactory { get; } = services.HttpClientFactory();
 
     public async Task<string> UploadFile(Stream stream, string fileName, CancellationToken cancellationToken)
     {
@@ -83,22 +77,16 @@ public sealed class SonioxClient
             .ConfigureAwait(false);
     }
 
-    // Scoped to the key's project, while the stored-file cap Soniox enforces is organization-wide -
-    // so this lists what we can clean, not everything that counts against the cap.
-    public async Task<SonioxFileList> ListFiles(string? cursor, int maxCount, CancellationToken cancellationToken)
-    {
-        using var httpClient = CreateHttpClient();
-        var url = $"{BaseUrl}/files?num_items={maxCount}";
-        if (!cursor.IsNullOrEmpty())
-            url += $"&cursor={Uri.EscapeDataString(cursor)}";
+    // Both lists are scoped to the key's project, while the caps Soniox enforces are organization-wide -
+    // so they list what we can clean, not everything that counts against the caps.
+    public Task<SonioxTranscriptionList> ListTranscriptions(
+        string? cursor,
+        int maxCount,
+        CancellationToken cancellationToken)
+        => ListPage<SonioxTranscriptionList>("transcriptions", cursor, maxCount, cancellationToken);
 
-        using var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
-        await EnsureSuccess(response, "list files", cancellationToken).ConfigureAwait(false);
-        var result = await response.Content
-            .ReadFromJsonAsync<SonioxFileList>(JsonOptions, cancellationToken)
-            .ConfigureAwait(false);
-        return result ?? throw StandardError.External("Soniox returned no file list.");
-    }
+    public Task<SonioxFileList> ListFiles(string? cursor, int maxCount, CancellationToken cancellationToken)
+        => ListPage<SonioxFileList>("files", cursor, maxCount, cancellationToken);
 
     public Task DeleteTranscription(string transcriptionId, CancellationToken cancellationToken)
         => Delete($"transcriptions/{transcriptionId}", cancellationToken);
@@ -107,6 +95,27 @@ public sealed class SonioxClient
         => Delete($"files/{fileId}", cancellationToken);
 
     // Private methods
+
+    private async Task<T> ListPage<T>(
+        string path,
+        string? cursor,
+        int maxCount,
+        CancellationToken cancellationToken)
+    {
+        // The parameter is "limit": an unknown one is ignored rather than rejected, which silently
+        // pins the page size to Soniox's own default.
+        using var httpClient = CreateHttpClient();
+        var url = $"{BaseUrl}/{path}?limit={maxCount}";
+        if (!cursor.IsNullOrEmpty())
+            url += $"&cursor={Uri.EscapeDataString(cursor)}";
+
+        using var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        await EnsureSuccess(response, $"list of {path}", cancellationToken).ConfigureAwait(false);
+        var result = await response.Content
+            .ReadFromJsonAsync<T>(JsonOptions, cancellationToken)
+            .ConfigureAwait(false);
+        return result ?? throw StandardError.External($"Soniox returned no {path} list.");
+    }
 
     private async Task Delete(string path, CancellationToken cancellationToken)
     {
