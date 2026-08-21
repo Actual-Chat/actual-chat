@@ -290,12 +290,14 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     protected virtual async Task<ApiArray<AuthorId>> GetAudioStreamingAuthorIdsByChat(
         ChatId chatId, CancellationToken cancellationToken)
     {
-        // Sorted so the consolidation comparer sees a stable sequence rather than Redis order
+        // Ordered by stream start so authors appear in the order they began speaking (latest last),
+        // and so the consolidation comparer sees a stable sequence rather than Redis order.
         var streams = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
         return streams
+            .OrderBy(x => x.BeginsAt)
+            .ThenBy(x => x.StreamId, StringComparer.Ordinal)
             .Select(x => x.AuthorId)
             .Distinct()
-            .OrderBy(x => x.Value)
             .ToApiArray();
     }
 

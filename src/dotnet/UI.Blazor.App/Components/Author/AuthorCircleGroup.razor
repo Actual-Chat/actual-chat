@@ -1,29 +1,42 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits FusionComponentBase<AppUIHub>
+@implements IDisposable
 @{
-    var authorIds = AuthorIds ?? [];
+    var authorIds = AnimateChanges ? (IReadOnlyList<AuthorId>)_display : AuthorIds ?? [];
     if (authorIds.Count == 0)
         return;
 
     var avatarSize = Size;
     var sizePx = (int)Size * 4;
     var overlapPx = -(sizePx / 2 - 2);
+    var advancePx = sizePx + overlapPx;
     var sizeStyle = $"--acg-circle-size: {sizePx}px; --acg-circle-overlap: {overlapPx}px;";
     var maxLength = authorIds.Count > MaxCount ? MaxCount - 1 : authorIds.Count;
     var groupCls = IsListening ? "" : "non-active";
     var ringCls = ShowRing ? "" : "no-ring";
+    var animateCls = AnimateChanges ? "animate-changes" : "";
 }
 
-<div class="author-circle-group @Class @groupCls @ringCls" style="@sizeStyle">
+<div class="author-circle-group @Class @groupCls @ringCls @animateCls" style="@sizeStyle">
     @{
         var zIndex = 1;
+        var slot = 0;
         for (var i = 0; i < maxLength; i++) {
             var authorId = authorIds[i];
             var lastAuthorCls = i == maxLength - 1 ? "last-author" : "";
+            var isLeaving = AnimateChanges && _leaving.Contains(authorId);
+            var leavingCls = isLeaving ? "leaving" : "";
+            string style;
+            if (AnimateChanges) {
+                var idx = isLeaving ? _leaveSlot.GetValueOrDefault(authorId, slot) : slot++;
+                style = $"--acg-x: {idx * advancePx}px; z-index: {idx + 1};";
+            }
+            else
+                style = $"z-index: {zIndex};";
             @* Keyed by author: without it the diff is positional, so anyone leaving the group re-points
                every avatar after them at a different author - which reloads the image and shows the
                loading skeleton in its place. *@
-            <div @key="@authorId" class="author-circle" style="z-index: @zIndex;">
+            <div @key="@authorId" class="author-circle @leavingCls" style="@style">
                 <div class="@lastAuthorCls author-wrapper">
                     <AuthorCircle AuthorId="@authorId" Size="@avatarSize"/>
                 </div>
@@ -32,7 +45,10 @@
         }
 
         if (authorIds.Count > MaxCount) {
-            <div class="author-circle-group-item author-circle last" style="z-index: @(zIndex + 1);">
+            var lastStyle = AnimateChanges
+                ? $"--acg-x: {slot * advancePx}px; z-index: {slot + 1};"
+                : $"z-index: {zIndex + 1};";
+            <div class="author-circle-group-item author-circle last" style="@lastStyle">
                 <div class="author-circle">
                     <div class="author-wrapper">
                         @{
@@ -49,12 +65,93 @@
 </div>
 
 @code {
+    private static readonly TimeSpan LeaveDuration = TimeSpan.FromMilliseconds(180);
+
+    private readonly List<AuthorId> _display = [];
+    private readonly HashSet<AuthorId> _leaving = [];
+    private readonly Dictionary<AuthorId, int> _leaveSlot = [];
+    private readonly Dictionary<AuthorId, CancellationTokenSource> _removals = [];
+
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public int MaxCount { get; set; } = 5;
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
     [Parameter] public bool IsListening { get; set; }
     [Parameter] public bool ShowRing { get; set; } = true;
 
+    // Keeps a just-left author in the DOM for the exit animation and orders the set by arrival,
+    // so heads join on the right and leave in place instead of the whole row shuffling.
+    [Parameter] public bool AnimateChanges { get; set; }
+
     [Parameter, ParameterComparer(typeof(ByItemParameterComparer))]
     public IReadOnlyList<AuthorId>? AuthorIds { get; set; }
+
+    public void Dispose() {
+        foreach (var cts in _removals.Values) {
+            cts.Cancel();
+            cts.Dispose();
+        }
+        _removals.Clear();
+    }
+
+    protected override void OnParametersSet() {
+        if (!AnimateChanges)
+            return;
+
+        var incoming = AuthorIds ?? [];
+        var incomingSet = new HashSet<AuthorId>(incoming);
+        // A returning author cancels their pending removal - they never visually leave.
+        foreach (var authorId in incoming) {
+            if (!_leaving.Remove(authorId))
+                continue;
+            _leaveSlot.Remove(authorId);
+            if (_removals.Remove(authorId, out var cts)) {
+                cts.Cancel();
+                cts.Dispose();
+            }
+        }
+        // Freeze each newly-leaving head at its current slot before survivors close up over it.
+        var slot = 0;
+        var newlyLeaving = new List<AuthorId>();
+        foreach (var authorId in _display) {
+            if (_leaving.Contains(authorId))
+                continue;
+            if (!incomingSet.Contains(authorId)) {
+                _leaveSlot[authorId] = slot;
+                newlyLeaving.Add(authorId);
+            }
+            slot++;
+        }
+        foreach (var authorId in newlyLeaving) {
+            _leaving.Add(authorId);
+            ScheduleRemoval(authorId);
+        }
+        // New authors keep server (arrival) order and land on the right.
+        foreach (var authorId in incoming)
+            if (!_display.Contains(authorId))
+                _display.Add(authorId);
+    }
+
+    private void ScheduleRemoval(AuthorId authorId) {
+        var cts = new CancellationTokenSource();
+        _removals[authorId] = cts;
+        _ = RemoveAfterDelay(authorId, cts.Token);
+    }
+
+    private async Task RemoveAfterDelay(AuthorId authorId, CancellationToken cancellationToken) {
+        try {
+            await Task.Delay(LeaveDuration, cancellationToken).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException) {
+            return;
+        }
+        await InvokeAsync(() => {
+            if (!_leaving.Remove(authorId))
+                return;
+            _display.Remove(authorId);
+            _leaveSlot.Remove(authorId);
+            if (_removals.Remove(authorId, out var cts))
+                cts.Dispose();
+            StateHasChanged();
+        });
+    }
 }
