@@ -30,6 +30,9 @@ const maxPendingCount = 32;
 // replacing it is the seam. Wrapping `receiveMessage` itself would be tidier but is
 // unreachable: it has already been called by the time any bundle code runs.
 const handlerGlobals = ['__dispatchMessageCallback', '__receiveMessageCallback'];
+// Android is the odd one out: its handler hangs off window.external rather than the global
+// scope, so the same seam needs a second lookup with a different root.
+const externalHandlerName = '__callback';
 
 type MessageHandler = (message: string) => void;
 
@@ -50,6 +53,8 @@ function flush(): void {
 }
 
 function onMessage(message: string, handler: MessageHandler): void {
+    // Ahead of the deferral so observers see arrival order, which is what a lost message shows up in.
+    RenderSync.observer?.(message);
     if (!isEnabled || !message.startsWith(renderBatchPrefix)) {
         // Interop must stay ordered against the DOM it reads: an ElementReference is
         // resolved by querySelector when the call runs, so it would silently miss an
@@ -72,6 +77,8 @@ function onMessage(message: string, handler: MessageHandler): void {
 }
 
 export class RenderSync {
+    public static observer: MessageHandler | null = null;
+
     public static get isEnabled(): boolean {
         return isEnabled;
     }
@@ -88,20 +95,27 @@ export class RenderSync {
     // No-op on every host that isn't a MAUI WebView - including WASM, where a render
     // batch must be applied synchronously because it holds a Mono heap pointer.
     //
-    // The global is normally still absent here: blazor.webview.js registers its handler
-    // from Blazor.start(), which runs after this deferred bundle. So the usual path is the
+    // The handler is normally still absent here: blazor.webview.js registers it from
+    // Blazor.start(), which runs after this deferred bundle. So the usual path is the
     // accessor below, which wraps whatever gets assigned, whenever that happens.
     public static init(): string | null {
-        const target = globalThis as unknown as Record<string, unknown>;
+        const globals = globalThis as unknown as Record<string, unknown>;
+        const external = (globalThis as unknown as { external?: Record<string, unknown> }).external;
         for (const name of handlerGlobals) {
-            const handler = target[name];
-            if (typeof handler === 'function') {
-                target[name] = RenderSync.wrap(handler as MessageHandler);
+            if (typeof globals[name] === 'function') {
+                globals[name] = RenderSync.wrap(globals[name] as MessageHandler);
                 return name;
             }
         }
+        if (external && typeof external[externalHandlerName] === 'function') {
+            external[externalHandlerName] = RenderSync.wrap(external[externalHandlerName] as MessageHandler);
+            return externalHandlerName;
+        }
+
         for (const name of handlerGlobals)
-            RenderSync.hookOnAssign(target, name);
+            RenderSync.hookOnAssign(globals, name);
+        if (external)
+            RenderSync.hookOnAssign(external, externalHandlerName);
         return null;
     }
 
@@ -119,8 +133,9 @@ export class RenderSync {
             set: (handler: MessageHandler) => {
                 wrapped = RenderSync.wrap(handler);
                 // Published only once it actually fires: "installed but never triggered"
-                // is the failure this whole indirection exists to make visible.
-                target['renderSyncHook'] = name;
+                // is the failure this whole indirection exists to make visible. Always on the
+                // global scope, even when the seam that fired was window.external's.
+                (globalThis as unknown as Record<string, unknown>)['renderSyncHook'] = name;
             },
         });
     }
