@@ -45,7 +45,7 @@ public abstract class FusionComponentBase<THub> : FusionComponentBase, IHasCircu
     private RenderGate RenderGate => field ??= Services.GetRequiredService<RenderGate>();
 
     protected override bool ShouldRender()
-        => base.ShouldRender() && !RenderGate.TryPostpone(this);
+        => !RenderGate.TryPostpone(this);
 
     void IPostponableRenderer.ResumeRender()
         => _ = InvokeAsync(() => {
