@@ -54,12 +54,5 @@ public abstract class ComputedStateComponent<THub, TState> : ComputedStateCompon
         => base.ShouldRender() && !RenderGate.TryPostpone(this);
 
     void IPostponableRenderer.ResumeRender()
-        => _ = InvokeAsync(() => {
-            try {
-                StateHasChanged();
-            }
-            catch {
-                // An earlier replay in the same pass may already have removed this component
-            }
-        });
+        => this.NotifyStateHasChanged();
 }
