@@ -28,7 +28,9 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
     private readonly Lock _lock = new();
     private Task<KvasarStore?> _storeTask;
     private string? _activeKey;
+    private long _generation;
     private bool _isSuspended;
+    private bool _isDetached;
 
     private ILogger Log { get; }
 
@@ -156,8 +158,9 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
         Task<KvasarStore?> oldStoreTask;
         string? oldKey;
         Task<KvasarStore?> newStoreTask;
+        long generation;
         lock (_lock) {
-            if (IsDisposed)
+            if (IsDisposed || _isDetached)
                 return Task.CompletedTask;
             if (_activeKey == key)
                 return _storeTask;
@@ -165,12 +168,13 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
             oldStoreTask = _storeTask;
             oldKey = _activeKey;
             _activeKey = key;
+            generation = ++_generation;
             // Publication: readers pick the new task up with a Volatile.Read in GetStore.
             newStoreTask = _isSuspended ? NoStoreTask : Open(key);
             Volatile.Write(ref _storeTask, newStoreTask);
         }
 
-        _ = SwitchAway(oldStoreTask, oldKey, key);
+        _ = SwitchAway(oldStoreTask, oldKey, generation);
         return newStoreTask;
     }
 
@@ -209,7 +213,7 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
     public void Resume()
     {
         lock (_lock) {
-            if (!_isSuspended || IsDisposed)
+            if (!_isSuspended || IsDisposed || _isDetached)
                 return;
 
             _isSuspended = false;
@@ -274,10 +278,10 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
                 & (Settings.BasePath.FileName + "-" + key)
                 & Settings.BasePath.FileName;
 
-    private async Task SwitchAway(Task<KvasarStore?> oldStoreTask, string? oldKey, string newKey)
+    private async Task SwitchAway(Task<KvasarStore?> oldStoreTask, string? oldKey, long generation)
     {
         await CloseAndDelete(oldStoreTask, oldKey).ConfigureAwait(false);
-        SweepKeyFolders(newKey);
+        SweepKeyFolders(generation);
     }
 
     private async Task CloseAndDelete(Task<KvasarStore?> storeTask, string? keyToDelete)
@@ -290,6 +294,12 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
 
     private void DeleteKeyFolder(string key)
     {
+        lock (_lock) {
+            // Activate may have switched back to this key while we were closing its old store
+            if (_activeKey == key)
+                return;
+        }
+
         var folder = GetBasePath(key).DirectoryPath;
         try {
             if (Directory.Exists(folder))
@@ -300,19 +310,24 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
         }
     }
 
-    private void SweepKeyFolders(string keyToKeep)
+    private void SweepKeyFolders(long generation)
     {
         var root = Settings.BasePath.DirectoryPath;
         var prefix = Settings.BasePath.FileName + "-";
-        var folderToKeep = prefix + keyToKeep;
         try {
             if (!Directory.Exists(root))
                 return;
 
             foreach (var folder in Directory.EnumerateDirectories(root, prefix + "*")) {
                 var folderName = ((FilePath)folder).FileName;
-                if (folderName == folderToKeep)
-                    continue;
+                lock (_lock) {
+                    // Re-read per folder: a later Activate owns the sweep and its key is the live
+                    // one, so a superseded sweep must not delete the folder that replaced it.
+                    if (_generation != generation || _activeKey == null)
+                        return;
+                    if (folderName == prefix + _activeKey)
+                        continue;
+                }
 
                 try {
                     Directory.Delete(folder, true);
@@ -332,6 +347,9 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
     {
         lock (_lock) {
             var storeTask = _storeTask;
+            // IsDisposed only flips once DisposeAsync(bool) has returned, i.e. after this runs -
+            // without a flag of our own a concurrent Activate would open a store nothing closes.
+            _isDetached = true;
             _activeKey = null;
             Volatile.Write(ref _storeTask, NoStoreTask);
             return storeTask;

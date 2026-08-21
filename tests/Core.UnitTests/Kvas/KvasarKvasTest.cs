@@ -224,6 +224,42 @@ public class KvasarKvasTest(ITestOutputHelper @out) : TestBase(@out), IAsyncLife
     }
 
     [Fact]
+    public async Task ActivateWhileSuspendedDefersToResumeTest()
+    {
+        // arrange
+        var services = CreateServices();
+        await using var kvas = CreateKvas(services, requiresActivation: true);
+        await kvas.Suspend();
+
+        // act
+        await kvas.Activate("aaaa1111");
+        var whenSuspended = await kvas.Get<string>("a");
+        kvas.Resume();
+        await kvas.Set("a", "a");
+
+        // assert
+        whenSuspended.Should().BeNull();
+        (await kvas.Get<string>("a")).Should().Be("a");
+    }
+
+    [Fact]
+    public async Task SupersededSweepKeepsTheLiveFolderTest()
+    {
+        // arrange
+        var services = CreateServices();
+        await using var kvas = CreateKvas(services, requiresActivation: true);
+
+        // act
+        await kvas.Activate("aaaa1111");
+        await kvas.Activate("bbbb2222");
+        await kvas.Set("b", "b");
+
+        // assert
+        await WhenFolderNamesAre(["Store-bbbb2222"]);
+        (await kvas.Get<string>("b")).Should().Be("b");
+    }
+
+    [Fact]
     public async Task ActivateSweepsStaleKeyFoldersTest()
     {
         // arrange
