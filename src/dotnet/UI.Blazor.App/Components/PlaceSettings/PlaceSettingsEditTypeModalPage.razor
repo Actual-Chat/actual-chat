@@ -180,7 +180,7 @@
 
     private async Task OnNewInviteClick() {
         Invite invite = PlaceInvite.New(Constants.Invites.Defaults.PlaceRemaining, PlaceId);
-        var uiActionResult = await UICommander.Run(new Invites_Generate(Session, invite));
+        var uiActionResult = await UICommander.Run(new Invites_Generate { Session = Session, Invite = invite });
         invite = uiActionResult.Value;
         _newInviteId = invite.Id;
     }
@@ -200,9 +200,14 @@
                 ? AliasId.ParseNullable(_form.AliasId)
                 : null,
         };
-        var command = new Places_Change(Session, place.Id, place.Version, new() {
-            Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),
-        });
+        var command = new Places_Change {
+            Session = Session,
+            PlaceId = place.Id,
+            ExpectedVersion = place.Version,
+            Change = new() {
+                Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),
+            },
+        };
         var uiActionResult = await UICommander.Run(command);
         if (uiActionResult.HasError)
             return;

@@ -23,26 +23,26 @@ public interface IEmailAuth : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record EmailAuth_SendTotp(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] Email Email,
-    [property: DataMember, Key(2)] TotpPurpose Purpose = TotpPurpose.SignInEmail,
-    [property: DataMember, Key(3)] string? CaptchaToken = null,
-    [property: DataMember, Key(4)] string? CaptchaAction = null
-) : ISessionCommand<Moment>, IApiCommand;
+public sealed partial record EmailAuth_SendTotp : ApiCommand<Moment>
+{
+    [DataMember(Order = 2), Key(2)] public required Email Email { get; init; }
+    [DataMember(Order = 3), Key(3)] public TotpPurpose Purpose { get; init; } = TotpPurpose.SignInEmail;
+    [DataMember(Order = 4), Key(4)] public string? CaptchaToken { get; init; }
+    [DataMember(Order = 5), Key(5)] public string? CaptchaAction { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record EmailAuth_ValidateTotp(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] Email Email,
-    [property: DataMember, Key(2)] int Totp
-) : ISessionCommand<bool>, IApiCommand;
+public sealed partial record EmailAuth_ValidateTotp : ApiCommand<bool>
+{
+    [DataMember(Order = 2), Key(2)] public required Email Email { get; init; }
+    [DataMember(Order = 3), Key(3)] public required int Totp { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record EmailAuth_VerifyEmail(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] Email Email,
-    [property: DataMember, Key(2)] int Token
-) : ISessionCommand<bool>, IApiCommand; // NOTE(AY): Add backend, implement IApiCommand
+public sealed partial record EmailAuth_VerifyEmail : ApiCommand<bool>
+{
+    [DataMember(Order = 2), Key(2)] public required Email Email { get; init; }
+    [DataMember(Order = 3), Key(3)] public required int Token { get; init; }
+} // NOTE(AY): Add backend, implement IApiCommand

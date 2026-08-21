@@ -294,7 +294,7 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
 
         Sink.Clear();
         // "Mark all read" clears the whole feed in one round-trip.
-        await Commander.Call(new Notifications_HandleAll(Tester.Session));
+        await Commander.Call(new Notifications_HandleAll { Session = Tester.Session });
 
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);

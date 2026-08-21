@@ -49,64 +49,64 @@ public interface IAuthors : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Authors_SetAvatar(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] ChatId ChatId,
-    [property: DataMember, Key(2)] Symbol AvatarId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Authors_SetAvatar : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required Symbol AvatarId { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Authors_Invite(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] ChatId ChatId,
-    [property: DataMember, Key(2)] UserId[] UserIds,
-    [property: DataMember, Key(3)] bool? JoinAnonymously = null
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Authors_Invite : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required UserId[] UserIds { get; init; }
+    [DataMember(Order = 4), Key(4)] public bool? JoinAnonymously { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Authors_Exclude(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] AuthorId AuthorId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Authors_Exclude : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required AuthorId AuthorId { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Authors_Restore(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] AuthorId AuthorId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Authors_Restore : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required AuthorId AuthorId { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Authors_Leave(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] ChatId ChatId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Authors_Leave : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Authors_Join(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] ChatId ChatId,
-    [property: DataMember, Key(2)] Symbol AvatarId = default,
-    [property: DataMember, Key(3)] bool? JoinAnonymously = null
-) : ISessionCommand<AuthorFull>, IApiCommand;
+public sealed partial record Authors_Join : ApiCommand<AuthorFull>
+{
+    [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
+    [DataMember(Order = 3), Key(3)] public Symbol AvatarId { get; init; }
+    [DataMember(Order = 4), Key(4)] public bool? JoinAnonymously { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Authors_ChangeRole(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] AuthorId AuthorId,
-    [property: DataMember, Key(2)] SystemRole SystemRole,
-    [property: DataMember, Key(3)] bool IsInRole
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Authors_ChangeRole : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required AuthorId AuthorId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required SystemRole SystemRole { get; init; }
+    [DataMember(Order = 4), Key(4)] public required bool IsInRole { get; init; }
+}
 
 [DataContract, MessagePackObject]
 [Obsolete("2026.08: Use Authors_ChangeRole. Old clients only.")]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Authors_PromoteToOwner(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] AuthorId AuthorId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Authors_PromoteToOwner : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required AuthorId AuthorId { get; init; }
+}

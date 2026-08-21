@@ -40,9 +40,14 @@
 
     private async Task OnAddClick() {
         var contact = State.Value.Contact!;
-        var command = new Contacts_Change(Session, contact.Id, null, new Change<Contact> {
-            Create = contact,
-        });
+        var command = new Contacts_Change {
+            Session = Session,
+            Id = contact.Id,
+            ExpectedVersion = null,
+            Change = new Change<Contact> {
+                Create = contact,
+            },
+        };
         await UICommander.Run(command);
     }
 

@@ -130,7 +130,9 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (Invalidation.IsActive)
             return false; // It just spawns other commands, so nothing to do here
 
-        var (session, email, totp) = command;
+        var session = command.Session;
+        var email = command.Email;
+        var totp = command.Totp;
         if (!await ValidateCode(session, email.Value, totp, TotpPurpose.SignInEmail, cancellationToken).ConfigureAwait(false))
             return false;
 
@@ -148,7 +150,9 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (Invalidation.IsActive)
             return false; // It just spawns other commands, so nothing to do here
 
-        var (session, email, totp) = command;
+        var session = command.Session;
+        var email = command.Email;
+        var totp = command.Token;
         if (!await ValidateCode(session, email.Value, totp, TotpPurpose.VerifyEmail, cancellationToken).ConfigureAwait(false))
             return false;
 

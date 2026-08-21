@@ -78,7 +78,7 @@ public class SessionTemporalsTest(AppHostFixture fixture, ITestOutputHelper @out
         await Commander.Call(new SessionTemporalsBackend_Set(session, serverKey, "server-value"));
 
         // act
-        await Commander.Call(new SessionTemporals_Set(session, serverKey, "client-value"));
+        await Commander.Call(new SessionTemporals_Set { Session = session, Key = serverKey, Value = "client-value" });
 
         // assert
         (await backend.Get(session, serverKey, default)).Should().Be("server-value");
@@ -95,10 +95,10 @@ public class SessionTemporalsTest(AppHostFixture fixture, ITestOutputHelper @out
         await Commander.Call(new SessionTemporalsBackend_Set(session, signInErrorKey, "boom"));
 
         // act
-        await Commander.Call(new SessionTemporals_Set(session, "own-key", "own-value"));
+        await Commander.Call(new SessionTemporals_Set { Session = session, Key = "own-key", Value = "own-value" });
         var ownValue = await sessionTemporals.Get(session, "own-key", default);
         var signInError = await sessionTemporals.Get(session, signInErrorKey, default);
-        await Commander.Call(new SessionTemporals_Set(session, signInErrorKey, null));
+        await Commander.Call(new SessionTemporals_Set { Session = session, Key = signInErrorKey, Value = null });
 
         // assert
         ownValue.Should().Be("own-value");

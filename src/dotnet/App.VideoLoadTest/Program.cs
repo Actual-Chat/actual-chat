@@ -83,7 +83,7 @@ var session = Session.New();
 var orchEmail = $"test-videoload-c{workerChatIdx}-o@actual.chat";
 WriteLine($"Signing in orchestrator ({orchEmail})...");
 var signedIn = await commander
-    .Call(new EmailAuth_ValidateTotp(session, Email.New(orchEmail), 111111), cts.Token)
+    .Call(new EmailAuth_ValidateTotp { Session = session, Email = Email.New(orchEmail), Totp = 111111 }, cts.Token)
     .ConfigureAwait(false);
 if (!signedIn)
     throw new InvalidOperationException("Sign-in failed. Is the server running with test agent bypass?");
@@ -99,7 +99,11 @@ for (var pi = 0; pi < streamsPerChat; pi++) {
     var s = Session.New();
     producerSessions[p] = s;
     authTasks[p] = commander.Call(
-        new EmailAuth_ValidateTotp(s, Email.New($"test-videoload-c{workerChatIdx}-p{p}@actual.chat"), 111111), cts.Token);
+        new EmailAuth_ValidateTotp {
+            Session = s,
+            Email = Email.New($"test-videoload-c{workerChatIdx}-p{p}@actual.chat"),
+            Totp = 111111,
+        }, cts.Token);
 }
 await Task.WhenAll(authTasks).ConfigureAwait(false);
 foreach (var t in authTasks) {
@@ -119,7 +123,7 @@ for (var pi = 0; pi < streamsPerChat; pi++) {
     for (var ci = 0; ci < chatCount; ci++) {
         var s = producerSessions[pi];
         var cid = chatIds[ci];
-        joinTasks.Add(commander.Call(new Authors_Join(s, cid), cts.Token));
+        joinTasks.Add(commander.Call(new Authors_Join { Session = s, ChatId = cid }, cts.Token));
     }
 }
 await Task.WhenAll(joinTasks).ConfigureAwait(false);

@@ -86,7 +86,7 @@
 
     private Task OnSignOutClick(string idPrefix)
     {
-        var command = new Accounts_DeactivateSession(Session, idPrefix);
+        var command = new Accounts_DeactivateSession { Session = Session, IdPrefix = idPrefix };
         return UICommander.Run(command);
     }
 
@@ -104,7 +104,7 @@
         if (!confirmed)
             return;
 
-        var command = new Accounts_DeactivateAllSessions(Session, [SessionKind.Session]);
+        var command = new Accounts_DeactivateAllSessions { Session = Session, Kinds = [SessionKind.Session] };
         await UICommander.Run(command).ConfigureAwait(false);
     }
 

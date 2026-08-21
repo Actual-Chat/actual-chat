@@ -240,9 +240,14 @@
             MediaId = _form.Picture?.MediaRef?.MediaId,
             BackgroundMediaId = _form.Background?.MediaRef?.MediaId,
         };
-        var command = new Places_Change(Session, place.Id, place.Version, new() {
-            Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),
-        });
+        var command = new Places_Change {
+            Session = Session,
+            PlaceId = place.Id,
+            ExpectedVersion = place.Version,
+            Change = new() {
+                Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),
+            },
+        };
         await UICommander.Run(command);
     }
 

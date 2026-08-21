@@ -238,7 +238,8 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         if (Invalidation.IsActive)
             return default; // It just spawns other commands, so nothing to do here
 
-        var (session, threadChatId) = command;
+        var session = command.Session;
+        var threadChatId = command.ThreadChatId;
         if (!threadChatId.IsThread())
             throw new ArgumentOutOfRangeException(nameof(threadChatId));
 

@@ -11,7 +11,10 @@ public static class ExternalContactOperations
                 x.Id,
                 x.Version > 0 ? x.Version : null,
                 x.Version > 0 ? Change.Update(x) : Change.Create(x)));
-        var results = await tester.Commander.Call(new ExternalContacts_BulkChange(tester.Session, changes.ToArray()));
+        var results = await tester.Commander.Call(new ExternalContacts_BulkChange {
+            Session = tester.Session,
+            Changes = changes.ToArray(),
+        });
         var errors = results.Select(x => x.Error).SkipNullItems().ToList();
         if (errors.Count > 0)
             throw new AggregateException("Failed to create/update external contacts", errors);
@@ -23,7 +26,10 @@ public static class ExternalContactOperations
     {
         var changes = externalContactIds.Select(x =>
             new ExternalContactChange(x, null, Change.Remove<ExternalContactFull>()));
-        var results = await tester.Commander.Call(new ExternalContacts_BulkChange(tester.Session, changes.ToArray()));
+        var results = await tester.Commander.Call(new ExternalContacts_BulkChange {
+            Session = tester.Session,
+            Changes = changes.ToArray(),
+        });
         var errors = results.Select(x => x.Error).SkipNullItems().ToList();
         if (errors.Count > 0)
             throw new AggregateException("Failed to delete external contacts", errors);

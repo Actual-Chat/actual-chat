@@ -86,7 +86,7 @@
         });
 
     private void NotifyAllInternal()
-        => _ = UICommander.Call(new Notifications_NotifyMembers(Session, ChatId));
+        => _ = UICommander.Call(new Notifications_NotifyMembers { Session = Session, ChatId = ChatId });
 
     private void OnCallAllClick()
         => ToastUI.Show(L.Editor_ButtonNotImplemented, ToastDismissDelay.Short);

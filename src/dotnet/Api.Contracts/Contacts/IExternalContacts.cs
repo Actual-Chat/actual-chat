@@ -13,11 +13,9 @@ public interface IExternalContacts : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record ExternalContacts_BulkChange(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] ExternalContactChange[] Changes
-) : ISessionCommand<Result<ExternalContactFull?>[]>, IApiCommand
+public sealed partial record ExternalContacts_BulkChange : ApiCommand<Result<ExternalContactFull?>[]>
 {
+    [DataMember(Order = 2), Key(2)] public required ExternalContactChange[] Changes { get; init; }
     public const int MaxChangeCount = 1_000;
     // The change count alone doesn't bound the batch - each contact carries names and hash sets
     public const int MaxNameLength = 256;

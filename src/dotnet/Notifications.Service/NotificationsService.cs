@@ -55,7 +55,8 @@ public class NotificationsService(IServiceProvider services) : INotifications
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, notificationId) = command;
+        var session = command.Session;
+        var notificationId = command.NotificationId;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (notificationId.UserId != account.Id)
             throw Unauthorized();
@@ -81,7 +82,9 @@ public class NotificationsService(IServiceProvider services) : INotifications
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, deviceId, deviceType) = command;
+        var session = command.Session;
+        var deviceId = command.DeviceId;
+        var deviceType = command.DeviceType;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account.IsGuestOrNull()) {
             Log.LogWarning("Skipping RegisterDevice for guest or none user." +
@@ -100,7 +103,8 @@ public class NotificationsService(IServiceProvider services) : INotifications
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, deviceId) = command;
+        var session = command.Session;
+        var deviceId = command.DeviceId;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var existingDevices = await Backend.ListDevices(account.Id, cancellationToken).ConfigureAwait(false);
         if (existingDevices.All(d => d.DeviceId != deviceId)) {
@@ -118,7 +122,8 @@ public class NotificationsService(IServiceProvider services) : INotifications
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId) = command;
+        var session = command.Session;
+        var chatId = command.ChatId;
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         var author = chat.Rules.Author.Require();
         var account = chat.Rules.Account.Require();
@@ -163,7 +168,8 @@ public class NotificationsService(IServiceProvider services) : INotifications
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, ChatEntryId) = command;
+        var session = command.Session;
+        var ChatEntryId = command.ChatEntryId;
         var chatId = ChatEntryId.ChatId;
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.IsMember().Require();

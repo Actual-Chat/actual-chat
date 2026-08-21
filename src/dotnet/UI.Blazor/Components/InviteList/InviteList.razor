@@ -60,7 +60,7 @@
     }
 
     private Task Revoke(Invite invite)
-        => UICommander.Run(new Invites_Revoke(Session, invite.Id));
+        => UICommander.Run(new Invites_Revoke { Session = Session, InviteId = invite.Id });
 
     private async ValueTask OnShareClick(Invite invite) {
         var link = GetLink(invite);

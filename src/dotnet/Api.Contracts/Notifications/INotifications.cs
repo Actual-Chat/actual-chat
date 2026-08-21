@@ -27,42 +27,40 @@ public interface INotifications : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Notifications_Handle(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] NotificationId NotificationId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Notifications_Handle : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required NotificationId NotificationId { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Notifications_HandleAll(
-    [property: DataMember, Key(0)] Session Session
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Notifications_HandleAll : ApiCommand<Unit>;
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Notifications_RegisterDevice(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] Symbol DeviceId,
-    [property: DataMember, Key(2)] DeviceType DeviceType
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Notifications_RegisterDevice : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required Symbol DeviceId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required DeviceType DeviceType { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Notifications_DeregisterDevice(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] Symbol DeviceId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Notifications_DeregisterDevice : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required Symbol DeviceId { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Notifications_NotifyMembers(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] ChatId ChatId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Notifications_NotifyMembers : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Notifications_NotifyMentionedMembers(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] ChatEntryId ChatEntryId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Notifications_NotifyMentionedMembers : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required ChatEntryId ChatEntryId { get; init; }
+}

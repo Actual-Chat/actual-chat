@@ -167,14 +167,14 @@ public class SelectionUI : UIServiceBase<AppUIHub>
                 return;
         }
 
-        var removeCommand = new Chats_RemoveEntries(Session, chatId, localIds);
+        var removeCommand = new Chats_RemoveEntries { Session = Session, ChatId = chatId, LocalIds = localIds };
         await UICommander.Run(removeCommand).ConfigureAwait(true);
 
         ToastUI.Show(L.Selection_MessagesDeleted, Restore, L.Selection_Undo, ToastDismissDelay.Long);
         Clear();
 
         void Restore() {
-            var restoreCommand = new Chats_RestoreEntries(Session, chatId, localIds);
+            var restoreCommand = new Chats_RestoreEntries { Session = Session, ChatId = chatId, LocalIds = localIds };
             _ = UICommander.Run(restoreCommand);
         }
     }
@@ -210,11 +210,12 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         if (selectedChatIds.Count == 0)
             return;
 
-        var cmd = new Chats_ForwardEntries(
-            Session,
-            chatId,
-            selection.ToArray(),
-            selectedChatIds.ToArray());
+        var cmd = new Chats_ForwardEntries {
+            Session = Session,
+            ChatId = chatId,
+            ChatEntries = selection.ToArray(),
+            DestinationChatIds = selectedChatIds.ToArray(),
+        };
         await UICommander.Run(cmd, CancellationToken.None).ConfigureAwait(true);
         var firstChatId = selectedChatIds.First();
         var info = await BuildInfoMessage().ConfigureAwait(true);
@@ -251,12 +252,13 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         if (modalModel.Title.IsNullOrEmpty())
             return;
 
-        var cmd = new ChatThreads_Start(
-            Session,
-            chatId,
-            modalModel.Title,
-            modalModel.Description,
-            textEntryIds);
+        var cmd = new ChatThreads_Start {
+            Session = Session,
+            ParentChatId = chatId,
+            Title = modalModel.Title,
+            Description = modalModel.Description,
+            EntryIds = textEntryIds,
+        };
         await UICommander.Call(cmd, CancellationToken.None).ConfigureAwait(true);
         Clear();
     }

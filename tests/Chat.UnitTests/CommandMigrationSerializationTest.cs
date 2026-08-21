@@ -1,4 +1,5 @@
 using System.Buffers;
+using ActualChat.Kvas;
 using ActualLab.Interception;
 using ActualLab.Rpc.Infrastructure;
 
@@ -164,6 +165,55 @@ public class ApiCommandRpcArgumentSerializerTest(ITestOutputHelper @out) : TestB
         // assert
         command.Uuid.Should().Be("uuid-x");
         command.LocalIds.Should().Equal(7L);
+    }
+
+    [Fact]
+    public void LegacyMapFormattedCommandKeepsEmptyUuid()
+    {
+        // arrange — a pre-Uuid ServerKvas_Set payload: its own formatter writes a named-key map,
+        // so there is no array element to prepend and the missing Uuid entry must read back as ""
+        var buffer = new ArrayBufferWriter<byte>();
+        var writer = new MessagePackWriter(buffer);
+        writer.WriteMapHeader(3);
+        writer.Write(nameof(ServerKvas_Set.Session));
+        Options.Resolver.GetFormatterWithVerify<Session>().Serialize(ref writer, TestSession, Options);
+        writer.Write(nameof(ServerKvas_Set.Key));
+        Options.Resolver.GetFormatterWithVerify<string>().Serialize(ref writer, "the-key", Options);
+        writer.Write(nameof(ServerKvas_Set.Value));
+        Options.Resolver.GetFormatterWithVerify<byte[]?>().Serialize(ref writer, [1, 2, 3], Options);
+        writer.Flush();
+        var data = (ReadOnlyMemory<byte>)buffer.WrittenMemory;
+        var serializer = new ApiCommandRpcArgumentSerializer(Base, () => new Version(2, 10));
+        ArgumentList args = ArgumentList.New(default(ServerKvas_Set)!);
+
+        // act
+        serializer.Deserialize(ref args, false, data);
+        var command = (ServerKvas_Set)args.GetUntyped(0)!;
+
+        // assert
+        command.Uuid.Should().Be("");
+        command.Session.Should().Be(TestSession);
+        command.Key.Should().Be("the-key");
+        command.Value.Should().Equal([1, 2, 3]);
+    }
+
+    [Fact]
+    public void MapFormattedCommandRoundTripsUuid()
+    {
+        // arrange
+        var data = (ReadOnlyMemory<byte>)MessagePackSerializer.Serialize(
+            new ServerKvas_Set { Uuid = "uuid-kvas", Session = TestSession, Key = "the-key", Value = [4] },
+            Options);
+        var serializer = new ApiCommandRpcArgumentSerializer(Base, () => new Version(2, 10));
+        ArgumentList args = ArgumentList.New(default(ServerKvas_Set)!);
+
+        // act
+        serializer.Deserialize(ref args, false, data);
+        var command = (ServerKvas_Set)args.GetUntyped(0)!;
+
+        // assert
+        command.Uuid.Should().Be("uuid-kvas");
+        command.Key.Should().Be("the-key");
     }
 
     [Fact]

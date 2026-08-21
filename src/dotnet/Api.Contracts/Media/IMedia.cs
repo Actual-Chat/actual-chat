@@ -19,37 +19,35 @@ public interface IMedia : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Media_ReserveMedia(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] string Scope
-) : ISessionCommand<MediaId>, IApiCommand
+public sealed partial record Media_ReserveMedia : ApiCommand<MediaId>
 {
-    [DataMember, Key(2)] public MetadataBag Metadata { get; init; } = MetadataBag.Empty;
-    [DataMember, Key(3)] public MediaKind Kind { get; init; }
+    [DataMember(Order = 2), Key(2)] public required string Scope { get; init; }
+    [DataMember(Order = 3), Key(3)] public MetadataBag Metadata { get; init; } = MetadataBag.Empty;
+    [DataMember(Order = 4), Key(4)] public MediaKind Kind { get; init; }
 }
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Media_RemoveMedia(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] MediaId MediaId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Media_RemoveMedia : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required MediaId MediaId { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Media_UpdateProgress(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] MediaId MediaId,
-    [property: DataMember, Key(2)] long? ExpectedVersion,
-    [property: DataMember, Key(3)] MediaProcessingStage Stage,
-    [property: DataMember, Key(4)] double StageProgress,
-    [property: DataMember, Key(5)] string? Error = null
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Media_UpdateProgress : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required MediaId MediaId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required long? ExpectedVersion { get; init; }
+    [DataMember(Order = 4), Key(4)] public required MediaProcessingStage Stage { get; init; }
+    [DataMember(Order = 5), Key(5)] public required double StageProgress { get; init; }
+    [DataMember(Order = 6), Key(6)] public string? Error { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Media_ProcessUpload(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] MediaId MediaId,
-    [property: DataMember, Key(2)] UploadId UploadId
-) : ISessionCommand<MediaRef>, IApiCommand;
+public sealed partial record Media_ProcessUpload : ApiCommand<MediaRef>
+{
+    [DataMember(Order = 2), Key(2)] public required MediaId MediaId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required UploadId UploadId { get; init; }
+}

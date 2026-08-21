@@ -28,7 +28,7 @@ internal sealed class NewChatMemberSelector(AppUIHub hub, ChatId chatId)
         => Authors.ListUserIds(Session, chatId, cancellationToken);
 
     public async Task<Exception?> Invite(UserId[] userIds, CancellationToken cancellationToken) {
-        var command = new Authors_Invite(Session, chatId, userIds);
+        var command = new Authors_Invite { Session = Session, ChatId = chatId, UserIds = userIds };
         var (_, error) = await UICommander.Run(command, cancellationToken).ConfigureAwait(false);
         return error;
     }

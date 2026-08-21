@@ -268,12 +268,13 @@ public class NonContactPeerLimitTest(ChatCollection.AppHostFixture fixture, ITes
         var entry = await aliceTester.CreateTextEntry(peerChatId, "Hi");
 
         // act, assert
-        var command = new ChatThreads_Start(
-            aliceTester.Session,
-            peerChatId,
-            "Thread",
-            "",
-            [entry.Id]);
+        var command = new ChatThreads_Start {
+            Session = aliceTester.Session,
+            ParentChatId = peerChatId,
+            Title = "Thread",
+            Description = "",
+            EntryIds = [entry.Id],
+        };
         var startThread = () => aliceTester.Commander.Call(command);
         await startThread.Should().ThrowAsync<Exception>();
     }

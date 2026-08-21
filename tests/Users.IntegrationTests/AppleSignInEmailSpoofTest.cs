@@ -136,7 +136,13 @@ public class AppleSignInEmailSpoofTest(AppHostFixture fixture, ITestOutputHelper
         var session = Session.New();
         await Commander.Call(new SessionsBackend_Upsert(session));
 
-        var command = new NativeAuth_SignInApple(session, queryUserId, code, queryEmail, null);
+        var command = new NativeAuth_SignInApple {
+            Session = session,
+            UserId = queryUserId,
+            Code = code,
+            Email = queryEmail,
+            Name = null,
+        };
         await Commander.Call(command, true, CancellationToken.None);
 
         var signInError = await SessionTemporals.Get(

@@ -26,21 +26,33 @@ public class ChatUsagesTest(AppHostFixture fixture, ITestOutputHelper @out)
         list1.Should().BeEmpty();
 
         // act
-        await commander.Call(new ChatUsages_RegisterUsage(session, ChatUsageListKind.PeerChatsWroteTo, chatId1));
+        await commander.Call(new ChatUsages_RegisterUsage {
+            Session = session,
+            Kind = ChatUsageListKind.PeerChatsWroteTo,
+            ChatId = chatId1,
+        });
         list1 = await chatUsages.GetRecencyList(session, ChatUsageListKind.PeerChatsWroteTo, default);
 
         // assert
         list1.Should().HaveCount(1).And.Contain(chatId1);
 
         // act
-        await commander.Call(new ChatUsages_RegisterUsage(session, ChatUsageListKind.PeerChatsWroteTo, chatId1));
+        await commander.Call(new ChatUsages_RegisterUsage {
+            Session = session,
+            Kind = ChatUsageListKind.PeerChatsWroteTo,
+            ChatId = chatId1,
+        });
         list1 = await chatUsages.GetRecencyList(session, ChatUsageListKind.PeerChatsWroteTo, default);
 
         // assert
         list1.Should().HaveCount(1).And.Contain(chatId1);
 
         // act
-        await commander.Call(new ChatUsages_RegisterUsage(session, ChatUsageListKind.ViewedGroupChats, chatId2));
+        await commander.Call(new ChatUsages_RegisterUsage {
+            Session = session,
+            Kind = ChatUsageListKind.ViewedGroupChats,
+            ChatId = chatId2,
+        });
         list1 = await chatUsages.GetRecencyList(session, ChatUsageListKind.PeerChatsWroteTo, default);
 
         // assert
@@ -49,7 +61,11 @@ public class ChatUsagesTest(AppHostFixture fixture, ITestOutputHelper @out)
         list2.Should().HaveCount(1).And.Contain(chatId2);
 
         // act
-        await commander.Call(new ChatUsages_RegisterUsage(session, ChatUsageListKind.ViewedGroupChats, chatId1));
+        await commander.Call(new ChatUsages_RegisterUsage {
+            Session = session,
+            Kind = ChatUsageListKind.ViewedGroupChats,
+            ChatId = chatId1,
+        });
         list1 = await chatUsages.GetRecencyList(session, ChatUsageListKind.PeerChatsWroteTo, default);
 
         // assert
@@ -70,7 +86,11 @@ public class ChatUsagesTest(AppHostFixture fixture, ITestOutputHelper @out)
         list3.Should().BeEmpty();
 
         // act
-        await commander2.Call(new ChatUsages_RegisterUsage(session2, ChatUsageListKind.PeerChatsWroteTo, chatId1));
+        await commander2.Call(new ChatUsages_RegisterUsage {
+            Session = session2,
+            Kind = ChatUsageListKind.PeerChatsWroteTo,
+            ChatId = chatId1,
+        });
         list3 = await chatUsages.GetRecencyList(session2, ChatUsageListKind.PeerChatsWroteTo, default);
 
         // assert
@@ -92,8 +112,8 @@ public class ChatUsagesTest(AppHostFixture fixture, ITestOutputHelper @out)
         const ChatUsageListKind listKind = ChatUsageListKind.ViewedGroupChats;
 
         // act
-        await commander.Call(new ChatUsages_RegisterUsage(session, listKind, chatId1));
-        await commander.Call(new ChatUsages_RegisterUsage(session, listKind, chatId2));
+        await commander.Call(new ChatUsages_RegisterUsage { Session = session, Kind = listKind, ChatId = chatId1 });
+        await commander.Call(new ChatUsages_RegisterUsage { Session = session, Kind = listKind, ChatId = chatId2 });
         var list1 = await chatUsages.GetRecencyList(session, listKind, default);
 
         // assert
@@ -127,9 +147,19 @@ public class ChatUsagesTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // act
         await reader.Commander.Call(
-            new ChatPositions_Set(reader.Session, readableChatId, ChatPositionKind.Read, readablePosition));
+            new ChatPositions_Set {
+                Session = reader.Session,
+                ChatId = readableChatId,
+                Kind = ChatPositionKind.Read,
+                Position = readablePosition,
+            });
         await reader.Commander.Call(
-            new ChatPositions_Set(reader.Session, unreadableChatId, ChatPositionKind.Read, unreadablePosition));
+            new ChatPositions_Set {
+                Session = reader.Session,
+                ChatId = unreadableChatId,
+                Kind = ChatPositionKind.Read,
+                Position = unreadablePosition,
+            });
         var storedReadable = await chatPositionsBackend.Get(
             account.Id, readableChatId, ChatPositionKind.Read, default);
         var storedUnreadable = await chatPositionsBackend.Get(
@@ -151,7 +181,12 @@ public class ChatUsagesTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // act
         var act = () => tester.Commander.Call(
-            new ChatPositions_Set(tester.Session, chatId, ChatPositionKind.Heard, new ChatPosition(10)));
+            new ChatPositions_Set {
+                Session = tester.Session,
+                ChatId = chatId,
+                Kind = ChatPositionKind.Heard,
+                Position = new ChatPosition(10),
+            });
 
         // assert
         await act.Should().ThrowAsync<Exception>();
@@ -192,8 +227,16 @@ public class ChatUsagesTest(AppHostFixture fixture, ITestOutputHelper @out)
         const ChatUsageListKind listKind = ChatUsageListKind.ViewedGroupChats;
 
         // act
-        await reader.Commander.Call(new ChatUsages_RegisterUsage(reader.Session, listKind, readableChatId));
-        await reader.Commander.Call(new ChatUsages_RegisterUsage(reader.Session, listKind, unreadableChatId));
+        await reader.Commander.Call(new ChatUsages_RegisterUsage {
+            Session = reader.Session,
+            Kind = listKind,
+            ChatId = readableChatId,
+        });
+        await reader.Commander.Call(new ChatUsages_RegisterUsage {
+            Session = reader.Session,
+            Kind = listKind,
+            ChatId = unreadableChatId,
+        });
         var recencyList = await chatUsages.GetRecencyList(reader.Session, listKind, default);
 
         // assert
@@ -215,9 +258,18 @@ public class ChatUsagesTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // act
         await tester.Commander.Call(
-            new ChatUsages_RegisterUsage(tester.Session, listKind, firstChatId, futureAccessTime));
+            new ChatUsages_RegisterUsage {
+                Session = tester.Session,
+                Kind = listKind,
+                ChatId = firstChatId,
+                AccessTime = futureAccessTime,
+            });
         await Task.Delay(20);
-        await tester.Commander.Call(new ChatUsages_RegisterUsage(tester.Session, listKind, secondChatId));
+        await tester.Commander.Call(new ChatUsages_RegisterUsage {
+            Session = tester.Session,
+            Kind = listKind,
+            ChatId = secondChatId,
+        });
         var recencyList = await chatUsages.GetRecencyList(tester.Session, listKind, default);
 
         // assert

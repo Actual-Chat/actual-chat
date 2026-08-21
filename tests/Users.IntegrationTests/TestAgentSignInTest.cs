@@ -133,10 +133,10 @@ public class TestAgentSignInTest(AppHostFixture fixture, ITestOutputHelper @out)
         var email = ActualChat.Email.Parse(emailString);
         var session = _tester.Session;
 
-        var sendCmd = new EmailAuth_SendTotp(session, email);
+        var sendCmd = new EmailAuth_SendTotp { Session = session, Email = email };
         await _tester.Commander.Call(sendCmd);
 
-        var validateCmd = new EmailAuth_ValidateTotp(session, email, 111111);
+        var validateCmd = new EmailAuth_ValidateTotp { Session = session, Email = email, Totp = 111111 };
         var success = await _tester.Commander.Call(validateCmd);
         success.Should().BeTrue();
 

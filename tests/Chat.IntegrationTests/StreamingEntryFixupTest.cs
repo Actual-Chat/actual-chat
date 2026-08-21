@@ -165,13 +165,18 @@ public class StreamingEntryFixupTest(ChatCollection.AppHostFixture fixture, ITes
     private static async Task<ChatId> CreateUserChat(WebClientTester tester)
     {
         await tester.SignInAsUniqueAlice();
-        var chat = await tester.Commander.Call(new Chats_Change(tester.Session, default, null, new() {
-            Create = new ChatDiff {
-                Title = "Streaming-fixup test",
-                Kind = ChatKind.Group,
-                IsPublic = false,
+        var chat = await tester.Commander.Call(new Chats_Change {
+            Session = tester.Session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "Streaming-fixup test",
+                    Kind = ChatKind.Group,
+                    IsPublic = false,
+                },
             },
-        }));
+        });
         // Posting a regular text entry ensures the author exists —
         // CreateStreamingEntry calls GetOwnAuthor.Require() and would otherwise fail.
         await tester.CreateTextEntry(chat.Id, "seed");

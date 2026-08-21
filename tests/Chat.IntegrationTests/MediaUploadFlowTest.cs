@@ -29,7 +29,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         var testData = "Hello, this is test file content!"u8.ToArray();
 
         // Act 1: Reserve MediaId
-        var mediaId = await commander.Call(new Media_ReserveMedia(session, scope));
+        var mediaId = await commander.Call(new Media_ReserveMedia { Session = session, Scope = scope });
 
         // Assert 1: MediaId is created and status is Reserved
         mediaId.Should().NotBeNull();
@@ -48,17 +48,33 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
             .Set("FileName", "test.txt")
             .Set("ContentType", "text/plain");
         var tag = $"MediaUploadTest/v1/{scope}";
-        var uploadId = await commander.Call(new Uploads_Create(session, testData.Length, tag, metadata));
+        var uploadId = await commander.Call(new Uploads_Create {
+            Session = session,
+            Length = testData.Length,
+            Tag = tag,
+            Metadata = metadata,
+        });
 
         uploadId.Should().NotBeNull();
 
         // Act 3: Upload file content
-        var newOffset = await commander.Call(new Uploads_Append(session, uploadId, 0, testData));
+        var newOffset = await commander.Call(new Uploads_Append {
+            Session = session,
+            UploadId = uploadId,
+            Offset = 0,
+            Chunk = testData,
+        });
 
         newOffset.Should().Be(testData.Length);
 
         // Act 4: Update progress to Uploading
-        await commander.Call(new Media_UpdateProgress(session, mediaId, null, MediaProcessingStage.Uploading, 100));
+        await commander.Call(new Media_UpdateProgress {
+            Session = session,
+            MediaId = mediaId,
+            ExpectedVersion = null,
+            Stage = MediaProcessingStage.Uploading,
+            StageProgress = 100,
+        });
 
         progress = await mediaProgressBackend.Get(mediaId, default);
         progress.Should().NotBeNull();
@@ -66,7 +82,11 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         progress.StageProgress.Should().Be(100);
 
         // Act 5: Process upload - verifies upload is complete, runs processors, saves ContentId to Media, updates progress to Ready, removes upload
-        var mediaRef = await commander.Call(new Media_ProcessUpload(session, mediaId, uploadId));
+        var mediaRef = await commander.Call(new Media_ProcessUpload {
+            Session = session,
+            MediaId = mediaId,
+            UploadId = uploadId,
+        });
 
         mediaRef.Should().NotBeNull();
         mediaRef.BlobId.Should().NotBeNullOrEmpty();
@@ -106,12 +126,17 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         for (var i = 0; i < testData.Length; i++)
             testData[i] = (byte)(i * 31 + 7);
 
-        var mediaId = await commander.Call(new Media_ReserveMedia(session, scope));
+        var mediaId = await commander.Call(new Media_ReserveMedia { Session = session, Scope = scope });
         var metadata = new MetadataBag()
             .Set("FileName", "test.bin")
             .Set("ContentType", "application/octet-stream");
         var tag = $"MediaUploadStreamTest/v1/{scope}";
-        var uploadId = await commander.Call(new Uploads_Create(session, testData.Length, tag, metadata));
+        var uploadId = await commander.Call(new Uploads_Create {
+            Session = session,
+            Length = testData.Length,
+            Tag = tag,
+            Metadata = metadata,
+        });
 
         // Act: stream the data in small sub-chunks
         var newOffset = await uploads.AppendStream(session, uploadId, 0, ToRpcStream(testData, 64 * 1024), default);
@@ -147,9 +172,24 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
             .Set("ContentType", "text/plain");
 
         // act
-        var first = await tester.Commander.Call(new Uploads_Create(tester.Session, 1, "", metadata));
-        var second = await tester.Commander.Call(new Uploads_Create(tester.Session, 1, "", metadata));
-        var act = () => tester.Commander.Call(new Uploads_Create(tester.Session, 1, "", metadata));
+        var first = await tester.Commander.Call(new Uploads_Create {
+            Session = tester.Session,
+            Length = 1,
+            Tag = "",
+            Metadata = metadata,
+        });
+        var second = await tester.Commander.Call(new Uploads_Create {
+            Session = tester.Session,
+            Length = 1,
+            Tag = "",
+            Metadata = metadata,
+        });
+        var act = () => tester.Commander.Call(new Uploads_Create {
+            Session = tester.Session,
+            Length = 1,
+            Tag = "",
+            Metadata = metadata,
+        });
 
         // assert
         first.Should().NotBeNull();
@@ -174,9 +214,19 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // act
         var normal = await tester.Commander.Call(
-            new Uploads_Create(tester.Session, RateLimitBudgets.UploadByteUnit, "", metadata));
+            new Uploads_Create {
+                Session = tester.Session,
+                Length = RateLimitBudgets.UploadByteUnit,
+                Tag = "",
+                Metadata = metadata,
+            });
         var act = () => tester.Commander.Call(
-            new Uploads_Create(tester.Session, 2 * RateLimitBudgets.UploadByteUnit, "", metadata));
+            new Uploads_Create {
+                Session = tester.Session,
+                Length = 2 * RateLimitBudgets.UploadByteUnit,
+                Tag = "",
+                Metadata = metadata,
+            });
 
         // assert
         normal.Should().NotBeNull();
@@ -193,11 +243,21 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
             .Set("FileName", "test.bin")
             .Set("ContentType", "application/octet-stream");
         var length = Constants.Uploads.MaxChunkSize + 1L;
-        var uploadId = await tester.Commander.Call(new Uploads_Create(tester.Session, length, "", metadata));
+        var uploadId = await tester.Commander.Call(new Uploads_Create {
+            Session = tester.Session,
+            Length = length,
+            Tag = "",
+            Metadata = metadata,
+        });
         var oversizedChunk = new byte[Constants.Uploads.MaxChunkSize + 1];
 
         // act
-        var act = () => tester.Commander.Call(new Uploads_Append(tester.Session, uploadId, 0, oversizedChunk));
+        var act = () => tester.Commander.Call(new Uploads_Append {
+            Session = tester.Session,
+            UploadId = uploadId,
+            Offset = 0,
+            Chunk = oversizedChunk,
+        });
 
         // assert
         await act.Should().ThrowAsync<InvalidOperationException>();
@@ -214,14 +274,19 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
             .Set("FileName", "test.txt")
             .Set("ContentType", "text/plain");
         var uploadId = await tester.Commander.Call(
-            new Uploads_Create(tester.Session, data.Length, "", metadata));
-        await tester.Commander.Call(new Uploads_Append(tester.Session, uploadId, 0, data));
+            new Uploads_Create { Session = tester.Session, Length = data.Length, Tag = "", Metadata = metadata });
+        await tester.Commander.Call(new Uploads_Append {
+            Session = tester.Session,
+            UploadId = uploadId,
+            Offset = 0,
+            Chunk = data,
+        });
 
         // act
         var first = await tester.Commander.Call(
-            new Uploads_ConvertToMediaRef(tester.Session, uploadId));
+            new Uploads_ConvertToMediaRef { Session = tester.Session, UploadId = uploadId });
         var second = await tester.Commander.Call(
-            new Uploads_ConvertToMediaRef(tester.Session, uploadId));
+            new Uploads_ConvertToMediaRef { Session = tester.Session, UploadId = uploadId });
         var dbHub = tester.AppServices.DbHub<MediaDbContext>();
         await using var dbContext = await dbHub.CreateDbContext();
         var mediaCount = await dbContext.Media.CountAsync(x => x.Scope == first.MediaId.Scope);
@@ -247,7 +312,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         var commander = ownerTester.Commander;
 
         // Owner reserves media
-        var mediaId = await commander.Call(new Media_ReserveMedia(ownerSession, "owner-test"));
+        var mediaId = await commander.Call(new Media_ReserveMedia { Session = ownerSession, Scope = "owner-test" });
         mediaId.Should().NotBeNull();
 
         // Act & Assert: Another user should not be able to update progress
@@ -258,7 +323,13 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         var otherCommander = otherTester.Commander;
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => {
-            await otherCommander.Call(new Media_UpdateProgress(otherSession, mediaId, null, MediaProcessingStage.Ready, 100));
+            await otherCommander.Call(new Media_UpdateProgress {
+                Session = otherSession,
+                MediaId = mediaId,
+                ExpectedVersion = null,
+                Stage = MediaProcessingStage.Ready,
+                StageProgress = 100,
+            });
         });
     }
 
@@ -274,7 +345,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         var commander = ownerTester.Commander;
 
         // Owner reserves media
-        var mediaId = await commander.Call(new Media_ReserveMedia(ownerSession, "remove-test"));
+        var mediaId = await commander.Call(new Media_ReserveMedia { Session = ownerSession, Scope = "remove-test" });
 
         // Act & Assert: Another user should not be able to remove
         await using var otherTester = AppHost.NewBlazorTester(Out);
@@ -284,11 +355,11 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         var otherCommander = otherTester.Commander;
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => {
-            await otherCommander.Call(new Media_RemoveMedia(otherSession, mediaId));
+            await otherCommander.Call(new Media_RemoveMedia { Session = otherSession, MediaId = mediaId });
         });
 
         // Owner can remove
-        await commander.Call(new Media_RemoveMedia(ownerSession, mediaId));
+        await commander.Call(new Media_RemoveMedia { Session = ownerSession, MediaId = mediaId });
 
         var mediaBackend = services.GetRequiredService<IMediaBackend>();
         var media = await mediaBackend.GetFull(mediaId, default);
@@ -309,7 +380,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         var commander = tester.Commander;
 
         // Reserve media
-        var mediaId = await commander.Call(new Media_ReserveMedia(session, "delete-test"));
+        var mediaId = await commander.Call(new Media_ReserveMedia { Session = session, Scope = "delete-test" });
 
         // Verify both media and progress exist
         var media = await mediaBackend.GetFull(mediaId, default);
@@ -319,7 +390,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         progress.Should().NotBeNull();
 
         // Act: Remove media
-        await commander.Call(new Media_RemoveMedia(session, mediaId));
+        await commander.Call(new Media_RemoveMedia { Session = session, MediaId = mediaId });
 
         // Assert: Both media and progress are removed
         media = await mediaBackend.GetFull(mediaId, default);

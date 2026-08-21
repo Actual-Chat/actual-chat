@@ -48,7 +48,11 @@ public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out, ILog
             var updatedAccount = account with { Status = newStatus };
             Log.LogInformation("About to update Status to '{NewStatus}'", newStatus);
             // intentionally pass expectedVersion=null to avoid version mismatch while greeting process changes account
-            await Commander.Call(new Accounts_Update(_adminSession, updatedAccount, null));
+            await Commander.Call(new Accounts_Update {
+                Session = _adminSession,
+                Account = updatedAccount,
+                ExpectedVersion = null,
+            });
             Log.LogInformation("Updated Status to '{NewStatus}'", newStatus);
 
             // assert

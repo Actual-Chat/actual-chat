@@ -158,7 +158,12 @@
             new AvatarFull(account.Id) {
                 IsAnonymous = true,
             }.WithMissingPropertiesFrom(anonymous));
-        var command = new Avatars_Change(Session, Symbol.Empty, null, Change.Create(diff));
+        var command = new Avatars_Change {
+            Session = Session,
+            AvatarId = Symbol.Empty,
+            ExpectedVersion = null,
+            Change = Change.Create(diff),
+        };
         var (avatar, error) = await UICommander.Run(command);
         if (error != null)
             return;

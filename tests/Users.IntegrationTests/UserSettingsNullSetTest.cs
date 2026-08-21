@@ -26,7 +26,7 @@ public class UserSettingsNullSetTest(AppHostFixture fixture, ITestOutputHelper @
     {
         // arrange
         await Tester.SignInAsBob();
-        var command = new UserSettings_Set(Tester.Session, nameof(UserPttSettings), null);
+        var command = new UserSettings_Set { Session = Tester.Session, Key = nameof(UserPttSettings), Value = null };
 
         // act
         var act = () => Tester.Commander.Call(command);
@@ -43,10 +43,14 @@ public class UserSettingsNullSetTest(AppHostFixture fixture, ITestOutputHelper @
         var chatId = ChatId.Parse("testchatid1234567890");
         var key = ChatUserSettings.GetKey(chatId);
         await Tester.Commander.Call(
-            new UserSettings_Set(Tester.Session, key, new ChatUserSettings { VoiceMode = VoiceMode.JustVoice }));
+            new UserSettings_Set {
+                Session = Tester.Session,
+                Key = key,
+                Value = new ChatUserSettings { VoiceMode = VoiceMode.JustVoice },
+            });
 
         // act
-        await Tester.Commander.Call(new UserSettings_Set(Tester.Session, key, null));
+        await Tester.Commander.Call(new UserSettings_Set { Session = Tester.Session, Key = key, Value = null });
 
         // assert
         var settings = AppHost.Services.GetRequiredService<IUserSettings>();
@@ -64,8 +68,16 @@ public class UserSettingsNullSetTest(AppHostFixture fixture, ITestOutputHelper @
 
         // act
         var setSettings = () => Tester.Commander.Call(
-            new UserSettings_Set(Tester.Session, key, new ChatInviteSettings { InviteId = "someInviteId" }));
-        var setKvas = () => Tester.Commander.Call(new ServerKvas_Set(Tester.Session, key, [1, 2, 3]));
+            new UserSettings_Set {
+                Session = Tester.Session,
+                Key = key,
+                Value = new ChatInviteSettings { InviteId = "someInviteId" },
+            });
+        var setKvas = () => Tester.Commander.Call(new ServerKvas_Set {
+            Session = Tester.Session,
+            Key = key,
+            Value = [1, 2, 3],
+        });
 
         // assert
         await setSettings.Should().ThrowAsync<Exception>();
@@ -89,7 +101,7 @@ public class UserSettingsNullSetTest(AppHostFixture fixture, ITestOutputHelper @
         await guestKvas.Set<ChatUserSettings>(plainKey, new ChatUserSettings { VoiceMode = VoiceMode.JustVoice });
 
         // act
-        await Tester.Commander.Call(new ServerKvas_MigrateGuestKeys(Tester.Session));
+        await Tester.Commander.Call(new ServerKvas_MigrateGuestKeys { Session = Tester.Session });
 
         // assert
         var userKvas = kvasBackend.ForUser(account.Id);

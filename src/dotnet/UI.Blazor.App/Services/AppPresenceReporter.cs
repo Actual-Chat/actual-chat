@@ -95,7 +95,10 @@ public class AppPresenceReporter : UIWorkerBase<AppUIHub>, IComputeService
                 _lastCheckInAt.Value += Constants.Presence.CheckInRetryDelay;
                 return;
             }
-            await Commander.Call(new UserPresences_CheckIn(Session, isActive), cancellationToken).ConfigureAwait(false);
+            await Commander.Call(new UserPresences_CheckIn {
+                Session = Session,
+                IsActive = isActive,
+            }, cancellationToken).ConfigureAwait(false);
             _lastCheckInAt.Value = CpuNow;
         }
         catch (Exception e) when (e is not OperationCanceledException) {

@@ -272,7 +272,12 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
     }
 
     private Task PromoteToModerator(AuthorId authorId)
-        => Owner.Commander.Call(new Authors_ChangeRole(Owner.Session, authorId, SystemRole.Moderator, true));
+        => Owner.Commander.Call(new Authors_ChangeRole {
+            Session = Owner.Session,
+            AuthorId = authorId,
+            SystemRole = SystemRole.Moderator,
+            IsInRole = true,
+        });
 
     private async Task<bool> IsMuted(ChatId chatId, AuthorId authorId, bool expected = true)
     {

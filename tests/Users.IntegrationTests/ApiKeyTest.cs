@@ -35,7 +35,7 @@ public class ApiKeyTest(AppHostFixture fixture, ITestOutputHelper @out, ILogger<
         apiKeys.Count.Should().Be(0);
 
         // Act — create an API key
-        var createCommand = new Accounts_CreateApiKey(session, "Test Key", 30);
+        var createCommand = new Accounts_CreateApiKey { Session = session, Name = "Test Key", ExpiresInDays = 30 };
         var apiKeyId = await Commander.Call(createCommand, default);
         apiKeyId.Should().NotBeNullOrEmpty();
         apiKeyId[0].Should().Be(CoreConstants.Session.ApiKeyPrefix);
@@ -57,7 +57,11 @@ public class ApiKeyTest(AppHostFixture fixture, ITestOutputHelper @out, ILogger<
         var session = _tester.Session;
 
         // Create an API key
-        var createCommand = new Accounts_CreateApiKey(session, "Key To Deactivate", 30);
+        var createCommand = new Accounts_CreateApiKey {
+            Session = session,
+            Name = "Key To Deactivate",
+            ExpiresInDays = 30,
+        };
         var apiKeyId = await Commander.Call(createCommand, default);
 
         // Wait for it to appear
@@ -68,7 +72,7 @@ public class ApiKeyTest(AppHostFixture fixture, ITestOutputHelper @out, ILogger<
 
         // Act — deactivate it
         var apiKeySession = new Session(apiKeyId);
-        var deactivateCommand = new Accounts_DeactivateSession(session, apiKeySession.IdPrefix);
+        var deactivateCommand = new Accounts_DeactivateSession { Session = session, IdPrefix = apiKeySession.IdPrefix };
         await Commander.Call(deactivateCommand, default);
 
         // Assert — should disappear from active list
@@ -89,7 +93,7 @@ public class ApiKeyTest(AppHostFixture fixture, ITestOutputHelper @out, ILogger<
         var sessionsBefore = await _accounts.ListOwnSessions(session, SessionKind.Session, default);
 
         // Act — create an API key
-        var createCommand = new Accounts_CreateApiKey(session, "My Key", 365);
+        var createCommand = new Accounts_CreateApiKey { Session = session, Name = "My Key", ExpiresInDays = 365 };
         await Commander.Call(createCommand, default);
 
         // Assert — sessions list should not change
@@ -111,7 +115,7 @@ public class ApiKeyTest(AppHostFixture fixture, ITestOutputHelper @out, ILogger<
         var session = _tester.Session;
         var ownAccount = await _accounts.GetOwn(session, default);
 
-        var createCommand = new Accounts_CreateApiKey(session, "Auth Test Key", 30);
+        var createCommand = new Accounts_CreateApiKey { Session = session, Name = "Auth Test Key", ExpiresInDays = 30 };
         var apiKeyId = await Commander.Call(createCommand, default);
 
         // Act — use the API key session to get own account

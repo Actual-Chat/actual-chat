@@ -43,12 +43,14 @@ public static class ChatOperations
         var isPublicChat = chatDiff.IsPublic ?? false;
 
         var commander = tester.Commander;
-        var chat = await commander.Call(new Chats_Change(session,
-            default,
-            null,
-            new () {
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new () {
                 Create = chatDiff,
-            }), cancellationToken);
+            },
+        }, cancellationToken);
         chat.Require();
         var chatId = chat.Id;
 
@@ -56,7 +58,10 @@ public static class ChatOperations
         if (!isPublicChat) {
             // to join private chat we need to generate invite code
             Invite.Invite invite = Invite.ChatInvite.New(Constants.Invites.Defaults.ChatRemaining, chatId);
-            invite = await commander.Call(new Invites_Generate(session, invite), cancellationToken);
+            invite = await commander.Call(new Invites_Generate {
+                Session = session,
+                Invite = invite,
+            }, cancellationToken);
             inviteId = invite.Id;
         }
 
@@ -64,23 +69,32 @@ public static class ChatOperations
     }
 
     public static Task<Chat.Chat> UpdateChat(this IWebTester tester, ChatId chatId, string title)
-        => tester.Commander.Call(new Chats_Change(tester.Session,
-            chatId,
-            null,
-            Change.Update(new ChatDiff {
+        => tester.Commander.Call(new Chats_Change {
+            Session = tester.Session,
+            ChatId = chatId,
+            ExpectedVersion = null,
+            Change = Change.Update(new ChatDiff {
                 Title = title
-            })));
+            }),
+        });
 
     public static Task<Chat.Chat> SetChatMedia(this IWebTester tester, ChatId chatId, MediaId mediaId)
-        => tester.Commander.Call(new Chats_Change(tester.Session,
-            chatId,
-            null,
-            Change.Update(new ChatDiff {
+        => tester.Commander.Call(new Chats_Change {
+            Session = tester.Session,
+            ChatId = chatId,
+            ExpectedVersion = null,
+            Change = Change.Update(new ChatDiff {
                 MediaId = mediaId
-            })));
+            }),
+        });
 
     public static Task<Chat.Chat> DeleteChat(this IWebTester tester, ChatId chatId)
-        => tester.Commander.Call(new Chats_Change(tester.Session, chatId, null, Change.Remove(new ChatDiff())));
+        => tester.Commander.Call(new Chats_Change {
+            Session = tester.Session,
+            ChatId = chatId,
+            ExpectedVersion = null,
+            Change = Change.Remove(new ChatDiff()),
+        });
 
     public static async Task<AuthorFull> JoinChat(this IWebTester tester, ChatId chatId, Symbol inviteId,
         bool? joinAnonymously = null, Symbol avatarId = default)
@@ -97,7 +111,7 @@ public static class ChatOperations
         if (!isPublicChat) {
             canJoin.Should().BeFalse();
             // to join private chat we need to activate invite code first
-            await commander.Call(new Invites_Use(session, inviteId), true);
+            await commander.Call(new Invites_Use { Session = session, InviteId = inviteId }, true);
 
             var c = await Computed.Capture(() => chats.GetRules(session, chatId, default));
             c = await c.When(x => x.CanJoin()).WaitAsync(TimeSpan.FromSeconds(3));
@@ -106,7 +120,12 @@ public static class ChatOperations
 
         canJoin.Should().BeTrue();
 
-        var command = new Authors_Join(session, chatId, AvatarId: avatarId, JoinAnonymously: joinAnonymously);
+        var command = new Authors_Join {
+            Session = session,
+            ChatId = chatId,
+            AvatarId = avatarId,
+            JoinAnonymously = joinAnonymously,
+        };
         var author = await commander.Call(command, true).ConfigureAwait(false);
         return author;
     }
@@ -156,7 +175,7 @@ public static class ChatOperations
         var session = tester.Session;
         var commander = tester.Commander;
 
-        await commander.Call(new Authors_Invite(session, chatId, userIds));
+        await commander.Call(new Authors_Invite { Session = session, ChatId = chatId, UserIds = userIds });
 
         // TODO: return author from command
         var authorIds = await tester.Authors.ListAuthorIds(tester.Session, chatId, CancellationToken.None);
@@ -169,5 +188,5 @@ public static class ChatOperations
     }
 
     public static Task LeaveChat(this IWebTester tester, ChatId chatId)
-        => tester.Commander.Call(new Authors_Leave(tester.Session, chatId));
+        => tester.Commander.Call(new Authors_Leave { Session = tester.Session, ChatId = chatId });
 }

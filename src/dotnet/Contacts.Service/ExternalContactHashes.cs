@@ -23,7 +23,10 @@ public class ExternalContactHashes(IAccounts accounts, IExternalContactHashesBac
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
 
-        var (session, deviceId, expectedVersion, change) = command;
+        var session = command.Session;
+        var deviceId = command.DeviceId;
+        var expectedVersion = command.ExpectedVersion;
+        var change = command.Change;
         var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (!account.IsActive())
             return null;

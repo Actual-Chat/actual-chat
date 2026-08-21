@@ -18,10 +18,11 @@ public class RemoveOwnAccountTest(AppHostFixture fixture, ITestOutputHelper @out
         var session = tester.Session;
 
         var chats = services.GetRequiredService<IChats>();
-        var createChatCommand = new Chats_Change(session,
-            null,
-            null,
-            new Change<ChatDiff> {
+        var createChatCommand = new Chats_Change {
+            Session = session,
+            ChatId = null,
+            ExpectedVersion = null,
+            Change = new Change<ChatDiff> {
                 Create = Option.Some(new ChatDiff {
                     Title = "TestChatToRemove",
                     IsPublic = false,
@@ -29,13 +30,14 @@ public class RemoveOwnAccountTest(AppHostFixture fixture, ITestOutputHelper @out
                     AllowAnonymousAuthors = true,
                     Kind = ChatKind.Group,
                 }),
-            });
+            },
+        };
         var chat = await services.Commander().Call(createChatCommand);
         chat.Should().NotBeNull();
 
         var entries = await CreateChatEntries(chats, session, chat.Id, 3);
         var entriesActual = await CreateChatEntries(chats, session, TestChatId, 3);
-        var deleteOwnAccountCommand = new Accounts_DeleteOwn(session);
+        var deleteOwnAccountCommand = new Accounts_DeleteOwn { Session = session };
         await services.Commander().Call(deleteOwnAccountCommand);
 
         var chat1 = await chats.Get(session, chat.Id, CancellationToken.None);
@@ -79,7 +81,7 @@ public class RemoveOwnAccountTest(AppHostFixture fixture, ITestOutputHelper @out
                 if (count-- <= 0)
                     return entries.ToArray();
 
-                var command = new Chats_UpsertEntry(session, chatId, null) { Text = text };
+                var command = new Chats_UpsertEntry { Session = session, ChatId = chatId, LocalId = null, Text = text };
                 var entry = await commander.Call(command, CancellationToken.None).ConfigureAwait(false);
                 entries.Add(entry);
             }

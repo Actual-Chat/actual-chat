@@ -100,7 +100,11 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         if (Invalidation.IsActive)
             return null!;
 
-        var (session, phone, purpose, captchaToken, captchaAction, _) = command;
+        var session = command.Session;
+        var phone = command.Phone;
+        var purpose = command.Purpose;
+        var captchaToken = command.CaptchaToken;
+        var captchaAction = command.CaptchaAction;
         if (TryGetPredefined(phone, out _))
             return new TotpSendResult(NextSendAt(), null); // no need to send predefined totp
 
@@ -147,8 +151,13 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         if (Invalidation.IsActive)
             return default; // It just spawns other commands, so nothing to do here
 
-        var (session, phone, purpose, captchaToken, captchaAction) = command;
-        var sendCodeCommand = new PhoneAuth_SendCode(session, phone, purpose, captchaToken, captchaAction);
+        var sendCodeCommand = new PhoneAuth_SendCode {
+            Session = command.Session,
+            Phone = command.Phone,
+            Purpose = command.Purpose,
+            CaptchaToken = command.CaptchaToken,
+            CaptchaAction = command.CaptchaAction,
+        };
         var result = await Commander.Call(sendCodeCommand, true, cancellationToken).ConfigureAwait(false);
 
         return result.NextSendAt;
@@ -162,7 +171,9 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         if (Invalidation.IsActive)
             return false; // It just spawns other commands, so nothing to do here
 
-        var (session, phone, totp) = command;
+        var session = command.Session;
+        var phone = command.Phone;
+        var totp = command.Totp;
         if (!await ValidateCode(session, phone, totp, TotpPurpose.SignInPhone, cancellationToken).ConfigureAwait(false))
             return false;
 
@@ -181,7 +192,9 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         if (Invalidation.IsActive)
             return false; // It just spawns other commands, so nothing to do here
 
-        var (session, phone, totp) = command;
+        var session = command.Session;
+        var phone = command.Phone;
+        var totp = command.Totp;
         if (!await ValidateCode(session, phone, totp, TotpPurpose.VerifyPhone, cancellationToken).ConfigureAwait(false))
             return false;
 

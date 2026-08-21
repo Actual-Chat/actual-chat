@@ -266,7 +266,10 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         ChatEntryAttachment[] attachments,
         CancellationToken cancellationToken)
     {
-        var cmd = new Chats_UpsertEntry(Session, chatId, null) {
+        var cmd = new Chats_UpsertEntry {
+            Session = Session,
+            ChatId = chatId,
+            LocalId = null,
             Text = text,
             ClientId = RandomStringGenerator.Default.Next(6),
             Attachments = attachments,
@@ -312,12 +315,20 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
 
         Task<UploadId> InitUpload()
         {
-            var cmd = new Uploads_Create(Session, uploadSource.Metadata.Length, "", metadata);
+            var cmd = new Uploads_Create {
+                Session = Session,
+                Length = uploadSource.Metadata.Length,
+                Tag = "",
+                Metadata = metadata,
+            };
             return UICommander.Call(cmd, cancellationToken);
         }
 
         Task<MediaRef> CompleteUpload()
-            => Commander.Call(new Uploads_ConvertToMediaRef(Session, uploadId), CancellationToken.None);
+            => Commander.Call(new Uploads_ConvertToMediaRef {
+                Session = Session,
+                UploadId = uploadId,
+            }, CancellationToken.None);
     }
 
     private async Task<Disposable<UploadSource>> PrepareUploadSource(

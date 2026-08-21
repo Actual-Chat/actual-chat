@@ -149,9 +149,9 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         if (!isPublicPlace) {
             ActualChat.Invite.Invite invite = ActualChat.Invite.PlaceInvite.New(Constants.Invites.Defaults.PlaceRemaining, place.Id);
-            invite = await commander.Call(new Invites_Generate(session, invite));
+            invite = await commander.Call(new Invites_Generate { Session = session, Invite = invite });
 
-            await commander2.Call(new Invites_Use(anotherSession, invite.Id));
+            await commander2.Call(new Invites_Use { Session = anotherSession, InviteId = invite.Id });
         }
 
         await ComputedTest.When(async ct => {
@@ -186,12 +186,12 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         if (!isPublicPlace) {
             ActualChat.Invite.Invite invite = ActualChat.Invite.PlaceInvite.New(Constants.Invites.Defaults.PlaceRemaining, place.Id);
-            invite = await commander.Call(new Invites_Generate(session, invite));
+            invite = await commander.Call(new Invites_Generate { Session = session, Invite = invite });
 
-            await tester2.Commander.Call(new Invites_Use(anotherSession, invite.Id));
+            await tester2.Commander.Call(new Invites_Use { Session = anotherSession, InviteId = invite.Id });
         }
 
-        await commander.Call(new Places_Join(anotherSession, place.Id));
+        await commander.Call(new Places_Join { Session = anotherSession, PlaceId = place.Id });
 
         await ComputedTest.When(async ct => {
             var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
@@ -226,13 +226,13 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         var inviteId = Symbol.Empty;
         if (!isPublicPlace) {
             ActualChat.Invite.Invite invite = ActualChat.Invite.PlaceInvite.New(Constants.Invites.Defaults.PlaceRemaining, placeId);
-            invite = await commander.Call(new Invites_Generate(session, invite));
+            invite = await commander.Call(new Invites_Generate { Session = session, Invite = invite });
             inviteId = invite.Id;
 
-            await tester2.Commander.Call(new Invites_Use(anotherSession, inviteId));
+            await tester2.Commander.Call(new Invites_Use { Session = anotherSession, InviteId = inviteId });
         }
 
-        await commander.Call(new Places_Join(anotherSession, placeId));
+        await commander.Call(new Places_Join { Session = anotherSession, PlaceId = placeId });
 
         await ComputedTest.When(async ct => {
                 var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
@@ -245,7 +245,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         place!.Rules.CanLeave().Should().BeTrue();
 
         // Leave
-        await commander.Call(new Places_Leave(anotherSession, placeId));
+        await commander.Call(new Places_Leave { Session = anotherSession, PlaceId = placeId });
 
         await ComputedTest.When(async ct => {
             var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
@@ -262,13 +262,13 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         // Re-join again
         if (!isPublicPlace) {
-            await tester2.Commander.Call(new Invites_Use(anotherSession, inviteId));
+            await tester2.Commander.Call(new Invites_Use { Session = anotherSession, InviteId = inviteId });
             await ComputedTest.When(async ct => {
                 var rejoinable = await places.Get(anotherSession, placeId, ct);
                 rejoinable!.Rules.CanJoin().Should().BeTrue();
             });
         }
-        await commander.Call(new Places_Join(anotherSession, placeId));
+        await commander.Call(new Places_Join { Session = anotherSession, PlaceId = placeId });
 
         await ComputedTest.When(async ct => {
             var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
@@ -307,9 +307,9 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         if (!isPublicPlace) {
             ActualChat.Invite.Invite invite = ActualChat.Invite.PlaceInvite.New(Constants.Invites.Defaults.PlaceRemaining, place.Id);
-            invite = await commander.Call(new Invites_Generate(session, invite));
+            invite = await commander.Call(new Invites_Generate { Session = session, Invite = invite });
 
-            await commander2.Call(new Invites_Use(anotherSession, invite.Id));
+            await commander2.Call(new Invites_Use { Session = anotherSession, InviteId = invite.Id });
         }
 
         if (isPublicChat) {
@@ -328,7 +328,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         else
             await services.Queues().WhenProcessing();
 
-        await commander2.Call(new Places_Join(anotherSession, place.Id));
+        await commander2.Call(new Places_Join { Session = anotherSession, PlaceId = place.Id });
 
         // Assert user can see the Place.
         await ComputedTest.When(async ct => {
@@ -342,7 +342,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             contactIds.Length.Should().Be(0);
 
             ActualChat.Invite.Invite invite = ActualChat.Invite.ChatInvite.New(Constants.Invites.Defaults.ChatRemaining, chat.Id);
-            invite = await commander.Call(new Invites_Generate(session, invite));
+            invite = await commander.Call(new Invites_Generate { Session = session, Invite = invite });
 
             // Invites_Use requires place membership, which the just-issued Places_Join grants a
             // recompute later - ChatsBackend.GetRules consolidates.
@@ -352,8 +352,8 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
                 var placeRules = await chatsBackend.GetRules(place.Id.RootChatId, joiner.Id, ct);
                 placeRules.IsMember().Should().BeTrue();
             });
-            await commander2.Call(new Invites_Use(anotherSession, invite.Id));
-            await commander2.Call(new Authors_Join(anotherSession, chat.Id));
+            await commander2.Call(new Invites_Use { Session = anotherSession, InviteId = invite.Id });
+            await commander2.Call(new Authors_Join { Session = anotherSession, ChatId = chat.Id });
         }
 
         // Assert user can see the Chat.
@@ -400,7 +400,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         if (addToPlaceMembers) {
             var user2 = await tester2.Accounts.GetOwn(session2, default);
-            await commander.Call(new Places_Invite(session, place.Id, [user2.Id]));
+            await commander.Call(new Places_Invite { Session = session, PlaceId = place.Id, UserIds = [user2.Id] });
             var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();
             await ComputedTest.When(async ct => {
                 var placeFromUser2Perspective = await tester2.Places.Get(session2, place.Id, ct);
@@ -411,15 +411,15 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         }
 
         ActualChat.Invite.Invite invite = ActualChat.Invite.ChatInvite.New(Constants.Invites.Defaults.ChatRemaining, chat.Id);
-        invite = await commander.Call(new Invites_Generate(session, invite));
+        invite = await commander.Call(new Invites_Generate { Session = session, Invite = invite });
 
         if (shouldSucceed) {
-            var invite2 = await commander2.Call(new Invites_Use(session2, invite.Id));
+            var invite2 = await commander2.Call(new Invites_Use { Session = session2, InviteId = invite.Id });
             invite2.Should().NotBeNull();
         }
         else
             await Assert.ThrowsAsync<InvalidOperationException>(async () => {
-                await commander2.Call(new Invites_Use(session2, invite.Id));
+                await commander2.Call(new Invites_Use { Session = session2, InviteId = invite.Id });
             });
     }
 
@@ -439,7 +439,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         var session2 = tester2.Session;
         await tester2.SignInAsUniqueAlice();
 
-        await tester2.Commander.Call(new Places_Join(session2, place.Id));
+        await tester2.Commander.Call(new Places_Join { Session = session2, PlaceId = place.Id });
 
         var authorList1 = await authors.ListAuthorIds(session1, chat.Id, default);
         authorList1.Should().HaveCount(2);
@@ -525,7 +525,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         chat.Rules.CanLeave().Should().BeFalse();
 
         await Assert.ThrowsAsync<SecurityException>(() =>
-            commander.Call(new Authors_Leave(session, chat.Id)
+            commander.Call(new Authors_Leave { Session = session, ChatId = chat.Id }
         ));
     }
 
@@ -545,13 +545,23 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         await tester2.SignInAsUniqueAlice();
         var commander2 = tester2.Commander;
 
-        await commander2.Call(new Places_Join(session2, place.Id));
+        await commander2.Call(new Places_Join { Session = session2, PlaceId = place.Id });
 
-        var cmd1 = new Chats_UpsertEntry(session1, chat.Id, null) { Text = "My first message" };
+        var cmd1 = new Chats_UpsertEntry {
+            Session = session1,
+            ChatId = chat.Id,
+            LocalId = null,
+            Text = "My first message",
+        };
         var chatEntry1 = await commander1.Call(cmd1);
         chatEntry1.Should().NotBeNull();
 
-        var cmd2 = new Chats_UpsertEntry(session2, chat.Id, null) { Text = "And mine first message" };
+        var cmd2 = new Chats_UpsertEntry {
+            Session = session2,
+            ChatId = chat.Id,
+            LocalId = null,
+            Text = "And mine first message",
+        };
         var chatEntry2 = await commander2.Call(cmd2);
         chatEntry2.Should().NotBeNull();
     }
@@ -572,10 +582,15 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         await tester2.SignInAsUniqueAlice();
 
         var account = await tester2.AppServices.GetRequiredService<IAccounts>().GetOwn(session2, default);
-        await commander1.Call(new Places_Invite(session1, place.Id, [account.Id]));
+        await commander1.Call(new Places_Invite { Session = session1, PlaceId = place.Id, UserIds = [account.Id] });
 
         var commander2 = tester2.Commander;
-        var cmd = new Chats_UpsertEntry(session2, chat.Id, null) { Text = "My first message" };
+        var cmd = new Chats_UpsertEntry {
+            Session = session2,
+            ChatId = chat.Id,
+            LocalId = null,
+            Text = "My first message",
+        };
         var chatEntry = await commander2.Call(cmd);
         chatEntry.Should().NotBeNull();
         var authorId = chatEntry.AuthorId;
@@ -682,7 +697,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         await tester2.SignInAsUniqueAlice();
         var commander2 = tester2.Commander;
 
-        await commander2.Call(new Places_Join(session2, place.Id));
+        await commander2.Call(new Places_Join { Session = session2, PlaceId = place.Id });
 
         if (shouldSucceed)
             (await AddChat()).Should().NotBeNull();
@@ -718,7 +733,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         var accounts2 = tester2.ScopedAppServices.GetRequiredService<IAccounts>();
         var user2 = await accounts2.GetOwn(session2, default);
 
-        await commander1.Call(new Places_Invite(session1, place.Id, [user2.Id]));
+        await commander1.Call(new Places_Invite { Session = session1, PlaceId = place.Id, UserIds = [user2.Id] });
         var placeFromUser2Perspective = await tester2.Places.Get(session2, place.Id, default).Require();
         var user2PlaceMember = placeFromUser2Perspective.Rules.Author.Require();
 
@@ -728,7 +743,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         placeUsers.Should().HaveCount(2).And.Contain(user2.Id);
 
         if (!chat.IsPublic)
-            await commander1.Call(new Authors_Invite(session1, chat.Id, [user2.Id]));
+            await commander1.Call(new Authors_Invite { Session = session1, ChatId = chat.Id, UserIds = [user2.Id] });
 
         var chatFromUser2Perspective = await tester2.Chats.Get(session2, chat.Id, default).Require();
         var user2ChatAuthor = chatFromUser2Perspective.Rules.Author.Require();
@@ -738,10 +753,10 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         chatUsers.Should().HaveCount(2).And.Contain(user2.Id);
 
         // NOTE: user2 should write a message to ensure explicit author exists for the chat.
-        var cmd = new Chats_UpsertEntry(session2, chat.Id, null) { Text = "Hello!" };
+        var cmd = new Chats_UpsertEntry { Session = session2, ChatId = chat.Id, LocalId = null, Text = "Hello!" };
         await commander2.Call(cmd);
 
-        await commander1.Call(new Places_Exclude(session1, user2PlaceMember.Id));
+        await commander1.Call(new Places_Exclude { Session = session1, AuthorId = user2PlaceMember.Id });
 
         placeMembers = await tester.Places.ListAuthorIds(session1, place.Id, default);
         placeMembers.Should().HaveCount(1).And.NotContain(user2PlaceMember.Id);
@@ -778,7 +793,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             await tester2.SignInAsUniqueAlice();
             var commander2 = tester2.Commander;
 
-            await commander2.Call(new Places_Join(session2, place.Id));
+            await commander2.Call(new Places_Join { Session = session2, PlaceId = place.Id });
             (session, commander) = (session2, commander2);
         }
 
@@ -792,11 +807,16 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         Task<Chat> MakeChatPublic()
         {
-            return commander.Call(new Chats_Change(session, chat.Id, null, new () {
-                Update = new ChatDiff {
-                    IsPublic = true,
+            return commander.Call(new Chats_Change {
+                Session = session,
+                ChatId = chat.Id,
+                ExpectedVersion = null,
+                Change = new () {
+                    Update = new ChatDiff {
+                        IsPublic = true,
+                    },
                 },
-            }));
+            });
         }
     }
 
@@ -818,22 +838,24 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         var (_, chat) = await CreatePlaceWithDefaultChat(commander1, session1, false, isPublicChat);
 
-        await commander1.Call(new Authors_SetAvatar(session1, chat.Id, avatar2.Id));
+        await commander1.Call(new Authors_SetAvatar { Session = session1, ChatId = chat.Id, AvatarId = avatar2.Id });
         var author = await authors.GetOwn(session1, chat.Id, default).Require();
         author.AvatarId.Should().Be(avatar2.Id);
 
-        await commander1.Call(new Authors_SetAvatar(session1, chat.Id, avatar1.Id));
+        await commander1.Call(new Authors_SetAvatar { Session = session1, ChatId = chat.Id, AvatarId = avatar1.Id });
         author = await authors.GetOwn(session1, chat.Id, default).Require();
         author.AvatarId.Should().Be(avatar1.Id);
 
         async Task<AvatarFull> CreateAvatar(string name)
         {
-            return await commander1.Call(new Avatars_Change(session1,
-                Symbol.Empty,
-                null,
-                Change.Create(new AvatarDiff {
+            return await commander1.Call(new Avatars_Change {
+                Session = session1,
+                AvatarId = Symbol.Empty,
+                ExpectedVersion = null,
+                Change = Change.Create(new AvatarDiff {
                     Name = name
-                })));
+                }),
+            });
         }
     }
 
@@ -859,7 +881,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         var chatFromUser2Perspective = await tester2.Chats.Get(session2, chatId, default);
         chatFromUser2Perspective.Should().NotBeNull();
 
-        await commander1.Call(new Places_Invite(session1, placeId, [user2.Id]));
+        await commander1.Call(new Places_Invite { Session = session1, PlaceId = placeId, UserIds = [user2.Id] });
         var placeFromUser2Perspective = await tester2.Places.Get(session2, placeId, default).Require();
         var user2PlaceMember = placeFromUser2Perspective.Rules.Author.Require();
 
@@ -871,7 +893,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         contactIds.Should().HaveCount(1);
         contactIds[0].ChatId.Should().Be(chatId);
 
-        await commander1.Call(new Places_Exclude(session1, user2PlaceMember.Id));
+        await commander1.Call(new Places_Exclude { Session = session1, AuthorId = user2PlaceMember.Id });
 
         await ComputedTest.When(async ct => {
             placeFromUser2Perspective = await tester2.Places.Get(session2, placeId, ct).Require();
@@ -914,7 +936,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         var accounts2 = tester2.ScopedAppServices.GetRequiredService<IAccounts>();
         var user2 = await accounts2.GetOwn(session2, default);
 
-        await commander1.Call(new Places_Invite(session1, place.Id, [user2.Id]));
+        await commander1.Call(new Places_Invite { Session = session1, PlaceId = place.Id, UserIds = [user2.Id] });
         var placeFromUser2Perspective = await tester2.Places.Get(session2, place.Id, default).Require();
         var user2PlaceMember = placeFromUser2Perspective.Rules.Author.Require();
 
@@ -923,16 +945,16 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         await tester2.JoinChat(chat.Id, invite.Id);
 
-        await commander2.Call(new Places_Leave(session2, place.Id));
+        await commander2.Call(new Places_Leave { Session = session2, PlaceId = place.Id });
 
         var chatRules = await chats.GetRules(session2, chat.Id, default);
 
         var canJoin = chatRules.CanJoin();
         canJoin.Should().BeFalse();
 
-        await commander1.Call(new Places_Invite(session1, place.Id, [user2.Id]));
+        await commander1.Call(new Places_Invite { Session = session1, PlaceId = place.Id, UserIds = [user2.Id] });
 
-        await commander2.Call(new Invites_Use(session2, invite.Id), true);
+        await commander2.Call(new Invites_Use { Session = session2, InviteId = invite.Id }, true);
 
         await ComputedTest.When(async ct => {
             chatRules = await chats.GetRules(session2, chat.Id, ct);
@@ -957,12 +979,17 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         Session session,
         bool isPublicPlace)
     {
-        var place = await commander.Call(new Places_Change(session, default, null, new () {
-            Create = new PlaceDiff {
-                Title = PlaceTitle,
-                IsPublic = isPublicPlace,
+        var place = await commander.Call(new Places_Change {
+            Session = session,
+            PlaceId = default,
+            ExpectedVersion = null,
+            Change = new () {
+                Create = new PlaceDiff {
+                    Title = PlaceTitle,
+                    IsPublic = isPublicPlace,
+                },
             },
-        }));
+        });
         return place;
     }
 
@@ -973,13 +1000,18 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         bool isPublicChat,
         string chatTitle = ChatTitle)
     {
-        var chat = await commander.Call(new Chats_Change(session, default, null, new () {
-            Create = new ChatDiff {
-                Title = chatTitle,
-                IsPublic = isPublicChat,
-                PlaceId = placeId,
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new () {
+                Create = new ChatDiff {
+                    Title = chatTitle,
+                    IsPublic = isPublicChat,
+                    PlaceId = placeId,
+                },
             },
-        }));
+        });
         return chat;
     }
 }

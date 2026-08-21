@@ -27,7 +27,12 @@ public static class CopyChatToPlaceUI
         async Task CopyInternal() {
             onBeforeCopy?.Invoke();
             var correlationId = Guid.NewGuid().ToString();
-            var command = new Chat_CopyChat(session, sourceChatId, placeId, correlationId);
+            var command = new Chat_CopyChat {
+                Session = session,
+                SourceChatId = sourceChatId,
+                PlaceId = placeId,
+                CorrelationId = correlationId,
+            };
             var (result, error) = await hub.UICommander.Run(command, cancellationToken);
             onAfterCopy?.Invoke(error);
             if (error != null)
@@ -67,7 +72,11 @@ public static class CopyChatToPlaceUI
         return;
 
         async Task PublishInternal() {
-            var command = new Chat_PublishCopiedChat(session, placeChatId, sourceChatId);
+            var command = new Chat_PublishCopiedChat {
+                Session = session,
+                NewChatId = placeChatId,
+                SourceChatId = sourceChatId,
+            };
             var (_, error) = await hub.UICommander.Run(command, cancellationToken).ConfigureAwait(true);
             if (error != null)
                 return;

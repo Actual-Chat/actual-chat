@@ -122,11 +122,11 @@
     }
 
     private async Task CreateChat(string title, Symbol systemTag, string? mediaId = null) {
-        var command = new Chats_Change(
-            Session,
-            default,
-            null,
-            new() {
+        var command = new Chats_Change {
+            Session = Session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
                 Create = new ChatDiff {
                     Title = title,
                     Kind = ChatKind.Group,
@@ -134,7 +134,8 @@
                     IsPublic = false,
                     SystemTag = systemTag,
                 },
-            });
+            },
+        };
         await UICommander.Run(command);
     }
 

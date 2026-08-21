@@ -114,7 +114,7 @@ public static class TestAuthExt
             return false;
 
         await services.Commander()
-            .Call(new Accounts_ConfirmRegister(session, info.Token), true, cancellationToken)
+            .Call(new Accounts_ConfirmRegister { Session = session, Token = info.Token }, true, cancellationToken)
             .ConfigureAwait(false);
         return true;
     }
@@ -134,7 +134,7 @@ public static class TestAuthExt
         var services = appHost.Services;
         var commander = services.Commander();
 
-        var command = new Accounts_SignOut(session, deactivate);
+        var command = new Accounts_SignOut { Session = session, Deactivate = deactivate };
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
         var accounts = appHost.Services.GetRequiredService<IAccounts>();
         await WaitForSignOut(accounts, session, cancellationToken).ConfigureAwait(false);

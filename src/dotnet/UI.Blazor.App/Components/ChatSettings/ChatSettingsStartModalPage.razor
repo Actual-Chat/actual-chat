@@ -276,9 +276,14 @@
             Description = _form!.Description,
             MediaId = _form.Picture?.MediaRef?.MediaId,
         };
-        var command = new Chats_Change(Session, chat.Id, chat.Version, new() {
-            Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
-        });
+        var command = new Chats_Change {
+            Session = Session,
+            ChatId = chat.Id,
+            ExpectedVersion = chat.Version,
+            Change = new() {
+                Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
+            },
+        };
         await Hub.UICommander.Run(command);
     }
 

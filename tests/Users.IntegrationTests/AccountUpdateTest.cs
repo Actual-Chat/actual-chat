@@ -46,7 +46,11 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
             Name = account.Name + " Updated",
             Claims = new ApiMap<string, string>(),
         };
-        var updateCommand = new Accounts_Update(Tester.Session, accountWithEmptyClaims, null);
+        var updateCommand = new Accounts_Update {
+            Session = Tester.Session,
+            Account = accountWithEmptyClaims,
+            ExpectedVersion = null,
+        };
         await Tester.Commander.Call(updateCommand);
 
         // Assert - claims should be preserved
@@ -67,7 +71,11 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
             Name = account.Name + " Updated",
             Identities = new ApiMap<UserIdentity, string>(),
         };
-        var updateCommand = new Accounts_Update(Tester.Session, accountWithEmptyIdentities, null);
+        var updateCommand = new Accounts_Update {
+            Session = Tester.Session,
+            Account = accountWithEmptyIdentities,
+            ExpectedVersion = null,
+        };
         await Tester.Commander.Call(updateCommand);
 
         // Assert - identities should be preserved
@@ -91,7 +99,11 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
             Claims = new ApiMap<string, string>(),
             Identities = new ApiMap<UserIdentity, string>(),
         };
-        var updateCommand = new Accounts_Update(Tester.Session, accountWithEmptyData, null);
+        var updateCommand = new Accounts_Update {
+            Session = Tester.Session,
+            Account = accountWithEmptyData,
+            ExpectedVersion = null,
+        };
         await Tester.Commander.Call(updateCommand);
 
         // Assert - both claims and identities should be preserved
@@ -114,7 +126,11 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
             TimeZone = newTimeZone,
             SyncContacts = true,
         };
-        var updateCommand = new Accounts_Update(Tester.Session, updatedAccountData, null);
+        var updateCommand = new Accounts_Update {
+            Session = Tester.Session,
+            Account = updatedAccountData,
+            ExpectedVersion = null,
+        };
         await Tester.Commander.Call(updateCommand);
 
         // Assert - other properties should be updated
@@ -143,7 +159,11 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
             CreatedAt = createdAt - TimeSpan.FromDays(365),
             IsGreetingCompleted = false,
         };
-        var updateCommand = new Accounts_Update(Tester.Session, updatedAccountData, null);
+        var updateCommand = new Accounts_Update {
+            Session = Tester.Session,
+            Account = updatedAccountData,
+            ExpectedVersion = null,
+        };
         await Tester.Commander.Call(updateCommand);
 
         // assert
@@ -244,7 +264,11 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
             Email = account.Email,
             Phone = account.Phone,
         };
-        var updateCommand = new Accounts_Update(Tester.Session, oldAppUpdate, null);
+        var updateCommand = new Accounts_Update {
+            Session = Tester.Session,
+            Account = oldAppUpdate,
+            ExpectedVersion = null,
+        };
         await Tester.Commander.Call(updateCommand);
 
         // Assert - claims and identities should be preserved
@@ -265,7 +289,11 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         var accountWithNewClaimsAndIdentities = account
             .WithClaim("malicious_claim", "should_not_appear")
             .WithIdentity(new UserIdentity("malicious_provider", "malicious_id"));
-        var updateCommand = new Accounts_Update(Tester.Session, accountWithNewClaimsAndIdentities, null);
+        var updateCommand = new Accounts_Update {
+            Session = Tester.Session,
+            Account = accountWithNewClaimsAndIdentities,
+            ExpectedVersion = null,
+        };
         await Tester.Commander.Call(updateCommand);
 
         // Assert - claims and identities should remain unchanged (original values preserved)
@@ -288,7 +316,11 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // Act
         var updatedAccountData = account with { Name = account.Name + " V2" };
-        var updateCommand = new Accounts_Update(Tester.Session, updatedAccountData, null);
+        var updateCommand = new Accounts_Update {
+            Session = Tester.Session,
+            Account = updatedAccountData,
+            ExpectedVersion = null,
+        };
         await Tester.Commander.Call(updateCommand);
 
         // Assert
@@ -306,7 +338,11 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // Act
         var updatedAccountData = account with { Name = account.Name + " WithVersion" };
-        var updateCommand = new Accounts_Update(Tester.Session, updatedAccountData, account.Version);
+        var updateCommand = new Accounts_Update {
+            Session = Tester.Session,
+            Account = updatedAccountData,
+            ExpectedVersion = account.Version,
+        };
         await Tester.Commander.Call(updateCommand);
 
         // Assert
@@ -322,7 +358,11 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // Act & Assert
         var updatedAccountData = account with { Name = account.Name + " WrongVersion" };
-        var updateCommand = new Accounts_Update(Tester.Session, updatedAccountData, account.Version + 100);
+        var updateCommand = new Accounts_Update {
+            Session = Tester.Session,
+            Account = updatedAccountData,
+            ExpectedVersion = account.Version + 100,
+        };
 
         var act = () => Tester.Commander.Call(updateCommand);
         await act.Should().ThrowAsync<Exception>();
@@ -343,7 +383,11 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
             Name = account.Name + " DbTest",
             Claims = new ApiMap<string, string>(),
         };
-        var updateCommand = new Accounts_Update(Tester.Session, accountWithEmptyClaims, null);
+        var updateCommand = new Accounts_Update {
+            Session = Tester.Session,
+            Account = accountWithEmptyClaims,
+            ExpectedVersion = null,
+        };
         await Tester.Commander.Call(updateCommand);
 
         // Wait for update to propagate
@@ -368,7 +412,11 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
             Name = account.Name + " DbTest",
             Identities = new ApiMap<UserIdentity, string>(),
         };
-        var updateCommand = new Accounts_Update(Tester.Session, accountWithEmptyIdentities, null);
+        var updateCommand = new Accounts_Update {
+            Session = Tester.Session,
+            Account = accountWithEmptyIdentities,
+            ExpectedVersion = null,
+        };
         await Tester.Commander.Call(updateCommand);
 
         // Wait for update to propagate
@@ -456,7 +504,11 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         var timeZone = "America/New_York";
 
         var accountWithTimeZone = account with { TimeZone = timeZone };
-        var updateCommand = new Accounts_Update(Tester.Session, accountWithTimeZone, null);
+        var updateCommand = new Accounts_Update {
+            Session = Tester.Session,
+            Account = accountWithTimeZone,
+            ExpectedVersion = null,
+        };
         await Tester.Commander.Call(updateCommand);
 
         var updatedAccount = await WhenOwnAccountUpdated(a => a.TimeZone == timeZone);
@@ -476,7 +528,11 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         var account = await Tester.SignInAsUniqueBob();
 
         var accountWithSyncContacts = account with { SyncContacts = true };
-        var updateCommand = new Accounts_Update(Tester.Session, accountWithSyncContacts, null);
+        var updateCommand = new Accounts_Update {
+            Session = Tester.Session,
+            Account = accountWithSyncContacts,
+            ExpectedVersion = null,
+        };
         await Tester.Commander.Call(updateCommand);
 
         var updatedAccount = await WhenOwnAccountUpdated(a => a.SyncContacts);

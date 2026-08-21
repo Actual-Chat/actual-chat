@@ -26,7 +26,7 @@ public sealed class McpMessageTools(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         var parsedChatId = ChatId.Parse(chatId);
-        var command = new Chats_UpsertEntry(Session, parsedChatId, null) { Text = text };
+        var command = new Chats_UpsertEntry { Session = Session, ChatId = parsedChatId, LocalId = null, Text = text };
         var entry = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         return entry.LocalId;
     }
@@ -40,7 +40,12 @@ public sealed class McpMessageTools(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         var parsedChatId = ChatId.Parse(chatId);
-        var command = new Chats_UpsertEntry(Session, parsedChatId, entryId) { Text = text };
+        var command = new Chats_UpsertEntry {
+            Session = Session,
+            ChatId = parsedChatId,
+            LocalId = entryId,
+            Text = text,
+        };
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
@@ -52,7 +57,7 @@ public sealed class McpMessageTools(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         var parsedChatId = ChatId.Parse(chatId);
-        var command = new Chats_RemoveEntry(Session, parsedChatId, entryId);
+        var command = new Chats_RemoveEntry { Session = Session, ChatId = parsedChatId, LocalId = entryId };
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 

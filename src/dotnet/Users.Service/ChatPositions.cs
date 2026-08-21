@@ -28,7 +28,10 @@ public class ChatPositions(IServiceProvider services) : DbServiceBase<UsersDbCon
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, kind, position) = command;
+        var session = command.Session;
+        var chatId = command.ChatId;
+        var kind = command.Kind;
+        var position = command.Position;
         if (kind == ChatPositionKind.Heard)
             throw StandardError.Constraint(
                 "Heard position can't be set directly - it's owned by the server-side ack path.");

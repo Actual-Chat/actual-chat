@@ -147,7 +147,7 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
         // No navigation here: ProcessLoginLogout reloads once OwnAccount flips to guest.
         // UICommander, not Commander: SignOut() callers are fire-and-forget, so a throw would vanish.
         // Deactivate, because sign-in doesn't rotate the session id - it would outlive the sign-out.
-        => Hub.UICommander.Run(new Accounts_SignOut(Session, true));
+        => Hub.UICommander.Run(new Accounts_SignOut { Session = Session, Deactivate = true });
 
     // Private methods
 

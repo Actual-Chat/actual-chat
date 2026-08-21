@@ -35,10 +35,11 @@
 
     private async Task OnTimeZoneSelected(TimeZone timeZone) {
         var account = await Hub.Accounts.GetOwn(Session, default);
-        var updateAccountCommand = new Accounts_Update(
-            Session,
-            account with { TimeZone = timeZone.Id },
-            account.Version);
+        var updateAccountCommand = new Accounts_Update {
+            Session = Session,
+            Account = account with { TimeZone = timeZone.Id },
+            ExpectedVersion = account.Version,
+        };
         var (_, error) = await Hub.UICommander.Run(updateAccountCommand);
         if (error != null)
             return;

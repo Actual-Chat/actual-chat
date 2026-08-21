@@ -58,7 +58,7 @@ public static class AccountOperations
     {
         await using var __ = await tester.BackupAuth();
         await tester.SignIn(account, cancellationToken);
-        var cmd = new Accounts_Update(tester.Session, account, null);
+        var cmd = new Accounts_Update { Session = tester.Session, Account = account, ExpectedVersion = null };
         await tester.Commander.Call(cmd, cancellationToken);
         AccountFull result = null!;
 
@@ -76,7 +76,7 @@ public static class AccountOperations
     {
         await using var __ = await tester.BackupAuth();
         await tester.SignIn(account, cancellationToken);
-        var cmd = new Accounts_DeleteOwn(tester.Session);
+        var cmd = new Accounts_DeleteOwn { Session = tester.Session };
         await tester.Commander.Call(cmd, cancellationToken);
         return await tester.Accounts.GetOwn(tester.Session, cancellationToken);
     }

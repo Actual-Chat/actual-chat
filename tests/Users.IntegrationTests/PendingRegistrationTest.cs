@@ -131,7 +131,7 @@ public class PendingRegistrationTest(AppHostFixture fixture, ITestOutputHelper @
         info.Should().NotBeNull();
 
         // act
-        await Commander.Call(new Accounts_ConfirmRegister(session, info!.Token));
+        await Commander.Call(new Accounts_ConfirmRegister { Session = session, Token = info!.Token });
 
         // assert
         var account = await Accounts.GetOwn(session, default);
@@ -152,7 +152,7 @@ public class PendingRegistrationTest(AppHostFixture fixture, ITestOutputHelper @
         info.Should().NotBeNull();
 
         // act
-        await Commander.Call(new Accounts_CancelRegister(session, info!.Token));
+        await Commander.Call(new Accounts_CancelRegister { Session = session, Token = info!.Token });
 
         // assert
         (await GetPendingRegistration(session))
@@ -176,7 +176,7 @@ public class PendingRegistrationTest(AppHostFixture fixture, ITestOutputHelper @
         info.Should().NotBeNull();
 
         // act + assert
-        var act = () => Commander.Call(new Accounts_ConfirmRegister(sessionB, info!.Token));
+        var act = () => Commander.Call(new Accounts_ConfirmRegister { Session = sessionB, Token = info!.Token });
         await act.Should().ThrowAsync<Exception>(
             "a PendingRegistration token issued for one session must not be redeemable from another");
 
@@ -197,7 +197,7 @@ public class PendingRegistrationTest(AppHostFixture fixture, ITestOutputHelper @
         info.Should().NotBeNull();
 
         // act
-        var act = () => Commander.Call(new Accounts_CancelRegister(sessionB, info!.Token));
+        var act = () => Commander.Call(new Accounts_CancelRegister { Session = sessionB, Token = info!.Token });
 
         // assert
         await act.Should().ThrowAsync<Exception>(
@@ -217,7 +217,7 @@ public class PendingRegistrationTest(AppHostFixture fixture, ITestOutputHelper @
         var email = UniqueNames.Email("existing-account");
         await SignIn(sessionFirst, email);
         var info = await GetPendingRegistration(sessionFirst);
-        await Commander.Call(new Accounts_ConfirmRegister(sessionFirst, info!.Token));
+        await Commander.Call(new Accounts_ConfirmRegister { Session = sessionFirst, Token = info!.Token });
         var firstAccount = await Accounts.GetOwn(sessionFirst, default);
         firstAccount.IsGuest.Should().BeFalse();
 
@@ -247,7 +247,7 @@ public class PendingRegistrationTest(AppHostFixture fixture, ITestOutputHelper @
         var existingEmail = UniqueNames.Email("stale-prompt-existing");
         await SignIn(seedSession, existingEmail);
         var seedInfo = await GetPendingRegistration(seedSession);
-        await Commander.Call(new Accounts_ConfirmRegister(seedSession, seedInfo!.Token));
+        await Commander.Call(new Accounts_ConfirmRegister { Session = seedSession, Token = seedInfo!.Token });
 
         // act — same session signs in successfully against the existing email
         await SignIn(session, existingEmail);
@@ -273,7 +273,7 @@ public class PendingRegistrationTest(AppHostFixture fixture, ITestOutputHelper @
         var session = await NewSession();
         await SignIn(session, email);
         var info = await GetPendingRegistration(session);
-        await Commander.Call(new Accounts_ConfirmRegister(session, info!.Token));
+        await Commander.Call(new Accounts_ConfirmRegister { Session = session, Token = info!.Token });
         return await Accounts.GetOwn(session, CancellationToken.None);
     }
 

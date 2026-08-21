@@ -127,11 +127,15 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
         bool isWrongAccepted;
         bool isPredefinedAccepted;
         try {
-            await tester.Commander.Call(new PhoneAuth_SendTotp(tester.Session, phone, TotpPurpose.SignInPhone));
+            await tester.Commander.Call(new PhoneAuth_SendTotp {
+                Session = tester.Session,
+                Phone = phone,
+                Purpose = TotpPurpose.SignInPhone,
+            });
             isWrongAccepted = await tester.Commander
-                .Call(new PhoneAuth_ValidateTotp(tester.Session, phone, 222222));
+                .Call(new PhoneAuth_ValidateTotp { Session = tester.Session, Phone = phone, Totp = 222222 });
             isPredefinedAccepted = await tester.Commander
-                .Call(new PhoneAuth_ValidateTotp(tester.Session, phone, 111111));
+                .Call(new PhoneAuth_ValidateTotp { Session = tester.Session, Phone = phone, Totp = 111111 });
         }
         finally {
             settings.PredefinedTotps = oldPredefinedTotps;
@@ -180,11 +184,13 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var tester = AppHost.NewWebClientTester(Out);
         await using var _ = tester.ConfigureAwait(false);
-        var command = new PhoneAuth_SendTotp(tester.Session,
-            NewPhone(),
-            TotpPurpose.SignInPhone,
-            FailingProofToken,
-            Constants.Recaptcha.Actions.PhoneSignIn);
+        var command = new PhoneAuth_SendTotp {
+            Session = tester.Session,
+            Phone = NewPhone(),
+            Purpose = TotpPurpose.SignInPhone,
+            CaptchaToken = FailingProofToken,
+            CaptchaAction = Constants.Recaptcha.Actions.PhoneSignIn,
+        };
 
         // act
         Func<Task> send = () => tester.Commander.Call(command);
@@ -199,11 +205,13 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var tester = AppHost.NewWebClientTester(Out);
         await using var _ = tester.ConfigureAwait(false);
-        var command = new PhoneAuth_SendTotp(tester.Session,
-            NewPhone(),
-            TotpPurpose.SignInPhone,
-            PassingProofToken,
-            Constants.Recaptcha.Actions.PhoneSignIn);
+        var command = new PhoneAuth_SendTotp {
+            Session = tester.Session,
+            Phone = NewPhone(),
+            Purpose = TotpPurpose.SignInPhone,
+            CaptchaToken = PassingProofToken,
+            CaptchaAction = Constants.Recaptcha.Actions.PhoneSignIn,
+        };
 
         // act
         Func<Task> send = () => tester.Commander.Call(command);
@@ -218,11 +226,13 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var tester = AppHost.NewWebClientTester(Out);
         await using var _ = tester.ConfigureAwait(false);
-        var command = new PhoneAuth_SendTotp(tester.Session,
-            NewPhone(),
-            TotpPurpose.SignInPhone,
-            PassingProofToken,
-            Constants.Recaptcha.Actions.EmailSignIn);
+        var command = new PhoneAuth_SendTotp {
+            Session = tester.Session,
+            Phone = NewPhone(),
+            Purpose = TotpPurpose.SignInPhone,
+            CaptchaToken = PassingProofToken,
+            CaptchaAction = Constants.Recaptcha.Actions.EmailSignIn,
+        };
 
         // act
         Func<Task> send = () => tester.Commander.Call(command);
@@ -237,7 +247,11 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var tester = AppHost.NewWebClientTester(Out);
         await using var _ = tester.ConfigureAwait(false);
-        var command = new PhoneAuth_SendTotp(tester.Session, NewPhone(), TotpPurpose.SignInPhone);
+        var command = new PhoneAuth_SendTotp {
+            Session = tester.Session,
+            Phone = NewPhone(),
+            Purpose = TotpPurpose.SignInPhone,
+        };
 
         // act
         var isProofRequired = CaptchaProofs.IsProofRequired;
@@ -257,7 +271,11 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
         await tester.Commander.Call(new SessionsBackend_Upsert(tester.Session) {
             Description = AppKind.Ios.ToUserAgent("1.0"),
         });
-        var command = new PhoneAuth_SendTotp(tester.Session, NewPhone(), TotpPurpose.SignInPhone);
+        var command = new PhoneAuth_SendTotp {
+            Session = tester.Session,
+            Phone = NewPhone(),
+            Purpose = TotpPurpose.SignInPhone,
+        };
 
         // act
         var isProofRequired = CaptchaProofs.IsProofRequired;
@@ -279,11 +297,15 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
             Description = AppKind.Ios.ToUserAgent("1.0"),
         });
         var phone = NewPhone();
-        var command = new PhoneAuth_SendCode(tester.Session, phone, TotpPurpose.SignInPhone);
+        var command = new PhoneAuth_SendCode {
+            Session = tester.Session,
+            Phone = phone,
+            Purpose = TotpPurpose.SignInPhone,
+        };
 
-        // act
+        // act - a fresh Uuid on the second send, or the deduplicator would replay the first result
         var sent = await tester.Commander.Call(command);
-        var throttled = await tester.Commander.Call(command);
+        var throttled = await tester.Commander.Call(command with { Uuid = ApiCommand.NewUuid() });
 
         // assert
         sent.Channel.Should().Be(TotpChannel.Sms);
@@ -298,11 +320,13 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
         var tester = AppHost.NewWebClientTester(Out);
         await using var _ = tester.ConfigureAwait(false);
         var email = ActualChat.Email.Parse($"{Ulid.NewUlid().ToString().ToLower()}@example.com");
-        var command = new EmailAuth_SendTotp(tester.Session,
-            email,
-            TotpPurpose.SignInEmail,
-            FailingProofToken,
-            Constants.Recaptcha.Actions.EmailSignIn);
+        var command = new EmailAuth_SendTotp {
+            Session = tester.Session,
+            Email = email,
+            Purpose = TotpPurpose.SignInEmail,
+            CaptchaToken = FailingProofToken,
+            CaptchaAction = Constants.Recaptcha.Actions.EmailSignIn,
+        };
 
         // act
         Func<Task> send = () => tester.Commander.Call(command);

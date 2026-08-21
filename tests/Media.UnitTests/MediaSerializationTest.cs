@@ -105,7 +105,12 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void Uploads_Create_Basic()
     {
-        var cmd = new Uploads_Create(TestSession, 1024, "image", new MetadataBag());
+        var cmd = new Uploads_Create {
+            Session = TestSession,
+            Length = 1024,
+            Tag = "image",
+            Metadata = new MetadataBag(),
+        };
         cmd.AssertPassesThroughSerializers();
     }
 
@@ -113,7 +118,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void Uploads_Remove_Basic()
     {
         var uploadId = UploadId.New();
-        var cmd = new Uploads_Remove(TestSession, uploadId);
+        var cmd = new Uploads_Remove { Session = TestSession, UploadId = uploadId };
         cmd.AssertPassesThroughSerializers();
     }
 
@@ -140,7 +145,12 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void AcceptsRealisticPayload()
     {
         // arrange
-        var command = new Uploads_Append(TestSession, UploadId.New(), 0, new byte[4 * 1024 * 1024]);
+        var command = new Uploads_Append {
+            Session = TestSession,
+            UploadId = UploadId.New(),
+            Offset = 0,
+            Chunk = new byte[4 * 1024 * 1024],
+        };
         var arguments = ArgumentList.New(command);
         var formats = new[] {
             RpcSerializationFormat.MessagePackV6,

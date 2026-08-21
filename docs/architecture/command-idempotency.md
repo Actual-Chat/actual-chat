@@ -102,9 +102,15 @@ branch only — commands are client→server, so the client never needs it):
   msgpack slice is measured, an empty `Uuid` is prepended (array header `+1`), and the
   transformed slice is deserialized into the current layout.
 
-Only arguments whose type `typeof(ApiCommand).IsAssignableFrom(type)` is true are touched;
-everything else is untouched. This is why `ApiCommand` lives in `Core` (so the decorator can
-name it) — it has no `Api`-only dependencies.
+Only arguments whose type derives from `ApiCommand` are touched; everything else is
+untouched. This is why `ApiCommand` lives in `Core` (so the decorator can name it) — it has
+no `Api`-only dependencies.
+
+**Exception — commands with their own `[MessagePackFormatter]`.** The `ServerKvas_*` and
+`ServerSettings_Set` commands serialize as a *named-key map*, not an array, so there is no
+element to prepend — `MustPrependUuid` skips them. They need no migration: a map from an old
+client simply lacks the `Uuid` entry, and their formatters read that back as `""`, which is
+exactly what the array path prepends.
 
 See also [Serialization](./serialization.md) for the broader serializer landscape and the
 MessagePack attribute convention.
@@ -147,11 +153,31 @@ Reclaims log at Info; overruns log at Warning.
 - **Version, not heuristics.** Backward compat is gated on the handshake API version, not on
   payload length or a caught exception.
 
+## Writing an API command
+
+Every client-callable command derives from `ApiCommand<TResult>`, with **no positional
+constructor** — `Uuid` must never appear in a call site, and an all-`init` record is the only
+shape that round-trips through MessagePack, Newtonsoft, and System.Text.Json alike:
+
+```csharp
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Chats_RemoveEntry : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required long LocalId { get; init; }
+}
+```
+
+- **Own members start at `Key(2)`** — `Uuid` is 0 and `Session` is 1, both on the base.
+- **`required`** for everything the caller must supply; drop it (and give a default) for
+  optional members.
+- Call sites use object initializers: `new Chats_RemoveEntry { Session = s, ChatId = c, LocalId = 1 }`.
+- Don't deconstruct a command in its handler — read `command.ChatId` instead. Positional
+  deconstruction died with the positional constructor, and it broke on every added member anyway.
+
 ## Deferred
 
-- **Migrate the remaining commands** — only `Reactions_React` is migrated as a testbed; the
-  other ~80 `IApiCommand` commands follow. Safe across a rollout because of the version-gated
-  deserializer above.
 - **Marker heartbeat** — extend the in-progress TTL while a command runs, for genuinely
   unbounded-duration commands. Not needed yet (the flat 5-min TTL covers realistic maxima);
   `command.dedup.overrun` would flag the gap.

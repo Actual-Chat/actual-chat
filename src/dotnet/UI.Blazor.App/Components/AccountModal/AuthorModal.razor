@@ -208,7 +208,7 @@
             Modal.Close();
 
         async Task SetAvatar(AvatarFull avatar) {
-            var command = new Authors_SetAvatar(Session, ChatId, avatar.Id);
+            var command = new Authors_SetAvatar { Session = Session, ChatId = ChatId, AvatarId = avatar.Id };
             await UICommander.Run(command);
             revealed = true;
         }
@@ -231,7 +231,11 @@
         => AuthorUI.StartAnonymousPeerChat(AuthorId);
 
     private async Task OnAvatarSelected(AvatarFull avatar) {
-        var command = new Authors_SetAvatar(Session, AuthorId.ChatId.GetThreadOutermostParentOrSelf(), avatar.Id);
+        var command = new Authors_SetAvatar {
+            Session = Session,
+            ChatId = AuthorId.ChatId.GetThreadOutermostParentOrSelf(),
+            AvatarId = avatar.Id,
+        };
         await UICommander.Run(command);
     }
 

@@ -32,7 +32,10 @@ public class Uploads(IServiceProvider services) : IUploads
     // [CommandHandler]
     public virtual async Task<UploadId> OnCreate(Uploads_Create command, CancellationToken cancellationToken)
     {
-        var (session, length, tag, metadata) = command;
+        var session = command.Session;
+        var length = command.Length;
+        var tag = command.Tag;
+        var metadata = command.Metadata;
         if (length is null)
             throw StandardError.NotSupported("Defer upload length is not supported yet.");
         if (length > Constants.Attachments.FileSizeLimit)
@@ -57,7 +60,8 @@ public class Uploads(IServiceProvider services) : IUploads
     // [CommandHandler]
     public virtual async Task OnRemove(Uploads_Remove command, CancellationToken cancellationToken)
     {
-        var (session, uploadId) = command;
+        var session = command.Session;
+        var uploadId = command.UploadId;
         var user = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var upload = await Backend.Get(uploadId, cancellationToken).ConfigureAwait(false);
         if (upload is null || upload.UserId != user.Id)
@@ -69,7 +73,10 @@ public class Uploads(IServiceProvider services) : IUploads
     // [CommandHandler]
     public virtual async Task<long> OnAppend(Uploads_Append command, CancellationToken cancellationToken)
     {
-        var (session, uploadId, offset, data) = command;
+        var session = command.Session;
+        var uploadId = command.UploadId;
+        var offset = command.Offset;
+        var data = command.Chunk;
         if (data.Length > Constants.Uploads.MaxChunkSize)
             throw StandardError.Constraint("Upload chunk is too big.");
 
@@ -138,7 +145,8 @@ public class Uploads(IServiceProvider services) : IUploads
     // [CommandHandler]
     public virtual async Task<MediaRef> OnConvertToMediaContent(Uploads_ConvertToMediaRef command, CancellationToken cancellationToken)
     {
-        var (session, uploadId) = command;
+        var session = command.Session;
+        var uploadId = command.UploadId;
         var user = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var upload = await Backend.Get(uploadId, cancellationToken).ConfigureAwait(false);
         EnsureCanAccessUpload(upload, user);
@@ -151,7 +159,9 @@ public class Uploads(IServiceProvider services) : IUploads
         if (Invalidation.IsActive)
             return;
 
-        var (session, uploadId, mediaId) = command;
+        var session = command.Session;
+        var uploadId = command.UploadId;
+        var mediaId = command.MediaId;
 
         // Verify upload ownership
         var user = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);

@@ -50,12 +50,17 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
         var nonMemberSession = Session.New();
         _ = await appHost.SignIn(nonMemberSession, new AccountFull("Jack"));
 
-        var chat = await commander.Call(new Chats_Change(memberSession, default, null, new() {
-            Create = new ChatDiff {
-                Title = "NonMemberAudioTest",
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = memberSession,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "NonMemberAudioTest",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
 
         // JustVoice keeps this recording out of the transcription pipeline.
@@ -103,12 +108,17 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
         var session = Session.New();
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
 
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = "LiveStreamsTest",
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "LiveStreamsTest",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
 
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
@@ -131,12 +141,17 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
 
         // Create a chat
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = "LiveStreamsTest",
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "LiveStreamsTest",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
 
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
@@ -170,12 +185,17 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
         var session = Session.New();
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
 
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = "LiveStreamsTest",
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "LiveStreamsTest",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
 
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
@@ -194,12 +214,17 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
         var commander = services.Commander();
         var session = Session.New();
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = "SkipToLiveTest",
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "SkipToLiveTest",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
         await services.UserSettingsUI(session)
             .ChatUserSettings(chat.Id)

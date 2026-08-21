@@ -433,7 +433,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         var hasMultipleAvatars = avatars.Count > 1;
 
         if (!hasMultipleAvatars) {
-            var command = new Places_Join(Session, placeId);
+            var command = new Places_Join { Session = Session, PlaceId = placeId };
             await UICommander.Run(command).ConfigureAwait(false);
             return;
         }
@@ -441,7 +441,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         await ModalUI.Show(new AvatarSelectModal.Model(null, false, JoinWithAvatar)).ConfigureAwait(false);
 
         async Task JoinWithAvatar(AvatarFull avatar) {
-            var command = new Places_Join(Session, placeId, avatar.Id);
+            var command = new Places_Join { Session = Session, PlaceId = placeId, AvatarId = avatar.Id };
             await UICommander.Run(command).ConfigureAwait(false);
         }
     }
@@ -698,7 +698,12 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                         return Task.CompletedTask;
                     }
 
-                    var command = new ChatPositions_Set(Session, chatId, ChatPositionKind.Read, new ChatPosition(position.EntryLid, position.Origin));
+                    var command = new ChatPositions_Set {
+                        Session = Session,
+                        ChatId = chatId,
+                        Kind = ChatPositionKind.Read,
+                        Position = new ChatPosition(position.EntryLid, position.Origin),
+                    };
                     writeDebouncer.Throttle(command);
 
                     var cReadEntryLid = Computed.GetExisting(() => GetReadEntryLid(chatId, default));
@@ -820,8 +825,13 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
         var isSelectedChat = chat.Id.Equals(SelectedChatId.Value);
         var command = isDelete
-            ? (ICommand)new Chats_Change(Session, chat.Id, null, Change.Remove<ChatDiff>())
-            : new Authors_Leave(Session, chat.Id);
+            ? (ICommand)new Chats_Change {
+                Session = Session,
+                ChatId = chat.Id,
+                ExpectedVersion = null,
+                Change = Change.Remove<ChatDiff>(),
+            }
+            : new Authors_Leave { Session = Session, ChatId = chat.Id };
         var result = await UICommander.Run(command).ConfigureAwait(true); // Continue on Blazor context
         if (result.HasError)
             return;
@@ -839,8 +849,13 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         modal.Close();
         await onBeforeExecuteCommand().ConfigureAwait(true);
         var command = isDelete
-            ? (ICommand)new Places_Change(Session, placeId, null, Change.Remove<PlaceDiff>())
-            : new Places_Leave(Session, placeId);
+            ? (ICommand)new Places_Change {
+                Session = Session,
+                PlaceId = placeId,
+                ExpectedVersion = null,
+                Change = Change.Remove<PlaceDiff>(),
+            }
+            : new Places_Leave { Session = Session, PlaceId = placeId };
         var result = await UICommander.Run(command).ConfigureAwait(true);
         if (result.HasError)
             return;
@@ -850,9 +865,14 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     private async Task ArchiveChatInternal(ChatId chatId)
     {
-        var archiveCommand = new Chats_Change(Session, chatId, null, Change.Update(new ChatDiff {
-            IsArchived = true
-        }));
+        var archiveCommand = new Chats_Change {
+            Session = Session,
+            ChatId = chatId,
+            ExpectedVersion = null,
+            Change = Change.Update(new ChatDiff {
+                IsArchived = true
+            }),
+        };
         await UICommander.Call(archiveCommand).ConfigureAwait(true);
     }
 

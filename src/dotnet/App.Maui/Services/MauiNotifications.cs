@@ -23,7 +23,7 @@ public class MauiNotifications(IServiceProvider services)
         Log.LogInformation("RefreshNotificationToken. Peer got connected");
         var session = await SessionResolver.GetSession(cancellationToken).ConfigureAwait(false);
         Log.LogInformation("RefreshNotificationToken. Got session");
-        var command = new Notifications_RegisterDevice(session, token, deviceType);
+        var command = new Notifications_RegisterDevice { Session = session, DeviceId = token, DeviceType = deviceType };
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         Log.LogInformation("<- RefreshNotificationToken");
     }

@@ -20,7 +20,13 @@ public class NativeAuthSignOutTest(AppHostFixture fixture, ITestOutputHelper @ou
         var appleUserId = UniqueNames.AppleId();
         var email = UniqueNames.Email("native-signout", "gmail.com");
         var code = AppleTokenHandler.Setup(appleUserId, email);
-        await Commander.Call(new NativeAuth_SignInApple(session, appleUserId, code, email, "Test User"), ct);
+        await Commander.Call(new NativeAuth_SignInApple {
+            Session = session,
+            UserId = appleUserId,
+            Code = code,
+            Email = email,
+            Name = "Test User",
+        }, ct);
         await AppHost.ConfirmPendingRegistration(session);
 
         var cAccount = await Computed.Capture(() => Accounts.GetOwn(session, ct), ct);
@@ -30,7 +36,7 @@ public class NativeAuthSignOutTest(AppHostFixture fixture, ITestOutputHelper @ou
         cAccount.Value.IsGuest.Should().BeFalse();
 
         // act
-        await Commander.Call(new NativeAuth_SignOut(session), ct);
+        await Commander.Call(new NativeAuth_SignOut { Session = session }, ct);
 
         // assert
         cAccount = await cAccount

@@ -11,8 +11,8 @@ public interface ISessionTemporals : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record SessionTemporals_Set(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] string Key,
-    [property: DataMember, Key(2)] string? Value
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record SessionTemporals_Set : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required string Key { get; init; }
+    [DataMember(Order = 3), Key(3)] public required string? Value { get; init; }
+}

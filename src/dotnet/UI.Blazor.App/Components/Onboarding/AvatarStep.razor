@@ -79,9 +79,13 @@
             return;
         }
 
-        var createAvatarCommand = new Avatars_Change(Session, Symbol.Empty, null,
-            Change.Create(AvatarDiff.FromFull(
-                new AvatarFull(account.Id).WithMissingPropertiesFrom(account.Avatar))));
+        var createAvatarCommand = new Avatars_Change {
+            Session = Session,
+            AvatarId = Symbol.Empty,
+            ExpectedVersion = null,
+            Change = Change.Create(AvatarDiff.FromFull(
+            new AvatarFull(account.Id).WithMissingPropertiesFrom(account.Avatar))),
+        };
         var (newAvatar, error) = await UICommander.Run(createAvatarCommand);
         if (error != null)
             return;
@@ -89,7 +93,7 @@
         _model.OriginalAvatar = newAvatar;
         _model.AvatarId = newAvatar.Id;
         _model.Picture = newAvatar.Picture! with { ExternalUrl = account.Avatar.PictureUrl };
-        var setDefaultAvatarCommand = new Avatars_SetDefault(Session, newAvatar.Id);
+        var setDefaultAvatarCommand = new Avatars_SetDefault { Session = Session, AvatarId = newAvatar.Id };
         await UICommander.Run(setDefaultAvatarCommand);
     }
 
@@ -100,17 +104,23 @@
 
     protected override async Task<bool> Save() {
         var account = await Accounts.GetOwn(Session, default);
-        var updateAccountCommand = new Accounts_Update(
-            Session,
-            account with {
+        var updateAccountCommand = new Accounts_Update {
+            Session = Session,
+            Account = account with {
                 Name = _model.Name,
             },
-            account.Version);
+            ExpectedVersion = account.Version,
+        };
         await UICommander.Run(updateAccountCommand);
 
         var updated = _model.OriginalAvatar.WithPicture(_model.Picture) with { Name = _model.Name.Trim() };
         var diff = DiffEngine.Diff<AvatarFull, AvatarDiff>(_model.OriginalAvatar, updated);
-        var updateAvatarCommand = new Avatars_Change(Session, _model.AvatarId, null, Change.Update(diff));
+        var updateAvatarCommand = new Avatars_Change {
+            Session = Session,
+            AvatarId = _model.AvatarId,
+            ExpectedVersion = null,
+            Change = Change.Update(diff),
+        };
         var (_, error) = await UICommander.Run(updateAvatarCommand);
         return error is null;
     }

@@ -186,7 +186,10 @@ public static class IosPtt
             var sessionResolver = app.Services.GetRequiredService<TrueSessionResolver>();
             var session = await sessionResolver.SessionTask.ConfigureAwait(false);
             var commander = app.Services.GetRequiredService<ICommander>();
-            await commander.Call(new Notifications_DeregisterDevice(session, token), CancellationToken.None)
+            await commander.Call(new Notifications_DeregisterDevice {
+                Session = session,
+                DeviceId = token,
+            }, CancellationToken.None)
                 .ConfigureAwait(false);
         }, Log, "PTT token deregistration failed", CancellationToken.None);
     }

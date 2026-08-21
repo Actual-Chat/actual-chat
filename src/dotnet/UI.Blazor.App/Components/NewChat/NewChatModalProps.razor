@@ -191,18 +191,23 @@
         if (!_formRef.IsValid)
             return;
         try {
-            var command = new Chats_Change(Hub.Session, null, null, new() {
-                Create = new ChatDiff {
-                    Title = _form.Title,
-                    Description = _form.Description,
-                    Kind = null,
-                    IsPublic = _form.IsPublic,
-                    MediaId = _form.Picture?.MediaRef?.MediaId,
-                    AllowGuestAuthors = PlaceId is null ? _form.AllowGuestAuthors : null,
-                    AllowAnonymousAuthors = PlaceId is null ? _form.AllowAnonymousAuthors : null,
-                    PlaceId = PlaceId
+            var command = new Chats_Change {
+                Session = Hub.Session,
+                ChatId = null,
+                ExpectedVersion = null,
+                Change = new() {
+                    Create = new ChatDiff {
+                        Title = _form.Title,
+                        Description = _form.Description,
+                        Kind = null,
+                        IsPublic = _form.IsPublic,
+                        MediaId = _form.Picture?.MediaRef?.MediaId,
+                        AllowGuestAuthors = PlaceId is null ? _form.AllowGuestAuthors : null,
+                        AllowAnonymousAuthors = PlaceId is null ? _form.AllowAnonymousAuthors : null,
+                        PlaceId = PlaceId
+                    },
                 },
-            });
+            };
             var (chat, createChatError) = await Hub.UICommander.Run(command, CancellationToken.None);
             if (createChatError != null)
                 return;

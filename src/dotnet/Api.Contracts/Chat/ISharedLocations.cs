@@ -16,9 +16,9 @@ public interface ISharedLocations : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record SharedLocations_Change(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] ChatId ChatId,
-    [property: DataMember, Key(2)] SharedLocationId? Id,
-    [property: DataMember, Key(3)] Change<SharedLocationDiff> Change
-) : ISessionCommand<SharedLocation?>, IApiCommand;
+public sealed partial record SharedLocations_Change : ApiCommand<SharedLocation?>
+{
+    [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required SharedLocationId? Id { get; init; }
+    [DataMember(Order = 4), Key(4)] public required Change<SharedLocationDiff> Change { get; init; }
+}

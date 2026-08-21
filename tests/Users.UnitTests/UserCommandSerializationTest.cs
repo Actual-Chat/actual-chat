@@ -14,7 +14,7 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
         var account = new AccountFull(TestUserId, 1) {
             Name = "Updated",
         };
-        var cmd = new Accounts_Update(TestSession, account, 1);
+        var cmd = new Accounts_Update { Session = TestSession, Account = account, ExpectedVersion = 1 };
         cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
@@ -25,21 +25,21 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void Accounts_DeleteOwn_Basic()
     {
-        var cmd = new Accounts_DeleteOwn(TestSession);
+        var cmd = new Accounts_DeleteOwn { Session = TestSession };
         cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Accounts_SignOut_Basic()
     {
-        var cmd = new Accounts_SignOut(TestSession);
+        var cmd = new Accounts_SignOut { Session = TestSession };
         cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Accounts_CreateApiKey_Basic()
     {
-        var cmd = new Accounts_CreateApiKey(TestSession, "My API Key", 30);
+        var cmd = new Accounts_CreateApiKey { Session = TestSession, Name = "My API Key", ExpiresInDays = 30 };
         cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
@@ -51,7 +51,7 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void Accounts_CreateApiKey_DefaultExpiration()
     {
-        var cmd = new Accounts_CreateApiKey(TestSession, "Default Expiry Key");
+        var cmd = new Accounts_CreateApiKey { Session = TestSession, Name = "Default Expiry Key" };
         cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.ExpiresInDays.Should().Be(365);
@@ -61,7 +61,7 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void Accounts_DeactivateSession_Basic()
     {
-        var cmd = new Accounts_DeactivateSession(TestSession, "abc123def456");
+        var cmd = new Accounts_DeactivateSession { Session = TestSession, IdPrefix = "abc123def456" };
         cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.IdPrefix.Should().Be(original.IdPrefix);
@@ -71,7 +71,7 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void Accounts_DeactivateAllSessions_Basic()
     {
-        var cmd = new Accounts_DeactivateAllSessions(TestSession, [SessionKind.Session]);
+        var cmd = new Accounts_DeactivateAllSessions { Session = TestSession, Kinds = [SessionKind.Session] };
         cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Kinds.Should().BeEquivalentTo(original.Kinds);
@@ -88,8 +88,12 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void Avatars_Change_Create()
     {
-        var cmd = new Avatars_Change(TestSession, Symbol.Empty, null,
-            Change.Create(new AvatarDiff { Name = "New Avatar" }));
+        var cmd = new Avatars_Change {
+            Session = TestSession,
+            AvatarId = Symbol.Empty,
+            ExpectedVersion = null,
+            Change = Change.Create(new AvatarDiff { Name = "New Avatar" }),
+        };
         cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
@@ -99,7 +103,7 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void Avatars_SetDefault_Basic()
     {
-        var cmd = new Avatars_SetDefault(TestSession, "avatar-1");
+        var cmd = new Avatars_SetDefault { Session = TestSession, AvatarId = "avatar-1" };
         cmd.AssertPassesThroughSerializers();
     }
 
@@ -107,7 +111,12 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     public void ChatPositions_Set_Basic()
     {
         var position = new ChatPosition(42, "origin");
-        var cmd = new ChatPositions_Set(TestSession, TestChatId, ChatPositionKind.Read, position);
+        var cmd = new ChatPositions_Set {
+            Session = TestSession,
+            ChatId = TestChatId,
+            Kind = ChatPositionKind.Read,
+            Position = position,
+        };
         cmd.AssertPassesThroughSerializers();
     }
 
@@ -115,21 +124,30 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     public void ChatPositions_Set_Heard()
     {
         var position = new ChatPosition(42, "origin");
-        var cmd = new ChatPositions_Set(TestSession, TestChatId, ChatPositionKind.Heard, position);
+        var cmd = new ChatPositions_Set {
+            Session = TestSession,
+            ChatId = TestChatId,
+            Kind = ChatPositionKind.Heard,
+            Position = position,
+        };
         cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void ChatUsages_RegisterUsage_Basic()
     {
-        var cmd = new ChatUsages_RegisterUsage(TestSession, ChatUsageListKind.ViewedGroupChats, TestChatId);
+        var cmd = new ChatUsages_RegisterUsage {
+            Session = TestSession,
+            Kind = ChatUsageListKind.ViewedGroupChats,
+            ChatId = TestChatId,
+        };
         cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Emails_SendDigest_Basic()
     {
-        var cmd = new Emails_SendDigest(TestSession);
+        var cmd = new Emails_SendDigest { Session = TestSession };
         cmd.AssertPassesThroughSerializers();
     }
 
@@ -139,7 +157,7 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
         // Deliberately keeps covering the obsolete command's wire contract for old clients
         var phone = ActualChat.Phone.Parse("1-2345678901");
 #pragma warning disable CS0618
-        var cmd = new PhoneAuth_SendTotp(TestSession, phone);
+        var cmd = new PhoneAuth_SendTotp { Session = TestSession, Phone = phone };
         cmd.AssertPassesThroughSerializers();
 #pragma warning restore CS0618
     }
@@ -147,8 +165,11 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void PhoneAuth_SendCode_Basic()
     {
-        var cmd = new PhoneAuth_SendCode(
-            TestSession, ActualChat.Phone.Parse("374-11223344"), TotpPurpose.VerifyPhone);
+        var cmd = new PhoneAuth_SendCode {
+            Session = TestSession,
+            Phone = ActualChat.Phone.Parse("374-11223344"),
+            Purpose = TotpPurpose.VerifyPhone,
+        };
         cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
@@ -162,8 +183,12 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     public void PhoneAuth_SendCode_ReservedChannel()
     {
         // The handler ignores Channel, but the ordinal is part of the wire contract and has to survive
-        var cmd = new PhoneAuth_SendCode(
-            TestSession, ActualChat.Phone.Parse("374-11223344"), TotpPurpose.VerifyPhone, null, null, TotpChannel.Sms);
+        var cmd = new PhoneAuth_SendCode {
+            Session = TestSession,
+            Phone = ActualChat.Phone.Parse("374-11223344"),
+            Purpose = TotpPurpose.VerifyPhone,
+            Channel = TotpChannel.Sms,
+        };
         cmd.AssertPassesThroughSerializers(
             (deserialized, original) => deserialized.Channel.Should().Be(original.Channel), Out);
     }
@@ -188,7 +213,7 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     public void PhoneAuth_ValidateTotp_Basic()
     {
         var phone = ActualChat.Phone.Parse("1-2345678901");
-        var cmd = new PhoneAuth_ValidateTotp(TestSession, phone, 123456);
+        var cmd = new PhoneAuth_ValidateTotp { Session = TestSession, Phone = phone, Totp = 123456 };
         cmd.AssertPassesThroughSerializers();
     }
 
@@ -196,35 +221,43 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     public void PhoneAuth_VerifyPhone_Basic()
     {
         var phone = ActualChat.Phone.Parse("1-2345678901");
-        var cmd = new PhoneAuth_VerifyPhone(TestSession, phone, 123456);
+        var cmd = new PhoneAuth_VerifyPhone { Session = TestSession, Phone = phone, Totp = 123456 };
         cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void EmailAuth_SendTotp_Basic()
     {
-        var cmd = new EmailAuth_SendTotp(TestSession, ActualChat.Email.Parse("test@example.com"));
+        var cmd = new EmailAuth_SendTotp { Session = TestSession, Email = ActualChat.Email.Parse("test@example.com") };
         cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void EmailAuth_ValidateTotp_Basic()
     {
-        var cmd = new EmailAuth_ValidateTotp(TestSession, ActualChat.Email.Parse("test@example.com"), 123456);
+        var cmd = new EmailAuth_ValidateTotp {
+            Session = TestSession,
+            Email = ActualChat.Email.Parse("test@example.com"),
+            Totp = 123456,
+        };
         cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void EmailAuth_VerifyEmail_Basic()
     {
-        var cmd = new EmailAuth_VerifyEmail(TestSession, ActualChat.Email.Parse("test@example.com"), 123456);
+        var cmd = new EmailAuth_VerifyEmail {
+            Session = TestSession,
+            Email = ActualChat.Email.Parse("test@example.com"),
+            Token = 123456,
+        };
         cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void UserPresences_CheckIn_Basic()
     {
-        var cmd = new UserPresences_CheckIn(TestSession, true);
+        var cmd = new UserPresences_CheckIn { Session = TestSession, IsActive = true };
         cmd.AssertPassesThroughSerializers();
     }
 

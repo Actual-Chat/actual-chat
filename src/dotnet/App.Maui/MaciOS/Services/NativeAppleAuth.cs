@@ -21,7 +21,13 @@ public sealed class NativeAppleAuth(IServiceProvider services)
         var name = result.Properties["name"];
         var userId = result.Properties["user_id"];
         var session = await SessionResolver.GetSession().ConfigureAwait(false);
-        var command = new NativeAuth_SignInApple(session, userId, code, email, name);
+        var command = new NativeAuth_SignInApple {
+            Session = session,
+            UserId = userId,
+            Code = code,
+            Email = email,
+            Name = name,
+        };
         await Commander.Call(command, true).ConfigureAwait(false);
     }
 }

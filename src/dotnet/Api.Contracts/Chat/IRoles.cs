@@ -23,10 +23,10 @@ public interface IRoles : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Roles_Change(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] ChatId ChatId,
-    [property: DataMember, Key(2)] RoleId RoleId,
-    [property: DataMember, Key(3)] long? ExpectedVersion,
-    [property: DataMember, Key(4)] Change<RoleDiff> Change
-) : ISessionCommand<Role>, IApiCommand;
+public sealed partial record Roles_Change : ApiCommand<Role>
+{
+    [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required RoleId RoleId { get; init; }
+    [DataMember(Order = 4), Key(4)] public required long? ExpectedVersion { get; init; }
+    [DataMember(Order = 5), Key(5)] public required Change<RoleDiff> Change { get; init; }
+}

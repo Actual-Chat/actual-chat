@@ -125,7 +125,11 @@
             return false;
 
         var account = await Accounts.GetOwn(Session, default);
-        var command = new Accounts_Update(Session, account with { Phone = phone }, account.Version);
+        var command = new Accounts_Update {
+            Session = Session,
+            Account = account with { Phone = phone },
+            ExpectedVersion = account.Version,
+        };
         var (_, error) = await UICommander.Run(command);
         if (error is not null)
             return false;

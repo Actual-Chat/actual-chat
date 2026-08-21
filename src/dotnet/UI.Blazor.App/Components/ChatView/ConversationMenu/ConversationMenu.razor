@@ -108,7 +108,7 @@
         => ChatUI.ToggleExpandConversation(_conversationId);
 
     private void OnReSummarize()
-        => UICommander.Call(new Conversations_Summarize(Session, _conversationId));
+        => UICommander.Call(new Conversations_Summarize { Session = Session, ConversationId = _conversationId });
 
     private async Task OnCopyToClipboardRequested() {
         var cancellationToken = CancellationToken.None;

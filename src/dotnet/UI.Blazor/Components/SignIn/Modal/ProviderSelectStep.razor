@@ -179,7 +179,7 @@
             TotpUI.Reset();
         }
 
-        var cmd = new SessionTemporals_Set(Session, SessionTemporals_SignInErrorKey, null);
+        var cmd = new SessionTemporals_Set { Session = Session, Key = SessionTemporals_SignInErrorKey, Value = null };
         _ = Hub.Services.Commander().Run(cmd, true, CancellationToken.None);
     }
 

@@ -21,7 +21,7 @@ internal sealed class NewPlaceMemberSelector(AppUIHub hub, PlaceId placeId)
         => await Places.ListUserIds(Session, placeId, cancellationToken);
 
     public async Task<Exception?> Invite(UserId[] userIds, CancellationToken cancellationToken) {
-        var command = new Places_Invite(Session, placeId, userIds);
+        var command = new Places_Invite { Session = Session, PlaceId = placeId, UserIds = userIds };
         var (_, error) = await UICommander.Run(command, cancellationToken).ConfigureAwait(false);
         return error;
     }

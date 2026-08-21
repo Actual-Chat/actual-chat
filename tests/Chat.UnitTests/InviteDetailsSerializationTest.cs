@@ -60,7 +60,7 @@ public class InviteDetailsSerializationTest(ITestOutputHelper @out) : TestBase(@
             ChatId = chatId,
             Remaining = 5,
         };
-        var cmd = new Invites_Generate(TestSession, invite);
+        var cmd = new Invites_Generate { Session = TestSession, Invite = invite };
         var s = cmd.PassThroughModernSerializers(Out);
         s.Session.Should().Be(cmd.Session);
         s.Invite.Id.Should().Be(cmd.Invite.Id);
@@ -69,14 +69,14 @@ public class InviteDetailsSerializationTest(ITestOutputHelper @out) : TestBase(@
     [Fact]
     public void Invites_Use_Basic()
     {
-        var cmd = new Invites_Use(TestSession, "invite-1");
+        var cmd = new Invites_Use { Session = TestSession, InviteId = "invite-1" };
         cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Invites_Revoke_Basic()
     {
-        var cmd = new Invites_Revoke(TestSession, "invite-1");
+        var cmd = new Invites_Revoke { Session = TestSession, InviteId = "invite-1" };
         cmd.AssertPassesThroughSerializers();
     }
 

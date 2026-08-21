@@ -83,7 +83,12 @@
             return Task.CompletedTask;
 
         var update = Change.Update<ChatDiff>(new() { IsSummarized = isSummarized });
-        return UICommander.Run(new Chats_Change(Session, Chat.Id, null, update));
+        return UICommander.Run(new Chats_Change {
+            Session = Session,
+            ChatId = Chat.Id,
+            ExpectedVersion = null,
+            Change = update,
+        });
     }
 
     private async Task OnPttToggleChanged(bool isPttEnabled) {
@@ -94,7 +99,12 @@
         // A non-null value is just a "turn it on" sentinel - the server stamps the real epoch.
         var pttEnabledAt = isPttEnabled ? (Moment?)Clocks.SystemClock.Now : null;
         var update = Change.Update<ChatDiff>(new() { PttEnabledAt = pttEnabledAt });
-        var (newChat, error) = await UICommander.Run(new Chats_Change(Session, chat.Id, null, update));
+        var (newChat, error) = await UICommander.Run(new Chats_Change {
+            Session = Session,
+            ChatId = chat.Id,
+            ExpectedVersion = null,
+            Change = update,
+        });
         if (error != null)
             return;
 

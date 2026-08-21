@@ -42,14 +42,14 @@ public static class EditPlaceMemberCommands
     public static async Task OnRemoveFromPlaceClick(AppUIHub hub, Author author)
     {
         var session = hub.Session;
-        var result = await hub.UICommander.Run(new Places_Exclude(session, author.Id));
+        var result = await hub.UICommander.Run(new Places_Exclude { Session = session, AuthorId = author.Id });
         if (result.HasError)
             return;
         var authorName = author.Avatar.Name;
         hub.ToastUI.Show($"{authorName} removed", "icon-minus-circle", Undo, "Undo", ToastDismissDelay.Long);
 
         void Undo() {
-            var undoCommand = new Places_Restore(session, author.Id);
+            var undoCommand = new Places_Restore { Session = session, AuthorId = author.Id };
             _ = hub.UICommander.Run(undoCommand);
         }
     }
@@ -69,7 +69,12 @@ public static class EditPlaceMemberCommands
     public static async Task OnSetModeratorClick(AppUIHub hub, Author author, bool isModerator)
     {
         var authorName = author.Avatar.Name;
-        var command = new Places_ChangeRole(hub.Session, author.Id, SystemRole.Moderator, isModerator);
+        var command = new Places_ChangeRole {
+            Session = hub.Session,
+            AuthorId = author.Id,
+            SystemRole = SystemRole.Moderator,
+            IsInRole = isModerator,
+        };
         var result = await hub.UICommander.Run(command);
         if (result.HasError)
             return;
@@ -85,7 +90,12 @@ public static class EditPlaceMemberCommands
 
     private static async Task OnPromoteToOwnerConfirmed(AppUIHub hub, AuthorId authorId, string authorName)
     {
-        var command = new Places_ChangeRole(hub.Session, authorId, SystemRole.Owner, true);
+        var command = new Places_ChangeRole {
+            Session = hub.Session,
+            AuthorId = authorId,
+            SystemRole = SystemRole.Owner,
+            IsInRole = true,
+        };
         var result = await hub.UICommander.Run(command);
         if (result.HasError)
             return;

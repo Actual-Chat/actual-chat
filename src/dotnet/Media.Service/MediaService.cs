@@ -51,7 +51,8 @@ public class MediaService(IServiceProvider services) : IMedia
         if (Invalidation.IsActive)
             return default!;
 
-        var (session, scope) = command;
+        var session = command.Session;
+        var scope = command.Scope;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
 
         var mediaId = MediaId.New(scope);
@@ -73,7 +74,8 @@ public class MediaService(IServiceProvider services) : IMedia
         if (Invalidation.IsActive)
             return;
 
-        var (session, mediaId) = command;
+        var session = command.Session;
+        var mediaId = command.MediaId;
         var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
         if (media == null)
             return;
@@ -93,7 +95,12 @@ public class MediaService(IServiceProvider services) : IMedia
         if (Invalidation.IsActive)
             return;
 
-        var (session, mediaId, expectedVersion, stage, stageProgress, error) = command;
+        var session = command.Session;
+        var mediaId = command.MediaId;
+        var expectedVersion = command.ExpectedVersion;
+        var stage = command.Stage;
+        var stageProgress = command.StageProgress;
+        var error = command.Error;
         var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
         if (media == null)
             throw StandardError.NotFound<Media>();
@@ -111,7 +118,9 @@ public class MediaService(IServiceProvider services) : IMedia
         if (Invalidation.IsActive)
             return default!;
 
-        var (session, mediaId, uploadId) = command;
+        var session = command.Session;
+        var mediaId = command.MediaId;
+        var uploadId = command.UploadId;
 
         // Verify ownership
         var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);

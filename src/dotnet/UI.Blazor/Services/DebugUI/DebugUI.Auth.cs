@@ -44,8 +44,12 @@ public sealed partial class DebugUI
 
         if (input.Contains('@')) {
             var email = Email.Parse(input);
-            await commander.Call(new EmailAuth_SendTotp(session, email)).ConfigureAwait(true);
-            var ok = await commander.Call(new EmailAuth_ValidateTotp(session, email, 111111)).ConfigureAwait(true);
+            await commander.Call(new EmailAuth_SendTotp { Session = session, Email = email }).ConfigureAwait(true);
+            var ok = await commander.Call(new EmailAuth_ValidateTotp {
+                Session = session,
+                Email = email,
+                Totp = 111111,
+            }).ConfigureAwait(true);
             if (!ok)
                 throw StandardError.Internal($"EmailAuth.ValidateTotp failed for '{email}'.");
         }
@@ -54,9 +58,13 @@ public sealed partial class DebugUI
                 ?? throw StandardError.Constraint($"Cannot parse phone '{input}'.");
             // Keeps the legacy SendTotp path exercised from the debug UI
 #pragma warning disable CS0618
-            await commander.Call(new PhoneAuth_SendTotp(session, phone)).ConfigureAwait(true);
+            await commander.Call(new PhoneAuth_SendTotp { Session = session, Phone = phone }).ConfigureAwait(true);
 #pragma warning restore CS0618
-            var ok = await commander.Call(new PhoneAuth_ValidateTotp(session, phone, 111111)).ConfigureAwait(true);
+            var ok = await commander.Call(new PhoneAuth_ValidateTotp {
+                Session = session,
+                Phone = phone,
+                Totp = 111111,
+            }).ConfigureAwait(true);
             if (!ok)
                 throw StandardError.Internal(
                     $"PhoneAuth.ValidateTotp failed for '{phone}'.");
@@ -67,7 +75,10 @@ public sealed partial class DebugUI
                 .Get(session, Constants.SessionTemporals.PendingRegistrationKey, default)
                 .ConfigureAwait(true);
             if (PendingRegistrationInfo.TryParseJson(json) is { } info)
-                await commander.Call(new Accounts_ConfirmRegister(session, info.Token)).ConfigureAwait(true);
+                await commander.Call(new Accounts_ConfirmRegister {
+                    Session = session,
+                    Token = info.Token,
+                }).ConfigureAwait(true);
         }
 
         // Wait for the client-side AccountUI to observe the new (non-guest)

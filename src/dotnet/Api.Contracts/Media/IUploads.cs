@@ -25,40 +25,40 @@ public interface IUploads : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Uploads_Create(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] long? Length,
-    [property: DataMember, Key(2)] string Tag,
-    [property: DataMember, Key(3)] MetadataBag Metadata
-) : ISessionCommand<UploadId>, IApiCommand;
+public sealed partial record Uploads_Create : ApiCommand<UploadId>
+{
+    [DataMember(Order = 2), Key(2)] public required long? Length { get; init; }
+    [DataMember(Order = 3), Key(3)] public required string Tag { get; init; }
+    [DataMember(Order = 4), Key(4)] public required MetadataBag Metadata { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Uploads_Append(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] UploadId UploadId,
-    [property: DataMember, Key(2)] long Offset,
-    [property: DataMember, Key(3)] byte[] Chunk
-) : ISessionCommand<long>, IApiCommand;
+public sealed partial record Uploads_Append : ApiCommand<long>
+{
+    [DataMember(Order = 2), Key(2)] public required UploadId UploadId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required long Offset { get; init; }
+    [DataMember(Order = 4), Key(4)] public required byte[] Chunk { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Uploads_Remove(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] UploadId UploadId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Uploads_Remove : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required UploadId UploadId { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Uploads_ConvertToMediaRef(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] UploadId UploadId
-) : ISessionCommand<MediaRef>, IApiCommand;
+public sealed partial record Uploads_ConvertToMediaRef : ApiCommand<MediaRef>
+{
+    [DataMember(Order = 2), Key(2)] public required UploadId UploadId { get; init; }
+}
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Uploads_StartProcessUpload(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] UploadId UploadId,
-    [property: DataMember, Key(2)] MediaId MediaId
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record Uploads_StartProcessUpload : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required UploadId UploadId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required MediaId MediaId { get; init; }
+}

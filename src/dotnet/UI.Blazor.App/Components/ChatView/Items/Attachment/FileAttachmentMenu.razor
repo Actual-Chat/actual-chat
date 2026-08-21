@@ -71,7 +71,12 @@
         if (selectedChatIds.Count == 0)
             return;
 
-        var cmd = new Chats_ForwardAttachment(Session, a.EntryId, a.Index, selectedChatIds.ToArray());
+        var cmd = new Chats_ForwardAttachment {
+            Session = Session,
+            ChatEntryId = a.EntryId,
+            AttachmentIndex = a.Index,
+            DestinationChatIds = selectedChatIds.ToArray(),
+        };
         await UICommander.Run(cmd, CancellationToken.None).ConfigureAwait(true);
     }
 

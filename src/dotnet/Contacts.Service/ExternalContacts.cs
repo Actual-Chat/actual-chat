@@ -31,7 +31,8 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
 
-        var (session, changes) = command;
+        var session = command.Session;
+        var changes = command.Changes;
         if (changes.Length > ExternalContacts_BulkChange.MaxChangeCount)
             throw StandardError.Constraint(
                 $"A contact batch cannot contain more than {ExternalContacts_BulkChange.MaxChangeCount} changes.");

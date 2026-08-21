@@ -92,17 +92,19 @@ Commands represent write operations. They follow this naming convention:
 
 Commands must implement:
 - `ICommand<TResult>` - For commands with return values
-- `ISessionCommand<TResult>` - For frontend commands (includes Session)
 - `IBackendCommand` - For backend commands
+- Frontend commands instead **derive from `ApiCommand<TResult>`**, which supplies `Uuid` (`Key 0`,
+  the idempotency key) and `Session` (`Key 1`) — so their own members start at `Key(2)`. There is
+  no positional constructor; see [Command idempotency](./command-idempotency.md).
 
 ```csharp
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record Chats_Change(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] ChatId? ChatId,
-    [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(3)] Change<ChatDiff> Change
-) : ISessionCommand<Chat>, IApiCommand;
+[DataContract, MessagePackObject]
+public sealed partial record Chats_Change : ApiCommand<Chat>
+{
+    [DataMember(Order = 2), Key(2)] public required ChatId? ChatId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required long? ExpectedVersion { get; init; }
+    [DataMember(Order = 4), Key(4)] public required Change<ChatDiff> Change { get; init; }
+}
 ```
 
 ### Event System

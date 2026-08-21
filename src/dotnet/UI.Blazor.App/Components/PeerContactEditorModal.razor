@@ -103,7 +103,12 @@
         var contact = _contact! with {
             PeerContactName = _form.PeerContactName
         };
-        var command = new Contacts_Change(Session, contact.Id, contact.Version, Change.Update(contact));
+        var command = new Contacts_Change {
+            Session = Session,
+            Id = contact.Id,
+            ExpectedVersion = contact.Version,
+            Change = Change.Update(contact),
+        };
         var (_, error) = await UICommander.Run(command);
         if (error != null)
             return;

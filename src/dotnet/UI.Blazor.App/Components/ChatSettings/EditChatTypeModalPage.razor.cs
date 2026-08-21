@@ -121,7 +121,10 @@ public partial class EditChatTypeModalPage
     private async Task OnNewInviteClick()
     {
         ActualChat.Invite.Invite invite = ChatInvite.New(Constants.Invites.Defaults.ChatRemaining, ChatId);
-        var uiActionResult = await UICommander.Run(new Invites_Generate(Session, invite)).ConfigureAwait(false);
+        var uiActionResult = await UICommander.Run(new Invites_Generate {
+            Session = Session,
+            Invite = invite,
+        }).ConfigureAwait(false);
         invite = uiActionResult.Value;
         _newInviteId = invite.Id;
     }
@@ -147,12 +150,14 @@ public partial class EditChatTypeModalPage
             AllowGuestAuthors = !isPlaceChat && _form.AllowGuestAuthors,
             AllowAnonymousAuthors = !isPlaceChat && _form.AllowAnonymousAuthors,
         };
-        var command = new Chats_Change(Session,
-            chat.Id,
-            chat.Version,
-            new () {
+        var command = new Chats_Change {
+            Session = Session,
+            ChatId = chat.Id,
+            ExpectedVersion = chat.Version,
+            Change = new () {
                 Update = DiffEngine.Diff<Chat.Chat, ChatDiff>(chat, newChat),
-            });
+            },
+        };
         var uiActionResult = await UICommander.Run(command).ConfigureAwait(false);
         return !uiActionResult.HasError;
     }

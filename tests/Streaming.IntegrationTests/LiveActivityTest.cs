@@ -68,7 +68,12 @@ public class LiveActivityTest(AppHostFixture fixture, ITestOutputHelper @out)
         cList.Value.Should().BeEmpty();
 
         // act
-        await commander.Call(new Chats_UpsertEntry(session, chatId, null) { Text = "Hello" }, cts.Token);
+        await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "Hello",
+        }, cts.Token);
         await Task.Delay(TimeSpan.FromSeconds(1), cts.Token);
 
         // assert
@@ -82,12 +87,17 @@ public class LiveActivityTest(AppHostFixture fixture, ITestOutputHelper @out)
         var services = AppHost.Services;
         var session = Session.New();
         _ = await AppHost.SignIn(session, new AccountFull(title));
-        var chat = await services.Commander().Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = title,
-                Kind = ChatKind.Group,
+        var chat = await services.Commander().Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = title,
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
         return (session, chat.Id);
     }

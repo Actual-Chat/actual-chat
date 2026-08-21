@@ -18,7 +18,7 @@ public interface IUserPresences : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record UserPresences_CheckIn(
-    [property: DataMember, Key(0)] Session Session,
-    [property: DataMember, Key(1)] bool IsActive
-) : ISessionCommand<Unit>, IApiCommand;
+public sealed partial record UserPresences_CheckIn : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required bool IsActive { get; init; }
+}

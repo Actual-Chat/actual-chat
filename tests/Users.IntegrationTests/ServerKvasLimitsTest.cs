@@ -18,7 +18,7 @@ public class ServerKvasLimitsTest(AppHostFixture fixture, ITestOutputHelper @out
         var value = new byte[1024];
 
         // act
-        await tester.Commander.Call(new ServerKvas_Set(tester.Session, key, value));
+        await tester.Commander.Call(new ServerKvas_Set { Session = tester.Session, Key = key, Value = value });
         var stored = await kvas.Get(tester.Session, key, CancellationToken.None);
 
         // assert
@@ -35,7 +35,11 @@ public class ServerKvasLimitsTest(AppHostFixture fixture, ITestOutputHelper @out
         var value = new byte[ServerKvas_Set.MaxValueLength + 1];
 
         // act
-        var act = () => tester.Commander.Call(new ServerKvas_Set(tester.Session, key, value));
+        var act = () => tester.Commander.Call(new ServerKvas_Set {
+            Session = tester.Session,
+            Key = key,
+            Value = value,
+        });
 
         // assert
         await act.Should().ThrowAsync<Exception>().WithMessage("*too big*");
@@ -50,7 +54,11 @@ public class ServerKvasLimitsTest(AppHostFixture fixture, ITestOutputHelper @out
         var key = new string('k', ServerKvas_Set.MaxKeyLength + 1);
 
         // act
-        var act = () => tester.Commander.Call(new ServerKvas_Set(tester.Session, key, [1, 2, 3]));
+        var act = () => tester.Commander.Call(new ServerKvas_Set {
+            Session = tester.Session,
+            Key = key,
+            Value = [1, 2, 3],
+        });
 
         // assert
         await act.Should().ThrowAsync<Exception>();
@@ -68,7 +76,7 @@ public class ServerKvasLimitsTest(AppHostFixture fixture, ITestOutputHelper @out
             .ToArray();
 
         // act
-        var act = () => tester.Commander.Call(new ServerKvas_SetMany(tester.Session, items));
+        var act = () => tester.Commander.Call(new ServerKvas_SetMany { Session = tester.Session, Items = items });
 
         // assert
         await act.Should().ThrowAsync<Exception>().WithMessage("*cannot contain more than*");

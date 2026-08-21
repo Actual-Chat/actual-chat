@@ -9,28 +9,40 @@ public static class ChatEntryOperations
         string text,
         MediaId? mediaId = null)
     {
-        var cmd = new Chats_UpsertEntry(tester.Session, chatId, null) {
+        var cmd = new Chats_UpsertEntry {
+            Session = tester.Session,
+            ChatId = chatId,
+            LocalId = null,
             Text = text,
             Attachments = mediaId == null
-                ? []
-                : [
-                    new ChatEntryAttachment {
-                        MediaId = mediaId,
-                        Index = 0,
-                    },
-                ],
+            ? []
+            : [
+                new ChatEntryAttachment {
+                    MediaId = mediaId,
+                    Index = 0,
+                },
+            ],
         };
         return tester.Commander.Call(cmd);
     }
 
     public static Task<ChatEntry> UpdateTextEntry(this IWebTester tester, ChatEntryId id, string text)
     {
-        var cmd = new Chats_UpsertEntry(tester.Session, id.ChatId, id.LocalId) { Text = text };
+        var cmd = new Chats_UpsertEntry {
+            Session = tester.Session,
+            ChatId = id.ChatId,
+            LocalId = id.LocalId,
+            Text = text,
+        };
         return tester.Commander.Call(cmd);
     }
 
     public static Task RemoveTextEntry(this IWebTester tester, ChatEntryId id)
-        => tester.Commander.Call(new Chats_RemoveEntry(tester.Session, id.ChatId, id.LocalId));
+        => tester.Commander.Call(new Chats_RemoveEntry {
+            Session = tester.Session,
+            ChatId = id.ChatId,
+            LocalId = id.LocalId,
+        });
 
     public static async Task<ChatEntry[]> CreateTextEntries(this IWebTester tester, ChatId chatId, string textPrefix, int entryCount)
     {

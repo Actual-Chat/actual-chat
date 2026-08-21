@@ -62,12 +62,17 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
                 Primary = Languages.Russian,
             });
 
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = "Test",
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "Test",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
 
         using var cts = new CancellationTokenSource();
@@ -114,12 +119,17 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
                 Primary = Languages.Russian,
             });
 
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = "Test",
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "Test",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
 
         using var cts = new CancellationTokenSource();
@@ -183,12 +193,17 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
                 Primary = Languages.Russian,
             });
 
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = "Test",
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "Test",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
 
         using var cts = new CancellationTokenSource();
@@ -253,12 +268,17 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
                 Primary = Languages.Russian,
             });
 
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = "Test",
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "Test",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
 
         using var cts = new CancellationTokenSource();
@@ -297,12 +317,17 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
                 Primary = Languages.Russian,
             });
 
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = "Test",
-                Kind = ChatKind.Group,
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "Test",
+                    Kind = ChatKind.Group,
+                },
             },
-        }));
+        });
         chat.Require();
 
         using var cts = new CancellationTokenSource();

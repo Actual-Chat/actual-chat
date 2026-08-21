@@ -52,7 +52,10 @@ partial class SendingMessages
                 ThumbnailMediaId = x.ThumbnailMediaId,
             }))
             .ToArray();
-        var cmd = new Chats_UpsertEntry(Session, request.ChatId, request.LocalId) {
+        var cmd = new Chats_UpsertEntry {
+            Session = Session,
+            ChatId = request.ChatId,
+            LocalId = request.LocalId,
             Text = request.Text,
             RepliedEntryLid = request.RepliedEntryLid,
             ClientId = request.ClientId,

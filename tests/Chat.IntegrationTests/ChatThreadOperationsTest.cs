@@ -147,7 +147,12 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         var entryIdsForThread = parentChatEntries.Where((c, i) => i is 0 or 2).Select(c => c.Id).ToArray();
         var threadChat = await CreateThreadChat(commander, chats, session, parentChat.Id, "Thread#1", entryIdsForThread, cancellationToken);
 
-        await commander.Run(new Chats_Change(session, threadChat.Id, null, Change.Remove<ChatDiff>()), cancellationToken);
+        await commander.Run(new Chats_Change {
+            Session = session,
+            ChatId = threadChat.Id,
+            ExpectedVersion = null,
+            Change = Change.Remove<ChatDiff>(),
+        }, cancellationToken);
 
         var parentChat1 = await chats.Get(session, parentChatId, cancellationToken);
         parentChat1.Should().NotBeNull();
@@ -179,7 +184,12 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         var entryIdsForThread = parentChatEntries.Where((c, i) => i is 0 or 2).Select(c => c.Id).ToArray();
         var threadChat = await CreateThreadChat(commander, chats, session, parentChat.Id, "Thread#1", entryIdsForThread, cancellationToken);
 
-        await commander.Run(new Chats_Change(session, parentChat.Id, null, Change.Remove<ChatDiff>()), cancellationToken);
+        await commander.Run(new Chats_Change {
+            Session = session,
+            ChatId = parentChat.Id,
+            ExpectedVersion = null,
+            Change = Change.Remove<ChatDiff>(),
+        }, cancellationToken);
 
         var parentChat1 = await chats.Get(session, parentChatId, cancellationToken);
         parentChat1.Should().BeNull();
@@ -239,7 +249,13 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
     private static async Task<Chat> CreateThreadChat(ICommander commander, IChats chats, Session session, ChatId parentChatId,
         string title, ChatEntryId[] entryIdsForThread, CancellationToken cancellationToken)
     {
-        var chatThread = await commander.Call(new ChatThreads_Start(session, parentChatId, title, "", entryIdsForThread), cancellationToken);
+        var chatThread = await commander.Call(new ChatThreads_Start {
+            Session = session,
+            ParentChatId = parentChatId,
+            Title = title,
+            Description = "",
+            EntryIds = entryIdsForThread,
+        }, cancellationToken);
         var chat = await chats.Get(session, chatThread.Id, cancellationToken);
         chat.Require();
         return chat;
@@ -250,7 +266,7 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
     {
         var parentChatEntries = new List<ChatEntry>();
         foreach (var message in messages) {
-            var cmd = new Chats_UpsertEntry(session, chatId, null) { Text = message };
+            var cmd = new Chats_UpsertEntry { Session = session, ChatId = chatId, LocalId = null, Text = message };
             var chatEntry = await commander.Call(cmd, cancellationToken);
             parentChatEntries.Add(chatEntry);
         }

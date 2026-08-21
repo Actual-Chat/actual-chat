@@ -109,7 +109,10 @@ public class Places(IServiceProvider services) : IPlaces
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
 
-        var (session, placeId, expectedVersion, placeChange) = command;
+        var session = command.Session;
+        var placeId = command.PlaceId;
+        var expectedVersion = command.ExpectedVersion;
+        var placeChange = command.Change;
 
         var place = placeId is null ? null
             : await Get(session, placeId, cancellationToken).ConfigureAwait(false);
@@ -144,8 +147,10 @@ public class Places(IServiceProvider services) : IPlaces
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, placeId, avatarId) = command;
-        var joinCommand = new Authors_Join(session, placeId.RootChatId, avatarId);
+        var session = command.Session;
+        var placeId = command.PlaceId;
+        var avatarId = command.AvatarId;
+        var joinCommand = new Authors_Join { Session = session, ChatId = placeId.RootChatId, AvatarId = avatarId };
         await Commander.Call(joinCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -155,8 +160,10 @@ public class Places(IServiceProvider services) : IPlaces
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, placeId, userIds) = command;
-        var inviteCommand = new Authors_Invite(session, placeId.RootChatId, userIds);
+        var session = command.Session;
+        var placeId = command.PlaceId;
+        var userIds = command.UserIds;
+        var inviteCommand = new Authors_Invite { Session = session, ChatId = placeId.RootChatId, UserIds = userIds };
         await Commander.Call(inviteCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -166,10 +173,11 @@ public class Places(IServiceProvider services) : IPlaces
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, authorId) = command;
+        var session = command.Session;
+        var authorId = command.AuthorId;
         ThrowIfNonPlaceRootChatAuthor(authorId);
 
-        var excludeCommand = new Authors_Exclude(session, authorId);
+        var excludeCommand = new Authors_Exclude { Session = session, AuthorId = authorId };
         await Commander.Call(excludeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -179,10 +187,11 @@ public class Places(IServiceProvider services) : IPlaces
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, authorId) = command;
+        var session = command.Session;
+        var authorId = command.AuthorId;
         ThrowIfNonPlaceRootChatAuthor(authorId);
 
-        var restoreCommand = new Authors_Restore(session, authorId);
+        var restoreCommand = new Authors_Restore { Session = session, AuthorId = authorId };
         await Commander.Call(restoreCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -192,10 +201,18 @@ public class Places(IServiceProvider services) : IPlaces
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, authorId, systemRole, isInRole) = command;
+        var session = command.Session;
+        var authorId = command.AuthorId;
+        var systemRole = command.SystemRole;
+        var isInRole = command.IsInRole;
         ThrowIfNonPlaceRootChatAuthor(authorId);
 
-        var changeRoleCommand = new Authors_ChangeRole(session, authorId, systemRole, isInRole);
+        var changeRoleCommand = new Authors_ChangeRole {
+            Session = session,
+            AuthorId = authorId,
+            SystemRole = systemRole,
+            IsInRole = isInRole,
+        };
         await Commander.Call(changeRoleCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -206,8 +223,14 @@ public class Places(IServiceProvider services) : IPlaces
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, authorId) = command;
-        var changeRoleCommand = new Places_ChangeRole(session, authorId, SystemRole.Owner, true);
+        var session = command.Session;
+        var authorId = command.AuthorId;
+        var changeRoleCommand = new Places_ChangeRole {
+            Session = session,
+            AuthorId = authorId,
+            SystemRole = SystemRole.Owner,
+            IsInRole = true,
+        };
         await Commander.Call(changeRoleCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -217,13 +240,14 @@ public class Places(IServiceProvider services) : IPlaces
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, placeId) = command;
+        var session = command.Session;
+        var placeId = command.PlaceId;
         var place = await Get(session, placeId, cancellationToken).ConfigureAwait(false);
         if (place == null)
             return;
 
         place.Rules.Require(PlacePermissions.Leave);
-        var leaveCommand = new Authors_Leave(session, placeId.RootChatId);
+        var leaveCommand = new Authors_Leave { Session = session, ChatId = placeId.RootChatId };
         await Commander.Call(leaveCommand, true, cancellationToken).ConfigureAwait(false);
     }
 

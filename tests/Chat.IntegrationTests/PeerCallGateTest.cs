@@ -73,7 +73,11 @@ public class PeerCallGateTest(ChatCollection.AppHostFixture fixture, ITestOutput
 
         // act — Alice blocks Bob; the block strips his call permission again.
         var blockContactId = ContactId.NewUser(alice.Id, bob.Id);
-        await aliceTester.Commander.Call(new Contacts_SetIsBlocked(aliceTester.Session, blockContactId, true));
+        await aliceTester.Commander.Call(new Contacts_SetIsBlocked {
+            Session = aliceTester.Session,
+            Id = blockContactId,
+            IsBlocked = true,
+        });
         await ComputedTest.When(async ct => {
             var chat = await chats.Get(bobTester.Session, chatId, ct);
             chat!.Rules.CanWriteAudio().Should().BeFalse();

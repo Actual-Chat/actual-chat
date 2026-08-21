@@ -252,7 +252,7 @@ public class ChatBlockTest(ChatCollection.AppHostFixture fixture, ITestOutputHel
     private static Task BlockUser(IWebTester tester, UserId ownerId, UserId otherUserId, bool isBlocked = true)
     {
         var contactId = ContactId.NewUser(ownerId, otherUserId);
-        var cmd = new Contacts_SetIsBlocked(tester.Session, contactId, isBlocked);
+        var cmd = new Contacts_SetIsBlocked { Session = tester.Session, Id = contactId, IsBlocked = isBlocked };
         return tester.Commander.Call(cmd);
     }
 }

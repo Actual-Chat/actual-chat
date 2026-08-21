@@ -26,7 +26,7 @@ public static class AuthorsExt
         if (author is { HasLeft: false })
             return author;
 
-        var command = new Authors_Join(session, chatId);
+        var command = new Authors_Join { Session = session, ChatId = chatId };
         author = await authors.GetCommander().Call(command, true, cancellationToken).ConfigureAwait(false);
         return author;
     }

@@ -123,19 +123,28 @@
 
             // Upload the cropped blob via the standard pipeline
             var scope = ModalModel.Scope;
-            var mediaId = await UICommander.Call(new Media_ReserveMedia(Session, scope));
+            var mediaId = await UICommander.Call(new Media_ReserveMedia { Session = Session, Scope = scope });
 
             var tag = $"FileUpload/v1/{scope}";
             var metadata = new MetadataBag()
                 .Set("FileName", "avatar-crop.png")
                 .Set("ContentType", "image/png");
             var blobSize = await _jsRef!.InvokeAsync<long>("getCroppedBlobSize").ConfigureAwait(true);
-            var uploadId = await UICommander.Call(new Uploads_Create(Session, blobSize, tag, metadata));
+            var uploadId = await UICommander.Call(new Uploads_Create {
+                Session = Session,
+                Length = blobSize,
+                Tag = tag,
+                Metadata = metadata,
+            });
 
             var streamSource = new WebUploadStreamSource(_jsRef!);
             await FileUploader.Upload(streamSource, uploadId, null, CancellationToken.None);
 
-            var mediaRef = await UICommander.Call(new Media_ProcessUpload(Session, mediaId, uploadId));
+            var mediaRef = await UICommander.Call(new Media_ProcessUpload {
+                Session = Session,
+                MediaId = mediaId,
+                UploadId = uploadId,
+            });
 
             ModalModel.OnCropped?.Invoke(mediaRef);
             Modal.Close();

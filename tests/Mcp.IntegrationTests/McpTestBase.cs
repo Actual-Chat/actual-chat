@@ -18,7 +18,7 @@ public abstract class McpTestBase<TFixture>(TFixture fixture, ITestOutputHelper 
 
     protected async Task<string> IssueApiKey(string name = "test", CancellationToken ct = default)
     {
-        var command = new Accounts_CreateApiKey(Tester.Session, name);
+        var command = new Accounts_CreateApiKey { Session = Tester.Session, Name = name };
         return await Tester.Commander.Call(command, ct).ConfigureAwait(false);
     }
 

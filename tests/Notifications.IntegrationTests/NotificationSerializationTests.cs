@@ -180,28 +180,32 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     public void Notifications_Handle_Basic()
     {
         var id = NotificationId.New(TestUserId, NotificationKind.Message, "1234");
-        var cmd = new Notifications_Handle(TestSession, id);
+        var cmd = new Notifications_Handle { Session = TestSession, NotificationId = id };
         cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Notifications_RegisterDevice_Basic()
     {
-        var cmd = new Notifications_RegisterDevice(TestSession, "device-1", DeviceType.AndroidApp);
+        var cmd = new Notifications_RegisterDevice {
+            Session = TestSession,
+            DeviceId = "device-1",
+            DeviceType = DeviceType.AndroidApp,
+        };
         cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Notifications_DeregisterDevice_Basic()
     {
-        var cmd = new Notifications_DeregisterDevice(TestSession, "device-1");
+        var cmd = new Notifications_DeregisterDevice { Session = TestSession, DeviceId = "device-1" };
         cmd.AssertPassesThroughSerializers();
     }
 
     [Fact]
     public void Notifications_NotifyMembers_Basic()
     {
-        var cmd = new Notifications_NotifyMembers(TestSession, TestChatId);
+        var cmd = new Notifications_NotifyMembers { Session = TestSession, ChatId = TestChatId };
         cmd.AssertPassesThroughSerializers();
     }
 
@@ -209,7 +213,7 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     public void Notifications_NotifyMentionedMembers_Basic()
     {
         var entryId = ChatEntryId.New(TestChatId, 1);
-        var cmd = new Notifications_NotifyMentionedMembers(TestSession, entryId);
+        var cmd = new Notifications_NotifyMentionedMembers { Session = TestSession, ChatEntryId = entryId };
         cmd.AssertPassesThroughSerializers();
     }
 

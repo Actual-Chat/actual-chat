@@ -33,7 +33,13 @@ public class PeerChatThreadTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         // act
         var thread = await commander
-            .Call(new ChatThreads_Start(session, peerChatId, "Peer thread", "", entries.Select(e => e.Id).ToArray()), cancellationToken)
+            .Call(new ChatThreads_Start {
+                Session = session,
+                ParentChatId = peerChatId,
+                Title = "Peer thread",
+                Description = "",
+                EntryIds = entries.Select(e => e.Id).ToArray(),
+            }, cancellationToken)
             .Require();
 
         // assert
@@ -101,7 +107,12 @@ public class PeerChatThreadTest(ChatCollection.AppHostFixture fixture, ITestOutp
     {
         var entries = new List<ChatEntry>();
         foreach (var message in messages) {
-            var entry = await commander.Call(new Chats_UpsertEntry(session, chatId, null) { Text = message }, cancellationToken);
+            var entry = await commander.Call(new Chats_UpsertEntry {
+                Session = session,
+                ChatId = chatId,
+                LocalId = null,
+                Text = message,
+            }, cancellationToken);
             entries.Add(entry);
         }
         return entries;

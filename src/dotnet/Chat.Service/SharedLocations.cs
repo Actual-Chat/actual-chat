@@ -36,7 +36,10 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
         if (Invalidation.IsActive)
             return null; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, id, change) = command;
+        var session = command.Session;
+        var chatId = command.ChatId;
+        var id = command.Id;
+        var change = command.Change;
         change.RequireValid();
 
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);

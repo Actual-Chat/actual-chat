@@ -375,14 +375,15 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
 
     private async Task<Symbol> CreateAvatar(MediaId mediaId)
     {
-        var command = new Avatars_Change(
-            Tester.Session,
-            Symbol.Empty,
-            null,
-            Change.Create(new AvatarDiff {
+        var command = new Avatars_Change {
+            Session = Tester.Session,
+            AvatarId = Symbol.Empty,
+            ExpectedVersion = null,
+            Change = Change.Create(new AvatarDiff {
                 Name = "test",
                 MediaId = Option.Some<MediaId?>(mediaId),
-            }));
+            }),
+        };
         var avatar = await Commander.Call(command, true, CancellationToken.None);
         return avatar.Id;
     }

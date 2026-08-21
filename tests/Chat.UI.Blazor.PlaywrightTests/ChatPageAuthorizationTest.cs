@@ -72,10 +72,11 @@ public class ChatPageAuthorizationTest(AppHostFixture fixture, ITestOutputHelper
     {
         var account = await _accounts.GetOwn(_tester.Session, default);
 
-        var command = new Accounts_Update(
-            _adminSession,
-            account with { Status = newStatus },
-            account.Version);
+        var command = new Accounts_Update {
+            Session = _adminSession,
+            Account = account with { Status = newStatus },
+            ExpectedVersion = account.Version,
+        };
         await _accounts.GetCommander().Call(command);
     }
 }
