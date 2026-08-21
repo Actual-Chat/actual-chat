@@ -52,7 +52,10 @@ partial class SendingMessages
                 ThumbnailMediaId = x.ThumbnailMediaId,
             }))
             .ToArray();
+        // The request's Uuid survives both the retry loop above and an app restart, so a resend of a
+        // command the server already applied replays its result instead of posting a second message.
         var cmd = new Chats_UpsertEntry {
+            Uuid = request.Uuid,
             Session = Session,
             ChatId = request.ChatId,
             LocalId = request.LocalId,

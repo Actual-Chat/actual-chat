@@ -35,7 +35,9 @@ public sealed class ApiCommandDeduplicator(IServiceProvider services) : ICommand
     [CommandFilter(Priority = CommanderCommandHandlerPriority.CommandTracer - 1_000_000)]
     public async Task OnCommand(ICommand command, CommandContext context, CancellationToken cancellationToken)
     {
-        if (!context.IsOutermost || command is not ApiCommand { Uuid.Length: > 0 } apiCommand) {
+        if (!context.IsOutermost
+            || command is INotDeduplicated
+            || command is not ApiCommand { Uuid.Length: > 0 } apiCommand) {
             await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
             return;
         }
@@ -68,16 +70,19 @@ public sealed class ApiCommandDeduplicator(IServiceProvider services) : ICommand
                         await RunAndComplete(context, key, resultType, cancellationToken).ConfigureAwait(false);
                         return;
                     }
+
                     context.SetResult(Deserialize(reclaimed.Result, resultType));
                     IdempotencyMeters.Outcome.Add(1, ReplayedTag);
                     return;
                 }
+
                 var result = await Store.WaitForResult(key, InProgressTtl, cancellationToken).ConfigureAwait(false);
                 if (result is { } bytes) {
                     context.SetResult(Deserialize(bytes, resultType));
                     IdempotencyMeters.Outcome.Add(1, WaitedTag);
                     return;
                 }
+
                 IdempotencyMeters.Overrun.Add(1);
                 Log.LogWarning(
                     "Dedup: marker for {Key} expired without a result, re-claiming (possible double run)", key);
@@ -100,6 +105,7 @@ public sealed class ApiCommandDeduplicator(IServiceProvider services) : ICommand
             IdempotencyMeters.Release.Add(1);
             throw;
         }
+
         IdempotencyMeters.Outcome.Add(1, ExecutedTag);
 
         var resultBytes = Serialize(context.UntypedResult.Value, resultType);

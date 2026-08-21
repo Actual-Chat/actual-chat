@@ -16,9 +16,12 @@ public interface IUserPresences : IComputeService
     Task OnCheckIn(UserPresences_CheckIn command, CancellationToken cancellationToken);
 }
 
+// Not deduplicated: every active client sends one per Presence.AwayTimeout * 0.75, always with a
+// fresh Uuid, so dedup could never replay one - and suppressing a check-in would freeze presence.
+
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record UserPresences_CheckIn : ApiCommand<Unit>
+public sealed partial record UserPresences_CheckIn : ApiCommand<Unit>, INotDeduplicated
 {
     [DataMember(Order = 2), Key(2)] public required bool IsActive { get; init; }
 }

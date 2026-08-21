@@ -19,9 +19,9 @@ public sealed class ApiCommandRpcArgumentSerializer(
 {
     // The API version (from the RPC handshake's per-peer RemoteApiVersionSet) that introduces ApiCommand.Uuid.
     // Pinned to the release this ships in, NOT ApiConstants.Version, which floats forward with every build.
-    public static readonly Version UuidVersion = new(2, 16);
-
-    private static readonly ConcurrentDictionary<Type, bool> MustPrependUuidCache = new();
+    // Re-check it against version.json whenever this branch misses a release: a peer at this version or
+    // above is trusted to send the Uuid layout, so a threshold below the actual release breaks those clients.
+    public static readonly Version UuidVersion = new(2, 17);
 
     private readonly IByteSerializer _baseSerializer = baseSerializer;
     private readonly RpcByteArgumentSerializerV4 _inner = new(baseSerializer);
@@ -46,7 +46,7 @@ public sealed class ApiCommandRpcArgumentSerializer(
                 continue;
             }
 
-            var item = MustPrependUuid(type)
+            var item = typeof(ApiCommand).IsAssignableFrom(type) && IsArrayLayout(data)
                 ? ReadMigratedCommand(ref data, type)
                 : _baseSerializer.Read(ref data, type);
             arguments.SetUntyped(i, item);
@@ -55,12 +55,11 @@ public sealed class ApiCommandRpcArgumentSerializer(
 
     // Private methods
 
-    private static bool MustPrependUuid(Type type)
-        // A command with its own [MessagePackFormatter] is a named-key map that already tolerates a missing
-        // Uuid; prepending an array element would corrupt it.
-        => typeof(ApiCommand).IsAssignableFrom(type)
-            && MustPrependUuidCache.GetOrAdd(type,
-                static t => t.GetCustomAttribute<MessagePackFormatterAttribute>() is null);
+    private static bool IsArrayLayout(ReadOnlyMemory<byte> data)
+        // Only the [Key(N)] array layout has an element to prepend. A by-name map - what the keyless
+        // formats (msgpack6k/6ck, used by TS clients) and the commands with their own map formatter
+        // produce - carries no Uuid entry at all, which already reads back as "".
+        => !data.IsEmpty && new MessagePackReader(data).NextMessagePackType == MessagePackType.Array;
 
     private object? ReadMigratedCommand(ref ReadOnlyMemory<byte> data, Type type)
     {

@@ -1,5 +1,6 @@
 using System.Buffers;
 using ActualChat.Kvas;
+using ActualChat.Serialization.Internal;
 using ActualLab.Interception;
 using ActualLab.Rpc.Infrastructure;
 
@@ -13,10 +14,10 @@ namespace ActualChat.Chat.UnitTests;
 public static class ApiCommandSerializer
 {
     // The API version (from the RPC handshake's RemoteApiVersionSet) where the Uuid field was introduced.
-    // Pinned to the shipping release (2.16), NOT derived from ApiConstants.Version, which floats forward.
+    // Pinned to the shipping release (2.17), NOT derived from ApiConstants.Version, which floats forward.
     // Deliberately explicit, not sniffed from the payload: version-tolerant layouts can share an element
     // count, so length alone can't tell the formats apart — the peer's handshake version can.
-    public static readonly Version UuidVersion = new(2, 16);
+    public static readonly Version UuidVersion = new(2, 17);
 
     public static byte[] Serialize<T>(T command, MessagePackSerializerOptions options)
         where T : ApiCommand
@@ -54,8 +55,8 @@ public class CommandMigrationSerializationTest(ITestOutputHelper @out) : TestBas
     private static readonly Session TestSession = Session.New();
     private static readonly ChatId TestChatId = ChatId.Parse("the-actual-one");
     private static readonly PlaceId TestPlaceId = PlaceId.New();
-    private static readonly Version LegacyPeer = new(2, 15); // previous release, just below UuidVersion
-    private static readonly Version CurrentPeer = ApiCommandSerializer.UuidVersion; // 2.16, at the boundary
+    private static readonly Version LegacyPeer = new(2, 16); // previous release, just below UuidVersion
+    private static readonly Version CurrentPeer = ApiCommandSerializer.UuidVersion; // 2.17, at the boundary
     private static MessagePackSerializerOptions Options => MessagePackByteSerializer.DefaultOptions;
 
     [Theory]
@@ -195,6 +196,29 @@ public class ApiCommandRpcArgumentSerializerTest(ITestOutputHelper @out) : TestB
         command.Session.Should().Be(TestSession);
         command.Key.Should().Be("the-key");
         command.Value.Should().Equal([1, 2, 3]);
+    }
+
+    [Fact]
+    public void LegacyKeylessCommandIsNotPrepended()
+    {
+        // arrange — a keyless (by-name map) payload, as TS clients send; a legacy version must leave it alone
+        var keylessOptions = new MessagePackSerializerOptions(AppMessagePackKeylessResolver.Instance);
+        var data = (ReadOnlyMemory<byte>)MessagePackSerializer.Serialize(
+            new TstCmd_RemoveEntries { Uuid = "", Session = TestSession, ChatId = TestChatId, LocalIds = [8L] },
+            keylessOptions);
+        var serializer = new ApiCommandRpcArgumentSerializer(
+            new MessagePackByteSerializer(keylessOptions), () => new Version(2, 10));
+        ArgumentList args = ArgumentList.New(default(TstCmd_RemoveEntries)!);
+
+        // act
+        serializer.Deserialize(ref args, false, data);
+        var command = (TstCmd_RemoveEntries)args.GetUntyped(0)!;
+
+        // assert
+        command.Uuid.Should().Be("");
+        command.Session.Should().Be(TestSession);
+        command.ChatId.Should().Be(TestChatId);
+        command.LocalIds.Should().Equal(8L);
     }
 
     [Fact]

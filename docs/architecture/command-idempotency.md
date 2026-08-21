@@ -61,10 +61,30 @@ cached — the claim is released so a same-`Uuid` retry re-runs it.
 Empty-`Uuid` commands are skipped (`Uuid.Length > 0` guard) — see
 [Old clients](#old-clients-graceful-degradation).
 
+### Opting out — `INotDeduplicated`
+
+A command that implements `INotDeduplicated` (`Core/Commands/ApiCommand.cs`) bypasses the filter
+entirely. This is for high-frequency commands that would pay the store's two round-trips — and a
+resident entry per call for `CompletedTtl` — for nothing:
+
+| Command | Why |
+|---|---|
+| `UserPresences_CheckIn` | One per active client every `AwayTimeout * 0.75` (45 s), always a fresh `Uuid`, so it could never be replayed — and replaying one instead of running it would freeze presence |
+| `ChatPositions_Set` | Debounced at 1 s per open chat while scrolling; fresh `Uuid` each time |
+| `Uploads_Append` | One command per chunk (256 KB–4 MB) would fill the store during a single upload; a resend is handled by the handler's offset check instead |
+
+The test that guards this is `NotDeduplicatedCommandRunsEveryTime` in `ApiCommandDeduplicatorTest`.
+Before adding to the list, prefer evidence: a command whose `command.dedup.outcome` is all
+`executed` and never `replayed` is a candidate — though today that metric isn't tagged by command
+type, so the split isn't visible in prod yet.
+
 ## The Redis store
 
 `IIdempotencyStore` (`Core.Server`) is implemented by `RedisIdempotencyStore` (`Redis`) on
-`RedisDb<InfrastructureDbContext>` with key prefix `ApiCmdDedup`:
+`RedisDb<InfrastructureDbContext>` with key prefix `ApiCmdDedup`. `RedisDb.Database` applies that
+prefix itself, so the store passes bare keys to every call — including the `keys` array of the Lua
+script, which StackExchange.Redis prefixes too. Keys look like
+`<instance>.infrastructure.ApiCmdDedup.<session hash>:<uuid>`.
 
 - **Claim** — `SET NX` a marker `[InProgressTag][owner]`. Winning the `SET NX` is the claim.
 - **Complete** — overwrite with `[CompletedTag][resultBytes]` (the MessagePack-serialized
@@ -95,7 +115,7 @@ branch only — commands are client→server, so the client never needs it):
 
 - The peer's API version is read per-call from the RPC handshake:
   `RpcInboundContext.Current.Peer.…Handshake.RemoteApiVersionSet[RpcDefaults.ApiScope]`.
-- Peers **≥ `UuidVersion`** (pinned to the shipping release, `2.16`), backend peers
+- Peers **≥ `UuidVersion`** (pinned to the shipping release, `2.17`), backend peers
   (BackendScope, no ApiScope), and non-command args pass through the inner
   `RpcByteArgumentSerializerV4` verbatim — the common path, zero behaviour change.
 - Peers **< `UuidVersion`** get their `ApiCommand`-typed argument migrated: the item's
@@ -106,11 +126,17 @@ Only arguments whose type derives from `ApiCommand` are touched; everything else
 untouched. This is why `ApiCommand` lives in `Core` (so the decorator can name it) — it has
 no `Api`-only dependencies.
 
-**Exception — commands with their own `[MessagePackFormatter]`.** The `ServerKvas_*` and
-`ServerSettings_Set` commands serialize as a *named-key map*, not an array, so there is no
-element to prepend — `MustPrependUuid` skips them. They need no migration: a map from an old
-client simply lacks the `Uuid` entry, and their formatters read that back as `""`, which is
-exactly what the array path prepends.
+**Exception — map payloads.** The transform only applies when the item's msgpack slice actually
+starts with an array header (`IsArrayLayout`). A *named-key map* has no element to prepend, and it
+needs none: a missing `Uuid` entry already reads back as `""`, exactly what the array path prepends.
+Two kinds of map reach the server:
+
+- **Commands with their own `[MessagePackFormatter]`** — `ServerKvas_*` and `ServerSettings_Set`.
+- **Keyless formats** (`msgpack6k` / `msgpack6ck`), which serialize every member by name. These are
+  what the TypeScript clients use, and `Uploads_Append` travels this way. Those peers advertise no
+  `ApiVersionSet` today, so they land in the pass-through branch anyway — but the decorator must not
+  rely on that: the moment TS gains versioning and reports anything below `UuidVersion`, a type check
+  alone would drive a map into `ReadArrayHeader` and fail every such command.
 
 See also [Serialization](./serialization.md) for the broader serializer landscape and the
 MessagePack attribute convention.
@@ -120,7 +146,7 @@ MessagePack attribute convention.
 A migrated legacy command arrives with an empty `Uuid` (the prepended placeholder). The
 deduplicator's `Uuid.Length > 0` guard therefore **skips** it: the command runs normally
 every time, with no idempotency. Old clients keep working; they simply don't get dedup until
-they upgrade. This was verified live — a real `2.15` client against a `2.16` server: reactions
+they upgrade. This was verified live — a real pre-`UuidVersion` client against a new server: reactions
 work, the server logs the migration, and the deduplicator skips the empty-`Uuid` command.
 
 ## Observability
@@ -147,7 +173,8 @@ Reclaims log at Info; overruns log at Warning.
 - **Host-liveness over fencing.** Mark which host owns execution; another host seeing the same
   command checks whether that owner is alive and, if not, redoes it. Host death is likelier than
   Redis loss.
-- **Dedup for all commands; the queue is separate.** Every `ApiCommand` is deduped; only
+- **Dedup for all commands except explicit opt-outs.** Every `ApiCommand` is deduped unless it
+  implements `INotDeduplicated` (see [Opting out](#opting-out--inotdeduplicated)); only
   heavy/edit-type commands will opt into a client-side queue (deferred, see below). Cheap
   client-only actions (mute mic) need neither.
 - **Version, not heuristics.** Backward compat is gated on the handshake API version, not on
