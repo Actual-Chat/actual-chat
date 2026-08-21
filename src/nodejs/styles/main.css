@@ -382,7 +382,10 @@ body.narrow .list-view-layout:has(.chat-activity-panel:not(.not-participating)) 
     transform: scale(0);
     transition-delay: 0s;
 }
-.list-view-layout .layout-header.collapsed:has(.header-activity-panel-wrapper) .author-circle:not(:first-child) {
+/* Non-animated groups overlap via margin, so the collapsed pill tightens them here.
+   The animated group positions heads by transform (--acg-x) with margin:0 - a margin
+   would shift its absolute-positioned heads and stack them, so exclude it. */
+.list-view-layout .layout-header.collapsed:has(.header-activity-panel-wrapper) .author-circle-group:not(.animate-changes) .author-circle:not(:first-child) {
     @apply -ml-5;
 }
 body.narrow .list-view-layout .layout-header.expanded .chat-header-control-panel {

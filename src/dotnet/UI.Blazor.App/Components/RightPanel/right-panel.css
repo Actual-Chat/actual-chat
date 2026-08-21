@@ -70,36 +70,30 @@ body.narrow .right-panel.has-expanded-header > .c-top-region > .c-header.expande
     height: auto;
     min-height: var(--rp-header-base);
 }
-/* Reserve the avatar's flow height in .c-top (a wallpaper strip above it + the square) so the title and
-   badge below flow UNDER the avatar instead of behind it. */
+/* Full-screen avatar: the square spans the full width and sits at the top (just clear of the notch).
+   .c-top reserves the avatar's height in flow so the title/badge/description drop UNDER the avatar
+   instead of behind it. Bell/share stay hidden; the square, the close (X) and the info below show. */
 body.narrow .right-panel.has-expanded-header > .c-top-region > .c-header.expanded-header > .c-top {
-    height: calc(4.5rem + var(--safe-area-top) + var(--expanded-header-height));
+    height: calc(var(--safe-area-top) + var(--expanded-header-height));
 }
-/* Full-screen avatar: keep the top edge where it is (a strip of the blurred .c-top wallpaper stays
-   visible above it) and let the square span the full width, instead of jumping to the panel top. */
 body.narrow .right-panel > .c-top-region > .c-header.expanded-header > .c-center {
-    top: calc(4.5rem + var(--safe-area-top));
+    top: var(--safe-area-top);
     height: var(--expanded-header-height);
 }
-/* edit/share/invite: shown, dropped to the avatar's bottom edge and overlapping it by 50%. */
-body.narrow .right-panel.has-expanded-header > .c-top-region > .c-header > .c-center > .c-buttons {
-    @apply absolute right-4 bottom-0;
-    @apply max-w-none opacity-100;
-    transform: translateY(50%);
-}
-/* title + public/private badge + description: shown, flowing below the avatar (cleared of the buttons). */
+/* title + badge + description: shown, flowing below the avatar. */
 body.narrow .right-panel.has-expanded-header > .c-top-region > .c-header > .c-bottom {
     @apply opacity-100;
-    padding-top: 2rem;
+    padding-top: 1rem;
 }
 /* Keep the panel-close button visible over the full-screen avatar (it otherwise fades with the header). */
 body.narrow .right-panel.has-expanded-header > .c-top-region > .c-header > .c-buttons {
     @apply opacity-100;
 }
-/* Only the tabs/list are hidden while the avatar is full-screen. */
+/* Only the tabs/list are hidden while the avatar is full-screen. Fade out fast (and front-loaded
+   via ease-out) so it's gone before the .25s avatar grow, instead of overlapping it the whole time. */
 body.narrow .right-panel.has-expanded-header > .c-panel-content {
     @apply opacity-0 pointer-events-none;
-    transition: opacity .25s ease-in;
+    transition: opacity .1s ease-out;
 }
 .right-panel .tab-panel > .divider {
     @apply mx-6;
