@@ -260,6 +260,24 @@ public class KvasarKvasTest(ITestOutputHelper @out) : TestBase(@out), IAsyncLife
     }
 
     [Fact]
+    public async Task ReactivatingAKeyBeingClosedStillOpensTest()
+    {
+        // arrange
+        var services = CreateServices();
+        await using var kvas = CreateKvas(services, requiresActivation: true);
+        await kvas.Activate("aaaa1111");
+
+        // act
+        await kvas.Activate("bbbb2222"); // Starts closing + deleting aaaa1111 in the background
+        await kvas.Activate("aaaa1111"); // Must wait for that close: the store lock is exclusive
+        await kvas.Set("a", "a");
+
+        // assert
+        (await kvas.Get<string>("a")).Should().Be("a");
+        await WhenFolderNamesAre(["Store-aaaa1111"]);
+    }
+
+    [Fact]
     public async Task ActivateSweepsStaleKeyFoldersTest()
     {
         // arrange
