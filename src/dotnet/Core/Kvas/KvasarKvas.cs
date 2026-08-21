@@ -175,7 +175,10 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
             // Publication: readers pick the new task up with a Volatile.Read in GetStore.
             newStoreTask = _isSuspended ? NoStoreTask : Open(key, pending);
             Volatile.Write(ref _storeTask, newStoreTask);
-            _maintenanceTask = SwitchAway(pending, oldStoreTask, oldKey, generation);
+            _maintenanceTask = CloseAndDelete(pending, oldStoreTask, oldKey);
+            // Reclaiming disk is not something an open or a suspend should ever wait behind, so the
+            // sweep trails the chain instead of joining it.
+            _ = SweepAfter(_maintenanceTask, generation);
         }
 
         return newStoreTask;
@@ -286,9 +289,10 @@ public sealed class KvasarKvas : SafeAsyncDisposableBase, IKvasStore
                 & (Settings.BasePath.FileName + "-" + key)
                 & Settings.BasePath.FileName;
 
-    private async Task SwitchAway(Task pending, Task<KvasarStore?> oldStoreTask, string? oldKey, long generation)
+    private async Task SweepAfter(Task pending, long generation)
     {
-        await CloseAndDelete(pending, oldStoreTask, oldKey).ConfigureAwait(false);
+        await pending.SilentAwait(false);
+
         SweepKeyFolders(generation);
     }
 
