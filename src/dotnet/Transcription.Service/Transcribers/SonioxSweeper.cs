@@ -20,6 +20,12 @@ public sealed class SonioxSweeper : WorkerBase
         public TimeSpan Retention { get; init; } = TimeSpan.FromMinutes(15);
         public int PageSize { get; init; } = 1000;
         public int MaxDeletesPerSweep { get; init; } = 5000;
+        // Soniox meters requests per minute across the whole organization, and live transcription
+        // spends from the same budget - so a sweep paces itself far below it, leaving room for the
+        // transcribers and for the other hosts sweeping on their own schedule.
+        public TimeSpan DeleteDelay { get; init; } = TimeSpan.FromSeconds(1);
+        public TimeSpan RateLimitDelay { get; init; } = TimeSpan.FromSeconds(30);
+        public int MaxRateLimitRetryCount { get; init; } = 5;
         public RetryDelaySeq RetryDelays { get; init; }
             = RetryDelaySeq.Exp(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(30));
         public LogLevel LogLevel { get; init; } = LogLevel.Information;
@@ -106,20 +112,17 @@ public sealed class SonioxSweeper : WorkerBase
                     kept++;
                     continue;
                 }
+
                 if (deleted + failed >= maxDeleteCount) {
                     isTruncated = true;
                     break;
                 }
 
-                try {
-                    await delete(item.Id, cancellationToken).ConfigureAwait(false);
+                if (await TryDelete(delete, kind, item.Id, cancellationToken).ConfigureAwait(false))
                     deleted++;
-                }
-                catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
-                    // One bad id must not cost the rest of the sweep - the next run retries it.
+                else
                     failed++;
-                    Log.LogWarning(e, "Sweep: couldn't delete {Kind} {Id}", kind, item.Id);
-                }
+                await SystemClock.Delay(Settings.DeleteDelay, cancellationToken).ConfigureAwait(false);
             }
         } while (!cursor.IsNullOrEmpty() && !isTruncated && !cancellationToken.IsCancellationRequested);
 
@@ -132,6 +135,32 @@ public sealed class SonioxSweeper : WorkerBase
                 "Sweep: deleted {DeletedCount} orphaned {Kind}(s), kept {KeptCount}, {FailedCount} failed",
                 deleted, kind, kept, failed);
         return (deleted, failed);
+    }
+
+    private async Task<bool> TryDelete(
+        Func<string, CancellationToken, Task> delete,
+        string kind,
+        string id,
+        CancellationToken cancellationToken)
+    {
+        for (var attempt = 0;; attempt++) {
+            try {
+                await delete(id, cancellationToken).ConfigureAwait(false);
+                return true;
+            }
+            catch (RateLimitExceededException e) when (attempt < Settings.MaxRateLimitRetryCount) {
+                // Waiting the limit out beats spending the sweep's budget on deletes that can't land,
+                // and the transcribers sharing the budget are the ones that must get through it.
+                var delay = e.RetryDelay > TimeSpan.Zero ? e.RetryDelay : Settings.RateLimitDelay;
+                Log.LogWarning("Sweep: rate-limited, retrying {Kind} {Id} in {Delay}", kind, id, delay);
+                await SystemClock.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
+                // One bad id must not cost the rest of the sweep - the next run retries it.
+                Log.LogWarning(e, "Sweep: couldn't delete {Kind} {Id}", kind, id);
+                return false;
+            }
+        }
     }
 
     private async Task<SweepPage> ListTranscriptionPage(string? cursor, CancellationToken cancellationToken)

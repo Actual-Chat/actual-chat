@@ -19,6 +19,9 @@ public sealed class SonioxApiMock : HttpMessageHandler
     public List<int> RequestedPageSizes { get; } = new();
     // Recorded before the request is answered, so a refused delete still counts as attempted
     public List<string> DeleteAttempts { get; } = new();
+    // Answers this many deletes with the 429 Soniox returns once the per-minute budget is spent
+    public int RateLimitedDeleteCount { get; set; }
+    public TimeSpan? RetryAfter { get; set; }
 
     public SonioxApiMock AddTranscription(
         string id,
@@ -81,6 +84,14 @@ public sealed class SonioxApiMock : HttpMessageHandler
     private HttpResponseMessage Delete(Dictionary<string, Item> items, string id, bool isTranscription)
     {
         DeleteAttempts.Add(id);
+        if (RateLimitedDeleteCount > 0) {
+            RateLimitedDeleteCount--;
+            var response = Respond(HttpStatusCode.TooManyRequests, "");
+            if (RetryAfter is { } retryAfter)
+                response.Headers.RetryAfter = new RetryConditionHeaderValue(retryAfter);
+            return response;
+        }
+
         if (!items.TryGetValue(id, out var item))
             return Respond(HttpStatusCode.NotFound, "");
         if (isTranscription && item.Status is not ("completed" or "error"))
@@ -103,6 +114,7 @@ public sealed class SonioxApiMock : HttpMessageHandler
             json["status"] = item.Status;
             json["file_id"] = item.FileId;
         }
+
         return json;
     }
 
