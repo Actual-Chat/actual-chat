@@ -10,6 +10,7 @@ import { ServiceWorker } from 'service-worker';
 import { ScreenOrientation, DeviceOrientation } from 'orientation';
 import { CompactLayout } from 'compact-layout';
 import { MutationProcessor } from 'mutation-processor';
+import { AppRecovery } from '../../dotnet/UI.Blazor/Services/AppRecovery/app-recovery';
 import { BrowserInit } from '../../dotnet/UI.Blazor/Services/BrowserInit/browser-init';
 import '../../dotnet/UI.Blazor.App/Services/app-presence-classes';
 import '../../dotnet/UI.Blazor.App/Services/conversation-collapse';
@@ -20,6 +21,7 @@ import '../../dotnet/UI.Blazor.App/Services/conversation-collapse';
 // RenderSync itself is published so deferral can be switched on mid-call over the debugger,
 // which is the only way to A/B it against the same call rather than a different one.
 globalThis.renderSyncHook = RenderSync.init();
+AppRecovery.startRenderBatchWatch();
 globalThis.RenderSync = RenderSync;
 
 globalThis.ServerClock = ServerClock;
@@ -79,7 +81,7 @@ void (async () => {
     const app = window.App;
     if (app) {
         await app.whenBlazorReady;
-        BrowserInit.startReloadWatchers();
+        AppRecovery.start();
         void BrowserInit.startWebSplashRemoval(5_000);
     }
 })();

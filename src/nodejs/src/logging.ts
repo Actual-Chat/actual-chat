@@ -33,6 +33,7 @@ export type { LogRef, LogScopeFns } from './actuallab-core/index.js';
 export type LogScope =
     | 'default'
     // Library
+    | 'AppRecovery'
     | 'Api'
     | 'AsyncProcessor'
     | 'AsyncVideoEncoder'
@@ -147,6 +148,7 @@ export type LogScope =
 const defaults: Record<LogScope, LogLevel> = {
     default: LogLevel.Warn,
     // Library
+    AppRecovery: LogLevel.Warn,
     Api: LogLevel.Warn,
     AsyncProcessor: LogLevel.Warn,
     AsyncVideoEncoder: LogLevel.Warn,

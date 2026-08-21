@@ -1,8 +1,8 @@
 // TODO: fix eslint errors
 /* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-argument */
 import { Api, streamingApi, uploadsApi } from 'api';
+import { AppRecovery } from '../AppRecovery/app-recovery';
 import { ConnectivityUI } from '../ConnectivityUI/connectivity-ui';
-import { EventHandlerSet } from 'event-handling';
 import { delayAsync, PromiseSource } from 'actuallab-core';
 import { AppKind, BrowserInfo, HostKind } from '../BrowserInfo/browser-info';
 import { getLogs } from 'logging';
@@ -29,10 +29,6 @@ export class BrowserInit {
     public static firebasePublicKey?: string;
     public static readonly isMauiApp = ConnectivityUI.isMauiApp;
     public static readonly whenInitialized = new PromiseSource<void>();
-    public static readonly whenReloading = new PromiseSource<void>();
-    public static readonly reconnectedEvents = new EventHandlerSet<void>();
-    public static connectionState = '';
-    public static reconnectingPromise: Promise<void> = null!;
     private static isAppReady = false;
 
     public static init(
@@ -74,7 +70,7 @@ export class BrowserInit {
             errorLog?.log('init: error:', e);
             this.whenInitialized.reject(e);
             // We can't do much in this case, so...
-            void this.startReloading();
+            void AppRecovery.startReloading();
         }
         finally {
             this.whenInitialized.resolve(undefined);
@@ -89,128 +85,6 @@ export class BrowserInit {
     public static getUrl(url: string) : string {
         const baseUri = BrowserInit.baseUri;
         return baseUri ? new URL(url, baseUri).toString() : url;
-    }
-
-    public static resetAppConnectionState(): void {
-        if (this.connectionState === '')
-            return; // Already reset
-
-        this.setAppConnectionState();
-        this.reconnectedEvents.triggerSilently();
-    }
-
-    public static startReconnecting(mustReconnectBlazor : boolean): void {
-        this.setAppConnectionState('Reconnecting...');
-        if (!mustReconnectBlazor)
-            return;
-
-        this.reconnectingPromise ??= (async (): Promise<void> => {
-            try {
-                const blazor = window['Blazor'] as { reconnect: () => Promise<boolean> };
-                if (!blazor?.reconnect) {
-                    // No Blazor reconnect = it's WASM & something is severely wrong,
-                    // so the best we can do is to reload the page.
-                    void this.startReloading();
-                    return;
-                }
-
-                await ConnectivityUI.whenReadyToReload('reconnecting');
-                if (this.whenReloading.isCompleted)
-                    return; // Already reloading
-
-                warnLog?.log('startReconnecting: reconnecting...');
-                try {
-                    if (await blazor.reconnect())
-                        return;
-                }
-                catch {
-                    // We assume it may fail
-                }
-
-                errorLog?.log('startReconnecting: failed to reconnect, will reload...');
-                void this.startReloading();
-            }
-            finally {
-                this.reconnectingPromise = null!;
-            }
-        })();
-    }
-
-    public static async startReloading(): Promise<void> {
-        if (this.whenReloading.isCompleted)
-            return; // Already reloading
-
-        if (!this.isMauiApp) // No "Reloading..." on MAUI app
-            this.setAppConnectionState('Reloading...');
-
-        warnLog?.log('startReloading: reloading...');
-        this.whenReloading.resolve(undefined);
-
-        // @ts-expect-error because of the `window.opusMediaRecorder`
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        await window?.opusMediaRecorder?.stop();
-
-        await ConnectivityUI.whenReadyToReload('reloading');
-        window.location.reload();
-    }
-
-    public static startReloadWatchers() {
-        const attachWatchers = () => {
-            const errors: string[] = [];
-            const reconnectDiv = document.getElementById('components-reconnect-modal');
-            if (reconnectDiv) {
-                const checkReconnectDiv = () => {
-                    if (this.whenReloading.isCompleted)
-                        return;
-
-                    const classList = reconnectDiv.classList;
-                    if (classList.length == 0 || classList.contains('components-reconnect-hide'))
-                        this.resetAppConnectionState();
-                    else if (classList.contains('components-reconnect-rejected')) {
-                        warnLog?.log(
-                            'startReloading: triggered by #components-reconnect-modal',
-                            { classes: reconnectDiv.className, text: reconnectDiv.innerText?.trim().slice(0, 300) });
-                        void this.startReloading();
-                    }
-                    else if (classList.contains('components-reconnect-failed'))
-                        this.startReconnecting(true);
-                    else if (classList.contains('components-reconnect-show'))
-                        this.startReconnecting(false);
-                }
-                const observer = new MutationObserver(() => checkReconnectDiv());
-                observer.observe(reconnectDiv, { attributes: true });
-                checkReconnectDiv();
-            }
-            else
-                errors.push('no reconnectDiv');
-
-            const errorDiv = document.getElementById('blazor-error-ui');
-            if (errorDiv) {
-                const checkErrorDiv = () => {
-                    if (errorDiv.style.display === 'block') {
-                        warnLog?.log(
-                            'startReloading: triggered by #blazor-error-ui',
-                            { text: errorDiv.innerText?.trim().slice(0, 300) });
-                        void this.startReloading();
-                    }
-                }
-                const observer = new MutationObserver(() => checkErrorDiv());
-                observer.observe(errorDiv, { attributes: true });
-                checkErrorDiv();
-            }
-            else
-                errors.push('no errorDiv');
-
-            if (errors.length === 0)
-                infoLog?.log(`startReloadWatchers: completed`);
-            else
-                errorLog?.log(`startReloadWatchers: errors:`, errors);
-        }
-
-        if (document.readyState === 'loading')
-            document.addEventListener('DOMContentLoaded', () => attachWatchers());
-        else
-            attachWatchers();
     }
 
     public static removeWebSplash(instantly = false) {
@@ -399,36 +273,6 @@ export class BrowserInit {
         }
 
         void keepWebLock();
-    }
-
-    private static setAppConnectionState(state = ''): void {
-        if (this.connectionState === state)
-            return;
-
-        this.connectionState = state;
-        if (this.whenReloading.isCompleted)
-            return;
-
-        const appConnectionStateDiv = document.getElementById('app-connection-state');
-        if (!appConnectionStateDiv)
-            return;
-
-        if (state) {
-            appConnectionStateDiv.innerHTML = `
-                <div class="c-bg"></div>
-                <div class="c-circle-blur"></div>
-                <div class="c-circle">
-                    <!-- Must have open and close tags, otherwise doesn't work! -->
-                    <loading-cat-svg></loading-cat-svg>
-                    <span class="c-text">${state}</span>
-                </div>
-            `;
-            appConnectionStateDiv.style.display = '';
-        }
-        else {
-            appConnectionStateDiv.innerHTML = '';
-            appConnectionStateDiv.style.display = 'none';
-        }
     }
 
     private static isProdBaseUri(baseUri: string): boolean {
