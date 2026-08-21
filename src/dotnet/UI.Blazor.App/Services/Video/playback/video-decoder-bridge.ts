@@ -263,6 +263,13 @@ export class VideoDecoderBridge {
                 return;
 
             const submitMs = now();
+            // Re-anchor the hang deadline when the decoder was idle: the watchdog must time
+            // the decoder's work, not a gap spent waiting for a chunk it could accept. Since
+            // KeyFramePeriod (3s) exceeds decoderHangTimeoutMs (2s), every recovery keyframe
+            // otherwise arrives past an already-expired deadline and re-fires instantly - a
+            // fired watchdog could never be recovered from inside the player.
+            if (this.pending.length === 0)
+                this.lastDecoderActivityMs = submitMs;
             this.pending.push({
                 capturedAt: arrived.capturedAt,
                 arrivedAt: arrived.arrivedAt,

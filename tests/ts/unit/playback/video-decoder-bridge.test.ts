@@ -139,6 +139,39 @@ describe('VideoDecoderBridge', () => {
         expect(bridge.hangDeadline()).toBe(4000);
     });
 
+    it('gives the recovery keyframe a full budget however long the keyframe wait was', () => {
+        // arrange: stall, then wait longer than the timeout for the recovery keyframe -
+        // the real cadence, since KeyFramePeriod (3s) exceeds decoderHangTimeoutMs (2s)
+        const { bridge, clock } = makeBridge();
+        const stats = createEmptyPlayerStats();
+        bridge.submit(makeArrived(stats, true, 0));
+        clock.now = 2000;
+        bridge.onWatchdogFired(clock.now);
+        clock.now = 5000;
+
+        // act
+        bridge.submit(makeArrived(stats, true, 1));
+
+        // assert: deadline is ahead of now, not the expired 4000 an output-anchored one gives
+        expect(bridge.hangDeadline()).toBe(7000);
+    });
+
+    it('still declares a hang when the decoder is fed but produces nothing', () => {
+        // arrange
+        const { bridge, clock } = makeBridge();
+        const stats = createEmptyPlayerStats();
+        bridge.submit(makeArrived(stats, true, 0));
+
+        // act: keep submitting while the decoder stays silent
+        clock.now = 1000;
+        bridge.submit(makeArrived(stats, false, 1));
+        clock.now = 1500;
+        bridge.submit(makeArrived(stats, false, 2));
+
+        // assert: the deadline stays anchored to the last output, so the hang is still caught
+        expect(bridge.hangDeadline()).toBe(2000);
+    });
+
     it('stamps submit/decode liveness and tracks decodedReadyCount', () => {
         // arrange: submit one keyframe, then fire onFrame via the fake decoder
         const { bridge, decoders } = makeBridge();
