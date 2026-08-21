@@ -10,7 +10,7 @@ public sealed class RenderGate : WorkerBase
     public const bool IsEnabledOnMauiApp = true;
 
     private readonly BackgroundStateTracker? _backgroundStateTracker;
-    private readonly HashSet<IPostponableRenderer> _postponed = new();
+    private readonly HashSet<ComponentBase> _postponed = new();
     private readonly Lock _lock = new();
 
     private ILogger Log { get; }
@@ -28,7 +28,7 @@ public sealed class RenderGate : WorkerBase
 
     // Runs inside ShouldRender for every component on every render, so it must never throw:
     // one exception here would stop the whole app rendering rather than one component.
-    public bool TryPostpone(IPostponableRenderer renderer)
+    public bool TryPostpone(ComponentBase renderer)
     {
         if (_backgroundStateTracker is not { } backgroundStateTracker)
             return false;
@@ -66,7 +66,7 @@ public sealed class RenderGate : WorkerBase
 
     private void Resume()
     {
-        IPostponableRenderer[] postponed;
+        ComponentBase[] postponed;
         lock (_lock) {
             if (_postponed.Count == 0)
                 return;
@@ -76,6 +76,6 @@ public sealed class RenderGate : WorkerBase
         }
         Log.LogInformation("Resuming {Count} postponed render(s)", postponed.Length);
         foreach (var renderer in postponed)
-            renderer.ResumeRender();
+            renderer.NotifyStateHasChanged();
     }
 }

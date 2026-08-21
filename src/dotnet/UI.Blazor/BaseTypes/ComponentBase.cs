@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor;
 /// <summary>
 /// Base class for Blazor components with typed <see cref="UIHub"/> access and service shortcuts.
 /// </summary>
-public abstract class ComponentBase<THub> : ComponentBase, IHasCircuitHub, IPostponableRenderer
+public abstract class ComponentBase<THub> : ComponentBase, IHasCircuitHub
     where THub : UIHub
 {
     [Inject] protected THub Hub { get; init; } = null!;
@@ -48,9 +48,6 @@ public abstract class ComponentBase<THub> : ComponentBase, IHasCircuitHub, IPost
 
     protected override bool ShouldRender()
         => !RenderGate.TryPostpone(this);
-
-    void IPostponableRenderer.ResumeRender()
-        => this.NotifyStateHasChanged();
 
     // Explicit IHasFusionHub & IHasServices implementation
     CircuitHub IHasCircuitHub.CircuitHub => Hub;
