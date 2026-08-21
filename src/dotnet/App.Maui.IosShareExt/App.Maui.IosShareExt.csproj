@@ -68,11 +68,15 @@
     <DefineConstants>$(DefineConstants);IS_PRODUCTION_ENV</DefineConstants>
   </PropertyGroup>
 
-
+  <!-- The image sets' Contents.json come from the default ImageAsset glob; the PNGs they name
+       stay in resources\ so another extension can link the same files into its own catalog.
+       ACTool clones every ImageAsset to its Link path before compiling, which is what lets the
+       two halves live apart. Generated from src\nodejs\images\*.svg by scripts\prepare-images.cmd. -->
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
-    <!-- Generated from src\nodejs\images\*.svg by scripts\prepare-images.cmd; the glob picks up @2x/@3x -->
-    <BundleResource Include="..\..\..\resources\images\converted\error-cat*.png" Link="%(Filename)%(Extension)" />
-    <BundleResource Include="..\..\..\resources\images\converted\share-cat*.png" Link="%(Filename)%(Extension)" />
+    <ImageAsset Include="..\..\..\resources\images\converted\error-cat*.png"
+                Link="Assets.xcassets\error-cat.imageset\%(Filename)%(Extension)" />
+    <ImageAsset Include="..\..\..\resources\images\converted\share-cat*.png"
+                Link="Assets.xcassets\share-cat.imageset\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- TODO: Move GoogleService-Info.plist files to Maui project and define BundleResource there,

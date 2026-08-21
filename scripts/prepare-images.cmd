@@ -40,8 +40,9 @@ EOF
 fi
 
 # Only the SVGs the iOS app extension bundles as PNGs - UIKit can't render SVG, unlike the
-# web, which is served every other file under $inDir as-is. Add a name here when a native
-# view needs one. @2x/@3x come from the SVG's own size, so each image keeps its dimensions.
+# web, which is served every other file under $inDir as-is. A new name also needs an .imageset
+# - Contents.json plus an ImageAsset link - in every project that renders it.
+# @2x/@3x come from the SVG's own size, so each image keeps its dimensions.
 names="error-cat-dark error-cat-light share-cat-dark share-cat-light"
 
 inDir="src/nodejs/images"
