@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor;
 
-public abstract class FusionComponentBase<THub> : FusionComponentBase, IHasCircuitHub
+public abstract class FusionComponentBase<THub> : FusionComponentBase, IHasCircuitHub, IPostponableRenderer
     where THub : UIHub
 {
     [Inject] protected THub Hub { get; init; } = null!;
@@ -41,6 +41,21 @@ public abstract class FusionComponentBase<THub> : FusionComponentBase, IHasCircu
     protected bool IsPrerendering => Hub.IsPrerendering;
     protected bool IsInteractive => Hub.IsInteractive;
     protected bool ShouldAutoFocusField => Hub.BrowserInfo.ShouldAutoFocusField;
+
+    private RenderGate RenderGate => field ??= Services.GetRequiredService<RenderGate>();
+
+    protected override bool ShouldRender()
+        => base.ShouldRender() && !RenderGate.TryPostpone(this);
+
+    void IPostponableRenderer.ResumeRender()
+        => _ = InvokeAsync(() => {
+            try {
+                StateHasChanged();
+            }
+            catch {
+                // An earlier replay in the same pass may already have removed this component
+            }
+        });
 
     // Explicit IHasFusionHub & IHasServices implementation
     CircuitHub IHasCircuitHub.CircuitHub => Hub;
