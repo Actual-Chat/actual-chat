@@ -68,6 +68,21 @@ public class VirtualListDataTest(ITestOutputHelper @out) : TestBase(@out)
         keyRange.Should().Be(new Range<string>("1", "11"));
     }
 
+    [Fact]
+    public void KeyRangeShouldBeDefaultWhenEveryLeafIsSkipKey()
+    {
+        // arrange - the live block alone in the window: its header and footer are both skip-key
+        var header = new TestItem("100") { ShouldSkipKey = true };
+        var footer = new TestItem("101") { ShouldSkipKey = true };
+        var data = new VirtualListData<TestItem>([new TestGroup("100", [header, footer])]);
+
+        // act
+        var keyRange = data.KeyRange;
+
+        // assert
+        keyRange.Should().Be(default(Range<string>));
+    }
+
     // Nested types
 
     private class TestItem(string key) : IVirtualListItem
