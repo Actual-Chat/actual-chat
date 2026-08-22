@@ -64,7 +64,8 @@ const mipmapTextureCache = new Map<string, GPUTexture>();
 function getMipmapTexture(w: number, h: number): GPUTexture {
     const key = `${w},${h}`;
     const cached = mipmapTextureCache.get(key);
-    if (cached) return cached;
+    if (cached)
+        return cached;
 
     const maxMips = Math.floor(Math.log2(Math.max(w, h))) + 1;
     const texture = device!.createTexture({
@@ -96,6 +97,7 @@ const uniform8BufferPool: GPUBuffer[] = [];
 function getUniform8Buffer(): GPUBuffer {
     if (uniform8BufferPool.length > 0)
         return uniform8BufferPool.pop()!;
+
     return device!.createBuffer({
         size: 8,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
@@ -113,28 +115,40 @@ const tempFloat32Array2 = new Float32Array(2);
 // destroy() calls a few frames behind the encode rate, after the GPU has
 // drained the work that referenced the resource.
 let blurFrameCounter = 0;
+// Split by what the closure touches. GPU handles die with the device and must not be
+// dereferenced afterwards; VideoFrames are unaffected and still have to be closed, so
+// a device loss drops the first queue but must drain the second.
 const blurCleanupQueue = new Map<number, (() => void)[]>();
+const blurFrameCloseQueue = new Map<number, (() => void)[]>();
 const BLUR_CLEANUP_DELAY_FRAMES = 3;
 
-function registerBlurDeferredCleanup(cleanupFn: () => void): void {
+function registerDeferred(queue: Map<number, (() => void)[]>, cleanupFn: () => void): void {
     const cleanupFrame = blurFrameCounter + BLUR_CLEANUP_DELAY_FRAMES;
-    const cleanups = blurCleanupQueue.get(cleanupFrame) ?? [];
+    const cleanups = queue.get(cleanupFrame) ?? [];
     cleanups.push(cleanupFn);
-    blurCleanupQueue.set(cleanupFrame, cleanups);
+    queue.set(cleanupFrame, cleanups);
+}
+
+function registerBlurDeferredCleanup(cleanupFn: () => void): void {
+    registerDeferred(blurCleanupQueue, cleanupFn);
 }
 
 function deferTextureDestroy(texture: GPUTexture | null): void {
-    if (!texture) return;
+    if (!texture)
+        return;
+
     registerBlurDeferredCleanup(() => texture.destroy());
 }
 
 function deferBufferDestroy(buffer: GPUBuffer | null): void {
-    if (!buffer) return;
+    if (!buffer)
+        return;
+
     registerBlurDeferredCleanup(() => buffer.destroy());
 }
 
 function deferFrameClose(frame: VideoFrame): void {
-    registerBlurDeferredCleanup(() => {
+    registerDeferred(blurFrameCloseQueue, () => {
         try { frame.close(); } catch { /* already closed */ }
     });
 }
@@ -147,20 +161,36 @@ function clearOffsetBufferCache(): void {
 
 export function processBlurDeferredCleanups(currentFrame: number = ++blurFrameCounter): void {
     const minCleanupFrame = currentFrame - BLUR_CLEANUP_DELAY_FRAMES;
-    for (const [frameNum, cleanups] of blurCleanupQueue) {
+    drainDueDeferred(blurCleanupQueue, minCleanupFrame);
+    drainDueDeferred(blurFrameCloseQueue, minCleanupFrame);
+}
+
+function drainDueDeferred(queue: Map<number, (() => void)[]>, minCleanupFrame: number): void {
+    for (const [frameNum, cleanups] of queue) {
         if (frameNum <= minCleanupFrame) {
-            for (const cleanup of cleanups) {
-                try { cleanup(); } catch (e) { warnLog?.log('Error during deferred cleanup:', e); }
-            }
-            blurCleanupQueue.delete(frameNum);
+            runDeferred(cleanups);
+            queue.delete(frameNum);
         }
+    }
+}
+
+function drainAllDeferred(queue: Map<number, (() => void)[]>): void {
+    for (const cleanups of queue.values())
+        runDeferred(cleanups);
+    queue.clear();
+}
+
+function runDeferred(cleanups: (() => void)[]): void {
+    for (const cleanup of cleanups) {
+        try { cleanup(); } catch (e) { warnLog?.log('Error during deferred cleanup:', e); }
     }
 }
 
 function getOffsetBuffer(targetW: number, targetH: number, blurStrength: number): GPUBuffer {
     const key = `${targetW},${targetH},${blurStrength}`;
     const cached = offsetBufferCache.get(key);
-    if (cached) return cached;
+    if (cached)
+        return cached;
 
     const buffer = device!.createBuffer({
         size: 8,
@@ -462,6 +492,7 @@ export async function initBlurWebGPU(gpuDevice?: GPUDevice): Promise<void> {
     if (device) {
         if (device === sharedDevice)
             return;
+
         infoLog?.log('Reinitializing blur with new shared device');
     }
 
@@ -476,8 +507,10 @@ export async function initBlurWebGPU(gpuDevice?: GPUDevice): Promise<void> {
 // cleanly against a fresh device. Cannot .destroy() the cached
 // textures/buffers — handles are already dead and dereffing them re-triggers
 // the same Dawn "external Instance reference no longer exists" path that
-// crashes the renderer. Maps are .clear()ed; the deferred-cleanup queue is
-// emptied (its closures hold .destroy() calls against dead handles).
+// crashes the renderer. Maps are .clear()ed, and so is the GPU cleanup queue (its
+// closures hold .destroy() calls against dead handles) — but the frame-close queue
+// is drained instead: those VideoFrames outlive the device and back-pressure the
+// decoder until they are closed.
 function onBlurDeviceLost(): void {
     warnLog?.log('Blur invalidated by device.lost');
     device = null;
@@ -505,6 +538,7 @@ function onBlurDeviceLost(): void {
     cachedOutSizeKey = '';
     lastBlurStrength = -1;
     blurCleanupQueue.clear();
+    drainAllDeferred(blurFrameCloseQueue);
     lostDispose = null;
 }
 
@@ -514,7 +548,8 @@ function ensureInitialized(): void {
 }
 
 function initializeGpuResources(): void {
-    if (!device) throw new Error('Device not initialized');
+    if (!device)
+        throw new Error('Device not initialized');
 
     try {
         const gpu = navigator.gpu as GPU | undefined;
@@ -1082,7 +1117,9 @@ export class BgBlurRenderer {
     }
 
     private ensureInit(): void {
-        if (this.initStarted) return;
+        if (this.initStarted)
+            return;
+
         this.initStarted = true;
         void (async () => {
             try {
