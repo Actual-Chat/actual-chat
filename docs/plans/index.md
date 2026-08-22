@@ -29,6 +29,13 @@ OpenSearch with PostgreSQL full-text search (`tsvector` + GIN) behind
 segmentation) moves to the application level for uniform coverage across the
 top ~50 languages, on a pgvector-ready schema.
 
+### Better translation
+
+[Better translation](./better-translation.md) — throttle both translation
+streams. The whole-message stream publishes one wire item per LLM chunk with no
+rate limit; the realtime stream is throttled at 500ms, tuned for latency rather
+than for the up-to-4-calls/sec of LLM spend it implies.
+
 ### Chat roles — Moderator
 
 [Moderator role](./moderator-role.md) — a third system role between `Anyone` and
