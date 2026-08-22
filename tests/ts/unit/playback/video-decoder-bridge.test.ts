@@ -188,4 +188,40 @@ describe('VideoDecoderBridge', () => {
         bridge.tryPull();
         expect(stats.decodedReadyCount).toBe(0);
     });
+
+    it('throws CODEC_EXHAUSTED once the recovery budget runs out', () => {
+        // arrange: an unproven decoder that fails again on every recovery keyframe
+        const { bridge, decoders } = makeBridge();
+        const stats = createEmptyPlayerStats();
+        for (let i = 0; i < 4; i++) {
+            decoders[decoders.length - 1].handlers.onError(new Error(`decode failed ${i}`));
+            bridge.submit(makeArrived(stats, true, i));
+        }
+
+        // act: maxRecoveries is 5, so the 5th recovery keyframe is the one that gives up
+        decoders[decoders.length - 1].handlers.onError(new Error('decode failed 4'));
+        const arrived = makeArrived(stats, true, 4);
+
+        // assert: it throws, and still closes the chunk it was handed
+        expect(() => bridge.submit(arrived)).toThrow(/CODEC_EXHAUSTED/);
+        expect(stats.recoveryStreak).toBe(5);
+        expect((arrived.chunk as unknown as MockEncodedVideoChunk).closed).toBe(true);
+    });
+
+    it('closes a decoder frame that has no in-flight chunk to pair with', () => {
+        // arrange: one submitted chunk, so the second output has nothing left to pair with
+        const { bridge, decoders } = makeBridge();
+        const stats = createEmptyPlayerStats();
+        bridge.submit(makeArrived(stats, true, 0));
+        let unpairedCloseCount = 0;
+
+        // act
+        decoders[0].handlers.onFrame({ close: () => { /* paired */ } } as unknown as VideoFrame);
+        decoders[0].handlers.onFrame(
+            { close: () => { unpairedCloseCount++; } } as unknown as VideoFrame);
+
+        // assert
+        expect(unpairedCloseCount).toBe(1);
+        expect(stats.decodedReadyCount).toBe(1);
+    });
 });
