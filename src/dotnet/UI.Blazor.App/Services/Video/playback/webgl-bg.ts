@@ -83,7 +83,14 @@ void main() {
 export class WebGlBgRenderer {
     private gl: WebGL2RenderingContext | null = null;
     private readonly perf = new BgBlurPerfTracker('webgl');
-    private disposed = false;
+    private isDisposed = false;
+    // Stored so dispose() can detach it before its own loseContext() — that call
+    // dispatches the same event, and answering it would log an ordinary teardown
+    // as a context loss.
+    private readonly onContextLost = (): void => {
+        warnLog?.log('WebGlBgRenderer: context lost');
+        this.gl = null;
+    };
 
     private copyProgram: WebGLProgram | null = null;
     private blurProgram: WebGLProgram | null = null;
@@ -116,6 +123,10 @@ export class WebGlBgRenderer {
             warnLog?.log('WebGlBgRenderer: webgl2 context unavailable');
             return;
         }
+
+        // Without this the renderer goes silently black on a lost context and the
+        // logs give no way to tell that apart from an ordinary teardown.
+        canvas.addEventListener('webglcontextlost', this.onContextLost);
         try {
             this.gl = gl;
             this.initGl();
@@ -125,13 +136,41 @@ export class WebGlBgRenderer {
         }
     }
 
-    render(frame: VideoFrame): boolean {
-        if (this.disposed) return false;
+    dispose(): void {
+        if (this.isDisposed)
+            return;
+
+        this.isDisposed = true;
+        this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
         const gl = this.gl;
-        if (!gl) return false;
+        if (!gl)
+            return;
+
+        if (this.sourceTexture) gl.deleteTexture(this.sourceTexture);
+        if (this.pingTexture) gl.deleteTexture(this.pingTexture);
+        if (this.pongTexture) gl.deleteTexture(this.pongTexture);
+        if (this.pingFbo) gl.deleteFramebuffer(this.pingFbo);
+        if (this.pongFbo) gl.deleteFramebuffer(this.pongFbo);
+        if (this.positionBuffer) gl.deleteBuffer(this.positionBuffer);
+        if (this.copyProgram) gl.deleteProgram(this.copyProgram);
+        if (this.blurProgram) gl.deleteProgram(this.blurProgram);
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+        this.gl = null;
+    }
+
+    render(frame: VideoFrame): boolean {
+        if (this.isDisposed)
+            return false;
+
+        const gl = this.gl;
+        if (!gl)
+            return false;
+
         const fw = frame.displayWidth;
         const fh = frame.displayHeight;
-        if (fw <= 0 || fh <= 0) return false;
+        if (fw <= 0 || fh <= 0)
+            return false;
+
         const targetW = BG_CANVAS_WIDTH;
         const targetH = Math.max(1, Math.round(targetW * fh / fw));
         try {
@@ -212,22 +251,7 @@ export class WebGlBgRenderer {
         }
     }
 
-    dispose(): void {
-        if (this.disposed) return;
-        this.disposed = true;
-        const gl = this.gl;
-        if (!gl) return;
-        if (this.sourceTexture) gl.deleteTexture(this.sourceTexture);
-        if (this.pingTexture) gl.deleteTexture(this.pingTexture);
-        if (this.pongTexture) gl.deleteTexture(this.pongTexture);
-        if (this.pingFbo) gl.deleteFramebuffer(this.pingFbo);
-        if (this.pongFbo) gl.deleteFramebuffer(this.pongFbo);
-        if (this.positionBuffer) gl.deleteBuffer(this.positionBuffer);
-        if (this.copyProgram) gl.deleteProgram(this.copyProgram);
-        if (this.blurProgram) gl.deleteProgram(this.blurProgram);
-        gl.getExtension('WEBGL_lose_context')?.loseContext();
-        this.gl = null;
-    }
+    // Private methods
 
     private initGl(): void {
         const gl = this.gl!;
