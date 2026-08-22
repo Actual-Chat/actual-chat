@@ -221,9 +221,21 @@ export const recorderWorkerImpl: RecorderWorker = {
         return MediaCapture.applyFrameRate(track, fps);
     },
 
+    // The frame arrives transferred, so this realm owns it: an absent handler or a throw
+    // out of requireState() has to release it rather than drop it on the floor.
     pushFrame(frame: VideoFrame): Promise<void> {
-        const s = requireState();
-        s.deps.pushFrame?.(frame);
+        let isOwned = true;
+        try {
+            const push = requireState().deps.pushFrame;
+            if (push) {
+                push(frame);
+                isOwned = false;
+            }
+        } finally {
+            if (isOwned)
+                try { frame.close(); } catch { /* ignore */ }
+        }
+
         return Promise.resolve();
     },
 
