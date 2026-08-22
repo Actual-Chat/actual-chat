@@ -360,12 +360,6 @@ export class MainThreadDiagnostics {
         let lastTick = performance.now();
         let stallStart = 0;
 
-        // Hidden tabs throttle setInterval to ~1s. Without filtering, every
-        // throttled tick (delta ~1000-1100ms) would be reported as a stall.
-        // We only ignore deltas that fit the throttling profile; bigger deltas
-        // are real stalls on top of throttling and still get reported.
-        const HIDDEN_THROTTLE_FLOOR_MS = 1100;
-
         // Re-baseline on visibility transitions: otherwise a stale lastTick
         // from the previous regime (e.g. throttled hidden tick) would make
         // the first tick of the new regime look like a stall.
@@ -386,7 +380,9 @@ export class MainThreadDiagnostics {
             const now = performance.now();
             const delta = now - lastTick;
             const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
-            if (isHidden && delta < HIDDEN_THROTTLE_FLOOR_MS) {
+            // Hidden-tab timers throttle without an upper bound (minute-long buckets,
+            // or a frozen tab), so a delta measured here says nothing about the thread.
+            if (isHidden) {
                 if (stallStart) {
                     warnLog?.log(`watchdog: recovered after ${Math.round(now - stallStart)}ms total stall (tab hidden)`);
                     stallStart = 0;
@@ -437,7 +433,6 @@ export class MainThreadDiagnostics {
                         : '';
                     errorLog?.log(
                         `watchdog: main thread stalled for ${Math.round(delta)}ms`
-                        + (isHidden ? ' (tab hidden — throttling-adjusted)' : '')
                         + heapTail
                         + snapTail);
                 }
