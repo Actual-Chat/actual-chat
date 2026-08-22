@@ -206,6 +206,10 @@
             IsUnreadByOthers, IsUnreadByOthersBlockStart);
         return new() {
             InitialValue = initialData, // To show the original text immediately
+            // The default delayer collapses to ~32ms whenever UIActionTracker reports
+            // instant updates — ~30 render batches/sec per streaming message, each one a
+            // synchronous DOM patch. 0.2s is the grid the streaming markup already animates on.
+            UpdateDelayer = FixedDelayer.Get(0.2),
             Category = GetStateCategory(GetType()),
         };
     }
