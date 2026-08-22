@@ -172,6 +172,23 @@ function getTransferables(args: unknown[]): Transferable[] | undefined {
     return result;
 }
 
+// Transferables arrive owned by this realm, so a call that never reaches a method
+// has to release them here — a VideoFrame or AudioData left to the GC back-pressures
+// its codec until collection.
+function closeTransferables(args: unknown[] | undefined): void {
+    if (!args)
+        return;
+
+    for (const arg of args) {
+        if (!isTransferable(arg))
+            continue;
+
+        const closeable = arg as { close?: () => void };
+        if (typeof closeable.close === 'function')
+            try { closeable.close(); } catch { /* ignore */ }
+    }
+}
+
 /**
  * Direct noWait send — skips Proxy.get, proxyMethodCache lookup, RpcCall ctor.
  * Use in hot paths (per audio/video frame). Caller must pass transferables explicitly
@@ -210,7 +227,11 @@ export function rpcServer(
     const onMessage = async (event: MessageEvent<RpcCall>): Promise<void> => {
         const rpcCall = event.data;
         if (!rpcCall.id) {
-            await onUnhandledMessage(event);
+            try {
+                await onUnhandledMessage(event);
+            } finally {
+                closeTransferables(rpcCall.args);
+            }
             return;
         }
         debugLog?.log(`-> ${name}.onMessage[#${rpcCall.id}]:`, rpcCall)
@@ -220,7 +241,11 @@ export function rpcServer(
             // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
             const method = serverImpl[rpcCall.method] as Function | null;
             if (!method) {
-                await onUnhandledMessage(event);
+                try {
+                    await onUnhandledMessage(event);
+                } finally {
+                    closeTransferables(rpcCall.args);
+                }
                 return;
             }
             value = await method.apply(serverImpl, rpcCall.args);
@@ -249,13 +274,19 @@ export function rpcServer(
         dispose() {
             if (!isDisposed) {
                 isDisposed = true;
-                messagePort.onmessage = oldOnMessage;
+                messagePort.onmessage = oldOnMessage ?? drainTransferables;
                 messagePort.onmessageerror = oldOnMessageError;
                 if (onDispose)
                     onDispose();
             }
         }
     }
+}
+
+// Stand-in handler for a port whose server is gone: messages posted before the
+// dispose can still be dispatched, and dropping them strands their transferables.
+function drainTransferables(event: MessageEvent<RpcCall>): void {
+    closeTransferables(event.data.args);
 }
 
 const DefaultRpcClientTimeoutMs = 5_000;
@@ -374,7 +405,7 @@ export function rpcClientServer<TClient extends object>(
 
     const onDispose = () => {
         server.dispose();
-        messagePort.onmessage = oldOnMessage;
+        messagePort.onmessage = oldOnMessage ?? drainTransferables;
         messagePort.onmessageerror = oldOnMessageError;
     }
 
