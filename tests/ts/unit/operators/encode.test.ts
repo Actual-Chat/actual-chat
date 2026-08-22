@@ -150,12 +150,13 @@ function makeBundle(
     stats: RecorderStats,
     layers: { width: number; height: number }[],
     forceKeyframe = false,
+    ladderVersion = 0,
 ): CapturedBundle {
     if (layers.length === 0) throw new Error('makeBundle: at least one layer');
     // Bottom-first: layers[0] = base layer, layers[last] = top layer.
     const captured: CapturedFrame[] = layers.map(l =>
         makeCaptured(index, stats, l.width, l.height, forceKeyframe));
-    return { layers: captured, index, dropTrace: [], rotation: 0, stats };
+    return { layers: captured, ladderVersion, index, dropTrace: [], rotation: 0, stats };
 }
 
 function fromArray<T>(items: T[]): AsyncIterable<T> {
@@ -602,8 +603,8 @@ describe('encode operator', () => {
             createEncoder: makeFactory(),
         })(fromArray([
             makeBundle(1, stats, [{ width: 640, height: 360 }]),
-            makeBundle(2, stats, [{ width: 640, height: 360 }, { width: 1280, height: 720 }]),
-            makeBundle(3, stats, [{ width: 640, height: 360 }, { width: 1280, height: 720 }]),
+            makeBundle(2, stats, [{ width: 640, height: 360 }, { width: 1280, height: 720 }], false, 1),
+            makeBundle(3, stats, [{ width: 640, height: 360 }, { width: 1280, height: 720 }], false, 1),
         ]));
         const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
 
@@ -659,7 +660,7 @@ describe('encode operator', () => {
             makeBundle(2, stats, [
                 { width: 320, height: 180 },
                 { width: 640, height: 360 },
-            ]),
+            ], false, 1),
         ]));
         const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
 
@@ -684,5 +685,32 @@ describe('encode operator', () => {
         expect(topEncoder.state).toBe('closed');
 
         await iter.next();
+    });
+
+    it('drops a bundle whose ladder version the controller has moved past', async () => {
+        const stats = makeStats();
+        const controller = new LayerLadderController([cfg(640, 360)]);
+        const seg = encode({
+            controller,
+            createEncoder: makeFactory(),
+        })(fromArray([
+            makeBundle(1, stats, [{ width: 640, height: 360 }]),
+            // Still stamped v0: downscale emitted it before the reconfigure below.
+            makeBundle(2, stats, [{ width: 640, height: 360 }, { width: 1280, height: 720 }]),
+        ]));
+        const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
+
+        const next1 = iter.next();
+        await waitForCalls(0, 1);
+        MockVideoEncoder.instances[0].emitNext(80, 'key');
+        expect((await next1).done).toBe(false);
+
+        // act: the ladder moves on while bundle 2 is mid-reshape
+        controller.setConfigs([cfg(640, 360), cfg(1280, 720)]);
+        const r2 = await iter.next();
+
+        // assert: no encoder was built for the stale generation, and it leaked nothing
+        expect(r2.done).toBe(true);
+        expect(MockVideoEncoder.instances).toHaveLength(1);
     });
 });
