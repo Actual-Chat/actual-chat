@@ -170,6 +170,10 @@ function createEncoder(
         const stack = e instanceof Error ? e.stack : undefined;
         const tag = enc.tag || 'pre-configure';
         warnLog?.log(`encoder error (${tag}): ${msg}`, stack ?? '');
+        // A fatal error closes the encoder and clears its queue without settling
+        // anything, so fail the in-flight items here rather than three seconds
+        // later when the bundle watchdog notices.
+        try { enc.handleEncoderReset(); } catch { /* ignore */ }
     };
 
     // Per-encode setTimeout/clearTimeout churn was ~750ms / 30s on a 90
