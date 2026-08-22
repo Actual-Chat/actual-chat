@@ -34,6 +34,7 @@ import {
     getVideoLayerBitratesKbps,
     kbpsToBitsPerSecond,
 } from 'app-constants';
+import { withTimeout } from 'actuallab-core';
 import { getLogs } from 'logging';
 import { Api, WorkerKind } from 'api';
 import { rpcClientServer, rpcNoWait } from 'rpc';
@@ -113,6 +114,9 @@ const MAX_RECOVERY_ATTEMPTS = 5;
 // on foreground leaves the pipeline silently dead. 3s comfortably clears the
 // ~1s health tick and brief capture gaps without churning a healthy stream.
 const CAPTURE_STALL_RECOVERY_MS = 3000;
+// Ceiling on one recoverNow() pass. 15s clears a slow-but-live restart with room
+// to spare; see scheduleRecovery for why the pass must be bounded at all.
+const RECOVER_NOW_TIMEOUT_MS = 15_000;
 // User-facing message shown when the HW encoder cannot be initialised at all
 // (every codec probe fails) or when recovery has exhausted MAX_RECOVERY_ATTEMPTS.
 // Kept free of codec/encoder/internals — actionable only.
@@ -2301,18 +2305,32 @@ export class VideoRecorder {
             });
             return;
         }
+
         const delayMs = Math.min(3000, 200 * Math.pow(1.7, this.recoveryAttempts - 1));
         warnLog?.log(
             `scheduleRecovery: ${reason}; attempt ${this.recoveryAttempts} in ${delayMs.toFixed(0)}ms`);
+        // The guard stays up for the whole of recoverNow(), not just until the timer
+        // fires: stop() can take seconds on a wedged pipeline, and an error arriving
+        // in that window used to schedule a second recovery whose startWorker() then
+        // rejected with "already running" — feeding itself straight to the attempt cap.
+        // The timeout is what makes holding it safe: recoverNow() awaits a worker that
+        // may be wedged too, and an await that never settles would retire recovery for
+        // the session.
         window.setTimeout(() => {
-            this.recoveryScheduled = false;
-            if (!this.isRecording || this.disposed)
+            if (!this.isRecording || this.disposed) {
+                this.recoveryScheduled = false;
                 return;
+            }
 
-            void this.recoverNow().catch((e: unknown) => {
-                warnLog?.log('scheduleRecovery: recoverNow failed', e);
-                this.scheduleRecovery('recovery attempt failed');
-            });
+            void withTimeout(this.recoverNow(), RECOVER_NOW_TIMEOUT_MS, 'recoverNow').then(
+                () => {
+                    this.recoveryScheduled = false;
+                },
+                (e: unknown) => {
+                    warnLog?.log('scheduleRecovery: recoverNow failed', e);
+                    this.recoveryScheduled = false;
+                    this.scheduleRecovery('recovery attempt failed');
+                });
         }, delayMs);
     }
 
@@ -2532,8 +2550,14 @@ export class VideoRecorder {
             this.worker = null;
         }
         if (this.workerInstance) {
-            try { this.workerInstance.terminate(); } catch { /* ignore */ }
+            const instance = this.workerInstance;
             this.workerInstance = null;
+            // Preview frames the worker already posted are still queued for dispatch;
+            // terminating in this task drops them without releasing them, so give the
+            // drain handler rpcServer.dispose() installed one turn to take them.
+            setTimeout(() => {
+                try { instance.terminate(); } catch { /* ignore */ }
+            }, 0);
         }
         this.tearDownWorkerSource();
     }
