@@ -99,7 +99,18 @@ export function keepAlive(opts: KeepAliveOptions): PipeOperator<CapturedFrame, C
                         };
                         injectedCount++;
                         retained.stats.keepAliveFramesInjected++;
-                        yield injected;
+                        // The clone is ours until the consumer actually receives it —
+                        // a generator returned at this yield would otherwise strand it.
+                        let isInjectedOwned = true;
+                        try {
+                            yield injected;
+
+                            isInjectedOwned = false;
+                        } finally {
+                            if (isInjectedOwned)
+                                try { injected.frame.close(); } catch { /* ignore */ }
+                        }
+
                         continue;
                     }
                     result = raced;
