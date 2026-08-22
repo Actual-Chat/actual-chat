@@ -7,7 +7,9 @@
 //     Api.init('Example', { url, modules: [streamingApi] });
 //     await streamingApi.liveVideoStreams.PushStream(...);
 
-import { defineRpcService, RpcRemoteExecutionMode, RpcType, type RpcHub } from 'actuallab-rpc';
+import {
+    defineRpcService, RpcCallTimeouts, RpcRemoteExecutionMode, RpcType, type RpcHub,
+} from 'actuallab-rpc';
 import { Api, type ApiModule } from './api.js';
 import type { Moment } from './rpc-scalars.js';
 import { coreApi } from './core-api.js';
@@ -19,6 +21,9 @@ import { coreApi } from './core-api.js';
 // the caller recreates them.  Mirror of [RpcMethod] on the .NET interfaces.
 const StreamPushMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect;
 const StreamControlMode = RpcRemoteExecutionMode.AwaitForConnection;
+// [RpcMethod(..., ConnectTimeout = 10)] on the .NET ILiveVideoStreams methods:
+// a control call waits at most 10s for the connection, then fails.
+const StreamControlTimeouts = new RpcCallTimeouts(10_000);
 
 // `clientStartAt` is the source's Unix-epoch capture timestamp (seconds, double).
 
@@ -29,9 +34,21 @@ export const LiveVideoStreamsDef = defineRpcService('ILiveVideoStreams', {
         args: ['session', 'chatId', 'clientStartAt', 'format', 'sourceKind', 'frameStream'],
         remoteExecutionMode: StreamPushMode,
     },
-    RequestKeyFrame: { args: ['session', 'streamId'], remoteExecutionMode: StreamControlMode },
-    ChangeRecordingQuality: { args: ['session', 'state', 'info'], remoteExecutionMode: StreamControlMode },
-    ChangePlaybackQuality: { args: ['session', 'qualityByStream', 'info'], remoteExecutionMode: StreamControlMode },
+    RequestKeyFrame: {
+        args: ['session', 'streamId'],
+        remoteExecutionMode: StreamControlMode,
+        timeouts: StreamControlTimeouts,
+    },
+    ChangeRecordingQuality: {
+        args: ['session', 'state', 'info'],
+        remoteExecutionMode: StreamControlMode,
+        timeouts: StreamControlTimeouts,
+    },
+    ChangePlaybackQuality: {
+        args: ['session', 'qualityByStream', 'info'],
+        remoteExecutionMode: StreamControlMode,
+        timeouts: StreamControlTimeouts,
+    },
 });
 
 // --- ILiveAudioStreams (per-stream audio push/pull + transcripts) ---

@@ -250,7 +250,8 @@ export class VideoPlayer {
 
     // PLI: receiver-requested keyframe (kept as a courtesy hook — most of
     // this is now driven by the worker's epoch-reset operator).
-    private lastKeyFrameRequestTime = 0;
+    // Parking expires after the cooldown — an unsettled call (run timeout is unbounded) must not latch it.
+    private keyFrameRequestBlockedSince: number | null = null;
     private readonly keyFrameRequestCooldownMs = 10000;
 
     // Render-quality hint state.
@@ -952,10 +953,10 @@ export class VideoPlayer {
     }
 
     private requestKeyFrame(): void {
-        const now = performance.now();
-        if (now - this.lastKeyFrameRequestTime < this.keyFrameRequestCooldownMs)
+        const sentAt = performance.now();
+        if (this.keyFrameRequestBlockedSince !== null
+            && sentAt - this.keyFrameRequestBlockedSince < this.keyFrameRequestCooldownMs)
             return;
-        this.lastKeyFrameRequestTime = now;
 
         infoLog?.log(`requestKeyFrame: stream=${this.streamId}`);
         // Worker-side hint (the new contract carries this, but the host
@@ -964,8 +965,22 @@ export class VideoPlayer {
         if (this.playerWorker)
             void this.playerWorker.requestKeyframe(this.streamId)
                 .catch(() => { /* worker stub is a no-op; ignore */ });
-        streamingApi.liveVideoStreams.RequestKeyFrame(RPC_SESSION_DEFAULT, this.streamId)
-            .catch((e: unknown) => warnLog?.log('RequestKeyFrame error:', e));
+
+        this.keyFrameRequestBlockedSince = sentAt;
+        // `sentAt` doubles as this request's identity, so a straggler settling after
+        // its parking expired can't disturb whatever request replaced it.
+        void streamingApi.liveVideoStreams.RequestKeyFrame(RPC_SESSION_DEFAULT, this.streamId)
+            .then(
+                () => {
+                    if (this.keyFrameRequestBlockedSince === sentAt)
+                        this.keyFrameRequestBlockedSince = performance.now();
+                },
+                (e: unknown) => {
+                    // Only a request the server actually got starts the cooldown.
+                    warnLog?.log('RequestKeyFrame error:', e);
+                    if (this.keyFrameRequestBlockedSince === sentAt)
+                        this.keyFrameRequestBlockedSince = null;
+                });
     }
 
     public async startPull(streamId: string, skipToMs: number): Promise<void> {
