@@ -241,6 +241,43 @@ describe('AsyncVideoEncoder', () => {
         expect(onResetReasons[0]).toMatch(/timeout/);
     });
 
+    it('doubles the clean-output bar each time a degraded adapter is restored', async () => {
+        vi.useFakeTimers();
+        const enc = makeEncoder({ timeoutMs: 50 });
+        const mock = MockVideoEncoder.instances[0];
+        // Outputs are verified FIFO by index, so it has to keep climbing across degrades.
+        let nextIndex = 1;
+        const degrade = async (): Promise<void> => {
+            const stuck = enc.encode(makeCaptured(nextIndex++, 'stuck'), { keyFrame: false });
+            const rejection = expect(stuck).rejects.toThrow(/encode timeout/);
+            await vi.advanceTimersByTimeAsync(60);
+            await rejection;
+        };
+        const emitClean = async (count: number): Promise<void> => {
+            for (let i = 0; i < count; i++) {
+                const p = enc.encode(makeCaptured(nextIndex++), { keyFrame: false });
+                mock.emitNext();
+                await p;
+            }
+        };
+
+        // arrange: the first degrade lifts after 30 clean outputs
+        await degrade();
+        await emitClean(29);
+        expect(enc.isDegraded).toBe(true);
+        await emitClean(1);
+        expect(enc.isDegraded).toBe(false);
+
+        // act: degrading again puts the bar at 60
+        await degrade();
+        await emitClean(59);
+
+        // assert
+        expect(enc.isDegraded).toBe(true);
+        await emitClean(1);
+        expect(enc.isDegraded).toBe(false);
+    });
+
     it('uses a wider first-output timeout, then steady-state timeout', async () => {
         vi.useFakeTimers();
         const enc = makeEncoder({ firstTimeoutMs: 1_500, timeoutMs: 300 });
