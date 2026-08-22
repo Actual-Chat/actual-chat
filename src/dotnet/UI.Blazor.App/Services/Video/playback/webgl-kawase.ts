@@ -103,7 +103,14 @@ void main() {
 export class WebGlKawaseBgRenderer {
     private gl: WebGL2RenderingContext | null = null;
     private readonly perf = new BgBlurPerfTracker('webgl-kawase');
-    private disposed = false;
+    private isDisposed = false;
+    // Stored so dispose() can detach it before its own loseContext() — that call
+    // dispatches the same event, and answering it would log an ordinary teardown
+    // as a context loss.
+    private readonly onContextLost = (): void => {
+        warnLog?.log('WebGlKawaseBgRenderer: context lost');
+        this.gl = null;
+    };
 
     private downsampleProgram: WebGLProgram | null = null;
     private upsampleProgram: WebGLProgram | null = null;
@@ -135,6 +142,10 @@ export class WebGlKawaseBgRenderer {
             warnLog?.log('WebGlKawaseBgRenderer: webgl2 context unavailable');
             return;
         }
+
+        // Without this the renderer goes silently black on a lost context and the
+        // logs give no way to tell that apart from an ordinary teardown.
+        canvas.addEventListener('webglcontextlost', this.onContextLost);
         try {
             this.gl = gl;
             this.initGl();
@@ -144,13 +155,42 @@ export class WebGlKawaseBgRenderer {
         }
     }
 
-    render(frame: VideoFrame, blurStrength = 20): boolean {
-        if (this.disposed) return false;
+    dispose(): void {
+        if (this.isDisposed)
+            return;
+
+        this.isDisposed = true;
+        this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
         const gl = this.gl;
-        if (!gl) return false;
+        if (!gl)
+            return;
+
+        if (this.sourceTexture) gl.deleteTexture(this.sourceTexture);
+        for (const t of this.pyramidTex) gl.deleteTexture(t);
+        for (const f of this.pyramidFbo) gl.deleteFramebuffer(f);
+        this.pyramidTex.length = 0;
+        this.pyramidFbo.length = 0;
+        if (this.positionBuffer) gl.deleteBuffer(this.positionBuffer);
+        if (this.downsampleProgram) gl.deleteProgram(this.downsampleProgram);
+        if (this.upsampleProgram) gl.deleteProgram(this.upsampleProgram);
+        if (this.copyProgram) gl.deleteProgram(this.copyProgram);
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+        this.gl = null;
+    }
+
+    render(frame: VideoFrame, blurStrength = 20): boolean {
+        if (this.isDisposed)
+            return false;
+
+        const gl = this.gl;
+        if (!gl)
+            return false;
+
         const fw = frame.displayWidth;
         const fh = frame.displayHeight;
-        if (fw <= 0 || fh <= 0) return false;
+        if (fw <= 0 || fh <= 0)
+            return false;
+
         const targetW = BG_CANVAS_WIDTH;
         const targetH = Math.max(1, Math.round(targetW * fh / fw));
         try {
@@ -227,23 +267,7 @@ export class WebGlKawaseBgRenderer {
         }
     }
 
-    dispose(): void {
-        if (this.disposed) return;
-        this.disposed = true;
-        const gl = this.gl;
-        if (!gl) return;
-        if (this.sourceTexture) gl.deleteTexture(this.sourceTexture);
-        for (const t of this.pyramidTex) gl.deleteTexture(t);
-        for (const f of this.pyramidFbo) gl.deleteFramebuffer(f);
-        this.pyramidTex.length = 0;
-        this.pyramidFbo.length = 0;
-        if (this.positionBuffer) gl.deleteBuffer(this.positionBuffer);
-        if (this.downsampleProgram) gl.deleteProgram(this.downsampleProgram);
-        if (this.upsampleProgram) gl.deleteProgram(this.upsampleProgram);
-        if (this.copyProgram) gl.deleteProgram(this.copyProgram);
-        gl.getExtension('WEBGL_lose_context')?.loseContext();
-        this.gl = null;
-    }
+    // Private methods
 
     private initGl(): void {
         const gl = this.gl!;

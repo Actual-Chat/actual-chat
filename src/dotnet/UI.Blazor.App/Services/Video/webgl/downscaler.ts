@@ -47,6 +47,7 @@ export function disableWebGlDownscale(): void {
 export function probeWebGl2(): boolean {
     if (webglDownscaleDisabled)
         return false;
+
     try {
         const probe = new OffscreenCanvas(1, 1);
         return probe.getContext('webgl2') !== null;
@@ -62,7 +63,14 @@ export class WebGlDownscaler implements DownscalerLike {
     private positionBuffer: WebGLBuffer | null = null;
     private sourceTexture: WebGLTexture | null = null;
     private uTexture: WebGLUniformLocation | null = null;
-    private disposed = false;
+    private isDisposed = false;
+    // Stored so dispose() can detach it before its own loseContext() — that call
+    // dispatches the same event, and answering it would disable WebGL for the session.
+    // No preventDefault(): restoration is not wanted, and nothing rebuilds the program.
+    private readonly onContextLost = (): void => {
+        warnLog?.log('WebGlDownscaler: context lost — disabling WebGL downscale');
+        disableWebGlDownscale();
+    };
 
     constructor() {
         this.canvas = new OffscreenCanvas(0, 0);
@@ -76,8 +84,29 @@ export class WebGlDownscaler implements DownscalerLike {
         });
         if (!gl)
             throw new Error('WebGlDownscaler: webgl2 context unavailable');
+
         this.gl = gl;
+        this.canvas.addEventListener('webglcontextlost', this.onContextLost);
         this.initGl();
+    }
+
+    dispose(): void {
+        if (this.isDisposed)
+            return;
+
+        this.isDisposed = true;
+        this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
+        const gl = this.gl;
+        if (!gl)
+            return;
+
+        if (this.sourceTexture) gl.deleteTexture(this.sourceTexture);
+        if (this.positionBuffer) gl.deleteBuffer(this.positionBuffer);
+        if (this.program) gl.deleteProgram(this.program);
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+        this.gl = null;
+        this.canvas.width = 0;
+        this.canvas.height = 0;
     }
 
     // eslint-disable-next-line @typescript-eslint/require-await
@@ -85,6 +114,14 @@ export class WebGlDownscaler implements DownscalerLike {
         const gl = this.gl;
         if (!gl)
             throw new Error('WebGlDownscaler: context unavailable');
+
+        // A lost context still accepts draw calls and silently renders black, so the
+        // catch below would never fire and the Canvas2D fallback would never engage.
+        if (gl.isContextLost()) {
+            disableWebGlDownscale();
+            throw new Error('WebGlDownscaler: context lost');
+        }
+
         const topIdx = layers.length - 1;
         const results = new Array<VideoFrame | null>(layers.length).fill(null);
         // Ceiling = the normalized input's visible size. A tier matching it is
@@ -102,6 +139,7 @@ export class WebGlDownscaler implements DownscalerLike {
                     results[i] = input;
                     continue;
                 }
+
                 if (this.canvas.width !== width)
                     this.canvas.width = width;
                 if (this.canvas.height !== height)
@@ -132,21 +170,7 @@ export class WebGlDownscaler implements DownscalerLike {
         }
     }
 
-    dispose(): void {
-        if (this.disposed)
-            return;
-        this.disposed = true;
-        const gl = this.gl;
-        if (!gl)
-            return;
-        if (this.sourceTexture) gl.deleteTexture(this.sourceTexture);
-        if (this.positionBuffer) gl.deleteBuffer(this.positionBuffer);
-        if (this.program) gl.deleteProgram(this.program);
-        gl.getExtension('WEBGL_lose_context')?.loseContext();
-        this.gl = null;
-        this.canvas.width = 0;
-        this.canvas.height = 0;
-    }
+    // Private methods
 
     private initGl(): void {
         const gl = this.gl!;
