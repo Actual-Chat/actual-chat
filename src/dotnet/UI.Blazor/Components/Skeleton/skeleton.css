@@ -495,18 +495,18 @@ chat-view-footer-skeleton .footer-editor {
 image-skeleton {
     @apply block;
 }
-image-skeleton.show-image-skeleton {
+image-skeleton[data-image-state="skeleton"] {
     @apply bg-05;
     animation: pulse 2s steps(10) infinite;
 }
-image-skeleton.show-image-skeleton .image,
-image-skeleton.show-image-thumbnail .image,
-image-skeleton.show-image-skeleton .image-thumbnail,
-image-skeleton.show-image-original .image-thumbnail {
+image-skeleton[data-image-state="skeleton"] .image,
+image-skeleton[data-image-state="thumbnail"] .image,
+image-skeleton[data-image-state="skeleton"] .image-thumbnail,
+image-skeleton[data-image-state="original"] .image-thumbnail {
     @apply invisible;
 }
-image-skeleton.show-image-original .image,
-image-skeleton.show-image-thumbnail .image-thumbnail {
+image-skeleton[data-image-state="original"] .image,
+image-skeleton[data-image-state="thumbnail"] .image-thumbnail {
     @apply block;
 }
 image-skeleton.image-cover {
@@ -563,7 +563,7 @@ voxt-skeleton {
 body:not(.app-ready) .animated-skeleton,
 body:not(.app-ready) .string-skeleton,
 body:not(.app-ready) voxt-skeleton,
-body:not(.app-ready) image-skeleton.show-image-skeleton,
+body:not(.app-ready) image-skeleton[data-image-state="skeleton"],
 body:not(.app-ready) thin-left-panel-skeleton .button,
 body:not(.app-ready) chat-view-footer-skeleton .footer-button,
 body:not(.app-ready) tab-skeleton .c-line {

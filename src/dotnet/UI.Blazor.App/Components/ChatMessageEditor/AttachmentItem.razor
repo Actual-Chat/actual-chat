@@ -27,7 +27,7 @@
                 <i class="icon-close text-lg"></i>
             </ButtonSquare>
             @if (attachment.IsSupportedImage || m.HasCustomPreview || m.HasImagePreview) {
-                <image-skeleton class="show-image-skeleton @plugClass" src="@previewUrl"
+                <image-skeleton initial-state="skeleton" class="@plugClass" src="@previewUrl"
                                 width="@(hasDims ? w : 0)" height="@(hasDims ? h : 0)" style="@ratioStyle"/>
             } else if (attachment.IsSupportedVideo) {
                 <video preload="metadata" class="@plugClass">

@@ -21,7 +21,6 @@ const defaultTickMs = 100;
 // instant. `fastRaf10` schedules onto the same grid.
 export const animationGridMs = 100;
 
-
 // The pseudo-element an animation lives on, where it isn't the element itself. This
 // is the one thing a registration has to state: a pseudo's animation is invisible in
 // the host's computed style, so it can't be derived, and pseudos can't take the inline
@@ -59,13 +58,19 @@ const animationClasses = new Set<string>([
     'animated-skeleton',
     'button',                   // thin-left-panel-skeleton .button
     'footer-button',            // chat-view-footer-skeleton .footer-button
-    'show-image-skeleton',
     'c-line',                   // tab-skeleton .c-line
     'recorder-btn-skeleton',
     'c-circle',                 // wave
     'string-skeleton',
     'voxt-skeleton',
 ]);
+
+// Animated elements a class can't identify. Same registry role as `animationClasses`
+// above — kept beside it so this file remains the one place listing every synced
+// animation.
+const animationSelectors: readonly string[] = [
+    'image-skeleton[data-image-state="skeleton"]', // skeleton shimmer
+];
 
 export class AnimationSync {
     // Explicit opt-in for elements with no class in the registry - notably nodes
@@ -80,7 +85,8 @@ export class AnimationSync {
 
     public static get selector(): string {
         const byClass = [...animationClasses].map(c => `.${c}`).join(',');
-        return `:is(${byClass},[${AnimationSync.attribute}]):not([${AnimationSync.syncedAttribute}])`;
+        const bySelector = animationSelectors.join(',');
+        return `:is(${byClass},${bySelector},[${AnimationSync.attribute}]):not([${AnimationSync.syncedAttribute}])`;
     }
 
     // Phase-aligns every registered element under `root`, returning how many were
@@ -222,7 +228,8 @@ export class AnimationSync {
         const tick = duration / steps;
         if (Math.abs(tick % animationGridMs) > 0.5)
             AnimationSync.warn(element,
-                `ticks every ${tick.toFixed(1)}ms (${duration}ms / steps(${steps})), which is not a multiple of the ${animationGridMs}ms grid`);
+                `ticks every ${tick.toFixed(1)}ms (${duration}ms / steps(${steps})), `
+                + `which is not a multiple of the ${animationGridMs}ms grid`);
     }
 
     // Attribute form: bare, `"::before"`, `"200"`, or `"200 ::before"`. It wins over
@@ -248,7 +255,7 @@ export class AnimationSync {
             if (animationClasses.has(className))
                 return true;
 
-        return false;
+        return animationSelectors.some(s => element.matches(s));
     }
 
     private static pseudoOfClasses(element: HTMLElement): string | undefined {
@@ -258,8 +265,10 @@ export class AnimationSync {
             if (pseudo === undefined || pseudo === found)
                 continue;
             if (found !== undefined) {
-                AnimationSync.warn(element, `matches registered classes with different pseudo-elements (${found}, ${pseudo})`);
+                AnimationSync.warn(element,
+                    `matches registered classes with different pseudo-elements (${found}, ${pseudo})`);
                 break;
+
             }
             found = pseudo;
         }
@@ -268,7 +277,9 @@ export class AnimationSync {
 
     private static warn(element: HTMLElement, message: string): void {
         const name = element.tagName.toLowerCase()
-            + (typeof element.className === 'string' && element.className ? `.${element.className.trim().split(/\s+/).join('.')}` : '');
+            + (typeof element.className === 'string' && element.className
+                ? `.${element.className.trim().split(/\s+/).join('.')}`
+                : '');
         console.warn(`AnimationSync: ${name} ${message}`);
     }
 

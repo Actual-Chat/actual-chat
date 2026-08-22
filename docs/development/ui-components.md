@@ -141,6 +141,57 @@ body.hoverable .amazing-panel > button:hover,
 }
 ```
 
+## Lit Components: Blazor owns `class`
+
+A Lit custom element rendered from Razor has **two** potential writers for its host
+attributes — Blazor, which rewrites the element's markup on every re-render, and the
+component itself. Anything both of them write ends up in a permanent tug-of-war,
+because Blazor's render tree never learns what the component changed.
+
+**The rule: a Lit component may *have* a `class`, but must never *write* one.**
+`class` belongs to Blazor. The component owns only attributes Blazor does not render.
+
+Publish component state through a `data-*` attribute and match it from CSS —
+attribute selectors have the same specificity as class selectors, so nothing in the
+cascade changes:
+
+**Wrong** — the component writes `class`, Blazor overwrites it on the next render,
+the component writes it again, forever:
+```typescript
+@property({ reflect: true }) class: string;   // makes every foreign class write re-render
+
+updated(changed: Map<string, unknown>) {
+    if (changed.has('class'))
+        this.classList.add(`show-image-${this._state}`);   // fights Blazor
+}
+```
+```css
+image-skeleton.show-image-original .image { ... }
+```
+
+**Correct** — Blazor owns `class`, the component owns `data-image-state`:
+```typescript
+private applyState(): void {
+    this.setAttribute('data-image-state', this._state);
+}
+```
+```css
+image-skeleton[data-image-state="original"] .image { ... }
+```
+
+Razor keeps writing `class` exactly as it would for any other element:
+```razor
+<image-skeleton class="pic-image @ExtraClass" src="@url" />
+```
+
+If the component needs an **initial** state from Razor, take it as a Lit property
+(`@property({ attribute: 'initial-state' })`) rather than reading it back out of the
+attribute the component itself writes. Razor renders that property as a constant, so
+re-renders write the same value and never conflict.
+
+The same reasoning applies to any attribute Razor emits — `style`, `title`, `id`. If
+Razor renders it, the component must not write it.
+
 ## No Inline Tailwind in Razor
 
 Do NOT write Tailwind utility classes directly in `.razor` markup. Instead, assign a CSS class and use `@apply` in the CSS file.

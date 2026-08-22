@@ -55,11 +55,11 @@ body.hoverable .image-line .image-item:hover {
     @apply flex;
     @apply cursor-pointer;
 }
-.image-attachment image-skeleton.show-image-skeleton {
+.image-attachment image-skeleton[data-image-state="skeleton"] {
     @apply bg-skeleton rounded-md animate-pulse;
     @apply w-full;
 }
-.image-attachment image-skeleton.show-image-original:before {
+.image-attachment image-skeleton[data-image-state="original"]:before {
     @apply content-empty;
     @apply absolute inset-0 z-minus;
     @apply bg-03;
