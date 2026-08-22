@@ -6,54 +6,30 @@ import { AC } from 'app-constants';
 
 type ImageState = 'none' | 'skeleton' | 'thumbnail' | 'original';
 
+const ImageStates: readonly string[] = ['skeleton', 'thumbnail', 'original'];
+
 @customElement('image-skeleton')
 export class ImageSkeleton extends LitElement {
-    protected createRenderRoot() {
-        return this;
-    }
+    private _imageRef: Ref<HTMLImageElement> = createRef();
+    private _imageState: ImageState = 'none';
 
-    @property({ reflect: true }) class: string;
     @property() src: string;
     @property() thumbnailSrc: string;
     @property() title = '';
     @property({ type: Number }) width?: number;
     @property({ type: Number }) height?: number;
-
-    private _imageRef: Ref<HTMLImageElement> = createRef();
-    private _imageState: ImageState = 'none';
+    // Razor's one-time seed. It renders a constant, so re-renders can't fight the
+    // `data-image-state` this component writes — see docs/development/ui-components.md.
+    @property({ attribute: 'initial-state' }) initialState = '';
 
     connectedCallback() {
         super.connectedCallback();
-        if (this.classList.contains('show-image-original'))
-            this._imageState = 'original';
-        else if (this.classList.contains('show-image-thumbnail'))
-            this._imageState = 'thumbnail';
-        else if (this.classList.contains('show-image-skeleton'))
-            this._imageState = 'skeleton';
+        // Blazor can detach and re-attach the element; re-seeding here would roll a
+        // state that already advanced back to Razor's one-time value.
+        if (this._imageState === 'none' && ImageStates.includes(this.initialState))
+            this._imageState = this.initialState as ImageState;
+        this.applyState();
     }
-
-    updated(changedProperties: Map<string, unknown>) {
-        if (changedProperties.has('class') && this._imageState !== 'none') {
-            const stateClass = `show-image-${this._imageState}`;
-            if (!this.classList.contains(stateClass)) {
-                this.classList.remove('show-image-skeleton', 'show-image-thumbnail', 'show-image-original');
-                this.classList.add(stateClass);
-            }
-        }
-    }
-
-    // for tests
-    // willUpdate(changedProperties: any) {
-    //     if (changedProperties.has("src")) {
-    //         if (Math.floor(Math.random() * 100) % 2 === 0) {
-    //             const original = this.src;
-    //             this.src = "https://some.host/invalid.svg";
-    //             setTimeout(() => {
-    //                 this.src = original;
-    //             }, 3000)
-    //         }
-    //     }
-    // }
 
     render() {
         const isSubDomain = this.isSubDomain(this.src);
@@ -111,10 +87,17 @@ export class ImageSkeleton extends LitElement {
         }
     }
 
-    async reloadImage(): Promise<void> {
+    // Protected/internal methods
+
+    protected createRenderRoot() {
+        return this;
+    }
+
+    // Private methods
+
+    private async reloadImage(): Promise<void> {
         this._imageState = 'skeleton';
-        this.classList.remove('show-image-original');
-        this.classList.add('show-image-skeleton');
+        this.applyState();
 
         const isSubDomain = this.isSubDomain(this.src);
         for (let attempt = 0; attempt < 10; attempt++) {
@@ -130,25 +113,35 @@ export class ImageSkeleton extends LitElement {
                 return;
             }
         }
+
         if (this._imageRef.value)
             this._imageRef.value.src = this.src;
     }
 
-    imageLoaded(): void {
+    private imageLoaded(): void {
         this._imageState = 'original';
-        this.classList.remove('show-image-skeleton', 'show-image-thumbnail');
-        if (!this.classList.contains('show-image-original'))
-            this.classList.add('show-image-original');
+        this.applyState();
     }
 
-    thumbnailLoaded(): void {
+    // A cached original often loads before a proxied thumbnail; downgrading here would
+    // leave the blurry one showing for good, since imageLoaded() never fires again.
+    private thumbnailLoaded(): void {
+        if (this._imageState === 'original')
+            return;
+
         this._imageState = 'thumbnail';
-        this.classList.remove('show-image-skeleton');
-        if (!this.classList.contains('show-image-thumbnail') && (!this.classList.contains('show-image-original')))
-            this.classList.add('show-image-thumbnail');
+        this.applyState();
     }
 
-    isSubDomain(url: string): boolean {
+    private applyState(): void {
+        if (this._imageState === 'none')
+            return;
+
+        if (this.getAttribute('data-image-state') !== this._imageState)
+            this.setAttribute('data-image-state', this._imageState);
+    }
+
+    private isSubDomain(url: string): boolean {
         return url.includes(AC.prodHost);
     }
 }

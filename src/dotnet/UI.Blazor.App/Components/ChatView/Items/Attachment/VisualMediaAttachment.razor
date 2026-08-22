@@ -36,7 +36,7 @@
             <VideoAttachmentThumbnail Attachment="@attachment"/>
         } else {
             <image-skeleton
-                class="show-image-skeleton"
+                initial-state="skeleton"
                 src="@url"
                 thumbnailSrc="@previewUrl"
                 width="@(hasDims ? mediaW : 0)"

@@ -34,7 +34,7 @@
                            href="@url" role="button" data-menu="@menuRef"
                            @onclick="@(() => OnMediaClick(item.Key, media))" @onclick:preventDefault="true">
                             @if (thumb.Length > 0) {
-                                <image-skeleton class="show-image-skeleton" src="@thumb"/>
+                                <image-skeleton initial-state="skeleton" src="@thumb"/>
                             }
                             <i class="icon-play-fill c-play-icon"></i>
                             @if (media.DurationMs > 0) {
@@ -50,7 +50,7 @@
                         <a class="image-attachment" @key="@media.Id"
                            href="@url" role="button" data-menu="@menuRef"
                            @onclick="@(() => OnMediaClick(item.Key, media))" @onclick:preventDefault="true">
-                            <image-skeleton class="show-image-skeleton" src="@url" thumbnailSrc="@previewUrl"/>
+                            <image-skeleton initial-state="skeleton" src="@url" thumbnailSrc="@previewUrl"/>
                         </a>
                     }
                 }
