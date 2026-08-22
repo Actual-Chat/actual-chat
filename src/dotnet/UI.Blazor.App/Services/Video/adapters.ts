@@ -6,6 +6,12 @@ import { closeEncodedChunk } from './frame-envelopes';
 
 const { warnLog } = getLogs('AsyncVideoEncoder');
 
+// Clean outputs required before a degraded adapter is allowed back to its
+// original queue depth — roughly a second of encoding at 30fps. Doubles on each
+// restore (see noteResolved), capped here at ~2 minutes' worth.
+const DEGRADE_RECOVERY_OUTPUTS = 30;
+const MAX_DEGRADE_RECOVERY_OUTPUTS = 3840;
+
 // ---- Recommended input / output types -------------------------------------
 
 // Frame is owned by the wrapper once submitted; closed on output or failure.
@@ -87,7 +93,10 @@ export abstract class CodecToAsyncAdapter<TIn, TOut, TCodecOutput> implements Di
     private readonly timeoutMs: number;
     private readonly firstTimeoutMs: number;
     private maxInflight: number;
+    private readonly initialMaxInflight: number;
     private degraded = false;
+    private consecutiveResolved = 0;
+    private restoreThreshold = DEGRADE_RECOVERY_OUTPUTS;
     private disposed = false;
     private lastResolvedIndex = -1;
     private hasResolvedOutput = false;
@@ -97,6 +106,7 @@ export abstract class CodecToAsyncAdapter<TIn, TOut, TCodecOutput> implements Di
         options: CodecToAsyncAdapterOptions = {},
     ) {
         this.maxInflight = options.maxInflight ?? 2;
+        this.initialMaxInflight = this.maxInflight;
         this.timeoutMs = options.timeoutMs ?? 300;
         this.firstTimeoutMs = options.firstTimeoutMs ?? 1_500;
         this.onResetRequested = options.onResetRequested;
@@ -112,14 +122,17 @@ export abstract class CodecToAsyncAdapter<TIn, TOut, TCodecOutput> implements Di
             this.closeInput(input);
             return Promise.reject(new ObjectDisposedError(`${this.adapterName} is disposed`));
         }
+
         const readyError = this.getNotReadyError();
         if (readyError) {
             this.closeInput(input);
             return Promise.reject(readyError);
         }
+
         if (this.inflight.length >= this.maxInflight) {
             this.closeInput(input);
-            return Promise.reject(new Error(
+            // Recoverable: a full queue means "skip this item", never "kill the pipeline".
+            return Promise.reject(this.createResetError(
                 `${this.adapterName}: queue full (${this.inflight.length}/${this.maxInflight})`));
         }
 
@@ -134,6 +147,7 @@ export abstract class CodecToAsyncAdapter<TIn, TOut, TCodecOutput> implements Di
             pending.source.reject(e);
             return pending.source;
         }
+
         return pending.source;
     }
 
@@ -155,28 +169,35 @@ export abstract class CodecToAsyncAdapter<TIn, TOut, TCodecOutput> implements Di
     }
 
     dispose(): void {
-        if (this.disposed) return;
+        if (this.disposed)
+            return;
+
         this.disposed = true;
         this.failAllPending('disposed', false);
         this.closeCodec();
     }
+
+    // Protected/internal methods
 
     protected resolveOutput(output: TCodecOutput): void {
         if (this.disposed) {
             this.closeOutput(output);
             return;
         }
+
         const front = this.inflight.shift();
         if (!front) {
             this.closeOutput(output);
             return;
         }
+
         this.closeInputAfterOutput(front.input);
         if (front.source.isCompleted) {
             this.degradeAndReset(`stale-output (index=${front.index})`);
             this.closeOutput(output);
             return;
         }
+
         if (this.lastResolvedIndex >= 0 && front.index <= this.lastResolvedIndex) {
             this.closeOutput(output);
             front.source.reject(this.createResetError(
@@ -185,11 +206,13 @@ export abstract class CodecToAsyncAdapter<TIn, TOut, TCodecOutput> implements Di
                 `out-of-order: index=${front.index} <= last=${this.lastResolvedIndex}`);
             return;
         }
+
         this.lastResolvedIndex = front.index;
         try {
             const result = this.buildOutput(front.input, output);
             this.hasResolvedOutput = true;
             front.source.resolve(result);
+            this.noteResolved();
         } catch (e) {
             this.closeOutput(output);
             front.source.reject(e);
@@ -220,6 +243,12 @@ export abstract class CodecToAsyncAdapter<TIn, TOut, TCodecOutput> implements Di
         // Optional subclass hook.
     }
 
+    protected getTimeoutMessage(timeoutMs: number, index: number): string {
+        return `${this.adapterName}: item timeout after ${timeoutMs}ms (index=${index})`;
+    }
+
+    // Private methods
+
     private makePending(input: TIn): PendingCodecItem<TIn, TOut> {
         const source = new PromiseSourceWithTimeout<TOut>();
         // Caller may not attach .catch before sync timeout/queue-full rejection;
@@ -238,15 +267,35 @@ export abstract class CodecToAsyncAdapter<TIn, TOut, TCodecOutput> implements Di
                 this.degradeAndReset(`timeout (index=${pending.index})`);
             });
         }
+
         return pending;
     }
 
-    protected getTimeoutMessage(timeoutMs: number, index: number): string {
-        return `${this.adapterName}: item timeout after ${timeoutMs}ms (index=${index})`;
+    // Lifts the degrade once the codec has proven itself again — staying at
+    // maxInflight=1 for the session caps throughput and keeps `queue full` armed.
+    private noteResolved(): void {
+        if (!this.degraded)
+            return;
+
+        if (++this.consecutiveResolved < this.restoreThreshold)
+            return;
+
+        this.degraded = false;
+        this.consecutiveResolved = 0;
+        this.maxInflight = this.initialMaxInflight;
+        warnLog?.log(
+            `restoring maxInflight to ${this.maxInflight} after ${this.restoreThreshold} clean outputs`);
+        // A machine that is merely over budget re-degrades right after every restore.
+        // Doubling the bar each time lets one transient hiccup recover in a second and
+        // leaves a persistently marginal encoder parked at maxInflight=1.
+        this.restoreThreshold = Math.min(this.restoreThreshold * 2, MAX_DEGRADE_RECOVERY_OUTPUTS);
     }
 
     private degradeAndReset(reason: string): void {
-        if (this.disposed) return;
+        if (this.disposed)
+            return;
+
+        this.consecutiveResolved = 0;
         if (!this.degraded) {
             this.degraded = true;
             this.maxInflight = 1;
@@ -299,6 +348,7 @@ export class AsyncVideoEncoder<
         metadata: EncodedVideoChunkMetadata,
     ) => TOut;
     private lastConfig: VideoEncoderConfig | null = null;
+    private nextEncodeOptions: { keyFrame: boolean } | null = null;
 
     constructor(
         buildOutput: (
@@ -341,10 +391,13 @@ export class AsyncVideoEncoder<
         return input.index;
     }
 
+    // Recoverable on purpose: an unusable encoder means "skip this bundle and rebuild
+    // the slot", not "tear the pipeline down". The encode operator recreates it.
     protected getNotReadyError(): Error | null {
         if (this.encoder.state === 'configured')
             return null;
-        return new Error(`AsyncVideoEncoder: encoder state is '${this.encoder.state}'`);
+
+        return this.createResetError(`AsyncVideoEncoder: encoder state is '${this.encoder.state}'`);
     }
 
     protected buildOutput(input: TIn, output: EncoderOutput): TOut {
@@ -368,11 +421,22 @@ export class AsyncVideoEncoder<
     }
 
     protected resetCodec(): void {
-        if (this.isDisposed || this.encoder.state === 'closed') return;
+        if (this.isDisposed)
+            return;
+
+        // reset() is a no-op on a closed codec — say so instead of reporting success,
+        // because the only way back is a new VideoEncoder.
+        if (this.encoder.state === 'closed') {
+            warnLog?.log(`${this.tag || 'encoder'}: reset requested but the codec is closed`);
+            return;
+        }
+
         try {
             this.encoder.reset();
         } catch { /* ignore */ }
-        if (!this.lastConfig) return;
+        if (!this.lastConfig)
+            return;
+
         try {
             this.encoder.configure(this.lastConfig);
         } catch (e) {
@@ -386,17 +450,6 @@ export class AsyncVideoEncoder<
         }
     }
 
-    private processWithOptions(input: TIn, opts: { keyFrame: boolean }): Promise<TOut> {
-        this.nextEncodeOptions = opts;
-        try {
-            return this.process(input);
-        } finally {
-            this.nextEncodeOptions = null;
-        }
-    }
-
-    private nextEncodeOptions: { keyFrame: boolean } | null = null;
-
     protected submit(input: TIn): void {
         try {
             this.encoder.encode(input.frame, { keyFrame: this.nextEncodeOptions?.keyFrame ?? false });
@@ -409,6 +462,17 @@ export class AsyncVideoEncoder<
             // Chromium's frame pool is ~12-20 and the simulcast pipeline keeps
             // multiple wraps in flight.
             try { input.frame.close(); } catch { /* already closed */ }
+        }
+    }
+
+    // Private methods
+
+    private processWithOptions(input: TIn, opts: { keyFrame: boolean }): Promise<TOut> {
+        this.nextEncodeOptions = opts;
+        try {
+            return this.process(input);
+        } finally {
+            this.nextEncodeOptions = null;
         }
     }
 }
