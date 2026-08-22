@@ -293,7 +293,8 @@ export const playerWorkerImpl: PlayerWorker = {
         const player = players.get(streamId);
         if (!player)
             return Promise.resolve(createEmptyPlayerStats());
-        return Promise.resolve({ ...player.stats });
+
+        return Promise.resolve(player.snapshotStats());
     },
 
     async stop(streamId?: string): Promise<void> {

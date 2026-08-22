@@ -236,8 +236,18 @@ export class Player {
         return this.abortController !== null;
     }
 
+    // encodedQueueCount is otherwise written only by the latency tap, which rides the
+    // decoded-frame stream — so it freezes at the moment decoding stops, which is
+    // exactly when a wedge report quotes it.
+    snapshotStats(): PlayerStats {
+        this.stats.encodedQueueCount = this.buffer?.count() ?? 0;
+        return { ...this.stats };
+    }
+
     setExpectedPaused(paused: boolean): void {
-        if (paused === this.expectedPaused) return;
+        if (paused === this.expectedPaused)
+            return;
+
         this.expectedPaused = paused;
         if (paused)
             this.stallTimer?.clear();
