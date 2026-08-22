@@ -49,7 +49,7 @@ function makeBundle(
     for (let i = 0; i < extraCount + 1; i++) {
         layers.push(makeCaptured(stats, idx, forceKeyframe, isKeepAlive));
     }
-    return { layers, index: idx, dropTrace: [], rotation: 0, stats };
+    return { layers, ladderVersion: 0, index: idx, dropTrace: [], rotation: 0, stats };
 }
 
 async function* source(items: CapturedBundle[]): AsyncIterable<CapturedBundle> {

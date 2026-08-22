@@ -138,6 +138,10 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
             // didn't help and we should rebuild the pipeline.
             let bundleHangAttempts = 0;
             const maxBundleHangAttempts = 2;
+            // Every promise settles on this path, so the bundle watchdog never fires —
+            // without a cap, a codec that dies on every encode skips forever.
+            let consecutiveRecoverySkips = 0;
+            const maxRecoverySkips = 30;
 
             // Pipelined submission queue. Steady-state encoding submits
             // multiple bundles before awaiting any one's completion, so the
@@ -165,6 +169,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
             const ensureBundleWatchdog = (): void => {
                 if (bundleWatchdogHandle !== null)
                     return;
+
                 bundleWatchdogHandle = setTimeout(() => {
                     bundleWatchdogHandle = null;
                     bundleWatchdogSignal.notify();
@@ -173,6 +178,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
             const disposeBundleWatchdog = (): void => {
                 if (bundleWatchdogHandle === null)
                     return;
+
                 clearTimeout(bundleWatchdogHandle);
                 bundleWatchdogHandle = null;
             };
@@ -226,6 +232,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                                 settled = res.r;
                                 break;
                             }
+
                             if (performance.now() >= bundleAwaitDeadline)
                                 throw new Error(
                                     `encode: bundle ${p.bundle.index} hung — `
@@ -237,6 +244,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     recordRestart(p.bundle.stats);
                     if (bundleHangAttempts >= maxBundleHangAttempts)
                         return { kind: 'throw', error: timeoutErr };
+
                     warnLog?.log(
                         `bundle ${p.bundle.index} hung — resetting encoders in place `
                         + `(attempt ${bundleHangAttempts}/${maxBundleHangAttempts}); `
@@ -251,6 +259,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     forceKeyframeNext = true;
                     return { kind: 'skip' };
                 }
+
                 bundleHangAttempts = 0;
                 let layerSumMs = 0;
                 let layerMaxMs = 0;
@@ -266,9 +275,11 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                 for (const result of settled) {
                     if (result.status === 'fulfilled') {
                         anyEncodedOutput = true;
+                        consecutiveRecoverySkips = 0;
                         break;
                     }
                 }
+
                 if (rejected.length > 0) {
                     for (const result of settled) {
                         if (result.status === 'fulfilled')
@@ -276,8 +287,18 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     }
                     if (rejected.every(r => isAsyncVideoEncoderResetError(r.reason))) {
                         forceKeyframeNext = true;
-                        return { kind: 'skip' };
+                        if (++consecutiveRecoverySkips < maxRecoverySkips)
+                            return { kind: 'skip' };
+
+                        const skippedCodec = configs[configs.length - 1].codec;
+                        return {
+                            kind: 'throw',
+                            error: new Error(
+                                `${ENCODER_INIT_FAILED_PREFIX} codec=${skippedCodec}: `
+                                + `${consecutiveRecoverySkips} bundles recovered without output`),
+                        };
                     }
+
                     const firstRealReason: unknown = rejected
                         .find(r => !isAsyncVideoEncoderResetError(r.reason))!.reason as unknown;
                     if (!anyEncodedOutput) {
@@ -293,11 +314,14 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                             ),
                         };
                     }
+
                     return { kind: 'throw', error: firstRealReason };
                 }
+
                 const results = settled.map((result): EncodedFrame => {
                     if (result.status !== 'fulfilled')
                         throw new Error('encode: unreachable rejected result after rejection check');
+
                     return result.value;
                 });
                 // Verify keyframe-ness when we asked for one. Pooled
@@ -317,15 +341,18 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                             break;
                         }
                     }
+
                     if (!allKey) {
                         warnLog?.log(
-                            `requested keyframe but encoder produced delta(s) at index=${p.bundle.index}; re-requesting`);
+                            `requested keyframe but encoder produced delta(s) `
+                            + `at index=${p.bundle.index}; re-requesting`);
                         for (const r of results)
                             closeEncodedFrame(r);
                         forceKeyframeNext = true;
                         return { kind: 'skip' };
                     }
                 }
+
                 const out: EncodedFrame[] = [];
                 let mustClose = true;
                 try {
@@ -380,8 +407,10 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                 while (pending.length > 0) {
                     const p = pending.shift()!;
                     const outcome = await awaitPending(p);
-                    if (outcome.kind === 'yield') yield outcome.bundle;
-                    else if (outcome.kind === 'throw') throw outcome.error;
+                    if (outcome.kind === 'yield')
+                        yield outcome.bundle;
+                    else if (outcome.kind === 'throw')
+                        throw outcome.error;
                 }
             }
 
@@ -414,9 +443,27 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         // in-flight encodes against a different layer set. The
                         // await also lets a just-issued controller reshape land
                         // before we snapshot it below.
-                        for await (const r of drainPending()) yield r;
+                        try {
+                            for await (const r of drainPending())
+                                yield r;
+                        } catch (e) {
+                            closeBundleLayers(bundle);
+                            throw e;
+                        }
+
                         const oldN = encoders.length;
                         const cur = opts.controller.current;
+                        // The bundle's layer set belongs to the ladder version downscale
+                        // stamped on it. Reshaping against a newer one would build encoders
+                        // from one generation's configs and pair them with another's layers
+                        // — cur.configs[i] is not even guaranteed to exist for every i <
+                        // layerCount. Drop the straggler instead; downscale reads the
+                        // controller per frame, so the bundles behind it are already current.
+                        if (bundle.ladderVersion !== cur.version) {
+                            closeBundleLayers(bundle);
+                            continue;
+                        }
+
                         // Reconcile by CANONICAL layer id: a slot's encoder is
                         // reused only when a config with the same canonical id
                         // and dims/codec still exists, wherever it now sits in
@@ -459,6 +506,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                                 { cause: e },
                             );
                         }
+
                         // Dispose old encoders that no config reuses.
                         for (let i = 0; i < oldN; i++)
                             if (!reusedOldSlots.has(i))
@@ -473,6 +521,33 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         if (oldN > 0) forceKeyframeNext = true;
                         configs = cur.configs;
                     }
+                    // A fatal WebCodecs error closes an encoder permanently — reset()
+                    // cannot revive it — so rebuild any slot that is no longer
+                    // configured before it can reject the whole bundle.
+                    const configuredSlots = Math.min(encoders.length, encoderCfgs.length);
+                    for (let i = 0; i < configuredSlots; i++) {
+                        const deadState = encoders[i].state;
+                        if (deadState !== 'closed' && deadState !== 'unconfigured')
+                            continue;
+
+                        const cfg = encoderCfgs[i];
+                        try { encoders[i].dispose(); } catch { /* ignore */ }
+                        try {
+                            encoders[i] = createEncoder(cfg, cfg.layerId ?? i);
+                        } catch (e) {
+                            closeBundleLayers(bundle);
+                            const message = e instanceof Error ? e.message : String(e);
+                            throw new Error(
+                                `${ENCODER_INIT_FAILED_PREFIX} codec=${cfg.codec}: ${message}`,
+                                { cause: e },
+                            );
+                        }
+
+                        recordRestart(bundle.stats);
+                        forceKeyframeNext = true;
+                        warnLog?.log(`encoder ${i} was '${deadState}' — recreated`);
+                    }
+
                     // applyKeyframePolicy promotes forceKeyframe to all-or-none;
                     // use the bundle helper to keep the contract explicit.
                     const keyFrame = isCapturedBundleKeyFrame(bundle)
@@ -483,7 +558,13 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     // verify the encoder honored the request before pulling
                     // more bundles from source. Delta bundles pipeline freely.
                     if (keyFrame && pending.length > 0) {
-                        for await (const r of drainPending()) yield r;
+                        try {
+                            for await (const r of drainPending())
+                                yield r;
+                        } catch (e) {
+                            closeBundleLayers(bundle);
+                            throw e;
+                        }
                     }
 
                     pending.push(submitBundle(bundle, keyFrame));
@@ -504,12 +585,16 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     while (pending.length >= MAX_PIPELINE) {
                         const p = pending.shift()!;
                         const outcome = await awaitPending(p);
-                        if (outcome.kind === 'yield') yield outcome.bundle;
-                        else if (outcome.kind === 'throw') throw outcome.error;
+                        if (outcome.kind === 'yield')
+                            yield outcome.bundle;
+                        else if (outcome.kind === 'throw')
+                            throw outcome.error;
                     }
                 }
+
                 // Source ended — drain anything still in flight.
-                for await (const r of drainPending()) yield r;
+                for await (const r of drainPending())
+                    yield r;
             } finally {
                 disposeBundleWatchdog();
                 for (const enc of encoders) {

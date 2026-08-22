@@ -346,6 +346,10 @@ export type NormalizedFrame = CapturedFrame;
 // Single-tier (P2P) sources produce a length-1 bundle.
 export interface CapturedBundle {
     layers: CapturedFrame[];
+    // LadderState.version the layer set was built from. The encoder set is
+    // reshaped against it, so a bundle that predates a ladder change must not
+    // be paired with encoders built for the newer one.
+    ladderVersion: number;
     // Bundle-level index (== layers[*].index) for drop-trace gap detection.
     index: number;
     dropTrace: FrameDropStage[];

@@ -323,7 +323,9 @@ closures, no track references.
 
 | Symptom | Where it's caught | Recovery |
 |---|---|---|
-| Encoder hangs on `output()` | `AsyncVideoEncoder` timeout (3 s first frame, 1 s steady) | Reset, force keyframe, retry bundle |
+| Encoder hangs on `output()` | `encode.ts` bundle watchdog (3 s per bundle; per-item adapter timeouts are disabled) | `handleEncoderHang()` — fail pending recoverably, `reset()` + reconfigure, force keyframe, skip the bundle. Throws after 2 consecutive hangs |
+| Encoder reports a fatal error | WebCodecs `error` callback in `recorder-worker-host.ts` | Fail the in-flight items at once, then `encode.ts` rebuilds any slot left `closed`/`unconfigured` and forces a keyframe |
+| Adapter degraded by a timeout or out-of-order output | `CodecToAsyncAdapter.degradeAndReset` | `maxInflight` drops to 1, restored after `DEGRADE_RECOVERY_OUTPUTS` clean outputs |
 | Frame dims ≠ encoder config | `dim-mismatch-guard.ts` | Drop frame; counter tick |
 | Downscaler hangs (`process()`) | `downscale.ts` 1.5 s watchdog | Close + recreate, force keyframe; bail after 4 consecutive |
 | HW NVENC slot lost | next `acquire()` on pool | Pool recreates encoder, runs through `handleEncoderReset` |

@@ -111,6 +111,7 @@ export function createDefaultDownscaler(): DownscalerLike {
             warnLog?.log('createDefaultDownscaler: WebGL init failed, using Canvas2D:', e);
         }
     }
+
     return new CanvasDownscaler();
 }
 
@@ -193,7 +194,8 @@ export function normalizeDownscale(opts: NormalizeDownscaleOptions): PipeOperato
                 });
 
                 // 2. Tiers from the ceiling, on the selected backend, watchdogged.
-                const layers: LayerSpec[] = opts.controller.current.configs.map(
+                const ladder = opts.controller.current;
+                const layers: LayerSpec[] = ladder.configs.map(
                     c => ({ width: c.width, height: c.height }));
                 slot.downscaler ??= createDownscaler();
                 const downscaler = slot.downscaler;
@@ -202,7 +204,8 @@ export function normalizeDownscale(opts: NormalizeDownscaleOptions): PipeOperato
                 // is unavailable / its context was lost.
                 if (!backendLogged) {
                     backendLogged = true;
-                    infoLog?.log(`normalizeDownscale: downscaler backend = ${downscaler.constructor.name} (mode '${mode}')`);
+                    infoLog?.log(
+                        `normalizeDownscale: downscaler backend = ${downscaler.constructor.name} (mode '${mode}')`);
                 }
                 const processPromise = downscaler.process(ceiling, layers);
                 let timerHandle: unknown = null;
@@ -212,6 +215,10 @@ export function normalizeDownscale(opts: NormalizeDownscaleOptions): PipeOperato
                 let raced: VideoFrame[] | 'timeout';
                 try {
                     raced = await Promise.race([processPromise, timeoutP]);
+                } catch (e) {
+                    // process() rejects on GPU context loss and closes nothing — the ceiling is still ours.
+                    try { ceiling.close(); } catch { /* ignore */ }
+                    throw e;
                 } finally {
                     if (timerHandle !== null)
                         try { clearTimeoutFn(timerHandle); } catch { /* ignore */ }
@@ -232,6 +239,7 @@ export function normalizeDownscale(opts: NormalizeDownscaleOptions): PipeOperato
                             `normalizeDownscale: hang watchdog fired ${consecutiveHangs}x in a row, giving up`);
                     return null;
                 }
+
                 consecutiveHangs = 0;
                 const frames = raced;
                 if (frames.length !== layers.length) {
@@ -241,17 +249,21 @@ export function normalizeDownscale(opts: NormalizeDownscaleOptions): PipeOperato
                     throw new Error(
                         `normalizeDownscale: downscaler returned ${frames.length} frames, expected ${layers.length}`);
                 }
+
                 const ms = performance.now() - startedAtMs;
                 const stats = envelope.stats;
                 stats.downscaleTimeMsSum += ms;
                 stats.downscaleTimeMsCount++;
                 if (ms > stats.downscaleTimeMsMax) stats.downscaleTimeMsMax = ms;
-                // After a hang, re-anchor every encoder with a keyframe.
                 const wireRotation = transform.wireRotation;
                 // Preview taps a clone of the ceiling (full-res, never the
                 // shrunk tier). Then close the ceiling iff it is not also a tier
                 // — encode closes the tiers (incl. the ceiling-as-top-tier case).
-                opts.preview?.forward(ceiling, wireRotation);
+                try {
+                    opts.preview?.forward(ceiling, wireRotation);
+                } catch (e) {
+                    warnLog?.log('normalizeDownscale: preview.forward failed:', e);
+                }
                 if (!frames.includes(ceiling))
                     try { ceiling.close(); } catch { /* ignore */ }
                 const layerSource: NormalizedFrame = {
@@ -262,6 +274,7 @@ export function normalizeDownscale(opts: NormalizeDownscaleOptions): PipeOperato
                 forceKeyframeAfterHang = false;
                 return {
                     layers: frames.map(frame => makeLayerEnvelope(layerSource, frame)),
+                    ladderVersion: ladder.version,
                     index: envelope.index,
                     dropTrace: envelope.dropTrace,
                     rotation: wireRotation,
@@ -274,7 +287,8 @@ export function normalizeDownscale(opts: NormalizeDownscaleOptions): PipeOperato
         const op = stage(source);
         return from((async function* (): AsyncIterable<CapturedBundle> {
             for await (const bundle of op)
-                if (bundle !== null) yield bundle;
+                if (bundle !== null)
+                    yield bundle;
         })());
     };
 }
@@ -301,30 +315,33 @@ function produceCeiling(
         && input.codedHeight === target.height) {
         return input;
     }
-    if (cropboxRotation === 0 && input.codedWidth > 0 && input.codedHeight > 0) {
-        const visible = computeCoverVisibleRect(
-            input.codedWidth, input.codedHeight,
-            target.width, target.height);
-        const recropped = new VideoFrame(input, {
-            visibleRect: visible,
-            displayWidth: target.width,
-            displayHeight: target.height,
+
+    // Both remaining paths consume `input`, and allocation or the draw can throw.
+    try {
+        if (cropboxRotation === 0 && input.codedWidth > 0 && input.codedHeight > 0) {
+            const visible = computeCoverVisibleRect(
+                input.codedWidth, input.codedHeight,
+                target.width, target.height);
+            return new VideoFrame(input, {
+                visibleRect: visible,
+                displayWidth: target.width,
+                displayHeight: target.height,
+                timestamp: input.timestamp,
+                duration: input.duration ?? undefined,
+            });
+        }
+
+        const slot = getSlot();
+        prepareSlot(slot, target.width, target.height);
+        drawFrameCover(slot.ctx, input, target.width, target.height, cropboxRotation);
+        return new VideoFrame(slot.canvas, {
             timestamp: input.timestamp,
             duration: input.duration ?? undefined,
+            alpha: 'discard',
         });
+    } finally {
         try { input.close(); } catch { /* already closed */ }
-        return recropped;
     }
-    const slot = getSlot();
-    prepareSlot(slot, target.width, target.height);
-    drawFrameCover(slot.ctx, input, target.width, target.height, cropboxRotation);
-    const out = new VideoFrame(slot.canvas, {
-        timestamp: input.timestamp,
-        duration: input.duration ?? undefined,
-        alpha: 'discard',
-    });
-    try { input.close(); } catch { /* already closed */ }
-    return out;
 }
 
 function closeFrames(frames: readonly VideoFrame[]): void {
@@ -466,6 +483,7 @@ function isFrameTransposed(input: VideoFrame): boolean {
 function signedAngleDeltaDeg(from: number, to: number): number {
     if (!Number.isFinite(from) || !Number.isFinite(to))
         return 0;
+
     return ((((to - from + 180) % 360) + 360) % 360) - 180;
 }
 
