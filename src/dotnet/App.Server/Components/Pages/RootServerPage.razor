@@ -33,7 +33,9 @@
 <html lang="en">
 <head>
     <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"/>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no,
+                   viewport-fit=cover, interactive-widget=resizes-content"/>
     <HeadOutlet @rendermode="@(_renderMode.Mode)" />
     <PageTitle>@CoreConstants.AppName</PageTitle>
     <HeadContent>
@@ -48,9 +50,10 @@
     @{
         var title = $"{CoreConstants.AppName}: The New Voice of Everyday Communication";
         var description =
-            "We fuse real-time audio, live transcription, and AI assistance to let you communicate with utmost efficiency. " +
-            "Reply 5x faster, read for quick context, defer without fear of losing clarity, " +
-            "and connect more frequently to deepen ties with those you cherish most — all free from the stress of traditional calls.";
+            "We fuse real-time audio, live transcription, and AI assistance to let you "
+            + "communicate with utmost efficiency. Reply 5x faster, read for quick context, "
+            + "defer without fear of losing clarity, and connect more frequently to deepen "
+            + "ties with those you cherish most — all free from the stress of traditional calls.";
         var siteDescription = title + Environment.NewLine + description;
         var image = "voxt-site-preview.jpg";
         if (_contentLinkInfo is not null) {
@@ -79,12 +82,12 @@
     <meta name="twitter:description" content="@description">
     <meta name="twitter:image" content="@image">
 
-    @* The version of icon.woff2 must match the version in icons.css! *@
-    <link rel="preload" href="/@Assets["dist/assets/woff2/icon.woff2"]" as="font" crossorigin />
-    <link rel="preload" href="/@Assets["dist/assets/woff2/TT-Commons-Pro-Regular.woff2"]" as="font" crossorigin />
-    <link rel="preload" href="/@Assets["dist/assets/woff2/TT-Commons-Pro-Medium.woff2"]" as="font" crossorigin />
-    <link rel="preload" href="/@Assets["dist/assets/woff2/TT-Commons-Pro-DemiBold.woff2"]" as="font" crossorigin />
-    <link rel="prefetch" href="/@Assets["dist/assets/woff2/TT-Commons-Pro-Light.woff2"]" as="font" crossorigin />
+    @* NOT @Assets — a preload counts only if its href matches what @font-face requests, and the
+       bundled CSS keeps the plain path (icon.woff2 also carries a generated ?t=, so it can't match). *@
+    <link rel="preload" href="/dist/assets/woff2/TT-Commons-Pro-Regular.woff2" as="font" crossorigin />
+    <link rel="preload" href="/dist/assets/woff2/TT-Commons-Pro-Medium.woff2" as="font" crossorigin />
+    <link rel="preload" href="/dist/assets/woff2/TT-Commons-Pro-DemiBold.woff2" as="font" crossorigin />
+    <link rel="prefetch" href="/dist/assets/woff2/TT-Commons-Pro-Light.woff2" as="font" crossorigin />
     <link rel="prefetch" href="/@Assets["dist/onDeviceAwakeWorker.js"]" as="worker" crossorigin />
     <link rel="prefetch" href="/@Assets["dist/opusDecoderWorker.js"]" as="worker" crossorigin />
     <link rel="prefetch" href="/@Assets["dist/opusEncoderWorker.js"]" as="worker" crossorigin />
@@ -101,7 +104,10 @@
     <link href="/@Assets["dist/bundle.css"]" rel="stylesheet" />
     <ImportMap nonce="@nonce" ImportMapDefinition="importMap"/>
     @if (Captcha.IsAvailable(HostInfo, recaptchaSiteKey)) {
-        <script id="recaptcha-head-script" nonce="@nonce" src="https://www.google.com/recaptcha/enterprise.js?render=@recaptchaSiteKey" async defer></script>
+        <script id="recaptcha-head-script"
+                nonce="@nonce"
+                src="https://www.google.com/recaptcha/enterprise.js?render=@recaptchaSiteKey"
+                async defer></script>
     } else {
         <meta id="recaptcha-fake" content="true" />
     }
@@ -124,9 +130,13 @@
                 await window.App.whenBundleReady;
                 return true;
             },
-            browserInit: async function(hostKind, appKind, apiVersion, baseUri, supportedHosts, sessionHash, appConstants, browserInfoBackendRef, clipboardInteropRef) {
+            browserInit: async function(
+                hostKind, appKind, apiVersion, baseUri, supportedHosts,
+                sessionHash, appConstants, browserInfoBackendRef, clipboardInteropRef) {
                 await window.App.whenBundleReady;
-                window.ui.BrowserInit.init(hostKind, appKind, apiVersion, baseUri, supportedHosts, sessionHash, appConstants, browserInfoBackendRef, clipboardInteropRef);
+                window.ui.BrowserInit.init(
+                    hostKind, appKind, apiVersion, baseUri, supportedHosts,
+                    sessionHash, appConstants, browserInfoBackendRef, clipboardInteropRef);
             },
         };
         window.App.whenBlazorReady = new Promise((resolve, _) => {
@@ -216,7 +226,8 @@
             @if (closeFlow.RedirectUrl is { } closeFlowRedirectUrl) {
                 @* A custom scheme with no registered handler (e.g. the app isn't installed) aborts
                    the document load, so the hand-off waits for everything above to be parsed. *@
-                @((MarkupString)$"addEventListener('load', function () {{ window.location.href = {JsonSerializer.Serialize(closeFlowRedirectUrl)}; }});")
+                @((MarkupString)("addEventListener('load', function () { window.location.href = "
+                    + JsonSerializer.Serialize(closeFlowRedirectUrl) + "; });"))
             }
             setTimeout(function () {
                 window.open('','_self').close();
@@ -240,8 +251,7 @@
     <script nonce="@nonce">
         if (!window.Blazor) {
             console.error('Blazor is not loaded. Please check the script tag for blazor.web.js.');
-        }
-        else {
+        } else {
             // Suppress stale event handler errors in Blazor Server.
             // When a component re-renders on the server (changing handler IDs) while an event
             // is in-flight over SignalR, the event arrives with a stale handler ID, causing
@@ -288,7 +298,8 @@
                    },
                    */
                     loadBootResource: function(type, name, defaultUri, integrity) {
-                        if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration' && integrity) {
+                        if (type !== 'dotnetjs' && type !== 'configuration'
+                            && location.hostname !== 'localhost' && integrity) {
                             return (async function() {
                                 const hash = encodeURIComponent(integrity);
                                 const response = await fetch(defaultUri + '?hash=' + hash, { integrity: integrity });
@@ -370,6 +381,7 @@
             HttpContext.Response.Redirect(redirectUrl, false);
             return;
         }
+
         if (!_authState.IsAnyAuthFlow && HttpContext.AcceptsInteractiveRouting()) {
             var forceServerPrerendered = _account.IsGuestOrNull() && (_url.IsHome() || _url.IsDocsOrDocsRoot());
             _renderMode = forceServerPrerendered
@@ -377,5 +389,4 @@
                 : RenderModeEndpoint.GetRenderMode(HttpContext);
         }
     }
-
 }

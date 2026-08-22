@@ -44,12 +44,13 @@
         " />
     <title>Voxt</title>
     <base href="/" />
-    <!-- The version of icon.woff2 must match the version in icons.css! -->
-    <link rel="preload" href="/dist/assets/woff2/icon.woff2?t=1731995804968" as="font" crossorigin />
+    <!-- A preload counts only if its href matches what @font-face requests, query string
+         included. icon.woff2 is absent on purpose: icons.css appends a generated ?t=
+         cache-buster that nothing here can reproduce, so it could never match. -->
     <link rel="preload" href="/dist/assets/woff2/TT-Commons-Pro-Regular.woff2" as="font" crossorigin />
     <link rel="preload" href="/dist/assets/woff2/TT-Commons-Pro-Medium.woff2" as="font" crossorigin />
     <link rel="preload" href="/dist/assets/woff2/TT-Commons-Pro-DemiBold.woff2" as="font" crossorigin />
-    <link rel="preload" href="/dist/assets/woff2/forkawesome-webfont.woff2" as="font" crossorigin />
+    <link rel="preload" href="/dist/assets/woff2/forkawesome-webfont.woff2?v=1.2.0" as="font" crossorigin />
     <link rel="prefetch" href="/dist/assets/woff2/TT-Commons-Pro-Light.woff2" as="font" crossorigin />
     <!-- Nothing else is prefetched here on purpose: workers, worklets and wasm are all served
          from the APK, so there is no network latency to hide (~15ms each), and they only
