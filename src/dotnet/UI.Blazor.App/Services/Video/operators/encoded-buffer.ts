@@ -34,17 +34,25 @@ export function pacedEncodedBuffer(opts: PacedEncodedBufferOptions): PipeOperato
             const pump: { done: boolean; error: unknown } = { done: false, error: undefined };
             let notify: (() => void) | null = null;
             const wake = (): void => { const n = notify; notify = null; n?.(); };
+            // A returned consumer must stop the producer too — a wedge restart returns it
+            // without raising abortSignal, and upstream keeps delivering regardless.
+            let isStopped = false;
+            let stopProducer: () => void = () => { /* replaced below */ };
+            const stopRace = new Promise<never>((_, reject) => {
+                stopProducer = () => reject(new Error('pacedEncodedBuffer: consumer stopped'));
+            });
+            void stopRace.catch(() => { /* handled by the producer's race while it runs */ });
 
             const produce = async (): Promise<void> => {
                 let pendingNext: Promise<IteratorResult<ArrivedChunk>> | null = null;
                 try {
-                    while (!abortSignal?.aborted) {
+                    while (!isStopped && !abortSignal?.aborted) {
                         pendingNext = iterator.next();
                         let result: IteratorResult<ArrivedChunk>;
                         try {
-                            result = await Promise.race([pendingNext, abortRace]);
+                            result = await Promise.race([pendingNext, abortRace, stopRace]);
                         } catch {
-                            break; // aborted
+                            break;
                         }
                         pendingNext = null;
                         if (result.done)
@@ -100,6 +108,7 @@ export function pacedEncodedBuffer(opts: PacedEncodedBufferOptions): PipeOperato
                     }
                     if (pump.error !== undefined)
                         throw pump.error instanceof Error ? pump.error : new Error('pacedEncodedBuffer: upstream error');
+
                     // Upstream ended: drain is exhausted above, trailing sub-target
                     // frames (if any) are closed by reset() in finally — same as the
                     // legacy single-loop behavior.
@@ -114,6 +123,8 @@ export function pacedEncodedBuffer(opts: PacedEncodedBufferOptions): PipeOperato
                     }
                 }
             } finally {
+                isStopped = true;
+                stopProducer();
                 await producer.catch(() => { /* ignore */ });
                 buffer.reset();
             }
