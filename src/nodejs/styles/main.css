@@ -263,6 +263,13 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     padding-top: var(--safe-area-top);
     min-height: var(--safe-area-top);
 }
+/* A headerless page - one that carries its own heading - would otherwise get an empty bar with a
+   separator under it. The box stays, because it is what reserves the top safe area; it just
+   collapses to that inset and drops the separator. */
+.list-view-layout.has-headerless-page > .layout-header {
+    @apply border-b-0;
+    min-height: var(--safe-area-top);
+}
 .layout-header > .c-content {
     @apply ordinary-header gap-x-2;
     @apply justify-items-stretch;

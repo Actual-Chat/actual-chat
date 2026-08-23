@@ -16,6 +16,9 @@ MutationProcessor.registerPresenceClasses(
     { container: '.list-view-layout', match: '.audio-panel-header', className: 'has-audio-panel-header' },
     { container: '.right-panel', match: '.c-header.expanded-header', className: 'has-expanded-header' },
     { container: '.layout-header', match: '.header-activity-panel-wrapper', className: 'has-activity-panel' },
+    // A page that carries its own heading, so the layout's header would be an empty bar with a
+    // separator under it - see .has-headerless-page in main.css.
+    { container: '.list-view-layout', match: '.headerless-page', className: 'has-headerless-page' },
 
     // The chat view's live-conversation block. Measured on an iPhone 13 Pro during a
     // fullscreen video call: 69 `.group` and 44 `.item` subjects, every predicate false,
