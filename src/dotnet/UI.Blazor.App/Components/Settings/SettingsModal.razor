@@ -13,6 +13,84 @@
     var isPttPreview = account.IsAdmin && HostInfo.BaseUrlKind == BaseUrlKind.Local;
     var showPtt = m.EnableIncompleteUI && Ptt.IsSupported(HostInfo) && (HostInfo.HostKind.IsMauiApp() || isPttPreview);
     var quitTitle = L.Settings_Quit_Format(CoreConstants.AppName);
+
+    var tabs = new List<SettingsTabDef>();
+    if (showMyAccount)
+        tabs.Add(new(SettingsTabId.Account, L.Settings_YourAccount) {
+            IconClass = "icon-person",
+            Content = @<YourAccount/>,
+        });
+    tabs.Add(new(SettingsTabId.UserInterface, L.Settings_UserInterface) {
+        IconClass = "icon-interface",
+        Content = @<UserInterface/>,
+    });
+    tabs.Add(new(SettingsTabId.Transcription, L.Settings_Transcription) {
+        IconClass = "icon-transcription",
+        TitleContent = @<LanguageShortcut/>,
+        Content = @<TranscriptionSettings/>,
+    });
+    if (showPtt)
+        tabs.Add(new(SettingsTabId.Ptt, L.Settings_Ptt) {
+            IconClass = "icon-talking",
+            Content = @<PttSettings/>,
+        });
+    tabs.Add(new(SettingsTabId.App, L.Settings_Application) {
+        IconClass = "icon-settings",
+        Content = @<AppSettings/>,
+    });
+    if (showMyAccount) {
+        tabs.Add(new(SettingsTabId.Sessions, L.Settings_Sessions) {
+            IconClass = "icon-lock",
+            Content = @<SessionSettings/>,
+        });
+        tabs.Add(new(SettingsTabId.ApiKeys, L.Settings_ApiKeys) {
+            IconClass = "icon-key",
+            Content = @<ApiKeySettings/>,
+        });
+        tabs.Add(new(SettingsTabId.Privacy, L.Settings_Privacy) {
+            IconClass = "icon-lock",
+            Content = @<PrivacySettings/>,
+        });
+    }
+    tabs.Add(new(SettingsTabId.Documents, L.Settings_Documents) {
+        IconClass = "icon-file-text",
+        Class = "docs-tab",
+        HasSeparatorBefore = true,
+        Content = @<DocumentsPage/>,
+    });
+    tabs.Add(new(SettingsTabId.DevTools, L.Settings_DeveloperTools) {
+        IconClass = "icon-eye",
+        Content = @<DeveloperTools/>,
+    });
+    if (m.ShowLogViewer)
+        tabs.Add(new(SettingsTabId.LogViewer, L.Settings_LogViewer) {
+            IconClass = "icon-info",
+            Class = "log-viewer-tab",
+            HeaderClass = "no-scrollbar",
+            ContentClass = "no-scrollbar",
+            Content = @<text>
+                          <div class="log-viewer-page">
+                              <LogView/>
+                          </div>
+                          <div class="log-viewer-footer">
+                              @if (Hub.ReportUI.IsAvailable) {
+                                  <Button Class="log-viewer-report-btn btn-primary" Click="@OnReportClick">Report</Button>
+                              }
+                              <Button Class="log-viewer-copy-btn btn-primary" Click="@OnCopyVisibleLogsClick">Copy</Button>
+                          </div>
+                      </text>,
+        });
+    if (showLogout)
+        tabs.Add(new(SettingsTabId.SignOut, L.Settings_LogOut) {
+            IconClass = "icon-log-out",
+            HasSeparatorBefore = true,
+            Click = SignOut,
+        });
+    if (showQuit)
+        tabs.Add(new(SettingsTabId.Quit, quitTitle) {
+            IconClass = "icon-close",
+            Click = Hub.ReloadUI.Quit,
+        });
 }
 
 <ModalFrame Class="settings-modal">
@@ -21,86 +99,7 @@
             <i class="icon-close text-xl"></i>
         </ButtonRound>
     }
-    <SettingsPanel Title="@L.Settings_Title" CloseModalClick="OnCloseClick" DefaultTabId="@m.TabId">
-        @if (showMyAccount) {
-            <SettingsTab @key="1" TabIndex="1" Title="@L.Settings_YourAccount" Id="@SettingsTabId.Account" IconClass="icon-person">
-                <YourAccount/>
-            </SettingsTab>
-        }
-
-        <SettingsTab @key="2" TabIndex="2" Title="@L.Settings_UserInterface" Id="@SettingsTabId.UserInterface" IconClass="icon-interface">
-            <UserInterface/>
-        </SettingsTab>
-
-        <SettingsTab @key="3" TabIndex="3" Title="@L.Settings_Transcription" Id="@SettingsTabId.Transcription" IconClass="icon-transcription">
-            <TitleContent>
-                <LanguageShortcut/>
-            </TitleContent>
-            <ChildContent>
-                <TranscriptionSettings/>
-            </ChildContent>
-        </SettingsTab>
-
-        @if (showPtt) {
-            <SettingsTab @key="4" TabIndex="4" Title="@L.Settings_Ptt" Id="@SettingsTabId.Ptt"
-                IconClass="icon-talking">
-                <PttSettings/>
-            </SettingsTab>
-        }
-
-        <SettingsTab @key="5" TabIndex="5" Title="@L.Settings_Application" Id="@SettingsTabId.App" IconClass="icon-settings">
-            <AppSettings/>
-        </SettingsTab>
-
-        @if (showMyAccount) {
-            <SettingsTab @key="6" TabIndex="6" Title="@L.Settings_Sessions" Id="@SettingsTabId.Sessions" IconClass="icon-lock">
-                <SessionSettings/>
-            </SettingsTab>
-            <SettingsTab @key="7" TabIndex="7" Title="@L.Settings_ApiKeys" Id="@SettingsTabId.ApiKeys" IconClass="icon-key">
-                <ApiKeySettings/>
-            </SettingsTab>
-        }
-
-        @if (showMyAccount) {
-            <SettingsTab @key="8" TabIndex="8" Title="@L.Settings_Privacy" Id="@SettingsTabId.Privacy" IconClass="icon-lock">
-                <PrivacySettings/>
-            </SettingsTab>
-        }
-
-        <SettingsTab @key="90" TabIndex="90" Title="@L.Settings_Documents" Id="@SettingsTabId.Documents" Class="docs-tab" IconClass="icon-file-text" HasSeparatorBefore="true">
-            <DocumentsPage/>
-        </SettingsTab>
-
-        <SettingsTab @key="91" TabIndex="91" Title="@L.Settings_DeveloperTools" Id="@SettingsTabId.DevTools" IconClass="icon-eye">
-            <DeveloperTools/>
-        </SettingsTab>
-
-        @if (m.ShowLogViewer) {
-            <SettingsTab @key="92" TabIndex="92" Title="@L.Settings_LogViewer" Id="@SettingsTabId.LogViewer" Class="log-viewer-tab" HeaderClass="no-scrollbar" ContentClass="no-scrollbar" IconClass="icon-info">
-                <ChildContent>
-                    <div class="log-viewer-page">
-                        <LogView/>
-                    </div>
-                    <div class="log-viewer-footer">
-                        @if (Hub.ReportUI.IsAvailable) {
-                            <Button Class="log-viewer-report-btn btn-primary" Click="@OnReportClick">Report</Button>
-                        }
-                        <Button Class="log-viewer-copy-btn btn-primary" Click="@OnCopyVisibleLogsClick">Copy</Button>
-                    </div>
-                </ChildContent>
-            </SettingsTab>
-        }
-
-        @if (showLogout) {
-            <SettingsTab @key="100" TabIndex="100" Title="@L.Settings_LogOut" Id="@SettingsTabId.SignOut" IconClass="icon-log-out" HasSeparatorBefore="true">
-            </SettingsTab>
-        }
-        @if (showQuit) {
-            <SettingsTab @key="101" TabIndex="101" Title="@quitTitle" Id="@SettingsTabId.Quit" IconClass="icon-close">
-            </SettingsTab>
-        }
-
-    </SettingsPanel>
+    <SettingsPanel Tabs="@tabs" Title="@L.Settings_Title" CloseModalClick="OnCloseClick" DefaultTabId="@m.TabId"/>
 </ModalFrame>
 
 @code {
@@ -129,6 +128,11 @@
 
     private void OnCloseClick()
         => Modal.Close();
+
+    private void SignOut() {
+        Modal.Close();
+        _ = Hub.AccountUI.SignOut();
+    }
 
     private Task OnReportClick()
         => ModalUI.Show(new ReportModal.Model());

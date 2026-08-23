@@ -7,7 +7,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class NotificationsPanelUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
     private static readonly ChatListFilter[] Filters =
-        [ChatListFilter.Unread, ChatListFilter.UnreadDMs, ChatListFilter.UnreadMentions];
+        [ChatListFilter.Unread, ChatListFilter.UnreadPeople, ChatListFilter.UnreadMentions];
     private static readonly TimeSpan GcPeriod = TimeSpan.FromSeconds(60);
     // Storage upper bound: entries older than this can never be shown under any retention setting.
     private static readonly TimeSpan MaxRetention = NotificationsPanelRetention.Hours24.ToTimeSpan();

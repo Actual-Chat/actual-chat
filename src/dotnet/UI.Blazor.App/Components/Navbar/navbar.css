@@ -90,10 +90,22 @@ body.hoverable .navbar-chat-buttons .navbar-button:has(.hover-zone:hover) .left-
     /* Removed will-change: transform to reduce compositor layer count on Android WebView,
        where nested compositor layers cause avatar rendering corruption (black circles) */
 }
-.navbar-group > .c-container {
+/* ContentSwap's host and layer sit between .navbar-group and the group's content, so the
+   group's inner layout belongs to the layer - each layer has to stand on its own during a swap */
+.navbar-group > .c-swap {
+    @apply flex-1;
+    @apply min-h-0;
+    /* The panel sits on the 02 surface, not the base one the outgoing layer assumes */
+    --content-swap-bg: var(--background-02);
+}
+.navbar-group > .c-swap > .c-layer {
+    @apply flex-y gap-y-1;
+    @apply min-h-0;
+}
+.navbar-group > .c-swap > .c-layer > .c-container {
     @apply flex-1 flex-y;
 }
-.navbar-group > .c-container > .c-delimiter {
+.navbar-group > .c-swap > .c-layer > .c-container > .c-delimiter {
     @apply border-t border-separator;
 }
 /* Navgar subgroup */

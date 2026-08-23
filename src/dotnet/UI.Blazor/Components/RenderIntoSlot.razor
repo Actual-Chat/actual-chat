@@ -5,29 +5,61 @@
         _slot.NotifyChanged();
         return;
     }
+    if (Swap is { IsVisible: false })
+        return;
 
-    _slot = Hub.RenderVars.RenderSlot(Name);
-    _slot.Value.Add(this);
-    _slot.NotifyChanged();
+    Register();
 }
 @code {
     private RenderVar<List<RenderIntoSlot>>? _slot;
-
     [Inject] private UIHub Hub { get; init; } = null!;
-
+    [CascadingParameter] private ContentSwapContext? Swap { get; set; }
     [Parameter, EditorRequired] public string Name { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     public void Dispose() {
+        if (Swap is { } swap)
+            swap.StateChanged -= OnStateChanged;
+        Unregister();
+    }
+
+    // Protected/internal methods
+
+    protected override void OnInitialized() {
+        if (Swap is { } swap)
+            swap.StateChanged += OnStateChanged;
+    }
+
+    // Private methods
+
+    private void OnStateChanged() {
+        if (Swap!.IsVisible)
+            Register();
+        else
+            Unregister();
+    }
+
+    private void Register() {
+        if (_slot != null)
+            return;
+
+        _slot = Hub.RenderVars.RenderSlot(Name);
+        _slot.Value.Add(this);
+        _slot.NotifyChanged();
+    }
+
+    private void Unregister() {
         if (_slot == null)
             return;
 
-        if (!_slot.Value.Remove(this)) {
+        var slot = _slot;
+        _slot = null;
+        if (!slot.Value.Remove(this)) {
             var log = Hub.LogFor(GetType());
             log.LogWarning("Couldn't remove RenderIntoSlot with Name = '{Name}'", Name);
             return;
         }
 
-        _slot.NotifyChanged();
+        slot.NotifyChanged();
     }
 }

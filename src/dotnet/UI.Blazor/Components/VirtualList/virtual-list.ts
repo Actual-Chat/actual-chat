@@ -5,6 +5,7 @@ import { VirtualListDataQuery } from './ts/virtual-list-data-query';
 import { VirtualListRenderState } from './ts/virtual-list-render-state';
 import { Range } from './ts/range';
 import { VirtualListOverlay, VirtualListOverlayStats, VirtualListOverlayTarget } from './virtual-list-overlay';
+import { ContentSwap } from '../ContentSwap/content-swap';
 
 const { warnLog } = getLogs('VirtualList');
 
@@ -19,6 +20,9 @@ const RequestDataTimeoutMs = 2500;
 // A request that died took the only thing that was going to produce a render with it, so nothing else
 // will ask again until the user moves. This is how a list that is sitting on a skeleton gets unstuck.
 const RequestDataRetryMs = 1000;
+
+// Set by VirtualList.IsContentSwapDependency: this list is what its enclosing swap area waits for.
+const ContentSwapDependencyAttribute = 'data-content-swap-dependency';
 
 // VirtualListDataQuery.None is identified by reference, and a query that arrived as JSON is a plain
 // object with no prototype - so `isNone` on one is always undefined. Compare the ranges instead.
@@ -62,6 +66,7 @@ export abstract class VirtualList implements VirtualListOverlayTarget {
     protected lastRenderAt: number | null = null;
 
     private isRevealed = false;
+    private isContentSwapDisplayed = false;
     private whenRequestDataCompleted: PromiseSourceWithTimeout<void> | null = null;
 
     protected constructor(
@@ -178,6 +183,16 @@ export abstract class VirtualList implements VirtualListOverlayTarget {
         this.isRevealed = true;
         // Inline beats the c-initially-hidden class, so later renders keeping the class stay visible.
         this.wrapperRef.style.visibility = 'visible';
+    }
+
+    // Called by a derived list once its content is on screen, which is later than reveal() for a
+    // FiniteList: that one un-hides on its very first render, skeletons included.
+    protected displayContentSwap(): void {
+        if (this.isContentSwapDisplayed || !this.ref.hasAttribute(ContentSwapDependencyAttribute))
+            return;
+
+        this.isContentSwapDisplayed = true;
+        ContentSwap.display(this.ref);
     }
 
     protected get isContainerRevealed(): boolean {

@@ -14,27 +14,40 @@
     if (isUnread)
         isChats = false;
     var isTestPages = NavbarUI.SelectedGroupId == NavbarGroupIds.TestPages;
+    // Chats and notifications display the swap through their list; nothing else in here loads
+    var hasList = isUnread || isChats;
     var cls = isChats || isUnread ? "navbar-chats" : "navbar-pages";
+    var groupKey = isUnread ? "unread"
+        : isChats ? "chats:" + (placeId?.Value ?? "")
+        : isTestPages ? "test"
+        : "";
 }
 
 <div class="navbar-content">
     <div class="navbar-group @cls">
-        @if (isUnread) {
-            <NotificationsNavbarWidget/>
-        }
-        else if (isChats) {
-            <ChatListNavbarWidget PlaceId="@placeId" />
-        }
-        else if (isTestPages && m.IsAdmin) {
-            var tp = "/test/";
-            var tpHome = Links.TestPageHome.Value;
-            var isNarrow = ScreenSize.IsNarrow();
-            @foreach (var page in GetTestPages()) {
-                if (page.DesktopOnly && isNarrow)
-                    continue;
-                <NavbarItem ReplaceOnPrefix="@tp" ReplaceOnPrefixExcept="@tpHome" Url="@(page.Url)">@(page.Title)</NavbarItem>
-            }
-        }
+        <ContentSwap LayerKey="@groupKey" Class="c-swap" Effect="@ContentSwapEffect.WipeRight">
+            <ChildContent>
+                @if (isUnread) {
+                    <NotificationsNavbarWidget/>
+                }
+                else if (isChats) {
+                    <ChatListNavbarWidget PlaceId="@placeId" />
+                }
+                else if (isTestPages && m.IsAdmin) {
+                    var tp = "/test/";
+                    var tpHome = Links.TestPageHome.Value;
+                    var isNarrow = ScreenSize.IsNarrow();
+                    @foreach (var page in GetTestPages()) {
+                        if (page.DesktopOnly && isNarrow)
+                            continue;
+                        <NavbarItem ReplaceOnPrefix="@tp" ReplaceOnPrefixExcept="@tpHome" Url="@(page.Url)">@(page.Title)</NavbarItem>
+                    }
+                }
+                @if (!hasList) {
+                    <ContentSwapDisplay/>
+                }
+            </ChildContent>
+        </ContentSwap>
     </div>
 </div>
 
@@ -64,6 +77,7 @@
         var pages = new List<TestPageEntry> {
             new("/test/audio-blob-download", "Audio Blob Download"),
             new("/test/blazor", "Blazor"),
+            new("/test/content-swap", "Content Swap"),
             new("/test/copy-chat2place", "Copy Chat to Place"),
             new("/test/digest", "Digest"),
             new("/test/discover", "Discover", DesktopOnly: true),

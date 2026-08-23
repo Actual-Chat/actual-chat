@@ -2,14 +2,16 @@
     Simplified nesting structure:
 
     navbar-chats navbar-group
-        c-container
-            c-(all|active)-chats
-                active-chats
-                    chat-list-active chat-list
-                        <navbar-item>
-                chats-tab
-                    chat-list chat-list-[pinned|unpinned]
-                        <navbar-item>
+        content-swap c-swap
+            c-layer
+                c-container
+                    c-(all|active)-chats
+                        active-chats
+                            chat-list-active chat-list
+                                <navbar-item>
+                        chats-tab
+                            chat-list chat-list-[pinned|unpinned]
+                                <navbar-item>
     <navbar-item>:
         navbar-item group
             navbar-item-content
@@ -23,7 +25,10 @@
 .navbar-chats.navbar-group {
     @apply overflow-y-hidden;
 }
-.navbar-chats.navbar-group > .c-container {
+.navbar-chats.navbar-group > .c-swap > .c-layer {
+    @apply overflow-y-hidden;
+}
+.navbar-chats.navbar-group > .c-swap > .c-layer > .c-container {
     @apply flex-1 flex-y;
     @apply overflow-y-hidden;
 }
@@ -395,4 +400,16 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
 }
 .left-panel-content-header.place:not(:has(.add-members-btn)) + .left-panel-content-main-wrapper .navbar-chats .download-app-banner {
     @apply hidden;
+}
+
+/* The ContentSwap host around the list under the filter tabs, in both navbar widgets. It takes the
+   box the list used to get as a flex item, and each layer has to stand on its own during a swap.
+   --content-swap-bg is inherited from the enclosing navbar-group swap. */
+.navbar-chats .c-all-chats > .c-list-swap {
+    @apply flex-1;
+    @apply min-h-0;
+}
+.navbar-chats .c-all-chats > .c-list-swap > .c-layer {
+    @apply flex-1 flex-y;
+    @apply min-h-0;
 }

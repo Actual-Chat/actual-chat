@@ -6,33 +6,29 @@
     if (State.IsInitial(out var places) || places.Count == 0)
         return;
 
-    var order = 0;
+    var tabs = new List<TabDef> {
+        new(string.Empty) {
+            TitleContent = @<i class="icon-message-ellipse text-2xl font-medium"></i>,
+        },
+    };
+    foreach (var place in places)
+        tabs.Add(new(place.Id.Value) {
+            TitleContent = @<Pic
+                                Title="@place.Title"
+                                Picture="@place.Picture.ToPicture()"
+                                Size="@SquareSize.Size10"
+                                IsSquare="true"
+                                AvatarKind="@AvatarKind.Marble"
+                                AvatarKey="@place.Id.Value"/>,
+        });
 }
 
 <div class="contact-selector-place-picker no-scrollbar">
-    <TabPanel TabsClass="carousel" BottomHill="@true" SelectedTabIdChanged="@OnSelectedTabIdChanged">
-        <ChildContent>
-            <Tab Id="@(string.Empty)" Order="@(order++)">
-                <TitleContent>
-                    <i class="icon-message-ellipse text-2xl font-medium"></i>
-                </TitleContent>
-            </Tab>
-
-            @foreach (var place in places) {
-                <Tab Id="@(place.Id.Value)" Order="@(order++)">
-                    <TitleContent>
-                        <Pic
-                            Title="@place.Title"
-                            Picture="@place.Picture.ToPicture()"
-                            Size="@SquareSize.Size10"
-                            IsSquare="true"
-                            AvatarKind="@AvatarKind.Marble"
-                            AvatarKey="@place.Id.Value"/>
-                    </TitleContent>
-                </Tab>
-            }
-        </ChildContent>
-    </TabPanel>
+    <TabPanel
+        Tabs="@tabs"
+        TabsClass="carousel"
+        BottomHill="@true"
+        SelectedTabIdChanged="@OnSelectedTabIdChanged"/>
 </div>
 
 @code {
@@ -55,11 +51,21 @@
 
     private void OnSelectedTabIdChanged(string? tabId) {
         if (tabId.IsNullOrEmpty())
-            SelectPlace(null);
+            SelectPlace(null, 0);
         else if (PlaceId.TryParse(tabId, out var placeId))
-            SelectPlace(placeId);
+            SelectPlace(placeId, GetPlaceIndex(placeId));
     }
 
-    private void SelectPlace(PlaceId? placeId)
-        => Selector.SelectPlace(placeId);
+    private void SelectPlace(PlaceId? placeId, int index)
+        => Selector.SelectPlace(placeId, index);
+
+    private int GetPlaceIndex(PlaceId placeId) {
+        // The all-places tab is rendered first, so a place sits one past its position in the list
+        var places = State.Value;
+        for (var i = 0; i < places.Count; i++)
+            if (places[i].Id == placeId)
+                return i + 1;
+
+        return 0;
+    }
 }

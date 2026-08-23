@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Module
 @using ActualChat.Contacts
-@inherits ComputedStateComponent<AppUIHub, RightPanelHeader.Model>
+@inherits ComputedStateComponent<AppUIHub, ChatSidePanelHeader.Model>
 @{
     var m = State.Value;
     var canEditProperties = m.CanEditProperties;
@@ -85,7 +85,7 @@
     private IContacts Contacts => Hub.Contacts;
 
     private IJSObjectReference? JSRef { get; set; }
-    private DotNetObjectReference<RightPanelHeader> BlazorRef { get; set; } = null!;
+    private DotNetObjectReference<ChatSidePanelHeader> BlazorRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
     [CascadingParameter] public ChatContext? ChatContext { get; set; }

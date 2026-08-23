@@ -1,0 +1,35 @@
+@namespace ActualChat.UI.Blazor.Components
+@typeparam TValue
+@* Retains a cascading value against a change meant for the layer that replaced this one.
+   A CascadingValue notifies its subscribers directly rather than through the render tree, so the
+   change walks straight past ContentSwapLayer's freeze - and it arrives before ContentSwap has even
+   seen the new Key, so "is my layer still rendering" is too late a test. Comparing identities is
+   order-free instead: a value for a different identity belongs to the layer that replaced this one.
+   Put this immediately inside a ContentSwap's content, once per cascaded value the content reads.
+   RetentionKeySelector is normally the same expression as the ContentSwap's Key. *@
+
+<CascadingValue Value="@_value">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    private TValue _value = default!;
+    private object? _key;
+    private bool _hasValue;
+
+    [CascadingParameter] public TValue Value { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TValue, object?> RetentionKeySelector { get; set; } = null!;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnParametersSet() {
+        // Deliberately not IsFixed: an update for the same identity - a new ChatContext carrying a
+        // fresh Chat snapshot, say - is exactly what a live layer must keep receiving.
+        var key = RetentionKeySelector.Invoke(Value);
+        if (_hasValue && !Equals(_key, key))
+            return;
+
+        _hasValue = true;
+        _key = key;
+        _value = Value;
+    }
+}

@@ -1,0 +1,13 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<CascadingValue Value="@Context" IsFixed="true">
+    @Content
+</CascadingValue>
+
+@code {
+    [Parameter, EditorRequired] public ContentSwapContext Context { get; set; } = null!;
+    [Parameter] public RenderFragment? Content { get; set; }
+
+    protected override bool ShouldRender()
+        => Context.CanRender;
+}

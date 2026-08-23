@@ -106,6 +106,10 @@ export class FiniteList extends VirtualList {
             this.scrollToKey(rs.scrollToKey, rs.scrollToKeyInTheMiddle ?? false);
 
         this.reveal();
+        // Unlike reveal(), which un-hides the wrapper on the very first render, an enclosing swap area
+        // is waiting for content: rows, or both ends known, which is how an empty list is confirmed.
+        if (rs.count > 0 || (rs.hasVeryFirstItem && rs.hasVeryLastItem))
+            this.displayContentSwap();
         void this.requestData();
     }
 

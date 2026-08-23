@@ -1,12 +1,17 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Live
 @using ActualChat.Users
-@inherits ComputedStateComponent<AppUIHub, CallList.Model>
+@inherits ComputedStateComponent<AppUIHub, LiveSessionMemberList.Model>
 @{
     var m = State.Value;
     var live = m.Session;
     if (live is null) {
-        <div class="call-list-tab"><div class="c-empty">@L.Call_NoActiveCall</div></div>
+        <div class="live-session-member-list">
+            @if (!State.IsInitial(out _)) {
+                <ContentSwapDisplay/>
+            }
+            <div class="c-empty">@L.Call_NoActiveCall</div>
+        </div>
         return;
     }
     var groups = new (string Key, string Title, MemberGroup Group)[] {
@@ -15,7 +20,10 @@
         ("exited", L.Call_GroupExited, MemberGroup.Exited),
     };
 }
-<div class="call-list-tab">
+<div class="live-session-member-list">
+    @if (!State.IsInitial(out _)) {
+        <ContentSwapDisplay/>
+    }
     @if (live.Kind == LiveSessionKind.Dialing) {
         <div class="c-dialing">@L.Call_Dialing</div>
     }

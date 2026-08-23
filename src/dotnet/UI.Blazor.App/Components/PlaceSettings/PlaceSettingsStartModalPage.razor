@@ -92,29 +92,20 @@
     </div>
 </div>
 
+@{
+    var tabs = new TabDef[] {
+        new("members", L.Place_TabMembers) { Content = @<AuthorList PlaceId="@PlaceId"/> },
+    };
+}
+
 <div class="c-panel-content">
     <div class="c-panel-tabs">
         <TabPanel
             @key="@PlaceId.Value"
+            Tabs="@tabs"
             TabsClass="left-panel-tabs wide-left-panel-tabs"
-            BottomHill="true">
-
-            <Tab @key="@("members")" Id="members" Title="@L.Place_TabMembers" Order="0">
-                <AuthorList PlaceId="@PlaceId"/>
-            </Tab>
-
-            @if (m.EnableIncompleteUI) {
-                <Tab @key="@("media")" Id="media" Title="@L.Place_TabMedia" Order="1">
-                    <ToBeDone/>
-                </Tab>
-                <Tab @key="@("files")" Id="files" Title="@L.Place_TabFiles" Order="2">
-                    <ToBeDone/>
-                </Tab>
-                <Tab @key="@("links")" Id="links" Title="@L.Place_TabLinks" Order="3">
-                    <ToBeDone/>
-                </Tab>
-            }
-        </TabPanel>
+            BottomHill="true"
+            SwapKind="@TabContentSwap.Swipe"/>
     </div>
 </div>
 

@@ -34,6 +34,7 @@ export * from './Components/Avatar/marble-avatar.lit';
 export * from './Components/Bubble/bubble-host';
 export * from './Components/Button/timer-button-svg.lit';
 export * from './Components/Clipboard/copy-trigger';
+export * from './Components/ContentSwap/content-swap';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/ErrorBarrier/error-cat-svg.lit';
 export * from './Components/FileUpload/file-upload-picker';

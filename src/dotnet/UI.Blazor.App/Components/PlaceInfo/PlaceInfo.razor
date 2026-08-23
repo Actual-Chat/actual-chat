@@ -9,9 +9,22 @@
         return;
 
     var isPublic = place.IsPublic;
+    var tabs = new TabDef[] {
+        new("chats", L.Place_TabChats) {
+            Class = "no-scrollbar",
+            Content = @<ChatList
+                           @key="@ChatList.GetKey(place.Id, m.IsPlaceMember, null)"
+                           PlaceId="@place.Id"
+                           UsePlaceChatListSettings="@m.IsPlaceMember"/>,
+        },
+        new("members", L.Place_TabMembers) {
+            Class = "no-scrollbar",
+            Content = @<PlaceInfoMembersTab Data="@m"/>,
+        },
+    };
 }
 
-<div class="place-info-wrapper">
+<div class="place-info-wrapper headerless-page">
 <div class="place-info">
     <div class="c-top">
         <div class="pic-wrapper">
@@ -108,15 +121,9 @@
         <TabPanel
             @key="@place.Id.Value"
             TabsClass="left-panel-tabs wide-left-panel-tabs"
-            BottomHill="true">
-
-            <Tab @key="@("chats")" Id="chats" Title="@L.Place_TabChats" Order="0" Class="no-scrollbar">
-                <ChatList @key="@ChatList.GetKey(place.Id, m.IsPlaceMember, null)" PlaceId="@place.Id" UsePlaceChatListSettings="@m.IsPlaceMember" />
-            </Tab>
-            <Tab @key="@("members")" Id="members" Title="@L.Place_TabMembers" Order="1" Class="no-scrollbar">
-                <PlaceInfoMembersTab Data="@m"/>
-            </Tab>
-        </TabPanel>
+            BottomHill="true"
+            Tabs="@tabs"
+            SwapKind="@TabContentSwap.Swipe"/>
     </div>
 </div>
 </div>

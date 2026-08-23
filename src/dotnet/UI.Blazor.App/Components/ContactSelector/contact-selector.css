@@ -114,3 +114,14 @@ body.hoverable .contact-selector-badges > .c-contact:hover .c-remove {
 .contact-selector-place-picker .tab-panel-tabs .btn .icon-message-ellipse {
     @apply text-primary;
 }
+
+/* The ContentSwap host around the list, so a place-filter change wipes rather than cuts. It takes
+   the box the list used to get as a flex item, and each layer has to stand on its own during a swap. */
+.c-list-swap:has(> .c-layer > .contact-selector-list) {
+    @apply grow;
+    @apply min-h-0;
+}
+.c-list-swap > .c-layer:has(> .contact-selector-list) {
+    @apply flex-y grow;
+    @apply min-h-0;
+}

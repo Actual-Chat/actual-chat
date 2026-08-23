@@ -1,0 +1,140 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Module
+@inherits ComputedStateComponent<AppUIHub, ChatSidePanel.Model>
+@{
+    var m = State.Value;
+    var chat = m.Chat;
+    if (chat is null) {
+        <RightPanelSkeleton />
+        return;
+    }
+
+    var tabs = new List<TabDef>();
+    if (m.ShowCallTab)
+        tabs.Add(new("call", L.RightPanel_TabCall) { Content = @<LiveSessionMemberList ChatId="@chat.Id"/> });
+    if (m.ShowMembersTab)
+        tabs.Add(new("members", L.RightPanel_TabMembers) { Content = @<AuthorList ChatId="@chat.Id"/> });
+    if (m.ShowThreads)
+        tabs.Add(new("threads", L.RightPanel_TabThreads) { Content = @<ThreadList ChatId="@chat.Id"/> });
+    if (m.ShowContentItemsTab) {
+        tabs.Add(new("media", L.RightPanel_TabMedia) { Content = @<VisualMediaList ChatId="@chat.Id"/> });
+        tabs.Add(new("files", L.RightPanel_TabFiles) { Content = @<FileList ChatId="@chat.Id"/> });
+        tabs.Add(new("links", L.RightPanel_TabLinks) { Content = @<LinkList ChatId="@chat.Id"/> });
+    }
+}
+
+<div @ref="Ref" class="chat-side-panel">
+    <ErrorBarrier Name="ChatSidePanel" Kind="@ErrorBarrierKind.Full">
+        <div class="c-top-region">
+            <ChatSidePanelHeader />
+            <ChatSidePanelInfo/>
+        </div>
+        <div class="c-panel-content">
+            <div class="c-panel-tabs">
+                @if (m.ShowTabs) {
+                    <TabPanel
+                        @ref="_tabPanel"
+                        @key="@chat.Id.Value"
+                        Tabs="@tabs"
+                        TabsClass="left-panel-tabs wide-left-panel-tabs"
+                        BottomHill="true"
+                        SwapKind="@TabContentSwap.Swipe"
+                        MustPropagateDisplay="true"/>
+                }
+            </div>
+            <div class="safe-area-bottom safe-area-bottom-overlay"></div>
+        </div>
+    </ErrorBarrier>
+</div>
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.RightPanelCollapse.create";
+
+    private TabPanel? _tabPanel;
+    private ChatId _tabChatId;
+    private bool _wasShowCallTab;
+    private Chat? Chat => ChatContext?.Chat;
+    private IChats Chats => Hub.Chats;
+    private IJSObjectReference? JSRef { get; set; }
+    private ElementReference Ref { get; set; }
+    [CascadingParameter] public ChatContext? ChatContext { get; set; }
+
+    public override ValueTask DisposeAsync() {
+        JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        return base.DisposeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (State.Value.Chat is null) {
+            if (JSRef is null)
+                return;
+
+            await JSRef.DisposeSilentlyAsync("dispose");
+            JSRef = null!;
+            return;
+        }
+
+        JSRef ??= await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+        AutoSelectCallTab();
+    }
+
+    private void AutoSelectCallTab() {
+        // When a live session starts, switch to the Call tab — but only if the user was on Members,
+        // so a deliberately-opened Threads/Media tab (or a manual return to Members mid-call) is left alone.
+        if (State.Value.Chat is not { } chat)
+            return;
+
+        var showCallTab = State.Value.ShowCallTab;
+        if (chat.Id != _tabChatId) {
+            _tabChatId = chat.Id;
+            _wasShowCallTab = showCallTab;
+            return;
+        }
+
+        if (showCallTab && !_wasShowCallTab && _tabPanel is { SelectedTabId: "members" } tabPanel)
+            tabPanel.SelectedTabId = "call";
+        _wasShowCallTab = showCallTab;
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<Model>.Options() {
+                InitialValue = Chat is null ? Model.Skeletons : Model.Loading(Chat),
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chat = Chat;
+        if (chat is null)
+            return Model.Skeletons;
+
+        var chatId = chat.Id;
+        var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
+        // Disable 'members' tab for the announcements chat
+        var showMemberTab = chat.Id != Constants.Chat.AnnouncementsChatId && rules.CanSeeMembers();
+        var liveSession = await Hub.LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+
+        return new () {
+            Chat = chat,
+            ShowCallTab = liveSession is not null,
+            ShowMembersTab = showMemberTab,
+            ShowContentItemsTab = true,
+        };
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static Model Skeletons { get; } = new();
+        public static Model Loading(Chat chat) => new() { Chat = chat };
+
+        public Chat? Chat { get; init; }
+        public bool ShowThreads => Chat?.Id.Kind is ChatKind.Group or ChatKind.Place or ChatKind.Peer;
+        public bool ShowTabs => ShowCallTab || ShowMembersTab || ShowContentItemsTab || ShowThreads;
+        public bool ShowCallTab { get; init; }
+        public bool ShowMembersTab { get; init; }
+        public bool ShowContentItemsTab { get; init; }
+    }
+}

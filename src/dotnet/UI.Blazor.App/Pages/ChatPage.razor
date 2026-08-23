@@ -16,6 +16,9 @@
     var chatKey = chatId?.Value ?? "";
     var chatContext = m?.ChatContext;
     var footerModel = m?.FooterModel;
+    // "~" marks the no-context branches, so a chat that first rendered as unavailable
+    // still cross-fades once its context arrives
+    var swapKey = chatContext is not null ? chatKey : "~" + chatKey;
     Log.LogDebug("Rendered for #{ChatId}", chatId);
 }
 
@@ -64,19 +67,29 @@
     </CascadingValue>
 </RenderIntoSlot>
 
-@if (m is null) {
-    <chat-view-skeleton count="15" class="chat-view-skeleton-list no-scrollbar"/>
-} else if (chatContext is not null) {
-    <CascadingValue Value="@chatContext">
-        <ChatView @key="@chatKey"/>
-    </CascadingValue>
-} else if (m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
-    <InaccessiblePlace ShowSignIn="@account.IsGuestOrNull()"/>
-} else if (route?.ChatId is not null) {
-    <ChatNotFound ShowSignIn="@account.IsGuestOrNull()"/>
-} else {
-    <NoChatSelected/>
-}
+<ContentSwap LayerKey="@swapKey" Class="chat-view-swap"
+             Effect="@ContentSwapEffect.None"
+             MaxDisplayDelay="@SwapMaxDisplayDelay">
+    <ChildContent>
+        @if (m is null) {
+            <chat-view-skeleton count="15" class="chat-view-skeleton-list no-scrollbar"/>
+            <ContentSwapDisplay/>
+        } else if (chatContext is not null) {
+            <CascadingValue Value="@chatContext">
+                <ChatView @key="@chatKey"/>
+            </CascadingValue>
+        } else if (m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
+            <InaccessiblePlace ShowSignIn="@account.IsGuestOrNull()"/>
+            <ContentSwapDisplay/>
+        } else if (route?.ChatId is not null) {
+            <ChatNotFound ShowSignIn="@account.IsGuestOrNull()"/>
+            <ContentSwapDisplay/>
+        } else {
+            <NoChatSelected/>
+            <ContentSwapDisplay/>
+        }
+    </ChildContent>
+</ContentSwap>
 
 @code {
     protected const string UnavailableChatTitle = "This chat is unavailable";
@@ -84,6 +97,9 @@
     protected static TimeSpan VeryFirstLoadDelay = TimeSpan.FromSeconds(1.5);
     protected static TimeSpan LoadTimeout = TimeSpan.FromSeconds(1);
     protected static TimeSpan LoadTimeoutToReloadDelay = TimeSpan.FromSeconds(2);
+    // Only the backstop for a chat that never says it is there: a cold InfiniteList regularly needs
+    // longer than the 0.333s default, and a skeleton flash reads worse than a slightly longer hold
+    protected static TimeSpan SwapMaxDisplayDelay = TimeSpan.FromSeconds(0.5);
     private static bool _isVeryFirstLoad = true;
 
     private MutableState<RouteState> _routeState = null!;
@@ -196,7 +212,10 @@
         }
     }
 
-    protected async ValueTask<FooterModel> GetFooterModel(Chat? chat, Account account, CancellationToken cancellationToken) {
+    protected async ValueTask<FooterModel> GetFooterModel(
+        Chat? chat,
+        Account account,
+        CancellationToken cancellationToken) {
         var session = Session;
         if (chat?.Id is not { } chatId)
             return FooterModel.None;
@@ -355,6 +374,7 @@
                 if (placeChatId is null)
                     return RouteResult.InvalidAlias;
             }
+
             targetChatId = placeChatId;
         }
 
@@ -378,7 +398,7 @@
         // This record relies on referential equality
         public bool Equals(Model? other) => ReferenceEquals(this, other);
         public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
-    };
+    }
 
     [ParameterComparer(typeof(ByRefParameterComparer))]
     public sealed record FooterModel {
@@ -413,7 +433,7 @@
         public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 
-    public record RouteState(RouteResult? Parsed, RouteResult? Fixed) {
-        public static readonly RouteState None = new (null, null);
+    public sealed record RouteState(RouteResult? Parsed, RouteResult? Fixed) {
+        public static readonly RouteState None = new(null, null);
     }
 }

@@ -81,3 +81,12 @@ edited. The reason can be as short as whose decision it was.
   — missing `.ConfigureAwait(false)` — required: the guide scopes that rule to
   service-layer code, `tests/Directory.Build.props:36-39` suppresses CA2007 /
   MA0004 / RCS1090 for test projects, and no other test in the repo uses it
+
+## src/dotnet/UI.Blazor/Components/ContentSwap/content-swap.css
+
+- L180 `var(--content-swap-wipe, 0.2s) linear both;`
+  — `mask-position` animated without `steps(N)` — Alex Yakunin's decision: the
+  wipe-dissolve is meant to read as a smooth ramp, and `steps()` turns it into
+  the discrete bands the effect was moved away from
+- L184 `mask-position: var(--c-wipe-from);`
+  — same, in the `content-swap-wipe-out` keyframes the rule above runs

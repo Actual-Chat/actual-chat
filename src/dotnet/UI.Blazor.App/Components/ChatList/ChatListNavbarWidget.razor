@@ -4,29 +4,22 @@
     var showFilters = true; // Chats and regular Places.
     var supportThreads = PlaceId is null || Constants.Place.SystemPlaceIds.All(c => PlaceId.Value != c.Value);
 
-    RenderFragment RenderChatListTab(double order, ChatListFilter filter)
-        => RenderTab(order, filter.Id.Value, GetFilterTitle(filter), filter);
-    RenderFragment RenderThreadsTab(double order)
-        => RenderTab(order, ThreadsTabId, L.ChatList_TabThreads, null);
-    RenderFragment RenderTab(double order, string id, string title, ChatListFilter? filter) {
-        var contentVersion = (id, title);
-        return @<Tab
-                    @key="@id"
-                    Id="@id"
-                    Title="@title"
-                    ContentVersion="@contentVersion"
-                    Order="@order"
-                    Class="chats-tab">
-                   <TitleContent>
-                       <span>@title</span>
-                       @if (filter is not null) {
-                           <ChatListTabUnreadCount
-                               PlaceChatListSettings="@_placeChatListSettings"
-                               ChatListFilter="@filter" />
-                       }
-                   </TitleContent>
-               </Tab>;
-    }
+    TabDef NewTab(string id, string title, ChatListFilter? filter)
+        => new(id, title) {
+            Class = "chats-tab",
+            TitleContent = @<text>
+                               <span>@title</span>
+                               @if (filter is not null) {
+                                   <ChatListTabUnreadCount
+                                       PlaceChatListSettings="@_placeChatListSettings"
+                                       ChatListFilter="@filter"/>
+                               }
+                           </text>,
+        };
+
+    var tabs = ChatListFilter.All.Select(x => NewTab(x.Id.Value, GetFilterTitle(x), x)).ToList();
+    if (supportThreads)
+        tabs.Add(NewTab(ThreadsTabId, L.ChatList_TabThreads, null));
 }
 
 <div class="c-container">
@@ -34,6 +27,7 @@
         @if (showFilters) {
             <TabPanel
                 @ref="@_tabPanel"
+                Tabs="@tabs"
                 BottomHill="true"
                 TabsClass="left-panel-tabs"
                 AutoSelectInitialTab="false"
@@ -41,24 +35,21 @@
                 <AdditionalButton>
                     <ChatListSortButton PlaceChatListSettings="@_placeChatListSettings"/>
                 </AdditionalButton>
-                <ChildContent>
-                    @{ var i1 = 0; }
-                    @for (var i = 0; i < ChatListFilter.All.Length; i++) {
-                        var filter = ChatListFilter.All[i];
-                        i1 = i + 1;
-                        @RenderChatListTab(i, filter)
-                    }
-                    @if (supportThreads) {
-                        @RenderThreadsTab(i1);
-                    }
-                </ChildContent>
             </TabPanel>
         }
-        @if (_showThreadsList) {
-            <ThreadList PlaceId="@PlaceId" />
-        } else {
-            <ChatList @key="@ChatList.GetKey(PlaceId, true, null)" PlaceId="@PlaceId" UsePlaceChatListSettings="@true"/>
-        }
+        <ContentSwap
+            LayerKey="@_selectedTabId"
+            Class="c-list-swap"
+            Effect="@_swapDirection.Swipe(GetTabIndex(_selectedTabId))"
+            MustPropagateDisplay="true">
+            <ChildContent>
+                @if (_showThreadsList) {
+                    <ThreadList PlaceId="@PlaceId" />
+                } else {
+                    <ChatList @key="@ChatList.GetKey(PlaceId, true, null)" PlaceId="@PlaceId" UsePlaceChatListSettings="@true"/>
+                }
+            </ChildContent>
+        </ContentSwap>
     </div>
     <div class="c-active-chats">
         <ActiveChats/>
@@ -68,6 +59,9 @@
 
 @code {
     private const string ThreadsTabId = "threads";
+
+    private readonly ContentSwapDirection _swapDirection = new();
+    private string _selectedTabId = "";
     private TabPanel? _tabPanel;
     private bool _showThreadsList;
     private PlaceChatListSettings? _placeChatListSettings;
@@ -102,6 +96,7 @@
 
     private void OnSelectedTabIdChanged(string? tabId) {
         tabId ??= "";
+        _selectedTabId = tabId;
         _showThreadsList = tabId == ThreadsTabId;
         if (!_showThreadsList) { // Show ChatList
             var filterId = tabId;
@@ -113,4 +108,16 @@
         => filter == ChatListFilter.People ? L.ChatList_TabPeople
             : filter == ChatListFilter.Groups ? L.ChatList_TabGroups
             : L.ChatList_TabAll;
+
+    private static int GetTabIndex(string tabId) {
+        // The Threads tab is rendered after every filter, so it is the one index past them
+        if (tabId == ThreadsTabId)
+            return ChatListFilter.All.Length;
+
+        for (var i = 0; i < ChatListFilter.All.Length; i++)
+            if (ChatListFilter.All[i].Id.Value == tabId)
+                return i;
+
+        return 0;
+    }
 }
