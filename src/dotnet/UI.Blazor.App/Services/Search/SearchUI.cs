@@ -202,13 +202,15 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
 
     private void NavbarUIOnSelectedGroupChanged(object? sender, NavbarGroupChangedEventArgs e)
     {
-        if (!e.IsUserAction)
-            return;
-
+        // Every navbar change, not just a click on a group button: opening a chat in another place
+        // and going back to all-chats both raise this with IsUserAction == false, and those are the
+        // usual ways to change place. Search left scoped to the place you came from is worse than
+        // not scoped at all - and the badge still says "Place", naming one you have left.
         var newPlaceId = NavbarUI.IsPlaceSelected(out var placeId) ? placeId : null;
         PlaceId.Value = newPlaceId;
-        if (newPlaceId is null && _locationFilter.Value == SearchLocationFilter.Place)
-            _locationFilter.Value = SearchLocationFilter.Anywhere;
+        _locationFilter.Value = newPlaceId is null
+            ? SearchLocationFilter.Anywhere
+            : SearchLocationFilter.Place;
     }
 
     // Nested types
