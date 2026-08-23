@@ -39,6 +39,9 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
     [Parameter] public RenderFragment<int>? Skeleton { get; set; }
     [Parameter] public RenderFragment<int>? SkeletonBatch { get; set; }
     [Parameter] public int SkeletonCount { get; set; } = 10;
+    // Opt-in: most lists sit in no swap area at all. Set it where the enclosing area should hold
+    // until this list has its content placed - see ContentSwap and virtual-list.ts.
+    [Parameter] public bool IsContentSwapDependency { get; set; }
     [Parameter] public double ExpandMultiplier { get; set; } = 2;
     // This event is intentionally Action vs EventCallback, coz normally it shouldn't
     // trigger StateHasChanged on parent component.

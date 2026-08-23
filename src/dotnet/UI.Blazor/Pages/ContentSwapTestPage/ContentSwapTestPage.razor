@@ -1,0 +1,254 @@
+@page "/test/content-swap"
+@namespace ActualChat.UI.Blazor.Pages
+@inherits ComponentBase<UIHub>
+@{
+    var views = Views(_scenario);
+    var view = views[ViewIndex];
+    var tab = Tabs[_tabIndex];
+    var maxDisplayDelay = MaxDisplayDelays[_maxDisplayDelayIndex].Value;
+}
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>ContentSwap Test Page</MainHeader>
+
+<UITimer Period="@TimeSpan.FromSeconds(0.2)" Tick="@StateHasChanged"/>
+
+<div class="test-page-wrapper">
+    <div class="content-swap-test-page">
+        <div class="c-controls">
+            <div class="test-page-btn-group">
+                @foreach (var scenario in Enum.GetValues<Scenario>()) {
+                    <Button Class="@ButtonClass(scenario == _scenario)" Click="@(() => SelectScenario(scenario))">
+                        @scenario
+                    </Button>
+                }
+            </div>
+            <div class="test-page-btn-group">
+                @foreach (var effect in Enum.GetValues<ContentSwapEffect>()) {
+                    <Button Class="@ButtonClass(effect == _effect)" Click="@(() => _effect = effect)">
+                        @effect
+                    </Button>
+                }
+            </div>
+            <div class="test-page-btn-group">
+                @for (var i = 0; i < views.Length; i++) {
+                    var index = i;
+                    <Button Class="@ButtonClass(index == ViewIndex)" Click="@(() => SelectView(index))">
+                        @views[index].Title
+                    </Button>
+                }
+                <Button Class="@ButtonClass(!_isEnabled)" Click="@(() => _isEnabled = !_isEnabled)">
+                    No swap
+                </Button>
+            </div>
+            <div class="test-page-btn-group">
+                <span class="c-group-title">Hold until displayed, at most</span>
+                @for (var i = 0; i < MaxDisplayDelays.Length; i++) {
+                    var index = i;
+                    <Button
+                        Class="@ButtonClass(index == _maxDisplayDelayIndex)"
+                        Click="@(() => SetMaxDisplayDelay(index))">
+                        @MaxDisplayDelays[index].Title
+                    </Button>
+                }
+            </div>
+        </div>
+
+        <div class="c-slot">
+            <span class="c-slot-title">Header slot</span>
+            <RenderSlot Name="@HeaderSlot"/>
+        </div>
+
+        <div class="c-body @BodyCssClass(_scenario)">
+            <ContentSwap
+                LayerKey="@view.Id"
+                Class="c-swap"
+                Name="@OuterName"
+                Effect="@_effect"
+                MaxDisplayDelay="@maxDisplayDelay"
+                Duration="@SwapDuration"
+                IsEnabled="@_isEnabled">
+                <Placeholder>
+                    <div class="content-swap-test-view c-view-placeholder">
+                        <div class="c-title">Placeholder</div>
+                    </div>
+                </Placeholder>
+                <ChildContent>
+                    @if (_scenario == Scenario.Nested) {
+                        <div class="c-panel">
+                            <div class="c-panel-title">@view.Title</div>
+                            <div class="test-page-btn-group">
+                                @for (var i = 0; i < Tabs.Length; i++) {
+                                    var index = i;
+                                    <Button
+                                        Class="@ButtonClass(index == _tabIndex)"
+                                        Click="@(() => SelectTab(index))">
+                                        @Tabs[index].Title
+                                    </Button>
+                                }
+                            </div>
+                            <ContentSwap
+                                LayerKey="@tab.Id"
+                                Class="c-inner-swap"
+                                Name="@InnerName"
+                                Effect="@_effect"
+                                MaxDisplayDelay="@maxDisplayDelay"
+                                Duration="@SwapDuration"
+                                IsEnabled="@_isEnabled">
+                                <ChildContent>
+                                    <ContentSwapTestView Model="@tab" Displayed="@OnViewDisplayed"/>
+                                </ChildContent>
+                            </ContentSwap>
+                        </div>
+                    } else {
+                        <ContentSwapTestView Model="@view" Displayed="@OnViewDisplayed"/>
+                    }
+                </ChildContent>
+            </ContentSwap>
+        </div>
+
+        <div class="c-slot">
+            <span class="c-slot-title">Footer stack</span>
+            <RenderStack Name="@FooterStack">
+                <Item>
+                    <div class="c-slot-item">@context</div>
+                </Item>
+            </RenderStack>
+        </div>
+
+        <div class="c-status">
+            Last swap: @_lastSwap
+        </div>
+        <div class="c-status">
+            Live views: @ContentSwapTestView.LiveCount &nbsp;|&nbsp; created: @ContentSwapTestView.CreatedCount
+            &nbsp;|&nbsp; release a hold from the console:
+            <code>ui.ContentSwap.display('@OuterName')</code>
+        </div>
+    </div>
+</div>
+
+@code {
+    public const string HeaderSlot = "ContentSwapTestHeader";
+    public const string FooterStack = "ContentSwapTestFooter";
+
+    private const string OuterName = "content-swap-test";
+    private const string InnerName = "content-swap-test-inner";
+    private static readonly TimeSpan SwapDuration = TimeSpan.FromSeconds(0.5);
+
+    private static readonly (string Title, TimeSpan Value)[] MaxDisplayDelays = [
+        ("Off", TimeSpan.Zero),
+        ("0.2s", Seconds(0.2)),
+        ("0.333s", Seconds(0.333)),
+        ("0.8s", Seconds(0.8)),
+        ("1.5s", Seconds(1.5)),
+    ];
+
+    private static readonly ContentSwapTestView.ViewModel[] Chats = [
+        new("chat-alpha", "Alpha", ContentSwapTestView.ViewKind.Chat, "c-view-alpha", 40, Seconds(0.4)),
+        new("chat-beta", "Beta", ContentSwapTestView.ViewKind.Chat, "c-view-beta", 8, Seconds(0.1)),
+        new("chat-gamma", "Gamma", ContentSwapTestView.ViewKind.Chat, "c-view-gamma", 120, Seconds(0.8)),
+        new("chat-delta", "Delta", ContentSwapTestView.ViewKind.Chat, "c-view-delta", 0, TimeSpan.Zero),
+    ];
+
+    private static readonly ContentSwapTestView.ViewModel[] Lists = [
+        new("list-all", "All", ContentSwapTestView.ViewKind.List, "c-view-alpha", 24, Seconds(0.3)),
+        new("list-unread", "Unread", ContentSwapTestView.ViewKind.List, "c-view-beta", 3, Seconds(0.1)),
+        new("list-place", "Place", ContentSwapTestView.ViewKind.List, "c-view-gamma", 60, Seconds(0.6)),
+    ];
+
+    private static readonly ContentSwapTestView.ViewModel[] Panels = [
+        new("panel-left", "Left panel", ContentSwapTestView.ViewKind.List, "c-view-alpha", 0, TimeSpan.Zero),
+        new("panel-right", "Right panel", ContentSwapTestView.ViewKind.List, "c-view-beta", 0, TimeSpan.Zero),
+    ];
+
+    private static readonly ContentSwapTestView.ViewModel[] Tabs = [
+        new("tab-one", "Tab 1", ContentSwapTestView.ViewKind.Tab, "c-view-alpha", 12, Seconds(0.2)),
+        new("tab-two", "Tab 2", ContentSwapTestView.ViewKind.Tab, "c-view-gamma", 30, Seconds(0.5)),
+        new("tab-three", "Tab 3", ContentSwapTestView.ViewKind.Tab, "c-view-delta", 0, Seconds(0.1)),
+    ];
+
+    private readonly int[] _viewIndexes = new int[Enum.GetValues<Scenario>().Length];
+    private Scenario _scenario = Scenario.Chats;
+    private ContentSwapEffect _effect = ContentSwapEffect.SwipeRight;
+    private int _tabIndex;
+    private int _maxDisplayDelayIndex = 2;
+    private bool _isEnabled = true;
+    private CpuTimestamp _swapStartedAt;
+    private bool _hasSwapStarted;
+    private string _lastSwap = "none yet";
+
+    private int ViewIndex {
+        get => _viewIndexes[(int)_scenario];
+        set => _viewIndexes[(int)_scenario] = value;
+    }
+
+    // Protected/internal methods
+
+    protected override void OnInitialized()
+        => PanelsUI.Left.SetIsVisible(false);
+
+    // Private methods
+
+    private void SelectScenario(Scenario scenario) {
+        _scenario = scenario;
+        StartSwap();
+    }
+
+    private void SelectView(int index) {
+        ViewIndex = index;
+        StartSwap();
+    }
+
+    private void SelectTab(int index) {
+        _tabIndex = index;
+        StartSwap();
+    }
+
+    private void SetMaxDisplayDelay(int index)
+        => _maxDisplayDelayIndex = index;
+
+    private void StartSwap() {
+        _swapStartedAt = CpuTimestamp.Now;
+        _hasSwapStarted = true;
+        _lastSwap = "content is still building...";
+    }
+
+    private void OnViewDisplayed() {
+        // The rule is min(displayed, cap), so the page can say which of the two it was without asking
+        // ContentSwap - the display signal itself goes straight to JS.
+        if (!_hasSwapStarted)
+            return;
+
+        var displayedAt = _swapStartedAt.Elapsed;
+        var maxDisplayDelay = MaxDisplayDelays[_maxDisplayDelayIndex].Value;
+        _lastSwap = maxDisplayDelay <= TimeSpan.Zero
+            ? $"content ready at {Ms(displayedAt)}, no hold - the effect started at 0"
+            : displayedAt <= maxDisplayDelay
+                ? $"held {Ms(displayedAt)}, ended by the hand-off"
+                : $"held {Ms(maxDisplayDelay)} - the cap - and the content was only ready at "
+                    + $"{Ms(displayedAt)}, so the swap ran over a still-building view";
+    }
+
+    private static string Ms(TimeSpan value)
+        => $"{value.TotalMilliseconds:F0} ms";
+
+    private static ContentSwapTestView.ViewModel[] Views(Scenario scenario)
+        => scenario switch {
+            Scenario.Chats => Chats,
+            Scenario.Lists => Lists,
+            _ => Panels,
+        };
+
+    private static string BodyCssClass(Scenario scenario)
+        => "c-body-" + scenario.ToString().ToLower();
+
+    private static string ButtonClass(bool isOn)
+        => isOn ? "btn-primary" : "btn-outline";
+
+    private static TimeSpan Seconds(double value)
+        => TimeSpan.FromSeconds(value);
+
+    // Nested types
+
+    private enum Scenario { Chats, Lists, Nested }
+}

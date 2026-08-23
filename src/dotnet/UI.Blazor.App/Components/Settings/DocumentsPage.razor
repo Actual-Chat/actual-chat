@@ -1,16 +1,14 @@
 @inherits ComponentBase<AppUIHub>
+@{
+    var tabs = new TabDef[] {
+        new("docs-privacy-policy", L.Documents_PrivacyPolicy) { Content = @<DocsPrivacyContent/> },
+        new("docs-terms-conditions", L.Documents_TermsConditions) { Content = @<DocsTermsContent/> },
+        new("docs-cookies", L.Documents_Cookies) { Content = @<DocsCookiesContent/> },
+    };
+}
 
 <TabPanel
+    Tabs="@tabs"
     Class="docs-panel"
-    BottomHill="true">
-
-    <Tab @key="@("docs-privacy-tab")" Id="docs-privacy-policy" Title="@L.Documents_PrivacyPolicy" Order="0">
-        <DocsPrivacyContent/>
-    </Tab>
-    <Tab @key="@("docs-terms-tab")" Id="docs-terms-conditions" Title="@L.Documents_TermsConditions" Order="1">
-        <DocsTermsContent/>
-    </Tab>
-    <Tab @key="@("docs-cookies-tab")" Id="docs-cookies" Title="@L.Documents_Cookies" Order="2">
-        <DocsCookiesContent/>
-    </Tab>
-</TabPanel>
+    BottomHill="true"
+    SwapKind="@TabContentSwap.Wipe"/>

@@ -3,79 +3,100 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IAsyncDisposable
 @{
-    _renderedSelectedTab = null;
-    _renderedTabs = SortedTabs.ToList();
+    var tabs = Tabs;
+    var selectedTabId = SelectedTabId;
+    // The swipe direction comes from where the tab sits in the rail, so a jump of two tabs still
+    // travels the way the eye expects
+    _selectedTabIndex = IndexOf(tabs, selectedTabId);
+    var selectedTab = _selectedTabIndex < 0 ? null : tabs[_selectedTabIndex];
+
+    RenderFragment RenderBody() =>
+        @<text>
+            @if (selectedTab is { Content: { } content }) {
+                <div @key="@selectedTab.Id" class="@selectedTab.Class tab">
+                    @content
+                </div>
+            }
+            @if (SwapKind != TabContentSwap.None && !MustPropagateDisplay) {
+                @* The tab body is rendered, so this area needn't hold. Not when the area propagates:
+                   there the body's own signal is what the panel around it is waiting for. *@
+                <ContentSwapDisplay/>
+            }
+        </text>;
 }
 
-<CascadingValue Value="@this" IsFixed="true" >
-    <div @ref="Ref" class="@Class tab-panel">
-        <div class="@TabsClass tab-panel-tabs" role="tablist">
-            <div class="btn-group no-scrollbar">
-                @if (AdditionalButton != null) {
-                    @AdditionalButton
-                }
-                @foreach (var tab in _renderedTabs) {
-                    var isActive = tab.Id == SelectedTabId && _renderedSelectedTab == null;
-                    if (isActive)
-                        _renderedSelectedTab = tab;
-
-                    var attributes = new Dictionary<string, object> {
-                        { "data-tab-id", tab.Id },
-                        { "role", "tab" },
-                        { "aria-selected", isActive.ToString() },
-                    };
-
-                    if (tab.AdditionalAttributes != null)
-                        attributes.AddRange(tab.AdditionalAttributes);
-
-                    var cls = $"tab-btn unhovered {(isActive ? "on" : "")} {tab.ButtonClass} ";
-                    var wrapperCls = isActive ? "selected-tab" : "";
-                    <div @key="@tab.Id" class="btn-group-container @wrapperCls">
-                        <Button
-                            AdditionalAttributes="@attributes"
-                            Class="@cls"
-                            Click="@(_ => SelectedTabId = tab.Id)">
-                            @if (tab.TitleContent != null) {
-                                @tab.TitleContent
-                            } else {
-                                @tab.Title
-                            }
-                        </Button>
-                    </div>
-                    @if (tab.TitleExtras != null) {
-                        @tab.TitleExtras
-                    }
-                }
-            </div>
-            @if (BottomHill) {
-                <div class="bottom-hill"></div>
+<div @ref="Ref" class="@Class tab-panel">
+    <div class="@TabsClass tab-panel-tabs" role="tablist">
+        <div class="btn-group no-scrollbar">
+            @if (AdditionalButton != null) {
+                @AdditionalButton
+            }
+            @foreach (var tab in tabs) {
+                var isActive = tab.Id == selectedTabId;
+                var attributes = new Dictionary<string, object> {
+                    { "data-tab-id", tab.Id },
+                    { "role", "tab" },
+                    { "aria-selected", isActive.ToString() },
+                };
+                var cls = $"tab-btn unhovered {(isActive ? "on" : "")} ";
+                var wrapperCls = isActive ? "selected-tab" : "";
+                <div @key="@tab.Id" class="btn-group-container @wrapperCls">
+                    <Button
+                        AdditionalAttributes="@attributes"
+                        Class="@cls"
+                        Click="@(_ => SelectTab(tab.Id))">
+                        @if (tab.TitleContent != null) {
+                            @tab.TitleContent
+                        } else {
+                            @tab.Title
+                        }
+                    </Button>
+                </div>
             }
         </div>
-        <Divider/>
-        @ChildContent
-        @if (TabContent != null) {
-            @TabContent.Invoke(SelectedTabId)
+        @if (BottomHill) {
+            <div class="bottom-hill"></div>
         }
     </div>
-</CascadingValue>
+    <Divider/>
+    @* The wrapper is conditional: a swap host between .tab-panel and .tab would break every
+       `.tab-panel > .tab` selector in the app, and only the opted-in panels are worth that. *@
+    @if (SwapKind != TabContentSwap.None) {
+        <ContentSwap
+            LayerKey="@selectedTabId"
+            Class="c-tab-content"
+            Effect="@SwapEffect()"
+            MustPropagateDisplay="@MustPropagateDisplay"
+            IsEnabled="@_isUserSelection">
+            <ChildContent>
+                @RenderBody()
+            </ChildContent>
+        </ContentSwap>
+    } else {
+        @RenderBody()
+    }
+</div>
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.TabPanel.create";
 
-    private readonly TabRegistry<Tab> _tabRegistry = new();
-    private IReadOnlyList<Tab> _renderedTabs = [];
-    private Tab? _renderedSelectedTab;
+    private readonly ContentSwapDirection _swapDirection = new();
+    private IReadOnlyList<TabDef> _lastTabs = [];
+    private int _selectedTabIndex = -1;
+    private bool _isUserSelection;
 
     private IJSObjectReference? JSRef { get; set; }
     private ElementReference Ref { get; set; }
 
+    [Parameter, EditorRequired] public IReadOnlyList<TabDef> Tabs { get; set; } = [];
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string TabsClass { get; set; } = "";
     [Parameter] public bool BottomHill { get; set; }
     [Parameter] public bool AutoSelectInitialTab { get; set; } = true;
+    // Opt-in: most tab panels cut, and the ones that animate are the ones whose bodies are lists
+    [Parameter] public TabContentSwap SwapKind { get; set; }
+    [Parameter] public bool MustPropagateDisplay { get; set; }
     [Parameter] public RenderFragment? AdditionalButton { get; set; }
-    [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public RenderFragment<string?>? TabContent { get; set; }
     [Parameter] public EventCallback<string?> SelectedTabIdChanged { get; set; }
 
     public string? SelectedTabId {
@@ -90,47 +111,72 @@
         }
     }
 
-    public IReadOnlyList<Tab> Tabs => _tabRegistry.Tabs;
-    public IEnumerable<Tab> SortedTabs => _tabRegistry.SortedTabs;
-
     public async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
     }
 
+    protected override void OnParametersSet() {
+        // Resolved here rather than after the render: the tabs arrive as a parameter, so the panel
+        // can settle its selection before it draws - and an imperative SelectedTabId set from a
+        // parent's OnAfterRender is no longer something a later resolution can race away.
+        var tabs = Tabs;
+        var lastTabs = _lastTabs;
+        _lastTabs = tabs;
+        SelectedTabId = ResolveSelectedTabId(tabs, lastTabs);
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
-            if (BottomHill)
-                JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                    JSCreateMethod,
-                    Ref);
-            StateHasChanged();
-            return;
-        }
-
-        var currentTabs = SortedTabs.ToList();
-        var selectedTabId = SelectedTabId;
-        SelectedTabId = _tabRegistry.ResolveSelectedTabId(currentTabs, _renderedTabs, _renderedSelectedTab, AutoSelectInitialTab);
-        var tabsHaveChanged = !_renderedTabs.SequenceEqual(currentTabs);
-
-        // If a tab list has changed, we need to rerender tab buttons.
-        if (!tabsHaveChanged)
+        // Consumed by the render this click produced. Anything that changes the selection without a
+        // click - the initial resolution, or a tab going away with the chat - is a cut, not a swipe.
+        _isUserSelection = false;
+        if (!firstRender || !BottomHill)
             return;
 
-        // But if the selected tab has changed, we already did it, do not do it again.
-        if (SelectedTabId != selectedTabId)
-            return;
-
-        // Rerender tab buttons.
+        JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
         StateHasChanged();
     }
 
-    internal void RegisterTab(Tab tab)
-        => _tabRegistry.Register(tab);
+    // Private methods
 
-    internal void UnregisterTab(Tab tab)
-        => _tabRegistry.Unregister(tab);
+    private string? ResolveSelectedTabId(IReadOnlyList<TabDef> tabs, IReadOnlyList<TabDef> lastTabs) {
+        // Survival is decided by Id rather than instance: a tab re-created with the same Id hasn't
+        // disappeared, and a ContentSwap around the panel replaces every def at once.
+        var selectedTabId = SelectedTabId;
+        if (tabs.Count == 0)
+            return null;
+        if (selectedTabId is null || IndexOf(lastTabs, selectedTabId) < 0)
+            return AutoSelectInitialTab ? tabs[0].Id : null;
+        if (IndexOf(tabs, selectedTabId) >= 0)
+            return selectedTabId;
 
-    internal void TabContentChanged()
-        => StateHasChanged();
+        // The selected tab is gone: take the nearest survivor after it in the order it had,
+        // and fall back to the last tab if everything after it went away too.
+        return lastTabs
+            .SkipWhile(x => x.Id != selectedTabId)
+            .FirstOrDefault(x => IndexOf(tabs, x.Id) >= 0)
+            ?.Id
+            ?? tabs[^1].Id;
+    }
+
+    private static int IndexOf(IReadOnlyList<TabDef> tabs, string? tabId) {
+        if (tabId is null)
+            return -1;
+
+        for (var i = 0; i < tabs.Count; i++)
+            if (tabs[i].Id == tabId)
+                return i;
+
+        return -1;
+    }
+
+    private ContentSwapEffect SwapEffect()
+        => SwapKind == TabContentSwap.Wipe
+            ? _swapDirection.Wipe(_selectedTabIndex)
+            : _swapDirection.Swipe(_selectedTabIndex);
+
+    private void SelectTab(string tabId) {
+        _isUserSelection = true;
+        SelectedTabId = tabId;
+    }
 }

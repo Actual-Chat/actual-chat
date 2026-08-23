@@ -60,7 +60,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.BackendStatusTest>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Banners>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.BreakableWord>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallList>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LiveSessionMemberList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CameraMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivities>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivityPanel>();
@@ -368,9 +368,10 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReportModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightChatPanelButtonBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanel>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelChatInfo>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatSidePanelInfo>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelContent>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelHeader>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatSidePanel>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatSidePanelHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelSearchTabs>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SearchFilterBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SearchFilterMenu>();
@@ -828,7 +829,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.BackendStatusTest), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Banners), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.BreakableWord), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.CallList), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.LiveSessionMemberList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CameraMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivities), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivityPanel), AotTypeKind.Component),
@@ -1136,9 +1137,10 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReportModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightChatPanelButtonBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanel), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelChatInfo), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatSidePanelInfo), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelContent), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelHeader), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatSidePanel), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatSidePanelHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelSearchTabs), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SearchFilterBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SearchFilterMenu), AotTypeKind.Component),

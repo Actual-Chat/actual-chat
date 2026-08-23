@@ -35,7 +35,7 @@ export class RightPanelHeader {
         this.blazorRef = blazorRef;
         // Expose --expanded-header-height on the right panel (not just the header) so the sibling
         // scroll region (.c-panel-content) can read it and slide below the full-screen avatar square.
-        this.varTarget = header.closest<HTMLElement>('.right-panel') ?? header;
+        this.varTarget = header.closest<HTMLElement>('.chat-side-panel') ?? header;
         this.rightSideNav = document.querySelector('.side-nav-right')!;
         if (!this.rightSideNav)
             return;
@@ -190,7 +190,7 @@ export class RightPanelHeader {
         const isExpanded = this.header.classList.contains('expanded-header');
 
         // While the header is collapsed (scrolled compact), the avatar is inert.
-        const rightPanel = this.header.closest('.right-panel');
+        const rightPanel = this.header.closest('.chat-side-panel');
         if (!isExpanded && rightPanel?.classList.contains('collapsed'))
             return;
 

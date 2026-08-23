@@ -2110,7 +2110,13 @@ export class InfiniteList extends VirtualList {
             if (this.isDisposed || this.isContainerRevealed)
                 return;
 
-            if (this.isContentPlaced() || performance.now() - startedAt > RevealTimeoutMs)
+            // Placement is what an enclosing swap area waits for. The timeout below only un-hides this
+            // list; ending the hold on it too would take that backstop away from MaxDisplayDelay.
+            if (this.isContentPlaced()) {
+                this.reveal();
+                this.displayContentSwap();
+            }
+            else if (performance.now() - startedAt > RevealTimeoutMs)
                 this.reveal();
             else
                 requestAnimationFrame(check);

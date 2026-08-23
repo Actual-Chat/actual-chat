@@ -1,0 +1,190 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Module
+@using System.Diagnostics.CodeAnalysis
+@inherits ComponentBase<UIHub>
+@implements IAsyncDisposable
+@{
+    if (_outgoingLayer is not null && _animator?.IsAnimating != true) {
+        if (_holdToken is not null)
+            Display();
+        else
+            EndSwap();
+    }
+}
+
+<div @ref="_ref" class="content-swap @Class @_effectClass"
+     data-swap-hold="@_holdToken" data-swap-name="@_name" data-swap-propagate="@MustPropagateDisplay">
+    @foreach (var layer in Layers()) {
+        <div @key="@layer" class="c-layer @LayerClass @layer.CssClass" inert="@(layer == _outgoingLayer)">
+            <ContentSwapLayer Context="@layer.Context" Content="@layer.Content"/>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.ContentSwap.create";
+
+    private Layer _currentLayer = null!;
+    private Layer? _outgoingLayer;
+    private object? _lastLayerKey;
+    private bool _hasLastKey;
+    private string _effectClass = "";
+    private string? _holdToken;
+    private string? _name;
+    private int _swapIndex;
+    private ComponentAnimator? _animator;
+    private ElementReference _ref;
+    private IJSObjectReference _jsRef = null!;
+    private DotNetObjectReference<ContentSwap> _blazorRef = null!;
+
+    [CascadingParameter] private ContentSwapContext? ParentContext { get; set; }
+    [Parameter] public object? LayerKey { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Placeholder { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string LayerClass { get; set; } = "";
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public ContentSwapEffect Effect { get; set; } = ContentSwapEffect.Fade;
+    [Parameter] public TimeSpan Duration { get; set; } = TimeSpan.FromSeconds(0.5);
+    // The backstop for content that never says it is there, not a tuning knob: a call site that wants
+    // a different moment renders <ContentSwapDisplay/> there, or calls ui.ContentSwap.display
+    [Parameter] public TimeSpan MaxDisplayDelay { get; set; } = TimeSpan.FromSeconds(0.333);
+    // For an area whose content is also what the area around it is waiting for - a tab body that is
+    // the panel's content, say. Off by default: a display signal speaks for one area.
+    [Parameter] public bool MustPropagateDisplay { get; set; }
+    [Parameter] public bool IsEnabled { get; set; } = true;
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ContentSwap))]
+    public ContentSwap() { }
+
+    public async ValueTask DisposeAsync() {
+        await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null!;
+        _blazorRef.DisposeSilently();
+        _blazorRef = null!;
+        _animator?.Dispose();
+        _animator = null;
+        _outgoingLayer?.Context.Detach();
+        _outgoingLayer = null;
+        if (_hasLastKey)
+            _currentLayer.Context.Detach();
+    }
+
+    [JSInvokable]
+    public void OnDisplayed() {
+        if (_holdToken is null)
+            return;
+
+        Display();
+        StateHasChanged();
+    }
+
+    // Protected/internal methods
+
+    protected override void OnParametersSet() {
+        // Runs before rendering, so the layer that stops being on screen always vacates the areas it
+        // registered into before the one replacing it claims them
+        _name = Name.NullIfEmpty();
+        if (!_hasLastKey) {
+            _hasLastKey = true;
+            _lastLayerKey = LayerKey;
+            _currentLayer = NewLayer(ChildContent);
+            if (CanSwap() && Placeholder is not null)
+                StartSwap(NewLayer(Placeholder));
+            else
+                _currentLayer.Context.SetState(ContentSwapLayerState.Displayed);
+
+            return;
+        }
+
+        if (Equals(_lastLayerKey, LayerKey)) {
+            _currentLayer.Content = ChildContent;
+            return;
+        }
+
+        _lastLayerKey = LayerKey;
+        var outgoingLayer = _currentLayer;
+        _currentLayer = NewLayer(ChildContent);
+        if (CanSwap())
+            StartSwap(outgoingLayer);
+        else {
+            outgoingLayer.Context.SetState(ContentSwapLayerState.Replaced);
+            outgoingLayer.Context.Detach();
+            _currentLayer.Context.SetState(ContentSwapLayerState.Displayed);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        _blazorRef = DotNetObjectReference.Create(this);
+        _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _ref, _blazorRef);
+    }
+
+    // Private methods
+
+    private IEnumerable<Layer> Layers() {
+        // The outgoing layer goes first: appending the incoming one is then the only edit Blazor has
+        // to make, and a move would reset the effect and the outgoing layer's scroll offsets.
+        // Paint order comes back from z-index on .outgoing.
+        if (_outgoingLayer is { } outgoingLayer)
+            yield return outgoingLayer;
+
+        yield return _currentLayer;
+    }
+
+    private bool CanSwap()
+        // An instant cut with nothing to wait for is just a cut - no point stacking two layers for it
+        => IsEnabled && (Effect != ContentSwapEffect.None || MaxDisplayDelay > TimeSpan.Zero);
+
+    private void StartSwap(Layer outgoingLayer) {
+        // Effect is read here rather than at render time, so a call site is free to pick the effect -
+        // a direction, most likely - in the very same parameter set that changes LayerKey
+        _effectClass = Effect.GetCssClass();
+        // A swap during a swap switches to a new pair rather than stacking a third layer, so whatever
+        // was outgoing is dropped right here - and the layer that was building under it is now what
+        // the user sees, so it takes over the shared areas the dropped one had
+        if (_outgoingLayer is { } lastOutgoingLayer) {
+            lastOutgoingLayer.Context.SetState(ContentSwapLayerState.Replaced);
+            lastOutgoingLayer.Context.Detach();
+        }
+        // On screen and frozen from here: it is what the user sees until the hand-off, and its DOM
+        // has to survive untouched while it is
+        outgoingLayer.Context.SetState(ContentSwapLayerState.Replacing);
+        _outgoingLayer = outgoingLayer;
+        outgoingLayer.CssClass = "outgoing";
+        _currentLayer.CssClass = "incoming";
+        // The token has to differ from the previous swap's: JS clears the attribute to display, and
+        // Blazor only writes an attribute back when its own value changed
+        _swapIndex++;
+        _holdToken = _swapIndex.Format();
+        _animator ??= new ComponentAnimator(this, Duration);
+        _animator.BeginAnimation(MaxDisplayDelay);
+    }
+
+    private void Display() {
+        _holdToken = null;
+        _outgoingLayer!.Context.SetState(ContentSwapLayerState.Replaced);
+        _currentLayer.Context.SetState(ContentSwapLayerState.Displayed);
+        _animator!.BeginAnimation(Duration);
+    }
+
+    private void EndSwap() {
+        _outgoingLayer!.Context.Detach();
+        _outgoingLayer = null;
+        _currentLayer.CssClass = "";
+        _effectClass = "";
+    }
+
+    private Layer NewLayer(RenderFragment? content)
+        => new(content, ParentContext);
+
+    // Nested types
+
+    private sealed class Layer(RenderFragment? content, ContentSwapContext? parentContext) {
+        public RenderFragment? Content { get; set; } = content;
+        public string CssClass { get; set; } = "";
+        public ContentSwapContext Context { get; } = new(parentContext);
+    }
+}

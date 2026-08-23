@@ -1,169 +1,105 @@
 @namespace ActualChat.UI.Blazor.Components
 @{
-    _renderedSelectedTab = null;
-    _renderedTabs = _tabRegistry.SortedTabs.ToList();
+    var tabs = Tabs;
+    var selectedTabId = SelectedTabId;
+    var selectedTab = tabs.FirstOrDefault(x => x.Id == selectedTabId);
     var cls = _isRightSideVisible ? "hide-panel" : "hide-tabs";
     var attr = _isRightSideVisible ? "hide-panel" : "hide-tabs";
 
-    RenderFragment RenderCommonButton(SettingsTab tab) {
-        var isActive = tab.Id == SelectedTabId;
-        var tabCls = $"{tab.ButtonClass} unhovered";
-        if (!tab.IsToggle) {
-            return
-                @<Button Class="@tabCls" Click="@(_ => OnTabTitleClick(tab))" data-tab-id="@tab.Id" role="tab" aria-selected="@isActive">
-                    @RenderTabTitle(tab)
-                </Button>;
-        }
-        return
-            @<Button Class="@tabCls" data-tab-id="@tab.Id" role="tab" aria-selected="@isActive">
-                @RenderTabTitle(tab)
-            </Button>;
-    }
-
-    RenderFragment RenderSignOutButton(SettingsTab tab)
-        => @<Button Class="unhovered" Click="@SignOut" data-tab-id="@tab.Id" role="tab">
-               @RenderTabTitle(tab)
-           </Button>;
-
-    RenderFragment RenderQuitButton(SettingsTab tab)
-        => @<Button Class="unhovered" Click="@Quit" data-tab-id="@tab.Id" role="tab">
-               @RenderTabTitle(tab)
-           </Button>;
-
-    RenderFragment RenderTabTitle(SettingsTab tab) =>
+    RenderFragment RenderTabTitle(SettingsTabDef tab) =>
         @<div class="settings-tab-item">
             <i class="@tab.IconClass text-2xl icon-title"></i>
-            @if (tab.TitleComment.IsNullOrEmpty()) {
-                <span>@tab.Title</span>
-            } else {
-                <div class="c-title">
-                    <span>@tab.Title</span>
-                    <span class="c-comment">@tab.TitleComment</span>
-                </div>
-            }
+            <span>@tab.Title</span>
             <div class="flex-x">
                 @tab.TitleContent
             </div>
         </div>;
 }
 
-<CascadingValue Value="@this" IsFixed="true" >
-    <div class="@Class settings-panel @cls" data-settings-panel="@attr">
-        <div class="c-tabs" role="tablist" aria-orientation="vertical">
-            <div class="c-header">
-                <SettingsHeader Title="@Title" ArrowClick="CloseModalClick"/>
-            </div>
-            <div class="c-tab-items">
-                @foreach (var tab in _renderedTabs) {
-                    var isActive = tab.Id == SelectedTabId && _renderedSelectedTab == null;
-                    if (isActive)
-                        _renderedSelectedTab = tab;
-                    var activeCls = $"{(isActive ? "on" : "")}";
-                    var tabCls = tab.Class;
-                    var containerCls = tab.IsToggle ? "container-toggle" : "";
-                    @if (tab.HasSeparatorBefore) {
-                        <Divider Class="m-4"/>
-                    }
-                    <div class="c-tab-item @containerCls @activeCls @tabCls">
-                        @switch (tab.Id) {
-                            case "signOut":
-                                @RenderSignOutButton(tab)
-                                break;
-                            case "quit":
-                                @RenderQuitButton(tab)
-                                break;
-                            default:
-                                @RenderCommonButton(tab)
-                                break;
-                        }
-                    </div>
+<div class="@Class settings-panel @cls" data-settings-panel="@attr">
+    <div class="c-tabs" role="tablist" aria-orientation="vertical">
+        <div class="c-header">
+            <SettingsHeader Title="@Title" ArrowClick="CloseModalClick"/>
+        </div>
+        <div class="c-tab-items">
+            @foreach (var tab in tabs) {
+                var isActive = tab.Id == selectedTabId;
+                @if (tab.HasSeparatorBefore) {
+                    <Divider Class="m-4"/>
                 }
-            </div>
-            <DownloadAppBanner CanBeClosed="false"/>
-            <div class="p-2">
-                <ShareOwnAccountTileItem/>
-            </div>
-            <div class="c-footer">
-                <div class="c-content">
-                    <div class="c-version">@ApiConstants.DisplayVersionString</div>
-                    <div class="flex-none">
-                        <StartupTimeBar/>
-                    </div>
+                <div @key="@tab.Id" class="c-tab-item @(isActive ? "on" : "") @tab.Class">
+                    <Button
+                        Class="unhovered"
+                        Click="@(_ => OnTabClick(tab))"
+                        data-tab-id="@tab.Id"
+                        role="tab"
+                        aria-selected="@isActive">
+                        @RenderTabTitle(tab)
+                    </Button>
+                </div>
+            }
+        </div>
+        <DownloadAppBanner CanBeClosed="false"/>
+        <div class="p-2">
+            <ShareOwnAccountTileItem/>
+        </div>
+        <div class="c-footer">
+            <div class="c-content">
+                <div class="c-version">@ApiConstants.DisplayVersionString</div>
+                <div class="flex-none">
+                    <StartupTimeBar/>
                 </div>
             </div>
         </div>
-        @ChildContent
     </div>
-</CascadingValue>
+    @if (selectedTab is { Content: { } content }) {
+        <div @key="@selectedTab.Id" class="@selectedTab.Class settings-tab">
+            <div class="tab-inner">
+                <div class="settings-tab-header @selectedTab.HeaderClass">
+                    <SettingsHeader Title="@selectedTab.Title" ArrowClick="@OnTabArrowClick"/>
+                </div>
+                <div class="settings-tab-content @selectedTab.ContentClass">
+                    @content
+                </div>
+            </div>
+        </div>
+    }
+</div>
 
 @code {
-    private readonly TabRegistry<SettingsTab> _tabRegistry = new();
-    private IReadOnlyList<SettingsTab> _renderedTabs = [];
-    private SettingsTab? _renderedSelectedTab;
-    private string? _selectedTabId;
+    private IReadOnlyList<SettingsTabDef> _lastTabs = [];
     private bool _isRightSideVisible;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-
-    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter, EditorRequired] public IReadOnlyList<SettingsTabDef> Tabs { get; set; } = [];
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
-    [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<string?> SelectedTabIdChanged { get; set; }
     [Parameter] public EventCallback CloseModalClick { get; set; }
     [Parameter] public string? DefaultTabId { get; set; }
 
     public string? SelectedTabId {
-        get => _selectedTabId;
+        get;
         set {
-            if (_selectedTabId == value)
+            if (field == value)
                 return;
 
-            _selectedTabId = value;
-            SelectedTabIdChanged.InvokeAsync(value);
+            field = value;
+            SelectedTabIdChanged.InvokeAsync(field);
             StateHasChanged();
         }
     }
 
     protected override void OnInitialized() {
-        _selectedTabId = DefaultTabId;
+        SelectedTabId = DefaultTabId;
         if (!DefaultTabId.IsNullOrEmpty())
             _isRightSideVisible = true;
     }
 
-    protected override void OnAfterRender(bool firstRender) {
-        // On first render, tabs register during ChildContent (after _renderedTabs snapshot),
-        // so just re-render to pick them up with the correct SelectedTabId.
-        if (firstRender) {
-            StateHasChanged();
-            return;
-        }
-
-        var currentTabs = _tabRegistry.SortedTabs.ToList();
-        var selectedTabId = SelectedTabId;
-        SelectedTabId = _tabRegistry.ResolveSelectedTabId(currentTabs, _renderedTabs, _renderedSelectedTab);
-        var tabsHaveChanged = !_renderedTabs.SequenceEqual(currentTabs);
-
-        if (!tabsHaveChanged)
-            return;
-
-        // If the selected tab has changed, we already triggered a re-render via the setter.
-        if (SelectedTabId != selectedTabId)
-            return;
-
-        // Tab list changed but selection didn't — re-render tab buttons.
-        StateHasChanged();
-    }
-
-    internal void RegisterTab(SettingsTab tab)
-        => _tabRegistry.Register(tab);
-
-    public void UnregisterTab(SettingsTab tab)
-        => _tabRegistry.Unregister(tab);
-
-    private void OnTabTitleClick(SettingsTab tab) {
-        SelectedTabId = tab.Id;
-        _isRightSideVisible = true;
+    protected override void OnParametersSet() {
+        var tabs = Tabs;
+        var lastTabs = _lastTabs;
+        _lastTabs = tabs;
+        SelectedTabId = ResolveSelectedTabId(tabs, lastTabs);
     }
 
     public void OnTabArrowClick() {
@@ -171,11 +107,36 @@
         StateHasChanged();
     }
 
-    private void SignOut() {
-        Modal.Close();
-        _ = Hub.AccountUI.SignOut();
+    // Private methods
+
+    private string? ResolveSelectedTabId(IReadOnlyList<SettingsTabDef> tabs, IReadOnlyList<SettingsTabDef> lastTabs) {
+        // Survival is decided by Id rather than instance: a tab re-created with the same Id hasn't
+        // disappeared. An action tab has no content, so it is never a selection to fall back to.
+        var selectedTabId = SelectedTabId;
+        var selectable = tabs.Where(x => x.Content != null).ToList();
+        if (selectable.Count == 0)
+            return null;
+        if (selectedTabId is null || lastTabs.All(x => x.Id != selectedTabId))
+            return selectable[0].Id;
+        if (selectable.Any(x => x.Id == selectedTabId))
+            return selectedTabId;
+
+        // The selected tab is gone: take the nearest survivor after it in the order it had,
+        // and fall back to the last tab if everything after it went away too.
+        return lastTabs
+            .SkipWhile(x => x.Id != selectedTabId)
+            .FirstOrDefault(x => selectable.Any(y => y.Id == x.Id))
+            ?.Id
+            ?? selectable[^1].Id;
     }
 
-    private void Quit()
-        => Hub.ReloadUI.Quit();
+    private void OnTabClick(SettingsTabDef tab) {
+        if (tab.Click is { } click) {
+            click.Invoke();
+            return;
+        }
+
+        SelectedTabId = tab.Id;
+        _isRightSideVisible = true;
+    }
 }

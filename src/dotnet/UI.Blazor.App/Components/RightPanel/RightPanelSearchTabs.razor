@@ -1,51 +1,32 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
+@{
+    var tabs = new TabDef[] {
+        new("chat") {
+            TitleContent = @<text><i class="icon-message-ellipse"></i><span>@L.SearchTabs_Chat</span></text>,
+            Content = @<ToBeDone/>,
+        },
+        new("tags") {
+            TitleContent = @<text><i class="icon-hash-fill"></i><span>@L.SearchTabs_Tags</span></text>,
+            Content = @<ToBeDone/>,
+        },
+        new("contacts") {
+            TitleContent = @<text><i class="icon-person"></i><span>@L.SearchTabs_Contacts</span></text>,
+            Content = @<ToBeDone/>,
+        },
+        new("date") {
+            TitleContent = @<text><i class="icon-calendar"></i><span>@L.SearchTabs_Date</span></text>,
+            Content = @<ToBeDone/>,
+        },
+    };
+}
 
 <TabPanel
     @key="@ChatId.Value"
+    Tabs="@tabs"
     TabsClass="search-panel-tabs"
-    BottomHill="true">
-
-    <Tab @key="@("chat")" Id="chat" Order="0">
-        <TitleContent>
-            <i class="icon-message-ellipse"></i>
-            <span>@L.SearchTabs_Chat</span>
-        </TitleContent>
-        <ChildContent>
-            <ToBeDone/>
-        </ChildContent>
-    </Tab>
-
-    <Tab @key="@("tags")" Id="tags" Order="1">
-        <TitleContent>
-            <i class="icon-hash-fill"></i>
-            <span>@L.SearchTabs_Tags</span>
-        </TitleContent>
-        <ChildContent>
-            <ToBeDone/>
-        </ChildContent>
-    </Tab>
-
-    <Tab @key="@("contacts")" Id="contacts" Order="2">
-        <TitleContent>
-            <i class="icon-person"></i>
-            <span>@L.SearchTabs_Contacts</span>
-        </TitleContent>
-        <ChildContent>
-            <ToBeDone/>
-        </ChildContent>
-    </Tab>
-
-    <Tab @key="@("date")" Id="date" Order="3">
-        <TitleContent>
-            <i class="icon-calendar"></i>
-            <span>@L.SearchTabs_Date</span>
-        </TitleContent>
-        <ChildContent>
-            <ToBeDone/>
-        </ChildContent>
-    </Tab>
-</TabPanel>
+    BottomHill="true"
+    SwapKind="@TabContentSwap.Swipe"/>
 
 @code {
     // TODO(DF): review usages

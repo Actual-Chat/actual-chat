@@ -12,12 +12,12 @@ public sealed record ChatListFilter(
     public static readonly ChatListFilter Groups = new("@groups", "Groups", c => c.Kind != ChatKind.Peer);
     public static readonly ChatListFilter Unread = new("@unread", "Unread",
         AcrossPlace: true, ChatInfoFilter: c => c.UnmutedUnreadCount > 0);
-    public static readonly ChatListFilter UnreadDMs = new("@unread-dms", "DMs",
+    public static readonly ChatListFilter UnreadPeople = new("@unread-people", "People",
         c => c.Kind == ChatKind.Peer, AcrossPlace: true, ChatInfoFilter: c => c.UnmutedUnreadCount > 0);
     public static readonly ChatListFilter UnreadMentions = new("@unread-mentions", "Mentions",
         AcrossPlace: true, ChatInfoFilter: c => c.HasUnreadOwnMention);
     public static readonly ChatListFilter[] All = [None, Groups, People];
-    private static readonly ChatListFilter[] AllKnown = [None, Groups, People, Unread, UnreadDMs, UnreadMentions];
+    private static readonly ChatListFilter[] AllKnown = [None, Groups, People, Unread, UnreadPeople, UnreadMentions];
 
     public bool Invoke(ChatInfo chatInfo)
         => (Filter?.Invoke(chatInfo.Chat) ?? true) && (ChatInfoFilter?.Invoke(chatInfo) ?? true);

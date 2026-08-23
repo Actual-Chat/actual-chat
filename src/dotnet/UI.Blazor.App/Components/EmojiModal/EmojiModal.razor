@@ -1,6 +1,39 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<EmojiModal.Model>
 @inherits ComponentBase<AppUIHub>
+@{
+    var tabs = new TabDef[] {
+        new("emoji", L.Emoji_Title) {
+            Class = "no-scrollbar",
+            Content = @<div class="c-grid">
+                           @if (_recentEmojis.Count > 0) {
+                               <div class="c-emoji-recent">
+                                   <div class="c-group-title">@L.Emoji_Recent</div>
+                                   <div class="c-emoji-recent-list no-scrollbar">
+                                       @foreach (var emoji in _recentEmojis) {
+                                           @EmojiButton(emoji)
+                                       }
+                                   </div>
+                               </div>
+                           }
+                           @foreach (var group in Enum.GetValues<EmojiGroup>()) {
+                               <div @key="group" class="c-group">
+                                   <div class="c-group-title">@group</div>
+                                   <div class="c-group-items">
+                                       @foreach (var emoji in Emojis.GetByGroup(group)) {
+                                           @EmojiButton(emoji)
+                                       }
+                                   </div>
+                               </div>
+                           }
+                       </div>,
+        },
+        new("gif", "GIF") {
+            Class = "no-scrollbar",
+            Content = @<GifPicker GifSelected="@OnGifSelected"/>,
+        },
+    };
+}
 
 <DialogFrame
     Class="emoji-modal"
@@ -8,35 +41,12 @@
     HasHeader="false"
     NarrowViewSettings="DialogFrameNarrowViewSettings.Bottom">
     <Body>
-        <TabPanel @ref="_tabPanel" BottomHill="true" TabsClass="emoji-modal-tabs">
-            <Tab Id="emoji" Title="@L.Emoji_Title" Order="0" Class="no-scrollbar">
-                <div class="c-grid">
-                    @if (_recentEmojis.Count > 0) {
-                        <div class="c-emoji-recent">
-                            <div class="c-group-title">@L.Emoji_Recent</div>
-                            <div class="c-emoji-recent-list no-scrollbar">
-                                @foreach (var emoji in _recentEmojis) {
-                                    @EmojiButton(emoji)
-                                }
-                            </div>
-                        </div>
-                    }
-                    @foreach (var group in Enum.GetValues<EmojiGroup>()) {
-                        <div @key="group" class="c-group">
-                            <div class="c-group-title">@group</div>
-                            <div class="c-group-items">
-                                @foreach (var emoji in Emojis.GetByGroup(group)) {
-                                    @EmojiButton(emoji)
-                                }
-                            </div>
-                        </div>
-                    }
-                </div>
-            </Tab>
-            <Tab Id="gif" Title="GIF" Order="1" Class="no-scrollbar">
-                <GifPicker GifSelected="@OnGifSelected"/>
-            </Tab>
-        </TabPanel>
+        <TabPanel
+            @ref="_tabPanel"
+            Tabs="@tabs"
+            BottomHill="true"
+            TabsClass="emoji-modal-tabs"
+            SwapKind="@TabContentSwap.Swipe"/>
     </Body>
 </DialogFrame>
 

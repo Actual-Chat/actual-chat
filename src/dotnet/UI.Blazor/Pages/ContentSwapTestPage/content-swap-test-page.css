@@ -1,0 +1,131 @@
+.content-swap-test-page {
+    @apply flex-y gap-2;
+    @apply flex-1 min-h-0;
+}
+.content-swap-test-page .c-controls {
+    @apply flex-y gap-1;
+}
+.content-swap-test-page .c-slot {
+    @apply flex-x items-center gap-2;
+    @apply flex-none min-h-8;
+    @apply px-2;
+    @apply rounded-lg border border-separator;
+    @apply text-sm text-02;
+}
+.content-swap-test-page .c-slot-title {
+    @apply flex-none;
+    @apply w-28;
+    @apply text-03;
+}
+.content-swap-test-page .c-slot-item {
+    @apply px-2;
+    @apply rounded bg-03;
+}
+.content-swap-test-page .c-body {
+    @apply flex-1 flex-x min-h-0;
+}
+/* The list scenario is the left panel: a narrow column rather than the whole area */
+.content-swap-test-page .c-body-lists {
+    @apply max-w-80;
+}
+.content-swap-test-page .c-swap {
+    @apply flex-1 min-w-0;
+    min-height: 16rem;
+    @apply rounded-lg;
+    @apply overflow-hidden;
+    --content-swap-bg: var(--background-02);
+}
+.content-swap-test-page .c-group-title {
+    @apply flex-x items-center;
+    @apply pr-1;
+    @apply text-sm text-03;
+}
+.content-swap-test-page .c-status {
+    @apply flex-none;
+    @apply text-sm text-03;
+}
+.content-swap-test-page .c-status code {
+    @apply px-1;
+    @apply rounded bg-03;
+}
+
+/* Nested scenario - an outer area holding a panel whose tab body is an area of its own */
+
+.content-swap-test-page .c-panel {
+    @apply flex-y gap-2;
+    @apply w-full h-full min-h-0;
+    @apply p-2;
+    @apply rounded-lg;
+    @apply bg-03;
+}
+.content-swap-test-page .c-panel-title {
+    @apply flex-none;
+    @apply text-lg font-medium text-01;
+}
+.content-swap-test-page .c-inner-swap {
+    @apply flex-1 min-h-0;
+    @apply rounded-lg;
+    @apply overflow-hidden;
+    --content-swap-bg: var(--background-03);
+}
+
+/* Swapped views */
+
+.content-swap-test-view {
+    @apply flex-y gap-2;
+    @apply w-full h-full;
+    @apply p-3;
+    @apply rounded-lg;
+    @apply overflow-hidden;
+}
+.content-swap-test-view .c-title {
+    @apply flex-none flex-x items-center gap-2;
+    @apply text-lg font-medium text-01;
+}
+.content-swap-test-view .c-age {
+    @apply text-sm font-normal text-03;
+}
+.content-swap-test-view .c-items {
+    @apply flex-y gap-1;
+    @apply flex-1 min-h-0;
+    @apply overflow-y-auto custom-scrollbar;
+}
+.content-swap-test-view .c-item {
+    @apply flex-none flex-x items-center;
+    @apply h-8;
+    @apply px-2;
+    @apply rounded;
+    @apply bg-01;
+    @apply text-sm text-01;
+}
+.content-swap-test-view .c-item.c-skeleton {
+    @apply bg-02;
+}
+.content-swap-test-view .c-empty {
+    @apply flex-1 flex-x items-center justify-center;
+    @apply text-03;
+}
+/* The chat scenario grows its rows the way a message list does, so a swap has something tall to
+   hand over; the list and tab ones stay dense. */
+.content-swap-test-view.c-view-chat .c-item {
+    @apply h-12;
+}
+.content-swap-test-view.c-view-list .c-item,
+.content-swap-test-view.c-view-tab .c-item {
+    @apply h-8;
+}
+.content-swap-test-view.c-view-alpha {
+    @apply bg-sky-500/20;
+}
+.content-swap-test-view.c-view-beta {
+    @apply bg-emerald-500/20;
+}
+.content-swap-test-view.c-view-gamma {
+    @apply bg-amber-500/20;
+}
+.content-swap-test-view.c-view-delta {
+    @apply bg-fuchsia-500/20;
+}
+.content-swap-test-view.c-view-placeholder {
+    @apply bg-02;
+}

@@ -1,0 +1,85 @@
+@namespace ActualChat.UI.Blazor.Pages
+@implements IDisposable
+@{
+    var m = Model;
+}
+
+<RenderIntoSlot Name="@ContentSwapTestPage.HeaderSlot">
+    <span class="c-slot-item">@m.Title #@_instance</span>
+</RenderIntoSlot>
+<RenderIntoStack Name="@ContentSwapTestPage.FooterStack" Key="@m.Kind.ToString()">
+    <span class="c-slot-item">@m.Title #@_instance</span>
+</RenderIntoStack>
+
+<div class="content-swap-test-view @m.KindCssClass @m.CssClass">
+    <div class="c-title">
+        @m.Title #@_instance
+        <span class="c-age">@(_isLoaded ? "loaded" : $"loading {m.LoadDelay.TotalSeconds:0.0}s...")</span>
+    </div>
+    @if (!_isLoaded) {
+        <UITimer Period="@m.LoadDelay" Tick="@OnLoaded" IsRecurring="false"/>
+        <div class="c-items">
+            @for (var i = 0; i < m.SkeletonCount; i++) {
+                <div class="c-item c-skeleton"></div>
+            }
+        </div>
+    } else {
+        <ContentSwapDisplay/>
+        @if (m.ItemCount == 0) {
+            <div class="c-empty">Nothing here</div>
+        } else {
+            <div class="c-items">
+                @for (var i = 0; i < m.ItemCount; i++) {
+                    <div class="c-item">@m.Title item @(i + 1)</div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private static int _liveCount;
+    private static int _createdCount;
+    public static int LiveCount => Volatile.Read(ref _liveCount);
+    public static int CreatedCount => Volatile.Read(ref _createdCount);
+
+    private int _instance;
+    private bool _isLoaded;
+
+    [Parameter, EditorRequired] public ViewModel Model { get; set; } = null!;
+    [Parameter] public EventCallback Displayed { get; set; }
+
+    public void Dispose()
+        => Interlocked.Decrement(ref _liveCount);
+
+    // Protected/internal methods
+
+    protected override void OnInitialized() {
+        Interlocked.Increment(ref _liveCount);
+        _instance = Interlocked.Increment(ref _createdCount);
+        _isLoaded = Model.LoadDelay <= TimeSpan.Zero;
+    }
+
+    // Private methods
+
+    private Task OnLoaded() {
+        _isLoaded = true;
+        return Displayed.InvokeAsync();
+    }
+
+    // Nested types
+
+    public enum ViewKind { Chat, List, Tab }
+
+    public sealed record ViewModel(
+        string Id,
+        string Title,
+        ViewKind Kind,
+        string CssClass,
+        int ItemCount,
+        TimeSpan LoadDelay)
+    {
+        public string KindCssClass { get; } = "c-view-" + Kind.ToString().ToLower();
+        public int SkeletonCount { get; init; } = 6;
+    }
+}

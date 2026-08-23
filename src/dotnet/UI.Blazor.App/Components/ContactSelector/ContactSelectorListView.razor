@@ -5,26 +5,38 @@
     var selectedChatIds = Selector.SelectedChatIds.Value;
 }
 
-<div class="contact-selector-list" role="listbox" aria-multiselectable="true">
-    @foreach (var contact in contacts) {
-        var isSelected = selectedChatIds.Contains(contact.Id);
-        <div class="contact-selector-list-item"
-             role="option"
-             tabindex="0"
-             aria-selected="@(isSelected ? "true" : "false")"
-             @onclick="() => OnContactClick(contact.Id)">
-            <ContactView
-                ContactInfo="contact"
-                SearchQuery="Selector.SearchQuery"/>
-            <Checkbox
-                IsChecked="@isSelected"
-                Class="!flex-none"
-                Change="() => OnContactClick(contact.Id)"/>
+<ContentSwap
+    LayerKey="@Selector.SelectedPlaceId"
+    Class="c-list-swap"
+    Effect="@_swapDirection.Wipe(Selector.SelectedPlaceIndex)">
+    <ChildContent>
+        <div class="contact-selector-list" role="listbox" aria-multiselectable="true">
+            @foreach (var contact in contacts) {
+                var isSelected = selectedChatIds.Contains(contact.Id);
+                <div class="contact-selector-list-item"
+                     role="option"
+                     tabindex="0"
+                     aria-selected="@(isSelected ? "true" : "false")"
+                     @onclick="() => OnContactClick(contact.Id)">
+                    <ContactView
+                        ContactInfo="contact"
+                        SearchQuery="Selector.SearchQuery"/>
+                    <Checkbox
+                        IsChecked="@isSelected"
+                        Class="!flex-none"
+                        Change="() => OnContactClick(contact.Id)"/>
+                </div>
+            }
         </div>
-    }
-</div>
+        @if (Selector.ContactsPlaceId == Selector.SelectedPlaceId) {
+            <ContentSwapDisplay/>
+        }
+    </ChildContent>
+</ContentSwap>
 
 @code {
+    private readonly ContentSwapDirection _swapDirection = new();
+
     [CascadingParameter] public ContactSelector Selector { get; set; } = null!;
 
     protected override ComputedState<object?>.Options GetStateOptions()

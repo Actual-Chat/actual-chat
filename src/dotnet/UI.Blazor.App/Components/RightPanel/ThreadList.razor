@@ -5,6 +5,9 @@
 }
 
 <div class="thread-list-tab">
+    @if (m is not null) {
+        <ContentSwapDisplay/>
+    }
     @if (m is { ThreadChats.Count: 0 }) {
         <div class="c-empty">@L.RightPanel_NoThreadsYet</div>
     } else if (m is not null) {

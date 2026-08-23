@@ -46,8 +46,8 @@
 
     <FormBlock>
         @if (_result is not null) {
-            <TabPanel BottomHill="true">
-                <Tab Id="email-preview" Title="Email Preview" Order="0">
+            var tabs = new TabDef[] {
+                new("email-preview", "Email Preview") { Content = @<text>
                     @if (_result.RenderedHtml.IsNullOrEmpty()) {
                         <p class="p-4 text-gray-500">No email content to preview.</p>
                     } else {
@@ -56,8 +56,8 @@
                             style="width: 100%; height: 800px; border: 1px solid #ccc;">
                         </iframe>
                     }
-                </Tab>
-                <Tab Id="diagnostics" Title="Diagnostics" Order="1">
+                </text> },
+                new("diagnostics", "Diagnostics") { Content = @<text>
                     @if (_result.Chats.Length == 0) {
                         <p class="p-4 text-gray-500">No chats found for digest.</p>
                     } else {
@@ -94,10 +94,10 @@
                             </p>
                         }
                     }
-                </Tab>
-            </TabPanel>
-        }
-        else if (_error is not null) {
+                </text> },
+            };
+            <TabPanel Tabs="@tabs" BottomHill="true"/>
+        } else if (_error is not null) {
             <div class="mb-4 p-3 bg-red-100 text-red-800 rounded">
                 @_error
             </div>

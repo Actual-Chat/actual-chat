@@ -1,3 +1,9 @@
+/* The ContentSwap host in ChatPage - it has to occupy the box .chat-view used to */
+
+.chat-view-swap {
+    @apply w-full h-full min-h-0;
+}
+
 .message-wrapper {
     @apply relative;
     @apply flex-y;

@@ -4,6 +4,22 @@
     var m = State.Value;
     var cls = m.IsOpen ? "open" : "closed";
     _shouldRenderContent |= m.IsOpen;
+    var tabs = new TabDef[] {
+        new("chats", L.Navbar_Chats) {
+            Content = @<div class="c-container"><ChatSearchTab Place="@Place"/></div>,
+        },
+        new("ai-search", L.Common_Search) {
+            Content = @<div class="c-container">
+                           <RecentlyViewedGroups
+                               Title="@L.Search_RecentSearches"
+                               ListKind="@ChatUsageListKind.SearchChats"
+                               Place="@Place"/>
+                       </div>,
+        },
+        new("Threads", L.RightPanel_TabThreads) { Content = @<ToBeDone/> },
+        new("tags", L.Search_TabTags) { Content = @<ToBeDone/> },
+        new("media", L.RightPanel_TabMedia) { Content = @<ToBeDone/> },
+    };
 }
 
 <div class="left-search-overlay-panel left-place-search-overlay-panel @cls" inert="@(!m.IsOpen)" @onmousedown:preventDefault="true">
@@ -12,32 +28,10 @@
             @if (m.EnableIncompleteUI) {
                 <TabPanel
                     @key="@("left-place-search-panel")"
+                    Tabs="@tabs"
                     TabsClass="left-panel-tabs wide-left-panel-tabs"
-                    BottomHill="true">
-
-                    <Tab @key="@("chats")" Id="chats" Title="@L.Navbar_Chats" Order="0">
-                        <div class="c-container">
-                            <ChatSearchTab Place="@Place"/>
-                        </div>
-                    </Tab>
-                    <Tab @key="@("ai-search")" Id="ai-search" Title="@L.Common_Search" Order="1">
-                        <div class="c-container">
-                            <RecentlyViewedGroups
-                                Title="@L.Search_RecentSearches"
-                                ListKind="@ChatUsageListKind.SearchChats"
-                                Place="@Place"/>
-                        </div>
-                    </Tab>
-                    <Tab @key="@("threads")" Id="Threads" Title="@L.RightPanel_TabThreads" Order="2">
-                        <ToBeDone/>
-                    </Tab>
-                    <Tab @key="@("tags")" Id="tags" Title="@L.Search_TabTags" Order="3">
-                        <ToBeDone/>
-                    </Tab>
-                    <Tab @key="@("media")" Id="media" Title="@L.RightPanel_TabMedia" Order="4">
-                        <ToBeDone/>
-                    </Tab>
-                </TabPanel>
+                    BottomHill="true"
+                    SwapKind="@TabContentSwap.Swipe"/>
             } else {
                 // TODO: remove when migrated to markup above
                 <div class="c-search-tab c-container">

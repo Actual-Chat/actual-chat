@@ -1,0 +1,92 @@
+.live-session-member-list {
+    @apply flex-y h-full;
+    @apply p-2;
+    @apply overflow-y-auto custom-scrollbar;
+}
+.live-session-member-list .c-empty {
+    @apply p-4;
+    @apply text-03 text-center;
+}
+.live-session-member-list .c-dialing {
+    @apply p-2;
+    @apply text-03 text-center;
+}
+.live-session-member-list .c-rules,
+.live-session-member-list .c-manage {
+    @apply flex-x items-center gap-x-2;
+    @apply px-2 py-2;
+}
+.live-session-member-list .c-rules {
+    @apply border-b border-separator;
+}
+.live-session-member-list .c-rules-title,
+.live-session-member-list .c-manage-title {
+    @apply text-caption-1 text-03;
+    @apply min-w-16;
+}
+.live-session-member-list .c-rules-text {
+    @apply text-caption-1 text-02;
+}
+.live-session-member-list .c-manage-buttons {
+    @apply flex-x items-center gap-x-4 ml-auto;
+}
+.live-session-member-list .c-manage-btn {
+    @apply flex items-center justify-center;
+    @apply text-2xl;
+}
+.live-session-member-list .c-manage-btn.on {
+    @apply text-primary;
+}
+.live-session-member-list .c-manage-btn.off {
+    @apply text-03;
+}
+body.hoverable .live-session-member-list .c-manage-btn:hover {
+    @apply opacity-70;
+}
+.live-session-member-list .c-content {
+    @apply flex-auto flex-y gap-y-1;
+}
+.live-session-member-list .c-member-row {
+    @apply flex-x items-center gap-x-3;
+    @apply h-12 px-2;
+    @apply rounded-xl;
+}
+body.hoverable .live-session-member-list .c-member-row:hover {
+    @apply bg-hover;
+}
+.live-session-member-list .c-member-row > .avatar-badge {
+    @apply flex-1 min-w-0;
+}
+.live-session-member-list .c-member-row .avatar-name {
+    @apply font-medium text-02;
+}
+.live-session-member-list .c-member-state {
+    @apply flex-x items-center gap-x-4 flex-none;
+}
+.live-session-member-list .c-member-state i {
+    @apply text-2xl text-03;
+}
+.live-session-member-list .c-member-state i.recording {
+    @apply text-danger;
+}
+.live-session-member-list .c-member-state i.muted {
+    @apply text-03;
+}
+.live-session-member-list .c-member-state i.listening {
+    @apply text-primary;
+}
+.live-session-member-list .c-mic-btn {
+    @apply flex items-center justify-center;
+    @apply rounded-full;
+}
+body.hoverable .live-session-member-list .c-mic-btn:hover {
+    @apply bg-hover;
+}
+.live-session-member-list .c-host-btn {
+    @apply flex items-center justify-center;
+    @apply rounded-full;
+    @apply text-02;
+}
+body.hoverable .live-session-member-list .c-host-btn:hover {
+    @apply bg-hover;
+}

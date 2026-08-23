@@ -5,19 +5,15 @@
         _stack.NotifyChanged();
         return;
     }
+    if (Swap is { IsVisible: false })
+        return;
 
-    _stack = Hub.RenderVars.RenderStack(Name);
-    if (MustPrepend)
-        _stack.Value.Insert(0, this);
-    else
-        _stack.Value.Add(this);
-    _stack.NotifyChanged();
+    Register();
 }
 @code {
-    private RenderVar<List<RenderIntoStack>>? _stack = null!;
-
+    private RenderVar<List<RenderIntoStack>>? _stack;
     [Inject] private UIHub Hub { get; init; } = null!;
-
+    [CascadingParameter] private ContentSwapContext? Swap { get; set; }
     [Parameter, EditorRequired] public string Name { get; set; } = "";
     [Parameter, EditorRequired] public string Key { get; set; } = "";
     [Parameter] public double Order { get; set; } = 0;
@@ -25,15 +21,51 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     public void Dispose() {
+        if (Swap is { } swap)
+            swap.StateChanged -= OnStateChanged;
+        Unregister();
+    }
+
+    // Protected/internal methods
+
+    protected override void OnInitialized() {
+        if (Swap is { } swap)
+            swap.StateChanged += OnStateChanged;
+    }
+
+    // Private methods
+
+    private void OnStateChanged() {
+        if (Swap!.IsVisible)
+            Register();
+        else
+            Unregister();
+    }
+
+    private void Register() {
+        if (_stack != null)
+            return;
+
+        _stack = Hub.RenderVars.RenderStack(Name);
+        if (MustPrepend)
+            _stack.Value.Insert(0, this);
+        else
+            _stack.Value.Add(this);
+        _stack.NotifyChanged();
+    }
+
+    private void Unregister() {
         if (_stack == null)
             return;
 
-        if (!_stack.Value.Remove(this)) {
+        var stack = _stack;
+        _stack = null;
+        if (!stack.Value.Remove(this)) {
             var log = Hub.LogFor(GetType());
             log.LogWarning("Couldn't remove RenderIntoStack with Name = '{Name}'", Name);
             return;
         }
 
-        _stack.NotifyChanged();
+        stack.NotifyChanged();
     }
 }

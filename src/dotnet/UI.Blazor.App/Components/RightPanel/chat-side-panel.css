@@ -3,7 +3,7 @@
     inherits: true;
     initial-value: 0;
 }
-.right-panel {
+.chat-side-panel {
     @apply relative;
     @apply flex-y;
     @apply w-full h-full;
@@ -23,11 +23,11 @@
 /* Base / wide (desktop): header + chat-info are simply stacked on top and the list fills the rest —
    the original layout. No overlay, translate or clip: collapsing is a narrow-screen (touch) feature,
    so wide behaves exactly as before the c-top-region wrapper was introduced. */
-.right-panel > .c-top-region {
+.chat-side-panel > .c-top-region {
     @apply relative flex-none flex-y;
     @apply w-full;
 }
-.right-panel > .c-panel-content {
+.chat-side-panel > .c-panel-content {
     @apply flex-1 flex-y;
     @apply w-full;
     @apply overflow-y-hidden;
@@ -36,7 +36,7 @@
    expanded size (base + chat-info) down to the bar, clipping chat-info then the header from the bottom.
    Linear in --rp-collapse so the translated scroll region stays glued to it; the 100rem fallback shows
    an unmeasured chat-info in full instead of hiding it. */
-body.narrow .right-panel > .c-top-region {
+body.narrow .chat-side-panel > .c-top-region {
     @apply absolute z-20 top-0 left-0;
     /* Block, not flex: as a flex column with a max-height it would shrink the header (and the bio,
        which is overflow:auto → min-height:0, collapses first) to fit the cap — and that shrunk height
@@ -47,8 +47,8 @@ body.narrow .right-panel > .c-top-region {
     max-height: calc(var(--rp-header-base) + var(--rp-chatinfo-h, 100rem) - var(--rp-collapse-range) * var(--rp-collapse));
 }
 /* Narrow: constant-height list block, translated down while expanded so the header shrink never resizes
-   the list viewport (what made Android/Chrome reclamp scrollTop and jitter). Clipped by .right-panel. */
-body.narrow .right-panel > .c-panel-content {
+   the list viewport (what made Android/Chrome reclamp scrollTop and jitter). Clipped by .chat-side-panel. */
+body.narrow .chat-side-panel > .c-panel-content {
     @apply absolute left-0;
     top: var(--rp-bar-h);
     height: calc(100% - var(--rp-bar-h));
@@ -59,50 +59,50 @@ body.narrow .right-panel > .c-panel-content {
    edit/share overlapping its bottom edge by 50%, then the title + public/private badge, then the
    chat-info toggles. ONLY the tabs/list (.c-panel-content) are hidden. Because nothing switches to flow,
    the list viewport never resizes — the root of the members-scroll-behind-tabs and stuck-avatar bugs. */
-body.narrow .right-panel.has-expanded-header > .c-top-region {
+body.narrow .chat-side-panel.has-expanded-header > .c-top-region {
     @apply overflow-visible;
     max-height: none;
 }
 /* Header keeps its natural (content) height on narrow — it grows via the tall .c-top below (which
    reserves the avatar's flow space), not via the fixed square the general .expanded-header rule uses
    on wide. */
-body.narrow .right-panel.has-expanded-header > .c-top-region > .c-header.expanded-header {
+body.narrow .chat-side-panel.has-expanded-header > .c-top-region > .c-header.expanded-header {
     height: auto;
     min-height: var(--rp-header-base);
 }
 /* Full-screen avatar: the square spans the full width and sits at the top (just clear of the notch).
    .c-top reserves the avatar's height in flow so the title/badge/description drop UNDER the avatar
    instead of behind it. Bell/share stay hidden; the square, the close (X) and the info below show. */
-body.narrow .right-panel.has-expanded-header > .c-top-region > .c-header.expanded-header > .c-top {
+body.narrow .chat-side-panel.has-expanded-header > .c-top-region > .c-header.expanded-header > .c-top {
     height: calc(var(--safe-area-top) + var(--expanded-header-height));
 }
-body.narrow .right-panel > .c-top-region > .c-header.expanded-header > .c-center {
+body.narrow .chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center {
     top: var(--safe-area-top);
     height: var(--expanded-header-height);
 }
 /* title + badge + description: shown, flowing below the avatar. */
-body.narrow .right-panel.has-expanded-header > .c-top-region > .c-header > .c-bottom {
+body.narrow .chat-side-panel.has-expanded-header > .c-top-region > .c-header > .c-bottom {
     @apply opacity-100;
     padding-top: 1rem;
 }
 /* Keep the panel-close button visible over the full-screen avatar (it otherwise fades with the header). */
-body.narrow .right-panel.has-expanded-header > .c-top-region > .c-header > .c-buttons {
+body.narrow .chat-side-panel.has-expanded-header > .c-top-region > .c-header > .c-buttons {
     @apply opacity-100;
 }
 /* Only the tabs/list are hidden while the avatar is full-screen. Fade out fast (and front-loaded
    via ease-out) so it's gone before the .25s avatar grow, instead of overlapping it the whole time. */
-body.narrow .right-panel.has-expanded-header > .c-panel-content {
+body.narrow .chat-side-panel.has-expanded-header > .c-panel-content {
     @apply opacity-0 pointer-events-none;
     transition: opacity .1s ease-out;
 }
-.right-panel .tab-panel > .divider {
+.chat-side-panel .tab-panel > .divider {
     @apply mx-6;
 }
-.right-panel > .c-top-region > .c-chat-info .card-item > .c-left {
+.chat-side-panel > .c-top-region > .c-chat-info .card-item > .c-left {
     /* Icon glyphs have different advance widths; a fixed column keeps the titles aligned. */
     @apply w-8;
 }
-.right-panel > .c-top-region > .c-chat-info {
+.chat-side-panel > .c-top-region > .c-chat-info {
     @apply flex-none flex-y gap-y-1;
     /* Natural height — always fully rendered. The collapse is done by the top region clipping it
        (max-height + overflow:hidden there), so chat-info never depends on a measured var to be
@@ -112,24 +112,24 @@ body.narrow .right-panel.has-expanded-header > .c-panel-content {
     opacity: clamp(0, calc((0.5 - var(--rp-collapse)) * 2), 1);
     transition: opacity .2s ease-in;
 }
-.right-panel > .c-panel-content > .c-panel-tabs {
+.chat-side-panel > .c-panel-content > .c-panel-tabs {
     @apply flex-y;
     @apply h-full;
     @apply overflow-hidden;
 }
 
-.right-panel > .c-top-region > .c-header {
+.chat-side-panel > .c-top-region > .c-header {
     @apply relative;
     @apply flex-y items-center gap-x-4;
     @apply h-auto;
     height: auto;
     min-height: calc(var(--rp-header-base) - (var(--rp-header-base) - var(--rp-bar-h)) * var(--rp-collapse));
 }
-.right-panel > .c-top-region > .c-header.expanded-header {
+.chat-side-panel > .c-top-region > .c-header.expanded-header {
     height: var(--expanded-header-height);
     min-height: var(--expanded-header-height);
 }
-.right-panel > .c-top-region > .c-header > .c-buttons {
+.chat-side-panel > .c-top-region > .c-header > .c-buttons {
     @apply absolute z-30;
     @apply flex-x items-center justify-center gap-x-3;
     @apply opacity-100;
@@ -138,11 +138,11 @@ body.narrow .right-panel.has-expanded-header > .c-panel-content {
     transform: translateX(calc(0.5rem * var(--rp-collapse)));
     transition: opacity .25s ease-in .25s;
 }
-.right-panel > .c-top-region > .c-header.expanded-header > .c-buttons {
+.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-buttons {
     @apply opacity-0;
     transition: opacity .25s ease-in;
 }
-.right-panel > .c-top-region > .c-header > .c-top {
+.chat-side-panel > .c-top-region > .c-header > .c-top {
     @apply relative;
     @apply flex-none;
     @apply w-full;
@@ -151,7 +151,7 @@ body.narrow .right-panel.has-expanded-header > .c-panel-content {
     height: calc((6.5rem - 3rem * var(--rp-collapse)) + var(--safe-area-top));
     padding-top: var(--safe-area-top);
 }
-.right-panel > .c-top-region > .c-header > .c-bottom {
+.chat-side-panel > .c-top-region > .c-header > .c-bottom {
     @apply flex-y items-start justify-end gap-y-1;
     @apply w-full;
     @apply px-4;
@@ -164,23 +164,23 @@ body.narrow .right-panel.has-expanded-header > .c-panel-content {
     opacity: clamp(0, calc((0.5 - var(--rp-collapse)) * 2), 1);
     transition: opacity .25s ease-in;
 }
-.right-panel > .c-top-region > .c-header.expanded-header > .c-bottom {
+.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-bottom {
     @apply opacity-0;
 }
-.right-panel > .c-top-region > .c-header > .c-bottom > .c-content {
+.chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-content {
     @apply flex-x gap-x-2;
     width: inherit;
 }
-.right-panel > .c-top-region > .c-header > .c-bottom > .c-content > .c-title {
+.chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-content > .c-title {
     @apply w-full;
     @apply text-headline-7 text-02;
     @apply truncate;
 }
-.right-panel > .c-top-region > .c-header > .c-bottom > .c-content > .c-info {
+.chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-content > .c-info {
     @apply flex-x;
     @apply text-caption-6 text-03;
 }
-.right-panel > .c-top-region > .c-header > .c-bottom > .c-chat-description {
+.chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-chat-description {
     @apply w-full;
     @apply overflow-auto;
     @apply text-caption-6 text-03;
@@ -188,10 +188,10 @@ body.narrow .right-panel.has-expanded-header > .c-panel-content {
     max-height: calc(0.875rem * 3);
     word-break: break-word;
 }
-.right-panel > .c-top-region > .c-header > .c-bottom > .c-info > .c-bullet {
+.chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-info > .c-bullet {
     @apply px-1;
 }
-.right-panel > .c-top-region > .c-header > .c-center {
+.chat-side-panel > .c-top-region > .c-header > .c-center {
     @apply absolute z-20;
     @apply flex-x;
     @apply h-16 w-full;
@@ -204,12 +204,12 @@ body.narrow .right-panel.has-expanded-header > .c-panel-content {
         height .25s ease-in,
         padding .25s ease-in;
 }
-.right-panel > .c-top-region > .c-header.expanded-header > .c-center {
+.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center {
     @apply top-0;
     @apply px-0;
     height: var(--expanded-header-height);
 }
-.right-panel > .c-top-region > .c-header.collapsed-header > .c-center {
+.chat-side-panel > .c-top-region > .c-header.collapsed-header > .c-center {
     @apply h-16;
     @apply px-4;
     top: calc(4.5rem + var(--safe-area-top));
@@ -217,10 +217,10 @@ body.narrow .right-panel.has-expanded-header > .c-panel-content {
 /* ChatIcon wraps the Pic in a plain <div class="hideable"> (no CSS of its own). With SizeFull the Pic
    is pic-size-100 (height:100%), so the wrapper's auto height breaks the chain and a generated
    (marble/beam) avatar collapses to a 0-sized box. Give the wrapper the full box so the chain resolves. */
-.right-panel .chat-avatar .hideable {
+.chat-side-panel .chat-avatar .hideable {
     @apply w-full h-full;
 }
-.right-panel > .c-top-region > .c-header > .c-center .chat-avatar {
+.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar {
     @apply relative;
     width: calc(4rem - 1.5rem * var(--rp-collapse));
     height: calc(4rem - 1.5rem * var(--rp-collapse));
@@ -230,7 +230,7 @@ body.narrow .right-panel.has-expanded-header > .c-panel-content {
         height .25s ease-in,
         background-color 0s ease-in;
 }
-.right-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar {
+.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar {
     width: var(--expanded-header-height);
     height: var(--expanded-header-height);
     background-color: var(--background-03);
@@ -239,7 +239,7 @@ body.narrow .right-panel.has-expanded-header > .c-panel-content {
         height .25s ease-in,
         background-color .15s ease-in 0.25s;
 }
-.right-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar {
+.chat-side-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar {
     width: 4rem;
     height: 4rem;
     background-color: var(--transparent);
@@ -248,39 +248,39 @@ body.narrow .right-panel.has-expanded-header > .c-panel-content {
         height .25s ease-in,
         background-color 0.1s ease-in;
 }
-.right-panel > .c-top-region > .c-header > .c-center .chat-avatar .c-wrapper {
+.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .c-wrapper {
     @apply w-full h-full;
 }
-.right-panel > .c-top-region > .c-header > .c-center .chat-avatar > div,
-.right-panel > .c-top-region > .c-header > .c-center .chat-avatar > div image-skeleton {
+.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar > div,
+.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar > div image-skeleton {
     border-radius: 9999px;
     overflow: hidden;
 }
-.right-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar > div,
-.right-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar > div image-skeleton,
-.right-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar > div div {
+.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar > div,
+.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar > div image-skeleton,
+.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar > div div {
     animation: removeBorderRadius .4s ease-in-out forwards;
 }
-.right-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar > div,
-.right-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar > div image-skeleton,
-.right-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar > div div {
+.chat-side-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar > div,
+.chat-side-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar > div image-skeleton,
+.chat-side-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar > div div {
     animation: addBorderRadius .4s ease-in-out forwards;
 }
 
-.right-panel > .c-top-region > .c-header > .c-center .chat-avatar .clickable-avatar:hover {
+.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .clickable-avatar:hover {
     @apply cursor-pointer;
 }
-.right-panel > .c-top-region > .c-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar {
+.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar {
     @apply absolute top-0;
     @apply w-16 h-16 max-w-none max-h-none;
     @apply opacity-0;
     transition: width 0.25s ease-in, height 0.25s ease-in, opacity 0.25s ease-in 0.25s;
 }
-.right-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar {
+.chat-side-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar {
     @apply hidden;
     @apply opacity-0;
 }
-.right-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar {
+.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar {
     width: var(--expanded-header-height);
     height: var(--expanded-header-height);
 }
@@ -306,23 +306,23 @@ body.narrow .right-panel.has-expanded-header > .c-panel-content {
         border-radius: 9999px;
     }
 }
-.right-panel > .c-top-region > .c-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar .c-content {
+.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar .c-content {
     @apply w-full h-full;
 }
-.right-panel > .c-top-region > .c-header > .c-center .chat-avatar .clickable-avatar.small-avatar .c-content {
+.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .clickable-avatar.small-avatar .c-content {
     width: calc(4rem - 1.5rem * var(--rp-collapse));
     height: calc(4rem - 1.5rem * var(--rp-collapse));
     transition: width 0.25s ease-in, height 0.25s ease-in;
 }
-.right-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar .clickable-avatar.small-avatar .c-content {
+.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar .clickable-avatar.small-avatar .c-content {
     width: var(--expanded-header-height);
     height: var(--expanded-header-height);
 }
-.right-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar .clickable-avatar.small-avatar .c-content {
+.chat-side-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar .clickable-avatar.small-avatar .c-content {
     @apply w-16 h-16;
 }
 
-.right-panel > .c-top-region > .c-header > .c-center > .c-buttons {
+.chat-side-panel > .c-top-region > .c-header > .c-center > .c-buttons {
     @apply flex-1 flex-x items-center justify-end gap-x-3;
     @apply max-w-240;
     @apply overflow-hidden;
@@ -333,7 +333,7 @@ body.narrow .right-panel.has-expanded-header > .c-panel-content {
         max-width .25s ease-in,
         transform .25s ease-in;
 }
-.right-panel > .c-top-region > .c-header.expanded-header > .c-center > .c-buttons {
+.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center > .c-buttons {
     @apply max-w-0;
     @apply opacity-0;
     transform: translateX(var(--expanded-header-height));
@@ -342,7 +342,7 @@ body.narrow .right-panel.has-expanded-header > .c-panel-content {
         max-width .15s ease-in .25s,
         transform .25s ease-in;
 }
-.right-panel > .c-top-region > .c-header.collapsed-header > .c-center > .c-buttons {
+.chat-side-panel > .c-top-region > .c-header.collapsed-header > .c-center > .c-buttons {
     @apply max-w-160;
     @apply opacity-100;
     transform: translateX(0);
@@ -351,23 +351,23 @@ body.narrow .right-panel.has-expanded-header > .c-panel-content {
         max-width .15s ease-in .15s,
         transform .15s ease-in .3s;
 }
-.right-panel > .c-top-region > .c-header > .c-center > .c-buttons .btn.btn-round {
+.chat-side-panel > .c-top-region > .c-header > .c-center > .c-buttons .btn.btn-round {
     @apply bg-[var(--round-right-panel)];
     @apply text-primary;
 }
 
-.right-panel > .c-top-region > .c-header > .c-center > .c-title {
+.chat-side-panel > .c-top-region > .c-header > .c-center > .c-title {
     @apply flex-1 flex-x md:flex-none self-center;
     @apply text-02 text-title-1;
 }
-.right-panel > .c-top-region > .c-header > .c-center i.icon-edit {
+.chat-side-panel > .c-top-region > .c-header > .c-center i.icon-edit {
     @apply text-primary;
 }
 
 /* Compact (collapse) interpolation: everything driven by --rp-collapse (0..1).
    Conflict-free with the avatar full-screen feature: collapse moves/scales via
    transform (it uses top/width), so both can coexist. */
-.right-panel > .c-top-region > .c-header > .c-compact-title {
+.chat-side-panel > .c-top-region > .c-header > .c-compact-title {
     @apply absolute z-20;
     @apply text-02 text-headline-1;
     @apply truncate pointer-events-none;
@@ -381,32 +381,32 @@ body.narrow .right-panel.has-expanded-header > .c-panel-content {
 /* While scrolling, dragging or during the frame-driven snap the dependent properties must
    follow the variable instantly — their own transitions would lag and stall the motion.
    Outside these the transitions still drive the expanded/collapsed-header avatar feature. */
-.right-panel.collapsing > .c-top-region,
-.right-panel.collapsing > .c-top-region *,
-.right-panel.collapsing > .c-panel-content,
-.right-panel.collapsing > .c-panel-content *,
-.right-panel.dragging > .c-top-region,
-.right-panel.dragging > .c-top-region *,
-.right-panel.dragging > .c-panel-content,
-.right-panel.dragging > .c-panel-content *,
-.right-panel.snapping > .c-top-region,
-.right-panel.snapping > .c-top-region *,
-.right-panel.snapping > .c-panel-content,
-.right-panel.snapping > .c-panel-content * {
+.chat-side-panel.collapsing > .c-top-region,
+.chat-side-panel.collapsing > .c-top-region *,
+.chat-side-panel.collapsing > .c-panel-content,
+.chat-side-panel.collapsing > .c-panel-content *,
+.chat-side-panel.dragging > .c-top-region,
+.chat-side-panel.dragging > .c-top-region *,
+.chat-side-panel.dragging > .c-panel-content,
+.chat-side-panel.dragging > .c-panel-content *,
+.chat-side-panel.snapping > .c-top-region,
+.chat-side-panel.snapping > .c-top-region *,
+.chat-side-panel.snapping > .c-panel-content,
+.chat-side-panel.snapping > .c-panel-content * {
     transition: none !important;
 }
-.right-panel.collapsed > .c-top-region > .c-header > .c-center > .c-buttons {
+.chat-side-panel.collapsed > .c-top-region > .c-header > .c-center > .c-buttons {
     @apply pointer-events-none;
 }
 
-.right-panel .tab-panel {
+.chat-side-panel .tab-panel {
     @apply h-full;
 }
-.right-panel .tab-panel .tab {
+.chat-side-panel .tab-panel .tab {
     @apply h-full;
     @apply overflow-hidden;
 }
-.tab-panel > .tab > .author-list-tab {
+.tab-panel .tab > .author-list-tab {
     @apply flex-y;
     @apply h-full;
     @apply p-2;
@@ -415,7 +415,7 @@ body.narrow .right-panel.has-expanded-header > .c-panel-content {
 /* Narrow only: the collapse translates & clips the list block, so a short native list needs bottom
    padding to scroll its clipped tail into view (fades out as the header collapses). On wide there is
    no clip, so no extra padding. VirtualList clamps beyond its model's end, so this can't help it. */
-body.narrow .right-panel .author-list-tab {
+body.narrow .chat-side-panel .author-list-tab {
     padding-bottom: calc(0.5rem + var(--rp-collapse-range) * (1 - var(--rp-collapse)));
 }
 .author-list-tab .avatar-badge {
@@ -694,4 +694,16 @@ body.narrow .content-list-links .link-preview:not(.local-link) {
 }
 .content-list-links .c-link-plain .c-normal-title .c-end {
     @apply flex-none;
+}
+
+/* The side panel's swap area sits between .side-nav and .chat-side-panel, so it has to pass the
+   panel the box it used to get from the drawer, and each layer has to stand on its own. */
+.side-panel-swap {
+    @apply w-full h-full min-h-0;
+    /* The panel sits on the 03 surface, not the base one a layer assumes. Set here rather than on
+       .chat-side-panel so the tab swap inside inherits it too. */
+    --content-swap-bg: var(--background-03);
+}
+.side-panel-swap > .c-layer {
+    @apply min-h-0;
 }

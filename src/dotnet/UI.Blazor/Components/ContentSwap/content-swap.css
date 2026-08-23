@@ -1,0 +1,272 @@
+/* Structure - stacking, and what "outgoing" means regardless of the effect */
+
+.content-swap {
+    @apply grid;
+    grid-template-areas: "content-swap";
+}
+.content-swap > .c-layer {
+    @apply min-w-0 min-h-0;
+    grid-area: content-swap;
+}
+.content-swap > .c-layer.outgoing {
+    @apply z-10;
+    /* An outgoing layer has to occlude the one beneath it. Most content is transparent and sits on a
+       surface far up the tree, so without a background of its own the swap is a double exposure of
+       both views rather than a hand-off. Override --content-swap-bg on the host when the content
+       sits on something other than the base surface. */
+    background-color: var(--content-swap-bg, var(--background-01));
+    @apply pointer-events-none;
+    contain: layout paint style;
+}
+
+.content-swap-display {
+    @apply hidden;
+}
+
+/* The hold. data-swap-hold is on the host while the swap waits for the incoming content to say it
+   is there - see ContentSwap.MaxDisplayDelay and content-swap.ts. Pausing the animations rather than
+   withholding them keeps every effect a single declaration: a paused animation sits at time 0,
+   which for all of them is the state the layer already has, and runs from the start once the
+   attribute goes. Nothing here decides when that is - JS drops it on the hand-off, and ContentSwap
+   drops it when MaxDisplayDelay expires.
+   !important, and not a specificity race: every effect below sets the animation shorthand, which
+   resets animation-play-state to running, and each of them out-specifies this rule. */
+.content-swap[data-swap-hold] > .c-layer {
+    animation-play-state: paused !important;
+}
+/* While an effect is running the host contains its layers: a transformed layer is partly outside
+   the region, and clip-path only stops it painting there - its box still counts as scrollable
+   overflow, which an ancestor with overflow:auto turns into a scrollbar. The class is only on the
+   host for the length of the swap, so nothing is clipped at rest. */
+.content-swap:is(.c-swap-none, .c-swap-fade, .c-swap-defocus, .c-swap-reveal, .c-swap-recede,
+    .c-swap-wipe, .c-swap-swipe) {
+    @apply overflow-hidden;
+}
+
+/* A held region shows the old content over the new one, so a click in it would land on something
+   the user cannot see. Dropping it is the lesser surprise, and the window is MaxDisplayDelay at most. */
+.content-swap[data-swap-hold] {
+    @apply pointer-events-none;
+}
+
+/* Effects. Which one applies is ContentSwapEffect, captured on the host when the swap starts; the
+   timing is per call site, set as --content-swap-fade / --content-swap-wipe on the host, so picking
+   an effect stays a one-word change rather than a new class per site. No effect carries a delay: the
+   hold is the pause above, and a delay on top of it would postpone the effect past the hand-off. */
+
+/* An instant cut. Still an animation, and not simply nothing, because it also has to be a cut a
+   hold can pause - which is the whole point of None: hold the old content, then hand over. */
+.content-swap.c-swap-none > .c-layer.outgoing {
+    animation: content-swap-fade-out 1ms linear forwards;
+}
+
+.content-swap.c-swap-fade > .c-layer.outgoing {
+    will-change: opacity;
+    animation: content-swap-fade-out
+        var(--content-swap-fade, 0.2s) ease-out forwards;
+}
+@keyframes content-swap-fade-out {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+/* Two ways to add a blur to the plain fade. Both are a fixed radius applied the instant the layer
+   starts fading, never an animated one: a radius in the keyframes drops the whole animation off the
+   compositor, while a static filter leaves the opacity animation composited.
+   - Defocus blurs the outgoing layer, so it stops competing for the eye as readable text.
+   - Reveal blurs the incoming layer through the outgoing one. Nothing shows while the outgoing
+     layer is still opaque; as it fades, the incoming content is revealed blurred and sharpens as
+     the blur fades out with it. Costlier - backdrop-filter re-samples what is behind it - so
+     measure on Android WebView before shipping. */
+
+.content-swap.c-swap-defocus > .c-layer.outgoing {
+    will-change: opacity;
+    filter: blur(var(--content-swap-blur, 3px));
+    /* A blur spreads well past the box it came from, which would smear the content of the layer
+       over the header, footer and side panels. clip-path applies after filter, so it cuts that off.
+       The feathered edge left behind is invisible as long as --content-swap-bg matches the
+       surface underneath, which is the point of setting it. */
+    clip-path: inset(0);
+    animation: content-swap-fade-out
+        var(--content-swap-fade, 0.2s) ease-out forwards;
+}
+.content-swap.c-swap-reveal > .c-layer.outgoing {
+    will-change: opacity;
+    backdrop-filter: blur(var(--content-swap-blur, 8px));
+    animation: content-swap-fade-out
+        var(--content-swap-fade, 0.2s) ease-out forwards;
+}
+
+/* Defocus + recede. Unlike c-swap-defocus this animates the radius, which puts the keyframe on the
+   paint thread and takes opacity and transform down with it - a deliberate trade for how much
+   better a blur that grows reads than one that snaps. c-swap-defocus is the composited fallback if
+   this costs too much on a device.
+   The scale goes *down*: clip-path is applied in the coordinate space of the layer itself, before
+   the transform maps it out, so scaling up would push the blur back past the host and smear the
+   header and footer again. */
+
+.content-swap.c-swap-recede > .c-layer.outgoing {
+    will-change: opacity, transform;
+    clip-path: inset(0);
+    animation: content-swap-recede-out
+        var(--content-swap-fade, 0.2s) ease-out forwards;
+}
+.content-swap.c-swap-recede > .c-layer.incoming {
+    will-change: transform;
+    animation: content-swap-advance-in
+        var(--content-swap-fade, 0.2s) ease-out both;
+}
+@keyframes content-swap-recede-out {
+    from {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+    }
+    to {
+        opacity: 0;
+        transform: scale(var(--content-swap-scale, 0.97));
+        filter: blur(var(--content-swap-blur, 3px));
+    }
+}
+@keyframes content-swap-advance-in {
+    from {
+        transform: scale(var(--content-swap-in-scale, 1.02));
+    }
+    to {
+        transform: none;
+    }
+}
+
+/* Wipe-dissolve: a soft transparency front sweeps across the outgoing layer, so at any instant each
+   band is further gone than the one behind it. The mask is 3x the layer along the sweep axis - a
+   third for "still here", a third of ramp, a third for "gone" - and the sweep is the mask sliding
+   across.
+   Direction is four variables and nothing else: the gradient angle, which axis the mask is 3x on,
+   and where the slide starts and ends. The stops always run transparent-to-opaque along the
+   gradient, so the front always travels the way the angle points.
+   The incoming layer does not move at all: a wipe uncovers what is already in place.
+   A mask sweep is not composited, so this still costs more than the fades - but only one pass, and
+   nothing here re-samples what is behind it. */
+
+.content-swap.c-swap-wipe-right {
+    --c-wipe-angle: 90deg;
+    --c-wipe-size: 300% 100%;
+    --c-wipe-from: 100% 0;
+    --c-wipe-to: 0% 0;
+}
+.content-swap.c-swap-wipe-left {
+    --c-wipe-angle: 270deg;
+    --c-wipe-size: 300% 100%;
+    --c-wipe-from: 0% 0;
+    --c-wipe-to: 100% 0;
+}
+.content-swap.c-swap-wipe-down {
+    --c-wipe-angle: 180deg;
+    --c-wipe-size: 100% 300%;
+    --c-wipe-from: 0 100%;
+    --c-wipe-to: 0 0%;
+}
+.content-swap.c-swap-wipe-up {
+    --c-wipe-angle: 0deg;
+    --c-wipe-size: 100% 300%;
+    --c-wipe-from: 0 0%;
+    --c-wipe-to: 0 100%;
+}
+
+.content-swap.c-swap-wipe > .c-layer.outgoing {
+    clip-path: inset(0);
+    mask-image: linear-gradient(var(--c-wipe-angle),
+        transparent 0 30%, rgba(0, 0, 0, 0.35) 42%, rgba(0, 0, 0, 0.8) 52%, #000 62%, #000 100%);
+    mask-size: var(--c-wipe-size);
+    mask-repeat: no-repeat;
+    mask-position: var(--c-wipe-from);
+    will-change: mask-position;
+    animation: content-swap-wipe-out
+        var(--content-swap-wipe, 0.2s) linear both;
+}
+@keyframes content-swap-wipe-out {
+    from {
+        mask-position: var(--c-wipe-from);
+    }
+    to {
+        mask-position: var(--c-wipe-to);
+    }
+}
+
+/* Swipe: both layers travel one full box the same way, so the incoming content pushes the outgoing
+   one out rather than dissolving through it. They move in lockstep and tile the region exactly - at
+   any instant the two visible parts add up to one box, so there is no gap and no double exposure.
+   Containing the host is what keeps a layer at translateX(100%) from painting over whatever sits
+   next to the region, and from adding its box to some ancestor's scrollable overflow - see the
+   overflow rule above.
+   Both layers get the background: unlike every other effect, the incoming one arrives over the
+   region's own surface rather than under an opaque layer, and that surface is not necessarily
+   opaque itself. */
+
+.content-swap.c-swap-swipe-right {
+    --c-swipe-out: translateX(100%);
+    --c-swipe-in: translateX(-100%);
+}
+.content-swap.c-swap-swipe-left {
+    --c-swipe-out: translateX(-100%);
+    --c-swipe-in: translateX(100%);
+}
+.content-swap.c-swap-swipe-down {
+    --c-swipe-out: translateY(100%);
+    --c-swipe-in: translateY(-100%);
+}
+.content-swap.c-swap-swipe-up {
+    --c-swipe-out: translateY(-100%);
+    --c-swipe-in: translateY(100%);
+}
+
+.content-swap.c-swap-swipe > .c-layer {
+    background-color: var(--content-swap-bg, var(--background-01));
+    will-change: transform;
+}
+.content-swap.c-swap-swipe > .c-layer.outgoing {
+    animation: content-swap-swipe-out
+        var(--content-swap-swipe, 0.2s) ease-in-out forwards;
+}
+.content-swap.c-swap-swipe > .c-layer.incoming {
+    animation: content-swap-swipe-in
+        var(--content-swap-swipe, 0.2s) ease-in-out both;
+}
+/* Every other effect sits at its own resting state at time 0, so pausing them for the hold is free.
+   This one does not: paused, the incoming layer parks a full box outside the region - which is where
+   it would then build, one box away from anything inside it that measures against the viewport. Held,
+   it stays put; the jump to the keyframe start happens on the frame the outgoing layer still covers
+   the region completely, so it is not a frame anyone sees. !important because an author declaration
+   is the only thing that outranks a running animation. */
+.content-swap[data-swap-hold].c-swap-swipe > .c-layer.incoming {
+    transform: none !important;
+}
+@keyframes content-swap-swipe-out {
+    from {
+        transform: none;
+    }
+    to {
+        transform: var(--c-swipe-out);
+    }
+}
+@keyframes content-swap-swipe-in {
+    from {
+        transform: var(--c-swipe-in);
+    }
+    to {
+        transform: none;
+    }
+}
+
+/* Equal specificity with the effect rules above, and later in the file, so this wins without
+   !important - but only over what this file declares. */
+@media (prefers-reduced-motion: reduce) {
+    .content-swap:is(.c-swap-none, .c-swap-fade, .c-swap-defocus, .c-swap-reveal, .c-swap-recede,
+        .c-swap-wipe, .c-swap-swipe) > .c-layer:is(.outgoing, .incoming) {
+        animation-duration: 1ms;
+    }
+}

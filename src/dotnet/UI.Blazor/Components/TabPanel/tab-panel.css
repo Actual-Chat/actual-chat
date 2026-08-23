@@ -112,3 +112,14 @@ body.hoverable .tab-panel-tabs .tab-btn.on:hover .btn-content {
     @apply overflow-hidden;
 }
 
+
+/* The ContentSwap host a SwipesContent panel puts between .tab-panel and .tab. It has to occupy the
+   box the tab used to get as a flex item, and each layer has to stand on its own during a swap. */
+.tab-panel > .c-tab-content {
+    @apply flex-1;
+    @apply min-h-0;
+}
+.tab-panel > .c-tab-content > .c-layer {
+    @apply flex-1 flex-y;
+    @apply min-h-0;
+}

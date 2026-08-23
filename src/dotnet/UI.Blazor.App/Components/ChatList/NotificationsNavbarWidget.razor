@@ -2,65 +2,80 @@
 @inherits ComputedStateComponent<AppUIHub, NotificationsNavbarWidget.Model>
 @{
     var m = State.Value;
-    RenderFragment RenderTab(double order, ChatListFilter filter, string title) {
-        var contentVersion = (filter.Id.Value, title);
-        return @<Tab
-                    @key="@filter.Id.Value"
-                    Id="@filter.Id.Value"
-                    Title="@title"
-                    ContentVersion="@contentVersion"
-                    Order="@order"
-                    Class="chats-tab">
-                   <TitleContent>
-                       <span>@title</span>
-                       <NotificationsTabUnreadCount ChatListFilter="@filter"/>
-                   </TitleContent>
-               </Tab>;
-    }
+    TabDef NewTab(ChatListFilter filter, string title)
+        => new(filter.Id.Value, title) {
+            Class = "chats-tab",
+            TitleContent = @<text>
+                               <span>@title</span>
+                               <NotificationsTabUnreadCount ChatListFilter="@filter"/>
+                           </text>,
+        };
+
+    var tabs = new List<TabDef>();
+    if (m.HasAll)
+        tabs.Add(NewTab(ChatListFilter.Unread, "All"));
+    if (m.HasPeople)
+        tabs.Add(NewTab(ChatListFilter.UnreadPeople, "People"));
+    if (m.HasMentions)
+        tabs.Add(NewTab(ChatListFilter.UnreadMentions, "Mentions"));
 }
 
 <div class="c-container">
     <div class="c-all-chats">
-        @if (!m.HasAll && !m.HasDMs && !m.HasMentions) {
+        @if (!m.HasAll && !m.HasPeople && !m.HasMentions) {
             <div class="c-empty">
                 <i class="icon-checkmark-circle"></i>
                 <span>@L.Notifications_AllCaughtUp</span>
             </div>
+            <ContentSwapDisplay/>
         } else {
             <TabPanel
+                Tabs="@tabs"
                 BottomHill="true"
                 TabsClass="left-panel-tabs"
-                SelectedTabIdChanged="@OnSelectedTabIdChanged">
+                SelectedTabIdChanged="@OnSelectedTabIdChanged"/>
+            <ContentSwap
+                LayerKey="@_settings.FilterId.Value"
+                Class="c-list-swap"
+                Effect="@_swapDirection.Swipe(GetTabIndex(_settings.FilterId))"
+                MustPropagateDisplay="true">
                 <ChildContent>
-                    @if (m.HasAll) {
-                        @RenderTab(0, ChatListFilter.Unread, "All")
-                    }
-                    @if (m.HasDMs) {
-                        @RenderTab(1, ChatListFilter.UnreadDMs, "DMs")
-                    }
-                    @if (m.HasMentions) {
-                        @RenderTab(2, ChatListFilter.UnreadMentions, "Mentions")
-                    }
+                    <ChatList
+                        @key="@ChatList.GetKey(null, false, _settings)"
+                        PlaceId="@null"
+                        UsePlaceChatListSettings="@false"
+                        Settings="@_settings"/>
                 </ChildContent>
-            </TabPanel>
-            <ChatList @key="@ChatList.GetKey(null, false, _settings)" PlaceId="@null" UsePlaceChatListSettings="@false" Settings="@_settings"/>
+            </ContentSwap>
         }
     </div>
 </div>
 
 @code {
+    private static readonly ChatListFilter[] Filters =
+        [ChatListFilter.Unread, ChatListFilter.UnreadPeople, ChatListFilter.UnreadMentions];
+
+    private readonly ContentSwapDirection _swapDirection = new();
     private ChatListSettings _settings = new() { FilterId = ChatListFilter.Unread.Id };
+    private bool _isPanelOpen;
 
     private ChatListUI ChatListUI => Hub.ChatListUI;
     private NotificationsPanelUI NotificationsPanelUI => Hub.NotificationsPanelUI;
 
+    [CascadingParameter] private ContentSwapContext? Swap { get; set; }
+
     protected override void OnInitialized() {
-        NotificationsPanelUI.Open();
+        if (Swap is { } swap)
+            swap.StateChanged += OnStateChanged;
+        if (Swap is not { IsVisible: false })
+            OpenPanel();
         base.OnInitialized();
     }
 
     public override ValueTask DisposeAsync() {
-        NotificationsPanelUI.Close();
+        if (Swap is { } swap)
+            swap.StateChanged -= OnStateChanged;
+        ClosePanel();
         return base.DisposeAsync();
     }
 
@@ -74,16 +89,19 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasAll = await HasTab(ChatListFilter.Unread, cancellationToken).ConfigureAwait(false);
-        var hasDMs = await HasTab(ChatListFilter.UnreadDMs, cancellationToken).ConfigureAwait(false);
+        var hasPeople = await HasTab(ChatListFilter.UnreadPeople, cancellationToken).ConfigureAwait(false);
         var hasMentions = await HasTab(ChatListFilter.UnreadMentions, cancellationToken).ConfigureAwait(false);
-        return new(hasAll, hasDMs, hasMentions);
+        return new(hasAll, hasPeople, hasMentions);
     }
+
+    // Private methods
 
     private async Task<bool> HasTab(ChatListFilter filter, CancellationToken cancellationToken) {
         // A tab stays visible while it still retains recently-read chats, not only while there are unread ones.
         var retainedIds = await NotificationsPanelUI.GetRetainedSet(filter.Id, cancellationToken).ConfigureAwait(false);
         if (!retainedIds.IsEmpty)
             return true;
+
         var count = await ChatListUI.GetUnreadChatCount(null, filter, cancellationToken).ConfigureAwait(false);
         return count > 0;
     }
@@ -91,11 +109,45 @@
     private void OnSelectedTabIdChanged(string? tabId) {
         if (tabId.IsNullOrEmpty())
             return;
+
         _settings = new ChatListSettings { FilterId = tabId };
         StateHasChanged();
     }
 
+    private static int GetTabIndex(Symbol filterId) {
+        for (var i = 0; i < Filters.Length; i++)
+            if (Filters[i].Id == filterId)
+                return i;
+
+        return 0;
+    }
+
+    private void OnStateChanged() {
+        if (Swap!.IsVisible)
+            OpenPanel();
+        else
+            ClosePanel();
+    }
+
+    private void OpenPanel() {
+        if (_isPanelOpen)
+            return;
+
+        _isPanelOpen = true;
+        NotificationsPanelUI.Open();
+    }
+
+    private void ClosePanel() {
+        // The panel is logically closed the moment this widget stops being the one on screen, but it
+        // then outlives the swap - and its late Close would otherwise clear the next widget's Open
+        if (!_isPanelOpen)
+            return;
+
+        _isPanelOpen = false;
+        NotificationsPanelUI.Close();
+    }
+
     // Nested types
 
-    public sealed record Model(bool HasAll = false, bool HasDMs = false, bool HasMentions = false);
+    public sealed record Model(bool HasAll = false, bool HasPeople = false, bool HasMentions = false);
 }

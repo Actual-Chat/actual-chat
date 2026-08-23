@@ -17,6 +17,11 @@
 }
 
 <div class="author-list-tab">
+    @* Not before the authors are in: the initial model is empty, and displaying the panel on it
+       would show an empty list that then fills. *@
+    @if (!State.IsInitial(out _)) {
+        <ContentSwapDisplay/>
+    }
     <div class="c-content">
         @if (hideMembers) {
             <div class="note-hidden-members">

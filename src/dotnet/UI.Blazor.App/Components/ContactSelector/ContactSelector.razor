@@ -25,6 +25,11 @@
     public IState<IReadOnlyDictionary<ChatId, ContactInfo>> AllContacts => _allContacts;
     public ComputedState<IReadOnlyList<ContactInfo>> Contacts => State;
     public IState<ImmutableHashSet<ChatId>> SelectedChatIds => _selectedChatIds;
+    public PlaceId? SelectedPlaceId => _placeId;
+    public int SelectedPlaceIndex { get; private set; }
+    // The place Contacts was last computed for - which lags SelectedPlaceId by one recompute, and is
+    // how a consumer tells "the list is for the place I picked" from "the list is still the old one"
+    public PlaceId? ContactsPlaceId { get; private set; }
 
     public void Toggle(ChatId chatId)
         => _selectedChatIds.Set(
@@ -42,8 +47,9 @@
     public void Clear()
         => _selectedChatIds.Set(static x => x.Value.Clear());
 
-    public void SelectPlace(PlaceId? placeId) {
+    public void SelectPlace(PlaceId? placeId, int index) {
         _placeId = placeId;
+        SelectedPlaceIndex = index;
         _ = State.Recompute();
     }
 
@@ -77,8 +83,9 @@
         var searchQuery = SearchQuery;
         var excludedChats = ExcludeChatIds;
         var filter = Filter;
+        var placeId = _placeId;
 
-        var allContacts = await LocalSearchUI.ListContactInfos(_placeId, cancellationToken).ConfigureAwait(false);
+        var allContacts = await LocalSearchUI.ListContactInfos(placeId, cancellationToken).ConfigureAwait(false);
         _allContacts.Value = allContacts;
         IEnumerable<ContactInfo> contacts = allContacts.Values;
         if (excludedChats != null && excludedChats.Count != 0)
@@ -91,6 +98,7 @@
         if (!searchQuery.IsEmpty)
             contacts = contacts.FilterAndOrderBySearchQuery(searchQuery);
 
+        ContactsPlaceId = placeId;
         return contacts.ToList();
     }
 }
