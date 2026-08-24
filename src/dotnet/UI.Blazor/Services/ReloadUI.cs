@@ -15,11 +15,11 @@ public class ReloadUI(IServiceProvider services)
             Log.LogInformation("Reloading...");
             try {
                 var hostInfo = Services.HostInfo();
-                var nav = Services.GetRequiredService<NavigationManager>();
-                await Clear(clearLocalSettings).ConfigureAwait(true); // Nav requires UI context
+                var history = Services.GetRequiredService<History>();
+                await Clear(clearLocalSettings).ConfigureAwait(true);
                 if (hostInfo.HostKind.IsApp())
                     AppNavigationQueue.Reset();
-                nav.NavigateTo(Links.Home, true);
+                await history.ForceReload(nameof(Reload), history.Uri).ConfigureAwait(true);
             }
             catch (Exception e) {
                 Log.LogError(e, "Reload failed");

@@ -23,7 +23,9 @@
 
   "Settings_Title": "Настройки",
   "Settings_Language": "Език",
-  "Settings_UILanguage": "Език на приложението",
+  "Settings_UILanguage": "Език на интерфейса",
+  "Settings_UILanguageApplyTitle": "Да се приложи ли промяната на езика сега?",
+  "Settings_UILanguageReloadText": "Презаредете интерфейса, за да използвате избрания език. В противен случай промяната ще влезе в сила при следващото презареждане на интерфейса.",
   "Settings_Language_Auto": "Автоматично",
   "Settings_YourAccount": "Вашият профил",
   "Settings_UserInterface": "Интерфейс",

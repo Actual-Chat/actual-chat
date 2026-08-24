@@ -23,7 +23,9 @@
 
   "Settings_Title": "Cài đặt",
   "Settings_Language": "Ngôn ngữ",
-  "Settings_UILanguage": "Ngôn ngữ ứng dụng",
+  "Settings_UILanguage": "Ngôn ngữ giao diện",
+  "Settings_UILanguageApplyTitle": "Áp dụng thay đổi ngôn ngữ ngay bây giờ?",
+  "Settings_UILanguageReloadText": "Tải lại giao diện để sử dụng ngôn ngữ đã chọn. Nếu không, thay đổi sẽ có hiệu lực vào lần tải lại giao diện tiếp theo.",
   "Settings_Language_Auto": "Tự động",
   "Settings_YourAccount": "Tài khoản của bạn",
   "Settings_UserInterface": "Giao diện người dùng",

@@ -23,7 +23,9 @@
 
   "Settings_Title": "Nastavení",
   "Settings_Language": "Jazyk",
-  "Settings_UILanguage": "Jazyk aplikace",
+  "Settings_UILanguage": "Jazyk rozhraní",
+  "Settings_UILanguageApplyTitle": "Použít změnu jazyka nyní?",
+  "Settings_UILanguageReloadText": "Načtěte rozhraní znovu, abyste použili vybraný jazyk. Jinak se změna projeví při příštím načtení rozhraní.",
   "Settings_Language_Auto": "Automaticky",
   "Settings_YourAccount": "Váš účet",
   "Settings_UserInterface": "Rozhraní",

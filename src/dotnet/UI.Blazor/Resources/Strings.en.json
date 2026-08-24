@@ -23,7 +23,9 @@
 
   "Settings_Title": "Settings",
   "Settings_Language": "Language",
-  "Settings_UILanguage": "App language",
+  "Settings_UILanguage": "UI language",
+  "Settings_UILanguageApplyTitle": "Apply language change now?",
+  "Settings_UILanguageReloadText": "Reload the UI to use the selected language. Otherwise, the change will take effect the next time the UI reloads.",
   "Settings_Language_Auto": "Automatic",
   "Settings_YourAccount": "Your Account",
   "Settings_UserInterface": "User Interface",

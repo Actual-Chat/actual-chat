@@ -23,7 +23,9 @@
 
   "Settings_Title": "Pengaturan",
   "Settings_Language": "Bahasa",
-  "Settings_UILanguage": "Bahasa aplikasi",
+  "Settings_UILanguage": "Bahasa antarmuka",
+  "Settings_UILanguageApplyTitle": "Terapkan perubahan bahasa sekarang?",
+  "Settings_UILanguageReloadText": "Muat ulang antarmuka untuk menggunakan bahasa yang dipilih. Jika tidak, perubahan akan diterapkan saat antarmuka dimuat ulang berikutnya.",
   "Settings_Language_Auto": "Otomatis",
   "Settings_YourAccount": "Akun Anda",
   "Settings_UserInterface": "Antarmuka",

@@ -23,7 +23,9 @@
 
   "Settings_Title": "Налаштування",
   "Settings_Language": "Мова",
-  "Settings_UILanguage": "Мова застосунку",
+  "Settings_UILanguage": "Мова інтерфейсу",
+  "Settings_UILanguageApplyTitle": "Застосувати зміну мови зараз?",
+  "Settings_UILanguageReloadText": "Перезавантажте інтерфейс, щоб використовувати вибрану мову. Інакше зміна застосовується під час наступного перезавантаження інтерфейсу.",
   "Settings_Language_Auto": "Автоматично",
   "Settings_YourAccount": "Ваш обліковий запис",
   "Settings_UserInterface": "Інтерфейс користувача",

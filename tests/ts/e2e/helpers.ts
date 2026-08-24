@@ -396,8 +396,13 @@ export async function setUILanguage(page: Page, code: string): Promise<string> {
     if (previous === code)
         return previous;
 
-    // OnLanguageChanged persists the value and updates the device cache; applying it is explicit.
+    // OnLanguageChanged persists the device cache before offering an immediate reload.
     await select.selectOption(code);
+    await page.waitForFunction(
+        expected => (localStorage.getItem('ui.language') ?? '') === expected,
+        code,
+        { timeout: 10_000 },
+    );
     await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForAppReady(page);
     return previous;

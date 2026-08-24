@@ -74,6 +74,7 @@ CROATIAN = [
     ("fajlova", "datoteka"), ("fajlovi", "datoteke"), ("Fajlovi", "Datoteke"),
     ("fajla", "datoteke"), ("fajl", "datoteka"), ("Fajl", "Datoteka"),
     ("uslov", "uvjet"), ("Uslov", "Uvjet"),
+    ("interfejsa", "sučelja"), ("Interfejsa", "Sučelja"),
     ("interfejs", "sučelje"), ("Interfejs", "Sučelje"),
     ("dugme", "gumb"), ("Dugme", "Gumb"), ("dugmet", "gumb"),
     ("tastatur", "tipkovnic"), ("Tastatur", "Tipkovnic"),

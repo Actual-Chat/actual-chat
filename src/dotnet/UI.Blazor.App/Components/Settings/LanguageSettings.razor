@@ -40,9 +40,31 @@
         return settings.UILanguage;
     }
 
-    private Task OnLanguageChanged(string code)
-        // LanguageUI's sync loop mirrors the choice into the device cache.
-        => LanguageUI.UpdateSettings(x => x with { UILanguage = Language.TryParse(code, allowNull: true) });
+    private async Task OnLanguageChanged(string code) {
+        var language = Language.TryParse(code, allowNull: true);
+        await LanguageUI.UpdateUILanguage(language).ConfigureAwait(true);
+
+        var effectiveLanguage = Languages.ResolveUILanguage(
+            Hub.BrowserInfo.UILanguageOverride,
+            language,
+            Hub.BrowserInfo.ClientLanguages);
+        if (effectiveLanguage == Hub.LocalizationUI.Language)
+            return;
+
+        var mustReload = false;
+        var model = new ConfirmModal.Model(
+            IsDestructive: false,
+            Text: L.Settings_UILanguageReloadText,
+            Confirm: () => mustReload = true) {
+            Title = L.Settings_UILanguageApplyTitle,
+            ConfirmButtonText = L.Navbar_Reload,
+            CancelButtonText = L.Common_Later,
+        };
+        var modalRef = await ModalUI.Show(model).ConfigureAwait(true);
+        await modalRef.WhenClosed.ConfigureAwait(true);
+        if (mustReload)
+            Hub.ReloadUI.Reload();
+    }
 
     public sealed class FormModel {
         private string FormId { get; }

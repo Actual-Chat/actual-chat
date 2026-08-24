@@ -90,6 +90,12 @@ public class LanguageUI : UIWorkerBase<AppUIHub>, IComputeService, IDisposable
         Settings.Set(updater.Invoke(Settings.Value));
     }
 
+    public async Task UpdateUILanguage(Language? language)
+    {
+        await UpdateSettings(x => x with { UILanguage = language }).ConfigureAwait(false);
+        await SetStoredLanguage(language).ConfigureAwait(false);
+    }
+
     // Protected/internal methods
 
     protected override Task OnRun(CancellationToken cancellationToken)

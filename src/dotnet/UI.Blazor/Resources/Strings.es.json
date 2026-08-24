@@ -23,7 +23,9 @@
 
   "Settings_Title": "Ajustes",
   "Settings_Language": "Idioma",
-  "Settings_UILanguage": "Idioma de la aplicación",
+  "Settings_UILanguage": "Idioma de la interfaz",
+  "Settings_UILanguageApplyTitle": "¿Aplicar ahora el cambio de idioma?",
+  "Settings_UILanguageReloadText": "Recarga la interfaz para usar el idioma seleccionado. De lo contrario, el cambio se aplicará la próxima vez que se recargue la interfaz.",
   "Settings_Language_Auto": "Automático",
   "Settings_YourAccount": "Tu cuenta",
   "Settings_UserInterface": "Interfaz de usuario",
