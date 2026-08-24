@@ -1,0 +1,138 @@
+// Reverse-indexed catalog: MessageIndex maps a runtime-produced English message back to
+// its key here, so the English value below MUST byte-match what the app actually produces.
+// Placeholders are named: {field} is replaced by the form label, the rest pass through.
+// Two families live here: Validation_* messages produced by BCL attributes, and Error_*
+// messages thrown by the server and shown in an error toast. Our own validation attributes
+// report a Validation_* key directly instead, so they live in Strings.*.json.
+// An Error_* value that no longer matches the code silently falls back to AI translation -
+// ServerErrorLocalizationTest is what keeps the two in sync.
+// TODO(FC): the Validation_* entries here are temporary - see MessageIndex. The .NET 11 pipeline
+// resolves IStringLocalizerFactory per call as of preview.7, so once the SDK is bumped off
+// preview.6 the BCL attributes localize forwards too and only Error_ strings remain here.
+{
+  "Validation_Required_Format": "Pole {field} je povinné.",
+  "Validation_MinLength_Format": "Pole {field} musí být text nebo pole s minimální délkou „{min}“.",
+  "Validation_EmailAddress_Format": "Pole {field} neobsahuje platnou e-mailovou adresu.",
+  "Validation_DeleteConfirmationRequired": "Potvrzení smazání je povinné",
+  "Validation_DeleteConfirmationInvalid": "Pro potvrzení napište DELETE",
+
+  // Generic errors, composed by StandardError / the exception types themselves
+  "Error_NotEnoughPermissions": "Tuto akci nemůžete provést: nedostatečná oprávnění.",
+  "Error_NotEnoughPermissions_Format": "Tuto akci nemůžete provést: nedostatečná oprávnění. Požadované oprávnění: {permission}",
+  "Error_TooManyRequests": "Příliš mnoho požadavků.",
+  "Error_TooManyRequests_Format": "Příliš mnoho požadavků. Zkuste to znovu za {seconds} s.",
+  "Error_VersionMismatch": "Neshoda verzí.",
+  "Error_ChatNotFound": "Chat nebyl nalezen.",
+  "Error_ChatEntryNotFound": "Záznam chatu nebyl nalezen.",
+  "Error_AccountNotFound": "Účet nebyl nalezen.",
+  "Error_AuthorNotFound": "Autor nebyl nalezen.",
+  "Error_AvatarNotFound": "Avatar nebyl nalezen.",
+  "Error_ContactNotFound": "Kontakt nebyl nalezen.",
+  "Error_MediaNotFound": "Médium nebylo nalezeno.",
+  "Error_UploadNotFound": "Nahrávaný soubor nebyl nalezen.",
+
+  // Sign-in and account
+  "Error_RegistrationExpired": "Tato žádost o registraci vypršela. Zkuste se přihlásit znovu.",
+  "Error_SessionExpired": "Vaše relace vypršela nebo byla deaktivována. Restartujte aplikaci.",
+  "Error_AlreadySignedIn": "Už jste přihlášeni.",
+  "Error_PhoneTaken": "Toto telefonní číslo už používá jiný účet.",
+  "Error_EmailTaken": "Tento e-mail už používá jiný účet.",
+  "Error_SmsNotDelivered": "Zprávu se nepodařilo doručit na zadané telefonní číslo.",
+  "Error_CannotDeactivateCurrentSession": "Aktuální relaci nelze deaktivovat.",
+  "Error_PhoneFormatInvalid": "Nesprávný formát telefonního čísla.",
+  "Error_CannotChangeOwnStatus": "Vlastní stav změnit nemůžete.",
+  "Error_ApiKeyExpirationRange_Format": "Platnost klíče API musí být mezi 1 a {days} dny.",
+
+  // Chat members and roles
+  "Error_OnlyOwnerCannotLeave": "Tento chat nemůžete opustit, protože jste jeho jediný vlastník. Nejprve přidejte dalšího vlastníka.",
+  "Error_CannotRemoveSelf": "Sami sebe z členů chatu odebrat nemůžete.",
+  "Error_CannotRemoveChatOwner": "Vlastníka tohoto chatu z členů odebrat nemůžete.",
+  "Error_CannotRemoveSearchBot": "Vyhledávacího AI bota z členů chatu odebrat nemůžete.",
+  "Error_OwnerCannotBeDemoted": "Vlastníkům chatu nelze odebrat roli.",
+  "Error_AuthorAlreadyLeft": "Vybraný autor už chat opustil.",
+  "Error_AutomaticRoleMembership": "Tato systémová role používá automatická pravidla členství.",
+  "Error_ManageMembershipInPlace": "Členství v otevřeném chatu Místa spravujte v nastavení Místa.",
+  "Error_AnonymousAvatarRequired": "Pro anonymní připojení je nutné použít anonymní avatar.",
+  "Error_GuestJoinNotAllowed": "Tento chat neumožňuje připojení s účtem hosta.",
+  "Error_AnonymousJoinNotAllowed": "Tento chat neumožňuje anonymní připojení.",
+  "Error_OwnersRoleCannotBeEmpty": "V roli vlastníků musí být alespoň jeden uživatel.",
+  "Error_OnlyOwnersAllowed": "Tuto akci mohou provést jen členové role vlastníků tohoto chatu.",
+
+  // Messages
+  "Error_CannotSendMessages": "V tomto chatu nemůžete posílat zprávy.",
+  "Error_EmptyMessage": "Bohužel nelze odesílat prázdné zprávy.",
+  "Error_CanEditOwnMessagesOnly": "Upravovat můžete jen vlastní zprávy.",
+  "Error_OnlyTextCanBeEdited": "Upravovat lze jen textové zprávy.",
+  "Error_StreamingCannotBeEdited": "Streamované zprávy nelze upravovat.",
+  "Error_ForwardedCannotBeEdited": "Přeposlané zprávy nelze upravovat.",
+  "Error_MessageNoLongerExists": "Tato zpráva už neexistuje.",
+  "Error_CannotRemoveMessage": "Nemáte oprávnění smazat tuto zprávu.",
+  "Error_CannotRemoveOwnerMessage": "Nemáte oprávnění smazat zprávu vlastníka.",
+  "Error_CannotRestoreMessage": "Nemáte oprávnění obnovit tuto zprávu.",
+  "Error_CannotRestoreOwnerMessage": "Nemáte oprávnění obnovit zprávu vlastníka.",
+  "Error_RootChatCannotHoldMessages": "Kořenový chat Místa nemůže obsahovat zprávy — pište do některého z chatů daného Místa.",
+  "Error_CanAttachOwnLocationsOnly": "Připojit můžete jen vlastní polohy sdílené v tomto chatu.",
+  "Error_NonContactMessageLimit_Format": "Můžete poslat až {limit} zpráv, dokud si vás tento uživatel nepřidá do kontaktů nebo neodpoví.",
+  "Error_OnlyOwnersOrModeratorsCanPin": "Tuto akci nemůžete provést: nedostatečná oprávnění. Požadované oprávnění: připínat zprávy mohou jen vlastníci a moderátoři chatu.",
+  "Error_PinLimit_Format": "Připnout můžete až {limit} zpráv.",
+
+  // Chats and places
+  "Error_ChatTitleEmpty": "Název chatu nesmí být prázdný.",
+  "Error_ThreadTitleEmpty": "Název vlákna nesmí být prázdný.",
+  "Error_PlaceTitleEmpty": "Název Místa nesmí být prázdný.",
+  "Error_PlaceUnavailable": "Požadované Místo není dostupné.",
+  "Error_OnlyPlaceMembersCanAddChats": "Chaty mohou přidávat jen členové Místa.",
+  "Error_CannotMakeChatPublic": "Tuto akci nemůžete provést: nedostatečná oprávnění. Požadované oprávnění: zveřejnit chat",
+  "Error_CustomLinkNotAllowed": "Vlastní odkazy nejsou u chatů Místa povoleny.",
+  "Error_CustomLinkTaken_Format": "Vlastní odkaz „{link}“ už používá jiný chat ve stejném Místě.",
+  "Error_WelcomeChatCannotBePrivate": "Typ chatu „Welcome“ nelze změnit na uzavřený.",
+  "Error_WelcomeChatCannotBeRemoved": "Chat „Welcome“ nelze smazat.",
+  "Error_OnlyGroupOrPlaceChatCanBeCopied": "Do Místa lze kopírovat jen skupinové chaty nebo chaty Místa.",
+  "Error_CannotCopyToSamePlace": "Chat Místa nelze zkopírovat do stejného Místa.",
+  "Error_MigrationRequiresChatOwner": "Migraci může provést jen vlastník tohoto chatu.",
+  "Error_MigrationRequiresPlaceOwner": "Zkopírovat chat do Místa může jen vlastník Místa.",
+  "Error_OperationRequiresChatOwner": "Tuto operaci může provést jen vlastník tohoto chatu.",
+  "Error_OperationRequiresPlaceOwner": "Tuto operaci může provést jen vlastník Místa, kam chat patří.",
+
+  // Threads and contacts
+  "Error_ThreadRequiresContact": "Vlákna lze založit až poté, co si vás tento uživatel přidá do kontaktů nebo odpoví.",
+  "Error_SignInToFollowThread": "Pro sledování vlákna chatu se musíte přihlásit.",
+  "Error_OnlyPeerContactCanBeBlocked": "Blokovat lze jen soukromé kontakty.",
+  "Error_SignInToChat": "Pro chat s jiným uživatelem se musíte přihlásit.",
+  "Error_CannotChatWithUnauthenticated": "S nepřihlášeným uživatelem chatovat nemůžete.",
+
+  // Calls
+  "Error_OnlyParticipantCanBecomeHost": "Hostitelem hovoru se může stát jen jeho účastník.",
+  "Error_CannotMuteOwner": "Nemůžete vypnout mikrofon vlastníka.",
+  "Error_OnlyHostOrOwnerCanChangeHost": "Hostitele hovoru může změnit jen současný hostitel nebo vlastník chatu.",
+  "Error_CallRequiresContact": "Tomuto uživateli můžete zavolat, až si vás přidá do kontaktů nebo vám odpoví.",
+  "Error_CannotMuteInPeerChat": "V hovoru jeden na jednoho nemůžete ztlumit druhého účastníka.",
+  "Error_OnlyHostOwnerOrModeratorCanManageCall": "Živou relaci může spravovat jen hostitel hovoru nebo vlastník či moderátor chatu.",
+  "Error_VoiceStreamingModeLocked": "Režim streamování hlasu v tomto chatu nelze změnit.",
+
+  // Notifications
+  "Error_NotifyMembersNotAllowed": "Upozorňování členů není ve veřejně přístupných chatech povoleno.",
+  "Error_AlertEveryoneUnavailable": "Upozornění pro všechny není dostupné v chatech s více než 10 lidmi.",
+  "Error_NobodyToNotify": "Není koho upozornit.",
+  "Error_OnlyAuthorCanNotify": "Upozorňovat zmíněné osoby smí jen autor.",
+
+  // Media and uploads
+  "Error_NoMediaAccess": "K tomuto médiu nemáte oprávnění.",
+  "Error_FileTooBig": "Soubor je příliš velký.",
+  "Error_CropExportFailed": "Nepodařilo se exportovat oříznutý obrázek.",
+  "Error_FileTooBig_Format": "Soubor je příliš velký. Maximální velikost: {size}.",
+  "Error_TooManyFiles_Format": "Příliš mnoho souborů. Maximální povolený počet je {count}.",
+
+  // Invites
+  "Error_InviteAlreadyUsed": "Odkaz s pozvánkou už byl použit.",
+  "Error_InviteNotActive": "Odkaz s pozvánkou už není aktivní.",
+  "Error_InviteCodeNotFound": "Pozvánka se zadaným kódem nebyla nalezena.",
+  "Error_OnlyPlaceMembersCanUseCode": "Tento kód mohou použít jen členové Místa.",
+  "Error_UserInvitesRemoved": "Funkce uživatelských pozvánek byla odstraněna.",
+
+  // Live location
+  "Error_JoinChatToShareLocation": "Než budete sdílet svou polohu, připojte se k chatu.",
+  "Error_CanChangeOwnLocationsOnly": "V tomto chatu můžete měnit jen vlastní sdílené polohy.",
+  "Error_LocationSharingLimit_Format": "V tomto chatu už polohu živě sdílí maximální počet lidí: {limit}.",
+  "Error_FailedToAddFileAttachment": "Nepodařilo se přidat přílohu."
+}
