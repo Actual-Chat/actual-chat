@@ -36,9 +36,12 @@ public sealed partial record Notifications_Handle : ApiCommand<Unit>
 // ReSharper disable once InconsistentNaming
 public sealed partial record Notifications_HandleAll : ApiCommand<Unit>;
 
+// Not deduplicated: registering a device token is an idempotent upsert the client re-sends to
+// refresh a stale record, so suppressing a repeat is worse than running it.
+
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Notifications_RegisterDevice : ApiCommand<Unit>
+public sealed partial record Notifications_RegisterDevice : ApiCommand<Unit>, INotDeduplicated
 {
     [DataMember(Order = 2), Key(2)] public required Symbol DeviceId { get; init; }
     [DataMember(Order = 3), Key(3)] public required DeviceType DeviceType { get; init; }
