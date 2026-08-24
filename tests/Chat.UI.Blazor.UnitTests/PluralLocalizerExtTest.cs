@@ -2,10 +2,11 @@ using ActualChat.UI.Blazor.Resources;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
-public class PluralLocalizerExtTest
+public sealed class PluralLocalizerExtTest
 {
     // One row per shipped language per count that its rule can tell apart:
-    // 1 / 2 / 5 separate one, few and many; 21 is where the Slavic rule returns to "one".
+    // 1 / 2 / 5 separate one, few and many; 21 is where the East Slavic rule returns to "one"
+    // and where Polish deliberately does not - "21 uczestników", never "21 uczestnik".
     private static readonly (string Subtag, int Count, string Expected)[] MemberCountCases = [
         ("en", 1, "1 member"), ("en", 2, "2 members"), ("en", 5, "5 members"), ("en", 21, "21 members"),
         ("de", 1, "1 Mitglied"), ("de", 2, "2 Mitglieder"), ("de", 5, "5 Mitglieder"), ("de", 21, "21 Mitglieder"),
@@ -15,6 +16,8 @@ public class PluralLocalizerExtTest
         ("it", 1, "1 membro"), ("it", 2, "2 membri"), ("it", 5, "5 membri"), ("it", 21, "21 membri"),
         ("ja", 1, "メンバー 1 人"), ("ja", 2, "メンバー 2 人"), ("ja", 5, "メンバー 5 人"), ("ja", 21, "メンバー 21 人"),
         ("ko", 1, "멤버 1명"), ("ko", 2, "멤버 2명"), ("ko", 5, "멤버 5명"), ("ko", 21, "멤버 21명"),
+        ("pl", 1, "1 uczestnik"), ("pl", 2, "2 uczestnicy"), ("pl", 5, "5 uczestników"),
+        ("pl", 21, "21 uczestników"),
         ("pt", 1, "1 membro"), ("pt", 2, "2 membros"), ("pt", 5, "5 membros"), ("pt", 21, "21 membros"),
         ("ru", 1, "1 участник"), ("ru", 2, "2 участника"), ("ru", 5, "5 участников"), ("ru", 21, "21 участник"),
         ("tr", 1, "1 üye"), ("tr", 2, "2 üye"), ("tr", 5, "5 üye"), ("tr", 21, "21 üye"),
@@ -58,7 +61,7 @@ public class PluralLocalizerExtTest
         // this test forces its counted forms into the table above.
 
         // arrange
-        var covered = MemberCountCases.Select(c => c.Subtag).ToHashSet(StringComparer.Ordinal);
+        var covered = MemberCountCases.Select(c => c.Subtag).ToHashSet();
 
         // act
         var uncovered = StringCatalogs.ShippedSubtags(StringCatalogs.Kind.Strings)
