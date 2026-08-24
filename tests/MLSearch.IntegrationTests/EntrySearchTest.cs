@@ -32,13 +32,57 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // act, assert
         var searchResults = await Find("let");
-        searchResults.Should().BeEquivalentTo([entry1.BuildSearchResult(["let's"], IsolationKey)], o => o.ExcludingSearchMatch());
+        searchResults.Should()
+            .BeEquivalentTo([entry1.BuildSearchResult(["let's"], IsolationKey)],
+                o => o.ExcludingSearchMatch());
         searchResults = await Find("something saying");
-        searchResults.Should().BeEquivalentTo([entry2.BuildSearchResult(["something", "saying"], IsolationKey)], o => o.ExcludingSearchMatch());
+        searchResults.Should()
+            .BeEquivalentTo([entry2.BuildSearchResult(["something", "saying"], IsolationKey)],
+                o => o.ExcludingSearchMatch());
         searchResults = await Find("river ba");
-        searchResults.Should().BeEquivalentTo([entry3.BuildSearchResult(["river", "bank"], IsolationKey)], o => o.ExcludingSearchMatch());
+        searchResults.Should()
+            .BeEquivalentTo([entry3.BuildSearchResult(["river", "bank"], IsolationKey)],
+                o => o.ExcludingSearchMatch());
         searchResults = await Find("wak");
-        searchResults.Should().BeEquivalentTo([entry4.BuildSearchResult(["wake"], IsolationKey)], o => o.ExcludingSearchMatch());
+        searchResults.Should()
+            .BeEquivalentTo([entry4.BuildSearchResult(["wake"], IsolationKey)], o => o.ExcludingSearchMatch());
+    }
+
+    [Fact]
+    public async Task ShouldFindEntriesByHashtag()
+    {
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chatId, _) = await Tester.CreateChat(false);
+
+        var tagged = await CreateEntry(chatId, "Check the #Promo today");
+        var otherTagged = await CreateEntry(chatId, "Big #promotion starts");
+        var untagged = await CreateEntry(chatId, "No promo here");
+
+        // act, assert
+        // A trailing space completes the tag, so it must match exactly - and case-insensitively
+        var searchResults = await Find("#PROMO ");
+        searchResults.Should()
+            .BeEquivalentTo([tagged.BuildSearchResult(["promo"], IsolationKey)], o => o.ExcludingSearchMatch());
+
+        // A tag ending the criteria may still be half-typed, so it prefix-matches
+        searchResults = await Find("#promo", expected: 2);
+        searchResults.Should()
+            .BeEquivalentTo([
+                    tagged.BuildSearchResult(["promo"], IsolationKey),
+                    otherTagged.BuildSearchResult(["promotion"], IsolationKey),
+                ],
+                o => o.ExcludingSearchMatch());
+
+        // Without '#' it's an ordinary word search, which finds tagged and untagged alike
+        searchResults = await Find("promo", expected: 3);
+        searchResults.Should()
+            .BeEquivalentTo([
+                    tagged.BuildSearchResult(["promo"], IsolationKey),
+                    otherTagged.BuildSearchResult(["promotion"], IsolationKey),
+                    untagged.BuildSearchResult(["promo"], IsolationKey),
+                ],
+                o => o.ExcludingSearchMatch());
     }
 
     [Fact]
@@ -48,14 +92,18 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Tester.SignInAsUniqueBob();
         var (chatId, _) = await Tester.CreateChat(false);
 
-        var entry = await CreateEntry(chatId, "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum test has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.");
+        var entry = await CreateEntry(chatId,
+            "Lorem Ipsum is simply dummy text of the printing and typesetting industry. "
+            + "Lorem Ipsum test has been the industry's standard dummy text ever since the 1500s, "
+            + "when an unknown printer took a galley of type and scrambled it to make a type specimen book.");
 
         // act, assert
         var searchResults = await Find("test");
         searchResults.Should()
             .BeEquivalentTo([
                 entry.Id.BuildSearchResult(
-                    "…Lorem Ipsum test has been the industry's standard dummy text ever since the 1500s, when an unknown printer…",
+                    "…Lorem Ipsum test has been the industry's standard dummy text ever since the 1500s, "
+                    + "when an unknown printer…",
                     ["test"],
                     IsolationKey,
                     (13, 17)),
@@ -200,14 +248,17 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         var searchResults = await Find("let", expected: 1);
 
         // assert
-        searchResults.Should().BeEquivalentTo([entry1.BuildSearchResult(["let's"], IsolationKey)], o => o.ExcludingSearchMatch());
+        searchResults.Should()
+            .BeEquivalentTo([entry1.BuildSearchResult(["let's"], IsolationKey)],
+                o => o.ExcludingSearchMatch());
 
         // act
         entry2 = await UpdateEntry(entry2.Id, "let");
         searchResults = await Find("let", expected: 2);
         searchResults.Should()
             .BeEquivalentTo([
-                    entry2.BuildSearchResult(["let"], IsolationKey), entry1.BuildSearchResult(["let's"], IsolationKey),
+                    entry2.BuildSearchResult(["let"], IsolationKey),
+                    entry1.BuildSearchResult(["let's"], IsolationKey),
                 ],
                 o => o.ExcludingSearchMatch().WithStrictOrderingFor(x => x));
     }

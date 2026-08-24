@@ -23,5 +23,7 @@
     }
 
     private void OnClick()
-        => SearchUI.SearchFor(Markup.Text);
+        // The trailing space completes the tag: search treats a tag ending the criteria as a
+        // prefix, so without it clicking #promo would also find #promotion
+        => SearchUI.SearchFor(Markup.Text + " ");
 }

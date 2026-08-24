@@ -4,15 +4,16 @@ namespace ActualChat.MLSearch;
 
 public static class ChatEntryExt
 {
-    public static IndexedEntry ToIndexedEntry(this ChatEntry entry)
-        => new() {
+    public static IndexedEntry ToIndexedEntry(this ChatEntry entry, IMarkupParser markupParser)
+    {
+        var markup = markupParser.Parse(entry.Content);
+        return new IndexedEntry {
             Id = entry.Id,
             Content = entry.Content,
+            Hashtags = HashtagExtractor.Instance.GetTags(markup).ToArray(),
             At = entry.GetIndexedEntryDate(),
         };
-
-    public static IEnumerable<IndexedEntry> ToIndexedEntries(this IEnumerable<ChatEntry> entries)
-        => entries.Select(x => x.ToIndexedEntry());
+    }
 
     public static Moment GetIndexedEntryDate(this ChatEntry entry)
         => entry.EndsAt ?? entry.Audio?.ContentEndsAt ?? entry.BeginsAt;

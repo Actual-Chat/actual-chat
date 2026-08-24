@@ -14,6 +14,7 @@ public sealed partial class EntryIndexingFlow : BatchedIndexingFlow<ChatEntry, C
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IPlacesBackend PlacesBackend => field ??= Services.GetRequiredService<IPlacesBackend>();
     private IndexedDocuments IndexedDocuments => field ??= Services.GetRequiredService<IndexedDocuments>();
+    private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
     private Task WhenReady => field ??= Services.GetRequiredService<OpenSearchConfigurator>().WhenReady;
 
     private ChatId ChatId => field ??= ChatId.Parse(Id.Arguments);
@@ -71,7 +72,7 @@ public sealed partial class EntryIndexingFlow : BatchedIndexingFlow<ChatEntry, C
 
         var updated = batch
             .Where(x => x is { IsRemoved: false, IsSystemEntry: false })
-            .Select(x => x.ToIndexedEntry())
+            .Select(x => x.ToIndexedEntry(MarkupParser))
             .ToList();
         var removed = batch
             .Where(x => x is { IsRemoved: true, IsSystemEntry: false })

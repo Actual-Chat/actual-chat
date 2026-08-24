@@ -27,6 +27,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private OpenSearchConfigurator OpenSearchConfigurator { get; } = services.GetRequiredService<OpenSearchConfigurator>();
     private IndexedDocuments IndexedDocuments { get; } = services.GetRequiredService<IndexedDocuments>();
+    private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();
     private FlowHub FlowHub => field ??= Services.FlowHub();
     private ILogger? OpenSearchDebugLog => Constants.DebugMode.OpenSearchRequestResponse ? Log : null;
 
@@ -450,6 +451,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         if (chatIds.Count == 0)
             return SearchResult<FoundChatEntry>.Empty;
 
+        var hashtags = query.GetHashtags(MarkupParser);
+
         var searchResponse =
             await OpenSearchClient.SearchAsync<IndexedEntry>(searchDescriptor
                         => searchDescriptor.Index(OpenSearchNames.EntryIndexName)
@@ -478,11 +481,22 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                 HighlightedWords = hit.GetHighlightedWords().ToApiSet(StringComparer.OrdinalIgnoreCase),
             };
 
-        BoolQueryDescriptor<IndexedEntry> ConfigureQuery(BoolQueryDescriptor<IndexedEntry> descriptor)
-            => descriptor.Must(q
-                    => q.MatchBoolPrefix(p => p.Query(query.Criteria).Field(x => x.Content).Operator(Operator.And)),
+        BoolQueryDescriptor<IndexedEntry> ConfigureQuery(BoolQueryDescriptor<IndexedEntry> descriptor) {
+            // The Content clause stays even when the criteria is nothing but a tag: the standard
+            // analyzer drops the '#', so it still matches, and the entry's highlight is built from
+            // it - a tags-only query would leave IHit.Highlight without a content field at all.
+            var clauses = new List<Func<QueryContainerDescriptor<IndexedEntry>, QueryContainer>> {
+                q => q.MatchBoolPrefix(p => p.Query(query.Criteria).Field(x => x.Content).Operator(Operator.And)),
                 qc => qc.HasParent<IndexedChat>(
-                    p => p.Query(q => q.Terms(t => t.Field(x => x.Id).Terms(chatIds)))));
+                    p => p.Query(q => q.Terms(t => t.Field(x => x.Id).Terms(chatIds)))),
+            };
+            foreach (var (tag, isPrefix) in hashtags)
+                clauses.Add(isPrefix
+                    ? q => q.Prefix(p => p.Field(x => x.Hashtags).Value(tag))
+                    : q => q.Term(t => t.Field(x => x.Hashtags).Value(tag)));
+
+            return descriptor.Must(clauses.ToArray());
+        }
 
         async Task<List<ChatId>> ListChatIds() {
             if (query.ChatId is not null)

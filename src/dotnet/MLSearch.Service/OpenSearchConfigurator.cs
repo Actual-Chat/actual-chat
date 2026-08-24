@@ -93,13 +93,31 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
             EnsureIndex(OpenSearchNames.PlaceIndexName,
                 ConfigurePlaceContactIndex,
                 cancellationToken),
-            EnsureIndex(OpenSearchNames.EntryIndexName,
-                ConfigureEntryIndex,
-                cancellationToken));
+            EnsureEntryIndex(cancellationToken));
 
-    private async Task EnsureIndex(IndexName indexName, Func<CreateIndexDescriptor, ICreateIndexRequest> configure, CancellationToken cancellationToken)
+    private async Task EnsureEntryIndex(CancellationToken cancellationToken)
     {
-        var existsResponse = await OpenSearchClient.Indices.ExistsAsync(indexName, ct:cancellationToken).ConfigureAwait(false);
+        await EnsureIndex(OpenSearchNames.EntryIndexName, ConfigureEntryIndex, cancellationToken).ConfigureAwait(false);
+        // Hashtags were added after the index shipped, and EnsureIndex is create-only. Without this
+        // merge an already-created index would map them dynamically as text, and a tag containing
+        // '-' would be analyzed into several terms no exact-tag query can match.
+        await OpenSearchClient.Indices
+            .PutMappingAsync<IndexedEntry>(m => m
+                    .Index(OpenSearchNames.EntryIndexName)
+                    .Properties(pp => pp.Keyword(p => p.Name(x => x.Hashtags))),
+                cancellationToken)
+            .Assert(Log)
+            .ConfigureAwait(false);
+    }
+
+    private async Task EnsureIndex(
+        IndexName indexName,
+        Func<CreateIndexDescriptor, ICreateIndexRequest> configure,
+        CancellationToken cancellationToken)
+    {
+        var existsResponse = await OpenSearchClient.Indices
+            .ExistsAsync(indexName, ct: cancellationToken)
+            .ConfigureAwait(false);
         if (existsResponse.Exists)
             return;
 
@@ -170,6 +188,7 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
                     .Properties(pp
                     => pp.Keyword(p => p.Name(x => x.Id))
                         .Text(p => p.Name(e => e.Content))
+                        .Keyword(p => p.Name(x => x.Hashtags))
                         .Date(p => p.Name(x => x.At))
                         .Join(j => j.Name(x => x.EntryToChat).Relations(r => r.Join<IndexedChat, IndexedEntry>())))
                 )

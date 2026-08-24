@@ -6,6 +6,7 @@ public sealed record IndexedEntry : IHasId<ChatEntryId>, IHasRoutingKey<ChatEntr
 {
     public required ChatEntryId Id { get; init; }
     public string Content { get; init; } = "";
+    public string[] Hashtags { get; init; } = [];
     public Moment At { get; init; }
     public JoinField EntryToChat => JoinField.Link<IndexedEntry, IndexedChat>(new (ChatId));
 
