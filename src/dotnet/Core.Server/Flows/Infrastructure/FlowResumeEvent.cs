@@ -39,7 +39,7 @@ public sealed partial class FlowResumeEvent :
     internal FlowResumeEvent(FlowId flowId, FlowHub hub) : this(flowId)
     {
         _hub = hub;
-        DelayQuanta = hub.Defs.ByName[flowId.Name].DelayQuanta;
+        DelayQuanta = hub.Defs.Get(flowId.Name).DelayQuanta;
     }
 
     public override string ToString()
@@ -147,7 +147,7 @@ public sealed partial class FlowResumeEvent :
     TimeSpan ITimeoutProvider.GetTimeout(IServiceProvider services)
     {
         var flowHub = services.FlowHub();
-        var flowDef = flowHub.Defs.ByName[FlowId.Name];
+        var flowDef = flowHub.Defs.Get(FlowId.Name);
         return flowDef.ResumeTimeout;
     }
 }

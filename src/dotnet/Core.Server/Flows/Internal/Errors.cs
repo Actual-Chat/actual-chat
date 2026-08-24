@@ -17,5 +17,14 @@ public static class Errors
 
     public static Exception UnhandledEvent(Type flowType, string step, Type eventType)
         => new InvalidOperationException(
-            $"Flow '{flowType.GetName()}' didn't mark event of type {eventType.GetName()} as handled on step '{step}'.");
+            $"Flow '{flowType.GetName()}' didn't mark event of type {eventType.GetName()} "
+            + $"as handled on step '{step}'.");
+
+    public static Exception UnknownFlow(Symbol name)
+        // KeyNotFoundException is deliberate: it resolves to Transiency.NonTransient, which is what
+        // stops DbEventForwarder from retrying a resume event of a removed flow forever.
+        => new KeyNotFoundException($"Flow '{name}' isn't registered - it was likely removed or renamed.");
+
+    public static Exception UnknownFlow(Type flowType)
+        => new KeyNotFoundException($"Flow '{flowType.GetName()}' isn't registered.");
 }

@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using ActualChat.Flows.Internal;
 using ActualChat.Queues;
 
 namespace ActualChat.Flows.Infrastructure;
@@ -26,7 +27,15 @@ public sealed class FlowDefs
 
     // Get methods
 
-    public FlowDef Get<TFlow>() => ByType[typeof(TFlow)];
-    public FlowDef Get(Type type) => ByType[type];
-    public FlowDef Get(Symbol name) => ByName[name];
+    public FlowDef Get<TFlow>() => Get(typeof(TFlow));
+
+    public FlowDef Get(Type type)
+        => ByType.TryGetValue(type, out var flowDef)
+            ? flowDef
+            : throw Errors.UnknownFlow(type);
+
+    public FlowDef Get(Symbol name)
+        => ByName.TryGetValue(name, out var flowDef)
+            ? flowDef
+            : throw Errors.UnknownFlow(name);
 }
