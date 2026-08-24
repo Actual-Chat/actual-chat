@@ -8,12 +8,20 @@ stays compatible with clients that predate it.
 
 **The short version.** Every client-callable command derives from `ApiCommand`, which
 carries a client-generated `Uuid` (idempotency key). A server-side CommandR filter,
-`ApiCommandDeduplicator`, claims each outermost command by `(SessionHash, Uuid)` in a
-Redis-backed store, runs it once, and replays the stored result to any duplicate. It is
-best-effort by design (~95% — an occasional double-run under network trouble is
-acceptable), favouring **host-liveness over strict fencing**. Old clients that send the
-pre-`Uuid` command layout are transparently migrated on the server, so the feature can roll
-out before every command is migrated.
+`ApiCommandDeduplicator`, claims each outermost command by `(SessionHash, Uuid)` in an
+**in-process** store, runs it once, and replays the stored result to any duplicate that
+reaches the same node. It is best-effort by design (~95% — an occasional double-run under
+network trouble is acceptable). Old clients that send the pre-`Uuid` command layout are
+transparently migrated on the server, so the feature can roll out before every command is
+migrated.
+
+**What "in-process" costs.** A client's commands travel over one RPC connection to one
+node, so a retry lands where the original ran and gets deduped. What isn't covered: a
+reconnect that picks a different node, and a node restart or deploy, which empties the
+store. Both re-run the command — the same outcome as before this feature existed. This was
+a deliberate trade (see [Design decisions](#design-decisions)): a distributed store buys
+those two cases at the cost of a hard runtime dependency and two network round-trips per
+command.
 
 ## The Uuid lives on the command
 
@@ -43,20 +51,19 @@ public partial record ApiCommand : ISessionCommand, IApiCommand, IHasUuid
 `ApiCommandDeduplicator` (`src/dotnet/Core.Server/Commands/ApiCommandDeduplicator.cs`) is a
 CommandR filter that runs on the **outermost** `ApiCommand` only. Its key is
 `{Session.Hash}:{Uuid}` — the session hash (not the raw session) shortens the key and avoids
-leaking or cross-contaminating sessions. The owner is this node's mesh id.
+leaking or cross-contaminating sessions.
 
-Per command it drives an `IIdempotencyStore`:
+Per command it drives an `IdempotencyStore` claim:
 
-| Store state | Action |
+| Claim | Action |
 |---|---|
-| **New** (claim won) | Run the command, then `Complete` with the serialized result |
-| **Completed** | Replay the stored result — the command never runs again |
-| **InProgress**, owner **alive** | Wait for the owner's result (`WaitForResult`) |
-| **InProgress**, owner **dead** | `TryReclaim` the claim and run it here |
+| **Won** (`TryClaim` returned `true`) | Run the command, then `Complete` it with the serialized result |
+| **Held, completed** | Replay the stored result — the command never runs again |
+| **Held, still running** | Await `WhenCompleted` and replay what the owner produced |
+| **Dropped while awaiting** | Loop and re-claim: run the command here |
 
-Owner liveness comes from `MeshWatcher`: an `InProgress` claim whose owner node is no longer
-`Online` is reclaimed immediately rather than waited out. A command that **fails** is not
-cached — the claim is released so a same-`Uuid` retry re-runs it.
+A command that **fails** is not cached — the claim is released, which both wakes its waiters
+with "no result" and frees the key, so a same-`Uuid` retry re-runs the command.
 
 Empty-`Uuid` commands are skipped (`Uuid.Length > 0` guard) — see
 [Old clients](#old-clients-graceful-degradation).
@@ -64,8 +71,8 @@ Empty-`Uuid` commands are skipped (`Uuid.Length > 0` guard) — see
 ### Opting out — `INotDeduplicated`
 
 A command that implements `INotDeduplicated` (`Core/Commands/ApiCommand.cs`) bypasses the filter
-entirely. This is for high-frequency commands that would pay the store's two round-trips — and a
-resident entry per call for `CompletedTtl` — for nothing:
+entirely. This is for high-frequency commands that would hold a resident entry per call for
+`CompletedTtl` — crowding out entries that could actually be replayed — for nothing:
 
 | Command | Why |
 |---|---|
@@ -78,29 +85,30 @@ Before adding to the list, prefer evidence: a command whose `command.dedup.outco
 `executed` and never `replayed` is a candidate — though today that metric isn't tagged by command
 type, so the split isn't visible in prod yet.
 
-## The Redis store
+## The in-process store
 
-`IIdempotencyStore` (`Core.Server`) is implemented by `RedisIdempotencyStore` (`Redis`) on
-`RedisDb<InfrastructureDbContext>` with key prefix `ApiCmdDedup`. `RedisDb.Database` applies that
-prefix itself, so the store passes bare keys to every call — including the `keys` array of the Lua
-script, which StackExchange.Redis prefixes too. Keys look like
-`<instance>.infrastructure.ApiCmdDedup.<session hash>:<uuid>`.
+`IdempotencyStore` (`src/dotnet/Core.Server/Commands/IdempotencyStore.cs`) is a singleton
+`ConcurrentDictionary<string, IdempotencyEntry>`. An entry is a claim: it carries an expiry
+and a `TaskCompletionSource`, so waiters are woken the moment the owner finishes rather than
+polling. `TryClaim` returns `true` to exactly one caller per key; the rest get the live entry.
 
-- **Claim** — `SET NX` a marker `[InProgressTag][owner]`. Winning the `SET NX` is the claim.
-- **Complete** — overwrite with `[CompletedTag][resultBytes]` (the MessagePack-serialized
-  command result).
-- **Reclaim** — a Lua compare-and-set: if the marker still names the expected dead owner,
-  swap it to the new owner atomically; if it was completed meanwhile, return the result
-  instead. This is the only multi-step operation, and it is atomic.
+- **Complete** — stores the MessagePack-serialized command result and pushes the entry's expiry
+  out to `CompletedTtl`.
+- **Release** — removes the entry and completes its waiters with `null`, so they re-claim.
+- **Prune** — a sweep (at most once per `PruneInterval`, on the claim path) drops expired
+  entries; if that still leaves more than `MaxEntryCount`, the oldest go too. The cap is the
+  memory guarantee: past it the dedup window shortens instead of the heap growing.
 
-| TTL | Value | Meaning |
+| Knob | Value | Meaning |
 |---|---|---|
-| `InProgressTtl` | 5 min | Guards only the live-but-slow case (a dead owner is reclaimed via liveness regardless of TTL). Must exceed the slowest realistic command. |
-| `CompletedTtl` | 1 h | Dedup window — how long a completed result is replayed. Covers client retries / reconnects. |
+| `InProgressTtl` | 5 min | A claim that outlives it is dropped, so a duplicate re-runs the command. Must exceed the slowest realistic command; also caps how long a duplicate awaits the owner. |
+| `CompletedTtl` | 15 min | Dedup window — how long a completed result is replayed. Covers client retries / reconnects. |
+| `PruneInterval` | 1 min | How often the expiry sweep runs. |
+| `MaxEntryCount` | 100 000 | Hard cap on resident entries. |
 
-There is **no fencing token**: a slow "first" owner could theoretically `Complete` over a
-newer run. For idempotent commands this is harmless, and host death is far likelier than
-Redis loss — hence liveness-based reclaim rather than strict fencing.
+There is **no fencing token**: a slow owner could theoretically `Complete` after its claim was
+dropped and a second run started. For idempotent commands this is harmless, and both the
+`command.dedup.overrun` counter and the 5-minute TTL make it visible rather than silent.
 
 ## Backward compatibility — the version-gated deserializer
 
@@ -157,22 +165,24 @@ work, the server logs the migration, and the deduplicator skips the empty-`Uuid`
 | Instrument | Meaning |
 |---|---|
 | `command.dedup.outcome` `{executed,replayed,waited}` | Terminal outcome of a deduped command |
-| `command.dedup.reclaim` | Claims reclaimed from a dead owner |
-| `command.dedup.overrun` | In-progress marker expired without a result (possible double run) |
+| `command.dedup.overrun` | A claim outlived its in-progress TTL without a result (possible double run) |
 | `command.dedup.release` | Claims released after a failed command |
 | `command.dedup.result_size` | Serialized result size |
-| `command.dedup.store.duration` `{claim,complete}` | Store op latency (ms) |
 
-Reclaims log at Info; overruns log at Warning.
+Overruns log at Warning. Resident memory is `result_size` × the `executed` rate over
+`CompletedTtl`, bounded by `MaxEntryCount`.
 
 ## Design decisions
 
 - **~95% is enough.** No perfect solution is required — an occasional double-run during
   network trouble is acceptable ("we're not transferring money"). Dedup state is **not** stored
   atomically with the operation's DB.
-- **Host-liveness over fencing.** Mark which host owns execution; another host seeing the same
-  command checks whether that owner is alive and, if not, redoes it. Host death is likelier than
-  Redis loss.
+- **In-process, not distributed.** The store started out on Redis (claim marker + result, with
+  mesh-liveness reclaim for a dead owner). That was dropped: a client's commands reach one node
+  over one RPC connection, so the cross-node duplicate the distributed store existed for is the
+  rare case — and it isn't worth a runtime dependency, two network round-trips per command, and
+  command results living in shared infrastructure. A node restart or a reconnect to another node
+  loses the window; both simply re-run the command, as they did before dedup existed.
 - **Dedup for all commands except explicit opt-outs.** Every `ApiCommand` is deduped unless it
   implements `INotDeduplicated` (see [Opting out](#opting-out--inotdeduplicated)); only
   heavy/edit-type commands will opt into a client-side queue (deferred, see below). Cheap

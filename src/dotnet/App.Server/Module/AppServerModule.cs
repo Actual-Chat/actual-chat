@@ -224,8 +224,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             };
         });
 
-        // API command idempotency (claim -> complete over Redis, dedup by (SessionId, Uuid))
-        services.AddSingleton<IIdempotencyStore>(c => new RedisIdempotencyStore(c));
+        // API command idempotency (in-process claim -> complete, dedup by (SessionHash, Uuid))
+        services.AddSingleton<IdempotencyStore>();
         services.AddSingleton<ApiCommandDeduplicator>();
         services.AddCommander().AddHandlers<ApiCommandDeduplicator>();
 

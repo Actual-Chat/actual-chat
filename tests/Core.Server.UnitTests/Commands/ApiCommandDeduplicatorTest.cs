@@ -2,58 +2,12 @@ using System.Diagnostics.Metrics;
 
 namespace ActualChat.Commands.UnitTests;
 
-public sealed class FakeIdempotencyStore : IIdempotencyStore
-{
-    private readonly ConcurrentDictionary<string, (string Owner, ReadOnlyMemory<byte>? Result)> _entries = new();
-
-    public Task<IdempotencyEntry> ClaimOrGet(string key, string owner, TimeSpan ttl, CancellationToken cancellationToken)
-    {
-        if (_entries.TryAdd(key, (owner, null)))
-            return Task.FromResult(new IdempotencyEntry(IdempotencyState.New, Owner: owner));
-
-        var e = _entries[key];
-        return Task.FromResult(e.Result is { } bytes
-            ? new IdempotencyEntry(IdempotencyState.Completed, bytes)
-            : new IdempotencyEntry(IdempotencyState.InProgress, Owner: e.Owner));
-    }
-
-    public Task Complete(string key, ReadOnlyMemory<byte> resultMessage, TimeSpan ttl, CancellationToken cancellationToken)
-    {
-        _entries[key] = ("", resultMessage);
-        return Task.CompletedTask;
-    }
-
-    public Task<ReadOnlyMemory<byte>?> WaitForResult(string key, TimeSpan timeout, CancellationToken cancellationToken)
-        => Task.FromResult(_entries.TryGetValue(key, out var e) && e.Result is { } b ? (ReadOnlyMemory<byte>?)b : null);
-
-    public Task<IdempotencyEntry?> TryReclaim(
-        string key, string expectedOwner, string newOwner, TimeSpan ttl, CancellationToken cancellationToken)
-    {
-        if (!_entries.TryGetValue(key, out var e))
-            return Task.FromResult<IdempotencyEntry?>(null);
-        if (e.Result is { } bytes)
-            return Task.FromResult<IdempotencyEntry?>(new IdempotencyEntry(IdempotencyState.Completed, bytes));
-        if (e.Owner == expectedOwner) {
-            _entries[key] = (newOwner, null);
-            return Task.FromResult<IdempotencyEntry?>(new IdempotencyEntry(IdempotencyState.New, Owner: newOwner));
-        }
-        return Task.FromResult<IdempotencyEntry?>(null);
-    }
-
-    public Task Release(string key, CancellationToken cancellationToken)
-    {
-        _entries.TryRemove(key, out _);
-        return Task.CompletedTask;
-    }
-}
-
 public sealed class TestCounterService
     : ICommandHandler<TestCounter_Increment>, ICommandHandler<TestCounter_IncrementNotDeduplicated>
 {
     private int _value;
-
-    public int Value => _value;
     public int HandlerCalls;
+    public int Value => _value;
 
     public Task OnCommand(TestCounter_Increment command, CommandContext context, CancellationToken cancellationToken)
         => Increment(command.Amount, context);
@@ -80,7 +34,7 @@ public class ApiCommandDeduplicatorTest(ITestOutputHelper @out) : TestBase(@out)
         var services = new ServiceCollection();
         var commander = services.AddCommander();
         services.AddFusion();
-        services.AddSingleton<IIdempotencyStore, FakeIdempotencyStore>();
+        services.AddSingleton<IdempotencyStore>();
         services.AddSingleton<ApiCommandDeduplicator>();
         commander.AddHandlers<ApiCommandDeduplicator>();
         services.AddSingleton<TestCounterService>();
@@ -95,7 +49,7 @@ public class ApiCommandDeduplicatorTest(ITestOutputHelper @out) : TestBase(@out)
         var services = CreateServices();
         var commander = services.Commander();
         var counter = services.GetRequiredService<TestCounterService>();
-        var command = new TestCounter_Increment { Session = Session.New(), Amount = 5 }; // Uuid auto-generated once
+        var command = new TestCounter_Increment { Session = Session.New(), Amount = 5 };
 
         // act
         var result1 = await commander.Call(command, CancellationToken.None);
@@ -119,7 +73,7 @@ public class ApiCommandDeduplicatorTest(ITestOutputHelper @out) : TestBase(@out)
 
         // act
         await commander.Call(new TestCounter_Increment { Session = session, Amount = 5 }, CancellationToken.None);
-        await commander.Call(new TestCounter_Increment { Session = session, Amount = 5 }, CancellationToken.None); // different Uuid
+        await commander.Call(new TestCounter_Increment { Session = session, Amount = 5 }, CancellationToken.None);
 
         // assert
         counter.HandlerCalls.Should().Be(2);
@@ -140,9 +94,10 @@ public class ApiCommandDeduplicatorTest(ITestOutputHelper @out) : TestBase(@out)
             },
         };
         listener.SetMeasurementEventCallback<long>((_, value, tags, _) => {
-            foreach (var tag in tags)
+            foreach (var tag in tags) {
                 if (tag.Key == "outcome" && tag.Value is string outcome)
                     counts.AddOrUpdate(outcome, value, (_, v) => v + value);
+            }
         });
         listener.Start();
         var command = new TestCounter_Increment { Session = Session.New(), Amount = 5 };
@@ -165,7 +120,7 @@ public class ApiCommandDeduplicatorTest(ITestOutputHelper @out) : TestBase(@out)
         var counter = services.GetRequiredService<TestCounterService>();
         var command = new TestCounter_IncrementNotDeduplicated { Session = Session.New(), Amount = 5 };
 
-        // act — the very same command instance, i.e. the same Uuid
+        // act
         await commander.Call(command, CancellationToken.None);
         await commander.Call(command, CancellationToken.None);
 
