@@ -201,7 +201,7 @@
                     <UITimer Period="@TimeSpan.FromSeconds(5)" IsRecurring="false" Tick="OnConnectingTimeout" />
                     <div class="connecting-overlay">
                         <div class="connecting-spinner"></div>
-                        <span>Connecting...</span>
+                        <span>@L.Video_Connecting</span>
                     </div>
                 } else if (_endingGraceActive) {
                     <UITimer Period="@TimeSpan.FromMilliseconds(500)" IsRecurring="false" Tick="OnEndingGraceTimeout" />

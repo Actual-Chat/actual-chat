@@ -14,13 +14,13 @@
         <div class="c-name">
             <span>@Participant.Author.Avatar.Name</span>
             @if (Participant.IsOwn) {
-                <span class="c-you">(you)</span>
+                <span class="c-you">@L.Location_You</span>
             }
         </div>
         <div class="c-status">
             <span>@L.Location_Updated</span><LiveTimeDeltaText Moment="@Participant.Location.ModifiedAt" NullText=""/>
             @if (!distanceText.IsNullOrEmpty()) {
-                <span> · @distanceText from you</span>
+                <span> · @L.LocationMessage_DistanceFromYou_Format(distanceText)</span>
             }
         </div>
     </div>

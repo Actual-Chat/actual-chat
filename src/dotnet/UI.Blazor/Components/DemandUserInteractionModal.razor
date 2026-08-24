@@ -10,10 +10,10 @@
 
 <ModalChrome Class="max-w-sm p-4 flex-y gap-y-4">
     @if (isUpdating) {
-        <div class="flex-none">Updating...</div>
+        <div class="flex-none">@L.DemandInteraction_Updating</div>
     }
     else {
-        <div class="flex-1">Continue @operations?</div>
+        <div class="flex-1">@L.DemandInteraction_Continue_Format(operations)</div>
         <div class="demand-interaction flex-none flex-x justify-center gap-x-4">
             <Button Class="btn-modal" Click="OnCancelClick">@L.Common_Cancel</Button>
             <Button Class="btn-modal btn-primary" Click="OnContinueClick">@L.Common_Continue</Button>
@@ -38,7 +38,6 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)
             return;
-
         if (HostInfo.HostKind is HostKind.MauiApp)
             return;
 
@@ -89,14 +88,15 @@
         var whenConfirmed = InteractiveUI.ActiveDemand.Value?.WhenConfirmedSource;
         if (result)
             whenConfirmed?.TrySetResult();
-         else
+        else
             whenConfirmed?.TrySetCanceled();
+
         Modal.Close();
     }
 
     // Nested types
 
-    public class Model {
+    public sealed class Model {
         public static readonly Model Instance = new();
     }
 }

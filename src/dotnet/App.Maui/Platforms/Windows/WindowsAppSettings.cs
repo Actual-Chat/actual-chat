@@ -1,9 +1,11 @@
 ﻿using Windows.ApplicationModel;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Resources;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.App.Maui;
 
-public class WindowsAppSettings : INativeAppSettings
+public class WindowsAppSettings(IStringLocalizer l) : INativeAppSettings
 {
     // ELEMENT_NOT_FOUND: StartupTask isn't registered (unpackaged or not declared in the manifest).
     private const int HResultElementNotFound = unchecked((int)0x80070490);
@@ -16,12 +18,11 @@ public class WindowsAppSettings : INativeAppSettings
         return startupTask.State switch {
             StartupTaskState.Enabled => new AutoStartState(true),
             StartupTaskState.EnabledByPolicy => new AutoStartState(true, false,
-                "Auto-start is enabled by group/machine policy."),
+                l.NativeApp_AutoStartEnabledByPolicy),
             StartupTaskState.DisabledByPolicy => new AutoStartState(false, false,
-                "Auto-start is disabled by group/machine policy or is not supported on this device."),
+                l.NativeApp_AutoStartDisabledByPolicy),
             StartupTaskState.DisabledByUser => new AutoStartState(false, false,
-                $"{CoreConstants.AppName} auto-start is disabled in Task Manager. "
-                + "You can re-enable it in its Startup tab.",
+                l.NativeApp_AutoStartDisabledInTaskManager_Format(CoreConstants.AppName),
                 OpenTaskManager),
             _ => new AutoStartState(false), // We assume it's disabled in any other case
         };

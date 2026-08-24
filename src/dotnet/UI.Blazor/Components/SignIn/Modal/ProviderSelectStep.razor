@@ -66,7 +66,7 @@
             <Button Type="@ButtonType.Submit"  Class="btn-primary btn-modal sign-in" IsDisabled="@(_validationState is ValidationState.Invalid || _formModel.PhoneOrEmail.IsNullOrEmpty())">
                 @switch (_validationState) {
                     case ValidationState.Validating:
-                        <i class="icon-refresh"></i><span>Validating...</span>
+                        <i class="icon-refresh"></i><span>@L.SignIn_Validating</span>
                         break;
                     case ValidationState.Invalid:
                         <span>@L.SignIn_Unavailable</span>

@@ -22,10 +22,10 @@
         }
     </div>
     <div class="c-text">
-        <span class="c-error">@ErrorText</span>
-            @if (IsVerifying) {
-                <span class="c-disabled-text">Verifying...</span>
-            }
+        <span class="c-error">@(ErrorText ?? L.Verify_InvalidCode)</span>
+        @if (IsVerifying) {
+            <span class="c-disabled-text">@L.Verify_Verifying</span>
+        }
     </div>
 </div>
 
@@ -40,7 +40,7 @@
     private IJSObjectReference? _jsRef;
 
     [Parameter] public bool IsVerifying { get; set; }
-    [Parameter] public string ErrorText { get; set; } = "Invalid code. Please correct it or request a new one.";
+    [Parameter] public string? ErrorText { get; set; }
     [Parameter] public EventCallback<int> Completed { get; set; }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TotpInput))]
@@ -50,13 +50,6 @@
         var jsRef = _jsRef;
         _jsRef = null!;
         return jsRef.DisposeSilentlyAsync();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
-            _blazorRef = DotNetObjectReference.Create(this);
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _ref, _inputRefs, _blazorRef);
-        }
     }
 
     public ValueTask Focus()
@@ -71,4 +64,13 @@
     [JSInvokable]
     public Task OnCompleted(int value)
         => Completed.InvokeAsync(value);
+
+    // Protected methods
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            _blazorRef = DotNetObjectReference.Create(this);
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _ref, _inputRefs, _blazorRef);
+        }
+    }
 }

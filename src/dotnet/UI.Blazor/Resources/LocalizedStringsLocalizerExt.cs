@@ -142,6 +142,10 @@ public static class LocalizedStringsLocalizerExt
         public string DevTools_EarlyAccessUIDisabled => l["DevTools_EarlyAccessUIDisabled"].Value;
         public string DevTools_Troubleshooting => l["DevTools_Troubleshooting"].Value;
         public string DevTools_EnableLogViewer => l["DevTools_EnableLogViewer"].Value;
+        public string DevTools_EnableVideoDiagnostics => l["DevTools_EnableVideoDiagnostics"].Value;
+        public string DevTools_EnableAudioDiagnostics => l["DevTools_EnableAudioDiagnostics"].Value;
+        public string Diagnostics_Video => l["Diagnostics_Video"].Value;
+        public string Diagnostics_Audio => l["Diagnostics_Audio"].Value;
 
         public string Documents_PrivacyPolicy => l["Documents_PrivacyPolicy"].Value;
         public string Documents_TermsConditions => l["Documents_TermsConditions"].Value;
@@ -156,9 +160,14 @@ public static class LocalizedStringsLocalizerExt
         public string RenderMode_WasmDescription => l["RenderMode_WasmDescription"].Value;
 
         public string TimeZone_SelectTitle => l["TimeZone_SelectTitle"].Value;
+        public string TimeZone_Question => l["TimeZone_Question"].Value;
         public string TimeZone_Updated => l["TimeZone_Updated"].Value;
 
         public string NativeApp_AutoStart => l["NativeApp_AutoStart"].Value;
+        public string NativeApp_AutoStartEnabledByPolicy => l["NativeApp_AutoStartEnabledByPolicy"].Value;
+        public string NativeApp_AutoStartDisabledByPolicy => l["NativeApp_AutoStartDisabledByPolicy"].Value;
+        public string NativeApp_AutoStartDisabledInTaskManager_Format(object arg0)
+            => l["NativeApp_AutoStartDisabledInTaskManager_Format", arg0].Value;
 
         public string Email_Title => l["Email_Title"].Value;
         public string Email_Label => l["Email_Label"].Value;
@@ -176,6 +185,7 @@ public static class LocalizedStringsLocalizerExt
         public string ChatList_TabGroups => l["ChatList_TabGroups"].Value;
         public string ChatList_TabPeople => l["ChatList_TabPeople"].Value;
         public string ChatList_TabThreads => l["ChatList_TabThreads"].Value;
+        public string ChatList_TabMentions => l["ChatList_TabMentions"].Value;
         public string ChatList_SortBy => l["ChatList_SortBy"].Value;
         public string ChatList_SortByAnyonesActivity => l["ChatList_SortByAnyonesActivity"].Value;
         public string ChatList_SortByOwnActivity => l["ChatList_SortByOwnActivity"].Value;
@@ -408,6 +418,7 @@ public static class LocalizedStringsLocalizerExt
         public string Search_TypeAnything => l["Search_TypeAnything"].Value;
         public string Search_TypePeople => l["Search_TypePeople"].Value;
         public string Search_TypeGroups => l["Search_TypeGroups"].Value;
+        public string Search_TypePlaces => l["Search_TypePlaces"].Value;
         public string Search_TypeMessages => l["Search_TypeMessages"].Value;
         public string Search_TabTags => l["Search_TabTags"].Value;
         public string Search_RecentSearches => l["Search_RecentSearches"].Value;
@@ -471,6 +482,7 @@ public static class LocalizedStringsLocalizerExt
         public string Form_ConfirmDelete => l["Form_ConfirmDelete"].Value;
         public string Form_Email => l["Form_Email"].Value;
         public string Form_TimeZone => l["Form_TimeZone"].Value;
+        public string Form_PleaseSelect => l["Form_PleaseSelect"].Value;
         public string Form_Phone => l["Form_Phone"].Value;
         public string Form_CustomLink => l["Form_CustomLink"].Value;
         public string DeleteAccount_Title => l["DeleteAccount_Title"].Value;
@@ -624,12 +636,19 @@ public static class LocalizedStringsLocalizerExt
             => l["Banner_LockScreenCalls_Prefix", arg0].Value;
         public string Banner_LockScreenCallsTarget => l["Banner_LockScreenCallsTarget"].Value;
         public string Banner_LockScreenCalls_Suffix => l["Banner_LockScreenCalls_Suffix"].Value;
+        public string Banner_LiveActivities_Prefix(object arg0) => l["Banner_LiveActivities_Prefix", arg0].Value;
+        public string Banner_LiveActivitiesTarget => l["Banner_LiveActivitiesTarget"].Value;
+        public string Banner_LiveActivities_Suffix => l["Banner_LiveActivities_Suffix"].Value;
         public string Banner_PttAllow => l["Banner_PttAllow"].Value;
         public string Banner_Connected => l["Banner_Connected"].Value;
         public string Banner_ConnectionLost => l["Banner_ConnectionLost"].Value;
         public string Banner_Connecting => l["Banner_Connecting"].Value;
         public string Banner_Offline => l["Banner_Offline"].Value;
         public string Banner_WillReconnectIn => l["Banner_WillReconnectIn"].Value;
+        public string Reconnect_Title => l["Reconnect_Title"].Value;
+        public string DemandInteraction_Updating => l["DemandInteraction_Updating"].Value;
+        public string DemandInteraction_Continue_Format(object arg0)
+            => l["DemandInteraction_Continue_Format", arg0].Value;
         public string Banner_ReadyToRestart_Format(object arg0) => l["Banner_ReadyToRestart_Format", arg0].Value;
         public string Banner_CallDialing => l["Banner_CallDialing"].Value;
         public string Banner_CallAccepted => l["Banner_CallAccepted"].Value;
@@ -914,6 +933,7 @@ public static class LocalizedStringsLocalizerExt
         public string Location_NoOneSharing => l["Location_NoOneSharing"].Value;
         public string Location_OpenIn => l["Location_OpenIn"].Value;
         public string Location_Updated => l["Location_Updated"].Value;
+        public string Location_You => l["Location_You"].Value;
         public string Location_EnablePermission => l["Location_EnablePermission"].Value;
         public string Location_SendThisLocation => l["Location_SendThisLocation"].Value;
         public string Location_SendCurrentLocation => l["Location_SendCurrentLocation"].Value;
@@ -962,6 +982,7 @@ public static class LocalizedStringsLocalizerExt
         public string Replay_SpeedMenuTitle => l["Replay_SpeedMenuTitle"].Value;
         public string Translation_TranslateTo => l["Translation_TranslateTo"].Value;
         public string Translation_TranslateToColon => l["Translation_TranslateToColon"].Value;
+        public string Translation_Setup => l["Translation_Setup"].Value;
         public string Translation_ModalTitle => l["Translation_ModalTitle"].Value;
         public string Translation_TranslateOwnMessages => l["Translation_TranslateOwnMessages"].Value;
         public string Uploads_Pending => l["Uploads_Pending"].Value;
@@ -1027,6 +1048,7 @@ public static class LocalizedStringsLocalizerExt
         public string LogView_DisabledSettingsLink => l["LogView_DisabledSettingsLink"].Value;
         public string LogView_Disabled_Suffix => l["LogView_Disabled_Suffix"].Value;
         public string LogView_CopyToClipboard => l["LogView_CopyToClipboard"].Value;
+        public string LogView_Report => l["LogView_Report"].Value;
         public string Report_Title => l["Report_Title"].Value;
         public string Report_Description => l["Report_Description"].Value;
         public string Report_Placeholder => l["Report_Placeholder"].Value;
@@ -1043,6 +1065,15 @@ public static class LocalizedStringsLocalizerExt
         public string SearchTabs_Contacts => l["SearchTabs_Contacts"].Value;
         public string SearchTabs_Date => l["SearchTabs_Date"].Value;
         public string Notifications_AllCaughtUp => l["Notifications_AllCaughtUp"].Value;
+        public string NotificationsPanel_Description => l["NotificationsPanel_Description"].Value;
+        public string NotificationsPanel_DropReadChats => l["NotificationsPanel_DropReadChats"].Value;
+        public string NotificationsPanel_Immediately => l["NotificationsPanel_Immediately"].Value;
+        public string NotificationsPanel_AfterPanelClosed => l["NotificationsPanel_AfterPanelClosed"].Value;
+        public string NotificationsPanel_After10Minutes => l["NotificationsPanel_After10Minutes"].Value;
+        public string NotificationsPanel_After1Hour => l["NotificationsPanel_After1Hour"].Value;
+        public string NotificationsPanel_After3Hours => l["NotificationsPanel_After3Hours"].Value;
+        public string NotificationsPanel_After8Hours => l["NotificationsPanel_After8Hours"].Value;
+        public string NotificationsPanel_After24Hours => l["NotificationsPanel_After24Hours"].Value;
         public string Search_In => l["Search_In"].Value;
         public string Search_CloseSearch => l["Search_CloseSearch"].Value;
         public string Search_ShowLess => l["Search_ShowLess"].Value;
@@ -1139,6 +1170,9 @@ public static class LocalizedStringsLocalizerExt
         public string Download_SignInToWebApp => l["Download_SignInToWebApp"].Value;
         public string Download_QrCode_Format(object arg0) => l["Download_QrCode_Format", arg0].Value;
         public string Redirect_To => l["Redirect_To"].Value;
+        public string Unavailable_Title => l["Unavailable_Title"].Value;
+        public string Unavailable_PageNotFound => l["Unavailable_PageNotFound"].Value;
+        public string Unavailable_NotFound_Format(object arg0) => l["Unavailable_NotFound_Format", arg0].Value;
         public string Error_AwSnap => l["Error_AwSnap"].Value;
         public string Error_Title => l["Error_Title"].Value;
         public string Error_AccountSuspendedTitle => l["Error_AccountSuspendedTitle"].Value;
@@ -1160,6 +1194,8 @@ public static class LocalizedStringsLocalizerExt
         public string Verify_EnterCodeSentTo_Suffix => l["Verify_EnterCodeSentTo_Suffix"].Value;
         public string Verify_RequestNewCodeIn => l["Verify_RequestNewCodeIn"].Value;
         public string Verify_Resend => l["Verify_Resend"].Value;
+        public string Verify_Verifying => l["Verify_Verifying"].Value;
+        public string Verify_InvalidCode => l["Verify_InvalidCode"].Value;
         public string PicUpload_UploadImage => l["PicUpload_UploadImage"].Value;
         public string PicUpload_GenerateAvatar => l["PicUpload_GenerateAvatar"].Value;
         public string SignIn_SignIn => l["SignIn_SignIn"].Value;
@@ -1168,6 +1204,7 @@ public static class LocalizedStringsLocalizerExt
         public string SignIn_VerificationCode => l["SignIn_VerificationCode"].Value;
         public string SignIn_CodeSent => l["SignIn_CodeSent"].Value;
         public string SignIn_Unavailable => l["SignIn_Unavailable"].Value;
+        public string SignIn_Validating => l["SignIn_Validating"].Value;
         public string SignIn_WelcomeNamed_Format(object arg0, object arg1)
             => l["SignIn_WelcomeNamed_Format", arg0, arg1].Value;
         public string SignIn_SignInWith_Format(object arg0) => l["SignIn_SignInWith_Format", arg0].Value;
@@ -1254,6 +1291,7 @@ public static class LocalizedStringsLocalizerExt
         public string Video_StopNow => l["Video_StopNow"].Value;
         public string Video_FailedToStartRecording => l["Video_FailedToStartRecording"].Value;
         public string Video_HideChat => l["Video_HideChat"].Value;
+        public string Video_Connecting => l["Video_Connecting"].Value;
         public string Video_ShowChat => l["Video_ShowChat"].Value;
         public string Video_StartVideo => l["Video_StartVideo"].Value;
         public string Video_StopVideo => l["Video_StopVideo"].Value;

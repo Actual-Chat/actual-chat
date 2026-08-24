@@ -6,7 +6,7 @@
     var btnText = isExpanded ? L.Search_ShowLess : L.Search_ShowMore;
     var isExpandedCls = isExpanded ? "expanded" : "";
     var isCollapsedCls = IsCollapsed ? "collapsed" : "";
-    var title = IsGlobalSearchResult ? L.LeftPanel_PublicChatsAndPlaces : Scope.ToString();
+    var title = IsGlobalSearchResult ? L.LeftPanel_PublicChatsAndPlaces : GetScopeTitle(Scope);
 }
 
 <div class="search-result-group-header @isExpandedCls @isCollapsedCls">
@@ -31,6 +31,15 @@
     [Parameter, EditorRequired] public SearchScope Scope { get; set; }
     [Parameter, EditorRequired] public bool IsGlobalSearchResult { get; set; }
     [Parameter] public bool IsCollapsed { get; set; }
+
+    private string GetScopeTitle(SearchScope scope)
+        => scope switch {
+            SearchScope.People => L.Search_TypePeople,
+            SearchScope.Groups => L.Search_TypeGroups,
+            SearchScope.Places => L.Search_TypePlaces,
+            SearchScope.Messages => L.Search_TypeMessages,
+            _ => scope.ToString(),
+        };
 
     private Task OnTitleClick()
         => SearchUI.ToggleGroupCollapse(new SearchResultGroupKey(Scope, IsGlobalSearchResult));

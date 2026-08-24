@@ -2,9 +2,9 @@
 @page "/unavailable/{What}"
 @inherits ComponentBase<UIHub>
 
-<MainHeader>Unavailable</MainHeader>
+<MainHeader>@L.Unavailable_Title</MainHeader>
 
-This @(What.NullIfEmpty() ?? "page") doesn't exist.
+@(What.NullIfEmpty() is { } what ? L.Unavailable_NotFound_Format(what) : L.Unavailable_PageNotFound)
 
 @code {
     [Parameter] public string? What { get; set; }

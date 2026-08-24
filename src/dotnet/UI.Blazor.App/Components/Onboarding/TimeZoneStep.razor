@@ -11,10 +11,10 @@
 
 <div>
     @if (Stepper.CurrentStepIndex == 0) {
-        <p class="text-title-1 text-center">Welcome to @CoreConstants.AppName!</p>
+        <p class="text-title-1 text-center">@L.Onboarding_Welcome_Format(CoreConstants.AppName)</p>
     }
     <p class="step-subtitle">
-        What is your time zone?
+        @L.TimeZone_Question
     </p>
     <p class="text-headline-1 mt-2">
     </p>
@@ -36,7 +36,7 @@
                     ValueExpression="@(() => _model.SelectedTimeZoneName)"
                     ValueChanged="@((string timeZoneName) => OnTimeZoneSelected(timeZoneName))">
                     @if (_model.SelectedTimeZoneName == "") {
-                        <option value="">Please select...</option>
+                        <option value="">@L.Form_PleaseSelect</option>
                     }
                     @foreach (var timeZone in _timeZones) {
                         <option value="@timeZone.IanaName">@timeZone.IanaName</option>
