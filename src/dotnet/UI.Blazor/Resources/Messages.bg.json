@@ -1,0 +1,138 @@
+// Reverse-indexed catalog: MessageIndex maps a runtime-produced English message back to
+// its key here, so the English value below MUST byte-match what the app actually produces.
+// Placeholders are named: {field} is replaced by the form label, the rest pass through.
+// Two families live here: Validation_* messages produced by BCL attributes, and Error_*
+// messages thrown by the server and shown in an error toast. Our own validation attributes
+// report a Validation_* key directly instead, so they live in Strings.*.json.
+// An Error_* value that no longer matches the code silently falls back to AI translation -
+// ServerErrorLocalizationTest is what keeps the two in sync.
+// TODO(FC): the Validation_* entries here are temporary - see MessageIndex. The .NET 11 pipeline
+// resolves IStringLocalizerFactory per call as of preview.7, so once the SDK is bumped off
+// preview.6 the BCL attributes localize forwards too and only Error_ strings remain here.
+{
+  "Validation_Required_Format": "Полето {field} е задължително.",
+  "Validation_MinLength_Format": "Полето {field} трябва да е текст или масив с минимална дължина „{min}“.",
+  "Validation_EmailAddress_Format": "Полето {field} не съдържа валиден имейл адрес.",
+  "Validation_DeleteConfirmationRequired": "Необходимо е потвърждение за изтриване",
+  "Validation_DeleteConfirmationInvalid": "Напишете DELETE, за да потвърдите",
+
+  // Generic errors, composed by StandardError / the exception types themselves
+  "Error_NotEnoughPermissions": "Не може да извършите това действие: недостатъчни права.",
+  "Error_NotEnoughPermissions_Format": "Не може да извършите това действие: недостатъчни права. Необходимо право: {permission}",
+  "Error_TooManyRequests": "Твърде много заявки.",
+  "Error_TooManyRequests_Format": "Твърде много заявки. Опитайте отново след {seconds} с.",
+  "Error_VersionMismatch": "Несъответствие на версиите.",
+  "Error_ChatNotFound": "Чатът не е намерен.",
+  "Error_ChatEntryNotFound": "Записът в чата не е намерен.",
+  "Error_AccountNotFound": "Профилът не е намерен.",
+  "Error_AuthorNotFound": "Авторът не е намерен.",
+  "Error_AvatarNotFound": "Аватарът не е намерен.",
+  "Error_ContactNotFound": "Контактът не е намерен.",
+  "Error_MediaNotFound": "Медийният файл не е намерен.",
+  "Error_UploadNotFound": "Качваният файл не е намерен.",
+
+  // Sign-in and account
+  "Error_RegistrationExpired": "Тази заявка за регистрация е изтекла. Опитайте да влезете отново.",
+  "Error_SessionExpired": "Сесията ви е изтекла или е деактивирана. Рестартирайте приложението.",
+  "Error_AlreadySignedIn": "Вече сте влезли.",
+  "Error_PhoneTaken": "Този телефонен номер вече се използва от друг профил.",
+  "Error_EmailTaken": "Този имейл вече се използва от друг профил.",
+  "Error_SmsNotDelivered": "Съобщението не можа да бъде доставено до посочения телефонен номер.",
+  "Error_CannotDeactivateCurrentSession": "Текущата сесия не може да бъде деактивирана.",
+  "Error_PhoneFormatInvalid": "Неправилен формат на телефонния номер.",
+  "Error_CannotChangeOwnStatus": "Не може да променяте собствения си статус.",
+  "Error_ApiKeyExpirationRange_Format": "Валидността на API ключа трябва да е между 1 и {days} дни.",
+
+  // Chat members and roles
+  "Error_OnlyOwnerCannotLeave": "Не може да напуснете този чат, защото сте единственият му собственик. Първо добавете друг собственик.",
+  "Error_CannotRemoveSelf": "Не може да премахнете себе си от участниците в чата.",
+  "Error_CannotRemoveChatOwner": "Не може да премахнете собственик на този чат от участниците.",
+  "Error_CannotRemoveSearchBot": "Не може да премахнете AI бота за търсене от участниците в чата.",
+  "Error_OwnerCannotBeDemoted": "На собствениците на чата не може да се отнеме ролята.",
+  "Error_AuthorAlreadyLeft": "Избраният автор вече е напуснал чата.",
+  "Error_AutomaticRoleMembership": "Тази системна роля използва автоматични правила за членство.",
+  "Error_ManageMembershipInPlace": "Управлявайте участието в отворения чат на Мястото чрез настройките на Мястото.",
+  "Error_AnonymousAvatarRequired": "За анонимно присъединяване трябва да се използва анонимен аватар.",
+  "Error_GuestJoinNotAllowed": "Чатът не позволява присъединяване с гост профил.",
+  "Error_AnonymousJoinNotAllowed": "Чатът не позволява анонимно присъединяване.",
+  "Error_OwnersRoleCannotBeEmpty": "В ролята на собствениците трябва да има поне един потребител.",
+  "Error_OnlyOwnersAllowed": "Това действие може да бъде извършено само от членове на ролята собственици на този чат.",
+
+  // Messages
+  "Error_CannotSendMessages": "Не може да изпращате съобщения в този чат.",
+  "Error_EmptyMessage": "За съжаление не може да публикувате празни съобщения.",
+  "Error_CanEditOwnMessagesOnly": "Може да редактирате само собствените си съобщения.",
+  "Error_OnlyTextCanBeEdited": "Може да се редактират само текстови съобщения.",
+  "Error_StreamingCannotBeEdited": "Съобщенията в реално време не може да се редактират.",
+  "Error_ForwardedCannotBeEdited": "Препратените съобщения не може да се редактират.",
+  "Error_MessageNoLongerExists": "Това съобщение вече не съществува.",
+  "Error_CannotRemoveMessage": "Нямате право да изтриете това съобщение.",
+  "Error_CannotRemoveOwnerMessage": "Нямате право да изтриете съобщение на собственик.",
+  "Error_CannotRestoreMessage": "Нямате право да възстановите това съобщение.",
+  "Error_CannotRestoreOwnerMessage": "Нямате право да възстановите съобщение на собственик.",
+  "Error_RootChatCannotHoldMessages": "Основният чат на Мястото не може да съдържа съобщения — пишете в някой от чатовете на Мястото.",
+  "Error_CanAttachOwnLocationsOnly": "Може да прикачите само собствените си споделени местоположения от този чат.",
+  "Error_NonContactMessageLimit_Format": "Може да изпратите до {limit} съобщения, докато този потребител не ви добави в контактите си или не отговори.",
+  "Error_OnlyOwnersOrModeratorsCanPin": "Не може да извършите това действие: недостатъчни права. Необходимо право: само собственици и модератори на чата може да закачат съобщения.",
+  "Error_PinLimit_Format": "Може да закачите до {limit} съобщения.",
+
+  // Chats and places
+  "Error_ChatTitleEmpty": "Името на чата не може да е празно.",
+  "Error_ThreadTitleEmpty": "Името на нишката не може да е празно.",
+  "Error_PlaceTitleEmpty": "Името на Мястото не може да е празно.",
+  "Error_PlaceUnavailable": "Заявеното Място не е достъпно.",
+  "Error_OnlyPlaceMembersCanAddChats": "Само участниците в Мястото може да добавят чатове.",
+  "Error_CannotMakeChatPublic": "Не може да извършите това действие: недостатъчни права. Необходимо право: да направите чата отворен",
+  "Error_CustomLinkNotAllowed": "Собствените линкове не са разрешени за чатове на Място.",
+  "Error_CustomLinkTaken_Format": "Собственият линк „{link}“ вече се използва от друг чат в същото Място.",
+  "Error_WelcomeChatCannotBePrivate": "Видът на чата „Welcome“ не може да се смени на затворен.",
+  "Error_WelcomeChatCannotBeRemoved": "Чатът „Welcome“ не може да бъде изтрит.",
+  "Error_OnlyGroupOrPlaceChatCanBeCopied": "В Място може да се копират само групови чатове или чатове на Място.",
+  "Error_CannotCopyToSamePlace": "Чат на Място не може да се копира в същото Място.",
+  "Error_MigrationRequiresChatOwner": "За да извършите миграцията, трябва да сте собственик на този чат.",
+  "Error_MigrationRequiresPlaceOwner": "За да копирате чат в Място, трябва да сте собственик на Мястото.",
+  "Error_OperationRequiresChatOwner": "За да извършите тази операция, трябва да сте собственик на този чат.",
+  "Error_OperationRequiresPlaceOwner": "За да извършите тази операция, трябва да сте собственик на Мястото на чата.",
+
+  // Threads and contacts
+  "Error_ThreadRequiresContact": "Нишки може да се започват едва след като този потребител ви добави в контактите си или отговори.",
+  "Error_SignInToFollowThread": "За да следвате нишка от чата, трябва да влезете.",
+  "Error_OnlyPeerContactCanBeBlocked": "Може да се блокират само лични контакти.",
+  "Error_SignInToChat": "За да пишете на друг потребител, трябва да влезете.",
+  "Error_CannotChatWithUnauthenticated": "Не може да пишете на потребител, който не е влязъл.",
+
+  // Calls
+  "Error_OnlyParticipantCanBecomeHost": "Водещ на обаждането може да стане само негов участник.",
+  "Error_CannotMuteOwner": "Не може да изключите микрофона на собственик.",
+  "Error_OnlyHostOrOwnerCanChangeHost": "Водещият на обаждането може да бъде сменен само от текущия водещ или собственик на чата.",
+  "Error_CallRequiresContact": "Може да се обадите на този потребител едва след като ви добави в контактите си или ви отговори.",
+  "Error_CannotMuteInPeerChat": "В разговор един на един не може да заглушите другия участник.",
+  "Error_OnlyHostOwnerOrModeratorCanManageCall": "Сесията на живо може да се управлява само от водещия на обаждането или собственик/модератор на чата.",
+  "Error_VoiceStreamingModeLocked": "Режимът на предаване на глас не може да се променя в този чат.",
+
+  // Notifications
+  "Error_NotifyMembersNotAllowed": "Уведомяването на участниците не е разрешено в публично достъпни чатове.",
+  "Error_AlertEveryoneUnavailable": "Предупреждаването на всички не е достъпно в чатове с повече от 10 души.",
+  "Error_NobodyToNotify": "Няма кого да уведомим.",
+  "Error_OnlyAuthorCanNotify": "Само авторът може да уведомява споменатите лица.",
+
+  // Media and uploads
+  "Error_NoMediaAccess": "Нямате права за достъп до този медиен файл.",
+  "Error_FileTooBig": "Файлът е твърде голям.",
+  "Error_CropExportFailed": "Изрязаното изображение не можа да бъде експортирано.",
+  "Error_FileTooBig_Format": "Файлът е твърде голям. Максимален размер: {size}.",
+  "Error_TooManyFiles_Format": "Твърде много файлове. Максималният разрешен брой е {count}.",
+
+  // Invites
+  "Error_InviteAlreadyUsed": "Линкът за покана вече е използван.",
+  "Error_InviteNotActive": "Линкът за покана вече не е активен.",
+  "Error_InviteCodeNotFound": "Покана с посочения код не е намерена.",
+  "Error_OnlyPlaceMembersCanUseCode": "Този код може да се използва само от участници в Мястото.",
+  "Error_UserInvitesRemoved": "Функцията за потребителски покани е премахната.",
+
+  // Live location
+  "Error_JoinChatToShareLocation": "Присъединете се към чата, преди да споделите местоположението си.",
+  "Error_CanChangeOwnLocationsOnly": "В този чат може да променяте само собствените си споделени местоположения.",
+  "Error_LocationSharingLimit_Format": "В този чат вече максимален брой хора споделят местоположението си на живо: {limit}.",
+  "Error_FailedToAddFileAttachment": "Прикаченият файл не можа да бъде добавен."
+}
