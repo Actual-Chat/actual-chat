@@ -1,0 +1,138 @@
+// Reverse-indexed catalog: MessageIndex maps a runtime-produced English message back to
+// its key here, so the English value below MUST byte-match what the app actually produces.
+// Placeholders are named: {field} is replaced by the form label, the rest pass through.
+// Two families live here: Validation_* messages produced by BCL attributes, and Error_*
+// messages thrown by the server and shown in an error toast. Our own validation attributes
+// report a Validation_* key directly instead, so they live in Strings.*.json.
+// An Error_* value that no longer matches the code silently falls back to AI translation -
+// ServerErrorLocalizationTest is what keeps the two in sync.
+// TODO(FC): the Validation_* entries here are temporary - see MessageIndex. The .NET 11 pipeline
+// resolves IStringLocalizerFactory per call as of preview.7, so once the SDK is bumped off
+// preview.6 the BCL attributes localize forwards too and only Error_ strings remain here.
+{
+  "Validation_Required_Format": "Kolom {field} wajib diisi.",
+  "Validation_MinLength_Format": "Kolom {field} harus berupa teks atau larik dengan panjang minimal “{min}”.",
+  "Validation_EmailAddress_Format": "Kolom {field} bukan alamat email yang valid.",
+  "Validation_DeleteConfirmationRequired": "Konfirmasi penghapusan wajib diisi",
+  "Validation_DeleteConfirmationInvalid": "Ketik DELETE untuk mengonfirmasi",
+
+  // Generic errors, composed by StandardError / the exception types themselves
+  "Error_NotEnoughPermissions": "Anda tidak bisa melakukan tindakan ini: izin tidak mencukupi.",
+  "Error_NotEnoughPermissions_Format": "Anda tidak bisa melakukan tindakan ini: izin tidak mencukupi. Izin yang diminta: {permission}",
+  "Error_TooManyRequests": "Terlalu banyak permintaan.",
+  "Error_TooManyRequests_Format": "Terlalu banyak permintaan. Coba lagi dalam {seconds} detik.",
+  "Error_VersionMismatch": "Versi tidak cocok.",
+  "Error_ChatNotFound": "Obrolan tidak ditemukan.",
+  "Error_ChatEntryNotFound": "Entri obrolan tidak ditemukan.",
+  "Error_AccountNotFound": "Akun tidak ditemukan.",
+  "Error_AuthorNotFound": "Penulis tidak ditemukan.",
+  "Error_AvatarNotFound": "Avatar tidak ditemukan.",
+  "Error_ContactNotFound": "Kontak tidak ditemukan.",
+  "Error_MediaNotFound": "Media tidak ditemukan.",
+  "Error_UploadNotFound": "Unggahan tidak ditemukan.",
+
+  // Sign-in and account
+  "Error_RegistrationExpired": "Permintaan pendaftaran ini sudah kedaluwarsa. Coba masuk lagi.",
+  "Error_SessionExpired": "Sesi Anda kedaluwarsa atau dinonaktifkan. Mulai ulang aplikasi.",
+  "Error_AlreadySignedIn": "Sudah masuk.",
+  "Error_PhoneTaken": "Nomor telepon ini sudah dipakai akun lain.",
+  "Error_EmailTaken": "Email ini sudah dipakai akun lain.",
+  "Error_SmsNotDelivered": "Kami tidak bisa mengirim pesan ke nomor telepon tersebut.",
+  "Error_CannotDeactivateCurrentSession": "Sesi saat ini tidak bisa dinonaktifkan.",
+  "Error_PhoneFormatInvalid": "Format nomor telepon salah.",
+  "Error_CannotChangeOwnStatus": "Anda tidak bisa mengubah status Anda sendiri.",
+  "Error_ApiKeyExpirationRange_Format": "Masa berlaku kunci API harus antara 1 dan {days} hari.",
+
+  // Chat members and roles
+  "Error_OnlyOwnerCannotLeave": "Anda tidak bisa keluar dari obrolan ini karena Anda satu-satunya pemilik. Tambahkan pemilik lain terlebih dahulu.",
+  "Error_CannotRemoveSelf": "Anda tidak bisa mengeluarkan diri sendiri dari anggota obrolan.",
+  "Error_CannotRemoveChatOwner": "Anda tidak bisa mengeluarkan pemilik obrolan ini dari anggota obrolan.",
+  "Error_CannotRemoveSearchBot": "Anda tidak bisa mengeluarkan bot pencarian AI dari anggota obrolan.",
+  "Error_OwnerCannotBeDemoted": "Status pemilik obrolan tidak bisa dicabut.",
+  "Error_AuthorAlreadyLeft": "Penulis yang dipilih sudah keluar dari obrolan.",
+  "Error_AutomaticRoleMembership": "Peran sistem ini memakai aturan keanggotaan otomatis.",
+  "Error_ManageMembershipInPlace": "Keanggotaan obrolan terbuka Tempat dikelola lewat pengaturan Tempat.",
+  "Error_AnonymousAvatarRequired": "Avatar anonim harus dipakai untuk bergabung secara anonim.",
+  "Error_GuestJoinNotAllowed": "Obrolan ini tidak mengizinkan bergabung dengan akun tamu.",
+  "Error_AnonymousJoinNotAllowed": "Obrolan ini tidak mengizinkan bergabung secara anonim.",
+  "Error_OwnersRoleCannotBeEmpty": "Peran pemilik harus berisi setidaknya satu pengguna.",
+  "Error_OnlyOwnersAllowed": "Hanya anggota peran pemilik obrolan ini yang bisa melakukan tindakan tersebut.",
+
+  // Messages
+  "Error_CannotSendMessages": "Anda tidak bisa mengirim pesan di obrolan ini.",
+  "Error_EmptyMessage": "Maaf, Anda tidak bisa mengirim pesan kosong.",
+  "Error_CanEditOwnMessagesOnly": "Anda hanya bisa mengedit pesan Anda sendiri.",
+  "Error_OnlyTextCanBeEdited": "Hanya pesan teks yang bisa diedit.",
+  "Error_StreamingCannotBeEdited": "Pesan yang sedang dialirkan tidak bisa diedit.",
+  "Error_ForwardedCannotBeEdited": "Pesan yang diteruskan tidak bisa diedit.",
+  "Error_MessageNoLongerExists": "Pesan ini sudah tidak ada.",
+  "Error_CannotRemoveMessage": "Anda tidak diizinkan menghapus pesan ini.",
+  "Error_CannotRemoveOwnerMessage": "Anda tidak diizinkan menghapus pesan pemilik.",
+  "Error_CannotRestoreMessage": "Anda tidak diizinkan memulihkan pesan ini.",
+  "Error_CannotRestoreOwnerMessage": "Anda tidak diizinkan memulihkan pesan pemilik.",
+  "Error_RootChatCannotHoldMessages": "Obrolan utama sebuah Tempat tidak bisa memuat pesan — kirim ke salah satu obrolan di Tempat itu.",
+  "Error_CanAttachOwnLocationsOnly": "Anda hanya bisa melampirkan lokasi yang Anda bagikan sendiri di obrolan ini.",
+  "Error_NonContactMessageLimit_Format": "Anda bisa mengirim hingga {limit} pesan sampai pengguna ini menambahkan Anda ke kontaknya atau membalas.",
+  "Error_OnlyOwnersOrModeratorsCanPin": "Anda tidak bisa melakukan tindakan ini: izin tidak mencukupi. Izin yang diminta: hanya pemilik dan moderator obrolan yang bisa menyematkan pesan.",
+  "Error_PinLimit_Format": "Anda bisa menyematkan hingga {limit} pesan.",
+
+  // Chats and places
+  "Error_ChatTitleEmpty": "Judul obrolan tidak boleh kosong.",
+  "Error_ThreadTitleEmpty": "Judul utas tidak boleh kosong.",
+  "Error_PlaceTitleEmpty": "Nama Tempat tidak boleh kosong.",
+  "Error_PlaceUnavailable": "Tempat yang diminta tidak tersedia.",
+  "Error_OnlyPlaceMembersCanAddChats": "Hanya anggota Tempat yang bisa menambahkan obrolan.",
+  "Error_CannotMakeChatPublic": "Anda tidak bisa melakukan tindakan ini: izin tidak mencukupi. Izin yang diminta: menjadikan obrolan terbuka",
+  "Error_CustomLinkNotAllowed": "Tautan khusus tidak diizinkan untuk obrolan Tempat.",
+  "Error_CustomLinkTaken_Format": "Tautan khusus “{link}” sudah dipakai obrolan lain di Tempat yang sama.",
+  "Error_WelcomeChatCannotBePrivate": "Jenis obrolan “Welcome” tidak bisa diubah menjadi tertutup.",
+  "Error_WelcomeChatCannotBeRemoved": "Obrolan “Welcome” tidak boleh dihapus.",
+  "Error_OnlyGroupOrPlaceChatCanBeCopied": "Hanya obrolan grup atau obrolan Tempat yang bisa disalin ke sebuah Tempat.",
+  "Error_CannotCopyToSamePlace": "Obrolan Tempat tidak bisa disalin ke Tempat yang sama.",
+  "Error_MigrationRequiresChatOwner": "Anda harus menjadi pemilik obrolan ini untuk melakukan migrasi.",
+  "Error_MigrationRequiresPlaceOwner": "Anda harus menjadi pemilik Tempat untuk menyalin obrolan ke Tempat.",
+  "Error_OperationRequiresChatOwner": "Anda harus menjadi pemilik obrolan ini untuk melakukan operasi tersebut.",
+  "Error_OperationRequiresPlaceOwner": "Anda harus menjadi pemilik Tempat dari obrolan ini untuk melakukan operasi tersebut.",
+
+  // Threads and contacts
+  "Error_ThreadRequiresContact": "Utas hanya bisa dimulai setelah pengguna ini menambahkan Anda ke kontaknya atau membalas.",
+  "Error_SignInToFollowThread": "Anda harus masuk untuk mengikuti utas obrolan.",
+  "Error_OnlyPeerContactCanBeBlocked": "Hanya kontak pribadi yang bisa diblokir.",
+  "Error_SignInToChat": "Anda harus masuk untuk mengobrol dengan pengguna lain.",
+  "Error_CannotChatWithUnauthenticated": "Anda tidak bisa mengobrol dengan pengguna yang belum masuk.",
+
+  // Calls
+  "Error_OnlyParticipantCanBecomeHost": "Hanya peserta panggilan yang bisa menjadi tuan rumah panggilan.",
+  "Error_CannotMuteOwner": "Anda tidak bisa mematikan mikrofon pemilik.",
+  "Error_OnlyHostOrOwnerCanChangeHost": "Hanya tuan rumah panggilan atau pemilik obrolan yang bisa mengganti tuan rumah panggilan.",
+  "Error_CallRequiresContact": "Anda bisa menelepon pengguna ini hanya setelah dia menambahkan Anda ke kontaknya atau membalas Anda.",
+  "Error_CannotMuteInPeerChat": "Anda tidak bisa membisukan peserta lain dalam obrolan satu lawan satu.",
+  "Error_OnlyHostOwnerOrModeratorCanManageCall": "Hanya tuan rumah panggilan, pemilik, atau moderator obrolan yang bisa mengelola sesi langsung.",
+  "Error_VoiceStreamingModeLocked": "Mode pengaliran suara tidak bisa diubah di obrolan ini.",
+
+  // Notifications
+  "Error_NotifyMembersNotAllowed": "Memberi tahu anggota tidak diizinkan di obrolan yang terbuka untuk umum.",
+  "Error_AlertEveryoneUnavailable": "Peringatan ke semua orang tidak tersedia di obrolan dengan lebih dari 10 orang.",
+  "Error_NobodyToNotify": "Tidak ada yang perlu diberi tahu.",
+  "Error_OnlyAuthorCanNotify": "Hanya penulis yang boleh memberi tahu pihak yang disebut.",
+
+  // Media and uploads
+  "Error_NoMediaAccess": "Anda tidak punya izin untuk mengakses media ini.",
+  "Error_FileTooBig": "File terlalu besar.",
+  "Error_CropExportFailed": "Gagal mengekspor gambar yang dipangkas.",
+  "Error_FileTooBig_Format": "File terlalu besar. Ukuran file maksimum: {size}.",
+  "Error_TooManyFiles_Format": "Terlalu banyak file. Jumlah maksimum yang diizinkan adalah {count}.",
+
+  // Invites
+  "Error_InviteAlreadyUsed": "Tautan undangan sudah dipakai.",
+  "Error_InviteNotActive": "Tautan undangan sudah tidak aktif.",
+  "Error_InviteCodeNotFound": "Undangan dengan kode tersebut tidak ditemukan.",
+  "Error_OnlyPlaceMembersCanUseCode": "Hanya anggota Tempat yang bisa memakai kode ini.",
+  "Error_UserInvitesRemoved": "Fitur undangan pengguna telah dihapus.",
+
+  // Live location
+  "Error_JoinChatToShareLocation": "Bergabunglah ke obrolan sebelum membagikan lokasi Anda.",
+  "Error_CanChangeOwnLocationsOnly": "Di obrolan ini Anda hanya bisa mengubah lokasi yang Anda bagikan sendiri.",
+  "Error_LocationSharingLimit_Format": "Obrolan ini sudah mencapai batas maksimum {limit} orang yang membagikan lokasi langsung.",
+  "Error_FailedToAddFileAttachment": "Gagal menambahkan lampiran file."
+}

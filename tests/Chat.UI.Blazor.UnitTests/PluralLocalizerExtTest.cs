@@ -13,6 +13,7 @@ public sealed class PluralLocalizerExtTest
         ("es", 1, "1 miembro"), ("es", 2, "2 miembros"), ("es", 5, "5 miembros"), ("es", 21, "21 miembros"),
         ("fr", 1, "1 membre"), ("fr", 2, "2 membres"), ("fr", 5, "5 membres"), ("fr", 21, "21 membres"),
         ("hi", 1, "1 सदस्य"), ("hi", 2, "2 सदस्य"), ("hi", 5, "5 सदस्य"), ("hi", 21, "21 सदस्य"),
+        ("id", 1, "1 anggota"), ("id", 2, "2 anggota"), ("id", 5, "5 anggota"), ("id", 21, "21 anggota"),
         ("it", 1, "1 membro"), ("it", 2, "2 membri"), ("it", 5, "5 membri"), ("it", 21, "21 membri"),
         ("ja", 1, "メンバー 1 人"), ("ja", 2, "メンバー 2 人"), ("ja", 5, "メンバー 5 人"), ("ja", 21, "メンバー 21 人"),
         ("ko", 1, "멤버 1명"), ("ko", 2, "멤버 2명"), ("ko", 5, "멤버 5명"), ("ko", 21, "멤버 21명"),
