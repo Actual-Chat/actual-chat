@@ -23,7 +23,7 @@
                             Value="_formModel.PrimaryLanguageId"
                             ValueExpression="@(() => _formModel.PrimaryLanguageId)"
                             ValueChanged="@((string languageId) => OnLanguageChanged(0, languageId))">
-                            @foreach (var language in Languages.All) {
+                            @foreach (var language in Languages.AllTranscription) {
                                 <option value="@language.Id">@language.Title</option>
                             }
                         </InputSelect>
@@ -39,7 +39,7 @@
                             ValueExpression="@(() => _formModel.SecondaryLanguageId)"
                             ValueChanged="@((string languageId) => OnLanguageChanged(1, languageId))">
                             <option value="">@L.Onboarding_NoLanguage</option>
-                            @foreach (var language in Languages.All) {
+                            @foreach (var language in Languages.AllTranscription) {
                                 if (!IsPrimary(language.Id)) {
                                     <option value="@language.Id">@language.Title</option>
                                 }
@@ -58,7 +58,7 @@
                             ValueChanged="@((string languageId) => OnLanguageChanged(2, languageId))"
                             disabled="@IsTertiaryDisabled">
                             <option value="">@L.Onboarding_NoLanguage</option>
-                            @foreach (var language in Languages.All) {
+                            @foreach (var language in Languages.AllTranscription) {
                                 if (!IsPrimary(language.Id) && !IsSecondary(language.Id)) {
                                     <option value="@language.Id">@language.Title</option>
                                 }

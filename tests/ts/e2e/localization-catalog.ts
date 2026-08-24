@@ -14,7 +14,7 @@ import * as path from 'path';
 
 export const RESOURCES_DIR = path.resolve(process.cwd(), 'src/dotnet/UI.Blazor/Resources');
 
-// LanguageUI.SupportedUILanguages, in its declaration order.
+// Languages.AllUI, in its declaration order.
 export const UI_LANGUAGES: UILanguage[] = [
     { code: 'en-US', subtag: 'en', nativeName: 'English' },
     { code: 'es-ES', subtag: 'es', nativeName: 'Español' },

@@ -12,14 +12,6 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 {
     private static readonly string JSGetLanguagesMethod = $"{BlazorUIAppModule.ImportName}.LanguageUI.getLanguages";
     public static readonly Language DefaultUILanguage = Languages.Main;
-    public static readonly Language[] SupportedUILanguages = [
-        Languages.English, Languages.Spanish, Languages.French, Languages.Italian,
-        Languages.Russian, Languages.German, Languages.Chinese, Languages.Hindi,
-        Languages.Japanese, Languages.Korean, Languages.Portuguese, Languages.Turkish,
-        Languages.Ukrainian, Languages.Vietnamese, Languages.Polish, Languages.Indonesian,
-        Languages.Czech, Languages.Bulgarian, Languages.Bosnian, Languages.Croatian,
-        Languages.Montenegrin, Languages.Serbian,
-    ];
 
     public SyncedState<UserLanguageSettings> Settings { get; init; }
     public SyncedState<Language> UILanguage { get; init; }
@@ -138,7 +130,7 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 
         var languages = await GetClientLanguages(cancellationToken).ConfigureAwait(false);
         foreach (var language in languages)
-            if (SupportedUILanguages.FirstOrDefault(l => l.IsoCode == language.IsoCode) is { } uiLanguage)
+            if (Languages.AllUI.FirstOrDefault(l => l.IsoCode == language.IsoCode) is { } uiLanguage)
                 return uiLanguage;
 
         return DefaultUILanguage;

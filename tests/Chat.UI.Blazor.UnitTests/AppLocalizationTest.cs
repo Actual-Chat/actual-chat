@@ -107,7 +107,7 @@ public class AppLocalizationTest
         var shipped = ShippedLanguages(kind).ToHashSet();
 
         // act
-        var missing = LanguageUI.SupportedUILanguages
+        var missing = Languages.AllUI
             .Where(l => !shipped.Contains(l))
             .Select(l => l.IsoCode)
             .ToList();

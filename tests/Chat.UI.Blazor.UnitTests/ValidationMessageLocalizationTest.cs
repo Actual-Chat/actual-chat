@@ -41,7 +41,7 @@ public class ValidationMessageLocalizationTest
         // These never reach MessageIndex, so nothing else would catch a missing translation.
 
         // assert
-        foreach (var language in LanguageUI.SupportedUILanguages) {
+        foreach (var language in Languages.AllUI) {
             var catalog = StringCatalogs.LoadStrings(language);
             catalog.Should().NotBeNull($"'{language.IsoCode}' must ship a catalog");
             foreach (var key in AllValidationKeys())
@@ -82,7 +82,7 @@ public class ValidationMessageLocalizationTest
         // whichever of the two routes produced it.
 
         // assert
-        foreach (var language in LanguageUI.SupportedUILanguages) {
+        foreach (var language in Languages.AllUI) {
             var l = new TestStringLocalizer(ShippedCatalog(language));
             var iso = language.IsoCode;
             foreach (var key in AllValidationKeys())

@@ -4,11 +4,12 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat;
 
-#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+// Equality is reference-based, so the usual Equals/GetHashCode pairing warnings don't apply
 
 /// <summary>
 /// Represents a language with its title and code.
 /// </summary>
+#pragma warning disable CS0659, CS0660, CS0661
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringLikeJsonConverter<Language>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<Language>))]
@@ -29,17 +30,25 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
     [IgnoreDataMember]
     public string NativeName { get; }
     [IgnoreDataMember]
+    public LanguageSupport Support { get; }
+    [IgnoreDataMember]
     public bool IsAnyEnglish { get; }
     [IgnoreDataMember]
     public bool IsAnySpanish { get; }
 
     // Factories and constructors
 
-    internal Language(string value, string shortTitle, string title, string? nativeName = null)
+    internal Language(
+        string value,
+        string shortTitle,
+        string title,
+        string? nativeName = null,
+        LanguageSupport support = LanguageSupport.Transcription)
         : base(value)
     {
         ShortTitle = shortTitle;
         Title = title;
+        Support = support;
         // The primary subtag, not value[..2]: that would collapse "fil-PH" onto Finnish's "fi".
         var separatorIndex = value.IndexOf('-');
         IsoCode = (separatorIndex < 0 ? value : value[..separatorIndex]).ToLower();
@@ -78,7 +87,8 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out Language? result)
     {
-        if (!s.IsNullOrEmpty() && (Languages.ById.TryGetValue(s, out result) || Languages.ById.TryGetValue(s.ToLower(), out result)))
+        if (!s.IsNullOrEmpty()
+            && (Languages.ById.TryGetValue(s, out result) || Languages.ById.TryGetValue(s.ToLower(), out result)))
             return true;
 
         result = null;
