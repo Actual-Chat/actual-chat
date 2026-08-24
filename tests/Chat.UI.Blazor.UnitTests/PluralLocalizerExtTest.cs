@@ -22,6 +22,8 @@ public sealed class PluralLocalizerExtTest
         ("it", 1, "1 membro"), ("it", 2, "2 membri"), ("it", 5, "5 membri"), ("it", 21, "21 membri"),
         ("ja", 1, "メンバー 1 人"), ("ja", 2, "メンバー 2 人"), ("ja", 5, "メンバー 5 人"), ("ja", 21, "メンバー 21 人"),
         ("ko", 1, "멤버 1명"), ("ko", 2, "멤버 2명"), ("ko", 5, "멤버 5명"), ("ko", 21, "멤버 21명"),
+        ("max", 1, "メンバー 1 人"), ("max", 2, "メンバー 2 人"), ("max", 5, "メンバー 5 人"),
+        ("max", 21, "メンバー 21 人"),
         ("pl", 1, "1 uczestnik"), ("pl", 2, "2 uczestnicy"), ("pl", 5, "5 uczestników"),
         ("pl", 21, "21 uczestników"),
         ("pt", 1, "1 membro"), ("pt", 2, "2 membros"), ("pt", 5, "5 membros"), ("pt", 21, "21 membros"),
@@ -52,7 +54,7 @@ public sealed class PluralLocalizerExtTest
     public void EveryLanguageShouldAgreeWithTheNumeral(string subtag, int count, string expected)
     {
         // arrange
-        var l = NewLocalizer(Language.Parse(subtag));
+        var l = NewLocalizer(GetCatalogLanguage(subtag));
 
         // act
         var text = l.Chat_Members(count, count);
@@ -109,7 +111,7 @@ public sealed class PluralLocalizerExtTest
         // or a plural marker; Chat_Members is single-form in all five, so nothing else covers that.
 
         // arrange
-        var l = NewLocalizer(Language.Parse(subtag));
+        var l = NewLocalizer(GetCatalogLanguage(subtag));
 
         // act
         var text = l.Selection_DeleteTitle(count);
@@ -129,7 +131,7 @@ public sealed class PluralLocalizerExtTest
         // French, Hindi and Portuguese count zero as singular; English and Russian don't.
 
         // arrange
-        var l = NewLocalizer(Language.Parse(subtag));
+        var l = NewLocalizer(GetCatalogLanguage(subtag));
 
         // act
         var text = l.Chat_Members(0, 0);
@@ -167,4 +169,7 @@ public sealed class PluralLocalizerExtTest
 
     private static TestStringLocalizer NewLocalizer(Language language)
         => new(StringCatalogs.Load(StringCatalogs.Kind.Strings, language)!, language);
+
+    private static Language GetCatalogLanguage(string subtag)
+        => Languages.AllUIAndTestOnly.Single(l => l.IsoCode == subtag);
 }

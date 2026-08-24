@@ -60,7 +60,8 @@ public class DeltaTextTest
     public void EveryLanguageShouldRenderEveryDelta(string subtag)
     {
         // arrange
-        using var context = NewContext(Language.Parse(subtag));
+        var language = Languages.AllUIAndTestOnly.Single(l => l.IsoCode == subtag);
+        using var context = NewContext(language);
         var deltaText = context.Services.GetRequiredService<DeltaText>();
         var offsets = new[] { -3, -30, 30, -90, 90, -180, 180, -420, 420, -10800, -86400, 86400, -432000 };
 

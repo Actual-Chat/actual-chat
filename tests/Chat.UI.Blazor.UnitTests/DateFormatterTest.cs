@@ -62,7 +62,8 @@ public class DateFormatterTest
     public void EveryLanguageShouldRenderRelativeDatesAndDurations(string subtag)
     {
         // arrange
-        var formatter = NewFormatter(Language.Parse(subtag));
+        var language = Languages.AllUIAndTestOnly.Single(l => l.IsoCode == subtag);
+        var formatter = NewFormatter(language);
 
         // act
         var rendered = new[] { 0, 1, 3, 30, 400 }

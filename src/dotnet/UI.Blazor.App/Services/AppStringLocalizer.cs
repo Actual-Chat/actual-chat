@@ -62,7 +62,7 @@ public sealed class AppStringLocalizer(IServiceProvider services) : IStringLocal
     private static Dictionary<Language, Dictionary<string, string>> LoadAll()
     {
         var result = new Dictionary<Language, Dictionary<string, string>>();
-        foreach (var lang in Languages.AllUI) {
+        foreach (var lang in Languages.AllUIAndTestOnly) {
             var strings = StringCatalogs.LoadStrings(lang);
             if (strings == null)
                 continue;

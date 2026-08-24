@@ -136,6 +136,6 @@ public class SystemEntryLocalizationTest
 
     private static IEnumerable<Language> ShippedLanguages()
         => StringCatalogs.ShippedSubtags(StringCatalogs.Kind.Strings)
-            .Select(s => Language.TryParse(s))
-            .Where(l => l != null)!;
+            .Select(s => Languages.AllUIAndTestOnly.SingleOrDefault(l => l.IsoCode == s))
+            .OfType<Language>();
 }

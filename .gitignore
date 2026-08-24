@@ -32,6 +32,8 @@ _ReSharper*/
 [tT]mp/
 BenchmarkDotNet.Artifacts/
 StyleCopReport.xml
+__pycache__/
+*.py[cod]
 *.dotCover
 *.coverage
 *.coveragexml

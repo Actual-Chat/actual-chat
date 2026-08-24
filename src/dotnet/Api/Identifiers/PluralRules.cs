@@ -7,10 +7,14 @@ namespace ActualChat;
 public static class PluralRules
 {
     public static int GetPluralFormCount(this Language language)
-        => language.IsoCode is "ru" or "uk" or "sr" or "hr" or "bs" or "cnr" or "pl" or "cs" ? 3 : 2;
+        => language == Languages.Max ? 1
+            : language.IsoCode is "ru" or "uk" or "sr" or "hr" or "bs" or "cnr" or "pl" or "cs" ? 3 : 2;
 
     public static int GetPluralFormIndex(this Language language, long count)
     {
+        if (language == Languages.Max)
+            return 0;
+
         var n = Math.Abs(count);
         var mod10 = n % 10;
         var mod100 = n % 100;
