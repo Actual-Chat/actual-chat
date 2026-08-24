@@ -78,7 +78,7 @@ features:
   originate, how they amplify, which edges are conditional, and where
   `ConsolidationDelay` cuts a cascade that is effectively a no-op.
 - [Command idempotency](./architecture/command-idempotency.md) — how `ApiCommand`'s
-  client-generated `Uuid` + a Redis-backed server filter dedup retried commands, and how
+  client-generated `Uuid` + an in-process server filter dedup retried commands, and how
   the version-gated deserializer keeps old clients working across a rollout.
 
 ## Related Projects
