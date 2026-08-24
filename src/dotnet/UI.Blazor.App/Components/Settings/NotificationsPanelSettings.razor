@@ -12,13 +12,13 @@
 
         <FormBlock>
             <p class="c-description">
-                A chat you've read stays in the notifications panel for a while, then drops out on its own.
+                @L.NotificationsPanel_Description
             </p>
             <FormSection
                 For="() => _formModel.Retention"
                 InputId="@_formModel.RetentionFormId"
                 IsLabelInsideInput="true"
-                Label="Drop read chats"
+                Label="@L.NotificationsPanel_DropReadChats"
                 IsRequired="true"
                 HideValidationMessage="true">
                 <InputSelect
@@ -64,16 +64,16 @@
             .Update(x => x with { Retention = retention }, CancellationToken.None);
     }
 
-    private static string GetLabel(NotificationsPanelRetention retention)
+    private string GetLabel(NotificationsPanelRetention retention)
         => retention switch {
-            NotificationsPanelRetention.Immediately => "Immediately",
-            NotificationsPanelRetention.UntilPanelClosed => "After closing the panel",
-            NotificationsPanelRetention.Minutes10 => "After 10 minutes",
-            NotificationsPanelRetention.Hour1 => "After 1 hour",
-            NotificationsPanelRetention.Hours3 => "After 3 hours",
-            NotificationsPanelRetention.Hours8 => "After 8 hours",
-            NotificationsPanelRetention.Hours24 => "After 24 hours",
-            _ => retention.ToString(),
+            NotificationsPanelRetention.Immediately => L.NotificationsPanel_Immediately,
+            NotificationsPanelRetention.UntilPanelClosed => L.NotificationsPanel_AfterPanelClosed,
+            NotificationsPanelRetention.Minutes10 => L.NotificationsPanel_After10Minutes,
+            NotificationsPanelRetention.Hour1 => L.NotificationsPanel_After1Hour,
+            NotificationsPanelRetention.Hours3 => L.NotificationsPanel_After3Hours,
+            NotificationsPanelRetention.Hours8 => L.NotificationsPanel_After8Hours,
+            NotificationsPanelRetention.Hours24 => L.NotificationsPanel_After24Hours,
+            _ => L.NotificationsPanel_After1Hour,
         };
 
     // Nested types

@@ -23,12 +23,13 @@
                 <i class="icon-bell"></i>
             </Icon>
             <Body>
-                Enable <strong>Live Activities</strong> so @CoreConstants.AppName can show upload and chat progress on the Lock Screen
+                @L.Banner_LiveActivities_Prefix(CoreConstants.AppName)<strong
+                    >@L.Banner_LiveActivitiesTarget</strong>@L.Banner_LiveActivities_Suffix
             </Body>
             <Buttons>
                 <Button
                     Class="btn-transparent unhovered"
-                    Click="@OnConfigureClick">Open Settings</Button>
+                    Click="@OnConfigureClick">@L.Common_Settings</Button>
             </Buttons>
         </Banner>
     </RenderIntoSlot>

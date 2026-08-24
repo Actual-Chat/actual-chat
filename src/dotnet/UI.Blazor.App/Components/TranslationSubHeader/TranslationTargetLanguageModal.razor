@@ -18,7 +18,7 @@
         <div class="language-btn-group">
             <div class="c-title">
                 @L.Translation_TranslateToColon
-                <span @onclick="@OnOpenLanguageSettings" class="c-edit" role="button" tabindex="0"> (setup)</span>
+                <span @onclick="@OnOpenLanguageSettings" class="c-edit" role="button" tabindex="0"> @L.Translation_Setup</span>
             </div>
             <div class="c-languages" role="listbox">
                 @foreach (var l in m.Languages) {

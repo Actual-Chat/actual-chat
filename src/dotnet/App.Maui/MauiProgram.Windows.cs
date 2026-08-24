@@ -5,6 +5,7 @@ using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Services;
+using Microsoft.Extensions.Localization;
 using Microsoft.Maui.LifecycleEvents;
 
 namespace ActualChat.App.Maui;
@@ -16,7 +17,8 @@ public static partial class MauiProgram
         services.AddTransient<IAppIconBadge>(_ => new WindowsAppIconBadge());
         services.AddTransient<IDeviceTokenRetriever>(_ => new WindowsDeviceTokenRetriever());
         services.AddScoped<INotificationsPermission>(_ => new WindowsNotificationsPermission());
-        services.AddTransient<INativeAppSettings>(_ => new WindowsAppSettings());
+        services.AddTransient<INativeAppSettings>(
+            c => new WindowsAppSettings(c.GetRequiredService<IStringLocalizer>()));
         services.AddScoped<IRecordingPermissionRequester>(_ => new WindowsRecordingPermissionRequester());
         services.AddScoped<IMauiLogAccessor>(c => new WindowsLogAccessor(c));
         services.AddScoped<IAudioCapture>(c => new WindowsAudioCapture(c.LogFor<WindowsAudioCapture>()));

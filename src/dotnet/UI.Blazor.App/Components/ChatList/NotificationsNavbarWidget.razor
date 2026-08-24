@@ -13,11 +13,11 @@
 
     var tabs = new List<TabDef>();
     if (m.HasAll)
-        tabs.Add(NewTab(ChatListFilter.Unread, "All"));
+        tabs.Add(NewTab(ChatListFilter.Unread, L.ChatList_TabAll));
     if (m.HasPeople)
-        tabs.Add(NewTab(ChatListFilter.UnreadPeople, "People"));
+        tabs.Add(NewTab(ChatListFilter.UnreadPeople, L.ChatList_TabPeople));
     if (m.HasMentions)
-        tabs.Add(NewTab(ChatListFilter.UnreadMentions, "Mentions"));
+        tabs.Add(NewTab(ChatListFilter.UnreadMentions, L.ChatList_TabMentions));
 }
 
 <div class="c-container">

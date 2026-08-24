@@ -74,9 +74,9 @@
                           </div>
                           <div class="log-viewer-footer">
                               @if (Hub.ReportUI.IsAvailable) {
-                                  <Button Class="log-viewer-report-btn btn-primary" Click="@OnReportClick">Report</Button>
+                                  <Button Class="log-viewer-report-btn btn-primary" Click="@OnReportClick">@L.LogView_Report</Button>
                               }
-                              <Button Class="log-viewer-copy-btn btn-primary" Click="@OnCopyVisibleLogsClick">Copy</Button>
+                              <Button Class="log-viewer-copy-btn btn-primary" Click="@OnCopyVisibleLogsClick">@L.Common_Copy</Button>
                           </div>
                       </text>,
         });
