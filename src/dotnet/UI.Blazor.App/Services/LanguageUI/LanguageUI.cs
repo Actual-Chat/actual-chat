@@ -15,7 +15,7 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     public static readonly Language[] SupportedUILanguages = [
         Languages.English, Languages.Spanish, Languages.French, Languages.Italian, Languages.Russian, Languages.German,
         Languages.Chinese, Languages.Hindi, Languages.Japanese, Languages.Korean, Languages.Portuguese, Languages.Turkish,
-        Languages.Ukrainian, Languages.Vietnamese, Languages.Polish, Languages.Indonesian, Languages.Czech, Languages.Czech,
+        Languages.Ukrainian, Languages.Vietnamese, Languages.Polish, Languages.Indonesian, Languages.Czech, Languages.Czech, Languages.Bulgarian,
     ];
 
     public SyncedState<UserLanguageSettings> Settings { get; init; }

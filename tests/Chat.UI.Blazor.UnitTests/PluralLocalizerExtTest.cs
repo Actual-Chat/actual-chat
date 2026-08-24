@@ -9,6 +9,7 @@ public sealed class PluralLocalizerExtTest
     // and where Polish deliberately does not - "21 uczestników", never "21 uczestnik".
     private static readonly (string Subtag, int Count, string Expected)[] MemberCountCases = [
         ("en", 1, "1 member"), ("en", 2, "2 members"), ("en", 5, "5 members"), ("en", 21, "21 members"),
+        ("bg", 1, "1 участник"), ("bg", 2, "2 участници"), ("bg", 5, "5 участници"), ("bg", 21, "21 участници"),
         ("cs", 1, "1 člen"), ("cs", 2, "2 členové"), ("cs", 5, "5 členů"), ("cs", 21, "21 členů"),
         ("de", 1, "1 Mitglied"), ("de", 2, "2 Mitglieder"), ("de", 5, "5 Mitglieder"), ("de", 21, "21 Mitglieder"),
         ("es", 1, "1 miembro"), ("es", 2, "2 miembros"), ("es", 5, "5 miembros"), ("es", 21, "21 miembros"),
