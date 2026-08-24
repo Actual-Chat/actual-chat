@@ -1,4 +1,9 @@
-@inherits ComponentBase<AppUIHub>
+@inherits ComputedStateComponent<AppUIHub, Language?>
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2091:GenericArgumentDoNotHaveAnnotation",
+    Justification = "Primitive types will be preserved.")]
+@{
+    _formModel.Language = State.Value;
+}
 
 <Form Model="@_formModel">
     <FormBlock>
@@ -6,7 +11,6 @@
             For="() => _formModel.LanguageCode"
             InputId="@_formModel.LanguageFormId"
             IsLabelInsideInput="true"
-            IsRequired="true"
             Label="@L.Settings_Language">
             <InputSelect
                 TValue="string"
@@ -14,6 +18,7 @@
                 Value="_formModel.LanguageCode"
                 ValueExpression="@(() => _formModel.LanguageCode)"
                 ValueChanged="@(OnLanguageChanged)">
+                <option value="">@L.Settings_Language_Auto</option>
                 @foreach (var language in Languages.AllUI) {
                     <option value="@language.Value">@language.NativeName</option>
                 }
@@ -28,30 +33,27 @@
     private LanguageUI LanguageUI => field ??= Hub.LanguageUI;
 
     protected override void OnInitialized()
-        => _formModel = new FormModel(ComponentIdGenerator) { Language = LanguageUI.UILanguage.Value };
+        => _formModel = new FormModel(ComponentIdGenerator);
 
-    private async Task OnLanguageChanged(string code) {
-        _formModel.LanguageCode = code;
-        LanguageUI.UILanguage.Value = _formModel.Language;
-        await LanguageUI.UILanguage.WhenWritten();
-        // WhenWritten only means the value reached BatchingKvas' write queue;
-        // without a flush, ForceReload can discard it before it hits the storage.
-        await LocalSettings.Flush();
-        await History.ForceReload("Language changed", History.Uri);
+    protected override async Task<Language?> ComputeState(CancellationToken cancellationToken) {
+        var settings = await LanguageUI.Settings.Use(LanguageUI.WhenReady, cancellationToken).ConfigureAwait(false);
+        return settings.UILanguage;
     }
 
-    public sealed class FormModel
-    {
+    private Task OnLanguageChanged(string code)
+        // LanguageUI's sync loop mirrors the choice into the device cache.
+        => LanguageUI.UpdateSettings(x => x with { UILanguage = Language.TryParse(code, allowNull: true) });
+
+    public sealed class FormModel {
         private string FormId { get; }
         public string LanguageFormId { get; }
-        public Language Language { get; set; } = LanguageUI.DefaultUILanguage;
+        public Language? Language { get; set; }
         public string LanguageCode {
-            get => Language.Value;
-            set => Language = Language.Parse(value);
+            get => Language?.Value ?? "";
+            set => Language = ActualChat.Language.TryParse(value, allowNull: true);
         }
 
-        public FormModel(ComponentIdGenerator componentIdGenerator)
-        {
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("ui-language-form");
             LanguageFormId = $"{FormId}-language";
         }

@@ -17,6 +17,7 @@ public interface IBrowserInfoBackend
         bool IsVisible,
         bool IsHoverable,
         ThemeInfo ThemeInfo,
+        UILanguageInfo UILanguageInfo,
         string DefaultTheme,
         double UtcOffset,
         string TimeZone,
@@ -37,4 +38,8 @@ public interface IBrowserInfoBackend
         string DefaultTheme,
         string CurrentTheme,
         string Colors);
+
+    public sealed record UILanguageInfo(
+        string? Selected,
+        string[] ClientLanguages);
 }

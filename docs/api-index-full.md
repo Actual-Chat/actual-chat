@@ -1022,7 +1022,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ChatUI` - Chat selection, read positions, and chat state.
 - `ChatView` - Main chat view component.
 - `EditMembersUI` - Member editing utilities.
-- `LanguageUI` - Language preferences.
+- `LanguageUI` - Spoken and UI language settings; syncs the UI language to the device cache.
+- `LocalizationUI` - The UI language the app renders in, pulled once at startup; also localizes server-composed text at runtime.
 - `LiveStreamUI` - Live streaming management.
 - `MarkupEditor` - Markup editing component.
 - `MarkupView` (abstract class) - Markup rendering component.
@@ -1221,4 +1222,3 @@ Standalone demo app exercising `ActualChat.Asr`. (CLI bootstrap — no dedicated
 ## ActualChat.MLSearch
 
 (Empty marker project — no public types; implementation lives in `ActualChat.MLSearch.Service`.)
-

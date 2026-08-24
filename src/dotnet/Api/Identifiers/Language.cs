@@ -49,9 +49,7 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
         ShortTitle = shortTitle;
         Title = title;
         Support = support;
-        // The primary subtag, not value[..2]: that would collapse "fil-PH" onto Finnish's "fi".
-        var separatorIndex = value.IndexOf('-');
-        IsoCode = (separatorIndex < 0 ? value : value[..separatorIndex]).ToLower();
+        IsoCode = GetIsoCode(value);
         NativeName = nativeName ?? title;
         IsAnyEnglish = shortTitle.StartsWith("en", StringComparison.OrdinalIgnoreCase);
         IsAnySpanish = shortTitle.StartsWith("es", StringComparison.OrdinalIgnoreCase);
@@ -93,5 +91,12 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
 
         result = null;
         return false;
+    }
+
+    public static string GetIsoCode(string languageTag)
+    {
+        // The primary subtag, not languageTag[..2]: that would collapse "fil-PH" onto Finnish's "fi".
+        var separatorIndex = languageTag.IndexOf('-');
+        return (separatorIndex < 0 ? languageTag : languageTag[..separatorIndex]).ToLower();
     }
 }

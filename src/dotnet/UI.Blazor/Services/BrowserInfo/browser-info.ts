@@ -6,6 +6,7 @@ import { ScreenSize } from '../ScreenSize/screen-size';
 import { getLogs } from 'logging';
 import { DocumentEvents } from 'event-handling';
 import { Theme, ThemeInfo } from 'theme';
+import { LocalizationUI, UILanguageInfo } from 'localization-ui';
 
 const { infoLog } = getLogs('BrowserInfo');
 
@@ -52,6 +53,7 @@ export class BrowserInfo {
             isVisible: !document.hidden,
             isHoverable: ScreenSize.isHoverable,
             themeInfo: Theme.info!,
+            uiLanguageInfo: LocalizationUI.info!,
             utcOffset: this.utcOffset,
             timeZone: this.timeZone,
             isMobile: DeviceInfo.isMobile,
@@ -199,6 +201,7 @@ export interface InitResult {
     isVisible: boolean,
     isHoverable: boolean,
     themeInfo: ThemeInfo,
+    uiLanguageInfo: UILanguageInfo,
     utcOffset: number;
     timeZone: string;
     isMobile: boolean;

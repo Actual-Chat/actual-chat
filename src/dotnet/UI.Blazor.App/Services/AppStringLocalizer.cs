@@ -5,16 +5,16 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
 /// <see cref="IStringLocalizer{T}"/> that reads translations from embedded JSON resources and
-/// selects the language via <see cref="LanguageUI"/> — the standard .resx/CultureInfo
+/// selects the language via <see cref="LocalizationUI"/> — the standard .resx/CultureInfo
 /// localizer doesn't work under InvariantGlobalization.
 /// </summary>
 public sealed class AppStringLocalizer(IServiceProvider services) : IStringLocalizer<Strings>, IHasUILanguage
 {
     private static readonly Dictionary<Language, Dictionary<string, string>> Translations = LoadAll();
 
-    private LanguageUI LanguageUI => field ??= services.GetRequiredService<LanguageUI>();
+    private LocalizationUI LocalizationUI => field ??= services.GetRequiredService<LocalizationUI>();
 
-    public Language UILanguage => LanguageUI.UILanguage.Value;
+    public Language UILanguage => LocalizationUI.Language;
 
     public LocalizedString this[string name] {
         get {
@@ -33,8 +33,8 @@ public sealed class AppStringLocalizer(IServiceProvider services) : IStringLocal
 
     public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures)
     {
-        var dict = Translations.GetValueOrDefault(LanguageUI.UILanguage.Value)
-            ?? Translations.GetValueOrDefault(LanguageUI.DefaultUILanguage);
+        var dict = Translations.GetValueOrDefault(LocalizationUI.Language)
+            ?? Translations.GetValueOrDefault(Languages.Main);
         return dict?.Select(kv => new LocalizedString(kv.Key, kv.Value)) ?? [];
     }
 
@@ -42,14 +42,14 @@ public sealed class AppStringLocalizer(IServiceProvider services) : IStringLocal
 
     private string GetString(string name, out bool found)
     {
-        var lang = LanguageUI.UILanguage.Value;
+        var lang = LocalizationUI.Language;
         if (Translations.TryGetValue(lang, out var dict) && dict.TryGetValue(name, out var value)) {
             found = true;
             return value;
         }
 
-        if (lang != LanguageUI.DefaultUILanguage
-            && Translations.TryGetValue(LanguageUI.DefaultUILanguage, out dict)
+        if (lang != Languages.Main
+            && Translations.TryGetValue(Languages.Main, out dict)
             && dict.TryGetValue(name, out value)) {
             found = true;
             return value;

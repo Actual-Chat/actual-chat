@@ -33,6 +33,38 @@ edited. The reason can be as short as whose decision it was.
   — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
   members, so they must stay `virtual`, and a sealed type can't declare one (CS0549)
 
+## src/dotnet/Api/Users/UserLanguageSettings.cs
+
+- L24 `[DataMember, MemoryPackOrder(4), Key(4)]` on `UILanguage`
+  — MemoryPack attribute on a new member — required: the type is `[MemoryPackable]`
+  for legacy KVAS reads, and MemoryPack's generator rejects a partially annotated
+  object outright (MEMPACK025), so a new member cannot opt out of `MemoryPackOrder`
+
+## src/dotnet/UI.Blazor.App/Services/LanguageUI/LanguageUI.cs
+
+- L11 `public class LanguageUI : UIWorkerBase<AppUIHub>, IComputeService, IDisposable`
+  — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
+  members, so they must stay `virtual`, and a sealed type can't declare one (CS0549)
+- L26 `public LanguageUI(AppUIHub hub) : base(hub)`
+  — not a primary constructor — required: the `Settings` initializer uses `StateFactory`
+  (a base member) and the `CreateLanguageSettings` method group, and `this` isn't
+  available in a field initializer
+
+## src/dotnet/UI.Blazor.App/Services/LocalizationUI.cs
+
+- L14 `public class LocalizationUI : UIServiceBase<AppUIHub>, IUITextLocalizer, IComputeService, IAsyncDisposable`
+  — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
+  members, so they must stay `virtual`, and a sealed type can't declare one (CS0549)
+- L20 `private readonly AsyncTaskMethodBuilder _whenReadySource = AsyncTaskMethodBuilderExt.New();`
+  — task-source field naming — matches `AccountUI.cs:13` and `WebShareInfo.cs:9`
+  verbatim; this is the established idiom for a `WhenXxx` gate
+- L30 `public LocalizationUI(AppUIHub hub) : base(hub)`
+  — not a primary constructor — required: the `_localizations` initializer passes the
+  `Localize` method group, and `this` isn't available in a field initializer
+- L31 `hub.LogFor<ConcurrentProcessor<Key, string>>()`
+  — `LogFor<T>()` instead of `LogFor(GetType())` — intended: the logger belongs to the
+  `ConcurrentProcessor` it's handed to, not to `LocalizationUI`
+
 ## src/dotnet/UI.Blazor.App/Components/ChatView/Items/TranscriptUI.cs
 
 - L5 `public class TranscriptUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService`

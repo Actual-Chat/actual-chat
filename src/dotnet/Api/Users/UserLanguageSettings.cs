@@ -3,13 +3,13 @@ using ActualChat.Kvas;
 namespace ActualChat.Users;
 
 /// <summary>
-/// User preferences for spoken languages (primary, secondary, tertiary).
+/// User preferences for spoken languages (primary, secondary, tertiary), plus the
+/// language the app's own UI renders in - <c>null</c> there means "follow the device".
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record UserLanguageSettings : StoredSettings, IHasOrigin, IHasKvasKey<UserLanguageSettings>
 {
     public static string KvasKey => nameof(UserLanguageSettings);
-
     [DataMember, MemoryPackOrder(0), Key(0), LegacyLanguageFormatter(false)]
     public Language Primary {
         get => field ?? Languages.Main;
@@ -21,6 +21,8 @@ public sealed partial record UserLanguageSettings : StoredSettings, IHasOrigin, 
     public Language? Tertiary { get; init; }
     [DataMember, MemoryPackOrder(2), Key(2)]
     public string Origin { get; init; } = "";
+    [DataMember, MemoryPackOrder(4), Key(4)]
+    public Language? UILanguage { get; init; }
 
     public List<Language> ListSpoken()
     {
@@ -31,6 +33,7 @@ public sealed partial record UserLanguageSettings : StoredSettings, IHasOrigin, 
             result.Add(tertiary);
         if (result.Count == 0)
             result.Add(Languages.Main);
+
         return result;
     }
 

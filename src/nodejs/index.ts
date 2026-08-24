@@ -12,9 +12,10 @@ register();
 // Logging init — touching the module triggers @actuallab/core's
 // initLogging() (lazy on first Log.get) and registers the global controller.
 import 'logging';
-// FontSize & Theme init
+// FontSize, Theme & LocalizationUI init
 import { FontSizes } from 'font-sizes';
 import { Theme } from 'theme';
+import { LocalizationUI } from 'localization-ui';
 // Critical init logic - should go right after logging-init
 import './src/init';
 
@@ -28,6 +29,7 @@ declare global {
         ui: typeof ui;
         FontSizes: typeof FontSizes;
         Theme: typeof Theme;
+        LocalizationUI: typeof LocalizationUI;
         blazorApp: typeof blazorApp;
         Kvas: typeof Kvas;
         App?: {
@@ -45,6 +47,7 @@ window.ui = {
 };
 window.FontSizes = FontSizes;
 window.Theme = Theme;
+window.LocalizationUI = LocalizationUI;
 window.blazorApp = blazorApp;
 window.Kvas = Kvas;
 
