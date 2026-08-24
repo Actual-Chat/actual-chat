@@ -67,15 +67,15 @@ describe('validation message localization', () => {
         page = await conn.context.newPage();
         await ensureSignedIn(page);
 
-        // Server render mode: a language change ends in History.ForceReload, and under WASM the
-        // reload re-boots MONO against whatever the service worker cached, which double-faults
-        // after a server rebuild. Server mode is also where per-circuit localization matters.
+        // This test explicitly reloads after changing the language. Use server render mode because
+        // reloading under WASM re-boots MONO against whatever the service worker cached, which
+        // double-faults after a server rebuild. Per-circuit localization also matters here.
         await page.goto(`${BASE_URL}/fusion/renderMode/s`, { waitUntil: 'domcontentloaded' });
         await waitForAppReady(page);
 
         originalLanguage = await setUILanguage(page, RUSSIAN);
 
-        // The forced reload leaves the settings modal open; come back on a clean route.
+        // The reload leaves the settings modal open; come back on a clean route.
         await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' }).catch(() => { /* ignore */ });
         await waitForAppReady(page);
 

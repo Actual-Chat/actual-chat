@@ -26,8 +26,10 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
     public TimeSpan UtcOffset { get; protected set; }
     public string TimeZone { get; protected set; } = "";
     public string[] ClientLanguages { get; protected set; } = [];
+    public string? UILanguageOverride { get; protected set; }
     public Language? StoredUILanguage { get; protected set; }
-    public Language UILanguage => Languages.ResolveUILanguage(StoredUILanguage, ClientLanguages);
+    public Language UILanguage
+        => Languages.ResolveUILanguage(UILanguageOverride, StoredUILanguage, ClientLanguages);
     public bool IsMobile { get; protected set; }
     public bool IsAndroid { get; protected set; }
     public bool IsIos { get; protected set; }
@@ -70,6 +72,7 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
         UtcOffset = TimeSpan.FromMinutes(initResult.UtcOffset);
         TimeZone = initResult.TimeZone;
         ClientLanguages = initResult.UILanguageInfo.ClientLanguages;
+        UILanguageOverride = initResult.UILanguageInfo.UrlOverride;
         StoredUILanguage = Language.TryParse(initResult.UILanguageInfo.Selected, allowNull: true);
         IsMobile = initResult.IsMobile;
         IsAndroid = initResult.IsAndroid;

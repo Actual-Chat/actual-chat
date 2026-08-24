@@ -53,7 +53,7 @@ export class BrowserInfo {
             isVisible: !document.hidden,
             isHoverable: ScreenSize.isHoverable,
             themeInfo: Theme.info!,
-            uiLanguageInfo: LocalizationUI.info!,
+            uiLanguageInfo: LocalizationUI.languageInfo!,
             utcOffset: this.utcOffset,
             timeZone: this.timeZone,
             isMobile: DeviceInfo.isMobile,

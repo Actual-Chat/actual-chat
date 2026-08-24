@@ -40,6 +40,7 @@ public interface IBrowserInfoBackend
         string Colors);
 
     public sealed record UILanguageInfo(
+        string? UrlOverride,
         string? Selected,
         string[] ClientLanguages);
 }

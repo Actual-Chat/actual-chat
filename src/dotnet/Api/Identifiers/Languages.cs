@@ -130,8 +130,13 @@ public static class Languages
             .DistinctBy(kv => kv.Key)
             .ToDictionary(kv => kv.Key, kv => kv.Value);
 
-    public static Language ResolveUILanguage(Language? selected, IReadOnlyList<string> clientLanguages)
-        => selected ?? DetectUILanguage(clientLanguages);
+    public static Language ResolveUILanguage(
+        string? languageOverride,
+        Language? selected,
+        IReadOnlyList<string> clientLanguages)
+        => languageOverride is not null
+            ? DetectUILanguage([languageOverride])
+            : selected ?? DetectUILanguage(clientLanguages);
 
     public static Language DetectUILanguage(IReadOnlyList<string> clientLanguages)
     {

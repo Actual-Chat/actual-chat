@@ -119,9 +119,9 @@ describe('UI localization smoke', () => {
         const page = await conn.context.newPage();
         await ensureSignedIn(page);
 
-        // Server render mode: a language change ends in History.ForceReload, and under WASM the
-        // reload re-boots MONO against whatever the service worker cached, which double-faults
-        // after a server rebuild.
+        // This test explicitly reloads after changing the language. Use server render mode because
+        // reloading under WASM re-boots MONO against whatever the service worker cached, which
+        // double-faults after a server rebuild.
         await goto(page, '/fusion/renderMode/s');
         await page.close();
     }, 180_000);
@@ -244,8 +244,8 @@ async function runStep(page: Page, step: TourStep): Promise<ScannedText[]> {
 }
 
 async function goto(page: Page, route: string) {
-    // Both failures a retry fixes: ERR_ABORTED, when a ForceReload from the language switch is
-    // still in flight and supersedes this navigation, and the occasional load that just hangs.
+    // Both failures a retry fixes: ERR_ABORTED from overlapping browser navigation, and the
+    // occasional load that just hangs.
     let lastError: unknown;
     for (let attempt = 0; attempt < 2; attempt++) {
         const isNavigated = await page.goto(`${BASE_URL}${route}`, { waitUntil: 'domcontentloaded' })
