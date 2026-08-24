@@ -6,6 +6,7 @@ import { DocumentEvents, tryPreventDefaultForEvent } from 'event-handling';
 import { fromEvent } from 'rxjs';
 import { Gesture, Gestures } from 'gestures';
 import { ScrollController } from 'scroll-controller';
+import { Timeout } from 'timeout';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { getLogs } from 'logging';
 import { unselect } from 'keyboard';
@@ -22,6 +23,8 @@ const PrePullDurationMs = 20;
 const MinPullDurationMs = 20;
 const MaxChatViewScroll = 40;
 const MaxSetVisibilityWaitDurationMs = 500;
+// Native history navigation can take over without dispatching the final touch event.
+const PullGestureStaleMs = 1000;
 
 enum SideNavSide {
     Left,
@@ -269,7 +272,7 @@ class SideNavPullDetectGesture extends Gesture {
             }
 
             const offset = coords.sub(this.origin);
-            if (offset.length < prePullDistance || Date.now() - initialState.startedAt < PrePullDurationMs)
+            if (offset.length < prePullDistance || performance.now() - initialState.startedAt < PrePullDurationMs)
                 return; // Too small pull distance or too early to start the pull
 
             const isLeft = sideNav.side == SideNavSide.Left;
@@ -317,6 +320,7 @@ class SideNavPullDetectGesture extends Gesture {
 
 class SideNavPullGesture extends Gesture {
     private state: MoveState | null = null;
+    private staleTimeout: Timeout | null = null;
 
     constructor(
         public readonly sideNav: SideNav,
@@ -337,6 +341,8 @@ class SideNavPullGesture extends Gesture {
             if (this.state === null)
                 return;
 
+            this.staleTimeout?.dispose();
+            this.staleTimeout = null;
             debugLog?.log(
                 `SideNavPullGesture[${sideNav.side}].endMove:`,
                 event,
@@ -347,7 +353,7 @@ class SideNavPullGesture extends Gesture {
 
             tryPreventDefaultForEvent(event);
 
-            const moveDuration = Date.now() - this.state.startedAt;
+            const moveDuration = performance.now() - this.state.startedAt;
             if (event === null || event.type === 'touchstart' || moveDuration < MinPullDurationMs)
                 isCancelled = true;
 
@@ -383,8 +389,8 @@ class SideNavPullGesture extends Gesture {
                 await transitionEnded;
                 await sideNav.setVisibility(mustBeOpen);
 
-                const endTime = Date.now() + MaxSetVisibilityWaitDurationMs;
-                while (sideNav.isOpen != mustBeOpen && Date.now() < endTime) {
+                const endTime = performance.now() + MaxSetVisibilityWaitDurationMs;
+                while (sideNav.isOpen != mustBeOpen && performance.now() < endTime) {
                     await delayAsync(50);
                     await fastReadRafAsync();
                 }
@@ -399,6 +405,8 @@ class SideNavPullGesture extends Gesture {
             if (this.state === null)
                 return;
 
+            this.staleTimeout?.dispose();
+            this.staleTimeout = new Timeout(PullGestureStaleMs, () => { void endMove(null, true); });
             if (ScreenSize.isWide()) {
                 await endMove(event, true);
                 return;
@@ -451,10 +459,10 @@ class SideNavPullGesture extends Gesture {
                         throw e;
                     }
                     this.addDisposables(
-                        DocumentEvents.active.touchEnd$.subscribe(e => { void endMove(e, false); }),
-                        DocumentEvents.active.touchCancel$.subscribe(e => { void endMove(e, true); }),
-                        DocumentEvents.active.touchStart$.subscribe(e => { void endMove(e, true); }), // Just in case
-                        DocumentEvents.active.touchMove$.subscribe(e => { void move(e); }),
+                        DocumentEvents.capturedActive.touchEnd$.subscribe(e => { void endMove(e, false); }),
+                        DocumentEvents.capturedActive.touchCancel$.subscribe(e => { void endMove(e, true); }),
+                        DocumentEvents.capturedActive.touchStart$.subscribe(e => { void endMove(e, true); }), // Just in case
+                        DocumentEvents.capturedActive.touchMove$.subscribe(e => { void move(e); }),
                         chatViewDiv
                             ? Disposables.fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(() => {
                             // This doesn't work on Safari - i.e. it still drags the chat view while you move:
@@ -479,6 +487,8 @@ class SideNavPullGesture extends Gesture {
             return;
 
         debugLog?.log('dispose()');
+        this.staleTimeout?.dispose();
+        this.staleTimeout = null;
         this.state = null;
         super.dispose();
     }
@@ -497,7 +507,7 @@ class MoveState {
         public readonly openRatio: number,
         public prevMoveState: MoveState | null = null,
     ) {
-        const now = Date.now();
+        const now = performance.now();
         this.capturedAt = now;
         this.startedAt = prevMoveState?.startedAt ?? now;
         this.velocity = 0;
