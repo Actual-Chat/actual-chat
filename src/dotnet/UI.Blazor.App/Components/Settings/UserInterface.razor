@@ -3,12 +3,10 @@
     var m = State.Value;
 }
 
-@if (m.EnableIncompleteUI) {
-    <TileTopic Topic="@L.Settings_UILanguage"/>
-    <Tile>
-        <LanguageSettings/>
-    </Tile>
-}
+<TileTopic Topic="@L.Settings_UILanguage"/>
+<Tile>
+    <LanguageSettings/>
+</Tile>
 
 <TileTopic Topic="@L.UserInterface_Font"/>
 <Tile Class="font-size-tile">
@@ -38,8 +36,6 @@
 <NotificationsPanelSettings/>
 
 @code {
-    private ILogger<UserInterface> Log => field ??= Hub.LogFor<UserInterface>();
-
     private BubbleUI BubbleUI => Hub.BubbleUI;
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
 
@@ -49,10 +45,8 @@
         => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var appSettings = await UserSettingsUI.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
-        return new(account.IsAdmin, appSettings.IsAuthorColorsEnabled ?? true, enableIncompleteUI);
+        return new(appSettings.IsAuthorColorsEnabled ?? true);
     }
 
     private Task OnToggleAuthorColors()
@@ -61,7 +55,7 @@
         });
 
     private async Task OnRestartWalkThrough() {
-        await BubbleUI.ResetSettings();
+        await BubbleUI.ResetSettings().ConfigureAwait(true);
         ToastUI.Show(L.UserInterface_WalkThroughRestarted, "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
@@ -72,8 +66,7 @@
 
     // Nested types
 
-    public record Model(bool IsAdmin, bool IsAuthorColorsEnabled, bool EnableIncompleteUI)
-    {
-        public static readonly Model None = new(false, true, false);
+    public sealed record Model(bool IsAuthorColorsEnabled) {
+        public static readonly Model None = new(true);
     }
 }

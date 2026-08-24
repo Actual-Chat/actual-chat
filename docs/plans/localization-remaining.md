@@ -16,33 +16,34 @@ per-language completeness, placeholder preservation) and
 
 ---
 
-## 0. Deliberately dormant — enable the picker LAST
+## 0. The picker is live — done
 
-`Components/Settings/UserInterface.razor:6` wraps the App-language tile in
-`@if (m.EnableIncompleteUI)`, and `LanguageUI.DetectUILanguage`
-(`Services/LanguageUI/LanguageUI.cs:131-134`) returns `DefaultUILanguage`
-unless the same feature flag is on:
+The App-language picker used to sit behind `EnableIncompleteUI`, and
+`DetectUILanguage` returned English outright unless that flag was on, so every
+user got English regardless of device locale. Both are gone: the tile in
+Settings → User Interface is unconditional, and the language now lives on the
+account as `UserLanguageSettings.UILanguage` (`null` = follow the device), cached
+per device so the first frame never waits on the network. See
+[i18n.md → Where the UI language comes from](../i18n.md#where-the-ui-language-comes-from)
+for how it resolves and why a change takes effect after a manual reload.
 
-```csharp
-if (!await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
-    return DefaultUILanguage;
-```
+**The gate was removed before §3 and §4 were finished, deliberately.** What it
+was protecting against is still true and still open: a user who switches to
+Spanish gets a translated in-app UI while push notification text, the iOS share
+sheet, Android permission dialogs and every OS prompt stay English. Those are §3
+and §4 below, and they are now the visible gap rather than a hidden one. §5 does
+not gate anything — see there.
 
-So today every user gets English regardless of device locale, and all 1198 keys
-are dormant. **This is intentional and stays that way until §3 and §4 are
-done.** (§5 does not gate it — see there.)
+Two things the switch left open, both cheap and both worth doing before the
+inconsistency is widely noticed:
 
-The reason is that localization is only partly a per-surface job. A user who
-switches the app to Spanish today would get a translated in-app UI while their
-push notifications, the iOS share sheet, every Android permission dialog and
-the OS microphone prompt all stayed English — a worse, more confusing result
-than a consistently English app. The flag is what keeps the half-finished state
-invisible.
-
-**Do not flip it as part of an intermediate PR.** Enabling
-`Features_EnableIncompleteUI` for the language path — or ungating it
-specifically — is the *final* step, taken once push, email and the native
-shells are covered.
+- **Guest → sign-in.** `ServerKvas.MigrateGuestKeys` moves guest settings onto
+  the user prefix, so a language chosen while signed out now migrates together
+  with the spoken languages. That is probably right, but nobody has decided it.
+- **First start on a fresh device, already signed in.** The cache is empty, so
+  the app renders auto-detected. When the account value arrives it is cached, but
+  the running app keeps its startup language; the selection takes effect on the
+  next manual reload or app start.
 
 ---
 
@@ -189,20 +190,31 @@ builder's `_ => Markup.EmptyText` arm unnoticed.
 
 ---
 
-## 2. UI language is device-local — settled, no work
+## 2. UI language is account-level — done
 
-`LanguageUI.UILanguage` is a `SyncedState` over `LocalSettings`
-(`LanguageUI.cs:34`), and **it stays there**. There is no account-level UI
-language and none is planned: a display language belongs to the device the user
-is looking at, not to the account.
+This section used to argue the opposite: that a display language belongs to the
+device, not the account, and that no account field was planned. That was
+reversed and shipped — `UserLanguageSettings.UILanguage` (`null` = follow the
+device), cached per device in `localStorage` so the first frame never waits on
+the network. [i18n.md → Where the UI language comes from](../i18n.md#where-the-ui-language-comes-from)
+is the reference; the reversal was about the user, who reads one language on
+every device they own, not about which surfaces are localized.
 
-This was previously written up here as a prerequisite for §3 — an account field
-plus device sync, a multi-device conflict policy and a fallback. That whole item
-is dropped. §3 is not blocked on anything.
+**What it changes for §3:** the server can read the recipient's language
+directly, so `DbDevice.Language` is no longer needed for iOS push in general —
+only for recipients left on auto, where nothing but the device knows the locale.
+Suggested resolution there: render from `UILanguage` when set, fall back to the
+registered device language, then English. It also settles §3's open question
+about digest chrome: `UILanguage` is a better answer than
+`UserLanguageSettings.Primary`, which stays what it should be, a *spoken*
+language.
 
-The consequence for the server is that anything it composes must get the
-language from the surface it is addressing: from the device registration for
-push (§3), and from the discussion for digests (§3).
+**What it leaves for §4:** native surfaces still can't read the selection —
+`localStorage` is unreachable from the FCM receiver, the Android foreground
+service and the Live Activity. Mirroring the resolved language into
+`LocalSettings` (or `MauiPreferences`) from `LanguageUI.SetStoredLanguage` gives
+native code a process-wide accessor, which is §4's second open question with an
+obvious answer now.
 
 ---
 
@@ -227,7 +239,7 @@ device already knows its own language (§2), so the payload should carry
 structured fields and let each platform compose. Where a platform can't, the
 device's language rides along with its registration — `DbDevice` gains a
 `Language` column, `Notifications_RegisterDevice` a matching field, and the app
-re-registers when `LanguageUI.UILanguage` changes.
+re-registers when the account's `UILanguage` changes.
 
 | Platform | Today | Work |
 |---|---|---|
@@ -293,7 +305,7 @@ channel name), `WalkieTalkieWakeHandler.cs:109`, `IosActivitiesBackend.cs:87`
 and `AndroidActivitiesForegroundService.cs:424,509` (`"Sharing live location"`).
 
 So for the in-process two-thirds the strings are not the blocker — the
-*language* is. `LanguageUI.UILanguage` is a `SyncedState` scoped to the Blazor
+*language* is. `LocalizationUI.Language` is scoped to the Blazor
 circuit, while this code runs on the native side (foreground service, FCM
 receiver, permission dialogs, Live Activity), where no such scope exists.
 
@@ -325,7 +337,7 @@ independent of everything above, and doable at any time.
 
 ---
 
-## 5. Landing pages and legal docs — independent of §0, and mostly legal text
+## 5. Landing pages and legal docs — mostly legal text
 
 `Pages/Landing/**` is completely untouched — 44 files, zero `L.` usages. The
 file count hides how lopsided it is:
@@ -357,16 +369,16 @@ So the marketing half is not "ordinary translation work, just large" — it need
 per-language routes, `hreflang` and a localized `<html lang>` before the
 translation is worth commissioning. Budget that first or skip the section.
 
-### This section does not gate §0
+### This section never gated the picker
 
-§0's rule is that a user who switches to Spanish must not get a half-translated
+§0's rule was that a user who switches to Spanish must not get a half-translated
 experience. Landing and legal pages sit *before* sign-in: a signed-in user
 switching the app language essentially never returns to the marketing page, and
 English-only legal documents are unremarkable. Gating the picker on this section
 would make it wait on ~145,000 words of legal translation that has nothing to do
 with the in-app experience.
 
-**§0's gate is §3 + §4.** §5 is an independent marketing/legal track that can
+**§0's gap is §3 + §4.** §5 is an independent marketing/legal track that can
 run on its own schedule, or not at all.
 
 ---
@@ -485,9 +497,6 @@ why #3721 dropped the keys instead of relocating them. Now:
    catalog question answered the same way.
 7. §6's video error codes — the branch `wip/l10n-video-error-codes` is
    ready to cherry-pick; then web-auth's popup alert.
-8. §0 — flip the flag once §3 and §4 are done, i.e. once a user switching
-   language gets a consistently localized app, notifications and OS prompts
-   included.
-9. §5, independently and on its own schedule — the marketing half needs SEO
+8. §5, independently and on its own schedule — the marketing half needs SEO
    routing before translation pays off, and the legal half needs a liability
-   decision. Neither holds up §0.
+   decision. Neither holds up anything else.

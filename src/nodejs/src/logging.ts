@@ -127,6 +127,7 @@ export type LogScope =
     | 'TextBox'
     | 'Theme'
     | 'TooltipHost'
+    | 'LocalizationUI'
     | 'UserInterface'
     | 'VideoPanel'
     | 'JoinVideoCallModal'
@@ -241,6 +242,7 @@ const defaults: Record<LogScope, LogLevel> = {
     SelectionHost: LogLevel.Warn,
     TextBox: LogLevel.Warn,
     Theme: LogLevel.Warn,
+    LocalizationUI: LogLevel.Warn,
     TooltipHost: LogLevel.Warn,
     UserInterface: LogLevel.Warn,
     // Video

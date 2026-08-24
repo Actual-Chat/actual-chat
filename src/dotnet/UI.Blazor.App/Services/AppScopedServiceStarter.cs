@@ -63,8 +63,12 @@ public sealed class AppScopedServiceStarter
             // ReSharper disable once ExplicitCallerInfoArgument
             Tracer.Point("BrowserInfo is ready");
 
+            // Must happen before anything renders: the string localizer reads it synchronously,
+            // and a component rendered before it lands stays English until it re-renders.
+            // A headless scope never gets here, so its LocalizationUI keeps the English default.
+            Hub.LocalizationUI.SetLanguage(browserInfo.UILanguage);
+            Hub.LanguageUI.Start();
             Hub.Services.GetRequiredService<ThemeUI>().Start();
-            _ = Hub.LanguageUI; // Touch: start language settings sync so the UI language resolves early
             var dateTimeConverter = Hub.DateTimeConverter;
             if (dateTimeConverter is ServerSideDateTimeConverter serverSideDateTimeConverter)
                 serverSideDateTimeConverter.Initialize(browserInfo.UtcOffset);

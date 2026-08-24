@@ -290,7 +290,8 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 - `ChatAudioUI` — audio listening/recording state
 - `ChatListUI` — chat list filtering and sorting
 - `SearchUI` — unified search across chats
-- `LanguageUI` — language preferences
+- `LanguageUI` — spoken + UI language settings; syncs the UI language to the device cache
+- `LocalizationUI` — the UI language the app renders in (pulled once at startup), and runtime localization of server-composed text
 - `OnboardingUI` — user onboarding flow
 - `LiveStreamUI` — live streaming management
 - `LocalSearchUI` — in-memory local search service; public `ListXxx` compute methods (contacts, users, authors, chats, places) return natural types, `ListMentionCandidates` unions them for the @-mention picker

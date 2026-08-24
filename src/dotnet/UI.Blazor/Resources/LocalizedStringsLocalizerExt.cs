@@ -39,6 +39,7 @@ public static class LocalizedStringsLocalizerExt
         public string Settings_Title => l["Settings_Title"].Value;
         public string Settings_Language => l["Settings_Language"].Value;
         public string Settings_UILanguage => l["Settings_UILanguage"].Value;
+        public string Settings_Language_Auto => l["Settings_Language_Auto"].Value;
         public string Settings_YourAccount => l["Settings_YourAccount"].Value;
         public string Settings_UserInterface => l["Settings_UserInterface"].Value;
         public string Settings_Transcription => l["Settings_Transcription"].Value;

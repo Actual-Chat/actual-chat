@@ -25,6 +25,9 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
     public IState<ThermalLevel> ThermalLevel => _thermalLevel;
     public TimeSpan UtcOffset { get; protected set; }
     public string TimeZone { get; protected set; } = "";
+    public string[] ClientLanguages { get; protected set; } = [];
+    public Language? StoredUILanguage { get; protected set; }
+    public Language UILanguage => Languages.ResolveUILanguage(StoredUILanguage, ClientLanguages);
     public bool IsMobile { get; protected set; }
     public bool IsAndroid { get; protected set; }
     public bool IsIos { get; protected set; }
@@ -37,9 +40,10 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
     public string WindowId { get; protected set; } = "";
     public Task WhenReady => WhenReadySource.Task;
     public Task WhenWasmReady => WhenWasmReadySource.Task;
-    // True when the device likely has a physical keyboard (heuristic):
-    // wide viewport (not a phone) + hoverable pointer (not touch-only).
-    public bool ShouldAutoFocusField => !IsMobile && ScreenSize.Value.IsWide() && IsHoverable.Value;
+    public bool ShouldAutoFocusField
+        // True when the device likely has a physical keyboard (heuristic):
+        // wide viewport (not a phone) + hoverable pointer (not touch-only).
+        => !IsMobile && ScreenSize.Value.IsWide() && IsHoverable.Value;
 
     public BrowserInfo(UIHub hub) : base(hub)
     {
@@ -65,6 +69,8 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
         _windowHeight.Value = initResult.WindowHeight;
         UtcOffset = TimeSpan.FromMinutes(initResult.UtcOffset);
         TimeZone = initResult.TimeZone;
+        ClientLanguages = initResult.UILanguageInfo.ClientLanguages;
+        StoredUILanguage = Language.TryParse(initResult.UILanguageInfo.Selected, allowNull: true);
         IsMobile = initResult.IsMobile;
         IsAndroid = initResult.IsAndroid;
         IsIos = initResult.IsIos;
@@ -110,7 +116,7 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
     public void OnWasmReady()
         => WhenWasmReadySource.TrySetResult();
 
-    // Protected & private methods
+    // Protected/internal methods
 
     protected void Update(ScreenSize? screenSize = null, bool? isHoverable = null, bool? isVisible = null)
     {

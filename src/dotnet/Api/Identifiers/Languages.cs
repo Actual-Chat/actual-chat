@@ -129,4 +129,20 @@ public static class Languages
             .Concat(All.Select(x => new KeyValuePair<string, Language>(x.ShortTitle.ToLower(), x)))
             .DistinctBy(kv => kv.Key)
             .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+    public static Language ResolveUILanguage(Language? selected, IReadOnlyList<string> clientLanguages)
+        => selected ?? DetectUILanguage(clientLanguages);
+
+    public static Language DetectUILanguage(IReadOnlyList<string> clientLanguages)
+    {
+        // Matched by IsoCode rather than by Value: the client reports "en-GB" or a bare "en",
+        // and AllUI carries one entry per catalog, so both must land on English.
+        foreach (var clientLanguage in clientLanguages) {
+            var isoCode = Language.GetIsoCode(clientLanguage);
+            if (AllUI.FirstOrDefault(x => x.IsoCode == isoCode) is { } language)
+                return language;
+        }
+
+        return Main;
+    }
 }
