@@ -10,8 +10,11 @@ public static class Languages
     // Chinese does support only `chirp` recognition model which does not support streaming.
     // public static readonly Language2 Arabic = new("ar-SA", "AR", "Arabic (Saudi Arabia)", AssumeValid.Option); We need RTL support
     // public static readonly Language2 Bengali = new("bn-BD", "BN", "Bengali", AssumeValid.Option); Not supported
+    public static readonly Language Bosnian = new("bs-BA", "BS", "Bosnian", "Bosanski");
+    public static readonly Language Bulgarian = new("bg-BG", "BG", "Bulgarian", "Български");
     public static readonly Language Chinese = new("zh-CN", "zh", "Chinese", "中文");
     public static readonly Language ChineseTW = new("zh-TW", "zh-TW", "Chinese (Taiwan)");
+    public static readonly Language Croatian = new("hr-HR", "HR", "Croatian", "Hrvatski");
     public static readonly Language Czech = new("cs-CZ", "CS", "Czech", "Čeština");
     public static readonly Language Danish = new("da-DK", "DA", "Danish", "Dansk");
     public static readonly Language Dutch = new("nl-NL", "NL", "Dutch", "Nederlands");
@@ -31,6 +34,8 @@ public static class Languages
     public static readonly Language Korean = new("ko-KR", "KO", "Korean", "한국어");
     public static readonly Language Malay = new("ms-MY", "MS", "Malay", "Bahasa Melayu");
     public static readonly Language Marathi = new("mr-IN", "MR", "Marathi", "मराठी");
+    // "cnr" is Montenegrin's ISO 639-2 code, assigned in 2017
+    public static readonly Language Montenegrin = new("cnr-ME", "CNR", "Montenegrin", "Crnogorski");
     public static readonly Language Polish = new("pl-PL", "PL", "Polish", "Polski");
     public static readonly Language Portuguese = new("pt-PT", "PT", "Portuguese", "Português");
     public static readonly Language PortugueseBR = new("pt-BR", "PT-BR", "Portuguese (Brazil)");
@@ -54,8 +59,11 @@ public static class Languages
     public static readonly Language Main = English;
 
     public static readonly Language[] All = [
+        Bosnian,
+        Bulgarian,
         Chinese,
         ChineseTW,
+        Croatian,
         Czech,
         Danish,
         Dutch,
@@ -75,6 +83,7 @@ public static class Languages
         Korean,
         Malay,
         Marathi,
+        Montenegrin,
         Polish,
         Portuguese,
         PortugueseBR,
