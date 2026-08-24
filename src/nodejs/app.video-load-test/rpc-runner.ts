@@ -82,7 +82,7 @@ export async function runRpcProducer(
         // Real-time video stream: isRealTime=true, allowReconnect=false, ackPeriod=5, ackAdvance=31.
         // toRef() creates the sender, registers it, and starts pumping in the background.
         const stream = new RpcStream<VideoFrameDto>((async function* () {
-            const start = performance.now();
+            const start = Date.now();
             for (let i = 0; !ctx.abort.aborted; i++) {
                 await paceFrame(start, i);
                 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- aborted may flip during the await

@@ -146,7 +146,7 @@ const serverImpl: OpusEncoderWorker = {
     },
 
     heartbeat: async (_noWait?: RpcNoWait): Promise<void> => {
-        lastHeartbeatAt = performance.now();
+        lastHeartbeatAt = Date.now();
     },
 
     ensureConnected: (_quickReconnect: boolean, _noWait?: RpcNoWait): Promise<void> => {
@@ -420,13 +420,13 @@ function clearQueue(): void {
 
 function startHeartbeatWatchdog(): void {
     // Watchdog runs on the worker's own event loop, so a hung main thread can't suppress it.
-    lastHeartbeatAt = performance.now();
+    lastHeartbeatAt = Date.now();
     if (heartbeatCheckIntervalId !== undefined)
         return;
     heartbeatCheckIntervalId = setInterval(() => {
         if (state !== 'encoding')
             return;
-        if (performance.now() - lastHeartbeatAt <= AUDIO.rec.heartbeat.timeoutMs)
+        if (Date.now() - lastHeartbeatAt <= AUDIO.rec.heartbeat.timeoutMs)
             return;
 
         warnLog?.log(`heartbeat watchdog: no main-thread heartbeat for ${AUDIO.rec.heartbeat.timeoutMs}ms — shutting down pipeline`);

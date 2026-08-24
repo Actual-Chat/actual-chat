@@ -30,13 +30,13 @@ export class VideoPanel {
     private lastMouseX = 0;
     private lastMouseY = 0;
     private mouseDragging = false;
-    private lastMouseDragEndTime = 0;
+    private lastMouseDragEndTime = Number.NEGATIVE_INFINITY;
     private pinching = false;
     private pinchInitialDist = 0;
     private pinchInitialScale = 0;
     private pinchContentX = 0;
     private pinchContentY = 0;
-    private lastPinchEndTime = 0;
+    private lastPinchEndTime = Number.NEGATIVE_INFINITY;
     // Unified tap / double-tap state (tracked inside touch handlers, not separate listeners)
     private tapTouchId = -1;
     private tapStartX = 0;
@@ -44,7 +44,7 @@ export class VideoPanel {
     private tapStartTime = 0;
     private tapMoved = false;
     private singleTapTimer = 0;
-    private lastTouchActionTime = 0; // suppress synthetic click
+    private lastTouchActionTime = Number.NEGATIVE_INFINITY; // suppress synthetic click
     // Touch identifiers to track only our gesture's touches
     private activeTouchIds = new Set<number>();
 

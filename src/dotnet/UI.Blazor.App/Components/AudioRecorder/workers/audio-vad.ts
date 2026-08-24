@@ -194,7 +194,7 @@ enum VadActivity {
 }
 
 export class WebRtcVoiceActivityDetector extends VoiceActivityDetectorBase {
-    private lastSkippedAt = 0;
+    private lastSkippedAt = Number.NEGATIVE_INFINITY;
 
     constructor(private baseVad: WebRtcVad) {
         super(false, AUDIO.rec.sampleRate);

@@ -1013,7 +1013,7 @@ See [`.editorconfig`](../.editorconfig) for the complete list of silenced analyz
 
 ## TypeScript
 
-### Measuring time: `performance.now()`, never `Date.now()`
+### Measuring time: `performance.now()` vs `Date.now()`
 
 Anything that measures an interval, a duration, a velocity, or an animation's progress uses
 `performance.now()`. `Date.now()` is wall-clock and quantised to a whole millisecond, so a duration
@@ -1026,6 +1026,13 @@ against a `performance.now()` one is out by about 1.7e12, so every such comparis
 
 `Date.now()` is still right for a wall-clock instant that leaves the process: a timestamp sent to the
 server, serialised, or shown to a user.
+
+`Date.now()` also stays right for a threshold measured in seconds - a heartbeat watchdog, a
+health-check cycle, a presence deadline. There the 1ms quantisation is noise, and the wall clock is
+what the code means: `performance.now()` does not advance while the OS is suspended, so a monotonic
+deadline survives a laptop sleeping and still reports a user who left hours ago as present. Reach for
+`performance.now()` when the threshold is a few hundred milliseconds or less, or when the value is
+divided by to produce a rate.
 
 **In the virtual list** (`src/dotnet/UI.Blazor/Components/VirtualList/**` and
 `src/nodejs/src/scroll-controller.ts`) `Date.now()` is banned outright. Every value there is either a
