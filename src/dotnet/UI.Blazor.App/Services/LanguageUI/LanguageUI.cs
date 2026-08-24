@@ -15,7 +15,7 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     public static readonly Language[] SupportedUILanguages = [
         Languages.English, Languages.Spanish, Languages.French, Languages.Italian, Languages.Russian, Languages.German,
         Languages.Chinese, Languages.Hindi, Languages.Japanese, Languages.Korean, Languages.Portuguese, Languages.Turkish,
-        Languages.Ukrainian, Languages.Vietnamese,
+        Languages.Ukrainian, Languages.Vietnamese, Languages.Polish,
     ];
 
     public SyncedState<UserLanguageSettings> Settings { get; init; }
@@ -137,6 +137,7 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
         foreach (var language in languages)
             if (SupportedUILanguages.FirstOrDefault(l => l.IsoCode == language.IsoCode) is { } uiLanguage)
                 return uiLanguage;
+
         return DefaultUILanguage;
     }
 

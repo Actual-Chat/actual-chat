@@ -30,6 +30,7 @@ export const UI_LANGUAGES: UILanguage[] = [
     { code: 'tr-TR', subtag: 'tr', nativeName: 'Türkçe' },
     { code: 'uk-UA', subtag: 'uk', nativeName: 'Українська' },
     { code: 'vi-VN', subtag: 'vi', nativeName: 'Tiếng Việt' },
+    { code: 'pl-PL', subtag: 'pl', nativeName: 'Polski' },
 ];
 
 export const ENGLISH = UI_LANGUAGES[0];

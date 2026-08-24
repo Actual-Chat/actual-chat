@@ -1,0 +1,138 @@
+// Reverse-indexed catalog: MessageIndex maps a runtime-produced English message back to
+// its key here, so the English value below MUST byte-match what the app actually produces.
+// Placeholders are named: {field} is replaced by the form label, the rest pass through.
+// Two families live here: Validation_* messages produced by BCL attributes, and Error_*
+// messages thrown by the server and shown in an error toast. Our own validation attributes
+// report a Validation_* key directly instead, so they live in Strings.*.json.
+// An Error_* value that no longer matches the code silently falls back to AI translation -
+// ServerErrorLocalizationTest is what keeps the two in sync.
+// TODO(FC): the Validation_* entries here are temporary - see MessageIndex. The .NET 11 pipeline
+// resolves IStringLocalizerFactory per call as of preview.7, so once the SDK is bumped off
+// preview.6 the BCL attributes localize forwards too and only Error_ strings remain here.
+{
+  "Validation_Required_Format": "Pole {field} jest wymagane.",
+  "Validation_MinLength_Format": "Pole {field} musi być tekstem lub tablicą o minimalnej długości „{min}”.",
+  "Validation_EmailAddress_Format": "Pole {field} nie zawiera prawidłowego adresu e-mail.",
+  "Validation_DeleteConfirmationRequired": "Potwierdzenie usunięcia jest wymagane",
+  "Validation_DeleteConfirmationInvalid": "Wpisz DELETE, aby potwierdzić",
+
+  // Generic errors, composed by StandardError / the exception types themselves
+  "Error_NotEnoughPermissions": "Nie możesz wykonać tej czynności: brak wystarczających uprawnień.",
+  "Error_NotEnoughPermissions_Format": "Nie możesz wykonać tej czynności: brak wystarczających uprawnień. Wymagane uprawnienie: {permission}",
+  "Error_TooManyRequests": "Zbyt wiele żądań.",
+  "Error_TooManyRequests_Format": "Zbyt wiele żądań. Spróbuj ponownie za {seconds} s.",
+  "Error_VersionMismatch": "Niezgodność wersji.",
+  "Error_ChatNotFound": "Nie znaleziono czatu.",
+  "Error_ChatEntryNotFound": "Nie znaleziono wpisu czatu.",
+  "Error_AccountNotFound": "Nie znaleziono konta.",
+  "Error_AuthorNotFound": "Nie znaleziono autora.",
+  "Error_AvatarNotFound": "Nie znaleziono awatara.",
+  "Error_ContactNotFound": "Nie znaleziono kontaktu.",
+  "Error_MediaNotFound": "Nie znaleziono pliku multimedialnego.",
+  "Error_UploadNotFound": "Nie znaleziono przesyłanego pliku.",
+
+  // Sign-in and account
+  "Error_RegistrationExpired": "To żądanie rejestracji wygasło. Spróbuj zalogować się ponownie.",
+  "Error_SessionExpired": "Twoja sesja wygasła lub została dezaktywowana. Uruchom aplikację ponownie.",
+  "Error_AlreadySignedIn": "Już zalogowano.",
+  "Error_PhoneTaken": "Ten numer telefonu jest już przypisany do innego konta.",
+  "Error_EmailTaken": "Ten adres e-mail jest już przypisany do innego konta.",
+  "Error_SmsNotDelivered": "Nie udało się dostarczyć wiadomości na podany numer telefonu.",
+  "Error_CannotDeactivateCurrentSession": "Nie można dezaktywować bieżącej sesji.",
+  "Error_PhoneFormatInvalid": "Nieprawidłowy format numeru telefonu.",
+  "Error_CannotChangeOwnStatus": "Nie możesz zmienić własnego statusu.",
+  "Error_ApiKeyExpirationRange_Format": "Ważność klucza API musi wynosić od 1 do {days} dni.",
+
+  // Chat members and roles
+  "Error_OnlyOwnerCannotLeave": "Nie możesz opuścić tego czatu, ponieważ jesteś jego jedynym właścicielem. Najpierw dodaj innego właściciela.",
+  "Error_CannotRemoveSelf": "Nie możesz usunąć samego siebie z uczestników czatu.",
+  "Error_CannotRemoveChatOwner": "Nie możesz usunąć właściciela tego czatu z jego uczestników.",
+  "Error_CannotRemoveSearchBot": "Nie możesz usunąć bota wyszukiwania AI z uczestników czatu.",
+  "Error_OwnerCannotBeDemoted": "Właścicielom czatu nie można odebrać roli.",
+  "Error_AuthorAlreadyLeft": "Wybrany autor już opuścił czat.",
+  "Error_AutomaticRoleMembership": "Ta rola systemowa korzysta z automatycznych reguł członkostwa.",
+  "Error_ManageMembershipInPlace": "Członkostwem w otwartym czacie Miejsca zarządza się w ustawieniach Miejsca.",
+  "Error_AnonymousAvatarRequired": "Aby dołączyć anonimowo, należy użyć anonimowego awatara.",
+  "Error_GuestJoinNotAllowed": "Ten czat nie pozwala dołączyć z konta gościa.",
+  "Error_AnonymousJoinNotAllowed": "Ten czat nie pozwala dołączyć anonimowo.",
+  "Error_OwnersRoleCannotBeEmpty": "W roli właścicieli musi być co najmniej jeden użytkownik.",
+  "Error_OnlyOwnersAllowed": "Tę czynność mogą wykonać tylko członkowie roli właścicieli tego czatu.",
+
+  // Messages
+  "Error_CannotSendMessages": "Nie możesz wysyłać wiadomości w tym czacie.",
+  "Error_EmptyMessage": "Niestety nie można publikować pustych wiadomości.",
+  "Error_CanEditOwnMessagesOnly": "Możesz edytować tylko własne wiadomości.",
+  "Error_OnlyTextCanBeEdited": "Edytować można tylko wiadomości tekstowe.",
+  "Error_StreamingCannotBeEdited": "Wiadomości przesyłanych na żywo nie można edytować.",
+  "Error_ForwardedCannotBeEdited": "Przesłanych dalej wiadomości nie można edytować.",
+  "Error_MessageNoLongerExists": "Ta wiadomość już nie istnieje.",
+  "Error_CannotRemoveMessage": "Nie masz uprawnień do usunięcia tej wiadomości.",
+  "Error_CannotRemoveOwnerMessage": "Nie masz uprawnień do usunięcia wiadomości właściciela.",
+  "Error_CannotRestoreMessage": "Nie masz uprawnień do przywrócenia tej wiadomości.",
+  "Error_CannotRestoreOwnerMessage": "Nie masz uprawnień do przywrócenia wiadomości właściciela.",
+  "Error_RootChatCannotHoldMessages": "Główny czat Miejsca nie może zawierać wiadomości — napisz w jednym z czatów tego Miejsca.",
+  "Error_CanAttachOwnLocationsOnly": "Możesz załączyć tylko własne lokalizacje udostępnione w tym czacie.",
+  "Error_NonContactMessageLimit_Format": "Możesz wysłać maksymalnie {limit} wiadomości, dopóki ten użytkownik nie doda Cię do kontaktów lub nie odpowie.",
+  "Error_OnlyOwnersOrModeratorsCanPin": "Nie możesz wykonać tej czynności: brak wystarczających uprawnień. Wymagane uprawnienie: przypinać wiadomości mogą tylko właściciele i moderatorzy czatu.",
+  "Error_PinLimit_Format": "Możesz przypiąć maksymalnie {limit} wiadomości.",
+
+  // Chats and places
+  "Error_ChatTitleEmpty": "Nazwa czatu nie może być pusta.",
+  "Error_ThreadTitleEmpty": "Nazwa wątku nie może być pusta.",
+  "Error_PlaceTitleEmpty": "Nazwa Miejsca nie może być pusta.",
+  "Error_PlaceUnavailable": "Żądane Miejsce jest niedostępne.",
+  "Error_OnlyPlaceMembersCanAddChats": "Tylko uczestnicy Miejsca mogą dodawać czaty.",
+  "Error_CannotMakeChatPublic": "Nie możesz wykonać tej czynności: brak wystarczających uprawnień. Wymagane uprawnienie: udostępnienie czatu publicznie",
+  "Error_CustomLinkNotAllowed": "Własne linki nie są dozwolone w czatach Miejsca.",
+  "Error_CustomLinkTaken_Format": "Własny link „{link}” jest już używany przez inny czat w tym samym Miejscu.",
+  "Error_WelcomeChatCannotBePrivate": "Nie można zmienić typu czatu „Welcome” na zamknięty.",
+  "Error_WelcomeChatCannotBeRemoved": "Usunięcie czatu „Welcome” jest zabronione.",
+  "Error_OnlyGroupOrPlaceChatCanBeCopied": "Do Miejsca można kopiować tylko czaty grupowe lub czaty Miejsca.",
+  "Error_CannotCopyToSamePlace": "Nie można skopiować czatu Miejsca do tego samego Miejsca.",
+  "Error_MigrationRequiresChatOwner": "Aby wykonać migrację, musisz być właścicielem tego czatu.",
+  "Error_MigrationRequiresPlaceOwner": "Aby skopiować czat do Miejsca, musisz być właścicielem Miejsca.",
+  "Error_OperationRequiresChatOwner": "Aby wykonać tę operację, musisz być właścicielem tego czatu.",
+  "Error_OperationRequiresPlaceOwner": "Aby wykonać tę operację, musisz być właścicielem Miejsca, do którego należy czat.",
+
+  // Threads and contacts
+  "Error_ThreadRequiresContact": "Wątki można rozpocząć dopiero, gdy ten użytkownik doda Cię do kontaktów lub odpowie.",
+  "Error_SignInToFollowThread": "Aby obserwować wątek czatu, musisz się zalogować.",
+  "Error_OnlyPeerContactCanBeBlocked": "Blokować można tylko kontakty prywatne.",
+  "Error_SignInToChat": "Aby rozmawiać z innym użytkownikiem, musisz się zalogować.",
+  "Error_CannotChatWithUnauthenticated": "Nie możesz rozmawiać z niezalogowanym użytkownikiem.",
+
+  // Calls
+  "Error_OnlyParticipantCanBecomeHost": "Prowadzącym rozmowę może zostać tylko jej uczestnik.",
+  "Error_CannotMuteOwner": "Nie możesz wyłączyć mikrofonu właściciela.",
+  "Error_OnlyHostOrOwnerCanChangeHost": "Prowadzącego rozmowę może zmienić tylko obecny prowadzący lub właściciel czatu.",
+  "Error_CallRequiresContact": "Możesz zadzwonić do tego użytkownika dopiero, gdy doda Cię do kontaktów lub Ci odpowie.",
+  "Error_CannotMuteInPeerChat": "W rozmowie jeden na jeden nie możesz wyciszyć drugiego uczestnika.",
+  "Error_OnlyHostOwnerOrModeratorCanManageCall": "Sesją na żywo może zarządzać tylko prowadzący rozmowę albo właściciel lub moderator czatu.",
+  "Error_VoiceStreamingModeLocked": "W tym czacie nie można zmienić trybu przesyłania głosu.",
+
+  // Notifications
+  "Error_NotifyMembersNotAllowed": "Powiadamianie uczestników nie jest dozwolone w czatach dostępnych publicznie.",
+  "Error_AlertEveryoneUnavailable": "Alarmowanie wszystkich jest niedostępne w czatach z ponad 10 osobami.",
+  "Error_NobodyToNotify": "Nie ma kogo powiadomić.",
+  "Error_OnlyAuthorCanNotify": "Tylko autor może powiadamiać wspomniane osoby.",
+
+  // Media and uploads
+  "Error_NoMediaAccess": "Nie masz uprawnień do tego pliku multimedialnego.",
+  "Error_FileTooBig": "Plik jest za duży.",
+  "Error_CropExportFailed": "Nie udało się wyeksportować przyciętego obrazu.",
+  "Error_FileTooBig_Format": "Plik jest za duży. Maksymalny rozmiar pliku: {size}.",
+  "Error_TooManyFiles_Format": "Za dużo plików. Maksymalna dozwolona liczba to {count}.",
+
+  // Invites
+  "Error_InviteAlreadyUsed": "Ten link zapraszający został już wykorzystany.",
+  "Error_InviteNotActive": "Ten link zapraszający nie jest już aktywny.",
+  "Error_InviteCodeNotFound": "Nie znaleziono zaproszenia o podanym kodzie.",
+  "Error_OnlyPlaceMembersCanUseCode": "Tego kodu mogą użyć tylko uczestnicy Miejsca.",
+  "Error_UserInvitesRemoved": "Funkcja zaproszeń użytkowników została usunięta.",
+
+  // Live location
+  "Error_JoinChatToShareLocation": "Dołącz do czatu, zanim udostępnisz swoją lokalizację.",
+  "Error_CanChangeOwnLocationsOnly": "W tym czacie możesz zmieniać tylko własne udostępnione lokalizacje.",
+  "Error_LocationSharingLimit_Format": "W tym czacie lokalizację na żywo udostępnia już maksymalna liczba osób: {limit}.",
+  "Error_FailedToAddFileAttachment": "Nie udało się dodać załącznika."
+}
