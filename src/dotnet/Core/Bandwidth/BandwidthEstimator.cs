@@ -41,7 +41,7 @@ public readonly record struct BandwidthEstimateRecord(
 /// available bandwidth on the current RPC connection. Driven by a single
 /// fused <c>signalLevel</c> in [0, 1]: 1.0 = perfect, 0.5 = "real cap is
 /// ~half of what I just used".
-/// Algorithm and rationale: <c>docs/plans/video-quality-control-v2.md</c>.
+/// Algorithm and rationale: <c>docs/live-video/08-quality-control.md</c>.
 /// </summary>
 public sealed class BandwidthEstimator(BandwidthEstimatorConfig config)
 {

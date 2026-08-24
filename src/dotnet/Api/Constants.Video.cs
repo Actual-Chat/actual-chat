@@ -15,8 +15,10 @@ public static partial class Constants
 
         // Target playback buffer (the only intentional live-video buffer).
         public const int TargetBufferSize = 6; // jitter buffer depth (frames)
+        // 200 ms — below the audio buffer so audio lands slightly behind video
+        // (the safe side); trades jitter headroom for latency.
         public static readonly TimeSpan TargetBufferSpan =
-            TimeSpan.FromSeconds((double)TargetBufferSize / FrameRate); // 200 ms — below audio buffer so audio lands slightly behind video (safe side); trades jitter headroom for latency
+            TimeSpan.FromSeconds((double)TargetBufferSize / FrameRate);
         public static readonly double TargetBufferSpanMs = TargetBufferSpan.TotalMilliseconds;
 
         // Playback verdict thresholds (compared against per-tick EMAs of the
@@ -36,10 +38,10 @@ public static partial class Constants
         public const long InitialOutboundCeilingBps = 375_000;  // ~3 Mbps
         public const long InitialInboundCeilingBps = 1_000_000; // ~8 Mbps
 
-        // Reference values for the fused signalLevel formulas (see
-        // docs/plans/video-quality-control-v2.md → "Computing signalLevel").
-        // Penalty for each input is a linear ramp from Ok (penalty = 0) to
-        // Bad (penalty = 1), clamped to [0, 1].
+        // Vestigial: reference values for the continuous-penalty signalLevel
+        // the QC legs used before SenderHealthClassifier / ReceiverHealthClassifier
+        // took over. Nothing reads them today — the live thresholds are the
+        // classifier defaults. See docs/live-video/08-quality-control.md.
         public const double DropOkSender = 0.20;
         public const double DropBadSender = 0.50;
         public const double DropOkReceiver = 0.20;
@@ -68,7 +70,8 @@ public static partial class Constants
         // (memoizer eviction preserves the anchor; Replay just has to be wide
         // enough to surface it). 10% margin over KeyFramePeriod absorbs minor
         // jitter in the sender's keyframe cadence.
-        public static readonly TimeSpan ServerReplayTailDuration = TimeSpan.FromSeconds(KeyFramePeriod.TotalSeconds * 1.1);
+        public static readonly TimeSpan ServerReplayTailDuration =
+            TimeSpan.FromSeconds(KeyFramePeriod.TotalSeconds * 1.1);
         // Simulcast streams interleave the widest layer ladder into one
         // chain at VideoLayerDef.MaxLayerCount × FrameRate frames per second. Without the
         // layer multiplier the count cap clipped the Replay window to ~1.1 s of
