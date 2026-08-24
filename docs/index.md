@@ -61,6 +61,11 @@ features:
 
 ## Cross-cutting
 
+- [Localization (i18n)](./i18n.md) — the catalog mechanism, how to add and
+  consume a key, plurals and sentence fragments, writing English that survives
+  translation, product terminology, and the enumerated list of what stays
+  English on purpose.
+
 - [Compute-method invalidation map](./invalidation-map.md) — where invalidations
   originate, how they amplify, which edges are conditional, and where
   `ConsolidationDelay` cuts a cascade that is effectively a no-op.
