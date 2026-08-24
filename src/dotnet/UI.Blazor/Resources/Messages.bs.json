@@ -1,0 +1,138 @@
+// Reverse-indexed catalog: MessageIndex maps a runtime-produced English message back to
+// its key here, so the English value below MUST byte-match what the app actually produces.
+// Placeholders are named: {field} is replaced by the form label, the rest pass through.
+// Two families live here: Validation_* messages produced by BCL attributes, and Error_*
+// messages thrown by the server and shown in an error toast. Our own validation attributes
+// report a Validation_* key directly instead, so they live in Strings.*.json.
+// An Error_* value that no longer matches the code silently falls back to AI translation -
+// ServerErrorLocalizationTest is what keeps the two in sync.
+// TODO(FC): the Validation_* entries here are temporary - see MessageIndex. The .NET 11 pipeline
+// resolves IStringLocalizerFactory per call as of preview.7, so once the SDK is bumped off
+// preview.6 the BCL attributes localize forwards too and only Error_ strings remain here.
+{
+  "Validation_Required_Format": "Polje {field} je obavezno.",
+  "Validation_MinLength_Format": "Polje {field} mora biti tekst ili niz minimalne dužine „{min}“.",
+  "Validation_EmailAddress_Format": "Polje {field} ne sadrži ispravnu email adresu.",
+  "Validation_DeleteConfirmationRequired": "Potvrda brisanja je obavezna",
+  "Validation_DeleteConfirmationInvalid": "Upišite DELETE za potvrdu",
+
+  // Generic errors, composed by StandardError / the exception types themselves
+  "Error_NotEnoughPermissions": "Ne možete izvesti ovu radnju: nedovoljne dozvole.",
+  "Error_NotEnoughPermissions_Format": "Ne možete izvesti ovu radnju: nedovoljne dozvole. Potrebna dozvola: {permission}",
+  "Error_TooManyRequests": "Previše zahtjeva.",
+  "Error_TooManyRequests_Format": "Previše zahtjeva. Pokušajte ponovo za {seconds} s.",
+  "Error_VersionMismatch": "Neslaganje verzija.",
+  "Error_ChatNotFound": "Chat nije pronađen.",
+  "Error_ChatEntryNotFound": "Unos u chatu nije pronađen.",
+  "Error_AccountNotFound": "Račun nije pronađen.",
+  "Error_AuthorNotFound": "Autor nije pronađen.",
+  "Error_AvatarNotFound": "Avatar nije pronađen.",
+  "Error_ContactNotFound": "Kontakt nije pronađen.",
+  "Error_MediaNotFound": "Medij nije pronađen.",
+  "Error_UploadNotFound": "Otpremanje nije pronađeno.",
+
+  // Sign-in and account
+  "Error_RegistrationExpired": "Ovaj zahtjev za registraciju je istekao. Pokušajte se prijaviti ponovo.",
+  "Error_SessionExpired": "Vaša sesija je istekla ili je deaktivirana. Ponovo pokrenite aplikaciju.",
+  "Error_AlreadySignedIn": "Već ste prijavljeni.",
+  "Error_PhoneTaken": "Ovaj broj telefona već koristi drugi račun.",
+  "Error_EmailTaken": "Ovaj email već koristi drugi račun.",
+  "Error_SmsNotDelivered": "Poruku nismo mogli isporučiti na navedeni broj telefona.",
+  "Error_CannotDeactivateCurrentSession": "Trenutna sesija se ne može deaktivirati.",
+  "Error_PhoneFormatInvalid": "Neispravan format broja telefona.",
+  "Error_CannotChangeOwnStatus": "Ne možete promijeniti vlastiti status.",
+  "Error_ApiKeyExpirationRange_Format": "Trajanje API ključa mora biti između 1 i {days} dana.",
+
+  // Chat members and roles
+  "Error_OnlyOwnerCannotLeave": "Ne možete napustiti ovaj chat jer ste njegov jedini vlasnik. Prvo dodajte drugog vlasnika.",
+  "Error_CannotRemoveSelf": "Ne možete ukloniti sebe iz članova chata.",
+  "Error_CannotRemoveChatOwner": "Ne možete ukloniti vlasnika ovog chata iz članova.",
+  "Error_CannotRemoveSearchBot": "Ne možete ukloniti AI bota za pretragu iz članova chata.",
+  "Error_OwnerCannotBeDemoted": "Vlasnicima chata se ne može oduzeti uloga.",
+  "Error_AuthorAlreadyLeft": "Odabrani autor je već napustio chat.",
+  "Error_AutomaticRoleMembership": "Ova sistemska uloga koristi automatska pravila članstva.",
+  "Error_ManageMembershipInPlace": "Članstvom u otvorenom chatu Mjesta upravljate putem postavki Mjesta.",
+  "Error_AnonymousAvatarRequired": "Za anonimno pridruživanje treba koristiti anonimni avatar.",
+  "Error_GuestJoinNotAllowed": "Chat ne dozvoljava pridruživanje s gostujućim računom.",
+  "Error_AnonymousJoinNotAllowed": "Chat ne dozvoljava anonimno pridruživanje.",
+  "Error_OwnersRoleCannotBeEmpty": "U ulozi vlasnika mora biti barem jedan korisnik.",
+  "Error_OnlyOwnersAllowed": "Ovu radnju mogu izvesti samo članovi uloge vlasnika ovog chata.",
+
+  // Messages
+  "Error_CannotSendMessages": "Ne možete slati poruke u ovom chatu.",
+  "Error_EmptyMessage": "Nažalost, ne možete objaviti prazne poruke.",
+  "Error_CanEditOwnMessagesOnly": "Možete uređivati samo vlastite poruke.",
+  "Error_OnlyTextCanBeEdited": "Mogu se uređivati samo tekstualne poruke.",
+  "Error_StreamingCannotBeEdited": "Poruke koje se prenose uživo ne mogu se uređivati.",
+  "Error_ForwardedCannotBeEdited": "Proslijeđene poruke se ne mogu uređivati.",
+  "Error_MessageNoLongerExists": "Ova poruka više ne postoji.",
+  "Error_CannotRemoveMessage": "Nemate dozvolu za brisanje ove poruke.",
+  "Error_CannotRemoveOwnerMessage": "Nemate dozvolu za brisanje poruke vlasnika.",
+  "Error_CannotRestoreMessage": "Nemate dozvolu za vraćanje ove poruke.",
+  "Error_CannotRestoreOwnerMessage": "Nemate dozvolu za vraćanje poruke vlasnika.",
+  "Error_RootChatCannotHoldMessages": "Korijenski chat Mjesta ne može sadržavati poruke — pišite u nekom od chatova tog Mjesta.",
+  "Error_CanAttachOwnLocationsOnly": "Možete priložiti samo vlastite lokacije podijeljene u ovom chatu.",
+  "Error_NonContactMessageLimit_Format": "Možete poslati do {limit} poruka dok vas ovaj korisnik ne doda u kontakte ili ne odgovori.",
+  "Error_OnlyOwnersOrModeratorsCanPin": "Ne možete izvesti ovu radnju: nedovoljne dozvole. Potrebna dozvola: poruke mogu kačiti samo vlasnici i moderatori chata.",
+  "Error_PinLimit_Format": "Možete zakačiti do {limit} poruka.",
+
+  // Chats and places
+  "Error_ChatTitleEmpty": "Naziv chata ne može biti prazan.",
+  "Error_ThreadTitleEmpty": "Naziv niti ne može biti prazan.",
+  "Error_PlaceTitleEmpty": "Naziv Mjesta ne može biti prazan.",
+  "Error_PlaceUnavailable": "Traženo Mjesto nije dostupno.",
+  "Error_OnlyPlaceMembersCanAddChats": "Chatove mogu dodavati samo članovi Mjesta.",
+  "Error_CannotMakeChatPublic": "Ne možete izvesti ovu radnju: nedovoljne dozvole. Potrebna dozvola: učiniti chat otvorenim",
+  "Error_CustomLinkNotAllowed": "Vlastiti linkovi nisu dozvoljeni za chatove Mjesta.",
+  "Error_CustomLinkTaken_Format": "Vlastiti link „{link}“ već koristi drugi chat u istom Mjestu.",
+  "Error_WelcomeChatCannotBePrivate": "Vrsta chata „Welcome“ ne može se promijeniti u zatvorenu.",
+  "Error_WelcomeChatCannotBeRemoved": "Chat „Welcome“ se ne smije obrisati.",
+  "Error_OnlyGroupOrPlaceChatCanBeCopied": "U Mjesto se mogu kopirati samo grupni chatovi ili chatovi Mjesta.",
+  "Error_CannotCopyToSamePlace": "Chat Mjesta se ne može kopirati u isto Mjesto.",
+  "Error_MigrationRequiresChatOwner": "Migraciju može izvesti samo vlasnik ovog chata.",
+  "Error_MigrationRequiresPlaceOwner": "Chat u Mjesto može kopirati samo vlasnik Mjesta.",
+  "Error_OperationRequiresChatOwner": "Ovu operaciju može izvesti samo vlasnik ovog chata.",
+  "Error_OperationRequiresPlaceOwner": "Ovu operaciju može izvesti samo vlasnik Mjesta kojem chat pripada.",
+
+  // Threads and contacts
+  "Error_ThreadRequiresContact": "Niti se mogu započeti tek nakon što vas ovaj korisnik doda u kontakte ili odgovori.",
+  "Error_SignInToFollowThread": "Da biste pratili nit chata, morate se prijaviti.",
+  "Error_OnlyPeerContactCanBeBlocked": "Blokirati se mogu samo privatni kontakti.",
+  "Error_SignInToChat": "Da biste pisali drugom korisniku, morate se prijaviti.",
+  "Error_CannotChatWithUnauthenticated": "Ne možete pisati korisniku koji nije prijavljen.",
+
+  // Calls
+  "Error_OnlyParticipantCanBecomeHost": "Domaćin poziva može postati samo njegov učesnik.",
+  "Error_CannotMuteOwner": "Ne možete isključiti mikrofon vlasnika.",
+  "Error_OnlyHostOrOwnerCanChangeHost": "Domaćina poziva može promijeniti samo trenutni domaćin ili vlasnik chata.",
+  "Error_CallRequiresContact": "Ovog korisnika možete pozvati tek nakon što vas doda u kontakte ili vam odgovori.",
+  "Error_CannotMuteInPeerChat": "U razgovoru jedan na jedan ne možete utišati drugog učesnika.",
+  "Error_OnlyHostOwnerOrModeratorCanManageCall": "Sesijom uživo može upravljati samo domaćin poziva ili vlasnik odnosno moderator chata.",
+  "Error_VoiceStreamingModeLocked": "Način prijenosa glasa se ne može promijeniti u ovom chatu.",
+
+  // Notifications
+  "Error_NotifyMembersNotAllowed": "Obavještavanje članova nije dozvoljeno u javno dostupnim chatovima.",
+  "Error_AlertEveryoneUnavailable": "Upozorenje za sve nije dostupno u chatovima s više od 10 ljudi.",
+  "Error_NobodyToNotify": "Nema koga obavijestiti.",
+  "Error_OnlyAuthorCanNotify": "Samo autor smije obavijestiti spomenute osobe.",
+
+  // Media and uploads
+  "Error_NoMediaAccess": "Nemate dozvolu za pristup ovom mediju.",
+  "Error_FileTooBig": "Fajl je prevelik.",
+  "Error_CropExportFailed": "Izrezana slika se nije mogla izvesti.",
+  "Error_FileTooBig_Format": "Fajl je prevelik. Najveća veličina fajla: {size}.",
+  "Error_TooManyFiles_Format": "Previše fajlova. Najveći dozvoljeni broj je {count}.",
+
+  // Invites
+  "Error_InviteAlreadyUsed": "Link pozivnice je već iskorišten.",
+  "Error_InviteNotActive": "Link pozivnice više nije aktivan.",
+  "Error_InviteCodeNotFound": "Pozivnica s navedenim kodom nije pronađena.",
+  "Error_OnlyPlaceMembersCanUseCode": "Ovaj kod mogu koristiti samo članovi Mjesta.",
+  "Error_UserInvitesRemoved": "Funkcija korisničkih pozivnica je uklonjena.",
+
+  // Live location
+  "Error_JoinChatToShareLocation": "Pridružite se chatu prije nego podijelite svoju lokaciju.",
+  "Error_CanChangeOwnLocationsOnly": "U ovom chatu možete mijenjati samo vlastite podijeljene lokacije.",
+  "Error_LocationSharingLimit_Format": "U ovom chatu lokaciju uživo već dijeli najveći dozvoljeni broj ljudi: {limit}.",
+  "Error_FailedToAddFileAttachment": "Prilog se nije mogao dodati."
+}
