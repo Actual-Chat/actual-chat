@@ -79,6 +79,9 @@ entirely. This is for high-frequency commands that would hold a resident entry p
 | `UserPresences_CheckIn` | One per active client every `AwayTimeout * 0.75` (45 s), always a fresh `Uuid`, so it could never be replayed — and replaying one instead of running it would freeze presence |
 | `ChatPositions_Set` | Debounced at 1 s per open chat while scrolling; fresh `Uuid` each time |
 | `Uploads_Append` | One command per chunk (256 KB–4 MB) would fill the store during a single upload; a resend is handled by the handler's offset check instead |
+| `ChatUsages_RegisterUsage` | An idempotent upsert of a chat's access time, sent on every chat opening |
+| `UserSettings_Set` | Last-write-wins; settings churn would hold an entry per write |
+| `Notifications_RegisterDevice` | An idempotent device-token upsert the client re-sends precisely to refresh a stale record |
 
 The test that guards this is `NotDeduplicatedCommandRunsEveryTime` in `ApiCommandDeduplicatorTest`.
 Before adding to the list, prefer evidence: a command whose `command.dedup.outcome` is all

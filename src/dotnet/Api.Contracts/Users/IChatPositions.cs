@@ -13,7 +13,7 @@ public interface IChatPositions : IComputeService
 }
 
 // Not deduplicated: the read-position writer debounces at 1s and builds a fresh Uuid each time,
-// so dedup only adds two store round-trips per scroll.
+// so dedup could never replay one - it would only hold an entry per scroll.
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
