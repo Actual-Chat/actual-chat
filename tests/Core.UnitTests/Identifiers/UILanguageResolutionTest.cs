@@ -30,10 +30,24 @@ public sealed class UILanguageResolutionTest(ITestOutputHelper @out) : TestBase(
 
     [Fact]
     public void ResolveUILanguageShouldPreferTheSelectedLanguage()
-        => Languages.ResolveUILanguage(Languages.Japanese, ["de-DE"]).Should().Be(Languages.Japanese);
+        => Languages.ResolveUILanguage(null, Languages.Japanese, ["de-DE"]).Should().Be(Languages.Japanese);
 
     [Fact]
     public void ResolveUILanguageShouldDetectWhenNothingIsSelected()
         // null is the "auto" selection rather than a missing value: it means "follow the device"
-        => Languages.ResolveUILanguage(null, ["de-DE"]).Should().Be(Languages.German);
+        => Languages.ResolveUILanguage(null, null, ["de-DE"]).Should().Be(Languages.German);
+
+    [Theory]
+    [InlineData("de-DE", "de-DE")]
+    [InlineData("de-AT", "de-DE")]
+    [InlineData("ru", "ru-RU")]
+    public void ResolveUILanguageShouldPreferTheUrlOverride(string languageOverride, string expected)
+        => Languages.ResolveUILanguage(languageOverride, Languages.Japanese, ["fr-FR"])
+            .Should().Be(Language.Parse(expected));
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("not-a-language")]
+    public void ResolveUILanguageShouldNotFallThroughWhenTheUrlOverrideIsInvalid(string languageOverride)
+        => Languages.ResolveUILanguage(languageOverride, Languages.Japanese, ["de-DE"]).Should().Be(Languages.Main);
 }

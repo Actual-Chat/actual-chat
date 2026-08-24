@@ -36,9 +36,9 @@ describe('Error toast localization', () => {
         page = await conn.context.newPage();
         await ensureSignedIn(page);
 
-        // Server render mode: the language change ends in History.ForceReload, and under WASM
-        // that re-boots MONO against service-worker-cached assets, which double-faults after a
-        // server rebuild ("SystemInteropJS_BindAssemblyExports unexpected double fault").
+        // This test explicitly reloads after changing the language. Use server render mode because
+        // reloading under WASM re-boots MONO against service-worker-cached assets, which double-
+        // faults after a server rebuild ("SystemInteropJS_BindAssemblyExports unexpected double fault").
         await page.goto(`${BASE_URL}/fusion/renderMode/s`, { waitUntil: 'domcontentloaded' });
         await waitForAppReady(page);
     }, 120_000);

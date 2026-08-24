@@ -3,9 +3,11 @@ import { getLogs } from 'logging';
 const { debugLog } = getLogs('LocalizationUI');
 
 const storage = window.localStorage as Storage | null;
-const storageKey = 'ui.language'
+const storageKey = 'ui.language';
+const urlParameter = 'ui-language';
 
 export interface UILanguageInfo {
+    urlOverride: string | null;
     selected: string | null;
     clientLanguages: string[];
 }
@@ -15,12 +17,14 @@ export interface UILanguageInfo {
 // Which of clientLanguages the app actually renders in is decided in .NET: the catalog
 // list (Languages.AllUI) is there, and duplicating it here would be a second source of truth.
 export class LocalizationUI {
+    public static urlOverride: string | null;
     public static selected: string | null;
-    public static info?: UILanguageInfo;
+    public static languageInfo?: UILanguageInfo;
 
     public static init(): void {
+        this.urlOverride = new URLSearchParams(location.search).get(urlParameter);
         this.selected = load();
-        this.info = createInfo();
+        this.languageInfo = createInfo();
     }
 
     public static set(selected: string | null): void {
@@ -30,7 +34,7 @@ export class LocalizationUI {
         debugLog?.log('set:', selected);
         this.selected = selected;
         save(selected);
-        this.info = createInfo();
+        this.languageInfo = createInfo();
     }
 
     // Called with the effective language - i.e. the detected one when nothing is selected.
@@ -41,6 +45,7 @@ export class LocalizationUI {
 
 function createInfo(): UILanguageInfo {
     return {
+        urlOverride: LocalizationUI.urlOverride,
         selected: LocalizationUI.selected,
         clientLanguages: [...navigator.languages],
     }
