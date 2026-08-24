@@ -11,6 +11,8 @@ public static class AppMeters
     public static readonly UpDownCounter<int> VideoStreamCount;
     public static readonly Counter<long> MessageCount;
     public static readonly Counter<long> UITextCatalogMissCount;
+    public static readonly Counter<long> VerificationCodeSent;
+    public static readonly Counter<long> VerificationCodeChannelSkipped;
 
     // Send side — sourced from RecorderStats pushed via
     // ILiveVideoStreams.ChangeRecordingQuality (1 Hz from each active recorder).
@@ -69,6 +71,12 @@ public static class AppMeters
             "app.localization.catalog_miss.count",
             null,
             "UI strings with no catalog entry, which fall back to AI translation; tags: language, kind");
+        VerificationCodeSent = m.CreateCounter<long>(
+            "app.verification_code.sent", null, "Verification codes sent, tagged with the delivery channel");
+        VerificationCodeChannelSkipped = m.CreateCounter<long>(
+            "app.verification_code.channel_skipped", null,
+            "Channels that didn't deliver a verification code; "
+            + "reason tag: blocked | unconfigured | prefix | declined | failed");
 
         VideoSendDropRatio = m.CreateHistogram<double>(
             "app.video.send.drop_ratio", "ratio", "Sender RpcStream dropped-frame ratio over the last 1 s window");

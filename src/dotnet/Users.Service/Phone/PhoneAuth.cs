@@ -17,7 +17,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
 
     private UsersSettings Settings { get; }
     private HostInfo HostInfo { get; }
-    private ITextMessageSender TextMessage { get; }
+    private IVerificationCodeSender CodeSender { get; }
     private TotpCodes Totps { get; }
     private CaptchaProofValidator CaptchaProofs { get; }
     private RateLimitPolicy RateLimitPolicy { get; }
@@ -31,7 +31,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
     {
         Settings = services.GetRequiredService<UsersSettings>();
         HostInfo = services.HostInfo();
-        TextMessage = services.GetRequiredService<ITextMessageSender>();
+        CodeSender = services.GetRequiredService<IVerificationCodeSender>();
         Totps = services.GetRequiredService<TotpCodes>();
         CaptchaProofs = services.GetRequiredService<CaptchaProofValidator>();
         RateLimitPolicy = services.GetRequiredService<RateLimitPolicy>();
@@ -40,7 +40,10 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
 
     // [ComputeMethod]
     public virtual Task<bool> IsEnabled(CancellationToken cancellationToken)
-        => Task.FromResult(HostInfo.IsDevelopmentInstance || Settings.IsTwilioEnabled || Settings.IsSMSToEnabled);
+        => Task.FromResult(HostInfo.IsDevelopmentInstance
+            || Settings.IsTelegramGatewayEnabled
+            || Settings.IsTwilioEnabled
+            || Settings.IsSMSToEnabled);
 
     // [ComputeMethod]
     public virtual Task<string> CheckIfBlocked(
@@ -49,22 +52,17 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         TotpPurpose purpose,
         CancellationToken cancellationToken)
     {
-        var value = phone.Normalize().Value;
-        if (!IsBlocked())
+        // A blocked prefix only rules out SMS - Telegram still reaches the number, so the flow is
+        // refused only when that way out is closed too
+        if (!IsSmsBlocked(phone) || Settings.IsTelegramGatewayEnabled)
             return Task.FromResult(string.Empty);
 
         var message = purpose switch {
             TotpPurpose.SignInPhone => "Unable to send SMS to this number, please use other login methods.",
             _ => "Unable to send SMS to this number",
         };
-        return Task.FromResult(message);
 
-        bool IsBlocked() {
-            foreach (var blockedPrefix in BlockedPhonePrefixes)
-                if (value.StartsWith(blockedPrefix))
-                    return true;
-            return false;
-        }
+        return Task.FromResult(message);
     }
 
     // [ComputeMethod]
@@ -87,31 +85,38 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
 
         var identity = UserIdentityExt.NewPhoneIdentity(phone);
         var userId = await AccountsBackend.GetIdByUserIdentity(identity, cancellationToken).ConfigureAwait(false);
+
         return userId is not null;
     }
 
     // [CommandHandler]
-    public virtual async Task<Moment> OnSendTotp(PhoneAuth_SendTotp command, CancellationToken cancellationToken)
+    public virtual async Task<TotpSendResult> OnSendCode(
+        PhoneAuth_SendCode command,
+        CancellationToken cancellationToken)
     {
         // NOTE(AY): A bit suspicious IApiCommand design:
         // - On one hand, it doesn't have to invalidate anything
         // - On another, it doesn't use a backend.
         if (Invalidation.IsActive)
-            return default; // It just spawns other commands, so nothing to do here
+            return null!;
 
-        var (session, phone, purpose, captchaToken, captchaAction) = command;
+        var (session, phone, purpose, captchaToken, captchaAction, _) = command;
         if (TryGetPredefined(phone, out _))
-            return NextSendAt(); // no need to send predefined totp
+            return new TotpSendResult(NextSendAt(), null); // no need to send predefined totp
 
         await CaptchaProofs
             .Require(session, captchaToken, captchaAction, purpose, cancellationToken)
             .ConfigureAwait(false);
 
-        // Throttle the send rate: limit by phone and by session
+        // Throttle the send rate: limit by phone and by session.
+        // The throttled call reports the channel of the code that's still live, so the UI keeps naming it.
         if (await IsThrottled(session, phone, cancellationToken).ConfigureAwait(false))
-            return NextSendAt();
+            return new TotpSendResult(
+                NextSendAt(),
+                await GetLastChannel(session, phone, cancellationToken).ConfigureAwait(false));
 
-        var canSendValidationMessage = await CheckIfBlocked(session, phone, purpose, cancellationToken).ConfigureAwait(false);
+        var canSendValidationMessage = await CheckIfBlocked(session, phone, purpose, cancellationToken)
+            .ConfigureAwait(false);
         if (!canSendValidationMessage.IsNullOrEmpty())
             throw StandardError.Constraint(canSendValidationMessage);
 
@@ -120,11 +125,33 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         var sTotp = totp.ToString(TotpFormat);
         if (!HostInfo.IsProductionInstance)
             Log.LogWarning("!!! Phone verification code for {Phone}: {Code}", phone.Value, sTotp);
-        await TextMessage.Send(phone, $"{CoreConstants.AppName}: your phone verification code is {sTotp}. Don't share it with anyone.").ConfigureAwait(false);
-        return nextSendAt;
+
+        var onlyChannel = IsSmsBlocked(phone) ? TotpChannel.Telegram : (TotpChannel?)null;
+        var text = $"{CoreConstants.AppName}: your phone verification code is {sTotp}. Don't share it with anyone.";
+        var sentChannel = await CodeSender
+            .Send(phone, new VerificationMessage(sTotp, text, onlyChannel))
+            .ConfigureAwait(false);
+        if (sentChannel is { } sent)
+            await SetLastChannel(session, phone, sent, cancellationToken).ConfigureAwait(false);
+
+        return new TotpSendResult(nextSendAt, sentChannel);
 
         DateTimeOffset NextSendAt()
             => Clocks.SystemClock.UtcNow + Settings.TotpUIThrottling;
+    }
+
+    // [CommandHandler]
+    [Obsolete("2026.08: Use PhoneAuth_SendCode. Old clients only.")]
+    public virtual async Task<Moment> OnSendTotp(PhoneAuth_SendTotp command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return default; // It just spawns other commands, so nothing to do here
+
+        var (session, phone, purpose, captchaToken, captchaAction) = command;
+        var sendCodeCommand = new PhoneAuth_SendCode(session, phone, purpose, captchaToken, captchaAction);
+        var result = await Commander.Call(sendCodeCommand, true, cancellationToken).ConfigureAwait(false);
+
+        return result.NextSendAt;
     }
 
     // [CommandHandler]
@@ -144,6 +171,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
 
         var signInCommand = new AccountsBackend_SignIn(session, phoneIdentity, identities, claims);
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
+
         return true;
     }
 
@@ -178,8 +206,44 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
 
         var cmd = new AccountsBackend_Update(updatedAccount, account.Version);
         await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+
         return true;
     }
+
+    // The channel is picked here rather than in the UI because old clients call the obsolete
+    // PhoneAuth_SendTotp and can't ask for one - a client-side rule would repeat Telegram forever
+    internal bool IsSmsBlocked(ActualChat.Phone phone)
+    {
+        var value = phone.Normalize().Value;
+        foreach (var blockedPrefix in BlockedPhonePrefixes)
+            if (value.StartsWith(blockedPrefix))
+                return true;
+
+        return false;
+    }
+
+    // It's internal to be accessible from tests
+    internal async Task SetLastChannel(
+        Session session, ActualChat.Phone phone, TotpChannel channel, CancellationToken cancellationToken)
+    {
+        var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        await db.StringSetAsync(LastChannelKey(session, phone), channel.ToString(), Settings.TotpCodeLifetime)
+            .ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private async Task<TotpChannel?> GetLastChannel(
+        Session session, ActualChat.Phone phone, CancellationToken cancellationToken)
+    {
+        var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var value = await db.StringGetAsync(LastChannelKey(session, phone)).ConfigureAwait(false);
+
+        return Enum.TryParse<TotpChannel>((string?)value, out var channel) ? channel : null;
+    }
+
+    private static string LastChannelKey(Session session, ActualChat.Phone phone)
+        => $".TotpLastChannel:{Hash(session.Id)}:{Hash(phone.E164Value)}";
 
     private async Task<bool> IsThrottled(Session session, ActualChat.Phone phone, CancellationToken cancellationToken)
     {

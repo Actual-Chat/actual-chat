@@ -37,19 +37,21 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
         return hasSentRecently;
     }
 
-    public async Task<bool> SendCode(TotpPurpose purpose, Phone phone, CancellationToken cancellationToken)
+    public async Task<TotpSendResult?> SendCode(
+        TotpPurpose purpose, Phone phone, CancellationToken cancellationToken)
     {
         if (purpose is not (TotpPurpose.SignInPhone or TotpPurpose.VerifyPhone))
             throw new ArgumentOutOfRangeException(nameof(purpose));
 
         var (token, action) = await GetCaptchaProof(purpose, cancellationToken).ConfigureAwait(false);
-        var cmd = new PhoneAuth_SendTotp(Session, phone, purpose, token, action);
-        var (totpNextSendAt, error) = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
-        if (error != null)
-            return false;
+        var cmd = new PhoneAuth_SendCode(Session, phone, purpose, token, action);
+        var (result, error) = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
+        if (error != null || result == null)
+            return null;
 
-        _totpNextSendAt.Value = totpNextSendAt;
-        return true;
+        _totpNextSendAt.Value = result.NextSendAt;
+
+        return result;
     }
 
     public async Task<bool> SendCode(TotpPurpose purpose, Email email, CancellationToken cancellationToken)

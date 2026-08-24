@@ -27,7 +27,10 @@ public sealed class UsersSettings
     public string TwilioSmsFrom { get; set; } = "";
     public string SMSToApiKey { get; set; } = "";
     public string SMSToFrom { get; set; } = "SMSto";
+    public string TelegramGatewayToken { get; set; } = "";
+    public TimeSpan? TelegramGatewayTtl { get; set; }
     public string BlockedPhonePrefixes { get; set; } = "";
+    public string SkipTelegramPhonePrefixes { get; set; } = "";
     public IReadOnlyDictionary<string, int> PredefinedTotps { get; set; } = ImmutableDictionary<string, int>.Empty;
     // A kill switch: MauiAuthController.Start assumes every browser component the app can reach
     // reports Sec-Fetch-Site: none. Turn this off if some platform turns out not to.
@@ -44,4 +47,10 @@ public sealed class UsersSettings
         && !SmtpFrom.IsNullOrEmpty();
     public bool IsSMSToEnabled => !SMSToApiKey.IsNullOrEmpty()
         && !SMSToFrom.IsNullOrEmpty();
+
+    public bool IsTelegramGatewayEnabled => !TelegramGatewayToken.IsNullOrEmpty();
+    // Unset means the message lives exactly as long as the code it carries. Telegram Gateway rejects
+    // anything outside 30s..1h and refunds the fee for a message it couldn't deliver within the ttl.
+    public TimeSpan TelegramGatewayMessageTtl
+        => (TelegramGatewayTtl ?? TotpCodeLifetime).Clamp(TimeSpan.FromSeconds(30), TimeSpan.FromHours(1));
 }

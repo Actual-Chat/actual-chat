@@ -1158,6 +1158,10 @@ public static class LocalizedStringsLocalizerExt
         public string Verify_PleaseVerifyEmail => l["Verify_PleaseVerifyEmail"].Value;
         public string Verify_EnterCodeSentTo_Prefix => l["Verify_EnterCodeSentTo_Prefix"].Value;
         public string Verify_EnterCodeSentTo_Suffix => l["Verify_EnterCodeSentTo_Suffix"].Value;
+        public string Verify_EnterCodeSentTo_SuffixTelegram
+            => l["Verify_EnterCodeSentTo_SuffixTelegram"].Value;
+        public string Verify_EnterCodeSentTo_SuffixSms => l["Verify_EnterCodeSentTo_SuffixSms"].Value;
+        public string Verify_SmsUnavailableUsedTelegram => l["Verify_SmsUnavailableUsedTelegram"].Value;
         public string Verify_RequestNewCodeIn => l["Verify_RequestNewCodeIn"].Value;
         public string Verify_Resend => l["Verify_Resend"].Value;
         public string PicUpload_UploadImage => l["PicUpload_UploadImage"].Value;

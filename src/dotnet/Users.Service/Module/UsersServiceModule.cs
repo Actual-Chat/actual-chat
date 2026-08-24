@@ -176,7 +176,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<IServerKvasBackend, ServerKvasBackend>();
 
         // PhoneAuth
-        rpcHost.AddApi<IPhoneAuth, PhoneAuth>(); // Requires Redis & ITextMessageSender
+        rpcHost.AddApi<IPhoneAuth, PhoneAuth>(); // Requires Redis & IVerificationCodeSender
 
         // EmailAuth
         rpcHost.AddApi<IEmailAuth, EmailAuth>(); // Requires Redis & IEmailSender
@@ -224,38 +224,40 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         // Email sender - used by IEmailAuth (API) & Emails
         services.AddSingleton<IEmailSender, EmailSender>();
 
-        // Text message sender registration - covers all combinations of Twilio / SMS.to availability
+        // Verification code channels: each available one is registered under its own key,
+        // the composite picks among them at send time
+        var isTelegramEnabled = Settings.IsTelegramGatewayEnabled;
         var isTwilioEnabled = Settings.IsTwilioEnabled;
         var isSmsToEnabled = Settings.IsSMSToEnabled;
 
-        if (!isTwilioEnabled && !isSmsToEnabled)
-            // Neither enabled -> log-only sender
-            services.AddSingleton<ITextMessageSender, LogOnlyTextMessageSender>();
-        else if (isTwilioEnabled && isSmsToEnabled) {
-            // Both enabled -> use Composite to route +7 through SMS.to, everything else through Twilio
-            // Key "SMSTo" is used for numbers starting with +7
-            services.AddKeyedSingleton<ITextMessageSender>("SMSTo", (c, _) => new SMSToTextMessageSender(c));
-
-            services.AddSingleton<ITwilioRestClient>(_ => {
-                TwilioClient.Init(Settings.TwilioApiKey, Settings.TwilioApiSecret, Settings.TwilioAccountSid);
-                return TwilioClient.GetRestClient();
-            });
-            services.AddKeyedSingleton<ITextMessageSender>("Default", (c, _) => new TwilioTextMessageSender(c));
-            services.AddSingleton<ITextMessageSender, CompositeTextMessageSender>();
-        }
-        else if (isTwilioEnabled) {
-            // Only Twilio enabled -> use Twilio directly
-            services.AddSingleton<ITwilioRestClient>(_ => {
-                TwilioClient.Init(Settings.TwilioApiKey, Settings.TwilioApiSecret, Settings.TwilioAccountSid);
-                return TwilioClient.GetRestClient();
-            });
-            services.AddSingleton<ITextMessageSender, TwilioTextMessageSender>();
-        }
+        if (!isTelegramEnabled && !isTwilioEnabled && !isSmsToEnabled)
+            services.AddSingleton<IVerificationCodeSender, LogOnlyVerificationCodeSender>();
         else {
-            // Only SMS.to enabled -> use SMS.to directly (also register keyed instance for consistency)
-            services.AddKeyedSingleton<ITextMessageSender>("SMSTo", (c, _) => new SMSToTextMessageSender(c));
-            services.AddSingleton<ITextMessageSender, SMSToTextMessageSender>();
+            if (isTelegramEnabled)
+                services.AddKeyedSingleton<IVerificationCodeSender>(
+                    "Telegram", (c, _) => new TelegramGatewayCodeSender(c));
+            if (isSmsToEnabled)
+                services.AddKeyedSingleton<IVerificationCodeSender>(
+                    "SMSTo", (c, _) => new SMSToVerificationCodeSender(c));
+            if (isTwilioEnabled) {
+                services.AddSingleton<ITwilioRestClient>(_ => {
+                    TwilioClient.Init(Settings.TwilioApiKey, Settings.TwilioApiSecret, Settings.TwilioAccountSid);
+                    return TwilioClient.GetRestClient();
+                });
+                services.AddKeyedSingleton<IVerificationCodeSender>(
+                    "Twilio", (c, _) => new TwilioVerificationCodeSender(c));
+            }
+            // Off development this stays unregistered on purpose: it reports every code as delivered by SMS,
+            // so with Telegram alone it would turn "the number has no Telegram" into a silent success
+            if (!isTwilioEnabled && !isSmsToEnabled && HostInfo.IsDevelopmentInstance)
+                services.AddKeyedSingleton<IVerificationCodeSender>(
+                    "LogOnly", (c, _) => new LogOnlyVerificationCodeSender(c));
+            services.AddSingleton<IVerificationCodeSender, CompositeVerificationCodeSender>();
         }
+        services.AddHttpClient(nameof(TelegramGatewayCodeSender))
+            .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(10));
+        services.AddHttpClient(nameof(SMSToVerificationCodeSender))
+            .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(10));
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
