@@ -23,17 +23,17 @@ public sealed class FlowHub(IServiceProvider services) : IHasServices
 
     public FlowId NewId<TFlow>(string arguments)
         where TFlow : Flow
-        => new (Defs.ByType[typeof(TFlow)].Name, arguments);
+        => new (Defs.Get<TFlow>().Name, arguments);
 
     public FlowId NewId<TFlow>(params ReadOnlySpan<string> arguments)
         where TFlow : Flow
-        => new (Defs.ByType[typeof(TFlow)].Name, FlowId.CombineArguments(arguments));
+        => new (Defs.Get<TFlow>().Name, FlowId.CombineArguments(arguments));
 
     public FlowId NewId(Type flowType, string arguments)
-        => new (Defs.ByType[flowType].Name, arguments);
+        => new (Defs.Get(flowType).Name, arguments);
 
     public FlowId NewId(Type flowType, params ReadOnlySpan<string> arguments)
-        => new (Defs.ByType[flowType].Name, FlowId.CombineArguments(arguments));
+        => new (Defs.Get(flowType).Name, FlowId.CombineArguments(arguments));
 
     // NewResumeEvent
 
@@ -116,7 +116,8 @@ public sealed class FlowHub(IServiceProvider services) : IHasServices
         bool addDependency,
         CancellationToken cancellationToken = default)
     {
-        using var activity = CoreServerInstruments.ActivitySource.StartActivity(GetType(), activityKind: ActivityKind.Client);
+        using var activity = CoreServerInstruments.ActivitySource
+            .StartActivity(GetType(), activityKind: ActivityKind.Client);
 
         var cFlowData = await Computed
             .Capture(() => Backend.TryGetData(flowId, cancellationToken), cancellationToken)

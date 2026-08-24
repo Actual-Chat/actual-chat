@@ -8,7 +8,7 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
     public FlowHub Hub { get; } = hub;
     public IServiceProvider Services => Hub.Services;
     public CancellationToken CancellationToken { get; } = cancellationToken;
-    public FlowDef FlowDef => field ??= Hub.Defs.ByType[Flow.GetType()];
+    public FlowDef FlowDef => field ??= Hub.Defs.Get(Flow.GetType());
     public ILogger Log => field ??= Services.LogFor(Flow.GetType());
 
     // Properties

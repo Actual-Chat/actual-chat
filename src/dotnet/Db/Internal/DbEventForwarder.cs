@@ -54,6 +54,9 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
                 }
 
                 activity?.SetStatus(ActivityStatusCode.Error, e.Message);
+                if (IsPermanentError(e))
+                    throw;
+
                 throw new RetryRequiredException("Queues.Enqueue failed, retry required.", e);
             }
         }
@@ -86,6 +89,9 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
                 }
 
                 activity?.SetStatus(ActivityStatusCode.Error, e.Message);
+                if (IsPermanentError(e))
+                    throw;
+
                 throw new RetryRequiredException("Queues.Enqueue failed, retry required.", e);
             }
         }
@@ -97,4 +103,13 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
             break;
         }
     }
+
+    // Private methods
+
+    private static bool IsPermanentError(Exception error)
+        // RetryRequiredException is super-transient, i.e. DbLogReader retries it indefinitely - the
+        // right default here, since dropping an event is far worse than retrying one. An error no
+        // retry can fix - e.g. a resume event of a flow that no longer exists - would spin forever
+        // that way, so it's rethrown as-is to let the reader exhaust its retries and discard the event.
+        => TransiencyResolvers.PreferTransient.Invoke(error) is Transiency.NonTransient or Transiency.Terminal;
 }

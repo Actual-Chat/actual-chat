@@ -44,15 +44,16 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         if (_flowDataPrimer.TryUsePrimed(flowId, out var primed))
             return primed;
 
-        var flowDef = FlowHub.Defs.ByName[flowId.Name];
+        var flowDef = FlowHub.Defs.Get(flowId.Name);
         var dbFlow = await EntityResolver.Get(flowId.Value, cancellationToken).ConfigureAwait(false);
         return dbFlow?.ToFlowData(flowDef.Type, flowId);
     }
 
     // Regular RPC method!
-    public virtual async Task<IFlowData> Start(FlowId flowId, long? expectedVersion, CancellationToken cancellationToken)
+    public virtual async Task<IFlowData> Start(
+        FlowId flowId, long? expectedVersion, CancellationToken cancellationToken)
     {
-        var flowDef = FlowHub.Defs.ByName[flowId.Name];
+        var flowDef = FlowHub.Defs.Get(flowId.Name);
         DebugLog?.LogDebug("Start: `{FlowId}`", flowId);
         return await ResumeRetryPolicy.Run(async ct => {
             using var releaser = await _resumeLocks.Lock(flowId, ct).ConfigureAwait(false);
@@ -178,7 +179,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
     public virtual async Task<long> OnResume(FlowResumeEvent resumeEvent, CancellationToken cancellationToken)
     {
         var flowId = resumeEvent.FlowId;
-        var flowDef = FlowHub.Defs.ByName[flowId.Name];
+        var flowDef = FlowHub.Defs.Get(flowId.Name);
         DebugLog?.LogDebug("OnResume: `{FlowId}` <- {Event}", flowId, resumeEvent);
 
         return await ResumeRetryPolicy.Run(async ct => {
@@ -229,7 +230,8 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         flowId.Require();
         var flow = command.Flow;
         if (flow?.GetType() == typeof(Flow))
-            throw StandardError.Internal("Flow.GetType() == typeof(Flow), i.e., the command is routed to another host.");
+            throw StandardError.Internal(
+                "Flow.GetType() == typeof(Flow), i.e., the command is routed to another host.");
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
@@ -293,7 +295,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
             // so the invalidation triggered here doesn't require a follow-up DB read.
             // The version guard protects against out-of-order completion handlers — if a
             // newer store's handler already primed, ours is a no-op (and skips invalidation).
-            var flowDef = FlowHub.Defs.ByName[flowId.Name];
+            var flowDef = FlowHub.Defs.Get(flowId.Name);
             var flowData = dbFlow.ToFlowData(flowDef.Type, flowId);
             var version = dbFlow.Version;
             await _flowDataPrimer.Prime(flowId, version, flowData, CancellationToken.None).ConfigureAwait(false);
