@@ -3,14 +3,19 @@ namespace ActualChat.Transcription.UnitTests;
 public sealed class SonioxLanguageTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact]
-    public void OnlyUzbekAndMontenegrinShouldBeUnsupported()
+    public void OnlyUzbekShouldBeUnsupported()
     {
+        // Montenegrin isn't listed here: it never enters AllTranscription, because
+        // LanguageSupport.UI without Transcription keeps it out of the spoken-language set.
+
         // act
-        var unsupported = Languages.All.Where(x => !SonioxLanguage.Supported.Contains(x)).ToArray();
+        var unsupported = Languages.AllTranscription
+            .Where(x => !SonioxLanguage.Supported.Contains(x))
+            .ToArray();
 
         // assert
         WriteLine(unsupported.Select(x => x.Value).ToDelimitedString());
-        unsupported.Should().BeEquivalentTo([Languages.Uzbek, Languages.Montenegrin]);
+        unsupported.Should().BeEquivalentTo([Languages.Uzbek]);
     }
 
     [Theory]

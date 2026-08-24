@@ -7,16 +7,14 @@ public static class SonioxLanguage
 {
     private static readonly ApiSet<Language> Unsupported = new([
         Languages.Uzbek,
-        // A UI language only: "cnr" is not a Soniox code, and the model would reject it.
-        // Montenegrin speech falls within the Serbian/Croatian models either way.
-        Languages.Montenegrin,
     ]);
     // Filipino is the standardized register of Tagalog and Soniox exposes only "tl",
     // so "fil" would be rejected despite the audio being well within the model's reach.
     private static readonly Dictionary<Language, string> CodeOverrides = new() {
         { Languages.Filipino, "tl" },
     };
-    public static ApiSet<Language> Supported { get; } = new(Languages.All.Where(x => !Unsupported.Contains(x)));
+    public static ApiSet<Language> Supported { get; }
+        = new(Languages.AllTranscription.Where(x => !Unsupported.Contains(x)));
     public static string ToSoniox(this Language language)
         => CodeOverrides.GetValueOrDefault(language) ?? language.IsoCode;
 }

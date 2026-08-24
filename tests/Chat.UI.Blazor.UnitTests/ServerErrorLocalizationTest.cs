@@ -115,7 +115,7 @@ public class ServerErrorLocalizationTest
 
         // act
         var misses = new List<string>();
-        foreach (var language in LanguageUI.SupportedUILanguages) {
+        foreach (var language in Languages.AllUI) {
             var l = new TestStringLocalizer(StringCatalogs.LoadMessages(language)!);
             foreach (var (key, message) in EnglishErrors())
                 if (l.ForRuntimeMessage(message) == null)
