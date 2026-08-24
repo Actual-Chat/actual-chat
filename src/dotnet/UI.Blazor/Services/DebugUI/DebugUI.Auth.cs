@@ -52,7 +52,10 @@ public sealed partial class DebugUI
         else {
             var phone = await Hub.Phones.ParseWithCountryFallback(session, input, default).ConfigureAwait(true)
                 ?? throw StandardError.Constraint($"Cannot parse phone '{input}'.");
+            // Keeps the legacy SendTotp path exercised from the debug UI
+#pragma warning disable CS0618
             await commander.Call(new PhoneAuth_SendTotp(session, phone)).ConfigureAwait(true);
+#pragma warning restore CS0618
             var ok = await commander.Call(new PhoneAuth_ValidateTotp(session, phone, 111111)).ConfigureAwait(true);
             if (!ok)
                 throw StandardError.Internal(

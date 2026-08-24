@@ -3,15 +3,23 @@
 @namespace ActualChat.UI.Blazor.Components
 @inherits ComponentBase<UIHub>
 @{
-    var address = Purpose is TotpPurpose.VerifyEmail or TotpPurpose.SignInEmail ? Email?.Value : Phone!.ToReadable();
+    var isEmail = Purpose is TotpPurpose.VerifyEmail or TotpPurpose.SignInEmail;
+    var address = isEmail ? Email?.Value : Phone!.ToReadable();
+    var sentToSuffix = _sentChannel switch {
+        TotpChannel.Telegram => L.Verify_EnterCodeSentTo_SuffixTelegram,
+        TotpChannel.Sms => L.Verify_EnterCodeSentTo_SuffixSms,
+        _ => L.Verify_EnterCodeSentTo_Suffix,
+    };
 }
 
 <UITimer @key="@_timerKey" Period="@TimerPeriod" IsRecurring="false" Tick="@OnTimerTick" />
 <div class="totp-verifier @Class" @onclick="@(() => Focus())">
     <span class="c-description">
-        @L.Verify_EnterCodeSentTo_Prefix<span
-            class="whitespace-nowrap">@(address)</span>@L.Verify_EnterCodeSentTo_Suffix
+        @L.Verify_EnterCodeSentTo_Prefix<span class="whitespace-nowrap">@(address)</span>@(sentToSuffix)
     </span>
+    @if (_sentChannel == TotpChannel.Telegram) {
+        <span class="c-note">@L.Verify_SmsUnavailableUsedTelegram</span>
+    }
     <TotpInput @ref="_totpInput" Completed="OnInputCompleted" IsVerifying="@_isVerifying"/>
     @if (_totpNextSendAt is { } totpNextSendAt) {
         @if (Clocks.SystemClock.Now < totpNextSendAt) {
@@ -30,6 +38,7 @@
     private TotpInput? _totpInput;
     private Moment? _totpNextSendAt;
     private bool _isVerifying;
+    private TotpChannel? _sentChannel;
 
     private TotpUI TotpUI => Hub.TotpUI;
 
@@ -78,9 +87,8 @@
         }
 
         if (error != null) {
-            if (_totpInput != null) {
+            if (_totpInput != null)
                 await _totpInput.Clear();
-            }
             await Error.InvokeAsync();
             return;
         }
@@ -97,10 +105,16 @@
     }
 
     private async Task SendTotp() {
-        var codeSent = Purpose is TotpPurpose.VerifyEmail or TotpPurpose.SignInEmail
-            ? await TotpUI.SendCode(Purpose, Email!, CancellationToken.None)
-            : await TotpUI.SendCode(Purpose, Phone!, CancellationToken.None);
-        if (!codeSent)
+        bool isCodeSent;
+        if (Purpose is TotpPurpose.VerifyEmail or TotpPurpose.SignInEmail) {
+            isCodeSent = await TotpUI.SendCode(Purpose, Email!, CancellationToken.None);
+        } else {
+            var result = await TotpUI.SendCode(Purpose, Phone!, CancellationToken.None);
+            isCodeSent = result != null;
+            // The server reports no channel only when nothing was sent at all, e.g. for a predefined code
+            _sentChannel = result?.Channel ?? _sentChannel;
+        }
+        if (!isCodeSent)
             return;
 
         _totpNextSendAt = TotpUI.TotpNextSendAt.Value;

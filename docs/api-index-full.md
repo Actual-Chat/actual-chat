@@ -609,7 +609,9 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ListeningLingerExt` (static class) - Extension methods for ListeningLinger.
 - `Presence` (enum) - Specifies a user's online presence status.
 - `TimeZone` (record) - Represents a time zone with identifier and display name.
+- `TotpChannel` (enum) - Specifies the delivery channel used to send a verification code (Telegram or SMS).
 - `TotpPurpose` (enum) - Specifies the purpose of a time-based one-time password (TOTP).
+- `TotpSendResult` (record) - Result of sending a verification code: next allowed send time and the delivery channel used.
 - `UserAppSettings` (record) - Application-level user preferences.
 - `UserAvatarSettings` (record) - Avatar and profile customization settings.
 - `UserBubblesSettings` (record) - Onboarding bubble tooltip configuration per user.

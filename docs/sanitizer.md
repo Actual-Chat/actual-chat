@@ -104,12 +104,12 @@ Pass sanitization flag through `BrowserInit.Initialize()` → `window.App.browse
 | 1 | `UI.Blazor.App/.../SendingMessages.cs` | 343-345 | Error | `request.Text` |
 | 2 | `UI.Blazor.App/.../SendingMessages.cs` | 394 | Error | `request.Text` |
 | 3 | `UI.Blazor.App/.../SendingMessages.Queue.cs` | 20-21 | Warning | `command.Request.Text` |
-| 4 | `Users.Service/.../LogOnlyTextMessageSender.cs` | 10 | Warning | SMS text + phone |
+| 4 | `Users.Service/.../LogOnlyVerificationCodeSender.cs` | 10 | Warning | SMS text + phone |
 | 5 | `App.Maui/.../IncomingShareHandler.cs` | 55 | Info | shared text |
 | 6 | `App.Maui.IosShareExt/.../ShareUI.cs` | 179 | Info | shared text |
 | 7 | `Chat.ML/EntryGroupExtractor.cs` | 197 | Warning | first 20 chars |
 | 8 | `Chat.Service/.../LanguageDetector.cs` | 71 | Error | API response |
-| 9 | `Users.Service/.../SMSToTextMessageSender.cs` | 44 | Error | SMS API response |
+| 9 | `Users.Service/.../SMSToVerificationCodeSender.cs` | 44 | Error | SMS API response |
 
 ### HIGH — Message/transcription text (Debug level, but active on MAUI devices)
 

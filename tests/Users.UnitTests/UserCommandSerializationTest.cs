@@ -136,9 +136,52 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void PhoneAuth_SendTotp_Basic()
     {
+        // Deliberately keeps covering the obsolete command's wire contract for old clients
         var phone = ActualChat.Phone.Parse("1-2345678901");
+#pragma warning disable CS0618
         var cmd = new PhoneAuth_SendTotp(TestSession, phone);
         cmd.AssertPassesThroughSerializers();
+#pragma warning restore CS0618
+    }
+
+    [Fact]
+    public void PhoneAuth_SendCode_Basic()
+    {
+        var cmd = new PhoneAuth_SendCode(
+            TestSession, ActualChat.Phone.Parse("374-11223344"), TotpPurpose.VerifyPhone);
+        cmd.AssertPassesThroughSerializers(
+            (deserialized, original) => {
+                deserialized.Session.Should().Be(original.Session);
+                deserialized.Phone.Should().Be(original.Phone);
+                deserialized.Purpose.Should().Be(original.Purpose);
+                deserialized.Channel.Should().BeNull();
+            }, Out);
+    }
+
+    [Fact]
+    public void PhoneAuth_SendCode_ReservedChannel()
+    {
+        // The handler ignores Channel, but the ordinal is part of the wire contract and has to survive
+        var cmd = new PhoneAuth_SendCode(
+            TestSession, ActualChat.Phone.Parse("374-11223344"), TotpPurpose.VerifyPhone, null, null, TotpChannel.Sms);
+        cmd.AssertPassesThroughSerializers(
+            (deserialized, original) => deserialized.Channel.Should().Be(original.Channel), Out);
+    }
+
+    [Fact]
+    public void TotpSendResult_NullChannel()
+    {
+        var result = new TotpSendResult(new Moment(DateTime.UtcNow), null);
+        result.AssertPassesThroughSerializers(
+            (deserialized, original) => deserialized.Channel.Should().Be(original.Channel), Out);
+    }
+
+    [Fact]
+    public void TotpSendResult_SmsChannel()
+    {
+        var result = new TotpSendResult(new Moment(DateTime.UtcNow), TotpChannel.Sms);
+        result.AssertPassesThroughSerializers(
+            (deserialized, original) => deserialized.Channel.Should().Be(original.Channel), Out);
     }
 
     [Fact]

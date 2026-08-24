@@ -4,24 +4,24 @@ using ActualChat.Users.Module;
 
 namespace ActualChat.Users.Phone.Internal;
 
-public sealed class SMSToTextMessageSender(IServiceProvider services) : ITextMessageSender, IDisposable
+public sealed class SMSToVerificationCodeSender(IServiceProvider services) : IVerificationCodeSender, IDisposable
 {
     private static readonly Uri SendUri = new("https://api.sms.to/sms/send");
 
     private UsersSettings UsersSettings { get; } = services.GetRequiredService<UsersSettings>();
     private IHttpClientFactory HttpClientFactory { get; } = services.HttpClientFactory();
-    private ILogger Log { get; } = services.LogFor<SMSToTextMessageSender>();
+    private ILogger Log { get; } = services.LogFor<SMSToVerificationCodeSender>();
     private HttpClient? _client;
-    private HttpClient Client => _client ??= HttpClientFactory.CreateClient(nameof(SMSToTextMessageSender));
+    private HttpClient Client => _client ??= HttpClientFactory.CreateClient(nameof(SMSToVerificationCodeSender));
 
-    public async Task Send(ActualChat.Phone phone, string text)
+    public async Task<TotpChannel?> Send(ActualChat.Phone phone, VerificationMessage message)
     {
         var apiKey = UsersSettings.SMSToApiKey;
         var sender = UsersSettings.SMSToFrom;
 
         if (apiKey.IsNullOrWhiteSpace() || sender.IsNullOrWhiteSpace()) {
             Log.LogError("SMS.to is not configured properly. SMSToApiKey or SMSToFrom is missing");
-            throw StandardError.External("We couldn't deliver the message to the specified phone number.");
+            throw Errors.DeliveryFailed();
         }
 
         try {
@@ -32,7 +32,7 @@ public sealed class SMSToTextMessageSender(IServiceProvider services) : ITextMes
             var payload = new {
                 to = phone.E164Value,
                 sender_id = sender,
-                message = text,
+                message = message.Text,
             };
 
             var json = JsonSerializer.Serialize(payload);
@@ -42,12 +42,14 @@ public sealed class SMSToTextMessageSender(IServiceProvider services) : ITextMes
             if (!response.IsSuccessStatusCode) {
                 var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 Log.LogError("SMS.to send failed with status {StatusCode}. Body: {Body}", (int)response.StatusCode, content);
-                throw StandardError.External("We couldn't deliver the message to the specified phone number.");
+                throw Errors.DeliveryFailed();
             }
+
+            return TotpChannel.Sms;
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to send text message via SMS.to");
-            throw StandardError.External("We couldn't deliver the message to the specified phone number.");
+            throw Errors.DeliveryFailed();
         }
     }
 

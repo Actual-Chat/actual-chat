@@ -6,6 +6,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.Users.IntegrationTests;
 
+// Deliberately keeps calling the obsolete PhoneAuth_SendTotp throughout this suite so its
+// end-to-end delegation to PhoneAuth_SendCode stays covered for old clients.
+#pragma warning disable CS0618
 [Collection(nameof(UserCollection))]
 public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
@@ -18,7 +21,7 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     private CaptchaProofValidator CaptchaProofs => AppHost.Services.GetRequiredService<CaptchaProofValidator>();
 
     [Fact]
-    public async Task RefusesCodeAfterTooManyAttempts()
+    public async Task ValidateShouldRefuseCodeAfterTooManyAttempts()
     {
         // arrange
         var (purpose, target, session) = NewInputs();
@@ -37,7 +40,7 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task AcceptsCorrectCodeWhileAttemptsRemain()
+    public async Task ValidateShouldAcceptCorrectCodeWhileAttemptsRemain()
     {
         // arrange
         var (purpose, target, session) = NewInputs();
@@ -53,7 +56,7 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task CodeCannotBeReused()
+    public async Task CodeShouldNotBeReusable()
     {
         // arrange
         var (purpose, target, session) = NewInputs();
@@ -69,7 +72,7 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task ResendReplacesTheCode()
+    public async Task ResendShouldReplaceTheCode()
     {
         // arrange
         var (purpose, target, session) = NewInputs();
@@ -88,7 +91,7 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task CodeIsValidUntilItsLifetimeEnds()
+    public async Task CodeShouldStayValidUntilItsLifetimeEnds()
     {
         // arrange
         var (purpose, target, session) = NewInputs();
@@ -108,7 +111,7 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task PredefinedCodeSignsInWithoutASentCode()
+    public async Task PredefinedCodeShouldSignInWithoutASentCode()
     {
         // arrange
         var phone = ActualChat.Phone.New("1", "5555555550");
@@ -140,7 +143,7 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task RefusesRepeatedLookupsPastBudget()
+    public async Task LookupsShouldBeRefusedPastBudget()
     {
         // arrange
         var policy = new LookupRateLimitPolicy(3);
@@ -172,7 +175,7 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task RefusesInvalidProof()
+    public async Task SendShouldRefuseInvalidProof()
     {
         // arrange
         var tester = AppHost.NewWebClientTester(Out);
@@ -191,7 +194,7 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task AcceptsValidProof()
+    public async Task SendShouldAcceptValidProof()
     {
         // arrange
         var tester = AppHost.NewWebClientTester(Out);
@@ -210,7 +213,7 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task RefusesProofMintedForAnotherAction()
+    public async Task SendShouldRefuseProofMintedForAnotherAction()
     {
         // arrange
         var tester = AppHost.NewWebClientTester(Out);
@@ -229,7 +232,7 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task RefusesRequestWithoutProofOffProduction()
+    public async Task SendShouldRefuseRequestWithoutProofOffProduction()
     {
         // arrange
         var tester = AppHost.NewWebClientTester(Out);
@@ -246,7 +249,7 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task AcceptsRequestWithoutProofFromNativeApp()
+    public async Task SendShouldAcceptRequestWithoutProofFromNativeApp()
     {
         // arrange
         var tester = AppHost.NewWebClientTester(Out);
@@ -266,7 +269,30 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task RefusesInvalidProofOnEmailSend()
+    public async Task ThrottledSendShouldReportTheLiveCodesChannel()
+    {
+        // arrange
+        var tester = AppHost.NewWebClientTester(Out);
+        await using var _ = tester.ConfigureAwait(false);
+        // A native-app session needs no captcha proof, so both sends can go through unchanged
+        await tester.Commander.Call(new SessionsBackend_Upsert(tester.Session) {
+            Description = AppKind.Ios.ToUserAgent("1.0"),
+        });
+        var phone = NewPhone();
+        var command = new PhoneAuth_SendCode(tester.Session, phone, TotpPurpose.SignInPhone);
+
+        // act
+        var sent = await tester.Commander.Call(command);
+        var throttled = await tester.Commander.Call(command);
+
+        // assert
+        sent.Channel.Should().Be(TotpChannel.Sms);
+        throttled.NextSendAt.Should().BeGreaterThan(default);
+        throttled.Channel.Should().Be(TotpChannel.Sms);
+    }
+
+    [Fact]
+    public async Task EmailSendShouldRefuseInvalidProof()
     {
         // arrange
         var tester = AppHost.NewWebClientTester(Out);
@@ -327,3 +353,4 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
         }
     }
 }
+#pragma warning restore CS0618

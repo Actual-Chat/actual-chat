@@ -4,19 +4,19 @@ using Twilio.Rest.Api.V2010.Account;
 
 namespace ActualChat.Users.Phone.Internal;
 
-public sealed class TwilioTextMessageSender(IServiceProvider services) : ITextMessageSender
+public sealed class TwilioVerificationCodeSender(IServiceProvider services) : IVerificationCodeSender
 {
     private UsersSettings UsersSettings { get; } = services.GetRequiredService<UsersSettings>();
     private ITwilioRestClient Client { get; } = services.GetRequiredService<ITwilioRestClient>();
-    private ILogger Log { get; } = services.LogFor<TwilioTextMessageSender>();
+    private ILogger Log { get; } = services.LogFor<TwilioVerificationCodeSender>();
 
-    public async Task Send(ActualChat.Phone phone, string text)
+    public async Task<TotpChannel?> Send(ActualChat.Phone phone, VerificationMessage message)
     {
         try {
             await MessageResource
                 .CreateAsync(new Twilio.Types.PhoneNumber(phone.E164Value),
                     from: UsersSettings.TwilioSmsFrom,
-                    body: text,
+                    body: message.Text,
                     client: Client)
                 .ConfigureAwait(false);
         }
@@ -27,7 +27,9 @@ public sealed class TwilioTextMessageSender(IServiceProvider services) : ITextMe
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to send text message");
-            throw StandardError.External("We couldn't deliver the message to the specified phone number.");
+            throw Errors.DeliveryFailed();
         }
+
+        return TotpChannel.Sms;
     }
 }
