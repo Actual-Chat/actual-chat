@@ -1,0 +1,138 @@
+// Reverse-indexed catalog: MessageIndex maps a runtime-produced English message back to
+// its key here, so the English value below MUST byte-match what the app actually produces.
+// Placeholders are named: {field} is replaced by the form label, the rest pass through.
+// Two families live here: Validation_* messages produced by BCL attributes, and Error_*
+// messages thrown by the server and shown in an error toast. Our own validation attributes
+// report a Validation_* key directly instead, so they live in Strings.*.json.
+// An Error_* value that no longer matches the code silently falls back to AI translation -
+// ServerErrorLocalizationTest is what keeps the two in sync.
+// TODO(FC): the Validation_* entries here are temporary - see MessageIndex. The .NET 11 pipeline
+// resolves IStringLocalizerFactory per call as of preview.7, so once the SDK is bumped off
+// preview.6 the BCL attributes localize forwards too and only Error_ strings remain here.
+{
+  "Validation_Required_Format": "Поље {field} је обавезно.",
+  "Validation_MinLength_Format": "Поље {field} мора бити текст или низ минималне дужине „{min}“.",
+  "Validation_EmailAddress_Format": "Поље {field} не садржи исправну емаил адресу.",
+  "Validation_DeleteConfirmationRequired": "Потврда брисања је обавезна",
+  "Validation_DeleteConfirmationInvalid": "Упишите DELETE за потврду",
+
+  // Generic errors, composed by StandardError / the exception types themselves
+  "Error_NotEnoughPermissions": "Не можете извести ову радњу: недовољне дозволе.",
+  "Error_NotEnoughPermissions_Format": "Не можете извести ову радњу: недовољне дозволе. Потребна дозвола: {permission}",
+  "Error_TooManyRequests": "Превише захтјева.",
+  "Error_TooManyRequests_Format": "Превише захтјева. Покушајте поново за {seconds} с.",
+  "Error_VersionMismatch": "Неслагање верзија.",
+  "Error_ChatNotFound": "Чет није пронађен.",
+  "Error_ChatEntryNotFound": "Унос у чету није пронађен.",
+  "Error_AccountNotFound": "Рачун није пронађен.",
+  "Error_AuthorNotFound": "Аутор није пронађен.",
+  "Error_AvatarNotFound": "Аватар није пронађен.",
+  "Error_ContactNotFound": "Контакт није пронађен.",
+  "Error_MediaNotFound": "Медиј није пронађен.",
+  "Error_UploadNotFound": "Отпремање није пронађено.",
+
+  // Sign-in and account
+  "Error_RegistrationExpired": "Овај захтјев за регистрацију је истекао. Покушајте се пријавити поново.",
+  "Error_SessionExpired": "Ваша сесија је истекла или је деактивирана. Поново покрените апликацију.",
+  "Error_AlreadySignedIn": "Већ сте пријављени.",
+  "Error_PhoneTaken": "Овај број телефона већ користи други рачун.",
+  "Error_EmailTaken": "Овај емаил већ користи други рачун.",
+  "Error_SmsNotDelivered": "Поруку нисмо могли испоручити на наведени број телефона.",
+  "Error_CannotDeactivateCurrentSession": "Тренутна сесија се не може деактивирати.",
+  "Error_PhoneFormatInvalid": "Неисправан формат броја телефона.",
+  "Error_CannotChangeOwnStatus": "Не можете променити властити статус.",
+  "Error_ApiKeyExpirationRange_Format": "Трајање API кључа мора бити између 1 и {days} дана.",
+
+  // Chat members and roles
+  "Error_OnlyOwnerCannotLeave": "Не можете напустити овај чет јер сте његов једини власник. Прво додајте другог власника.",
+  "Error_CannotRemoveSelf": "Не можете уклонити себе из чланова чета.",
+  "Error_CannotRemoveChatOwner": "Не можете уклонити власника овог чета из чланова.",
+  "Error_CannotRemoveSearchBot": "Не можете уклонити AI бота за претрагу из чланова чета.",
+  "Error_OwnerCannotBeDemoted": "Власницима чета се не може одузети улога.",
+  "Error_AuthorAlreadyLeft": "Одабрани аутор је већ напустио чет.",
+  "Error_AutomaticRoleMembership": "Ова системска улога користи аутоматска правила чланства.",
+  "Error_ManageMembershipInPlace": "Чланством у отвореном чету Места управљате путем поставки Места.",
+  "Error_AnonymousAvatarRequired": "За анонимно придруживање треба користити анонимни аватар.",
+  "Error_GuestJoinNotAllowed": "Чет не дозвољава придруживање с гостујућим рачуном.",
+  "Error_AnonymousJoinNotAllowed": "Чет не дозвољава анонимно придруживање.",
+  "Error_OwnersRoleCannotBeEmpty": "У улози власника мора бити барем један корисник.",
+  "Error_OnlyOwnersAllowed": "Ову радњу могу извести само чланови улоге власника овог чета.",
+
+  // Messages
+  "Error_CannotSendMessages": "Не можете слати поруке у овом чету.",
+  "Error_EmptyMessage": "Нажалост, не можете објавити празне поруке.",
+  "Error_CanEditOwnMessagesOnly": "Можете уређивати само властите поруке.",
+  "Error_OnlyTextCanBeEdited": "Могу се уређивати само текстуалне поруке.",
+  "Error_StreamingCannotBeEdited": "Поруке које се преносе уживо не могу се уређивати.",
+  "Error_ForwardedCannotBeEdited": "Прослеђене поруке се не могу уређивати.",
+  "Error_MessageNoLongerExists": "Ова порука више не постоји.",
+  "Error_CannotRemoveMessage": "Немате дозволу за брисање ове поруке.",
+  "Error_CannotRemoveOwnerMessage": "Немате дозволу за брисање поруке власника.",
+  "Error_CannotRestoreMessage": "Немате дозволу за враћање ове поруке.",
+  "Error_CannotRestoreOwnerMessage": "Немате дозволу за враћање поруке власника.",
+  "Error_RootChatCannotHoldMessages": "Коријенски чет Места не може садржавати поруке — пишите у неком од четова тог Места.",
+  "Error_CanAttachOwnLocationsOnly": "Можете приложити само властите локације подељене у овом чету.",
+  "Error_NonContactMessageLimit_Format": "Можете послати до {limit} порука док вас овај корисник не дода у контакте или не одговори.",
+  "Error_OnlyOwnersOrModeratorsCanPin": "Не можете извести ову радњу: недовољне дозволе. Потребна дозвола: поруке могу качити само власници и модератори чета.",
+  "Error_PinLimit_Format": "Можете закачити до {limit} порука.",
+
+  // Chats and places
+  "Error_ChatTitleEmpty": "Назив чета не може бити празан.",
+  "Error_ThreadTitleEmpty": "Назив нити не може бити празан.",
+  "Error_PlaceTitleEmpty": "Назив Места не може бити празан.",
+  "Error_PlaceUnavailable": "Тражено Место није доступно.",
+  "Error_OnlyPlaceMembersCanAddChats": "Четове могу додавати само чланови Места.",
+  "Error_CannotMakeChatPublic": "Не можете извести ову радњу: недовољне дозволе. Потребна дозвола: учинити чет отвореним",
+  "Error_CustomLinkNotAllowed": "Властити линкови нису дозвољени за четове Места.",
+  "Error_CustomLinkTaken_Format": "Властити линк „{link}“ већ користи други чет у истом Месту.",
+  "Error_WelcomeChatCannotBePrivate": "Врста чета „Welcome“ не може се променити у затворену.",
+  "Error_WelcomeChatCannotBeRemoved": "Чет „Welcome“ се не сме обрисати.",
+  "Error_OnlyGroupOrPlaceChatCanBeCopied": "У Место се могу копирати само групни четови или четови Места.",
+  "Error_CannotCopyToSamePlace": "Чет Места се не може копирати у исто Место.",
+  "Error_MigrationRequiresChatOwner": "Миграцију може извести само власник овог чета.",
+  "Error_MigrationRequiresPlaceOwner": "Чет у Место може копирати само власник Места.",
+  "Error_OperationRequiresChatOwner": "Ову операцију може извести само власник овог чета.",
+  "Error_OperationRequiresPlaceOwner": "Ову операцију може извести само власник Места којем чет припада.",
+
+  // Threads and contacts
+  "Error_ThreadRequiresContact": "Нити се могу започети тек након што вас овај корисник дода у контакте или одговори.",
+  "Error_SignInToFollowThread": "Да бисте пратили нит чета, морате се пријавити.",
+  "Error_OnlyPeerContactCanBeBlocked": "Блокирати се могу само приватни контакти.",
+  "Error_SignInToChat": "Да бисте писали другом кориснику, морате се пријавити.",
+  "Error_CannotChatWithUnauthenticated": "Не можете писати кориснику који није пријављен.",
+
+  // Calls
+  "Error_OnlyParticipantCanBecomeHost": "Домаћин позива може постати само његов учесник.",
+  "Error_CannotMuteOwner": "Не можете искључити микрофон власника.",
+  "Error_OnlyHostOrOwnerCanChangeHost": "Домаћина позива може променити само тренутни домаћин или власник чета.",
+  "Error_CallRequiresContact": "Овог корисника можете позвати тек након што вас дода у контакте или вам одговори.",
+  "Error_CannotMuteInPeerChat": "У разговору један на један не можете утишати другог учесника.",
+  "Error_OnlyHostOwnerOrModeratorCanManageCall": "Сесијом уживо може управљати само домаћин позива или власник односно модератор чета.",
+  "Error_VoiceStreamingModeLocked": "Начин преноса гласа се не може променити у овом чету.",
+
+  // Notifications
+  "Error_NotifyMembersNotAllowed": "Обавештавање чланова није дозвољено у јавно доступним четовима.",
+  "Error_AlertEveryoneUnavailable": "Упозорење за све није доступно у четовима с више од 10 људи.",
+  "Error_NobodyToNotify": "Нема кога обавестити.",
+  "Error_OnlyAuthorCanNotify": "Само аутор сме обавестити споменуте особе.",
+
+  // Media and uploads
+  "Error_NoMediaAccess": "Немате дозволу за приступ овом медију.",
+  "Error_FileTooBig": "Фајл је превелик.",
+  "Error_CropExportFailed": "Изрезана слика се није могла извести.",
+  "Error_FileTooBig_Format": "Фајл је превелик. Највећа величина фајла: {size}.",
+  "Error_TooManyFiles_Format": "Превише фајлова. Највећи дозвољени број је {count}.",
+
+  // Invites
+  "Error_InviteAlreadyUsed": "Линк позивнице је већ искоришћен.",
+  "Error_InviteNotActive": "Линк позивнице више није активан.",
+  "Error_InviteCodeNotFound": "Позивница с наведеним кодом није пронађена.",
+  "Error_OnlyPlaceMembersCanUseCode": "Овај код могу користити само чланови Места.",
+  "Error_UserInvitesRemoved": "Функција корисничких позивница је уклоњена.",
+
+  // Live location
+  "Error_JoinChatToShareLocation": "Придружите се чету пре него поделите своју локацију.",
+  "Error_CanChangeOwnLocationsOnly": "У овом чету можете мењати само властите подељене локације.",
+  "Error_LocationSharingLimit_Format": "У овом чету локацију уживо већ дели највећи дозвољени број људи: {limit}.",
+  "Error_FailedToAddFileAttachment": "Прилог се није могао додати."
+}
