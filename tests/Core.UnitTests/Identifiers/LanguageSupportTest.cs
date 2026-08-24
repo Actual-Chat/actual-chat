@@ -17,14 +17,14 @@ public sealed class LanguageSupportTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public void AllUIShouldHaveNoDuplicateIsoCodes()
+    public void AllUIAndTestOnlyShouldHaveNoDuplicateIsoCodes()
     {
-        // A catalog is named after the IsoCode, so two AllUI entries sharing one - en-GB
+        // A catalog is named after the IsoCode, so two catalog entries sharing one - en-GB
         // and en-IN both resolve to "en" - would load the same file twice and make the
         // picker offer a choice that changes nothing.
 
         // act
-        var duplicates = Languages.AllUI
+        var duplicates = Languages.AllUIAndTestOnly
             .GroupBy(x => x.IsoCode)
             .Where(g => g.Count() > 1)
             .Select(g => $"{g.Key}: {g.Select(x => x.Value).ToDelimitedString()}")
@@ -33,6 +33,18 @@ public sealed class LanguageSupportTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         duplicates.Should().BeEmpty("each UI language must own a distinct catalog:\n{0}",
             duplicates.ToDelimitedString("\n"));
+    }
+
+    [Fact]
+    public void MaxShouldBeAHiddenUrlOnlyPseudoLanguage()
+    {
+        // assert
+        Languages.Max.Support.Should().Be(LanguageSupport.None);
+        Languages.All.Should().NotContain(Languages.Max);
+        Languages.AllUI.Should().NotContain(Languages.Max);
+        Languages.AllTranscription.Should().NotContain(Languages.Max);
+        Languages.AllUIAndTestOnly.Should().Contain(Languages.Max);
+        Language.TryParse(Languages.Max.Value).Should().BeNull();
     }
 
     [Fact]

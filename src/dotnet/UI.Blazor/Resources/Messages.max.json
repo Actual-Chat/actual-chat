@@ -1,0 +1,138 @@
+// Reverse-indexed catalog: MessageIndex maps a runtime-produced English message back to
+// its key here, so the English value below MUST byte-match what the app actually produces.
+// Placeholders are named: {field} is replaced by the form label, the rest pass through.
+// Two families live here: Validation_* messages produced by BCL attributes, and Error_*
+// messages thrown by the server and shown in an error toast. Our own validation attributes
+// report a Validation_* key directly instead, so they live in Strings.*.json.
+// An Error_* value that no longer matches the code silently falls back to AI translation -
+// ServerErrorLocalizationTest is what keeps the two in sync.
+// TODO(FC): the Validation_* entries here are temporary - see MessageIndex. The .NET 11 pipeline
+// resolves IStringLocalizerFactory per call as of preview.7, so once the SDK is bumped off
+// preview.6 the BCL attributes localize forwards too and only Error_ strings remain here.
+{
+  "Validation_Required_Format": "Le champ « {field} » est obligatoire.",
+  "Validation_MinLength_Format": "The field {field} must be a string or array type with a minimum length of '{min}'.",
+  "Validation_EmailAddress_Format": "「{field}」は有効なメールアドレスではありません。",
+  "Validation_DeleteConfirmationRequired": "Необходимо е потвърждение за изтриване",
+  "Validation_DeleteConfirmationInvalid": "確認のため DELETE と入力してください",
+
+  // Generic errors, composed by StandardError / the exception types themselves
+  "Error_NotEnoughPermissions": "Nie możesz wykonać tej czynności: brak wystarczających uprawnień.",
+  "Error_NotEnoughPermissions_Format": "Nie możesz wykonać tej czynności: brak wystarczających uprawnień. Wymagane uprawnienie: {permission}",
+  "Error_TooManyRequests": "リクエストが多すぎます。",
+  "Error_TooManyRequests_Format": "リクエストが多すぎます。{seconds}秒後にもう一度お試しください。",
+  "Error_VersionMismatch": "データが変更されました。もう一度お試しください。",
+  "Error_ChatNotFound": "Không tìm thấy cuộc trò chuyện.",
+  "Error_ChatEntryNotFound": "メッセージが見つかりません。",
+  "Error_AccountNotFound": "アカウントが見つかりません。",
+  "Error_AuthorNotFound": "Không tìm thấy người tham gia.",
+  "Error_AvatarNotFound": "プロフィールが見つかりません。",
+  "Error_ContactNotFound": "連絡先が見つかりません。",
+  "Error_MediaNotFound": "Nie znaleziono pliku multimedialnego.",
+  "Error_UploadNotFound": "アップロードが見つかりません。",
+
+  // Sign-in and account
+  "Error_RegistrationExpired": "Срок действия этого запроса на регистрацию истёк. Попробуйте войти ещё раз.",
+  "Error_SessionExpired": "セッションの期限が切れたか、無効になりました。アプリを再起動してください。",
+  "Error_AlreadySignedIn": "すでにサインインしています。",
+  "Error_PhoneTaken": "Diese Telefonnummer wird bereits von einem anderen Konto verwendet.",
+  "Error_EmailTaken": "Diese E-Mail-Adresse wird bereits von einem anderen Konto verwendet.",
+  "Error_SmsNotDelivered": "Die Nachricht konnte nicht an die angegebene Telefonnummer zugestellt werden.",
+  "Error_CannotDeactivateCurrentSession": "Die aktuelle Sitzung kann nicht deaktiviert werden.",
+  "Error_PhoneFormatInvalid": "Неправилен формат на телефонния номер.",
+  "Error_CannotChangeOwnStatus": "Bạn không thể thay đổi trạng thái của chính mình.",
+  "Error_ApiKeyExpirationRange_Format": "Die Gültigkeit des API-Schlüssels muss zwischen 1 und {days} Tagen liegen.",
+
+  // Chat members and roles
+  "Error_OnlyOwnerCannotLeave": "Du kannst diesen Chat nicht verlassen, weil du sein einziger Eigentümer bist. Füge zuerst einen weiteren Eigentümer hinzu.",
+  "Error_CannotRemoveSelf": "Vous ne pouvez pas vous retirer vous-même des membres du chat.",
+  "Error_CannotRemoveChatOwner": "Du kannst einen Eigentümer dieses Chats nicht aus den Mitgliedern entfernen.",
+  "Error_CannotRemoveSearchBot": "Vous ne pouvez pas retirer le bot de recherche IA des membres du chat.",
+  "Error_OwnerCannotBeDemoted": "На собствениците на чата не може да се отнеме ролята.",
+  "Error_AuthorAlreadyLeft": "Der ausgewählte Teilnehmer hat den Chat bereits verlassen.",
+  "Error_AutomaticRoleMembership": "В этой системной роли состав участников определяется автоматически.",
+  "Error_ManageMembershipInPlace": "Управляйте участниками публичного чата пространства в настройках пространства.",
+  "Error_AnonymousAvatarRequired": "За анонимно присъединяване трябва да се използва анонимен аватар.",
+  "Error_GuestJoinNotAllowed": "У цьому чаті не можна приєднатися з гостьовим обліковим записом.",
+  "Error_AnonymousJoinNotAllowed": "Obrolan ini tidak mengizinkan bergabung secara anonim.",
+  "Error_OwnersRoleCannotBeEmpty": "В ролята на собствениците трябва да има поне един потребител.",
+  "Error_OnlyOwnersAllowed": "Това действие може да бъде извършено само от членове на ролята собственици на този чат.",
+
+  // Messages
+  "Error_CannotSendMessages": "Vous ne pouvez pas envoyer de messages dans ce chat.",
+  "Error_EmptyMessage": "За съжаление не може да публикувате празни съобщения.",
+  "Error_CanEditOwnMessagesOnly": "Може да редактирате само собствените си съобщения.",
+  "Error_OnlyTextCanBeEdited": "Редактировать можно только текстовые сообщения.",
+  "Error_StreamingCannotBeEdited": "Les messages en cours d’enregistrement ne peuvent pas être modifiés.",
+  "Error_ForwardedCannotBeEdited": "Weitergeleitete Nachrichten können nicht bearbeitet werden.",
+  "Error_MessageNoLongerExists": "このメッセージはすでに存在しません。",
+  "Error_CannotRemoveMessage": "Você não tem permissão para remover esta mensagem.",
+  "Error_CannotRemoveOwnerMessage": "Você não tem permissão para remover a mensagem de um proprietário.",
+  "Error_CannotRestoreMessage": "Você não tem permissão para restaurar esta mensagem.",
+  "Error_CannotRestoreOwnerMessage": "Você não tem permissão para restaurar a mensagem de um proprietário.",
+  "Error_RootChatCannotHoldMessages": "Cuộc trò chuyện gốc của không gian không chứa tin nhắn — hãy đăng vào một trong các cuộc trò chuyện của không gian.",
+  "Error_CanAttachOwnLocationsOnly": "Може да прикачите само собствените си споделени местоположения от този чат.",
+  "Error_NonContactMessageLimit_Format": "Vous pouvez envoyer jusqu’à {limit} messages tant que cette personne ne vous a pas ajouté à ses contacts ou ne vous a pas répondu.",
+  "Error_OnlyOwnersOrModeratorsCanPin": "Nie możesz wykonać tej czynności: brak wystarczających uprawnień. Wymagane uprawnienie: przypinać wiadomości mogą tylko właściciele i moderatorzy czatu.",
+  "Error_PinLimit_Format": "Можна закріпити не більше ніж {limit} повідомлень.",
+
+  // Chats and places
+  "Error_ChatTitleEmpty": "Tiêu đề cuộc trò chuyện không được để trống.",
+  "Error_ThreadTitleEmpty": "Името на нишката не може да е празно.",
+  "Error_PlaceTitleEmpty": "Название пространства не может быть пустым.",
+  "Error_PlaceUnavailable": "Không gian được yêu cầu hiện không khả dụng.",
+  "Error_OnlyPlaceMembersCanAddChats": "Chỉ thành viên của không gian mới thêm được cuộc trò chuyện.",
+  "Error_CannotMakeChatPublic": "Nie możesz wykonać tej czynności: brak wystarczających uprawnień. Wymagane uprawnienie: udostępnienie czatu publicznie",
+  "Error_CustomLinkNotAllowed": "Los enlaces personalizados no están permitidos en los chats de un espacio.",
+  "Error_CustomLinkTaken_Format": "Liên kết «{link}» đã được một cuộc trò chuyện khác trong cùng không gian sử dụng.",
+  "Error_WelcomeChatCannotBePrivate": "Видът на чата „Welcome“ не може да се смени на затворен.",
+  "Error_WelcomeChatCannotBeRemoved": "Der Chat „Welcome“ kann nicht gelöscht werden.",
+  "Error_OnlyGroupOrPlaceChatCanBeCopied": "スペースにコピーできるのは、グループチャットまたはスペースのチャットだけです。",
+  "Error_CannotCopyToSamePlace": "Não é possível copiar um chat de espaço para o mesmo espaço.",
+  "Error_MigrationRequiresChatOwner": "Bạn phải là chủ sở hữu cuộc trò chuyện này để thực hiện việc chuyển.",
+  "Error_MigrationRequiresPlaceOwner": "チャットをスペースにコピーするには、そのスペースのオーナーである必要があります。",
+  "Error_OperationRequiresChatOwner": "この操作を行うには、このチャットのオーナーである必要があります。",
+  "Error_OperationRequiresPlaceOwner": "Vous devez être propriétaire de l’espace auquel appartient ce chat pour effectuer cette opération.",
+
+  // Threads and contacts
+  "Error_ThreadRequiresContact": "Vous pourrez démarrer des fils quand cette personne vous aura ajouté à ses contacts ou vous aura répondu.",
+  "Error_SignInToFollowThread": "スレッドをフォローするにはサインインしてください。",
+  "Error_OnlyPeerContactCanBeBlocked": "Seuls les contacts personnels peuvent être bloqués.",
+  "Error_SignInToChat": "Щоб написати іншому користувачу, увійдіть в обліковий запис.",
+  "Error_CannotChatWithUnauthenticated": "Mit einem nicht angemeldeten Nutzer kann kein Chat gestartet werden.",
+
+  // Calls
+  "Error_OnlyParticipantCanBecomeHost": "Hanya peserta panggilan yang bisa menjadi tuan rumah panggilan.",
+  "Error_CannotMuteOwner": "Du kannst das Mikrofon eines Eigentümers nicht ausschalten.",
+  "Error_OnlyHostOrOwnerCanChangeHost": "Водещият на обаждането може да бъде сменен само от текущия водещ или собственик на чата.",
+  "Error_CallRequiresContact": "Anda bisa menelepon pengguna ini hanya setelah dia menambahkan Anda ke kontaknya atau membalas Anda.",
+  "Error_CannotMuteInPeerChat": "In einem Einzelchat kannst du das Mikrofon der anderen Person nicht ausschalten.",
+  "Error_OnlyHostOwnerOrModeratorCanManageCall": "Сесията на живо може да се управлява само от водещия на обаждането или собственик/модератор на чата.",
+  "Error_VoiceStreamingModeLocked": "In diesem Chat kann der Sprachübertragungsmodus nicht geändert werden.",
+
+  // Notifications
+  "Error_NotifyMembersNotAllowed": "Powiadamianie uczestników nie jest dozwolone w czatach dostępnych publicznie.",
+  "Error_AlertEveryoneUnavailable": "Dringende Benachrichtigungen sind in Chats mit mehr als 10 Personen nicht verfügbar.",
+  "Error_NobodyToNotify": "Tidak ada yang perlu diberi tahu.",
+  "Error_OnlyAuthorCanNotify": "メンションした相手に通知できるのは、メッセージの作成者だけです。",
+
+  // Media and uploads
+  "Error_NoMediaAccess": "このファイルにアクセスする権限がありません。",
+  "Error_FileTooBig": "El archivo es demasiado grande.",
+  "Error_CropExportFailed": "Изрязаното изображение не можа да бъде експортирано.",
+  "Error_FileTooBig_Format": "Файл слишком большой. Максимальный размер: {size}.",
+  "Error_TooManyFiles_Format": "Слишком много файлов. Максимально допустимое количество — {count}.",
+
+  // Invites
+  "Error_InviteAlreadyUsed": "Dieser Einladungslink wurde bereits verwendet.",
+  "Error_InviteNotActive": "Це посилання-запрошення більше не активне.",
+  "Error_InviteCodeNotFound": "Es wurde keine Einladung mit diesem Code gefunden.",
+  "Error_OnlyPlaceMembersCanUseCode": "Использовать этот код могут только участники пространства.",
+  "Error_UserInvitesRemoved": "Приглашения пользователей больше не поддерживаются.",
+
+  // Live location
+  "Error_JoinChatToShareLocation": "Присъединете се към чата, преди да споделите местоположението си.",
+  "Error_CanChangeOwnLocationsOnly": "В този чат може да променяте само собствените си споделени местоположения.",
+  "Error_LocationSharingLimit_Format": "Questa chat ha già il numero massimo di {limit} persone che condividono la posizione in tempo reale.",
+  "Error_FailedToAddFileAttachment": "Der Dateianhang konnte nicht hinzugefügt werden."
+}

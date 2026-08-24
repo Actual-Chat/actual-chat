@@ -59,6 +59,8 @@ public class LocalizationUI : UIServiceBase<AppUIHub>, IUITextLocalizer, IComput
         var localized = L.ForRuntimeMessage(message);
         if (localized != null)
             return localized;
+        if (language == Languages.Max)
+            return message;
 
         var item = _localizations.Enqueue(new Key(language, message));
         return await item.ResultTask.WaitAsync(cancellationToken).ConfigureAwait(false);

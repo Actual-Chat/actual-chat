@@ -20,6 +20,7 @@ public sealed class UILanguageResolutionTest(ITestOutputHelper @out) : TestBase(
     [InlineData("fil-PH")] // Must not collapse onto Finnish's "fi"
     [InlineData("nb-NO")]
     [InlineData("")]
+    [InlineData("max")]
     [InlineData("not-a-language")]
     public void DetectUILanguageShouldFallBackToMain(string clientLanguage)
         => Languages.DetectUILanguage([clientLanguage]).Should().Be(Languages.Main);
@@ -46,7 +47,15 @@ public sealed class UILanguageResolutionTest(ITestOutputHelper @out) : TestBase(
             .Should().Be(Language.Parse(expected));
 
     [Theory]
+    [InlineData("max")]
+    [InlineData("MAX")]
+    public void ResolveUILanguageShouldAcceptMaxOnlyAsTheUrlOverride(string languageOverride)
+        => Languages.ResolveUILanguage(languageOverride, Languages.Japanese, ["fr-FR"])
+            .Should().Be(Languages.Max);
+
+    [Theory]
     [InlineData("")]
+    [InlineData("max-US")]
     [InlineData("not-a-language")]
     public void ResolveUILanguageShouldNotFallThroughWhenTheUrlOverrideIsInvalid(string languageOverride)
         => Languages.ResolveUILanguage(languageOverride, Languages.Japanese, ["de-DE"]).Should().Be(Languages.Main);

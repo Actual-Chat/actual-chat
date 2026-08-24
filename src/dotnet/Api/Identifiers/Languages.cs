@@ -35,6 +35,7 @@ public static class Languages
     public static readonly Language Kazakh = new("kk-KZ", "KK", "Kazakh", "Қазақ тілі");
     public static readonly Language Korean = new("ko-KR", "KO", "Korean", "한국어", LanguageSupport.All);
     public static readonly Language Malay = new("ms-MY", "MS", "Malay", "Bahasa Melayu");
+    public static readonly Language Max = new("max", "MAX", "Max", "Max", LanguageSupport.None);
     public static readonly Language Marathi = new("mr-IN", "MR", "Marathi", "मराठी");
     // "cnr" is Montenegrin's ISO 639-2 code, assigned in 2017
     public static readonly Language Montenegrin = new("cnr-ME", "CNR", "Montenegrin", "Crnogorski", LanguageSupport.UI);
@@ -119,6 +120,9 @@ public static class Languages
         Montenegrin, Serbian,
     ];
 
+    // Includes URL-only pseudo-locales; never use this collection for a user-facing language choice.
+    public static readonly Language[] AllUIAndTestOnly = [..AllUI, Max];
+
     public static readonly Language[] AllTranscription =
         All.Where(x => x.Support.HasFlag(LanguageSupport.Transcription)).ToArray();
 
@@ -134,9 +138,11 @@ public static class Languages
         string? languageOverride,
         Language? selected,
         IReadOnlyList<string> clientLanguages)
-        => languageOverride is not null
-            ? DetectUILanguage([languageOverride])
-            : selected ?? DetectUILanguage(clientLanguages);
+        => languageOverride is null
+            ? selected ?? DetectUILanguage(clientLanguages)
+            : languageOverride.Equals(Max.Value, StringComparison.OrdinalIgnoreCase)
+                ? Max
+                : DetectUILanguage([languageOverride]);
 
     public static Language DetectUILanguage(IReadOnlyList<string> clientLanguages)
     {

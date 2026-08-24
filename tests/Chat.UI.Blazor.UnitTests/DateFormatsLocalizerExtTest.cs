@@ -10,7 +10,8 @@ public class DateFormatsLocalizerExtTest
     // Every shape the UI formats, as the standard specifier that reaches it
     private static readonly string[] Specifiers = ["t", "m", "d", "D", "y"];
 
-    public static TheoryData<string> ShippedSubtags { get; } = new(StringCatalogs.ShippedSubtags(StringCatalogs.Kind.Strings));
+    public static TheoryData<string> ShippedSubtags { get; } =
+        new(StringCatalogs.ShippedSubtags(StringCatalogs.Kind.Strings));
 
     [Theory]
     [MemberData(nameof(ShippedSubtags))]
@@ -152,7 +153,7 @@ public class DateFormatsLocalizerExtTest
 
     private static TestStringLocalizer NewLocalizer(string subtag)
     {
-        var language = Language.Parse(subtag);
+        var language = Languages.AllUIAndTestOnly.Single(l => l.IsoCode == subtag);
         return new TestStringLocalizer(StringCatalogs.Load(StringCatalogs.Kind.Strings, language)!, language);
     }
 }
