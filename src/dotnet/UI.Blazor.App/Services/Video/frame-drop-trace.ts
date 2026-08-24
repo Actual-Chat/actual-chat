@@ -217,7 +217,7 @@ function createVideoTraceKiller(stage: FrameDropStage): () => void {
 }
 
 function nowMs(): number {
-    return typeof performance !== 'undefined' ? performance.now() : Date.now();
+    return performance.now();
 }
 
 function stageName(stage: number): string {

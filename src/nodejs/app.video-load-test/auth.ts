@@ -33,9 +33,9 @@ function newSessionId(): string {
 }
 
 export async function signIn(opts: SignInOptions): Promise<SignInResult> {
-    const t0 = Date.now();
+    const t0 = performance.now();
     const stage = (msg: string): void => {
-        console.log(`[auth t=${String(Date.now() - t0).padStart(5, ' ')}ms] ${msg}`);
+        console.log(`[auth t=${String(performance.now() - t0).padStart(5, ' ')}ms] ${msg}`);
     };
 
     const sessionId = newSessionId();

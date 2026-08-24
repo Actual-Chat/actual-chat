@@ -1022,14 +1022,14 @@ export class AudioContextSource {
                     }
                 }
                 debugLog?.log('maintain: context is running');
-                let lastTestAt = Date.now();
+                let lastTestAt = performance.now();
 
                 // noinspection InfiniteLoopJS
                 while (this._isMaintained) {
                     // Health check loop
                     this._testRequested = new PromiseSource<void>();
                     const testRequested = this._testRequested;
-                    const minDelay = lastTestAt + MaintainCyclePeriodMs - Date.now();
+                    const minDelay = lastTestAt + MaintainCyclePeriodMs - performance.now();
                     if (minDelay > 0) {
                         await Promise.race([delayAsync(minDelay), testRequested]);
                     } else {
@@ -1040,7 +1040,7 @@ export class AudioContextSource {
                     if (!this._isMaintained) break;
 
                     const isWakeUpTest = testRequested.isCompleted;
-                    lastTestAt = Date.now();
+                    lastTestAt = performance.now();
                     try {
                         await this.test(context, !isWakeUpTest);
                     } catch (e) {

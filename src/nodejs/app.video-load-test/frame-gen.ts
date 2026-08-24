@@ -67,11 +67,11 @@ export function generateFrame(index: number): VideoFrameDto {
  * already passed.
  */
 export async function paceFrame(
-    startWallClock: number,
+    startedAt: number,
     index: number,
 ): Promise<void> {
     const targetMs = (FrameConfig.FrameDurationTicks / 10_000) * index;
-    const elapsed = Date.now() - startWallClock;
+    const elapsed = performance.now() - startedAt;
     const remaining = targetMs - elapsed;
     if (remaining > 0) {
         await new Promise<void>((r) => setTimeout(r, remaining));

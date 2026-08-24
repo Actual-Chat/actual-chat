@@ -379,9 +379,9 @@ export class RightPanelCollapse {
         this.rightPanel.classList.remove('collapsing');
         this.rightPanel.classList.add('snapping');
         const start = this.progress;
-        const startedAt = Date.now();
+        const startedAt = performance.now();
         const step = () => {
-            const t = Math.min(1, (Date.now() - startedAt) / SNAP_DURATION_MS);
+            const t = Math.min(1, (performance.now() - startedAt) / SNAP_DURATION_MS);
             this.setProgress(start + (target - start) * easeOutCubic(t));
             if (t < 1) {
                 this.snapRaf = requestAnimationFrame(step);
@@ -457,7 +457,7 @@ class CollapseDragGesture extends Gesture {
         const startProgress = panel.getProgress();
         this.progress = startProgress;
         this.lastProgress = startProgress;
-        this.lastTime = Date.now();
+        this.lastTime = performance.now();
 
         this.addDisposables(
             DocumentEvents.capturedPassive.touchCancel$.subscribe(() => this.finish()),
@@ -479,7 +479,7 @@ class CollapseDragGesture extends Gesture {
                 // Drag down (dy > 0) expands => progress decreases; drag up collapses.
                 this.progress = Math.max(0, Math.min(1, startProgress - dy / range));
 
-                const now = Date.now();
+                const now = performance.now();
                 const dt = now - this.lastTime;
                 if (dt > 0) {
                     this.velocity = (this.progress - this.lastProgress) / dt * 1000;

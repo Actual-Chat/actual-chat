@@ -85,9 +85,9 @@ export class PreciseTimeout extends Timeout {
         }
 
         // Precise timeout handling
-        const endsAt = Date.now() + timeoutMs;
+        const endsAt = performance.now() + timeoutMs;
         const loop = () => {
-            if (Date.now() >= endsAt)
+            if (performance.now() >= endsAt)
                 callback();
             else
                 this.handle = requestAnimationFrame(loop);

@@ -241,7 +241,7 @@ class PanelDragGesture extends Gesture {
         }
 
         tryPreventDefaultForEvent(touchStartEvent);
-        const gestureStartTime = Date.now();
+        const gestureStartTime = performance.now();
 
         const wrapperHeightRange = remToPx(WRAPPER_HEIGHT_REM);
         const wrapperMaxHeight = remToPx(WRAPPER_MAX_HEIGHT_REM);
@@ -292,7 +292,7 @@ class PanelDragGesture extends Gesture {
                 this.dispose();
             }),
             DocumentEvents.capturedPassive.touchEnd$.subscribe(() => {
-                const elapsed = Date.now() - gestureStartTime;
+                const elapsed = performance.now() - gestureStartTime;
                 panel['isMoving'] = false;
 
                 if (!this.toggled && this.badgeVisible) {

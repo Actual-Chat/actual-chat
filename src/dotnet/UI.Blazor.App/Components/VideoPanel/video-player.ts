@@ -1086,10 +1086,10 @@ export class VideoPlayer {
             if (this.currentAttempt?.attemptId === attemptId)
                 this.currentAttempt = null;
             if (this.workerStreamActive) {
-                const stopStartedMs = Date.now();
+                const stopStartedMs = performance.now();
                 try { await this.playerWorker.stop(streamId); }
                 catch { /* ignore */ }
-                const stopMs = Date.now() - stopStartedMs;
+                const stopMs = performance.now() - stopStartedMs;
                 if (stopMs > 1_000)
                     this.pushBreadcrumb(`worker.stop took ${stopMs}ms`);
                 this.workerStreamActive = false;

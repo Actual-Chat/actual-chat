@@ -9,7 +9,7 @@ const PostInteractionActivityPeriodMs = 30_000;
 export class UserActivityUI {
     private static _blazorRef: DotNet.DotNetObject;
     private static _activityPeriodMs: number;
-    private static _activeUntil: number = Date.now() + PostInteractionActivityPeriodMs;
+    private static _activeUntil: number = performance.now() + PostInteractionActivityPeriodMs;
     private static notifyBackendThrottled: () => void;
 
     public static get activeUntil() { return this._activeUntil; }
@@ -42,7 +42,7 @@ export class UserActivityUI {
 
     private static onInteraction(activityPeriodMs?: number, force = false): void {
         activityPeriodMs ??= this._activityPeriodMs;
-        const newActiveUntil = Date.now() + activityPeriodMs;
+        const newActiveUntil = performance.now() + activityPeriodMs;
         if (!force && this._activeUntil > newActiveUntil)
             return;
 
@@ -52,7 +52,7 @@ export class UserActivityUI {
 
     private static notifyBackend = async () => {
         // Zero is meaningful here: it's how .NET learns the user is no longer present
-        const willBeActiveForMs = Math.max(0, this._activeUntil - Date.now());
+        const willBeActiveForMs = Math.max(0, this._activeUntil - performance.now());
         debugLog?.log(`notifyBackend`);
         await this._blazorRef.invokeMethodAsync('OnInteraction', willBeActiveForMs);
     }

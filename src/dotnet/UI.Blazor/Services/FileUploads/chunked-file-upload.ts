@@ -328,7 +328,7 @@ class ChunkSizeSelector
     }
 
     public getTimestamp() : number {
-        return typeof performance !== 'undefined' ? performance.now() : Date.now();
+        return performance.now();
     }
 
     public getElapsedTime(timestamp: number) : number {

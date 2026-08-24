@@ -215,7 +215,7 @@ export class WebRtcVoiceActivityDetector extends VoiceActivityDetectorBase {
             // Emscripten interop requires Uint8Array or ArrayBuffer, so we need to pass Float32Array as Uint8Array
             // @ts-expect-error TODO(AK): fix the error
             const activity = this.baseVad.detect(new Uint8Array(frame.buffer, frame.byteOffset, frame.length * 4));
-            const now = Date.now();
+            const now = performance.now();
             if (activity > 0 && (this.sampleCount / AUDIO.rec.samplesPerMs < AUDIO.vad.skipFirstRecordingMs || now - this.lastSkippedAt < 5)) {
                 this.lastSkippedAt = now;
                 return Promise.resolve(null); // Skip triggering on microphone noise at the beginning of the first microphone stream

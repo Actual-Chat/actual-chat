@@ -281,10 +281,10 @@ export class VideoPanel {
                     if (!this.isExpanded())
                         return false;
 
-                    if (Date.now() - this.lastTouchActionTime < 1000)
+                    if (performance.now() - this.lastTouchActionTime < 1000)
                         return false;
 
-                    if (Date.now() - this.lastMouseDragEndTime < 300)
+                    if (performance.now() - this.lastMouseDragEndTime < 300)
                         return false;
 
                     return this.isOnFocusedTile(e.target as HTMLElement);
@@ -319,7 +319,7 @@ export class VideoPanel {
 
         const stopMouseDrag = () => {
             if (this.mouseDragging)
-                this.lastMouseDragEndTime = Date.now();
+                this.lastMouseDragEndTime = performance.now();
             this.mouseDragging = false;
         };
         fromEvent<PointerEvent>(document, 'pointerup')
@@ -422,7 +422,7 @@ export class VideoPanel {
             this.tapMoved = false;
             this.tapStartX = e.touches[0].clientX;
             this.tapStartY = e.touches[0].clientY;
-            this.tapStartTime = Date.now();
+            this.tapStartTime = performance.now();
         }
     }
 
@@ -489,7 +489,7 @@ export class VideoPanel {
 
         if (this.pinching && e.touches.length < 2) {
             this.pinching = false;
-            this.lastPinchEndTime = Date.now();
+            this.lastPinchEndTime = performance.now();
         }
         if (this.dragging && e.touches.length === 0)
             this.dragging = false;
@@ -498,8 +498,8 @@ export class VideoPanel {
         if (e.touches.length === 0 && e.changedTouches.length === 1
             && e.changedTouches[0].identifier === this.tapTouchId) {
             this.tapTouchId = -1;
-            const elapsed = Date.now() - this.tapStartTime;
-            if (!this.tapMoved && elapsed < TAP_MAX_DURATION && Date.now() - this.lastPinchEndTime > 500)
+            const elapsed = performance.now() - this.tapStartTime;
+            if (!this.tapMoved && elapsed < TAP_MAX_DURATION && performance.now() - this.lastPinchEndTime > 500)
                 this.handleTap(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
         }
     }
@@ -509,7 +509,7 @@ export class VideoPanel {
     // region: Tap / double-tap
 
     private handleTap(screenX: number, screenY: number): void {
-        this.lastTouchActionTime = Date.now();
+        this.lastTouchActionTime = performance.now();
 
         if (this.singleTapTimer) {
             // Second tap → double-tap
