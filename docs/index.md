@@ -22,6 +22,9 @@ hero:
       text: Live Audio
       link: /live-audio/README
     - theme: alt
+      text: UI
+      link: /ui/
+    - theme: alt
       text: Plans
       link: /plans/
     - theme: alt
@@ -58,6 +61,11 @@ features:
 - [Live Audio pipeline](./live-audio/README.md) — end-to-end documentation of the
   current audio pipeline: microphone capture, VAD, Opus encoding,
   publish/persist/transcribe, fan-out, replay, playback.
+
+## UI
+
+- [UI documentation](./ui/index.md) — component conventions, the virtual list
+  specification, safe areas, and splash screens.
 
 ## Cross-cutting
 

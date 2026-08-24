@@ -14,7 +14,7 @@ namespace ActualChat.Chat.IntegrationTests;
 // deliberately changing JSON output for 28 types.
 //
 // When to reuse: any change that touches serialization attributes, member order, or type shape —
-// [DataContract] removal (phase 4 of docs/plans/msgpack.md) being the obvious next one. To use it,
+// see docs/architecture/serialization.md for what each serializer honors. To use it,
 // drop the Skip, run with ActualChat_WriteWireFormatBaseline=true on the pre-change build, make
 // the change, then run it again with the variable unset. MessagePack differences fail; JSON
 // differences are only reported, since some refactors are meant to move JSON.

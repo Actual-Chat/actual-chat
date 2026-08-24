@@ -1,5 +1,8 @@
 # Further rendering improvements during speech
 
+Status: **R3 shipped** — `@keyframes rotate-ring` is transform-only now, and the
+animation runs on `steps(25)` rather than `linear`. R4–R7 are open.
+
 ## Context
 
 Continuation of the prior redraw / battery investigation on

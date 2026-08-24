@@ -3,7 +3,7 @@
 This document describes the coding conventions used in Voxt (formerly Actual Chat) project that differ from standard .NET conventions.
 
 > **Building or modifying a Blazor UI component?** Read
-> [development/ui-components.md](development/ui-components.md) **first**.
+> [ui/components.md](ui/components.md) **first**.
 > It covers the `.razor` + `.css` + `.ts` file layout, when a component
 > needs its own folder, CSS class naming (`c-` prefix, modifiers), where
 > child-component styles belong, and how Razor/TS counterparts are paired

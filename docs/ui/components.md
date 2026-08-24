@@ -888,7 +888,7 @@ instance (`quiet-heights-${chatId}`), and never capture a component, list or ele
 both turn a fixed registry into an unbounded one that pins whatever it holds.
 
 An example of the pair in use is the conversation collapse — see
-[The virtual list](../virtual-list.md) §3.10.
+[The virtual list](./virtual-list.md) §3.10.
 
 ## Modal Components
 
@@ -951,5 +951,5 @@ When creating a new component with TS/CSS/Modal, register it in all required pla
 
 ## See Also
 
-- [Implementing Features](./implementing-features.md) — full-stack feature implementation guide
+- [Implementing Features](../development/implementing-features.md) — full-stack feature implementation guide
 - [Coding Style](../CODING_STYLE.md) — general coding conventions

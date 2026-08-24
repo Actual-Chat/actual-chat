@@ -651,7 +651,7 @@ and [startup-profiling.md](./startup-profiling.md).
 
 **The launch surface has to be painted explicitly.** The `UIWindow` and the root view
 controller's view are white by default and show for a frame between the launch
-storyboard and WebKit's first paint — see [Splash screens](./splash-screen.md).
+storyboard and WebKit's first paint — see [Splash screens](./ui/splash-screen.md).
 
 **The app bundle is two apps.** `ActualChat.app` plus
 `PlugIns/ActualChat.App.Maui.IosShareExt.appex` (`chat.actual.dev.app.share`), signed

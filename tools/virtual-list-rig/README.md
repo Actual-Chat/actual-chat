@@ -1,7 +1,7 @@
 # Virtual list overscroll rig
 
 Drives real touch gestures into a Chrome debug port and judges the rubber band against the rules in
-`docs/virtual-list.md` §3.7. This is how the overscroll model is verified; the phones are for feel.
+`docs/ui/virtual-list.md` §3.7. This is how the overscroll model is verified; the phones are for feel.
 
 Needs a Chrome started with remote debugging (`ai chrome`, port 9222; `ai chrome*2` adds 9223), a
 Voxt chat open in it, and the server running. Both scripts put the page in a 412x915x2.6 mobile
@@ -25,7 +25,7 @@ node tools/virtual-list-rig/follow.mjs 9223             # the follow's write pat
 ```
 
 `follow.mjs` answers one question and is not part of the matrix: the pinned edge follows content that
-grew under it by writing `scrollTop` once per frame, and docs/virtual-list.md §4.7 records that a
+grew under it by writing `scrollTop` once per frame, and docs/ui/virtual-list.md §4.7 records that a
 per-frame write stream was visibly jittery on Android. It drives 2px of correction per frame down each
 path in turn and reports what a real item did on screen. Chrome shows no difference between them, so
 the run that matters is against a phone's debug port.

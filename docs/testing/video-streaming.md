@@ -323,10 +323,10 @@ After rebuilding the server, the browser may request old fingerprinted `.wasm` a
 
 ## Example Test Script
 
-A complete example is available at [`tmp/test-video-preview.ts`](../../tmp/test-video-preview.ts).
+Assemble the steps above into a scratch script under `tmp/` and run it with `tsx`:
 
 ```bash
-cd /proj/ActualChat && npx tsx tmp/test-video-preview.ts
+npx tsx tmp/test-video-preview.ts
 ```
 
 ## Architecture Notes

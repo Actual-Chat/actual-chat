@@ -19,7 +19,7 @@ export class ImageSkeleton extends LitElement {
     @property({ type: Number }) width?: number;
     @property({ type: Number }) height?: number;
     // Razor's one-time seed. It renders a constant, so re-renders can't fight the
-    // `data-image-state` this component writes — see docs/development/ui-components.md.
+    // `data-image-state` this component writes — see docs/ui/components.md.
     @property({ attribute: 'initial-state' }) initialState = '';
 
     connectedCallback() {

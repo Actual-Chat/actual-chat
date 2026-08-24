@@ -171,11 +171,15 @@ are MessagePack-only.
 
 #### What unblocks full removal
 
-Steps 2 and 3 of [phase 3](../plans/msgpack.md#phase-3-remove-memorypack-complete) — dropping
-the NuGet packages and the `MemoryPack` global using — stay open until the persisted blobs are
-migrated or aged out. Concretely: every `0x0`-marked KVAS value rewritten as `0x1`, every
-pre-format-byte Flow row re-serialized, and no installed client still holding local settings
-written by a pre-v2.8 build.
+The last two steps of the MemoryPack removal — dropping the NuGet packages and the
+`MemoryPack` global using — stay open until the persisted blobs are migrated or aged out.
+Concretely: every `0x0`-marked KVAS value rewritten as `0x1`, every pre-format-byte Flow row
+re-serialized, and no installed client still holding local settings written by a pre-v2.8
+build.
+
+What remains carries MemoryPack purely as a read leg: the Flow types and their reachable
+state, the `StoredSettings` union, the legacy `Language` formatters, `MediaRef`, `Range<T>`,
+`ChatEntrySlim`, and `HashedExternalContact`.
 
 ## What each serializer honors
 
@@ -440,8 +444,5 @@ asserted, since a change to a type's Newtonsoft markup may move that output by d
 
 - [`docs/CODING_STYLE.md` → Serialization Attributes](../CODING_STYLE.md#serialization-attributes)
   — the short rule list, for when you just need to know what to type.
-- [`docs/plans/msgpack.md`](../plans/msgpack.md) — the MemoryPack → MessagePack migration
-  plan. Phases 1–3 are complete; phase 4 (removing `[DataContract]`) was dropped — see
-  [Attribute conventions](#attribute-conventions) for why it stays.
 - [`docs/native-aot.md`](../native-aot.md) — why the AOT resolver chain excludes dynamic
   IL emit, which is what makes `[MessagePackObject]` mandatory rather than optional.

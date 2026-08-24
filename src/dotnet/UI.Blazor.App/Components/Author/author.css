@@ -43,7 +43,7 @@
    their translateX transitions them left - no layout-thread work, no overshoot.
    --acg-x is a ready px value (not calc(index * step)): WebKit rejects a calc that
    multiplies a length by an unregistered custom property, which killed the whole
-   transform on iOS. See ui-components.md "Prefer Composited Properties". */
+   transform on iOS. See ui/components.md "Prefer Composited Properties". */
 .author-circle-group.animate-changes {
     @apply relative;
     height: var(--acg-circle-size, 2.25rem);

@@ -1,4 +1,4 @@
-// The follow's write path, measured against the one it replaced. docs/virtual-list.md §4.7 records,
+// The follow's write path, measured against the one it replaced. docs/ui/virtual-list.md §4.7 records,
 // from a device, that driving the scroll position from JavaScript at frame rate is visibly jittery on
 // Android - and the pinned-edge follow writes `scrollTop` on every frame the edge moves. This drives
 // the same correction, 2px per frame, as a scroll and then as a transform, and records the only honest

@@ -132,7 +132,7 @@ Two traps when cross-referencing the map against a `.mibc`:
 
 - The map embeds assembly names **inside** generic type arguments
   (`RadixHeapSet_1<ActualLab_Core_ActualLab_Time_GenericTimeoutSlot>`) and the mibc does not
-  (`RadixHeapSet\`1<ActualLab.Time.GenericTimeoutSlot>`). Naive name matching therefore
+  (``RadixHeapSet`1<ActualLab.Time.GenericTimeoutSlot>``). Naive name matching therefore
   misfiles generic instantiations as "not in image". This produced a 6× wrong answer once.
 - A truncated `.nettrace` fails conversion with *"Read past end of stream"*. On Android this
   is almost always the device dropping off ADB mid-capture — `adb kill-server && adb
@@ -172,7 +172,7 @@ What *is* still true, and is probably what the original claim conflated:
   (layout disabled) and which neither we nor the SDK ever pass. So the profile changes
   *which* methods are compiled, never their order.
 
-The original evidence — `RadixHeapSet\`1<GenericTimeoutSlot>` named in the profile yet
+The original evidence — ``RadixHeapSet`1<GenericTimeoutSlot>`` named in the profile yet
 "still being jitted at runtime" on Android — does not show what it appeared to. Android has
 a JIT and tiering, and this same document measures that ~1,200 of 1,675 methods jitted
 during a cold start are **tier-1 promotions, not first compiles**. A method present in the

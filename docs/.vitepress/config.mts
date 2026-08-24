@@ -81,6 +81,7 @@ export default withMermaid(defineConfig({
     /\.editorconfig$/,
     /\.\.\/src\//,
     /\.\.\/tests\//,
+    /\.\.\/scripts\//,
   ],
   appearance: 'dark',
   themeConfig: {
@@ -109,7 +110,7 @@ export default withMermaid(defineConfig({
             text: "Live Video Pipeline",
             collapsed: true,
             items: [
-              { text: "Overview", link: "/live-video/" },
+              { text: "Overview", link: "/live-video/README" },
               { text: "End-to-end", link: "/live-video/01-end-to-end" },
               { text: "Sender", link: "/live-video/02-sender" },
               { text: "Codecs and layers", link: "/live-video/03-codecs-and-layers" },
@@ -127,7 +128,7 @@ export default withMermaid(defineConfig({
             text: "Live Audio Pipeline",
             collapsed: true,
             items: [
-              { text: "Overview", link: "/live-audio/" },
+              { text: "Overview", link: "/live-audio/README" },
               { text: "End-to-end", link: "/live-audio/01-end-to-end" },
               { text: "Recorder", link: "/live-audio/02-recorder" },
               { text: "Codec and VAD", link: "/live-audio/03-codec-and-vad" },
@@ -141,6 +142,17 @@ export default withMermaid(defineConfig({
             ],
           },
           {
+            text: "UI",
+            collapsed: true,
+            items: [
+              { text: "Overview", link: "/ui/" },
+              { text: "Component Guidelines", link: "/ui/components" },
+              { text: "The Virtual List", link: "/ui/virtual-list" },
+              { text: "Safe Areas", link: "/ui/safe-areas" },
+              { text: "Splash Screens", link: "/ui/splash-screen" },
+            ],
+          },
+          {
             text: "Development",
             collapsed: false,
             items: [
@@ -150,8 +162,7 @@ export default withMermaid(defineConfig({
               { text: "Coding Style", link: "/CODING_STYLE" },
               { text: "API Index", link: "/api-index" },
               { text: "AI Agent Guide", link: "/AGENTS" },
-              { text: "Safe Areas", link: "/safe-areas" },
-              { text: "Splash Screens", link: "/splash-screen" },
+              { text: "Localization (i18n)", link: "/i18n" },
               { text: "iOS-specific Behavior", link: "/ios-specific" },
               { text: "Android-specific Behavior", link: "/android-specific" },
               { text: "Native AOT", link: "/native-aot" },

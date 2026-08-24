@@ -241,7 +241,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{FC821FB9-9
 		docs\running-voxt.md = docs\running-voxt.md
 		docs\sanitizer.md = docs\sanitizer.md
 		docs\native-aot.md = docs\native-aot.md
-		docs\safe-areas.md = docs\safe-areas.md
+		docs\ui\components.md = docs\ui\components.md
+		docs\ui\safe-areas.md = docs\ui\safe-areas.md
+		docs\ui\splash-screen.md = docs\ui\splash-screen.md
+		docs\ui\virtual-list.md = docs\ui\virtual-list.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "svg2font", "svg2font", "{69BADAEC-4FA5-48E1-91DE-26A4F2F3DE10}"
@@ -395,9 +398,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.App", "src\dotnet\UI.App
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "plans", "plans", "{A0CDF5EA-4040-448A-A15D-FA54A07A9DBE}"
 	ProjectSection(SolutionItems) = preProject
-		docs\plans\BigTasks.md = docs\plans\BigTasks.md
-		docs\plans\Search.md = docs\plans\Search.md
-		docs\plans\SmallTasks.md = docs\plans\SmallTasks.md
+		docs\plans\index.md = docs\plans\index.md
 		docs\plans\e2ee.md = docs\plans\e2ee.md
 	EndProjectSection
 EndProject

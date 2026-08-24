@@ -13,14 +13,6 @@ candidate tasks. A plan is removed from here once its work ships.
 
 Recently added, larger efforts — in progress or next up.
 
-### Hashtags
-
-[Hashtags](./hashtags.md) — `#hashtag` markup parsed into a new
-`HashtagMarkup`, rendered as a clickable link that opens the left-panel
-search with the tag and the Messages filter applied. Exact-match hashtag
-search folds into the `Search.Service` analyzer (below); an optional DB
-registry for autocomplete/trending is deferred. (#4121)
-
 ### AI search & indexing — MLSearch → PostgreSQL
 
 [MLSearch: OpenSearch → PostgreSQL](./mlsearch-postgres-fts.md) — replace
@@ -35,14 +27,6 @@ top ~50 languages, on a pgvector-ready schema.
 streams. The whole-message stream publishes one wire item per LLM chunk with no
 rate limit; the realtime stream is throttled at 500ms, tuned for latency rather
 than for the up-to-4-calls/sec of LLM spend it implies.
-
-### Chat roles — Moderator
-
-[Moderator role](./moderator-role.md) — a third system role between `Anyone` and
-`Owner`: delete/restore anyone's messages, mute and manage calls, kick members,
-edit chat title/picture/description — but no chat deletion, archiving, type
-changes, or role edits. Owners are immune to moderator actions; place-level
-moderators cover every public chat in the place.
 
 ### Distributed services
 
@@ -90,11 +74,6 @@ account.
 
 ## Standing plans
 
-### Architecture and infrastructure
-
-- [MessagePack migration](./msgpack.md) — replace MemoryPack with MessagePack
-  as the primary binary serializer for better cross-platform (non-.NET) support.
-
 ### Audio and video
 
 - [Audio pipeline redesign](./audio-pipeline-redesign.md) — replace the four
@@ -103,18 +82,9 @@ account.
   focus", and lazy per-resource release so short activities stop re-allocating
   expensive native resources. Includes the full iOS `audiomxd` investigation
   (idle 0.267 cores → 0).
-- [Unified live-activity signal](./live-activity-signal.md) — base the
-  stop-listening / stop-recording idle timers on a single `ILiveSessions`
-  activity bool derived from audio and video presence (not from the
-  transcription/persistence pipeline), and treat a disconnected client as idle.
 - [NAudio replacement](./naudio-replacement.md) — Windows audio capture fails
   under NativeAOT (`InvalidProgramException` in NAudio's WASAPI COM path);
   replace it with an AOT-safe capture path.
-- [Video simulcast](./video-simulcast.md) — emit multiple encoded tiers per
-  sender so each receiver subscribes to what its link sustains (long-term).
-- [Video throughput probing](./video-throughput-probing.md) — capacity-probing
-  step-up on high-latency links, mirroring the throughput step-down path
-  (medium-term).
 
 ### Chat and UI
 
@@ -123,7 +93,7 @@ account.
   progressively), which needs a partial mode in `MarkupParser` so unterminated
   markup renders styled instead of literal.
 - [Speech render performance](./speech-render-perf.md) — next-tier CPU/GPU
-  reductions during recording (R1/R2 already shipped; desktop holds 60 fps).
+  reductions during recording (R1–R3 shipped, R4–R7 open; desktop holds 60 fps).
 
 ### Accounts and security
 
@@ -151,11 +121,6 @@ account.
 - [TypeScript `moduleResolution: bundler`](./ts-module-resolution-bundler.md) —
   switch from the legacy `node` algorithm so TS honors `package.json` `exports`
   subpaths.
-
-### Search (historical)
-
-- [Search](./Search.md) — original (2024) search architecture notes, largely
-  superseded by the MLSearch plan above.
 
 ## Backlog
 

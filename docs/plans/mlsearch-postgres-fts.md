@@ -93,7 +93,7 @@ existing behavior. Recall will change (mostly improve); the cutover plan account
 
 **Non-goals** (this migration): semantic/vector search implementation (blocks are designed as the
 future embedding unit, but no embeddings are generated), the interactive search bot from
-[Search.md](./Search.md), typo tolerance (listed as a future option), attachment/file content
+the 2024 search plan, typo tolerance (listed as a future option), attachment/file content
 indexing.
 
 ## Delivery strategy: a new Search service
@@ -128,7 +128,7 @@ same conversation, concatenated into a single indexed document. Rationale:
   proportionally large).
 - **Semantic unit**: a block is the natural retrieval unit for conversational content — and the
   intended **embedding unit** for future vector search (this resolves the tiling question from the
-  old [Search.md](./Search.md) plan).
+  old 2024 search plan).
 - **Ranking**: term co-occurrence within a conversation is captured even when spread across
   adjacent short messages.
 

@@ -18,8 +18,9 @@ enforces it via `ReceiveQualityFilter` and `RequestKeyFrame`.
 - Controllers (both sides) — `src/dotnet/UI.Blazor.App/Services/VideoQualityUI.cs`
 - Shared adaptive controller — `src/dotnet/Core/Bandwidth/BandwidthEstimator.cs`
   (namespace `ActualChat.Bandwidth`)
-- Per-direction caps + allocator — same `Services/` folder:
-  `LayerCap.cs`, `EncodingCap.cs`, `BandwidthCap.cs`, `VideoQualityAllocator.cs`
+- Per-direction caps, probe + allocator — same `Services/` folder:
+  `LayerCap.cs`, `EncodingCap.cs`, `BandwidthCap.cs`, `ThermalCap.cs`,
+  `SpeculativeProbe.cs`, `VideoQualityAllocator.cs`
 - RPC connection epoch — `src/dotnet/Core/Rpc/RpcConnectionInfo.cs`
   (consumed by ConnectivityUI; ConnectionInfo nullable until first connect)
 - Wire types — `src/dotnet/Api.Contracts/Streaming/Quality/{ReceiveQuality,RecordingQuality,PlaybackQuality}.cs`
@@ -111,9 +112,18 @@ Three things compose into the final per-stream layer count:
    ```
    Mobile drops camera layer 2; screencast is always at full ladder.
 
-The effective target per kind is `min(encCap, bwCap, deviceCap)`. When
-it changes for either kind, the controller calls
-`recorder.SetTargetLayerCount(target)`.
+The effective target per kind is `min(encCap, bwCap, deviceCap)`, then
+clamped by `ThermalCap` (which also caps FPS). When it changes for either
+kind, the controller calls `recorder.SetTargetLayerCount(target)`.
+
+On top of that, `SpeculativeProbe` (`SpeculativeProbe.cs`) covers the case
+the drain-rate measurement cannot: an idle wire offers nothing to measure.
+When bandwidth is the binding cap, the link looks healthy (ack age at or
+below `max(HealthyAckAgeMs, minRtt + HealthyAckSlackMs)`) and the wire queue
+is shallow, it adds **one** camera layer for `WindowTicks` and watches ack
+age. Flat ack age commits the climb by bumping `BandwidthCap`; an inflation
+past `AckAgeInflationMs` reverts it and backs off (`BaseCooldownTicks ×
+CooldownGrowth^failures`, capped at `MaxCooldownTicks`).
 
 ### Outbound `signalLevel`
 
@@ -144,9 +154,12 @@ fallback — `EncodingCap` is the primary response to encode overrun.
 3. bwEstimator.Tick(connection, now, totalBytesPerSec, signalLevel)
 4. encodingCap.Tick(fusedEncodeRatio)
 5. bwCap.Tick(bwEstimator)
-6. effCap = min(encCap, bwCap, deviceCap)
-7. for each kind: recorder.SetTargetLayerCount(effCap[kind]) if changed
-8. ChangeRecordingQuality(state, info)   // server-side telemetry only
+6. probeExtra = speculativeProbe.Tick(...)  // 0 or 1 camera layer
+7. effCap = min(encCap, bwCap, deviceCap), camera + probeExtra
+8. thermalCap.Tick(now, thermalLevel); effCap = min(effCap, thermalCap)
+9. for each kind: recorder.SetTargetLayerCount(effCap[kind]) if changed,
+   then recorder FPS ceiling = thermalCap.MaxFps
+10. ChangeRecordingQuality(state, info)   // server-side telemetry only
 ```
 
 ## Receiver side — inbound
@@ -371,9 +384,11 @@ RpcStream<VideoFrameBundle> ─▶ ProcessFrames ─▶ Memoizer       per-frame
 
 ## Known limits and trade-offs
 
-- **No client-side network probing.** Backpressure is observed from the
-  publisher leg's RPC ring (compaction kicks in via `canSkipTo`) and
-  from the receiver leg's `playbackRateEma`.
+- **Probing is uplink-only, and only one layer wide.** `SpeculativeProbe`
+  tests for camera headroom on the sender; there is no equivalent on the
+  receiver leg, where backpressure is still observed rather than provoked —
+  from the publisher leg's RPC ring (compaction via `canSkipTo`) and from
+  `playbackRateEma`.
 - **Layer changes restart the sender encoder pipeline.** A fresh
   `VideoEncoder` is constructed per layer (encoders are not pooled — see
   `02-sender.md`), so a few frames around the transition cost the

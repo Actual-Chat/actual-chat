@@ -16,13 +16,20 @@ The `/docs` folder contains VitePress-based documentation for Voxt:
 |------|----------|
 | `index.md` | Homepage with hero section and feature highlights |
 | `architecture/` | Architecture docs: overview, project structure, service design |
-| `plans/` | Project plans and task lists (BigTasks, SmallTasks, feature plans) |
+| `ui/` | UI docs: component guidelines, virtual list, safe areas, splash screens |
+| `live-video/`, `live-audio/` | The two streaming pipelines, end to end |
+| `development/` | Full-stack feature implementation guide |
+| `plans/` | The task tracker (`plans/index.md`) plus one file per open plan |
 | `testing/` | Testing documentation and guides |
 | `tests/` | Test scripts (e.g., Playwright scripts) |
+| `releases/` | Per-release notes |
 | `running-voxt.md` | Development environment setup guide |
 | `CODING_STYLE.md` | Coding conventions and style guidelines |
 | `AGENTS.md` | AI agent instructions for the repository |
 | `.vitepress/` | VitePress configuration and theme |
+
+A plan is deleted from `plans/` once its work ships or the approach is dropped —
+`plans/index.md` tracks what is still open, and `git log` keeps the rest.
 
 ## Essential Rules
 

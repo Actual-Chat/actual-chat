@@ -7,7 +7,7 @@ description: |
   four `?vl*` URL flags, the touch-gesture rig, the frame recorder, attaching to a real Android
   device over CDP, and how to read a trace without being fooled by a measurement artifact. Use when
   the list jumps while scrolling, blanks, sticks on skeletons, or the overscroll/bounce misbehaves.
-  The component's specification is `docs/virtual-list.md`; this skill is only how to *measure* it.
+  The component's specification is `docs/ui/virtual-list.md`; this skill is only how to *measure* it.
   Pairs with /debug-ui (browser side) and /server-loop (server side).
 allowed-tools:
   - Bash
@@ -27,7 +27,7 @@ allowed-tools:
 
 ## Ground rules before you measure anything
 
-**The spec is [`docs/virtual-list.md`](../../../docs/virtual-list.md) (132KB).** Look invariants up
+**The spec is [`docs/ui/virtual-list.md`](../../../docs/ui/virtual-list.md) (132KB).** Look invariants up
 there; do not trust a summary, including this one. The section map you will actually use:
 
 | Need | Section |
@@ -424,7 +424,7 @@ position in wrapper coordinates, the item's offset within the chain, and the scr
 
 | Path | What it is |
 |---|---|
-| `docs/virtual-list.md` | **The specification.** Invariants live here, not in this skill |
+| `docs/ui/virtual-list.md` | **The specification.** Invariants live here, not in this skill |
 | `src/dotnet/UI.Blazor/Components/VirtualList/infinite-list.ts` | The chat list. `isDebugEnabled` / `setDebugEnabled`, `checkModelDrift`, `checkContentOverflow`. Registers `globalThis.InfiniteList` (and `InfiniteList.instances`) |
 | `src/dotnet/UI.Blazor/Components/VirtualList/virtual-list.ts` | The shared base. `readLoadDelay` (`?vlloaddelay`), request guard and retry |
 | `src/dotnet/UI.Blazor/Components/VirtualList/finite-list.ts` | The sidebar list. Registers `globalThis.FiniteList` |
