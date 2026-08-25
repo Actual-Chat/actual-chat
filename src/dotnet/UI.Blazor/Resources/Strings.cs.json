@@ -1045,6 +1045,7 @@
   "SearchTabs_Contacts": "Kontakty",
   "SearchTabs_Date": "Datum",
   "Notifications_AllCaughtUp": "Máte vše přečtené",
+  "Notifications_DismissAll": "Zavřít vše",
   "NotificationsPanel_Description": "Přečtený chat zůstane chvíli v panelu oznámení a pak sám zmizí.",
   "NotificationsPanel_DropReadChats": "Odebírat přečtené chaty",
   "NotificationsPanel_Immediately": "Ihned",

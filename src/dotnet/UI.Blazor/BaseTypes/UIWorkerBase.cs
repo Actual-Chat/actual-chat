@@ -31,9 +31,14 @@ public abstract class UIWorkerBase<THub>(THub hub) : UIServiceBase<THub>(hub), I
                 try {
                     await OnRun(StopToken).ConfigureAwait(false);
                 }
+                catch (Exception e) when (!e.IsCancellationOf(StopToken)) {
+                    // WhenRunning still never throws - same as WorkerBase - and the worker still
+                    // doesn't restart; per-worker retry stays each worker's own business. But a
+                    // worker that dies here is dead for the rest of the process, so it says so.
+                    Log.LogError(e, "{Worker} failed and stopped", GetType().GetName());
+                }
                 catch {
-                    // Intended: WhenRunning should behave similarly
-                    // to how it behaves in WorkerBase, i.e. never throw.
+                    // Cancelled on shutdown
                 }
             }, CancellationToken.None);
         }

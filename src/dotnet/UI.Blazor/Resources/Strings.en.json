@@ -1045,6 +1045,7 @@
   "SearchTabs_Contacts": "Contacts",
   "SearchTabs_Date": "Date",
   "Notifications_AllCaughtUp": "You're all caught up",
+  "Notifications_DismissAll": "Dismiss all",
   "NotificationsPanel_Description": "A chat you've read stays in the notifications panel for a while, then drops out on its own.",
   "NotificationsPanel_DropReadChats": "Drop read chats",
   "NotificationsPanel_Immediately": "Immediately",

@@ -1045,6 +1045,7 @@
   "SearchTabs_Contacts": "Контакти",
   "SearchTabs_Date": "Датум",
   "Notifications_AllCaughtUp": "Све сте прочитали",
+  "Notifications_DismissAll": "Одбаци све",
   "NotificationsPanel_Description": "Прочитани чет остаје неко вријеме у панелу обавештења, а затим сам нестане.",
   "NotificationsPanel_DropReadChats": "Уклањај прочитане четове",
   "NotificationsPanel_Immediately": "Одмах",

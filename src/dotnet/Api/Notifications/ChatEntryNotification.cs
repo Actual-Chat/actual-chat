@@ -10,6 +10,10 @@ namespace ActualChat.Notifications;
 public abstract partial record ChatEntryNotification(NotificationId Id, long Version = 0)
     : ChatNotification(Id, Version)
 {
+    // Anchored at its entry, so the Read position clears it - except reactions, see ReactionNotification.
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override NotificationDismissMode DismissMode => NotificationDismissMode.OnRead;
+
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatEntryId EntryId => ChatEntryId.Parse(SimilarityKey);

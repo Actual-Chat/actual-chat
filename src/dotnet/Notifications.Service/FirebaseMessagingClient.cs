@@ -160,7 +160,7 @@ public class FirebaseMessagingClient(
     }
 
     public async Task SendDismissal(
-        IReadOnlyCollection<Notification> dismissedNotifications,
+        IReadOnlyCollection<PendingDismissal> dismissals,
         IReadOnlyCollection<Symbol> deviceIds,
         int badgeCount,
         CancellationToken cancellationToken)
@@ -168,12 +168,12 @@ public class FirebaseMessagingClient(
         if (deviceIds.Count == 0)
             return;
 
-        var dismissedIds = dismissedNotifications.Select(n => n.Id.Value);
+        var dismissedIds = dismissals.Select(x => x.Id.Value);
         // Only chat/entry-derived tags are emitted: a client closes every notification sharing
         // a tag, so the non-chat "topic" fallback must never be a dismissal tag.
-        var dismissedTags = dismissedNotifications
-            .Select(NotificationExt.GetPushTag)
-            .Where(tag => tag is not null)
+        var dismissedTags = dismissals
+            .Select(x => x.Tag)
+            .Where(tag => !tag.IsNullOrEmpty())
             .Distinct();
         var data = new Dictionary<string, string>() {
             { Constants.Notification.MessageDataKeys.DismissedIds, string.Join(',', dismissedIds) },

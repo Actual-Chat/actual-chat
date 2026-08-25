@@ -1045,6 +1045,7 @@
   "SearchTabs_Contacts": "Contactos",
   "SearchTabs_Date": "Fecha",
   "Notifications_AllCaughtUp": "Estás al día",
+  "Notifications_DismissAll": "Descartar todo",
   "NotificationsPanel_Description": "Un chat que ya has leído permanece un rato en el panel de notificaciones y luego desaparece solo.",
   "NotificationsPanel_DropReadChats": "Quitar los chats leídos",
   "NotificationsPanel_Immediately": "Inmediatamente",

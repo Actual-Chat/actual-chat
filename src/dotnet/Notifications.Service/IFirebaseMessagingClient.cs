@@ -11,7 +11,7 @@ public interface IFirebaseMessagingClient
         CancellationToken cancellationToken);
 
     Task SendDismissal(
-        IReadOnlyCollection<Notification> dismissedNotifications,
+        IReadOnlyCollection<PendingDismissal> dismissals,
         IReadOnlyCollection<Symbol> deviceIds,
         int badgeCount,
         CancellationToken cancellationToken);

@@ -23,6 +23,8 @@ public static class LoggingExt
         "ActualChat.App.Maui.Services.MauiNotifications",
         "ActualChat.UI.Blazor.App.NotificationUI",
         "ActualChat.UI.Blazor.App.Services.NotificationReconciler",
+        "ActualChat.UI.Blazor.App.Services.AppIconBadgeUpdater",
+        "ActualChat.App.Maui.WindowsAppIconBadge",
         "ActualChat.UI.Blazor.App.Services.WebDeviceNotifications",
     ];
 

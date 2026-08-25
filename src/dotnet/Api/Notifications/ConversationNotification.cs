@@ -9,6 +9,10 @@ namespace ActualChat.Notifications;
 public sealed partial record ConversationNotification(NotificationId Id, long Version = 0)
     : ChatNotification(Id, Version)
 {
+    // Anchored at EndEntryLid, so the Read position clears it.
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override NotificationDismissMode DismissMode => NotificationDismissMode.OnRead;
+
     [DataMember(Order = 9), Key(9)] public long StartEntryLid { get; init; }
     [DataMember(Order = 10), Key(10)] public long EndEntryLid { get; init; }
 

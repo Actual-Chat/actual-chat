@@ -144,6 +144,7 @@ public sealed class AppScopedServiceStarter
             Hub.Services.GetRequiredService<LiveLocationReporter>().Start();
             Hub.Services.GetRequiredService<AppIconBadgeUpdater>().Start();
             Hub.Services.GetRequiredService<NotificationReconciler>().Start();
+            Hub.Services.GetRequiredService<SeenNotificationDismisser>().Start();
             if (hostKind.IsApp())
                 await StartHostedServices().ConfigureAwait(false);
 

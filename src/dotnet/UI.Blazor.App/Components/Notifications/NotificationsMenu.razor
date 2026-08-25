@@ -1,0 +1,14 @@
+@using ActualChat.Notifications
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits Menu<AppUIHub>
+
+<MenuEntry
+    Icon="icon-checkmark-circle"
+    Text="@L.Notifications_DismissAll"
+    Click="OnDismissAllClick">
+</MenuEntry>
+
+@code {
+    private Task OnDismissAllClick()
+        => UICommander.Run(new Notifications_DismissAll { Session = Session });
+}

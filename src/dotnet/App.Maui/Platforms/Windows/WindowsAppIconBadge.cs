@@ -4,7 +4,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.App.Maui;
 
-public class WindowsAppIconBadge : IAppIconBadge
+public class WindowsAppIconBadge(ILogger log) : IAppIconBadge
 {
     // Toggles to "true" the first time CreateBadgeUpdaterForApplication throws in unpackaged
     // mode (AppxManifest.xml missing). Once set, we skip all subsequent attempts — every call
@@ -20,9 +20,10 @@ public class WindowsAppIconBadge : IAppIconBadge
         try {
             badgeUpdater = BadgeUpdateManager.CreateBadgeUpdaterForApplication();
         }
-        catch (COMException) {
+        catch (COMException e) {
             // Unpackaged Windows app has no registered BadgeUpdater — permanently disable.
             _isUnsupported = true;
+            log.LogWarning(e, "App icon badge is unsupported here - no updates for this session");
             return;
         }
 

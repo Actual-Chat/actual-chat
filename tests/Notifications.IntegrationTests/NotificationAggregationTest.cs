@@ -93,7 +93,7 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
             .WithNotification(first)
             .WithNotification(second);
 
-        var merged = info.Displayed.Single().Should().BeOfType<MessageNotification>().Subject;
+        var merged = info.Items.Single().Should().BeOfType<MessageNotification>().Subject;
         merged.StartEntryLid.Should().Be(100);
         merged.EntryLid.Should().Be(101);
         merged.StartEntryId.Should().Be(ChatEntryId.New(TestChatId, 100));
@@ -113,7 +113,7 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
         for (var lid = 100; lid < 107; lid++)
             info = info.WithNotification(NewMessage(lid, author1, $"m{lid}"));
 
-        var merged = (MessageNotification)info.Displayed.Single();
+        var merged = (MessageNotification)info.Items.Single();
         merged.UnreadCount.Should().Be(7);
         merged.RecentMessages.Should().HaveCount(Constants.Notification.MaxRecentMessages);
         merged.RecentMessages.Select(m => m.Text).Should().Equal("m102", "m103", "m104", "m105", "m106");
@@ -135,7 +135,7 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
             .WithNotification(second)
             .WithNotification(first);
 
-        var merged = (MessageNotification)info.Displayed.Single();
+        var merged = (MessageNotification)info.Items.Single();
         merged.UnreadCount.Should().Be(2);
         merged.RecentMessages.Select(m => m.Text).Should().Equal("Hi", "are you there?");
         merged.LeadText.Should().Be("are you there?");
@@ -251,7 +251,7 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
         var info = new UserNotificationInfo(TestUserId);
         for (var lid = 100; lid < 106; lid++)
             info = info.WithNotification(NewMessage(lid, author1, $"m{lid}", "Alice"));
-        var merged = (MessageNotification)info.Displayed.Single();
+        var merged = (MessageNotification)info.Items.Single();
 
         var text = NotificationHelper.ComposeAggregatedText(merged);
 
@@ -279,7 +279,7 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
         var info = new UserNotificationInfo(TestUserId);
         for (var lid = 100; lid < 105; lid++)
             info = info.WithNotification(NewMessage(lid, author, $"m{lid}", "Alice"));
-        var merged = (MessageNotification)info.Displayed.Single();
+        var merged = (MessageNotification)info.Items.Single();
 
         var reAnchored = merged.ReAnchorAt(103);
 
@@ -544,7 +544,7 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
         var authorB = AuthorId.New(TestChatId, 2);
         var groupA = "a:" + authorA.Value;
         var groupB = "a:" + authorB.Value;
-        var displayed = NewSpoken(100, authorA, "one", groupA) with {
+        var items = NewSpoken(100, authorA, "one", groupA) with {
             SentAt = t0,
             BeepCount = 1,
             LastBeepAt = t0,
@@ -553,7 +553,7 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
 
         // act
         var fromB = NewSpoken(101, authorB, "two", groupB) with { SentAt = t0 + TimeSpan.FromSeconds(2) };
-        var merged = (ChatEntryRelatedNotification)fromB.MergeWith(displayed);
+        var merged = (ChatEntryRelatedNotification)fromB.MergeWith(items);
         var fromA = NewSpoken(102, authorA, "three", groupA) with { SentAt = t0 + TimeSpan.FromSeconds(4) };
         merged = (ChatEntryRelatedNotification)fromA.MergeWith(merged);
 

@@ -30,7 +30,16 @@ driven by the iOS app-icon badge never updating while backgrounded.
 Data model (`src/dotnet/Api/Notifications/`): `Notification` is a MessagePack
 `[Union]` (one concrete record per `NotificationKind` — Message, Reply,
 Mention, Reaction, Invitation, Attention, Thread). `UserNotificationInfo` is
-the per-user blob (`Displayed` set + `LastPushAt` + `IsDormant`).
+the per-user blob (`Items` set + `PendingDismissals` + `LastPushAt` + `IsDormant`).
+
+**Lifecycle.** Each kind carries a `DismissMode` (`OnRead` / `OnView` /
+`Explicit`) and an optional `ExpiresAt`, both computed per-kind rather than
+stored. `GetUserNotificationInfo` hides read, mode-suppressed and expired items
+and resumes `NotificationConvergeFlow`, which commits those removals — hiding
+alone would leave the notification on the device with nothing scheduled to close
+it. Every removal appends to `PendingDismissals` in the same commit, and an entry
+is cleared only once its dismissal push has actually gone out, so a failed send
+is retried rather than lost.
 
 **Throttling.** Hard vs. soft updates: the first/urgent notification for a key
 commits + pushes; similar low-urgency ones during the silence window accumulate
@@ -51,7 +60,14 @@ way. Clients render every banner themselves — no `webpush.notification`, no
 - **Reconciliation** — `src/dotnet/UI.Blazor.App/Services/NotificationReconciler.cs`
   prunes stale and creates missing notifications from `ListActive` (prune+create
   on web/Android, prune-only on iOS).
-- **In-app feed** — `UI.Blazor.App/Components/Notifications/NotificationStack.razor`.
+- **In-app feed** — none. There is no rendered component that displays the active
+  set; it surfaces only as OS notifications, the app-icon badge, and incoming-call
+  rings. `/test/notifications` dumps it as JSON for diagnostics.
+
+  Note what this set is *not*: unread counts on chats and places drive the navbar
+  and the bell panel, and are deliberately a different calculation. `ListActive`
+  drives the app-icon badge and the OS-level surfaces. Two concepts, one source of
+  truth each — not two sources for one thing.
 - **App-icon badge** — `AppIconBadgeUpdater.cs` (single source of truth) plus
   native `AppIconBadge` on iOS (`App.Maui/MaciOS/AppIconBadge.cs`) and Windows
   (`Platforms/Windows/WindowsAppIconBadge.cs`). On iOS the badge of a
@@ -66,4 +82,4 @@ way. Clients render every banner themselves — no `webpush.notification`, no
 | Notification not delivered | `NotificationsBackend` submission → reconciliation; is the user `IsDormant`? |
 | Notification lingers after read | clear-on-read → silent dismissal push; `NotificationReconciler` prune |
 | Duplicate / noisy pushes | soft-buffer coalescing + throttle window in `NotificationsBackend` |
-| Missing in-app feed item | `INotifications.ListActive` projection; `NotificationStack.razor` |
+| Active set looks wrong | `/test/notifications` — dumps `INotifications.ListActive` as JSON |

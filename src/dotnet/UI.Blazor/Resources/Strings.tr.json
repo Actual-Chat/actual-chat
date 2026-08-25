@@ -1045,6 +1045,7 @@
   "SearchTabs_Contacts": "Kişiler",
   "SearchTabs_Date": "Tarih",
   "Notifications_AllCaughtUp": "Her şeyi gördün",
+  "Notifications_DismissAll": "Tümünü kapat",
   "NotificationsPanel_Description": "Okuduğunuz bir sohbet bir süre bildirim panelinde kalır, sonra kendiliğinden kaybolur.",
   "NotificationsPanel_DropReadChats": "Okunan sohbetleri kaldır",
   "NotificationsPanel_Immediately": "Hemen",

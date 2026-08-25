@@ -26,13 +26,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(90);
     // Grace once nobody is recording/streaming before a phone-mode session winds down.
     private static readonly TimeSpan RecordingCloseGrace = TimeSpan.FromSeconds(30);
-    // How long a call rings an unanswered invitee before it's marked Missed and the ring stops.
-    // TODO: revert to 40s - lowered to 20s only for call-status testing.
-    private static readonly TimeSpan RingTimeout = TimeSpan.FromSeconds(20);
-    // Redis field TTL on a ringing invite: the no-observer backstop that expires a stale ring even
-    // if the caller disconnects and nobody polls GetState. Longer than RingTimeout so the observed
-    // path marks it Missed first; a status change rewrites the field without this short TTL.
-    private static readonly TimeSpan RingTtl = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan RingTimeout = Constants.Call.RingTimeout;
+    private static readonly TimeSpan RingTtl = Constants.Call.RingTtl;
     // How long a dialing call state lingers with no observer before its Redis key lapses - it covers
     // the ring plus a backstop; a terminal transition overwrites it sooner.
     private static readonly TimeSpan DialingStateTtl = TimeSpan.FromSeconds(60);

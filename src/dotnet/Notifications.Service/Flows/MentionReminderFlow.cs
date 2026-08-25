@@ -39,7 +39,7 @@ public partial class MentionReminderFlow : PeriodicFlow
         var userId = UserId.Parse(Id.Arguments);
         var backend = Services.GetRequiredService<INotificationsBackend>();
         var info = await backend.GetUserNotificationInfo(userId, cancellationToken).ConfigureAwait(false);
-        var mentions = info.Displayed.Where(n => n.Kind == NotificationKind.Mention).ToList();
+        var mentions = info.Items.Where(n => n.Kind == NotificationKind.Mention).ToList();
         if (mentions.Count == 0) {
             ReAlertCounts.Clear();
             return Moment.MaxValue; // nothing unread -> stop until a new mention restarts the flow
