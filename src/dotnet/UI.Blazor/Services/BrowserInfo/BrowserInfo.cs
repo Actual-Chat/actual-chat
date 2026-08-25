@@ -71,9 +71,7 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
         _windowHeight.Value = initResult.WindowHeight;
         UtcOffset = TimeSpan.FromMinutes(initResult.UtcOffset);
         TimeZone = initResult.TimeZone;
-        ClientLanguages = initResult.UILanguageInfo.ClientLanguages;
-        UILanguageOverride = initResult.UILanguageInfo.UrlOverride;
-        StoredUILanguage = Language.TryParse(initResult.UILanguageInfo.Selected, allowNull: true);
+        UpdateUILanguageInfo(initResult.UILanguageInfo);
         IsMobile = initResult.IsMobile;
         IsAndroid = initResult.IsAndroid;
         IsIos = initResult.IsIos;
@@ -154,6 +152,13 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
             TryParseTheme(themeInfo.DefaultTheme) ?? Theme.Light,
             TryParseTheme(themeInfo.CurrentTheme) ?? Theme.Light,
             themeInfo.Colors);
+
+    protected void UpdateUILanguageInfo(IBrowserInfoBackend.UILanguageInfo uiLanguageInfo)
+    {
+        ClientLanguages = uiLanguageInfo.ClientLanguages;
+        UILanguageOverride = uiLanguageInfo.UrlOverride;
+        StoredUILanguage = Language.TryParse(uiLanguageInfo.Selected, allowNull: true);
+    }
 
     protected static ScreenSize? TryParseScreenSize(string? screenSize)
         => Enum.TryParse<ScreenSize>(screenSize ?? "", true, out var v) ? v : null;
