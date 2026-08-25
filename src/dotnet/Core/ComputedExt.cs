@@ -5,8 +5,37 @@ namespace ActualChat;
 
 public static class ComputedExt
 {
+    public static readonly TimeSpan MinSafeInvalidationDelay = TimeSpan.FromSeconds(1);
+    public static readonly TimeSpan MaxSafeInvalidationDelay = TimeSpan.FromMinutes(30);
+
     private static readonly ConcurrentDictionary<(Type, string), PropertyInfo?> PropertyCache = new();
     private static readonly ConcurrentDictionary<(Type, string), FieldInfo?> FieldCache = new();
+
+    public static void InvalidateSafely(this Computed? computed,
+        TimeSpan delay,
+        [CallerFilePath] string? file = null,
+        [CallerMemberName] string? member = null,
+        [CallerLineNumber] int line = 0)
+        => computed.InvalidateSafely(delay, MaxSafeInvalidationDelay, file, member, line);
+
+    public static void InvalidateSafely(this Computed? computed,
+        TimeSpan delay,
+        TimeSpan maxDelay,
+        [CallerFilePath] string? file = null,
+        [CallerMemberName] string? member = null,
+        [CallerLineNumber] int line = 0)
+    {
+        // A pending invalidation pins its Computed<T> until it fires, so a far-future delay retains
+        // it for that long - and the cost scales with the method's parameter cardinality. Clamping
+        // only makes the method recompute (and re-arm) earlier; it never changes the result.
+        // The lower bound matters too: a delay of 0 invalidates immediately, so an already-past
+        // expiration would spin.
+        if (computed is null)
+            return;
+
+        delay = delay.Clamp(MinSafeInvalidationDelay, maxDelay);
+        computed.Invalidate(delay, new InvalidationSource(file, member, line));
+    }
 
     public static IState<T>? GetState<T>(this Computed<T> computed)
     {
