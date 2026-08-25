@@ -19,6 +19,9 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
     // The probe costs the user traffic and tells us nothing a working app doesn't already
     // show, so it waits until startup is over rather than competing with it.
     private static readonly TimeSpan ProbeDelay = TimeSpan.FromSeconds(60);
+    // The probe only runs once connected, so an endpoint that never connects would trap
+    // us here. The origin gets no deadline: there is nowhere better to go.
+    private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(30);
     private int _verifiedVersion = -1;
     private ISystemProperties SystemProperties => field ??= Services.GetRequiredService<ISystemProperties>();
     private ReconnectUI ReconnectUI => field ??= Services.GetRequiredService<ReconnectUI>();
@@ -44,7 +47,10 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
     {
         var selector = RpcEndpointSelector.Instance!;
         var state = ReconnectUI.State;
-        await state.Computed.When(x => x.IsConnected, cancellationToken).ConfigureAwait(false);
+        if (!await WaitUntilConnected(selector, cancellationToken).ConfigureAwait(false)) {
+            MoveToNextEndpoint(selector);
+            return;
+        }
         if (selector.Version == _verifiedVersion) {
             await WaitUntilDisconnected(cancellationToken).ConfigureAwait(false);
             return;
@@ -62,6 +68,28 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
         }
 
         MoveToNextEndpoint(selector);
+    }
+
+    private async Task<bool> WaitUntilConnected(
+        RpcEndpointSelector selector,
+        CancellationToken cancellationToken)
+    {
+        var state = ReconnectUI.State;
+        if (selector.IsOnOrigin) {
+            await state.Computed.When(x => x.IsConnected, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+
+        using var cts = cancellationToken.CreateLinkedTokenSource();
+        cts.CancelAfter(ConnectTimeout);
+        try {
+            await state.Computed.When(x => x.IsConnected, cts.Token).ConfigureAwait(false);
+            return true;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+            Log.LogWarning("RPC endpoint did not connect within {Timeout}", ConnectTimeout.ToShortString());
+            return false;
+        }
     }
 
     private Task WaitUntilDisconnected(CancellationToken cancellationToken)

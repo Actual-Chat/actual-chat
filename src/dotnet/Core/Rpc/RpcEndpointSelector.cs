@@ -4,13 +4,58 @@ namespace ActualChat.Rpc;
 /// Picks the host used for RPC connections, which may differ from the app's base
 /// host — content URLs keep using the base host.
 /// </summary>
-public abstract class RpcEndpointSelector
+public class RpcEndpointSelector
 {
     public static RpcEndpointSelector? Instance { get; set; }
 
+    private readonly string[] _candidates;
+    private string _current;
+    private int _version;
+
+    public string OriginHost => _candidates[0];
+    public string Current => Volatile.Read(ref _current);
+    public bool IsOnOrigin => string.Equals(Current, OriginHost, StringComparison.OrdinalIgnoreCase);
+    public int Version
+        // Bumped whenever the selection is re-evaluated, including a reset that picks the
+        // same endpoint again - a new network makes an old verdict meaningless.
+        => Volatile.Read(ref _version);
+
+    public RpcEndpointSelector(string[] candidates, string? current = null)
+    {
+        if (candidates.Length == 0)
+            throw new ArgumentOutOfRangeException(nameof(candidates));
+
+        _candidates = candidates;
+        _current = current != null && candidates.Contains(current, StringComparer.OrdinalIgnoreCase)
+            ? current
+            : candidates[0];
+    }
+
+    public string Get(string host)
+        => string.Equals(host, OriginHost, StringComparison.OrdinalIgnoreCase) ? Current : host;
+
+    public void UseDirect()
+    {
+        Interlocked.Increment(ref _version);
+        Set(OriginHost);
+    }
+
+    public bool MoveNext()
+    {
+        Interlocked.Increment(ref _version);
+        var index = Array.FindIndex(_candidates,
+            x => string.Equals(x, Current, StringComparison.OrdinalIgnoreCase));
+        var nextIndex = index + 1;
+        if (nextIndex >= _candidates.Length)
+            return false;
+
+        Set(_candidates[nextIndex]);
+        return true;
+    }
+
     public static string ApplyTo(string baseUrl)
     {
-        // Returns baseUrl with just its host replaced by the selected RPC endpoint.
+        // Scheme, port, path and query are preserved - only the host moves.
         if (Instance is not { } instance)
             return baseUrl;
 
@@ -30,11 +75,19 @@ public abstract class RpcEndpointSelector
             : string.Concat(baseUrl.AsSpan(0, hostStart), endpoint, baseUrl.AsSpan(hostEnd));
     }
 
-    // Bumped whenever the selection is re-evaluated, including a reset that picks the
-    // same endpoint again - a new network makes an old verdict meaningless.
-    public abstract int Version { get; }
+    // Protected/internal methods
 
-    public abstract string Get(string host);
-    public abstract void UseDirect();
-    public abstract bool MoveNext();
+    protected virtual void OnChanged(string endpoint) { }
+
+    // Private methods
+
+    private void Set(string endpoint)
+    {
+        if (string.Equals(Current, endpoint, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        // Publication: Get() reads this without a lock.
+        Volatile.Write(ref _current, endpoint);
+        OnChanged(endpoint);
+    }
 }
