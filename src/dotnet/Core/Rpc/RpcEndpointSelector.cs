@@ -30,6 +30,10 @@ public abstract class RpcEndpointSelector
             : string.Concat(baseUrl.AsSpan(0, hostStart), endpoint, baseUrl.AsSpan(hostEnd));
     }
 
+    // Bumped whenever the selection is re-evaluated, including a reset that picks the
+    // same endpoint again - a new network makes an old verdict meaningless.
+    public abstract int Version { get; }
+
     public abstract string Get(string host);
     public abstract void UseDirect();
     public abstract bool MoveNext();

@@ -91,6 +91,17 @@ export class BrowserInit {
         return baseUri ? new URL(url, baseUri).toString() : url;
     }
 
+    // Media workers read this when they start, so a change reaches a stream on its next
+    // start rather than mid-flight - moving a live peer would mean rebuilding the pipeline.
+    public static setRpcBaseUri(rpcBaseUri: string): void {
+        const newRpcBaseUri = rpcBaseUri || BrowserInit.baseUri;
+        if (newRpcBaseUri === BrowserInit.rpcBaseUri)
+            return;
+
+        BrowserInit.rpcBaseUri = newRpcBaseUri;
+        warnLog?.log(`RPC endpoint changed: ${new URL(newRpcBaseUri).host}`);
+    }
+
     // Only /rpc/* goes here: the RPC endpoint may differ from baseUri, while content
     // URLs (cdn./media./maps.) must keep using baseUri.
     public static getRpcUrl(url: string) : string {

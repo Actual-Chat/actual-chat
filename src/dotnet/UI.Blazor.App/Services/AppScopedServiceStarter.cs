@@ -179,6 +179,7 @@ public sealed class AppScopedServiceStarter
         //   transition, and the first track is built before the route reaches the speaker.
         services.GetService<ServerTimeSync>()?.Start();
         services.GetRequiredService<ConnectivityUI>().Start();
+        services.GetRequiredService<RpcEndpointMonitor>().Start();
         _ = hub.AudioFocusUI.WarmUp();
         _ = hub.TuneUI;
         _ = hub.IncomingVoiceActivityUI;

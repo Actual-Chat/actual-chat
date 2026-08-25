@@ -10,6 +10,10 @@ public interface ISystemProperties : IComputeService
     // Not a [ComputeMethod]! ConnectTimeout stops a clock probe from parking until reconnect.
     [RpcMethod(ConnectTimeout = 0.5)]
     Task<double> GetTime(CancellationToken cancellationToken);
+    // Not a [ComputeMethod]! The payload must cross the wire on every call - it measures
+    // sustained throughput, so a cached or compressible result would prove nothing.
+    [RpcMethod(ConnectTimeout = 0.5)]
+    Task<byte[]> GetProbePayload(int size, CancellationToken cancellationToken);
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<ServerApiInfo> GetServerApiInfo(string expectedVersion, CancellationToken cancellationToken);
     Task<ServerApiInfo> GetServerApiInfoNC(string expectedVersion, CancellationToken cancellationToken);

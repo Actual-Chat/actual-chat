@@ -7,6 +7,7 @@ public sealed class MauiRpcEndpointSelector : RpcEndpointSelector
     private readonly string _originHost;
     private readonly string[] _candidates;
     private string _current;
+    private int _version;
 
     public static void Use()
         => Instance = new MauiRpcEndpointSelector(MauiSettings.Host, MauiSettings.RpcEndpoints);
@@ -21,16 +22,22 @@ public sealed class MauiRpcEndpointSelector : RpcEndpointSelector
             : originHost;
     }
 
+    public override int Version => Volatile.Read(ref _version);
+
     public override string Get(string host)
         => string.Equals(host, _originHost, StringComparison.OrdinalIgnoreCase)
             ? Volatile.Read(ref _current)
             : host;
 
     public override void UseDirect()
-        => Set(_originHost);
+    {
+        Interlocked.Increment(ref _version);
+        Set(_originHost);
+    }
 
     public override bool MoveNext()
     {
+        Interlocked.Increment(ref _version);
         var current = Volatile.Read(ref _current);
         var index = Array.FindIndex(_candidates, x => string.Equals(x, current, StringComparison.OrdinalIgnoreCase));
         var nextIndex = index + 1;
