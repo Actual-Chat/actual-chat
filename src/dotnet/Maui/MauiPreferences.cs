@@ -10,6 +10,7 @@ public static class MauiPreferences
     public const string ChatAttentionStateKey = "ChatAttention";
 
     private const string HostOverrideKey = "app_server_instance_override";
+    private const string RpcEndpointKey = "rpc_endpoint";
     private const string DbEncryptionKeyKey = "db_encryption_key";
     private const string HostIpKeyPrefix = "host_ip_";
     private const string IsDataCollectionEnabledKey = "analytics";
@@ -25,6 +26,10 @@ public static class MauiPreferences
     public static string? HostOverride {
         get => Get<string>(HostOverrideKey).NullIfEmpty();
         set => Set(HostOverrideKey, value ?? "");
+    }
+    public static string? RpcEndpoint {
+        get => Get<string>(RpcEndpointKey).NullIfEmpty();
+        set => Set(RpcEndpointKey, value ?? "");
     }
 
     public static byte[] DbEncryptionKey

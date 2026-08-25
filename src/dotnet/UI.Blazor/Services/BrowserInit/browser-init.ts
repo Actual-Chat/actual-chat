@@ -22,6 +22,7 @@ const sessionStorage = globalThis?.sessionStorage;
 export class BrowserInit {
     public static apiVersion = '';
     public static baseUri = '';
+    public static rpcBaseUri = '';
     public static sessionHash = '';
     public static windowId = '';
     public static firebaseApp?: FirebaseApp;
@@ -36,6 +37,7 @@ export class BrowserInit {
         appKind: AppKind,
         apiVersion: string,
         baseUri: string,
+        rpcBaseUri: string,
         supportedHosts: string[],
         sessionHash: string,
         appConstants: AppConstants,
@@ -51,8 +53,9 @@ export class BrowserInit {
             this.apiVersion = apiVersion;
             const documentBaseUri = new URL(document.baseURI);
             this.baseUri = supportedHosts.includes(documentBaseUri.host) ? `${documentBaseUri.protocol}//${documentBaseUri.host}` : baseUri;
+            this.rpcBaseUri = rpcBaseUri || this.baseUri;
             Api.init('MainThread', {
-                url: this.getUrl('/rpc/ws').replace(/^http/, 'ws'),
+                url: this.getRpcUrl('/rpc/ws').replace(/^http/, 'ws'),
                 modules: [streamingApi, uploadsApi],
                 connectivityUI: ConnectivityUI,
                 sessionTokenProvider: minLifespanMs => SessionTokens.get(minLifespanMs),
@@ -85,6 +88,13 @@ export class BrowserInit {
     public static getUrl(url: string) : string {
         const baseUri = BrowserInit.baseUri;
         return baseUri ? new URL(url, baseUri).toString() : url;
+    }
+
+    // Only /rpc/* goes here: the RPC endpoint may differ from baseUri, while content
+    // URLs (cdn./media./maps.) must keep using baseUri.
+    public static getRpcUrl(url: string) : string {
+        const rpcBaseUri = BrowserInit.rpcBaseUri || BrowserInit.baseUri;
+        return rpcBaseUri ? new URL(url, rpcBaseUri).toString() : url;
     }
 
     public static removeWebSplash(instantly = false) {

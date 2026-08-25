@@ -1,3 +1,4 @@
+using ActualChat.Rpc;
 using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -30,6 +31,7 @@ public sealed class BrowserInit(UIHub hub) : UIServiceBase<UIHub>(hub)
                     appKind.ToString(),
                     apiVersion,
                     baseUri,
+                    RpcEndpointSelector.Instance is null ? "" : RpcEndpointSelector.ApplyTo(baseUri),
                     HostInfo.GetHosts(),
                     sessionHash,
                     appConstants,

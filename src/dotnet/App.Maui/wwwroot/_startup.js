@@ -26,9 +26,9 @@
             await window.App.whenBundleReady;
             return true;
         },
-        browserInit: async function (hostKind, appKind, apiVersion, baseUri, suppoertedHosts, sessionHash, appConstants, browserInfoBackendRef, clipboardInteropRef) {
+        browserInit: async function (hostKind, appKind, apiVersion, baseUri, rpcBaseUri, suppoertedHosts, sessionHash, appConstants, browserInfoBackendRef, clipboardInteropRef) {
             await window.App.whenBundleReady;
-            await window.ui.BrowserInit.init(hostKind, appKind, apiVersion, baseUri, suppoertedHosts, sessionHash, appConstants, browserInfoBackendRef, clipboardInteropRef);
+            await window.ui.BrowserInit.init(hostKind, appKind, apiVersion, baseUri, rpcBaseUri, suppoertedHosts, sessionHash, appConstants, browserInfoBackendRef, clipboardInteropRef);
         },
     };
     window.App.whenBlazorReady = new Promise((resolve, _) => {

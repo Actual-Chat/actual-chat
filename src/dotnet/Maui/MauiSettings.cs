@@ -32,6 +32,7 @@ public static class MauiSettings
                 ? Constants.Hosts.DevVoxt
                 : Constants.Hosts.Voxt;
     public static readonly string Host;
+    public static readonly string[] RpcEndpoints;
     public static bool IsHostOverridden => !string.Equals(Host, DefaultHost, StringComparison.OrdinalIgnoreCase);
     public static readonly Uri BaseUri;
     public static readonly string BaseUrl;
@@ -42,6 +43,7 @@ public static class MauiSettings
     static MauiSettings()
     {
         Host = MauiPreferences.HostOverride ?? DefaultHost;
+        RpcEndpoints = [Host, "kz1.edge." + Host];
         BaseUrl = "https://" + Host + "/";
         BaseUri = BaseUrl.ToUri();
 
@@ -58,6 +60,7 @@ public static class MauiSettings
 #endif
         AppUserAgent = AppKind.ToUserAgent(ApiConstants.FullVersionString);
         MauiHostNameRemapper.Use();
+        MauiRpcEndpointSelector.Use();
     }
 
     // Nested types

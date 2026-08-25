@@ -2123,7 +2123,7 @@ export class VideoRecorder {
 
         // kind=video tells the server this connection carries media streams,
         // so it skips WebSocket compression for it.
-        const apiUrl = BrowserInit.getUrl('/rpc/ws?kind=video').replace(/^http/, 'ws');
+        const apiUrl = BrowserInit.getRpcUrl('/rpc/ws?kind=video').replace(/^http/, 'ws');
         // SharedSettings is the legacy worker plumbing; the new worker
         // doesn't observe it. Keep the call so the audio path (which
         // still uses SharedSettings) is unaffected.
