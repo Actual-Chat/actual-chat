@@ -363,6 +363,32 @@ fix shifted the account avatar +8px in **English**, which no Max measurement
 would have shown.
 :::
 
+## What the parallel sweep found
+
+The deferred pass above was run: five read-only agents, one surface each,
+driving Playwright over CDP rather than the chrome MCP (which keeps one
+selected page per connection, so agents sharing it steal each other's tabs).
+
+Most fixes held. The ones that did not are fixed, and the full account is in
+[the findings doc](./max-locale-findings.md#what-the-sweep-changed). The
+short version, because these are the ones worth re-checking by hand:
+
+| | |
+|---|---|
+| **Tab strips** | One button rule broke all of them three ways, and silently disabled the scroller added for B1/M4. Check labels are one line, CJK is not stacked, and English shows no fade when the tabs genuinely fit. |
+| **Settings &rarr; Documents** | Got *worse* before it got better (447 &rarr; 648px in a 390px viewport). Check the header is &le;390 and the sub-tab strip scrolls. |
+| **Status badge** | Needed a 56px floor, not 48 &mdash; Chrome paints a character before the ellipsis. Check a squeezed badge shows all three dots. |
+| **Banners** | The container query fires against the *content box*, so it was costing English a row on every phone. Check English stays inline from 350px up and Max still wraps. |
+| **Bubbles** | Safe areas, a `max-width` that was not a cap, and a counter that absorbed every shortfall. |
+| **Modal titles** | Two headers exist; the narrow one was missed on the first pass. |
+
+::: tip Themes are out of scope for layout
+Every theme-scoped rule in this codebase sets only colour variables &mdash;
+verified across all eight files that mention `theme-dark`/`theme-light`. Themes
+cannot change sizes, so they are worth checking only where colour matters (the
+search tint, the banner gradients).
+:::
+
 ## Reporting a problem
 
 If an item fails, the useful detail is: which finding, which viewport, which
