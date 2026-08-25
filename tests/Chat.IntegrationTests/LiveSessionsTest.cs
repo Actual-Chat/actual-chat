@@ -5,11 +5,11 @@ using ActualChat.Testing.Host;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection))]
-public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
+public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact]
-    public async Task SessionStaysLiveWhileRecordingThenCloses()
+    public async Task SessionShouldStayLiveWhileRecordingThenClose()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -39,7 +39,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task PhoneModeStaysLiveWhileRecordingThenCloses()
+    public async Task PhoneModeShouldStayLiveWhileRecordingThenClose()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -65,7 +65,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task ParticipationIsTracked()
+    public async Task ParticipationShouldBeTracked()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -74,23 +74,32 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
-        await backend.OnStreamRegistered(chatId, author!.Id, null, false, true, default);
-        var authorId = author.Id;
+        var authorId = author!.Id;
 
-        // act + assert — a streamer is auto-registered as a participant (recorders join the registry)
-        await ComputedTest.When(async ct => (await backend.ListParticipants(chatId, ct)).Contains(authorId).Should().BeTrue());
+        // act — a streamer registers
+        await backend.OnStreamRegistered(chatId, authorId, null, false, true, default);
 
-        // an explicit leave removes them
+        // assert — it is auto-registered as a participant (recorders join the registry)
+        await ComputedTest.When(async ct =>
+            (await backend.ListParticipants(chatId, ct)).Contains(authorId).Should().BeTrue());
+
+        // act — an explicit leave
         await backend.SetParticipation(chatId, authorId, ParticipationKind.AudioListen, false, default);
-        await ComputedTest.When(async ct => (await backend.ListParticipants(chatId, ct)).Contains(authorId).Should().BeFalse());
 
-        // and they can re-join
+        // assert — it removes them
+        await ComputedTest.When(async ct =>
+            (await backend.ListParticipants(chatId, ct)).Contains(authorId).Should().BeFalse());
+
+        // act — a re-join
         await backend.SetParticipation(chatId, authorId, ParticipationKind.AudioListen, true, default);
-        await ComputedTest.When(async ct => (await backend.ListParticipants(chatId, ct)).Contains(authorId).Should().BeTrue());
+
+        // assert — they are back
+        await ComputedTest.When(async ct =>
+            (await backend.ListParticipants(chatId, ct)).Contains(authorId).Should().BeTrue());
     }
 
     [Fact]
-    public async Task ExplicitLeaveClosesImmediately()
+    public async Task ExplicitLeaveShouldCloseImmediately()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -106,11 +115,13 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
 
         // assert — the session is gone at once and the registry is cleared (the grace is only for stale clients)
         (await backend.GetState(chatId, default)).Should().BeNull();
-        (await backend.ListParticipants(chatId, default)).Should().BeEmpty();
+        // Unlike GetState, ListParticipants is consolidated: an already-observed value keeps serving
+        // the pre-leave registry until the consolidation delay elapses.
+        await ComputedTest.When(async ct => (await backend.ListParticipants(chatId, ct)).Should().BeEmpty());
     }
 
     [Fact]
-    public async Task RejoinAfterCloseStartsFreshSession()
+    public async Task RejoinAfterCloseShouldStartFreshSession()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -133,7 +144,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task LeaveWithOthersPresentKeepsSessionLive()
+    public async Task LeaveWithOthersPresentShouldKeepSessionLive()
     {
         // arrange — two real accounts both join as participants
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -167,7 +178,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task RecorderLeavingWithOnlyListenerLeftClosesSession()
+    public async Task RecorderLeavingWithOnlyListenerLeftShouldCloseSession()
     {
         // The session stays live only while someone is streaming (recording audio or video); a lone
         // listener does not keep it alive. Once the last recorder leaves, the session closes even
@@ -200,7 +211,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task RecorderDowngradingToListenerMarksSessionClosing()
+    public async Task RecorderDowngradingToListenerShouldMarkSessionClosing()
     {
         // Stopping recording while staying on as a listener empties the session of streamers - a lone
         // listener can't keep it live - so it's marked closing (recoverable if a recorder returns), just
@@ -226,7 +237,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task LastRecorderDowngradingToListenerClosesSession()
+    public async Task LastRecorderDowngradingToListenerShouldCloseSession()
     {
         // The user-reported case: both peers stop recording but keep listening. Neither leaves, yet with no
         // recorder left the latched session must close (marked closing, then finalized by the summary flow).
@@ -259,7 +270,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task LiveSessionExposesHostAndMembers()
+    public async Task LiveSessionShouldExposeHostAndMembers()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -284,7 +295,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task SetRulesPersistsVoiceModeOverride()
+    public async Task SetRulesShouldPersistVoiceModeOverride()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -305,7 +316,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task MutePeerSetsMicMuted()
+    public async Task MutePeerShouldSetMicMuted()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -327,7 +338,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task MutePeerAllowsSelfButRequiresManageForPeers()
+    public async Task MutePeerShouldAllowSelfButRequireManageForPeers()
     {
         // arrange — Bob owns the chat (host/owner), Alice is a regular member
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -340,17 +351,17 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var bobAuthor = await bob.GetOwnAuthor(chatId);
         var liveSessions = alice.AppServices.GetRequiredService<ILiveSessions>();
 
-        // act + assert — a non-host participant may (un)mute themselves
+        // act
         Func<Task> selfMute = () => liveSessions.MutePeer(alice.Session, chatId, aliceAuthor!.Id, true, default);
-        await selfMute.Should().NotThrowAsync();
-
-        // but may not mute another peer
         Func<Task> mutePeer = () => liveSessions.MutePeer(alice.Session, chatId, bobAuthor!.Id, true, default);
+
+        // assert — a non-host participant may (un)mute themselves, but not another peer
+        await selfMute.Should().NotThrowAsync();
         await mutePeer.Should().ThrowAsync<InvalidOperationException>();
     }
 
     [Fact]
-    public async Task SessionLatchesOnSecondStreamer()
+    public async Task SessionShouldLatchOnSecondStreamer()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -379,7 +390,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task GetNullUntilSecondStreamer()
+    public async Task GetShouldReturnNullUntilSecondStreamer()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -407,7 +418,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task SessionPersistsAcrossVadGap()
+    public async Task SessionShouldPersistAcrossVadGap()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -439,7 +450,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task LiveBlockEntersRangeMetaOnlyAfterLatch()
+    public async Task LiveBlockShouldEnterRangeMetaOnlyAfterLatch()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -476,7 +487,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task LiveBlockEntersTileOnlyAfterLatch()
+    public async Task LiveBlockShouldEnterTileOnlyAfterLatch()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -509,7 +520,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task SilentRecorderStaysPresentMember()
+    public async Task SilentRecorderShouldStayPresentMember()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -532,7 +543,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task ListenerDoesNotKeepSessionAlive()
+    public async Task ListenerShouldNotKeepSessionAlive()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -557,7 +568,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task HasRecorderReflectsRegistry()
+    public async Task HasRecorderShouldReflectRegistry()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -567,17 +578,21 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
 
-        // act + assert — a streamer is a recorder
+        // act — a streamer registers
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
+
+        // assert — it counts as a recorder
         await ComputedTest.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeTrue());
 
-        // recording stops → no recorder
+        // act — recording stops
         await backend.SetParticipation(chatId, author!.Id, ParticipationKind.Record, false, default);
+
+        // assert — no recorder is left
         await ComputedTest.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeFalse());
     }
 
     [Fact]
-    public async Task TrailingUtteranceDoesNotResurrectRecorder()
+    public async Task TrailingUtteranceShouldNotResurrectRecorder()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -603,7 +618,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task StartCallRingsInvitee()
+    public async Task StartCallShouldRingInvitee()
     {
         // arrange — Bob (caller) and Alice (callee) share a chat
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -635,7 +650,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task AcceptCallJoinsCall()
+    public async Task AcceptCallShouldJoinCall()
     {
         // arrange
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -666,7 +681,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task AcceptLatchesDialingCallToConnected()
+    public async Task AcceptShouldLatchDialingCallToConnected()
     {
         // arrange — Bob dials Alice; while ringing the session is Dialing (no block: SessionStartedAt null)
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -703,7 +718,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task RingIdSurvivesChatGrowthAcrossLatch()
+    public async Task RingIdShouldSurviveChatGrowthAcrossLatch()
     {
         // arrange — Bob dials Alice
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -734,7 +749,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task DeclineKeepsCallWhileAnotherRings()
+    public async Task DeclineShouldKeepCallWhileAnotherRings()
     {
         // arrange — Bob rings two people
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -763,7 +778,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task AllDeclinedEndsCall()
+    public async Task AllDeclinedShouldEndCall()
     {
         // arrange — Bob rings two people, nobody joins
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -791,7 +806,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task StartCallSetsDialingStatus()
+    public async Task StartCallShouldSetDialingStatus()
     {
         // arrange
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -815,7 +830,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task AcceptSetsAcceptedStatus()
+    public async Task AcceptShouldSetAcceptedStatus()
     {
         // arrange — Bob rings Alice
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -839,7 +854,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task DeclineLeavesDeclinedStatus()
+    public async Task DeclineShouldLeaveDeclinedStatus()
     {
         // arrange — Bob rings Alice
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -870,7 +885,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task CancelClearsStatus()
+    public async Task CancelShouldClearStatus()
     {
         // arrange — Bob rings Alice
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -892,7 +907,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task FreshDialingCallIsNotClosedBySelfHeal()
+    public async Task FreshDialingCallShouldNotBeClosedBySelfHeal()
     {
         // arrange — Bob rings Alice
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -917,7 +932,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task CallStatusGoesToTheCallerOnly()
+    public async Task CallStatusShouldGoToTheCallerOnly()
     {
         // arrange — Bob rings Alice
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -942,7 +957,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task CallStatusInvalidatesAnAlreadyObservedValue()
+    public async Task CallStatusShouldInvalidateAnAlreadyObservedValue()
     {
         // arrange — Bob rings Alice; Bob is already observing the status, like the banner is
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -972,7 +987,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task CancelCallEndsTheCall()
+    public async Task CancelCallShouldEndTheCall()
     {
         // arrange
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -995,10 +1010,12 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task StreamBeforeAcceptLatchesDialingCallToConnected()
+    public async Task StreamBeforeAcceptShouldLatchDialingCallToConnected()
     {
         // A dialing call reaching the 2-party stream latch (both parties stream before a formal Accept)
         // must become Connected - never left as Dialing with SessionStartedAt set (invariant).
+
+        // arrange
         await using var bob = AppHost.NewBlazorTester(Out);
         await using var alice = AppHost.NewBlazorTester(Out);
         await bob.SignInAsUniqueBob();
@@ -1023,7 +1040,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task LeaveCallEndsCallBelowTwo()
+    public async Task LeaveCallShouldEndCallBelowTwo()
     {
         // arrange
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -1047,7 +1064,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task StartCallPromotesExistingSession()
+    public async Task StartCallShouldPromoteExistingSession()
     {
         // arrange — an ambient live session is already running when a call starts
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -1074,7 +1091,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task StartCallOnLatchedSessionStaysConnected()
+    public async Task StartCallOnLatchedSessionShouldStayConnected()
     {
         // arrange — a 2-party ambient session is already latched (block visible) when a call starts
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -1103,7 +1120,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task LatchSetsVisibleStartLidToChatEnd()
+    public async Task LatchShouldSetVisibleStartLidToChatEnd()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -1133,7 +1150,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task CloseNowKeepsLatchedTranscriptionSessionClosing()
+    public async Task CloseNowShouldKeepLatchedTranscriptionSessionClosing()
     {
         // arrange — a latched transcription session (2 peers)
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -1158,7 +1175,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task FinalizeSessionMaterializesContextRange()
+    public async Task FinalizeSessionShouldMaterializeContextRange()
     {
         // arrange — a chat with a few entries, then a latched transcription session
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -1215,7 +1232,7 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task RangeMetaKeepsPreLatchConversationsVisible()
+    public async Task RangeMetaShouldKeepPreLatchConversationsVisible()
     {
         // arrange — transcription starts solo at e0, a conversation is persisted over [e0, e2] before the
         // session latches (V = chat end after e3), so it sits in [StartEntryLid, VisibleStartLid).
@@ -1234,7 +1251,8 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
             LocalId = null,
             Text = "e0",
         });
-        await backend.OnStreamRegistered(chatId, author!.Id, e0.LocalId, true, true, default); // solo, StartEntryLid = e0
+        // solo, StartEntryLid = e0
+        await backend.OnStreamRegistered(chatId, author!.Id, e0.LocalId, true, true, default);
         await commander.Call(new Chats_UpsertEntry { Session = session, ChatId = chatId, LocalId = null, Text = "e1" });
         var e2 = await commander.Call(new Chats_UpsertEntry {
             Session = session,
@@ -1263,12 +1281,18 @@ public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public void SummaryFlowNameMatchesConstant()
+    public void SummaryFlowNameShouldMatchConstant()
     {
         // The streaming backend wakes the flow by this string name (it can't reference the flow type);
         // if the flow is renamed, this guards that LiveFlows.SummaryFlowName is updated with it.
+
+        // arrange
         var flowHub = AppHost.Services.GetRequiredService<ActualChat.Flows.FlowHub>();
+
+        // act
         var name = flowHub.NewId<ActualChat.Chat.Flows.LiveConversationSummaryFlow>("x").Name.Value;
+
+        // assert
         name.Should().Be(LiveFlows.SummaryFlowName);
     }
 }
