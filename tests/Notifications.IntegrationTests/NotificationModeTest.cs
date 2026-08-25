@@ -51,7 +51,7 @@ public class NotificationModeTest(AppHostFixture fixture, ITestOutputHelper @out
         // The in-text mention arrives as a personal Mention notification...
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
-            var notification = info.Displayed.Should().ContainSingle().Subject;
+            var notification = info.Items.Should().ContainSingle().Subject;
             notification.Kind.Should().Be(NotificationKind.Mention);
         }, TimeSpan.FromSeconds(10));
         await TestExt.When(() => {
@@ -60,7 +60,7 @@ public class NotificationModeTest(AppHostFixture fixture, ITestOutputHelper @out
             return Task.CompletedTask;
         }, TimeSpan.FromSeconds(10));
 
-        // ...while the plain message was never displayed or pushed.
+        // ...while the plain message was never items or pushed.
         Sink.Messages.Should().NotContain(m =>
             !m.IsDismissal && m.Notification!.Kind == NotificationKind.Message && m.DeviceIds.Contains(deviceId));
     }
@@ -85,7 +85,7 @@ public class NotificationModeTest(AppHostFixture fixture, ITestOutputHelper @out
         await Commander.Call(new NotificationsBackend_NotifyMembers(bob.Id, chatId, entry.LocalId));
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
-            info.Displayed.Should().Contain(n => n.Kind == NotificationKind.Attention);
+            info.Items.Should().Contain(n => n.Kind == NotificationKind.Attention);
         }, TimeSpan.FromSeconds(10));
         await TestExt.When(() => {
             Sink.Messages.Should().Contain(m =>
@@ -130,7 +130,7 @@ public class NotificationModeTest(AppHostFixture fixture, ITestOutputHelper @out
 
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
-            var notification = info.Displayed.Should().ContainSingle().Subject;
+            var notification = info.Items.Should().ContainSingle().Subject;
             notification.Text.Should().Be("Bobby: sentinel");
         }, TimeSpan.FromSeconds(10));
         Sink.Messages.Should().NotContain(m =>
@@ -165,7 +165,7 @@ public class NotificationModeTest(AppHostFixture fixture, ITestOutputHelper @out
 
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
-            var notification = info.Displayed.Should().ContainSingle().Subject
+            var notification = info.Items.Should().ContainSingle().Subject
                 .Should().BeOfType<ReactionNotification>().Subject;
             notification.EntryLid.Should().Be(entry2.LocalId);
         }, TimeSpan.FromSeconds(10));

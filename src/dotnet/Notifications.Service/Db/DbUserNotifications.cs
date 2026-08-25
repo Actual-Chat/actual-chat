@@ -7,7 +7,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ActualChat.Notifications.Db;
 
-// One row per user; Data is the serialized UserNotificationInfo blob.
+// One row per user. ItemsData holds the whole serialized UserNotificationInfo - PendingDismissals,
+// LastPushAt and IsDormant ride along with Items, since a removal and the dismissal it owes have to
+// be one write.
 [Table("UserNotifications")]
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbUserNotifications : IHasId<string>, IHasVersion<long>, IRequirementTarget
@@ -17,12 +19,12 @@ public class DbUserNotifications : IHasId<string>, IHasVersion<long>, IRequireme
 
     [DbKey] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
-    public byte[] Data { get; set; } = [];
+    public byte[] ItemsData { get; set; } = [];
     public bool IsDormant { get; set; }
 
     public UserNotificationInfo ToModel()
     {
-        var info = (UserNotificationInfo)Serializer.Read(Data, typeof(UserNotificationInfo), out _)!;
+        var info = (UserNotificationInfo)Serializer.Read(ItemsData, typeof(UserNotificationInfo), out _)!;
         return info with { Version = Version };
     }
 
@@ -34,7 +36,7 @@ public class DbUserNotifications : IHasId<string>, IHasVersion<long>, IRequireme
         using var buffer = Serializer.Write(model);
         Id = model.UserId.Value;
         Version = model.Version;
-        Data = buffer.ToArray();
+        ItemsData = buffer.ToArray();
         IsDormant = model.IsDormant;
     }
 

@@ -12,9 +12,9 @@ public interface INotifications : IComputeService
         Session session, ChatEntryId chatEntryId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task OnHandle(Notifications_Handle command, CancellationToken cancellationToken);
+    Task OnDismiss(Notifications_Dismiss command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnHandleAll(Notifications_HandleAll command, CancellationToken cancellationToken);
+    Task OnDismissAll(Notifications_DismissAll command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRegisterDevice(Notifications_RegisterDevice command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -27,14 +27,14 @@ public interface INotifications : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Notifications_Handle : ApiCommand<Unit>
+public sealed partial record Notifications_Dismiss : ApiCommand<Unit>
 {
     [DataMember(Order = 2), Key(2)] public required NotificationId NotificationId { get; init; }
 }
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Notifications_HandleAll : ApiCommand<Unit>;
+public sealed partial record Notifications_DismissAll : ApiCommand<Unit>;
 
 // Not deduplicated: registering a device token is an idempotent upsert the client re-sends to
 // refresh a stale record, so suppressing a repeat is worse than running it.

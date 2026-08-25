@@ -101,7 +101,9 @@ public static class MauiDiagnostics
         if (!LoggingExt.DevLog.IsEmpty)
             logging = logging.WriteTo.File(LoggingExt.DevLog,
                 outputTemplate: LoggingExt.OutputTemplate,
-                fileSizeLimitBytes: LoggingExt.DevLogFileSizeLimit);
+                fileSizeLimitBytes: LoggingExt.DevLogFileSizeLimit,
+                rollOnFileSizeLimit: true,
+                retainedFileCountLimit: LoggingExt.RetainedFileCountLimit);
 #elif ANDROID
         logging = logging
             .WriteTo.AndroidTaggedLog(LogTag, outputTemplate: AndroidOutputTemplate)

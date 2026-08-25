@@ -330,6 +330,19 @@ public static partial class Constants
         }
     }
 
+    public static class Call
+    {
+        // How long a call rings an unanswered invitee before it's marked Missed and the ring stops.
+        // Owned by LiveSessionsBackend; shared so the notification expiry and the Android banner's
+        // self-destruct timeout can't drift from it.
+        // TODO: revert to 40s - lowered to 20s only for call-status testing.
+        public static readonly TimeSpan RingTimeout = TimeSpan.FromSeconds(20);
+        // Redis field TTL on a ringing invite: the no-observer backstop that expires a stale ring
+        // even if the caller disconnects and nobody polls GetState. Longer than RingTimeout so the
+        // observed path marks it Missed first; a status change rewrites the field without this TTL.
+        public static readonly TimeSpan RingTtl = TimeSpan.FromSeconds(60);
+    }
+
     public static class Notification
     {
         public const string CallTagPrefix = "call-";
@@ -407,7 +420,17 @@ public static partial class Constants
         public static readonly TimeSpan SilencePeriod = TimeSpan.FromSeconds(10);
         // Once a user accumulates this many displayed notifications without engaging,
         // the backend goes dormant and stops all work until an engagement signal.
-        public const int DormancyThreshold = 64;
+        public const int DormancyThreshold = 100;
+        // A ring that outlives the ring itself by this margin was never dismissed: its cancel
+        // command was lost, or the caller vanished before anything observed the ring.
+        public static readonly TimeSpan RingExpirationMargin = TimeSpan.FromSeconds(5);
+        // A reaction clears when its entry is seen (NotificationDismissMode.OnView); this is the
+        // backstop for a chat the user never reopens. Smiles aren't worth keeping around longer.
+        public static readonly TimeSpan ReactionLifespan = TimeSpan.FromDays(1);
+        // A dismissal older than the push's own TimeToLive can't be delivered any more, so
+        // retrying it forever only grows the blob.
+        public static readonly TimeSpan PendingDismissalTtl = TimeSpan.FromDays(1);
+        public const int MaxPendingDismissals = 256;
         // Read-position advances are frequent (~1/s while scrolling); the read-reconcile event
         // is collapsed to one per (user, chat) per this window via a delay-bucketed event uuid.
         // This bounds the background-banner dismissal lag on other devices (in-app is instant).

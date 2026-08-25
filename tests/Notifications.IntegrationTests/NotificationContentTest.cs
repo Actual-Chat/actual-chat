@@ -197,7 +197,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         Notification notification = null!;
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(user.Id, CancellationToken.None);
-            var notifications = info.Displayed
+            var notifications = info.Items
                 .Where(n => EntryIdOf(n) == entryId)
                 .ToList();
             notifications.Should().HaveCount(1);

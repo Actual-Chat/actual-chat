@@ -14,9 +14,10 @@ namespace ActualChat.App.Maui;
 public static class IncomingCallNotifications
 {
     public const string ChannelId = "incoming_calls";
-    // Mirrors the server's LiveSessionsBackend.RingTimeout: the banner self-destructs
-    // at ring expiry even when the dismissal push never arrives (offline device).
-    private static readonly TimeSpan RingTimeout = TimeSpan.FromSeconds(40);
+    // The banner self-destructs at ring expiry even when the dismissal push never arrives
+    // (offline device). Shared with the server so the two can't drift - this was 40s against
+    // the server's 20s.
+    private static readonly TimeSpan RingTimeout = Constants.Call.RingTimeout;
     private static ILogger? _log;
 
     private static Context Context => Application.Context;

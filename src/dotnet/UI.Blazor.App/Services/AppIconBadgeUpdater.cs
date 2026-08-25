@@ -1,3 +1,4 @@
+using ActualLab.Resilience;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -14,10 +15,21 @@ public class AppIconBadgeUpdater(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
         if (badge is null)
             return Task.CompletedTask;
 
+        // Both loops are the badge's only drivers, and on Windows the badge is the only
+        // notification surface at all (no tray, no pushes), so a single transient failure used to
+        // freeze it - silently, for the rest of the process. A restart re-asserts on its own:
+        // lastCount is a local, so the first emission after one always writes.
         return Task.WhenAll(
-            UpdateOnActiveChanges(badge, cancellationToken),
-            ReassertOnForeground(badge, cancellationToken));
+            RunChain(ct => UpdateOnActiveChanges(badge, ct), cancellationToken),
+            RunChain(ct => ReassertOnForeground(badge, ct), cancellationToken));
     }
+
+    private Task RunChain(Func<CancellationToken, Task> loop, CancellationToken cancellationToken)
+        => AsyncChain.From(loop)
+            .Log(LogLevel.Debug, Log)
+            .RetryForever(RetryDelaySeq.Exp(1, 60), Log)
+            .CycleForever()
+            .RunIsolated(cancellationToken);
 
     private async Task UpdateOnActiveChanges(IAppIconBadge badge, CancellationToken cancellationToken)
     {

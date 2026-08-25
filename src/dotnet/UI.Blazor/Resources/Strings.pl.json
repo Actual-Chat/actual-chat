@@ -1045,6 +1045,7 @@
   "SearchTabs_Contacts": "Kontakty",
   "SearchTabs_Date": "Data",
   "Notifications_AllCaughtUp": "Wszystko przeczytane",
+  "Notifications_DismissAll": "Odrzuć wszystkie",
   "NotificationsPanel_Description": "Przeczytany czat zostaje jeszcze przez chwilę w panelu powiadomień, a potem znika sam.",
   "NotificationsPanel_DropReadChats": "Usuwaj przeczytane czaty",
   "NotificationsPanel_Immediately": "Natychmiast",

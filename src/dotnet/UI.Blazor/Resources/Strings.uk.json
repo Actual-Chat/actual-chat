@@ -1045,6 +1045,7 @@
   "SearchTabs_Contacts": "Контакти",
   "SearchTabs_Date": "Дата",
   "Notifications_AllCaughtUp": "Ви все переглянули",
+  "Notifications_DismissAll": "Сховати всі",
   "NotificationsPanel_Description": "Прочитаний чат ще певний час залишається на панелі сповіщень, а потім зникає сам.",
   "NotificationsPanel_DropReadChats": "Прибирати прочитані чати",
   "NotificationsPanel_Immediately": "Одразу",
