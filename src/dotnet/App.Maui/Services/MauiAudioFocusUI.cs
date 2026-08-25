@@ -6,13 +6,14 @@ namespace ActualChat.App.Maui.Services;
 
 public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
 {
-    private readonly List<AudioFocusRestoreHandler> _restoreAudioFocusHandlers = new ();
+    private readonly List<AudioFocusRestoreHandler> _restoreAudioFocusHandlers = new();
     private AudioFocusHolder? _lastAudioFocusHolder;
 
     protected readonly AsyncLock OperationLock = new();
 
     protected AppUIHub Hub { get; } = hub;
     protected ILogger Log => field ??= Hub.LogFor(GetType());
+    public override AudioFocusMode ActiveMode => _lastAudioFocusHolder?.Mode ?? AudioFocusMode.Tune;
 
     public override async Task<AudioFocusScope?> TryAcquire(AudioFocusRequester requester)
     {
@@ -65,6 +66,14 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
 
     protected abstract Task<MauiAudioFocusHandle?> RequestAudioFocus(AudioFocusMode mode);
 
+    protected virtual AudioFocusMode CalculateAudioFocusMode(IReadOnlyCollection<AudioFocusRequester> requesters)
+    {
+        if (requesters.Count == 0)
+            throw new ArgumentException("No requesters provided", nameof(requesters));
+
+        return requesters.Select(c => c.Kind).Max();
+    }
+
     // Private methods
 
     private async Task ReleaseAudioFocus(AudioFocusRequester requester)
@@ -93,7 +102,7 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
 
     private async Task<AudioFocusHolder?> RenewAudioFocus(AudioFocusRequester? requester)
     {
-        AudioFocusHolder? temp = _lastAudioFocusHolder;
+        var temp = _lastAudioFocusHolder;
         if (temp is null && requester is null)
             return null;
 
@@ -149,37 +158,33 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
         }
     }
 
-    private AudioFocusMode CalculateAudioFocusMode(IReadOnlyCollection<AudioFocusRequester>? requesters, AudioFocusRequester? newRequester)
+    private AudioFocusMode CalculateAudioFocusMode(
+        IReadOnlyCollection<AudioFocusRequester>? requesters,
+        AudioFocusRequester? newRequester)
     {
         var list = new List<AudioFocusRequester>();
         if (requesters is not null)
             list.AddRange(requesters);
         if (newRequester is not null)
             list.Add(newRequester.Value);
+
         return CalculateAudioFocusMode(list);
-    }
-
-    protected virtual AudioFocusMode CalculateAudioFocusMode(IReadOnlyCollection<AudioFocusRequester> requesters)
-    {
-        if (requesters.Count == 0)
-            throw new ArgumentException("No requesters provided", nameof(requesters));
-
-        return requesters.Select(c => c.Kind).Max();
     }
 
     private bool FocusModeHasChanged(AudioFocusHolder audioFocusHolder, AudioFocusRequester requester)
     {
         var mode1 = CalculateAudioFocusMode(audioFocusHolder.Scopes.Keys);
         var mode2 = CalculateAudioFocusMode(audioFocusHolder.Scopes.Keys, requester);
+
         return mode1 != mode2;
     }
 
     // Nested types
 
-    private class AudioFocusHolder(AudioFocusMode mode, MauiAudioFocusHandle handle)
+    private sealed class AudioFocusHolder(AudioFocusMode mode, MauiAudioFocusHandle handle)
     {
         public AudioFocusMode Mode => mode;
-        public bool IsSuspended { get; private set;}
+        public bool IsSuspended { get; private set; }
         public MauiAudioFocusHandle Handle => handle;
         public Dictionary<AudioFocusRequester, Scope> Scopes { get; } = new();
 
@@ -187,7 +192,7 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
             => IsSuspended = isSuspended;
     }
 
-    private class Scope(MauiAudioFocusUI owner, AudioFocusRequester requester) : AudioFocusScope
+    private sealed class Scope(MauiAudioFocusUI owner, AudioFocusRequester requester) : AudioFocusScope
     {
         public override void Dispose()
             => _ = owner.ReleaseAudioFocus(requester);
