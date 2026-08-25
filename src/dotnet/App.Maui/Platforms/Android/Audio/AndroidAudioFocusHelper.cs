@@ -8,7 +8,7 @@ namespace ActualChat.App.Maui.Audio;
 /// Low-level Android audio focus helper. All public methods assume sequential (serialized)
 /// calling — synchronization is handled by <see cref="AndroidAudioFocusUI"/> via AsyncLock.
 /// </summary>
-public class AndroidAudioFocusHelper : IDisposable
+public sealed class AndroidAudioFocusHelper : IDisposable
 {
     private readonly AudioManager _audioManager;
     private readonly AudioFocusChangeListener _audioFocusChangeListener;
@@ -35,19 +35,6 @@ public class AndroidAudioFocusHelper : IDisposable
         _deviceRouter = CreateDeviceRouter(_audioManager, context, log);
     }
 
-    private static IAudioDeviceRouter CreateDeviceRouter(AudioManager audioManager, Context context, ILogger log)
-    {
-        if (OperatingSystem.IsAndroidVersionAtLeast(12))
-            try {
-                return new ModernAudioDeviceRouter(audioManager, log);
-            }
-            catch (Exception e) {
-                log.LogError(e, "Failed to create ModernAudioDeviceRouter, falling back to LegacyAudioDeviceRouter");
-            }
-
-        return new LegacyAudioDeviceRouter(audioManager, context, log);
-    }
-
     public void Dispose()
     {
         try {
@@ -68,7 +55,10 @@ public class AndroidAudioFocusHelper : IDisposable
         => RequestFocusAsync(AudioFocus.Gain, AudioUsageKind.VoiceCommunication, AudioContentType.Speech);
 
     public Task<bool> RequestFocusForNotification()
-        => RequestFocusAsync(AudioFocus.GainTransientMayDuck, AudioUsageKind.AssistanceSonification, AudioContentType.Sonification);
+        => RequestFocusAsync(
+            AudioFocus.GainTransientMayDuck,
+            AudioUsageKind.AssistanceSonification,
+            AudioContentType.Sonification);
 
     public async Task WarmUpAudioMode()
     {
@@ -154,27 +144,25 @@ public class AndroidAudioFocusHelper : IDisposable
 
     // Private methods
 
-    private void LogAudioState()
+    private static IAudioDeviceRouter CreateDeviceRouter(AudioManager audioManager, Context context, ILogger log)
     {
-        try {
-            var outputs = _audioManager.GetDevices(GetDevicesTargets.Outputs) ?? [];
-            var commDevice = OperatingSystem.IsAndroidVersionAtLeast(12)
-                ? _audioManager.CommunicationDevice?.Type
-                : null;
-            _log.LogInformation(
-                "Audio state: mode={Mode}, hasFocus={HasFocus}, isYielded={IsYielded}, commDevice={CommDevice}, "
-                + "ringerMode={RingerMode}, isMusicActive={IsMusicActive}, outputs=[{Outputs}]",
-                _audioManager.Mode, _hasFocus, _isCommunicationModeYielded,
-                commDevice, _audioManager.RingerMode, _audioManager.IsMusicActive,
-                string.Join(", ", outputs.Select(d => d.Type.ToString())));
-        }
-        catch (Exception e) {
-            _log.LogWarning(e, "Couldn't read the audio state");
-        }
+        if (OperatingSystem.IsAndroidVersionAtLeast(12))
+            try {
+                return new ModernAudioDeviceRouter(audioManager, log);
+            }
+            catch (Exception e) {
+                log.LogError(e, "Failed to create ModernAudioDeviceRouter, falling back to LegacyAudioDeviceRouter");
+            }
+
+        return new LegacyAudioDeviceRouter(audioManager, context, log);
     }
 
-    private async Task<bool> RequestFocusAsync(AudioFocus audioFocus, AudioUsageKind audioUsageKind, AudioContentType audioContentType)
+    private async Task<bool> RequestFocusAsync(
+        AudioFocus audioFocus,
+        AudioUsageKind audioUsageKind,
+        AudioContentType audioContentType)
     {
+        LogAudioState();
         var isCommunication = audioUsageKind == AudioUsageKind.VoiceCommunication;
 
         // For voice communication, we need to set Mode.InCommunication to enable proper audio routing.
@@ -231,31 +219,36 @@ public class AndroidAudioFocusHelper : IDisposable
         }
     }
 
-    // ========== Device Router Interface ==========
+    private void LogAudioState()
+    {
+        try {
+            var outputs = _audioManager.GetDevices(GetDevicesTargets.Outputs) ?? [];
+            var commDevice = OperatingSystem.IsAndroidVersionAtLeast(12)
+                ? _audioManager.CommunicationDevice?.Type
+                : null;
+            _log.LogInformation(
+                "Audio state: mode={Mode}, hasFocus={HasFocus}, isYielded={IsYielded}, commDevice={CommDevice}, "
+                + "ringerMode={RingerMode}, isMusicActive={IsMusicActive}, outputs=[{Outputs}]",
+                _audioManager.Mode, _hasFocus, _isCommunicationModeYielded,
+                commDevice, _audioManager.RingerMode, _audioManager.IsMusicActive,
+                string.Join(", ", outputs.Select(d => d.Type.ToString())));
+        }
+        catch (Exception e) {
+            _log.LogWarning(e, "Couldn't read the audio state");
+        }
+    }
+
+    // Nested types
 
     private interface IAudioDeviceRouter : IDisposable
     {
-        /// <summary>
-        /// Select the best available communication device (BT > Wired > Speaker).
-        /// Waits for device to be ready before returning.
-        /// </summary>
+        // Completes only once the route has actually landed, not when it's requested.
         Task<bool> SetCommunicationDeviceAsync(CancellationToken ct);
-
-        /// <summary>
-        /// Clear communication device selection, restore default routing.
-        /// </summary>
         void ClearCommunicationDevice();
-
-        /// <summary>
-        /// Called when audio devices change (connect/disconnect).
-        /// Re-evaluates and updates routing if needed.
-        /// </summary>
         Task OnDevicesChangedAsync(CancellationToken ct);
     }
 
-    // ========== Modern Implementation (API 31+) ==========
-
-    private class ModernAudioDeviceRouter : IAudioDeviceRouter
+    private sealed class ModernAudioDeviceRouter : IAudioDeviceRouter
     {
         // ~300ms budget, matching WarmUpAudioMode's own wait for the communication pipeline.
         private const int RouteSettleChecks = 10;
@@ -365,12 +358,10 @@ public class AndroidAudioFocusHelper : IDisposable
         }
     }
 
-    // Legacy Implementation (API 28-30)
-    // Uses deprecated APIs that are required for backward compatibility with older Android versions.
-    // These APIs are obsoleted on Android 34+ but we only use this class on API 28-30.
+    // Uses APIs obsoleted on Android 34+, which is safe because this router only runs on API 28-30.
 #pragma warning disable CA1422 // Validate platform compatibility
 
-    private class LegacyAudioDeviceRouter : IAudioDeviceRouter
+    private sealed class LegacyAudioDeviceRouter : IAudioDeviceRouter
     {
         private readonly AudioManager _audioManager;
         private readonly Context _context;
@@ -492,7 +483,7 @@ public class AndroidAudioFocusHelper : IDisposable
             ClearCommunicationDevice();
         }
 
-        private class ScoStateReceiver(LegacyAudioDeviceRouter parent) : BroadcastReceiver
+        private sealed class ScoStateReceiver(LegacyAudioDeviceRouter parent) : BroadcastReceiver
         {
             public override void OnReceive(Context? context, Intent? intent)
             {
@@ -510,16 +501,14 @@ public class AndroidAudioFocusHelper : IDisposable
 
 #pragma warning restore CA1422 // Validate platform compatibility
 
-    // Nested Types
-
-    private class AudioFocusChangeListener(Action<AudioFocus> onChange)
+    private sealed class AudioFocusChangeListener(Action<AudioFocus> onChange)
         : Java.Lang.Object, AudioManager.IOnAudioFocusChangeListener
     {
         public void OnAudioFocusChange(AudioFocus focusChange)
             => onChange(focusChange);
     }
 
-    private class DeviceCallback(Action onChanged) : AudioDeviceCallback
+    private sealed class DeviceCallback(Action onChanged) : AudioDeviceCallback
     {
         public override void OnAudioDevicesAdded(AudioDeviceInfo[]? addedDevices)
             => onChanged();
