@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Fusion.Internal;
@@ -7,12 +8,23 @@ namespace ActualChat.Users;
 public class SystemProperties(IServiceProvider services)
     : DbServiceBase<UsersDbContext>(services), ISystemProperties
 {
+    private const int MinProbePayloadSize = 1024;
+    private const int MaxProbePayloadSize = 256 * 1024;
     private static readonly Version MinCompatibleVersion = new(2, 15);
     private static readonly Version MinReportableClientVersion = MinCompatibleVersion;
 
     // Not a [ComputeMethod]!
     public Task<double> GetTime(CancellationToken cancellationToken)
         => Task.FromResult(Clocks.SystemClock.Now.EpochOffset.TotalSeconds);
+
+    // Not a [ComputeMethod]!
+    public Task<byte[]> GetProbePayload(int size, CancellationToken cancellationToken)
+    {
+        // Random rather than zeroed: WebSocket deflate would shrink a compressible payload
+        // to nothing, so it would cross a throttled link just fine and prove nothing.
+        size = size.Clamp(MinProbePayloadSize, MaxProbePayloadSize);
+        return Task.FromResult(RandomNumberGenerator.GetBytes(size));
+    }
 
     // [ComputeMethod]
     public virtual Task<ServerApiInfo> GetServerApiInfo(string expectedVersion, CancellationToken cancellationToken)

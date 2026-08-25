@@ -1,3 +1,4 @@
+@using ActualChat.Rpc
 @using ActualChat.UI.App.Services
 @inherits ComputedStateComponent<AppUIHub, DeveloperTools.Model>
 @{
@@ -15,6 +16,12 @@
         <TileTopic Topic="@L.DevTools_Host"/>
         <Tile Class="host-switcher-tile">
             <ServerInstanceSelector Selector="@ServerInstanceSelector" />
+            @if (m.RpcEndpoint.Length != 0) {
+                <TileItem>
+                    <Content>RPC endpoint</Content>
+                    <Caption>@m.RpcEndpoint</Caption>
+                </TileItem>
+            }
         </Tile>
     }
 
@@ -108,7 +115,8 @@
             account.IsAdmin,
             appSettings.IsLogViewerEnabledOrDefault,
             isVideoDiagnosticsEnabled,
-            isAudioDiagnosticsEnabled);
+            isAudioDiagnosticsEnabled,
+            RpcEndpointSelector.Instance?.Current ?? "");
     }
 
     private Task OnExperimentalFeatureEnabledClick()
@@ -149,8 +157,9 @@
         bool IsAdmin,
         bool IsLogUIEnabled,
         bool IsVideoDiagnosticsEnabled,
-        bool IsAudioDiagnosticsEnabled)
+        bool IsAudioDiagnosticsEnabled,
+        string RpcEndpoint)
     {
-        public static readonly Model None = new(false, false, false, false, false, false);
+        public static readonly Model None = new(false, false, false, false, false, false, "");
     }
 }

@@ -131,11 +131,11 @@
                 return true;
             },
             browserInit: async function(
-                hostKind, appKind, apiVersion, baseUri, supportedHosts,
+                hostKind, appKind, apiVersion, baseUri, rpcBaseUri, supportedHosts,
                 sessionHash, appConstants, browserInfoBackendRef, clipboardInteropRef) {
                 await window.App.whenBundleReady;
                 window.ui.BrowserInit.init(
-                    hostKind, appKind, apiVersion, baseUri, supportedHosts,
+                    hostKind, appKind, apiVersion, baseUri, rpcBaseUri, supportedHosts,
                     sessionHash, appConstants, browserInfoBackendRef, clipboardInteropRef);
             },
         };

@@ -105,6 +105,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
             services.AddScoped<ConnectivityUI>(c => new ServerConnectivityUI(c.UIHub()));
         else if (!isMauiApp) // MauiConnectivityUI is registered in MauiApp
             services.AddScoped<ConnectivityUI>(c => new WebConnectivityUI(c.UIHub()));
+        services.AddScoped<RpcEndpointMonitor>(c => new RpcEndpointMonitor(c.UIHub()));
         if (!isMauiApp) {
             services.AddScoped<BackgroundStateTracker>(c => new WebBackgroundStateTracker(c));
             services.AddScoped<ThermalTracker>(c => new WebThermalTracker(c));

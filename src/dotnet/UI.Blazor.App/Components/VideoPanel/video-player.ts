@@ -698,7 +698,7 @@ export class VideoPlayer {
             // Pre-warm the worker's Fusion RPC peer so the WS handshake
             // overlaps the rest of init. kind=video tells the server this
             // connection carries media streams, so it skips WS compression.
-            const apiUrl = BrowserInit.getUrl('/rpc/ws?kind=video').replace(/^http/, 'ws');
+            const apiUrl = BrowserInit.getRpcUrl('/rpc/ws?kind=video').replace(/^http/, 'ws');
             void this.playerWorker.prewarmRpc(apiUrl, rpcNoWait);
 
             debugLog?.log('Player worker initialized');
