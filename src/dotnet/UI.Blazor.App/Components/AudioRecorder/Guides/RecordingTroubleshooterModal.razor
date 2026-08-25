@@ -36,7 +36,7 @@
     }
 
     var title = L.MicGuide_TroubleshooterTitle;
-    var buttonTitle = RecordingPermissionRequester.CanRequest
+    var buttonTitle = CanOpenSettings
         ? L.Common_Settings
         : L.Common_OK;
 }
@@ -100,11 +100,18 @@
 
     [Parameter] public Model ModalModel { get; set; } = null!;
 
+    private bool CanOpenSettings
+        // The settings screen is a dead end for a device failure - only offer it for permissions
+        => ModalModel.MayBePermission && RecordingPermissionRequester.CanRequest;
+
     private async Task OnClick() {
-        if (RecordingPermissionRequester.CanRequest)
+        if (CanOpenSettings)
             await RecordingPermissionRequester.TryRequest();
         Modal.Close();
     }
 
-    public sealed record Model(GuideType? TestGuideType = null, bool IsUnknown = false);
+    public sealed record Model(
+        GuideType? TestGuideType = null,
+        bool IsUnknown = false,
+        bool MayBePermission = true);
 }

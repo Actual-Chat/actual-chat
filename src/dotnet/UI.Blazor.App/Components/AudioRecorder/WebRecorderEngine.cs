@@ -3,22 +3,29 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class WebRecorderEngine(AppUIHub hub) : IAudioRecorderEngine
+public sealed class WebRecorderEngine(AppUIHub hub) : IAudioRecorderEngine
 {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.AudioRecorder.create";
     private IJSObjectReference _jsRef = null!;
+    private AppUIHub Hub { get; } = hub;
 
-    public async Task<bool> Start(ChatId chatId, ChatEntryId? repliedChatEntryId, CancellationToken cancellationToken = default)
+    public async Task<RecorderStartResult> Start(
+        ChatId chatId,
+        ChatEntryId? repliedChatEntryId,
+        CancellationToken cancellationToken = default)
     {
         await EnsureInitialized(cancellationToken).ConfigureAwait(false);
 
-        return await _jsRef.InvokeAsync<bool>("startRecording",
+        var isStarted = await _jsRef.InvokeAsync<bool>("startRecording",
                 CancellationToken.None,
                 chatId,
                 repliedChatEntryId)
             .AsTask()
             .WaitAsync(AudioRecorder.StartRecordingTimeout, cancellationToken)
             .ConfigureAwait(false);
+        // The JS recorder gives back a bare false, and on the web that's getUserMedia
+        // denying access far more often than a device that won't open
+        return isStarted ? RecorderStartResult.Started : RecorderStartResult.NoPermission;
     }
 
     public async Task<bool> Stop(CancellationToken cancellationToken = default)
@@ -60,9 +67,11 @@ public class WebRecorderEngine(AppUIHub hub) : IAudioRecorderEngine
         if (_jsRef != null)
             return;
 
-        var js = hub.JS;
-        var backend = hub.Services.GetRequiredService<IAudioRecorderBackend>();
+        var js = Hub.JS;
+        var backend = Hub.Services.GetRequiredService<IAudioRecorderBackend>();
         var blazorRef = DotNetObjectReference.Create(backend);
-        _jsRef = await js.InvokeAsync<IJSObjectReference>(JSCreateMethod, cancellationToken, blazorRef).ConfigureAwait(false);
+        _jsRef = await js
+            .InvokeAsync<IJSObjectReference>(JSCreateMethod, cancellationToken, blazorRef)
+            .ConfigureAwait(false);
     }
 }

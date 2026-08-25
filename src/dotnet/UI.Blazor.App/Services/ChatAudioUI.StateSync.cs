@@ -8,6 +8,7 @@ public partial class ChatAudioUI
     private static readonly TimeSpan Epsilon = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan MinListeningPlayerPlayDurationToConsiderHealthy = TimeSpan.FromSeconds(10);
     private static readonly int MaxStopRecordingTryCount = 3;
+    private static readonly TimeSpan DiagnosticsTimeout = TimeSpan.FromSeconds(5);
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -1040,7 +1041,8 @@ public partial class ChatAudioUI
         }
     }
 
-    private async Task ShowRecordingTroubleshooter(TimeSpan delay, CancellationToken cancellationToken) {
+    private async Task ShowRecordingTroubleshooter(TimeSpan delay, CancellationToken cancellationToken)
+    {
         await Clocks.CpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
         if (!Hub.WhenInitialized.IsCompleted) {
             // A headless scope has no renderer, so Dispatcher would throw and WhenInitialized never completes.
@@ -1049,12 +1051,20 @@ public partial class ChatAudioUI
         }
 
         await Dispatcher.InvokeAsync(async () => {
-            var model = new RecordingTroubleshooterModal.Model(null, true);
-            var modalRef = await ModalUI.Show(model, cancellationToken).ConfigureAwait(true);
-
+            // Diagnostics run before the dialog because they decide what it may claim: the guide's
+            // "grant the microphone permission" advice is misleading when permission is already granted
             Log.LogWarning("Recording issue. Capturing diagnostics state...");
-            var diagnostics = await AudioRecorder.RunDiagnostics(CancellationToken.None).ConfigureAwait(true);
+            var diagnostics = await AudioRecorder.RunDiagnostics(CancellationToken.None)
+                .WaitAsync(DiagnosticsTimeout, CancellationToken.None)
+                .SuppressExceptions()
+                .ConfigureAwait(true);
             Log.LogWarning("Recording issue. Diagnostics State = {State}", diagnostics);
+
+            var model = new RecordingTroubleshooterModal.Model(
+                null,
+                true,
+                diagnostics?.HasMicrophonePermission != true);
+            var modalRef = await ModalUI.Show(model, cancellationToken).ConfigureAwait(true);
 
             try {
                 await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(true);

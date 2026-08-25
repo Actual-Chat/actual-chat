@@ -106,7 +106,7 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
                 return; // Already started
         }
         else if (state.ChatId is not null)
-            await StopRecordingUnsafe();
+            await StopRecordingUnsafe().ConfigureAwait(false);
 
         MarkStarting(chatId);
         try {
@@ -114,14 +114,19 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             if (_audioFocusScope is null)
                 Log.LogWarning("Failed to gain audio focus for recording. Continue without it");
 
-            var isStarted = await _engine.Start(chatId, repliedChatEntryId, cancellationToken).WaitAsync(StartRecordingTimeout, cancellationToken).ConfigureAwait(false);
-            if (!isStarted) {
-                MicrophonePermission.ForgetCached();
-                Log.LogWarning(nameof(StartRecording) + ": chat #{ChatId} - can't access the microphone", chatId);
-                // Cancel recording
+            var startResult = await _engine.Start(chatId, repliedChatEntryId, cancellationToken)
+                .WaitAsync(StartRecordingTimeout, cancellationToken)
+                .ConfigureAwait(false);
+            if (startResult != RecorderStartResult.Started) {
+                var isPermissionIssue = startResult == RecorderStartResult.NoPermission;
+                // Forgetting the cached permission re-prompts on the next attempt
+                if (isPermissionIssue)
+                    MicrophonePermission.ForgetCached();
+                Log.LogWarning(nameof(StartRecording) + ": chat #{ChatId} - {Result}", chatId, startResult);
                 MarkStopped();
-                throw new AudioRecorderException(
-                    "Can't access the microphone - please check if the microphone access permission is granted.");
+                throw new AudioRecorderException(isPermissionIssue
+                    ? "Can't access the microphone - please check if the microphone access permission is granted."
+                    : "Can't access the microphone - the audio device didn't open.");
             }
         }
         catch (Exception e) when (e is not AudioRecorderException) {
@@ -130,7 +135,7 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
                 DebugLog?.LogDebug($"{nameof(StartRecording)} is cancelled");
             else
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-                Log.LogError(e,$"{nameof(StartRecording)} failed");
+                Log.LogError(e, $"{nameof(StartRecording)} failed");
 
             await StopRecordingUnsafe().ConfigureAwait(false);
 
@@ -167,21 +172,15 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         return state.IsRecording;
     }
 
-    // JS backend callback handlers
     [JSInvokable]
     public void OnRecordingStateChange(bool isRecording, bool isSignalDetected, bool isConnected, bool isVoiceActive)
     {
-        // Log.LogInformation(
-        //     "OnRecordingStateChange: isRecording={IsRecording}, isSignalDetected={IsSignalDetected}, isConnected={IsConnected}, isVoiceActive={IsVoiceActive}",
-        //     isRecording,
-        //     isSignalDetected,
-        //     isConnected,
-        //     isVoiceActive);
         var state = State.Value;
         if (state.ChatId is null) {
             if (isRecording)
                 throw StandardError.Internal(
-                    "Something is off: OnRecordingStateChange() is called with active microphone, but ChatId.IsNone == true.");
+                    "Something is off: OnRecordingStateChange() is called with active microphone, "
+                    + "but ChatId.IsNone == true.");
 
             isVoiceActive = false;
         }
@@ -240,14 +239,15 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         catch (Exception e) {
             var reason = e is TimeoutException ? "timed out" : "failed";
             // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-            Log.LogError(e, $"{nameof(StopRecordingUnsafe)}: chat #{{ChatId}} - {reason}, recorder state is in doubt", chatId);
+            Log.LogError(e,
+                $"{nameof(StopRecordingUnsafe)}: chat #{{ChatId}} - {reason}, recorder state is in doubt",
+                chatId);
             return false;
         }
+
         MarkStopped();
         return true;
     }
-
-    // MarkXxx
 
     private void MarkStarting(ChatId chatId)
     {
@@ -308,7 +308,9 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         // Do nothing even app lost the audio focus.
         => null;
 
-    public class AudioDiagnosticsState
+    // Nested types
+
+    public sealed class AudioDiagnosticsState
     {
         public bool? IsPlayerInitialized { get; init; }
         public bool? IsRecorderInitialized { get; init; }
@@ -328,10 +330,26 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         public long? LastEncoderWorkletFrameProcessedAt { get; init; }
 
         public override string ToString()
-            => $"{nameof(AudioDiagnosticsState)} {{ {nameof(IsPlayerInitialized)}: {IsPlayerInitialized}, {nameof(IsRecorderInitialized)}: {IsRecorderInitialized}, {nameof(HasMicrophonePermission)}: {HasMicrophonePermission}, {nameof(IsAudioContextSourceMaintained)}: {IsAudioContextSourceMaintained}, {nameof(IsAudioContextRunning)}: {IsAudioContextRunning}, {nameof(HasMicrophoneStream)}: {HasMicrophoneStream}, {nameof(IsVadActive)}: {IsVadActive}, {nameof(LastVadEvent)}: {LastVadEvent}, {nameof(LastVadFrameProcessedAt)}: {LastVadFrameProcessedAt}, {nameof(IsConnected)}: {IsConnected}, {nameof(IsSignalDetected)}: {IsSignalDetected}, {nameof(LastFrameProcessedAt)}: {LastFrameProcessedAt}, {nameof(VadWorkletState)}: {VadWorkletState}, {nameof(LastVadWorkletFrameProcessedAt)}: {LastVadWorkletFrameProcessedAt}, {nameof(EncoderWorkletState)}: {EncoderWorkletState}, {nameof(LastEncoderWorkletFrameProcessedAt)}: {LastEncoderWorkletFrameProcessedAt} }}";
+            => $"{nameof(AudioDiagnosticsState)} {{ "
+                + $"{nameof(IsPlayerInitialized)}: {IsPlayerInitialized}, "
+                + $"{nameof(IsRecorderInitialized)}: {IsRecorderInitialized}, "
+                + $"{nameof(HasMicrophonePermission)}: {HasMicrophonePermission}, "
+                + $"{nameof(IsAudioContextSourceMaintained)}: {IsAudioContextSourceMaintained}, "
+                + $"{nameof(IsAudioContextRunning)}: {IsAudioContextRunning}, "
+                + $"{nameof(HasMicrophoneStream)}: {HasMicrophoneStream}, "
+                + $"{nameof(IsVadActive)}: {IsVadActive}, "
+                + $"{nameof(LastVadEvent)}: {LastVadEvent}, "
+                + $"{nameof(LastVadFrameProcessedAt)}: {LastVadFrameProcessedAt}, "
+                + $"{nameof(IsConnected)}: {IsConnected}, "
+                + $"{nameof(IsSignalDetected)}: {IsSignalDetected}, "
+                + $"{nameof(LastFrameProcessedAt)}: {LastFrameProcessedAt}, "
+                + $"{nameof(VadWorkletState)}: {VadWorkletState}, "
+                + $"{nameof(LastVadWorkletFrameProcessedAt)}: {LastVadWorkletFrameProcessedAt}, "
+                + $"{nameof(EncoderWorkletState)}: {EncoderWorkletState}, "
+                + $"{nameof(LastEncoderWorkletFrameProcessedAt)}: {LastEncoderWorkletFrameProcessedAt} }}";
     }
 
-    public class VadEvent
+    public sealed class VadEvent
     {
         public string? Kind { get; init; }
         public double Offset { get; init; }
@@ -339,6 +357,7 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         public double SpeechProb { get; init; }
 
         public override string ToString()
-            => $"{nameof(VadEvent)} {{ {nameof(Kind)}: {Kind}, {nameof(Offset)}: {Offset}, {nameof(Duration)}: {Duration}, {nameof(SpeechProb)}: {SpeechProb} }}";
+            => $"{nameof(VadEvent)} {{ {nameof(Kind)}: {Kind}, {nameof(Offset)}: {Offset}, "
+                + $"{nameof(Duration)}: {Duration}, {nameof(SpeechProb)}: {SpeechProb} }}";
     }
 }
