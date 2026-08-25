@@ -13,6 +13,13 @@ candidate tasks. A plan is removed from here once its work ships.
 
 Recently added, larger efforts — in progress or next up.
 
+### Android ANRs — FCM cold-start stalls
+
+[Android ANRs](./android-anr-issues.md) — two thirds of Voxt's Android ANRs are
+an FCM push waking a dead process, with `Application.onCreate` blocked on a
+runtime mutex past the 10s foreground-broadcast timeout. Priority triage on the
+server, less work on push-started processes, and a lazy idle-primed `MauiApp`.
+
 ### AI search & indexing — MLSearch → PostgreSQL
 
 [MLSearch: OpenSearch → PostgreSQL](./mlsearch-postgres-fts.md) — replace
