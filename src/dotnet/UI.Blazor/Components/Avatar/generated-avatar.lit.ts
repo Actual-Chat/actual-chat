@@ -52,7 +52,11 @@ export abstract class GeneratedAvatar extends LitElement {
         });
         SvgCache.add(cacheKey, svgString, this.pixelSize);
 
-        return GeneratedAvatar.renderSkeleton();
+        // Keep the last rasterized image (CSS scales it) instead of flashing the skeleton while the new
+        // size rasterizes; only fall back to the skeleton before the very first raster exists.
+        return this.cachedUrl
+            ? html`<img src='${this.cachedUrl}' width='100%' height='100%' draggable='false' alt='' />`
+            : GeneratedAvatar.renderSkeleton();
     }
 
     protected abstract getCacheKey(pixelSize: number): string;
@@ -79,9 +83,15 @@ export abstract class GeneratedAvatar extends LitElement {
     }
 
     private applyWidth(width: number): void {
-        const pixelSize = Math.ceil(width * (window.devicePixelRatio || 1));
-        if (pixelSize > 0 && pixelSize !== this.pixelSize)
-            this.pixelSize = pixelSize;
+        const target = width * (window.devicePixelRatio || 1);
+        if (target <= 0)
+            return;
+        // Snap up to a power-of-two bucket and never shrink. A resize (e.g. the header collapse that
+        // fires this every frame) then reuses the cached raster — CSS scales it — so there's no
+        // per-frame re-rasterize or skeleton flash; growing re-rasterizes at most a few times.
+        const bucket = 1 << Math.min(10, Math.ceil(Math.log2(Math.max(target, 1))));
+        if (bucket > this.pixelSize)
+            this.pixelSize = bucket;
     }
 
     private static renderSkeleton(): TemplateResult {
