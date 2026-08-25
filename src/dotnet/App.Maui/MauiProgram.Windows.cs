@@ -14,7 +14,7 @@ public static partial class MauiProgram
 {
     private static partial void ConfigureBlazorWebViewAppPlatformServices(this IServiceCollection services)
     {
-        services.AddTransient<IAppIconBadge>(_ => new WindowsAppIconBadge());
+        services.AddTransient<IAppIconBadge>(c => new WindowsAppIconBadge(c.LogFor<WindowsAppIconBadge>()));
         services.AddTransient<IDeviceTokenRetriever>(_ => new WindowsDeviceTokenRetriever());
         services.AddScoped<INotificationsPermission>(_ => new WindowsNotificationsPermission());
         services.AddTransient<INativeAppSettings>(

@@ -8,6 +8,7 @@ public static class LoggingExt
     public const string OutputTemplate = "{Timestamp:HH:mm:ss.fff} {Level:u3} T{ThreadID} [{SourceContext}] {Message:l}{NewLine}{Exception}";
     public const long FileSizeLimit = 10_000_000L;
     public const long DevLogFileSizeLimit = 100_000_000L;
+    public const int RetainedFileCountLimit = 3;
 
     public static readonly FilePath DevLog;
     public static LogLevel MinLevel { get; private set; }
@@ -22,6 +23,8 @@ public static class LoggingExt
         "ActualChat.App.Maui.Services.MauiNotifications",
         "ActualChat.UI.Blazor.App.NotificationUI",
         "ActualChat.UI.Blazor.App.Services.NotificationReconciler",
+        "ActualChat.UI.Blazor.App.Services.AppIconBadgeUpdater",
+        "ActualChat.App.Maui.WindowsAppIconBadge",
         "ActualChat.UI.Blazor.App.Services.WebDeviceNotifications",
     ];
 

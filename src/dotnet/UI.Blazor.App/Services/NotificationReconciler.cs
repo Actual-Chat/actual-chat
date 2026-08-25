@@ -1,4 +1,5 @@
 using ActualChat.Notifications;
+using ActualLab.Resilience;
 using Notification = ActualChat.Notifications.Notification;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -24,12 +25,23 @@ public class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
             return Task.CompletedTask; // No notification tray on this platform
 
         return Task.WhenAll(
-            ReconcileOnActiveChanges(deviceNotifications, cancellationToken),
-            ReconcileOnForeground(deviceNotifications, cancellationToken));
+            RunChain(ct => ReconcileOnActiveChanges(deviceNotifications, ct), cancellationToken),
+            RunChain(ct => ReconcileOnForeground(deviceNotifications, ct), cancellationToken));
     }
+
+    private Task RunChain(Func<CancellationToken, Task> loop, CancellationToken cancellationToken)
+        => AsyncChain.From(loop)
+            .Log(LogLevel.Debug, Log)
+            .RetryForever(RetryDelaySeq.Exp(1, 60), Log)
+            .CycleForever()
+            .RunIsolated(cancellationToken);
 
     private async Task ReconcileOnActiveChanges(IDeviceNotifications deviceNotifications, CancellationToken cancellationToken)
     {
+        // Reseed on every (re)start: carrying the previous run's tags across a restart would make
+        // the first observation look like a diff and re-create banners the user already dismissed.
+        _lastActiveTags = new HashSet<string>(StringComparer.Ordinal);
+        _isInitialized = false;
         var cActive = await Computed
             .Capture(() => Hub.Notifications.ListActive(Hub.Session, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
