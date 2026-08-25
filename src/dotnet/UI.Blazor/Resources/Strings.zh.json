@@ -1035,6 +1035,7 @@
   "SearchTabs_Contacts": "联系人",
   "SearchTabs_Date": "日期",
   "Notifications_AllCaughtUp": "你已全部看完",
+  "Notifications_DismissAll": "全部关闭",
   "NotificationsPanel_Description": "已读的聊天会在通知面板中停留一段时间，然后自动消失。",
   "NotificationsPanel_DropReadChats": "移除已读聊天",
   "NotificationsPanel_Immediately": "立即",

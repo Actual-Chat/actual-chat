@@ -9,7 +9,9 @@
 @if (place != null) {
     <LeftPanelPlaceContentHeader Place="@place"/>
 } else {
-    <LeftPanelChatContentHeader Title="@(m.IsNotifications ? L.Navbar_Notifications : L.Navbar_Chats)"/>
+    <LeftPanelChatContentHeader
+        Title="@(m.IsNotifications ? L.Navbar_Notifications : L.Navbar_Chats)"
+        Menu="@(m.IsNotifications ? MenuRef.New<NotificationsMenu>() : null)"/>
 }
 @if (!m.IsNotifications) {
     <div class="left-search-panel">

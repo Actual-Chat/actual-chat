@@ -1035,6 +1035,7 @@
   "SearchTabs_Contacts": "संपर्क",
   "SearchTabs_Date": "तारीख",
   "Notifications_AllCaughtUp": "आप सब कुछ देख चुके हैं",
+  "Notifications_DismissAll": "सभी खारिज करें",
   "NotificationsPanel_Description": "आपने जो चैट पढ़ ली है, वह कुछ समय तक नोटिफ़िकेशन पैनल में रहती है और फिर अपने आप हट जाती है।",
   "NotificationsPanel_DropReadChats": "पढ़ी हुई चैट हटाएँ",
   "NotificationsPanel_Immediately": "तुरंत",

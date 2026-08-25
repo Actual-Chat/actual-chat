@@ -1035,6 +1035,7 @@
   "SearchTabs_Contacts": "연락처",
   "SearchTabs_Date": "날짜",
   "Notifications_AllCaughtUp": "모두 확인했습니다",
+  "Notifications_DismissAll": "모두 닫기",
   "NotificationsPanel_Description": "읽은 채팅은 잠시 알림 패널에 남아 있다가 자동으로 사라집니다.",
   "NotificationsPanel_DropReadChats": "읽은 채팅 제거",
   "NotificationsPanel_Immediately": "즉시",

@@ -1035,6 +1035,7 @@
   "SearchTabs_Contacts": "Kontak",
   "SearchTabs_Date": "Tanggal",
   "Notifications_AllCaughtUp": "Semua sudah terbaca",
+  "Notifications_DismissAll": "Tutup semua",
   "NotificationsPanel_Description": "Obrolan yang sudah Anda baca tetap ada di panel notifikasi sebentar, lalu hilang dengan sendirinya.",
   "NotificationsPanel_DropReadChats": "Buang obrolan yang sudah dibaca",
   "NotificationsPanel_Immediately": "Segera",

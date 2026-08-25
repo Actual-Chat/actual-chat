@@ -1068,6 +1068,7 @@ public static class LocalizedStringsLocalizerExt
         public string SearchTabs_Contacts => l["SearchTabs_Contacts"].Value;
         public string SearchTabs_Date => l["SearchTabs_Date"].Value;
         public string Notifications_AllCaughtUp => l["Notifications_AllCaughtUp"].Value;
+        public string Notifications_DismissAll => l["Notifications_DismissAll"].Value;
         public string NotificationsPanel_Description => l["NotificationsPanel_Description"].Value;
         public string NotificationsPanel_DropReadChats => l["NotificationsPanel_DropReadChats"].Value;
         public string NotificationsPanel_Immediately => l["NotificationsPanel_Immediately"].Value;

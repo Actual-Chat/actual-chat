@@ -1035,6 +1035,7 @@
   "SearchTabs_Contacts": "連絡先",
   "SearchTabs_Date": "日付",
   "Notifications_AllCaughtUp": "すべて確認済みです",
+  "Notifications_DismissAll": "すべて閉じる",
   "NotificationsPanel_Description": "既読のチャットは通知パネルにしばらく残り、その後自動的に消えます。",
   "NotificationsPanel_DropReadChats": "既読のチャットを外す",
   "NotificationsPanel_Immediately": "すぐに",

@@ -334,6 +334,16 @@ to `IsServerOrWasmApp()`) and `WindowsDeviceTokenRetriever` returns `null`, so
 there are no toasts and no pushes. The app-icon badge is the *entire* notification
 surface, and `UpdateOnActiveChanges` is its only driver.
 
+### 8 — "Dismiss all" menu (done)
+
+`Notifications_DismissAll` had no caller. The Notifications navbar panel header
+now carries a three-dots menu (`NotificationsMenu`, same shape as the Place one)
+with a single "Dismiss all" entry.
+
+Note what it does *not* do: the panel below it lists unread **chats**, so
+dismissing notifications leaves it unchanged. What clears is the app-icon badge
+and the OS-level notifications — the two concepts, behaving as designed.
+
 ### 7 — reaction view-clearing (client) (done)
 
 `SeenNotificationDismisser` (a scoped `UIWorkerBase`, same shape as
@@ -368,7 +378,4 @@ this path is build- and review-verified only. The server half it depends on
 
 ## Not in scope
 
-- A user-reachable "dismiss all" affordance. `Notifications_DismissAll` still has
-  no caller; expiry plus view-clearing may make one unnecessary. Revisit after
-  step 4 lands.
 - Anything about how unread chat/place counts are computed.

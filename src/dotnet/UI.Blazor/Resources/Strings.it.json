@@ -1035,6 +1035,7 @@
   "SearchTabs_Contacts": "Contatti",
   "SearchTabs_Date": "Data",
   "Notifications_AllCaughtUp": "Hai visto tutto",
+  "Notifications_DismissAll": "Chiudi tutto",
   "NotificationsPanel_Description": "Una chat che hai letto resta per un po' nel pannello delle notifiche, poi scompare da sola.",
   "NotificationsPanel_DropReadChats": "Rimuovi le chat lette",
   "NotificationsPanel_Immediately": "Subito",
