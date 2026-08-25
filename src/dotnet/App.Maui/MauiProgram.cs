@@ -42,6 +42,9 @@ public static partial class MauiProgram
     {
         using var _1 = Tracer.MethodRegion();
         MauiStartupBreadcrumbs.Add("CreateMauiApp");
+#if ANDROID
+        MauiStartupBreadcrumbs.Add($"start reason: {AndroidUtils.GetProcessStartReason()}");
+#endif
 
         // Parse -t <seconds> for auto-shutdown (used for AOT testing)
         var args = Environment.GetCommandLineArgs();

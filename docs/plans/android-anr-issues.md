@@ -1,8 +1,8 @@
 # Android ANRs — FCM cold-start stalls
 
-Status: **A1–A4 implemented on `feat/android-anr-startup` (2026-08-25); A5/B1
-and the Crashlytics/Analytics decisions pending.** Data pulled from Play
-Console on 2026-08-25.
+Status: **A1–A4 + instrumentation implemented on `feat/android-anr-startup`
+(2026-08-25); measure a dev/beta cycle before deciding on A5/B1.** Data pulled
+from Play Console on 2026-08-25.
 
 Implementation notes (deviations from the plan below):
 
@@ -16,8 +16,14 @@ Implementation notes (deviations from the plan below):
 - A3 gates on API level only (`< 31`): during `Application.OnCreate` the FCM
   exemption window isn't open yet even on a push start, and on API 31+ user
   launches MainActivity raises the service moments later anyway.
-- Crashlytics (Android) is still referenced — awaiting the "deliberate or
-  vestigial?" answer (open question 2).
+- Crashlytics (Android) stays — the developer confirmed it's deliberate
+  (open question 2 closed: keep).
+- Instrumentation landed: a `start reason: Importance/ImportanceReasonCode`
+  mark at the top of `CreateMauiApp`, an `Application.OnCreate completed`
+  mark, and `MauiStartupBreadcrumbs` now buffers marks and flushes them in
+  one append off the main thread (250ms debounce; rotation deferred off the
+  startup path too). No `WarmUpWebView` sub-marks — A2 took it off the push
+  path entirely.
 
 ## Summary
 
