@@ -1,8 +1,9 @@
 namespace ActualChat.Chat;
 
 /// <summary>
-/// Stores the dismissed-at timestamp for the Push-to-talk join banner;
-/// a dismissal older than the chat's <c>PttEnabledAt</c> epoch no longer hides the banner.
+/// Stores the dismissed-at timestamp for the Push-to-talk join banner, in device-local settings:
+/// the banner also asks the per-device question, so dismissing it on one device must not silence
+/// another. A dismissal older than the chat's <c>PttEnabledAt</c> epoch no longer hides the banner.
 /// </summary>
 [DataContract, MessagePackObject]
 public sealed partial record PttJoinBannerUserSettings : StoredSettings

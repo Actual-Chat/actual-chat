@@ -11,4 +11,5 @@ public sealed partial record Device(
     [property: DataMember(Order = 2), Key(2)] Moment CreatedAt)
 {
     [DataMember(Order = 3), Key(3)] public Moment? AccessedAt { get; init; }
+    [DataMember(Order = 4), Key(4)] public bool IsPttEnabled { get; init; }
 }

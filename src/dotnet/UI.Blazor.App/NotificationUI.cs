@@ -29,6 +29,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
 
     private IDeviceTokenRetriever DeviceTokenRetriever => field ??= Hub.Services.GetRequiredService<IDeviceTokenRetriever>();
     private IncomingCallUI IncomingCallUI => field ??= Hub.Services.GetRequiredService<IncomingCallUI>();
+    private ChatAudioUI ChatAudioUI => field ??= Hub.Services.GetRequiredService<ChatAudioUI>();
     private UrlMapper UrlMapper => Hub.UrlMapper;
     private IJSRuntime JS => Hub.JS;
 
@@ -154,6 +155,23 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
         }
     }
 
+    public async Task RefreshDeviceRegistration(CancellationToken cancellationToken = default)
+    {
+        // No registration happened yet: the eventual one reads the current PTT device flag anyway.
+        var existingTask = _registerDeviceTask;
+        if (existingTask == null)
+            return;
+
+        var deviceId = await existingTask.ConfigureAwait(false);
+        lock (Lock) {
+            if (_registerDeviceTask != existingTask)
+                return;
+
+            _registerDeviceTask = null;
+        }
+        RegisterDevice(deviceId, cancellationToken);
+    }
+
     public async Task EnsureDeviceRegistered(CancellationToken cancellationToken = default)
     {
         Log.LogInformation("-> EnsureDeviceRegistered");
@@ -234,10 +252,12 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
                             Log.LogInformation("RegisterDeviceTask. About to send register command. UserId is {UserId}", Hub.AccountUI.OwnAccount.Value.Id);
                         else
                             Log.LogInformation("RegisterDeviceTask. About to send register command");
+                        var isPttEnabled = await ChatAudioUI.IsPttEnabledOnDevice(linkedToken).ConfigureAwait(false);
                         var command = new Notifications_RegisterDevice {
                             Session = Session,
                             DeviceId = deviceId,
                             DeviceType = GetDeviceType(),
+                            IsPttEnabled = isPttEnabled,
                         };
                         await Hub.Commander.Call(command, linkedToken).ConfigureAwait(false);
                         Log.LogInformation("RegisterDeviceTask. Register command has been executed");

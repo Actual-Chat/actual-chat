@@ -643,6 +643,7 @@ public static class LocalizedStringsLocalizerExt
         public string Banner_LiveActivitiesTarget => l["Banner_LiveActivitiesTarget"].Value;
         public string Banner_LiveActivities_Suffix => l["Banner_LiveActivities_Suffix"].Value;
         public string Banner_PttAllow => l["Banner_PttAllow"].Value;
+        public string Banner_PttUseDevice => l["Banner_PttUseDevice"].Value;
         public string Banner_Connected => l["Banner_Connected"].Value;
         public string Banner_ConnectionLost => l["Banner_ConnectionLost"].Value;
         public string Banner_Connecting => l["Banner_Connecting"].Value;
@@ -997,6 +998,10 @@ public static class LocalizedStringsLocalizerExt
         public string Share_AddComment => l["Share_AddComment"].Value;
         public string Share_SendToSelected => l["Share_SendToSelected"].Value;
 
+        public string Ptt_UseOnThisDevice => l["Ptt_UseOnThisDevice"].Value;
+        public string Ptt_UseOnThisDeviceCaption => l["Ptt_UseOnThisDeviceCaption"].Value;
+        public string Ptt_DeviceEnabledToast => l["Ptt_DeviceEnabledToast"].Value;
+        public string Ptt_NotOnThisDevice => l["Ptt_NotOnThisDevice"].Value;
         public string Ptt_ChatsTopic => l["Ptt_ChatsTopic"].Value;
         public string Ptt_NoPttChats => l["Ptt_NoPttChats"].Value;
         public string Ptt_AvailableTopic => l["Ptt_AvailableTopic"].Value;

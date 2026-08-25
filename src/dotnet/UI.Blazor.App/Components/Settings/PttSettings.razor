@@ -8,6 +8,16 @@
     var canAllowMore = m.CanAllowMore;
 }
 
+<Tile>
+    <TileItem Click="@OnToggleDevice">
+        <Icon><i class="icon-phone text-2xl"></i></Icon>
+        <Content>@L.Ptt_UseOnThisDevice</Content>
+        <Caption>@L.Ptt_UseOnThisDeviceCaption</Caption>
+        <Right><Toggle IsChecked="@m.IsDeviceEnabled" IsCheckedChanged="@(_ => OnToggleDevice())"/></Right>
+    </TileItem>
+</Tile>
+
+<div class="ptt-settings-body @(m.IsDeviceEnabled ? "" : "off")">
 <TileTopic Topic="@L.Ptt_ChatsTopic"/>
 <Tile>
     @foreach (var chat in m.AllowedChats) {
@@ -115,6 +125,7 @@
         <Right><Toggle IsChecked="@m.Settings.AreAudibleCuesEnabled" IsCheckedChanged="@(_ => OnToggleCues())"/></Right>
     </TileItem>
 </Tile>
+</div>
 
 @code {
     private GestureUI GestureUI => Hub.GestureUI;
@@ -127,7 +138,10 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var settings = await UserSettingsUI.UserPttSettings().Get(cancellationToken).ConfigureAwait(false);
-        var allowedChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        var isDeviceEnabled = await ChatAudioUI.IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false);
+        // Consented, not armed: the roster shows the account-level consents, which other devices
+        // act on even while this device's switch is off.
+        var allowedChatIds = await ChatAudioUI.GetConsentedPttChatIds(cancellationToken).ConfigureAwait(false);
         var allowedChatIdSet = allowedChatIds.ToHashSet();
         var chatInfos = await ChatListUI.ListAllUnordered(cancellationToken).ConfigureAwait(false);
         var allowedChats = new List<ChatItem>();
@@ -148,6 +162,7 @@
         }
         return new Model(
             settings,
+            isDeviceEnabled,
             allowedChatIdSet,
             allowedChats.OrderBy(x => x.Title).ToList(),
             availableChats.OrderBy(x => x.Title).ToList());
@@ -172,6 +187,9 @@
             : m.AvailableChats.Count != 0
                 ? L.Ptt_NothingAllowed
                 : L.Ptt_NoPttChats;
+
+    private void OnToggleDevice()
+        => ChatAudioUI.SetIsPttEnabledOnDevice(!State.Value.IsDeviceEnabled);
 
     private Task OnTurnOff(ChatId chatId)
         => UserSettingsUI.UserPttSettings().Update(x => x.WithoutPttChat(chatId), CancellationToken.None);
@@ -221,10 +239,11 @@
 
     public sealed record Model(
         UserPttSettings Settings,
+        bool IsDeviceEnabled,
         IReadOnlySet<ChatId> AllowedChatIds,
         IReadOnlyList<ChatItem> AllowedChats,
         IReadOnlyList<ChatItem> AvailableChats) {
-        public static readonly Model None = new(new UserPttSettings(), new HashSet<ChatId>(), [], []);
+        public static readonly Model None = new(new UserPttSettings(), false, new HashSet<ChatId>(), [], []);
         public bool CanAllowMore => AllowedChatIds.Count < UserPttSettings.MaxChatCount;
     }
 

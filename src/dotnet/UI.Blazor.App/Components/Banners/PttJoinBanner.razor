@@ -1,9 +1,12 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Kvas
-@inherits ComputedStateComponent<AppUIHub, bool>
+@inherits ComputedStateComponent<AppUIHub, PttJoinBannerKind>
+@{
+    var kind = State.Value;
+}
 
 <Banner
-    IsVisible="@State.Value"
+    IsVisible="@(kind != PttJoinBannerKind.None)"
     Severity="BannerSeverity.Info"
     ShowDismissButton="true"
     Dismiss="@OnDismiss">
@@ -11,7 +14,7 @@
         <i class="icon-talking text-2xl"></i>
     </Icon>
     <Body>
-        @L.Banner_PttAllow
+        @(kind == PttJoinBannerKind.EnableDevice ? L.Banner_PttUseDevice : L.Banner_PttAllow)
     </Body>
     <Buttons>
         <Button
@@ -21,53 +24,56 @@
 </Banner>
 
 @code {
-    private SyncedState<PttJoinBannerUserSettings> _settings = null!;
+    private StoredState<PttJoinBannerUserSettings> _settings = null!;
 
     private Chat Chat => ChatContext.Chat;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 
     protected override void OnInitialized() {
+        // Deliberately device-local (unlike most user settings): the device question is per
+        // device, so dismissing it on one phone must not silence the ask on another.
         var key = PttJoinBannerUserSettings.GetKey(Chat.Id);
-        _settings = StateFactory.NewUserSettingsSynced(UserSettingsUI, key, new PttJoinBannerUserSettings());
+        _settings = StateFactory.NewKvasStored<PttJoinBannerUserSettings>(
+            new(LocalSettings, key) {
+                InitialValue = new PttJoinBannerUserSettings(),
+                Category = GetStateCategory(GetType()),
+            });
     }
 
-    public override async ValueTask DisposeAsync() {
-        await base.DisposeAsync();
-        _settings.Dispose();
-    }
-
-    protected override ComputedState<bool>.Options GetStateOptions()
+    protected override ComputedState<PttJoinBannerKind>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<bool>.Options() {
-                InitialValue = false,
+            static t => new ComputedState<PttJoinBannerKind>.Options() {
+                InitialValue = PttJoinBannerKind.None,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<PttJoinBannerKind> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         if (chat.HasSingleAuthor || !chat.IsMember() || chat.Id.IsThread())
-            return false;
+            return PttJoinBannerKind.None;
         if (chat.PttEnabledAt is not { } enabledAt)
-            return false;
+            return PttJoinBannerKind.None;
 
         var isIncompleteUIEnabled = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         if (!isIncompleteUIEnabled)
-            return false;
+            return PttJoinBannerKind.None;
 
-        if (!_settings.WhenFirstTimeRead.IsCompleted)
-            await _settings.WhenFirstTimeRead.ConfigureAwait(false);
+        if (!_settings.WhenRead.IsCompleted)
+            await _settings.WhenRead.ConfigureAwait(false);
 
-        // Both the dismissal and the consent expire with the enable-epoch: an off-on cycle re-shows the banner.
         var settings = await _settings.Use(cancellationToken).ConfigureAwait(false);
-        if (settings.DismissedAt >= enabledAt)
-            return false;
-
-        var PTTTalkieSettings = await UserSettingsUI.UserPttSettings()
+        var pttSettings = await UserSettingsUI.UserPttSettings()
             .Get(cancellationToken)
             .ConfigureAwait(false);
-        return !PTTTalkieSettings.IsArmedIn(chat.Id, enabledAt);
+        var isDeviceEnabled = await ChatAudioUI.IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false);
+        return Ptt.GetJoinBannerKind(
+            pttSettings.IsArmedIn(chat.Id, enabledAt),
+            isDeviceEnabled,
+            settings.DismissedAt,
+            enabledAt);
     }
 
     // Event handlers
@@ -77,20 +83,36 @@
         if (chat.PttEnabledAt is not { } enabledAt)
             return;
 
-        var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(CancellationToken.None).ConfigureAwait(true);
-        if (pttChatIds.Count >= UserPttSettings.MaxChatCount && !pttChatIds.Contains(chat.Id)) {
-            ToastUI.Show(
-                L.Ptt_MaxChatsReached_Format(UserPttSettings.MaxChatCount),
-                "icon-alert-circle",
-                ToastDismissDelay.Long);
-            return;
+        var wasDeviceEnabled = await ChatAudioUI.IsPttEnabledOnDevice(CancellationToken.None).ConfigureAwait(true);
+        // Consented, not armed: with the device switch off the armed set is empty, and updating
+        // consents against it would wipe every other chat's consent for the user's other devices.
+        var consentedChatIds = await ChatAudioUI.GetConsentedPttChatIds(CancellationToken.None).ConfigureAwait(true);
+        if (!consentedChatIds.Contains(chat.Id)) {
+            if (consentedChatIds.Count >= UserPttSettings.MaxChatCount) {
+                ToastUI.Show(
+                    L.Ptt_MaxChatsReached_Format(UserPttSettings.MaxChatCount),
+                    "icon-alert-circle",
+                    ToastDismissDelay.Long);
+                return;
+            }
+
+            // Never a raw client clock: JoinedAt must land within the current epoch (>= enabledAt).
+            var joinedAt = Moment.Max(Clocks.ServerClock.Now, enabledAt);
+            await UserSettingsUI.UserPttSettings().Update(
+                x => x.WithOnlyPttChats(consentedChatIds.ToHashSet()).WithPttChat(chat.Id, joinedAt),
+                CancellationToken.None);
         }
 
-        // Never a raw client clock: JoinedAt must land within the current epoch (>= enabledAt).
-        var joinedAt = Moment.Max(Clocks.ServerClock.Now, enabledAt);
-        await UserSettingsUI.UserPttSettings().Update(
-            x => x.WithOnlyPttChats(pttChatIds.ToHashSet()).WithPttChat(chat.Id, joinedAt),
-            CancellationToken.None);
+        ChatAudioUI.SetIsPttEnabledOnDevice(true);
+        if (!wasDeviceEnabled)
+            // The chat-flavored banner enrolls the device implicitly, so confirm it and offer a
+            // one-tap way back for someone who only meant to arm their other devices.
+            ToastUI.Show(
+                L.Ptt_DeviceEnabledToast,
+                "icon-talking",
+                () => ChatAudioUI.SetIsPttEnabledOnDevice(false),
+                L.Ptt_NotOnThisDevice,
+                ToastDismissDelay.Long);
     }
 
     private void OnDismiss()

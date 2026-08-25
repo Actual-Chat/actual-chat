@@ -25,6 +25,15 @@ public static class PttWakeHandler
         }
 
         var isForeground = AndroidUtils.IsAppForeground() ?? false;
+        // Before the FGS and the mic-blocked notification, both of which are themselves noise:
+        // a silenced phone must stay silent. Foreground is exempt - the user is looking at the
+        // app, so this is playback they asked for rather than an alert that interrupts them.
+        if (!isForeground && AndroidRingerMode.IsSilenced) {
+            Log.LogInformation("PTT wake for chat #{ChatId} suppressed: the phone is silenced", chatId);
+            ShowFallbackNotification(chatId, silent: true);
+            return;
+        }
+
         var isServiceShown = false;
         if (!isForeground) {
             // First and synchronously: FGS start must land inside the FCM high-priority
@@ -111,24 +120,37 @@ public static class PttWakeHandler
         AndroidActivitiesBackend.MarkForegroundServiceHidden();
     }
 
-    private static void ShowFallbackNotification(ChatId chatId)
+    private static void ShowFallbackNotification(ChatId chatId, bool silent = false)
+        // Tagged by chat id, so a whole night of suppressed wakes collapses into one entry
+        // per chat instead of stacking.
         => NotificationHelper.ShowChatNotification(
             chatId.Value,
             "Voxt",
             "Someone is talking in a chat you keep listening to",
             null,
             Links.Chat(chatId),
-            silent: false);
+            silent: silent);
 
     // Nested types
 
     private sealed class AndroidPlatform : PttPlatform
     {
         public static readonly AndroidPlatform Instance = new();
+        public override bool IsSilenced => AndroidRingerMode.IsSilenced;
 
         public override void OnWakeFailed(ChatId chatId)
         {
             ShowFallbackNotification(chatId);
+            HideForegroundService(mustOwn: true);
+        }
+
+        public override void OnWakeIgnored(ChatId chatId, PttWakeIgnoreReason reason)
+        {
+            // A device with PTT switched off stays fully inert; the notification is for the
+            // phone that would have played this if it weren't silenced.
+            if (reason == PttWakeIgnoreReason.Silenced)
+                ShowFallbackNotification(chatId, silent: true);
+
             HideForegroundService(mustOwn: true);
         }
 

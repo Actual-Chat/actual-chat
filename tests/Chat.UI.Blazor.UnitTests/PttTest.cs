@@ -122,4 +122,77 @@ public class PttTest
             .ShouldReportMicFailure(hasSignal: false, TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(4))
             .Should().BeTrue();
     }
+
+    [Fact]
+    public void UnconsentedChatShowsAllowChatBanner()
+    {
+        // act + assert
+        Ptt.GetJoinBannerKind(isArmedInChat: false, isDeviceEnabled: false, dismissedAt: default, enabledAt: T0)
+            .Should().Be(PttJoinBannerKind.AllowChat);
+        Ptt.GetJoinBannerKind(isArmedInChat: false, isDeviceEnabled: true, dismissedAt: default, enabledAt: T0)
+            .Should().Be(PttJoinBannerKind.AllowChat);
+    }
+
+    [Fact]
+    public void ConsentedChatOnDisabledDeviceShowsEnableDeviceBanner()
+    {
+        // act + assert
+        Ptt.GetJoinBannerKind(isArmedInChat: true, isDeviceEnabled: false, dismissedAt: default, enabledAt: T0)
+            .Should().Be(PttJoinBannerKind.EnableDevice);
+    }
+
+    [Fact]
+    public void ConsentedChatOnEnabledDeviceShowsNoBanner()
+    {
+        // act + assert
+        Ptt.GetJoinBannerKind(isArmedInChat: true, isDeviceEnabled: true, dismissedAt: default, enabledAt: T0)
+            .Should().Be(PttJoinBannerKind.None);
+    }
+
+    [Fact]
+    public void DismissalWithinEpochHidesBothBannerKinds()
+    {
+        // act + assert
+        Ptt.GetJoinBannerKind(isArmedInChat: false, isDeviceEnabled: false, dismissedAt: T0, enabledAt: T0)
+            .Should().Be(PttJoinBannerKind.None);
+        Ptt.GetJoinBannerKind(isArmedInChat: true, isDeviceEnabled: false, dismissedAt: T0, enabledAt: T0)
+            .Should().Be(PttJoinBannerKind.None);
+    }
+
+    [Fact]
+    public void DismissalFromAPriorEpochDoesNotHideTheBanner()
+    {
+        // An owner's off-on cycle starts a new epoch, and stale dismissals must not survive it.
+        // act + assert
+        Ptt.GetJoinBannerKind(
+                isArmedInChat: false, isDeviceEnabled: false,
+                dismissedAt: T0 - TimeSpan.FromSeconds(1), enabledAt: T0)
+            .Should().Be(PttJoinBannerKind.AllowChat);
+    }
+
+    [Fact]
+    public void ANormalRingerShouldNotCountAsSilenced()
+    {
+        // act + assert
+        Ptt.IsSilenced(DeviceRingerMode.Normal, isDndActive: false).Should().BeFalse();
+    }
+
+    [Fact]
+    public void AMutedRingerShouldCountAsSilenced()
+    {
+        // Vibrate counts too: a buzzing phone on a nightstand still wakes its owner.
+        // act + assert
+        Ptt.IsSilenced(DeviceRingerMode.Vibrate, isDndActive: false).Should().BeTrue();
+        Ptt.IsSilenced(DeviceRingerMode.Silent, isDndActive: false).Should().BeTrue();
+    }
+
+    [Fact]
+    public void DoNotDisturbShouldCountAsSilencedAtEveryRingerMode()
+    {
+        // Android's bedtime mode leaves the ringer at Normal, so the ringer alone can't see it.
+        // act + assert
+        Ptt.IsSilenced(DeviceRingerMode.Normal, isDndActive: true).Should().BeTrue();
+        Ptt.IsSilenced(DeviceRingerMode.Vibrate, isDndActive: true).Should().BeTrue();
+        Ptt.IsSilenced(DeviceRingerMode.Silent, isDndActive: true).Should().BeTrue();
+    }
 }

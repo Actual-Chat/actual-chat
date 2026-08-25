@@ -278,13 +278,13 @@ public class NotificationsBackend(IServiceProvider services)
 
         if (Invalidation.IsActive) {
             var device = context.Operation.Items.KeylessGet<DbDevice>();
-            var isNew = context.Operation.Items.KeylessGet(false);
-            if (isNew && device != null)
+            var mustInvalidate = context.Operation.Items.KeylessGet(false);
+            if (mustInvalidate && device != null)
                 _ = ListDevices(UserId.Parse(device.UserId), default);
             return;
         }
 
-        var (userId, deviceId, deviceType, sessionHash) = command;
+        var (userId, deviceId, deviceType, sessionHash, isPttEnabled) = command;
         DebugLog?.LogDebug("-> OnRegisterDevice. UserId={UserId}, DeviceId={DeviceId}, "
             + "DeviceType={DeviceType}, SessionHash={SessionHash}",
             userId, deviceId, deviceType, sessionHash);
@@ -295,12 +295,14 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
 
         var dbDevice = existingDbDevice;
+        var isChanged = existingDbDevice == null;
         if (dbDevice == null) {
             dbDevice = new DbDevice {
                 Id = deviceId,
                 Type = deviceType,
                 UserId = userId.Value,
                 SessionHash = sessionHash,
+                IsPttEnabled = isPttEnabled,
                 Version = VersionGenerator.NextVersion(),
                 CreatedAt = Clocks.SystemClock.Now,
             };
@@ -316,6 +318,11 @@ public class NotificationsBackend(IServiceProvider services)
                 dbDevice.Type = deviceType; // Now MAUI app reports device type properly, lets update it.
             if (dbDevice.SessionHash.IsNullOrEmpty() && !sessionHash.IsEmpty)
                 dbDevice.SessionHash = sessionHash;
+            if (dbDevice.IsPttEnabled != isPttEnabled) {
+                // ListDevices must invalidate, or SendPttWake keeps serving the stale flag.
+                dbDevice.IsPttEnabled = isPttEnabled;
+                isChanged = true;
+            }
             if (UserId.TryParse(dbDevice.UserId, out var existingUserId) && existingUserId != userId) {
                 if (existingUserId.IsGuest) {
                     dbDevice.UserId = userId.Value;
@@ -332,7 +339,7 @@ public class NotificationsBackend(IServiceProvider services)
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation.Items.KeylessSet(dbDevice);
-        context.Operation.Items.KeylessSet(existingDbDevice == null);
+        context.Operation.Items.KeylessSet(isChanged);
     }
 
     // [CommandHandler]
@@ -1094,12 +1101,13 @@ public class NotificationsBackend(IServiceProvider services)
 
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
         var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
+        // PTT is per-device opt-in: a device registered without the flag never wakes.
         var fcmDeviceIds = devices
-            .Where(d => d.DeviceType == DeviceType.AndroidApp)
+            .Where(d => d.DeviceType == DeviceType.AndroidApp && d.IsPttEnabled)
             .Select(d => d.DeviceId)
             .ToList();
         var pttDeviceIds = devices
-            .Where(d => d.DeviceType == DeviceType.iOSPttApp)
+            .Where(d => d.DeviceType == DeviceType.iOSPttApp && d.IsPttEnabled)
             .Select(d => d.DeviceId)
             .ToList();
         if (fcmDeviceIds.Count == 0 && pttDeviceIds.Count == 0) {

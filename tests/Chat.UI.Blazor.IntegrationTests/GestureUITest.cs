@@ -2,11 +2,12 @@ using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Services.Gestures;
+using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
 [Collection(nameof(ChatUICollection))]
-public class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
+public sealed class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<ChatAppHostFixture>(fixture, @out)
 {
     private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(20);
@@ -46,7 +47,7 @@ public class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task ActivationLoopCompletesAnIterationAndArmsPracticeGestures()
+    public async Task ActivationLoopShouldCompleteAnIterationAndArmPracticeGestures()
     {
         // arrange
         await SensorTester.SignInAsUniqueBob();
@@ -78,21 +79,10 @@ public class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task DisarmingFlipToTalkTakesEffectWellBeforeTheIdleCheckPeriod()
+    public async Task DisarmingFlipToTalkShouldTakeEffectWellBeforeTheIdleCheckPeriod()
     {
         // arrange
-        await SensorTester.SignInAsUniqueBob();
-        var (chatId, _) = await SensorTester.CreateChat(true);
-        // Armed = chat-level PTT on + consent within its epoch; the backend stamps the epoch.
-        var chat = await SensorTester.AppServices.Commander().Call(new ChatsBackend_Change(
-            chatId, null, Change.Update(new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart })));
-        var PTTTalkieSettings = Hub.UserSettingsUI.UserPttSettings();
-        await PTTTalkieSettings.Update(x => x with {
-            PttChats = [new PttChat(chatId, chat.PttEnabledAt!.Value)],
-            PttChatIds = [chatId],
-            AreGesturesAlwaysOn = true,
-            IsFlipToTalkEnabled = true,
-        });
+        var pttSettings = await ArmPttChat();
         GestureUI.Start();
         await TestExt.When(
             () => GestureUI.RecognizerOptions.IsFlipToTalkEnabled.Should().BeTrue(),
@@ -101,7 +91,7 @@ public class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
         // act: the loop just ran, so its wall-clock floor puts the next tick ~15s out -
         // anything faster than that proves the settings write woke it
         await Task.Delay(TimeSpan.FromSeconds(1).Debuggable());
-        await PTTTalkieSettings.Update(x => x with { IsFlipToTalkEnabled = false });
+        await pttSettings.Update(x => x with { IsFlipToTalkEnabled = false });
 
         // assert
         await TestExt.When(
@@ -110,7 +100,27 @@ public class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task TheLoopRunsWhenTheFeedReportsAnAccelerometer()
+    public async Task GesturesShouldStayDisarmedWhilePttIsOffOnThisDevice()
+    {
+        // arrange: consent is account-level, so only the device switch can keep this host silent
+        await ArmPttChat(isPttEnabledOnDevice: false);
+        GestureUI.Start();
+
+        // assert
+        await Task.Delay(SettleDelay.Debuggable());
+        GestureUI.RecognizerOptions.Should().Be(new GestureOptions(false, false, false, ShakeSensitivity.Medium));
+
+        // act
+        Hub.ChatAudioUI.SetIsPttEnabledOnDevice(true);
+
+        // assert
+        await TestExt.When(
+            () => GestureUI.RecognizerOptions.IsFlipToTalkEnabled.Should().BeTrue(),
+            WaitTimeout.Debuggable());
+    }
+
+    [Fact]
+    public async Task TheLoopShouldRunWhenTheFeedReportsAnAccelerometer()
     {
         // arrange
         await SensorTester.SignInAsUniqueBob();
@@ -127,10 +137,9 @@ public class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task TheLoopStaysOffWithoutAnAccelerometerOnANonMauiHost()
+    public async Task TheLoopShouldStayOffWithoutAnAccelerometerOnANonMauiHost()
     {
         // The "doesn't" half of the gate; the test above is the "runs" half.
-
         // arrange
         await NoSensorTester.SignInAsUniqueBob();
         var gestureUI = NoSensorTester.ScopedAppServices.AppUIHub().GestureUI;
@@ -144,6 +153,27 @@ public class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
         await Task.Delay(SettleDelay.Debuggable());
         gestureUI.RecognizerOptions.Should().Be(new GestureOptions(false, false, false, ShakeSensitivity.Medium));
         gestureUI.SampleCount.Should().Be(0);
+    }
+
+    // Private methods
+
+    private async Task<UserSettingsAccessor<UserPttSettings>> ArmPttChat(bool isPttEnabledOnDevice = true)
+    {
+        await SensorTester.SignInAsUniqueBob();
+        var (chatId, _) = await SensorTester.CreateChat(true);
+        // Armed = chat-level PTT on + consent within its epoch + this device enrolled;
+        // the backend stamps the epoch.
+        var chat = await SensorTester.AppServices.Commander().Call(new ChatsBackend_Change(
+            chatId, null, Change.Update(new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart })));
+        var pttSettings = Hub.UserSettingsUI.UserPttSettings();
+        await pttSettings.Update(x => x with {
+            PttChats = [new PttChat(chatId, chat.PttEnabledAt!.Value)],
+            PttChatIds = [chatId],
+            AreGesturesAlwaysOn = true,
+            IsFlipToTalkEnabled = true,
+        });
+        Hub.ChatAudioUI.SetIsPttEnabledOnDevice(isPttEnabledOnDevice);
+        return pttSettings;
     }
 
     // Nested types

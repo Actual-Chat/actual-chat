@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.App.Services;
 using Android.Content;
 using Android.Media;
 using Android.OS;
@@ -30,11 +31,12 @@ public static class IncomingCallRinger
     {
         lock (Lock) {
             try {
-                var audioManager = (AudioManager?)Context.GetSystemService(Context.AudioService);
-                var ringerMode = audioManager?.RingerMode ?? RingerMode.Normal;
-                if (ringerMode != RingerMode.Silent)
+                // DND is deliberately not consulted: an incoming call is the user's own contact
+                // reaching them, not a background alert.
+                var ringerMode = AndroidRingerMode.Mode;
+                if (ringerMode != DeviceRingerMode.Silent)
                     StartVibration();
-                if (ringerMode == RingerMode.Normal)
+                if (ringerMode == DeviceRingerMode.Normal)
                     StartRingtone();
             }
             catch (Exception e) {

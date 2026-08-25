@@ -29,8 +29,15 @@ public static class PttSession
             var (scopedServices, isHeadless) = ResolveScope();
             var core = scopedServices.GetRequiredService<PttSessionCore>();
             var audioFocusDenialCount = core.AudioFocusDenialCount;
-            await core.StartPlayback(chatId, startedAt, isForeground, isHeadless, platform)
+            var ignoreReason = await core.StartPlayback(chatId, startedAt, isForeground, isHeadless, platform)
                 .ConfigureAwait(false);
+            if (ignoreReason is { } reason) {
+                platform.OnWakeIgnored(chatId, reason);
+                if (isHeadless)
+                    await StopAndDisposeCurrent($"PTT wake ignored: {reason}").ConfigureAwait(false);
+                return;
+            }
+
             if (isHeadless)
                 EnsureTeardownWatcher(platform);
             if (!isForeground)

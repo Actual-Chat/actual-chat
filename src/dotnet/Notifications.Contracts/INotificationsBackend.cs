@@ -166,7 +166,10 @@ public sealed partial record NotificationsBackend_RegisterDevice(
     [property: DataMember, Key(0)] UserId UserId,
     [property: DataMember, Key(1)] Symbol DeviceId,
     [property: DataMember, Key(2)] DeviceType DeviceType,
-    [property: DataMember, Key(3)] Symbol SessionHash
+    [property: DataMember, Key(3)] Symbol SessionHash,
+    // Defaults to false: PTT is per-device opt-in, and a command from a client
+    // predating the flag must not enroll that device.
+    [property: DataMember, Key(4)] bool IsPttEnabled = false
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
