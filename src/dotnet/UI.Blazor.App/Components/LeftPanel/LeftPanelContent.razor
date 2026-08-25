@@ -30,11 +30,13 @@
                         }
                         <DownloadAppBanner CanBeClosed="true"/>
                         <NavbarContent/>
-                        <div class="safe-area-bottom safe-area-bottom-overlay"></div>
                     </div>
                 }
             </ChildContent>
         </ContentSwap>
+        @* Outside the swap: every list the panel can show wants the same dissolve, and inside it
+           the search and notification layers got none. *@
+        <div class="safe-area-bottom safe-area-bottom-overlay"></div>
     </div>
 </div>
 

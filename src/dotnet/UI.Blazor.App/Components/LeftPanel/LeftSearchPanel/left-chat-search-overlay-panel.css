@@ -24,8 +24,11 @@
     @apply pt-0;
 }
 
+/* Its swap layers paint themselves opaque so they don't double-expose, and they sit on the search
+   layer's surface rather than the app's base one - without this they flash --background-01. */
 .left-place-search-overlay-panel .tab-panel {
     @apply overflow-hidden;
+    --content-swap-bg: var(--background-03);
 }
 .left-place-search-overlay-panel .tab-panel .tab {
     @apply py-2;

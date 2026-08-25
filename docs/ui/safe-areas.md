@@ -2,6 +2,36 @@
 
 The app uses CSS-driven safe areas via `viewport-fit=cover` and `env(safe-area-inset-*)`. Background layers may extend into safe areas, but interactive/content elements are pushed inward by the inset amounts.
 
+## The rule
+
+An inset is not a margin the app stops at. A panel **occupies** the inset — what
+changes is only what it paints there.
+
+| | Top | Bottom |
+|---|---|---|
+| **Narrow** | The panel's own background continues into the inset, **including a background image**: a blurred place wallpaper reaches the very top of the screen, behind the clock and battery. | The panel continues into the inset too, under the dissolve — a gradient plus blur, so the system navigation stays legible over it. |
+| **Wide** | One flat strip across the **whole** width, in the navbar's left-side colour. Panels do **not** each extend their own background here. | Same as narrow: the panel continues, under the dissolve. |
+
+Interactive content is still pushed inward by the inset in every case. Only the
+*background* extends.
+
+::: warning A spacer is not an extension
+`<div class="safe-area-top">` reserves the inset and paints nothing, so whatever
+sits behind it shows through. That is fine where the ancestor's flat colour is
+already the intended background, and wrong wherever the component has a
+background of its own — an image, a gradient, a different surface — because the
+background then stops at the spacer and leaves a visible band above it.
+
+To extend a background, grow the element and pad it:
+
+```css
+.some-header {
+    height: calc(6.5rem + var(--safe-area-top));
+    padding-top: var(--safe-area-top);
+}
+```
+:::
+
 ## CSS Variables
 
 Four CSS custom properties wrap the native `env()` values, defined on `:root` in `main.css`:
@@ -90,7 +120,8 @@ All spacers have `flex-shrink: 0` so they don't collapse in flex containers.
 | Direction | Background | Reason |
 |-----------|-----------|--------|
 | Left, right | `var(--background-04)` (dark, opaque) | Always visible as permanent strips at screen edges. The `::after` pseudo-elements on `.safe-area-left` / `.safe-area-right` use `position: fixed; z-index: 99999` to paint over everything, ensuring these strips are visible regardless of scroll position or overlay state. |
-| Top, bottom | `transparent` | Top/bottom safe areas are not rendered as standalone colored strips. Instead, each component extends its own background into the safe area via `padding-top` / `padding-bottom` on the appropriate element (header extends `bg-01`, editor extends `bg-post-panel`, etc.). |
+| Top (narrow), bottom | `transparent` | Not standalone coloured strips: each component extends its own background into the inset via `padding-top` / `padding-bottom` on the appropriate element (header extends `bg-01`, editor extends `bg-post-panel`, a place header extends its wallpaper). See [The rule](#the-rule). |
+| Top (wide) | navbar left-side colour | One flat strip across the whole width. Panels do **not** extend their own backgrounds into the top inset in wide mode. |
 
 The bottom safe area in scrollable panels (left panel chat list, right panel content) uses `.safe-area-bottom-overlay` which is transparent with `backdrop-filter: blur(8px)`, blurring content that scrolls underneath.
 
@@ -462,3 +493,4 @@ body.narrow splash-page-skeleton .left-panel-skeleton.side-nav {
 3. **`.has-safe-area-bottom` pattern** — Avoids double bottom padding when the chat editor is present vs. when viewing a read-only chat or other page.
 4. **Blur overlays for scrollable lists** — The bottom safe area in scrollable panels (left chat list, right panel content) uses `position: absolute` + `backdrop-filter: blur(8px)` so content scrolls underneath while the safe area is visually distinct.
 5. **Skeleton safe areas in CSS only** — The loading skeleton uses CSS padding rather than JS, so safe areas are visible before any JavaScript loads.
+6. **Panels occupy the insets, they don't stop at them** — see [The rule](#the-rule). The visible test is a place header on a notched phone: its blurred wallpaper must reach the top of the screen, not stop below the clock. Wide mode is the exception, and deliberately so — a single navbar-coloured strip reads as one window chrome rather than as several panels each bleeding upward.

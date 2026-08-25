@@ -37,6 +37,15 @@
     @apply gap-x-2;
     @apply px-0;
 }
+/* Carousel tabs hold an avatar, not a label, and it is taller than the text-tab caps below - which
+   clipped it, symmetrically enough to read as "small" rather than as broken. */
+.tab-panel-tabs.carousel,
+.tab-panel-tabs.carousel .btn-group-container {
+    @apply max-h-none;
+}
+.tab-panel-tabs.carousel .tab-btn .btn-content {
+    @apply p-0;
+}
 .tab-panel-tabs .btn-group-container {
     @apply relative;
     @apply flex-y;

@@ -89,6 +89,11 @@ body.narrow .left-panel-content-header::before {
     @apply grow;
     @apply overflow-hidden;
 }
+/* Above the swap: an outgoing layer is z-10 while it animates, and the dissolve has to stay on top
+   of whichever list is leaving as well as the one arriving. */
+.left-panel-content-main-wrapper > .safe-area-bottom-overlay {
+    @apply z-20;
+}
 /* The chat list and the search results are the two layers of one swap area, so the search tint
    arrives with the layer that carries it instead of as a backdrop racing the content. */
 .left-panel-content-main-wrapper > .content-swap {
