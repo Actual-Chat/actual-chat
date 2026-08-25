@@ -9,6 +9,10 @@ namespace ActualChat.Notifications;
 public abstract partial record ChatEntryRelatedNotification(NotificationId Id, long Version = 0)
     : ChatNotification(Id, Version)
 {
+    // Anchored at EntryLid, so the Read position clears it.
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override NotificationDismissMode DismissMode => NotificationDismissMode.OnRead;
+
     [DataMember(Order = 9), Key(9)]
     public long EntryLid { get; init; }
     // First unread entry the coalesced notification anchors at — the tap target, stable across
@@ -149,6 +153,6 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
         var text = n.LeadText.IsNullOrEmpty() ? n.Text : n.LeadText;
         return text.IsNullOrEmpty()
             ? []
-            : [NotificationMessage.New(n.AuthorId ?? default, "", text, n.EntryLid, n.SentAt)];
+            : [NotificationMessage.New(n.AuthorId, "", text, n.EntryLid, n.SentAt)];
     }
 }

@@ -6,8 +6,10 @@ namespace ActualChat.Notifications;
 [DataContract, MessagePackObject]
 public sealed partial record NotificationMessage : ISanitized
 {
+    // Nullable to match ChatNotification.AuthorId: a message synthesized while upgrading a
+    // pre-RecentMessages blob has no author to attribute it to.
     [DataMember(Order = 0), Key(0)]
-    public AuthorId AuthorId { get; init; }
+    public AuthorId? AuthorId { get; init; }
     [DataMember(Order = 1), Key(1)]
     public string AuthorName {
         get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
@@ -21,7 +23,7 @@ public sealed partial record NotificationMessage : ISanitized
     [DataMember(Order = 4), Key(4)]
     public Moment SentAt { get; init; }
     public static NotificationMessage New(
-        AuthorId authorId, string authorName, string text,
+        AuthorId? authorId, string authorName, string text,
         long entryLid, Moment sentAt)
         => new() {
             AuthorId = authorId,
