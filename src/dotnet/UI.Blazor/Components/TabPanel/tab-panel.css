@@ -4,9 +4,12 @@
 .tab-panel.hide-header .tab-panel-tabs {
     @apply hidden;
 }
+/* min-w-0/max-w-full so the strip can't size to its content: it would widen everything around it
+   past the viewport, and .btn-group inherits that width and never gets to scroll. */
 .tab-panel-tabs {
     @apply relative;
     @apply flex-none flex-x items-center;
+    @apply min-w-0 max-w-full;
     @apply mb-2.5 pb-1.5;
     @apply overflow-hidden;
 }

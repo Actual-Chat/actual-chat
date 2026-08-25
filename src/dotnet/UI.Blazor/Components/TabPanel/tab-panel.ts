@@ -124,22 +124,6 @@ export class TabPanel {
         this.updateOverflow();
     }
 
-    private updateOverflow() {
-        const scrollContainer = this.scrollContainer;
-        if (!scrollContainer)
-            return;
-
-        const tolerance = TabPanel.scrollTolerancePx;
-        const maxScrollLeft = scrollContainer.scrollWidth - scrollContainer.clientWidth;
-        const scrollLeft = scrollContainer.scrollLeft;
-        scrollContainer.classList.toggle('fade-left', scrollLeft > tolerance);
-        scrollContainer.classList.toggle('fade-right', scrollLeft < maxScrollLeft - tolerance);
-    }
-
-    private scrollActiveTabIntoView(behavior: ScrollBehavior) {
-        this.activeTab?.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior });
-    }
-
     private updateHillPosition() {
         if (!this.activeTab || !this.hill)
             return;
@@ -152,6 +136,25 @@ export class TabPanel {
 
         this.hill.style.left = `${left + 4}px`;
         this.hill.style.width = `${width - 8}px`;
+    }
+
+    // Read off the tabs, not scrollWidth: that counts the container's own horizontal padding.
+    private updateOverflow() {
+        const scrollContainer = this.scrollContainer;
+        const tabs = scrollContainer?.children;
+        if (!tabs?.length)
+            return;
+
+        const tolerance = TabPanel.scrollTolerancePx;
+        const box = scrollContainer!.getBoundingClientRect();
+        const first = tabs[0].getBoundingClientRect();
+        const last = tabs[tabs.length - 1].getBoundingClientRect();
+        scrollContainer!.classList.toggle('fade-left', first.left < box.left - tolerance);
+        scrollContainer!.classList.toggle('fade-right', last.right > box.right + tolerance);
+    }
+
+    private scrollActiveTabIntoView(behavior: ScrollBehavior) {
+        this.activeTab?.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior });
     }
 
     private setupDragScroll(): void {

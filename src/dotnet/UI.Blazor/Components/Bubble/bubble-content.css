@@ -27,9 +27,9 @@ body.narrow .ac-bubble-host.landscape .bubble-content .c-body {
 .bubble-title {
     @apply text-headline-1 whitespace-normal;
 }
-/* The counter is an index, the buttons are the controls: let it yield the row's width to them */
+/* flex-none in the markup: an index is ~40px, and letting it shrink meant it absorbed every
+   shortfall - down to one glyph per line - so the buttons' flex-wrap below never got to act. */
 .bubble-counter {
-    @apply min-w-0;
     @apply text-caption-2;
 }
 .bubble-buttons {

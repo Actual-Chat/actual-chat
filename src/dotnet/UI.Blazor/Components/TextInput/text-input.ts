@@ -68,6 +68,10 @@ export class TextInput implements Disposable {
         await this.blazorRef.invokeMethodAsync('OnTextChanged', '');
     }
 
+    public blur(): void {
+        this.element.blur();
+    }
+
     // Called by Blazor
     public set(value: string | undefined): void {
         this.element.value = value ?? '';

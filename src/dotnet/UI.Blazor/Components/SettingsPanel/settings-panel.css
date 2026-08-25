@@ -125,8 +125,11 @@ body.wide .settings-tab {
         overflow-y: auto;
     }
 }
+/* min-w-0: a flex item's default min-width is its content, so without this a wide child - a tab
+   strip whose labels don't fit - widens this box and everything in it past the viewport. */
 .tab-inner {
     @apply flex-1 flex-y items-stretch md:items-center;
+    @apply min-w-0;
     @apply md:w-3/5;
 }
 .hide-tabs .settings-tab {
@@ -237,6 +240,7 @@ body.hoverable .tile-btn:hover,
 .settings-tab-content {
     @apply flex-y gap-y-4;
     @apply w-full md:w-100;
+    @apply min-w-0;
     @apply p-2 md:px-4 md:pb-4;
     @apply overflow-y-auto md:overflow-y-visible custom-scrollbar;
 }
@@ -315,11 +319,11 @@ body.narrow .settings-tab-header {
 .tile-item-my-account-link .tile-item-body-content {
     @apply text-01 text-text-1;
 }
-/* The share button is decoration, the account name is the identity - so the button gives up its
-   width ~100x faster, down to its icon, instead of the name paying the whole shortfall. */
+/* The share button is decoration, the account name is the identity, so the button yields first -
+   but by a factor that lets its label ellipsise on the way rather than snap to icon-only. */
 .tile-item-my-account-link .tile-item-right {
-    @apply flex-initial shrink-[100];
-    @apply min-w-16;
+    @apply flex-initial shrink-[8];
+    @apply min-w-24;
 }
 .tile-item-my-account-link .btn.btn-share-action {
     @apply mr-0.5 md:mr-1.5;

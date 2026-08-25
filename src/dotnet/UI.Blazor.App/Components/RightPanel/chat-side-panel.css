@@ -181,7 +181,9 @@ body.narrow .chat-side-panel.has-expanded-header > .c-panel-content {
    width ~100x faster, down to the icon, instead of the title paying the whole shortfall. */
 .chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-content > .status-badge {
     @apply flex-initial shrink-[100];
-    @apply min-w-10;
+    /* 56px: the padding, icon and gap take 34, and Chrome paints a character before the ellipsis,
+       so a complete "P..." needs ~19 of the remainder - 48px only got two of the three dots out. */
+    @apply min-w-14;
 }
 .chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-content > .c-info {
     @apply flex-x;
@@ -419,16 +421,22 @@ body.narrow .chat-side-panel.has-expanded-header > .c-panel-content {
     @apply p-2;
     @apply overflow-y-auto custom-scrollbar;
 }
-/* Narrow only: the collapse translates & clips the list block, so a short native list needs bottom
-   padding to scroll its clipped tail into view (fades out as the header collapses). On wide there is
-   no clip, so no extra padding. The panel is fullscreen here with nothing below it, so the bottom
-   safe area is reserved too. VirtualList clamps beyond its model's end, so this can't help it. */
+/* The bottom safe area is reserved on both layouts: nothing sits below the panel in either, so the
+   tail would otherwise land under the inset. The collapse range on top of it is narrow only - there
+   the collapse translates & clips the list block, so a short native list needs the extra padding to
+   scroll its clipped tail into view (it fades out as the header collapses). VirtualList clamps beyond
+   its model's end, so this can't help it. */
+.chat-side-panel .author-list-tab {
+    padding-bottom: calc(0.5rem + var(--safe-area-bottom));
+}
 body.narrow .chat-side-panel .author-list-tab {
     padding-bottom: calc(0.5rem + var(--safe-area-bottom) + var(--rp-collapse-range) * (1 - var(--rp-collapse)));
 }
-/* Narrow only: the content VirtualLists (media/files/links) can't use bottom padding for their clipped
-   tail — the list clamps scrollTop to its model's end, ignoring CSS padding. Growing the measured end
-   anchor extends that end (endAnchorSize feeds max in computeScrollLimits) so the tail is reachable
+/* The content VirtualLists (media/files/links) can't use bottom padding at all - the list clamps
+   scrollTop to its model's end, ignoring CSS padding - so their bottom safe area has to come from the
+   end anchor instead, on both layouts. The collapse range added to it below is narrow only: there the
+   tail is clipped, and growing the measured end anchor extends that end (endAnchorSize feeds max in
+   computeScrollLimits) so the tail is reachable
    while the header is fully expanded — the only state it stays clipped in (a short list can't collapse;
    a long one un-clips itself by collapsing). Gated on .rp-expanded (progress === 0), NOT the live
    --rp-collapse: tying the measured anchor to the animating var resized it every frame mid-collapse, and
@@ -437,7 +445,7 @@ body.narrow .chat-side-panel .author-list-tab {
    contentOverflow() (right-panel-collapse.ts). The base is just a hair of breathing room plus the
    bottom safe area (the panel is fullscreen with no footer below) — unlike the transcript's h-12
    end-anchor that clears its editor footer. */
-body.narrow .chat-side-panel .content-list-tab > .c-wrapper > ul.c-virtual-container > .c-end-anchor {
+.chat-side-panel .content-list-tab > .c-wrapper > ul.c-virtual-container > .c-end-anchor {
     height: calc(0.5rem + var(--safe-area-bottom));
 }
 body.narrow .chat-side-panel.rp-expanded .content-list-tab > .c-wrapper > ul.c-virtual-container > .c-end-anchor {

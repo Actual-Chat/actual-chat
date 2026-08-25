@@ -38,13 +38,14 @@
     @apply flex-wrap justify-start items-center;
     @apply gap-y-2;
 }
-/* The dismiss button is out of flow, so only a banner that has one reserves room for it */
+/* The dismiss button is out of flow, so only a banner that has one reserves room for it - 36px is
+   what it actually occupies (24px wide at right-2), and the room saved keeps a phone row unwrapped. */
 .banner.banner-wrap.banner-dismissible > .c-content {
-    @apply pr-12;
+    @apply pr-9;
 }
 .banner.banner-wrap .banner-body {
     @apply flex-1;
-    @apply min-w-48;
+    @apply min-w-44;
 }
 .banner.banner-wrap .banner-buttons {
     @apply ml-auto;
@@ -52,9 +53,10 @@
 .banner.banner-wrap .close-banner-abs {
     @apply absolute top-2 md:top-3.5 right-2;
 }
-/* 22rem, not the phone's ~24rem: English fits beside the button there and shouldn't cost a row.
-   A translation that doesn't fit still wraps on its own - .banner-body's min-w-48 floor sees to that. */
-@container banner-wrap (max-width: 22rem) {
+/* The query sees the content box, 20px narrower than the banner, so 22rem still fired up to a 380px
+   viewport and cost English a row on every phone. A translation that doesn't fit wraps regardless -
+   .banner-body's min-w-44 floor sees to that, from a 362px viewport down. */
+@container banner-wrap (max-width: 20rem) {
     .banner.banner-wrap.banner-dismissible > .c-content {
         @apply pr-0;
     }

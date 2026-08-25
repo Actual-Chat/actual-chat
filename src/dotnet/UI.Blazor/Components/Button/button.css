@@ -76,12 +76,13 @@ body.device-ios * {
     @apply min-h-16 md:min-h-12;
 }
 /* .btn-xs and .btn-sm stay on one line — the row rhythm of toolbars and tab rails depends
-   on it. Every other size grows to two lines rather than losing characters. */
-.btn:not(.btn-xs, .btn-sm) > .btn-content {
+   on it. Every other size grows to two lines rather than losing characters.
+   .tab-btn too: a strip detects overflow only while its labels keep scrollWidth past clientWidth. */
+.btn:not(.btn-xs, .btn-sm, .tab-btn) > .btn-content {
     @apply whitespace-normal;
 }
-.btn:not(.btn-xs, .btn-sm) > .btn-content:not(:has(*)),
-.btn:not(.btn-xs, .btn-sm) > .btn-content > span {
+.btn:not(.btn-xs, .btn-sm, .tab-btn) > .btn-content:not(:has(*)),
+.btn:not(.btn-xs, .btn-sm, .tab-btn) > .btn-content > span {
     @apply line-clamp-2;
     @apply whitespace-normal;
 }

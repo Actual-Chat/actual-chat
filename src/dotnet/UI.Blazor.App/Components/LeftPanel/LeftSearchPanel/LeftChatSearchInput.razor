@@ -103,8 +103,12 @@
     }
 
     private void OnClick(bool openPanel) {
-        if (!openPanel)
+        if (!openPanel) {
             Cancel();
+            // Escape and Ctrl+F close it while the input still holds focus, so clicking the field
+            // again is no focus change and OnFocus - the only thing that reopens it - never fires.
+            _ = _inputRef?.Blur();
+        }
         var wasOpen = SearchUI.IsShowRecentOn.Value || SearchUI.IsSearchModeOn.Value;
         SearchUI.ShowRecent(openPanel);
         SearchUI.PlaceId.Value = Place?.Id;

@@ -8,10 +8,10 @@ import {
     Placement,
     ReferenceElement,
     shift,
-    SideObject,
     VirtualElement,
 } from '@floating-ui/dom';
 import { Disposable } from 'disposable';
+import { getSafeAreaPadding } from 'safe-area';
 import { DocumentEvents, stopEvent } from 'event-handling';
 import { getOrInheritData } from 'dom-helpers';
 import { delayAsync } from 'actuallab-core';
@@ -23,7 +23,7 @@ import { getLogs } from 'logging';
 import { unselect } from 'keyboard';
 import { Tune, TuneUI } from '../../Services/TuneUI/tune-ui';
 
-const {  logScope, debugLog } = getLogs('MenuHost');
+const { logScope, debugLog } = getLogs('MenuHost');
 // TODO: remove eslint ignores and fix errors
 enum MenuTrigger {
     None = 0,
@@ -282,10 +282,9 @@ export class MenuHost implements Disposable {
             middleware.push(offset(6));
         }
         middleware.push(flip());
-        // crossAxis: true is what keeps a menu too tall for the space above its anchor from
-        // ending up at a negative top - flip() alone leaves it there when neither side fits.
+        // crossAxis: flip() alone leaves a too-tall menu at a negative top when neither side fits.
         middleware.push(shift({
-            padding: getMenuOverflowPadding(),
+            padding: getSafeAreaPadding(menuViewportGap),
             crossAxis: true,
             limiter: limitShift(),
         }));
@@ -456,18 +455,6 @@ let _nextId = 1;
 const nextId = () => 'menu:' + (_nextId++).toString();
 
 const menuViewportGap = 5;
-
-// The insets are read from the CSS variables rather than env(), so debugUI.showSafeAreas applies here too.
-function getMenuOverflowPadding(): SideObject {
-    const style = getComputedStyle(document.body);
-    const inset = (name: string) => menuViewportGap + (Number.parseFloat(style.getPropertyValue(name)) || 0);
-    return {
-        top: inset('--safe-area-top'),
-        right: inset('--safe-area-right'),
-        bottom: inset('--safe-area-bottom'),
-        left: inset('--safe-area-left'),
-    };
-}
 
 function getPlacementFromAttributes(triggerElement: HTMLElement): Placement | null {
     const placement = triggerElement.dataset.menuPlacement;
