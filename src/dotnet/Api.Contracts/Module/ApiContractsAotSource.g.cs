@@ -115,8 +115,8 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Media.Uploads_Remove>();
         CodeKeeper.KeepSerializable<global::ActualChat.Media.Uploads_StartProcessUpload>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.Notifications_DeregisterDevice>();
-        CodeKeeper.KeepSerializable<global::ActualChat.Notifications.Notifications_Handle>();
-        CodeKeeper.KeepSerializable<global::ActualChat.Notifications.Notifications_HandleAll>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Notifications.Notifications_Dismiss>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Notifications.Notifications_DismissAll>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.Notifications_NotifyMembers>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.Notifications_NotifyMentionedMembers>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.Notifications_RegisterDevice>();
@@ -824,12 +824,12 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_DeregisterDevice>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_DeregisterDevice>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_DeregisterDevice>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_Handle>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_Handle>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_Handle>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_HandleAll>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_HandleAll>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_HandleAll>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_Dismiss>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_Dismiss>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_Dismiss>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_DismissAll>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_DismissAll>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_DismissAll>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_NotifyMembers>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_NotifyMembers>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.Notifications_NotifyMembers>>>>();
@@ -1924,8 +1924,8 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+NotificationActionKindFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+NotificationFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+Notifications_DeregisterDeviceFormatter, ActualChat.Api.Contracts");
-        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+Notifications_HandleAllFormatter, ActualChat.Api.Contracts");
-        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+Notifications_HandleFormatter, ActualChat.Api.Contracts");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+Notifications_DismissAllFormatter, ActualChat.Api.Contracts");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+Notifications_DismissFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+Notifications_NotifyMembersFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+Notifications_NotifyMentionedMembersFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+Notifications_RegisterDeviceFormatter, ActualChat.Api.Contracts");
@@ -2105,8 +2105,8 @@ internal partial class ApiContractsAotSource : IAotSource
             (typeof(global::ActualChat.Media.Uploads_Remove), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Media.Uploads_StartProcessUpload), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notifications.Notifications_DeregisterDevice), AotTypeKind.Serializable),
-            (typeof(global::ActualChat.Notifications.Notifications_Handle), AotTypeKind.Serializable),
-            (typeof(global::ActualChat.Notifications.Notifications_HandleAll), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Notifications.Notifications_Dismiss), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Notifications.Notifications_DismissAll), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notifications.Notifications_NotifyMembers), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notifications.Notifications_NotifyMentionedMembers), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notifications.Notifications_RegisterDevice), AotTypeKind.Serializable),

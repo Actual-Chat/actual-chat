@@ -33,7 +33,7 @@ public class NotificationActiveReaderTest(AppHostFixture fixture, ITestOutputHel
         await Task.Delay(Constants.Notification.ActiveReaderGrace + TimeSpan.FromSeconds(5));
 
         var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
-        info.Displayed.Should().BeEmpty();
+        info.Items.Should().BeEmpty();
         Sink.Messages.Should().NotContain(m => m.Notification != null && m.Notification.Id == notification.Id,
             "a message read during the grace window must never be pushed to any device");
     }
@@ -54,15 +54,15 @@ public class NotificationActiveReaderTest(AppHostFixture fixture, ITestOutputHel
         var notification = NewMessageNotification(alice.Id, chatId, entryLid, "Live message");
         await Enqueue(notification);
 
-        // Held, not alerted: nothing is displayed while the grace window runs.
+        // Held, not alerted: nothing is items while the grace window runs.
         await Task.Delay(TimeSpan.FromSeconds(3));
         var early = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
-        early.Displayed.Should().BeEmpty("the message must be deferred, not pushed immediately");
+        early.Items.Should().BeEmpty("the message must be deferred, not pushed immediately");
 
         // After the grace window the unread message surfaces and a real push goes out.
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
-            info.Displayed.Should().ContainSingle().Which.Id.Should().Be(notification.Id);
+            info.Items.Should().ContainSingle().Which.Id.Should().Be(notification.Id);
             Sink.Messages.Should().Contain(m =>
                 !m.IsDismissal && !m.IsSilent && m.Notification != null
                 && m.Notification.Id == notification.Id && m.DeviceIds.Contains(deviceId));

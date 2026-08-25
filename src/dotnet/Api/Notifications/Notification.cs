@@ -38,8 +38,8 @@ public abstract partial record Notification(
     public Moment CreatedAt { get; init; }
     [DataMember(Order = 6), Key(6)]
     public Moment SentAt { get; init; }
-    [DataMember(Order = 7), Key(7)]
-    public Moment? HandledAt { get; init; }
+    // Key 7 held HandledAt: dismissal removes the notification from UserNotificationInfo.Items
+    // rather than stamping it, so the field was always null. Keys are wire format - it stays vacant.
     // Optional call-to-action buttons (empty for ordinary chat notifications). Key 16 avoids the
     // 8..15 range that subtypes use, so it's collision-free across the whole union.
     [DataMember(Order = 16), Key(16)]
@@ -52,8 +52,6 @@ public abstract partial record Notification(
     public NotificationKind Kind => Id.Kind;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string SimilarityKey => Id.SimilarityKey;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public bool IsActive => HandledAt == null;
 
     public Notification WithSimilar(Notification similar)
     {
@@ -63,7 +61,6 @@ public abstract partial record Notification(
         return this with {
             Version = similar.Version,
             CreatedAt = similar.CreatedAt,
-            HandledAt = null,
         };
     }
 

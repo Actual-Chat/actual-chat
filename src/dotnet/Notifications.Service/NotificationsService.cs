@@ -21,7 +21,7 @@ public class NotificationsService(IServiceProvider services) : INotifications
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var info = await Backend.GetUserNotificationInfo(account.Id, cancellationToken).ConfigureAwait(false);
-        return info.Displayed;
+        return info.Items;
     }
 
     // [ComputeMethod]
@@ -49,8 +49,8 @@ public class NotificationsService(IServiceProvider services) : INotifications
     }
 
     // [CommandHandler]
-    public virtual async Task OnHandle(
-        Notifications_Handle command, CancellationToken cancellationToken)
+    public virtual async Task OnDismiss(
+        Notifications_Dismiss command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
@@ -60,18 +60,18 @@ public class NotificationsService(IServiceProvider services) : INotifications
         if (notificationId.UserId != account.Id)
             throw Unauthorized();
 
-        await Commander.Run(new NotificationsBackend_Handle(notificationId), cancellationToken).ConfigureAwait(false);
+        await Commander.Run(new NotificationsBackend_Dismiss(notificationId), cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task OnHandleAll(
-        Notifications_HandleAll command, CancellationToken cancellationToken)
+    public virtual async Task OnDismissAll(
+        Notifications_DismissAll command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
-        await Commander.Run(new NotificationsBackend_HandleAll(account.Id), cancellationToken).ConfigureAwait(false);
+        await Commander.Run(new NotificationsBackend_DismissAll(account.Id), cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

@@ -12,9 +12,9 @@ public interface INotifications : IComputeService
         Session session, ChatEntryId chatEntryId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task OnHandle(Notifications_Handle command, CancellationToken cancellationToken);
+    Task OnDismiss(Notifications_Dismiss command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnHandleAll(Notifications_HandleAll command, CancellationToken cancellationToken);
+    Task OnDismissAll(Notifications_DismissAll command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRegisterDevice(Notifications_RegisterDevice command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -27,14 +27,14 @@ public interface INotifications : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Notifications_Handle(
+public sealed partial record Notifications_Dismiss(
     [property: DataMember, Key(0)] Session Session,
     [property: DataMember, Key(1)] NotificationId NotificationId
 ) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Notifications_HandleAll(
+public sealed partial record Notifications_DismissAll(
     [property: DataMember, Key(0)] Session Session
 ) : ISessionCommand<Unit>, IApiCommand;
 

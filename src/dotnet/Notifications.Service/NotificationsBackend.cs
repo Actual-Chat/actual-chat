@@ -107,20 +107,21 @@ public class NotificationsBackend(IServiceProvider services)
         // Population re-check: hide notifications the user has since read, or that the chat's
         // notification mode suppresses (the mode may change after the notification was shown;
         // ringer kinds stay visible even when muted). This is the single source of truth for the
-        // "active" set — the in-app list, the badge count, and the client reconciler all agree,
-        // and OnPush drops sends for anything hidden here, so fan-out and this filter must use
-        // the same NotificationHelper predicates.
+        // "active" set — the app-icon badge, the client reconciler and incoming-call rings all
+        // agree, and OnPush drops sends for anything hidden here, so fan-out and this filter must
+        // use the same NotificationHelper predicates. Unread counts on chats and places are a
+        // different calculation and deliberately do not come from here.
         // Reads IChatPositionsBackend.Get + notification mode (once per distinct chat), so Fusion
         // re-invalidates this method whenever a read position or mode setting changes.
-        var readPositions = await GetReadPositions(userId, info.Displayed, cancellationToken).ConfigureAwait(false);
-        var modes = await GetChatNotificationModes(userId, info.Displayed, cancellationToken).ConfigureAwait(false);
-        var displayed = info.Displayed.Without(n => IsRead(n, readPositions) || IsSuppressedByMode(n, modes));
-        if (displayed.Count == info.Displayed.Count)
+        var readPositions = await GetReadPositions(userId, info.Items, cancellationToken).ConfigureAwait(false);
+        var modes = await GetChatNotificationModes(userId, info.Items, cancellationToken).ConfigureAwait(false);
+        var items = info.Items.Without(n => IsRead(n, readPositions) || IsSuppressedByMode(n, modes));
+        if (items.Count == info.Items.Count)
             return info;
 
         return info with {
-            Displayed = displayed,
-            IsDormant = displayed.Count >= Constants.Notification.DormancyThreshold,
+            Items = items,
+            IsDormant = items.Count >= Constants.Notification.DormancyThreshold,
         };
     }
 
@@ -146,11 +147,11 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         if (notification.SentAt == default) {
-            // Reuse an already-displayed notification's SentAt so a SentAt-less redelivery stays a
+            // Reuse an already-items notification's SentAt so a SentAt-less redelivery stays a
             // no-op (MergeWith treats an equal SentAt as a duplicate) instead of re-alerting; only a
             // genuinely first-seen notification is stamped Now.
-            var displayed = info.Displayed.FirstOrDefault(n => n.Id == notification.Id);
-            notification = notification with { SentAt = displayed?.SentAt ?? Clocks.SystemClock.Now };
+            var items = info.Items.FirstOrDefault(n => n.Id == notification.Id);
+            notification = notification with { SentAt = items?.SentAt ?? Clocks.SystemClock.Now };
         }
 
         if (IsSoftUpdate(info, notification)) {
@@ -188,32 +189,32 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
-    public virtual async Task OnHandle(
-        NotificationsBackend_Handle command,
+    public virtual async Task OnDismiss(
+        NotificationsBackend_Dismiss command,
         CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
 
         var notificationId = command.NotificationId;
-        DebugLog?.LogDebug("-> OnHandle. NotificationId={NotificationId}", notificationId);
+        DebugLog?.LogDebug("-> OnDismiss. NotificationId={NotificationId}", notificationId);
         await ApplyHardUpdate(notificationId.UserId, [], [notificationId], cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task OnHandleAll(
-        NotificationsBackend_HandleAll command,
+    public virtual async Task OnDismissAll(
+        NotificationsBackend_DismissAll command,
         CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
 
         var userId = command.UserId;
-        DebugLog?.LogDebug("-> OnHandleAll. UserId={UserId}", userId);
-        // handleAll dismisses the raw committed set (not the compute-filtered view), so
+        DebugLog?.LogDebug("-> OnDismissAll. UserId={UserId}", userId);
+        // dismissAll dismisses the raw committed set (not the compute-filtered view), so
         // notifications hidden by a currently muted chat are dismissed too and can't resurface
         // as unread when the chat is unmuted.
-        await ApplyHardUpdate(userId, [], [], handleAll: true, cancellationToken).ConfigureAwait(false);
+        await ApplyHardUpdate(userId, [], [], dismissAll: true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -580,7 +581,7 @@ public class NotificationsBackend(IServiceProvider services)
             // the device banner via the dismissal push ApplyHardUpdate emits for a removed notification.
             var notificationId = NotificationId.New(a.UserId, NotificationKind.IncomingCall, conversationId.Value);
             await Queues
-                .Enqueue(new NotificationsBackend_Handle(notificationId), cancellationToken)
+                .Enqueue(new NotificationsBackend_Dismiss(notificationId), cancellationToken)
                 .ConfigureAwait(false);
         }
     }
@@ -731,7 +732,7 @@ public class NotificationsBackend(IServiceProvider services)
 
         var (userId, chatId, _) = eventCommand;
 
-        // Cheap gate: avoid the operation + row lock + push path unless this user has a displayed
+        // Cheap gate: avoid the operation + row lock + push path unless this user has a items
         // notification anchored to this chat. The event's EntryLid is advisory (collapsed events
         // keep the window's first advance) — ApplyHardUpdate re-checks the live Read position.
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
@@ -742,7 +743,7 @@ public class NotificationsBackend(IServiceProvider services)
         if (dbUserNotifications is null)
             return;
 
-        var hasNotificationInChat = dbUserNotifications.ToModel().Displayed.Any(n => {
+        var hasNotificationInChat = dbUserNotifications.ToModel().Items.Any(n => {
             var (anchorChatId, anchorEntryLid) = GetReadAnchor(n);
             return anchorChatId == chatId && anchorEntryLid > 0;
         });
@@ -909,13 +910,13 @@ public class NotificationsBackend(IServiceProvider services)
         // handled, or muted since it was enqueued), and take the badge from the current active
         // set — so a redelivered/out-of-order queue message can't resurrect it or stamp a stale badge.
         var info = await GetUserNotificationInfo(userId, cancellationToken).ConfigureAwait(false);
-        // Send the converged displayed notification (not the enqueued one), so aggregated content,
+        // Send the converged items notification (not the enqueued one), so aggregated content,
         // the first-unread anchor and the beep state all reflect the committed state.
-        var displayed = info.Displayed.FirstOrDefault(n => n.Id == notification.Id);
-        if (displayed is null)
+        var items = info.Items.FirstOrDefault(n => n.Id == notification.Id);
+        if (items is null)
             return;
 
-        notification = displayed;
+        notification = items;
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
         var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
         devices = devices.Where(d => d.DeviceType != DeviceType.iOSPttApp).ToList();
@@ -933,7 +934,7 @@ public class NotificationsBackend(IServiceProvider services)
             + "IsSilent={IsSilent}, DeviceIds#={DeviceIdCount}",
             entryId, userId, notification.Id, command.IsSilent, deviceIds.Count);
         await FirebaseMessagingClient
-            .SendMessage(notification, deviceIds, isAdmin, info.Displayed.Count, command.IsSilent, cancellationToken)
+            .SendMessage(notification, deviceIds, isAdmin, info.Items.Count, command.IsSilent, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -958,7 +959,7 @@ public class NotificationsBackend(IServiceProvider services)
         DebugLog?.LogDebug("-> OnPushDismissal. UserId={UserId}, Notifications#={Count}, DeviceIds#={DeviceIdCount}",
             userId, dismissed.Count, deviceIds.Count);
         await FirebaseMessagingClient
-            .SendDismissal(dismissed, deviceIds, info.Displayed.Count, cancellationToken)
+            .SendDismissal(dismissed, deviceIds, info.Items.Count, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -1056,7 +1057,7 @@ public class NotificationsBackend(IServiceProvider services)
         return modeByChat.ToDictionary(x => x.ChatId, x => x.Mode);
     }
 
-    // Mentions and explicit pings share NotificationKind.Attention, so a mention displayed before
+    // Mentions and explicit pings share NotificationKind.Attention, so a mention items before
     // the user muted the chat stays visible (treated as Ringer); new ones are dropped at fan-out.
     private static bool IsSuppressedByMode(Notification notification, Dictionary<ChatId, ChatNotificationMode> modes)
     {
@@ -1309,7 +1310,7 @@ public class NotificationsBackend(IServiceProvider services)
 
     private static bool IsSoftUpdate(UserNotificationInfo info, Notification notification)
     {
-        var hasSimilar = info.Displayed.Any(n => n.Id == notification.Id);
+        var hasSimilar = info.Items.Any(n => n.Id == notification.Id);
         if (!hasSimilar)
             return false; // First notification for this key -> hard update
 
@@ -1398,16 +1399,16 @@ public class NotificationsBackend(IServiceProvider services)
     private async Task ApplyHardUpdate(
         UserId userId,
         IReadOnlyList<Notification> notifications,
-        IReadOnlyCollection<NotificationId> handledIds,
+        IReadOnlyCollection<NotificationId> dismissedIds,
         CancellationToken cancellationToken)
-        => await ApplyHardUpdate(userId, notifications, handledIds, handleAll: false, cancellationToken)
+        => await ApplyHardUpdate(userId, notifications, dismissedIds, dismissAll: false, cancellationToken)
             .ConfigureAwait(false);
 
     private async Task ApplyHardUpdate(
         UserId userId,
         IReadOnlyList<Notification> notifications,
-        IReadOnlyCollection<NotificationId> handledIds,
-        bool handleAll,
+        IReadOnlyCollection<NotificationId> dismissedIds,
+        bool dismissAll,
         CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
@@ -1422,7 +1423,7 @@ public class NotificationsBackend(IServiceProvider services)
         var (info, dismissed, silentById, reAnchored) = await Reconcile(
             dbUserNotifications?.ToModel() ?? new UserNotificationInfo(userId)).ConfigureAwait(false);
         if (silentById.Count == 0 && dismissed.Count == 0 && reAnchored.Count == 0)
-            return; // Nothing changed (e.g. an already-dismissed OnHandle, or a redelivered batch)
+            return; // Nothing changed (e.g. an already-dismissed OnDismiss, or a redelivered batch)
 
         if (dbUserNotifications != null)
             dbUserNotifications.UpdateFrom(info);
@@ -1479,17 +1480,17 @@ public class NotificationsBackend(IServiceProvider services)
         foreach (var notification in reAnchored.Where(n => !pushedTags.Contains(GetPushGroupKey(n))))
             context.Operation.AddEvent(new NotificationsBackend_Push(notification, IsSilent: true));
 
-        // A newly displayed mention (re)starts the per-user reminder flow, which re-alerts unread
+        // A newly items mention (re)starts the per-user reminder flow, which re-alerts unread
         // mentions until they're read. It's keyed by user, so repeated starts just resume it.
         var hasNewMention = notifications.Any(n =>
-            n.Kind == NotificationKind.Mention && info.Displayed.Any(d => d.Id == n.Id));
+            n.Kind == NotificationKind.Mention && info.Items.Any(d => d.Id == n.Id));
         if (hasNewMention)
             context.Operation.AddEvent(FlowHub.NewResumeEvent<Flows.MentionReminderFlow>(userId.Value));
         if (dismissed.Count > 0) {
             // Only close banners whose tag is now fully gone — the chat banner may still be
             // backed by another active notification under the same tag. The badge is still
             // refreshed by the dismissal push regardless.
-            var survivingTags = info.Displayed.Select(GetPushGroupKey).ToHashSet(StringComparer.Ordinal);
+            var survivingTags = info.Items.Select(GetPushGroupKey).ToHashSet(StringComparer.Ordinal);
             var bannersToClose = dismissed.Where(d => !survivingTags.Contains(GetPushGroupKey(d))).ToApiArray();
             context.Operation.AddEvent(new NotificationsBackend_PushDismissal(userId, bannersToClose));
         }
@@ -1503,19 +1504,19 @@ public class NotificationsBackend(IServiceProvider services)
         {
             var now = Clocks.SystemClock.Now;
             var readPositions = await GetReadPositions(
-                    userId, committed.Displayed.Concat(notifications), cancellationToken)
+                    userId, committed.Items.Concat(notifications), cancellationToken)
                 .ConfigureAwait(false);
             var current = committed;
             var dismissed = new List<Notification>();
-            foreach (var existing in committed.Displayed) {
-                var isGone = handleAll || handledIds.Contains(existing.Id) || IsRead(existing, readPositions);
+            foreach (var existing in committed.Items) {
+                var isGone = dismissAll || dismissedIds.Contains(existing.Id) || IsRead(existing, readPositions);
                 if (isGone) {
-                    current = current with { Displayed = current.Displayed.Without(x => x.Id == existing.Id) };
+                    current = current with { Items = current.Items.Without(x => x.Id == existing.Id) };
                     dismissed.Add(existing);
                 }
             }
 
-            // Track which incoming notifications actually changed the displayed set: a no-op merge
+            // Track which incoming notifications actually changed the items set: a no-op merge
             // (a redelivered duplicate, or a stale out-of-order event for an already-read entry)
             // must neither beep nor push. MergeWith returns the existing instance for no-op merges,
             // so reference equality detects them.
@@ -1524,9 +1525,9 @@ public class NotificationsBackend(IServiceProvider services)
                 if (IsRead(notification, readPositions))
                     continue;
 
-                var before = current.Displayed.FirstOrDefault(n => n.Id == notification.Id);
+                var before = current.Items.FirstOrDefault(n => n.Id == notification.Id);
                 current = current.WithNotification(notification);
-                var after = current.Displayed.First(n => n.Id == notification.Id);
+                var after = current.Items.First(n => n.Id == notification.Id);
                 if (!ReferenceEquals(before, after) && !changedIds.Contains(notification.Id))
                     changedIds.Add(notification.Id);
             }
@@ -1538,10 +1539,10 @@ public class NotificationsBackend(IServiceProvider services)
             // replacement — except ringers, which always alert.
             var silentById = new Dictionary<NotificationId, bool>();
             foreach (var id in changedIds) {
-                var displayed = current.Displayed.First(n => n.Id == id);
-                if (displayed is not ChatEntryRelatedNotification related) {
-                    var isRinger = displayed.Kind is NotificationKind.Attention or NotificationKind.IncomingCall;
-                    silentById[id] = !isRinger && committed.Displayed.Any(n => n.Id == id);
+                var items = current.Items.First(n => n.Id == id);
+                if (items is not ChatEntryRelatedNotification related) {
+                    var isRinger = items.Kind is NotificationKind.Attention or NotificationKind.IncomingCall;
+                    silentById[id] = !isRinger && committed.Items.Any(n => n.Id == id);
                     continue;
                 }
 
@@ -1549,7 +1550,7 @@ public class NotificationsBackend(IServiceProvider services)
                 var text = NotificationHelper.ComposeAggregatedText(related);
                 var updated = (shouldBeep ? NotificationBeepPolicy.MarkBeeped(related, now) : related)
                     with { Text = text };
-                current = current with { Displayed = current.Displayed.WithUpdate(n => n.Id == id, _ => updated) };
+                current = current with { Items = current.Items.WithUpdate(n => n.Id == id, _ => updated) };
                 silentById[id] = !shouldBeep;
             }
 
@@ -1557,7 +1558,7 @@ public class NotificationsBackend(IServiceProvider services)
             // Re-anchor it to the new first-unread entry and refresh its lead/count so the quote
             // tracks where they stopped instead of citing already-read messages.
             var reAnchored = new List<Notification>();
-            foreach (var existing in current.Displayed) {
+            foreach (var existing in current.Items) {
                 if (existing is not ChatEntryRelatedNotification related)
                     continue;
                 if (!readPositions.TryGetValue(related.ChatId, out var read) || read is <= 0 or long.MaxValue)
@@ -1568,7 +1569,7 @@ public class NotificationsBackend(IServiceProvider services)
 
                 var reanchored = await ReAnchor(related, read + 1, cancellationToken).ConfigureAwait(false);
                 current = current with {
-                    Displayed = current.Displayed.WithUpdate(n => n.Id == related.Id, _ => reanchored),
+                    Items = current.Items.WithUpdate(n => n.Id == related.Id, _ => reanchored),
                 };
                 reAnchored.Add(reanchored);
             }
@@ -1576,7 +1577,7 @@ public class NotificationsBackend(IServiceProvider services)
             current = current with {
                 Version = VersionGenerator.NextVersion(current.Version),
                 LastPushAt = silentById.Count > 0 ? now : current.LastPushAt,
-                IsDormant = current.Displayed.Count >= Constants.Notification.DormancyThreshold,
+                IsDormant = current.Items.Count >= Constants.Notification.DormancyThreshold,
             };
             return (current, dismissed, silentById, reAnchored);
         }

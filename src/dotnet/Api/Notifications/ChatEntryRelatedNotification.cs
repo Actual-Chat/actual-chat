@@ -88,7 +88,6 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
         return this with {
             Version = e.Version,
             CreatedAt = e.CreatedAt,
-            HandledAt = null,
             // An out-of-order earlier message must not regress the newest-activity timestamp,
             // and the banner headline (title/icon) must keep tracking the newest message.
             SentAt = Moment.Max(e.SentAt, SentAt),

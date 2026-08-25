@@ -13,7 +13,7 @@ public static class NotificationOperations
         ChatEntryRelatedNotification notification = null!;
         await TestExt.When(async () => {
             var info = await tester.NotificationsBackend.GetUserNotificationInfo(userId, CancellationToken.None);
-            var notifications = info.Displayed
+            var notifications = info.Items
                 .OfType<ChatEntryRelatedNotification>()
                 .Where(x => x.EntryId == entryId)
                 .ToList();

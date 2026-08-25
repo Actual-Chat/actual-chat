@@ -13,23 +13,23 @@ public sealed partial record UserNotificationInfo(
     ) : IHasVersion<long>
 {
     [DataMember(Order = 2), Key(2)]
-    public ApiArray<Notification> Displayed { get; init; }
+    public ApiArray<Notification> Items { get; init; }
     // Key 3 held UnsentDelta; keys are wire format, so it stays vacant rather than being reused.
     [DataMember(Order = 4), Key(4)]
     public Moment LastPushAt { get; init; }
     [DataMember(Order = 5), Key(5)]
     public bool IsDormant { get; init; }
 
-    // Upserts notification into Displayed: a notification with the same Id is merged into the
+    // Upserts notification into Items: a notification with the same Id is merged into the
     // existing one (coalescing subtypes accumulate their state), otherwise it's appended.
     public UserNotificationInfo WithNotification(Notification notification)
     {
         var id = notification.Id;
-        var existing = Displayed.FirstOrDefault(n => n.Id == id);
+        var existing = Items.FirstOrDefault(n => n.Id == id);
         var merged = notification.MergeWith(existing);
-        var displayed = existing != null
-            ? Displayed.WithUpdate(n => n.Id == id, _ => merged)
-            : Displayed.With(merged);
-        return this with { Displayed = displayed };
+        var items = existing != null
+            ? Items.WithUpdate(n => n.Id == id, _ => merged)
+            : Items.With(merged);
+        return this with { Items = items };
     }
 }

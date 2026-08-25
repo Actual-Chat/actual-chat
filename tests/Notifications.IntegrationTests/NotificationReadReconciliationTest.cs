@@ -22,7 +22,7 @@ public class NotificationReadReconciliationTest(AppHostFixture fixture, ITestOut
 
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
-            info.Displayed.Should().ContainSingle();
+            info.Items.Should().ContainSingle();
         }, TimeSpan.FromSeconds(10));
 
         // Alice reads the chat — the notification's entry is now read
@@ -31,17 +31,17 @@ public class NotificationReadReconciliationTest(AppHostFixture fixture, ITestOut
 
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
-            info.Displayed.Should().BeEmpty("the read message must be hidden by the population re-check");
+            info.Items.Should().BeEmpty("the read message must be hidden by the population re-check");
         }, TimeSpan.FromSeconds(10));
 
-        // A new message arrives — only it should remain displayed
+        // A new message arrives — only it should remain items
         await Tester.SignIn(bob);
         var entry2 = await Tester.CreateTextEntry(chatId, "Another one");
 
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
-            var displayed = info.Displayed.Should().ContainSingle().Subject;
-            displayed.Should().BeOfType<MessageNotification>()
+            var items = info.Items.Should().ContainSingle().Subject;
+            items.Should().BeOfType<MessageNotification>()
                 .Which.EntryLid.Should().Be(entry2.LocalId);
         }, TimeSpan.FromSeconds(10));
     }

@@ -24,9 +24,9 @@ public interface INotificationsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task OnProcess(NotificationsBackend_Process command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnHandle(NotificationsBackend_Handle command, CancellationToken cancellationToken);
+    Task OnDismiss(NotificationsBackend_Dismiss command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnHandleAll(NotificationsBackend_HandleAll command, CancellationToken cancellationToken);
+    Task OnDismissAll(NotificationsBackend_DismissAll command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnPush(NotificationsBackend_Push command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -97,7 +97,7 @@ public sealed partial record NotificationsBackend_Process(
 // Dismisses a single notification (the user handled it) and pushes a silent badge update.
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record NotificationsBackend_Handle(
+public sealed partial record NotificationsBackend_Dismiss(
     [property: DataMember, Key(0)] NotificationId NotificationId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
@@ -109,7 +109,7 @@ public sealed partial record NotificationsBackend_Handle(
 // dismissal.
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record NotificationsBackend_HandleAll(
+public sealed partial record NotificationsBackend_DismissAll(
     [property: DataMember, Key(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {

@@ -96,7 +96,6 @@ public class NotificationFormatterPresenceTest(ITestOutputHelper @out) : TestBas
                 IconUrl = "https://x/y.png",
                 CreatedAt = TestMoment,
                 SentAt = TestMoment,
-                HandledAt = TestMoment,
                 Actions = ApiArray.New(new NotificationAction(NotificationActionKind.Open, "Open", "/chat/1")),
             };
     }

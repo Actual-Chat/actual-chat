@@ -30,7 +30,7 @@ driven by the iOS app-icon badge never updating while backgrounded.
 Data model (`src/dotnet/Api/Notifications/`): `Notification` is a MessagePack
 `[Union]` (one concrete record per `NotificationKind` — Message, Reply,
 Mention, Reaction, Invitation, Attention, Thread). `UserNotificationInfo` is
-the per-user blob (`Displayed` set + `LastPushAt` + `IsDormant`).
+the per-user blob (`Items` set + `LastPushAt` + `IsDormant`).
 
 **Throttling.** Hard vs. soft updates: the first/urgent notification for a key
 commits + pushes; similar low-urgency ones during the silence window accumulate
@@ -54,6 +54,11 @@ way. Clients render every banner themselves — no `webpush.notification`, no
 - **In-app feed** — none. There is no rendered component that displays the active
   set; it surfaces only as OS notifications, the app-icon badge, and incoming-call
   rings. `/test/notifications` dumps it as JSON for diagnostics.
+
+  Note what this set is *not*: unread counts on chats and places drive the navbar
+  and the bell panel, and are deliberately a different calculation. `ListActive`
+  drives the app-icon badge and the OS-level surfaces. Two concepts, one source of
+  truth each — not two sources for one thing.
 - **App-icon badge** — `AppIconBadgeUpdater.cs` (single source of truth) plus
   native `AppIconBadge` on iOS (`App.Maui/MaciOS/AppIconBadge.cs`) and Windows
   (`Platforms/Windows/WindowsAppIconBadge.cs`). On iOS the badge of a

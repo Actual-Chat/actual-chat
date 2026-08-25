@@ -26,7 +26,7 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
             Version = 1L,
             Title = "Bob @ Good chat",
             Text = "Sent an image",
-            HandledAt = Moment.Now,
+            SentAt = Moment.Now,
         };
         AssertMessagePackRoundtrip(d);
 
@@ -34,7 +34,6 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
             Version = 1L,
             Title = "Bob @ Good chat",
             Text = "Sent an image",
-            HandledAt = null,
         };
         AssertMessagePackRoundtrip(d);
     }
@@ -213,7 +212,7 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     public void DismissCommandShouldPassThroughSerializers()
     {
         var id = NotificationId.New(TestUserId, NotificationKind.Message, "1234");
-        var cmd = new Notifications_Handle(TestSession, id);
+        var cmd = new Notifications_Dismiss(TestSession, id);
         cmd.AssertPassesThroughSerializers();
     }
 
