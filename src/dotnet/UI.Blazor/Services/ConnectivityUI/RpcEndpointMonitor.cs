@@ -97,15 +97,15 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
 
     private async Task<bool> IsEndpointUsable(CancellationToken cancellationToken)
     {
-        if (await Probe(cancellationToken).ConfigureAwait(false))
+        if (await Probe(cancellationToken).ConfigureAwait(false) != ProbeResult.Failed)
             return true;
 
         // One failure can be an ordinary blip; only a repeat means the endpoint is unusable.
         await Clocks.CpuClock.Delay(ProbeRetryDelay, cancellationToken).ConfigureAwait(false);
-        return await Probe(cancellationToken).ConfigureAwait(false);
+        return await Probe(cancellationToken).ConfigureAwait(false) != ProbeResult.Failed;
     }
 
-    private async Task<bool> Probe(CancellationToken cancellationToken)
+    private async Task<ProbeResult> Probe(CancellationToken cancellationToken)
     {
         var startedAt = Clocks.CpuClock.Now;
         try {
@@ -116,17 +116,23 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
             if (payload.Length < ProbeSize) {
                 Log.LogWarning("RPC endpoint probe returned {Size} of {ExpectedSize} bytes",
                     payload.Length, ProbeSize);
-                return false;
+                return ProbeResult.Inconclusive;
             }
 
             Log.LogInformation("RPC endpoint probe passed: {Size} bytes in {Elapsed}",
                 ProbeSize, elapsed.ToShortString());
-            return true;
+            return ProbeResult.Passed;
         }
         catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
+            // A throttled link makes the payload arrive late or not at all, so only a
+            // timeout indicts the endpoint. A fast failure means something a different
+            // endpoint cannot fix - an older server without this method, say - and acting
+            // on it would force reconnects that never help.
             var elapsed = Clocks.CpuClock.Now - startedAt;
-            Log.LogWarning(e, "RPC endpoint probe failed after {Elapsed}", elapsed.ToShortString());
-            return false;
+            var isTimeout = elapsed >= ProbeTimeout;
+            Log.LogWarning(e, "RPC endpoint probe {Outcome} after {Elapsed}",
+                isTimeout ? "timed out" : "failed for an unrelated reason", elapsed.ToShortString());
+            return isTimeout ? ProbeResult.Failed : ProbeResult.Inconclusive;
         }
     }
 
@@ -142,5 +148,14 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
 
         Peer?.Disconnect();
         ReconnectUI.ResetReconnectDelays();
+    }
+
+    // Nested types
+
+    private enum ProbeResult
+    {
+        Passed = 0,
+        Failed,
+        Inconclusive,
     }
 }
