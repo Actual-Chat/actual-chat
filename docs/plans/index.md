@@ -13,6 +13,14 @@ candidate tasks. A plan is removed from here once its work ships.
 
 Recently added, larger efforts — in progress or next up.
 
+### Notification lifecycle
+
+[Notification lifecycle](./notification-lifecycle.md) — give every notification a
+terminal state (per-kind `ExpiresAt` + `DismissMode`), make dismissal as reliable
+as delivery via a persisted `PendingDismissals` set drained by a flow, and clear
+reactions when their entry is actually on screen. Traced from a production
+`CallNotification` stranded for 5½ days with the app-icon badge stuck at 1.
+
 ### AI search & indexing — MLSearch → PostgreSQL
 
 [MLSearch: OpenSearch → PostgreSQL](./mlsearch-postgres-fts.md) — replace
