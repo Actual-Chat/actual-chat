@@ -68,6 +68,21 @@
 .left-panel-content:has(.left-search-overlay-panel.open) {
     @apply bg-04;
 }
+.left-panel-content > .safe-area-top {
+    @apply bg-04;
+}
+/* Round the wallpaper's top-left only in narrow mode, where the bg-04 safe-area strip exists to blend into */
+body.narrow .left-panel-content-header > .c-content {
+    @apply rounded-tl-xl;
+}
+/* Fill the concave corner sliver with bg-04 on top of the header (painting over, not behind, so a transparent wallpaper doesn't reveal a box) */
+body.narrow .left-panel-content-header::before {
+    content: '';
+    @apply absolute left-0 top-0 z-10;
+    @apply w-3 h-3;
+    @apply pointer-events-none;
+    background: radial-gradient(circle at bottom right, transparent 0.75rem, var(--background-04) calc(0.75rem + 0.5px));
+}
 .left-panel-content .left-panel-content-main-wrapper {
     @apply relative;
     @apply flex-y;
@@ -84,6 +99,7 @@
    so a border there would be drawn inside those 56px and end up 1px above the chat header's
    separator, which sits below its own 56px .c-content. */
 .left-panel-content-header {
+    @apply relative;
     @apply border-b border-separator;
 }
 .left-panel-content-header.place {
@@ -96,7 +112,7 @@
 }
 .left-panel-content-header.place .c-icon {
     @apply absolute top-1/2 inset-x-0;
-    @apply min-h-26;
+    @apply h-26;
     @apply -translate-y-1/2;
     transition: transform 200ms ease-out;
 }
@@ -212,14 +228,16 @@ body.hoverable .add-members-btn:hover {
 }
 .left-search-panel:has(.left-search-overlay-panel.open) {
     @apply bg-03;
+    /* Fixed blue header height so it stays constant when the keyboard opens (viewport units shrink with the keyboard) */
     background-image: linear-gradient(
         to bottom,
         color-mix(in srgb, var(--blue-50-50) 80%, var(--violet-50-50)),
-        var(--background-03) 12%);
+        var(--background-03));
+    background-repeat: no-repeat;
+    background-size: 100% 6rem;
     border-radius: 0.75rem 0 0 0;
     transition: background-color 200ms ease-in-out,
-                border-color 200ms ease-in-out,
-                border-radius 200ms ease-in-out 200ms;
+                border-color 200ms ease-in-out;
 }
 
 .left-panel-content-header.place.chat-roulette > .c-content {
