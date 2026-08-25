@@ -17,6 +17,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
     private readonly IAudioDeviceRouter _deviceRouter;
     private AudioFocusRequestClass? _focusRequest;
     private bool _hasFocus;
+    private bool _isCommunicationFocus;
     private bool _isCommunicationModeYielded;
 
     public event Action<AudioFocus>? OnFocusChanged;
@@ -49,13 +50,14 @@ public sealed class AndroidAudioFocusHelper : IDisposable
     }
 
     public Task<bool> RequestFocusForCall()
-        => RequestFocusAsync(AudioFocus.GainTransient, AudioUsageKind.VoiceCommunication, AudioContentType.Speech);
+        => RequestFocus(AudioFocus.GainTransient, AudioUsageKind.VoiceCommunication, AudioContentType.Speech);
 
     public Task<bool> RequestFocusForPlayback()
-        => RequestFocusAsync(AudioFocus.Gain, AudioUsageKind.VoiceCommunication, AudioContentType.Speech);
+        // Playback needs no microphone, and the communication route drops a BT peer to SCO - a virtual call.
+        => RequestFocus(AudioFocus.Gain, AudioUsageKind.Media, AudioContentType.Speech);
 
     public Task<bool> RequestFocusForNotification()
-        => RequestFocusAsync(
+        => RequestFocus(
             AudioFocus.GainTransientMayDuck,
             AudioUsageKind.AssistanceSonification,
             AudioContentType.Sonification);
@@ -90,8 +92,9 @@ public sealed class AndroidAudioFocusHelper : IDisposable
             _audioManager.Mode = Mode.Normal;
             _log.LogInformation("WarmUpAudioMode: reverted to Normal");
         }
-        else
+        else {
             _log.LogInformation("WarmUpAudioMode: keeping InCommunication (real focus acquired)");
+        }
     }
 
     public Task EnsureCommunicationRoute(CancellationToken cancellationToken)
@@ -99,8 +102,8 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         // every ~6s for as long as a focus holder stays idle, and answering each one turned into a
         // permanent re-assert loop (13 in 100s, measured). Asserting only when audio is about to
         // play fixes the route where it matters and leaves an idle armed session alone.
-        => _hasFocus
-            ? _deviceRouter.SetCommunicationDeviceAsync(cancellationToken)
+        => _isCommunicationFocus
+            ? _deviceRouter.SelectCommunicationDevice(cancellationToken)
             : Task.FromResult(false);
 
     public void YieldCommunicationMode()
@@ -127,7 +130,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
 
         _log.LogInformation("Restoring the communication mode after the incoming ring");
         _audioManager.Mode = Mode.InCommunication;
-        await _deviceRouter.SetCommunicationDeviceAsync(CancellationToken.None).ConfigureAwait(false);
+        await _deviceRouter.SelectCommunicationDevice(CancellationToken.None).ConfigureAwait(false);
     }
 
     public void AbandonFocus()
@@ -140,6 +143,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         _audioManager.AbandonAudioFocusRequest(_focusRequest);
         _audioManager.Mode = Mode.Normal;
         _hasFocus = false;
+        _isCommunicationFocus = false;
     }
 
     // Private methods
@@ -157,7 +161,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         return new LegacyAudioDeviceRouter(audioManager, context, log);
     }
 
-    private async Task<bool> RequestFocusAsync(
+    private async Task<bool> RequestFocus(
         AudioFocus audioFocus,
         AudioUsageKind audioUsageKind,
         AudioContentType audioContentType)
@@ -183,11 +187,12 @@ public sealed class AndroidAudioFocusHelper : IDisposable
 
         var result = _audioManager.RequestAudioFocus(_focusRequest);
         _hasFocus = result == AudioFocusRequest.Granted;
+        _isCommunicationFocus = _hasFocus && isCommunication;
         _log.LogInformation("Requested audio focus for '{Usage}', granted = {Result}", audioUsageKind, _hasFocus);
 
         // After gaining focus, apply routing preference (handles external devices like Bluetooth)
         if (_hasFocus && isCommunication)
-            await _deviceRouter.SetCommunicationDeviceAsync(CancellationToken.None).ConfigureAwait(false);
+            await _deviceRouter.SelectCommunicationDevice(CancellationToken.None).ConfigureAwait(false);
 
         return _hasFocus;
     }
@@ -206,13 +211,13 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         // Re-route audio if we have active focus in communication mode
         // This handles: BT connected mid-recording, BT disconnected, etc.
         if (_hasFocus && _audioManager.Mode == Mode.InCommunication)
-            _ = HandleDevicesChangedAsync();
+            _ = HandleDevicesChanged();
     }
 
-    private async Task HandleDevicesChangedAsync()
+    private async Task HandleDevicesChanged()
     {
         try {
-            await _deviceRouter.OnDevicesChangedAsync(CancellationToken.None).ConfigureAwait(false);
+            await _deviceRouter.OnDevicesChanged(CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) {
             _log.LogWarning(e, "Failed to re-route audio after device change");
@@ -243,9 +248,9 @@ public sealed class AndroidAudioFocusHelper : IDisposable
     private interface IAudioDeviceRouter : IDisposable
     {
         // Completes only once the route has actually landed, not when it's requested.
-        Task<bool> SetCommunicationDeviceAsync(CancellationToken ct);
+        Task<bool> SelectCommunicationDevice(CancellationToken ct);
         void ClearCommunicationDevice();
-        Task OnDevicesChangedAsync(CancellationToken ct);
+        Task OnDevicesChanged(CancellationToken ct);
     }
 
     private sealed class ModernAudioDeviceRouter : IAudioDeviceRouter
@@ -270,7 +275,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
                 _listener);
         }
 
-        public async Task<bool> SetCommunicationDeviceAsync(CancellationToken ct)
+        public async Task<bool> SelectCommunicationDevice(CancellationToken ct)
         {
             try {
                 var devices = _audioManager.AvailableCommunicationDevices;
@@ -328,9 +333,9 @@ public sealed class AndroidAudioFocusHelper : IDisposable
             }
         }
 
-        public Task OnDevicesChangedAsync(CancellationToken ct)
+        public Task OnDevicesChanged(CancellationToken ct)
             // Modern API: just re-select best device when devices change
-            => SetCommunicationDeviceAsync(ct);
+            => SelectCommunicationDevice(ct);
 
         public void Dispose()
         {
@@ -382,7 +387,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
             _context.RegisterReceiver(_scoReceiver, filter);
         }
 
-        public async Task<bool> SetCommunicationDeviceAsync(CancellationToken ct)
+        public async Task<bool> SelectCommunicationDevice(CancellationToken ct)
         {
             try {
                 var devices = _audioManager.GetDevices(GetDevicesTargets.Outputs) ?? [];
@@ -468,10 +473,10 @@ public sealed class AndroidAudioFocusHelper : IDisposable
             }
         }
 
-        public Task OnDevicesChangedAsync(CancellationToken ct)
+        public Task OnDevicesChanged(CancellationToken ct)
             // Legacy API: re-apply routing when devices change
             // This handles BT connecting mid-recording
-            => SetCommunicationDeviceAsync(ct);
+            => SelectCommunicationDevice(ct);
 
         public void Dispose()
         {

@@ -70,8 +70,12 @@ internal sealed class AndroidAudioPlaybackEngine(
         var bufferBytes = Math.Max(minBufferBytes, Constants.Audio.PcmFrameLength * 4);
         AudioTrack audioTrack;
         try {
+            // Media keeps a Bluetooth peer on A2DP; only a live capture session needs the SCO route.
+            var usage = AudioFocusUI.ActiveMode >= AudioFocusMode.Recording
+                ? AudioUsageKind.VoiceCommunication
+                : AudioUsageKind.Media;
             var attributes = new AudioAttributes.Builder()
-                .SetUsage(AudioUsageKind.VoiceCommunication)!
+                .SetUsage(usage)!
                 .SetContentType(AudioContentType.Speech)!
                 .Build();
 

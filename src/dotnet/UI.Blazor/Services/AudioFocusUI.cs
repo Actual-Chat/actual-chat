@@ -39,6 +39,8 @@ public abstract class AudioFocusScope : IDisposable
 /// </summary>
 public class AudioFocusUI : ProcessorBase
 {
+    public virtual AudioFocusMode ActiveMode => AudioFocusMode.Tune;
+
     public virtual Task<AudioFocusScope?> TryAcquire(AudioFocusRequester requester)
         => Task.FromResult<AudioFocusScope?>(FakeScope.Instance);
 
