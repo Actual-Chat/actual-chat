@@ -1,0 +1,82 @@
+@page "/test/notifications"
+@namespace ActualChat.UI.Blazor.App.Pages
+@using ActualChat.Notifications
+@using Notification = ActualChat.Notifications.Notification
+@inherits ComputedStateComponent<AppUIHub, NotificationsTestPage.Model>
+
+<RequireAccount/>
+<MainHeader>Active Notifications</MainHeader>
+
+@{
+    var m = State.Value;
+}
+
+<div class="test-page-wrapper">
+    <div class="flex-y gap-y-4 select-text">
+        <h3>@(m.Items.Count) active notification(s)</h3>
+        @if (m.Error is { } error) {
+            <pre class="text-danger whitespace-pre-wrap">@error</pre>
+        }
+        @foreach (var item in m.Items) {
+            <div class="flex-y gap-y-1">
+                <h4>@item.Title</h4>
+                <pre class="overflow-x-auto text-sm">@item.Json</pre>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private INotifications Notifications => Hub.Notifications;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        ApiArray<Notification> notifications;
+        try {
+            notifications = await Notifications.ListActive(Session, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            return new() { Error = e.ToString() };
+        }
+
+        var items = notifications
+            .OrderBy(n => n.SentAt)
+            .Select(n => new Item($"{n.Kind} — {n.GetType().Name} — {n.Id.Value}", ToJson(n)))
+            .ToList();
+        return new() { Items = items };
+    }
+
+    // Private methods
+
+    private static string ToJson(Notification notification) {
+        // Serialized against the concrete type, so the union subtype's own members are included;
+        // computed properties (Kind, ChatId, EntryId, ...) are [JsonIgnore]-d and show up in Title.
+        try {
+            return SystemJsonSerializer.Pretty.Write(notification, notification.GetType());
+        }
+        catch (Exception e) {
+            return e.ToString();
+        }
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public IReadOnlyList<Item> Items { get; init; } = [];
+        public string? Error { get; init; }
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+    }
+
+    public sealed record Item(string Title, string Json);
+}

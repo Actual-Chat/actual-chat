@@ -407,7 +407,7 @@ public static partial class Constants
         public static readonly TimeSpan SilencePeriod = TimeSpan.FromSeconds(10);
         // Once a user accumulates this many displayed notifications without engaging,
         // the backend goes dormant and stops all work until an engagement signal.
-        public const int DormancyThreshold = 64;
+        public const int DormancyThreshold = 100;
         // Read-position advances are frequent (~1/s while scrolling); the read-reconcile event
         // is collapsed to one per (user, chat) per this window via a delay-bucketed event uuid.
         // This bounds the background-banner dismissal lag on other devices (in-app is instant).

@@ -5,7 +5,9 @@
     var m = State.Value;
     PlaceId? placeId = null;
     // Default to chats if no group is selected
-    var isChats = NavbarUI.SelectedGroupId == NavbarGroupIds.Chats || NavbarUI.SelectedGroupId.IsNullOrEmpty() || NavbarUI.IsPlaceSelected(out placeId);
+    var isChats = NavbarUI.SelectedGroupId == NavbarGroupIds.Chats
+        || NavbarUI.SelectedGroupId.IsNullOrEmpty()
+        || NavbarUI.IsPlaceSelected(out placeId);
     if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId)) {
         isChats = true;
         placeId = (pinnedChatId as PlaceChatId)?.PlaceId;
@@ -40,7 +42,10 @@
                     @foreach (var page in GetTestPages()) {
                         if (page.DesktopOnly && isNarrow)
                             continue;
-                        <NavbarItem ReplaceOnPrefix="@tp" ReplaceOnPrefixExcept="@tpHome" Url="@(page.Url)">@(page.Title)</NavbarItem>
+                        <NavbarItem
+                            ReplaceOnPrefix="@tp"
+                            ReplaceOnPrefixExcept="@tpHome"
+                            Url="@(page.Url)">@(page.Title)</NavbarItem>
                     }
                 }
                 @if (!hasList) {
@@ -93,6 +98,7 @@
             new("/test/markup-editor", "Markup Editor"),
             new("/test/mesh", "Mesh"),
             new("/test/mic-permission-guides", "Mic Permission Guides"),
+            new("/test/notifications", "Notifications (active set)"),
             new("/test/photo-permission", "Photo Permission"),
             new("/test/place-info", "Place Info", DesktopOnly: true),
             new("/test/reconnect-overlay", "Reconnect Overlay", DesktopOnly: true),
@@ -116,7 +122,7 @@
             pages.Add(new("/test/external-contacts", "External Contacts"));
         if (hostKind == HostKind.MauiApp)
             pages.Add(new("/test/maui", "Maui"));
-        pages.Sort(static (a, b) => StringComparer.Ordinal.Compare(a.Title, b.Title));
+        pages.Sort(static (a, b) => string.Compare(a.Title, b.Title));
         return pages;
     }
 

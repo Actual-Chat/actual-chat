@@ -1,4 +1,5 @@
 using ActualChat.Module;
+using ActualChat.Notifications;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Hosting;
@@ -16,10 +17,22 @@ CancelKeyPress += (_, args) => {
 };
 
 var services = CreateServiceProvider();
+// An API key is a SessionKind.ApiKey session token, so it works here as-is
+var session = new Session(GetArgument("s", "session", "your Session ID or API key"));
+
+if (args.Contains("-notifications")) {
+    var notifications = services.GetRequiredService<INotifications>();
+    var active = await notifications.ListActive(session, cancellationToken).ConfigureAwait(false);
+    WriteLine($"{active.Count} active notification(s):");
+    foreach (var notification in active.OrderBy(x => x.SentAt)) {
+        WriteLine($"--- {notification.Kind} | {notification.GetType().Name} | {notification.Id.Value}");
+        WriteLine(SystemJsonSerializer.Pretty.Write(notification, notification.GetType()));
+    }
+    return;
+}
+
 var chats = services.GetRequiredService<IChats>();
 var authors = services.GetRequiredService<IAuthors>();
-
-var session = new Session(GetArgument("s", "session", "your Session ID"));
 var chatId = ChatId.Parse(GetArgument("c", "chatId", "Chat ID to watch"));
 
 var chat = await chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);

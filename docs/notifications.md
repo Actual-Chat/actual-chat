@@ -51,7 +51,9 @@ way. Clients render every banner themselves — no `webpush.notification`, no
 - **Reconciliation** — `src/dotnet/UI.Blazor.App/Services/NotificationReconciler.cs`
   prunes stale and creates missing notifications from `ListActive` (prune+create
   on web/Android, prune-only on iOS).
-- **In-app feed** — `UI.Blazor.App/Components/Notifications/NotificationStack.razor`.
+- **In-app feed** — none. There is no rendered component that displays the active
+  set; it surfaces only as OS notifications, the app-icon badge, and incoming-call
+  rings. `/test/notifications` dumps it as JSON for diagnostics.
 - **App-icon badge** — `AppIconBadgeUpdater.cs` (single source of truth) plus
   native `AppIconBadge` on iOS (`App.Maui/MaciOS/AppIconBadge.cs`) and Windows
   (`Platforms/Windows/WindowsAppIconBadge.cs`). On iOS the badge of a
@@ -66,4 +68,4 @@ way. Clients render every banner themselves — no `webpush.notification`, no
 | Notification not delivered | `NotificationsBackend` submission → reconciliation; is the user `IsDormant`? |
 | Notification lingers after read | clear-on-read → silent dismissal push; `NotificationReconciler` prune |
 | Duplicate / noisy pushes | soft-buffer coalescing + throttle window in `NotificationsBackend` |
-| Missing in-app feed item | `INotifications.ListActive` projection; `NotificationStack.razor` |
+| Active set looks wrong | `/test/notifications` — dumps `INotifications.ListActive` as JSON |
