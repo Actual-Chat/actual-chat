@@ -45,6 +45,18 @@ public abstract partial record Notification(
     [DataMember(Order = 16), Key(16)]
     public ApiArray<NotificationAction> Actions { get; init; }
 
+    // Policy - per-kind, overridden by subtypes. Both are computed rather than stored, so they
+    // apply to blobs written before they existed.
+    // Explicit is the safe default: the subtypes that opt into OnRead are exactly the ones
+    // GetReadAnchor can resolve, so a kind with no anchor can't be filtered by a read position
+    // that doesn't apply to it.
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public virtual NotificationDismissMode DismissMode => NotificationDismissMode.Explicit;
+    // Null = never expires. Deliberately has no importance term: a ringer is the *most* expirable
+    // kind, not the least, since nothing else can clear it.
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public virtual Moment? ExpiresAt => null;
+
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId UserId => Id.UserId;

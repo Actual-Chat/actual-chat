@@ -28,6 +28,8 @@ public interface INotificationsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task OnDismissAll(NotificationsBackend_DismissAll command, CancellationToken cancellationToken);
     [CommandHandler]
+    Task OnCleanup(NotificationsBackend_Cleanup command, CancellationToken cancellationToken);
+    [CommandHandler]
     Task OnPush(NotificationsBackend_Push command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnPushDismissal(NotificationsBackend_PushDismissal command, CancellationToken cancellationToken);
@@ -110,6 +112,18 @@ public sealed partial record NotificationsBackend_Dismiss(
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_DismissAll(
+    [property: DataMember, Key(0)] UserId UserId
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public UserId ShardKey => UserId;
+}
+
+// Commits the removals that GetUserNotificationInfo's filter only hides - read, mode-suppressed
+// and expired notifications - and emits the dismissals they owe. Driven by NotificationCleanupFlow.
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record NotificationsBackend_Cleanup(
     [property: DataMember, Key(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {

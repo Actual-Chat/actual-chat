@@ -11,6 +11,13 @@ public sealed partial record CallNotification(NotificationId Id, long Version = 
 {
     [DataMember(Order = 9), Key(9)] public bool HasVideo { get; init; }
 
+    // A ring has no entry to read or see, so it keeps the Explicit default: it's cleared by
+    // NotificationsBackend_CancelCall, and expiry is what covers a cancel that never arrives
+    // (caller crashed, ring lapsed via RingTtl).
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override Moment? ExpiresAt
+        => SentAt + Constants.Call.RingTimeout + Constants.Notification.RingExpirationMargin;
+
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public override ChatId ChatId => ConversationId.Parse(SimilarityKey).ChatId;

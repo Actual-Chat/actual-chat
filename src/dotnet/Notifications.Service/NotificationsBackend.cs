@@ -115,9 +115,20 @@ public class NotificationsBackend(IServiceProvider services)
         // re-invalidates this method whenever a read position or mode setting changes.
         var readPositions = await GetReadPositions(userId, info.Items, cancellationToken).ConfigureAwait(false);
         var modes = await GetChatNotificationModes(userId, info.Items, cancellationToken).ConfigureAwait(false);
-        var items = info.Items.Without(n => IsRead(n, readPositions) || IsSuppressedByMode(n, modes));
+        var now = Clocks.SystemClock.Now;
+        AutoInvalidateOnNextExpiration(info.Items, now);
+        var items = info.Items.Without(n =>
+            IsRead(n, readPositions) || IsSuppressedByMode(n, modes) || IsExpired(n, now));
         if (items.Count == info.Items.Count)
             return info;
+
+        // Hiding is not removing: these are still committed to the blob, and still on the devices
+        // that were shown them. The cleanup flow commits the removal and owes each one a dismissal.
+        // The read fails if the enqueue fails, so a retried read retries the trigger - repeated
+        // resumes of the same flow collapse, and the flow parks once it has nothing left to do.
+        await Queues
+            .Enqueue(FlowHub.NewResumeEvent<Flows.NotificationCleanupFlow>(userId.Value), cancellationToken)
+            .ConfigureAwait(false);
 
         return info with {
             Items = items,
@@ -215,6 +226,21 @@ public class NotificationsBackend(IServiceProvider services)
         // notifications hidden by a currently muted chat are dismissed too and can't resurface
         // as unread when the chat is unmuted.
         await ApplyHardUpdate(userId, [], [], dismissAll: true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnCleanup(
+        NotificationsBackend_Cleanup command,
+        CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
+
+        var userId = command.UserId;
+        DebugLog?.LogDebug("-> OnCleanup. UserId={UserId}", userId);
+        // No additions, no explicit dismissals: Reconcile alone drops whatever the compute filter
+        // hides (read, mode-suppressed, expired) and emits the dismissals those removals owe.
+        await ApplyHardUpdate(userId, [], [], cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -989,9 +1015,31 @@ public class NotificationsBackend(IServiceProvider services)
         return positions.ToDictionary(x => x.ChatId, x => x.ReadEntryLid);
     }
 
+    private static bool IsExpired(Notification notification, Moment now)
+        => notification.ExpiresAt is { } expiresAt && expiresAt <= now;
+
+    // Re-runs this method when the earliest expiration lands, so an expired notification leaves the
+    // active set (and triggers its cleanup) without waiting for the user's next notification event.
+    private static void AutoInvalidateOnNextExpiration(IEnumerable<Notification> notifications, Moment now)
+    {
+        var nextExpiresAt = notifications
+            .Select(n => n.ExpiresAt)
+            .SkipNullItems()
+            .Where(x => x > now)
+            .DefaultIfEmpty()
+            .Min();
+        if (nextExpiresAt is { } expiresAt && expiresAt != default)
+            Computed.GetCurrent().InvalidateSafely(expiresAt - now);
+    }
+
     // A chat notification is read once the user's Read position has advanced past its entry.
+    // Only OnRead kinds: a reaction anchors at the recipient's own message, and a ring has no
+    // entry at all, so for those the Read position answers the wrong question.
     private static bool IsRead(Notification notification, IReadOnlyDictionary<ChatId, long> readPositions)
     {
+        if (notification.DismissMode != NotificationDismissMode.OnRead)
+            return false;
+
         var (chatId, entryLid) = GetReadAnchor(notification);
         if (chatId is null || entryLid <= 0)
             return false;
@@ -1506,10 +1554,18 @@ public class NotificationsBackend(IServiceProvider services)
             var readPositions = await GetReadPositions(
                     userId, committed.Items.Concat(notifications), cancellationToken)
                 .ConfigureAwait(false);
+            // Must remove exactly what GetUserNotificationInfo hides, or the cleanup flow it
+            // triggers can't converge: the filter would keep hiding what this leaves committed.
+            var modes = await GetChatNotificationModes(userId, committed.Items, cancellationToken)
+                .ConfigureAwait(false);
             var current = committed;
             var dismissed = new List<Notification>();
             foreach (var existing in committed.Items) {
-                var isGone = dismissAll || dismissedIds.Contains(existing.Id) || IsRead(existing, readPositions);
+                var isGone = dismissAll
+                    || dismissedIds.Contains(existing.Id)
+                    || IsRead(existing, readPositions)
+                    || IsSuppressedByMode(existing, modes)
+                    || IsExpired(existing, now);
                 if (isGone) {
                     current = current with { Items = current.Items.Without(x => x.Id == existing.Id) };
                     dismissed.Add(existing);
@@ -1522,13 +1578,27 @@ public class NotificationsBackend(IServiceProvider services)
             // so reference equality detects them.
             var changedIds = new List<NotificationId>();
             foreach (var notification in notifications) {
-                if (IsRead(notification, readPositions))
+                if (IsRead(notification, readPositions) || IsExpired(notification, now))
                     continue;
 
                 var before = current.Items.FirstOrDefault(n => n.Id == notification.Id);
                 current = current.WithNotification(notification);
                 var after = current.Items.First(n => n.Id == notification.Id);
-                if (!ReferenceEquals(before, after) && !changedIds.Contains(notification.Id))
+                if (ReferenceEquals(before, after))
+                    continue;
+
+                // Stamp on the way in - this is the only funnel into Items. No producer sets
+                // either field, so CreatedAt stayed at epoch (and it is the push's timestamp,
+                // see FirebaseMessagingClient) and Version stayed 0 for every notification.
+                var createdAt = before is { CreatedAt.EpochOffset.Ticks: > 0 } ? before.CreatedAt : now;
+                var stamped = after with {
+                    Version = VersionGenerator.NextVersion(before?.Version ?? 0),
+                    CreatedAt = createdAt,
+                };
+                current = current with {
+                    Items = current.Items.WithUpdate(n => n.Id == notification.Id, _ => stamped),
+                };
+                if (!changedIds.Contains(notification.Id))
                     changedIds.Add(notification.Id);
             }
 
@@ -1539,9 +1609,9 @@ public class NotificationsBackend(IServiceProvider services)
             // replacement — except ringers, which always alert.
             var silentById = new Dictionary<NotificationId, bool>();
             foreach (var id in changedIds) {
-                var items = current.Items.First(n => n.Id == id);
-                if (items is not ChatEntryRelatedNotification related) {
-                    var isRinger = items.Kind is NotificationKind.Attention or NotificationKind.IncomingCall;
+                var item = current.Items.First(n => n.Id == id);
+                if (item is not ChatEntryRelatedNotification related) {
+                    var isRinger = item.Kind is NotificationKind.Attention or NotificationKind.IncomingCall;
                     silentById[id] = !isRinger && committed.Items.Any(n => n.Id == id);
                     continue;
                 }

@@ -33,8 +33,10 @@ only remaining exit is `NotificationsBackend_CancelCall`, which
 RingTtl before this catches it"). Both existing filters are, by design, blind to
 exactly this shape.
 
-The same investigation found that reactions never notify at all, and that the
-client-side badge worker can die silently and permanently.
+The same investigation found that a reaction is dropped before delivery whenever
+the recipient's Read position already covers their own message — which is the
+normal state of any chat they actually read — and that the client-side badge
+worker can die silently and permanently.
 
 ## Reuse
 
@@ -107,10 +109,16 @@ public virtual Moment? ExpiresAt => null;
 | Attention | `OnRead` | none |
 
 `IsRead` is gated on `DismissMode == OnRead`. That single gate is what unbreaks
-reactions: today a `ReactionNotification` anchors at the reacted-to entry — the
-recipient's own message, whose read position was set at send time
-(`Chats.cs:557`) — so `Reconcile` drops it at commit
-(`NotificationsBackend.cs:1524`) and it never notifies anyone.
+reactions: a `ReactionNotification` anchors at the reacted-to entry — the
+recipient's own message — so once their Read position covers it, `Reconcile`
+drops the notification at commit and it never reaches a device.
+
+The precondition is "their Read position covers their own entry", not "always":
+`Chats.OnUpsertTextEntry` advances it on send only for an author who is already
+caught up (`Chats.cs:552`), so in a chat with no read position yet — which is
+what every pre-existing test sets up — reactions did get through. That's why the
+suite never caught it. `NotificationDismissModeTest` sets the read position
+explicitly and fails without the gate.
 
 `OnRead` is **opt-in**, declared on exactly the three types `GetReadAnchor` can
 resolve — `ChatEntryRelatedNotification`, `ChatEntryNotification` and
@@ -188,7 +196,7 @@ rendered `NotificationStack`/`NotificationEntry`, JSON-write coverage for all
 union subtypes. Extend with `DormancyThreshold` 64 → 100 and the dead
 `similarityKey` parameter on `EnqueueMessageRelatedNotifications`.
 
-### 2 — clamped self-invalidation
+### 2 — clamped self-invalidation (done)
 
 `Computed.InvalidateSafely(delay)` (30 min cap) plus an explicit-`maxDelay`
 overload, in `ActualChat.Core`,
@@ -220,7 +228,7 @@ exceed it. `LiveTime` and `LocationUI` keep their local clamps: both pass
 `usePreciseTimer: false` and need sub-second delays, which the helper's 1s floor
 would round up.
 
-### 3 — `Handle` → `Dismiss` rename
+### 3 — `Handle` → `Dismiss` rename (done)
 
 Mechanical, no behavior change. "Dismiss" is already the vocabulary downstream:
 `Reconcile` builds a `dismissed` list, the push is `SendDismissal`, the payload
@@ -252,7 +260,7 @@ chats and places drive the navbar and the bell panel and are deliberately a
 different calculation; `ListActive` drives the app-icon badge and the OS-level
 surfaces. Two concepts, one source of truth each.
 
-### 4 — expiry, dismiss modes, and the cleanup flow
+### 4 — expiry, dismiss modes, and the cleanup flow (done)
 
 1. `NotificationDismissMode` + `DismissMode` / `ExpiresAt` virtual properties;
    `IsRead` gated on `DismissMode == OnRead`.
