@@ -427,6 +427,10 @@ public static partial class Constants
         // A reaction clears when its entry is seen (NotificationDismissMode.OnView); this is the
         // backstop for a chat the user never reopens. Smiles aren't worth keeping around longer.
         public static readonly TimeSpan ReactionLifespan = TimeSpan.FromDays(1);
+        // A dismissal older than the push's own TimeToLive can't be delivered any more, so
+        // retrying it forever only grows the blob.
+        public static readonly TimeSpan PendingDismissalTtl = TimeSpan.FromDays(1);
+        public const int MaxPendingDismissals = 256;
         // Read-position advances are frequent (~1/s while scrolling); the read-reconcile event
         // is collapsed to one per (user, chat) per this window via a delay-bucketed event uuid.
         // This bounds the background-banner dismissal lag on other devices (in-app is instant).

@@ -28,11 +28,11 @@ public interface INotificationsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task OnDismissAll(NotificationsBackend_DismissAll command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnCleanup(NotificationsBackend_Cleanup command, CancellationToken cancellationToken);
-    [CommandHandler]
     Task OnPush(NotificationsBackend_Push command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnPushDismissal(NotificationsBackend_PushDismissal command, CancellationToken cancellationToken);
+    Task OnConverge(NotificationsBackend_Converge command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnClearDismissals(NotificationsBackend_ClearDismissals command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<bool> OnUpsertExplicitNotification(
         NotificationsBackend_UpsertExplicitNotification command,
@@ -119,18 +119,6 @@ public sealed partial record NotificationsBackend_DismissAll(
     public UserId ShardKey => UserId;
 }
 
-// Commits the removals that GetUserNotificationInfo's filter only hides - read, mode-suppressed
-// and expired notifications - and emits the dismissals they owe. Driven by NotificationCleanupFlow.
-[DataContract, MessagePackObject]
-// ReSharper disable once InconsistentNaming
-public sealed partial record NotificationsBackend_Cleanup(
-    [property: DataMember, Key(0)] UserId UserId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
-{
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
-}
-
 // Delivers a notification to the user's devices. Enqueued (not called in-process) so NATS
 // retries the FCM send on transient failure and it survives a push-side crash. The badge is not
 // carried — OnPush recomputes it from current state at delivery (avoids stale/out-of-order badges).
@@ -147,11 +135,28 @@ public sealed partial record NotificationsBackend_Push(
 
 // Pushes a silent dismissal to the user's devices: closes the given banners (tags fully gone) and
 // refreshes the badge (recomputed at delivery by OnPushDismissal).
+// Brings a user's notification state to rest: commits the removals GetUserNotificationInfo's
+// filter only hides (read, mode-suppressed, expired), then delivers every dismissal those
+// removals owe. Idempotent, so the event ApplyHardUpdate emits and NotificationConvergeFlow's
+// retry can both run it without coordinating.
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record NotificationsBackend_PushDismissal(
+public sealed partial record NotificationsBackend_Converge(
+    [property: DataMember, Key(0)] UserId UserId
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public UserId ShardKey => UserId;
+}
+
+// Clears entries from UserNotificationInfo.PendingDismissals once their dismissal has actually
+// gone out (or can no longer be delivered). Separate from OnPushDismissal so the send happens
+// outside the row lock, and a failed send simply leaves the entries to be retried.
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record NotificationsBackend_ClearDismissals(
     [property: DataMember, Key(0)] UserId UserId,
-    [property: DataMember, Key(1)] ApiArray<Notification> Dismissed
+    [property: DataMember, Key(1)] ApiArray<NotificationId> Ids
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]

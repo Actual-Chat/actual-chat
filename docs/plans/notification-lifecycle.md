@@ -272,16 +272,16 @@ surfaces. Two concepts, one source of truth each.
    the instinct to special-case them (as `IsDeliverable` does) is exactly what
    would re-create the bug.
 4. Clamped self-invalidation on the nearest `ExpiresAt`, via the step 2 helper.
-5. Every filter hit enqueues a resume of `NotificationCleanupFlow`. The read
+5. Every filter hit enqueues a resume of `NotificationConvergeFlow`. The read
    **fails** unless the enqueue succeeds, so a retried read retries the trigger.
-6. `NotificationCleanupFlow` (`DelayQuanta = 3`, one per user): commits removals
+6. `NotificationConvergeFlow` (`DelayQuanta = 3`, one per user): commits removals
    from `Items`, appends `PendingDismissals`, parks at `Moment.MaxValue` when
    there is nothing left.
 7. Fix `Version` / `CreatedAt` stamping — the observed stranded ring has
    `Version: 0` and an epoch `CreatedAt`, so some write path skips them. Trace it
    before expiry keys off timestamps.
 
-### 5 — reliable dismissal drain
+### 5 — reliable dismissal drain (done)
 
 The drain half of `PendingDismissals`: a flow (or a second phase of the cleanup
 flow) that sends the dismissal push and removes the entry only after a
@@ -292,7 +292,22 @@ Closes the gap where `OnPushDismissal` consumes its queue message and then fails
 in `SendDismissal` — the entry is already out of `Items` at that point, so
 nothing can re-derive it.
 
-### 6 — client resilience and diagnosability
+As built, cleanup and the send are **one command**, `NotificationsBackend_Converge`:
+it runs `ApplyHardUpdate` to commit the removals, then sends whatever is pending
+from outside the row lock. Splitting them gave the flow two calls that raced the
+outbox event, and there was no caller that wanted cleanup without delivery —
+which is the invariant, not an option. It's idempotent (a removed notification
+can't come back), so the event `ApplyHardUpdate` emits and the flow's retry can
+both run it without coordinating; the second pass dismisses nothing, emits no
+event, and terminates.
+
+The command carries no payload: `OnConverge` reads what to send from
+`PendingDismissals`. Clearing entries after a successful send is its own command
+(`NotificationsBackend_ClearDismissals`) so the send stays outside the lock.
+`SendDismissal` takes `IReadOnlyCollection<PendingDismissal>` rather than
+notifications — by the time it runs, the notifications are gone.
+
+### 6 — client resilience and diagnosability (done)
 
 1. `AppIconBadgeUpdater` and `NotificationReconciler` wrap their loops in
    `AsyncChain…RetryForever…CycleForever`. `lastCount` is a local, so a restart

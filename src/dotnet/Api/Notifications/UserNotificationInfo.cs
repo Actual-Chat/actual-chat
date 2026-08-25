@@ -19,6 +19,29 @@ public sealed partial record UserNotificationInfo(
     public Moment LastPushAt { get; init; }
     [DataMember(Order = 5), Key(5)]
     public bool IsDormant { get; init; }
+    // Dismissals this user is still owed. Appended in the same commit that removes the
+    // notification from Items - that atomicity is why this lives in the blob rather than its own
+    // table - and cleared only once the dismissal push has actually gone out.
+    [DataMember(Order = 6), Key(6)]
+    public ApiArray<PendingDismissal> PendingDismissals { get; init; }
+
+    public UserNotificationInfo WithPendingDismissals(IEnumerable<PendingDismissal> dismissals)
+    {
+        var pending = PendingDismissals;
+        foreach (var dismissal in dismissals)
+            pending = pending.Without(x => x.Id == dismissal.Id).With(dismissal);
+        // Bounded: an unreachable device must not grow the blob without limit. The client-side
+        // NotificationReconciler prunes whatever falls off here on its next run.
+        var extra = pending.Count - Constants.Notification.MaxPendingDismissals;
+        if (extra > 0)
+            pending = pending.Skip(extra).ToApiArray();
+        return this with { PendingDismissals = pending };
+    }
+
+    public UserNotificationInfo WithoutPendingDismissals(IReadOnlyCollection<NotificationId> ids)
+        => ids.Count == 0
+            ? this
+            : this with { PendingDismissals = PendingDismissals.Without(x => ids.Contains(x.Id)) };
 
     // Upserts notification into Items: a notification with the same Id is merged into the
     // existing one (coalescing subtypes accumulate their state), otherwise it's appended.
@@ -33,3 +56,15 @@ public sealed partial record UserNotificationInfo(
         return this with { Items = items };
     }
 }
+
+/// <summary>
+/// A dismissal the user's devices are still owed. <see cref="Tag"/> is captured at removal time:
+/// it derives from the notification, which is gone from
+/// <see cref="UserNotificationInfo.Items"/> by the time this is sent.
+/// </summary>
+[DataContract, MessagePackObject]
+[method: SerializationConstructor]
+public sealed partial record PendingDismissal(
+    [property: DataMember(Order = 0), Key(0)] NotificationId Id,
+    [property: DataMember(Order = 1), Key(1)] string Tag,
+    [property: DataMember(Order = 2), Key(2)] Moment QueuedAt);

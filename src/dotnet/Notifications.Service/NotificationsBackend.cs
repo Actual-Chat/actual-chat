@@ -127,7 +127,7 @@ public class NotificationsBackend(IServiceProvider services)
         // The read fails if the enqueue fails, so a retried read retries the trigger - repeated
         // resumes of the same flow collapse, and the flow parks once it has nothing left to do.
         await Queues
-            .Enqueue(FlowHub.NewResumeEvent<Flows.NotificationCleanupFlow>(userId.Value), cancellationToken)
+            .Enqueue(FlowHub.NewResumeEvent<Flows.NotificationConvergeFlow>(userId.Value), cancellationToken)
             .ConfigureAwait(false);
 
         return info with {
@@ -226,21 +226,6 @@ public class NotificationsBackend(IServiceProvider services)
         // notifications hidden by a currently muted chat are dismissed too and can't resurface
         // as unread when the chat is unmuted.
         await ApplyHardUpdate(userId, [], [], dismissAll: true, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [CommandHandler]
-    public virtual async Task OnCleanup(
-        NotificationsBackend_Cleanup command,
-        CancellationToken cancellationToken)
-    {
-        if (Invalidation.IsActive)
-            return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
-
-        var userId = command.UserId;
-        DebugLog?.LogDebug("-> OnCleanup. UserId={UserId}", userId);
-        // No additions, no explicit dismissals: Reconcile alone drops whatever the compute filter
-        // hides (read, mode-suppressed, expired) and emits the dismissals those removals owe.
-        await ApplyHardUpdate(userId, [], [], cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -965,28 +950,97 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
-    public virtual async Task OnPushDismissal(
-        NotificationsBackend_PushDismissal command,
+    public virtual async Task OnConverge(
+        NotificationsBackend_Converge command,
         CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return; // No state change, nothing to invalidate
+            return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
 
-        var (userId, dismissed) = command;
-        var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
-        var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
-        devices = devices.Where(d => d.DeviceType != DeviceType.iOSPttApp).ToList();
-        if (devices.Count == 0)
+        var userId = command.UserId;
+        DebugLog?.LogDebug("-> OnConverge. UserId={UserId}", userId);
+
+        // Cleanup first, so anything it removes is owed a dismissal this same pass. No additions
+        // and no explicit dismissals: Reconcile alone drops whatever the compute filter hides
+        // (read, mode-suppressed, expired) and records what those removals owe.
+        // Idempotent - a removed notification can't come back - so it's fine that the event
+        // ApplyHardUpdate itself emits lands here and runs a second, no-op pass. That pass
+        // dismisses nothing, so it emits no further event and this terminates.
+        await ApplyHardUpdate(userId, [], [], cancellationToken).ConfigureAwait(false);
+
+        // The send is deliberately outside the row lock ApplyHardUpdate holds.
+        var now = Clocks.SystemClock.Now;
+        var info = await GetUserNotificationInfo(userId, cancellationToken).ConfigureAwait(false);
+        var pending = info.PendingDismissals;
+        if (pending.IsEmpty)
             return;
 
-        // Badge recomputed from current state at delivery (see OnPush).
-        var info = await GetUserNotificationInfo(userId, cancellationToken).ConfigureAwait(false);
-        var deviceIds = devices.Select(d => d.DeviceId).ToList();
-        DebugLog?.LogDebug("-> OnPushDismissal. UserId={UserId}, Notifications#={Count}, DeviceIds#={DeviceIdCount}",
-            userId, dismissed.Count, deviceIds.Count);
-        await FirebaseMessagingClient
-            .SendDismissal(dismissed, deviceIds, info.Items.Count, cancellationToken)
+        // Time-barred entries are cleared without a send: the push's own TimeToLive is no longer
+        // than this, so retrying them cannot reach anyone.
+        var expiredIds = pending
+            .Where(x => now - x.QueuedAt >= Constants.Notification.PendingDismissalTtl)
+            .Select(x => x.Id)
+            .ToList();
+        var sendable = pending.Where(x => !expiredIds.Contains(x.Id)).ToList();
+
+        var doneIds = new List<NotificationId>(expiredIds);
+        if (sendable.Count > 0) {
+            var minActiveAt = now - Constants.Notification.ActiveDevicePeriod;
+            var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken)
+                .ConfigureAwait(false);
+            var deviceIds = devices
+                .Where(d => d.DeviceType != DeviceType.iOSPttApp)
+                .Select(d => d.DeviceId)
+                .ToList();
+            DebugLog?.LogDebug("OnConverge: sending. UserId={UserId}, Pending#={Count}, DeviceIds#={DeviceIdCount}",
+                userId, sendable.Count, deviceIds.Count);
+            // No devices to send to still counts as done - otherwise a user with none accumulates
+            // entries no send could ever consume. A throwing send leaves them standing to retry.
+            if (deviceIds.Count > 0)
+                // Badge recomputed from current state at delivery (see OnPush).
+                await FirebaseMessagingClient
+                    .SendDismissal(sendable, deviceIds, info.Items.Count, cancellationToken)
+                    .ConfigureAwait(false);
+            doneIds.AddRange(sendable.Select(x => x.Id));
+        }
+
+        if (doneIds.Count > 0)
+            await Commander
+                .Call(new NotificationsBackend_ClearDismissals(userId, doneIds.ToApiArray()), cancellationToken)
+                .ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnClearDismissals(
+        NotificationsBackend_ClearDismissals command,
+        CancellationToken cancellationToken)
+    {
+        var (userId, ids) = command;
+        var context = CommandContext.GetCurrent();
+        if (Invalidation.IsActive) {
+            if (context.Operation.Items.KeylessGet<bool>())
+                _ = GetUserNotificationInfo(userId, default);
+            return;
+        }
+
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbUserNotifications = await dbContext.UserNotifications.ForUpdate()
+            .FirstOrDefaultAsync(x => x.Id == userId.Value, cancellationToken)
             .ConfigureAwait(false);
+        if (dbUserNotifications is null)
+            return;
+
+        var info = dbUserNotifications.ToModel();
+        var updated = info.WithoutPendingDismissals(ids);
+        var hasChanges = updated.PendingDismissals.Count != info.PendingDismissals.Count;
+        context.Operation.Items.KeylessSet(hasChanges);
+        if (!hasChanges)
+            return;
+
+        dbUserNotifications.UpdateFrom(updated);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     // Fetches each distinct chat's Read position once (in parallel) instead of one sequential
@@ -1013,6 +1067,23 @@ public class NotificationsBackend(IServiceProvider services)
             .Collect(cancellationToken)
             .ConfigureAwait(false);
         return positions.ToDictionary(x => x.ChatId, x => x.ReadEntryLid);
+    }
+
+    // Only banners whose tag is now fully gone are owed a close - the chat banner may still be
+    // backed by another active notification under the same tag. The badge is refreshed by the
+    // dismissal push regardless, so an id-only entry still carries its weight.
+    private UserNotificationInfo WithPendingDismissals(
+        UserNotificationInfo info, IReadOnlyList<Notification> dismissed)
+    {
+        if (dismissed.Count == 0)
+            return info;
+
+        var now = Clocks.SystemClock.Now;
+        var survivingTags = info.Items.Select(GetPushGroupKey).ToHashSet(StringComparer.Ordinal);
+        var pending = dismissed
+            .Where(d => !survivingTags.Contains(GetPushGroupKey(d)))
+            .Select(d => new PendingDismissal(d.Id, d.GetPushTag() ?? "", now));
+        return info.WithPendingDismissals(pending);
     }
 
     private static bool IsExpired(Notification notification, Moment now)
@@ -1473,6 +1544,8 @@ public class NotificationsBackend(IServiceProvider services)
         if (silentById.Count == 0 && dismissed.Count == 0 && reAnchored.Count == 0)
             return; // Nothing changed (e.g. an already-dismissed OnDismiss, or a redelivered batch)
 
+        info = WithPendingDismissals(info, dismissed);
+
         if (dbUserNotifications != null)
             dbUserNotifications.UpdateFrom(info);
         else {
@@ -1493,6 +1566,7 @@ public class NotificationsBackend(IServiceProvider services)
                 .ConfigureAwait(false);
             (info, dismissed, silentById, reAnchored) = await Reconcile(dbUserNotifications.ToModel())
                 .ConfigureAwait(false);
+            info = WithPendingDismissals(info, dismissed);
             dbUserNotifications.UpdateFrom(info);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -1534,14 +1608,13 @@ public class NotificationsBackend(IServiceProvider services)
             n.Kind == NotificationKind.Mention && info.Items.Any(d => d.Id == n.Id));
         if (hasNewMention)
             context.Operation.AddEvent(FlowHub.NewResumeEvent<Flows.MentionReminderFlow>(userId.Value));
-        if (dismissed.Count > 0) {
-            // Only close banners whose tag is now fully gone — the chat banner may still be
-            // backed by another active notification under the same tag. The badge is still
-            // refreshed by the dismissal push regardless.
-            var survivingTags = info.Items.Select(GetPushGroupKey).ToHashSet(StringComparer.Ordinal);
-            var bannersToClose = dismissed.Where(d => !survivingTags.Contains(GetPushGroupKey(d))).ToApiArray();
-            context.Operation.AddEvent(new NotificationsBackend_PushDismissal(userId, bannersToClose));
-        }
+        if (dismissed.Count > 0)
+            // The dismissals are already committed to PendingDismissals above, so this event only
+            // has to *trigger* the send - OnConverge reads what to send from the blob and clears
+            // each entry once it is out. A lost or failed send leaves the entry standing, and
+            // NotificationConvergeFlow retries it.
+            context.Operation.AddEvent(new NotificationsBackend_Converge(userId));
+
         return;
 
         async Task<(

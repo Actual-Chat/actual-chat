@@ -30,7 +30,16 @@ driven by the iOS app-icon badge never updating while backgrounded.
 Data model (`src/dotnet/Api/Notifications/`): `Notification` is a MessagePack
 `[Union]` (one concrete record per `NotificationKind` — Message, Reply,
 Mention, Reaction, Invitation, Attention, Thread). `UserNotificationInfo` is
-the per-user blob (`Items` set + `LastPushAt` + `IsDormant`).
+the per-user blob (`Items` set + `PendingDismissals` + `LastPushAt` + `IsDormant`).
+
+**Lifecycle.** Each kind carries a `DismissMode` (`OnRead` / `OnView` /
+`Explicit`) and an optional `ExpiresAt`, both computed per-kind rather than
+stored. `GetUserNotificationInfo` hides read, mode-suppressed and expired items
+and resumes `NotificationConvergeFlow`, which commits those removals — hiding
+alone would leave the notification on the device with nothing scheduled to close
+it. Every removal appends to `PendingDismissals` in the same commit, and an entry
+is cleared only once its dismissal push has actually gone out, so a failed send
+is retried rather than lost.
 
 **Throttling.** Hard vs. soft updates: the first/urgent notification for a key
 commits + pushes; similar low-urgency ones during the silence window accumulate

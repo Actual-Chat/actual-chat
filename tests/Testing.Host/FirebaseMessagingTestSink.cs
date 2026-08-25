@@ -28,6 +28,9 @@ public sealed class FirebaseMessagingTestSink(ILogger<FirebaseMessagingTestSink>
 
     public IReadOnlyList<FirebaseSentMessage> Messages => _messages.ToArray();
     public IReadOnlyList<FirebaseWakeMessage> Wakes => _wakes.ToArray();
+    // Makes the next N dismissal sends throw, so a test can assert that a failed send leaves the
+    // dismissal owed rather than losing it.
+    public int FailDismissalCount { get; set; }
     public event Action<FirebaseSentMessage>? Sent;
 
     public void Clear()
@@ -51,14 +54,20 @@ public sealed class FirebaseMessagingTestSink(ILogger<FirebaseMessagingTestSink>
     }
 
     public Task SendDismissal(
-        IReadOnlyCollection<Notification> dismissedNotifications,
+        IReadOnlyCollection<PendingDismissal> dismissals,
         IReadOnlyCollection<Symbol> deviceIds,
         int badgeCount,
         CancellationToken cancellationToken)
     {
+        if (FailDismissalCount > 0) {
+            FailDismissalCount--;
+            log.LogInformation("SendDismissal: injected failure");
+            throw new InvalidOperationException("Injected dismissal failure.");
+        }
+
         log.LogInformation("SendDismissal: {Count} id(s) -> {DeviceCount} device(s), badge={Badge}",
-            dismissedNotifications.Count, deviceIds.Count, badgeCount);
-        Add(new FirebaseSentMessage(null, [..dismissedNotifications.Select(n => n.Id)], [..deviceIds], badgeCount));
+            dismissals.Count, deviceIds.Count, badgeCount);
+        Add(new FirebaseSentMessage(null, [..dismissals.Select(x => x.Id)], [..deviceIds], badgeCount));
         return Task.CompletedTask;
     }
 
