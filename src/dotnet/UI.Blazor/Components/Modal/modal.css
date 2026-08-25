@@ -178,12 +178,9 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply bg-transparent;
 }
 
-/* max-h-none: the title is often the only thing saying which of several similar modals this is,
-   so a long one grows the header onto a second line instead of losing its tail. */
 .modal-header {
     @apply ordinary-header;
     @apply flex-none justify-between;
-    @apply max-h-none;
     @apply overflow-visible;
 }
 
@@ -200,7 +197,6 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 .modal-header-interactive {
     @apply relative;
     @apply ordinary-header;
-    @apply max-h-none;
     @apply bg-02;
 }
 .modal-header-interactive .btn-submit {
