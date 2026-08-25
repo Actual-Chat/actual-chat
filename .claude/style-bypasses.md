@@ -129,3 +129,31 @@ edited. The reason can be as short as whose decision it was.
   the discrete bands the effect was moved away from
 - L184 `mask-position: var(--c-wipe-from);`
   — same, in the `content-swap-wipe-out` keyframes the rule above runs
+
+## src/dotnet/App.Maui/Platforms/Windows/Audio/WindowsAudioCapture.cs
+
+- L20 `private ILogger Log { get; } = log;`
+  — blank line after a single-line property — the hook alternates between
+  demanding and forbidding the blank line after this property on successive
+  runs; settled on no blank line, which is what "0 blank lines around
+  single-line properties, fields, and methods" says literally
+
+## src/dotnet/UI.Blazor.App/Components/AudioRecorder/AudioRecorder.cs
+
+- L14 `private readonly MutableState<AudioRecorderState> _state;`
+  — blank lines between members — the hook reads "0 blank lines inside types" as
+  "strip every blank line between members"; every other type in the repo separates
+  members with blank lines, so the file is left as it is. NEEDS ALEX'S CALL
+- L19 `private readonly AudioFocusRequester _audioFocusRequester;`
+  — readonly field after a mutable one — field order predates this branch and
+  reordering it is unrelated churn. NEEDS ALEX'S CALL
+- L37 `public AudioRecorder(AppUIHub hub)`
+  — explicit constructor instead of a primary constructor — the ctor body assigns
+  four fields including a MutableState built from `Hub`, so the conversion is a real
+  refactor, not a style fix. NEEDS ALEX'S CALL
+- L146 `throw new AudioRecorderException("Failed to start the recording.", e);`
+  — missing blank line before the final throw — it follows a run of guard clauses,
+  which the guide's own exemption covers
+- L109 `await StopRecordingUnsafe().ConfigureAwait(false);`
+  — blank line after an if/else-if chain ending in `return` — the chain ends in an
+  `else if`, which the guide's exemption covers

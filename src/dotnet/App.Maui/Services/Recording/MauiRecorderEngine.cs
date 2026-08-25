@@ -48,7 +48,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             _ => { SetSignalDetected(false); return Task.CompletedTask; });
     }
 
-    public async Task<bool> Start(
+    public async Task<RecorderStartResult> Start(
         ChatId chatId,
         ChatEntryId? repliedChatEntryId,
         CancellationToken cancellationToken = default)
@@ -85,12 +85,18 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 recordingToken)
             .ConfigureAwait(false);
         if (microphoneStream is null) {
-            Log.LogWarning("Microphone stream is unavailable");
+            // Capture fails both when the OS withholds the mic and when the audio device won't
+            // open, and only the permission check tells those two apart
+            var hasPermission = await MicrophonePermissionHandler.Check(cancellationToken).ConfigureAwait(false);
+            Log.LogWarning("Microphone stream is unavailable, permission: {HasPermission}", hasPermission);
             var releasedCts = Interlocked.CompareExchange(ref _recordingCts, null, recordingCts);
             if (ReferenceEquals(releasedCts, recordingCts))
                 recordingCts.CancelAndDisposeSilently();
             await SetRecording(false).ConfigureAwait(false);
-            return false;
+
+            return hasPermission == false
+                ? RecorderStartResult.NoPermission
+                : RecorderStartResult.NoDevice;
         }
 
         // Set the recording context
@@ -105,7 +111,8 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             Log,
             "Failed to process microphone stream",
             recordingToken);
-        return true;
+
+        return RecorderStartResult.Started;
     }
 
     public async Task<bool> Stop(CancellationToken cancellationToken = default)
