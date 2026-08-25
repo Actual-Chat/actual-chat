@@ -136,8 +136,8 @@ capability exists in the developer portal, and the `com.apple.developer.live-act
 forum threads 791243 and 808712). The only requirement is `NSSupportsLiveActivities` in the
 host app's `src/dotnet/App.Maui/Platforms/iOS/Info.plist` (already present).
 
-Like every embedded app extension, the appex still needs an App ID + provisioning profile
-for device signing — with **no** capabilities ticked:
+Like every embedded app extension, the appex needs an App ID + provisioning profile for
+device signing:
 
 - `chat.actual.dev.app.widget`
 - `chat.actual.app.widget`
@@ -146,9 +146,14 @@ The signed build path passes `-allowProvisioningUpdates`, so Xcode automatic sig
 creates both on first use; manual portal registration is only needed for manually-managed
 distribution profiles.
 
-Capabilities become necessary only for future features: **App Groups** (shared container)
-the moment the Live Activity should show chat avatars — images can't ride the size-limited
-`ContentState` payload — and **Push Notifications** on the host app if push-started/updated
+One capability is ticked on both: **App Groups**, granting
+`group.chat.actual[.dev].app.shared` — the container the app shares with its extensions
+(see `src/dotnet/App.Maui.IosShareExt/README.md`). Nothing here reads it yet; it's
+provisioned ahead of the first feature that needs it, which is chat avatars in the Live
+Activity — images can't ride the size-limited `ContentState` payload. Since profiles
+inherit whatever the App ID carries, that feature is then a code change alone.
+
+**Push Notifications** on the host app would be needed only if push-started/updated
 activities are ever added (out of scope by design; the shim is local-only). Interactive
 buttons (iOS 17+ App Intents, e.g. Stop/Pause parity with the Android notification) need
 no capability at all, just intent code shared into the extension target.

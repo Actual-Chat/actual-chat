@@ -4,5 +4,9 @@
 <dict>
     <key>application-identifier</key>
     <string>M287G8G83F.chat.actual.app.widget</string>
+    <key>com.apple.security.application-groups</key>
+    <array>
+        <string>group.chat.actual.app.shared</string>
+    </array>
 </dict>
 </plist>
