@@ -1,4 +1,5 @@
 using ActualChat.Rpc;
+using ActualChat.UI.Blazor.Module;
 using ActualChat.Users;
 using ActualLab.Fusion.Extensions;
 using ActualLab.Rpc;
@@ -20,14 +21,22 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
     private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan ProbeRetryDelay = TimeSpan.FromSeconds(1);
     // The probe costs the user traffic and tells us nothing a working app doesn't already
-    // show, so it waits until startup is over rather than competing with it.
-    private static readonly TimeSpan ProbeDelay = TimeSpan.FromSeconds(60);
+    // show, so it waits until startup is over rather than competing with it. It cannot wait
+    // much longer: a degraded connection often drops within a minute, and a probe that
+    // never fires on a bad link is worse than no probe at all.
+    private static readonly TimeSpan ProbeDelay = TimeSpan.FromSeconds(20);
     // The probe only runs once connected, so an endpoint that never connects would trap
-    // us here. The origin gets no deadline: there is nowhere better to go.
+    // us here - including the origin, which is exactly the case a relay exists for.
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(30);
+    private static readonly string JSSetRpcBaseUriMethod
+        = $"{BlazorUICoreModule.ImportName}.BrowserInit.setRpcBaseUri";
+    private static readonly TimeSpan PushToJSTimeout = TimeSpan.FromSeconds(2);
     private int _verifiedVersion = -1;
+    private string _pushedEndpoint = "";
     private ISystemProperties SystemProperties => field ??= Services.GetRequiredService<ISystemProperties>();
     private ReconnectUI ReconnectUI => field ??= Services.GetRequiredService<ReconnectUI>();
+    private ConnectivityUI ConnectivityUI => field ??= Services.GetRequiredService<ConnectivityUI>();
+    private IAppActivityState ActivityState => field ??= Services.GetRequiredService<IAppActivityState>();
     private RpcClientPeer? Peer => Hub.RpcHub.GetClientPeer(RpcRef.Default);
 
     // Protected/internal methods
@@ -46,11 +55,22 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
 
     // Private methods
 
+    private bool IsBackgroundIdle
+        => ActivityState.State.Value == AppActivityState.BackgroundIdle;
+
     private async Task MonitorEndpoint(CancellationToken cancellationToken)
     {
         var selector = RpcEndpointSelector.Instance!;
         var state = ReconnectUI.State;
-        if (!await WaitUntilConnected(selector, cancellationToken).ConfigureAwait(false)) {
+        await PushEndpointToJS(cancellationToken).ConfigureAwait(false);
+        // A backgrounded app has its networking suspended, so a failure seen there says
+        // nothing about the endpoint. BackgroundActive is different: a foreground service
+        // (PTT, sync, recording) keeps the network, and that is when connectivity matters
+        // most - so only BackgroundIdle is excluded.
+        await ActivityState.State.Computed
+            .When(x => x != AppActivityState.BackgroundIdle, cancellationToken)
+            .ConfigureAwait(false);
+        if (!await WaitUntilConnected(cancellationToken).ConfigureAwait(false)) {
             MoveToNextEndpoint(selector);
             return;
         }
@@ -64,34 +84,56 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
             return;
 
         var version = selector.Version;
-        if (await IsEndpointUsable(cancellationToken).ConfigureAwait(false)) {
+        if (await IsEndpointUsable(cancellationToken).ConfigureAwait(false))
             _verifiedVersion = version;
-            await WaitUntilDisconnected(cancellationToken).ConfigureAwait(false);
+        else if (!IsBackgroundIdle) {
+            MoveToNextEndpoint(selector);
             return;
         }
+        // Slipping into the background mid-probe means we have no verdict rather than a
+        // good one, so nothing is recorded and the next connection tries again.
 
-        MoveToNextEndpoint(selector);
+        await WaitUntilDisconnected(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<bool> WaitUntilConnected(
-        RpcEndpointSelector selector,
-        CancellationToken cancellationToken)
+    private async Task<bool> WaitUntilConnected(CancellationToken cancellationToken)
     {
         var state = ReconnectUI.State;
-        if (selector.IsOnOrigin) {
-            await state.Computed.When(x => x.IsConnected, cancellationToken).ConfigureAwait(false);
-            return true;
-        }
+        while (true) {
+            using var cts = cancellationToken.CreateLinkedTokenSource();
+            cts.CancelAfter(ConnectTimeout);
+            try {
+                await state.Computed.When(x => x.IsConnected, cts.Token).ConfigureAwait(false);
+                return true;
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+                // Being offline or idle in the background is not the endpoint's fault, and
+                // no other endpoint would do better, so keep waiting instead of cycling.
+                if (!ConnectivityUI.IsOnline.Value || IsBackgroundIdle)
+                    continue;
 
-        using var cts = cancellationToken.CreateLinkedTokenSource();
-        cts.CancelAfter(ConnectTimeout);
-        try {
-            await state.Computed.When(x => x.IsConnected, cts.Token).ConfigureAwait(false);
-            return true;
+                Log.LogWarning("RPC endpoint did not connect within {Timeout}", ConnectTimeout.ToShortString());
+                return false;
+            }
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            Log.LogWarning("RPC endpoint did not connect within {Timeout}", ConnectTimeout.ToShortString());
-            return false;
+    }
+
+    private async Task PushEndpointToJS(CancellationToken cancellationToken)
+    {
+        // The media workers read this when they start, so a switch reaches audio and video
+        // on their next start - moving a live peer would mean rebuilding the pipeline.
+        var endpoint = RpcEndpointSelector.ApplyTo(Services.UrlMapper().BaseUrl.TrimSuffix("/"));
+        if (endpoint == _pushedEndpoint)
+            return;
+
+        try {
+            using var cts = cancellationToken.CreateLinkedTokenSource();
+            cts.CancelAfter(PushToJSTimeout);
+            await JS.InvokeVoidAsync(JSSetRpcBaseUriMethod, cts.Token, endpoint).ConfigureAwait(false);
+            _pushedEndpoint = endpoint;
+        }
+        catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
+            Log.LogWarning(e, "Failed to push the RPC endpoint to JS");
         }
     }
 
@@ -111,9 +153,9 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
     private async Task<ProbeResult> Probe(CancellationToken cancellationToken)
     {
         var startedAt = Clocks.CpuClock.Now;
+        using var cts = cancellationToken.CreateLinkedTokenSource();
+        cts.CancelAfter(ProbeTimeout);
         try {
-            using var cts = cancellationToken.CreateLinkedTokenSource();
-            cts.CancelAfter(ProbeTimeout);
             var payload = await SystemProperties.GetProbePayload(ProbeSize, cts.Token).ConfigureAwait(false);
             var elapsed = Clocks.CpuClock.Now - startedAt;
             if (payload.Length < ProbeSize) {
@@ -131,8 +173,10 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
             // timeout indicts the endpoint. A fast failure means something a different
             // endpoint cannot fix - an older server without this method, say - and acting
             // on it would force reconnects that never help.
+            // Ask the deadline itself: cancellation lands just before the measured elapsed
+            // time reaches the timeout, so comparing the two never sees a timeout.
             var elapsed = Clocks.CpuClock.Now - startedAt;
-            var isTimeout = elapsed >= ProbeTimeout;
+            var isTimeout = cts.IsCancellationRequested;
             Log.LogWarning(e, "RPC endpoint probe {Outcome} after {Elapsed}",
                 isTimeout ? "timed out" : "failed for an unrelated reason", elapsed.ToShortString());
             return isTimeout ? ProbeResult.Failed : ProbeResult.Inconclusive;
