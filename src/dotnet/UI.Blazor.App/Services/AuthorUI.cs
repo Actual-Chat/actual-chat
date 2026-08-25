@@ -76,7 +76,9 @@ public class AuthorUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
     public async Task StartAnonymousPeerChat(UserId userId, CancellationToken cancellationToken = default)
     {
         var now = Clocks.SystemClock.Now;
-        var sDate = now.ToDateTime().ToString("MM/dd/yyyy");
+        // The title is persisted chat data, not UI chrome - so it stays English and
+        // locale-independent, the same way the built-in Notes chat does.
+        var sDate = now.ToDateTime().ToString("MM/dd/yyyy", CultureInfo.InvariantCulture);
         var createCommand = new Chats_Change {
             Session = Session,
             ChatId = default,

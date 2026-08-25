@@ -21,7 +21,7 @@
             chipCls += " btn-xs btn-transparent";
             <ButtonRound
                 Class="@chipCls"
-                Tooltip="@chip.Tooltip"
+                Tooltip="@ChipTooltip(chip.Filter)"
                 data-editor-focus="true"
                 PointerDownPreventDefault="true"
                 Click="@(_ => OnChipClick(chip.Filter))">
@@ -113,12 +113,20 @@
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.MentionList.create";
-    private static readonly (Func<MentionCandidate, bool> Filter, string Icon, string Tooltip)[] Chips = [
-        (MentionCandidateFilters.All, "icon-star-2", "All categories"),
-        (MentionCandidateFilters.User, "icon-person", "Users only"),
-        (MentionCandidateFilters.Chat, "icon-message-ellipse", "Chats only"),
-        (MentionCandidateFilters.Emoji, "icon-emoji-2", "Emoji only"),
+    private static readonly (Func<MentionCandidate, bool> Filter, string Icon)[] Chips = [
+        (MentionCandidateFilters.All, "icon-star-2"),
+        (MentionCandidateFilters.User, "icon-person"),
+        (MentionCandidateFilters.Chat, "icon-message-ellipse"),
+        (MentionCandidateFilters.Emoji, "icon-emoji-2"),
     ];
+
+    private string ChipTooltip(Func<MentionCandidate, bool> filter)
+        // The filters are static readonly fields, so reference equality is what the chip
+        // loop already matches the active filter with.
+        => filter == MentionCandidateFilters.User ? L.MentionList_FilterUsers
+            : filter == MentionCandidateFilters.Chat ? L.MentionList_FilterChats
+            : filter == MentionCandidateFilters.Emoji ? L.MentionList_FilterEmoji
+            : L.MentionList_FilterAll;
 
     private const int DefaultSkeletonCount = 8;
     private static readonly int[] SkeletonWidths = [72, 54, 63, 45, 68, 50, 60, 57];

@@ -7,8 +7,8 @@ validation messages and dates. This plan is the remaining work, ordered so that
 each item's prerequisite comes before it.
 
 ## Where things stand
-`Strings.<lang>.json` holds 1198 keys × 14 languages, `Messages.<lang>.json`
-holds 100; both are guarded by `AppLocalizationTest` (key/member correspondence,
+`Strings.<lang>.json` holds 1289 keys × 22 languages (plus the derived `Max`),
+`Messages.<lang>.json` holds 103; both are guarded by `AppLocalizationTest` (key/member correspondence,
 per-language completeness, placeholder preservation) and
 `ServerErrorLocalizationTest`. Consuming code goes through the typed members in
 `LocalizedStringsLocalizerExt.cs` — see `docs/CODING_STYLE.md` →
@@ -67,48 +67,38 @@ tooltip, pin/unpin, `Owner`/`Moderator` in both member menus, read receipts on
 mentions, the incoming-call modal, the streaming badge, the video-panel menu
 and the search-result group headers.
 
-**Keep the scan below in the loop for future passes** — an attribute/text-node
-scan will not find these:
+### The second pass (#4233), and why one was needed
 
-```bash
-python3 - <<'PY'
-import re, os
-skip = re.compile(r'/Discover/|TestPage|Diagnostic|/Landing/|/Emails/|/Testing/|Admin|/Guides/')
-for root in ['src/dotnet/UI.Blazor', 'src/dotnet/UI.Blazor.App']:
-    for dp, _, fns in os.walk(root):
-        for fn in fns:
-            if not fn.endswith('.razor'): continue
-            p = os.path.join(dp, fn)
-            if skip.search(p): continue
-            src = open(p, encoding='utf-8').read()
-            i = src.find('\n@code')
-            body = re.sub(r'@\*.*?\*@', '', src[:i] if i > 0 else src, flags=re.S)
-            for n, l in enumerate(body.split('\n'), 1):
-                if re.search(r'Log\w*\.|Justification|@using|@inherits|viewBox|\bd=', l): continue
-                for m in re.finditer(r'(?:\?|:|=|\?\?)\s*"([A-Z][^"{}]{2,})"', l):
-                    v = m.group(1).strip()
-                    if '/' in v: continue                                    # asset ids
-                    if re.match(r'^[A-Z][A-Za-z0-9]*(\.[A-Z][A-Za-z0-9]*)+$', v): continue  # enum refs
-                    if not re.search(r'[a-z]{2}', v): continue
-                    if re.match(r'^[A-Z][a-z]*([A-Z][a-z]*)+$', v): continue  # PascalCase identifiers
-                    print(f'{p}:{n}: {v!r}')
-PY
-```
+That scan read only the markup half of a `.razor` file, so anything below
+`@code` — a `switch` helper, a `[Parameter]` default, a `ToastUI.Show` argument,
+a `StringBuilder` composing share text — stayed English. ~60 strings across 30
+files did, including the search filter badges (`Chat`, `Place`, `People`,
+`Groups`, `Messages`), the sidebar's `Chats`/`Unread` headers, the whole phone
+verifier, the join-video modal's camera states, `Owner`/`Moderator`/`Your
+profile` in the *place* member lists (the chat ones were fixed in #3721), the
+mention picker's filter chips, and six date patterns spelled out at the call
+site instead of taken from `Date_*`.
+
+34 new keys; the rest mapped onto keys that already existed, which is itself the
+tell — half of these were duplicated English next to a key that already said the
+same thing.
 
 Deliberately excluded and expected to stay English: brand names (`GIF`,
 `Google Play`, `App Store`, `Microsoft Store`, `KLIPY`), guide-screenshot and
 tutorial-slide `alt`s (`Web/Chrome/01`, `Tutorial slide #1` — asset
 identifiers), diagnostics entries, `CaptchaView`'s fake-reCAPTCHA branch,
-`DeveloperTools`, `PlaceInfo`'s `EnableIncompleteUI` mockup text, and the three
-`ChatPropertiesMenu` entries that sit inside a `@* … *@` comment block.
+`DeveloperTools`, `PlaceInfo`'s `EnableIncompleteUI` mockup text, the three
+`ChatPropertiesMenu` entries that sit inside a `@* … *@` comment block, and chat
+titles that become persisted data (`Notes`, a Place's `Welcome` chat,
+`Anonymous chat (<date>)`).
 
 ### The runtime check — `ui-localization-smoke.test.ts`
 
-The scan above reads markup, so it cannot see a string built inside a `@code` block
-or defaulted on a `[Parameter]`. `tests/ts/e2e/ui-localization-smoke.test.ts` closes
-that gap from the other side: for each of the 13 non-English UI languages it switches
-the app over, walks 17 screens (chat list, three menus, chat view, right panel, nine
-settings tabs) and compares every visible text node and
+`tests/ts/e2e/ui-localization-smoke.test.ts` is the standing check, and it works from the
+rendered page rather than from source: for each of the 13 non-English UI languages it
+switches the app over, walks the tour (chat list, three menus, chat view, the chat side
+panel and its tabs, nine settings tabs, the search panel with its filter menu and badges,
+the mention list, the unavailable-chat page) and compares every visible text node and
 `title`/`aria-label`/`placeholder`/`data-tooltip` against the English catalog. Text
 matching an English value whose translation differs is an unlocalized string, reported
 with the key that produced it. The reverse check runs too — each screen must show some
@@ -120,7 +110,7 @@ AC_E2E_SERVER=external npx vitest run tests/ts/e2e/ui-localization-smoke.test.ts
 # one or more languages: AC_E2E_LANGUAGES=ru,ja
 ```
 
-Its first run found three misses the source scan could not have caught, all fixed
+Its first run found three misses no source-reading scan could have caught, all fixed
 here: `StatusBadge` composed "Public chat"/"Private chat"/"Place chat" (plus a
 concatenated " thread") and "Online"/"Away"/"Offline" in `ComputeState`;
 `LeftChatSearchInput` and `SearchPanel` defaulted `Placeholder` to `"Search"`; and
@@ -134,10 +124,25 @@ was still English. It stays a fragment; the localizer is passed in as a fourth t
 (`RenderFragment<(Presence, Moment?, bool, IStringLocalizer)>`) rather than re-componentizing
 it. **Don't "fix" that by making it a component again** — read #2450 first.
 
-Two things it cannot see: text that is hardcoded **and** absent from the catalog —
-there is nothing to match it against, and `DownloadAppBanner`'s `Get @AppName App` is
-one such string still open — and screens off the tour: a peer chat, place settings,
-most modals. Adding a screen is one entry in `TOUR`.
+Two things it cannot see, and #4233 measured both. **Text hardcoded *and* absent
+from the catalog** has nothing to match against: of that pass's findings, roughly
+half (`Unread`, `Search...`, `In call`, `Notifications panel`, `Verify by SMS`,
+`Camera is off`, the four mention chips, …) were invisible to it no matter which
+screen it visited — reading the source is the only way to find that half.
+`DownloadAppBanner`'s `Get @AppName App`, called out here as one such string, is
+now `Download_GetAppBanner_Format`.
+
+**Screens off the tour** were the other half, and that is where the reported bug
+lived: the search panel was never visited, so `Place` sat in the filter badge in
+every language. The tour now also walks the search panel, its filter menu, the
+filter badges, the mention list and the unavailable-chat page, plus the chat side
+panel's own tabs; steps that depend on account state this test doesn't create (a
+chat with members, a Place) are marked `isOptional` and skipped rather than
+failed. Adding a screen is still one entry in `TOUR`.
+
+The `right-panel` step had been failing silently against a stale `.right-panel`
+selector — the component is `.chat-side-panel` — so nothing it covered was
+actually being checked. Fixed in the same pass.
 
 The Notes chat title is the one deliberate exception (`KnownEnglish` in the spec):
 `ChatsBackend` creates that chat with the literal title "Notes" and the user can rename

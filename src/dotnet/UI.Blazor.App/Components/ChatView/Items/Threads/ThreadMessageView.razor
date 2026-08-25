@@ -130,7 +130,7 @@
 
         var session = Session;
         var threadCreator = await ChatThreads.GetThreadCreator(session, chatId, cancellationToken).ConfigureAwait(false);
-        var ownerName = threadCreator?.Avatar.Name ?? "Unknown";
+        var ownerName = threadCreator?.Avatar.Name ?? L.ChatView_UnknownAuthor;
         var chatEntries = await ChatUI.GetThreadPreviewEntries(chatId, cancellationToken: cancellationToken).ConfigureAwait(false);
         var markups = await chatEntries.Select(x => GetMarkup(x, cancellationToken)).Collect(cancellationToken).ConfigureAwait(false);
         var threadStat = await ChatThreads.GetThreadStat(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -179,14 +179,10 @@
 
     private string GetText() {
         var m = State.Value;
-        var sb = StringBuilderExt.Acquire();
-        sb.Append("Thread \"");
-        sb.Append(m?.Title.Text ?? Message.Chat.Title);
-        sb.Append("\" on");
-        sb.Append(CoreConstants.AppName);
-        sb.Append(": ");
-        sb.Append(UrlMapper.ToAbsolute(Links.Chat(Message.Chat.Id)));
-        return sb.ToStringAndRelease();
+        return L.Share_ThreadText_Format(
+            m?.Title.Text ?? Message.Chat.Title,
+            CoreConstants.AppName,
+            UrlMapper.ToAbsolute(Links.Chat(Message.Chat.Id)));
     }
 
     // Nested types

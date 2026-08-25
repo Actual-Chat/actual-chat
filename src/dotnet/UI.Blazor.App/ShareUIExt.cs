@@ -77,7 +77,7 @@ public static class ShareUIExt
         var targetTitle = place is null
             ? chat.Title
             : string.Concat(place.Title, "/", chat.Title);
-        var text = $"\"{targetTitle}\" on {CoreConstants.AppName}";
+        var text = l.Share_TextTitled_Format(targetTitle, CoreConstants.AppName);
         if ((place is null || place.IsPublic) && chat.IsPublic) {
             var localUrl = Links.Chat(chat.AliasInfo, place?.AliasInfo);
             return new ShareModalModel(
@@ -115,7 +115,7 @@ public static class ShareUIExt
         if (place == null)
             return null;
 
-        var text = $"\"{place.Title}\" on {CoreConstants.AppName}";
+        var text = l.Share_TextTitled_Format(place.Title, CoreConstants.AppName);
         if (place.IsPublic) {
             var welcomeChatId = await places.GetWelcomeChatId(session, placeId, cancellationToken).ConfigureAwait(false);
             // NOTE(DF): Direct navigation to place does not work well so far. Let's share place via welcome chat link.
@@ -164,9 +164,10 @@ public static class ShareUIExt
         if (account == null)
             return null;
 
+        var l = hub.StringLocalizer;
         var name = account.Avatar.Name;
-        var title = $"Share {name}'s contact";
-        var text = $"{name} on {CoreConstants.AppName}";
+        var title = l.Share_ContactOf_Format(name);
+        var text = l.Share_TextNamed_Format(name, CoreConstants.AppName);
         return new ShareModalModel(
             ShareKind.Contact, title, name,
             new(text, Links.User(account.Id)),
@@ -182,9 +183,10 @@ public static class ShareUIExt
         if (ownAccount.IsGuestOrNull())
             return null;
 
+        var l = shareUI.Hub.StringLocalizer;
         var name = ownAccount.Avatar.Name;
-        var title = shareUI.Hub.StringLocalizer.YourAccount_ShareYourContact;
-        var text = $"{name} on {CoreConstants.AppName}";
+        var title = l.YourAccount_ShareYourContact;
+        var text = l.Share_TextNamed_Format(name, CoreConstants.AppName);
         return new ShareModalModel(
             ShareKind.Contact, title, name,
             new(text, Links.User(ownAccount.AliasInfo)),

@@ -16,7 +16,7 @@
                 <LiveDuration StartedAt="@joinedAt"/>
             }
             else {
-                @m.StatusText
+                @StatusText(m)
             }
         </div>
     </div>
@@ -129,6 +129,10 @@
     private Task OnHangUpClick()
         => State.Value.Chat is { } chat ? IncomingCallUI.HangUp(chat.Id) : Task.CompletedTask;
 
+    private string StatusText(ComputedModel m)
+        => m.Phase == CallPhase.InCall ? L.Call_InCall
+            : m.HasVideo ? L.Call_IncomingVideo : L.Call_Incoming;
+
     // Nested types
 
     public enum CallPhase { Ringing, InCall }
@@ -139,8 +143,5 @@
         public CallPhase Phase { get; init; }
         public bool HasVideo { get; init; }
         public Moment? JoinedAt { get; init; }
-        public string StatusText => Phase == CallPhase.InCall
-            ? "In call"
-            : HasVideo ? "Incoming video call" : "Incoming call";
     }
 }

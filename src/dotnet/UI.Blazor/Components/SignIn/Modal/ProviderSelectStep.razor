@@ -283,7 +283,7 @@
             Email.TryParse(emailValue.Address, out email);
 
         if (email is null) {
-            _signInError = "Invalid phone number or email address.";
+            _signInError = L.SignIn_InvalidPhoneOrEmail;
             StateHasChanged();
             return false;
         }

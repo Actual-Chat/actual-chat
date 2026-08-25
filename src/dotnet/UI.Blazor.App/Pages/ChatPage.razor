@@ -39,7 +39,7 @@
         </CascadingValue>
     } else if (route?.ChatId is not null) {
         <CascadingValue Value="@chatContext">
-            <ChatHeader NoChatTitle="@UnavailableChatTitle"/>
+            <ChatHeader NoChatTitle="@L.Unavailable_Chat"/>
         </CascadingValue>
     } else {
         <ChatHeaderSkeleton/>
@@ -92,8 +92,6 @@
 </ContentSwap>
 
 @code {
-    protected const string UnavailableChatTitle = "This chat is unavailable";
-
     protected static TimeSpan VeryFirstLoadDelay = TimeSpan.FromSeconds(1.5);
     protected static TimeSpan LoadTimeout = TimeSpan.FromSeconds(1);
     protected static TimeSpan LoadTimeoutToReloadDelay = TimeSpan.FromSeconds(2);

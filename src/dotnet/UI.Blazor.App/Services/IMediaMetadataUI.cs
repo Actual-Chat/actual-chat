@@ -1,3 +1,6 @@
+using ActualChat.UI.Blazor.Resources;
+using Microsoft.Extensions.Localization;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 public record MediaMetadata(
@@ -5,11 +8,11 @@ public record MediaMetadata(
     string Artist,
     string ImageUrl)
 {
-    public static MediaMetadata FromTrack(ChatAudioTrackInfo trackInfo)
+    public static MediaMetadata FromTrack(ChatAudioTrackInfo trackInfo, IStringLocalizer l)
     {
-        var authorName = trackInfo.Author?.Avatar.Name ?? "Unknown";
-        var chatTitle = trackInfo.Chat?.Title ?? "Unknown";
-        return new($"{authorName} @ {chatTitle}", "Voxt", "/_applogo-dark_voxt.svg");
+        var authorName = trackInfo.Author?.Avatar.Name ?? l.ChatView_UnknownAuthor;
+        var chatTitle = trackInfo.Chat?.Title ?? l.ChatView_UnknownChat;
+        return new($"{authorName} @ {chatTitle}", CoreConstants.AppName, "/_applogo-dark_voxt.svg");
     }
 }
 

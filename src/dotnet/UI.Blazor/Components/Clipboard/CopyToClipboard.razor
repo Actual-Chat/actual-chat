@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 
 <div class="copy-to-clipboard">
     @if (ShowInput) {
@@ -22,7 +23,7 @@
     [Parameter] public string ButtonClass { get; set; } = "";
     [Parameter] public bool IsSquare { get; set; }
     [Parameter] public string InputClass { get; set; } = "";
-    [Parameter] public string Tooltip { get; set; } = "Copy";
+    [Parameter] public string? Tooltip { get; set; }
     [Parameter] public bool ShowInput { get; set; }
     [Parameter] public string Caption { get; set; } = "";
     [Parameter, EditorRequired] public string Text { get; set; } = "";

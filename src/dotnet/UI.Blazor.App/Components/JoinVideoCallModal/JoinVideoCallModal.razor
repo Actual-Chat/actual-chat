@@ -193,12 +193,12 @@
     private Chat Chat => ChatContext.Chat;
     private bool IsSettingsMode => ModalModel.Mode is VideoCallMode.Settings;
     private CameraState PreviewState => _session?.State ?? CameraState.Starting;
-    private string Title => IsSettingsMode ? "Video Settings"
-        : State.Value.HasActiveSession ? "Join the video"
-        : "Video preview";
-    private string SubmitButtonText => IsSettingsMode ? "Apply"
-        : State.Value.HasActiveSession ? "Join"
-        : "Start video";
+    private string Title => IsSettingsMode ? L.Call_VideoSettings
+        : State.Value.HasActiveSession ? L.Call_JoinVideo
+        : L.Call_VideoPreview;
+    private string SubmitButtonText => IsSettingsMode ? L.Common_Apply
+        : State.Value.HasActiveSession ? L.Common_Join
+        : L.Video_StartVideo;
 
     // Submit conditions:
     // - Video off: enabled iff remote streams exist (joining as viewer makes
@@ -374,8 +374,8 @@
         // for itself.
         if (!granted && wasDenied) {
             var toastText = HostInfo.HostKind.IsMauiApp()
-                ? "Camera is still blocked. Please allow camera access in system settings first."
-                : "Camera is still blocked. Please allow camera access in your browser settings first.";
+                ? L.Call_CameraStillBlockedApp
+                : L.Call_CameraStillBlockedWeb;
             ToastUI.Show(toastText, "icon-alert-circle", ToastDismissDelay.Long);
         }
         // OnAfterRenderAsync will pick this up once the video container renders.
@@ -578,13 +578,13 @@
 
     private string GetPlugText(CameraState cameraState) {
         if (!_isVideoOn)
-            return "Camera is off";
+            return L.Call_CameraIsOff;
         return cameraState switch {
             CameraState.On => "",
-            CameraState.Unavailable => "Camera is unavailable",
+            CameraState.Unavailable => L.Call_CameraIsUnavailable,
             // Off here means the session has not been created yet — the only
             // user-driven Off path is _isVideoOn == false, handled above.
-            _ => "Camera is starting...",
+            _ => L.Call_CameraStarting,
         };
     }
 

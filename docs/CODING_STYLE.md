@@ -830,8 +830,9 @@ cutoff, unions, constructor attributes, and the test helpers that catch shape di
 localized catalog (`src/dotnet/UI.Blazor/Resources/Strings.<lang>.json`) and is
 read through the typed members in `LocalizedStringsLocalizerExt.cs`
 (`@L.ChatMenu_Pin`), never through the raw `L["..."]` indexer. Adding a key means
-three edits — the English catalog, all 13 other catalogs, the typed member — and
-`AppLocalizationTest` fails the build if one is missing.
+three edits — the English catalog, every other hand-written catalog, the typed
+member — and then regenerating the derived ones (`scripts/derive-bcms.cmd`,
+`scripts/derive-max.cmd`). `AppLocalizationTest` fails the build if one is missing.
 
 #### When a string is localization's business
 

@@ -6,17 +6,17 @@
 @{
     var showVerifier = _validationState is ValidationState.Valid or ValidationState.CodeSentRecently;
     var buttonText = _validationState switch {
-        ValidationState.Validating => "Validating...",
-        ValidationState.Invalid => "Unavailable",
-        ValidationState.CannotSend => "Unavailable",
-        ValidationState.CodeSentRecently => "Code sent",
-        _ => "Verify by SMS",
+        ValidationState.Validating => L.SignIn_Validating,
+        ValidationState.Invalid => L.SignIn_Unavailable,
+        ValidationState.CannotSend => L.SignIn_Unavailable,
+        ValidationState.CodeSentRecently => L.Phone_CodeSent,
+        _ => L.Phone_VerifyBySms,
     };
     var description = _validationState switch {
-        ValidationState.Invalid => "Please try again later.",
+        ValidationState.Invalid => L.Phone_TryAgainLater,
         ValidationState.CannotSend => _canSendValidationMessage,
-        ValidationState.CodeSentRecently => "You can try again in a few minutes.",
-        _ => $"Verify your phone number to sign in to {CoreConstants.AppName}.",
+        ValidationState.CodeSentRecently => L.Phone_TryAgainInMinutes,
+        _ => L.Phone_VerifyToSignIn_Format(CoreConstants.AppName),
     };
     var isDisabled = _validationState is ValidationState.Invalid or ValidationState.Validating or ValidationState.CannotSend;
 }

@@ -5,7 +5,7 @@
 
 <div @ref="_ref"
      class="@Class copy-trigger"
-     data-tooltip="@Tooltip"
+     data-tooltip="@TooltipText"
      data-toooltip-position="@FloatingPosition.Top">
     @ChildContent
 </div>
@@ -19,8 +19,10 @@
     private string _lastCopyText = "";
     private bool _isDisposed;
 
+    private string TooltipText => Tooltip ?? L.Common_Copy;
+
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public string Tooltip { get; set; } = "Copy";
+    [Parameter] public string? Tooltip { get; set; }
     [Parameter] public string CopyText { get; set; } = "";
     [Parameter] public ElementReference? CopyTextSourceRef { get; set; }
     [Parameter] public string CopyTextFormatString { get; set; } = "";
@@ -29,7 +31,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             _lastCopyText = CopyText;
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _ref, CopyText, Tooltip, CopyTextSourceRef, CopyTextFormatString);
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _ref, CopyText, TooltipText, CopyTextSourceRef, CopyTextFormatString);
             _whenFirstRender.TrySetResult();
         } else if (CopyText != _lastCopyText) {
             _lastCopyText = CopyText;

@@ -487,7 +487,7 @@
         if (isEqualLayout && isExpanded && ownAuthorId is { } ownId
             && speakingAuthorIds.Contains(ownId)
             && !speakingAuthorIds.Any(a => a != ownId))
-            focusedName = "You";
+            focusedName = L.ChatView_You;
 
         var pinnedAuthorId = await _layoutCalculator.GetPinnedAuthor(cancellationToken).ConfigureAwait(false);
         // Author shown in the big tile right now — what the pin button pins when toggled on.
@@ -530,7 +530,7 @@
         CancellationToken cancellationToken) {
         const string focusedCls = "item-focused";
         if (layout.OwnCameraPreviewClass.Contains(focusedCls))
-            return "You";
+            return L.ChatView_You;
 
         var focused = layout.RemoteStreamPlayerClasses.FirstOrDefault(c => c.Class.Contains(focusedCls));
         if (focused is null)

@@ -105,7 +105,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 var trackInfo = (ChatAudioTrackInfo)TrackInfo;
                 _isOwnStream = await IsOwnStream(trackInfo, cancellationToken).ConfigureAwait(false);
                 await MediaMetadataUI
-                    .SetPlayback(MediaMetadata.FromTrack(trackInfo), trackInfo.IsStreaming)
+                    .SetPlayback(MediaMetadata.FromTrack(trackInfo, Hub.StringLocalizer), trackInfo.IsStreaming)
                     .ConfigureAwait(false);
                 var heldTrackInfo = ApplyAvSyncHold(trackInfo);
                 _currentTargetBufferSize = heldTrackInfo.TargetBufferSize;

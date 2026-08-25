@@ -45,6 +45,9 @@ const KnownEnglish: Record<string, string> = {
 interface TourStep {
     name: string;
     run: (page: Page) => Promise<void>;
+    // A screen that depends on account state this test doesn't create - a chat with members,
+    // a Place. Unreachable is a skip, not a failure; what it renders is still scanned.
+    isOptional?: boolean;
 }
 
 interface ScannedText {
@@ -84,12 +87,12 @@ const TOUR: TourStep[] = [
     { name: 'message-editor-menu', run: page => openMenu(page, '.chat-message-editor .attach-btn') },
     { name: 'chat-menu', run: page => openMenu(page, '.chat-list .navbar-item[data-menu]', 'right') },
     {
-        name: 'right-panel',
+        name: 'chat-side-panel',
         run: async page => {
             await closePopups(page);
             // The panel's open state is remembered per user, and its toggle is rendered only
             // while the panel is closed — so open it just when it isn't already open.
-            const panel = page.locator('.right-panel').first();
+            const panel = page.locator('.chat-side-panel').first();
             if (!await panel.isVisible().catch(() => false))
                 await click(page, '.chat-header-control-panel button:has(i.icon-layout)');
 
@@ -103,12 +106,30 @@ const TOUR: TourStep[] = [
             }
         },
     },
+    // The panel's own tabs: each is a screen of its own, and which of them a chat offers
+    // depends on what has been posted in it.
+    ...['media', 'files', 'links'].map(tab => ({
+        name: `chat-side-panel/${tab}`,
+        run: (page: Page) => openSidePanelTab(page, tab),
+        isOptional: true,
+    })),
     // The settings tabs are reached by clicking, not by a /settings/<tab> navigation each: nine
     // more full page loads is nine more chances for one to hang, and clicking is what a user does.
     { name: 'settings', run: page => openSettings(page) },
     ...['account', 'userInterface', 'transcription', 'app', 'sessions', 'apiKeys', 'privacy', 'documents', 'devTools']
         .map(tab => ({ name: `settings/${tab}`, run: (page: Page) => openSettingsTab(page, tab) })),
+    // Screens off the main flow. Each of these re-enters from /chat rather than continuing
+    // where the previous step left off, so one that fails to open can't cascade into the next.
+    { name: 'search-panel', run: page => openSearch(page) },
+    { name: 'search-filter-menu', run: page => openSearchFilterMenu(page) },
+    { name: 'search-filter-badges', run: page => applySearchFilters(page) },
+    { name: 'mention-list', run: page => openMentionList(page), isOptional: true },
+    { name: 'chat-unavailable', run: page => goto(page, `/chat/${UnknownChatSid}`) },
 ];
+
+// A well-formed group-chat id that no chat has, so the page renders its unavailable state
+// instead of 404ing out of the app.
+const UnknownChatSid = 's-0000000000-0000000000';
 
 describe('UI localization smoke', () => {
     let conn: BrowserConnection;
@@ -196,7 +217,8 @@ async function runTour(
     for (const step of TOUR) {
         const texts = await runStep(page, step);
         if (!texts.length) {
-            problems.push(`[unreached] ${step.name} (nothing visible)`);
+            if (!step.isOptional)
+                problems.push(`[unreached] ${step.name} (nothing visible)`);
             if (++emptyStepCount >= MaxEmptySteps)
                 return { findings, problems, isComplete: false };
 
@@ -211,7 +233,7 @@ async function runTour(
                 addFinding(findings, probe, scanned, step.name);
         }
         const translatedCount = texts.filter(x => translatedValues.has(x.text)).length;
-        if (translatedCount < MinTranslatedPerScreen)
+        if (translatedCount < MinTranslatedPerScreen && !step.isOptional)
             problems.push(`[unreached] ${step.name} (${translatedCount} localized strings)`);
     }
     await page.screenshot({ path: shot(`${language.subtag}-final`) }).catch(() => { /* ignore */ });
@@ -267,6 +289,52 @@ async function openSettings(page: Page) {
     await closePopups(page);
     await goto(page, '/settings');
     await page.locator('.settings-modal').first().waitFor({ state: 'visible', timeout: 15_000 });
+}
+
+async function openSidePanelTab(page: Page, tabId: string) {
+    await click(page, `.chat-side-panel [data-tab-id="${tabId}"]`);
+    await page.waitForTimeout(500);
+}
+
+async function openSearch(page: Page) {
+    await goto(page, '/chat');
+    await click(page, '.left-chat-search-input input');
+    // Typed text is what keeps the panel open: an empty input closes it again on blur,
+    // and every later search step needs it to stay open.
+    await page.keyboard.type('a');
+    await page.locator('.left-chat-search-input.open').first().waitFor({ state: 'visible', timeout: 10_000 });
+}
+
+async function openSearchFilterMenu(page: Page) {
+    await click(page, '.left-chat-search-input .c-filter-btn');
+    await page.locator('.search-filter-menu').first().waitFor({ state: 'visible', timeout: 10_000 });
+}
+
+// The badges render the filters the menu sets, and they are a separate set of strings from
+// the menu's own - narrower ones that have to fit a chip.
+async function applySearchFilters(page: Page) {
+    await pickFilter(page, 0);
+    await openSearchFilterMenu(page);
+    await pickFilter(page, 1);
+    await page.locator('.search-filter-badge').first().waitFor({ state: 'visible', timeout: 10_000 });
+}
+
+async function pickFilter(page: Page, sectionIndex: number) {
+    // The second option of each section: the first is the "no filter" default, which
+    // renders no badge.
+    await page.locator('.search-filter-menu .c-section').nth(sectionIndex)
+        .locator('.c-option').nth(1).click({ force: true, timeout: 10_000 });
+    await page.waitForTimeout(500);
+}
+
+async function openMentionList(page: Page) {
+    await goto(page, '/chat');
+    await page.locator('.chat-list .navbar-item-content[data-href^="/chat/"]').last()
+        .click({ force: true, timeout: 15_000 });
+    await page.locator('.chat-message-editor').first().waitFor({ state: 'visible', timeout: 20_000 });
+    await page.locator('.chat-message-editor [contenteditable]').first().click({ force: true });
+    await page.keyboard.type('@');
+    await page.locator('.mention-list').first().waitFor({ state: 'visible', timeout: 10_000 });
 }
 
 async function openSettingsTab(page: Page, tabId: string) {

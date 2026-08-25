@@ -12,8 +12,8 @@
     var permissionClass = hasMicrophonePermission ? "" : "mic-disabled";
     var (showStatus, statusText, autoHide) = (m.IsRecordingHere, m.IsMicrophoneCaptured, m.IsConnected) switch {
         (false, _, _) => (false, "", false),
-        (_, false, _) => (true, "Starting recording...", false),
-        (_, _, false) => (true, "Reconnecting...", false),
+        (_, false, _) => (true, L.Call_StartingRecording, false),
+        (_, _, false) => (true, L.Reconnect_Title, false),
         // (true, true, true) => ...
         _ => (true , language == null ? L.Call_Recording : L.Call_RecordingLanguage_Format(language.Title), true),
     };

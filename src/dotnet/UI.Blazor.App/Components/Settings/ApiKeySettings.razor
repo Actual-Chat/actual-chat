@@ -36,7 +36,7 @@
                     }
                 </Content>
                 <Caption>
-                    <span class="c-key-expires">@L.ApiKeys_Expires_Format(DateTimeConverter.ToLocalTime(key.ExpiresAt.ToDateTime()).ToString("g"))</span>
+                    <span class="c-key-expires">@L.ApiKeys_Expires_Format(DateTimeConverter.ToLocalTime(key.ExpiresAt.ToDateTime()).ToString("g", DateFormatter))</span>
                 </Caption>
             </TileItem>
             @if (key != keys[^1]) {
