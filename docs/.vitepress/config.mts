@@ -147,6 +147,7 @@ export default withMermaid(defineConfig({
             items: [
               { text: "Overview", link: "/ui/" },
               { text: "Component Guidelines", link: "/ui/components" },
+              { text: "Walk-through", link: "/ui/walk-through" },
               { text: "The Virtual List", link: "/ui/virtual-list" },
               { text: "Safe Areas", link: "/ui/safe-areas" },
               { text: "Splash Screens", link: "/ui/splash-screen" },

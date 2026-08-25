@@ -30,6 +30,16 @@ the three UI surfaces complex enough to need a document of their own.
 - [Splash screens](./splash-screen.md) — the native splash and the web splash,
   who owns each one per platform, and when each is torn down.
 
+## Review and testing
+
+- [UI walk-through](./walk-through.md) — a route map of every screen, panel,
+  menu, modal and transient surface, with the localization keys each one
+  renders and a coverage table for all 122 key prefixes. Use it to review a
+  translation in context, or to drive a layout pass under
+  `?ui-language=max` (the hidden widest-translation pseudo-locale). The
+  findings from the first such pass are
+  [Max-locale layout findings](../plans/max-locale-findings.md).
+
 ## Related
 
 - [Localization (i18n)](../i18n.md) — every user-visible string comes from the

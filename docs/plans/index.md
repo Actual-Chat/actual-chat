@@ -65,6 +65,15 @@ iOS Notification Service Extension), the digest emails, and the native shells
 per-language routes before translation pays off, and the legal half is a
 liability decision.
 
+[Max-locale layout findings](./max-locale-findings.md) — 19 layout defects in
+10 root causes, found by walking the whole UI under `?ui-language=max` at
+390x844, 820x720, 1280x800 and 1440x900, each verified against English on the
+same screen. Four blockers: right-panel tabs that cannot be reached, composed
+sentences that drop the name out of the middle, radio options that truncate
+into duplicates, and the left-panel title painted under the search box. Plus
+one localization gap — eight hardcoded English strings in `JoinVideoCallModal`.
+The route map it came from is the [UI walk-through](../ui/walk-through.md).
+
 ### On-premises instances
 
 [On-premises instances](./on-prem-instances.md) — let customers run their own
