@@ -323,6 +323,12 @@ body.hoverable .btn.btn-modal:hover::after {
     @apply text-03 text-xs font-normal leading-3;
     @apply whitespace-normal;
 }
+/* A caption that wraps to more than one line outgrows h-12, and .btn-content clips the overflow -
+   so the row has to grow, and leading-3 leaves the last line's descenders nothing to sit in. */
+.btn.btn-tile:has(.c-caption) {
+    @apply h-auto min-h-12;
+    @apply py-2;
+}
 
 /* Button Tile — flat: no fill, color variants only tint the hover/active ::after overlay */
 .btn.btn-tile.btn-primary,

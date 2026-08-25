@@ -206,6 +206,17 @@ body.hoverable .tile-item.clickable.item-danger:hover,
     @apply flex-1 flex-x justify-end items-center;
     @apply min-h-6;
 }
+/* A bare value is an anonymous flex item with a flex-basis of 0 and no min-width floor, so a long
+   label starves it down to its min-content - one word, or one glyph in CJK. The floor plus the
+   ellipsis keep it readable and make the label (already truncate) give way first. :not(:empty)
+   leaves the rows with no value at all alone - there the slot is a spacer, and a floor on it would
+   truncate their labels for nothing. */
+.tile-item-right:not(:empty):not(:has(*)) {
+    @apply block;
+    @apply min-w-24;
+    @apply truncate;
+    @apply leading-6 text-right;
+}
 .tile-hidden-btn {
     @apply md:invisible group-hover:md:visible;
 }
