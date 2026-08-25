@@ -22,6 +22,9 @@ public sealed class MainApplication : MauiApplication, AndroidX.Work.Configurati
     public override void OnCreate()
     {
         base.OnCreate();
+        // The moment the main looper is free to dispatch the broadcast that may have started us;
+        // the delta from "CreateMauiApp completed" is pure MAUI framework overhead.
+        MauiStartupBreadcrumbs.Add("Application.OnCreate completed");
         // Any process start, not only a user launch. A message push starts us with no MainActivity
         // and no Blazor scope, so nothing else raises the armed service - leaving no PTT badge and
         // no media session for the headset button. Android 12+ bans foreground-service starts from

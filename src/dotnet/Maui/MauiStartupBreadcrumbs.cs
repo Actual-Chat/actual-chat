@@ -10,12 +10,17 @@ namespace ActualChat.Maui;
 public static class MauiStartupBreadcrumbs
 {
     private const int MaxPreviousLength = 2048;
+    private static readonly TimeSpan FlushDelay = TimeSpan.FromMilliseconds(250);
 
     private static readonly Lock WriteLock = new();
+    private static readonly List<string> PendingLines = new();
     private static CpuTimestamp _startedAt;
     private static FilePath _filePath;
     private static FilePath _previousFilePath;
-    private static volatile bool _isInitialized;
+    private static System.Threading.Timer? _flushTimer;
+    private static bool _isRotated;
+    // Publication guard for the fields Initialize sets; accessed via Volatile.Read/Write.
+    private static bool _isInitialized;
 
     public static void Initialize()
     {
@@ -29,25 +34,30 @@ public static class MauiStartupBreadcrumbs
             var cacheDir = (FilePath)FileSystem.CacheDirectory;
             _filePath = cacheDir & "startup-breadcrumbs.txt";
             _previousFilePath = cacheDir & "startup-breadcrumbs.prev.txt";
-            if (File.Exists(_filePath))
-                File.Move(_filePath, _previousFilePath, overwrite: true);
-            _isInitialized = true;
+            Volatile.Write(ref _isInitialized, true);
             Add("process started");
         }
         catch {
-            _isInitialized = false;
+            Volatile.Write(ref _isInitialized, false);
         }
     }
 
     public static void Add(string phase)
     {
-        if (!_isInitialized)
+        // Buffered: marks land on the startup path's main thread, where a synchronous append per
+        // mark would feed the very stalls the breadcrumbs exist to diagnose. A timer flushes each
+        // burst in one append; an ANR kill fires no earlier than 10s in, so nothing that matters
+        // is still pending by then.
+        if (!Volatile.Read(ref _isInitialized))
             return;
 
         try {
             var elapsed = CpuTimestamp.Now - _startedAt;
-            lock (WriteLock)
-                File.AppendAllText(_filePath, $"+{elapsed.TotalSeconds:F3}s {phase}\n");
+            lock (WriteLock) {
+                PendingLines.Add($"+{elapsed.TotalSeconds:F3}s {phase}\n");
+                _flushTimer ??= new System.Threading.Timer(
+                    _ => Flush(), null, FlushDelay, System.Threading.Timeout.InfiniteTimeSpan);
+            }
         }
         catch {
             // Intended: see Initialize
@@ -56,15 +66,52 @@ public static class MauiStartupBreadcrumbs
 
     public static string ReadPrevious()
     {
-        if (!_isInitialized || !File.Exists(_previousFilePath))
+        if (!Volatile.Read(ref _isInitialized))
             return "";
 
         try {
+            lock (WriteLock)
+                EnsureRotated();
+            if (!File.Exists(_previousFilePath))
+                return "";
+
             var text = File.ReadAllText(_previousFilePath);
             return text.Length <= MaxPreviousLength ? text : text[..MaxPreviousLength];
         }
         catch {
             return "";
         }
+    }
+
+    // Private methods
+
+    private static void Flush()
+    {
+        try {
+            lock (WriteLock) {
+                _flushTimer?.Dispose();
+                _flushTimer = null;
+                if (PendingLines.Count == 0)
+                    return;
+
+                EnsureRotated();
+                File.AppendAllText(_filePath, string.Concat(PendingLines));
+                PendingLines.Clear();
+            }
+        }
+        catch {
+            // Intended: see Initialize
+        }
+    }
+
+    private static void EnsureRotated()
+    {
+        // Deferred from Initialize to keep its file IO off the main thread too.
+        if (_isRotated)
+            return;
+
+        if (File.Exists(_filePath))
+            File.Move(_filePath, _previousFilePath, overwrite: true);
+        _isRotated = true;
     }
 }

@@ -43,6 +43,21 @@ public static class AndroidUtils
         return false;
     }
 
+    public static string GetProcessStartReason()
+    {
+        // Importance separates a broadcast-started process from a user launch: an FCM wake reads
+        // as a receiver/cached importance, a user launch as Foreground (AMS marks the process
+        // top-bound at bind time, before any activity exists).
+        try {
+            var processInfo = new ActivityManager.RunningAppProcessInfo();
+            ActivityManager.GetMyMemoryState(processInfo);
+            return $"{processInfo.Importance}/{processInfo.ImportanceReasonCode}";
+        }
+        catch (System.Exception e) {
+            return e.GetType().Name;
+        }
+    }
+
     public static bool IsMainThread()
         => Looper.MainLooper!.IsCurrentThread;
 
