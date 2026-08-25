@@ -184,7 +184,10 @@ public class FirebaseMessagingClient(
             Data = data,
             Android = new AndroidConfig {
                 Data = data,
-                Priority = Priority.High,
+                // Normal, not High: nothing here is worth waking the device out of Doze. High would
+                // cold-start a dead app on the 10s foreground-broadcast ANR budget and, being
+                // non-notifying, spend the high-priority allowance real notifications need.
+                Priority = Priority.Normal,
                 TimeToLive = TimeSpan.FromDays(1),
             },
             Apns = new ApnsConfig {

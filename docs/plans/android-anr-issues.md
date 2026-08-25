@@ -1,7 +1,23 @@
 # Android ANRs — FCM cold-start stalls
 
-Status: **investigation complete, nothing implemented yet.** Data pulled from
-Play Console on 2026-08-25.
+Status: **A1–A4 implemented on `feat/android-anr-startup` (2026-08-25); A5/B1
+and the Crashlytics/Analytics decisions pending.** Data pulled from Play
+Console on 2026-08-25.
+
+Implementation notes (deviations from the plan below):
+
+- A4 preferred form (dropping the `Xamarin.AndroidX.Work.Runtime` package) is
+  impossible: `Xamarin.Google.AI.Edge.LiteRT` → `Play.AI.Delivery` →
+  `Play.Asset.Delivery` pulls it back transitively. Landed the fallback:
+  manifest `tools:node="remove"` for `WorkManagerInitializer` +
+  `MainApplication : Configuration.IProvider` for on-demand init. Verified
+  gone from the merged manifest; ProfileInstaller/ProcessLifecycle/EmojiCompat
+  initializers untouched.
+- A3 gates on API level only (`< 31`): during `Application.OnCreate` the FCM
+  exemption window isn't open yet even on a push start, and on API 31+ user
+  launches MainActivity raises the service moments later anyway.
+- Crashlytics (Android) is still referenced — awaiting the "deliberate or
+  vestigial?" answer (open question 2).
 
 ## Summary
 
