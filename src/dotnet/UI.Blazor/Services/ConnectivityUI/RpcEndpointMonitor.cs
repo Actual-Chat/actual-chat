@@ -14,7 +14,10 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
     // Must exceed the ~16KB some networks let through before capping a connection,
     // otherwise a fully throttled link passes the probe.
     private const int ProbeSize = 64 * 1024;
-    private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(3);
+    // 64KB in 10s is ~52 kbps. Well under what a weak but usable link sustains, and well
+    // over a capped one, which needs ~37s for this payload. A tighter deadline would
+    // demand ~175 kbps and start failing links that are merely slow.
+    private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan ProbeRetryDelay = TimeSpan.FromSeconds(1);
     // The probe costs the user traffic and tells us nothing a working app doesn't already
     // show, so it waits until startup is over rather than competing with it.
