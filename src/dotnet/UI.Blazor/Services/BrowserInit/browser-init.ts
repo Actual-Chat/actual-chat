@@ -45,7 +45,7 @@ export class BrowserInit {
         clipboardInteropRef: DotNet.DotNetObject | null,
     ): void {
         try {
-            infoLog?.log(`-> init, apiVersion: ${apiVersion}, baseUri: ${baseUri}, sessionHash: ${sessionHash}`);
+            infoLog?.log(`-> init, apiVersion: ${apiVersion}, baseUri: ${baseUri}, rpcBaseUri: ${rpcBaseUri}, sessionHash: ${sessionHash}`);
             initAppConstants(appConstants);
             if (!BrowserInit.isProdBaseUri(baseUri))
                 MainThreadDiagnostics.init();
@@ -54,6 +54,7 @@ export class BrowserInit {
             const documentBaseUri = new URL(document.baseURI);
             this.baseUri = supportedHosts.includes(documentBaseUri.host) ? `${documentBaseUri.protocol}//${documentBaseUri.host}` : baseUri;
             this.rpcBaseUri = rpcBaseUri || this.baseUri;
+            warnLog?.log(`RPC endpoint: ${new URL(this.rpcBaseUri).host}`);
             Api.init('MainThread', {
                 url: this.getRpcUrl('/rpc/ws').replace(/^http/, 'ws'),
                 modules: [streamingApi, uploadsApi],

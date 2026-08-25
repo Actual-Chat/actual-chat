@@ -29,7 +29,11 @@ public sealed class MauiConnectivityUI : ConnectivityUI
     {
         // A different network is unproven, and it may well be unrestricted, so we always
         // go back to the origin and let the connection quality demote us again if needed.
-        RpcEndpointSelector.Instance?.UseDirect();
+        if (RpcEndpointSelector.Instance is { } endpointSelector) {
+            endpointSelector.UseDirect();
+            Log.LogInformation("Network changed to {Profiles}, RPC endpoint reset to the origin",
+                e.ConnectionProfiles.ToDelimitedString());
+        }
         _isOnline.Value = e.NetworkAccess.IsOnline();
     }
 }

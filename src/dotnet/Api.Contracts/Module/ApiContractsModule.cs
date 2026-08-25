@@ -122,7 +122,10 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                     sb.Append(settings.SerializationFormatParameterName);
                     sb.Append('=');
                     sb.Append(peer.SerializationFormat.Key);
-                    return sb.ToStringAndRelease().ToUri();
+                    var uri = sb.ToStringAndRelease().ToUri();
+                    client.Services.LogFor<RpcWebSocketClient>()
+                        .LogInformation("RPC WebSocket endpoint: {Host}", uri.Host);
+                    return uri;
                 },
             };
             if (hostKind.IsMauiApp())
@@ -189,7 +192,10 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                     sb.Append(settings.SerializationFormatParameterName);
                     sb.Append('=');
                     sb.Append(peer.SerializationFormat.Key);
-                    return sb.ToStringAndRelease().ToUri();
+                    var uri = sb.ToStringAndRelease().ToUri();
+                    client.Services.LogFor<RpcHttpClient>()
+                        .LogInformation("RPC HTTP endpoint: {Host}", uri.Host);
+                    return uri;
                 },
                 HttpClientFactory = _ => {
                     var handler = new SocketsHttpHandler {
