@@ -21,6 +21,7 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.IServerFeaturesClient>();
         CodeKeeper.Keep<global::ActualChat.Kvas.IServerKvas>();
         CodeKeeper.Keep<global::ActualChat.Kvas.IServerSettings>();
+        CodeKeeper.KeepSerializable<global::ActualChat.ApiCommand>();
         CodeKeeper.KeepSerializable<global::ActualChat.Hashing.HashString>();
         CodeKeeper.KeepSerializable<global::ActualChat.Hosting.HostRole>();
         CodeKeeper.KeepSerializable<global::ActualChat.Kvas.ServerKvas_MigrateGuestKeys>();
@@ -62,6 +63,12 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<float>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<float>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<float>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ApiCommand>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ApiCommand>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ApiCommand>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ApiCommand<global::System.Reactive.Unit>>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ApiCommand<global::System.Reactive.Unit>>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ApiCommand<global::System.Reactive.Unit>>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Hashing.HashString>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Hashing.HashString>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Hashing.HashString>>>>();
@@ -221,7 +228,8 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Serialization.Internal.UnitMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Text.Internal.SymbolMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Time.Internal.MomentMessagePackFormatter, ActualLab.Core");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Media_Size2DFormatter1, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_ApiCommandFormatter1, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Media_Size2DFormatter2, MessagePack.Resolvers.DynamicObjectResolver");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Search.SearchMatchPart, ActualChat.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[System.Type, System.Private.CoreLib]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[System.ValueTuple`2[[System.String, System.Private.CoreLib],[System.Byte[], System.Private.CoreLib]], System.Private.CoreLib]], MessagePack");
@@ -270,6 +278,7 @@ internal partial class CoreAotSource : IAotSource
             (typeof(global::ActualChat.IServerFeaturesClient), AotTypeKind.Api),
             (typeof(global::ActualChat.Kvas.IServerKvas), AotTypeKind.Api),
             (typeof(global::ActualChat.Kvas.IServerSettings), AotTypeKind.Api),
+            (typeof(global::ActualChat.ApiCommand), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Hashing.HashString), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Hosting.HostRole), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Kvas.ServerKvas_MigrateGuestKeys), AotTypeKind.Serializable),
