@@ -265,6 +265,6 @@ public class InvitesBackend(IServiceProvider services)
     private static void AutoInvalidate(Moment expiresOn, Moment now)
     {
         if (expiresOn != default && expiresOn > now)
-            Computed.GetCurrent().Invalidate(expiresOn - now);
+            Computed.GetCurrent().InvalidateSafely(expiresOn - now);
     }
 }

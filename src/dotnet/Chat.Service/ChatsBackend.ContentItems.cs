@@ -148,7 +148,7 @@ public partial class ChatsBackend
         var utcNow = Clocks.SystemClock.Now.ToDateTime();
         var year = utcNow.Year;
         var nextYearStartsAt = new DateTime(year + 1, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        computed.Invalidate(TimeSpanExt.Min(MaxYearRecheckPeriod, nextYearStartsAt - utcNow));
+        computed.InvalidateSafely(nextYearStartsAt - utcNow, MaxYearRecheckPeriod);
         return Task.FromResult(year);
     }
 
