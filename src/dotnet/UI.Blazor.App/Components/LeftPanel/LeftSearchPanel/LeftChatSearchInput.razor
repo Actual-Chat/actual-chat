@@ -163,16 +163,16 @@
         return _inputRef?.SetText(e.Text).AsTask() ?? Task.CompletedTask;
     }
 
-    private static string LocationBadgeText(SearchLocationFilter filter) => filter switch {
-        SearchLocationFilter.Chat => "Chat",
-        SearchLocationFilter.Place => "Place",
+    private string LocationBadgeText(SearchLocationFilter filter) => filter switch {
+        SearchLocationFilter.Chat => L.Search_BadgeInChat,
+        SearchLocationFilter.Place => L.Search_BadgeInPlace,
         _ => "",
     };
 
-    private static string TypeBadgeText(SearchTypeFilter filter) => filter switch {
-        SearchTypeFilter.People => "People",
-        SearchTypeFilter.Groups => "Groups",
-        SearchTypeFilter.Messages => "Messages",
+    private string TypeBadgeText(SearchTypeFilter filter) => filter switch {
+        SearchTypeFilter.People => L.Search_TypePeople,
+        SearchTypeFilter.Groups => L.Search_TypeGroups,
+        SearchTypeFilter.Messages => L.Search_TypeMessages,
         _ => "",
     };
 

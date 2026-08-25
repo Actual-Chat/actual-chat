@@ -51,8 +51,8 @@ internal static class ContentListPlumbing
     {
         var d = dateTimeConverter.ToLocalTime(at);
         return groupBy switch {
-            ContentGrouping.Day => ($"{d.Year:D4}-{d.Month:D2}-{d.Day:D2}", d.ToString("MMMM d, yyyy", dateFormatter)),
-            ContentGrouping.Month => ($"{d.Year:D4}-{d.Month:D2}", d.ToString("MMMM yyyy", dateFormatter)),
+            ContentGrouping.Day => ($"{d.Year:D4}-{d.Month:D2}-{d.Day:D2}", d.ToString("D", dateFormatter)),
+            ContentGrouping.Month => ($"{d.Year:D4}-{d.Month:D2}", d.ToString("y", dateFormatter)),
             _ => ("", ""),
         };
     }
@@ -69,7 +69,7 @@ internal static class ContentListPlumbing
 
     // Day-level label shown by the floating date-visor — finer than the month group headers.
     public static string GetVisorDate(Moment at, DateTimeConverter dateTimeConverter, DateFormatter dateFormatter)
-        => dateTimeConverter.ToLocalTime(at).ToString("d MMMM yyyy", dateFormatter);
+        => dateTimeConverter.ToLocalTime(at).ToString("D", dateFormatter);
 
     public static ContentListItem EmptyPlaceholder()
         => new() { Key = "empty", IsEmptyPlaceholder = true };

@@ -5,7 +5,7 @@
 
 <SearchBox
     Class="icon-align-right"
-    Placeholder="@SearchBoxPlaceholder"
+    Placeholder="@(SearchBoxPlaceholder ?? L.Place_WhomToAdd)"
     MaxLength="@Constants.Chat.MaxSearchFilterLength"
     TextChanged="@OnFilter"/>
 <div class="c-contact-list" role="listbox" aria-multiselectable="true">
@@ -77,7 +77,7 @@
 
     private IAccounts Accounts => Hub.Accounts;
 
-    [Parameter] public string SearchBoxPlaceholder { get; set; } = "Whom would you like to add?";
+    [Parameter] public string? SearchBoxPlaceholder { get; set; }
     [Parameter, EditorRequired] public IMemberListSource ListSource { get; set; } = null!;
     [Parameter] public EventCallback Changed { get; set; }
 

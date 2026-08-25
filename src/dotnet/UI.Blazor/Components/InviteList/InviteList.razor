@@ -53,9 +53,9 @@
         switch (invite) {
             case ChatInvite:
             case PlaceInvite:
-                return "Private join link";
+                return L.ChatWelcome_PrivateJoinLink;
             default:
-                return "Unknown link";
+                return L.Invite_UnknownLink;
         }
     }
 
@@ -84,8 +84,8 @@
                 var targetTitle = place is null
                     ? chat.Title
                     : string.Concat(place.Title, "/", chat.Title);
-                var title = "Share private chat join link";
-                var text = $"\"{targetTitle}\" on {CoreConstants.AppName}";
+                var title = L.Share_PrivateChatJoinLink;
+                var text = L.Share_TextTitled_Format(targetTitle, CoreConstants.AppName);
                 var shareModalSelectorPrefs = ShareWithPlaceMembersOnly.GetFor(chat, place);
                 var shareModel = new ShareModalModel(
                     ShareKind.ChatInvite, title, targetTitle,
@@ -100,8 +100,8 @@
                 if (place == null || !place.Rules.CanInvite())
                     return;
 
-                var title = "Share private place join link";
-                var text = $"\"{place.Title}\" on {CoreConstants.AppName}";
+                var title = L.Share_PrivatePlaceJoinLink;
+                var text = L.Share_TextTitled_Format(place.Title, CoreConstants.AppName);
                 var shareModel = new ShareModalModel(
                     ShareKind.PlaceInvite, title, place.Title,
                     new(text, link),

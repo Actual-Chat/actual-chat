@@ -118,14 +118,10 @@
 
     private string GetText() {
         var m = State.Value;
-        var sb = StringBuilderExt.Acquire();
-        sb.Append("Thread \"");
-        sb.Append(_title ?? m.Chat.Title);
-        sb.Append("\" on");
-        sb.Append(CoreConstants.AppName);
-        sb.Append(": ");
-        sb.Append(UrlMapper.ToAbsolute(Links.Chat(m.Chat.Id)));
-        return sb.ToStringAndRelease();
+        return L.Share_ThreadText_Format(
+            _title ?? m.Chat.Title,
+            CoreConstants.AppName,
+            UrlMapper.ToAbsolute(Links.Chat(m.Chat.Id)));
     }
 
     private void Reply() {}

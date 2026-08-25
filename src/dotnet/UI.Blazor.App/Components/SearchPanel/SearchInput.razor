@@ -1,11 +1,12 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 
 <div class="@Class search-input">
     <label>
         <TextInput
             @ref="_inputRef"
             Class="w-full dialog-unstyled"
-            Placeholder="@Placeholder"
+            Placeholder="@(Placeholder ?? L.Common_Search)"
             MaxLength="@MaxLength"
             TextChanged="OnInput">
         </TextInput>
@@ -23,7 +24,7 @@
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public int? MaxLength { get; set; }
-    [Parameter] public string Placeholder { get; set; } = "Search...";
+    [Parameter] public string? Placeholder { get; set; }
     [Parameter] public bool ShowCloseButton { get; set; }
     [Parameter] public EventCallback OnCloseClick { get; set; }
     [Parameter] public EventCallback<string> TextChanged { get; set; }

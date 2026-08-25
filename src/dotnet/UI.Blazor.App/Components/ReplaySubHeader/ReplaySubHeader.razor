@@ -26,14 +26,14 @@
         var now = DateTimeConverter.ToLocalTime(Hub.Clocks.SystemClock.Now);
         var localTime = DateTimeConverter.ToLocalTime(playingAt);
         var delta = (now.Date - localTime.Date).Days;
-        var time = localTime.ToString("HH:mm", DateFormatter);
+        var time = localTime.ToString(L.Date_TimePattern, DateFormatter);
         dateLabel = delta switch {
             0 => $"{L.Common_Today}, {time}",
             1 => $"{L.Common_Yesterday}, {time}",
             < 8 => $"{localTime.ToString("ddd", DateFormatter)}, {time}",
             _ => now.Year == localTime.Year
-                ? $"{localTime.ToString("MMM dd", DateFormatter)}, {time}"
-                : $"{localTime.ToString("MMM dd, yyyy", DateFormatter)}, {time}",
+                ? $"{localTime.ToString(L.Date_DayMonthPattern, DateFormatter)}, {time}"
+                : $"{localTime.ToString(L.Date_DayMonthYearPattern, DateFormatter)}, {time}",
         };
     }
 }

@@ -90,7 +90,7 @@
         var targetTitle = _author?.Avatar.Name ?? "";
         var model = new ShareModalModel(
             ShareKind.Media,
-            "Share media",
+            L.Share_Media,
             targetTitle,
             new ShareRequest("") { Media = [Attachment.ToMediaRef()] },
             null);

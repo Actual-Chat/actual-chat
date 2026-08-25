@@ -39,7 +39,8 @@
 
     private void OnShareClick(AccountFull account, string name) {
         var shareUI = Services.GetRequiredService<ShareUI>();
-        var request = new ShareRequest($"{name} on {CoreConstants.AppName}", Links.User(account.AliasInfo));
-        shareUI.Share(ShareKind.Contact, "Share your contact", name, request);
+        var request = new ShareRequest(
+            L.Share_TextNamed_Format(name, CoreConstants.AppName), Links.User(account.AliasInfo));
+        shareUI.Share(ShareKind.Contact, L.YourAccount_ShareYourContact, name, request);
     }
 }

@@ -1,7 +1,8 @@
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 @implements IModalView<DownloadAppModal.Model>
 @{
-    var title = $"Get {CoreConstants.AppName}";
+    var title = L.Download_GetApp_Format(CoreConstants.AppName);
 }
 
 <DialogFrame

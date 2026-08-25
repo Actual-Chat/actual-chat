@@ -119,14 +119,12 @@
     private void OnInviteClick()
         => Context.StepIn(DiveInDialogPage.New<AddMemberModalPage>(PlaceId));
 
-    private static string? FormatStatusText(bool isOwner, bool isModerator, bool isOwn) {
-        var statusText = isOwner ? "Owner" : isModerator ? "Moderator" : null;
-        if (isOwn) {
-            if (statusText != null)
-                statusText += ", your profile";
-            else
-                statusText = "Your profile";
-        }
+    private string? FormatStatusText(bool isOwner, bool isModerator, bool isOwn) {
+        var statusText = isOwner ? L.Members_Owner : isModerator ? L.Members_Moderator : null;
+        if (isOwn)
+            statusText = statusText != null
+                ? L.Members_StatusOwn_Format(statusText)
+                : L.Members_YourProfile;
         return statusText;
     }
 
