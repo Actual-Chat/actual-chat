@@ -161,8 +161,7 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
                 return state;
 
             var minBeginsAt = state.Streams.Min(x => x.BeginsAt);
-            var delay = (minBeginsAt + StreamTtl - now + MinInvDelay).Clamp(MinInvDelay, StreamTtl);
-            computed.Invalidate(delay);
+            computed.InvalidateSafely(minBeginsAt + StreamTtl - now + MinInvDelay, StreamTtl);
             return state;
         }
     }

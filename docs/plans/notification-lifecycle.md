@@ -69,7 +69,7 @@ one is new.
 
 ### Reusability of new components
 
-- **`Computed.AutoInvalidate(delay, maxDelay)` extension** — clamped
+- **`Computed.InvalidateSafely(delay[, maxDelay])` extension** — clamped
   self-invalidation. There are four hand-rolled variants today
   (`Invites`, `InvitesBackend`, `LiveAudioBackend`, `LiveTime`), one of them
   unclamped. **Recommended placement: `ActualChat.Core`** (next to the other
@@ -89,13 +89,13 @@ fields, no migration — the blob is MessagePack and these carry the standard
 
 ```csharp
 public enum NotificationDismissMode {
-    OnRead,     // read position passes its entry
-    OnView,     // its entry was actually on screen
-    Explicit,   // only an explicit dismissal or expiry
+    Explicit = 0,  // only an explicit dismissal or expiry - the safe default
+    OnRead,        // read position passes its entry
+    OnView,        // its entry was actually on screen
 }
 
 // Notification
-public virtual NotificationDismissMode DismissMode => NotificationDismissMode.OnRead;
+public virtual NotificationDismissMode DismissMode => NotificationDismissMode.Explicit;
 public virtual Moment? ExpiresAt => null;
 ```
 
@@ -111,6 +111,15 @@ reactions: today a `ReactionNotification` anchors at the reacted-to entry — th
 recipient's own message, whose read position was set at send time
 (`Chats.cs:557`) — so `Reconcile` drops it at commit
 (`NotificationsBackend.cs:1524`) and it never notifies anyone.
+
+`OnRead` is **opt-in**, declared on exactly the three types `GetReadAnchor` can
+resolve — `ChatEntryRelatedNotification`, `ChatEntryNotification` and
+`ConversationNotification` — with `ReactionNotification` overriding to `OnView`.
+Anchorless kinds fall through to `Explicit`. That way a kind that declares
+nothing can't be filtered by a read position that doesn't apply to it: the
+failure mode is a notification that lingers (visible, and expiry-governed) rather
+than one silently dropped before delivery, which is the bug this whole plan came
+from.
 
 `GetReadAnchor` goes back to answering only "which chat/entry is this about". It
 stops doubling as "what clears it", which is how the call ring slipped past both
@@ -181,7 +190,8 @@ union subtypes. Extend with `DormancyThreshold` 64 → 100 and the dead
 
 ### 2 — clamped self-invalidation
 
-`Computed.AutoInvalidate(delay, maxDelay = 30 min)` in `ActualChat.Core`,
+`Computed.InvalidateSafely(delay)` (30 min cap) plus an explicit-`maxDelay`
+overload, in `ActualChat.Core`,
 replacing the four local variants. A pending invalidation pins the `Computed<T>`
 until it fires, so a far-future delay leaks memory proportional to the method's
 parameter cardinality; re-arming early is free, since the method recomputes and
@@ -196,13 +206,19 @@ Audit result:
 | **`InvitesBackend.cs:265-269`** | **unclamped `expiresOn - now`** | **fix** |
 | `LiveAudioBackend.cs:163` | clamped to `StreamTtl` | ok |
 | `ChatsBackend.ContentItems.cs:151` | `Min(MaxYearRecheckPeriod, …)` | ok |
-| `LiveTime.cs:33` | `TrimInvalidationDelay` | fold into the helper |
-| `LocationUI.cs:122` | `Min(RemainingTextUpdatePeriod, …)` | ok |
-| `ChatUI.Tiles.cs:1645` | unclamped, bounded by a grace period | verify |
+| `LiveTime.cs:33` | `TrimInvalidationDelay` | kept local |
+| `LocationUI.cs:122` | `Min(RemainingTextUpdatePeriod, …)` | kept local |
+| `ChatUI.Tiles.cs:1645` | bounded by `StreamingEntryGap` | ok |
 
 `InvitesBackend` is the live instance of the pathology: invite lifetimes run to
 days and `GetInviteChatLinkPreview` is keyed `(accountId, inviteId)`. Its sibling
 in the same feature is clamped, and carries the rationale in a comment.
+
+`ChatUI.Tiles.cs:1645` turned out to be bounded after all — the loop only reaches
+the invalidation for entries still inside `StreamingEntryGap`, so the delay can't
+exceed it. `LiveTime` and `LocationUI` keep their local clamps: both pass
+`usePreciseTimer: false` and need sub-second delays, which the helper's 1s floor
+would round up.
 
 ### 3 — `Handle` → `Dismiss` rename
 

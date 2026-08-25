@@ -251,9 +251,7 @@ public class Invites(IServiceProvider services) : IInvites
 
     private void AutoInvalidate(Invite invite1, TimeSpan minInviteLifespan)
     {
-        // The delay is clamped - we don't want to reference Computed<T> for too long
         var delay = invite1.ExpiresOn - Clocks.SystemClock.Now - minInviteLifespan + TimeSpan.FromSeconds(1);
-        delay = delay.Clamp(TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(10));
-        Computed.GetCurrent().Invalidate(delay);
+        Computed.GetCurrent().InvalidateSafely(delay, TimeSpan.FromMinutes(10));
     }
 }
