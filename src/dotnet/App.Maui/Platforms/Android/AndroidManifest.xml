@@ -22,6 +22,22 @@
     See https://developer.android.com/training/data-storage/shared/photopicker#device-availability for details.
     The service declaration below triggers Google Play services to install the backported photo picker module.
     -->
+    <!--
+    Nothing here schedules persistent work, yet WorkManager's androidx.startup initializer opens
+    its SQLite db and spins up four WM.task-* threads on every process start - including FCM
+    cold starts, where that contention shows up as ANRs. The package itself can't be dropped
+    (Xamarin.Google.AI.Edge.LiteRT pulls it transitively), so only the initializer is removed;
+    MainApplication implements Configuration.IProvider so an on-demand WorkManager.getInstance()
+    still initializes lazily instead of throwing.
+    -->
+    <provider
+      android:name="androidx.startup.InitializationProvider"
+      android:authorities="${applicationId}.androidx-startup"
+      tools:node="merge">
+      <meta-data
+        android:name="androidx.work.WorkManagerInitializer"
+        tools:node="remove" />
+    </provider>
     <service android:name="com.google.android.gms.metadata.ModuleDependencies"
              android:enabled="false"
              android:exported="false"
