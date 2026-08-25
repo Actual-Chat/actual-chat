@@ -91,9 +91,13 @@ public static class MauiDiagnostics
 #if WINDOWS
         AppDataLogFilePath = Path.Combine(FileSystem.AppDataDirectory, "Logs", "ActualChat.log");
         logging = logging.WriteTo.Debug(outputTemplate: LoggingExt.OutputTemplate);
+        // Without rollOnFileSizeLimit Serilog silently stops writing once the file hits
+        // fileSizeLimitBytes - which left the Windows app with no logs at all for 2 years.
         logging = logging.WriteTo.File(AppDataLogFilePath,
             outputTemplate: LoggingExt.OutputTemplate,
-            fileSizeLimitBytes: LoggingExt.FileSizeLimit);
+            fileSizeLimitBytes: LoggingExt.FileSizeLimit,
+            rollOnFileSizeLimit: true,
+            retainedFileCountLimit: LoggingExt.RetainedFileCountLimit);
         if (!LoggingExt.DevLog.IsEmpty)
             logging = logging.WriteTo.File(LoggingExt.DevLog,
                 outputTemplate: LoggingExt.OutputTemplate,

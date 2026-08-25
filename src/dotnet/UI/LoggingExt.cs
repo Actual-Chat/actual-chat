@@ -7,6 +7,7 @@ public static class LoggingExt
 {
     public const string OutputTemplate = "{Timestamp:HH:mm:ss.fff} {Level:u3} T{ThreadID} [{SourceContext}] {Message:l}{NewLine}{Exception}";
     public const long FileSizeLimit = 10_000_000L;
+    public const int RetainedFileCountLimit = 3;
     public const long DevLogFileSizeLimit = 100_000_000L;
 
     public static readonly FilePath DevLog;
