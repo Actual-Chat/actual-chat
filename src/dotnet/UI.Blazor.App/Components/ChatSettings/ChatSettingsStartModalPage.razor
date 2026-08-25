@@ -1,6 +1,5 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
-@using ActualLab.Generators
 @inherits ComputedStateComponent<AppUIHub, ChatSettingsStartModalPage.ComputedModel>
 @{
     if (State.IsInitial(out var m))
@@ -56,12 +55,6 @@
                     <ImageCropPicker @ref="_avatarPicker"
                         Scope="@_form!.ImageScope"
                         OnCropped="@OnImagePicked" />
-
-                    @if (m.EnableIncompleteUI) {
-                        <ButtonRound Class="btn-sm" Click="@OnGenerateAvatarClick">
-                            <i class="icon-sync text-2xl"></i>
-                        </ButtonRound>
-                    }
                 </div>
             </div>
         </FormBlock>
@@ -146,7 +139,6 @@
 </Form>
 
 @code {
-    private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
     private Form?_formRef;
     private FormModel? _form;
     private DialogButtonInfo _submitButtonInfo = null!;
@@ -220,7 +212,6 @@
         var isPublic = chat.IsPublic;
         _placeId = (chat.Id as PlaceChatId)?.PlaceId;
         var isPlace = _placeId is not null;
-        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken);
 
         return new() {
             Chat = chat,
@@ -228,20 +219,12 @@
             MemberCount = allAuthorIds.Length,
             IsPublic = isPublic,
             IsPlace = isPlace,
-            EnableIncompleteUI = enableIncompleteUI,
             IsAdmin = AccountUI.OwnAccount.Value.IsAdmin,
         };
     }
 
     private void OnImagePicked(MediaRef mediaRef) {
         _form!.Picture = new (mediaRef);
-        StateHasChanged();
-    }
-
-    private void OnGenerateAvatarClick() {
-        // TODO: To generate an avatar for chat we need the AvatarKey field for the chat avatar
-        _avatarKey = DefaultUserPicture.GetAvatarKey(IdGenerator.Next());
-        _form!.Picture = new Picture(null, null, _avatarKey);
         StateHasChanged();
     }
 
@@ -317,7 +300,6 @@
         public int MemberCount { get; init; }
         public bool IsPublic { get; init; }
         public bool IsPlace { get; init; }
-        public bool EnableIncompleteUI { get; init; }
         public bool IsAdmin { get; init; }
         public bool CanRemoveThread { get; init; }
     }
