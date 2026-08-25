@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using ActualChat.UI;
 using Microsoft.Maui.Storage;
 
 // ReSharper disable InconsistentlySynchronizedField
@@ -14,6 +15,7 @@ public static class MauiPreferences
     private const string HostIpKeyPrefix = "host_ip_";
     private const string IsDataCollectionEnabledKey = "analytics";
     private const string ThemeKey = "Theme";
+    private const string ThemeColorsKey = "ThemeColors";
     private const string MinReportableClientVersionKey = "min_reportable_client_version";
     private const string IsPttArmedKey = "is_ptt_armed";
 
@@ -21,6 +23,20 @@ public static class MauiPreferences
     private static readonly ConcurrentDictionary<string, object?> Cache = new();
     // A sentinel to distinguish "cached null/not-set" from "not yet cached"
     private static readonly object NotCachedTag = new();
+
+#if IOS
+    // The App Group container - the only defaults domain the app and its extensions can both
+    // see, see App.Maui.IosShareExt/README.md.
+    private static string? SharedName => field ??= MauiSettings.IsDevApp
+        ? "group.chat.actual.dev.app.shared"
+        // ReSharper disable once HeuristicUnreachableCode
+        : "group.chat.actual.app.shared";
+#else
+    // Nowhere else shares these: Mac Catalyst has no extensions and isn't even granted the App
+    // Group, and an Android app widget runs in the app's own process. A store name off iOS would
+    // only put them in a second file - one the Android backup rules don't know to exclude.
+    private static string? SharedName => null;
+#endif
 
     public static string? HostOverride {
         get => Get<string>(HostOverrideKey).NullIfEmpty();
@@ -35,9 +51,18 @@ public static class MauiPreferences
         set => Set(IsDataCollectionEnabledKey, value);
     }
 
-    public static string Theme {
-        get => Get<string>(ThemeKey) ?? "";
-        set => Set(ThemeKey, value);
+    // null means "follow the system appearance"
+    public static Theme? Theme {
+        get {
+            var stored = Get<string>(ThemeKey, sharedName: SharedName);
+            return Enum.TryParse<Theme>(stored, false, out var v) ? v : null;
+        }
+        set => Set(ThemeKey, value?.ToString("G"), SharedName);
+    }
+
+    public static string ThemeColors {
+        get => Get<string>(ThemeColorsKey, sharedName: SharedName) ?? "";
+        set => Set(ThemeColorsKey, value, SharedName);
     }
 
     public static string? MinReportableClientVersion {
@@ -61,7 +86,7 @@ public static class MauiPreferences
     // Public helpers
 
     [return: NotNullIfNotNull("factory")]
-    public static T? Get<T>(string key, Func<T>? factory = null)
+    public static T? Get<T>(string key, Func<T>? factory = null, string? sharedName = null)
     {
         var cached = Cache.GetValueOrDefault(key, NotCachedTag);
         if (cached != NotCachedTag)
@@ -74,7 +99,7 @@ public static class MauiPreferences
 
             T? result = default;
             try {
-                var stored = Preferences.Default.Get(key, "");
+                var stored = Preferences.Default.Get(key, "", sharedName);
                 if (stored.IsNullOrEmpty()) {
                     // No stored value
                 }
@@ -89,7 +114,7 @@ public static class MauiPreferences
 
             if (result is null && factory != null) {
                 result = factory.Invoke();
-                Set(key, result); // Sets Cache[key] as well
+                Set(key, result, sharedName); // Sets Cache[key] as well
                 return result!;
             }
 
@@ -98,20 +123,20 @@ public static class MauiPreferences
         }
     }
 
-    public static void Set(string key, object? value)
+    public static void Set(string key, object? value, string? sharedName = null)
     {
         lock (Lock) {
             Cache[key] = value;
             switch (value) {
             case null or string { Length: 0 }:
-                Preferences.Default.Remove(key);
+                Preferences.Default.Remove(key, sharedName);
                 return;
             case string str:
-                Preferences.Default.Set(key, str);
+                Preferences.Default.Set(key, str, sharedName);
                 return;
             default:
                 var stored = Serializers.SystemJson.Write(value, value.GetType());
-                Preferences.Default.Set(key, stored);
+                Preferences.Default.Set(key, stored, sharedName);
                 return;
             }
         }

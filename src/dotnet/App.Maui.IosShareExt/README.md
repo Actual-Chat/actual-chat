@@ -8,3 +8,23 @@ Add the next code to your app project:
     </ProjectReference>
 </ItemGroup>
 ```
+
+## What the extension shares with the app
+
+The extension is a separate process with its own bundle id, so it sees neither the
+app's `localStorage` nor its `NSUserDefaults`. Two entitlements bridge that:
+
+- **Keychain access group** (`M287G8G83F.chat.actual[.dev].app.shared`) — the session,
+  see `AppleSharedSecureStorage`.
+- **App Group** (`group.chat.actual[.dev].app.shared`) — the theme, see
+  `MauiPreferences.Theme`. The app writes it on every theme change
+  (`MauiThemeHandler.OnThemeChanged`); `ShareViewController` reads it per share and
+  applies it to `AppColors` and `OverrideUserInterfaceStyle`. Nothing written means
+  "follow the system appearance", which is what the extension did before.
+
+Both entitlements have to be granted by the provisioning profile the build is signed
+with, otherwise codesign fails with `MT7140`. Adding one means registering it on the
+Apple Developer portal, enabling it for every member id, and regenerating each of their
+profiles — the Debug ones plus `App Store [Share] [Dev]`. The App Group's members are
+`chat.actual[.dev].app`, `chat.actual[.dev].app.share` and `chat.actual[.dev].app.widget`;
+the widget is provisioned but reads nothing yet, see `src/swift/VoxtActivities/README.md`.

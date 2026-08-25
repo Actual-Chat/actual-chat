@@ -1,4 +1,4 @@
-using ActualChat.UI.Blazor.Services;
+using ActualChat.UI;
 using AndroidX.Core.View;
 
 namespace ActualChat.App.Maui;
