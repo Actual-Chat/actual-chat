@@ -26,6 +26,7 @@
 
     private ChatUI ChatUI => Hub.ChatUI;
     private IChats Chats => Hub.Chats;
+    private PanelsUI PanelsUI => Hub.PanelsUI;
 
     protected override void OnParametersSet() {
         switch (Arguments) {
@@ -67,6 +68,8 @@
     private async Task OnGoToMessage() {
         await WhenClosed;
         ChatUI.HighlightEntry(_entryId, navigate: true);
+        if (!PanelsUI.IsWide())
+            PanelsUI.Right.SetIsVisible(false);
     }
 
     private Task OnDownload() {
