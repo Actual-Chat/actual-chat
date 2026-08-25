@@ -10,7 +10,7 @@
 // resolves IStringLocalizerFactory per call as of preview.7, so once the SDK is bumped off
 // preview.6 the BCL attributes localize forwards too and only Error_ strings remain here.
 {
-  "Validation_Required_Format": "Le champ « {field} » est obligatoire.",
+  "Validation_Required_Format": "Le champ « {field} » est obligatoire.",
   "Validation_MinLength_Format": "The field {field} must be a string or array type with a minimum length of '{min}'.",
   "Validation_EmailAddress_Format": "「{field}」は有効なメールアドレスではありません。",
   "Validation_DeleteConfirmationRequired": "Необходимо е потвърждение за изтриване",

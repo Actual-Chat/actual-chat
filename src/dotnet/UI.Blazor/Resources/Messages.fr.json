@@ -2,15 +2,15 @@
 // app produces at runtime; these don't - they are ordinary translations.
 // Keep the {named} placeholders identical to the English ones.
 {
-  "Validation_Required_Format": "Le champ « {field} » est obligatoire.",
-  "Validation_MinLength_Format": "Le champ « {field} » doit contenir au moins {min} caractères.",
-  "Validation_EmailAddress_Format": "« {field} » n’est pas une adresse e-mail valide.",
+  "Validation_Required_Format": "Le champ « {field} » est obligatoire.",
+  "Validation_MinLength_Format": "Le champ « {field} » doit contenir au moins {min} caractères.",
+  "Validation_EmailAddress_Format": "« {field} » n’est pas une adresse e-mail valide.",
   "Validation_DeleteConfirmationRequired": "La confirmation de suppression est requise",
   "Validation_DeleteConfirmationInvalid": "Saisissez DELETE pour confirmer",
 
   // Generic errors, composed by StandardError / the exception types themselves
   "Error_NotEnoughPermissions": "Vous n’avez pas les droits nécessaires pour cette action.",
-  "Error_NotEnoughPermissions_Format": "Vous n’avez pas les droits nécessaires pour cette action. Droit requis : {permission}",
+  "Error_NotEnoughPermissions_Format": "Vous n’avez pas les droits nécessaires pour cette action. Droit requis : {permission}",
   "Error_TooManyRequests": "Trop de requêtes.",
   "Error_TooManyRequests_Format": "Trop de requêtes. Réessayez dans {seconds} s.",
   "Error_VersionMismatch": "Les données ont changé. Réessayez.",
@@ -47,8 +47,8 @@
   "Error_AnonymousAvatarRequired": "Un profil anonyme est nécessaire pour rejoindre anonymement.",
   "Error_GuestJoinNotAllowed": "Ce chat n’autorise pas l’accès avec un compte invité.",
   "Error_AnonymousJoinNotAllowed": "Ce chat n’autorise pas l’accès anonyme.",
-  "Error_OwnersRoleCannotBeEmpty": "Le rôle « Propriétaires » doit compter au moins un utilisateur.",
-  "Error_OnlyOwnersAllowed": "Seuls les membres du rôle « Propriétaires » de ce chat peuvent effectuer cette action.",
+  "Error_OwnersRoleCannotBeEmpty": "Le rôle « Propriétaires » doit compter au moins un utilisateur.",
+  "Error_OnlyOwnersAllowed": "Seuls les membres du rôle « Propriétaires » de ce chat peuvent effectuer cette action.",
 
   // Messages
   "Error_CannotSendMessages": "Vous ne pouvez pas envoyer de messages dans ce chat.",
@@ -76,9 +76,9 @@
   "Error_OnlyPlaceMembersCanAddChats": "Seuls les membres de l’espace peuvent ajouter des chats.",
   "Error_CannotMakeChatPublic": "Vous n’avez pas les droits nécessaires pour rendre ce chat public.",
   "Error_CustomLinkNotAllowed": "Les liens personnalisés ne sont pas autorisés pour les chats d’un espace.",
-  "Error_CustomLinkTaken_Format": "Le lien « {link} » est déjà utilisé par un autre chat du même espace.",
-  "Error_WelcomeChatCannotBePrivate": "Le chat « Welcome » ne peut pas devenir privé.",
-  "Error_WelcomeChatCannotBeRemoved": "Le chat « Welcome » ne peut pas être supprimé.",
+  "Error_CustomLinkTaken_Format": "Le lien « {link} » est déjà utilisé par un autre chat du même espace.",
+  "Error_WelcomeChatCannotBePrivate": "Le chat « Welcome » ne peut pas devenir privé.",
+  "Error_WelcomeChatCannotBeRemoved": "Le chat « Welcome » ne peut pas être supprimé.",
   "Error_OnlyGroupOrPlaceChatCanBeCopied": "Seuls les chats de groupe ou d’espace peuvent être copiés vers un espace.",
   "Error_CannotCopyToSamePlace": "Impossible de copier un chat d’espace vers le même espace.",
   "Error_MigrationRequiresChatOwner": "Vous devez être propriétaire de ce chat pour effectuer la migration.",
@@ -112,7 +112,7 @@
   "Error_NoMediaAccess": "Vous n’avez pas accès à ce fichier.",
   "Error_FileTooBig": "Le fichier est trop volumineux.",
   "Error_CropExportFailed": "Échec de l'exportation de l'image recadrée.",
-  "Error_FileTooBig_Format": "Le fichier est trop volumineux. Taille maximale : {size}.",
+  "Error_FileTooBig_Format": "Le fichier est trop volumineux. Taille maximale : {size}.",
   "Error_TooManyFiles_Format": "Trop de fichiers. Le nombre maximal autorisé est {count}.",
 
   // Invites
