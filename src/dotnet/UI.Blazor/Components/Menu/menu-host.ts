@@ -2,11 +2,13 @@ import { fromEvent, merge, Subject, takeUntil } from 'rxjs';
 import {
     computePosition,
     flip,
+    limitShift,
     Middleware,
     offset,
     Placement,
     ReferenceElement,
     shift,
+    SideObject,
     VirtualElement,
 } from '@floating-ui/dom';
 import { Disposable } from 'disposable';
@@ -258,7 +260,6 @@ export class MenuHost implements Disposable {
             // Hover menu positioning
             referenceElement = menu.triggerElement;
             middleware.push(offset({ mainAxis: -15, crossAxis: -10 }));
-            middleware.push(flip());
         } else if (position && !isButtonTrigger(menu.triggerElement)) {
             // Pointer relative positioning
             referenceElement = {
@@ -275,15 +276,19 @@ export class MenuHost implements Disposable {
                     };
                 },
             } as VirtualElement;
-            middleware.push(flip());
-            middleware.push(shift({ padding: 5 }));
         } else {
             // Trigger element relative positioning
             referenceElement = menu.triggerElement;
             middleware.push(offset(6));
-            middleware.push(flip());
-            middleware.push(shift({ padding: 5 }));
         }
+        middleware.push(flip());
+        // crossAxis: true is what keeps a menu too tall for the space above its anchor from
+        // ending up at a negative top - flip() alone leaves it there when neither side fits.
+        middleware.push(shift({
+            padding: getMenuOverflowPadding(),
+            crossAxis: true,
+            limiter: limitShift(),
+        }));
         const { x, y } = await computePosition(
             referenceElement,
             menuElement,
@@ -449,6 +454,20 @@ export class MenuHost implements Disposable {
 let _nextId = 1;
 // Menu Ids are used as HTML element Ids, so they need to have unique prefix
 const nextId = () => 'menu:' + (_nextId++).toString();
+
+const menuViewportGap = 5;
+
+// The insets are read from the CSS variables rather than env(), so debugUI.showSafeAreas applies here too.
+function getMenuOverflowPadding(): SideObject {
+    const style = getComputedStyle(document.body);
+    const inset = (name: string) => menuViewportGap + (Number.parseFloat(style.getPropertyValue(name)) || 0);
+    return {
+        top: inset('--safe-area-top'),
+        right: inset('--safe-area-right'),
+        bottom: inset('--safe-area-bottom'),
+        left: inset('--safe-area-left'),
+    };
+}
 
 function getPlacementFromAttributes(triggerElement: HTMLElement): Placement | null {
     const placement = triggerElement.dataset.menuPlacement;

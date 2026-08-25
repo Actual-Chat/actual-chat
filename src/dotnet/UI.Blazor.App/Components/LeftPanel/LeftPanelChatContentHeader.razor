@@ -13,10 +13,12 @@
                 <i class="icon-more-vertical text-2xl"></i>
             </ButtonRound>
         }
+        @ChildContent
     </div>
 </div>
 
 @code {
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter] public MenuRef? Menu { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
 }

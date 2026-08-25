@@ -37,6 +37,9 @@
 .banner.banner-wrap > .c-content {
     @apply flex-wrap justify-start items-center;
     @apply gap-y-2;
+}
+/* The dismiss button is out of flow, so only a banner that has one reserves room for it */
+.banner.banner-wrap.banner-dismissible > .c-content {
     @apply pr-12;
 }
 .banner.banner-wrap .banner-body {
@@ -49,11 +52,13 @@
 .banner.banner-wrap .close-banner-abs {
     @apply absolute top-2 md:top-3.5 right-2;
 }
-@container banner-wrap (max-width: 30rem) {
-    .banner.banner-wrap > .c-content {
+/* 22rem, not the phone's ~24rem: English fits beside the button there and shouldn't cost a row.
+   A translation that doesn't fit still wraps on its own - .banner-body's min-w-48 floor sees to that. */
+@container banner-wrap (max-width: 22rem) {
+    .banner.banner-wrap.banner-dismissible > .c-content {
         @apply pr-0;
     }
-    .banner.banner-wrap .banner-body {
+    .banner.banner-wrap.banner-dismissible .banner-body {
         @apply pr-10;
     }
     .banner.banner-wrap .banner-buttons {

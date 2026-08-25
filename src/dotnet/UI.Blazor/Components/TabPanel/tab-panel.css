@@ -16,6 +16,20 @@
     @apply w-full;
     @apply overflow-y-hidden overflow-x-auto;
 }
+/* Overflow fade: a mask rather than a gradient overlay, so it needs no background colour to blend
+   with and stays right in both themes. .fade-left / .fade-right are toggled by tab-panel.ts. */
+.tab-panel-tabs .btn-group.fade-left {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 2rem);
+    mask-image: linear-gradient(to right, transparent, #000 2rem);
+}
+.tab-panel-tabs .btn-group.fade-right {
+    -webkit-mask-image: linear-gradient(to left, transparent, #000 2rem);
+    mask-image: linear-gradient(to left, transparent, #000 2rem);
+}
+.tab-panel-tabs .btn-group.fade-left.fade-right {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
+}
 .tab-panel-tabs.carousel .btn-group {
     @apply gap-x-2;
     @apply px-0;
@@ -109,7 +123,6 @@ body.hoverable .tab-panel-tabs .tab-btn.on:hover .btn-content {
     @apply justify-start;
     @apply min-h-10;
     @apply px-2;
-    @apply overflow-hidden;
 }
 
 

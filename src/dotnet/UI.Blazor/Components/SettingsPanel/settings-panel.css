@@ -29,8 +29,11 @@ body.wide .settings-panel > .c-tabs {
 .settings-panel.hide-tabs > .c-tabs > .c-header {
     @apply bg-03;
 }
+/* The safe area has to grow the header vertically only — content-box would let ordinary-header's
+   px-4 grow it horizontally too, pushing the box past the viewport. */
 body.narrow .settings-panel > .c-tabs > .c-header {
-    box-sizing: content-box;
+    min-height: calc(3.5rem + var(--safe-area-top));
+    max-height: calc(3.5rem + var(--safe-area-top));
     padding-top: var(--safe-area-top);
 }
 .settings-panel > .c-tabs > .download-app-banner {
@@ -187,12 +190,18 @@ body.hoverable .tile-item.clickable.item-danger:hover,
     @apply truncate;
     @apply leading-5 text-02;
 }
+/* Option labels differ only in their tail ("... via Soniox" vs "... via OpenAI"), so the one-line
+   ellipsis every other row keeps would render two different options as the same text. */
+.tile-item:has(input[type="radio"], input[type="checkbox"]) .tile-item-body-content {
+    @apply max-h-none h-auto;
+    @apply whitespace-normal line-clamp-2;
+}
 .tile-item-body-caption {
     @apply text-caption-6 font-normal text-03;
 }
 .tile-item-right {
     @apply flex-1 flex-x justify-end items-center;
-    @apply h-6;
+    @apply min-h-6;
 }
 .tile-hidden-btn {
     @apply md:invisible group-hover:md:visible;
@@ -244,7 +253,8 @@ body.narrow .settings-tab-content {
     @apply border-b border-separator md:border-none;
 }
 body.narrow .settings-tab-header {
-    box-sizing: content-box;
+    min-height: calc(3.5rem + var(--safe-area-top));
+    max-height: calc(3.5rem + var(--safe-area-top));
     padding-top: var(--safe-area-top);
 }
 .settings-tab-header > .c-title {
@@ -256,8 +266,10 @@ body.narrow .settings-tab-header {
     }
 }
 
+/* text-start overrides the UA button centering, which only becomes visible once a label wraps. */
 .settings-tab-item {
     @apply flex-1 flex-x items-center gap-x-4;
+    @apply text-start;
 }
 .settings-tab-item .c-title {
     @apply flex-1 flex-y items-start;
@@ -296,8 +308,18 @@ body.narrow .settings-tab-header {
 .tile-item-my-account-link .tile-item-icon {
     @apply max-w-none;
 }
+.tile-item-my-account-link .tile-item-body {
+    @apply flex-auto;
+    @apply min-w-24;
+}
 .tile-item-my-account-link .tile-item-body-content {
     @apply text-01 text-text-1;
+}
+/* The share button is decoration, the account name is the identity - so the button gives up its
+   width ~100x faster, down to its icon, instead of the name paying the whole shortfall. */
+.tile-item-my-account-link .tile-item-right {
+    @apply flex-initial shrink-[100];
+    @apply min-w-16;
 }
 .tile-item-my-account-link .btn.btn-share-action {
     @apply mr-0.5 md:mr-1.5;

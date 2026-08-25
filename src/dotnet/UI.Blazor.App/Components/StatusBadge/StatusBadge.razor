@@ -8,23 +8,23 @@
     @switch (m.ChatKind) {
         case ChatKind.Group: {
             var iconCls = Chat.IsPublic ? "icon-globe" : "icon-lock";
-            <i class="@iconCls text-sm"></i>
+            <i class="@iconCls"></i>
             @if (!ShowOnlyIcon) {
-                @m.Status
+                <span class="c-text">@m.Status</span>
             }
             break;
         }
         case ChatKind.Peer when ShowLastSeen:
-            <AuthorPresenceText AuthorId="@m.AuthorId"/>
+            <span class="c-text"><AuthorPresenceText AuthorId="@m.AuthorId"/></span>
             break;
         case ChatKind.Peer:
-            @m.Status
+            <span class="c-text">@m.Status</span>
             break;
         case ChatKind.Place when m.Place != null: {
             var iconCls = !Chat.IsPublic ? "icon-lock" : m.Place.IsPublic ? "icon-globe" : "icon-people-2";
-            <i class="@iconCls text-sm"></i>
+            <i class="@iconCls"></i>
             @if (!ShowOnlyIcon) {
-                @m.Status
+                <span class="c-text">@m.Status</span>
             }
             break;
         }
@@ -53,7 +53,7 @@
         var badgeClass = "";
         var chat = Chat;
         var isPublicChat = chat.IsPublic;
-        ChatId parentChatId = chat.Id;
+        var parentChatId = chat.Id;
         var isThread = chat.Id.IsThread(out var threadChatId);
         if (isThread) {
             parentChatId = threadChatId!.GetOutermostParent();
@@ -81,7 +81,7 @@
                 status = isPublicChat
                     ? isThread ? L.Chat_PlaceChatThread : L.Chat_PlaceChat
                     : isThread ? L.Chat_PrivateChatThread : L.Chat_PrivateChat;
-                return new () {
+                return new() {
                     ChatKind = ChatKind.Place,
                     Status = status,
                     BadgeClass = badgeClass,
@@ -131,7 +131,7 @@
     // Nested types
 
     public sealed record Model {
-        public static readonly Model Loading = new () { ChatKind = ChatKind.Group};
+        public static readonly Model Loading = new() { ChatKind = ChatKind.Group };
 
         public required ChatKind ChatKind { get; init; }
         public string Status { get; init; } = "";

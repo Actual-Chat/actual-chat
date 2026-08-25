@@ -10,6 +10,7 @@ import { Subject,
 import { fastRaf } from 'fast-raf';
 
 export class TabPanel {
+    private static readonly scrollTolerancePx = 1;
     private readonly tabPanel: HTMLElement;
     private tabs: HTMLElement | null = null;
     private scrollContainer: HTMLElement | null = null;
@@ -17,6 +18,7 @@ export class TabPanel {
     private hill: HTMLElement | null;
     private mutationObserver: MutationObserver;
     private resizeObserver: ResizeObserver;
+    private isInitialized = false;
     private readonly disposed$: Subject<void> = new Subject<void>();
 
     static create(tabPanel: HTMLDivElement): TabPanel {
@@ -43,11 +45,13 @@ export class TabPanel {
             return;
 
         this.activeTab = this.tabs.querySelector('.btn-group-container.selected-tab');
-        if (this.activeTab) {
+        fastRaf(() => {
             fastRaf(() => {
-                fastRaf(() => this.updateHillPosition());
+                this.update();
+                this.scrollActiveTabIntoView('auto');
+                this.isInitialized = true;
             });
-        }
+        });
 
         this.mutationObserver = new MutationObserver((mutations) => {
             let needsUpdate = false;
@@ -72,8 +76,13 @@ export class TabPanel {
             if (needsUpdate) {
                 const active = this.tabs?.querySelector('.btn-group-container.selected-tab');
                 if (active) {
+                    const isSelectionChanged = active !== this.activeTab;
                     this.activeTab = active;
-                    fastRaf(() => this.updateHillPosition());
+                    fastRaf(() => {
+                        this.update();
+                        if (isSelectionChanged)
+                            this.scrollActiveTabIntoView(this.isInitialized ? 'smooth' : 'auto');
+                    });
                 }
             }
         });
@@ -86,15 +95,16 @@ export class TabPanel {
         });
 
         this.resizeObserver = new ResizeObserver(() => {
-            fastRaf(() => this.updateHillPosition());
+            fastRaf(() => this.update());
         });
 
+        this.resizeObserver.observe(this.scrollContainer);
         this.tabs.querySelectorAll('.btn-group-container')
             .forEach(tab => this.resizeObserver.observe(tab));
 
         fromEvent(this.scrollContainer, 'scroll')
             .pipe(takeUntil(this.disposed$))
-            .subscribe(() => this.updateHillPosition());
+            .subscribe(() => this.update());
     }
 
     public dispose() {
@@ -107,7 +117,28 @@ export class TabPanel {
         this.resizeObserver?.disconnect();
     }
 
-    // Public methods
+    // Private methods
+
+    private update() {
+        this.updateHillPosition();
+        this.updateOverflow();
+    }
+
+    private updateOverflow() {
+        const scrollContainer = this.scrollContainer;
+        if (!scrollContainer)
+            return;
+
+        const tolerance = TabPanel.scrollTolerancePx;
+        const maxScrollLeft = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+        const scrollLeft = scrollContainer.scrollLeft;
+        scrollContainer.classList.toggle('fade-left', scrollLeft > tolerance);
+        scrollContainer.classList.toggle('fade-right', scrollLeft < maxScrollLeft - tolerance);
+    }
+
+    private scrollActiveTabIntoView(behavior: ScrollBehavior) {
+        this.activeTab?.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior });
+    }
 
     private updateHillPosition() {
         if (!this.activeTab || !this.hill)

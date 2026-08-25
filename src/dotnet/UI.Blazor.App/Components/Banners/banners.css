@@ -65,8 +65,8 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
 }
 
 .banner.add-members-banner {
-    @apply h-10;
-    @apply bg-primary text-06;
+    @apply bg-primary;
+    @apply text-06;
 }
 .banner.add-members-banner .banner-body {
     @apply flex-1 flex-x justify-center items-center;
@@ -133,7 +133,7 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
 /* ── Outgoing-call banner ── */
 
 .banner.outgoing-call-banner {
-    @apply h-12;
+    @apply h-auto min-h-12;
     @apply my-1;
 }
 .outgoing-call-banner .c-icon {
@@ -147,8 +147,4 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
 }
 .outgoing-call-banner .banner-buttons .btn-h.btn-close-call i {
     @apply text-02;
-}
-
-.banner.lock-screen-calls-banner {
-    @apply h-auto min-h-14 py-2;
 }

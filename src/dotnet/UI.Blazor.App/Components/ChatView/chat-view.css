@@ -464,17 +464,11 @@ body.narrow .message-file-attachments {
     @apply flex-y gap-x-1;
     @apply text-02 text-text-1;
 }
-/* Prefix/Suffix carry their own edge space, hence no gap: "'s contact" hugs the name, " さんの" doesn't */
 .chat-welcome-block .c-content.c-contact-share {
-    @apply gap-x-0;
+    @apply block;
 }
-.chat-welcome-block .c-content.c-contact-share > .c-incut {
-    @apply flex-none;
-    @apply whitespace-pre;
-}
-.chat-welcome-block .c-content > .c-contact {
-    @apply max-w-100;
-    @apply truncate;
+.chat-welcome-block .c-content.c-contact-share > .c-value {
+    max-width: min(25rem, 100%);
 }
 .chat-welcome-block.search-welcome .c-content .c-messages {
     @apply flex-y gap-y-1;

@@ -1,7 +1,7 @@
 namespace ActualChat.UI.Blazor.Components;
 
 /// <summary>
-/// Picks the left/right variant of an effect from the direction a tab-like selection moved.
+/// Picks the directional variant of an effect from the direction a tab-like selection moved.
 /// One instance per swap area, kept by the component that renders it.
 /// </summary>
 public sealed class ContentSwapDirection
@@ -16,6 +16,11 @@ public sealed class ContentSwapDirection
 
     public ContentSwapEffect Wipe(int index)
         => MoveTo(index) ? ContentSwapEffect.WipeLeft : ContentSwapEffect.WipeRight;
+
+    public ContentSwapEffect WipeVertical(int index)
+        // For an area whose entries are stacked rather than laid out in a rail: index 0 is the
+        // topmost one, so a later entry sends the content up and the incoming one arrives from below.
+        => MoveTo(index) ? ContentSwapEffect.WipeUp : ContentSwapEffect.WipeDown;
 
     // Private methods
 

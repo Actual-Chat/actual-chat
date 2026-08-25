@@ -12,6 +12,7 @@
 
 @if (foundItems.Count == 0) {
     <NoResults/>
+    <ContentSwapDisplay/>
     return;
 }
 
@@ -40,6 +41,7 @@
         }
     }
 </div>
+<ContentSwapDisplay/>
 
 @code {
     private SearchUI SearchUI => Hub.SearchUI;

@@ -172,9 +172,16 @@ body.narrow .chat-side-panel.has-expanded-header > .c-panel-content {
     width: inherit;
 }
 .chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-content > .c-title {
-    @apply w-full;
+    @apply flex-auto;
+    @apply min-w-24;
     @apply text-headline-7 text-02;
     @apply truncate;
+}
+/* The badge is decoration, the title is what says which chat this is - so the badge gives up its
+   width ~100x faster, down to the icon, instead of the title paying the whole shortfall. */
+.chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-content > .status-badge {
+    @apply flex-initial shrink-[100];
+    @apply min-w-10;
 }
 .chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-content > .c-info {
     @apply flex-x;

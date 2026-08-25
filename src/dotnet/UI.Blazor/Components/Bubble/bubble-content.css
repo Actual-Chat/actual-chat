@@ -25,13 +25,15 @@ body.narrow .ac-bubble-host.landscape .bubble-content .c-body {
     @apply list-disc pl-4;
 }
 .bubble-title {
-    @apply text-headline-1;
+    @apply text-headline-1 whitespace-normal;
 }
+/* The counter is an index, the buttons are the controls: let it yield the row's width to them */
 .bubble-counter {
+    @apply min-w-0;
     @apply text-caption-2;
 }
 .bubble-buttons {
-    @apply gap-x-1;
+    @apply flex-wrap gap-x-1 gap-y-1;
 }
 
 .bubble-content p {

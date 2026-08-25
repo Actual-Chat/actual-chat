@@ -65,7 +65,7 @@
     contain: layout;
     transition: background-color 200ms ease-out;
 }
-.left-panel-content:has(.left-search-overlay-panel.open) {
+.left-panel-content.search-open {
     @apply bg-04;
 }
 .left-panel-content > .safe-area-top {
@@ -89,11 +89,33 @@ body.narrow .left-panel-content-header::before {
     @apply grow;
     @apply overflow-hidden;
 }
+/* The chat list and the search results are the two layers of one swap area, so the search tint
+   arrives with the layer that carries it instead of as a backdrop racing the content. */
+.left-panel-content-main-wrapper > .content-swap {
+    @apply flex-1;
+    @apply min-h-0;
+    --content-swap-bg: var(--background-03);
+}
+.left-panel-content-main-wrapper > .content-swap > .c-layer {
+    @apply flex-y;
+    @apply min-h-0;
+    @apply overflow-hidden;
+}
 .left-panel-content-main {
     @apply flex-y;
     @apply grow;
     @apply overflow-hidden;
     @apply relative z-0;
+}
+.left-panel-content-search {
+    @apply flex-1 flex-y;
+    @apply rounded-tl-xl;
+    @apply overflow-hidden;
+    @apply bg-03;
+    background-image: linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--blue-50-50) 80%, var(--violet-50-50)),
+        var(--background-03) 12%);
 }
 /* The border lives on the wrapper, not on .c-content: .c-content is clamped to max-h-14,
    so a border there would be drawn inside those 56px and end up 1px above the chat header's
@@ -101,6 +123,15 @@ body.narrow .left-panel-content-header::before {
 .left-panel-content-header {
     @apply relative;
     @apply border-b border-separator;
+    transition: border-color 200ms ease-in-out;
+}
+/* The chat variant hosts the search input in its own row, so it has to paint above
+   .left-search-panel (z-50) and drop its border while the search results are up. */
+.left-panel-content-header:not(.place) {
+    @apply relative z-[51];
+}
+.left-panel-content.search-open .left-panel-content-header:not(.place) {
+    @apply border-transparent;
 }
 .left-panel-content-header.place {
     @apply relative;
@@ -116,7 +147,7 @@ body.narrow .left-panel-content-header::before {
     @apply -translate-y-1/2;
     transition: transform 200ms ease-out;
 }
-.left-panel-content:has(.left-search-overlay-panel.open) .left-panel-content-header.place .c-icon {
+.left-panel-content.search-open .left-panel-content-header.place .c-icon {
     @apply -translate-y-[100vh];
 }
 .left-panel-content-header.place.chat-roulette .c-icon.c-chat-roulette-icon {
@@ -134,11 +165,33 @@ body.narrow .left-panel-content-header::before {
     @apply rounded-br-xl md:rounded-bl-xl;
     @apply overflow-hidden;
 }
+/* The search box keeps the panel's right edge, and the title truncates against it;
+   the open search takes the whole row, which squeezes the title down to nothing. */
+.left-panel-content-header > .c-content:has(> .left-chat-search-input) {
+    @apply justify-end;
+    @apply pr-0;
+}
+.left-panel-content-header > .c-content:has(> .left-chat-search-input.open) {
+    @apply gap-x-0;
+    @apply px-0;
+}
+/* The filter badges hang below the search row, and the results now sit directly under the header
+   rather than behind it - so the header has to grow past the ordinary 56px clamp to keep them apart. */
+.left-panel-content-header > .c-content:has(> .left-chat-search-input > .c-filter-badges) {
+    @apply max-h-none;
+}
 .left-panel-content-header > .c-content > .c-title {
     @apply flex-1;
-    @apply text-01 text-lg font-medium;
-    @apply truncate;
+    @apply min-w-0;
     @apply pl-1;
+    @apply truncate;
+    @apply text-01 text-lg font-medium;
+}
+.left-panel-content-header > .c-content:has(> .left-chat-search-input.open) > .c-title {
+    @apply p-0;
+}
+.left-panel-content-header .left-chat-search-input {
+    @apply self-start;
 }
 .left-panel-content-header .c-ending {
     @apply absolute right-0;
@@ -217,17 +270,23 @@ body.hoverable .add-members-btn:hover {
 .left-panel-content-header.place + .left-panel-content-main-wrapper .left-panel-content-main > .download-app-banner {
     @apply hidden;
 }
-
+/* The place variant's search: an overlay that has to cover the place header too, which nothing
+   laid out below that header can do - so it stays a backdrop rather than a swap layer. */
 .left-search-panel {
     @apply absolute inset-0 z-50;
-    @apply flex-y;
-    @apply pointer-events-none;
-    @apply overflow-hidden;
     top: var(--safe-area-top);
-    transition: background-color 200ms ease-in-out, border-color 200ms ease-in-out;
+    @apply flex-y;
+    @apply overflow-hidden;
+    @apply pointer-events-none;
 }
-.left-search-panel:has(.left-search-overlay-panel.open) {
+/* The tint rides a pseudo-element's opacity rather than the panel's own background-image:
+   a gradient is not interpolable, so setting one on open arrives at full strength in one frame. */
+.left-search-panel:before {
+    @apply content-empty;
+    @apply absolute inset-0 z-minus;
+    @apply rounded-tl-xl;
     @apply bg-03;
+    @apply opacity-0;
     /* Fixed blue header height so it stays constant when the keyboard opens (viewport units shrink with the keyboard) */
     background-image: linear-gradient(
         to bottom,
@@ -235,9 +294,10 @@ body.hoverable .add-members-btn:hover {
         var(--background-03));
     background-repeat: no-repeat;
     background-size: 100% 6rem;
-    border-radius: 0.75rem 0 0 0;
-    transition: background-color 200ms ease-in-out,
-                border-color 200ms ease-in-out;
+    transition: opacity 200ms ease-in-out;
+}
+.left-panel-content.search-open .left-search-panel:before {
+    @apply opacity-100;
 }
 
 .left-panel-content-header.place.chat-roulette > .c-content {

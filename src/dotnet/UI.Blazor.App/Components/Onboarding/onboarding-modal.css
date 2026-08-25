@@ -71,8 +71,9 @@ body.narrow .stepper.onboarding-stepper {
 .onboarding-modal .avatar-step {
     @apply flex-y gap-y-4;
 }
+/* The buttons drop below the avatar rather than squeeze it out once their labels stop fitting */
 .onboarding-modal .c-upload {
-    @apply flex-none flex-x gap-x-4;
+    @apply flex-none flex-x flex-wrap gap-4;
     @apply my-8;
 }
 .onboarding-modal .c-upload .c-buttons {
@@ -199,12 +200,12 @@ body.narrow .stepper-image-filler {
     @apply flex-y gap-y-4;
 }
 .onboarding-tutorial .c-title > p {
-    @apply text-3.5xl font-semibold leading-8;
+    @apply text-3.5xl font-semibold leading-8 wrap-anywhere;
     font-size: clamp(1.5rem, 2.5vw, 1.75rem);
     line-height: clamp(2rem, 3vw, 2rem);
 }
 .onboarding-tutorial .c-description {
-    @apply text-headline-7 font-light leading-5;
+    @apply text-headline-7 font-light leading-5 wrap-anywhere;
     font-size: clamp(1rem, 1.75vw, 1.375rem);
     line-height: clamp(1.25rem, 2.25vw, 1.75rem);
 }
@@ -348,10 +349,10 @@ body.hoverable .stepper-skip-filler .btn-h:hover {
 }
 .step-title {
     @apply mb-8;
-    @apply text-headline-5 text-center;
+    @apply text-headline-5 text-center wrap-anywhere;
 }
 .step-subtitle {
-    @apply text-headline-7 text-center;
+    @apply text-headline-7 text-center wrap-anywhere;
 }
 .step-comment {
     @apply text-caption-2 mt-2;
