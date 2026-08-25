@@ -123,6 +123,7 @@ export class RightPanelCollapse {
             this.chatInfoObserver.observe(topRegion, { childList: true, subtree: true });
         }
         this.measureGeometry();
+        this.rightPanel.classList.toggle('rp-expanded', this.progress === 0);
     }
 
     private measureGeometry() {
@@ -208,7 +209,7 @@ export class RightPanelCollapse {
         clearTimeout(this.lingerTimer);
         this.headerClassObserver?.disconnect();
         this.chatInfoObserver?.disconnect();
-        this.rightPanel.classList.remove('snapping', 'dragging', 'collapsing', 'collapsed');
+        this.rightPanel.classList.remove('snapping', 'dragging', 'collapsing', 'collapsed', 'rp-expanded');
         this.rightPanel.style.removeProperty('--rp-collapse');
         this.rightPanel.style.removeProperty('--rp-chatinfo-h');
         this.rightPanel.style.removeProperty('--rp-header-base');
@@ -354,6 +355,7 @@ export class RightPanelCollapse {
         this.progress = progress;
         this.rightPanel.style.setProperty('--rp-collapse', progress.toFixed(4));
         this.rightPanel.classList.toggle('collapsed', progress > 0.5);
+        this.rightPanel.classList.toggle('rp-expanded', progress === 0);
         this.markActive();
     }
 
@@ -432,7 +434,10 @@ export class RightPanelCollapse {
         const { min, max } = scrollController.getEffectiveScrollLimits();
         if (!Number.isFinite(min) || !Number.isFinite(max))
             return null;
-        return max - min;
+        // Exclude the fully-expanded tail room the content VirtualLists carry (added in chat-side-panel.css
+        // only while .rp-expanded, i.e. progress === 0) so the collapse decision stays based on real content.
+        const tailRoom = this.progress === 0 ? this.rangePx : 0;
+        return max - min - tailRoom;
     }
 }
 
