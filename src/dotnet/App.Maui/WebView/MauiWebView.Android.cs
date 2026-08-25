@@ -58,9 +58,14 @@ public partial class MauiWebView
         return;
 
         Task SetCookie(string name, string value, bool isHttpOnly) {
+            // Without a domain this is a host-only cookie, so it never reaches the edge
+            // hosts the RPC connection can move to and those connections arrive with no
+            // session. The token path that would avoid cookies is iOS/macOS-only, and
+            // deliberately so: a cookie the WebView cannot read is worth keeping.
+            var domain = MauiSettings.Host;
             var attributes = isHttpOnly
-                ? "path=/; secure; samesite=none; httponly"
-                : "path=/; secure; samesite=none";
+                ? $"domain={domain}; path=/; secure; samesite=none; httponly"
+                : $"domain={domain}; path=/; secure; samesite=none";
             var taskSource = TaskCompletionSourceExt.New();
             cookieManager.SetCookie(url, $"{name}={value}; {attributes}", new CookieSetValueCallback(taskSource));
             return taskSource.Task;
