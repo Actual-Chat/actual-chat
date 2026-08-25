@@ -224,6 +224,67 @@ public class PttPushTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
+    public async Task DeviceWithPttDisabledGetsNoWake()
+    {
+        // arrange
+        var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("WT device-off");
+        var deviceId = await RegisterDevice(alice.Id, DeviceType.AndroidApp, isPttEnabled: false);
+        await ArmByPtt(alice.Id, chatId);
+        Sink.Clear();
+
+        // act
+        await Speak(chatId, bobAuthor.Id);
+
+        // assert
+        await Task.Delay(NoWakeDelay);
+        Sink.Wakes.Should().NotContain(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId));
+    }
+
+    [Fact]
+    public async Task ReRegisteringWithPttDisabledStopsWakes()
+    {
+        // arrange
+        var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("WT device-toggle-off");
+        var deviceId = await RegisterDevice(alice.Id, DeviceType.AndroidApp);
+        await ArmByPtt(alice.Id, chatId);
+        Sink.Clear();
+
+        // act
+        await Speak(chatId, bobAuthor.Id);
+
+        // assert
+        await WaitFor(() => Sink.Wakes.Any(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId)), WakeTimeout);
+        Sink.Wakes.Should().Contain(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId));
+
+        // act: the user turns PTT off on this device; wait out the wake-dedup TTL first
+        await RegisterDevice(alice.Id, DeviceType.AndroidApp, isPttEnabled: false);
+        await Task.Delay(WakeTtl + TimeSpan.FromSeconds(1));
+        Sink.Clear();
+        await Speak(chatId, bobAuthor.Id);
+
+        // assert
+        await Task.Delay(NoWakeDelay);
+        Sink.Wakes.Should().NotContain(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId));
+    }
+
+    [Fact]
+    public async Task IosPttDeviceWithPttDisabledGetsNoWake()
+    {
+        // arrange
+        var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("WT ios-device-off");
+        var deviceId = await RegisterDevice(alice.Id, DeviceType.iOSPttApp, isPttEnabled: false);
+        await ArmByPtt(alice.Id, chatId);
+        ApnsSink.Clear();
+
+        // act
+        await Speak(chatId, bobAuthor.Id);
+
+        // assert
+        await Task.Delay(NoWakeDelay);
+        ApnsSink.Wakes.Should().NotContain(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId));
+    }
+
+    [Fact]
     public async Task NonAndroidDevicesGetNoWake()
     {
         // arrange
@@ -350,13 +411,15 @@ public class PttPushTest(AppHostFixture fixture, ITestOutputHelper @out)
         => ServerKvasBackend.ForUser(userId).ChatUserSettings(chatId)
             .Update(x => x with { NotificationMode = mode });
 
-    private Task<Symbol> RegisterDevice(UserId userId, DeviceType deviceType)
-        => RegisterDevice(Commander, userId, deviceType);
+    private Task<Symbol> RegisterDevice(UserId userId, DeviceType deviceType, bool isPttEnabled = true)
+        => RegisterDevice(Commander, userId, deviceType, isPttEnabled);
 
-    private static async Task<Symbol> RegisterDevice(ICommander commander, UserId userId, DeviceType deviceType)
+    private static async Task<Symbol> RegisterDevice(
+        ICommander commander, UserId userId, DeviceType deviceType, bool isPttEnabled = true)
     {
         var deviceId = new Symbol($"wt-device-{deviceType}-{userId.Value}");
-        await commander.Call(new NotificationsBackend_RegisterDevice(userId, deviceId, deviceType, Symbol.Empty));
+        await commander.Call(
+            new NotificationsBackend_RegisterDevice(userId, deviceId, deviceType, Symbol.Empty, isPttEnabled));
         return deviceId;
     }
 }

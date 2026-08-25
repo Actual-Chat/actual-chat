@@ -18,6 +18,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<Moment?> _stopRecordingAt;
     private readonly MutableState<ImmutableDictionary<ChatId, Moment>> _stopListeningAtMap;
     private readonly MutableState<NextBeepState?> _nextBeep;
+    private readonly StoredState<Box<bool>> _isPttEnabledOnDevice;
     private readonly AsyncTaskMethodBuilder _whenEnabledSource = AsyncTaskMethodBuilderExt.New();
     // Boxed because the CLR forbids volatile on Nullable<TimeSpan>; null means "no override".
     private volatile object? _recordingIdleDurationBox;
@@ -73,6 +74,11 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _replayState = stateFactory.NewMutable(
             (ReplayState?)null,
             StateCategories.Get(type, nameof(ReplayState)));
+        _isPttEnabledOnDevice = stateFactory.NewKvasStored<Box<bool>>(
+            new(hub.LocalSettings, Ptt.IsEnabledOnDeviceKey) {
+                InitialValue = Box.New(false),
+                Category = StateCategories.Get(type, nameof(IsPttEnabledOnDevice)),
+            });
         _audioFocusRequester = new AudioFocusRequester(AudioFocusMode.Playback, OnAudioFocusLost);
     }
 
@@ -123,6 +129,18 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         if (!Ptt.IsSupported(HostInfo))
             return [];
 
+        // PTT is per-device opt-in: a disabled device is fully inert whatever the account consents
+        // say. Consent-driven UI (the settings roster, the join banner) must use
+        // GetConsentedPttChatIds instead, or it would misread "device off" as "no consent".
+        if (!await IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false))
+            return [];
+
+        return await GetConsentedPttChatIds(cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod(MinCacheDuration = 300)] // Synced
+    public virtual async Task<List<ChatId>> GetConsentedPttChatIds(CancellationToken cancellationToken)
+    {
         // Armed = consent within the chat's current enable-epoch; the Chats.Get dependency
         // re-arms/disarms everything downstream when an owner flips the chat's PTT toggle.
         await Hub.ChatUI.WhenReady.ConfigureAwait(false);
@@ -136,6 +154,29 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
                 result.Add(pttChat.ChatId);
         }
         return result;
+    }
+
+    [ComputeMethod] // Synced
+    public virtual async Task<bool> IsPttEnabledOnDevice(CancellationToken cancellationToken)
+    {
+        if (!_isPttEnabledOnDevice.WhenRead.IsCompleted)
+            await _isPttEnabledOnDevice.WhenRead.ConfigureAwait(false);
+
+        var box = await _isPttEnabledOnDevice.Use(cancellationToken).ConfigureAwait(false);
+        return box.Value;
+    }
+
+    public void SetIsPttEnabledOnDevice(bool isEnabled)
+    {
+        if (_isPttEnabledOnDevice.Value.Value == isEnabled)
+            return;
+
+        _isPttEnabledOnDevice.Value = Box.New(isEnabled);
+        // The server-side wake fan-out filters on the flag stored with the device registration,
+        // so a silent flip here would leave the server waking (or never waking) this device.
+        _ = Hub.Services.GetRequiredService<NotificationUI>()
+            .RefreshDeviceRegistration()
+            .SilentAwait();
     }
 
     [ComputeMethod] // Synced

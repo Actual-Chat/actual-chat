@@ -16,6 +16,7 @@ public class DbDevice : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string UserId { get; set; } = null!;
     public string SessionHash { get; set; } = null!;
     public DeviceType Type { get; set; }
+    public bool IsPttEnabled { get; set; }
 
     public DateTime CreatedAt {
         get => field.DefaultKind(DateTimeKind.Utc);
@@ -30,5 +31,6 @@ public class DbDevice : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public Device ToModel()
         => new (Id, Type, CreatedAt) {
             AccessedAt = AccessedAt.ToMoment(),
+            IsPttEnabled = IsPttEnabled,
         };
 }

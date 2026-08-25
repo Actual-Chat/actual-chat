@@ -85,6 +85,7 @@ public class NotificationsService(IServiceProvider services) : INotifications
         var session = command.Session;
         var deviceId = command.DeviceId;
         var deviceType = command.DeviceType;
+        var isPttEnabled = command.IsPttEnabled;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account.IsGuestOrNull()) {
             Log.LogWarning("Skipping RegisterDevice for guest or none user." +
@@ -92,7 +93,8 @@ public class NotificationsService(IServiceProvider services) : INotifications
                 deviceId, deviceType, session.Hash, account.Id);
             return;
         }
-        var registerDeviceCommand = new NotificationsBackend_RegisterDevice(account.Id, deviceId, deviceType, session.Hash);
+        var registerDeviceCommand = new NotificationsBackend_RegisterDevice(
+            account.Id, deviceId, deviceType, session.Hash, isPttEnabled);
         await Commander.Run(registerDeviceCommand, cancellationToken).ConfigureAwait(false);
     }
 

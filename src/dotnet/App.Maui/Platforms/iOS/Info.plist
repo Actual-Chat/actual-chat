@@ -43,6 +43,8 @@
 	</dict>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Need access to your microphone to record audio messages</string>
+	<key>NSFocusStatusUsageDescription</key>
+	<string>Lets Voxt see when a Focus such as Sleep or Do Not Disturb is on, so push-to-talk stays quiet instead of playing voice out loud.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Share your live location with people in a chat while location sharing is active.</string>
 	<key>aps-environment</key>

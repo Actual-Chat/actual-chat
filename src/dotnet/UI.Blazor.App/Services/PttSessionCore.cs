@@ -19,7 +19,7 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
     public void Dispose()
         => _disposeCts.CancelAndDisposeSilently();
 
-    public async Task StartPlayback(
+    public async Task<PttWakeIgnoreReason?> StartPlayback(
         ChatId chatId,
         Moment startedAt,
         bool isForeground,
@@ -27,6 +27,20 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
         PttPlatform platform)
     {
         var chatAudioUI = Hub.ChatAudioUI;
+        // Second gate behind the server-side fan-out filter: a wake that reaches a device whose
+        // registration is stale (or that raced a toggle) must stay inert when PTT is off here.
+        if (!await chatAudioUI.IsPttEnabledOnDevice(CancellationToken.None).ConfigureAwait(false)) {
+            Log.LogWarning("PTT wake for chat #{ChatId} ignored: PTT is off on this device", chatId);
+            return PttWakeIgnoreReason.DeviceDisabled;
+        }
+        // Re-checked here as well as at the platform entry point: the phone can be silenced
+        // between the push and this boot. Foreground is exempt - the user is looking at the app,
+        // so this is playback they asked for rather than an alert that interrupts them.
+        if (!isForeground && platform.IsSilenced) {
+            Log.LogInformation("PTT wake for chat #{ChatId} ignored: the phone is silenced", chatId);
+            return PttWakeIgnoreReason.Silenced;
+        }
+
         if (isHeadless)
             chatAudioUI.IsPttHeadless = true;
         chatAudioUI.Enable();
@@ -45,7 +59,7 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
             // just make sure the trigger chat is being listened to.
             await chatAudioUI.SetListeningState(chatId, true).ConfigureAwait(false);
             await platform.OnForegroundWakeHandled(chatId).ConfigureAwait(false);
-            return;
+            return null;
         }
 
         // The cold boot outlives ChatListeningPlayer's stream-start cue window, so the wake
@@ -66,6 +80,7 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
             await chatAudioUI.SetListeningState(armedChatId, true).ConfigureAwait(false);
 
         _ = platform.OnPlaybackStarted(Hub, chatId);
+        return null;
     }
 
     public async Task<PttReply?> Transmit(

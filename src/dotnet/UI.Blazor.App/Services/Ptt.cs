@@ -1,7 +1,19 @@
+using ActualChat.Kvas;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 public static class Ptt
 {
+    public const string IsEnabledOnDeviceKey = "Ptt.IsEnabledOnDevice";
+
+    // For code outside the UI scope (e.g. the MAUI token-refresh path); scoped code
+    // reads ChatAudioUI.IsPttEnabledOnDevice instead.
+    public static async Task<bool> IsEnabledOnDevice(LocalSettings localSettings, CancellationToken cancellationToken)
+    {
+        var box = await localSettings.Get<Box<bool>>(IsEnabledOnDeviceKey, cancellationToken).ConfigureAwait(false);
+        return box?.Value ?? false;
+    }
+
     public static bool IsSupported(HostInfo hostInfo)
         // Apple's Push to Talk framework needs com.apple.developer.push-to-talk, which
         // Entitlements.prod.plist deliberately doesn't grant until the feature is tested - arming
@@ -22,6 +34,39 @@ public static class Ptt
 
         return Moment.Max(idleSince, lastActiveAt ?? idleSince) + idleTimeout;
     }
+
     public static bool MayTransmit(bool isPracticeMode, ChatId? recordingChatId)
         => !isPracticeMode && recordingChatId is null;
+
+    public static bool IsSilenced(DeviceRingerMode mode, bool isDndActive)
+        // Any Do Not Disturb counts, including one configured to let priority callers through:
+        // whoever set it up didn't consent to a stranger's voice out of the speaker.
+        => mode != DeviceRingerMode.Normal || isDndActive;
+
+    public static PttJoinBannerKind GetJoinBannerKind(
+        bool isArmedInChat, bool isDeviceEnabled, Moment dismissedAt, Moment enabledAt)
+    {
+        // The dismissal expires with the chat's enable-epoch: an owner's off-on cycle re-asks.
+        if (dismissedAt >= enabledAt)
+            return PttJoinBannerKind.None;
+        if (!isArmedInChat)
+            return PttJoinBannerKind.AllowChat;
+
+        return isDeviceEnabled ? PttJoinBannerKind.None : PttJoinBannerKind.EnableDevice;
+    }
+}
+
+public enum PttJoinBannerKind
+{
+    None,
+    AllowChat,
+    EnableDevice,
+}
+
+// Platform-independent view of the phone's alert mode; hosts that can't tell report Normal.
+public enum DeviceRingerMode
+{
+    Normal = 0,
+    Vibrate = 1,
+    Silent = 2,
 }

@@ -45,6 +45,9 @@ public sealed partial record Notifications_RegisterDevice : ApiCommand<Unit>, IN
 {
     [DataMember(Order = 2), Key(2)] public required Symbol DeviceId { get; init; }
     [DataMember(Order = 3), Key(3)] public required DeviceType DeviceType { get; init; }
+    // Not required, and false by default: PTT is per-device opt-in, and a command from a client
+    // predating the flag must not enroll that device.
+    [DataMember(Order = 4), Key(4)] public bool IsPttEnabled { get; init; }
 }
 
 [DataContract, MessagePackObject]
