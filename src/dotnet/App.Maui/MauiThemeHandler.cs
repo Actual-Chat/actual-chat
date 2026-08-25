@@ -1,4 +1,5 @@
 using ActualChat.App.Maui.Services;
+using ActualChat.UI;
 using ActualChat.UI.Blazor.Services;
 using CommunityToolkit.Maui.Core;
 using CommunityToolkit.Maui.Core.Platform;
@@ -17,7 +18,6 @@ public class MauiThemeHandler
 
     private Theme? _theme;
     private string _colors = "";
-    private string _serialized;
     private string _appliedColors = "";
     private ILogger? _log;
 
@@ -34,23 +34,18 @@ public class MauiThemeHandler
 
     protected MauiThemeHandler()
     {
-        _serialized = MauiPreferences.Theme;
-        var parts = _serialized.Split('|');
-        if (parts.Length == 2) {
-            _theme = Enum.TryParse<Theme>(parts[0], false, out var v) ? v : null;
-            _colors = parts[1];
-        }
+        _theme = MauiPreferences.Theme;
+        _colors = MauiPreferences.ThemeColors;
     }
 
     public void OnThemeChanged(ThemeInfo themeInfo)
     {
         _theme = themeInfo.Theme;
         _colors = themeInfo.Colors;
-        var serialized = string.Join('|', themeInfo.Theme?.ToString("G") ?? "", themeInfo.Colors);
-        if (serialized != _serialized) {
-            _serialized = serialized;
-            MauiPreferences.Theme = serialized;
-        }
+        // Written on every call, not only on a change: this is also how the iOS share extension
+        // learns the theme, and its App Group may still be empty from an earlier version.
+        MauiPreferences.Theme = themeInfo.Theme;
+        MauiPreferences.ThemeColors = themeInfo.Colors;
         Apply();
     }
 
