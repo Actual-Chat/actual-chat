@@ -334,12 +334,23 @@ to `IsServerOrWasmApp()`) and `WindowsDeviceTokenRetriever` returns `null`, so
 there are no toasts and no pushes. The app-icon badge is the *entire* notification
 surface, and `UpdateOnActiveChanges` is its only driver.
 
-### 7 — reaction view-clearing (client)
+### 7 — reaction view-clearing (client) (done)
 
-The chat view intersects `ChatViewItemVisibility.VisibleTextEntryIds` against
-`ListActive`, and sends `Notifications_Dismiss` for any `DismissMode == OnView`
-notification whose entry is on screen. No interim fallback ships — reactions go
-straight to view-clearing.
+`SeenNotificationDismisser` (a scoped `UIWorkerBase`, same shape as
+`NotificationReconciler`) watches `ChatUI.ItemVisibility`, intersects the visible
+entry lids against `ListActive`, and sends `Notifications_Dismiss` for any
+`DismissMode == OnView` notification whose entry is on screen. No new command was
+needed — the client already knows the notification id. No interim fallback
+shipped; reactions went straight to view-clearing.
+
+It keeps a local set of already-dismissed ids, because `ListActive` lags the
+dismissal and the same notification would otherwise be re-dismissed on every
+visibility change until it drops out.
+
+**Not verified end-to-end**: `/server-loop` isn't running for this worktree, so
+this path is build- and review-verified only. The server half it depends on
+(`DismissMode == OnView` surviving the read filter) is covered by
+`NotificationDismissModeTest`.
 
 ## Decisions taken
 
