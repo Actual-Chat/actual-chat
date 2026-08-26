@@ -131,9 +131,11 @@ in a later section looks loaded — most of them are.*
 - **interactive anchor** — *`interactiveAnchor`, `data-vl-hold`.* An opt-in override: when the user
   clicks a control that changes an item's size, *that* item is what the next render holds still.
   Expires after 2s.
-- **screen anchor** — *`screenAnchor`, `data-vl-anchor`, `watchScreenAnchor`.* The stronger override:
-  an element the caller promises to render again under the same id, held at its *rendered* screen
-  position through the render and the height animations that follow. Also expires after 2s.
+- **screen anchor** — *`screenAnchor`, `data-vl-anchor`, `data-anchor="below"`, `watchScreenAnchor`.*
+  The stronger override: an element held at its *rendered* screen position through the render and the
+  height animations that follow — addressed by a `data-vl-anchor` id the caller promises to render
+  again, or by the key of the item below a `data-anchor="below"` control (§3.9). Waits up to 10s for
+  its render; expires 2s after being placed.
 - **re-centre** — *`mustRecentre`, `isChainOffCentre`.* Shift the whole chain back to the middle of the
   scroll space, with the scroll following it. Invisible at a standstill, a jump anywhere else, so it
   waits for a quiet moment.
@@ -504,7 +506,8 @@ overscroll rows are the summary of §3.7.*
 | `scrollToKey` that is not the newest item | any → Placing | suppress new height animations, wait out the ones in flight, then place the item at `center` or `end` | `container.top` then `scrollTop` |
 | `scrollToKey` that *is* the newest item, end loaded | any → Pinned End | pin and re-pin, which in reverse is a follow of a few pixels or nothing at all — so a message you just posted still animates in | `scrollTop` |
 | the user scrolls away from the edge | Pinned → Free | `updatePinnedEdge` finds neither edge within `EdgeEpsilon` (4px); on desktop `onWheel` also clears the pin even inside the guard window | — |
-| a `data-vl-hold` control is clicked or tapped | Pinned → Free, interactive anchor set | the clicked item — or the first content item below it, for `data-anchor="below"` — is what the next render holds; `keep-edge` controls leave a pinned list alone; expires after 2s | — |
+| a `data-vl-hold` control is clicked or tapped | Pinned → Free, interactive anchor set | the clicked item is what the next render holds; `keep-edge` controls leave a pinned list alone; expires after 2s | — |
+| a `data-vl-hold` control marked `data-anchor="below"` | Pinned → Free, key-addressed screen anchor set | the first content item below the control keeps its rendered position; placed only by the render that inserts content directly above that item, however many unrelated renders land first | — |
 | a `data-vl-hold` control inside a `data-vl-anchor` element | Pinned → Free, screen anchor set | the element's rendered screen position is recorded; unpinning is what gives the chain its top anchor (§3.2) | — |
 | the render that follows a screen anchor | — | the chain moves so the element's *flow* position lands where its rendered one was, then a per-frame scroll write holds it there until it has been still 12 frames | `container.top`, then `scrollTop` |
 | the chain eats into the reserve | any → watching for a quiet moment | armed by `applyLayout`, and the watcher cancels itself the moment the chain is no longer off centre | — |
@@ -1331,13 +1334,26 @@ the band with `phase: 'in-band'`, and the chat was blank until something produce
 taps, links and text selection must not affect anchoring — and both a click and a `touchend` on the
 container count. `always` holds the item and drops the pin, a deliberate "read history" action;
 `keep-edge` holds only when the list is not pinned, since a pinned list absorbs the size change through
-its edge re-pin instead. `data-anchor="below"` means the control reveals rows *above* itself, so the
-first content item below it is what must keep its position. The same clamp as above applies: when the
-viewport is deeper into the block than the block is tall, the item itself is what the user gets back.
+its edge re-pin instead. The clamp from above applies: when the viewport is deeper into the block than
+the block is tall, the item itself is what the user gets back.
 
-**Screen anchors** are the second override, and the stronger one: an element marked
-`data-vl-anchor="<id>"` is one the caller promises to render again under that id, and whose position on
-screen is to survive the next render. It beats an interactive anchor when both apply.
+**Screen anchors** are the second override, and the stronger one: an element whose position on screen
+is to survive the render the interaction causes. It beats an interactive anchor when both apply, and
+it is addressed one of two ways. An element marked `data-vl-anchor="<id>"` is one the caller promises
+to render again under that id. A control marked `data-anchor="below"` instead anchors the first
+content **item below itself, by key**: the control reveals rows above that item (the live block's
+Show-more pill), and the item below the insertion is what must keep its rendered position — the rows
+grow upward and everything from the anchor down stays put.
+
+A key-addressed anchor differs from an id-addressed one in when it is spent. It records the content
+key directly above its item at the click, and is **placed only by the render that changes that** — the
+one that actually inserts the revealed rows. A live chat keeps streaming renders in while that one can
+be seconds away on WASM, and placing on whichever render lands first would start (and retire) the
+per-frame watch before there is anything to hold; those renders pass through and re-anchor by the
+viewport top as usual. Its item leaving the item set releases it — an id may be rendered again, but an
+item that is gone has nothing to come back as, and the live block folding away must free
+`checkPosition` (§3.6) rather than sit behind a stale hold. A full replacement releases it the same
+way, since `reanchor` — the path that would notice the vanished key — does not run there.
 
 It exists because an item key is not always enough to name the thing that must hold still, and because
 an item's *modelled* position is not always where it is:
@@ -1371,7 +1387,10 @@ block.
 
 Measured on a conversation header in view, before → after: collapse 16px → 0px, expand 124px → 0px.
 
-A trusted scroll or a 2s timeout (`InteractiveAnchorTtlMs`) clears either anchor.
+A trusted scroll clears either anchor at once. The timeout depends on what the anchor is waiting for:
+a screen anchor still waiting on its render gets `ScreenAnchorRenderTtlMs` (10s) — on WASM that render
+can be seconds away — and everything else, an interactive anchor and a placed screen anchor alike,
+expires `InteractiveAnchorTtlMs` (2s) after the click or the placement.
 
 #### Re-anchor writes are flagged
 
