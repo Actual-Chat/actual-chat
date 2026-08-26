@@ -11,10 +11,21 @@ Result of the first full [UI walk-through](../ui/walk-through.md) under
 
 Every finding below was verified against `?ui-language=en` on the same screen
 at the same size, so "Max-caused" means English fits and Max does not.
-Nothing here is fixed &mdash; this is the list.
+
+::: tip All of this shipped
+Every finding here is **fixed** on `feat/fix-ui-size-issues`, except `T1`,
+which was reclassified as not-a-defect (see [Not defects](#not-defects)). The
+fixes were then re-checked by a parallel read-only sweep &mdash; English first,
+Max as the stress case &mdash; and what that sweep found is in
+[What the sweep changed](#what-the-sweep-changed).
+
+The proposed fixes recorded under each category are what was *planned*. Where
+measurement contradicted the plan, the difference is called out in place, since
+being wrong about a cause is the more useful thing to record.
+:::
 
 ::: info How to read this
-Findings are grouped into **eight root causes**. Fixing the root cause fixes
+Findings are grouped into **ten root causes**. Fixing the root cause fixes
 every instance under it, which is why the fix lives on the category and the
 instances only carry evidence. Each category has a **primary** fix and, where
 there is a real alternative, a second option.
@@ -43,8 +54,10 @@ there is a real alternative, a second option.
 | m1 | Message menu positioned above the viewport top | Minor | [C9](#c9-floating-elements-are-not-clamped-to-the-viewport) | short viewports |
 | m2 | Account name squeezed to four characters | Minor | [C8](#c8-decoration-outranks-identity-in-flex-rows) | desktop |
 | L1 | 8 hardcoded English strings in `JoinVideoCallModal` | l10n gap | [L](#l1--the-video-call-modal-is-not-localized-at-all) | all |
-| T1 | `?ui-language=max` dropped by the landing redirect | Tooling | &mdash; | all |
+| T1 | `?ui-language=max` dropped by the landing redirect | ~~Tooling~~ | [not a defect](#not-defects) | &mdash; |
 | T2 | `Place_TabMedia/Files/Links` are dead keys | Hygiene | &mdash; | &mdash; |
+| N1 | Banner text escapes the banner vertically | Major | [C11](#c11-a-fixed-height-box-around-text-that-can-wrap) | all |
+| N2 | Join footer never centres its second line | Minor | [C12](#c12-a-centred-box-whose-contents-are-not-centred) | all |
 
 **The shape of the problem.** Max is 1.62x wider than English at the median and
 2.37x at p90, but the failures are not spread evenly. They cluster where a
@@ -320,6 +333,12 @@ than applied to every `TileItem` at once.
 **Where** Every modal.
 [`modal.css:191`](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/UI.Blazor/Components/Modal/modal.css#L191).
 
+::: warning Two headers, not one
+There is a second header &mdash; `.modal-header-interactive`, which is what
+narrow layouts render &mdash; with its own `.modal-title` rule. Fixing only the
+ordinary one left every modal at 390 still truncating. Both need it.
+:::
+
 **Evidence** The mic-permission guide renders
 "Rozwiązywanie problemów z nagry…" at 1280x800 in a 384 px modal. The title is
 the only thing telling you which of eight guides you opened.
@@ -462,11 +481,25 @@ even in its collapsed state. Nothing reserves space for it:
 .left-panel-content-header > .c-content > .c-title {
     @apply flex-1 truncate pl-1;
 }
-.left-panel-content-header .c-ending {
-    @apply absolute right-0;
-    @apply w-full;               /* covers the title */
+.left-search-panel {
+    @apply absolute inset-0 z-50;
+    @apply pointer-events-none;
+}
+.left-chat-search-input {
+    width: calc(100% - 4rem);    /* while COLLAPSED - covers all but 64px */
 }
 ```
+
+::: warning Corrected
+This originally blamed `.c-ending`, which belongs to `DiscoverHeader` and is
+not on this screen at all. The real overlay is `.left-search-panel`, and the
+thing that makes it cover the title is `.left-chat-search-input` being
+`calc(100% - 4rem)` wide **while collapsed** &mdash; a nearly full-width
+transparent input whose placeholder paints from x=156.
+
+That also invalidated the alternative fix below: reserving the collapsed
+search's width would have left the title 56px and truncated **English** too.
+:::
 
 **Scope** Only the chat-list header variant
 (`LeftPanelChatContentHeader`). The place variant
@@ -496,9 +529,29 @@ box is hidden.
 
 **Evidence** `.settings-tab-header` measures **422 px inside a 390 px
 viewport**; its `.c-title` runs from x 56 to x 406, i.e. 16 px past the right
-edge. The header inherits the desktop settings-column width instead of the
-viewport. In English the titles are short enough that nothing visibly falls off
-the edge, so the structural overflow is invisible.
+edge. In English the titles are short enough that nothing visibly falls off the
+edge, so the structural overflow is invisible.
+
+::: warning Corrected
+This originally read "the header inherits the desktop settings-column width".
+It does not, and the real cause is smaller and stranger:
+
+```css
+.settings-tab-header { @apply px-4; @apply w-full; }
+body.narrow .settings-tab-header {
+    box-sizing: content-box;          /* so padding-top: safe-area adds to HEIGHT */
+    padding-top: var(--safe-area-top);
+}
+```
+
+`content-box` was chosen so the safe-area padding would add to the *height* -
+but it makes the horizontal `px-4` add to the *width* too. 390 + 16 + 16 = 422,
+exactly the measured number. It is also **not Max-specific**: the box is 422px
+in English as well; Max merely supplies a title long enough to expose it.
+
+Fixed by keeping `border-box` and expressing the safe area through
+`min-height: calc(3.5rem + var(--safe-area-top))` instead.
+:::
 
 **Primary fix** Constrain the panel to the viewport on narrow layouts &mdash;
 `w-full max-w-full` on `.settings-panel` / `.settings-tab`, and `min-w-0` down
@@ -641,11 +694,69 @@ rather than replaced with an ellipsis.
 **Primary fix** `min-w-0` + `truncate` on `.chat-header-title > .c-info` so the
 subtitle ellipsises. One line, and it makes every other header state safe too.
 
+::: warning This fix does not work
+`.chat-header-title` is a **column** flex with `items-start`, so `min-width`
+and `flex-shrink` act on the vertical axis and do nothing here. What actually
+bites is `max-w-full` &mdash; which the sibling `.c-title-wrapper` already used.
+
+And `text-overflow` could never reach the member count: it is a bare text node,
+so it becomes an anonymous flex item. It needed the same block-box treatment
+that `button.css` uses for text-only buttons.
+:::
+
 **Alternative** Drop the member count from the subtitle while a call is active
 &mdash; the participant list is already on screen in the activity panel, so the
 information is redundant exactly when the room runs out.
 
 ---
+
+## C11. A fixed-height box around text that can wrap
+
+### N1 &mdash; Banner text escapes the banner vertically
+
+Found while fixing the above, not in the original walk: the walk caught the
+horizontal cases and missed this one, because a banner only overflows once a
+translation needs a second line.
+
+**Where** Every banner. `.banner` was a hard `h-14` (56 px).
+
+**Evidence** At 390x844 the "Add members" and notifications banners overflowed
+**5 px above and below** their own box. `.banner.add-members-banner` overrode
+to an even shorter `h-10`.
+
+**Root cause** A properly-designed growing variant already existed &mdash;
+`.banner-wrap`, with `h-auto min-h-14`, a `flex-wrap` content row, a `min-w-48`
+floor on the body so buttons cannot starve the text, an absolutely-positioned
+dismiss button and a container query that drops the buttons onto their own row.
+**Of 15 `<Banner>` call sites, exactly one used it.**
+
+**Fix** Make wrapping the default and invert the parameter to a `NoWrap`
+opt-out, used by the reconnect status strip &mdash; a fixed 40 px animated bar
+with a masked gradient border and a sweeping wave, which is not a message and
+should not grow.
+
+The container query needed retuning twice. It evaluates against the **content
+box** (the banner's border box minus 20 px), so `22rem` meant a 380 px viewport
+&mdash; it fired on essentially every phone and cost English a row it did not
+need. At `20rem` English stays inline from a 350 px viewport up, and Max still
+wraps wherever it must, because `.banner-body`'s floor forces it independently.
+
+## C12. A centred box whose contents are not centred
+
+### N2 &mdash; Join footer never centres its second line
+
+**Where** `.join-footer` &mdash; "To post or talk, join this chat" plus its
+button.
+
+**Evidence** The text and button were left-aligned once the text wrapped.
+
+**Root cause** `.join-footer` had **no CSS at all**. It is a plain block inside
+`.chat-footer`, which is `flex justify-center` &mdash; so the *box* was centred
+while its contents flowed from the left. In English it fits on one line and
+looks centred, which is why nobody saw it.
+
+**Fix** `w-full` + `text-center`. Deliberately not a flex row: the prefix
+carries a trailing `&nbsp;` for spacing that a flex `gap` would double.
 
 ## Localization gaps
 
@@ -693,20 +804,6 @@ it.
 
 ## Tooling and hygiene
 
-### T1 &mdash; The Max override is dropped by the landing redirect
-
-Opening `/?ui-language=max` while signed in redirects to `/chat` **without the
-query string**. The running instance stays in Max (the TypeScript bootstrap
-read the parameter before the redirect fired), but the address bar no longer
-carries it, so a refresh silently reverts to the account language &mdash; and
-anyone testing assumes the reload is still Max.
-
-**Primary fix** Preserve the query string across the landing redirect.
-
-**Alternative** Document `/chat?ui-language=max` as the entry point. Already
-done in the [walk-through](../ui/walk-through.md#the-max-pseudo-locale), but it
-leaves the trap in place for everyone else.
-
 ### T2 &mdash; Dead keys
 
 `Place_TabMedia`, `Place_TabFiles`, `Place_TabLinks` have no call site &mdash;
@@ -728,6 +825,55 @@ Recorded so they are not re-filed:
 - **Sticky conversation headers painted over scrolling messages.** Intended.
 - **Chat-list row titles ellipsised.** Chat names are user data, not catalog
   strings, and the row already identifies the chat by avatar.
+- **T1 &mdash; `?ui-language=max` dropped by the landing redirect.** Filed as a
+  tooling defect; reclassified. Opening `/?ui-language=max` while signed in
+  redirects to `/chat` without the query string, so a later refresh silently
+  reverts to the account language.
+
+  The fix was written and then reverted: **the URL is not a sound source of
+  truth for the active language.** URLs drop parameters in more places than
+  this one redirect, so preserving it here would fix a single instance of a
+  general problem and create false confidence. Read the language from the
+  document instead &mdash; `document.documentElement.lang` already reports
+  `max` &mdash; and navigate straight to `/chat/...?ui-language=max`, accepting
+  the redirect. Every verification pass on this branch asserts `lang`, never
+  the address bar.
+- **Debug overlays that overhang.** The VirtualList `?vl*` overlay pill and
+  similar dev instrumentation are allowed to stick out.
+
+## What the sweep changed
+
+After the twelve fixes landed, five read-only agents swept the UI in parallel
+&mdash; English as the product, Max as the stress case &mdash; driving
+Playwright over CDP so each had its own page. Most fixes held. What did not:
+
+- **One button rule broke every tab strip, three ways.** Letting large buttons
+  wrap also caught tab buttons: a CJK label shrank to a single stacked glyph,
+  two-line labels were clipped by the strip's fixed height, and &mdash; because
+  the text *wrapped* instead of overflowing &mdash; `scrollWidth == clientWidth`,
+  so the scroller and edge fade added for C2 never engaged. **One fix silently
+  disabled another.** Three agents found it independently, from three symptoms.
+- **The fade fired on strips that fit**, because overflow was inferred from
+  `scrollWidth`, which counts the container's own padding.
+- **Settings &rarr; Documents got worse, not better** (447 &rarr; 648 px in a
+  390 px viewport): once labels stopped wrapping their natural width grew, and
+  three flex ancestors defaulting to `min-width: auto` had nothing capping them.
+  The `min-w-0` had been applied one level too deep.
+- **The status badge still hard-clipped** at a 48 px floor: Chrome paints a
+  character *before* the ellipsis, so a complete `P...` needs ~19 px, and only
+  two of the three dots came out. 56 px is the working floor.
+- **Bubbles ignored safe areas**, and their `max-width` was not a cap &mdash;
+  a bare `min-width` always beats it, so the "cap" was unenforceable.
+- **A fix that was a no-op.** The chat-list bottom-inset fix targeted an end
+  anchor that does not exist: the sidebar list is a `FiniteList`, which renders
+  none. The inset was already handled elsewhere, and the sweep's original
+  finding was itself a false positive &mdash; rows measured mid-scroll, not at
+  the tail. Reverted.
+
+Two things the sweep proved *right* that were worth checking: the modal X
+stays correctly placed against a two-line title (centred on the header, 16 px
+clear), and the reduced banner dismiss reservation never let the X overlap text
+&mdash; zero overlaps across 28 width x locale combinations.
 
 ## Suggested regression guard
 
