@@ -1,19 +1,21 @@
 .left-search-overlay-panel {
-    @apply hidden;
+    @apply flex-y flex-1;
     @apply py-2;
     @apply overflow-hidden;
-    @apply opacity-0;
     @apply pointer-events-auto;
+}
+/* Inside the place variant's overlay the panel stays mounted and toggles itself; in the chat
+   variant ContentSwap builds it only while it is on screen and animates the hand-off. */
+.left-search-panel > .left-search-overlay-panel {
+    @apply hidden;
+    @apply opacity-0;
     @apply ease-in-out;
     transition: display 200ms, opacity 200ms;
     transition-behavior: allow-discrete;
 }
-.left-search-overlay-panel.open {
+.left-search-panel > .left-search-overlay-panel.open {
     @apply flex-y flex-1;
     @apply opacity-100;
-    @apply ease-in-out;
-    transition: display 200ms, opacity 200ms;
-    transition-behavior: allow-discrete;
     @starting-style {
         opacity: 0;
     }
@@ -22,8 +24,11 @@
     @apply pt-0;
 }
 
+/* Its swap layers paint themselves opaque so they don't double-expose, and they sit on the search
+   layer's surface rather than the app's base one - without this they flash --background-01. */
 .left-place-search-overlay-panel .tab-panel {
     @apply overflow-hidden;
+    --content-swap-bg: var(--background-03);
 }
 .left-place-search-overlay-panel .tab-panel .tab {
     @apply py-2;

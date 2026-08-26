@@ -71,6 +71,9 @@
     public ValueTask Focus()
         => ElementRef.FocusAsync();
 
+    public ValueTask Blur()
+        => JSRef?.InvokeVoidAsync("blur") ?? default;
+
     public ValueTask Clear()
         => JSRef?.InvokeVoidAsync("clear") ?? default;
 
