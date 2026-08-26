@@ -224,12 +224,21 @@ export class InfiniteList extends VirtualList {
     private isEndSkeletonShown = false;
     private revealedAt = 0;
     private interactiveAnchor: { key: string; at: number } | null = null;
-    // An element the caller has promised to render again under the same id, whose position on screen
-    // must survive the next render. Recorded as rendered rather than modelled, which is the whole
-    // point of it: a stuck sticky element is not where the model puts it, and an element inside a
-    // group has no modelled position at all.
-    private screenAnchor:
-        { id: string; top: number; at: number; isPlaced: boolean; corrected: number } | null = null;
+    // An element whose position on screen must survive the next render, recorded as rendered rather
+    // than modelled - a stuck sticky element is not where the model puts it, and an element inside a
+    // group has no modelled position at all. Addressed by data-vl-anchor id, or by item key for a
+    // data-anchor="below" hold; a key-addressed anchor also records the content key above it, and is
+    // placed only by the render that changes that - the one that actually inserts the revealed rows -
+    // so the unrelated renders a live chat streams in the meantime pass through without spending it.
+    private screenAnchor: {
+        id: string | null;
+        key: string | null;
+        aboveKey: string | null;
+        top: number;
+        at: number;
+        isPlaced: boolean;
+        corrected: number;
+    } | null = null;
     private isWatchingScreenAnchor = false;
     private stickyShift = 0;
     // Keys that left a recent render, with the height they had, so an item that comes straight back is
@@ -509,9 +518,13 @@ export class InfiniteList extends VirtualList {
             && !oldKeys.some(key => this.indexByKey.has(key));
         if (isFullReplacement) {
             // Nothing on screen survives, so no animation can be interrupted and nothing needs holding
-            // in place: whatever was animating is gone, and the list is stable by construction.
+            // in place: whatever was animating is gone, and the list is stable by construction. A
+            // key-addressed anchor's item went with everything else, and reanchor - the path that
+            // releases a vanished one - is skipped for a full replacement.
             this.heights?.applyAllInstantly();
             this.stability.releaseAllAnimations();
+            if (this.screenAnchor?.key != null)
+                this.releaseScreenAnchor();
         }
         if (!sameKeys(oldKeys, this.items))
             this.lastSentQuery = null;
@@ -1742,6 +1755,8 @@ export class InfiniteList extends VirtualList {
             this.interactiveAnchor = null;
             this.screenAnchor = {
                 id: anchorId,
+                key: null,
+                aboveKey: null,
                 top: anchorRef.getBoundingClientRect().top - this.ref.getBoundingClientRect().top,
                 at: performance.now(),
                 isPlaced: false,
@@ -1756,11 +1771,30 @@ export class InfiniteList extends VirtualList {
 
         this.setPinnedEdge(null);
         // A control marked data-anchor="below" reveals rows ABOVE itself, so the item below it is what
-        // must keep its screen position - otherwise the revealed rows push everything downward.
-        const anchorKey = target.closest('[data-anchor="below"]') != null
-            ? this.getFirstContentKeyBelow(key) ?? key
-            : key;
-        this.interactiveAnchor = { key: anchorKey, at: performance.now() };
+        // must keep its screen position - otherwise the revealed rows push everything downward. It is
+        // held as a key-addressed screen anchor rather than an interactive one: the render it waits
+        // for can be seconds away on WASM, and the rows it inserts then grow in from zero - the
+        // pending TTL covers the first, watchScreenAnchor the second, and the interactive anchor's
+        // model-level hold covers neither.
+        const belowKey = target.closest('[data-anchor="below"]') != null
+            ? this.getFirstContentKeyBelow(key)
+            : null;
+        if (belowKey != null) {
+            const belowRef = this.items[this.indexByKey.get(belowKey)!].ref;
+            this.interactiveAnchor = null;
+            this.screenAnchor = {
+                id: null,
+                key: belowKey,
+                aboveKey: this.getFirstContentKeyAbove(belowKey),
+                top: belowRef.getBoundingClientRect().top - this.ref.getBoundingClientRect().top,
+                at: performance.now(),
+                isPlaced: false,
+                corrected: 0,
+            };
+            return;
+        }
+
+        this.interactiveAnchor = { key, at: performance.now() };
     };
 
     // Puts the anchored element back where it was on screen. Both readings are rendered positions,
@@ -1776,10 +1810,17 @@ export class InfiniteList extends VirtualList {
             return false;
         }
 
-        const anchorRef = this.containerRef
-            .querySelector<HTMLElement>(`:scope [data-vl-anchor="${CSS.escape(anchor.id)}"]`);
-        if (anchorRef == null)
+        const anchorRef = this.getScreenAnchorRef(anchor);
+        if (anchorRef == null) {
+            // An id names an element its owner promises to render again, so its absence is worth
+            // waiting out. A key names a list item, and an item that has left the set has nothing to
+            // come back as - the live block folding away is the case, and a hold left standing there
+            // keeps checkPosition from fixing the very view the fold stranded.
+            if (anchor.key != null)
+                this.releaseScreenAnchor();
+
             return false;
+        }
 
         // Placed once, on the render the interaction caused. Re-placing it on every render that
         // follows drags the view further off each time, because those renders are the ones growing the
@@ -1789,6 +1830,13 @@ export class InfiniteList extends VirtualList {
             this.watchScreenAnchor();
             return false;
         }
+
+        // A key-addressed anchor is spent on the render that inserts content directly above its item -
+        // that is what data-anchor="below" reveals. A live chat keeps rendering while that one is
+        // still seconds away, and placing on whichever render lands first would start (and retire) the
+        // watch before there is anything to hold.
+        if (anchor.key != null && this.getFirstContentKeyAbove(anchor.key) === anchor.aboveKey)
+            return false;
 
         anchor.isPlaced = true;
         anchor.at = performance.now();
@@ -1846,8 +1894,9 @@ export class InfiniteList extends VirtualList {
 
             // A frame the list may not write is not the element standing still: counting it would
             // release the hold with the correction still owing - twelve frames of a resting finger is
-            // all it takes.
-            const isDeferred = !this.canCorrectPosition;
+            // all it takes. An anchor still waiting on its render has nothing to correct yet either -
+            // and correctScreenAnchor's own 2s deadline would retire it mid-wait if it were asked.
+            const isDeferred = !this.canCorrectPosition || !anchor.isPlaced;
             const moved = isDeferred ? false : this.correctScreenAnchor();
             if (moved == null) {
                 this.releaseScreenAnchor();
@@ -1881,10 +1930,9 @@ export class InfiniteList extends VirtualList {
         if (anchor == null || this.isDisposed || performance.now() - anchor.at > InteractiveAnchorTtlMs)
             return null;
 
-        const anchorRef = this.containerRef
-            .querySelector<HTMLElement>(`:scope [data-vl-anchor="${CSS.escape(anchor.id)}"]`);
+        const anchorRef = this.getScreenAnchorRef(anchor);
         if (anchorRef == null)
-            return false;
+            return anchor.key != null ? null : false;
 
         // Rendered, not flow: this holds what is on screen against content moving under it. An element
         // the viewport edge has stuck is already still and reads a delta of zero, which is right for it.
@@ -1908,6 +1956,13 @@ export class InfiniteList extends VirtualList {
         // bound at all within about thirty of them.
         anchor.corrected += applied;
         return Math.abs(anchor.corrected) > this.maxOverscroll ? null : true;
+    }
+
+    private getScreenAnchorRef(anchor: { id: string | null; key: string | null }): HTMLElement | null {
+        const selector = anchor.key != null
+            ? `:scope .item[data-key="${CSS.escape(anchor.key)}"]`
+            : `:scope [data-vl-anchor="${CSS.escape(anchor.id ?? '')}"]`;
+        return this.containerRef.querySelector<HTMLElement>(selector);
     }
 
     private hasFreshScreenAnchor(): boolean {
@@ -1941,6 +1996,18 @@ export class InfiniteList extends VirtualList {
             return null;
 
         for (let i = index + 1; i < this.items.length; i++)
+            if (!this.items[i].mustSkipKey)
+                return this.items[i].key;
+
+        return null;
+    }
+
+    private getFirstContentKeyAbove(key: string): string | null {
+        const index = this.indexByKey.get(key);
+        if (index == null)
+            return null;
+
+        for (let i = index - 1; i >= 0; i--)
             if (!this.items[i].mustSkipKey)
                 return this.items[i].key;
 
