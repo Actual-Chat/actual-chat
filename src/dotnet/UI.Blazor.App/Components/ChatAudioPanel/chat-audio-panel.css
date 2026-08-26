@@ -708,64 +708,6 @@ body.narrow .selected-language {
     @apply flex-1 flex-y;
 }
 
-/* === 8. Tooltips === */
-
-/* Desktop tooltip */
-.recorder-wrapper > .c-tooltip {
-    @apply relative z-tooltip bottom-12 left-0;
-    @apply flex justify-center;
-    @apply h-10;
-    @apply px-[12px] py-[7px];
-    @apply rounded-lg;
-    @apply whitespace-nowrap;
-    @apply bg-01;
-    @apply text-base text-02;
-    @apply pointer-events-none;
-    filter: drop-shadow(0px 5px 12px rgba(0, 0, 0, 0.16));
-}
-body.hoverable .recorder-wrapper> .c-tooltip {
-    @apply hidden;
-}
-
-/* Narrow tooltip */
-.narrow .narrow-recorder-tooltip {
-    @apply visible;
-    @apply fixed z-tooltip;
-    @apply flex justify-center text-center;
-    @apply h-10 w-48;
-    @apply p-2;
-    @apply rounded-lg;
-    @apply whitespace-nowrap;
-    @apply bg-01;
-    @apply text-base text-02;
-    @apply pointer-events-none;
-    @apply left-0 right-0;
-    bottom: calc(7rem + var(--safe-area-bottom));
-    margin: 0 auto;
-    filter: drop-shadow(0px 5px 12px rgba(0, 0, 0, 0.16));
-}
-.narrow-recorder-tooltip .c-tooltip-text {
-    @apply line-clamp-1;
-}
-body.narrow .narrow-panel .narrow-recorder-tooltip {
-    bottom: calc(8.5rem + var(--safe-area-bottom));
-}
-.wide .narrow-recorder-tooltip {
-    @apply hidden;
-}
-.narrow .recorder-wrapper > .c-tooltip {
-    @apply hidden;
-}
-
-/* Tooltip arrows */
-.recorder-wrapper > .c-tooltip > .c-tooltip-arrow,
-.narrow-recorder-tooltip > .c-tooltip-arrow {
-    @apply absolute -bottom-1;
-    @apply w-[8px] h-[8px];
-    @apply rotate-45;
-    @apply bg-01;
-}
-
 /* === 9. Transcription Options === */
 
 .btn.btn-round.transcription-options-btn i {

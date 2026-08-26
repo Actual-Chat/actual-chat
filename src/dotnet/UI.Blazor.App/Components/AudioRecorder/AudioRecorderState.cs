@@ -9,6 +9,8 @@ public sealed record AudioRecorderState(ChatId? ChatId)
     public bool IsConnected { get; init; }
     public bool IsVoiceActive { get; init; }
     public Moment RecordingStartTime { get; init; }
+    // CPU time, unlike RecordingStartTime above: it's compared against UI-side elapsed times.
+    public Moment ChangedAt { get; init; }
 
     public void Deconstruct(
         out ChatId? chatId,

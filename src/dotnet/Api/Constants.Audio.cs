@@ -94,6 +94,9 @@ public static partial class Constants
         public static readonly TimeSpan RecorderDrainTimeout = TimeSpan.FromSeconds(1);
         // Startup waits the recorder proceeds without rather than lose the utterance.
         public static readonly TimeSpan RecorderStartupWaitTimeout = TimeSpan.FromSeconds(3);
+        // How long the mic staying shut or the connection staying down must last before the UI
+        // calls it a failure: a healthy start passes through both states on its way up.
+        public static readonly TimeSpan RecordingProblemGracePeriod = TimeSpan.FromSeconds(1.5);
         // A PTT reply's two startup deadlines: how long the recorder may take to report itself
         // recording, and how long after that the first captured sample may take. Both are shorter
         // than AudioRecorder.StartRecordingTimeout - a reply that slow has lost its answer window,
