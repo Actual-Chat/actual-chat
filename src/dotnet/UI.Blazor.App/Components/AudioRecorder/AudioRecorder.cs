@@ -114,15 +114,17 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             if (_audioFocusScope is null)
                 Log.LogWarning("Failed to gain audio focus for recording. Continue without it");
 
-            var startResult = await _engine.Start(chatId, repliedChatEntryId, cancellationToken)
+            var startOutcome = await _engine.Start(chatId, repliedChatEntryId, cancellationToken)
                 .WaitAsync(StartRecordingTimeout, cancellationToken)
                 .ConfigureAwait(false);
-            if (startResult != RecorderStartResult.Started) {
-                var isPermissionIssue = startResult == RecorderStartResult.NoPermission;
+            if (!startOutcome.IsStarted) {
+                var isPermissionIssue = startOutcome.Result == RecorderStartResult.NoPermission;
                 // Forgetting the cached permission re-prompts on the next attempt
                 if (isPermissionIssue)
                     MicrophonePermission.ForgetCached();
-                Log.LogWarning(nameof(StartRecording) + ": chat #{ChatId} - {Result}", chatId, startResult);
+                Log.LogWarning(nameof(StartRecording) + ": chat #{ChatId} - {Result} ({Code})",
+                    chatId, startOutcome.Result, startOutcome.Code);
+                MarkFailed(chatId, startOutcome);
                 MarkStopped();
                 throw new AudioRecorderException(isPermissionIssue
                     ? "Can't access the microphone - please check if the microphone access permission is granted."
@@ -137,6 +139,8 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
                 Log.LogError(e, $"{nameof(StartRecording)} failed");
 
+            if (e is not OperationCanceledException)
+                MarkFailed(chatId, new RecorderStartOutcome(RecorderStartResult.Unknown, e.GetType().Name));
             await StopRecordingUnsafe().ConfigureAwait(false);
 
             if (e is OperationCanceledException)
@@ -155,6 +159,13 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         return await StopRecordingUnsafe().ConfigureAwait(false);
     }
 
+    // Public because the press can fail before any of this runs - RecorderToggle bails at the
+    // microphone permission check, and that's the failure the user most needs named.
+    public void MarkFailed(ChatId chatId, RecorderStartOutcome outcome)
+        => UpdateState(State.Value with {
+            LastFailure = new RecordingFailure(chatId, outcome.Result, outcome.Code, Clocks.CpuClock.Now),
+        });
+
     public async ValueTask ConversationSignal(CancellationToken cancellationToken)
         => await _engine.ConversationSignal(cancellationToken).ConfigureAwait(false);
 
@@ -170,6 +181,15 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             return false; // Not recording
 
         return state.IsRecording;
+    }
+
+    [JSInvokable]
+    public void OnRecordingFailed(string chatId, string failure)
+    {
+        var outcome = RecorderStartOutcome.Parse(failure);
+        Log.LogWarning(nameof(OnRecordingFailed) + ": chat #{ChatId} - {Result} ({Code})",
+            chatId, outcome.Result, outcome.Code);
+        MarkFailed(ChatId.Parse(chatId), outcome);
     }
 
     [JSInvokable]
@@ -195,7 +215,9 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         var recordingHasCompleted = !isRecording && state.IsRecording;
         var recordingDuration = TimeSpan.Zero;
         if (recordingHasStarted) {
-            newState = newState with { RecordingStartTime = Clocks.SystemClock.Now };
+            // Recording actually running is the only thing that clears a failure: clearing it on
+            // each restart attempt would blink the reason off and on for as long as it keeps failing
+            newState = newState with { RecordingStartTime = Clocks.SystemClock.Now, LastFailure = null };
             _ = TuneUI.Play(Tune.ConfirmRecording);
         }
         else if (recordingHasCompleted) {

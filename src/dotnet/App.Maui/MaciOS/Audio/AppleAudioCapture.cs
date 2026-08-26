@@ -42,8 +42,10 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
     private AudioFocusUI AudioFocusUI => field ??= hub.AudioFocusUI;
     private ILogger Log => field ??= hub.Services.LogFor(GetType());
 
-    public Task<IAsyncEnumerable<IMemoryOwner<float>>?> Capture(CancellationToken cancellationToken)
-        => Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(CaptureInternal(cancellationToken));
+    public Task<AudioCaptureResult> Capture(CancellationToken cancellationToken)
+        // Always reports success: AVAudioEngine setup happens inside the iterator, so a failure
+        // surfaces while enumerating rather than here - MauiRecorderEngine reports it from there.
+        => Task.FromResult(AudioCaptureResult.Ok(CaptureInternal(cancellationToken)));
 
     private async IAsyncEnumerable<IMemoryOwner<float>> CaptureInternal([EnumeratorCancellation] CancellationToken cancellationToken)
     {

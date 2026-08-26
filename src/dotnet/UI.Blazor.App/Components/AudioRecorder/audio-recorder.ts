@@ -8,7 +8,7 @@ import { VoiceActivityChange } from './workers/audio-vad-contract';
 import { getLogs } from 'logging';
 import { throttle } from 'actuallab-core';
 import { WebMicrophonePermissionHandler } from './web-microphone-permission-handler';
-import { AudioRecorderState } from './audio-recorder-state';
+import { AudioRecorderState, describeRecordingError } from './audio-recorder-state';
 import { Subscription } from 'rxjs';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('AudioRecorder');
@@ -36,6 +36,7 @@ export class AudioRecorder {
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly recorderStateChangedSubscription: Subscription;
     private readonly recordingHeartbeatSubscription: Subscription;
+    private readonly recordingFailedSubscription: Subscription;
 
     private state: 'starting' | 'failed' | 'recording' | 'stopped' = 'stopped';
     private chatId?: string;
@@ -47,7 +48,7 @@ export class AudioRecorder {
         debugLog?.log(`<- terminate()`);
     }
 
-    /** Called from Blazor */
+    // Called from Blazor
     public static create(blazorRef: DotNet.DotNetObject) {
         return new AudioRecorder(blazorRef);
     }
@@ -60,9 +61,11 @@ export class AudioRecorder {
             state.isConnected,
             state.isVoiceActive));
         this.recordingHeartbeatSubscription = AudioRecorderState.recordingHeartbeat$.subscribe(() => this.heartbeatThrottled());
+        this.recordingFailedSubscription = AudioRecorderState.recordingFailed$.subscribe(
+            f => this.onRecordingFailed(f.chatId, f.failure));
     }
 
-    /** Called from Blazor */
+    // Called from Blazor
     public async dispose(): Promise<void> {
         debugLog?.log(`-> dispose()`);
         this.chatId = undefined;
@@ -70,21 +73,22 @@ export class AudioRecorder {
             await opusMediaRecorder.stop();
             this.recorderStateChangedSubscription.unsubscribe();
             this.recordingHeartbeatSubscription.unsubscribe();
+            this.recordingFailedSubscription.unsubscribe();
         } catch (e) {
             errorLog?.log(`dispose: failed to stop recording`, e);
             throw e;
         }
     }
 
-    /** Called from Blazor  */
-    public async startRecording(chatId: string, repliedChatEntryId: string): Promise<boolean> {
+    // Called from Blazor. Returns '' on success, otherwise "<result>:<code>" - see RecorderStartResult.
+    public async startRecording(chatId: string, repliedChatEntryId: string): Promise<string> {
         debugLog?.log(`-> startRecording(), ChatId =`, chatId);
         this.chatId = chatId;
 
         try {
             if (this.state === 'recording' || this.state === 'starting') {
                 warnLog?.log('startRecording: it seems that server and client states are inconsistent');
-                return true;
+                return '';
             }
 
             this.state = 'starting';
@@ -92,22 +96,24 @@ export class AudioRecorder {
             if (this.state !== 'starting')
                 // noinspection ExceptionCaughtLocallyJS
                 throw new Error('Recording has been stopped.')
+
             this.state = 'recording';
         }
         catch (e) {
             errorLog?.log(`startRecording: unhandled error:`, e);
             this.state = 'failed';
             this.chatId = undefined;
-            throw e;
+            // Returned, not rethrown: an exception reaches Blazor as an opaque JSException.
+            return describeRecordingError(e);
         }
         finally {
             debugLog?.log(`<- startRecording()`);
         }
 
-        return true;
+        return '';
     }
 
-    /** Called from Blazor  */
+    // Called from Blazor
     public async stopRecording(): Promise<void> {
         try {
             debugLog?.log(`-> stopRecording`);
@@ -125,13 +131,13 @@ export class AudioRecorder {
         }
     }
 
-    /** Called from Blazor */
+    // Called from Blazor
     public conversationSignal(): Promise<void> {
         debugLog?.log(`conversationSignal()`);
         return opusMediaRecorder.conversationSignal();
     }
 
-    /** Called from Blazor */
+    // Called from Blazor
     public async runDiagnostics(): Promise<AudioDiagnosticsState> {
         const diagnosticsState = new AudioDiagnosticsState();
         diagnosticsState.isPlayerInitialized = AudioPlayer.isInitialized;
@@ -146,6 +152,17 @@ export class AudioRecorder {
         diagnosticsState.isAudioContextRunning = recordingAudioContextSource.isContextRunning;
         infoLog?.log('runDiagnostics: ', diagnosticsState);
         return await opusMediaRecorder.runDiagnostics(diagnosticsState);
+    }
+
+    // Private methods
+
+    private async onRecordingFailed(chatId: string, failure: string): Promise<void> {
+        try {
+            await this.blazorRef.invokeMethodAsync('OnRecordingFailed', chatId, failure);
+        }
+        catch (error) {
+            errorLog?.log(`onRecordingFailed: unhandled error:`, error);
+        }
     }
 
     private readonly heartbeatThrottled = throttle(() => this.heartbeat(), HEARTBEAT_INTERVAL);
@@ -177,6 +194,4 @@ export class AudioRecorder {
             errorLog?.log(`onRecordingStateChange: unhandled error:`, error);
         }
     }
-
-
 }

@@ -1,5 +1,6 @@
 using System.Buffers;
 using ActualChat.App.Maui.Services.Recording;
+using ActualChat.UI.Blazor.App.Components;
 using Android.Media;
 
 namespace ActualChat.App.Maui.Audio;
@@ -8,7 +9,7 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
 {
     public ILogger<AndroidAudioCapture> Log { get; } = log;
 
-    public Task<IAsyncEnumerable<IMemoryOwner<float>>?> Capture(CancellationToken cancellationToken)
+    public Task<AudioCaptureResult> Capture(CancellationToken cancellationToken)
     {
         // Configure AudioRecord for float32 PCM mono at desired sample rate (API 23+ supports PCM_FLOAT)
         var sampleRate = Constants.Audio.RecordingSampleRate;
@@ -17,7 +18,7 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
 
         var minBufferBytes = AudioRecord.GetMinBufferSize(sampleRate, channelConfig, encoding);
         if (minBufferBytes <= 0)
-            return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(null);
+            return Task.FromResult(AudioCaptureResult.Failed(RecorderStartResult.NoDevice, $"MinBufferSize={minBufferBytes}"));
 
         // We'll read at least VAD frame size per push
         var frameSamples = Constants.Audio.OpusFrameLength; // 20 ms at 16 kHz = 320 samples
@@ -47,7 +48,7 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                 Log.LogWarning("AudioRecord didn't initialize (state = {State}) - is the mic available?",
                     recorder.State);
                 recorder.Release();
-                return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(null);
+                return Task.FromResult(AudioCaptureResult.Failed(RecorderStartResult.Unknown, $"AudioRecord.{recorder.State}"));
             }
 
             var actualFrames = recorder.BufferSizeInFrames;
@@ -63,7 +64,7 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
             catch {
                  /* Ignore */
             }
-            return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(null);
+            return Task.FromResult(AudioCaptureResult.Failed(RecorderStartResult.Unknown, e.GetType().Name));
         }
 
         var buffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
@@ -82,7 +83,7 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
         };
         captureThread.Start();
         // Return enumerator
-        return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(Enumerate(cancellationToken));
+        return Task.FromResult(AudioCaptureResult.Ok(Enumerate(cancellationToken)));
 
         void Producer()
         {

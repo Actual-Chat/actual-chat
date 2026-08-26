@@ -9,16 +9,21 @@
     var animatorClass = "record-" + _animator.Class;
     var transitioningClass = m.IsTransitioning || m is { IsRecordingHere: true, IsConnected: false } ? "applying-changes" : "";
     var permissionClass = hasMicrophonePermission ? "" : "mic-disabled";
-    var hasRecordingFailed = m.Status is RecordingStatus.StartFailed or RecordingStatus.Disconnected;
-    var tooltip = m.Status switch {
-        RecordingStatus.Starting => L.Call_StartingRecording,
-        RecordingStatus.Recording => L.Call_Recording,
-        RecordingStatus.Reconnecting or RecordingStatus.Disconnected => L.Reconnect_Title,
-        RecordingStatus.StartFailed => L.Recording_CantStart,
+    var status = m.Status;
+    var tooltip = status.Kind switch {
+        RecordingStatusKind.Starting => L.Call_StartingRecording,
+        RecordingStatusKind.Recording => L.Call_Recording,
+        RecordingStatusKind.Reconnecting or RecordingStatusKind.Disconnected => L.Reconnect_Title,
+        RecordingStatusKind.NoMicrophonePermission => L.Recording_NoMicrophoneAccess,
+        RecordingStatusKind.NoMicrophone => L.Recording_NoMicrophone,
+        RecordingStatusKind.MicrophoneBusy => L.Recording_MicrophoneBusy,
+        RecordingStatusKind.StartFailed => status.FailureCode is { } code
+            ? L.Recording_UnknownError_Format(code)
+            : L.Recording_UnknownError,
         _ => L.ChatMenu_StartRecording,
     };
-    var severity = hasRecordingFailed ? TooltipSeverity.Error : TooltipSeverity.Normal;
-    var autoShowText = hasRecordingFailed ? tooltip : "";
+    var severity = status.IsFailure ? TooltipSeverity.Error : TooltipSeverity.Normal;
+    var autoShowText = status.IsFailure ? tooltip : "";
     var recordingIconSize = ScreenSize.IsNarrow() ? 10 : 8;
     var recBtnCls = "rec-btn ";
     if (m is { IsAnyoneTalking: true, IsRecordingHere: false } && !IsListening) {
@@ -190,8 +195,11 @@
             if (chatId is null || RecordingChatId == chatId)
                 return;
 
-            if (!await AudioRecorder.MicrophonePermission.CheckOrRequest(cancellationToken).ConfigureAwait(false))
+            if (!await AudioRecorder.MicrophonePermission.CheckOrRequest(cancellationToken).ConfigureAwait(false)) {
+                // Recording never starts, so this is the only chance to say why the press did nothing
+                AudioRecorder.MarkFailed(chatId, RecorderStartResult.NoPermission);
                 return;
+            }
 
             cancellationToken.ThrowIfCancellationRequested();
             // Tapping the mic to record lifts a soft "mute all" applied by the host.
@@ -225,7 +233,7 @@
 
     public sealed record Model(
         Chat? Chat,
-        RecordingStatus Status = RecordingStatus.Off,
+        RecordingStatus Status,
         bool IsRecordingHere = false,
         bool IsConnected = false,
         bool? HasMicrophonePermission = null,

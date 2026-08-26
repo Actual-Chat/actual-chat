@@ -11,6 +11,7 @@ public sealed record AudioRecorderState(ChatId? ChatId)
     public Moment RecordingStartTime { get; init; }
     // CPU time, unlike RecordingStartTime above: it's compared against UI-side elapsed times.
     public Moment ChangedAt { get; init; }
+    public RecordingFailure? LastFailure { get; init; }
 
     public void Deconstruct(
         out ChatId? chatId,
