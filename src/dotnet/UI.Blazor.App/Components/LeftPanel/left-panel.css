@@ -136,6 +136,7 @@ body.narrow .left-panel-content-header::before {
 }
 .left-panel-content-header > .c-content > .c-title {
     @apply flex-1;
+    @apply min-w-0;
     @apply text-01 text-lg font-medium;
     @apply truncate;
     @apply pl-1;

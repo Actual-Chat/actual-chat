@@ -234,6 +234,7 @@ body.hoverable .sessions-tile-item .sign-out-btn:hover,
 }
 .docs-panel.tab-panel {
     @apply h-full;
+    @apply min-w-0;
     @apply pb-4;
 }
 .docs-tab.settings-tab .tab {

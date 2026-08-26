@@ -11,11 +11,9 @@
     <div class="c-text">
         <span>@L.ChatView_WaitingForRequests</span>
         @if (m.PeerAccount is { } peerAccount) {
-            <div class="c-truncated-text">
-                <span class="c-part">@L.ChatView_SayHiTo_Prefix</span>
-                <AccountName UserId="@peerAccount.Id"/>
-                <span class="c-part">@L.ChatView_SayHiTo_Suffix</span>
-            </div>
+            <div class="c-sentence composed-sentence"><span class="c-part"
+                >@L.ChatView_SayHiTo_Prefix</span><AccountName UserId="@peerAccount.Id" Class="c-value"
+                /><span class="c-part">@L.ChatView_SayHiTo_Suffix</span></div>
         } else {
             <span>@L.ChatView_PostTheFirstMessage</span>
         }

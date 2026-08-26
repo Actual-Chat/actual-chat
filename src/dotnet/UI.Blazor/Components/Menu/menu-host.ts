@@ -2,6 +2,7 @@ import { fromEvent, merge, Subject, takeUntil } from 'rxjs';
 import {
     computePosition,
     flip,
+    limitShift,
     Middleware,
     offset,
     Placement,
@@ -10,6 +11,7 @@ import {
     VirtualElement,
 } from '@floating-ui/dom';
 import { Disposable } from 'disposable';
+import { getSafeAreaPadding } from 'safe-area';
 import { DocumentEvents, stopEvent } from 'event-handling';
 import { getOrInheritData } from 'dom-helpers';
 import { delayAsync } from 'actuallab-core';
@@ -21,7 +23,7 @@ import { getLogs } from 'logging';
 import { unselect } from 'keyboard';
 import { Tune, TuneUI } from '../../Services/TuneUI/tune-ui';
 
-const {  logScope, debugLog } = getLogs('MenuHost');
+const { logScope, debugLog } = getLogs('MenuHost');
 // TODO: remove eslint ignores and fix errors
 enum MenuTrigger {
     None = 0,
@@ -258,7 +260,6 @@ export class MenuHost implements Disposable {
             // Hover menu positioning
             referenceElement = menu.triggerElement;
             middleware.push(offset({ mainAxis: -15, crossAxis: -10 }));
-            middleware.push(flip());
         } else if (position && !isButtonTrigger(menu.triggerElement)) {
             // Pointer relative positioning
             referenceElement = {
@@ -275,15 +276,18 @@ export class MenuHost implements Disposable {
                     };
                 },
             } as VirtualElement;
-            middleware.push(flip());
-            middleware.push(shift({ padding: 5 }));
         } else {
             // Trigger element relative positioning
             referenceElement = menu.triggerElement;
             middleware.push(offset(6));
-            middleware.push(flip());
-            middleware.push(shift({ padding: 5 }));
         }
+        middleware.push(flip());
+        // crossAxis: flip() alone leaves a too-tall menu at a negative top when neither side fits.
+        middleware.push(shift({
+            padding: getSafeAreaPadding(menuViewportGap),
+            crossAxis: true,
+            limiter: limitShift(),
+        }));
         const { x, y } = await computePosition(
             referenceElement,
             menuElement,
@@ -449,6 +453,8 @@ export class MenuHost implements Disposable {
 let _nextId = 1;
 // Menu Ids are used as HTML element Ids, so they need to have unique prefix
 const nextId = () => 'menu:' + (_nextId++).toString();
+
+const menuViewportGap = 5;
 
 function getPlacementFromAttributes(triggerElement: HTMLElement): Placement | null {
     const placement = triggerElement.dataset.menuPlacement;

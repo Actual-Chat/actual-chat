@@ -8,7 +8,7 @@
         return;
 }
 
-<div class="banner @BannerCls @Class @_animator.Class @(Wrap ? "banner-wrap" : "")">
+<div class="banner @BannerCls @WrapCls @DismissCls @Class @_animator.Class">
     <div class="c-content">
         @if (!ScreenSize.IsNarrow()) {
             @if (Icon != null) {
@@ -20,10 +20,10 @@
         <div class="banner-body">
             @Body
         </div>
-        @if (Buttons != null || (ShowDismissButton && !Wrap)) {
+        @if (Buttons != null || (ShowDismissButton && NoWrap)) {
             <div class="banner-buttons">
                 @Buttons
-                @if (ShowDismissButton && !Wrap) {
+                @if (ShowDismissButton && NoWrap) {
                     <HeaderButton
                         Class="close-banner"
                         Click="OnClose"
@@ -35,7 +35,7 @@
             </div>
         }
     </div>
-    @if (ShowDismissButton && Wrap) {
+    @if (ShowDismissButton && !NoWrap) {
         <HeaderButton
             Class="close-banner close-banner-abs"
             Click="OnClose"
@@ -58,7 +58,8 @@
     [Parameter] public RenderFragment? Icon { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }
     [Parameter] public bool ShowDismissButton { get; set; }
-    [Parameter] public bool Wrap { get; set; }
+    // Opt-out for banners that must stay a single fixed-height line, e.g. the reconnect status strip
+    [Parameter] public bool NoWrap { get; set; }
     [Parameter] public bool IsVisible { get; set; } = true;
     [Parameter] public BannerSeverity Severity { get; set; } = BannerSeverity.Default;
     [Parameter] public EventCallback Dismiss { get; set; }
@@ -86,4 +87,6 @@
         BannerSeverity.Warning => "banner-warning",
         _ => "bg-02",
     };
+    private string WrapCls => NoWrap ? "" : "banner-wrap";
+    private string DismissCls => ShowDismissButton ? "banner-dismissible" : "";
 }

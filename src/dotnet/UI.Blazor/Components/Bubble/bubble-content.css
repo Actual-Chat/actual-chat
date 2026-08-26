@@ -25,13 +25,18 @@ body.narrow .ac-bubble-host.landscape .bubble-content .c-body {
     @apply list-disc pl-4;
 }
 .bubble-title {
-    @apply text-headline-1;
+    @apply text-headline-1 whitespace-normal;
 }
+/* flex-none in the markup: an index is ~40px, and letting it shrink meant it absorbed every
+   shortfall - down to one glyph per line - so the buttons' flex-wrap below never got to act. */
 .bubble-counter {
     @apply text-caption-2;
 }
+/* It has to take the leftover width for its own justify-end to have anything to distribute -
+   content-sized, the buttons sat straight against the counter. */
 .bubble-buttons {
-    @apply gap-x-1;
+    @apply flex-1;
+    @apply flex-wrap gap-x-1 gap-y-1;
 }
 
 .bubble-content p {

@@ -189,14 +189,9 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 }
 
 .modal-header .modal-title {
-    @apply truncate;
+    @apply min-w-0;
+    @apply line-clamp-2;
     @apply text-title-1 text-02;
-}
-.modal-header .modal-close {
-    @apply flex-none;
-    @apply -mr-0.5;
-    @apply overflow-visible;
-    @apply invisible md:visible;
 }
 
 .modal-header-interactive {
@@ -213,7 +208,8 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 }
 
 .modal-header-interactive .modal-title {
-    @apply truncate;
+    @apply min-w-0;
+    @apply line-clamp-2;
     @apply text-title-1 text-02;
 }
 

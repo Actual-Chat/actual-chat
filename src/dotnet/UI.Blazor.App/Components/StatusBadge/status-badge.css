@@ -1,10 +1,18 @@
+/* .c-text below can ellipsise, so any flex host could silently shrink the badge instead of its own
+   content - flex-none keeps that opt-in, for the hosts that override it deliberately. */
 .status-badge {
-    @apply flex items-center gap-x-1;
+    @apply flex flex-none items-center gap-x-1;
     @apply h-6;
     @apply px-2;
     @apply rounded-full;
     @apply text-caption-2;
     @apply whitespace-nowrap;
+}
+.status-badge > i {
+    @apply text-sm;
+}
+.status-badge > .c-text {
+    @apply truncate;
 }
 .status-badge.default {
     @apply px-0;
@@ -33,7 +41,8 @@
 }
 
 .chat-header-center > .chat-header-title > .c-info > .status-badge {
-    @apply h-3.5;
+    @apply flex-initial;
+    @apply h-3.5 min-w-0;
     @apply p-0;
     @apply text-caption-6 text-03;
 }

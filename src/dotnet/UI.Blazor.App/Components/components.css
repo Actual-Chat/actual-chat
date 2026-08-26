@@ -100,10 +100,19 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply text-02;
     @apply cursor-default;
 }
+/* Its span and button are inline-level, so centring the text centres every line - a flex row here
+   would swallow the trailing nbsp the prefix carries for spacing. */
+.join-footer {
+    @apply w-full;
+    @apply text-center;
+}
 .signin-footer {
-    @apply flex justify-center items-center;
+    @apply flex flex-wrap justify-center items-center;
     @apply w-full md:w-auto min-h-footer;
     @apply py-1;
+}
+.signin-footer .avatar-name {
+    @apply max-w-full;
 }
 .signin-footer .btn {
     @apply h-10 min-h-10 min-w-0;
@@ -145,6 +154,7 @@ body.narrow .layout-header.collapsed:has(.chat-activity-panel:not(.listening)) .
 }
 .chat-header-center > .chat-header-title > .c-info {
     @apply flex-none flex-x items-center gap-x-1;
+    @apply max-w-full;
 }
 
 .chat-header-center > .chat-header-title > .c-activities-container {

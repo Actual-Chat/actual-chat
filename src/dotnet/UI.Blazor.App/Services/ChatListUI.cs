@@ -21,12 +21,14 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
 
     private ComputedState<Trimmed<int>>? _unreadChatCount;
     private ComputedState<ChatInfo?>? _notesChat;
+    private (string ListKey, ChatId ChatId)? _scrollAnchor;
 
     private IContacts Contacts => Hub.Contacts;
     private IAuthors Authors => Hub.Authors;
     private IPlaces Places => Hub.Places;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatUI ChatUI => Hub.ChatUI;
+    private SearchUI SearchUI => Hub.SearchUI;
     private NotificationsPanelUI NotificationsPanelUI => Hub.NotificationsPanelUI;
     private LoadingUI LoadingUI => Hub.LoadingUI;
     private new ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
@@ -292,6 +294,26 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         };
         _ = TuneUI.Play(Tune.PinUnpinChat);
         await UICommander.Run(command).ConfigureAwait(false);
+    }
+
+    public void SetScrollAnchor(string listKey, ChatId? topVisibleChatId)
+    {
+        // Only the search overlay is worth restoring from: every other reason a chat list is re-created -
+        // another navbar group, place, or filter - is a new context, where landing on the previous list's
+        // chat would read as a random jump.
+        var isSearchOpen = SearchUI.IsSearchModeOn.Value || SearchUI.IsShowRecentOn.Value;
+        _scrollAnchor = isSearchOpen && topVisibleChatId is { } chatId
+            ? (listKey, chatId)
+            : null;
+    }
+
+    public ChatId? PullScrollAnchor(string listKey)
+    {
+        var scrollAnchor = _scrollAnchor;
+        _scrollAnchor = null;
+        return scrollAnchor is { } anchor && anchor.ListKey == listKey
+            ? anchor.ChatId
+            : null;
     }
 
     // Protected methods
