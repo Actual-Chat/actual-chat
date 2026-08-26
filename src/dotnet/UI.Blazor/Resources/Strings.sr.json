@@ -832,9 +832,6 @@
   "Chat_Online_Format": "{0} на вези",
   "Place_TabChats": "Четови",
   "Place_TabMembers": "Чланови",
-  "Place_TabMedia": "Медији",
-  "Place_TabFiles": "Фајлови",
-  "Place_TabLinks": "Линкови",
   "Place_SelectPlace": "Одаберите Место.",
   "Place_Notifications": "Обавештења",
   "Place_EditPlace": "Уреди Место",
@@ -970,7 +967,7 @@
   "Share_SendToSelected": "Пошаљи одабраним контактима",
 
   "Ptt_UseOnThisDevice": "Користи Притисни и говори на овом уређају",
-  "Ptt_UseOnThisDeviceCaption": "Када је искључено, овај уређај се неће будити, репродуковати ни слати глас путем Притисни и говори.",
+  "Ptt_UseOnThisDeviceCaption": "Када је искључено, овај уређај се неће будити, репродуцирати ни слати глас путем Притисни и говори.",
   "Ptt_DeviceEnabledToast": "Притисни и говори је сада активан на овом уређају.",
   "Ptt_NotOnThisDevice": "Не на овом уређају",
   "Ptt_ChatsTopic": "Четови с Притисни и говори",

@@ -859,9 +859,6 @@ public static class LocalizedStringsLocalizerExt
         public string Chat_Online_Format(object arg0) => l["Chat_Online_Format", arg0].Value;
         public string Place_TabChats => l["Place_TabChats"].Value;
         public string Place_TabMembers => l["Place_TabMembers"].Value;
-        public string Place_TabMedia => l["Place_TabMedia"].Value;
-        public string Place_TabFiles => l["Place_TabFiles"].Value;
-        public string Place_TabLinks => l["Place_TabLinks"].Value;
         public string Place_SelectPlace => l["Place_SelectPlace"].Value;
         public string Place_Notifications => l["Place_Notifications"].Value;
         public string Place_EditPlace => l["Place_EditPlace"].Value;
