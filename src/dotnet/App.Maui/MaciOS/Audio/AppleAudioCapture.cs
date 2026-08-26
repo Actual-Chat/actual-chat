@@ -43,8 +43,8 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
     private ILogger Log => field ??= hub.Services.LogFor(GetType());
 
     public Task<AudioCaptureResult> Capture(CancellationToken cancellationToken)
-        // Always reports success: AVAudioEngine setup happens inside the iterator, so a failure
-        // surfaces while enumerating rather than here - MauiRecorderEngine reports it from there.
+        // No eager failure path, unlike Android and Windows, which open the device before returning
+        // their iterator: here the whole AVAudioEngine setup is inside CaptureInternal.
         => Task.FromResult(AudioCaptureResult.Ok(CaptureInternal(cancellationToken)));
 
     private async IAsyncEnumerable<IMemoryOwner<float>> CaptureInternal([EnumeratorCancellation] CancellationToken cancellationToken)

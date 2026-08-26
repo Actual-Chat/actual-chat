@@ -13,7 +13,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 {
     private static readonly TimeSpan RecordingFailedInterval = TimeSpan.FromMilliseconds(500);
 
-    private readonly Lock _sync = new();
+    private readonly Lock _lock = new();
     private readonly Debouncer<Unit> _noSignalDetectedDebouncer;
 
     private ChatId? _chatId;
@@ -183,7 +183,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         var lastVadEvent = VoiceActivityDetector.LastActivityEvent;
 
         bool isSignalDetected, isConnected;
-        lock (_sync) {
+        lock (_lock) {
             isSignalDetected = _isSignalDetected;
             isConnected = true; // RPC handles connectivity transparently
         }
@@ -207,7 +207,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
     private void SetRecordingContext(ChatId chatId, ChatEntryId? repliedChatEntryId)
     {
-        lock (_sync)
+        lock (_lock)
         {
             _chatId = chatId;
             _repliedChatEntryId = repliedChatEntryId;
@@ -216,7 +216,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
     private void ClearRecordingContext()
     {
-        lock (_sync)
+        lock (_lock)
         {
             _chatId = null;
             _repliedChatEntryId = null;
@@ -310,7 +310,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     private void NotifyStateChange()
     {
         bool isRecording, isSignalDetected, isConnected, isVoiceActive;
-        lock (_sync) {
+        lock (_lock) {
             isRecording = _isRecording;
             isSignalDetected = _isSignalDetected;
             isConnected = _isConnected;
@@ -326,7 +326,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     private async Task ProcessAudioStream(IAsyncEnumerable<IMemoryOwner<float>> frames, CancellationToken cancellationToken)
     {
         ChatId? chatId;
-        lock (_sync)
+        lock (_lock)
             chatId = _chatId;
 
         try {
@@ -350,7 +350,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         try {
             ChatId? chatId;
             bool isRecording;
-            lock (_sync) {
+            lock (_lock) {
                 chatId = _chatId;
                 isRecording = _isRecording;
             }
@@ -509,7 +509,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         ChatId? chatId;
         ChatEntryId? repliedChatEntryId;
 
-        lock (_sync) {
+        lock (_lock) {
             chatId = _chatId;
             repliedChatEntryId = _repliedChatEntryId;
         }
@@ -538,7 +538,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
         // TODO(AK): Specify PreSkip
         _sendTask = SendAudio(chatId, repliedChatEntryId, 0, firstFrameSourceCapturedAt, stream.Reader, cancellationToken);
-        lock (_sync) {
+        lock (_lock) {
             _currentStream = stream;
             _repliedChatEntryId = null; // Clear so it's only used once
         }

@@ -1,3 +1,6 @@
+using ActualChat.UI.Blazor.Resources;
+using Microsoft.Extensions.Localization;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
@@ -15,6 +18,20 @@ public sealed record RecordingStatus(RecordingStatusKind Kind, string? FailureCo
     public static readonly RecordingStatus Disconnected = new(RecordingStatusKind.Disconnected);
     public static readonly RecordingStatus StartFailed = new(RecordingStatusKind.StartFailed);
     public bool IsFailure => Kind >= RecordingStatusKind.Disconnected;
+    public string GetTooltip(IStringLocalizer l)
+        => Kind switch {
+            RecordingStatusKind.Starting => l.Call_StartingRecording,
+            RecordingStatusKind.Recording => l.Call_Recording,
+            RecordingStatusKind.Reconnecting or RecordingStatusKind.Disconnected => l.Reconnect_Title,
+            RecordingStatusKind.NoMicrophonePermission => l.Recording_NoMicrophoneAccess,
+            RecordingStatusKind.NoMicrophone => l.Recording_NoMicrophone,
+            RecordingStatusKind.MicrophoneBusy => l.Recording_MicrophoneBusy,
+            RecordingStatusKind.StartFailed => FailureCode is { } code
+                ? l.Recording_UnknownError_Format(code)
+                : l.Recording_UnknownError,
+            _ => l.ChatMenu_StartRecording,
+        };
+
     public static RecordingStatus Parse(string status)
     {
         // "<Kind>" or "<Kind>:<code>" - the form debugUI.forceRecordingStatus takes
