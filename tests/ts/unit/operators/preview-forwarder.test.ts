@@ -1,10 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createPreviewSink } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/preview-forwarder';
-
-// The jam detector measures elapsed time, so the clock has to be steerable.
-let nowMs = 0;
-vi.spyOn(performance, 'now').mockImplementation(() => nowMs);
-beforeEach(() => { nowMs = 0; });
 
 // ---- Mocks ----------------------------------------------------------------
 
@@ -137,66 +132,6 @@ describe('createPreviewSink', () => {
 
         expect(frames.map(f => f.clones.length)).toEqual([0, 0]);
         expect(writer.written).toEqual([]);
-    });
-
-    it('does not report a jam while backpressure clears inside the threshold', () => {
-        const writer = new FakeWriter();
-        writer.desiredSize = 0;
-        let jams = 0;
-        const sink = makeSink(
-            () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
-            { onWriterJam: () => { jams++; } });
-
-        nowMs = 1000;
-        forwardFrames(sink, 1);
-        nowMs = 1900;
-        forwardFrames(sink, 1);
-
-        expect(jams).toBe(0);
-    });
-
-    it('reports a jam once per threshold of unbroken backpressure', () => {
-        const writer = new FakeWriter();
-        writer.desiredSize = 0;
-        let jams = 0;
-        const sink = makeSink(
-            () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
-            { onWriterJam: () => { jams++; } });
-
-        nowMs = 1000;
-        forwardFrames(sink, 1);
-        nowMs = 2100;
-        forwardFrames(sink, 1);
-        expect(jams).toBe(1);
-
-        // Window restarts, so a generator that stays dead re-reports rather than
-        // going quiet after the first call.
-        nowMs = 2200;
-        forwardFrames(sink, 1);
-        expect(jams).toBe(1);
-        nowMs = 3300;
-        forwardFrames(sink, 1);
-        expect(jams).toBe(2);
-    });
-
-    it('a delivered frame resets the jam window', () => {
-        const writer = new FakeWriter();
-        writer.desiredSize = 0;
-        let jams = 0;
-        const sink = makeSink(
-            () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
-            { onWriterJam: () => { jams++; } });
-
-        nowMs = 1000;
-        forwardFrames(sink, 1);
-        writer.desiredSize = 1;
-        nowMs = 1500;
-        forwardFrames(sink, 1);
-        writer.desiredSize = 0;
-        nowMs = 2100;
-        forwardFrames(sink, 1);
-
-        expect(jams).toBe(0);
     });
 
     it('reports frames to the canvas fallback when no writer is available', async () => {

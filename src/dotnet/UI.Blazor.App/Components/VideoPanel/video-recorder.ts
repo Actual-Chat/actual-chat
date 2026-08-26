@@ -2663,6 +2663,16 @@ export class VideoRecorder {
                     const scale = 1000 / dt;
                     this.capturedPerSec =
                         Math.max(0, stats.framesCaptured - previous.framesCaptured) * scale;
+                    const offeredPerSec =
+                        Math.max(0, stats.framesOffered - previous.framesOffered) * scale;
+                    const encodedPerSec =
+                        Math.max(0, stats.bundlesEncoded - previous.bundlesEncoded) * scale;
+                    debugLog?.log(
+                        `recorderStats: captured=${Math.round(this.capturedPerSec)}/s `
+                        + `offered=${Math.round(offeredPerSec)}/s `
+                        + `encoded=${Math.round(encodedPerSec)}/s `
+                        + `shipped=${Math.round(this.bundlesPerSec)}/s `
+                        + `targetFps=${this.lastTargetFps}`);
                     this.bundlesPerSec =
                         Math.max(0, stats.bundlesShipped - previous.bundlesShipped) * scale;
                     this.bytesPerSec =

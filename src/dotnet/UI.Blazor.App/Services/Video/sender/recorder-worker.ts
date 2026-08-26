@@ -105,10 +105,6 @@ export function initRecorderWorker(deps: RecorderWorkerDeps): void {
     const session = (deps.createSession ?? (() => new SenderSession()))();
     session.setPreviewFrameReporter(deps.reportPreviewFrame);
     session.setPreviewFramePresentationReporter(deps.reportPreviewFramePresentation);
-    session.setPreviewWriterJamHandler(() => {
-        if (state)
-            recreateWorkerPreviewGenerator(state);
-    });
     state = {
         session,
         recorder: new Recorder(session),
@@ -117,6 +113,20 @@ export function initRecorderWorker(deps: RecorderWorkerDeps): void {
         workerPreviewGenerator: null,
         workerSourceTrack: null,
     };
+}
+
+// Keeps a live generator across a restart so the preview <video> never has to
+// re-attach; builds a new one only when there isn't a usable one.
+function reuseOrInstallWorkerPreviewGenerator(s: WorkerState): void {
+    const generator = s.workerPreviewGenerator;
+    if (generator?.track.readyState === 'live') {
+        s.session.setPreviewGenerator({ writable: generator.writable });
+        s.deps.reportPreviewTrack?.(generator.track);
+        return;
+    }
+
+    disposeWorkerPreviewGenerator(s);
+    installWorkerPreviewGenerator(s);
 }
 
 // Stops the worker-created preview generator's track (if any) and clears the
@@ -139,18 +149,6 @@ function installWorkerPreviewGenerator(s: WorkerState): void {
     s.workerPreviewGenerator = generator;
     s.session.setPreviewGenerator(generator ? { writable: generator.writable } : undefined);
     s.deps.reportPreviewTrack?.(generator?.track ?? null);
-}
-
-// A jammed writer means WebKit's generator stopped draining for good — the
-// pipeline keeps producing, but nothing reaches the <video> again. Swapping in a
-// fresh generator is the only recovery, and it costs no capture/encoder restart.
-// Only Tier 1 (worker-built) generators are ours to replace.
-function recreateWorkerPreviewGenerator(s: WorkerState): void {
-    if (!s.workerPreviewGenerator)
-        return;
-
-    disposeWorkerPreviewGenerator(s);
-    installWorkerPreviewGenerator(s);
 }
 
 // Stops the worker-owned capture track (transferred clone) feeding a worker-side
@@ -281,16 +279,22 @@ export const recorderWorkerImpl: RecorderWorker = {
 
         const { config } = opts;
         const { deps, recorder, session } = s;
-        disposeWorkerPreviewGenerator(s);
         if (previewWritable) {
             // Tier 2: main built the generator (Chromium) and transferred only
             // the writable.
+            disposeWorkerPreviewGenerator(s);
             session.setPreviewGenerator({ writable: previewWritable });
         } else if (opts.createPreviewInWorker) {
             // Tier 1: main couldn't build a generator (Safari) — create it here
             // and ship the track back. Writable stays in this realm.
-            installWorkerPreviewGenerator(s);
+            //
+            // Reused across runs while its track is still live. The generator is
+            // independent of which camera feeds it, and on iOS a generator built
+            // during a camera switch delivers its first frame and then stops for
+            // good, while one carried over from warmup keeps working.
+            reuseOrInstallWorkerPreviewGenerator(s);
         } else {
+            disposeWorkerPreviewGenerator(s);
             session.setPreviewGenerator(undefined);
         }
         // Streaming context must land before the pipeline starts so
@@ -385,8 +389,9 @@ export const recorderWorkerImpl: RecorderWorker = {
                 catch (reportError) { errorLog?.log('reportStreamEnded failed:', reportError); }
             },
         ).finally(() => {
+            // Releases the writer lock but leaves a worker-owned generator alive
+            // for the next run to reuse; disposeRecorderWorker still stops it.
             session.setPreviewGenerator(undefined);
-            disposeWorkerPreviewGenerator(s);
             disposeWorkerSourceTrack(s);
             if (s.whenDone === whenDone)
                 s.whenDone = null;

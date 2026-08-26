@@ -19,7 +19,6 @@ export interface SenderSessionOptions {
     previewGenerator?: PreviewGeneratorLike;
     onPreviewFrame?: (frame: VideoFrame) => void | Promise<void>;
     onPreviewFramePresentation?: (presentation: PreviewFramePresentation) => void;
-    onPreviewWriterJam?: () => void;
     createCaptureClock?: () => MonotonicClock;
 }
 
@@ -29,7 +28,6 @@ export class SenderSession {
     private previewWriter: WritableStreamDefaultWriter<VideoFrame> | null = null;
     private onPreviewFrame: ((frame: VideoFrame) => void | Promise<void>) | null = null;
     private onPreviewFramePresentation: ((presentation: PreviewFramePresentation) => void) | null = null;
-    private onPreviewWriterJam: (() => void) | null = null;
 
     private disposed = false;
     private lastPreviewFramePresentation: PreviewFramePresentation | null = null;
@@ -41,7 +39,6 @@ export class SenderSession {
         this.encoderPool = new EncoderPool();
         this.onPreviewFrame = opts.onPreviewFrame ?? null;
         this.onPreviewFramePresentation = opts.onPreviewFramePresentation ?? null;
-        this.onPreviewWriterJam = opts.onPreviewWriterJam ?? null;
         this.setPreviewGenerator(opts.previewGenerator);
     }
 
@@ -57,14 +54,6 @@ export class SenderSession {
 
         this.lastPreviewFramePresentation = presentation;
         this.onPreviewFramePresentation?.(presentation);
-    }
-
-    reportPreviewWriterJam(): void {
-        this.onPreviewWriterJam?.();
-    }
-
-    setPreviewWriterJamHandler(handler: (() => void) | undefined): void {
-        this.onPreviewWriterJam = handler ?? null;
     }
 
     setPreviewGenerator(generator: PreviewGeneratorLike | undefined): void {
