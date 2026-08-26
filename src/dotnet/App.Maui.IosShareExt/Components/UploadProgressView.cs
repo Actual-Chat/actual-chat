@@ -43,7 +43,7 @@ public class UploadProgressView(IosHub hub) : ComputedStateView<UploadProgressVi
         var label = new UILabel {
             TranslatesAutoresizingMaskIntoConstraints = false,
             TextAlignment = UITextAlignment.Center,
-            Text = AppStrings.L.ShareExt_Uploading,
+            Text = L.ShareExt_Uploading,
             Font = UIFont.SystemFontOfSize(16, UIFontWeight.Medium)!,
             TextColor = AppColors.Text01,
         };
@@ -63,7 +63,7 @@ public class UploadProgressView(IosHub hub) : ComputedStateView<UploadProgressVi
         var cancelConfiguration = UIButtonConfiguration.PlainButtonConfiguration;
         cancelConfiguration.ContentInsets = new NSDirectionalEdgeInsets(10, 24, 10, 24);
         cancelConfiguration.BaseForegroundColor = AppColors.Primary;
-        cancelConfiguration.AttributedTitle = new NSAttributedString(AppStrings.L.Common_Cancel,
+        cancelConfiguration.AttributedTitle = new NSAttributedString(L.Common_Cancel,
             new UIStringAttributes { Font = UIFont.SystemFontOfSize(16, UIFontWeight.Medium) });
         var cancelButton = new UIButton {
             TranslatesAutoresizingMaskIntoConstraints = false,
