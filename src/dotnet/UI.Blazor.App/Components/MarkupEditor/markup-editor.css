@@ -1,6 +1,6 @@
 .markup-editor {
     @apply relative;
-    @apply text-xl md:text-base;
+    @apply text-base;
 }
 .markup-editor .editor-content {
     @apply relative;
@@ -64,9 +64,10 @@ body.narrow .markup-editor .editor-content .editor-mention-user {
 /* Placeholder */
 .markup-editor > .c-placeholder {
     @apply absolute;
-    @apply w-full h-5 md:h-6;
+    @apply w-full h-6;
     @apply pr-4;
     @apply truncate;
+    @apply text-base;
     @apply text-03;
 }
 body.narrow .markup-editor > .c-placeholder {
