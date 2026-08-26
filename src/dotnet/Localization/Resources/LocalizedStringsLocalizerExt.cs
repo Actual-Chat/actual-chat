@@ -1080,6 +1080,21 @@ public static class LocalizedStringsLocalizerExt
         public string SearchTabs_Date => l["SearchTabs_Date"].Value;
         public string Notifications_AllCaughtUp => l["Notifications_AllCaughtUp"].Value;
         public string Notifications_DismissAll => l["Notifications_DismissAll"].Value;
+        public string Notification_VoiceChatStarted => l["Notification_VoiceChatStarted"].Value;
+        public string Notification_VoiceChatStartedBy(long count, object arg0)
+            => l.Plural("Notification_VoiceChatStartedBy", count, arg0);
+        public string Notification_NamesAndMore(long count, object arg0, object arg1)
+            => l.Plural("Notification_NamesAndMore", count, arg0, arg1);
+        public string Notification_EarlierMessages(long count, object arg0)
+            => l.Plural("Notification_EarlierMessages", count, arg0);
+        public string Notification_AuthorLine_Format(object arg0, object arg1)
+            => l["Notification_AuthorLine_Format", arg0, arg1].Value;
+        public string Notification_ThreadCreated_Format(object arg0)
+            => l["Notification_ThreadCreated_Format", arg0].Value;
+        public string Notification_AttentionRequested_Format(object arg0)
+            => l["Notification_AttentionRequested_Format", arg0].Value;
+        public string Notification_Reaction_Format(object arg0, object arg1)
+            => l["Notification_Reaction_Format", arg0, arg1].Value;
         public string Search_In => l["Search_In"].Value;
         public string Search_CloseSearch => l["Search_CloseSearch"].Value;
         public string Search_ShowLess => l["Search_ShowLess"].Value;

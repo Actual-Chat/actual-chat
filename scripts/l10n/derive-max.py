@@ -27,7 +27,7 @@ import unicodedata
 
 KINDS = ("Strings", "Messages")
 MAX_SUBTAG = "max"
-RESOURCES = os.path.join("src", "dotnet", "UI.Blazor", "Resources")
+RESOURCES = os.path.join("src", "dotnet", "Localization", "Resources")
 FONT = os.path.join("src", "nodejs", "fonts", "TT-Commons-Pro-Regular.ttf")
 DATE_PREFIX = "Date_"
 DATE_NAME_KEYS = (

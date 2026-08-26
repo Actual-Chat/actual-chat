@@ -673,6 +673,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 
 ## ActualChat.Users.Contracts
 
+- `UserLocalizers` - Resolves the IStringLocalizer for text a given user will read: `UILanguage ?? DetectedUILanguage ?? English`.
+
 - `IAccountsBackend` - Backend service for managing user accounts.
 - `IAvatarsBackend` - Backend service for managing user avatars.
 - `IChatPositionsBackend` - Backend service for tracking user chat positions.
@@ -965,6 +967,23 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ChatCompletionServiceExt` (static class) - Extensions for chat completion service.
 - `OpenAITranscriber` - Transcriber using OpenAI API.
 - `TokenEstimator` - Estimates token counts for prompts.
+
+
+## ActualChat.Localization
+
+Namespace `ActualChat.UI.Blazor.Resources` (the assembly was split out of
+`ActualChat.UI.Blazor`; the namespace stayed). Dependency-free - no UI, no server.
+
+- `StringCatalog` (static class) - The merged Strings + Messages catalog for every shipped UI language, loaded once; resolved against an explicit language.
+- `StringCatalogs` (static class) - Loads the embedded `Strings.<lang>.json` / `Messages.<lang>.json` resources.
+- `LanguageStringLocalizer` - `IStringLocalizer` bound to an explicit `Language`, for server-side code composing text for a user; cached per language.
+- `IHasUILanguage` (interface) - The UI language behind an `IStringLocalizer`; how `Plural` finds the language.
+- `LocalizedStringsLocalizerExt` (static class) - Typed member per catalog key - the only supported way to read one.
+- `PluralLocalizerExt` (static class) - Resolves a key whose value lists `|`-separated plural forms.
+- `DateFormatsLocalizerExt` (static class) - Month/day names and date patterns from the catalog, ICU-free.
+- `MessageIndex` - Reverse index from an English server message back to its catalog key.
+- `MessageLocalizer` - Localizes a runtime message through `MessageIndex`.
+- `Strings` - Resource-anchor type for `IStringLocalizer<Strings>`.
 
 
 ## ActualChat.UI

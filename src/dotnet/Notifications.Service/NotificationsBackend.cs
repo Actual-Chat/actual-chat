@@ -6,10 +6,12 @@ using ActualChat.Live;
 using ActualChat.Notifications.Db;
 using ActualChat.Notifications.Module;
 using ActualChat.Queues;
+using ActualChat.UI.Blazor.Resources;
 using ActualLab.Diagnostics;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.Notifications;
 
@@ -36,6 +38,7 @@ public class NotificationsBackend(IServiceProvider services)
     private Streaming.ILiveSessionsBackend LiveSessionsBackend { get; }
         = services.GetRequiredService<Streaming.ILiveSessionsBackend>();
     private IChatThreadsBackend ChatThreadsBackend { get; } = services.GetRequiredService<IChatThreadsBackend>();
+    private UserLocalizers UserLocalizers { get; } = services.GetRequiredService<UserLocalizers>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
     private IUserPresencesBackend UserPresencesBackend { get; } = services.GetRequiredService<IUserPresencesBackend>();
@@ -490,9 +493,7 @@ public class NotificationsBackend(IServiceProvider services)
         }
         var iconUrl = primaryAuthor is null ? "" : NotificationHelper.GetIconUrl(chat, primaryAuthor, UrlMapper);
 
-        // The Started banner names who opened the voice chat instead of the generic phrase.
-        if (phase == ConversationNotificationPhase.Started && authorNames.Count > 0)
-            text = NotificationHelper.GetVoiceChatStartedText(authorNames);
+        var isStartedBanner = phase == ConversationNotificationPhase.Started && authorNames.Count > 0;
 
         // Started/Titled/Final are live phases; their joined participants already see the call live.
         var isLive = phase != ConversationNotificationPhase.Created;
@@ -508,9 +509,16 @@ public class NotificationsBackend(IServiceProvider services)
             if (activeUserIds.Contains(userId))
                 continue;
 
+            // The Started banner names who opened the voice chat instead of the generic phrase.
+            var userText = text;
+            if (isStartedBanner) {
+                var l = await UserLocalizers.Get(userId, cancellationToken).ConfigureAwait(false);
+                userText = NotificationHelper.GetVoiceChatStartedText(authorNames, l);
+            }
+
             var notification = ConversationNotification.New(userId, conversationId, endEntryLid) with {
                 Title = chat.Title,
-                Text = text,
+                Text = userText,
                 IconUrl = iconUrl,
                 SentAt = now,
             };
@@ -556,7 +564,6 @@ public class NotificationsBackend(IServiceProvider services)
             .Get(chatId, caller, RequestedAuthorKind.Full, cancellationToken)
             .ConfigureAwait(false);
         var iconUrl = callerAuthor is null ? "" : NotificationHelper.GetIconUrl(chat, callerAuthor, UrlMapper);
-        var text = hasVideo ? "Incoming video call" : "Incoming call";
         var now = Clocks.CoarseSystemClock.Now;
         // Unlike a conversation notification, the ring targets the invitees themselves.
         foreach (var inviteeAuthorId in invitees) {
@@ -566,9 +573,10 @@ public class NotificationsBackend(IServiceProvider services)
             if (invitee is not { } a || a.UserId.Value.IsNullOrEmpty())
                 continue;
 
+            var l = await UserLocalizers.Get(a.UserId, cancellationToken).ConfigureAwait(false);
             var notification = CallNotification.New(a.UserId, conversationId, caller, hasVideo) with {
                 Title = chat.Title,
-                Text = text,
+                Text = hasVideo ? l.Call_IncomingVideo : l.Call_Incoming,
                 IconUrl = iconUrl,
                 SentAt = now,
             };
@@ -679,12 +687,13 @@ public class NotificationsBackend(IServiceProvider services)
         // Location Content is a maps-link fallback rather than user text, so it must not be quoted.
         if (!entry.Content.IsNullOrEmpty() && !entry.HasLocation)
             text = $"\"{text}\"";
-        text = $"{reaction.Emoji} to {text}";
         var userIds = new[] { author.UserId };
         var similarityKey = entry.ChatId.Value;
+        // One recipient, so the localizer is resolved here rather than inside the fan-out loop.
+        var l = await UserLocalizers.Get(author.UserId, cancellationToken).ConfigureAwait(false);
         await EnqueueMessageRelatedNotifications(
-            entry.ChatId, entry.Id, reactionAuthor, text, NotificationKind.Reaction,
-            similarityKey, "", userIds, cancellationToken)
+            entry.ChatId, entry.Id, reactionAuthor, l.Notification_Reaction_Format(reaction.Emoji, text),
+            NotificationKind.Reaction, similarityKey, "", userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -709,10 +718,9 @@ public class NotificationsBackend(IServiceProvider services)
         if (creator is null)
             return;
 
-        var text = $"Thread '{chat.Title}' has been created";
         await EnqueueMessageRelatedNotifications(
-                parentChatId, null, creator, text, NotificationKind.Thread, similarityKey, "",
-                userIds, cancellationToken)
+                parentChatId, null, creator, l => l.Notification_ThreadCreated_Format(chat.Title),
+                NotificationKind.Thread, similarityKey, "", userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -1292,11 +1300,44 @@ public class NotificationsBackend(IServiceProvider services)
             _ => (null, 0L),
         };
 
-    private async ValueTask EnqueueMessageRelatedNotifications(
+    // Text that is user content: identical for everyone, so no localizer is resolved at all.
+    // This is the high-volume path - every message reaches every subscriber of the chat.
+    private ValueTask EnqueueMessageRelatedNotifications(
         ChatId chatId,
         ChatEntryId? entryId,
         AuthorFull changeAuthor,
         string content,
+        NotificationKind kind,
+        string similarityKey,
+        string beepGroup,
+        IReadOnlyList<UserId> userIds,
+        CancellationToken cancellationToken)
+        => EnqueueMessageRelatedNotifications(
+            chatId, entryId, changeAuthor, content, null, kind, similarityKey, beepGroup,
+            userIds, cancellationToken);
+
+    // Text that is a sentence: composed once per recipient, in their own language.
+    private ValueTask EnqueueMessageRelatedNotifications(
+        ChatId chatId,
+        ChatEntryId? entryId,
+        AuthorFull changeAuthor,
+        Func<IStringLocalizer, string> contentFactory,
+        NotificationKind kind,
+        string similarityKey,
+        string beepGroup,
+        IReadOnlyList<UserId> userIds,
+        CancellationToken cancellationToken)
+        => EnqueueMessageRelatedNotifications(
+            chatId, entryId, changeAuthor, null, contentFactory, kind, similarityKey, beepGroup,
+            userIds, cancellationToken);
+
+    // Exactly one of sharedContent / contentFactory is non-null - see the two overloads above.
+    private async ValueTask EnqueueMessageRelatedNotifications(
+        ChatId chatId,
+        ChatEntryId? entryId,
+        AuthorFull changeAuthor,
+        string? sharedContent,
+        Func<IStringLocalizer, string>? contentFactory,
         NotificationKind kind,
         string similarityKey,
         string beepGroup,
@@ -1317,6 +1358,12 @@ public class NotificationsBackend(IServiceProvider services)
         var otherUserIds = userIds.Where(userId => userId != changeAuthor.UserId);
 
         foreach (var otherUserId in otherUserIds) {
+            var content = sharedContent;
+            if (content is null) {
+                var l = await UserLocalizers.Get(otherUserId, cancellationToken).ConfigureAwait(false);
+                content = contentFactory!.Invoke(l);
+            }
+
             var entryLid = entryId?.LocalId ?? 0;
             var fullEntryId = entryId ?? ChatEntryId.New(chatId, entryLid);
             Notification notification = kind switch {
@@ -1381,10 +1428,10 @@ public class NotificationsBackend(IServiceProvider services)
 
         var now = Clocks.CoarseSystemClock.Now;
         var similarityKey = now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-        var content = $"{author.Avatar.Name} asks for attention";
         var lastEntryId = ChatEntryId.New(chatId, textEntryLid);
         await EnqueueMessageRelatedNotifications(
-            chatId, lastEntryId, author, content, NotificationKind.Attention,
+            chatId, lastEntryId, author, l => l.Notification_AttentionRequested_Format(author.Avatar.Name),
+            NotificationKind.Attention,
             similarityKey, "", userIds, cancellationToken)
             .ConfigureAwait(false);
     }
@@ -1553,6 +1600,8 @@ public class NotificationsBackend(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
+        // One localizer for the pass: every notification here is this user's.
+        var l = await UserLocalizers.Get(userId, cancellationToken).ConfigureAwait(false);
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         context.Operation.MustStore(false);
@@ -1725,7 +1774,7 @@ public class NotificationsBackend(IServiceProvider services)
                 }
 
                 var shouldBeep = NotificationBeepPolicy.ShouldBeep(related, now);
-                var text = NotificationHelper.ComposeAggregatedText(related);
+                var text = NotificationHelper.ComposeAggregatedText(related, l);
                 var updated = (shouldBeep ? NotificationBeepPolicy.MarkBeeped(related, now) : related)
                     with { Text = text };
                 current = current with { Items = current.Items.WithUpdate(n => n.Id == id, _ => updated) };
@@ -1745,7 +1794,7 @@ public class NotificationsBackend(IServiceProvider services)
                 if (read < start || read >= related.EntryLid)
                     continue; // nothing newly read here (fully-read ones were already dropped above)
 
-                var reanchored = await ReAnchor(related, read + 1, cancellationToken).ConfigureAwait(false);
+                var reanchored = await ReAnchor(related, read + 1, l, cancellationToken).ConfigureAwait(false);
                 current = current with {
                     Items = current.Items.WithUpdate(n => n.Id == related.Id, _ => reanchored),
                 };
@@ -1764,7 +1813,10 @@ public class NotificationsBackend(IServiceProvider services)
     // Partial read: drops now-read messages via ReAnchorAt; when every shown message was read,
     // re-seeds the window from the first still-unread entry so the banner isn't left textless.
     private async Task<ChatEntryRelatedNotification> ReAnchor(
-        ChatEntryRelatedNotification related, long newStart, CancellationToken cancellationToken)
+        ChatEntryRelatedNotification related,
+        long newStart,
+        IStringLocalizer l,
+        CancellationToken cancellationToken)
     {
         var updated = related.ReAnchorAt(newStart);
         if (updated.RecentMessages.IsEmpty) {
@@ -1786,7 +1838,7 @@ public class NotificationsBackend(IServiceProvider services)
                 };
             }
         }
-        return updated with { Text = NotificationHelper.ComposeAggregatedText(updated) };
+        return updated with { Text = NotificationHelper.ComposeAggregatedText(updated, l) };
     }
 
     // Banner grouping key = the client push tag. Uses the shared NotificationExt.GetPushTag so

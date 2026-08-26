@@ -1047,6 +1047,16 @@
   "SearchTabs_Date": "Ngày",
   "Notifications_AllCaughtUp": "Bạn đã xem hết",
   "Notifications_DismissAll": "Bỏ qua tất cả",
+  // Notification text composed on the server. The names, message text and chat titles
+  // spliced into these stay untranslated - they are user content.
+  "Notification_VoiceChatStarted": "Trò chuyện thoại đã bắt đầu",
+  "Notification_VoiceChatStartedBy": "{0} đã bắt đầu trò chuyện thoại",
+  "Notification_NamesAndMore": "{0} và {1} người khác",
+  "Notification_EarlierMessages": "+{0} tin nhắn trước đó",
+  "Notification_AuthorLine_Format": "{0}: {1}",
+  "Notification_ThreadCreated_Format": "Đã tạo chủ đề '{0}'",
+  "Notification_AttentionRequested_Format": "{0} cần mọi người chú ý",
+  "Notification_Reaction_Format": "{0} cho {1}",
   "Search_In": "Trong",
   "Search_CloseSearch": "Đóng tìm kiếm",
   "Search_ShowMore": "Xem thêm",

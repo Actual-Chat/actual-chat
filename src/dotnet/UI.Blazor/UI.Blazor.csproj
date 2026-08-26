@@ -13,16 +13,9 @@
     <PackageReference Include="Serilog" />
   </ItemGroup>
 
-  <!-- Embed JSON translation files as resources in the main assembly.
-       WithCulture=false prevents MSBuild from treating "Strings.es.json" etc. as culture
-       satellite resources (the ".es." in the filename would otherwise trigger that). -->
-  <ItemGroup>
-    <EmbeddedResource Include="Resources\Strings.*.json" LogicalName="%(Filename)%(Extension)" WithCulture="false" />
-    <EmbeddedResource Include="Resources\Messages.*.json" LogicalName="%(Filename)%(Extension)" WithCulture="false" />
-  </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
+    <ProjectReference Include="..\Localization\Localization.csproj" />
     <ProjectReference Include="..\UI\UI.csproj" />
     <ProjectReference Include="..\Users.Templates\Users.Templates.csproj" />
   </ItemGroup>

@@ -827,7 +827,7 @@ cutoff, unions, constructor attributes, and the test helpers that catch shape di
 ### Localization (UI Strings)
 
 **Never hardcode user-visible English text in UI code.** It comes from the
-localized catalog (`src/dotnet/UI.Blazor/Resources/Strings.<lang>.json`) and is
+localized catalog (`src/dotnet/Localization/Resources/Strings.<lang>.json`) and is
 read through the typed members in `LocalizedStringsLocalizerExt.cs`
 (`@L.ChatMenu_Pin`), never through the raw `L["..."]` indexer. Adding a key means
 three edits — the English catalog, every other hand-written catalog, the typed
@@ -981,24 +981,34 @@ public sealed class MyWorker : WorkerBase
 }
 ```
 
-**Example (UI worker):**
+**Example (UI worker running several chains).** `OnRun` returns `Task`. Collect
+the chains into a local named `baseChains`, decorate them **as a set** so no
+chain quietly gets different logging or retry, and run the sequence:
+
 ```csharp
-public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService
+public partial class LanguageUI : UIWorkerBase<AppUIHub>, IComputeService
 {
-    protected override IEnumerable<AsyncChain> OnRun(CancellationToken cancellationToken)
+    protected override Task OnRun(CancellationToken cancellationToken)
     {
+        var baseChains = new[] {
+            AsyncChain.From(SyncUILanguage),
+            AsyncChain.From(SyncDetectedUILanguage),
+        };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
-        return
-            from chain in new[] {
-                AsyncChain.From(SyncState),
-                AsyncChain.From(ProcessUpdates),
-            }
+        return (
+            from chain in baseChains
             select chain
                 .Log(LogLevel.Debug, Log)
-                .RetryForever(retryDelays, Log);
+                .RetryForever(retryDelays, Log)
+            ).RunIsolated(cancellationToken);
     }
 }
 ```
+
+`.Select(...)` instead of the query form is equally common; `ConnectivityUI` uses
+it. A single chain skips `baseChains` and reads
+`AsyncChain.From(X).Log(...).RetryForever(...).RunIsolated(cancellationToken)`.
+`RunIsolated` detaches from the caller's execution context; plain `Run` keeps it.
 
 **Common `RetryDelaySeq` patterns:**
 - `RetryDelaySeq.Exp(0.1, 1)` — fast retries for UI sync (100ms to 1s)

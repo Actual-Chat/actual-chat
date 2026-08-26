@@ -205,12 +205,12 @@ the network. [i18n.md → Where the UI language comes from](../i18n.md#where-the
 is the reference; the reversal was about the user, who reads one language on
 every device they own, not about which surfaces are localized.
 
-**What it changes for §3:** the server can read the recipient's language
-directly, so `DbDevice.Language` is no longer needed for iOS push in general —
-only for recipients left on auto, where nothing but the device knows the locale.
-Suggested resolution there: render from `UILanguage` when set, fall back to the
-registered device language, then English. It also settles §3's open question
-about digest chrome: `UILanguage` is a better answer than
+**What it changed for §3:** the server can read the recipient's language
+directly. The one gap — recipients left on auto, where only the device knows the
+locale — was closed by having the client write that resolution into
+`UserLanguageSettings.DetectedUILanguage` rather than by adding
+`DbDevice.Language`, so the whole chain is account-level. It also settles §3's
+open question about digest chrome: `UILanguage` is a better answer than
 `UserLanguageSettings.Primary`, which stays what it should be, a *spoken*
 language.
 
@@ -225,44 +225,45 @@ obvious answer now.
 
 ## 3. Push notifications and email
 
-Six strings, and none of them are the bulk of a push — author names, message
-text and chat titles are user content and pass through untranslated:
+### Push — composed on the server, in the recipient's language — done (#4125)
 
-- `Notifications.Service/NotificationHelper.cs:32,62` — `"Voice chat started"`,
-  `"{names} started a voice chat"`, `"and {n} more"`,
-  `"+{n} earlier message(s)"`
-- `Notifications.Service/NotificationsBackend.cs:539` — `"Incoming call"` /
-  `"Incoming video call"`
+**This reverses the decision this section used to carry** ("the device renders
+the notification text, not the server"), and the reversal rests on a factual
+correction. That decision's table said Android already composed client-side. It
+does not: `FirebaseMessagingClient.cs` puts the server-composed `Title`/`Body`
+into `renderData`, and `NotificationData.cs` renders exactly those. Web
+(`service-worker.ts`) and iOS (`Aps.Alert`) do the same. All three consume server
+text today, so composing per recipient on the server is **one** change instead of
+three — and it also fixes the in-app notification list, which renders
+`Notification.Text` verbatim and which client-side push rendering would never
+have reached.
 
-`"Incoming call"` also exists in `IncomingCallModal.razor:21` and again as an
-English fallback in `service-worker.ts:169,172` — one shared key, not three.
+What shipped:
 
-### Push — render client-side wherever the platform allows
+- `ActualChat.Localization` — the catalog extracted out of `UI.Blazor` into a
+  dependency-free assembly, plus `LanguageStringLocalizer`, an `IStringLocalizer`
+  bound to an explicit language rather than to the Blazor circuit.
+- `UserLanguageSettings.DetectedUILanguage` — what "follow the device" currently
+  resolves to, written by the client. `UILanguage` is `null` for everyone who
+  never opened the picker, and nothing server-side can resolve that on its own.
+- `NotificationsBackend` composes `Notification.Text` per recipient, resolving
+  `UILanguage ?? DetectedUILanguage ?? English` through `ServerKvasBackend`,
+  beside the notification mode it already reads per recipient.
 
-**Decision: the device renders the notification text, not the server.** The
-device already knows its own language (§2), so the payload should carry
-structured fields and let each platform compose. Where a platform can't, the
-device's language rides along with its registration — `DbDevice` gains a
-`Language` column, `Notifications_RegisterDevice` a matching field, and the app
-re-registers when the account's `UILanguage` changes.
+Consequences worth recording:
 
-| Platform | Today | Work |
-|---|---|---|
-| Android | **already client-side** — `Notification = default` is deliberate (`FirebaseMessagingClient.cs:111-117`); `FirebaseMessagingService` composes via `NotificationHelper.ShowChatNotification` | replace the pre-composed `Body` key with structured ones |
-| Web | SW is ours and already calls `showNotification` itself (`service-worker.ts:211`, `:169` for calls), passing the server's title/body through | compose locally; needs the catalog in the worker and the UI language reachable from it (IndexedDB/Cache, written by the app) |
-| iOS | system renders `Aps.Alert{Title,Body}` while the app isn't running | **needs a Notification Service Extension** — the server half is ready (`MutableContent = true` is already set), the target doesn't exist |
-
-**The iOS NSE comes first, in its own PR.** It is the only genuinely new piece
-of machinery here, and it decides the shape of the rest: a .NET appex is
-constrained (separate process, ~30s budget, ~24 MB cap — compare what
-`App.Maui.IosShareExt` cost to get startup under a second), while a native
-Swift NSE with `.strings` is far lighter but duplicates the catalog outside the
-.NET pipeline and therefore outside `AppLocalizationTest`'s guarantees. Settle
-that trade-off against a real target before touching the payload format.
-
-Until the NSE exists, iOS falls back to server-rendered text keyed on the
-device's registered `Language` — which is why the `DbDevice` column is worth
-having regardless of how far client-side rendering gets.
+- **The iOS Notification Service Extension is no longer a prerequisite.** It
+  remains worth having for other reasons — rich attachments, on-device
+  decoration — but it is now an independent item, not a gate on localized push.
+- **`DbDevice.Language` was not added and is not needed.** `DetectedUILanguage`
+  covers the auto case for the whole account, and a per-device language would
+  fight the single `Notification.Text` that `SendMessage` multicasts to all of a
+  user's devices — and disagree with the in-app text besides.
+- **Text is composed at fan-out and persisted per user**, so a notification
+  composed before a language change stays in the old language. Re-rendering
+  history would mean storing structured payloads for every notification kind.
+- `Call_Incoming` / `Call_IncomingVideo` are shared with the UI rather than
+  duplicated, and the name-joining reuses `Conversation_TwoNames_Format`.
 
 ### Email — no device, so language comes from the content
 
@@ -277,9 +278,15 @@ What is not localized is the template chrome — `Users.Templates/*.razor`
 button labels. **Open:** a digest spans chats with different dominant languages,
 so the chrome needs one value the per-chat rule can't supply. Candidates are
 `UserLanguageSettings.Primary` (already computed as `userLanguage` at
-`EmailsBackend.cs:27,79`, and the only option that also covers
-`EmailVerification`, which has no discussion to derive from), the dominant
-language across the whole digest, or leaving the chrome English.
+`EmailsBackend.cs:27,79`), the dominant language across the whole digest, or
+leaving the chrome English.
+
+**#4125 answered this.** The chrome language is
+`UILanguage ?? DetectedUILanguage ?? English`, the same resolution the
+notification path uses, and `LanguageStringLocalizer` is the mechanism — no new
+machinery, and it covers `EmailVerification`, which has no discussion to derive
+a language from. `UserLanguageSettings.Primary` is not a candidate: it is a
+*spoken* language. What is left here is the template work itself.
 
 ---
 
@@ -290,7 +297,7 @@ Same principle as §3: these render on the device, which knows its own locale.
 The old framing here — "separate mechanisms, no catalog access" — holds for
 only about a third of the list. The catalog is a **static**
 `Dictionary<Language, Dictionary<string, string>>` built from resources embedded
-in `UI.Blazor` (`AppStringLocalizer.Translations`, and
+in `ActualChat.Localization` (`StringCatalog.Translations`, and
 `StringCatalogs.Assembly => typeof(Strings).Assembly`), so any code in a process
 that loads that assembly can already read it:
 
@@ -298,7 +305,7 @@ that loads that assembly can already read it:
 |---|---|---|---|---|
 | Android dialogs | 9 strings, 3 files | main app | **yes** | plain C#; no `strings.xml` needed |
 | Local notifications / Live Activity | ~6 strings | main app | **yes** | plain C# in `App.Maui` |
-| iOS share extension (`App.Maui.IosShareExt/Components/*`) | ~18 strings | separate appex | **no** — refs `Api.Contracts` + `Maui` only | undecided, see below |
+| iOS share extension (`App.Maui.IosShareExt/Components/*`) | ~18 strings | separate appex | **yes, since #4125** — it can reference `ActualChat.Localization` | needs only the language, see below |
 | `Info.plist` usage descriptions | 6 iOS + 5 MacCatalyst | OS reads them, app not running | **no** | `InfoPlist.strings` per language — genuinely native |
 
 Android dialog sites: `AndroidWebChromeClient.cs:267-270`,
@@ -314,20 +321,19 @@ So for the in-process two-thirds the strings are not the blocker — the
 circuit, while this code runs on the native side (foreground service, FCM
 receiver, permission dialogs, Live Activity), where no such scope exists.
 
-### Deferred to the NSE PR — do not decide here
+### One question left, one answered
 
-Two questions are open, and they are the same question §3 already defers,
-because the answer to the first is what makes a .NET NSE viable or not:
+The catalog question that used to gate this section — and §3 with it — was
+answered by #4125. What remains is the language:
 
-1. **Where the catalog lives.** Extensions can't reference `UI.Blazor` — pulling
-   the whole Blazor UI assembly into an appex is the wrong dependency for a
-   target fighting startup time and bundle size (see what #4132 spent its effort
-   on). Options: extract `Strings`, `StringCatalogs` and the 28 JSON resources
-   into a small dependency-free assembly (`ActualChat.Core`, or a new
-   `ActualChat.Localization`) that both `UI.Blazor` and the extensions
-   reference; give the extensions their own `.strings` and accept a second
-   translation source outside `AppLocalizationTest`'s key and placeholder
-   guarantees; or leave the extensions English.
+1. **Where the catalog lives — answered by #4125.** `ActualChat.Localization`
+   exists: dependency-free (`Api` + `Microsoft.Extensions.Localization`), it owns
+   `Strings`, `StringCatalogs` and the embedded JSON, and the 2.2 MB of catalogs
+   left `UI.Blazor` rather than being duplicated. An extension can reference it
+   without pulling in the Blazor UI assembly — the dependency #4132 and #4214
+   spent their effort avoiding. Note the assembly name and the namespace differ:
+   the namespace stayed `ActualChat.UI.Blazor.Resources` so the move touched no
+   call site.
 2. **How native-side code reads the current UI language.** Options: have
    `LanguageUI` publish it to a process-wide accessor on change (one owner,
    synchronous reads); read `LocalSettings` at each call site; or pass it down
@@ -389,6 +395,26 @@ run on its own schedule, or not at all.
 ---
 
 ## 6. Smaller items — deferred, but the approach is settled
+
+### The catalog loads every language, on every host
+
+`StringCatalog` builds its `Language -> keys` map eagerly, so the first string
+lookup parses **all 46 embedded resources — 2.14 MB, 32,338 entries across 23
+languages**. A client reads exactly two of them: the selected language and the
+English fallback, 1,406 entries. It is on the startup path, since the field is a
+`static readonly` initializer and the first lookup happens during the first
+render.
+
+This predates the catalog's move out of `UI.Blazor` (`AppStringLocalizer` was
+eager too), so it is a standing cost on every WASM and MAUI launch rather than a
+regression. The server wants laziness for the same reason, just less visibly: it
+needs the languages its users actually have, discovered at runtime.
+
+**Agreed approach:** a `ConcurrentDictionary<Language, Dictionary<string, string>?>`
+filled per language on first use, caching `null` for a language that ships no
+catalog. Per-lookup cost is unchanged — one hash lookup either way — and the
+English fallback is just a second `Get`. Its own PR: it is a runtime change with
+nothing to do with any one feature.
 
 The old framing, "TypeScript with no localization path", is wrong for the video
 recorder: its text already crosses into C#. `describeStartError`'s result travels
@@ -488,20 +514,15 @@ why #3721 dropped the keys instead of relocating them. Now:
 ---
 
 ## Suggested order
-1. The iOS Notification Service Extension, on its own — it is the one new piece
-   of machinery, and whether it is a .NET appex or a native Swift one decides
-   the payload format §3 can adopt. Do it before changing any payload.
-2. §3's push track — structured payload, Android and web composing locally,
-   `DbDevice.Language` as the fallback for anything that still renders
-   server-side.
-3. §3's email track — settle the chrome language, then the 5 templates.
-4. §4's `Info.plist` strings — settled and independent, doable any time.
-5. §4's in-process subset (Android dialogs, local notifications, Live Activity)
+1. §3's email track — the chrome language is settled (#4125); what is left is
+   the 5 templates, using the same `LanguageStringLocalizer`.
+2. §4's `Info.plist` strings — settled and independent, doable any time.
+3. §4's in-process subset (Android dialogs, local notifications, Live Activity)
    — needs only a native-side language accessor, no new mechanism.
-6. §4's iOS share extension — together with, or after, the NSE: both need the
-   catalog question answered the same way.
-7. §6's video error codes — the branch `wip/l10n-video-error-codes` is
+4. §4's iOS share extension — the catalog question is answered; it needs the
+   language, which is §4's remaining open item.
+5. §6's video error codes — the branch `wip/l10n-video-error-codes` is
    ready to cherry-pick; then web-auth's popup alert.
-8. §5, independently and on its own schedule — the marketing half needs SEO
+6. §5, independently and on its own schedule — the marketing half needs SEO
    routing before translation pays off, and the legal half needs a liability
    decision. Neither holds up anything else.

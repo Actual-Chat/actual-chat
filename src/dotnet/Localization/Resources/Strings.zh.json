@@ -1047,6 +1047,16 @@
   "SearchTabs_Date": "日期",
   "Notifications_AllCaughtUp": "你已全部看完",
   "Notifications_DismissAll": "全部关闭",
+  // Notification text composed on the server. The names, message text and chat titles
+  // spliced into these stay untranslated - they are user content.
+  "Notification_VoiceChatStarted": "语音聊天已开始",
+  "Notification_VoiceChatStartedBy": "{0} 发起了语音聊天",
+  "Notification_NamesAndMore": "{0} 和其他 {1} 人",
+  "Notification_EarlierMessages": "+{0} 条更早的消息",
+  "Notification_AuthorLine_Format": "{0}：{1}",
+  "Notification_ThreadCreated_Format": "话题“{0}”已创建",
+  "Notification_AttentionRequested_Format": "{0} 请求大家注意",
+  "Notification_Reaction_Format": "{0} 回应 {1}",
   "Search_In": "位于",
   "Search_CloseSearch": "关闭搜索",
   "Search_ShowMore": "显示更多",

@@ -100,11 +100,17 @@ public class LanguageUI : UIWorkerBase<AppUIHub>, IComputeService, IDisposable
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
+        var baseChains = new[] {
+            AsyncChain.From(SyncUILanguage),
+            AsyncChain.From(SyncDetectedUILanguage),
+        };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
-        return AsyncChain.From(SyncUILanguage)
-            .Log(LogLevel.Debug, Log)
-            .RetryForever(retryDelays, Log)
-            .RunIsolated(cancellationToken);
+        return (
+            from chain in baseChains
+            select chain
+                .Log(LogLevel.Debug, Log)
+                .RetryForever(retryDelays, Log)
+            ).RunIsolated(cancellationToken);
     }
 
     // Private methods
@@ -115,6 +121,19 @@ public class LanguageUI : UIWorkerBase<AppUIHub>, IComputeService, IDisposable
         var changes = Settings.Computed.Changes(cancellationToken);
         await foreach (var (settings, _) in changes.ConfigureAwait(false))
             await SetStoredLanguage(settings.UILanguage).ConfigureAwait(false);
+    }
+
+    private async Task SyncDetectedUILanguage(CancellationToken cancellationToken)
+    {
+        await WhenReady.ConfigureAwait(false);
+        await BrowserInfo.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+        // Not LocalizationUI.Language: that folds in the non-persistent ?ui-language= override.
+        var detected = Languages.DetectUILanguage(BrowserInfo.ClientLanguages);
+        // The guard stops the loop: UpdateSettings fires the Changes SyncUILanguage listens to.
+        if (Settings.Value.DetectedUILanguage == detected)
+            return;
+
+        await UpdateSettings(x => x with { DetectedUILanguage = detected }).ConfigureAwait(false);
     }
 
     private async Task SetStoredLanguage(Language? language)

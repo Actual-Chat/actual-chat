@@ -1047,6 +1047,16 @@
   "SearchTabs_Date": "Datum",
   "Notifications_AllCaughtUp": "Sve ste pročitali",
   "Notifications_DismissAll": "Odbaci sve",
+  // Notification text composed on the server. The names, message text and chat titles
+  // spliced into these stay untranslated - they are user content.
+  "Notification_VoiceChatStarted": "Glasovni chat je počeo",
+  "Notification_VoiceChatStartedBy": "{0} pokreće glasovni chat|{0} pokreću glasovni chat|{0} pokreću glasovni chat",
+  "Notification_NamesAndMore": "{0} i još {1}",
+  "Notification_EarlierMessages": "+{0} ranija poruka|+{0} ranije poruke|+{0} ranijih poruka",
+  "Notification_AuthorLine_Format": "{0}: {1}",
+  "Notification_ThreadCreated_Format": "Nit „{0}“ je kreirana",
+  "Notification_AttentionRequested_Format": "{0} traži pažnju",
+  "Notification_Reaction_Format": "{0} na {1}",
   "Search_In": "U",
   "Search_CloseSearch": "Zatvori pretragu",
   "Search_ShowMore": "Prikaži više",

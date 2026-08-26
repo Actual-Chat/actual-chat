@@ -1047,6 +1047,16 @@
   "SearchTabs_Date": "Datum",
   "Notifications_AllCaughtUp": "Du bist auf dem neuesten Stand",
   "Notifications_DismissAll": "Alle ausblenden",
+  // Notification text composed on the server. The names, message text and chat titles
+  // spliced into these stay untranslated - they are user content.
+  "Notification_VoiceChatStarted": "Sprachchat gestartet",
+  "Notification_VoiceChatStartedBy": "{0} hat einen Sprachchat gestartet|{0} haben einen Sprachchat gestartet",
+  "Notification_NamesAndMore": "{0} und {1} weiterer|{0} und {1} weitere",
+  "Notification_EarlierMessages": "+{0} frühere Nachricht|+{0} frühere Nachrichten",
+  "Notification_AuthorLine_Format": "{0}: {1}",
+  "Notification_ThreadCreated_Format": "Thread '{0}' wurde erstellt",
+  "Notification_AttentionRequested_Format": "{0} bittet um Aufmerksamkeit",
+  "Notification_Reaction_Format": "{0} auf {1}",
   "Search_In": "In",
   "Search_CloseSearch": "Suche schließen",
   "Search_ShowMore": "Mehr anzeigen",

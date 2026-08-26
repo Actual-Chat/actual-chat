@@ -17,6 +17,9 @@ public static class PluralLocalizerExt
     public static string Plural(this IStringLocalizer l, string key, long count, object arg)
         => string.Format(GetForm(l, key, count), arg);
 
+    public static string Plural(this IStringLocalizer l, string key, long count, object arg0, object arg1)
+        => string.Format(GetForm(l, key, count), arg0, arg1);
+
     // Private methods
 
     private static string GetForm(IStringLocalizer l, string key, long count)

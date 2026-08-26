@@ -1047,6 +1047,16 @@
   "SearchTabs_Date": "Data",
   "Notifications_AllCaughtUp": "Wszystko przeczytane",
   "Notifications_DismissAll": "Odrzuć wszystkie",
+  // Notification text composed on the server. The names, message text and chat titles
+  // spliced into these stay untranslated - they are user content.
+  "Notification_VoiceChatStarted": "Czat głosowy rozpoczęty",
+  "Notification_VoiceChatStartedBy": "{0} rozpoczyna czat głosowy|{0} rozpoczynają czat głosowy|{0} rozpoczynają czat głosowy",
+  "Notification_NamesAndMore": "{0} i {1} inny|{0} i {1} inne|{0} i {1} innych",
+  "Notification_EarlierMessages": "+{0} wcześniejsza wiadomość|+{0} wcześniejsze wiadomości|+{0} wcześniejszych wiadomości",
+  "Notification_AuthorLine_Format": "{0}: {1}",
+  "Notification_ThreadCreated_Format": "Utworzono wątek „{0}”",
+  "Notification_AttentionRequested_Format": "{0} prosi o uwagę",
+  "Notification_Reaction_Format": "{0} na {1}",
   "Search_In": "W",
   "Search_CloseSearch": "Zamknij wyszukiwanie",
   "Search_ShowMore": "Pokaż więcej",

@@ -1047,6 +1047,16 @@
   "SearchTabs_Date": "日付",
   "Notifications_AllCaughtUp": "すべて確認済みです",
   "Notifications_DismissAll": "すべて閉じる",
+  // Notification text composed on the server. The names, message text and chat titles
+  // spliced into these stay untranslated - they are user content.
+  "Notification_VoiceChatStarted": "音声チャットが開始されました",
+  "Notification_VoiceChatStartedBy": "{0} さんが音声チャットを開始しました",
+  "Notification_NamesAndMore": "{0}、他 {1} 人",
+  "Notification_EarlierMessages": "+{0} 件の以前のメッセージ",
+  "Notification_AuthorLine_Format": "{0}：{1}",
+  "Notification_ThreadCreated_Format": "スレッド「{0}」が作成されました",
+  "Notification_AttentionRequested_Format": "{0} さんが注目を求めています",
+  "Notification_Reaction_Format": "{1} に {0}",
   "Search_In": "場所:",
   "Search_CloseSearch": "検索を閉じる",
   "Search_ShowMore": "もっと見る",

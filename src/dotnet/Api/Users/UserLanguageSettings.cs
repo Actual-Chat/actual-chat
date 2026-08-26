@@ -23,6 +23,10 @@ public sealed partial record UserLanguageSettings : StoredSettings, IHasOrigin, 
     public string Origin { get; init; } = "";
     [DataMember, MemoryPackOrder(4), Key(4)]
     public Language? UILanguage { get; init; }
+    // What "follow the device" resolved to, written by the client; server text falls back to it.
+    // A ?ui-language= override never lands here - it is deliberately non-persistent.
+    [DataMember, MemoryPackOrder(5), Key(5)]
+    public Language? DetectedUILanguage { get; init; }
 
     public List<Language> ListSpoken()
     {
