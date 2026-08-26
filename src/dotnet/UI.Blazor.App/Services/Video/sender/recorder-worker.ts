@@ -133,7 +133,9 @@ function disposeWorkerPreviewGenerator(s: WorkerState): void {
 function installWorkerPreviewGenerator(s: WorkerState): void {
     const generator = createWorkerVideoTrackGenerator();
     s.workerPreviewGenerator = generator;
-    s.session.setPreviewGenerator(generator ? { writable: generator.writable } : undefined);
+    // Writable stays closed until setPreviewAttached(true); until then the sink
+    // sees no writer and the generator is never written to unread.
+    s.session.setPreviewGenerator(undefined);
     s.deps.reportPreviewTrack?.(generator?.track ?? null);
 }
 
@@ -411,6 +413,29 @@ export const recorderWorkerImpl: RecorderWorker = {
         const s = requireState();
         s.recorder.setTargetFps(fps);
         await Promise.resolve();
+    },
+
+    getPreviewTrace(): Promise<import('./recorder-worker-contract').PreviewTrace> {
+        const s = requireState();
+        return Promise.resolve({ ...s.session.previewTrace });
+    },
+
+    setPreviewAttached(isAttached: boolean): Promise<void> {
+        const s = requireState();
+        const generator = s.workerPreviewGenerator;
+        s.session.setPreviewGenerator(
+            isAttached && generator ? { writable: generator.writable } : undefined);
+        return Promise.resolve();
+    },
+
+    rebuildPreviewGenerator(): Promise<void> {
+        const s = requireState();
+        if (!s.workerPreviewGenerator)
+            return Promise.resolve();
+
+        disposeWorkerPreviewGenerator(s);
+        installWorkerPreviewGenerator(s);
+        return Promise.resolve();
     },
 
     getStats(): Promise<RecorderStats> {

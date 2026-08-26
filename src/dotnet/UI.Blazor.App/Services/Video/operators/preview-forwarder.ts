@@ -1,11 +1,16 @@
 import { getLogs } from 'logging';
 import type { RotationQuarter } from '../orientation/quantize';
-import type { PreviewFramePresentation } from '../sender/recorder-worker-contract';
+import type { PreviewFramePresentation, PreviewTrace } from '../sender/recorder-worker-contract';
 import { HAS_VF_ROTATION_INIT, wrapWithRotation } from '../video-frame-caps';
 
 const { warnLog } = getLogs('VideoPipeline');
 // Log first, then 1-in-N — prevents flooding when a device-level failure drops every clone.
 const LogEveryN = 30;
+// Per-stage preview tally. Off in production - it costs an RPC per second and a
+// counter bump per frame. Flip to true to diagnose a frozen or blank preview;
+// see docs/ui/components.md.
+export const IS_PREVIEW_TRACE_ENABLED = false;
+export const isPreviewTraceEnabled = (): boolean => IS_PREVIEW_TRACE_ENABLED;
 
 export interface PreviewSinkOptions {
     // iOS Safari's <video> auto-orients a generated (VTG) track to upright on
@@ -18,6 +23,8 @@ export interface PreviewSinkOptions {
     getWriter: () => WritableStreamDefaultWriter<VideoFrame> | null;
     reportFrame?: (frame: VideoFrame) => void | Promise<void>;
     reportPresentation?: (presentation: PreviewFramePresentation) => void;
+    // Per-stage tally; main pulls it via getPreviewTrace().
+    trace?: PreviewTrace;
 }
 
 // The self-preview tap. `forward` takes a clone of the normalized ceiling
@@ -47,11 +54,14 @@ export interface PreviewSink {
 }
 
 export function createPreviewSink(opts: PreviewSinkOptions): PreviewSink {
-    const { isIos, getWriter, reportFrame, reportPresentation } = opts;
+    const { isIos, getWriter, reportFrame, reportPresentation, trace } = opts;
     let failures = 0;
     let lastReportedRotation: number | null = null;
     const reportFailure = (where: string, e: unknown): void => {
         failures++;
+        if (trace)
+            trace.lastError = where + ': ' + (e instanceof Error ? e.message : String(e));
+
         if (failures === 1 || failures % LogEveryN === 0)
             warnLog?.log(`previewSink: ${where} failed (#${failures}):`, e);
     };
@@ -96,10 +106,28 @@ export function createPreviewSink(opts: PreviewSinkOptions): PreviewSink {
         reportPresentationOnce(displayRotation);
 
         if (writer) {
+            if (trace)
+                trace.writeCalled++;
+
             writer.write(frame)
-                .catch((e: unknown) => reportFailure('writer.write', e))
+                .then(() => {
+                    if (!trace)
+                        return;
+
+                    trace.writeResolved++;
+                    trace.lastWriteResolvedAtMs = performance.now();
+                })
+                .catch((e: unknown) => {
+                    if (trace)
+                        trace.writeRejected++;
+
+                    reportFailure('writer.write', e);
+                })
                 .finally(() => closeFrame(frame));
         } else if (reportFrame) {
+            if (trace)
+                trace.reported++;
+
             const result = reportFrame(frame);
             if (result && typeof result.then === 'function') {
                 result
@@ -121,21 +149,37 @@ export function createPreviewSink(opts: PreviewSinkOptions): PreviewSink {
                 return;
             }
 
-            if (!writer && !reportFrame)
+            if (trace) {
+                trace.forwarded++;
+                trace.lastForwardedAtMs = performance.now();
+                trace.lastDesiredSize = writer ? writer.desiredSize : null;
+            }
+            if (!writer && !reportFrame) {
+                if (trace)
+                    trace.noConsumer++;
+
                 return;
+            }
 
 
             // Writer back-pressure: drop instead of buffer. The downstream
             // <video> element drains MSTG at its render cadence; if desiredSize
             // is exhausted, the renderer is stalled and queueing here only
             // delays the same drop while holding a GPU plane.
-            if (writer && writer.desiredSize !== null && writer.desiredSize <= 0)
+            if (writer && writer.desiredSize !== null && writer.desiredSize <= 0) {
+                if (trace)
+                    trace.refused++;
+
                 return;
+            }
 
             let clone: VideoFrame;
             try {
                 clone = source.clone();
             } catch (e) {
+                if (trace)
+                    trace.cloneFailed++;
+
                 reportFailure('frame clone', e);
                 return;
             }

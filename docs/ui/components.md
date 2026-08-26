@@ -217,6 +217,42 @@ To find the rest of them, cross-reference two lists: Razor elements carrying bot
 `@ref` and a `@`-interpolated `class`, and TS lines writing `classList`/`className`
 on `this.element` / `this.ref` / `parentElement` / `closest()`.
 
+## A promoted `<video>` layer can decode without painting
+
+On iOS WebKit a `<video>` can hold a healthy, advancing stream and still paint
+nothing. The self-preview hit this after a camera switch: the element was
+`display: block`, `visibility: visible`, `paused: false`, `readyState: 4`, at the
+right size and on the right track, and `drawImage(videoEl)` returned **fresh
+pixels every frame** — while the screen showed an empty rectangle.
+
+The trigger is compositing, not media. `.video-track-player` sets
+`contain: strict` and the surfaces inside it carry `will-change: transform`
+(plus `scaleX(-1)` when the camera is mirrored). Re-attaching a track to a
+promoted layer inside a strictly-contained parent can leave WebKit with a
+GraphicsLayer it never repaints. Both properties are load-bearing — see the
+`contain` / `will-change` notes in `video-panel.css` — so the layer is nudged
+instead: `forceRecomposite()` in `recorder-preview-view.ts` toggles `display`
+once on `loadeddata`, which forces a fresh compositing pass.
+
+**How to tell this apart from a frame-delivery failure**, because they look
+identical on screen:
+
+- `<video>.currentTime` is **useless** — it advances with the wall clock on a
+  MediaStream-backed element whether or not frames arrive. A fully frozen
+  preview reported 14.992 s of progress over 14.993 s.
+- `requestVideoFrameCallback` is also useless on its own: `presentedFrames`
+  keeps incrementing on a frozen element and `mediaTime` sits at 0.
+- **Hash the pixels.** Draw the element into a small offscreen canvas, hash the
+  `ImageData`, and compare samples seconds apart. Changing hash + blank screen
+  ⇒ compositing. Constant hash ⇒ delivery.
+
+If it is delivery, the sender-side tally is already there: turn on
+`logLevels.override('*Video*', 1)` and read `previewTrace` (forwarded / refused /
+written / resolved / inFlight) and `recorderStats` (captured / offered / encoded
+/ shipped) on the main thread. The preview tap runs in a worker whose console the
+inspector cannot reach, so `previewTrace` is pulled over RPC — never add
+diagnostic `console` output in that realm expecting to read it.
+
 ## No Inline Tailwind in Razor
 
 Do NOT write Tailwind utility classes directly in `.razor` markup. Instead, assign a CSS class and use `@apply` in the CSS file.

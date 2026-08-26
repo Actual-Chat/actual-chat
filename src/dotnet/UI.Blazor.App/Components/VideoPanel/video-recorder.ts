@@ -65,10 +65,13 @@ import {
     type LayerConfig,
 } from './layer-ladder';
 import { computeCaptureFps, computeTargetFps } from './fps-policy';
+import { isPreviewCanvasPreferred } from '../../Services/Video/preview-backend-override';
+import { isPreviewTraceEnabled } from '../../Services/Video/operators/preview-forwarder';
 import { getCaptureFpsOverride } from '../../Services/Video/capture-fps-override';
 import { MediaCapture } from '../../Services/Video/services/media-capture';
 import {
     type PreviewFramePresentation,
+    type PreviewTrace,
     type RecorderWorker,
     type RecorderWorkerCallbacks,
     type WireSafeRecorderConfig,
@@ -553,6 +556,7 @@ export class VideoRecorder {
     private _traceKillRegistration: Disposable | null = null;
     private recorderHealthTimer: number | null = null;
     private recorderHealthInFlight = false;
+    private lastPreviewTrace: PreviewTrace | null = null;
     private lastRecorderHealthStats: RecorderStats | null = null;
     private lastRecorderHealthWasPeerConnected = false;
 
@@ -780,6 +784,29 @@ export class VideoRecorder {
      */
     public toggleBlur(enabled: boolean): void {
         this.setIsBlurEnabled(enabled);
+    }
+
+    // Called by the preview view once the generated track is on a <video>.
+    // Until then the worker keeps the writable closed - see setPreviewAttached.
+    public notifyPreviewAttached(isAttached: boolean): void {
+        void this.worker?.setPreviewAttached(isAttached).catch(() => undefined);
+    }
+
+    // Rung 2 of the preview stall ladder: throw the generator away and publish a
+    // fresh track, which re-attaches the view through the usual listener path.
+    public rebuildPreviewGenerator(): void {
+        void this.worker?.rebuildPreviewGenerator().catch(() => undefined);
+    }
+
+    // Rung 3: give up on the generated track for the rest of the session and
+    // paint the preview from frames posted to main instead.
+    public forcePreviewCanvasFallback(): void {
+        warnLog?.log('forcePreviewCanvasFallback: generated preview track kept stalling');
+        void this.worker?.setPreviewAttached(false).catch(() => undefined);
+        this.cleanupGeneratedPreviewTrack();
+        this.previewCanvasFallback = true;
+        this.previewTrack = null;
+        this.notifyPreviewTrackChanged();
     }
 
     public getPreviewTrack(): MediaStreamTrack | null {
@@ -2177,7 +2204,7 @@ export class VideoRecorder {
         // No main-side generator (Safari): ask the worker to build one in its
         // realm and ship the track back via onPreviewTrackReady. Leave the
         // preview pending (don't commit to canvas yet) until that arrives.
-        const createPreviewInWorker = !previewGenerator;
+        const createPreviewInWorker = !previewGenerator && !isPreviewCanvasPreferred();
         if (previewGenerator) {
             this.setPreviewFramePresentation(null);
             this.previewCanvasFallback = false;
@@ -2186,6 +2213,13 @@ export class VideoRecorder {
                 this.notifyPreviewTrackChanged();
         } else {
             this.setPreviewFramePresentation(null);
+            // Nothing will report a track when the worker isn't building one, so
+            // commit to canvas here or the view never attaches at all.
+            if (!createPreviewInWorker) {
+                this.previewCanvasFallback = true;
+                this.previewTrack = null;
+                this.notifyPreviewTrackChanged();
+            }
         }
 
         void this.worker.start(
@@ -2641,6 +2675,41 @@ export class VideoRecorder {
         this.lastRecorderHealthWasPeerConnected = false;
     }
 
+    // The preview tap lives in the worker, whose console the inspector cannot
+    // reach — pulling the tally is the only way to see where frames stop.
+    // Deltas, so a stalled stage reads 0 while the ones before it keep moving.
+    private async reportPreviewTrace(): Promise<void> {
+        const worker = this.worker;
+        if (!worker)
+            return;
+
+        let trace: PreviewTrace;
+        try {
+            trace = await worker.getPreviewTrace();
+        } catch {
+            return;
+        }
+
+        const previous = this.lastPreviewTrace;
+        this.lastPreviewTrace = trace;
+        if (!previous)
+            return;
+
+        const d = (key: keyof PreviewTrace): number =>
+            Math.max(0, (trace[key] as number) - (previous[key] as number));
+        const sinceWriteMs = trace.lastWriteResolvedAtMs > 0
+            ? Math.round(trace.lastForwardedAtMs - trace.lastWriteResolvedAtMs)
+            : -1;
+        debugLog?.log(
+            `previewTrace: forwarded=${d('forwarded')} noConsumer=${d('noConsumer')} `
+            + `refused=${d('refused')} cloneFailed=${d('cloneFailed')} `
+            + `written=${d('writeCalled')} resolved=${d('writeResolved')} `
+            + `rejected=${d('writeRejected')} reported=${d('reported')} `
+            + `inFlight=${trace.writeCalled - trace.writeResolved - trace.writeRejected} `
+            + `desiredSize=${trace.lastDesiredSize} sinceResolvedMs=${sinceWriteMs}`
+            + (trace.lastError ? ` lastError=${trace.lastError}` : ''));
+    }
+
     private async reportRecorderStats(): Promise<void> {
         if (this.recorderHealthInFlight || !this.worker)
             return;
@@ -2671,6 +2740,8 @@ export class VideoRecorder {
                         + `encoded=${perSec(stats.bundlesEncoded, previous.bundlesEncoded)}/s `
                         + `shipped=${Math.round(this.bundlesPerSec)}/s `
                         + `targetFps=${this.lastTargetFps}`);
+                    if (debugLog && isPreviewTraceEnabled())
+                        void this.reportPreviewTrace();
                     this.bundlesPerSec =
                         Math.max(0, stats.bundlesShipped - previous.bundlesShipped) * scale;
                     this.bytesPerSec =
@@ -2814,6 +2885,10 @@ export class VideoRecorder {
 
     private createGeneratedPreviewTrack(): PreviewTrackGenerator | null {
         this.cleanupGeneratedPreviewTrack();
+        if (isPreviewCanvasPreferred()) {
+            debugLog?.log('createGeneratedPreviewTrack: canvas painter preferred');
+            return null;
+        }
         if (pickRenderBackendKind() !== 'mstg') {
             debugLog?.log('createGeneratedPreviewTrack: canvas preview selected');
             return null;
