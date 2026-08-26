@@ -1,5 +1,4 @@
 using ActualChat.App.Maui.IosShareExt.Services;
-using ActualChat.App.Maui.IosShareExt.UI;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 using ActualChat.Localization;
 using ActualChat.Maui;
@@ -49,7 +48,7 @@ public class SignInView(IosHub hub) : ComputedStateView<SignInView.Model>(hub)
         var label = new UILabel {
             TranslatesAutoresizingMaskIntoConstraints = false,
             TextAlignment = UITextAlignment.Center,
-            Text = AppStrings.L.ShareExt_SignInPrompt_Format(CoreConstants.AppName),
+            Text = L.ShareExt_SignInPrompt_Format(CoreConstants.AppName),
             Font = UIFont.SystemFontOfSize(20),
             TextColor = AppColors.Text01,
         };
@@ -57,7 +56,7 @@ public class SignInView(IosHub hub) : ComputedStateView<SignInView.Model>(hub)
         // Sign In button
         var signInButton = UIButton.FromType(UIButtonType.System);
         signInButton.TranslatesAutoresizingMaskIntoConstraints = false;
-        signInButton.SetTitle(AppStrings.L.SignIn_SignIn, UIControlState.Normal);
+        signInButton.SetTitle(L.SignIn_SignIn, UIControlState.Normal);
         signInButton.TitleLabel.Font = UIFont.SystemFontOfSize(18, UIFontWeight.Semibold);
         signInButton.SetTitleColor(AppColors.PrimaryTitle, UIControlState.Normal);
         signInButton.BackgroundColor = AppColors.Primary;
@@ -67,7 +66,7 @@ public class SignInView(IosHub hub) : ComputedStateView<SignInView.Model>(hub)
         // Close button
         var closeButton = UIButton.FromType(UIButtonType.System);
         closeButton.TranslatesAutoresizingMaskIntoConstraints = false;
-        closeButton.SetTitle(AppStrings.L.Common_Close, UIControlState.Normal);
+        closeButton.SetTitle(L.Common_Close, UIControlState.Normal);
         closeButton.TitleLabel.Font = UIFont.SystemFontOfSize(16);
         closeButton.TintColor = AppColors.Primary;
         closeButton.TouchUpInside += Safe(UIKitExt.CloseApp);

@@ -1,5 +1,6 @@
 using ActualLab.Fusion.UI;
 using ActualLab.Internal;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 
@@ -22,6 +23,9 @@ public abstract class StatefulView : UIView, IStatefulView, IEnumerable<UIView>
     public IServiceProvider Services => Hub.Services;
     protected UICommander UICommander => Hub.UICommander;
     protected Session Session => Hub.Session;
+    // Not a hub service: the appex resolves the catalog against a process-wide language rather
+    // than scope state, so this is a shortcut over the static AppColors and AppImages sit beside.
+    protected IStringLocalizer L => AppStrings.L;
     protected State State { get; private set; } = null!;
     protected Action<State, StateEventKind> StateChanged { get; set; }
     protected ILogger Log => field ??= Hub.LogFor(GetType());
