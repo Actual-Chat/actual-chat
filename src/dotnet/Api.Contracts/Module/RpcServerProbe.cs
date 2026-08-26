@@ -12,15 +12,13 @@ public sealed class RpcServerProbe(IServiceProvider services)
 {
     private const string ProbePath = "/rpc/check";
     private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(3);
-
     private HttpClient? _httpClient;
-
-    // Assumed until a server answers without honoring "size", i.e. predates the sized probe.
-    public bool IsSizedProbeSupported { get; private set; } = true;
     private IServiceProvider Services { get; } = services;
     private UrlMapper UrlMapper => field ??= Services.UrlMapper();
     private ILogger Log => field ??= Services.LogFor(GetType());
-
+    // False while a server answers without honoring "size" - it predates the sized probe, or
+    // this client has no session yet to be served one. Both can resolve, so this can go back.
+    public bool IsSizedProbeSupported { get; private set; } = true;
     public async Task<bool> IsServerReachable(CancellationToken cancellationToken)
     {
         var url = UrlMapper.BaseUrl.TrimSuffix("/") + ProbePath;
@@ -56,6 +54,7 @@ public sealed class RpcServerProbe(IServiceProvider services)
             var payload = await httpClient.GetByteArrayAsync(url, cts.Token).ConfigureAwait(false);
             var elapsed = CpuTimestamp.Now - startedAt;
             if (payload.Length >= size) {
+                IsSizedProbeSupported = true;
                 Log.LogInformation("RPC transfer probe to {Host}: {Size} bytes in {Elapsed}",
                     host, payload.Length, elapsed.ToShortString());
                 return elapsed;
@@ -71,6 +70,35 @@ public sealed class RpcServerProbe(IServiceProvider services)
         catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
             Log.LogWarning(e, "RPC transfer probe to {Host}: FAILED after {Elapsed}",
                 host, (CpuTimestamp.Now - startedAt).ToShortString());
+            return null;
+        }
+    }
+
+    public async Task<TimeSpan?> MeasureRoundTrip(
+        string host,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        // The unsized reply is 2 bytes, which crosses even a fully capped link, so this
+        // times distance rather than bandwidth - the one ranks candidates, the other vets them.
+        var url = RpcEndpointSelector.WithHost(UrlMapper.BaseUrl.TrimSuffix("/"), host) + ProbePath;
+        var httpClient = _httpClient ??= CreateHttpClient();
+        var startedAt = CpuTimestamp.Now;
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(timeout);
+        try {
+            using var response = await httpClient.GetAsync(url, cts.Token).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode) {
+                Log.LogWarning("RPC round-trip probe to {Host}: {StatusCode}", host, (int)response.StatusCode);
+                return null;
+            }
+
+            var elapsed = CpuTimestamp.Now - startedAt;
+            Log.LogInformation("RPC round-trip probe to {Host}: {Elapsed}", host, elapsed.ToShortString());
+            return elapsed;
+        }
+        catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
+            Log.LogWarning(e, "RPC round-trip probe to {Host}: FAILED", host);
             return null;
         }
     }

@@ -50,6 +50,9 @@ namespace ActualChat.App.Server.Module;
 public sealed class AppServerModule(IServiceProvider moduleServices)
     : HostModule<HostSettings>(moduleServices), IWebServerModule
 {
+    // Incompressible, so what a probe measures is the link rather than the compressor, and
+    // built once because the alternative is a CSPRNG run per request on a public route.
+    private static readonly byte[] ProbePayload = RandomNumberGenerator.GetBytes(256 * 1024);
     public IWebHostEnvironment Env => field ??= ModuleServices.GetRequiredService<IWebHostEnvironment>();
 
     public void ConfigureApp(WebApplication app)
@@ -158,15 +161,17 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         }
         app.MapRpcWebSocketServer();
         app.MapRpcHttpServer();
-        app.MapGet("/rpc/check", (int? size, HttpResponse response) => {
+        app.MapGet("/rpc/check", (int? size, HttpContext httpContext) => {
             // "size" makes this a throughput probe rather than a reachability one: some
             // networks let a connection's first few KB through and cap it after that, so
-            // only a payload larger than that allowance tells the two apart. Random bytes
-            // because a compressible one would arrive as a fraction of its size.
-            response.Headers.CacheControl = "no-store";
-            return size is not { } byteCount
-                ? Results.Text("ok")
-                : Results.Bytes(RandomNumberGenerator.GetBytes(Math.Clamp(byteCount, 1024, 256 * 1024)));
+            // only a payload larger than that allowance tells the two apart. It answers
+            // that to clients only - the bare "ok" has to stay open, because it's what
+            // RpcSwitchingClient falls back to exactly when RPC itself can't get through.
+            httpContext.Response.Headers.CacheControl = "no-store";
+            if (size is not { } byteCount || httpContext.TryGetSessionFromHeader() is null)
+                return Results.Text("ok");
+
+            return Results.Bytes(ProbePayload.AsMemory(0, Math.Clamp(byteCount, 1024, ProbePayload.Length)));
         });
         if (HostInfo.HasRole(HostRole.Api)) {
             app.MapFusionAuthEndpoints(); // /signIn, /signOut
