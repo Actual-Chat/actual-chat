@@ -83,6 +83,9 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     public int SyncCount { get; private set; }
+    public TimeSpan? MinRtt
+        // Null until a burst lands, so an unmeasured link never reads as a fast one.
+        => _minRttEma.SampleCount > 0 ? TimeSpan.FromSeconds(_minRttEma.Value) : null;
 
     public async Task EnsureSynced(CancellationToken cancellationToken)
     {
