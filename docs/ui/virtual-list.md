@@ -123,7 +123,7 @@ in a later section looks loaded — most of them are.*
 ### Anchoring and pinning — five different things
 
 - **pin**, **pinned edge**, **re-pin** — *`pinnedEdge`, `setPinnedEdge`, `updatePinnedEdge`,
-  `repinEdge`, the `.sticky-end` class.* A standing constraint: "stay flush with this end", re-applied
+  `repinEdge`, the `data-sticky-end` attribute.* A standing constraint: "stay flush with this end", re-applied
   on every render rather than performed once. Unrelated to `position: sticky`.
 - **re-anchor** — *`reanchor()`, and `ScrollToOptions.reanchor`.* Hold one on-screen item's wrapper
   coordinate fixed across a re-layout by moving `chainStart`. Compensating a change the code just made,
@@ -462,7 +462,7 @@ still. That is a third condition, tracked separately by `StabilityTracker`, and 
 
 | mode | how the code knows | meaning |
 |---|---|---|
-| **Pinned** | `pinnedEdge != null`, mirrored to the DOM as `.sticky-end` | "stay flush with this end", re-asserted on every render, relayout and viewport resize |
+| **Pinned** | `pinnedEdge != null`, mirrored to the DOM as `data-sticky-end` | "stay flush with this end", re-asserted on every render, relayout and viewport resize |
 | **Free** | `pinnedEdge == null` | the user's position is the truth; nothing corrects it |
 
 **Latches** — deferred work, at most one of each outstanding:
