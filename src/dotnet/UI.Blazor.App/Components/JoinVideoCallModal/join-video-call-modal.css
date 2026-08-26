@@ -11,6 +11,13 @@
     @apply overflow-hidden;
     @apply bg-03;
 }
+/* Query container for the .rotated-video axis swap below, scoped to the canvas
+   painter so the generated-track path keeps its original layout untouched.
+   Safe to size-contain here: the surfaces inside are absolutely positioned, so
+   the frame's height comes from min-h-56 rather than from its content. */
+.join-video-call-modal .video-frame[data-preview-backend="canvas"] {
+    container-type: size;
+}
 .join-video-call-modal .video-frame .plug-text {
     @apply text-title-1 text-02;
 }
@@ -35,7 +42,8 @@
     @apply object-cover;
     @apply rounded-2xl;
     @apply hidden;
-    transform: scaleX(-1);
+    transform: scaleX(-1) rotate(var(--video-rotation, 0deg));
+    transform-origin: center center;
 }
 /* Native <video> visible when Join mode has a live track. Blur-on case swaps
    the <video>'s srcObject to the worker's MediaStreamTrackGenerator output,
@@ -61,7 +69,25 @@
    Blazor re-renders don't wipe out the JS-added classes. */
 .join-video-call-modal .c-video.no-mirror .video-frame .camera-preview,
 .join-video-call-modal .c-video.no-mirror .video-frame .camera-preview-video {
-    transform: none;
+    transform: rotate(var(--video-rotation, 0deg));
+}
+/* Quarter-turn: the canvas painter draws the raw capture, which on iOS stays
+   landscape (MSTP does not auto-rotate), so CSS owns the turn. The generated
+   track needed none of this - the <video> auto-oriented it and the view
+   reported rotation 0 - which is why this only mattered once WebKit moved to
+   the canvas painter. Swap the box's axes so a portrait frame still fills it. */
+.join-video-call-modal .video-frame .camera-preview.rotated-video,
+.join-video-call-modal .video-frame .camera-preview-video.rotated-video {
+    inset: auto;
+    width: 100cqh;
+    height: 100cqw;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scaleX(-1) rotate(var(--video-rotation, 0deg));
+}
+.join-video-call-modal .c-video.no-mirror .video-frame .camera-preview.rotated-video,
+.join-video-call-modal .c-video.no-mirror .video-frame .camera-preview-video.rotated-video {
+    transform: translate(-50%, -50%) rotate(var(--video-rotation, 0deg));
 }
 /* Encoder-unavailable state: dim the preview and overlay the actionable
    restart prompt centred on the frame. Triggered by the modal's encoder
