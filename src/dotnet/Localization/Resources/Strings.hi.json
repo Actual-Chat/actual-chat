@@ -976,7 +976,7 @@
   "ShareExt_Uploading": "अपलोड हो रहा है...",
   "ShareExt_Done": "हो गया!",
   "ShareExt_StartupFailed": "कुछ गड़बड़ हो गई। कृपया पुनः प्रयास करें।",
-  "ShareExt_CannotSendToContact": "आप इस संपर्क को नहीं भेज सकते",
+  "ShareExt_CannotSendToContact": "आप इस संपर्क को संदेश नहीं भेज सकते",
   "ShareExt_UploadFailed": "अपलोड विफल",
 
   "Ptt_UseOnThisDevice": "इस डिवाइस पर पुश टू टॉक इस्तेमाल करें",

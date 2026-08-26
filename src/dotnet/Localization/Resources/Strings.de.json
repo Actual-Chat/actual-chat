@@ -976,7 +976,7 @@
   "ShareExt_Uploading": "Wird hochgeladen...",
   "ShareExt_Done": "Fertig!",
   "ShareExt_StartupFailed": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
-  "ShareExt_CannotSendToContact": "Du kannst an diesen Kontakt nichts senden",
+  "ShareExt_CannotSendToContact": "Du kannst diesem Kontakt nichts senden",
   "ShareExt_UploadFailed": "Hochladen fehlgeschlagen",
 
   "Ptt_UseOnThisDevice": "Push-to-Talk auf diesem Gerät verwenden",

@@ -975,8 +975,8 @@
   "ShareExt_SignInPrompt_Format": "コンテンツを共有するには {0} にサインインしてください",
   "ShareExt_Uploading": "Wird hochgeladen...",
   "ShareExt_Done": "Tamamlandı!",
-  "ShareExt_StartupFailed": "Что-то пошло не так. Пожалуйста, попробуйте ещё раз.",
-  "ShareExt_CannotSendToContact": "Du kannst an diesen Kontakt nichts senden",
+  "ShareExt_StartupFailed": "Нешто је пошло наопако. Молимо покушајте поново.",
+  "ShareExt_CannotSendToContact": "Вы не можете отправлять этому контакту",
   "ShareExt_UploadFailed": "アップロードに失敗しました",
 
   "Ptt_UseOnThisDevice": "Використовувати Push-to-Talk на цьому пристрої",
