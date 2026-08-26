@@ -29,8 +29,11 @@ body.wide .settings-panel > .c-tabs {
 .settings-panel.hide-tabs > .c-tabs > .c-header {
     @apply bg-03;
 }
+/* The safe area has to grow the header vertically only — content-box would let ordinary-header's
+   px-4 grow it horizontally too, pushing the box past the viewport. */
 body.narrow .settings-panel > .c-tabs > .c-header {
-    box-sizing: content-box;
+    min-height: calc(3.5rem + var(--safe-area-top));
+    max-height: calc(3.5rem + var(--safe-area-top));
     padding-top: var(--safe-area-top);
 }
 .settings-panel > .c-tabs > .download-app-banner {
@@ -122,8 +125,11 @@ body.wide .settings-tab {
         overflow-y: auto;
     }
 }
+/* min-w-0: a flex item's default min-width is its content, so without this a wide child - a tab
+   strip whose labels don't fit - widens this box and everything in it past the viewport. */
 .tab-inner {
     @apply flex-1 flex-y items-stretch md:items-center;
+    @apply min-w-0;
     @apply md:w-3/5;
 }
 .hide-tabs .settings-tab {
@@ -187,12 +193,29 @@ body.hoverable .tile-item.clickable.item-danger:hover,
     @apply truncate;
     @apply leading-5 text-02;
 }
+/* Option labels differ only in their tail ("... via Soniox" vs "... via OpenAI"), so the one-line
+   ellipsis every other row keeps would render two different options as the same text. */
+.tile-item:has(input[type="radio"], input[type="checkbox"]) .tile-item-body-content {
+    @apply max-h-none h-auto;
+    @apply whitespace-normal line-clamp-2;
+}
 .tile-item-body-caption {
     @apply text-caption-6 font-normal text-03;
 }
 .tile-item-right {
     @apply flex-1 flex-x justify-end items-center;
-    @apply h-6;
+    @apply min-h-6;
+}
+/* A bare value is an anonymous flex item with a flex-basis of 0 and no min-width floor, so a long
+   label starves it down to its min-content - one word, or one glyph in CJK. The floor plus the
+   ellipsis keep it readable and make the label (already truncate) give way first. :not(:empty)
+   leaves the rows with no value at all alone - there the slot is a spacer, and a floor on it would
+   truncate their labels for nothing. */
+.tile-item-right:not(:empty):not(:has(*)) {
+    @apply block;
+    @apply min-w-24;
+    @apply truncate;
+    @apply leading-6 text-right;
 }
 .tile-hidden-btn {
     @apply md:invisible group-hover:md:visible;
@@ -228,6 +251,7 @@ body.hoverable .tile-btn:hover,
 .settings-tab-content {
     @apply flex-y gap-y-4;
     @apply w-full md:w-100;
+    @apply min-w-0;
     @apply p-2 md:px-4 md:pb-4;
     @apply overflow-y-auto md:overflow-y-visible custom-scrollbar;
 }
@@ -244,7 +268,8 @@ body.narrow .settings-tab-content {
     @apply border-b border-separator md:border-none;
 }
 body.narrow .settings-tab-header {
-    box-sizing: content-box;
+    min-height: calc(3.5rem + var(--safe-area-top));
+    max-height: calc(3.5rem + var(--safe-area-top));
     padding-top: var(--safe-area-top);
 }
 .settings-tab-header > .c-title {
@@ -256,8 +281,10 @@ body.narrow .settings-tab-header {
     }
 }
 
+/* text-start overrides the UA button centering, which only becomes visible once a label wraps. */
 .settings-tab-item {
     @apply flex-1 flex-x items-center gap-x-4;
+    @apply text-start;
 }
 .settings-tab-item .c-title {
     @apply flex-1 flex-y items-start;
@@ -296,8 +323,18 @@ body.narrow .settings-tab-header {
 .tile-item-my-account-link .tile-item-icon {
     @apply max-w-none;
 }
+.tile-item-my-account-link .tile-item-body {
+    @apply flex-auto;
+    @apply min-w-24;
+}
 .tile-item-my-account-link .tile-item-body-content {
     @apply text-01 text-text-1;
+}
+/* The share button is decoration, the account name is the identity, so the button yields first -
+   but by a factor that lets its label ellipsise on the way rather than snap to icon-only. */
+.tile-item-my-account-link .tile-item-right {
+    @apply flex-initial shrink-[8];
+    @apply min-w-24;
 }
 .tile-item-my-account-link .btn.btn-share-action {
     @apply mr-0.5 md:mr-1.5;

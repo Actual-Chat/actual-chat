@@ -7,10 +7,13 @@
 }
 .ac-bubble {
     @apply hidden absolute top-0 left-0 z-bubble;
-    @apply min-w-64 max-w-64;
+    /* Both bounds subtract the insets - shift() can only translate a bubble, not shrink it - and the
+       floor yields the same way the cap does, since a bare min-width would just override it. */
+    min-width: min(16rem, calc(100vw - 2rem - var(--safe-area-left) - var(--safe-area-right)));
+    max-width: min(20rem, calc(100vw - 2rem - var(--safe-area-left) - var(--safe-area-right)));
     @apply p-4;
     @apply bg-bubble;
-    @apply rounded-lg whitespace-nowrap;
+    @apply rounded-lg;
     @apply pointer-events-auto;
     filter: drop-shadow(0px 5px 12px rgba(0, 0, 0, 0.16));
 }

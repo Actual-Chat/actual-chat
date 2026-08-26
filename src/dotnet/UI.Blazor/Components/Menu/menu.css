@@ -103,9 +103,20 @@ body.narrow .ac-menu-icon > i {
 .ac-menu-text {
     @apply w-full text-02 text-base font-medium mr-2;
     @apply overflow-hidden;
+    @apply text-ellipsis;
 }
 body.narrow .ac-menu-text {
     @apply text-headline-1;
+}
+/* Narrow pins the menu to the viewport width, so a long label has nowhere to grow and was cut
+   mid-word without even an ellipsis. Wide sizes the menu to its content and never clips, so it
+   keeps the one-line rhythm. */
+body.narrow .ac-menu-item {
+    @apply h-auto min-h-12;
+    @apply whitespace-normal;
+}
+body.narrow .ac-menu-text {
+    @apply line-clamp-2;
 }
 body.hoverable .ac-menu-item:hover .ac-menu-icon {
     @apply text-primary;

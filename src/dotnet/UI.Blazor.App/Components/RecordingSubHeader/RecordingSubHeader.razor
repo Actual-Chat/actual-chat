@@ -18,13 +18,10 @@
 
     <div class="c-container">
         @if (m?.RecordingChat != null) {
-            <div class="c-line-1">
-                <div class="c-text">
-                    @L.Recording_InChat_Prefix
-                </div>
-                <a class="c-text highlight" href="@m.RecordingChatUrl">@m.RecordingChat.Title</a>
-                <div class="c-text">@L.Recording_InChat_Suffix</div>
-            </div>
+            <div class="c-line-1 composed-sentence"><span class="c-text c-part"
+                >@L.Recording_InChat_Prefix</span><a class="c-text c-value highlight" href="@m.RecordingChatUrl"
+                >@m.RecordingChat.Title</a><span class="c-text c-part"
+                >@L.Recording_InChat_Suffix</span></div>
         }
 
         @if (m?.StopRecordingAt != null) {
@@ -69,8 +66,7 @@
         };
     }
 
-    private async Task<Chat?> GetRecordingElsewhereChat(CancellationToken cancellationToken)
-    {
+    private async Task<Chat?> GetRecordingElsewhereChat(CancellationToken cancellationToken) {
         var recordingChatId = await ChatAudioUI.GetRecordingChatId();
         if (recordingChatId is null)
             return null;

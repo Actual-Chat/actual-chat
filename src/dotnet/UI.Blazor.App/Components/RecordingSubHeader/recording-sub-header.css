@@ -12,10 +12,13 @@
     @apply overflow-hidden;
 }
 .recording-sub-header .c-line-1 {
-    @apply flex-1 flex-x flex-nowrap;
-    @apply gap-x-1 items-center;
+    @apply flex-1;
     @apply max-w-full;
     @apply overflow-hidden;
+}
+/* Recording_InChat_Prefix/_Suffix have no edge space of their own - this replaces the row's gap */
+.recording-sub-header .c-line-1 > .c-value {
+    @apply px-1;
 }
 .recording-sub-header .c-round-container {
     @apply flex-none flex justify-center items-center;

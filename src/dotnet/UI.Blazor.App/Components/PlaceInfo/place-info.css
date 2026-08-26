@@ -28,6 +28,14 @@ body.narrow .place-info {
     @apply rounded-lg;
     @apply overflow-hidden;
 }
+/* Over the wallpaper rather than in a header row - the page has no header to put it in. */
+.place-info > .c-top > .c-back-btn {
+    @apply absolute right-4 z-10;
+    top: calc(1rem + var(--safe-area-top-narrow));
+    @apply bg-[var(--round-right-panel)];
+    @apply text-primary;
+    @apply shadow-sm shadow-shadow-main;
+}
 .place-info > .c-top > .c-subheader {
     @apply absolute -bottom-5 z-10;
     @apply flex-x items-end justify-end gap-x-3;

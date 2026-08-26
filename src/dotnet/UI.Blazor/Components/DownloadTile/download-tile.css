@@ -1,8 +1,11 @@
+/* text-left overrides the UA stylesheet's centering for <button>, which shows up only once a
+   title wraps - and then only on the wrapped tiles, next to left-aligned ones that didn't. */
 .download-tile {
     @apply flex-x justify-between gap-4;
     @apply p-4;
     @apply rounded-lg;
     @apply bg-03;
+    @apply text-left;
     @apply overflow-hidden;
 }
 body.hoverable .download-tile:hover {
@@ -11,6 +14,10 @@ body.hoverable .download-tile:hover {
 body.hoverable .download-tile:hover .c-title,
 body.hoverable .download-tile:hover .c-text {
     @apply text-06;
+}
+.download-tile .c-labels {
+    @apply flex-y gap-1;
+    @apply min-w-0;
 }
 .download-tile .c-title {
     @apply flex justify-start;
@@ -21,6 +28,7 @@ body.hoverable .download-tile:hover .c-text {
     @apply text-text-1;
 }
 .download-tile .c-brand {
+    @apply flex-none;
     @apply md:mt-4;
 }
 .download-tile .c-qrcode {
@@ -32,5 +40,11 @@ body.hoverable .download-tile:hover .c-text {
     @apply flex-1 flex-y justify-between;
 }
 body.narrow .download-tile .c-content {
-    @apply flex-x justify-between;
+    @apply flex-x items-center justify-between;
+}
+/* The store badges are fixed-size images, the web-app one is a wrapping text pill: without a cap it
+   takes its max-content width and both dwarfs them and starves the labels beside it. The cap clears
+   the widest badge (135px), so only the pill is ever constrained by it. */
+body.narrow .download-tile .c-brand {
+    @apply max-w-36;
 }

@@ -54,18 +54,23 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new(AccountUI.OwnAccount.Value.IsActive()),
+            InitialValue = new(AccountUI.OwnAccount.Value is { IsGuest: false } a && a.IsActive()),
             Category = GetStateCategory(GetType()),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(true);
-        var isActive = account.IsActive();
-        if (!isActive)
+        // IsActive() alone lets a guest through - a guest account is Active - and a signed-out
+        // visitor has no notifications to show.
+        if (account.IsGuest || !account.IsActive())
             return new(false);
 
-        var chatById = await ChatListUI.ListUnordered(null, ChatListFilter.Unread, cancellationToken).ConfigureAwait(true);
-        var retainedIds = await NotificationsPanelUI.GetRetainedSet(ChatListFilter.Unread.Id, cancellationToken).ConfigureAwait(true);
+        var chatById = await ChatListUI
+            .ListUnordered(null, ChatListFilter.Unread, cancellationToken)
+            .ConfigureAwait(true);
+        var retainedIds = await NotificationsPanelUI
+            .GetRetainedSet(ChatListFilter.Unread.Id, cancellationToken)
+            .ConfigureAwait(true);
         return new(true, chatById.Count > 0, !retainedIds.IsEmpty);
     }
 
@@ -75,6 +80,7 @@
         // once there's nothing unread AND nothing retained, we fall back to Chats.
         if (_hadUnread && !m.HasUnread && !m.HasRetained && NavbarUI.SelectedGroupId == NavbarGroupIds.Unread)
             NavbarUI.SelectGroup(NavbarGroupIds.Chats, false);
+
         _hadUnread = m.IsActive && m.HasUnread;
     }
 

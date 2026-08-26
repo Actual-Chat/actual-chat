@@ -2,27 +2,23 @@
     @apply flex-y items-center gap-y-4;
     @apply py-8;
 }
-.empty-chat-content > .c-text,
-.empty-chat-content > .c-text .avatar-name {
+.empty-chat-content > .c-text {
     @apply flex-y items-center;
     @apply max-w-full;
     @apply text-03 text-headline-1;
 }
-.empty-chat-content > .c-text .avatar-name {
-    @apply line-clamp-1;
-}
-.empty-chat-content > .c-text > .c-truncated-text {
-    @apply flex-x justify-center;
+.empty-chat-content > .c-text > .c-sentence {
     @apply w-full;
     @apply px-4;
-    @apply truncate;
+    @apply text-center;
 }
-/* Prefix/Suffix carry their own edge space - flex would collapse a plain trailing one */
-.empty-chat-content > .c-text > .c-truncated-text > .c-part {
-    @apply whitespace-pre;
+.empty-chat-content > .c-text > .c-sentence > .c-value {
+    max-width: min(30rem, 100%);
+    @apply text-03 text-headline-1;
 }
-.empty-chat-content > .c-text > .c-truncated-text .avatar-name {
-    @apply max-w-120;
+/* The skeleton bars are sized children, so they still need a flex box of their own */
+.empty-chat-content > .c-text > .c-sentence > .c-value.skeleton {
+    @apply inline-flex-y items-center;
 }
 .narrow .empty-chat-content > .c-image {
     height: 224px;

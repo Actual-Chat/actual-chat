@@ -59,8 +59,10 @@
         // list, whose keys still mean positions in the previous one, so a missing or wrong @key has to
         // reach the developer instead of quietly showing the wrong chats.
         var key = GetKey(PlaceId, UsePlaceChatListSettings, Settings);
-        if (_lastKey is null)
+        if (_lastKey is null) {
             _lastKey = key;
+            Volatile.Write(ref _restoreChatId, ChatListUI.PullScrollAnchor(key));
+        }
         else if (key != _lastKey)
             throw StandardError.Internal(
                 $"{nameof(ChatList)} got new parameters ('{_lastKey}' -> '{key}') instead of being "

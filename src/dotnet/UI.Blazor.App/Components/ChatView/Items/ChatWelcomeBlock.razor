@@ -23,11 +23,10 @@
                     </div>
                     break;
                 case MessageType.Contact:
-                    <div class="c-content c-contact-share">
-                        <span class="c-incut">@L.ChatWelcome_ShareContact_Prefix</span>
-                        <span class="c-contact">@m.ShareModel?.TargetTitle</span>
-                        <span class="c-incut">@L.ChatWelcome_ShareContact_Suffix</span>
-                    </div>
+                    <div class="c-content c-contact-share composed-sentence"><span class="c-part"
+                        >@L.ChatWelcome_ShareContact_Prefix</span><span class="c-value"
+                        >@m.ShareModel?.TargetTitle</span><span class="c-part"
+                        >@L.ChatWelcome_ShareContact_Suffix</span></div>
                     break;
                 default:
                     var welcomeText = m.ShareModel is not null

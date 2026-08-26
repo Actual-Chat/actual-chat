@@ -1,9 +1,16 @@
 .chat-member-counter {
     @apply flex-x items-center gap-x-1;
+    @apply min-w-0;
 }
+/* The member count is a bare text node next to the online count, and text-overflow can't reach an
+   anonymous flex item - only a block box ellipsises it instead of cutting the last glyph in half. */
 .chat-member-counter > .c-text {
-    @apply flex-x items-center gap-x-0.5;
+    @apply block;
+    @apply truncate;
     @apply text-caption-6 text-03;
+}
+.chat-member-counter > .c-text > * {
+    @apply inline-block align-middle;
 }
 .chat-member-counter .member-separator {
     @apply w-px h-3;

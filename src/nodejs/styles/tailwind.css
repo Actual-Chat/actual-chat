@@ -162,6 +162,27 @@
         flex-basis: content;
     }
 
+    /* Composed sentences */
+
+    /* A [prefix][value][suffix] sentence. Inline text rather than a flex row, so it wraps at word
+       boundaries and the value truncates only when it alone exceeds the line - in a flex row the
+       pinned literal parts make the value absorb the entire shortfall, down to zero width. */
+    .composed-sentence {
+        @apply block;
+        overflow-wrap: anywhere;
+    }
+    /* Prefix/Suffix carry their own edge space, which pre-wrap keeps while still allowing wraps */
+    .composed-sentence > .c-part {
+        @apply inline;
+        @apply whitespace-pre-wrap;
+    }
+    .composed-sentence > .c-value {
+        @apply inline-block;
+        @apply max-w-full;
+        @apply truncate;
+        @apply align-bottom;
+    }
+
     /* Other */
 
     .disabled {

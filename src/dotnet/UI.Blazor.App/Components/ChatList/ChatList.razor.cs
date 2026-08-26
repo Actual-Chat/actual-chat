@@ -2,9 +2,19 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
+public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisposable
 {
-    private volatile VirtualListItemVisibility? _visibility;
+    // Shared between the UI thread, which reports item visibility and sets the parameters, and the
+    // compute path that runs GetData - hence the Volatile accesses to all four below.
+    private VirtualListItemVisibility? _visibility;
+    private IReadOnlyList<ChatListItemModel> _items = [];
+    private ChatId? _topVisibleChatId;
+    private ChatId? _restoreChatId;
+
+    public void Dispose()
+        // The search overlay replaces this list rather than hiding it, so the scroll position goes away
+        // with the component - ChatListUI holds the chat it was on until the list is re-created.
+        => ChatListUI.SetScrollAnchor(_lastKey ?? "", Volatile.Read(ref _topVisibleChatId));
 
     public async Task<VirtualListData<ChatListItemModel>> GetData(
         VirtualListDataQuery query,
@@ -43,18 +53,32 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
 
         var firstItem = renderedData.FirstItem;
         var lastItem = renderedData.LastItem;
-        var visibleIndices = _visibility?.VisibleKeys.Select(int.Parse).ToList() ?? [];
+        var visibility = Volatile.Read(ref _visibility);
+        var visibleIndices = visibility?.VisibleKeys.Select(int.Parse).ToList() ?? [];
         var isFirstRender = (firstItem is null || visibleIndices.Count == 0) && query.IsNone;
         var hasQuery = !query.IsNone;
         var minVisibleIndex = visibleIndices.DefaultIfEmpty(firstItem?.Position ?? 0).Min();
         var maxVisibleIndex = visibleIndices.DefaultIfEmpty(lastItem?.Position ?? 0).Max();
+        if (!isFirstRender)
+            Volatile.Write(ref _restoreChatId, null); // The list has a position of its own again
+
+        var restoreChatId = Volatile.Read(ref _restoreChatId);
+        var restoreIndexTask = restoreChatId is null
+            ? Task.FromResult(-1)
+            : ChatListUI.IndexOf(placeId, restoreChatId, chatListSettings, cancellationToken);
+        var restoreIndex = await restoreIndexTask.ConfigureAwait(false);
+        // A restored list loads around the chat it's going back to rather than around the selected one,
+        // and around index 0 when that chat is gone - so it lands on the top, not somewhere arbitrary.
+        var initialIndex = restoreChatId is null ? chatIndex : Math.Max(restoreIndex, 0);
         var range = (hasQuery, isFirstRender) switch {
             // No query, no data -> initial load
             (false, true) => new Range<int>(
-                chatIndex - ChatListUI.LoadLimit,
-                chatIndex + ChatListUI.LoadLimit),
+                initialIndex - ChatListUI.LoadLimit,
+                initialIndex + ChatListUI.LoadLimit),
             // No query, but there is old data -> retaining visual position
-            (false, false) => new Range<int>(minVisibleIndex - (ChatListUI.TileSize * 2), maxVisibleIndex + (ChatListUI.TileSize * 2)),
+            (false, false) => new Range<int>(
+                minVisibleIndex - (ChatListUI.TileSize * 2),
+                maxVisibleIndex + (ChatListUI.TileSize * 2)),
             // Query is there, so data is irrelevant
             _ => query.KeyRange.ToIntRange().Move(query.MoveRange),
         };
@@ -72,17 +96,29 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
         var indexTiles = indexTileLayer.GetCoveringTiles(range);
         var resultItems = new List<ChatListItemModel>();
         foreach (var indexTile in indexTiles) {
-            var tile = await ChatListUI.GetTile(placeId, indexTile, chatListSettings, cancellationToken).ConfigureAwait(false);
+            var tile = await ChatListUI
+                .GetTile(placeId, indexTile, chatListSettings, cancellationToken)
+                .ConfigureAwait(false);
             if (tile.Items.Count != 0)
                 resultItems.AddRange(tile.Items);
         }
 
         var scrollToKey = null as string;
+        var mustScrollToKeyInTheMiddle = false;
         if (isFirstRender) {
-            // scroll to the selected chat on very first render
-            var selectedItem = resultItems.FirstOrDefault(it => it.Chat.Id == chatId);
-            if (selectedItem != null)
-                scrollToKey = selectedItem.Key;
+            if (restoreChatId is not null) {
+                // Landing on the chat rather than on the pixel offset it had: the list is a fresh set
+                // of elements, and the chat is what the user was actually looking at.
+                scrollToKey = resultItems.FirstOrDefault(it => it.Chat.Id == restoreChatId)?.Key;
+            }
+            else {
+                // scroll to the selected chat on very first render
+                var selectedItem = resultItems.FirstOrDefault(it => it.Chat.Id == chatId);
+                if (selectedItem != null) {
+                    scrollToKey = selectedItem.Key;
+                    mustScrollToKeyInTheMiddle = true;
+                }
+            }
         }
 
         var hasVeryFirstItem = range.Start == 0;
@@ -99,19 +135,29 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
             ScrollToKey = scrollToKey,
-            ScrollToKeyInTheMiddle = scrollToKey is not null ? true : null,
+            ScrollToKeyInTheMiddle = mustScrollToKeyInTheMiddle ? true : null,
         };
 
         // Return the old data if the new one is identical (to prevent re-renders)
-        return result.IsSimilarTo(renderedData)
-            ? renderedData
-            : result;
+        var data = result.IsSimilarTo(renderedData) ? renderedData : result;
+        Volatile.Write(ref _items, data.Items);
+        return data;
     }
 
     // Private methods
 
     private void OnItemVisibilityChanged(VirtualListItemVisibility visibility)
-        // The only consumer is GetData below, which anchors the next load window on what the user
-        // can actually see - reusing the rendered range instead would grow it on every recompute.
-        => _visibility = visibility;
+    {
+        // GetData anchors the next load window on what the user can actually see - reusing the rendered
+        // range instead would grow it on every recompute.
+        Volatile.Write(ref _visibility, visibility);
+        // The retraction a disposed list reports must not erase what Dispose is about to hand over.
+        if (visibility.IsEmpty)
+            return;
+
+        var topPosition = visibility.VisibleKeys.Select(int.Parse).Min();
+        var topItem = Volatile.Read(ref _items).FirstOrDefault(x => x.Position == topPosition);
+        if (topItem != null)
+            Volatile.Write(ref _topVisibleChatId, topItem.Chat.Id);
+    }
 }

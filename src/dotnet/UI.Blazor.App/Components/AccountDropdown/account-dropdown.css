@@ -44,6 +44,11 @@ body.narrow .btn.btn-round.account-btn {
 body.hoverable .btn.btn-round.account-btn:hover > .btn-content {
     @apply bg-transparent;
 }
+/* The signed-in branch's visible circle is the avatar, sized w-10 narrow / w-12 wide; the guest
+   branch is a plain .btn-round, which is w-12 at every width - hence the same narrow size here. */
+body.narrow .btn.btn-round.sign-in-btn {
+    @apply w-10 h-10;
+}
 
 .left-panel-account-menu .dropdown-menu-btn.btn-round .btn-content {
     @apply bg-primary;

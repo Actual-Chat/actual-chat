@@ -42,9 +42,24 @@ body.device-ios * {
 .btn .btn-title {
     @apply truncate;
 }
+/* .btn-content is the real clipping box, so the ellipsis belongs here, not on .btn.
+   "safe center" keeps the overflowing side at the end instead of splitting it across both. */
 .btn > .btn-content {
-    @apply flex-x items-center justify-center gap-x-2;
+    @apply flex-x items-center gap-x-2;
+    justify-content: safe center;
+    @apply min-w-0;
     @apply overflow-hidden;
+}
+/* A bare label is an anonymous flex item, which text-overflow can't reach — turning the
+   box into a block is what makes the ellipsis appear. */
+.btn > .btn-content:not(:has(*)) {
+    @apply block;
+    @apply overflow-hidden;
+    @apply text-center text-ellipsis whitespace-nowrap;
+}
+.btn > .btn-content > span {
+    @apply min-w-0;
+    @apply truncate;
 }
 .btn > .btn-content i {
     @apply flex-none;
@@ -58,7 +73,18 @@ body.device-ios * {
     @apply text-caption-1;
 }
 .btn.btn-lg {
-    @apply min-h-16 max-h-16 md:min-h-12 md:max-h-12;
+    @apply min-h-16 md:min-h-12;
+}
+/* .btn-xs and .btn-sm stay on one line — the row rhythm of toolbars and tab rails depends
+   on it. Every other size grows to two lines rather than losing characters.
+   .tab-btn too: a strip detects overflow only while its labels keep scrollWidth past clientWidth. */
+.btn:not(.btn-xs, .btn-sm, .tab-btn) > .btn-content {
+    @apply whitespace-normal;
+}
+.btn:not(.btn-xs, .btn-sm, .tab-btn) > .btn-content:not(:has(*)),
+.btn:not(.btn-xs, .btn-sm, .tab-btn) > .btn-content > span {
+    @apply line-clamp-2;
+    @apply whitespace-normal;
 }
 .btn.btn-w-full {
     @apply min-w-full;
@@ -270,6 +296,12 @@ body.hoverable .btn.btn-modal:hover::after {
 .btn.btn-round::after {
     @apply rounded-full;
 }
+/* These hold an icon or an avatar, never a label: an oversized glyph must stay centred rather
+   than fall back to start alignment the way an overflowing label should. */
+.btn.btn-square > .btn-content,
+.btn.btn-round > .btn-content {
+    @apply justify-center;
+}
 
 /* Button Tile — full-width row with left-aligned icon + content */
 .btn.btn-tile {
@@ -290,6 +322,12 @@ body.hoverable .btn.btn-modal:hover::after {
     @apply text-start;
     @apply text-03 text-xs font-normal leading-3;
     @apply whitespace-normal;
+}
+/* A caption that wraps to more than one line outgrows h-12, and .btn-content clips the overflow -
+   so the row has to grow, and leading-3 leaves the last line's descenders nothing to sit in. */
+.btn.btn-tile:has(.c-caption) {
+    @apply h-auto min-h-12;
+    @apply py-2;
 }
 
 /* Button Tile — flat: no fill, color variants only tint the hover/active ::after overlay */

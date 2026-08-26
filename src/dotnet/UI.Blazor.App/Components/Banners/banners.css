@@ -64,62 +64,6 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
     width: calc(100% - 1rem);
 }
 
-.banner.add-members-banner {
-    @apply h-10;
-    @apply bg-primary text-06;
-}
-.banner.add-members-banner .banner-body {
-    @apply flex-1 flex-x justify-center items-center;
-}
-.banner.add-members-banner .banner-body .btn {
-    @apply justify-start;
-    @apply px-0;
-    @apply text-headline-1 text-06;
-}
-.banner.add-members-banner .banner-body .btn .btn-content {
-    @apply gap-x-3;
-}
-.banner.add-members-banner .banner-buttons .btn.btn-transparent,
-.banner.add-members-banner .banner-buttons .btn-h i {
-    @apply text-06;
-}
-
-.cr-banner {
-    @apply bg-01;
-}
-.cr-banner .c-content {
-    @apply flex-y gap-2;
-    @apply m-2 p-2;
-    @apply border rounded-2xl border-cr-item-border;
-}
-.cr-banner .c-author {
-    @apply flex-x items-center gap-x-2;
-}
-.cr-banner .c-author .c-info {
-    @apply flex-y;
-}
-.cr-banner .c-author .c-info .c-name {
-    @apply text-headline-1;
-}
-.cr-banner .c-author .c-info .c-bio {
-    @apply pr-8;
-    @apply line-clamp-2;
-    @apply text-caption-8;
-}
-.cr-banner .cr-item {
-    @apply p-0;
-    @apply border-none;
-}
-.cr-banner .cr-cancel.btn {
-    @apply bg-cr-right-panel;
-    @apply text-cr-badge-selected;
-}
-.cr-banner .cr-buttons {
-    @apply flex-x md:self-end;
-    @apply w-full md:max-w-80;
-    @apply mt-4;
-}
-
 /* ── Incoming call banner ── */
 
 .incoming-call-banner .c-texts {
@@ -133,7 +77,7 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
 /* ── Outgoing-call banner ── */
 
 .banner.outgoing-call-banner {
-    @apply h-12;
+    @apply h-auto min-h-12;
     @apply my-1;
 }
 .outgoing-call-banner .c-icon {
@@ -147,8 +91,4 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
 }
 .outgoing-call-banner .banner-buttons .btn-h.btn-close-call i {
     @apply text-02;
-}
-
-.banner.lock-screen-calls-banner {
-    @apply h-auto min-h-14 py-2;
 }
