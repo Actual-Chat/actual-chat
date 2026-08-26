@@ -47,10 +47,10 @@ body.wide .video-panel.expanded .video-streaming-preview .call-video-native {
    iOS (mstg) the idle one is the canvas, which is never drawn at all: the preview
    sink writes to the VideoTrackGenerator and skips the frame listeners that paint
    it. The receiver has always done this, in JS (video-player.ts applyBackendVisibility). */
-.video-streaming-preview.preview-backend-canvas .call-video-native {
+.video-streaming-preview[data-preview-backend="canvas"] .call-video-native {
     display: none;
 }
-.video-streaming-preview.preview-backend-mstg .call-video {
+.video-streaming-preview[data-preview-backend="mstg"] .call-video {
     display: none;
 }
 .video-streaming-preview .btn-h.btn-settings {
@@ -64,8 +64,8 @@ body.hoverable .video-streaming-preview .btn-h.btn-settings:hover {
     @apply hidden;
 }
 
-/* Loading spinner — JS (video-streaming-preview.ts) toggles `.starting` in the
-   render loop whenever a recorder is present, not interrupted, and the first
+/* Loading spinner — JS (video-streaming-preview.ts) toggles `data-starting` in
+   the render loop whenever a recorder is present, not interrupted, and the first
    frame hasn't landed yet. */
 .video-streaming-preview .video-loading {
     @apply absolute inset-0;
@@ -74,7 +74,7 @@ body.hoverable .video-streaming-preview .btn-h.btn-settings:hover {
     @apply hidden;
 }
 /* Loading spinner — shown while camera is starting */
-.video-streaming-preview.starting .video-loading {
+.video-streaming-preview[data-starting] .video-loading {
     @apply flex;
 }
 

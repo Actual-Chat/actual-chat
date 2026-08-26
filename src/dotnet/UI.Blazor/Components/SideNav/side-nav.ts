@@ -54,7 +54,7 @@ export class SideNav extends DisposableBag {
     public get isPulling() { return this._isPulling; }
     public set isPulling(value: boolean) {
         this._isPulling = value;
-        this.element.classList.toggle('pulling', value);
+        this.element.toggleAttribute('data-pulling', value);
         if (value)
             ScrollController.cancelMomentumAll();
     }
@@ -100,7 +100,7 @@ export class SideNav extends DisposableBag {
         void delayAsync(250).then(async () => {
             // No transitions immediately after the first render
             await fastWriteRafAsync();
-            this.element.classList.add('animated');
+            this.element.toggleAttribute('data-animated', true);
         });
     }
 
