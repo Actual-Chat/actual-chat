@@ -7,7 +7,6 @@
     @apply relative;
     @apply flex-y;
     @apply w-full h-full;
-    @apply border-l border-transparent;
     @apply bg-03;
     @apply overflow-hidden;
     contain: layout;
