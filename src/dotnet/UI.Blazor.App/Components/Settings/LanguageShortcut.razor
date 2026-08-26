@@ -1,12 +1,10 @@
 @inherits ComputedStateComponent<AppUIHub, UserLanguageSettings>
 @{
     var m = State.Value;
-    var text = m.Primary.ShortTitle.ToSentenceCase();
-    if (m.Secondary is { } secondary)
-        text += ", " + secondary.ShortTitle.ToSentenceCase();
+    var text = m.ListSpoken().Select(x => x.ShortTitle.ToSentenceCase()).ToDelimitedString(", ");
 }
 
-<div class="text-primary text-sm">
+<div class="text-primary text-sm whitespace-nowrap">
     @text
 </div>
 
