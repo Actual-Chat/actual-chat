@@ -33,7 +33,7 @@
                 StopPropagation="true"
                 PreventDefault="true"
                 Click="@OnStopRecording"
-                Tooltip="@L.Common_Stop"
+                Tooltip="@L.Recording_StopRecording"
                 TooltipPosition="FloatingPosition.Top">
                 <i class="icon-mic-2"></i>
             </HeaderButton>
@@ -119,6 +119,7 @@
             await OnHangUpRequested.InvokeAsync().ConfigureAwait(true);
             return;
         }
+
         var audioState = await ChatAudioUI.GetState(Chat.Id).ConfigureAwait(true);
         if (audioState.IsRecording)
             await ChatAudioUI.SetRecordingChatId(default).ConfigureAwait(true);
