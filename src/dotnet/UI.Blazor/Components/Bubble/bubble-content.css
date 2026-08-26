@@ -32,7 +32,10 @@ body.narrow .ac-bubble-host.landscape .bubble-content .c-body {
 .bubble-counter {
     @apply text-caption-2;
 }
+/* It has to take the leftover width for its own justify-end to have anything to distribute -
+   content-sized, the buttons sat straight against the counter. */
 .bubble-buttons {
+    @apply flex-1;
     @apply flex-wrap gap-x-1 gap-y-1;
 }
 
