@@ -389,6 +389,69 @@ cannot change sizes, so they are worth checking only where colour matters (the
 search tint, the banner gradients).
 :::
 
+## Second round — safe areas, search, menus *(landed)*
+
+Everything here was measured rather than eyeballed; the numbers are what the
+browser reported, and the screenshots are in `tmp/screenshots-max/`.
+
+### Safe areas — the rule, implemented
+
+`debugUI.showSafeAreas(true)` forces 34px on all four sides. That is how each
+row below was measured.
+
+| | |
+|---|---|
+| **Narrow, chat panel** | The bg-04 spacer above the header is gone (`height: 0`); the header starts at `y=0` with `padding-top: 34px`, so its own bg-03 carries into the inset and the content still starts at `y=34`. |
+| **Narrow, place panel** | The wallpaper reaches the top of the screen: `.c-content` and `.c-icon` are both `top=0, height=138` (104 + 34), and the pixel at `y=2` is a wallpaper colour, not the flat `232,232,232` band. |
+| **Wide** | One strip, one colour: a pixel row at `y=10` has **1 distinct colour across all 1440px**. `.base-layout::before` is `fixed`, `34px`, `rgb(232,232,232)` = `--background-04`, `z-index 99999`. |
+| **Right panel, narrow** | The bottom dissolve is at `top=810, bottom=844` — the inset exactly, inside the viewport. It used to render 164px *below* the screen, because it sat inside `.c-panel-content`, which is translated down by the whole collapse range while the header is expanded. |
+| **Settings footer** | Grows with its padding: `height=74` (40 + 34). The version label's bottom is at 796, and the inset starts at 810. |
+
+Screenshots: `safe-narrow-leftpanel-chats.png`, `safe-narrow-place-header.png`,
+`safe-wide-topstrip.png`, `safe-narrow-rightpanel.png`,
+`safe-narrow-settings-footer.png`.
+
+### Search panel blink
+
+Switching between a place and the chat list with search open used to wipe the
+**chat list** in and out underneath the place overlay. The swap host now reports
+`c-swap-none` in both directions instead of `c-swap-wipe-up` / `c-swap-wipe-down`.
+
+### Search tint during a tab swap
+
+Sampled down the same column, at rest and 110ms into a tab swap:
+
+| | at rest | mid-swap (before) | mid-swap (now) |
+|---|---|---|---|
+| +2px | `181,205,251` | `243,243,243` | `181,205,251` |
+| +25px | `206,221,249` | `243,243,243` | `206,221,248` |
+| +80px | `243,243,243` | `243,243,243` | `243,243,243` |
+
+The resting look is unchanged — that is the point of the table.
+
+### Menu labels
+
+*Копіювати посилання на повідомлення* at 390px now renders on **2 lines** with
+`scrollWidth == clientWidth` (272 == 272); the item grows 48 &rarr; 52px. It was
+cut mid-word with no ellipsis. Wide keeps one line. See `menu-long-label-narrow.png`.
+
+### Place preview back button
+
+Renders over the wallpaper at the top-right of `.c-top`, narrow only, `40x40`.
+Reachable from search for a place you are **not** a member of — `/place/<id>`
+for a place you already belong to does not show this surface at all.
+
+### C4 + C7 re-check (iPhone 13, `ui-language=max`)
+
+| | narrow Max | narrow English | wide Max |
+|---|---|---|---|
+| Settings header | 390 x 56 | 390 x 56 | 320 x 56 |
+| `documentElement.scrollWidth` | 390 | 390 | 1440 |
+| Clipped rows | 0 / 23 | 0 / 23 | 0 / 23 |
+
+B3's radio options: 0 real duplicate labels, every row a uniform 40px, 0 clipped
+— in Max at both viewports and in English. Screenshots: `c47-*.png`.
+
 ## Reporting a problem
 
 If an item fails, the useful detail is: which finding, which viewport, which
