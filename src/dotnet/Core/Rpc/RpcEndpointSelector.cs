@@ -12,12 +12,13 @@ public class RpcEndpointSelector
     private string _current;
     private int _version;
 
+    public IReadOnlyList<string> Candidates => _candidates;
     public string OriginHost => _candidates[0];
     public string Current => Volatile.Read(ref _current);
     public bool IsOnOrigin => string.Equals(Current, OriginHost, StringComparison.OrdinalIgnoreCase);
     public int Version
-        // Bumped whenever the selection is re-evaluated, including a reset that picks the
-        // same endpoint again - a new network makes an old verdict meaningless.
+        // Bumped only when a new network makes every earlier verdict meaningless. Moving
+        // between endpoints doesn't bump it, so a fresh move isn't mistaken for a reset.
         => Volatile.Read(ref _version);
 
     public RpcEndpointSelector(string[] candidates, string? current = null)
@@ -34,15 +35,26 @@ public class RpcEndpointSelector
     public string Get(string host)
         => string.Equals(host, OriginHost, StringComparison.OrdinalIgnoreCase) ? Current : host;
 
+    public void Invalidate()
+        => Interlocked.Increment(ref _version);
+
     public void UseDirect()
     {
         Interlocked.Increment(ref _version);
         Set(OriginHost);
     }
 
+    public bool Use(string endpoint)
+    {
+        if (!_candidates.Contains(endpoint, StringComparer.OrdinalIgnoreCase))
+            return false;
+
+        Set(endpoint);
+        return true;
+    }
+
     public bool MoveNext()
     {
-        Interlocked.Increment(ref _version);
         var index = Array.FindIndex(_candidates,
             x => string.Equals(x, Current, StringComparison.OrdinalIgnoreCase));
         var nextIndex = index + 1;
@@ -55,18 +67,12 @@ public class RpcEndpointSelector
 
     public static string ApplyTo(string baseUrl)
     {
-        // Scheme, port, path and query are preserved - only the host moves.
         if (Instance is not { } instance)
             return baseUrl;
 
-        var schemeEnd = baseUrl.IndexOf("://");
-        if (schemeEnd < 0)
+        var (hostStart, hostEnd) = GetHostRange(baseUrl);
+        if (hostStart < 0)
             return baseUrl;
-
-        var hostStart = schemeEnd + 3;
-        var hostEnd = baseUrl.IndexOfAny(['/', ':', '?'], hostStart);
-        if (hostEnd < 0)
-            hostEnd = baseUrl.Length;
 
         var host = baseUrl[hostStart..hostEnd];
         var endpoint = instance.Get(host);
@@ -75,11 +81,31 @@ public class RpcEndpointSelector
             : string.Concat(baseUrl.AsSpan(0, hostStart), endpoint, baseUrl.AsSpan(hostEnd));
     }
 
+    public static string WithHost(string baseUrl, string host)
+    {
+        var (hostStart, hostEnd) = GetHostRange(baseUrl);
+        return hostStart < 0
+            ? baseUrl
+            : string.Concat(baseUrl.AsSpan(0, hostStart), host, baseUrl.AsSpan(hostEnd));
+    }
+
     // Protected/internal methods
 
     protected virtual void OnChanged(string endpoint) { }
 
     // Private methods
+
+    private static (int Start, int End) GetHostRange(string baseUrl)
+    {
+        // Scheme, port, path and query are preserved - only the host moves.
+        var schemeEnd = baseUrl.IndexOf("://");
+        if (schemeEnd < 0)
+            return (-1, -1);
+
+        var hostStart = schemeEnd + 3;
+        var hostEnd = baseUrl.IndexOfAny(['/', ':', '?'], hostStart);
+        return (hostStart, hostEnd < 0 ? baseUrl.Length : hostEnd);
+    }
 
     private void Set(string endpoint)
     {

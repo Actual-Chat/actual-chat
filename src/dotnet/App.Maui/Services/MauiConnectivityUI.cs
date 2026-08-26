@@ -29,14 +29,15 @@ public sealed class MauiConnectivityUI : ConnectivityUI
 
     private void OnConnectivityChanged(object? sender, ConnectivityChangedEventArgs e)
     {
-        // A different network is unproven, and it may well be unrestricted, so we always
-        // go back to the origin and let the connection quality demote us again if needed.
+        // A different network makes every earlier verdict meaningless, so the endpoints get
+        // re-measured. The current one is kept until that finishes: dropping to an unproven
+        // origin costs a reconnect, and strands the app there when the origin is the bad one.
         var profiles = e.ConnectionProfiles.ToDelimitedString();
         if (profiles != _connectionProfiles) {
             _connectionProfiles = profiles;
             if (RpcEndpointSelector.Instance is { } endpointSelector) {
-                endpointSelector.UseDirect();
-                Log.LogInformation("Network changed to {Profiles}, RPC endpoint reset to the origin", profiles);
+                endpointSelector.Invalidate();
+                Log.LogInformation("Network changed to {Profiles}, RPC endpoints will be re-measured", profiles);
             }
         }
         _isOnline.Value = e.NetworkAccess.IsOnline();

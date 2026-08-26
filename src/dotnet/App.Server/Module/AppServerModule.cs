@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Security.Cryptography;
 using ActualChat.App.Server.Components.Pages;
 using ActualChat.App.Server.Flows;
 using ActualChat.App.Server.Health;
@@ -157,7 +158,16 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         }
         app.MapRpcWebSocketServer();
         app.MapRpcHttpServer();
-        app.MapGet("/rpc/check", () => Results.Text("ok"));
+        app.MapGet("/rpc/check", (int? size, HttpResponse response) => {
+            // "size" makes this a throughput probe rather than a reachability one: some
+            // networks let a connection's first few KB through and cap it after that, so
+            // only a payload larger than that allowance tells the two apart. Random bytes
+            // because a compressible one would arrive as a fraction of its size.
+            response.Headers.CacheControl = "no-store";
+            return size is not { } byteCount
+                ? Results.Text("ok")
+                : Results.Bytes(RandomNumberGenerator.GetBytes(Math.Clamp(byteCount, 1024, 256 * 1024)));
+        });
         if (HostInfo.HasRole(HostRole.Api)) {
             app.MapFusionAuthEndpoints(); // /signIn, /signOut
             app.MapFusionRenderModeEndpoints(); // /fusion/renderMode

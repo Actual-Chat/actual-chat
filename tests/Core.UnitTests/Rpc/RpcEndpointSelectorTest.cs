@@ -72,6 +72,59 @@ public class RpcEndpointSelectorTest
     }
 
     [Fact]
+    public void ShouldSelectAnyCandidate()
+    {
+        // arrange
+        var selector = new RpcEndpointSelector([Origin, Edge1, Edge2]);
+
+        // act & assert
+        selector.Use(Edge2).Should().BeTrue();
+        selector.Current.Should().Be(Edge2);
+        selector.Use("retired.edge.voxt.ai").Should().BeFalse(because: "only candidates may be dialed");
+        selector.Current.Should().Be(Edge2);
+    }
+
+    [Fact]
+    public void ShouldNotExpireTheVerdictOnMoveNextOrUse()
+    {
+        // arrange
+        var selector = new RpcEndpointSelector([Origin, Edge1, Edge2]);
+        var version = selector.Version;
+
+        // act
+        selector.MoveNext();
+        selector.Use(Edge2);
+
+        // assert
+        selector.Version.Should().Be(version,
+            because: "moving between endpoints is not a new network, so measurements still hold");
+    }
+
+    [Fact]
+    public void ShouldExpireTheVerdictOnInvalidateWithoutMoving()
+    {
+        // arrange
+        var selector = new RpcEndpointSelector([Origin, Edge1], Edge1);
+        var version = selector.Version;
+
+        // act
+        selector.Invalidate();
+
+        // assert
+        selector.Current.Should().Be(Edge1,
+            because: "a working endpoint must be kept until the new network is measured");
+        selector.Version.Should().NotBe(version);
+    }
+
+    [Theory]
+    [InlineData("wss://voxt.ai", "wss://kz1.edge.voxt.ai")]
+    [InlineData("https://voxt.ai/rpc/check?size=1", "https://kz1.edge.voxt.ai/rpc/check?size=1")]
+    [InlineData("https://cdn.voxt.ai/a.png", "https://kz1.edge.voxt.ai/a.png")]
+    [InlineData("not-a-url", "not-a-url")]
+    public void WithHostShouldReplaceTheHostUnconditionally(string baseUrl, string expected)
+        => RpcEndpointSelector.WithHost(baseUrl, Edge1).Should().Be(expected);
+
+    [Fact]
     public void ShouldBumpVersionEvenWhenTheEndpointDoesNotChange()
     {
         // arrange
