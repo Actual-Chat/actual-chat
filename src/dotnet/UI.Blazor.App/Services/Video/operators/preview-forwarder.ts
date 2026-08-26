@@ -3,15 +3,9 @@ import type { RotationQuarter } from '../orientation/quantize';
 import type { PreviewFramePresentation } from '../sender/recorder-worker-contract';
 import { HAS_VF_ROTATION_INIT, wrapWithRotation } from '../video-frame-caps';
 
-const { warnLog, debugLog } = getLogs('VideoPipeline');
-// Frozen self-previews are otherwise invisible: nothing on this path logs, and
-// <video>.currentTime keeps advancing whether or not frames arrive.
-const StatsIntervalMs = 1000;
+const { warnLog } = getLogs('VideoPipeline');
 // Log first, then 1-in-N — prevents flooding when a device-level failure drops every clone.
 const LogEveryN = 30;
-// WebKit's VideoTrackGenerator can stop draining for good — a new <video> on the
-// same track stays frozen too, so only a fresh generator clears it.
-const JamThresholdMs = 1000;
 
 export interface PreviewSinkOptions {
     // iOS Safari's <video> auto-orients a generated (VTG) track to upright on
@@ -24,8 +18,6 @@ export interface PreviewSinkOptions {
     getWriter: () => WritableStreamDefaultWriter<VideoFrame> | null;
     reportFrame?: (frame: VideoFrame) => void | Promise<void>;
     reportPresentation?: (presentation: PreviewFramePresentation) => void;
-    // Writer refused every frame for JamThresholdMs; host should rebuild it.
-    onWriterJam?: () => void;
 }
 
 // The self-preview tap. `forward` takes a clone of the normalized ceiling
@@ -55,58 +47,13 @@ export interface PreviewSink {
 }
 
 export function createPreviewSink(opts: PreviewSinkOptions): PreviewSink {
-    const { isIos, getWriter, reportFrame, reportPresentation, onWriterJam } = opts;
+    const { isIos, getWriter, reportFrame, reportPresentation } = opts;
     let failures = 0;
     let lastReportedRotation: number | null = null;
-    let refusedCount = 0;
-    let firstRefusalAtMs = 0;
-    let statsAtMs = 0;
-    let forwardedCount = 0;
-    let deliveredCount = 0;
-    let refusedTotal = 0;
-    const reportStats = (desiredSize: number | null): void => {
-        const nowMs = performance.now();
-        if (statsAtMs === 0)
-            statsAtMs = nowMs;
-
-        if (nowMs - statsAtMs < StatsIntervalMs)
-            return;
-
-        debugLog?.log(
-            `previewSink: forwarded=${forwardedCount} delivered=${deliveredCount} ` +
-            `refused=${refusedTotal} desiredSize=${desiredSize} over ` +
-            `${Math.round(nowMs - statsAtMs)}ms`);
-        statsAtMs = nowMs;
-        forwardedCount = 0;
-        deliveredCount = 0;
-        refusedTotal = 0;
-    };
     const reportFailure = (where: string, e: unknown): void => {
         failures++;
         if (failures === 1 || failures % LogEveryN === 0)
             warnLog?.log(`previewSink: ${where} failed (#${failures}):`, e);
-    };
-    // Re-arms itself: the window restarts after each report, so a generator that
-    // stays dead re-reports once per JamThresholdMs instead of once ever.
-    const noteWriterRefusal = (): void => {
-        const nowMs = performance.now();
-        if (refusedCount === 0)
-            firstRefusalAtMs = nowMs;
-
-        refusedCount++;
-        const elapsedMs = nowMs - firstRefusalAtMs;
-        if (elapsedMs < JamThresholdMs)
-            return;
-
-        warnLog?.log(
-            `previewSink: writer jammed — ${refusedCount} frames refused over ` +
-            `${Math.round(elapsedMs)}ms; asking the host for a fresh generator`);
-        refusedCount = 0;
-        try {
-            onWriterJam?.();
-        } catch (e) {
-            reportFailure('onWriterJam', e);
-        }
     };
     const reportPresentationOnce = (rotation: number): void => {
         if (!reportPresentation || lastReportedRotation === rotation)
@@ -149,7 +96,6 @@ export function createPreviewSink(opts: PreviewSinkOptions): PreviewSink {
         reportPresentationOnce(displayRotation);
 
         if (writer) {
-            deliveredCount++;
             writer.write(frame)
                 .catch((e: unknown) => reportFailure('writer.write', e))
                 .finally(() => closeFrame(frame));
@@ -178,21 +124,14 @@ export function createPreviewSink(opts: PreviewSinkOptions): PreviewSink {
             if (!writer && !reportFrame)
                 return;
 
-            forwardedCount++;
-            reportStats(writer ? writer.desiredSize : null);
 
             // Writer back-pressure: drop instead of buffer. The downstream
             // <video> element drains MSTG at its render cadence; if desiredSize
             // is exhausted, the renderer is stalled and queueing here only
-            // delays the same drop while holding a GPU plane. A stall that
-            // never clears is a dead generator, not a slow renderer.
-            if (writer && writer.desiredSize !== null && writer.desiredSize <= 0) {
-                refusedTotal++;
-                noteWriterRefusal();
+            // delays the same drop while holding a GPU plane.
+            if (writer && writer.desiredSize !== null && writer.desiredSize <= 0)
                 return;
-            }
 
-            refusedCount = 0;
             let clone: VideoFrame;
             try {
                 clone = source.clone();
