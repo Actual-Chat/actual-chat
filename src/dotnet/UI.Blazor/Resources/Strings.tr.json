@@ -948,6 +948,7 @@
   "Recording_InChat_Suffix": "sohbetinde!",
   "Recording_WillStopIn": "Kayıt şu süre sonra duracak: ",
   "Recording_StopRecording": "Kaydı durdur",
+  "Recording_MuteRecording": "Kaydı sessize al",
   "Recording_NoMicrophoneAccess": "Mikrofon erişimi yok",
   "Recording_NoMicrophone": "Mikrofon bulunamadı",
   "Recording_MicrophoneBusy": "Mikrofonu başka uygulama kullanıyor",

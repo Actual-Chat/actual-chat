@@ -948,6 +948,7 @@
   "Recording_InChat_Suffix": "!",
   "Recording_WillStopIn": "Snimanje će se zaustaviti za ",
   "Recording_StopRecording": "Zaustavi snimanje",
+  "Recording_MuteRecording": "Utišaj snimanje",
   "Recording_NoMicrophoneAccess": "Nema pristupa mikrofonu",
   "Recording_NoMicrophone": "Mikrofon nije pronađen",
   "Recording_MicrophoneBusy": "Druga aplikacija koristi mikrofon",

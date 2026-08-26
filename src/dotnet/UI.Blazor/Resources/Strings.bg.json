@@ -948,6 +948,7 @@
   "Recording_InChat_Suffix": "!",
   "Recording_WillStopIn": "Записът ще спре след ",
   "Recording_StopRecording": "Спри записа",
+  "Recording_MuteRecording": "Заглуши записа",
   "Recording_NoMicrophoneAccess": "Няма достъп до микрофона",
   "Recording_NoMicrophone": "Не е намерен микрофон",
   "Recording_MicrophoneBusy": "Друго приложение използва микрофона",

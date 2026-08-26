@@ -948,6 +948,7 @@
   "Recording_InChat_Suffix": "",
   "Recording_WillStopIn": "녹음이 다음 시간 후 중지됩니다: ",
   "Recording_StopRecording": "녹음 중지",
+  "Recording_MuteRecording": "녹음 음소거",
   "Recording_NoMicrophoneAccess": "마이크 접근 권한 없음",
   "Recording_NoMicrophone": "마이크를 찾을 수 없음",
   "Recording_MicrophoneBusy": "다른 앱이 마이크를 사용 중",

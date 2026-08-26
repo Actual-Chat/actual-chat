@@ -948,6 +948,7 @@
   "Recording_InChat_Suffix": "",
   "Recording_WillStopIn": "La grabación se detendrá en ",
   "Recording_StopRecording": "Detener grabación",
+  "Recording_MuteRecording": "Silenciar grabación",
   "Recording_NoMicrophoneAccess": "Sin acceso al micrófono",
   "Recording_NoMicrophone": "No se encontró micrófono",
   "Recording_MicrophoneBusy": "Otra app usa el micrófono",
