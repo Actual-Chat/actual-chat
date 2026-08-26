@@ -115,6 +115,10 @@ in a later section looks loaded — most of them are.*
 - **guard window** — *`lastProgrammaticScrollAt`, `ProgrammaticScrollGuardMs`; `suppressUntil` in the
   controller.* The interval after a scroll the code wrote itself, during which the resulting scroll
   event is ignored. The list's window and the controller's are separate and differently sized.
+- **position guard** — *`checkPosition`, `PositionGuardIntervalMs`.* The one correction that does not
+  run off an event: a 1s check that the view is inside the band and has content on it, for the state
+  where a blank viewport leaves the user nothing to scroll with (§3.6). Nothing to do with a *guard
+  window*, which suppresses a handler rather than running one.
 
 ### Anchoring and pinning — five different things
 
@@ -601,7 +605,7 @@ asked for, or where nothing is moving and a jump is invisible:
 1. **Opening or switching chat**, and any explicit `scrollToKey`.
 2. **A re-placement re-pin** — see below for what separates one from a follow.
 3. **Re-centring the chain** in the scroll space, at a quiet moment.
-4. **Stranded recovery**.
+4. **Stranded recovery**, and the position guard's return to the near end of the chain.
 5. **A direction switch** (§3.2), at an interaction or a quiet moment: the measured drift, unclamped.
 6. **Clamping back into the band**, inside `ScrollController` only — and not while the list is pinned,
    because a pinned list is about to correct itself by re-pinning and the clamp would get there first
@@ -715,10 +719,49 @@ The threshold is deliberately a multiple of the legal overscroll rather than an 
 overscrolling is normal and already bounded, and this is the case where the view and its chain have
 come apart entirely, whatever the cause.
 
+#### The position guard
+
+Every correction above runs off an *event* — a render, a settle, a scroll — and there is one state in
+which none of them arrives: the position is illegal, and the viewport is blank, so the user has nothing
+on screen to scroll and cannot produce the event that would fix it. `checkPosition` is the standing
+check that runs on its own clock instead, every `PositionGuardIntervalMs` (1s).
+
+It defers to anything that legitimately owns the position: a finger down, a scroll still settling, an
+open excursion, or one that ended within `PositionGuardOverscrollQuietMs` (500ms) —
+`ScrollController.isOverscrollRecent`, which a caller polling on its own clock needs and one reacting
+to an event does not. It also defers to a correction already booked (a pending jump, a scheduled
+follow) and to a fresh interactive or screen anchor, which is a click of the user's deliberately
+holding the view somewhere. Then two tiers:
+
+- **Out of band.** Exactly what the first scroll event out there would have found, so it is answered
+  the same way: `clampToLimits`, the snap that `ScrollController.onScroll` performs itself for any
+  crossing that is not a finger. It acts on the second consecutive check rather than the first, because
+  a correction booked for a frame that has not run yet can be seen out there once.
+- **In band, but with no content on screen.** Up to three screens past what is loaded is legal — that is
+  how reading further back starts — so the first answer is the data query that space exists for, and
+  only after `OffContentChecks` (3) checks with none in flight is the blank treated as a fault. Then the
+  view moves to the *near* end of the chain rather than to the default edge: this is the position the
+  user scrolled to, and the nearest place it puts content on screen is where scrolling itself would have
+  stopped.
+
+Deliberately **not** gated on the height animations that `applyLayout`'s own clamp waits for: the limits
+are built from the model, which carries settled heights (§3.10), so the guard reads the same numbers the
+settled pass would. Persistence across checks is what separates a fault from a frame in transit.
+
+It is a backstop, not the mechanism: with the collapse handled where it happens (§3.9) and the settled
+clamp below, the repro above recovers in ~500ms without the guard ever firing. What it covers is the
+cases we have not found.
+
 #### Clamping
 
 `clampToLimits` always **snaps**. It early-returns while a finger is down or an excursion is open, and
-`applyLayout` skips it while the list is pinned or animating.
+`applyLayout` skips it while the list is pinned.
+
+**Mid-animation it is deferred, not skipped.** The clamp needs the real sizes and the DOM does not have
+them yet, so `applyLayout` books the settled pass instead — which an unpinned list has to book for
+itself, `repinWhenStable` otherwise being reached only from the pinned path. Left to that path alone, a
+block collapsing under a view that is not at an edge got no clamp at all: the render skipped it for the
+animation, and nothing re-ran it afterwards.
 
 Handing an out-of-band position to the return instead looked like the gentler option and was
 tried, and it produced the Android "stops at random places while you spin it" bug: `applyLayout` clamps
@@ -1274,6 +1317,15 @@ viewport with it, and the gap that held them shrinks to a single row — so keep
 that gap drops the view clean past the row, onto whatever happens to sit that far below. So the offset
 is only kept while it still fits inside the surviving gap; past that, the view lands at the top of the
 gap, which is where the user was already looking.
+
+**With nothing surviving after the viewport, the gap is the rest of the chain.** That is the same
+collapse at the *end* of the list — a live conversation folding into its summary, which is where a live
+conversation always is, and a long newest message shrinking under a view parked at its tail. The gap
+used to be `Infinity` there, on the reasoning that no following item constrains anything, so the raw
+offset was always kept and the view fell as far past the chain as it had been deep inside the block.
+The chain's own end is the constraint, and it is what bounds the gap. Reproduced by growing the newest
+message to 4,000px, reading 2,000px into it, and taking the 4,000px away: the view stayed 2,800px past
+the band with `phase: 'in-band'`, and the chat was blank until something produced a scroll event.
 
 **Interactive anchors** are the opt-in override. Only controls marked `data-vl-hold` arm one — plain
 taps, links and text selection must not affect anchoring — and both a click and a `touchend` on the

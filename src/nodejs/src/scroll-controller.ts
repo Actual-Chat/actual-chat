@@ -166,6 +166,7 @@ export class ScrollController {
     private momentumSpringSide = 0;
     private momentumSpringVisible = 0;
     private momentumSpringVelocity = 0;
+    private overscrollEndedAt = 0;
 
     public get isTouchActive(): boolean {
         return this.isTouching;
@@ -175,6 +176,13 @@ export class ScrollController {
     // whole displacement.
     public get isOverscrollActive(): boolean {
         return this.phase !== 'in-band' || this.momentumPhase !== 'none';
+    }
+
+    // Also true for `quietMs` after the last excursion ended, which a caller polling on its own clock
+    // needs and one reacting to an event does not: a position just outside the limits then is the tail
+    // of the gesture that is already putting it back, not a fault to correct.
+    public isOverscrollRecent(quietMs: number): boolean {
+        return this.isOverscrollActive || performance.now() - this.overscrollEndedAt < quietMs;
     }
 
     constructor(
@@ -1031,6 +1039,7 @@ export class ScrollController {
         this.lastScrollTime = performance.now();
         this.lastWrittenTop = this.element.scrollTop;
         this.recentSpeed = 0;
+        this.overscrollEndedAt = this.lastScrollTime;
     }
 
     // The one way the band moves: by a delta to the transform, never by assigning it. The pair
