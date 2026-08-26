@@ -145,9 +145,11 @@ swiper-container::part(button-prev) {
     @apply h-full;
 }
 
+/* max-w/max-h let the browser letterbox the video against its wrapper. Sizing it from JS
+   instead reads a viewport height derived from --vh, which lags a rotation by a frame. */
 .media-swiper .video-wrapper video {
     @apply relative;
-    @apply max-h-full;
+    @apply max-w-full max-h-full;
 }
 .video-wrapper .video-control {
     @apply absolute z-10 left-0 right-0 bottom-0;

@@ -19,12 +19,7 @@ export class VisualMediaViewer {
     private readonly jumpTime: number = 5;
     private videos: NodeListOf<HTMLVideoElement>;
     private imageContainers: NodeListOf<HTMLElement>;
-    private maxVideoWidth = 0;
-    private maxVideoHeight = 0;
-    private videoRatio = 0;
     private readonly headerHeight: number = 0;
-    private windowWidth = 0;
-    private windowHeight = 0;
     private hideTimeoutId: number | null = null;
     private hideLockedUntil = 0;
     // eslint-disable-next-line
@@ -119,19 +114,10 @@ export class VisualMediaViewer {
         fromEvent(window.visualViewport ?? window, 'resize')
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: Event) => {
-                [...this.videos].forEach(video => {
-                    const activeSlide = this.imageViewer.querySelector('.swiper-slide-active');
-                    if (activeSlide) {
-                        const activeVideo = activeSlide.querySelector('video');
-                        if (activeVideo)
-                            this.setMaxSize(activeVideo);
-                    }
-                    this.onUpdateProgressBarDebounced(event, video);
-                });
+                [...this.videos].forEach(video => this.onUpdateProgressBarDebounced(event, video));
             });
 
         [...this.videos].forEach((video: HTMLMediaElement) => {
-            this.setMaxSize(video);
             this.addVideoListeners(video);
             this.videoPlugHandler(video);
             this.wiredMedia.add(video);
@@ -186,10 +172,7 @@ export class VisualMediaViewer {
         this.disposed$.complete();
     }
 
-    // Called from Blazor after the rendered slide window changes (items appended/prepended
-    // or a synthetic attachment upgraded to its resolved one). When activeIndex >= 0 a
-    // prepend shifted indices, so the active slide is re-pointed without animation or a
-    // recursive load-more (guarded by isReindexing) before media is re-measured.
+    // activeIndex >= 0 means a prepend shifted indices; isReindexing suppresses the load-more slideTo triggers.
     public onWindowChanged(activeIndex = -1): void {
         this.wireNewMedia();
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
@@ -203,12 +186,6 @@ export class VisualMediaViewer {
         if (this.thumbs)
             // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
             this.thumbs.update();
-        // The active slide's dimensions may have just resolved (synthetic 0×0 → real),
-        // so re-measure it for correct video scaling.
-        this.maxVideoWidth = this.maxVideoHeight = this.videoRatio = 0;
-        const activeVideo = this.imageViewer.querySelector<HTMLVideoElement>('.swiper-slide-active video.video-original');
-        if (activeVideo)
-            this.setMaxSize(activeVideo);
         void this.safeCenterThumb();
         this.updateVideoPlayback();
     }
@@ -825,35 +802,6 @@ export class VisualMediaViewer {
         });
     }
 
-    private setMaxSize(videoFile: HTMLMediaElement) {
-        const windowWidth = document.documentElement.offsetWidth;
-        const windowHeight = document.documentElement.offsetHeight;
-        if (windowWidth == this.windowWidth
-            && windowHeight == this.windowHeight
-            && this.videoRatio != 0
-            && this.maxVideoWidth != 0
-            && this.maxVideoHeight != 0)
-            return;
-
-        this.windowWidth = windowWidth;
-        this.windowHeight = windowHeight;
-        let maxWidth = Number(videoFile.dataset.width);
-        let maxHeight = Number(videoFile.dataset.height);
-        this.videoRatio = maxWidth / maxHeight;
-        if (windowWidth < maxWidth) {
-            maxWidth = windowWidth;
-            maxHeight = maxWidth / this.videoRatio;
-        }
-        if (windowHeight < maxHeight) {
-            maxHeight = windowHeight;
-            maxWidth = maxHeight * this.videoRatio;
-        }
-        this.maxVideoWidth = maxWidth;
-        this.maxVideoHeight = maxHeight;
-        videoFile.style.maxWidth = `${maxWidth}px`;
-        videoFile.style.maxHeight = `${maxHeight}px`;
-    }
-
     private fixVideoPosition() {
         const activeSlide = this.imageViewer.querySelector('.swiper-slide-active');
         if (!activeSlide)
@@ -1064,7 +1012,6 @@ export class VisualMediaViewer {
                 return;
 
             this.wiredMedia.add(video);
-            this.setMaxSize(video);
             this.addVideoListeners(video);
             this.videoPlugHandler(video);
         });
@@ -1082,8 +1029,6 @@ export class VisualMediaViewer {
 
     private async onSlideChange(swiper: Swiper): Promise<void> {
         this.updateVideoPlayback();
-        if (this.maxVideoWidth != 0 || this.maxVideoHeight != 0 || this.videoRatio != 0)
-            this.maxVideoWidth = this.maxVideoHeight = this.videoRatio = 0;
         if (this.isReindexing)
             return;
 
