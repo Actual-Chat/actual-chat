@@ -54,17 +54,27 @@ await applyViewport();
 const url = new URL(target.url);
 if (NOLOCK) url.searchParams.set('vllock', '0'); else url.searchParams.delete('vllock');
 if (TAKEOVER) url.searchParams.set('vltakeover', '1'); else url.searchParams.delete('vltakeover');
-if (url.toString() !== target.url) {
-    await send('Page.navigate', { url: url.toString() }); await sleep(6000);
-}
-else {
-    await send('Page.reload', { ignoreCache: true }); await sleep(6000);
-}
+if (url.toString() !== target.url)
+    await send('Page.navigate', { url: url.toString() });
+else
+    await send('Page.reload', { ignoreCache: true });
+
 const ev = async (expression, awaitPromise = false) => {
     const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise, timeout: 60000 });
     if (r.exceptionDetails) throw new Error('PAGE ' + JSON.stringify(r.exceptionDetails).slice(0, 400));
     return r.result.value;
 };
+// A cache-ignoring reload re-fetches the whole app, and how long that takes is the machine's business,
+// not ours: a fixed wait either runs long on every scenario or reports the list as missing on a slow
+// one. The evaluate is guarded because the context this session holds dies with the old document.
+for (let i = 0; ; i++) {
+    await sleep(500);
+    const isReady = await ev(`!!document.querySelector('.virtual-list.infinite-list')`).catch(() => false);
+    if (isReady)
+        break;
+    if (i >= 120)
+        throw new Error('the list never rendered - is a chat open on this page?');
+}
 // Touch emulation on: Chrome then treats dispatched touch events as a real touch device.
 await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
 await send('Emulation.setEmitTouchEventsForMouse', { enabled: false });
