@@ -117,15 +117,35 @@ body.narrow .left-panel-content-header.place .c-icon {
     @apply overflow-hidden;
     @apply relative z-0;
 }
+/* The band is a length rather than a share of the box: two elements have to paint it now, and they
+   are not the same height. 6.25rem is what 12% came to at the sizes it was drawn for. */
 .left-panel-content-search {
+    --c-search-tint-h: 6.25rem;
+    --c-search-tint: linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--blue-50-50) 80%, var(--violet-50-50)),
+        var(--background-03));
     @apply flex-1 flex-y;
     @apply rounded-tl-xl;
     @apply overflow-hidden;
     @apply bg-03;
-    background-image: linear-gradient(
-        to bottom,
-        color-mix(in srgb, var(--blue-50-50) 80%, var(--violet-50-50)),
-        var(--background-03) 12%);
+    background-image: var(--c-search-tint);
+    background-repeat: no-repeat;
+    background-size: 100% var(--c-search-tint-h);
+}
+/* A swap layer paints --content-swap-bg to occlude the layer under it, and a flat colour cannot
+   match a gradient - so the tint went missing for the length of every tab swap. The swap host
+   repaints the band, shifted up by the tab strip standing above it, and the layer inherits that:
+   layer and host share a grid area, so the two line up exactly. */
+.left-panel-content-search .c-tab-content {
+    @apply bg-03;
+    background-image: var(--c-search-tint);
+    background-repeat: no-repeat;
+    background-size: 100% var(--c-search-tint-h);
+    background-position: 0 -2.5rem;
+}
+.left-panel-content-search .c-tab-content > .c-layer.outgoing {
+    background: inherit;
 }
 /* The border lives on the wrapper, not on .c-content: .c-content is clamped to max-h-14,
    so a border there would be drawn inside those 56px and end up 1px above the chat header's

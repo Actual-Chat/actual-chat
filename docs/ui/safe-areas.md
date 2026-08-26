@@ -141,7 +141,7 @@ The bottom safe area in scrollable panels (left panel chat list, right panel con
 
 ## Component Categories
 
-### 1. Base Layout (left/right edges — always active)
+### 1. Base Layout (left/right edges — always active, plus the wide top strip)
 
 **File:** `BaseLayout.razor`, `main.css`
 
@@ -158,6 +158,27 @@ The outermost app layout places `.safe-area-left` and `.safe-area-right` divs fl
 These are always present in both narrow and wide modes. The `::after` pseudo-elements ensure the colored strips are fixed to the screen edges. Background color: `var(--background-04)` (dark).
 
 Left/right safe areas are **only** handled here at the top level — no inner components duplicate them, except for full-screen overlays that cover the entire viewport.
+
+**The wide top strip** is painted here too, by `.base-layout::before`:
+
+```css
+.base-layout::before {
+    content: '';
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: var(--safe-area-top-wide);
+    z-index: 99999;
+    background-color: var(--background-04);
+    pointer-events: none;
+}
+```
+
+It is `--safe-area-top-wide`, so it collapses to nothing in narrow, where each panel's own
+background continues into the inset instead. Fixed and at the same `z-index` as the side strips, so
+it sits above every panel — which is what makes the whole top one colour regardless of what the
+panels underneath paint. Panels still *reserve* the inset in wide; they simply stop painting it.
 
 ### 2. Middle Panel Layouts (top/bottom edges)
 
@@ -230,25 +251,31 @@ On wide (`md+`), side panels are `position: relative` with `left: 0; right: auto
 
 ### 5. Right Panel
 
-**Files:** `right-panel.css`, `RightPanelContent.razor`
+**Files:** `chat-side-panel.css`, `ChatSidePanel.razor`
 
-**Header** — the background image extends into the top safe area while interactive content is pushed down:
+**Header** — in narrow the background image extends into the top inset while interactive content is
+pushed down. It is `--safe-area-top-narrow`, not `--safe-area-top`: in wide the single strip
+painted by `.base-layout::before` covers the top instead, so the panel must not grow there.
 
 ```css
-.right-panel > .c-header > .c-top {
-    height: calc(6.5rem + var(--safe-area-top));
-    padding-top: var(--safe-area-top);
-}
-.right-panel > .c-header > .c-center {
-    top: calc(4.5rem + var(--safe-area-top));
-}
-.right-panel > .c-header > .c-buttons {
-    top: calc(0.5rem + var(--safe-area-top));
+.chat-side-panel > .c-top-region > .c-header > .c-top {
+    height: calc((6.5rem - 3rem * var(--rp-collapse)) + var(--safe-area-top-narrow));
+    padding-top: var(--safe-area-top-narrow);
 }
 ```
 
-**Content** — uses the blur overlay at the bottom of scrollable content:
-- `<div class="safe-area-bottom safe-area-bottom-overlay">` at the bottom of `.c-panel-content`
+**Content** — the dissolve is a **sibling** of `.c-panel-content`, not a child of it:
+
+```
+<div class="chat-side-panel">
+    <div class="c-top-region">...</div>
+    <div class="c-panel-content">...</div>
+    <div class="safe-area-bottom safe-area-bottom-overlay"></div>
+</div>
+```
+
+In narrow `.c-panel-content` is translated down by the whole collapse range while the header is
+expanded, so a dissolve inside it rides that translate straight off the bottom of the screen.
 
 ### 6. Full-Screen Dialogs (Narrow Stretch Modals)
 

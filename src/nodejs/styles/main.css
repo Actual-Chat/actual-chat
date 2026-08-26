@@ -263,9 +263,12 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply min-w-0;
     @apply float-left;
 }
+/* clip, not hidden: a closed side panel still contributes its width here, so the box overflows by
+   the panel's width and "hidden" leaves it programmatically scrollable - one focus() inside a panel
+   mid-close slides the whole layout sideways with nothing to scroll it back. clip cannot scroll. */
 .base-layout-body > .c-layout-content {
     @apply flex-1;
-    @apply overflow-hidden;
+    overflow: clip;
     @apply bg-01;
 }
 

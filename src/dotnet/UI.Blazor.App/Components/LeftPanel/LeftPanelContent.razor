@@ -9,6 +9,12 @@
     var layerKey = isSwapOpen ? "search" : "chats";
     // The results sit above the list they replace, so opening sweeps down and closing sweeps up
     var swapEffect = _swapDirection.WipeVertical(isSwapOpen ? 0 : 1);
+    // Moving between a place and the chat list while search stays open swaps this region from one
+    // search view to the other, and the place variant's own overlay covers it either way. Animating
+    // that hand-off is what showed the chat list underneath for the length of a wipe.
+    if (m.IsSearchOpen && _wasSearchOpen)
+        swapEffect = ContentSwapEffect.None;
+    _wasSearchOpen = m.IsSearchOpen;
     var searchCls = m.IsSearchOpen ? "search-open" : "";
 }
 
@@ -42,6 +48,7 @@
 
 @code {
     private readonly ContentSwapDirection _swapDirection = new();
+    private bool _wasSearchOpen;
 
     private IPlaces Places => Hub.Places;
     private SearchUI SearchUI => Hub.SearchUI;
