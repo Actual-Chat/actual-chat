@@ -69,6 +69,44 @@ That's it. ~30 seconds and the bundle the page loads is fresh. Manual
 `npm run build:Debug` is appropriate ONLY when the loop isn't running
 (or when you're hunting a build error in isolation).
 
+### Hard restart — when the browser is stuck on stale WASM
+
+**The failure this exists for:** the browser holds cached assemblies that no
+longer match the ones the server serves. The page reload-loops on an assembly
+mismatch, the console shows mismatch/load failures, and **nothing you can do
+from inside that tab recovers it** — reloading is what's already looping. An
+agent driving the page is simply stuck, and the run is over.
+
+Two triggers, same as the rebundle pair:
+
+- **Press `h` in the loop terminal.**
+- **`touch tmp/server-loop-hard-restart`** — for anyone who can't reach that
+  terminal (Claude in Docker, another shell). `tmp/` is shared across host, WSL
+  and Docker.
+
+The loop stops the server, then — once the process has released the files —
+purges `artifacts/{obj,bin}/App.Wasm` and drops both build stamps, so Steps 1
+and 2 both run instead of being skipped as up to date. Watch for:
+
+```
+[hh:mm:ss] Hard restart requested: stopping the server, then purging the WASM build outputs.
+[hh:mm:ss] Hard restart: purged …/artifacts/obj/App.Wasm.
+[hh:mm:ss] Hard restart: stamps dropped, so npm-build and dotnet-build both run below.
+```
+
+Dropping the stamps alone is not enough — MSBuild considers the stale outputs
+up to date and skips them, which is exactly how the mismatch survives an
+ordinary restart. The purge is scoped to the WASM app deliberately: it is the
+only output the browser can be poisoned by, and wiping all of `artifacts/`
+turns a ~1 minute recovery into a very long one.
+
+::: tip Prefer render mode `'s'` and you will rarely need this
+The stale-assembly trap only exists in WASM. `await debugUI.setRenderMode('s')`
+once at the start of a session makes reloads cheap (no runtime download, no
+service-worker dance) **and** removes this whole failure class. Switch to `'w'`
+at the end to confirm the WASM build, not while iterating — see `/debug-ui`.
+:::
+
 ### Rebundle without restarting the server
 
 Two triggers, same code path (`Invoke-Rebundle` in `server-loop.ps1`):
@@ -223,6 +261,7 @@ Setup details and usage live in `/debug-ui`.
 | `tmp/server-loop-server-run.err` | Step 3 — `dotnet run` stderr (empty on a healthy run) |
 | `tmp/server-loop-server-run.log` | Server's `ActualChat_DevLog` — the structured app diagnostics, richer than stdout |
 | `tmp/server-loop-rebundle` | Write it to request an in-place rebundle (same as pressing `j` in the loop terminal); the loop deletes it when it starts building |
+| `tmp/server-loop-hard-restart` | Write it to request a hard restart — stop, purge `artifacts/{obj,bin}/App.Wasm`, drop both stamps, full rebuild (same as pressing `h`). For when the browser is reload-looping on stale WASM assemblies |
 | `tmp/server-loop-npm-build.stamp` | "npm-build last succeeded at" (UTC ticks) — drives the skip check |
 | `tmp/server-loop-dotnet-build.<config>.stamp` | Same for dotnet-build, per `-c` configuration |
 
