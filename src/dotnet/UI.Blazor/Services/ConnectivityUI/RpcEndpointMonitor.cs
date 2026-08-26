@@ -46,6 +46,7 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
     private int _selectedVersion = -1;
     private int _verifiedVersion = -1;
     private string _pushedEndpoint = "";
+    private RpcEndpointReport? _pendingReport;
     private ISystemProperties SystemProperties => field ??= Services.GetRequiredService<ISystemProperties>();
     private RpcServerProbe ServerProbe => field ??= Services.GetRequiredService<RpcServerProbe>();
     private ReconnectUI ReconnectUI => field ??= Services.GetRequiredService<ReconnectUI>();
@@ -88,6 +89,7 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
             return;
         }
 
+        await ReportEndpoint(selector, cancellationToken).ConfigureAwait(false);
         if (selector.Version == _verifiedVersion) {
             await WaitUntilDisconnected(cancellationToken).ConfigureAwait(false);
             return;
@@ -119,8 +121,8 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
         if (version == _selectedVersion)
             return;
 
-        var endpoint = await FindBestEndpoint(selector, cancellationToken).ConfigureAwait(false);
-        if (endpoint is null && ServerProbe.IsSizedProbeSupported) {
+        var selection = await FindBestEndpoint(selector, cancellationToken).ConfigureAwait(false);
+        if (selection is null && ServerProbe.IsSizedProbeSupported) {
             // Nothing answered, and the server can measure - so the network is simply down.
             // That's no verdict rather than a bad one; the next cycle tries again.
             return;
@@ -129,7 +131,11 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
         _selectedVersion = version;
         // A server predating the sized probe can't be measured at all, so this falls back to
         // the older rule: a new network gets the origin, and a failing probe demotes us again.
-        endpoint ??= selector.OriginHost;
+        var endpoint = selection?.Endpoint ?? selector.OriginHost;
+        _pendingReport = new RpcEndpointReport(endpoint,
+            selection is null ? RpcEndpointReason.Unmeasurable : RpcEndpointReason.Measured,
+            ToMilliseconds(selection?.OriginElapsed),
+            ToMilliseconds(selection?.EndpointElapsed));
         if (endpoint == selector.Current)
             return;
 
@@ -140,7 +146,7 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
         ReconnectUI.ResetReconnectDelays();
     }
 
-    private async Task<string?> FindBestEndpoint(
+    private async Task<Selection?> FindBestEndpoint(
         RpcEndpointSelector selector,
         CancellationToken cancellationToken)
     {
@@ -154,25 +160,26 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
             var originTask = ServerProbe.MeasureTransfer(origin, ProbeSize, SelectTimeout, cts.Token);
             var hedgeTask = Clocks.CpuClock.Delay(SelectHedgeDelay, cancellationToken);
             var completedTask = await Task.WhenAny(originTask, hedgeTask).ConfigureAwait(false);
-            if (completedTask == originTask && await originTask.ConfigureAwait(false) is not null)
-                return origin;
+            if (completedTask == originTask && await originTask.ConfigureAwait(false) is { } fast)
+                return new Selection(origin, fast, fast);
 
             var relays = await ShortlistRelays(candidates, cts.Token).ConfigureAwait(false);
             var probeTasks = relays
                 .Select(x => ServerProbe.MeasureTransfer(x, ProbeSize, SelectTimeout, cts.Token))
                 .ToArray();
             var elapsed = await Task.WhenAll(probeTasks).ConfigureAwait(false);
+            var originElapsed = await originTask.ConfigureAwait(false);
             // The origin wins whenever it works at all: a relay adds a hop and is shared by
             // everyone who needs one, so it's only worth taking when the direct path isn't.
-            if (await originTask.ConfigureAwait(false) is not null)
-                return origin;
+            if (originElapsed is { } slow)
+                return new Selection(origin, slow, slow);
 
             var bestIndex = -1;
             for (var i = 0; i < elapsed.Length; i++)
                 if (elapsed[i] is { } x && (bestIndex < 0 || x < elapsed[bestIndex]!.Value))
                     bestIndex = i;
 
-            return bestIndex < 0 ? null : relays[bestIndex];
+            return bestIndex < 0 ? null : new Selection(relays[bestIndex], null, elapsed[bestIndex]);
         }
         finally {
             cts.Cancel();
@@ -200,6 +207,20 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
         // Nothing answered the cheap probe, yet the expensive one may still get through -
         // so fall back to the declared order rather than giving up on every relay at once.
         return nearest.Length > 0 ? nearest : relays.Take(MaxThroughputProbes).ToArray();
+    }
+
+    private async Task ReportEndpoint(RpcEndpointSelector selector, CancellationToken cancellationToken)
+    {
+        // Reported once per connection rather than per decision, so the metric counts
+        // connections - an endpoint carried over from an earlier decision still shows up.
+        var report = _pendingReport ?? new RpcEndpointReport(selector.Current, RpcEndpointReason.Retained);
+        _pendingReport = null;
+        try {
+            await SystemProperties.ReportRpcEndpoint(report, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
+            Log.LogWarning(e, "Failed to report the RPC endpoint");
+        }
     }
 
     private async Task PushEndpointToJS(CancellationToken cancellationToken)
@@ -301,11 +322,17 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
             selector.UseDirect();
         }
         _verifiedVersion = -1;
+        _pendingReport = new RpcEndpointReport(selector.Current, RpcEndpointReason.Demoted);
         Peer?.Disconnect();
         ReconnectUI.ResetReconnectDelays();
     }
 
+    private static double ToMilliseconds(TimeSpan? elapsed)
+        => elapsed?.TotalMilliseconds ?? -1;
+
     // Nested types
+
+    private sealed record Selection(string Endpoint, TimeSpan? OriginElapsed, TimeSpan? EndpointElapsed);
 
     private enum ProbeResult
     {
