@@ -786,29 +786,6 @@ export class VideoRecorder {
         this.setIsBlurEnabled(enabled);
     }
 
-    // Called by the preview view once the generated track is on a <video>.
-    // Until then the worker keeps the writable closed - see setPreviewAttached.
-    public notifyPreviewAttached(isAttached: boolean): void {
-        void this.worker?.setPreviewAttached(isAttached).catch(() => undefined);
-    }
-
-    // Rung 2 of the preview stall ladder: throw the generator away and publish a
-    // fresh track, which re-attaches the view through the usual listener path.
-    public rebuildPreviewGenerator(): void {
-        void this.worker?.rebuildPreviewGenerator().catch(() => undefined);
-    }
-
-    // Rung 3: give up on the generated track for the rest of the session and
-    // paint the preview from frames posted to main instead.
-    public forcePreviewCanvasFallback(): void {
-        warnLog?.log('forcePreviewCanvasFallback: generated preview track kept stalling');
-        void this.worker?.setPreviewAttached(false).catch(() => undefined);
-        this.cleanupGeneratedPreviewTrack();
-        this.previewCanvasFallback = true;
-        this.previewTrack = null;
-        this.notifyPreviewTrackChanged();
-    }
-
     public getPreviewTrack(): MediaStreamTrack | null {
         return this.previewTrack;
     }
