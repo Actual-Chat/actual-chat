@@ -42,8 +42,10 @@
                         MustPropagateDisplay="true"/>
                 }
             </div>
-            <div class="safe-area-bottom safe-area-bottom-overlay"></div>
         </div>
+        @* Outside .c-panel-content: in narrow that block is translated down by the whole collapse
+           range while the header is expanded, which carried the dissolve off the bottom of the screen. *@
+        <div class="safe-area-bottom safe-area-bottom-overlay"></div>
     </ErrorBarrier>
 </div>
 

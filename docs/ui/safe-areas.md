@@ -2,6 +2,36 @@
 
 The app uses CSS-driven safe areas via `viewport-fit=cover` and `env(safe-area-inset-*)`. Background layers may extend into safe areas, but interactive/content elements are pushed inward by the inset amounts.
 
+## The rule
+
+An inset is not a margin the app stops at. A panel **occupies** the inset — what
+changes is only what it paints there.
+
+| | Top | Bottom |
+|---|---|---|
+| **Narrow** | The panel's own background continues into the inset, **including a background image**: a blurred place wallpaper reaches the very top of the screen, behind the clock and battery. | The panel continues into the inset too, under the dissolve — a gradient plus blur, so the system navigation stays legible over it. |
+| **Wide** | One flat strip across the **whole** width, in the navbar's left-side colour. Panels do **not** each extend their own background here. | Same as narrow: the panel continues, under the dissolve. |
+
+Interactive content is still pushed inward by the inset in every case. Only the
+*background* extends.
+
+::: warning A spacer is not an extension
+`<div class="safe-area-top">` reserves the inset and paints nothing, so whatever
+sits behind it shows through. That is fine where the ancestor's flat colour is
+already the intended background, and wrong wherever the component has a
+background of its own — an image, a gradient, a different surface — because the
+background then stops at the spacer and leaves a visible band above it.
+
+To extend a background, grow the element and pad it:
+
+```css
+.some-header {
+    height: calc(6.5rem + var(--safe-area-top));
+    padding-top: var(--safe-area-top);
+}
+```
+:::
+
 ## CSS Variables
 
 Four CSS custom properties wrap the native `env()` values, defined on `:root` in `main.css`:
@@ -90,7 +120,8 @@ All spacers have `flex-shrink: 0` so they don't collapse in flex containers.
 | Direction | Background | Reason |
 |-----------|-----------|--------|
 | Left, right | `var(--background-04)` (dark, opaque) | Always visible as permanent strips at screen edges. The `::after` pseudo-elements on `.safe-area-left` / `.safe-area-right` use `position: fixed; z-index: 99999` to paint over everything, ensuring these strips are visible regardless of scroll position or overlay state. |
-| Top, bottom | `transparent` | Top/bottom safe areas are not rendered as standalone colored strips. Instead, each component extends its own background into the safe area via `padding-top` / `padding-bottom` on the appropriate element (header extends `bg-01`, editor extends `bg-post-panel`, etc.). |
+| Top (narrow), bottom | `transparent` | Not standalone coloured strips: each component extends its own background into the inset via `padding-top` / `padding-bottom` on the appropriate element (header extends `bg-01`, editor extends `bg-post-panel`, a place header extends its wallpaper). See [The rule](#the-rule). |
+| Top (wide) | navbar left-side colour | One flat strip across the whole width. Panels do **not** extend their own backgrounds into the top inset in wide mode. |
 
 The bottom safe area in scrollable panels (left panel chat list, right panel content) uses `.safe-area-bottom-overlay` which is transparent with `backdrop-filter: blur(8px)`, blurring content that scrolls underneath.
 
@@ -110,7 +141,7 @@ The bottom safe area in scrollable panels (left panel chat list, right panel con
 
 ## Component Categories
 
-### 1. Base Layout (left/right edges — always active)
+### 1. Base Layout (left/right edges — always active, plus the wide top strip)
 
 **File:** `BaseLayout.razor`, `main.css`
 
@@ -127,6 +158,27 @@ The outermost app layout places `.safe-area-left` and `.safe-area-right` divs fl
 These are always present in both narrow and wide modes. The `::after` pseudo-elements ensure the colored strips are fixed to the screen edges. Background color: `var(--background-04)` (dark).
 
 Left/right safe areas are **only** handled here at the top level — no inner components duplicate them, except for full-screen overlays that cover the entire viewport.
+
+**The wide top strip** is painted here too, by `.base-layout::before`:
+
+```css
+.base-layout::before {
+    content: '';
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: var(--safe-area-top-wide);
+    z-index: 99999;
+    background-color: var(--background-04);
+    pointer-events: none;
+}
+```
+
+It is `--safe-area-top-wide`, so it collapses to nothing in narrow, where each panel's own
+background continues into the inset instead. Fixed and at the same `z-index` as the side strips, so
+it sits above every panel — which is what makes the whole top one colour regardless of what the
+panels underneath paint. Panels still *reserve* the inset in wide; they simply stop painting it.
 
 ### 2. Middle Panel Layouts (top/bottom edges)
 
@@ -199,25 +251,31 @@ On wide (`md+`), side panels are `position: relative` with `left: 0; right: auto
 
 ### 5. Right Panel
 
-**Files:** `right-panel.css`, `RightPanelContent.razor`
+**Files:** `chat-side-panel.css`, `ChatSidePanel.razor`
 
-**Header** — the background image extends into the top safe area while interactive content is pushed down:
+**Header** — in narrow the background image extends into the top inset while interactive content is
+pushed down. It is `--safe-area-top-narrow`, not `--safe-area-top`: in wide the single strip
+painted by `.base-layout::before` covers the top instead, so the panel must not grow there.
 
 ```css
-.right-panel > .c-header > .c-top {
-    height: calc(6.5rem + var(--safe-area-top));
-    padding-top: var(--safe-area-top);
-}
-.right-panel > .c-header > .c-center {
-    top: calc(4.5rem + var(--safe-area-top));
-}
-.right-panel > .c-header > .c-buttons {
-    top: calc(0.5rem + var(--safe-area-top));
+.chat-side-panel > .c-top-region > .c-header > .c-top {
+    height: calc((6.5rem - 3rem * var(--rp-collapse)) + var(--safe-area-top-narrow));
+    padding-top: var(--safe-area-top-narrow);
 }
 ```
 
-**Content** — uses the blur overlay at the bottom of scrollable content:
-- `<div class="safe-area-bottom safe-area-bottom-overlay">` at the bottom of `.c-panel-content`
+**Content** — the dissolve is a **sibling** of `.c-panel-content`, not a child of it:
+
+```
+<div class="chat-side-panel">
+    <div class="c-top-region">...</div>
+    <div class="c-panel-content">...</div>
+    <div class="safe-area-bottom safe-area-bottom-overlay"></div>
+</div>
+```
+
+In narrow `.c-panel-content` is translated down by the whole collapse range while the header is
+expanded, so a dissolve inside it rides that translate straight off the bottom of the screen.
 
 ### 6. Full-Screen Dialogs (Narrow Stretch Modals)
 
@@ -462,3 +520,4 @@ body.narrow splash-page-skeleton .left-panel-skeleton.side-nav {
 3. **`.has-safe-area-bottom` pattern** — Avoids double bottom padding when the chat editor is present vs. when viewing a read-only chat or other page.
 4. **Blur overlays for scrollable lists** — The bottom safe area in scrollable panels (left chat list, right panel content) uses `position: absolute` + `backdrop-filter: blur(8px)` so content scrolls underneath while the safe area is visually distinct.
 5. **Skeleton safe areas in CSS only** — The loading skeleton uses CSS padding rather than JS, so safe areas are visible before any JavaScript loads.
+6. **Panels occupy the insets, they don't stop at them** — see [The rule](#the-rule). The visible test is a place header on a notched phone: its blurred wallpaper must reach the top of the screen, not stop below the clock. Wide mode is the exception, and deliberately so — a single navbar-coloured strip reads as one window chrome rather than as several panels each bleeding upward.
