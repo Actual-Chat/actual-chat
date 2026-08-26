@@ -24,6 +24,10 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
     // A healthy origin answers well inside this, so the relays are dialed only once the
     // origin is already in doubt - on a good network they cost no traffic at all.
     private static readonly TimeSpan SelectHedgeDelay = TimeSpan.FromSeconds(1.5);
+    // Measuring every relay at once has them competing for the same bottleneck, so the
+    // measurement would degrade with each relay added. Only the nearest few are measured.
+    private const int MaxThroughputProbes = 2;
+    private static readonly TimeSpan RoundTripTimeout = TimeSpan.FromSeconds(3);
     // 64KB in 10s is ~52 kbps. Well under what a weak but usable link sustains, and well
     // over a capped one, which needs ~37s for this payload. A tighter deadline would
     // demand ~175 kbps and start failing links that are merely slow.
@@ -153,26 +157,49 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
             if (completedTask == originTask && await originTask.ConfigureAwait(false) is not null)
                 return origin;
 
-            var probeTasks = new Task<TimeSpan?>[candidates.Count];
-            probeTasks[0] = originTask;
-            for (var i = 1; i < candidates.Count; i++)
-                probeTasks[i] = ServerProbe.MeasureTransfer(candidates[i], ProbeSize, SelectTimeout, cts.Token);
+            var relays = await ShortlistRelays(candidates, cts.Token).ConfigureAwait(false);
+            var probeTasks = relays
+                .Select(x => ServerProbe.MeasureTransfer(x, ProbeSize, SelectTimeout, cts.Token))
+                .ToArray();
             var elapsed = await Task.WhenAll(probeTasks).ConfigureAwait(false);
             // The origin wins whenever it works at all: a relay adds a hop and is shared by
             // everyone who needs one, so it's only worth taking when the direct path isn't.
-            if (elapsed[0] is not null)
+            if (await originTask.ConfigureAwait(false) is not null)
                 return origin;
 
             var bestIndex = -1;
-            for (var i = 1; i < elapsed.Length; i++)
+            for (var i = 0; i < elapsed.Length; i++)
                 if (elapsed[i] is { } x && (bestIndex < 0 || x < elapsed[bestIndex]!.Value))
                     bestIndex = i;
 
-            return bestIndex < 0 ? null : candidates[bestIndex];
+            return bestIndex < 0 ? null : relays[bestIndex];
         }
         finally {
             cts.Cancel();
         }
+    }
+
+    private async Task<string[]> ShortlistRelays(
+        IReadOnlyList<string> candidates,
+        CancellationToken cancellationToken)
+    {
+        var relays = candidates.Skip(1).ToArray();
+        if (relays.Length <= MaxThroughputProbes)
+            return relays;
+
+        var rttTasks = relays
+            .Select(x => ServerProbe.MeasureRoundTrip(x, RoundTripTimeout, cancellationToken))
+            .ToArray();
+        var rtt = await Task.WhenAll(rttTasks).ConfigureAwait(false);
+        var nearest = relays.Zip(rtt)
+            .Where(x => x.Second is not null)
+            .OrderBy(x => x.Second!.Value)
+            .Take(MaxThroughputProbes)
+            .Select(x => x.First)
+            .ToArray();
+        // Nothing answered the cheap probe, yet the expensive one may still get through -
+        // so fall back to the declared order rather than giving up on every relay at once.
+        return nearest.Length > 0 ? nearest : relays.Take(MaxThroughputProbes).ToArray();
     }
 
     private async Task PushEndpointToJS(CancellationToken cancellationToken)
