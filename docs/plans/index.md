@@ -80,14 +80,24 @@ iOS Notification Service Extension), the digest emails, and the native shells
 per-language routes before translation pays off, and the legal half is a
 liability decision.
 
-[Max-locale layout findings](./max-locale-findings.md) — 19 layout defects in
-10 root causes, found by walking the whole UI under `?ui-language=max` at
+[Max-locale layout findings](./max-locale-findings.md) — 21 layout defects in
+12 root causes, found by walking the whole UI under `?ui-language=max` at
 390x844, 820x720, 1280x800 and 1440x900, each verified against English on the
 same screen. Four blockers: right-panel tabs that cannot be reached, composed
 sentences that drop the name out of the middle, radio options that truncate
-into duplicates, and the left-panel title painted under the search box. Plus
-one localization gap — eight hardcoded English strings in `JoinVideoCallModal`.
-The route map it came from is the [UI walk-through](../ui/walk-through.md).
+into duplicates, and the left-panel title painted under the search box. **All
+fixed** on `feat/fix-ui-size-issues`, then re-checked by a parallel read-only
+sweep whose findings are recorded in the same document — including one fix that
+silently disabled another. The route map it came from is the
+[UI walk-through](../ui/walk-through.md); the manual pass is the
+[fix checklist](./max-locale-fix-checklist.md).
+
+[Localization size budgets](./l10n-size-budgets.md) — the follow-up the layout
+work argues for: declare how much room each string has (in em, so it survives a
+font-size change), measure every translation against it with the glyph advances
+`derive-max.py` already computes, and shorten the ones that do not fit. A
+phrase needing two lines in a one-line box is usually a phrase that could have
+been shorter, and shortening the widest translation narrows Max itself.
 
 ### On-premises instances
 
