@@ -791,11 +791,29 @@ body.narrow .list-view-layout.has-audio-panel-header .narrow-panel .rounded-sub-
     @apply h-12 inset-x-0;
     top: calc(-3rem + 1px);
 }
+/* The fog is an OPAQUE fill (--background-01 base + violet tint on top) so messages behind it are
+   hidden near the input; all shaping is done by the mask. The mask is a union of a full-width bottom
+   band (opaque near the footer, fading up to transparent - this is what actually hides the messages
+   and gives the bottom-to-top fade) plus three radial gradients that raise the top contour into a
+   bathtub silhouette (tall left/right edges + a small centered bump hugging the round record button).
+   Violet tones mirror the active-conversation header gradient (--violet-60-20, main.css). */
 body.narrow .list-view-layout.has-listening-activity .rounded-sub-footer > .bg-layer,
 body.narrow .list-view-layout.has-audio-panel-header .rounded-sub-footer > .bg-layer {
     background:
-        radial-gradient(100.91% 105.88% at 50% 100%, var(--background-01) 30%, var(--transparent) 75%),
-        radial-gradient(100.91% 105.88% at 50% 100%, var(--footer-fog-color-1) 30%, var(--footer-fog-color-2) 75%);
+        linear-gradient(var(--violet-50-10), var(--violet-50-10)),
+        linear-gradient(var(--background-01), var(--background-01));
+    -webkit-mask:
+        radial-gradient(30% 100% at 0% 100%, #000 55%, transparent 85%),
+        radial-gradient(30% 100% at 100% 100%, #000 55%, transparent 85%),
+        radial-gradient(30% 80% at 50% 100%, #000 55%, transparent 85%),
+        linear-gradient(to top, #000 35%, transparent 100%);
+    -webkit-mask-composite: source-over;
+    mask:
+        radial-gradient(30% 100% at 0% 100%, #000 55%, transparent 85%),
+        radial-gradient(30% 100% at 100% 100%, #000 55%, transparent 85%),
+        radial-gradient(30% 80% at 50% 100%, #000 55%, transparent 85%),
+        linear-gradient(to top, #000 35%, transparent 100%);
+    mask-composite: add;
     animation: smoothSubFooter 1s steps(10) forwards;
 }
 @keyframes smoothSubFooter {
