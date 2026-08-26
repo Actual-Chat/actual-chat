@@ -760,7 +760,7 @@ export class VideoPanel {
         this.videoPanel.style.top = '';
         this.videoPanel.style.left = '';
         this.videoPanel.style.right = '';
-        this.videoPanel.classList.remove('portrait-video');
+        this.videoPanel.removeAttribute('data-portrait-video');
         this.videoPanel.style.removeProperty('--video-panel-island-aspect');
         this.restoreToParent();
     }

@@ -890,10 +890,10 @@ export class VideoPlayer {
             }
         }
         const prevAspect = panel.style.getPropertyValue('--video-panel-island-aspect');
-        const prevPortrait = panel.classList.contains('portrait-video');
+        const prevPortrait = panel.hasAttribute('data-portrait-video');
         updateCollapsedIslandAspect(panel, frameW, frameH);
         const aspectChanged = panel.style.getPropertyValue('--video-panel-island-aspect') !== prevAspect;
-        const portraitChanged = panel.classList.contains('portrait-video') !== prevPortrait;
+        const portraitChanged = panel.hasAttribute('data-portrait-video') !== prevPortrait;
         if (aspectChanged || portraitChanged) {
             void panel.offsetHeight;
             this.runViewportCheck();

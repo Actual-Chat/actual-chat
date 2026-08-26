@@ -11,7 +11,7 @@
     @apply overflow-hidden;
     @apply bg-03;
 }
-/* Query container for the .rotated-video axis swap below, scoped to the canvas
+/* Query container for the data-rotated-video axis swap below, scoped to the canvas
    painter so the generated-track path keeps its original layout untouched.
    Safe to size-contain here: the surfaces inside are absolutely positioned, so
    the frame's height comes from min-h-56 rather than from its content. */
@@ -84,7 +84,7 @@
     transform: rotate(var(--video-rotation, 0deg));
 }
 /* Odd quarters swap the box's axes so a portrait frame still fills the frame. */
-.join-video-call-modal .video-frame[data-preview-backend="canvas"] .camera-preview.rotated-video {
+.join-video-call-modal .video-frame[data-preview-backend="canvas"] .camera-preview[data-rotated-video] {
     inset: auto;
     width: 100cqh;
     height: 100cqw;
@@ -92,7 +92,7 @@
     top: 50%;
     transform: translate(-50%, -50%) scaleX(-1) rotate(var(--video-rotation, 0deg));
 }
-.join-video-call-modal .c-video.no-mirror .video-frame[data-preview-backend="canvas"] .camera-preview.rotated-video {
+.join-video-call-modal .c-video.no-mirror .video-frame[data-preview-backend="canvas"] .camera-preview[data-rotated-video] {
     transform: translate(-50%, -50%) rotate(var(--video-rotation, 0deg));
 }
 /* Encoder-unavailable state: dim the preview and overlay the actionable

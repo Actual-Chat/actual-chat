@@ -2711,11 +2711,13 @@ export class VideoRecorder {
                         Math.max(0, stats.framesCaptured - previous.framesCaptured) * scale;
                     const perSec = (now: number, before: number): number =>
                         Math.round(Math.max(0, now - before) * scale);
+                    // Read straight from stats: the bundlesPerSec field is only
+                    // assigned below, so logging it here reports the last tick.
                     debugLog?.log(
                         `recorderStats: captured=${Math.round(this.capturedPerSec)}/s `
                         + `offered=${perSec(stats.framesOffered, previous.framesOffered)}/s `
                         + `encoded=${perSec(stats.bundlesEncoded, previous.bundlesEncoded)}/s `
-                        + `shipped=${Math.round(this.bundlesPerSec)}/s `
+                        + `shipped=${perSec(stats.bundlesShipped, previous.bundlesShipped)}/s `
                         + `targetFps=${this.lastTargetFps}`);
                     if (debugLog && isPreviewTraceEnabled())
                         void this.reportPreviewTrace();

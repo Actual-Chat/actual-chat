@@ -47,7 +47,7 @@ export function chooseFit(frameW: number, frameH: number, tileW: number, tileH: 
 }
 
 /** Publish the focused tile's post-rotation aspect to the collapsed (island)
- *  panel via CSS variable + `portrait-video` class. CSS owns the actual width
+ *  panel via CSS variable + `data-portrait-video` attribute. CSS owns the actual width
  *  / height; this only updates the inputs. No-op when the panel isn't
  *  currently collapsed, when the source dims are missing, or when the
  *  computed ratio is out of the clamped safe range. */
@@ -63,7 +63,7 @@ export function updateCollapsedIslandAspect(
     const nextAspect = ratio.toFixed(4);
     const nextPortrait = ratio < 1;
     panel.style.setProperty('--video-panel-island-aspect', nextAspect);
-    panel.classList.toggle('portrait-video', nextPortrait);
+    panel.toggleAttribute('data-portrait-video', nextPortrait);
 }
 
 /** Publish rotation state to CSS. CSS owns the actual sizing via container
@@ -72,7 +72,7 @@ export function updateCollapsedIslandAspect(
 export function applyRotationLayout(el: HTMLElement, quarter: RotationQuarter): void {
     const q = normalizeRotationQuarter(quarter);
     const swap = (q & 1) === 1;
-    el.classList.toggle('rotated-video', swap);
+    el.toggleAttribute('data-rotated-video', swap);
     el.style.removeProperty('width');
     el.style.removeProperty('height');
     el.style.removeProperty('left');

@@ -17,8 +17,8 @@ body.wide .video-panel.expanded .video-streaming-preview .call-video-native {
 .video-streaming-preview .call-video-native.no-mirror {
     transform: rotate(var(--video-rotation, 0deg)) translateZ(0);
 }
-.video-streaming-preview .call-video.rotated-video,
-.video-streaming-preview .call-video-native.rotated-video {
+.video-streaming-preview .call-video[data-rotated-video],
+.video-streaming-preview .call-video-native[data-rotated-video] {
     inset: auto;
     width: 100cqh;
     height: 100cqw;
@@ -26,10 +26,10 @@ body.wide .video-panel.expanded .video-streaming-preview .call-video-native {
     top: 50%;
     transform: translate(-50%, -50%) scaleX(-1) rotate(var(--video-rotation, 0deg)) translateZ(0);
 }
-.video-streaming-preview.screencast .call-video.rotated-video,
-.video-streaming-preview.screencast .call-video-native.rotated-video,
-.video-streaming-preview .call-video.no-mirror.rotated-video,
-.video-streaming-preview .call-video-native.no-mirror.rotated-video {
+.video-streaming-preview.screencast .call-video[data-rotated-video],
+.video-streaming-preview.screencast .call-video-native[data-rotated-video],
+.video-streaming-preview .call-video.no-mirror[data-rotated-video],
+.video-streaming-preview .call-video-native.no-mirror[data-rotated-video] {
     transform: translate(-50%, -50%) rotate(var(--video-rotation, 0deg)) translateZ(0);
 }
 /* Screencast preview: show whole screen with letterboxing instead of cropping. */
