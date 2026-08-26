@@ -127,12 +127,6 @@ export interface RecorderWorker extends SharedSettingsWorker {
     // Demand-driven target fps for temporal pacing. <=0 drops every frame
     // (idle: stop encoding, keep camera warm). Hot-applied, no restart.
     setTargetFps(fps: number, noWait?: RpcNoWait): Promise<void>;
-    // Opens the preview writable only once main has the track on a <video>.
-    // Writing into a worker-built generator that nothing reads yet leaves WebKit
-    // resolving every write while the track emits nothing.
-    setPreviewAttached(isAttached: boolean): Promise<void>;
-    // Discards a generator whose track stopped emitting and ships a fresh one.
-    rebuildPreviewGenerator(): Promise<void>;
     getStats(): Promise<RecorderStats>;
     getPreviewTrace(): Promise<PreviewTrace>;
     stop(): Promise<void>;

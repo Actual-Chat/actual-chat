@@ -5,7 +5,6 @@
 // onAttach/onDetach/onFirstFrame hooks — this class doesn't touch CSS.
 
 import { getLogs } from 'logging';
-import { DeviceInfo } from 'device-info';
 import { DeviceOrientation, ScreenOrientation, normalizeRotationQuarter } from 'orientation';
 import type { Subscription } from 'rxjs';
 import { merge } from 'rxjs';
@@ -25,16 +24,6 @@ import { applyRotationLayout, chooseFit, updateCollapsedIslandAspect } from './t
 
 const { infoLog, warnLog } = getLogs('VideoRecorder');
 const BG_DRAW_GATE_TOLERANCE_MS = 20;
-// Preview stall detection. WebKit bug 230922: a <video> fed by a MediaStream can
-// freeze on a single frame while every write into the generator still resolves.
-// Neither currentTime nor requestVideoFrameCallback notices - both keep advancing
-// on a frozen element - so the only honest signal is the pixels.
-const STALL_TICK_MS = 250;
-const STALL_TICKS_BEFORE_REPAIR = 4;
-// Cost is the video->canvas readback, not the pixel count: 8px and 32px both
-// measured ~0.7ms on an iPhone 13 Pro, so ~2.8ms/s at this cadence.
-const STALL_HASH_SIZE = 8;
-const CAMERA_SOURCE_KIND = 0;
 
 export interface RecorderPreviewViewOptions {
     // Blur overlay only — raw track always goes to videoEl.
@@ -123,11 +112,6 @@ export class RecorderPreviewView {
     // handles it. Non-zero only when one of the two channels diverges
     // from the start (e.g. screen-lock-on + device physically rotated).
     private initialDeviceScreenDelta: number | null = null;
-    private stallTimer: number | null = null;
-    private stallHashCanvas: HTMLCanvasElement | null = null;
-    private lastPixelHash: number | null = null;
-    private stallTicks = 0;
-    private repairAttempts = 0;
 
     static create(options: RecorderPreviewViewOptions): RecorderPreviewView {
         return new RecorderPreviewView(options);
@@ -279,7 +263,6 @@ export class RecorderPreviewView {
             try { this.options.videoEl.removeEventListener('resize', this.videoResizeListener); } catch { /* ignore */ }
             this.videoResizeListener = null;
         }
-        this.stopStallWatch();
         this.detach();
         this.bgCanvasTarget?.dispose();
     }
@@ -372,8 +355,6 @@ export class RecorderPreviewView {
         if (track) {
             videoEl.srcObject = new MediaStream([track]);
             playPreview(videoEl);
-            recorder.notifyPreviewAttached(true);
-            this.startStallWatch();
             this.videoLoadedDataListener = () => {
                 forceRecomposite(videoEl);
                 this.fireFirstFrame();
@@ -385,7 +366,7 @@ export class RecorderPreviewView {
         }
         const parent = videoEl.parentElement;
         // An attribute, not a class: Blazor owns `class` and drops whatever JS put
-        // there on its next re-render. See docs/development/ui-components.md.
+        // there on its next re-render. See docs/ui/components.md.
         parent?.setAttribute('data-preview-backend', track === null ? 'canvas' : 'mstg');
         if (track && this.bgCanvasTarget) {
             this.bgPumpHandle = window.setInterval(() => {
@@ -418,117 +399,6 @@ export class RecorderPreviewView {
         this.options.onAttach?.(recorder);
     }
 
-    // WebKit-wide, not iOS-only: bug 230922 is reported on macOS Safari too, and
-    // Mac Catalyst is the same engine. Camera only - a static screencast legitimately
-    // repeats frames (keepAlive re-emits the last one), so an unchanged image there
-    // means nothing is wrong.
-    private get isStallWatchApplicable(): boolean {
-        return DeviceInfo.isWebKit
-            && this.sourceKinds.length === 1
-            && this.sourceKinds[0] === CAMERA_SOURCE_KIND;
-    }
-
-    private startStallWatch(): void {
-        this.stopStallWatch();
-        if (!this.isStallWatchApplicable)
-            return;
-
-        this.lastPixelHash = null;
-        this.stallTicks = 0;
-        this.stallTimer = window.setInterval(() => this.checkForStall(), STALL_TICK_MS);
-    }
-
-    private stopStallWatch(): void {
-        if (this.stallTimer === null)
-            return;
-
-        window.clearInterval(this.stallTimer);
-        this.stallTimer = null;
-    }
-
-    // Sensor noise moves at least one of 64 samples on any live camera, so an
-    // unchanged hash means the element stopped updating, not a still scene.
-    private samplePixelHash(): number | null {
-        const videoEl = this.options.videoEl;
-        if (videoEl.videoWidth === 0 || videoEl.videoHeight === 0)
-            return null;
-
-        this.stallHashCanvas ??= document.createElement('canvas');
-        const canvas = this.stallHashCanvas;
-        canvas.width = STALL_HASH_SIZE;
-        canvas.height = STALL_HASH_SIZE;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        if (!ctx)
-            return null;
-
-        try {
-            ctx.clearRect(0, 0, STALL_HASH_SIZE, STALL_HASH_SIZE);
-            ctx.drawImage(videoEl, 0, 0, STALL_HASH_SIZE, STALL_HASH_SIZE);
-            const data = ctx.getImageData(0, 0, STALL_HASH_SIZE, STALL_HASH_SIZE).data;
-            let hash = 0;
-            for (let i = 0; i < data.length; i += 3)
-                hash = (hash * 31 + data[i]) >>> 0;
-
-            return hash;
-        } catch {
-            return null;
-        }
-    }
-
-    private checkForStall(): void {
-        const recorder = this.attachedRecorder;
-        if (this.disposed || this._paused || !this.attachedTrack || !recorder)
-            return;
-        if (recorder.recordingState !== 'recording')
-            return;
-
-        const hash = this.samplePixelHash();
-        if (hash === null)
-            return;
-
-        const previous = this.lastPixelHash;
-        this.lastPixelHash = hash;
-        if (previous === null || hash !== previous) {
-            this.stallTicks = 0;
-            this.repairAttempts = 0;
-            return;
-        }
-
-        this.stallTicks++;
-        if (this.stallTicks < STALL_TICKS_BEFORE_REPAIR)
-            return;
-
-        this.stallTicks = 0;
-        this.repairStalledPreview(recorder);
-    }
-
-    // WebKit 230922 has no code-level fix, only pipeline resets — so escalate
-    // through the cheap ones and land on the canvas painter if they all fail.
-    private repairStalledPreview(recorder: VideoRecorder): void {
-        const attempt = this.repairAttempts++;
-        const videoEl = this.options.videoEl;
-        if (attempt === 0) {
-            warnLog?.log('previewStall: re-attaching the generated track');
-            const track = this.attachedTrack;
-            if (track) {
-                videoEl.srcObject = new MediaStream([track]);
-                playPreview(videoEl);
-            }
-            forceRecomposite(videoEl);
-            return;
-        }
-
-        if (attempt === 1) {
-            warnLog?.log('previewStall: rebuilding the preview generator');
-            recorder.rebuildPreviewGenerator();
-            return;
-        }
-
-        warnLog?.log(`previewStall: ${attempt + 1} attempts failed — switching to the canvas painter`);
-        this.stopStallWatch();
-        recorder.forcePreviewCanvasFallback();
-    }
-
     private detach(): void {
         if (!this.attachedRecorder)
             return;
@@ -539,10 +409,6 @@ export class RecorderPreviewView {
             this.unsubscribeFrames();
             this.unsubscribeFrames = null;
         }
-        this.stopStallWatch();
-        if (this.attachedTrack)
-            this.attachedRecorder.notifyPreviewAttached(false);
-
         this.attachedRecorder = null;
         this.attachedTrack = null;
 
