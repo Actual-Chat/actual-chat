@@ -946,9 +946,16 @@ export class VideoRecorder {
             // flip the ladder so the encoder targets portrait — otherwise
             // normalizeFrame center-crops a landscape band out of a portrait
             // frame and the receiver sees only the middle (e.g. just the face).
+            // iOS is excluded: getSettings() there describes the sensor after the
+            // device's own rotation, but MSTP hands the pipeline sensor-oriented
+            // (landscape) frames regardless - see MediaCapture.preferPortraitConstraint.
+            // Trusting the settings when the phone is held landscape flips the ladder
+            // to portrait and normalizeFrame then cover-crops a vertical slice out of
+            // a landscape scene, on the wire as well as in the preview.
+            const isOrientationFromSettingsTrusted = !DeviceInfo.isIos;
             const cameraIsPortrait = this.cameraHeight > this.cameraWidth;
             const ladderTopIsPortrait = ladder[ladder.length - 1].height > ladder[ladder.length - 1].width;
-            if (!wantsPortrait && cameraIsPortrait !== ladderTopIsPortrait) {
+            if (isOrientationFromSettingsTrusted && !wantsPortrait && cameraIsPortrait !== ladderTopIsPortrait) {
                 ladder = ladder.map(l => ({ ...l, width: l.height, height: l.width }));
                 infoLog?.log(
                     `Warmup: camera orientation mismatch — flipped ladder to: ` +
@@ -1307,9 +1314,16 @@ export class VideoRecorder {
             // ship landscape video against the user's intent. Instead leave
             // ladder portrait so `normalizeFrame` cover-crops the landscape
             // source into a portrait target.
+            // iOS is excluded: getSettings() there describes the sensor after the
+            // device's own rotation, but MSTP hands the pipeline sensor-oriented
+            // (landscape) frames regardless - see MediaCapture.preferPortraitConstraint.
+            // Trusting the settings when the phone is held landscape flips the ladder
+            // to portrait and normalizeFrame then cover-crops a vertical slice out of
+            // a landscape scene, on the wire as well as in the preview.
+            const isOrientationFromSettingsTrusted = !DeviceInfo.isIos;
             const cameraIsPortrait = this.cameraHeight > this.cameraWidth;
             const ladderTopIsPortrait = ladder[ladder.length - 1].height > ladder[ladder.length - 1].width;
-            if (!wantsPortrait && cameraIsPortrait !== ladderTopIsPortrait) {
+            if (isOrientationFromSettingsTrusted && !wantsPortrait && cameraIsPortrait !== ladderTopIsPortrait) {
                 ladder = ladder.map(l => ({ ...l, width: l.height, height: l.width }));
                 this.layers = ladder.length >= 2 ? [...ladder] : null;
                 this.fullLayerLadder = this.layers ? [...this.layers] : null;
