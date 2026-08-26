@@ -400,6 +400,7 @@ Standalone iOS share-extension app:
 - `IosHub`, `IosShareExtensionModule`, `SessionInitializer` — DI / session
 - `ShareView`, `SignInView`, `ContactSelectionView`, `UploadProgressView`, etc. — extension UI
 - `IStatefulView<T>`, `ComputedStateView<T>` — Fusion-style stateful UIKit views
+- `AppStrings` — the extension's `IStringLocalizer`, language from the App Group
 
 
 ## MAUI Application (`ActualChat.App.Maui`)

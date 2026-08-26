@@ -1,5 +1,7 @@
 using ActualChat.App.Maui.IosShareExt.Services;
+using ActualChat.App.Maui.IosShareExt.UI;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
+using ActualChat.Localization;
 using ActualChat.Maui;
 
 namespace ActualChat.App.Maui.IosShareExt.Components;
@@ -45,7 +47,7 @@ public class SuccessView(IosHub hub) : ComputedStateView<SuccessView.Model>(hub)
         var label = new UILabel {
             TranslatesAutoresizingMaskIntoConstraints = false,
             TextAlignment = UITextAlignment.Center,
-            Text = "Done!",
+            Text = AppStrings.L.ShareExt_Done,
             Font = UIFont.SystemFontOfSize(24, UIFontWeight.Semibold),
             TextColor = AppColors.Text01,
         };

@@ -970,6 +970,15 @@
   "Share_AddComment": "Добавете коментар (по избор)",
   "Share_SendToSelected": "Изпрати до избраните контакти",
 
+  // The iOS share extension - native UIKit, so it renders outside the app's WebView.
+  "ShareExt_ShareWith": "Споделяне",
+  "ShareExt_SignInPrompt_Format": "Влезте в {0}, за да споделяте съдържание",
+  "ShareExt_Uploading": "Качване...",
+  "ShareExt_Done": "Готово!",
+  "ShareExt_StartupFailed": "Нещо се обърка. Моля, опитайте отново.",
+  "ShareExt_CannotSendToContact": "Не можете да изпращате на този контакт",
+  "ShareExt_UploadFailed": "Качването е неуспешно",
+
   "Ptt_UseOnThisDevice": "Използвай Натисни и говори на това устройство",
   "Ptt_UseOnThisDeviceCaption": "Когато е изключено, това устройство няма да се събужда, възпроизвежда или предава глас с Натисни и говори.",
   "Ptt_DeviceEnabledToast": "Натисни и говори вече е активно на това устройство.",

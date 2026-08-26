@@ -970,6 +970,15 @@
   "Share_AddComment": "Добавьте комментарий (необязательно)",
   "Share_SendToSelected": "Отправить выбранным контактам",
 
+  // The iOS share extension - native UIKit, so it renders outside the app's WebView.
+  "ShareExt_ShareWith": "Поделиться",
+  "ShareExt_SignInPrompt_Format": "Войдите в {0}, чтобы делиться контентом",
+  "ShareExt_Uploading": "Загрузка...",
+  "ShareExt_Done": "Готово!",
+  "ShareExt_StartupFailed": "Что-то пошло не так. Пожалуйста, попробуйте ещё раз.",
+  "ShareExt_CannotSendToContact": "Вы не можете отправлять этому контакту",
+  "ShareExt_UploadFailed": "Не удалось загрузить",
+
   "Ptt_UseOnThisDevice": "Использовать Push-to-Talk на этом устройстве",
   "Ptt_UseOnThisDeviceCaption": "Когда выключено, это устройство не будет просыпаться, воспроизводить и передавать голос Push-to-Talk.",
   "Ptt_DeviceEnabledToast": "Push-to-Talk теперь активен на этом устройстве.",

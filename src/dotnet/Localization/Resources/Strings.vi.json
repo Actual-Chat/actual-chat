@@ -970,6 +970,15 @@
   "Share_AddComment": "Thêm bình luận (tùy chọn)",
   "Share_SendToSelected": "Gửi đến các liên hệ đã chọn",
 
+  // The iOS share extension - native UIKit, so it renders outside the app's WebView.
+  "ShareExt_ShareWith": "Chia sẻ với",
+  "ShareExt_SignInPrompt_Format": "Đăng nhập vào {0} để chia sẻ nội dung",
+  "ShareExt_Uploading": "Đang tải lên...",
+  "ShareExt_Done": "Xong!",
+  "ShareExt_StartupFailed": "Đã xảy ra lỗi. Vui lòng thử lại.",
+  "ShareExt_CannotSendToContact": "Bạn không thể gửi đến liên hệ này",
+  "ShareExt_UploadFailed": "Tải lên thất bại",
+
   "Ptt_UseOnThisDevice": "Dùng Nhấn để nói trên thiết bị này",
   "Ptt_UseOnThisDeviceCaption": "Khi tắt, thiết bị này sẽ không đánh thức, phát hay truyền giọng nói Nhấn để nói.",
   "Ptt_DeviceEnabledToast": "Nhấn để nói hiện đã hoạt động trên thiết bị này.",

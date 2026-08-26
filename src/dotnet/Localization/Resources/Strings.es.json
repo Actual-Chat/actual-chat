@@ -970,6 +970,15 @@
   "Share_AddComment": "Añade un comentario (opcional)",
   "Share_SendToSelected": "Enviar a los contactos seleccionados",
 
+  // The iOS share extension - native UIKit, so it renders outside the app's WebView.
+  "ShareExt_ShareWith": "Compartir con",
+  "ShareExt_SignInPrompt_Format": "Inicia sesión en {0} para compartir contenido",
+  "ShareExt_Uploading": "Subiendo...",
+  "ShareExt_Done": "¡Listo!",
+  "ShareExt_StartupFailed": "Algo salió mal. Vuelve a intentarlo.",
+  "ShareExt_CannotSendToContact": "No puedes enviar a este contacto",
+  "ShareExt_UploadFailed": "Error al subir",
+
   "Ptt_UseOnThisDevice": "Usar Pulsar para hablar en este dispositivo",
   "Ptt_UseOnThisDeviceCaption": "Si está desactivado, este dispositivo no se despertará, no reproducirá ni transmitirá voz de Pulsar para hablar.",
   "Ptt_DeviceEnabledToast": "Pulsar para hablar ya está activo en este dispositivo.",

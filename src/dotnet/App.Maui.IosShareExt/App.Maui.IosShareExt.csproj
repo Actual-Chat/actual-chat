@@ -97,6 +97,7 @@
 
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
+    <ProjectReference Include="..\Localization\Localization.csproj" />
     <ProjectReference Include="..\Maui\Maui.csproj" />
   </ItemGroup>
 

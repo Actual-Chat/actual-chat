@@ -100,6 +100,9 @@ CROATIAN = [
     ("neko ", "netko "), ("Neko", "Netko"),
     ("svako ", "svatko "),
     ("ko otvori", "tko otvori"), ("ko je još", "tko je još"),
+    # Before the noun swap below: "prijenos" is masculine where "otpremanje" is neuter,
+    # so a predicate agreeing with it has to be rewritten whole.
+    ("Otpremanje nije uspjelo", "Prijenos nije uspio"),
     ("Otpremi", "Prenesi"), ("otpremanje", "prijenos"), ("Otpremanje", "Prijenos"),
     ("otpremite", "prenesite"), ("Otpremite", "Prenesite"),
     ("otpremljeno", "preneseno"), ("Otpremljeno", "Preneseno"),
@@ -124,6 +127,7 @@ EKAVIAN = [
     ("srijed", "sred"), ("|sri|", "|sre|"),
     ("rješ", "reš"), ("Rješ", "Reš"), ("riješ", "reš"), ("Riješ", "Reš"),
     ("uspješ", "uspeš"), ("Uspješ", "Uspeš"),
+    ("uspjelo", "uspelo"), ("Uspjelo", "Uspelo"),
     ("svijetl", "svetl"), ("Svijetl", "Svetl"),
     ("vjeru", "veru"), ("Vjeru", "Veru"),
     ("vjerovatn", "verovatn"), ("Vjerovatn", "Verovatn"),

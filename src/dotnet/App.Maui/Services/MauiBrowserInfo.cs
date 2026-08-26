@@ -49,6 +49,9 @@ public class MauiBrowserInfo : BrowserInfo
         Update(screenSize, initResult.IsHoverable, initResult.IsVisible);
         WindowId = initResult.WindowId;
         UpdateUILanguageInfo(initResult.UILanguageInfo);
+        // Written on every launch, not only on a change: this is also how the iOS share extension
+        // learns the language, and its App Group may still be empty from an earlier version.
+        MauiPreferences.UILanguage = UILanguage;
         // We don't want to change any other properties here
 
         WhenReadySource.TrySetResult();

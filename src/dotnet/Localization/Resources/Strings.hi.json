@@ -970,6 +970,15 @@
   "Share_AddComment": "अपनी टिप्पणी जोड़ें (वैकल्पिक)",
   "Share_SendToSelected": "चुने गए संपर्कों को भेजें",
 
+  // The iOS share extension - native UIKit, so it renders outside the app's WebView.
+  "ShareExt_ShareWith": "साझा करें",
+  "ShareExt_SignInPrompt_Format": "सामग्री साझा करने के लिए {0} में साइन इन करें",
+  "ShareExt_Uploading": "अपलोड हो रहा है...",
+  "ShareExt_Done": "हो गया!",
+  "ShareExt_StartupFailed": "कुछ गड़बड़ हो गई। कृपया पुनः प्रयास करें।",
+  "ShareExt_CannotSendToContact": "आप इस संपर्क को नहीं भेज सकते",
+  "ShareExt_UploadFailed": "अपलोड विफल",
+
   "Ptt_UseOnThisDevice": "इस डिवाइस पर पुश टू टॉक इस्तेमाल करें",
   "Ptt_UseOnThisDeviceCaption": "बंद होने पर यह डिवाइस पुश टू टॉक आवाज़ के लिए न जागेगा, न चलाएगा, न भेजेगा।",
   "Ptt_DeviceEnabledToast": "पुश टू टॉक अब इस डिवाइस पर सक्रिय है।",
