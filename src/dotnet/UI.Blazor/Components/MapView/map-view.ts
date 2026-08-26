@@ -127,7 +127,7 @@ export class MapView {
     }
 
     private onMoveEnd(): void {
-        this.element.classList.remove('moving');
+        this.element.toggleAttribute('data-moving', false);
         const map = this.map;
         if (map == null || this.blazorRef == null)
             return;
@@ -152,7 +152,7 @@ export class MapView {
         this.map.on('webglcontextlost', () => this.onContextLost());
         // An accuracy circle is a metric radius, so its pixel size changes with zoom.
         this.map.on('move', () => this.applyAccuracyCircles(this.lastMarkers));
-        this.map.on('movestart', () => this.element.classList.add('moving'));
+        this.map.on('movestart', () => this.element.toggleAttribute('data-moving', true));
         this.map.on('moveend', () => this.onMoveEnd());
         this.applyMarkers(this.lastMarkers);
     }
@@ -163,7 +163,7 @@ export class MapView {
             return;
 
         this.map = null;
-        this.element.classList.remove('moving');
+        this.element.toggleAttribute('data-moving', false);
         // Keep the user's pan/zoom, so the map reappears where they left it.
         const center = map.getCenter();
         this.options.centerLatitude = center.lat;

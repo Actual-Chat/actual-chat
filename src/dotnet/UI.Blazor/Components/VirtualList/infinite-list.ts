@@ -1006,8 +1006,8 @@ export class InfiniteList extends VirtualList {
         const wasPinned = this.pinnedEdge;
         this.pinnedEdge = edge;
         const isStickyEnd = edge === VirtualListEdge.End;
-        if (isStickyEnd !== this.ref.classList.contains('sticky-end'))
-            this.ref.classList.toggle('sticky-end', isStickyEnd);
+        if (isStickyEnd !== this.ref.hasAttribute('data-sticky-end'))
+            this.ref.toggleAttribute('data-sticky-end', isStickyEnd);
         if (wasPinned !== edge)
             this.repinChainAnchor(wasPinned);
 

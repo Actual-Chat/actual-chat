@@ -51,9 +51,9 @@
 /* Canvas-fallback backend (Edge/Firefox/iOS): RecorderPreviewView paints
    frames to the canvas, not the <video> (which has no track). Reveal the
    canvas as the primary surface — it sits after the <video> in the DOM, so it
-   covers the empty element. preview-backend-canvas is set by the view on
+   covers the empty element. data-preview-backend is set by the view on
    attach. */
-.join-video-call-modal .video-frame.preview-backend-canvas .camera-preview {
+.join-video-call-modal .video-frame[data-preview-backend="canvas"] .camera-preview {
     @apply block;
 }
 /* Mirror toggle — overrides the default scaleX(-1). Placed on .c-video (owned

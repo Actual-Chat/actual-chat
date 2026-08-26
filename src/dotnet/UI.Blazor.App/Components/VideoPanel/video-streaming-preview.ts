@@ -4,7 +4,7 @@ import { isBgBlurOff } from '../../Services/Video/playback/bg-blur-override';
 export class VideoStreamingPreview {
     private readonly element: HTMLElement;
     private readonly view: RecorderPreviewView;
-    private disposed = false;
+    private isDisposed = false;
 
     static create(element: HTMLElement, sourceKind: number): VideoStreamingPreview {
         return new VideoStreamingPreview(element, sourceKind);
@@ -26,14 +26,15 @@ export class VideoStreamingPreview {
             videoEl,
             bgCanvas,
             sourceKinds: [sourceKind],
+            // Attributes, not classes: Blazor owns `class` here and overwrites it.
             onFirstFrame: () => {
-                this.element.classList.add('has-video');
+                this.element.toggleAttribute('data-has-video', true);
             },
             onDetach: () => {
-                this.element.classList.remove('has-video');
+                this.element.toggleAttribute('data-has-video', false);
             },
             onStartingChange: (starting) => {
-                this.element.classList.toggle('starting', starting);
+                this.element.toggleAttribute('data-starting', starting);
             },
         });
     }
@@ -46,8 +47,10 @@ export class VideoStreamingPreview {
     }
 
     public dispose(): void {
-        if (this.disposed) return;
-        this.disposed = true;
+        if (this.isDisposed)
+            return;
+
+        this.isDisposed = true;
         this.view.dispose();
     }
 }

@@ -141,12 +141,16 @@ body.hoverable .amazing-panel > button:hover,
 }
 ```
 
-## Lit Components: Blazor owns `class`
+## Blazor owns `class`
 
 A Lit custom element rendered from Razor has **two** potential writers for its host
 attributes — Blazor, which rewrites the element's markup on every re-render, and the
 component itself. Anything both of them write ends up in a permanent tug-of-war,
 because Blazor's render tree never learns what the component changed.
+
+This is **not** limited to Lit. It applies to every plain-TS component that receives
+a Razor element through `@ref`, and to every element it reaches from there
+(`parentElement`, `closest()`, a `querySelector` hit that Razor also renders).
 
 **The rule: a Lit component may *have* a `class`, but must never *write* one.**
 `class` belongs to Blazor. The component owns only attributes Blazor does not render.
@@ -191,6 +195,27 @@ re-renders write the same value and never conflict.
 
 The same reasoning applies to any attribute Razor emits — `style`, `title`, `id`. If
 Razor renders it, the component must not write it.
+
+### Why it looks intermittent
+
+Blazor diffs per attribute and writes `class` only when the Razor-computed string
+actually *changes*. A JS-added class therefore survives indefinitely on an element
+whose Razor class is constant, and disappears the first time some unrelated
+expression in that same attribute flips. That makes the failure look like a race
+rather than a rule violation, and it hides in review: the offending line reads fine,
+and the element it targets is several files away.
+
+The iOS camera-preview bug was exactly this. `VideoStreamingPreview.razor` renders
+`class="video-track-player video-streaming-preview @Class @recordingCls @screenCastCls"`,
+and `RecorderPreviewView` set `preview-backend-mstg` on that same element to hide the
+idle render surface. Starting a recording flipped `@recordingCls` from `""` to
+`"recording"`, Blazor rewrote `class`, and the backend class vanished — leaving a
+never-painted `<canvas>` (`z-index: 1`) covering the live `<video>` beneath it. The
+preview went blank while the camera and the outbound stream were working perfectly.
+
+To find the rest of them, cross-reference two lists: Razor elements carrying both
+`@ref` and a `@`-interpolated `class`, and TS lines writing `classList`/`className`
+on `this.element` / `this.ref` / `parentElement` / `closest()`.
 
 ## No Inline Tailwind in Razor
 

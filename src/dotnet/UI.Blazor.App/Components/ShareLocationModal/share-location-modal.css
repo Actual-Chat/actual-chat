@@ -44,7 +44,7 @@ body.device-android .share-location-modal.picking .c-map-area {
     background: var(--black-05);
     content: '';
 }
-.share-location-modal .c-map-area .map-view.moving ~ .c-center-pin {
+.share-location-modal .c-map-area .map-view[data-moving] ~ .c-center-pin {
     transform: translateY(-0.375rem);
 }
 .share-location-modal .c-permission-prompt {

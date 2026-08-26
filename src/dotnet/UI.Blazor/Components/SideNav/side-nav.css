@@ -24,14 +24,14 @@ body.device-ios .side-nav {
     @apply has-viewport-height;
 }
 
-.side-nav.animated {
+.side-nav[data-animated] {
     @apply duration-250 ease-out;
     transition-property: transform, -webkit-transform, width;
 }
-.side-nav.animated > *:first-child {
+.side-nav[data-animated] > *:first-child {
     @apply transition-opacity duration-200 ease-out;
 }
-.side-nav.animated.pulling > *:first-child {
+.side-nav[data-animated][data-pulling] > *:first-child {
     @apply transition-none;
 }
 
