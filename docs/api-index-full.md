@@ -1194,6 +1194,7 @@ Standalone iOS share extension app and views.
 - `UploadProgressView` - Upload progress view.
 - `IStatefulView`, `IStatefulView<T>`, `StatefulView`, `StatefulView<T>` - Stateful view abstractions.
 - `ComputedStateView`, `ComputedStateView<T>`, `ComputedStateViewState<T>`, `CreateDefaultStateOptionsFactory<T>` - Computed-state view helpers.
+- `AppStrings` (static class) - The extension's `IStringLocalizer`, resolved against the language the app mirrors into the App Group.
 - `NSId`, `NSId<TId>`, `NSHasId<T, TId>` - NSObject ID wrappers.
 - `FusionBuilderExt`, `ServiceProviderExt`, `UICollectionViewCellRegistrationExt`, `UIKitExt`, `NSItemProviderExt` (static classes) - DI/UIKit/Fusion extensions.
 

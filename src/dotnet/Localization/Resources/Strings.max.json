@@ -970,6 +970,15 @@
   "Share_AddComment": "Добавьте комментарий (необязательно)",
   "Share_SendToSelected": "Enviar a los contactos seleccionados",
 
+  // The iOS share extension - native UIKit, so it renders outside the app's WebView.
+  "ShareExt_ShareWith": "Compartilhar com",
+  "ShareExt_SignInPrompt_Format": "コンテンツを共有するには {0} にサインインしてください",
+  "ShareExt_Uploading": "Wird hochgeladen...",
+  "ShareExt_Done": "Tamamlandı!",
+  "ShareExt_StartupFailed": "Что-то пошло не так. Пожалуйста, попробуйте ещё раз.",
+  "ShareExt_CannotSendToContact": "Du kannst an diesen Kontakt nichts senden",
+  "ShareExt_UploadFailed": "アップロードに失敗しました",
+
   "Ptt_UseOnThisDevice": "Використовувати Push-to-Talk на цьому пристрої",
   "Ptt_UseOnThisDeviceCaption": "Когато е изключено, това устройство няма да се събужда, възпроизвежда или предава глас с Натисни и говори.",
   "Ptt_DeviceEnabledToast": "この端末でプッシュ・トゥ・トークが有効になりました。",

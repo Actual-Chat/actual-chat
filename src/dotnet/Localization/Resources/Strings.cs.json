@@ -970,6 +970,15 @@
   "Share_AddComment": "Přidejte komentář (nepovinné)",
   "Share_SendToSelected": "Odeslat vybraným kontaktům",
 
+  // The iOS share extension - native UIKit, so it renders outside the app's WebView.
+  "ShareExt_ShareWith": "Sdílet",
+  "ShareExt_SignInPrompt_Format": "Přihlaste se do {0} a sdílejte obsah",
+  "ShareExt_Uploading": "Nahrávání...",
+  "ShareExt_Done": "Hotovo!",
+  "ShareExt_StartupFailed": "Něco se pokazilo. Zkuste to prosím znovu.",
+  "ShareExt_CannotSendToContact": "Tomuto kontaktu nemůžete odesílat",
+  "ShareExt_UploadFailed": "Nahrávání selhalo",
+
   "Ptt_UseOnThisDevice": "Používat Stiskni a mluv na tomto zařízení",
   "Ptt_UseOnThisDeviceCaption": "Když je vypnuto, toto zařízení se nebude budit, přehrávat ani vysílat hlas přes Stiskni a mluv.",
   "Ptt_DeviceEnabledToast": "Stiskni a mluv je teď na tomto zařízení aktivní.",

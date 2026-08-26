@@ -1003,6 +1003,14 @@ public static class LocalizedStringsLocalizerExt
         public string Share_AddComment => l["Share_AddComment"].Value;
         public string Share_SendToSelected => l["Share_SendToSelected"].Value;
 
+        public string ShareExt_ShareWith => l["ShareExt_ShareWith"].Value;
+        public string ShareExt_SignInPrompt_Format(object arg0) => l["ShareExt_SignInPrompt_Format", arg0].Value;
+        public string ShareExt_Uploading => l["ShareExt_Uploading"].Value;
+        public string ShareExt_Done => l["ShareExt_Done"].Value;
+        public string ShareExt_StartupFailed => l["ShareExt_StartupFailed"].Value;
+        public string ShareExt_CannotSendToContact => l["ShareExt_CannotSendToContact"].Value;
+        public string ShareExt_UploadFailed => l["ShareExt_UploadFailed"].Value;
+
         public string Ptt_UseOnThisDevice => l["Ptt_UseOnThisDevice"].Value;
         public string Ptt_UseOnThisDeviceCaption => l["Ptt_UseOnThisDeviceCaption"].Value;
         public string Ptt_DeviceEnabledToast => l["Ptt_DeviceEnabledToast"].Value;

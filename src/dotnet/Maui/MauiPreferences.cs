@@ -17,6 +17,7 @@ public static class MauiPreferences
     private const string IsDataCollectionEnabledKey = "analytics";
     private const string ThemeKey = "Theme";
     private const string ThemeColorsKey = "ThemeColors";
+    private const string UILanguageKey = "UILanguage";
     private const string MinReportableClientVersionKey = "min_reportable_client_version";
     private const string IsPttArmedKey = "is_ptt_armed";
 
@@ -68,6 +69,13 @@ public static class MauiPreferences
     public static string ThemeColors {
         get => Get<string>(ThemeColorsKey, sharedName: SharedName) ?? "";
         set => Set(ThemeColorsKey, value, SharedName);
+    }
+
+    // The language the app renders in, resolved rather than selected; null means the app hasn't
+    // run since this key appeared, and a reader falls back to the device languages.
+    public static Language? UILanguage {
+        get => Language.TryParse(Get<string>(UILanguageKey, sharedName: SharedName), allowNull: true);
+        set => Set(UILanguageKey, value?.Value, SharedName);
     }
 
     public static string? MinReportableClientVersion {

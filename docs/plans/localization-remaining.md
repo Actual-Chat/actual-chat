@@ -7,7 +7,7 @@ validation messages and dates. This plan is the remaining work, ordered so that
 each item's prerequisite comes before it.
 
 ## Where things stand
-`Strings.<lang>.json` holds 1289 keys × 22 languages (plus the derived `Max`),
+`Strings.<lang>.json` holds 1304 keys × 22 languages (plus the derived `Max`),
 `Messages.<lang>.json` holds 103; both are guarded by `AppLocalizationTest` (key/member correspondence,
 per-language completeness, placeholder preservation) and
 `ServerErrorLocalizationTest`. Consuming code goes through the typed members in
@@ -305,7 +305,7 @@ that loads that assembly can already read it:
 |---|---|---|---|---|
 | Android dialogs | 9 strings, 3 files | main app | **yes** | plain C#; no `strings.xml` needed |
 | Local notifications / Live Activity | ~6 strings | main app | **yes** | plain C# in `App.Maui` |
-| iOS share extension (`App.Maui.IosShareExt/Components/*`) | ~18 strings | separate appex | **yes, since #4125** — it can reference `ActualChat.Localization` | needs only the language, see below |
+| iOS share extension (`App.Maui.IosShareExt/Components/*`) | ~18 strings | separate appex | **yes, since #4125** — it references `ActualChat.Localization` | **done (#4261)** — `AppStrings.L`, language from the App Group |
 | `Info.plist` usage descriptions | 6 iOS + 5 MacCatalyst | OS reads them, app not running | **no** | `InfoPlist.strings` per language — genuinely native |
 
 Android dialog sites: `AndroidWebChromeClient.cs:267-270`,
@@ -321,10 +321,10 @@ So for the in-process two-thirds the strings are not the blocker — the
 circuit, while this code runs on the native side (foreground service, FCM
 receiver, permission dialogs, Live Activity), where no such scope exists.
 
-### One question left, one answered
+### Both questions answered
 
 The catalog question that used to gate this section — and §3 with it — was
-answered by #4125. What remains is the language:
+answered by #4125; the language question, by #4261:
 
 1. **Where the catalog lives — answered by #4125.** `ActualChat.Localization`
    exists: dependency-free (`Api` + `Microsoft.Extensions.Localization`), it owns
@@ -334,14 +334,15 @@ answered by #4125. What remains is the language:
    spent their effort avoiding. The namespace was `ActualChat.UI.Blazor.Resources`
    until it was renamed to `ActualChat.Localization` to match the
    assembly.
-2. **How native-side code reads the current UI language.** Options: have
-   `LanguageUI` publish it to a process-wide accessor on change (one owner,
-   synchronous reads); read `LocalSettings` at each call site; or pass it down
-   from the Blazor side, which doesn't help the sites the OS invokes directly.
-
-Crossing the process boundary is already solved here: the share extension reads
-the session id from `AppleSharedSecureStorage` (`SessionInitializer.cs:35`), so
-the same shared keychain / app group can carry a language.
+2. **How native-side code reads the current UI language — answered for iOS by
+   #4261.** `MauiBrowserInfo.OnInitialized` mirrors `BrowserInfo.UILanguage` into
+   `MauiPreferences.UILanguage`, which on iOS is the App Group container the app
+   and its extensions share — the same crossing the session id already makes
+   through `AppleSharedSecureStorage` (`SessionInitializer.cs:35`). The share
+   extension reads it back through `AppStrings.L` and falls back to
+   `NSLocale.PreferredLanguages` until the app has run once. The in-process sites
+   (Android dialogs, local notifications, Live Activity) can read the same
+   accessor rather than reaching for the Blazor circuit.
 
 `Info.plist` is the one part that is settled — `InfoPlist.strings` per language,
 independent of everything above, and doable at any time.
@@ -518,11 +519,10 @@ why #3721 dropped the keys instead of relocating them. Now:
    the 5 templates, using the same `LanguageStringLocalizer`.
 2. §4's `Info.plist` strings — settled and independent, doable any time.
 3. §4's in-process subset (Android dialogs, local notifications, Live Activity)
-   — needs only a native-side language accessor, no new mechanism.
-4. §4's iOS share extension — the catalog question is answered; it needs the
-   language, which is §4's remaining open item.
-5. §6's video error codes — the branch `wip/l10n-video-error-codes` is
+   — the native-side accessor now exists (`MauiPreferences.UILanguage`, written on
+   every platform), so this is catalog lookups at the call sites and nothing else.
+4. §6's video error codes — the branch `wip/l10n-video-error-codes` is
    ready to cherry-pick; then web-auth's popup alert.
-6. §5, independently and on its own schedule — the marketing half needs SEO
+5. §5, independently and on its own schedule — the marketing half needs SEO
    routing before translation pays off, and the legal half needs a liability
    decision. Neither holds up anything else.

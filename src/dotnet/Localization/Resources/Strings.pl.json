@@ -970,6 +970,15 @@
   "Share_AddComment": "Dodaj komentarz (opcjonalnie)",
   "Share_SendToSelected": "Wyślij do wybranych kontaktów",
 
+  // The iOS share extension - native UIKit, so it renders outside the app's WebView.
+  "ShareExt_ShareWith": "Udostępnij",
+  "ShareExt_SignInPrompt_Format": "Zaloguj się w {0}, aby udostępniać treści",
+  "ShareExt_Uploading": "Przesyłanie...",
+  "ShareExt_Done": "Gotowe!",
+  "ShareExt_StartupFailed": "Coś poszło nie tak. Spróbuj ponownie.",
+  "ShareExt_CannotSendToContact": "Nie możesz wysyłać do tego kontaktu",
+  "ShareExt_UploadFailed": "Przesyłanie nie powiodło się",
+
   "Ptt_UseOnThisDevice": "Używaj Naciśnij i mów na tym urządzeniu",
   "Ptt_UseOnThisDeviceCaption": "Gdy wyłączone, to urządzenie nie będzie się budzić, odtwarzać ani nadawać głosu Naciśnij i mów.",
   "Ptt_DeviceEnabledToast": "Naciśnij i mów jest teraz aktywne na tym urządzeniu.",

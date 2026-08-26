@@ -970,6 +970,15 @@
   "Share_AddComment": "Adicione um comentário (opcional)",
   "Share_SendToSelected": "Enviar aos contatos selecionados",
 
+  // The iOS share extension - native UIKit, so it renders outside the app's WebView.
+  "ShareExt_ShareWith": "Compartilhar com",
+  "ShareExt_SignInPrompt_Format": "Entre no {0} para compartilhar conteúdo",
+  "ShareExt_Uploading": "Enviando...",
+  "ShareExt_Done": "Pronto!",
+  "ShareExt_StartupFailed": "Algo deu errado. Tente novamente.",
+  "ShareExt_CannotSendToContact": "Você não pode enviar para este contato",
+  "ShareExt_UploadFailed": "Falha no envio",
+
   "Ptt_UseOnThisDevice": "Usar Pressione para falar neste dispositivo",
   "Ptt_UseOnThisDeviceCaption": "Quando desligado, este dispositivo não desperta, não reproduz nem transmite voz de Pressione para falar.",
   "Ptt_DeviceEnabledToast": "Pressione para falar agora está ativo neste dispositivo.",

@@ -970,6 +970,15 @@
   "Share_AddComment": "Dodajte komentar (opcionalno)",
   "Share_SendToSelected": "Pošalji odabranim kontaktima",
 
+  // The iOS share extension - native UIKit, so it renders outside the app's WebView.
+  "ShareExt_ShareWith": "Podijeli",
+  "ShareExt_SignInPrompt_Format": "Prijavite se u {0} da biste dijelili sadržaj",
+  "ShareExt_Uploading": "Prijenos...",
+  "ShareExt_Done": "Gotovo!",
+  "ShareExt_StartupFailed": "Nešto je pošlo naopako. Molimo pokušajte ponovo.",
+  "ShareExt_CannotSendToContact": "Ne možete slati ovom kontaktu",
+  "ShareExt_UploadFailed": "Prijenos nije uspio",
+
   "Ptt_UseOnThisDevice": "Koristi Pritisni i govori na ovom uređaju",
   "Ptt_UseOnThisDeviceCaption": "Kada je isključeno, ovaj uređaj se neće buditi, reproducirati ni slati glas putem Pritisni i govori.",
   "Ptt_DeviceEnabledToast": "Pritisni i govori je sada aktivan na ovom uređaju.",

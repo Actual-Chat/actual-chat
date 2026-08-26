@@ -16,11 +16,16 @@ app's `localStorage` nor its `NSUserDefaults`. Two entitlements bridge that:
 
 - **Keychain access group** (`M287G8G83F.chat.actual[.dev].app.shared`) — the session,
   see `AppleSharedSecureStorage`.
-- **App Group** (`group.chat.actual[.dev].app.shared`) — the theme, see
-  `MauiPreferences.Theme`. The app writes it on every theme change
-  (`MauiThemeHandler.OnThemeChanged`); `ShareViewController` reads it per share and
-  applies it to `AppColors` and `OverrideUserInterfaceStyle`. Nothing written means
-  "follow the system appearance", which is what the extension did before.
+- **App Group** (`group.chat.actual[.dev].app.shared`) — the theme and the UI
+  language, see `MauiPreferences.Theme` and `MauiPreferences.UILanguage`.
+  - The app writes the theme on every theme change (`MauiThemeHandler.OnThemeChanged`);
+    `ShareViewController` reads it per share and applies it to `AppColors` and
+    `OverrideUserInterfaceStyle`. Nothing written means "follow the system
+    appearance", which is what the extension did before.
+  - The app writes the language it renders in on every launch
+    (`MauiBrowserInfo.OnInitialized`); `AppStrings.L` reads it and resolves the
+    catalog against it. Nothing written means "follow `NSLocale.PreferredLanguages`",
+    which is what a device that hasn't run the app since #4261 gets.
 
 Both entitlements have to be granted by the provisioning profile the build is signed
 with, otherwise codesign fails with `MT7140`. Adding one means registering it on the

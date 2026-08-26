@@ -970,6 +970,15 @@
   "Share_AddComment": "Tambahkan komentar (opsional)",
   "Share_SendToSelected": "Kirim ke kontak terpilih",
 
+  // The iOS share extension - native UIKit, so it renders outside the app's WebView.
+  "ShareExt_ShareWith": "Bagikan ke",
+  "ShareExt_SignInPrompt_Format": "Masuk ke {0} untuk berbagi konten",
+  "ShareExt_Uploading": "Mengunggah...",
+  "ShareExt_Done": "Selesai!",
+  "ShareExt_StartupFailed": "Terjadi kesalahan. Silakan coba lagi.",
+  "ShareExt_CannotSendToContact": "Anda tidak dapat mengirim ke kontak ini",
+  "ShareExt_UploadFailed": "Unggahan gagal",
+
   "Ptt_UseOnThisDevice": "Gunakan Tekan untuk bicara di perangkat ini",
   "Ptt_UseOnThisDeviceCaption": "Saat mati, perangkat ini tidak akan bangun, memutar, atau mengirim suara Tekan untuk bicara.",
   "Ptt_DeviceEnabledToast": "Tekan untuk bicara kini aktif di perangkat ini.",

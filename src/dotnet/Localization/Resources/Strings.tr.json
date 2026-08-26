@@ -970,6 +970,15 @@
   "Share_AddComment": "Yorumunu ekle (isteğe bağlı)",
   "Share_SendToSelected": "Seçili kişilere gönder",
 
+  // The iOS share extension - native UIKit, so it renders outside the app's WebView.
+  "ShareExt_ShareWith": "Paylaş",
+  "ShareExt_SignInPrompt_Format": "İçerik paylaşmak için {0} uygulamasına giriş yap",
+  "ShareExt_Uploading": "Yükleniyor...",
+  "ShareExt_Done": "Tamamlandı!",
+  "ShareExt_StartupFailed": "Bir sorun oluştu. Lütfen tekrar dene.",
+  "ShareExt_CannotSendToContact": "Bu kişiye gönderemezsin",
+  "ShareExt_UploadFailed": "Yükleme başarısız",
+
   "Ptt_UseOnThisDevice": "Bu cihazda Bas-Konuş kullan",
   "Ptt_UseOnThisDeviceCaption": "Kapalıyken bu cihaz Bas-Konuş sesiyle uyanmaz, ses çalmaz ve iletmez.",
   "Ptt_DeviceEnabledToast": "Bas-Konuş artık bu cihazda etkin.",

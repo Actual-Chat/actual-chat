@@ -1,4 +1,6 @@
 ﻿using ActualChat.App.Maui.IosShareExt.Components;
+using ActualChat.App.Maui.IosShareExt.UI;
+using ActualChat.Localization;
 using ActualChat.Maui;
 
 namespace ActualChat.App.Maui.IosShareExt;
@@ -17,7 +19,7 @@ public class ShareViewController : UIViewController
         // object"), so a failed bootstrap used to crash the extension outright - which also killed
         // the failure report Bootstrap had just started sending.
         View = _app is null
-            ? new ErrorContentView("Something went wrong. Please try again.",
+            ? new ErrorContentView(AppStrings.L.ShareExt_StartupFailed,
                 (_, _) => _ = ExtensionContext?.CompleteRequestAsync([]))
             : _app.View;
     }

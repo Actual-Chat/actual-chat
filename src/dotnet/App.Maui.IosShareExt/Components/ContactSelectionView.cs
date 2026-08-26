@@ -1,5 +1,7 @@
 using ActualChat.App.Maui.IosShareExt.Services;
+using ActualChat.App.Maui.IosShareExt.UI;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
+using ActualChat.Localization;
 using ActualChat.Maui;
 
 namespace ActualChat.App.Maui.IosShareExt.Components;
@@ -29,7 +31,7 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         var titleLabel = new UILabel
         {
             TranslatesAutoresizingMaskIntoConstraints = false,
-            Text = "Share with",
+            Text = AppStrings.L.ShareExt_ShareWith,
             Font = UIFont.SystemFontOfSize(17, UIFontWeight.Semibold)!,
             TextColor = AppColors.Text01,
             TextAlignment = UITextAlignment.Center
@@ -39,7 +41,7 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         // Send button
         _sendButton = new UIButton(UIButtonType.System);
         _sendButton.TranslatesAutoresizingMaskIntoConstraints = false;
-        _sendButton.SetTitle("Send", UIControlState.Normal);
+        _sendButton.SetTitle(AppStrings.L.Common_Send, UIControlState.Normal);
         _sendButton.TitleLabel.Font = UIFont.SystemFontOfSize(17, UIFontWeight.Semibold)!;
         _sendButton.TintColor = AppColors.Primary;
         _sendButton.TouchUpInside += Safe(() => ShareUI.StartSending());
@@ -54,7 +56,7 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         var searchField = new UITextField
         {
             TranslatesAutoresizingMaskIntoConstraints = false,
-            Placeholder = "Who would you like to share with",
+            Placeholder = AppStrings.L.Share_WhoToShareWith,
             Font = UIFont.SystemFontOfSize(17),
             TextColor = AppColors.Text01,
             BackgroundColor = AppColors.Input,
@@ -92,7 +94,7 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         var commentField = new UITextField
         {
             TranslatesAutoresizingMaskIntoConstraints = false,
-            Placeholder = "Add your comment (optional)",
+            Placeholder = AppStrings.L.Share_AddComment,
             Font = UIFont.SystemFontOfSize(17),
             TextColor = AppColors.Text01,
             BackgroundColor = AppColors.Input,
