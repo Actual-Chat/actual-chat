@@ -42,8 +42,7 @@
     @apply object-cover;
     @apply rounded-2xl;
     @apply hidden;
-    transform: scaleX(-1) rotate(var(--video-rotation, 0deg));
-    transform-origin: center center;
+    transform: scaleX(-1);
 }
 /* Native <video> visible when Join mode has a live track. Blur-on case swaps
    the <video>'s srcObject to the worker's MediaStreamTrackGenerator output,
@@ -69,15 +68,23 @@
    Blazor re-renders don't wipe out the JS-added classes. */
 .join-video-call-modal .c-video.no-mirror .video-frame .camera-preview,
 .join-video-call-modal .c-video.no-mirror .video-frame .camera-preview-video {
+    transform: none;
+}
+/* Quarter-turn, canvas painter only. It draws the raw capture, which on iOS stays
+   landscape (MSTP does not auto-rotate), so CSS owns the turn. The generated track
+   needs none of it - the <video> auto-orients and the view reports rotation 0 - so
+   these stay scoped to the canvas backend rather than keying off the variable,
+   which would also fire on the generated path whenever the view falls back to the
+   device/screen delta (screen-lock + a physically rotated device). */
+.join-video-call-modal .video-frame[data-preview-backend="canvas"] .camera-preview {
+    transform: scaleX(-1) rotate(var(--video-rotation, 0deg));
+    transform-origin: center center;
+}
+.join-video-call-modal .c-video.no-mirror .video-frame[data-preview-backend="canvas"] .camera-preview {
     transform: rotate(var(--video-rotation, 0deg));
 }
-/* Quarter-turn: the canvas painter draws the raw capture, which on iOS stays
-   landscape (MSTP does not auto-rotate), so CSS owns the turn. The generated
-   track needed none of this - the <video> auto-oriented it and the view
-   reported rotation 0 - which is why this only mattered once WebKit moved to
-   the canvas painter. Swap the box's axes so a portrait frame still fills it. */
-.join-video-call-modal .video-frame .camera-preview.rotated-video,
-.join-video-call-modal .video-frame .camera-preview-video.rotated-video {
+/* Odd quarters swap the box's axes so a portrait frame still fills the frame. */
+.join-video-call-modal .video-frame[data-preview-backend="canvas"] .camera-preview.rotated-video {
     inset: auto;
     width: 100cqh;
     height: 100cqw;
@@ -85,8 +92,7 @@
     top: 50%;
     transform: translate(-50%, -50%) scaleX(-1) rotate(var(--video-rotation, 0deg));
 }
-.join-video-call-modal .c-video.no-mirror .video-frame .camera-preview.rotated-video,
-.join-video-call-modal .c-video.no-mirror .video-frame .camera-preview-video.rotated-video {
+.join-video-call-modal .c-video.no-mirror .video-frame[data-preview-backend="canvas"] .camera-preview.rotated-video {
     transform: translate(-50%, -50%) rotate(var(--video-rotation, 0deg));
 }
 /* Encoder-unavailable state: dim the preview and overlay the actionable
