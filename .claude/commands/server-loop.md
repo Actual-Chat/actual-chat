@@ -18,11 +18,18 @@ are typically running together.
 fight you. To restart the running .NET server, use one of:
 
 - `s` or `x` keypress in the loop terminal — in fact *any* key except
-  `j`, which is reserved for the rebundle below. The loop forwards it to
-  `/health/stop`.
+  `j` (rebundle), `h` (hard restart) and `k` (kill), all below. The loop
+  forwards it to `/health/stop` and force-kills the process if it hasn't
+  exited 10s later.
 - `curl https://local.voxt.ai/health/stop` (it's a **GET**, not POST —
   POST returns 400 from antiforgery).
 - `debugUI.stopServer()` from the browser console.
+- `k` keypress in the loop terminal — **kill**: force-kills the process
+  on the spot, no `/health/stop` and no 10s wait. For a server too wedged
+  to stop itself (deadlocked startup, hung disposer, listener that never
+  bound), or to cut short a stop that isn't taking. `k` only decides *how*
+  the process dies: on its own the loop then restarts normally, and after
+  an `h` it still does the full hard restart below.
 
 A clean stop makes the loop rebuild and relaunch automatically. A
 **failed start** (port in use, DB unreachable, etc.) parks the loop —
@@ -86,7 +93,9 @@ Two triggers, same as the rebundle pair:
 
 The loop stops the server, then — once the process has released the files —
 purges `artifacts/{obj,bin}/App.Wasm` and drops both build stamps, so Steps 1
-and 2 both run instead of being skipped as up to date. Watch for:
+and 2 both run instead of being skipped as up to date. If the stop doesn't take
+within 10s the loop force-kills the process and carries on with the purge; press
+`k` to skip that wait. Watch for:
 
 ```
 [hh:mm:ss] Hard restart requested: stopping the server, then purging the WASM build outputs.
@@ -112,8 +121,9 @@ at the end to confirm the WASM build, not while iterating — see `/debug-ui`.
 Two triggers, same code path (`Invoke-Rebundle` in `server-loop.ps1`):
 
 - **Press `j` in the loop terminal.** For the developer, who has it
-  focused. It is the one key the loop does *not* treat as "stop the
-  server".
+  focused. It is the one key that leaves the server process alone
+  entirely — `h` and `k` have their own meanings, everything else stops
+  the server.
 - **`touch tmp/server-loop-rebundle`** (or, in pwsh,
   `New-Item -ItemType File tmp/server-loop-rebundle -Force`). For everyone
   who can't reach that terminal — Claude in Docker, another shell, a

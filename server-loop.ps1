@@ -25,6 +25,11 @@
 #   pwsh:  New-Item -ItemType File tmp/server-loop-hard-restart -Force
 #   sh:    touch tmp/server-loop-hard-restart
 #
+# Pressing 'k' force-kills the server process on the spot, skipping
+# /health/stop and the deadline that follows it — for a server too wedged to
+# stop itself. It only changes how the process dies: a 'k' after 'h' still
+# gets the hard restart's purge, a 'k' on its own restarts the loop normally.
+#
 # Per-step output goes to tmp/server-loop-<step>.log. Stage transitions are
 # appended to tmp/server-loop.log. On any failure, a final marker line
 # "Last step failed, remove this file to restart the loop." is appended to
@@ -95,6 +100,12 @@ $hardRestartPurgePaths = @(
     (Join-Path $ScriptDir "artifacts/obj/App.Wasm"),
     (Join-Path $ScriptDir "artifacts/bin/App.Wasm")
 )
+
+# How long a stop request gets before the loop force-kills the server itself.
+# Deliberately shorter than the 15s in-process HardExit watchdog: that one only
+# fires while the process is healthy enough to run it, and when it isn't, the
+# wait buys nothing. Press 'k' to skip even this.
+$stopDeadlineSeconds = 10
 
 # Passed to every .NET build the loop runs, in every configuration.
 #
@@ -474,6 +485,19 @@ function Start-ServerProcess {
     return [System.Diagnostics.Process]::Start($psi)
 }
 
+# The loop's single force-kill path: the stop deadline, the watchdog's second
+# miss and the 'k' key all end up here, and each labels its own log lines.
+function Stop-ServerProcessNow {
+    param(
+        [Parameter(Mandatory)] $Process,
+        [Parameter(Mandatory)] [string] $Label,
+        [Parameter(Mandatory)] [string] $Reason
+    )
+    Write-LoopLog "${Label}: $Reason force-killing PID $($Process.Id)."
+    try { Stop-Process -Id $Process.Id -Force -ErrorAction Stop }
+    catch { Write-LoopLog "${Label}: Stop-Process failed: $_" }
+}
+
 function Send-StopSignal {
     $url = "$(Get-BaseUri)/health/stop"
     Write-LoopLog "Forwarding stop request to $url..."
@@ -620,7 +644,7 @@ while ($true) {
             -ServerArgs       $ServerArgs `
             -StdoutPath       $serverRunOutLog `
             -StderrPath       $serverRunErrLog
-        Write-Host "Keyboard: 'j' = rebundle in place (npm only, server keeps running); 'h' = hard restart (stop, purge the WASM build outputs, full rebuild); any other key = stop the server (forwarded to /health/stop; force-kill after 30s)." -ForegroundColor Cyan
+        Write-Host "Keyboard: 'j' = rebundle in place (npm only, server keeps running); 'h' = hard restart (stop, purge the WASM build outputs, full rebuild); 'k' = kill the server process right now (no /health/stop, no wait); any other key = stop the server (forwarded to /health/stop; force-kill after ${stopDeadlineSeconds}s)." -ForegroundColor Cyan
 
         # Watchdog state: probe /healthz/live once we've learned the port
         # from the MeshWatcher log line. Two consecutive misses
@@ -633,9 +657,9 @@ while ($true) {
         $watchdogMissCount = 0
         $watchdogAnnounced = $false
         $watchdogNextProbeAt = (Get-Date).AddSeconds(10)
-        # Keyboard-stop force-kill deadline: set when the user presses any
-        # key other than 'j' in the loop terminal. If $proc hasn't exited by
-        # then we bypass /health/stop entirely with Stop-Process -Force.
+        # Stop deadline: set whenever a stop goes out — a keypress other than
+        # 'j'/'k', or a hard restart. If $proc hasn't exited by then we bypass
+        # /health/stop entirely with Stop-Process -Force.
         $keyStopForceKillAt = $null
         # Set whenever the loop knows it caused the exit (stop signal sent
         # or watchdog killed the process). On exit we treat non-zero codes
@@ -647,24 +671,43 @@ while ($true) {
             $rebundleRequested = $false
             try {
                 if ([System.Console]::KeyAvailable) {
-                    # Capture the key instead of discarding it: 'j' has to be
-                    # claimed here, ahead of the catch-all stop below, or the
-                    # developer's rebundle request would kill their server.
+                    # Capture the key instead of discarding it: 'j', 'h' and 'k'
+                    # have to be claimed here, ahead of the catch-all stop below,
+                    # or e.g. the developer's rebundle request would kill their
+                    # server.
                     $key = [System.Console]::ReadKey($true)
-                    if ([char]::ToLowerInvariant($key.KeyChar) -eq 'j') {
+                    $keyChar = [char]::ToLowerInvariant($key.KeyChar)
+                    if ($keyChar -eq 'j') {
                         $rebundleRequested = $true
                     }
-                    elseif ([char]::ToLowerInvariant($key.KeyChar) -eq 'h') {
+                    elseif ($keyChar -eq 'h') {
                         $hardRestartRequested = $true
+                    }
+                    elseif ($keyChar -eq 'k') {
+                        # Kill now, no /health/stop and no deadline: the endpoint
+                        # is useless precisely when the server is wedged — a
+                        # deadlocked startup, a hung disposer, a listener that
+                        # never bound — and then the wait is pure delay.
+                        # Claimed ahead of the stop guard below so it also cuts
+                        # short a stop already in flight.
+                        #
+                        # $hardRestartRequested is deliberately left as it is:
+                        # 'k' decides how the process dies, 'h' decides what the
+                        # next iteration rebuilds. So 'k' alone recycles the loop
+                        # normally, and 'h' then 'k' still purges below.
+                        Stop-ServerProcessNow -Process $proc -Label 'Kill' -Reason 'requested from the loop terminal;'
+                        $stopRequested = $true
+                        $keyStopForceKillAt = $null
                     }
                     elseif (-not $keyStopForceKillAt) {
                         Send-StopSignal
                         $stopRequested = $true
-                        $keyStopForceKillAt = (Get-Date).AddSeconds(30)
-                        Write-LoopLog "Stop signal sent; will force-kill PID $($proc.Id) if it doesn't exit within 30s."
+                        $keyStopForceKillAt = (Get-Date).AddSeconds($stopDeadlineSeconds)
+                        Write-LoopLog "Stop signal sent; will force-kill PID $($proc.Id) if it doesn't exit within ${stopDeadlineSeconds}s."
                     }
                     # Subsequent keypresses while we wait are no-ops; the
-                    # 30s deadline already covers the "stop didn't take" case.
+                    # deadline already covers the "stop didn't take" case, and
+                    # 'k' is there for when it shouldn't be waited out.
                 }
             } catch {
                 # Detached / no console — fall back to passive wait.
@@ -688,11 +731,16 @@ while ($true) {
             # A hard restart is a stop plus a purge, so it goes down the same
             # path as a keyboard stop - the purge itself waits for the process
             # to release the files.
-            if ($hardRestartRequested -and -not $keyStopForceKillAt) {
+            #
+            # Guarded on $stopRequested rather than the deadline: the flag stays
+            # set until the process exits, so anything that clears the deadline
+            # first - the force-kill below, or 'k' - would otherwise make this
+            # send a second stop and re-arm a deadline on a dying process.
+            if ($hardRestartRequested -and -not $stopRequested) {
                 Write-LoopLog "Hard restart requested: stopping the server, then purging the WASM build outputs."
                 Send-StopSignal
                 $stopRequested = $true
-                $keyStopForceKillAt = (Get-Date).AddSeconds(30)
+                $keyStopForceKillAt = (Get-Date).AddSeconds($stopDeadlineSeconds)
             }
 
             if ($rebundleRequested) {
@@ -706,9 +754,8 @@ while ($true) {
             }
 
             if ($keyStopForceKillAt -and (Get-Date) -ge $keyStopForceKillAt) {
-                Write-LoopLog "Keyboard-stop: graceful shutdown didn't complete within 30s; force-killing PID $($proc.Id)."
-                try { Stop-Process -Id $proc.Id -Force -ErrorAction Stop }
-                catch { Write-LoopLog "Keyboard-stop: Stop-Process failed: $_" }
+                Stop-ServerProcessNow -Process $proc -Label 'Keyboard-stop' `
+                    -Reason "graceful shutdown didn't complete within ${stopDeadlineSeconds}s;"
                 $stopRequested = $true
                 # Clear the deadline so we don't retry on the next tick.
                 # $proc.HasExited will flip after Stop-Process.
@@ -738,9 +785,7 @@ while ($true) {
                         Write-LoopLog "Watchdog: miss $watchdogMissCount/2 — MeshWatcher port not yet in $devLog."
                     }
                     if ($watchdogMissCount -ge 2) {
-                        Write-LoopLog "Watchdog: two consecutive misses; force-killing PID $($proc.Id)."
-                        try { Stop-Process -Id $proc.Id -Force -ErrorAction Stop }
-                        catch { Write-LoopLog "Watchdog: Stop-Process failed: $_" }
+                        Stop-ServerProcessNow -Process $proc -Label 'Watchdog' -Reason 'two consecutive misses;'
                         $stopRequested = $true
                         # $proc.HasExited will flip on the next tick.
                     }
