@@ -7,19 +7,47 @@ const { debugLog } = getLogs('AudioRecorder');
 
 const RecordingFailedInterval = 500;
 
+export interface RecordingFailure {
+    chatId: string;
+    failure: string;
+}
+
+// getUserMedia's DOMException names are the only place the browser says what actually went wrong,
+// and they're specific enough to give the user advice they can act on. The result is
+// RecorderStartOutcome's wire form: "<RecorderStartResult>:<code>".
+export function describeRecordingError(error: unknown): string {
+    const name = error instanceof DOMException || error instanceof Error ? error.name : '';
+    switch (name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+        return `NoPermission:${name}`;
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+        return `NoDevice:${name}`;
+    case 'NotReadableError':
+    case 'AbortError':
+        return `DeviceBusy:${name}`;
+    default:
+        return `Unknown:${name || 'Error'}`;
+    }
+}
+
 // Web-only relay: forwards JS-side recorder state to Blazor.
 // Pushed into by opus-media-recorder.ts (the JS side is the source of truth on web);
 // subscribed by audio-recorder.ts which calls IAudioRecorderBackend.OnRecordingStateChange.
-// NOT used on MAUI (audio-recorder.ts is never instantiated; RecordingActivityClient targets RecordingActivity instead).
+// NOT used on MAUI (audio-recorder.ts is never instantiated; RecordingActivityClient targets
+// RecordingActivity instead).
 export class AudioRecorderState {
     private static readonly stateChangedSubject: Subject<RecorderState> = new Subject<RecorderState>();
     private static readonly recordingHeartbeatSubject: Subject<void> = new Subject<void>();
+    private static readonly recordingFailedSubject: Subject<RecordingFailure> = new Subject<RecordingFailure>();
 
     private static isRecording = false;
     private static isSignalDetected = false;
     private static isConnected = false;
     private static isVoiceActive = false;
-    private static lastState: RecorderState = { isRecording: false, isSignalDetected: false, isConnected: false, isVoiceActive: false };
+    private static lastState: RecorderState =
+        { isRecording: false, isSignalDetected: false, isConnected: false, isVoiceActive: false };
 
     public static get stateChanged$(): Observable<RecorderState> {
         return AudioRecorderState.stateChangedSubject.asObservable();
@@ -27,6 +55,10 @@ export class AudioRecorderState {
 
     public static get recordingHeartbeat$(): Observable<void> {
         return AudioRecorderState.recordingHeartbeatSubject.asObservable();
+    }
+
+    public static get recordingFailed$(): Observable<RecordingFailure> {
+        return AudioRecorderState.recordingFailedSubject.asObservable();
     }
 
     public static getState(): RecorderState {
@@ -64,6 +96,14 @@ export class AudioRecorderState {
             return;
         AudioRecorderState.isVoiceActive = isVoiceActive;
         AudioRecorderState.emitStateChanged();
+    }
+
+    // The mic is acquired inside an un-awaited recording action, so a getUserMedia failure can't
+    // reach whoever called start() - it has to be pushed out from where it happens.
+    public static setFailed(chatId: string, error: unknown): void {
+        const failure = describeRecordingError(error);
+        debugLog?.log(`AudioRecorderState.setFailed(): #${chatId} - ${failure}`);
+        AudioRecorderState.recordingFailedSubject.next({ chatId, failure });
     }
 
     public static microphoneIsCaptured(): void {

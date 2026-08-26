@@ -15,6 +15,18 @@ public sealed record RecordingStatus(RecordingStatusKind Kind, string? FailureCo
     public static readonly RecordingStatus Disconnected = new(RecordingStatusKind.Disconnected);
     public static readonly RecordingStatus StartFailed = new(RecordingStatusKind.StartFailed);
     public bool IsFailure => Kind >= RecordingStatusKind.Disconnected;
+    public static RecordingStatus Parse(string status)
+    {
+        // "<Kind>" or "<Kind>:<code>" - the form debugUI.forceRecordingStatus takes
+        var separatorIndex = status.IndexOf(':');
+        var name = separatorIndex < 0 ? status : status[..separatorIndex];
+        var code = separatorIndex < 0 ? null : status[(separatorIndex + 1)..].NullIfEmpty();
+        if (!Enum.TryParse<RecordingStatusKind>(name, true, out var kind))
+            throw StandardError.Constraint($"Unknown recording status kind: '{name}'.");
+
+        return new RecordingStatus(kind, code);
+    }
+
     public static RecordingStatus From(RecordingFailure failure)
         => failure.Result switch {
             RecorderStartResult.NoPermission => new(RecordingStatusKind.NoMicrophonePermission),

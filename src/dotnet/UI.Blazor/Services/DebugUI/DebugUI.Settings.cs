@@ -55,19 +55,22 @@ public sealed partial class DebugUI
     [JSInvokable]
     public void EnableAudioSync(bool enable)
     {
-        Services.GetRequiredService<IDebugAudioSync>().IsAudioSyncEnabled = enable;
+        Services.GetRequiredService<IDebugAudio>().IsAudioSyncEnabled = enable;
         Log.LogInformation("EnableAudioSync({Enable}): done", enable);
     }
 
-    /// <summary>
-    /// Switches the rendering mode without going through Settings -> User
-    /// Interface -> Rendering Mode. Mirrors <c>RenderModeSelector.ChangeMode</c>.
-    /// </summary>
-    /// <param name="mode">"a" (Auto), "s" (Server), or "w" (WASM).</param>
+    [JSInvokable]
+    public void ForceRecordingStatus(string? status)
+    {
+        Services.GetRequiredService<IDebugAudio>().ForceRecordingStatus(status);
+        Log.LogInformation("ForceRecordingStatus({Status}): done", status);
+    }
+
     [JSInvokable]
     public Task SetRenderMode(string mode)
     {
-        var key = (mode ?? "").Trim().ToLowerInvariant() switch {
+        // mode is "a" (Auto), "s" (Server) or "w" (WASM); mirrors RenderModeSelector.ChangeMode
+        var key = (mode ?? "").Trim().ToLower() switch {
             "a" => "a",
             "s" => "s",
             "w" => "w",

@@ -122,6 +122,14 @@ export class DebugUI {
         void this.backendRef.invokeMethodAsync('EnableAudioSync', enable);
     }
 
+    // Forces what every recording control reports, so the failure paths can be seen without
+    // breaking a microphone. Takes '<Kind>' or '<Kind>:<code>'; omit the argument to clear.
+    // Kinds: Off, Starting, Recording, Reconnecting, Disconnected, NoMicrophonePermission,
+    // NoMicrophone, MicrophoneBusy, StartFailed.
+    public static forceRecordingStatus(status = ''): void {
+        void this.backendRef.invokeMethodAsync('ForceRecordingStatus', status);
+    }
+
     public static async getUserId(): Promise<string> {
         const id = await this.backendRef.invokeMethodAsync<string>('GetUserId');
         console.log(`getUserId:`, id);

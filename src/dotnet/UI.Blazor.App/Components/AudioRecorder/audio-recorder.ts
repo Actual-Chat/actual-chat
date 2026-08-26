@@ -8,7 +8,7 @@ import { VoiceActivityChange } from './workers/audio-vad-contract';
 import { getLogs } from 'logging';
 import { throttle } from 'actuallab-core';
 import { WebMicrophonePermissionHandler } from './web-microphone-permission-handler';
-import { AudioRecorderState } from './audio-recorder-state';
+import { AudioRecorderState, describeRecordingError } from './audio-recorder-state';
 import { Subscription } from 'rxjs';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('AudioRecorder');
@@ -36,6 +36,7 @@ export class AudioRecorder {
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly recorderStateChangedSubscription: Subscription;
     private readonly recordingHeartbeatSubscription: Subscription;
+    private readonly recordingFailedSubscription: Subscription;
 
     private state: 'starting' | 'failed' | 'recording' | 'stopped' = 'stopped';
     private chatId?: string;
@@ -60,6 +61,8 @@ export class AudioRecorder {
             state.isConnected,
             state.isVoiceActive));
         this.recordingHeartbeatSubscription = AudioRecorderState.recordingHeartbeat$.subscribe(() => this.heartbeatThrottled());
+        this.recordingFailedSubscription = AudioRecorderState.recordingFailed$.subscribe(
+            f => this.onRecordingFailed(f.chatId, f.failure));
     }
 
     // Called from Blazor
@@ -70,6 +73,7 @@ export class AudioRecorder {
             await opusMediaRecorder.stop();
             this.recorderStateChangedSubscription.unsubscribe();
             this.recordingHeartbeatSubscription.unsubscribe();
+            this.recordingFailedSubscription.unsubscribe();
         } catch (e) {
             errorLog?.log(`dispose: failed to stop recording`, e);
             throw e;
@@ -100,7 +104,7 @@ export class AudioRecorder {
             this.state = 'failed';
             this.chatId = undefined;
             // Returned, not rethrown: an exception reaches Blazor as an opaque JSException.
-            return AudioRecorder.describeStartError(e);
+            return describeRecordingError(e);
         }
         finally {
             debugLog?.log(`<- startRecording()`);
@@ -152,22 +156,12 @@ export class AudioRecorder {
 
     // Private methods
 
-    // getUserMedia's DOMException names are the only place the browser says what actually went
-    // wrong, and they're specific enough to give the user advice they can act on.
-    private static describeStartError(error: unknown): string {
-        const name = error instanceof DOMException || error instanceof Error ? error.name : '';
-        switch (name) {
-        case 'NotAllowedError':
-        case 'SecurityError':
-            return `NoPermission:${name}`;
-        case 'NotFoundError':
-        case 'OverconstrainedError':
-            return `NoDevice:${name}`;
-        case 'NotReadableError':
-        case 'AbortError':
-            return `DeviceBusy:${name}`;
-        default:
-            return `Unknown:${name || 'Error'}`;
+    private async onRecordingFailed(chatId: string, failure: string): Promise<void> {
+        try {
+            await this.blazorRef.invokeMethodAsync('OnRecordingFailed', chatId, failure);
+        }
+        catch (error) {
+            errorLog?.log(`onRecordingFailed: unhandled error:`, error);
         }
     }
 

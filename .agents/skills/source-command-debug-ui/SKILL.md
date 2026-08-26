@@ -219,7 +219,8 @@ validation — feature, not bug.
 | `debugUI.getCurrentRenderMode()` | Returns `'s'` or `'w'` — pure client-side, derived from whether the WASM runtime is loaded. Note: `'a'` (Auto) starts as `'s'` and upgrades to `'w'`. |
 | `debugUI.resetOnboarding(enable)` | `false` skips all onboarding steps; `true` resets them. |
 | `debugUI.resetBubbles(enable)` | Same shape for feature-tip bubbles. |
-| `debugUI.enableAudioSync(enable)` | Toggles the `IDebugAudioSync` flag. |
+| `debugUI.enableAudioSync(enable)` | Toggles the `IDebugAudio` flag. |
+| `debugUI.forceRecordingStatus(status?)` | Forces what every recording control reports. `'<Kind>'` or `'<Kind>:<code>'`, e.g. `'NoMicrophonePermission'`, `'StartFailed:NotReadableError'`; omit to clear. Kinds: `Off`, `Starting`, `Recording`, `Reconnecting`, `Disconnected`, `NoMicrophonePermission`, `NoMicrophone`, `MicrophoneBusy`, `StartFailed`. |
 | `await debugUI.getThreadPoolSettings()` | Inspect current thread-pool min/max/available. |
 | `debugUI.changeThreadPoolSettings(min, minIO, max, maxIO)` | Runtime tune. Local-dev only. |
 
