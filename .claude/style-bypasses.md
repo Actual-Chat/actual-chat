@@ -157,3 +157,13 @@ edited. The reason can be as short as whose decision it was.
 - L109 `await StopRecordingUnsafe().ConfigureAwait(false);`
   — blank line after an if/else-if chain ending in `return` — the chain ends in an
   `else if`, which the guide's exemption covers
+
+## src/dotnet/UI.Blazor.App/Services/Video/services/recorder-preview-view.ts
+
+- L53 `// Forces WebKit to recomposite a <video> that decodes but never paints.`
+  — comment longer than the guide's limit — Alex Yakunin's decision: this is a
+  four-line workaround for an upstream browser bug whose symptom (a healthy,
+  advancing, correctly-sized `<video>` painting nothing) reads as a no-op, and
+  whose cause lives in two CSS properties in another file. Without the reasoning
+  written down the next reader deletes it. Records the WebKit bug id, the
+  measured evidence, and why `contain`/`will-change` are nudged, not removed.

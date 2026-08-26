@@ -9,7 +9,7 @@
 
 import { MonotonicClock } from 'clocks';
 import { EncoderPool } from './encoder-pool';
-import type { PreviewFramePresentation } from './recorder-worker-contract';
+import type { PreviewFramePresentation, PreviewTrace } from './recorder-worker-contract';
 
 export interface PreviewGeneratorLike {
     writable: WritableStream<VideoFrame>;
@@ -22,9 +22,20 @@ export interface SenderSessionOptions {
     createCaptureClock?: () => MonotonicClock;
 }
 
+export function createEmptyPreviewTrace(): PreviewTrace {
+    return {
+        forwarded: 0, noConsumer: 0, refused: 0, cloneFailed: 0,
+        writeCalled: 0, writeResolved: 0, writeRejected: 0, reported: 0,
+        lastForwardedAtMs: 0, lastWriteResolvedAtMs: 0,
+        lastDesiredSize: null, lastError: '',
+    };
+}
+
 export class SenderSession {
     readonly captureClock: MonotonicClock;
     readonly encoderPool: EncoderPool;
+    // Survives runs so a restart's trace is comparable with the run before it.
+    readonly previewTrace: PreviewTrace = createEmptyPreviewTrace();
     private previewWriter: WritableStreamDefaultWriter<VideoFrame> | null = null;
     private onPreviewFrame: ((frame: VideoFrame) => void | Promise<void>) | null = null;
     private onPreviewFramePresentation: ((presentation: PreviewFramePresentation) => void) | null = null;

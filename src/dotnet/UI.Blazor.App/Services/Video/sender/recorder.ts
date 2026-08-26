@@ -16,7 +16,7 @@ import { mstpSource } from '../operators/capture';
 import { stampCaptureTime } from '../operators/stamp-capture-time';
 import { attachSourceDims } from '../operators/attach-source-dims';
 import { normalizeDownscale, type DownscalerMode } from '../operators/downscale';
-import { createPreviewSink } from '../operators/preview-forwarder';
+import { createPreviewSink, isPreviewTraceEnabled } from '../operators/preview-forwarder';
 import { applyKeyframePolicy } from '../operators/apply-keyframe-policy';
 import { encode, type EncoderConfigPerLayer, type EncoderFactory } from '../operators/encode';
 import { FloodGate, floodGate } from '../operators/flood-gate';
@@ -139,6 +139,7 @@ export class Recorder {
             getWriter: () => this.session.getPreviewWriter(),
             reportFrame: frame => this.session.reportPreviewFrame(frame),
             reportPresentation: p => this.session.reportPreviewFramePresentation(p),
+            trace: isPreviewTraceEnabled() ? this.session.previewTrace : undefined,
         });
 
         // Two pipes only because pipe()'s typed overload tops out at 10 ops;
