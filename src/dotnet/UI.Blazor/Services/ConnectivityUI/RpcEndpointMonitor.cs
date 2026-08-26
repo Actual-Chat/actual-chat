@@ -28,6 +28,14 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
     // measurement would degrade with each relay added. Only the nearest few are measured.
     private const int MaxThroughputProbes = 2;
     private static readonly TimeSpan RoundTripTimeout = TimeSpan.FromSeconds(3);
+    // A material shift in min-RTT means the route changed - a handover, a new cell, a
+    // different exit - which is when an earlier measurement stops describing the link.
+    // It says nothing about which endpoint is better, only that the question is worth
+    // asking again, so the cost of being wrong is one measurement.
+    private static readonly TimeSpan PathCheckPeriod = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan MinPathChange = TimeSpan.FromMilliseconds(150);
+    private const double PathChangeFactor = 3;
+    private static readonly TimeSpan MinReselectInterval = TimeSpan.FromMinutes(2);
     // 64KB in 10s is ~52 kbps. Well under what a weak but usable link sustains, and well
     // over a capped one, which needs ~37s for this payload. A tighter deadline would
     // demand ~175 kbps and start failing links that are merely slow.
@@ -47,11 +55,14 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
     private int _verifiedVersion = -1;
     private string _pushedEndpoint = "";
     private RpcEndpointReport? _pendingReport;
+    private Moment _selectedAt;
     private ISystemProperties SystemProperties => field ??= Services.GetRequiredService<ISystemProperties>();
     private RpcServerProbe ServerProbe => field ??= Services.GetRequiredService<RpcServerProbe>();
     private ReconnectUI ReconnectUI => field ??= Services.GetRequiredService<ReconnectUI>();
     private ConnectivityUI ConnectivityUI => field ??= Services.GetRequiredService<ConnectivityUI>();
     private IAppActivityState ActivityState => field ??= Services.GetRequiredService<IAppActivityState>();
+    // Optional: a headless scope may run without it, and then only a network change re-measures.
+    private ServerTimeSync? TimeSync => field ??= Services.GetService<ServerTimeSync>();
     private RpcClientPeer? Peer => Hub.RpcHub.GetClientPeer(RpcRef.Default);
     private bool IsBackgroundIdle => ActivityState.State.Value == AppActivityState.BackgroundIdle;
 
@@ -67,6 +78,19 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
             .RetryForever(RetryDelaySeq.Exp(1, 30), Log)
             .CycleForever()
             .Run(cancellationToken);
+    }
+
+    // It's internal to be accessible from tests
+    internal static bool IsPathChange(TimeSpan before, TimeSpan after)
+    {
+        // Both directions count: a route that got worse may have started capping traffic,
+        // and one that got better may mean a relay is no longer the best way out.
+        if (before <= TimeSpan.Zero || after <= TimeSpan.Zero)
+            return false;
+
+        var ratio = after.TotalSeconds / before.TotalSeconds;
+        return (after - before).Duration() >= MinPathChange
+            && (ratio >= PathChangeFactor || ratio <= 1 / PathChangeFactor);
     }
 
     // Private methods
@@ -91,7 +115,7 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
 
         await ReportEndpoint(selector, cancellationToken).ConfigureAwait(false);
         if (selector.Version == _verifiedVersion) {
-            await WaitUntilDisconnected(cancellationToken).ConfigureAwait(false);
+            await WaitWhileHealthy(cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -109,7 +133,7 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
             return;
         }
 
-        await WaitUntilDisconnected(cancellationToken).ConfigureAwait(false);
+        await WaitWhileHealthy(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task SelectEndpoint(RpcEndpointSelector selector, CancellationToken cancellationToken)
@@ -129,6 +153,7 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
         }
 
         _selectedVersion = version;
+        _selectedAt = Clocks.CpuClock.Now;
         // A server predating the sized probe can't be measured at all, so this falls back to
         // the older rule: a new network gets the origin, and a failing probe demotes us again.
         var endpoint = selection?.Endpoint ?? selector.OriginHost;
@@ -307,8 +332,46 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
         }
     }
 
-    private Task WaitUntilDisconnected(CancellationToken cancellationToken)
-        => ReconnectUI.State.Computed.When(x => !x.IsConnected, cancellationToken);
+    private async Task WaitWhileHealthy(CancellationToken cancellationToken)
+    {
+        // Parking here until the connection drops is what left a mid-session change
+        // undetected: a link that degrades without dropping never reaches a decision point.
+        using var cts = cancellationToken.CreateLinkedTokenSource();
+        var whenDisconnected = ReconnectUI.State.Computed.When(x => !x.IsConnected, cts.Token);
+        var baseline = TimeSync?.MinRtt;
+        try {
+            while (true) {
+                var delayTask = Clocks.CpuClock.Delay(PathCheckPeriod, cts.Token);
+                if (await Task.WhenAny(whenDisconnected, delayTask).ConfigureAwait(false) == whenDisconnected)
+                    return;
+
+                if (!HasPathChanged(baseline))
+                    continue;
+
+                Log.LogWarning("RPC path changed: min-RTT {Before} -> {After}, re-measuring endpoints",
+                    baseline?.ToShortString(), TimeSync?.MinRtt?.ToShortString());
+                _selectedVersion = -1;
+                _verifiedVersion = -1;
+                return;
+            }
+        }
+        finally {
+            cts.Cancel();
+        }
+    }
+
+    private bool HasPathChanged(TimeSpan? baseline)
+    {
+        if (baseline is not { } before || TimeSync?.MinRtt is not { } now)
+            return false;
+        if (Clocks.CpuClock.Now - _selectedAt < MinReselectInterval) {
+            // A link whose RTT swings keeps clearing the bar, and each crossing costs a
+            // full re-measurement, so the rate is capped rather than the signal softened.
+            return false;
+        }
+
+        return IsPathChange(before, now);
+    }
 
     private void MoveToNextEndpoint(RpcEndpointSelector selector)
     {
