@@ -57,27 +57,9 @@
 
     private readonly ContentSwapDirection _swapDirection = new();
     private ChatListSettings _settings = new() { FilterId = ChatListFilter.Unread.Id };
-    private bool _isPanelOpen;
 
     private ChatListUI ChatListUI => Hub.ChatListUI;
     private NotificationsPanelUI NotificationsPanelUI => Hub.NotificationsPanelUI;
-
-    [CascadingParameter] private ContentSwapContext? Swap { get; set; }
-
-    protected override void OnInitialized() {
-        if (Swap is { } swap)
-            swap.StateChanged += OnStateChanged;
-        if (Swap is not { IsVisible: false })
-            OpenPanel();
-        base.OnInitialized();
-    }
-
-    public override ValueTask DisposeAsync() {
-        if (Swap is { } swap)
-            swap.StateChanged -= OnStateChanged;
-        ClosePanel();
-        return base.DisposeAsync();
-    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -97,9 +79,9 @@
     // Private methods
 
     private async Task<bool> HasTab(ChatListFilter filter, CancellationToken cancellationToken) {
-        // A tab stays visible while it still retains recently-read chats, not only while there are unread ones.
-        var retainedIds = await NotificationsPanelUI.GetRetainedSet(filter.Id, cancellationToken).ConfigureAwait(false);
-        if (!retainedIds.IsEmpty)
+        // A tab stays visible while it still holds recently-read chats, not only while there are unread ones.
+        var expiring = await NotificationsPanelUI.GetExpiring(filter.Id, cancellationToken).ConfigureAwait(false);
+        if (expiring.Count > 0)
             return true;
 
         var count = await ChatListUI.GetUnreadChatCount(null, filter, cancellationToken).ConfigureAwait(false);
@@ -120,31 +102,6 @@
                 return i;
 
         return 0;
-    }
-
-    private void OnStateChanged() {
-        if (Swap!.IsVisible)
-            OpenPanel();
-        else
-            ClosePanel();
-    }
-
-    private void OpenPanel() {
-        if (_isPanelOpen)
-            return;
-
-        _isPanelOpen = true;
-        NotificationsPanelUI.Open();
-    }
-
-    private void ClosePanel() {
-        // The panel is logically closed the moment this widget stops being the one on screen, but it
-        // then outlives the swap - and its late Close would otherwise clear the next widget's Open
-        if (!_isPanelOpen)
-            return;
-
-        _isPanelOpen = false;
-        NotificationsPanelUI.Close();
     }
 
     // Nested types

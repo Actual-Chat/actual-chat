@@ -68,10 +68,10 @@
         var chatById = await ChatListUI
             .ListUnordered(null, ChatListFilter.Unread, cancellationToken)
             .ConfigureAwait(true);
-        var retainedIds = await NotificationsPanelUI
-            .GetRetainedSet(ChatListFilter.Unread.Id, cancellationToken)
+        var expiring = await NotificationsPanelUI
+            .GetExpiring(ChatListFilter.Unread.Id, cancellationToken)
             .ConfigureAwait(true);
-        return new(true, chatById.Count > 0, !retainedIds.IsEmpty);
+        return new(true, chatById.Count > 0, expiring.Count > 0);
     }
 
     protected override void OnAfterRender(bool firstRender) {

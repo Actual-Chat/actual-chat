@@ -55,7 +55,4 @@ public static class UserSettingsUIExt
         this UserSettingsUI settingsUI)
         => new(settingsUI, nameof(UserPttSettings));
 
-    public static UserSettingsAccessor<UserNotificationsPanelSettings> UserNotificationsPanelSettings(
-        this UserSettingsUI settingsUI)
-        => new(settingsUI, nameof(UserNotificationsPanelSettings));
 }

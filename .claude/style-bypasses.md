@@ -157,3 +157,12 @@ edited. The reason can be as short as whose decision it was.
 - L109 `await StopRecordingUnsafe().ConfigureAwait(false);`
   — blank line after an if/else-if chain ending in `return` — the chain ends in an
   `else if`, which the guide's exemption covers
+
+## src/dotnet/UI.Blazor.App/Services/NotificationsPanelUI.cs
+
+- L10 `public class NotificationsPanelUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized`
+  — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
+- L23 `public NotificationsPanelUI(AppUIHub hub) : base(hub)`
+  — explicit constructor instead of a primary one — required: the body reads
+  `StateFactory`, a base-class member, which a primary constructor's field
+  initializers can't reach

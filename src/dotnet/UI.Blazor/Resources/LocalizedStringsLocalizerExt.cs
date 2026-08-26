@@ -66,7 +66,6 @@ public static class LocalizedStringsLocalizerExt
         public string UserInterface_OnboardingRestarted => l["UserInterface_OnboardingRestarted"].Value;
         public string UserInterface_Chats => l["UserInterface_Chats"].Value;
         public string UserInterface_ColorizeAuthorNames => l["UserInterface_ColorizeAuthorNames"].Value;
-        public string UserInterface_NotificationsPanel => l["UserInterface_NotificationsPanel"].Value;
 
         public string YourAccount_Information => l["YourAccount_Information"].Value;
         public string YourAccount_Name => l["YourAccount_Name"].Value;
@@ -1081,15 +1080,6 @@ public static class LocalizedStringsLocalizerExt
         public string SearchTabs_Date => l["SearchTabs_Date"].Value;
         public string Notifications_AllCaughtUp => l["Notifications_AllCaughtUp"].Value;
         public string Notifications_DismissAll => l["Notifications_DismissAll"].Value;
-        public string NotificationsPanel_Description => l["NotificationsPanel_Description"].Value;
-        public string NotificationsPanel_DropReadChats => l["NotificationsPanel_DropReadChats"].Value;
-        public string NotificationsPanel_Immediately => l["NotificationsPanel_Immediately"].Value;
-        public string NotificationsPanel_AfterPanelClosed => l["NotificationsPanel_AfterPanelClosed"].Value;
-        public string NotificationsPanel_After10Minutes => l["NotificationsPanel_After10Minutes"].Value;
-        public string NotificationsPanel_After1Hour => l["NotificationsPanel_After1Hour"].Value;
-        public string NotificationsPanel_After3Hours => l["NotificationsPanel_After3Hours"].Value;
-        public string NotificationsPanel_After8Hours => l["NotificationsPanel_After8Hours"].Value;
-        public string NotificationsPanel_After24Hours => l["NotificationsPanel_After24Hours"].Value;
         public string Search_In => l["Search_In"].Value;
         public string Search_CloseSearch => l["Search_CloseSearch"].Value;
         public string Search_ShowLess => l["Search_ShowLess"].Value;

@@ -214,15 +214,14 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         if (!filter.AcrossPlace)
             return chatById;
 
-        var retainedIds = await NotificationsPanelUI.GetRetainedSet(filter.Id, cancellationToken).ConfigureAwait(false);
-        if (retainedIds.IsEmpty)
+        var expiring = await NotificationsPanelUI.GetExpiring(filter.Id, cancellationToken).ConfigureAwait(false);
+        if (expiring.Count == 0)
             return chatById;
 
-        var allById = await ListAllUnordered(cancellationToken).ConfigureAwait(false);
+        // The ChatInfo each one had on its way out, so this needs no lookup over every chat.
         var result = new Dictionary<ChatId, ChatInfo>(chatById);
-        foreach (var chatId in retainedIds)
-            if (!result.ContainsKey(chatId) && allById.TryGetValue(chatId, out var chatInfo))
-                result.Add(chatId, chatInfo);
+        foreach (var (chatId, chatInfo) in expiring)
+            result.TryAdd(chatId, chatInfo);
         return result;
     }
 

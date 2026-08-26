@@ -308,7 +308,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NoResults>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsNavbarWidget>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsPanelSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsPermissionBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsTabUnreadCount>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotifyAllButton>();
@@ -539,7 +538,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.IFileProvider>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.MauiFileProvider>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.RelatedEntryRef>();
-        CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.RetainedRead>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.SendMessageRequestEntry>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.UploadSessionSnapshot>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.WebFileProvider>();
@@ -654,9 +652,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.RelatedEntryRef>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.RelatedEntryRef>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.RelatedEntryRef>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.RetainedRead>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.RetainedRead>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.RetainedRead>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.SendMessageRequestEntry>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.SendMessageRequestEntry>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.UI.Blazor.App.Services.SendMessageRequestEntry>>>>();
@@ -775,7 +770,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+MauiFileProviderFormatter, ActualChat.UI.Blazor.App");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+RelatedEntryKindFormatter, ActualChat.UI.Blazor.App");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+RelatedEntryRefFormatter, ActualChat.UI.Blazor.App");
-        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+RetainedReadFormatter, ActualChat.UI.Blazor.App");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+SendMessageRequestEntryFormatter, ActualChat.UI.Blazor.App");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+UploadSessionSnapshotFormatter, ActualChat.UI.Blazor.App");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+UI+Blazor+App+Services+UploadSessionStateFormatter, ActualChat.UI.Blazor.App");
@@ -1077,7 +1071,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.NoResults), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsNavbarWidget), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsPanelSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsPermissionBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsTabUnreadCount), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotifyAllButton), AotTypeKind.Component),
@@ -1308,7 +1301,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Services.IFileProvider), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.MauiFileProvider), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.RelatedEntryRef), AotTypeKind.Serializable),
-            (typeof(global::ActualChat.UI.Blazor.App.Services.RetainedRead), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.SendMessageRequestEntry), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.UploadSessionSnapshot), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.WebFileProvider), AotTypeKind.Serializable),

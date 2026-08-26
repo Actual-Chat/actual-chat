@@ -9,6 +9,11 @@
 </MenuEntry>
 
 @code {
-    private Task OnDismissAllClick()
-        => UICommander.Run(new Notifications_DismissAll { Session = Session });
+    private NotificationsPanelUI NotificationsPanelUI => Hub.NotificationsPanelUI;
+    private Task OnDismissAllClick() {
+        // Before the command, so the chats it reads are never seen leaving the panel's list.
+        NotificationsPanelUI.DismissAll();
+
+        return UICommander.Run(new Notifications_DismissAll { Session = Session });
+    }
 }
