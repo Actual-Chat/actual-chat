@@ -1,3 +1,6 @@
+using ActualChat.UI.Blazor.Resources;
+using Microsoft.Extensions.Localization;
+
 namespace ActualChat.Notifications;
 
 public static class NotificationHelper
@@ -28,21 +31,23 @@ public static class NotificationHelper
 
     public static string GetIconUrl(Chat.Chat chat, AuthorFull author, UrlMapper urlMapper)
         => urlMapper.IconUrl(chat.GetIconQuery(author));
-
-    public static string GetVoiceChatStartedText(IReadOnlyList<string> authorNames)
+    public static string GetVoiceChatStartedText(IReadOnlyList<string> authorNames, IStringLocalizer l)
     {
         var shown = authorNames.Take(Constants.Notification.MaxSummaryAuthors).ToList();
         var moreCount = authorNames.Count - shown.Count;
         var names = shown.Count switch {
             0 => "",
             1 => shown[0],
-            _ when moreCount > 0 => $"{string.Join(", ", shown)} and {moreCount} more",
-            _ => $"{string.Join(", ", shown.Take(shown.Count - 1))} and {shown[^1]}",
+            _ when moreCount > 0 => l.Notification_NamesAndMore(moreCount, string.Join(", ", shown), moreCount),
+            _ => l.Conversation_TwoNames_Format(string.Join(", ", shown.Take(shown.Count - 1)), shown[^1]),
         };
-        return names.IsNullOrEmpty() ? "Voice chat started" : $"{names} started a voice chat";
+        // Every author, not just the shown ones: "and 3 more" is part of the subject.
+        return names.IsNullOrEmpty()
+            ? l.Notification_VoiceChatStarted
+            : l.Notification_VoiceChatStartedBy(authorNames.Count, names);
     }
 
-    public static string ComposeAggregatedText(ChatEntryRelatedNotification notification)
+    public static string ComposeAggregatedText(ChatEntryRelatedNotification notification, IStringLocalizer l)
     {
         var messages = notification.RecentMessages;
         if (messages.IsEmpty)
@@ -55,11 +60,13 @@ public static class NotificationHelper
         var lines = new List<string>(messages.Count + 1);
         for (var i = messages.Count - 1; i >= 0; i--) {
             var m = messages[i];
-            lines.Add(showAuthorNames && !m.AuthorName.IsNullOrEmpty() ? $"{m.AuthorName}: {m.Text}" : m.Text);
+            lines.Add(showAuthorNames && !m.AuthorName.IsNullOrEmpty()
+                ? l.Notification_AuthorLine_Format(m.AuthorName, m.Text)
+                : m.Text);
         }
         var moreCount = notification.UnreadCount - messages.Count;
         if (moreCount > 0)
-            lines.Add(moreCount == 1 ? "+1 earlier message" : $"+{moreCount} earlier messages");
+            lines.Add(l.Notification_EarlierMessages(moreCount, moreCount));
         return string.Join('\n', lines);
     }
 

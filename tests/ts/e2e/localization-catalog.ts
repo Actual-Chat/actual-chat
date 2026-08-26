@@ -12,7 +12,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-export const RESOURCES_DIR = path.resolve(process.cwd(), 'src/dotnet/UI.Blazor/Resources');
+export const RESOURCES_DIR = path.resolve(process.cwd(), 'src/dotnet/Localization/Resources');
 
 // Languages.AllUI, in its declaration order.
 export const UI_LANGUAGES: UILanguage[] = [

@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Db\Db.csproj" />
+    <ProjectReference Include="..\Localization\Localization.csproj" />
     <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
     <ProjectReference Include="..\Contacts.Contracts\Contacts.Contracts.csproj" />
     <ProjectReference Include="..\Notifications.Contracts\Notifications.Contracts.csproj" />

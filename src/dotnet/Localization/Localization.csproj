@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Localization" />
+  </ItemGroup>
+
+  <!-- Embed JSON translation files as resources in the main assembly.
+       WithCulture=false prevents MSBuild from treating "Strings.es.json" etc. as culture
+       satellite resources (the ".es." in the filename would otherwise trigger that). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Strings.*.json" LogicalName="%(Filename)%(Extension)" WithCulture="false" />
+    <EmbeddedResource Include="Resources\Messages.*.json" LogicalName="%(Filename)%(Extension)" WithCulture="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Api\Api.csproj" />
+  </ItemGroup>
+
+</Project>

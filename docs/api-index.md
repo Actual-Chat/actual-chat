@@ -244,6 +244,24 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 - `IPromptHelpers`, `PromptTemplate` — reusable prompt templates
 
 
+## Localization (`ActualChat.Localization`)
+
+The string catalogs and their lookup, in a dependency-free assembly so backend
+services can compose user-facing text. Namespace is still
+`ActualChat.UI.Blazor.Resources`. See [`i18n.md`](i18n.md).
+
+- `StringCatalog` — merged Strings + Messages catalog for every shipped language, loaded once
+- `StringCatalogs` — loads the embedded `Strings.<lang>.json` / `Messages.<lang>.json`
+- `LanguageStringLocalizer` — `IStringLocalizer` bound to an explicit `Language` (server-side; `AppStringLocalizer` is the circuit-scoped sibling)
+- `LocalizedStringsLocalizerExt` — typed member per key; never use the raw `L["..."]` indexer
+- `PluralLocalizerExt` — `|`-separated plural forms, indexed by `PluralRules`
+- `DateFormatsLocalizerExt` — month/day names and date patterns, ICU-free
+- `MessageIndex` / `MessageLocalizer` — English server message → catalog key
+
+Resolving *which* language a given user reads is `UserLocalizers`
+(`ActualChat.Users`, in `Users.Contracts`) — `UILanguage ?? DetectedUILanguage ?? English`.
+
+
 ## UI Core (`ActualChat.UI`)
 
 - `UICoreModule` — UI core module

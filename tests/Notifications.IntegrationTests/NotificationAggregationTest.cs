@@ -1,4 +1,5 @@
 using ActualChat.Notifications.Flows;
+using ActualChat.UI.Blazor.Resources;
 
 namespace ActualChat.Notifications.IntegrationTests;
 
@@ -6,6 +7,7 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
 {
     private static readonly ChatId TestChatId = ChatId.Parse("the-actual-one");
     private static readonly UserId TestUserId = UserId.New();
+    private static readonly LanguageStringLocalizer English = LanguageStringLocalizer.Get(Languages.English);
 
     [Fact]
     public void ShouldBeepFirstAlertAlways()
@@ -219,7 +221,7 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
 
         var merged = (MessageNotification)second.MergeWith(first);
 
-        NotificationHelper.ComposeAggregatedText(merged)
+        NotificationHelper.ComposeAggregatedText(merged, English)
             .Should().Be("Bob: I fixed the flaky test\nAlice: who takes the release?");
     }
 
@@ -241,7 +243,7 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
 
         var merged = (MessageNotification)second.MergeWith(first);
 
-        NotificationHelper.ComposeAggregatedText(merged).Should().Be("second\nfirst");
+        NotificationHelper.ComposeAggregatedText(merged, English).Should().Be("second\nfirst");
     }
 
     [Fact]
@@ -253,7 +255,7 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
             info = info.WithNotification(NewMessage(lid, author1, $"m{lid}", "Alice"));
         var merged = (MessageNotification)info.Items.Single();
 
-        var text = NotificationHelper.ComposeAggregatedText(merged);
+        var text = NotificationHelper.ComposeAggregatedText(merged, English);
 
         text.Should().StartWith("Alice: m105");
         text.Should().EndWith("+1 earlier message");
@@ -269,7 +271,7 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
             LeadText = "old lead",
         };
 
-        NotificationHelper.ComposeAggregatedText(legacy).Should().Be("old lead");
+        NotificationHelper.ComposeAggregatedText(legacy, English).Should().Be("old lead");
     }
 
     [Fact]

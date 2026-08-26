@@ -1047,6 +1047,16 @@
   "SearchTabs_Date": "Дата",
   "Notifications_AllCaughtUp": "Вы всё просмотрели",
   "Notifications_DismissAll": "Скрыть все",
+  // Notification text composed on the server. The names, message text and chat titles
+  // spliced into these stay untranslated - they are user content.
+  "Notification_VoiceChatStarted": "Голосовой чат начался",
+  "Notification_VoiceChatStartedBy": "{0} начинает голосовой чат|{0} начинают голосовой чат|{0} начинают голосовой чат",
+  "Notification_NamesAndMore": "{0} и ещё {1}",
+  "Notification_EarlierMessages": "+{0} предыдущее сообщение|+{0} предыдущих сообщения|+{0} предыдущих сообщений",
+  "Notification_AuthorLine_Format": "{0}: {1}",
+  "Notification_ThreadCreated_Format": "Создан тред «{0}»",
+  "Notification_AttentionRequested_Format": "{0} просит внимания",
+  "Notification_Reaction_Format": "{0} на {1}",
   "Search_In": "В",
   "Search_CloseSearch": "Закрыть поиск",
   "Search_ShowMore": "Показать ещё",

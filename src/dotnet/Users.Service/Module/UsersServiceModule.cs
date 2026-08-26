@@ -128,6 +128,9 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<ISecureTokens, SecureTokens>();
         services.AddSingleton<ISecureTokensBackend, SecureTokensBackend>(); // Used by HttpSessionExt, server-side logic in AppBase, etc.
 
+        // The recipient's UI language, for any server-side text: notifications now, email next.
+        services.AddSingleton<UserLocalizers>();
+
         if (rpcHost.IsApiHost) {
             services.AddSingleton<AuthHelper>(); // Used by ApiHost-s
             services.AddSingleton<ClaimMapper>(); // Used by ServerAuth

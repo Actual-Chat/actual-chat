@@ -29,7 +29,7 @@ import sys
 BASE_SUBTAG = "bs"
 DERIVED = ("cnr", "hr", "sr")
 KINDS = ("Strings", "Messages")
-RESOURCES = os.path.join("src", "dotnet", "UI.Blazor", "Resources")
+RESOURCES = os.path.join("src", "dotnet", "Localization", "Resources")
 LETTER = "A-Za-zČĆŽŠĐčćžšđ"
 
 # ---------------------------------------------------------------- substitution

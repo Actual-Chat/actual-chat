@@ -1047,6 +1047,16 @@
   "SearchTabs_Date": "Date",
   "Notifications_AllCaughtUp": "Vous êtes à jour",
   "Notifications_DismissAll": "Tout ignorer",
+  // Notification text composed on the server. The names, message text and chat titles
+  // spliced into these stay untranslated - they are user content.
+  "Notification_VoiceChatStarted": "Discussion vocale démarrée",
+  "Notification_VoiceChatStartedBy": "{0} a démarré une discussion vocale|{0} ont démarré une discussion vocale",
+  "Notification_NamesAndMore": "{0} et {1} autre|{0} et {1} autres",
+  "Notification_EarlierMessages": "+{0} message précédent|+{0} messages précédents",
+  "Notification_AuthorLine_Format": "{0} : {1}",
+  "Notification_ThreadCreated_Format": "Le fil '{0}' a été créé",
+  "Notification_AttentionRequested_Format": "{0} demande de l'attention",
+  "Notification_Reaction_Format": "{0} à {1}",
   "Search_In": "Dans",
   "Search_CloseSearch": "Fermer la recherche",
   "Search_ShowMore": "Afficher plus",

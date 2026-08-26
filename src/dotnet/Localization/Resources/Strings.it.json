@@ -1047,6 +1047,16 @@
   "SearchTabs_Date": "Data",
   "Notifications_AllCaughtUp": "Hai visto tutto",
   "Notifications_DismissAll": "Chiudi tutto",
+  // Notification text composed on the server. The names, message text and chat titles
+  // spliced into these stay untranslated - they are user content.
+  "Notification_VoiceChatStarted": "Chat vocale avviata",
+  "Notification_VoiceChatStartedBy": "{0} ha avviato una chat vocale|{0} hanno avviato una chat vocale",
+  "Notification_NamesAndMore": "{0} e {1} altro|{0} e {1} altri",
+  "Notification_EarlierMessages": "+{0} messaggio precedente|+{0} messaggi precedenti",
+  "Notification_AuthorLine_Format": "{0}: {1}",
+  "Notification_ThreadCreated_Format": "Il thread '{0}' è stato creato",
+  "Notification_AttentionRequested_Format": "{0} chiede attenzione",
+  "Notification_Reaction_Format": "{0} a {1}",
   "Search_In": "In",
   "Search_CloseSearch": "Chiudi la ricerca",
   "Search_ShowMore": "Mostra altro",

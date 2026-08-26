@@ -1047,6 +1047,16 @@
   "SearchTabs_Date": "Tanggal",
   "Notifications_AllCaughtUp": "Du bist auf dem neuesten Stand",
   "Notifications_DismissAll": "Odrzuć wszystkie",
+  // Notification text composed on the server. The names, message text and chat titles
+  // spliced into these stay untranslated - they are user content.
+  "Notification_VoiceChatStarted": "音声チャットが開始されました",
+  "Notification_VoiceChatStartedBy": "{0} さんが音声チャットを開始しました",
+  "Notification_NamesAndMore": "{0} và {1} người khác",
+  "Notification_EarlierMessages": "+{0} wcześniejszych wiadomości",
+  "Notification_AuthorLine_Format": "{0}：{1}",
+  "Notification_ThreadCreated_Format": "スレッド「{0}」が作成されました",
+  "Notification_AttentionRequested_Format": "{0} さんが注目を求めています",
+  "Notification_Reaction_Format": "{1} mesajına {0}",
   "Search_In": "Şurada:",
   "Search_CloseSearch": "Zamknij wyszukiwanie",
   "Search_ShowMore": "Tampilkan lebih banyak",
