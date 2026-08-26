@@ -492,6 +492,7 @@ overscroll rows are the summary of §3.7.*
 | iOS transform reaches zero | momentum `transform` → none, engaged → in-band | the native scroll is already at the boundary; clear the band transform and release the forced overflow lock | `transform` |
 | `scrollTo` during an excursion | — | flagged `reanchor`: the boundary moves by the same delta and the excursion carries on. Not flagged, and to a target other than the boundary: `boundary` and `over` move together so the screen does not, and the return runs from the new edge (§3.9) | `scrollTop` |
 | a wheel notch, or `cancelOverscroll` | any phase → in-band | the excursion ends at the boundary: write, read back, transform dropped | `scrollTop` + `transform` |
+| a precise-device wheel gesture starting within `WheelOwnScreens` of a limit | — | the gesture is driven: every event cancelled, the scroll performed by `followBy` and clamped, so no excursion happens at all | `scrollTop` |
 | a render arrives | any → the render loop | §3.5 | mostly `container.top` |
 | render, relayout or viewport resize while pinned, delta within `maxOverscroll` | Pinned → follow | a follow is booked for the frame: it re-measures the edge in the frame's read phase and writes the delta to `scrollTop` in its write phase, at most once per frame, skipping the frame entirely under a finger or an open band | `scrollTop` |
 | the same, delta past `maxOverscroll` | Pinned → Placing | a re-placement: up to three `setScrollOffset` passes, re-measuring between them because near an edge `container.top` moves with the scroll | `scrollTop` |
@@ -977,6 +978,45 @@ so it is caught at the crossing, not in `onWheel`), the keyboard and a programma
 the edge, the way they do everywhere else on a desktop; a wheel notch during an excursion ends it at
 the boundary. `isTouchMotion` carries a finger's flag through its fling and clears after `MotionGapMs`
 (200ms) without scroll events, so a mouse does not inherit the band from a finger.
+
+#### Precise pointing devices: the gesture is driven, not corrected
+
+A trackpad — an Apple Magic Trackpad or any Windows precision touchpad — is not a wheel with smaller
+notches. It reports pixel deltas at frame rate for as long as the finger is down, and then the *driver*
+keeps reporting them for up to a second and a half of inertia. Stopping that at an edge by writing
+`scrollTop` back after each one cannot work: the write lands a frame after the position it answers, at
+full amplitude, so every frame shows a step out and a step home. Measured on a Magic Trackpad against
+Windows Chrome, and reported first from a MacBook — the same jitter, and not a platform bug.
+
+So a gesture that starts near a limit is **driven** rather than corrected: every event is cancelled and
+the scroll performed by `followBy`, clamped into the limits. The browser never scrolls, so there is
+nothing to disagree with, through the whole inertial tail.
+
+Two properties of the engine shape this, both measured on the rig:
+
+- **Cancelling is all-or-nothing per gesture.** A wheel sequence stays cancelable only while the handler
+  cancels every event of it; the first one left uncancelled hands the rest to the compositor for good.
+  Cancelling *every* event held for 100% of a 2.5s, 157-event gesture; cancelling only on reaching the
+  edge got 1 cancelable event out of 61-107, because the approach to an edge always begins in-band.
+  This is also why the listener is not passive and is never detached: a gesture is only ever offered as
+  cancelable when a blocking listener is already registered for it.
+- **A gesture's first event does not say where it is going.** It is routinely `deltaY: 0`, or a single
+  pixel *the other way* before the real direction arrives. So `canOwnWheel` reads proximity only, never
+  direction — a direction test there loses whole gestures, which is unrecoverable.
+
+The claim is therefore made blind and given back later: once a decisive delta shows the gesture leaving
+the edge behind — past `WheelOwnScreens` (2) screens from either limit — one event goes uncancelled and
+the compositor scrolls the rest of it, which it does better than the main thread can.
+
+Notched wheels are deliberately never driven. They don't shake at an edge, and a click at a time is an
+animation the browser owns; `isPreciseWheel` separates them by `wheelDeltaY` being a whole multiple of
+`WheelClickDelta` (120). A finger's own momentum reaches some engines as wheel events too, so a gesture
+is never claimed while `isTouching` or `isTouchMotion` is set — that band belongs to the touch path.
+
+**Known gap.** Middle-button autoscroll produces scroll events and no wheel events at all, so there is
+nothing to cancel and it still jitters at an edge — much less than a trackpad did, and scoped out
+deliberately. Closing it means drawing the excursion rather than snapping it, i.e. giving non-touch
+continuous input the band, not extending anything here.
 
 #### The scroller is never left switched off
 

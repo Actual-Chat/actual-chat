@@ -74,6 +74,15 @@ const LockWatchdogMs = 1500;
 const MomentumKillFrames = 2;
 const MomentumSampleWindowMs = 96;
 const MomentumSampleCapacity = 12;
+// How close to a limit a wheel gesture has to start for this controller to drive it instead of the
+// compositor, and how far it has to get for the compositor to have it back. Covers anything that could
+// still reach the edge, because a gesture can only be claimed at its first event - see onWheel.
+const WheelOwnScreens = 2;
+// deltaMode 1 is lines and 2 is pages. Both are nominal here: the browser picks the real amount, and a
+// projection that is out by a line self-corrects, because the write it feeds is clamped to the limit.
+const WheelLinePx = 16;
+// A notched wheel reports whole clicks of this, whatever it puts in deltaY.
+const WheelClickDelta = 120;
 
 // These phases describe the rubber band; MomentumPhase separately describes who advances the position.
 type Phase =
@@ -94,7 +103,8 @@ interface MotionSample {
 // Keeps an element's scrollTop within getScrollLimits()'s [min, max] band with an iOS-style rubber
 // band drawn in the element's transform. The position the user sees is the pair (scrollTop, transform).
 // A WebKit release atomically trades the first term for the second and returns entirely in the transform;
-// a caught return trades it back. Every scrollTop write is read back. A wheel stops at the edge.
+// a caught return trades it back. Every scrollTop write is read back. A wheel stops at the edge - a
+// notched one by being written back there, a precise device's by being driven outright (see onWheel).
 export class ScrollController {
     private static readonly all = new Set<ScrollController>();
 
@@ -138,6 +148,9 @@ export class ScrollController {
     private scrollSpeed = 0;            // px/ms, signed - what the return phase last measured
     // Only touch gets a band; a wheel, autoscroll, the keyboard and programmatic scrolls stop at the edge.
     private isTouchMotion = false;
+    // A wheel gesture whose scrolling this controller performs itself - see onWheel.
+    private isWheelOwned = false;
+    private lastWheelTime = 0;
 
     private lockWatchdog: ReturnType<typeof setTimeout> | null = null;
 
@@ -175,7 +188,12 @@ export class ScrollController {
             this.lastScrollTime = performance.now();
             const opts = { passive: true, signal: this.abort.signal };
             element.addEventListener('scroll', () => this.onScroll(), opts);
-            element.addEventListener('wheel', () => this.onWheel(), opts);
+            // Not passive: an edge is held by cancelling the wheel, and a gesture is only ever offered
+            // as cancelable while a blocking listener is registered for it.
+            element.addEventListener(
+                'wheel',
+                (e: WheelEvent) => this.onWheel(e),
+                { passive: false, signal: this.abort.signal });
             // On the document because a touch listener on this element costs WebKit a walk of its whole
             // subtree per rendering update (6-12% of its main thread, measured during a call), and
             // because a touch keeps the target it started on - a list that unloads rows from under the
@@ -545,11 +563,65 @@ export class ScrollController {
             this.engage(this.followSpeed);
     }
 
-    private onWheel(): void {
+    // A gesture left uncancelled for even one of its events is handed to the compositor for the rest of
+    // its life, and nothing on the main thread can take it back - so whether to drive this one is settled
+    // on its first event and then honoured throughout. Driving it is the only way to stop a precise
+    // device at an edge: its inertia arrives as events rather than as a fling the browser could be asked
+    // to end, so the position can only be written back after each one, a frame late and at full
+    // amplitude, which is the shake. Anything not driven still stops at the edge in onScroll.
+    private onWheel(event: WheelEvent): void {
+        // Read before the flag is cleared: a finger's own momentum reaches some engines as wheel events,
+        // and driving those would take the band away from the gesture that earned it.
+        const isFingerDriven = this.isTouching || this.isTouchMotion;
         this.isTouchMotion = false;
         this.stopMomentumTakeover();
         if (this.phase !== 'in-band')
             this.endPhase(this.boundary);
+
+        const now = performance.now();
+        const isGestureStart = now - this.lastWheelTime >= MotionGapMs;
+        this.lastWheelTime = now;
+        if (isGestureStart)
+            this.isWheelOwned = !isFingerDriven && this.canOwnWheel(event);
+        // Cancelling a pinch-zoom would disable zooming over the element, so it gives the gesture up.
+        if (event.ctrlKey)
+            this.isWheelOwned = false;
+        if (!this.isWheelOwned || !event.cancelable)
+            return;
+
+        const delta = wheelDeltaPx(event, this.element.clientHeight);
+        // Handed back as soon as the gesture is plainly leaving the edge behind: one uncancelled event
+        // returns the rest of it to the compositor, which scrolls it better than this can. Until then it
+        // is kept, because there is no second chance to claim it.
+        if (Math.abs(delta) >= MinExcursionPx && this.limitDistance >= this.ownWheelDistance) {
+            this.isWheelOwned = false;
+            return;
+        }
+
+        event.preventDefault();
+        this.followBy(delta);
+    }
+
+    // Deliberately blind to which way the gesture is going. A precise device's first event is routinely
+    // a zero or a pixel the other way, so a direction read from it is wrong about as often as it is
+    // right - and being wrong forfeits the whole gesture, since a claim can only be made at its start.
+    private canOwnWheel(event: WheelEvent): boolean {
+        return !event.ctrlKey
+            && event.cancelable
+            && isPreciseWheel(event)
+            && canOwnWheelGestures()
+            && this.limitDistance < this.ownWheelDistance;
+    }
+
+    private get ownWheelDistance(): number {
+        return this.element.clientHeight * WheelOwnScreens;
+    }
+
+    // To the closer limit, negative once past one; infinite when neither edge is enforced.
+    private get limitDistance(): number {
+        const limits = this.getEffectiveScrollLimits();
+        const top = this.element.scrollTop;
+        return Math.min(limits.max - top, top - limits.min);
     }
 
     private getViolatedBoundary(scrollTop: number): number | null {
@@ -1076,6 +1148,40 @@ function canLockOverflow(): boolean {
         overflowLockEnabled = !DeviceInfo.isWebKit;
 
     return overflowLockEnabled;
+}
+
+function wheelDeltaPx(event: WheelEvent, pageHeight: number): number {
+    switch (event.deltaMode) {
+    case WheelEvent.DOM_DELTA_LINE:
+        return event.deltaY * WheelLinePx;
+    case WheelEvent.DOM_DELTA_PAGE:
+        return event.deltaY * pageHeight;
+    default:
+        return event.deltaY;
+    }
+}
+
+// A precise device - a trackpad, a precision touchpad - reports pixel deltas at frame rate and carries
+// its own inertia in them, which is what shakes an edge and what only this controller can stop. A
+// notched wheel reports whole clicks the browser animates: it neither shakes nor survives being driven
+// a click at a time, so it is left to the browser.
+function isPreciseWheel(event: WheelEvent): boolean {
+    if (event.deltaMode !== WheelEvent.DOM_DELTA_PIXEL)
+        return false;
+
+    const clicks = (event as WheelEvent & { wheelDeltaY?: number }).wheelDeltaY;
+    return clicks === undefined || clicks % WheelClickDelta !== 0;
+}
+
+// Overridable as ?vlwheel=0 to hand precise gestures back to the browser, for comparing the two on a
+// device.
+let wheelOwnEnabled: boolean | null = null;
+
+function canOwnWheelGestures(): boolean {
+    if (wheelOwnEnabled === null)
+        wheelOwnEnabled = new URLSearchParams(location.search).get('vlwheel') !== '0';
+
+    return wheelOwnEnabled;
 }
 
 function canTakeOverMomentum(): boolean {

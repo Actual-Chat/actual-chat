@@ -4,7 +4,7 @@ version: 2.0.0
 description: |
   Instruments and workflow for debugging the VirtualList — the chat transcript (`InfiniteList`) and
   the sidebar (`FiniteList`). Covers the built-in consistency checker, the on-screen overlay, the
-  four `?vl*` URL flags, the touch-gesture rig, the frame recorder, attaching to a real Android
+  five `?vl*` URL flags, the touch-gesture rig, the frame recorder, attaching to a real Android
   device over CDP, and how to read a trace without being fooled by a measurement artifact. Use when
   the list jumps while scrolling, blanks, sticks on skeletons, or the overscroll/bounce misbehaves.
   The component's specification is `docs/ui/virtual-list.md`; this skill is only how to *measure* it.
@@ -150,8 +150,9 @@ the bar does not strobe or resize as numbers cross a power of ten.
 
 ### 1.3 URL flags
 
-Four, all read from `location.search`. Put them in the URL and reload — `?vlloaddelay` and
-`?vlfriction` are read once at module load, `?vllock` and `?vltakeover` are memoized on first use.
+Five, all read from `location.search`. Put them in the URL and reload — `?vlloaddelay` and
+`?vlfriction` are read once at module load, `?vllock`, `?vltakeover` and `?vlwheel` are memoized on
+first use.
 
 | Flag | Where | What it does |
 |---|---|---|
@@ -159,6 +160,7 @@ Four, all read from `location.search`. Put them in the URL and reload — `?vllo
 | `?vllock=0` / `=1` | `scroll-controller.ts` `canLockOverflow` | Forces the two-frame `overflow: hidden` fling kill off / on. Default is on everywhere except WebKit. `0` reproduces the "nothing stops a fling" half of the iOS problem on desktop |
 | `?vltakeover=0` / `=1` | `scroll-controller.ts` `canTakeOverMomentum` | Forces the WebKit release takeover off / on. Default is iOS+WebKit only. `1` exercises the FLIP handoff and the spring on desktop Chrome |
 | `?vlfriction=<max>x<ramp>` | `scroll-controller.ts` `readFriction` | Overrides the resistance curve (default `0.667x444`) for feel tuning on a device. `max` must be in (0, 1) |
+| `?vlwheel=0` | `scroll-controller.ts` `canOwnWheelGestures` | Stops the controller driving precise-device (trackpad / precision touchpad) wheel gestures near a limit, handing them back to the browser. Reproduces the edge jitter the takeover exists to remove — useful for A/B on a device |
 
 Also useful: `/test/virtual-list` (admin only) takes `RangeSeed`, `ContentSeed`, `DefaultEdge`,
 `RenderDirection` (0 = Natural, 1 = Reverse), `AnimateItemHeight`, `HeightTransition`, `HeightDelay`.
@@ -429,7 +431,7 @@ position in wrapper coordinates, the item's offset within the chain, and the scr
 | `src/dotnet/UI.Blazor/Components/VirtualList/virtual-list.ts` | The shared base. `readLoadDelay` (`?vlloaddelay`), request guard and retry |
 | `src/dotnet/UI.Blazor/Components/VirtualList/finite-list.ts` | The sidebar list. Registers `globalThis.FiniteList` |
 | `src/dotnet/UI.Blazor/Components/VirtualList/virtual-list-overlay.ts` | The on-screen overlay |
-| `src/nodejs/src/scroll-controller.ts` | The band, the resistance, the takeover. `getDebugState`, `getEffectiveScrollLimits`, `bandOffset`, `onTransform`; `?vllock`, `?vltakeover`, `?vlfriction`. Sets the `element.scrollController` expando |
+| `src/nodejs/src/scroll-controller.ts` | The band, the resistance, the takeover, the precise-wheel gesture drive. `getDebugState`, `getEffectiveScrollLimits`, `bandOffset`, `onTransform`; `?vllock`, `?vltakeover`, `?vlfriction`, `?vlwheel`. Sets the `element.scrollController` expando |
 | `src/dotnet/UI.Blazor/Services/DebugUI/debug-ui.ts` | `virtualListDebug()`, `showVirtualListOverlay()`, `applyVirtualListOverlay()` |
 | `src/dotnet/UI.Blazor/Services/DebugUI/DebugUI.cs`, `.Settings.cs` | Overlay persistence via `UserAppSettings.IsVirtualListOverlayEnabled` |
 | `tools/virtual-list-rig/rig.mjs` | Scenario rig + judge. Also the reference CDP client |
