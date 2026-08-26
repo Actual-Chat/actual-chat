@@ -39,17 +39,31 @@ public sealed class CompositeVerificationCodeSender(IServiceProvider services) :
     {
         // The prefix must be checked before calling Telegram.Send: a positive checkSendAbility is billed,
         // so a matching prefix has to skip the call entirely, not just discard its result.
-        if (Telegram is null || IsTelegramSkipped(phone)) {
+        if (Telegram is null) {
+            SkipChannel(TotpChannel.Telegram, phone, "unconfigured");
+
+            throw NoChannelLeft(phone, "the Telegram channel isn't configured");
+        }
+        if (IsTelegramSkipped(phone)) {
             SkipChannel(TotpChannel.Telegram, phone, "prefix");
 
-            throw Errors.DeliveryFailed();
+            throw NoChannelLeft(phone, "the number matches SkipTelegramPhonePrefixes");
         }
 
         var channel = await TrySend(Telegram, TotpChannel.Telegram, phone, message).ConfigureAwait(false);
         if (channel is null)
-            throw Errors.DeliveryFailed();
+            throw NoChannelLeft(phone, "Telegram couldn't deliver it either");
 
         return channel.Value;
+    }
+
+    private Exception NoChannelLeft(ActualChat.Phone phone, string reason)
+    {
+        Log.LogError(
+            "No channel delivered a verification code to {Phone}: {Reason}",
+            phone.E164Value.ToPrivate(), reason);
+
+        return Errors.DeliveryFailed();
     }
 
     private bool IsTelegramSkipped(ActualChat.Phone phone)
