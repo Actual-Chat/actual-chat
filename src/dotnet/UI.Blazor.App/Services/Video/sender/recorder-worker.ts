@@ -105,6 +105,10 @@ export function initRecorderWorker(deps: RecorderWorkerDeps): void {
     const session = (deps.createSession ?? (() => new SenderSession()))();
     session.setPreviewFrameReporter(deps.reportPreviewFrame);
     session.setPreviewFramePresentationReporter(deps.reportPreviewFramePresentation);
+    session.setPreviewWriterJamHandler(() => {
+        if (state)
+            recreateWorkerPreviewGenerator(state);
+    });
     state = {
         session,
         recorder: new Recorder(session),
@@ -125,6 +129,28 @@ function disposeWorkerPreviewGenerator(s: WorkerState): void {
 
     s.workerPreviewGenerator = null;
     try { generator.track.stop(); } catch { /* ignore */ }
+}
+
+// Builds the worker-side generator, hands its writable to the session and ships
+// the track to main. `reportPreviewTrack(null)` puts the preview on the canvas
+// fallback when the platform has no generator at all.
+function installWorkerPreviewGenerator(s: WorkerState): void {
+    const generator = createWorkerVideoTrackGenerator();
+    s.workerPreviewGenerator = generator;
+    s.session.setPreviewGenerator(generator ? { writable: generator.writable } : undefined);
+    s.deps.reportPreviewTrack?.(generator?.track ?? null);
+}
+
+// A jammed writer means WebKit's generator stopped draining for good — the
+// pipeline keeps producing, but nothing reaches the <video> again. Swapping in a
+// fresh generator is the only recovery, and it costs no capture/encoder restart.
+// Only Tier 1 (worker-built) generators are ours to replace.
+function recreateWorkerPreviewGenerator(s: WorkerState): void {
+    if (!s.workerPreviewGenerator)
+        return;
+
+    disposeWorkerPreviewGenerator(s);
+    installWorkerPreviewGenerator(s);
 }
 
 // Stops the worker-owned capture track (transferred clone) feeding a worker-side
@@ -263,15 +289,7 @@ export const recorderWorkerImpl: RecorderWorker = {
         } else if (opts.createPreviewInWorker) {
             // Tier 1: main couldn't build a generator (Safari) — create it here
             // and ship the track back. Writable stays in this realm.
-            const generator = createWorkerVideoTrackGenerator();
-            if (generator) {
-                s.workerPreviewGenerator = generator;
-                session.setPreviewGenerator({ writable: generator.writable });
-                deps.reportPreviewTrack?.(generator.track);
-            } else {
-                session.setPreviewGenerator(undefined);
-                deps.reportPreviewTrack?.(null);
-            }
+            installWorkerPreviewGenerator(s);
         } else {
             session.setPreviewGenerator(undefined);
         }

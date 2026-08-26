@@ -139,6 +139,7 @@ export class Recorder {
             getWriter: () => this.session.getPreviewWriter(),
             reportFrame: frame => this.session.reportPreviewFrame(frame),
             reportPresentation: p => this.session.reportPreviewFramePresentation(p),
+            onWriterJam: () => this.session.reportPreviewWriterJam(),
         });
 
         // Two pipes only because pipe()'s typed overload tops out at 10 ops;
