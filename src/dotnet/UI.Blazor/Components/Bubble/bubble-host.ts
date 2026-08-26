@@ -13,6 +13,7 @@ interface BubbleModel {
     isInViewport: boolean;
     isTopElement: boolean;
     isRead: boolean;
+    // Set when the show is requested, not when the bubble element appears - see show()
     isShown: boolean;
     priority: number;
     index?: number;
@@ -127,8 +128,12 @@ export class BubbleHost {
         debugLog?.log(`readBubble:`, bubbleRef);
 
         const bubble = this._bubbles.find(x => x.bubbleRef === bubbleRef);
-        if (bubble)
+        if (bubble) {
             bubble.isRead = true;
+            bubble.isShown = false;
+            bubble.bubbleElement = undefined;
+        }
+
         this.clearAutoUpdate();
         this.showNextBubble();
     }
@@ -145,8 +150,12 @@ export class BubbleHost {
 
         this.readBubbles.push(...readBubbles);
 
+        this.clearAutoUpdate();
+        // isShown is cleared too: every caller of this method drops the rendered bubble on the Blazor side
         this._bubbles.forEach(x => {
             x.isRead = this.readBubbles.includes(x.bubbleRef);
+            x.isShown = false;
+            x.bubbleElement = undefined;
             x.index = undefined;
             x.total = undefined;
         });
@@ -169,6 +178,7 @@ export class BubbleHost {
         const bubbleElement = document.getElementById(id);
         if (!bubbleElement) {
             warnLog?.log(`Bubble element not found:`, id);
+            bubble.isShown = false;
             return;
         }
 
@@ -321,6 +331,9 @@ export class BubbleHost {
     private show(bubble: BubbleModel, isLastVisible: boolean): void {
         debugLog?.log(`show:`, bubble.bubbleRef);
 
+        // Marked here rather than in showBubble(): the round trip can outlast the DOM
+        // debounce above, and re-requesting the same bubble meanwhile makes it blink
+        bubble.isShown = true;
         void this.blazorRef.invokeMethodAsync(
             'OnShow',
             bubble.bubbleRef,

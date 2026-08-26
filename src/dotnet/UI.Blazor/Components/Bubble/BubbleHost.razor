@@ -2,7 +2,6 @@
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
-@using ActualLab.Generators
 @using System.Diagnostics.CodeAnalysis
 @implements IAsyncDisposable
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "UI types are expected to be untrimmed.")]
@@ -23,7 +22,6 @@
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.BubbleHost.create";
-    private static RandomStringGenerator IdGenerator { get; } = new(3, Alphabet.AlphaNumeric);
 
     private BubbleModel? _bubble;
     private IJSObjectReference _jsRef = null!;
@@ -33,6 +31,7 @@
     private AccountUI AccountUI => Hub.AccountUI;
     private BubbleUI BubbleUI => field ??= Hub.BubbleUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
     private IJSRuntime JS => field ??= Hub.JS;
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
@@ -54,10 +53,15 @@
 
     [JSInvokable]
     public Task OnShow(string bubbleRef, bool isLastVisible, int index, int total) {
-        var id = IdGenerator.Next();
+        // Reusing the Id keeps @key - and thus the element - stable, so a repeated
+        // OnShow for the same bubble updates it in place instead of blinking.
+        var parsedRef = BubbleRef.Parse(bubbleRef);
+        var id = _bubble is { } oldBubble && oldBubble.Ref.BubbleType == parsedRef.BubbleType
+            ? oldBubble.Id
+            : ComponentIdGenerator.Next("bubble");
         _bubble = new BubbleModel(
             id,
-            BubbleRef.Parse(bubbleRef),
+            parsedRef,
             new Dictionary<string, object> {
                 { nameof(IBubble.Id), id },
                 { nameof(IBubble.IsLastVisible), isLastVisible },
