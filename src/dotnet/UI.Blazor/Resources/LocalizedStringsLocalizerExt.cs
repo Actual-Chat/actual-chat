@@ -981,7 +981,6 @@ public static class LocalizedStringsLocalizerExt
         public string Recording_InChat_Suffix => l["Recording_InChat_Suffix"].Value;
         public string Recording_WillStopIn => l["Recording_WillStopIn"].Value;
         public string Recording_StopRecording => l["Recording_StopRecording"].Value;
-        public string Recording_MuteRecording => l["Recording_MuteRecording"].Value;
         public string Recording_NoMicrophoneAccess => l["Recording_NoMicrophoneAccess"].Value;
         public string Recording_NoMicrophone => l["Recording_NoMicrophone"].Value;
         public string Recording_MicrophoneBusy => l["Recording_MicrophoneBusy"].Value;

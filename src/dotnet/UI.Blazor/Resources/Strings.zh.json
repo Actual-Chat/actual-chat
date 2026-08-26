@@ -948,7 +948,6 @@
   "Recording_InChat_Suffix": "聊天",
   "Recording_WillStopIn": "录音将在以下时间后停止：",
   "Recording_StopRecording": "停止录音",
-  "Recording_MuteRecording": "静音录音",
   "Recording_NoMicrophoneAccess": "无法访问麦克风",
   "Recording_NoMicrophone": "未找到麦克风",
   "Recording_MicrophoneBusy": "其他应用正在使用麦克风",
