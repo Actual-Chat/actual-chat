@@ -237,19 +237,20 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod] // Synced
     public virtual async Task<RecordingStatus> GetRecordingStatus(ChatId chatId, CancellationToken cancellationToken)
     {
+        var recorderState = await AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
+        var intentChangedAt = await _recordingIntentChangedAt.Use(cancellationToken).ConfigureAwait(false);
+        // Checked first, and with no grace: a permission refusal never gets as far as recording
+        if (recorderState.LastFailure is { } failure && failure.ChatId == chatId && failure.At >= intentChangedAt)
+            return RecordingStatus.From(failure);
+
         var recordingChatId = await GetRecordingChatId().ConfigureAwait(false);
         if (recordingChatId != chatId)
             return RecordingStatus.Off;
-
-        var recorderState = await AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
         if (recorderState is { IsRecording: true, IsConnected: true })
             return RecordingStatus.Recording;
 
-        // A problem is only as old as the newer of the two things that define it: the press asking
-        // for recording, and the pipeline transition that left it in this state. Neither alone is
-        // enough - the press runs bounded startup waits before the recorder moves at all, and a
-        // mid-session disconnect has no press behind it.
-        var intentChangedAt = await _recordingIntentChangedAt.Use(cancellationToken).ConfigureAwait(false);
+        // Unnamed, so it's judged by age - and it's only as old as the newer of the press and the
+        // pipeline transition: startup waits precede the first, a disconnect has no press at all.
         var graceLeft = Moment.Max(intentChangedAt, recorderState.ChangedAt)
             + Constants.Audio.RecordingProblemGracePeriod
             - CpuNow;

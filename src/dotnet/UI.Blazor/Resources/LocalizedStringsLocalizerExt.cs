@@ -981,7 +981,11 @@ public static class LocalizedStringsLocalizerExt
         public string Recording_InChat_Suffix => l["Recording_InChat_Suffix"].Value;
         public string Recording_WillStopIn => l["Recording_WillStopIn"].Value;
         public string Recording_StopRecording => l["Recording_StopRecording"].Value;
-        public string Recording_CantStart => l["Recording_CantStart"].Value;
+        public string Recording_NoMicrophoneAccess => l["Recording_NoMicrophoneAccess"].Value;
+        public string Recording_NoMicrophone => l["Recording_NoMicrophone"].Value;
+        public string Recording_MicrophoneBusy => l["Recording_MicrophoneBusy"].Value;
+        public string Recording_UnknownError => l["Recording_UnknownError"].Value;
+        public string Recording_UnknownError_Format(object arg0) => l["Recording_UnknownError_Format", arg0].Value;
         public string Replay_Replaying => l["Replay_Replaying"].Value;
         public string Replay_Backward => l["Replay_Backward"].Value;
         public string Replay_Speed => l["Replay_Speed"].Value;

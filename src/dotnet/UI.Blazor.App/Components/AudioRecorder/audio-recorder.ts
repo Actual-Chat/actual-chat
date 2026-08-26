@@ -47,7 +47,7 @@ export class AudioRecorder {
         debugLog?.log(`<- terminate()`);
     }
 
-    /** Called from Blazor */
+    // Called from Blazor
     public static create(blazorRef: DotNet.DotNetObject) {
         return new AudioRecorder(blazorRef);
     }
@@ -62,7 +62,7 @@ export class AudioRecorder {
         this.recordingHeartbeatSubscription = AudioRecorderState.recordingHeartbeat$.subscribe(() => this.heartbeatThrottled());
     }
 
-    /** Called from Blazor */
+    // Called from Blazor
     public async dispose(): Promise<void> {
         debugLog?.log(`-> dispose()`);
         this.chatId = undefined;
@@ -76,15 +76,15 @@ export class AudioRecorder {
         }
     }
 
-    /** Called from Blazor  */
-    public async startRecording(chatId: string, repliedChatEntryId: string): Promise<boolean> {
+    // Called from Blazor. Returns '' on success, otherwise "<result>:<code>" - see RecorderStartResult.
+    public async startRecording(chatId: string, repliedChatEntryId: string): Promise<string> {
         debugLog?.log(`-> startRecording(), ChatId =`, chatId);
         this.chatId = chatId;
 
         try {
             if (this.state === 'recording' || this.state === 'starting') {
                 warnLog?.log('startRecording: it seems that server and client states are inconsistent');
-                return true;
+                return '';
             }
 
             this.state = 'starting';
@@ -92,22 +92,24 @@ export class AudioRecorder {
             if (this.state !== 'starting')
                 // noinspection ExceptionCaughtLocallyJS
                 throw new Error('Recording has been stopped.')
+
             this.state = 'recording';
         }
         catch (e) {
             errorLog?.log(`startRecording: unhandled error:`, e);
             this.state = 'failed';
             this.chatId = undefined;
-            throw e;
+            // Returned, not rethrown: an exception reaches Blazor as an opaque JSException.
+            return AudioRecorder.describeStartError(e);
         }
         finally {
             debugLog?.log(`<- startRecording()`);
         }
 
-        return true;
+        return '';
     }
 
-    /** Called from Blazor  */
+    // Called from Blazor
     public async stopRecording(): Promise<void> {
         try {
             debugLog?.log(`-> stopRecording`);
@@ -125,13 +127,13 @@ export class AudioRecorder {
         }
     }
 
-    /** Called from Blazor */
+    // Called from Blazor
     public conversationSignal(): Promise<void> {
         debugLog?.log(`conversationSignal()`);
         return opusMediaRecorder.conversationSignal();
     }
 
-    /** Called from Blazor */
+    // Called from Blazor
     public async runDiagnostics(): Promise<AudioDiagnosticsState> {
         const diagnosticsState = new AudioDiagnosticsState();
         diagnosticsState.isPlayerInitialized = AudioPlayer.isInitialized;
@@ -146,6 +148,27 @@ export class AudioRecorder {
         diagnosticsState.isAudioContextRunning = recordingAudioContextSource.isContextRunning;
         infoLog?.log('runDiagnostics: ', diagnosticsState);
         return await opusMediaRecorder.runDiagnostics(diagnosticsState);
+    }
+
+    // Private methods
+
+    // getUserMedia's DOMException names are the only place the browser says what actually went
+    // wrong, and they're specific enough to give the user advice they can act on.
+    private static describeStartError(error: unknown): string {
+        const name = error instanceof DOMException || error instanceof Error ? error.name : '';
+        switch (name) {
+        case 'NotAllowedError':
+        case 'SecurityError':
+            return `NoPermission:${name}`;
+        case 'NotFoundError':
+        case 'OverconstrainedError':
+            return `NoDevice:${name}`;
+        case 'NotReadableError':
+        case 'AbortError':
+            return `DeviceBusy:${name}`;
+        default:
+            return `Unknown:${name || 'Error'}`;
+        }
     }
 
     private readonly heartbeatThrottled = throttle(() => this.heartbeat(), HEARTBEAT_INTERVAL);
@@ -177,6 +200,4 @@ export class AudioRecorder {
             errorLog?.log(`onRecordingStateChange: unhandled error:`, error);
         }
     }
-
-
 }

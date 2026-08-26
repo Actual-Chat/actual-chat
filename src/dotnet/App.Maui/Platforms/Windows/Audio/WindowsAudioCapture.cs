@@ -6,6 +6,7 @@ using Windows.Media.Capture;
 using Windows.Media.MediaProperties;
 using Windows.Media.Render;
 using ActualChat.App.Maui.Services.Recording;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.Audio.APM;
 using NAudio.CoreAudioApi;
 using NAudio.CoreAudioApi.Interfaces;
@@ -20,8 +21,11 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
     private const int MicDelaySamples = Constants.Audio.RecordingSampleRate * 40 / 1000;
     private static readonly TimeSpan GraphRetryDelay = TimeSpan.FromMilliseconds(250);
     private ILogger Log { get; } = log;
-    public async Task<IAsyncEnumerable<IMemoryOwner<float>>?> Capture(CancellationToken cancellationToken)
+    public async Task<AudioCaptureResult> Capture(CancellationToken cancellationToken)
     {
+        // Set by TryCreateGraph: WinRT already names the failure, and it's the only place
+        // AccessDenied can be told apart from a device that simply isn't there.
+        var failure = RecorderStartOutcome.Started;
         var apm = new AudioProcessingModule(
             new StreamConfig(Constants.Audio.RecordingSampleRate, Constants.Audio.Channels),
             new StreamConfig(Constants.Audio.RecordingSampleRate, Constants.Audio.Channels));
@@ -87,7 +91,7 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
             }
             if (!isGraphCreated) {
                 await Stop().ConfigureAwait(false);
-                return null;
+                return AudioCaptureResult.Failed(failure.Result, failure.Code);
             }
 
             try {
@@ -236,7 +240,7 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
             catch (Exception e) {
                 Log.LogError(e, "Failed to start audio capture");
                 await Stop().ConfigureAwait(false);
-                return null;
+                return AudioCaptureResult.Failed(RecorderStartResult.Unknown, e.GetType().Name);
             }
         }
         catch (Exception e) {
@@ -251,7 +255,7 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
         // the first MoveNextAsync, and an abandoned running graph wedges WinRT audio for this
         // process - every later AudioGraph.CreateAsync then fails until the app is restarted.
         var stopRegistration = cancellationToken.Register(() => _ = Stop());
-        return Enumerate(cancellationToken);
+        return AudioCaptureResult.Ok(Enumerate(cancellationToken));
 
         async Task<bool> TryCreateGraph() {
             graph.DisposeSilently();
@@ -265,6 +269,11 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                 Log.LogWarning(graphCreate.ExtendedError,
                     "AudioGraph creation failed: {Status}",
                     graphCreate.Status);
+                failure = new RecorderStartOutcome(
+                    graphCreate.Status == AudioGraphCreationStatus.DeviceNotAvailable
+                        ? RecorderStartResult.NoDevice
+                        : RecorderStartResult.Unknown,
+                    $"AudioGraph.{graphCreate.Status}");
                 return false;
             }
 
@@ -277,6 +286,13 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                 Log.LogWarning(inputCreate.ExtendedError,
                     "Microphone input node creation failed: {Status} - is the mic available?",
                     inputCreate.Status);
+                failure = new RecorderStartOutcome(
+                    inputCreate.Status switch {
+                        AudioDeviceNodeCreationStatus.AccessDenied => RecorderStartResult.NoPermission,
+                        AudioDeviceNodeCreationStatus.DeviceNotAvailable => RecorderStartResult.NoDevice,
+                        _ => RecorderStartResult.Unknown,
+                    },
+                    $"AudioInputNode.{inputCreate.Status}");
                 return false;
             }
 

@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public interface IAudioRecorderEngine
 {
-    Task<RecorderStartResult> Start(
+    Task<RecorderStartOutcome> Start(
         ChatId chatId,
         ChatEntryId? repliedChatEntryId,
         CancellationToken cancellationToken = default);

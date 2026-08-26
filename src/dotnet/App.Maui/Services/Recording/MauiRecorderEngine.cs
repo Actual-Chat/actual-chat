@@ -48,7 +48,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             _ => { SetSignalDetected(false); return Task.CompletedTask; });
     }
 
-    public async Task<RecorderStartResult> Start(
+    public async Task<RecorderStartOutcome> Start(
         ChatId chatId,
         ChatEntryId? repliedChatEntryId,
         CancellationToken cancellationToken = default)
@@ -78,25 +78,28 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         // Native capture setup can be non-trivial, and Start is usually called from
         // the Blazor/MAUI UI path. Keep it away from the main thread from the first
         // platform call, not only once frame processing begins.
-        var microphoneStream = await BackgroundTask.Run(
+        var capture = await BackgroundTask.Run(
                 () => AudioCapture.Capture(recordingToken),
                 Log,
                 "Failed to initialize microphone capture",
                 recordingToken)
             .ConfigureAwait(false);
-        if (microphoneStream is null) {
-            // Capture fails both when the OS withholds the mic and when the audio device won't
-            // open, and only the permission check tells those two apart
-            var hasPermission = await MicrophonePermissionHandler.Check(cancellationToken).ConfigureAwait(false);
-            Log.LogWarning("Microphone stream is unavailable, permission: {HasPermission}", hasPermission);
+        if (capture.Stream is not { } microphoneStream) {
+            // A platform that couldn't tell permission from device apart still can't, so fall back
+            // to asking the OS - it's the one thing that separates those two after the fact
+            var outcome = capture.ToOutcome();
+            if (outcome.Result == RecorderStartResult.Unknown) {
+                var hasPermission = await MicrophonePermissionHandler.Check(cancellationToken).ConfigureAwait(false);
+                if (hasPermission == false)
+                    outcome = new RecorderStartOutcome(RecorderStartResult.NoPermission, outcome.Code);
+            }
+            Log.LogWarning("Microphone stream is unavailable: {Result} ({Code})", outcome.Result, outcome.Code);
             var releasedCts = Interlocked.CompareExchange(ref _recordingCts, null, recordingCts);
             if (ReferenceEquals(releasedCts, recordingCts))
                 recordingCts.CancelAndDisposeSilently();
             await SetRecording(false).ConfigureAwait(false);
 
-            return hasPermission == false
-                ? RecorderStartResult.NoPermission
-                : RecorderStartResult.NoDevice;
+            return outcome;
         }
 
         // Set the recording context
@@ -112,7 +115,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             "Failed to process microphone stream",
             recordingToken);
 
-        return RecorderStartResult.Started;
+        return RecorderStartOutcome.Started;
     }
 
     public async Task<bool> Stop(CancellationToken cancellationToken = default)
@@ -322,9 +325,20 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
     private async Task ProcessAudioStream(IAsyncEnumerable<IMemoryOwner<float>> frames, CancellationToken cancellationToken)
     {
+        ChatId? chatId;
+        lock (_sync)
+            chatId = _chatId;
+
         try {
             var processor = new AudioStreamProcessor(this, Log);
             await processor.Process(frames, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            // The only place an AVAudioEngine failure can be reported: its graph is built inside
+            // the capture iterator, so Capture() had already returned success.
+            if (chatId is { } failedChatId)
+                AudioRecorderBackend.OnRecordingFailed(failedChatId.Value, $"Unknown:{e.GetType().Name}");
+            throw;
         }
         finally {
             await ResetRecordingState().ConfigureAwait(false);
