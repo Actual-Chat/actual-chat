@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
+using ActualChat.Localization;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.UI.Blazor.Resources;
 using ActualLab.Versioning;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;

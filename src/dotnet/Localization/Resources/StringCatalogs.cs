@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.Resources;
+namespace ActualChat.Localization;
 
 /// <summary>
 /// Loads the embedded string catalogs: <c>Strings.&lt;lang&gt;.json</c> (ordinary UI text)

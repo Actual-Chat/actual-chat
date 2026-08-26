@@ -1,5 +1,5 @@
+using ActualChat.Localization;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Localization;
 

@@ -1,8 +1,8 @@
 ﻿using ActualChat.Contacts;
 using ActualChat.Kvas;
+using ActualChat.Localization;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.App.Events;
-using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 using MathExt = ActualLab.Mathematics.MathExt;

@@ -971,8 +971,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 
 ## ActualChat.Localization
 
-Namespace `ActualChat.UI.Blazor.Resources` (the assembly was split out of
-`ActualChat.UI.Blazor`; the namespace stayed). Dependency-free - no UI, no server.
+Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 
 - `StringCatalog` (static class) - The merged Strings + Messages catalog for every shipped UI language, loaded once; resolved against an explicit language.
 - `StringCatalogs` (static class) - Loads the embedded `Strings.<lang>.json` / `Messages.<lang>.json` resources.

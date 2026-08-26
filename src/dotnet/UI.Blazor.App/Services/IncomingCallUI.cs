@@ -1,4 +1,4 @@
-using ActualChat.UI.Blazor.Resources;
+using ActualChat.Localization;
 using ActualChat.Live;
 using ActualChat.Notifications;
 using ActualChat.UI.Blazor.App.Module;

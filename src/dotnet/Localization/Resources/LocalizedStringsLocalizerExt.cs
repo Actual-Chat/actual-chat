@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Localization;
 
-namespace ActualChat.UI.Blazor.Resources;
+namespace ActualChat.Localization;
 
 /// <summary>
 /// One typed member per catalog key, as extension members on <see cref="IStringLocalizer"/>:

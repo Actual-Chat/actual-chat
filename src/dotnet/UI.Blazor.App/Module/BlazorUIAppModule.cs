@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.Localization;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor.App.Components.AudioPanel;
@@ -12,7 +13,6 @@ using ActualChat.UI.Blazor.App.Pages.Test;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Services.Gestures;
 using ActualChat.UI.Blazor.App.Testing;
-using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Fusion.UI;

@@ -1,4 +1,4 @@
-using ActualChat.UI.Blazor.Resources;
+using ActualChat.Localization;
 using Microsoft.Extensions.Localization;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;

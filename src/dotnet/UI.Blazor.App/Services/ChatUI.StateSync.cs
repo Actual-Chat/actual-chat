@@ -1,6 +1,6 @@
 using ActualChat.Kvas;
+using ActualChat.Localization;
 using ActualChat.UI.Blazor.App.Events;
-using ActualChat.UI.Blazor.Resources;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;

@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.Resources;
+namespace ActualChat.Localization;
 
 /// <summary>
 /// The UI language behind an <see cref="Microsoft.Extensions.Localization.IStringLocalizer"/>.

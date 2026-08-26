@@ -1,4 +1,4 @@
-using ActualChat.UI.Blazor.Resources;
+using ActualChat.Localization;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Resilience;
 

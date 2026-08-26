@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Localization;
 
-namespace ActualChat.UI.Blazor.Resources;
+namespace ActualChat.Localization;
 
 /// <summary>
 /// An <see cref="IStringLocalizer"/> bound to an explicit language, for code with no circuit.

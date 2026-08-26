@@ -1,6 +1,6 @@
 ﻿using Windows.ApplicationModel;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.UI.Blazor.Resources;
+using ActualChat.Localization;
 using Microsoft.Extensions.Localization;
 
 namespace ActualChat.App.Maui;

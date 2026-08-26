@@ -1,5 +1,5 @@
 using System.Globalization;
-using ActualChat.UI.Blazor.Resources;
+using ActualChat.Localization;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
