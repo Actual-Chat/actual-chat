@@ -1178,9 +1178,7 @@ function isPreciseWheel(event: WheelEvent): boolean {
 let wheelOwnEnabled: boolean | null = null;
 
 function canOwnWheelGestures(): boolean {
-    if (wheelOwnEnabled === null)
-        wheelOwnEnabled = new URLSearchParams(location.search).get('vlwheel') !== '0';
-
+    wheelOwnEnabled ??= new URLSearchParams(location.search).get('vlwheel') !== '0';
     return wheelOwnEnabled;
 }
 
