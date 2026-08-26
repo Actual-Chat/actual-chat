@@ -94,8 +94,11 @@ body.hoverable .settings-panel > .c-tabs .c-tab-item:hover i,
     @apply h-10;
     @apply bg-03;
 }
+/* The height has to grow with the padding: h-10 is a border-box cap, so on its own the inset
+   ate the row instead of sitting under it and the version label landed inside the inset. */
 body.narrow .settings-panel > .c-tabs .c-footer {
-    padding-bottom: var(--safe-area-bottom);
+    height: calc(2.5rem + var(--safe-area-bottom-narrow));
+    padding-bottom: var(--safe-area-bottom-narrow);
 }
 .settings-panel > .c-tabs .c-footer > .c-content {
     @apply flex-none flex-x items-center justify-between gap-x-2;

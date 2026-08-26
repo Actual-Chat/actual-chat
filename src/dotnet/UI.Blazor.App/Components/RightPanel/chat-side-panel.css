@@ -45,6 +45,10 @@ body.narrow .chat-side-panel > .c-top-region {
     @apply overflow-hidden;
     max-height: calc(var(--rp-header-base) + var(--rp-chatinfo-h, 100rem) - var(--rp-collapse-range) * var(--rp-collapse));
 }
+/* Above the tabs and whichever list they show, and above the header's own stacking too. */
+.chat-side-panel > .c-panel-content ~ .safe-area-bottom-overlay {
+    @apply z-20;
+}
 /* Narrow: constant-height list block, translated down while expanded so the header shrink never resizes
    the list viewport (what made Android/Chrome reclamp scrollTop and jitter). Clipped by .chat-side-panel. */
 body.narrow .chat-side-panel > .c-panel-content {
@@ -147,8 +151,8 @@ body.narrow .chat-side-panel.has-expanded-header > .c-panel-content {
     @apply w-full;
     @apply rounded-b-xl;
     @apply overflow-hidden;
-    height: calc((6.5rem - 3rem * var(--rp-collapse)) + var(--safe-area-top));
-    padding-top: var(--safe-area-top);
+    height: calc((6.5rem - 3rem * var(--rp-collapse)) + var(--safe-area-top-narrow));
+    padding-top: var(--safe-area-top-narrow);
 }
 .chat-side-panel > .c-top-region > .c-header > .c-bottom {
     @apply flex-y items-start justify-end gap-y-1;

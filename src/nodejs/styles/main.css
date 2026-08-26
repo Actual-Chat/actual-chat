@@ -241,6 +241,21 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply h-full max-h-full;
     @apply bg-02;
 }
+/* Wide: one flat strip across the whole top, in the navbar's colour - panels do not each extend
+   their own background into the inset there. Fixed and above everything, like the side strips, so
+   whatever a panel paints underneath stops mattering. In narrow it is 0 and each panel's own
+   background continues into the inset instead. */
+.base-layout::before {
+    content: '';
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: var(--safe-area-top-wide);
+    z-index: 99999;
+    background-color: var(--background-04);
+    pointer-events: none;
+}
 
 .base-layout-body {
     @apply relative;

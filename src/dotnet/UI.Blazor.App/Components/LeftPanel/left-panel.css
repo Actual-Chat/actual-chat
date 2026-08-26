@@ -68,20 +68,25 @@
 .left-panel-content.search-open {
     @apply bg-04;
 }
+/* Wide only: there the whole top is one flat strip painted by .base-layout::before, and this just
+   reserves the room under it. In narrow the panel's own background has to reach the top of the
+   screen instead, so the spacer collapses and the header below grows by the inset. */
 .left-panel-content > .safe-area-top {
+    height: var(--safe-area-top-wide);
     @apply bg-04;
 }
-/* Round the wallpaper's top-left only in narrow mode, where the bg-04 safe-area strip exists to blend into */
-body.narrow .left-panel-content-header > .c-content {
-    @apply rounded-tl-xl;
+/* bg-03 comes from .left-panel-content, so padding is all it takes to carry it into the inset. */
+body.narrow .left-panel-content-header:not(.place) {
+    padding-top: var(--safe-area-top-narrow);
 }
-/* Fill the concave corner sliver with bg-04 on top of the header (painting over, not behind, so a transparent wallpaper doesn't reveal a box) */
-body.narrow .left-panel-content-header::before {
-    content: '';
-    @apply absolute left-0 top-0 z-10;
-    @apply w-3 h-3;
-    @apply pointer-events-none;
-    background: radial-gradient(circle at bottom right, transparent 0.75rem, var(--background-04) calc(0.75rem + 0.5px));
+/* The place wallpaper IS this panel's background, so it grows into the inset rather than starting
+   below it. .c-icon is centred in .c-content, so both take the same height. */
+body.narrow .left-panel-content-header.place > .c-content {
+    min-height: calc(6.5rem + var(--safe-area-top-narrow));
+    max-height: calc(6.5rem + var(--safe-area-top-narrow));
+}
+body.narrow .left-panel-content-header.place .c-icon {
+    height: calc(6.5rem + var(--safe-area-top-narrow));
 }
 .left-panel-content .left-panel-content-main-wrapper {
     @apply relative;
