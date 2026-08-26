@@ -265,6 +265,26 @@ public class CompositeVerificationCodeSenderTest
     }
 
     [Fact]
+    public async Task ShouldTagTelegramSkippedWithUnconfiguredReasonWhenItIsMissing()
+    {
+        // arrange
+        var measurements = Collect();
+        using var listener = StartListener(measurements);
+        var twilio = new FakeSender(null);
+        var sender = CreateSender(null, null, twilio);
+
+        // act
+        var send = () => sender.Send(ArmenianPhone, TestMessage);
+
+        // assert
+        await send.Should().ThrowAsync<ExternalError>();
+        measurements.Should().Contain(m
+                => m.Name == "app.verification_code.channel_skipped"
+                    && m.Channel == "Telegram" && m.Reason == "unconfigured",
+            "a missing channel and a deliberately skipped one are different operational problems");
+    }
+
+    [Fact]
     public async Task ShouldTagTelegramSkippedWithPrefixReasonWhenSkipRuleFires()
     {
         // arrange
