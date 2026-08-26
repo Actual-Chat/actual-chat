@@ -10,18 +10,7 @@
     var transitioningClass = m.IsTransitioning || m is { IsRecordingHere: true, IsConnected: false } ? "applying-changes" : "";
     var permissionClass = hasMicrophonePermission ? "" : "mic-disabled";
     var status = m.Status;
-    var tooltip = status.Kind switch {
-        RecordingStatusKind.Starting => L.Call_StartingRecording,
-        RecordingStatusKind.Recording => L.Call_Recording,
-        RecordingStatusKind.Reconnecting or RecordingStatusKind.Disconnected => L.Reconnect_Title,
-        RecordingStatusKind.NoMicrophonePermission => L.Recording_NoMicrophoneAccess,
-        RecordingStatusKind.NoMicrophone => L.Recording_NoMicrophone,
-        RecordingStatusKind.MicrophoneBusy => L.Recording_MicrophoneBusy,
-        RecordingStatusKind.StartFailed => status.FailureCode is { } code
-            ? L.Recording_UnknownError_Format(code)
-            : L.Recording_UnknownError,
-        _ => L.ChatMenu_StartRecording,
-    };
+    var tooltip = status.GetTooltip(L);
     var severity = status.IsFailure ? TooltipSeverity.Error : TooltipSeverity.Normal;
     var autoShowText = status.IsFailure ? tooltip : "";
     var recordingIconSize = ScreenSize.IsNarrow() ? 10 : 8;
