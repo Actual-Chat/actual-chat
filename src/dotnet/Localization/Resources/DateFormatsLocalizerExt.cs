@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Localization;
 
-namespace ActualChat.UI.Blazor.Resources;
+namespace ActualChat.Localization;
 
 /// <summary>
 /// Builds a <see cref="DateTimeFormatInfo"/> from the catalog's <c>Date_*</c> keys.

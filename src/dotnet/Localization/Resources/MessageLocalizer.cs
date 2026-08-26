@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Localization;
 
-namespace ActualChat.UI.Blazor.Resources;
+namespace ActualChat.Localization;
 
 public static class MessageLocalizer
 {

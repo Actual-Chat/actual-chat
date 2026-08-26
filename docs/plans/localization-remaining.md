@@ -331,9 +331,9 @@ answered by #4125. What remains is the language:
    `Strings`, `StringCatalogs` and the embedded JSON, and the 2.2 MB of catalogs
    left `UI.Blazor` rather than being duplicated. An extension can reference it
    without pulling in the Blazor UI assembly — the dependency #4132 and #4214
-   spent their effort avoiding. Note the assembly name and the namespace differ:
-   the namespace stayed `ActualChat.UI.Blazor.Resources` so the move touched no
-   call site.
+   spent their effort avoiding. The namespace was `ActualChat.UI.Blazor.Resources`
+   until it was renamed to `ActualChat.Localization` to match the
+   assembly.
 2. **How native-side code reads the current UI language.** Options: have
    `LanguageUI` publish it to a process-wide accessor on change (one owner,
    synchronous reads); read `LocalSettings` at each call site; or pass it down
@@ -448,7 +448,7 @@ redoing the work:
   reach the user as raw browser text. Not fixable from our side.
 
 **Trap worth knowing:** a file using the typed localizer members needs
-`using ActualChat.UI.Blazor.Resources;`. Without it every member is invisible and
+`using ActualChat.Localization;`. Without it every member is invisible and
 the compiler reports CS1061 naming the *key* ("`IStringLocalizer` does not
 contain a definition for `Video_CameraUnavailable`"), which reads like a bad
 catalog entry or a stale build. `ChatVideoUI.Recording.cs` had this exact

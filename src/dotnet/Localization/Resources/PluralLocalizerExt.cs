@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Localization;
 
-namespace ActualChat.UI.Blazor.Resources;
+namespace ActualChat.Localization;
 
 /// <summary>
 /// Resolves a catalog key whose value lists plural forms separated by '|', in the order

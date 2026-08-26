@@ -1,4 +1,4 @@
-using ActualChat.UI.Blazor.Resources;
+using ActualChat.Localization;
 using System.Collections.Frozen;
 using ActualChat.UI.Blazor.App.Services;
 

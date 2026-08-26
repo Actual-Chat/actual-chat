@@ -247,8 +247,8 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 ## Localization (`ActualChat.Localization`)
 
 The string catalogs and their lookup, in a dependency-free assembly so backend
-services can compose user-facing text. Namespace is still
-`ActualChat.UI.Blazor.Resources`. See [`i18n.md`](i18n.md).
+services can compose user-facing text. Namespace is
+`ActualChat.Localization`. See [`i18n.md`](i18n.md).
 
 - `StringCatalog` — merged Strings + Messages catalog for every shipped language, loaded once
 - `StringCatalogs` — loads the embedded `Strings.<lang>.json` / `Messages.<lang>.json`

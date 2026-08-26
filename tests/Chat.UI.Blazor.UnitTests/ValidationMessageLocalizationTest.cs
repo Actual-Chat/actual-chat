@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using ActualChat.Localization;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.UI.Blazor.Resources;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 

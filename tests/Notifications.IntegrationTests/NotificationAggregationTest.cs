@@ -1,5 +1,5 @@
+using ActualChat.Localization;
 using ActualChat.Notifications.Flows;
-using ActualChat.UI.Blazor.Resources;
 
 namespace ActualChat.Notifications.IntegrationTests;
 

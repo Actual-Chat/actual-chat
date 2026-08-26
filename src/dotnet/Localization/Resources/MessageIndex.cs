@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace ActualChat.UI.Blazor.Resources;
+namespace ActualChat.Localization;
 
 // TODO(FC): drop the validation half of this index - 11.0.0-preview.7 shipped the fix this was
 // waiting for, and we are still on preview.6. The generated validator now resolves

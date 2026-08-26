@@ -1,4 +1,4 @@
-using ActualChat.UI.Blazor.Resources;
+using ActualChat.Localization;
 namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class ChatVideoUI

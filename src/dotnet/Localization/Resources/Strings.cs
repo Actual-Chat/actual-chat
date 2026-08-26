@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.Resources;
+namespace ActualChat.Localization;
 
 /// <summary>
 /// Resource-anchor type for <see cref="Microsoft.Extensions.Localization.IStringLocalizer{T}"/>;
