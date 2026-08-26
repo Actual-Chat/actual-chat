@@ -1,7 +1,9 @@
 using System.Security.Cryptography;
+using ActualChat.Diagnostics;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Fusion.Internal;
+using ActualLab.Rpc;
 
 namespace ActualChat.Users;
 
@@ -10,8 +12,12 @@ public class SystemProperties(IServiceProvider services)
 {
     private const int MinProbePayloadSize = 1024;
     private const int MaxProbePayloadSize = 256 * 1024;
+    private const string EdgeHostInfix = ".edge.";
+    private const int MaxEdgeNameLength = 16;
+    private const double MaxProbeDurationMs = 600_000;
     private static readonly Version MinCompatibleVersion = new(2, 15);
     private static readonly Version MinReportableClientVersion = MinCompatibleVersion;
+    private HostInfo HostInfo => field ??= Services.HostInfo();
 
     // Not a [ComputeMethod]!
     public Task<double> GetTime(CancellationToken cancellationToken)
@@ -24,6 +30,19 @@ public class SystemProperties(IServiceProvider services)
         // to nothing, so it would cross a throttled link just fine and prove nothing.
         size = size.Clamp(MinProbePayloadSize, MaxProbePayloadSize);
         return Task.FromResult(RandomNumberGenerator.GetBytes(size));
+    }
+
+    public Task ReportRpcEndpoint(RpcEndpointReport report, CancellationToken cancellationToken)
+    {
+        var hosts = HostInfo.GetHosts();
+        var endpoint = EndpointTag(hosts, report.Endpoint);
+        var reason = Enum.IsDefined(report.Reason) ? report.Reason : RpcEndpointReason.Retained;
+        AppMeters.RpcEndpointConnectionCount.Add(1,
+            new KeyValuePair<string, object?>("endpoint", endpoint),
+            new KeyValuePair<string, object?>("reason", reason.ToString().ToLower()));
+        RecordProbeDuration(report.OriginProbeMs, EndpointTag(hosts, HostInfo.BaseUrl.ToUri().Host), "origin");
+        RecordProbeDuration(report.EndpointProbeMs, endpoint, "selected");
+        return RpcNoWait.Tasks.Completed;
     }
 
     // [ComputeMethod]
@@ -111,5 +130,40 @@ public class SystemProperties(IServiceProvider services)
         // We must call CreateOperationDbContext to make sure this operation is logged in the User DB
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+    }
+
+    // Protected/internal methods
+
+    // It's internal to be accessible from tests
+    internal static string EndpointTag(IReadOnlySet<string> knownHosts, string endpoint)
+    {
+        // The tag comes from a client, so it can't be passed through: an unbounded tag value
+        // is an unbounded number of time series. Only the relay's own name survives, and
+        // anything unrecognized collapses into one bucket.
+        if (endpoint.IsNullOrEmpty())
+            return "other";
+        if (knownHosts.Contains(endpoint))
+            return "origin";
+
+        var edgeAt = endpoint.IndexOf(EdgeHostInfix, StringComparison.OrdinalIgnoreCase);
+        if (edgeAt <= 0)
+            return "other";
+
+        var name = endpoint[..edgeAt];
+        return name.Length <= MaxEdgeNameLength && name.All(char.IsAsciiLetterOrDigit)
+            ? "edge:" + name.ToLower()
+            : "other";
+    }
+
+    // Private methods
+
+    private static void RecordProbeDuration(double elapsedMs, string endpoint, string role)
+    {
+        if (double.IsNaN(elapsedMs) || elapsedMs < 0 || elapsedMs > MaxProbeDurationMs)
+            return;
+
+        AppMeters.RpcEndpointProbeDuration.Record(elapsedMs,
+            new KeyValuePair<string, object?>("endpoint", endpoint),
+            new KeyValuePair<string, object?>("role", role));
     }
 }

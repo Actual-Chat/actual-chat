@@ -13,6 +13,8 @@ public static class AppMeters
     public static readonly Counter<long> UITextCatalogMissCount;
     public static readonly Counter<long> VerificationCodeSent;
     public static readonly Counter<long> VerificationCodeChannelSkipped;
+    public static readonly Counter<long> RpcEndpointConnectionCount;
+    public static readonly Histogram<double> RpcEndpointProbeDuration;
 
     // Send side — sourced from RecorderStats pushed via
     // ILiveVideoStreams.ChangeRecordingQuality (1 Hz from each active recorder).
@@ -77,6 +79,14 @@ public static class AppMeters
             "app.verification_code.channel_skipped", null,
             "Channels that didn't deliver a verification code; "
             + "reason tag: blocked | unconfigured | prefix | declined | failed");
+        RpcEndpointConnectionCount = m.CreateCounter<long>(
+            "app.rpc.endpoint.connection.count", null,
+            "Client connections by the endpoint they arrived through; "
+            + "tags: endpoint (origin | edge:<name> | other), "
+            + "reason (retained | measured | unmeasurable | demoted)");
+        RpcEndpointProbeDuration = m.CreateHistogram<double>(
+            "app.rpc.endpoint.probe.duration", "ms",
+            "How long an endpoint took to deliver the probe payload; tags: endpoint, role (origin | selected)");
 
         VideoSendDropRatio = m.CreateHistogram<double>(
             "app.video.send.drop_ratio", "ratio", "Sender RpcStream dropped-frame ratio over the last 1 s window");

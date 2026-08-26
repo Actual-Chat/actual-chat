@@ -14,6 +14,8 @@ public interface ISystemProperties : IComputeService
     // sustained throughput, so a cached or compressible result would prove nothing.
     [RpcMethod(ConnectTimeout = 0.5)]
     Task<byte[]> GetProbePayload(int size, CancellationToken cancellationToken);
+    [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection, ConnectTimeout = 10)]
+    Task ReportRpcEndpoint(RpcEndpointReport report, CancellationToken cancellationToken);
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<ServerApiInfo> GetServerApiInfo(string expectedVersion, CancellationToken cancellationToken);
     Task<ServerApiInfo> GetServerApiInfoNC(string expectedVersion, CancellationToken cancellationToken);
@@ -37,6 +39,27 @@ public sealed partial record SystemProperties_PruneComputedGraph(
     [property: DataMember, Key(0)] Session Session,
     [property: DataMember, Key(1)] bool Everywhere = false
 ) : ISessionCommand<Unit>; // NOTE(AY): Maybe add backend & implement IApiCommand?
+
+/// <summary>
+/// What a client reports about the RPC endpoint it connected through, so the split
+/// between direct and relayed connections can be measured rather than assumed.
+/// </summary>
+[DataContract, MessagePackObject]
+public sealed partial record RpcEndpointReport(
+    [property: DataMember, Key(0)] string Endpoint,
+    [property: DataMember, Key(1)] RpcEndpointReason Reason,
+    // Negative where the probe didn't run or didn't finish - a timed-out origin is the
+    // case a relay exists for, and it produces no duration at all.
+    [property: DataMember, Key(2)] double OriginProbeMs = -1,
+    [property: DataMember, Key(3)] double EndpointProbeMs = -1);
+
+public enum RpcEndpointReason
+{
+    Retained = 0,
+    Measured,
+    Unmeasurable,
+    Demoted,
+}
 
 /// <summary>
 /// Server API version and compatibility information.
