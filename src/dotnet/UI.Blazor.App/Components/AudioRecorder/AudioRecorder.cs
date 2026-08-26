@@ -222,7 +222,8 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     // Private methods
 
     private void UpdateState(AudioRecorderState state)
-        => _state.Value = state;
+        // Stamped here because this is the single funnel every state change passes through.
+        => _state.Value = state with { ChangedAt = Clocks.CpuClock.Now };
 
     private async Task<bool> StopRecordingUnsafe()
     {

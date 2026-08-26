@@ -9,17 +9,16 @@
     var animatorClass = "record-" + _animator.Class;
     var transitioningClass = m.IsTransitioning || m is { IsRecordingHere: true, IsConnected: false } ? "applying-changes" : "";
     var permissionClass = hasMicrophonePermission ? "" : "mic-disabled";
-    // Steady recording (true, true, true) shows no tooltip - the red button + equalizer already signal
-    // recording, and the language is shown in the voice settings button right next to it. Only the
-    // transient/degraded states get one, and each persists until its condition clears.
-    var (showStatus, statusText) = (m.IsRecordingHere, m.IsMicrophoneCaptured, m.IsConnected) switch {
-        (false, _, _) => (false, ""),
-        (_, false, _) => (true, L.Call_StartingRecording),
-        (_, _, false) => (true, L.Reconnect_Title),
-        _ => (false, ""),
+    var hasRecordingFailed = m.Status is RecordingStatus.StartFailed or RecordingStatus.Disconnected;
+    var tooltip = m.Status switch {
+        RecordingStatus.Starting => L.Call_StartingRecording,
+        RecordingStatus.Recording => L.Call_Recording,
+        RecordingStatus.Reconnecting or RecordingStatus.Disconnected => L.Reconnect_Title,
+        RecordingStatus.StartFailed => L.Recording_CantStart,
+        _ => L.ChatMenu_StartRecording,
     };
-    var tooltipText = showStatus ? "" : statusText;
-    var tooltipPosition = showStatus ? FloatingPosition.None : FloatingPosition.Top;
+    var severity = hasRecordingFailed ? TooltipSeverity.Error : TooltipSeverity.Normal;
+    var autoShowText = hasRecordingFailed ? tooltip : "";
     var recordingIconSize = ScreenSize.IsNarrow() ? 10 : 8;
     var recBtnCls = "rec-btn ";
     if (m is { IsAnyoneTalking: true, IsRecordingHere: false } && !IsListening) {
@@ -32,7 +31,6 @@
         recBtnCls += "record-on-btn";
     } else
         recBtnCls += "record-off-btn";
-    var tooltip = m.IsRecordingHere ? L.ChatMenu_StopRecording : L.ChatMenu_StartRecording;
     var mustKeepAwake = !m.IsRecordingHere;
     if (!hasMicrophonePermission) {
         recBtnCls = "mic-disabled";
@@ -41,27 +39,16 @@
     }
 }
 
-@if (showStatus) {
-    <div class="narrow-recorder-tooltip">
-        <div class="c-tooltip-text">@statusText</div>
-        <div class="c-tooltip-arrow"></div>
-    </div>
-}
-
-<div class="recorder-wrapper @permissionClass @animatorClass @transitioningClass" data-tooltip="@tooltipText" data-tooltip-position="@(tooltipPosition.ToPositionString())">
-    @if (showStatus) {
-        <div class="c-tooltip">
-            <div class="c-tooltip-text">@statusText</div>
-            <div class="c-tooltip-arrow"></div>
-        </div>
-    }
+<div class="recorder-wrapper @permissionClass @animatorClass @transitioningClass"
+     data-tooltip="@tooltip"
+     data-tooltip-position="@(FloatingPosition.Top.ToPositionString())"
+     data-tooltip-severity="@(severity.ToSeverityString())"
+     data-render-script-tooltip-auto-show="@autoShowText">
     <ButtonRound
         Class="@recBtnCls"
         Click="@OnClick"
         MustKeepAwake="@mustKeepAwake"
-        PointerDownPreventDefault="true"
-        Tooltip="@tooltip"
-        TooltipPosition="FloatingPosition.Top">
+        PointerDownPreventDefault="true">
 
         @if (hasMicrophonePermission) {
             if (m is { IsAnyoneTalking: true, IsRecordingHere: false } && !IsListening) {
@@ -99,7 +86,6 @@
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
-    private LanguageUI LanguageUI => Hub.LanguageUI;
     private SearchUI SearchUI => Hub.SearchUI;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
@@ -121,8 +107,9 @@
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     private ChatId? ChatId => (ChatId?)Chat.Id;
 
-    protected override void OnInitialized()
-        => _animator = new (this, TimeSpan.FromMilliseconds(300));
+    protected override void OnInitialized() {
+        _animator = new (this, TimeSpan.FromMilliseconds(300));
+    }
 
     protected override Task OnInitializedAsync()
         => AudioRecorder.MicrophonePermission.Check(CancellationToken.None);
@@ -161,7 +148,7 @@
             return Model.Loading;
 
         var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
-        var language = await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
+        var status = await ChatAudioUI.GetRecordingStatus(chatId, cancellationToken).ConfigureAwait(false);
         var recorderState = await AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
         var hasMicrophonePermission = await AudioRecorder.MicrophonePermission.Cached.Use(cancellationToken).ConfigureAwait(false);
         var isRecordingHere = recordingChatId == chatId;
@@ -173,9 +160,8 @@
 
         return new (
             chat,
-            language,
+            status,
             isRecordingHere,
-            recorderState.IsRecording,
             recorderState.IsConnected,
             hasMicrophonePermission,
             isTransitioning,
@@ -239,15 +225,14 @@
 
     public sealed record Model(
         Chat? Chat,
-        Language? Language,
+        RecordingStatus Status = RecordingStatus.Off,
         bool IsRecordingHere = false,
-        bool IsMicrophoneCaptured = false,
         bool IsConnected = false,
         bool? HasMicrophonePermission = null,
         bool IsTransitioning = false,
         bool IsAnyoneTalking = false,
         ChatAudioState? AudioState = null
     ) {
-        public static readonly Model Loading = new(null, null, default, false, true, false, false, false);
+        public static readonly Model Loading = new(null, RecordingStatus.Off, false, true, false, false, false);
     }
 }

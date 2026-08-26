@@ -912,7 +912,12 @@ leaves rather than being cancelled by a passing hover. A shown tooltip tracks it
 attributes, so text and severity stay right even while the pointer never moves.
 
 Prefer it over a component-local tooltip: two tooltip systems over one control overlap, because
-pressing a control on a desktop also hovers it.
+pressing a control on a desktop also hovers it. `RecorderToggle` is the worked example — the record
+button auto-shows only a recording failure, and never the healthy path. What counts as a failure is
+`ChatAudioUI.GetRecordingStatus`, a compute method, so every recording control can report the same
+thing: a problem stays `Starting`/`Reconnecting` until it outlasts
+`Constants.Audio.RecordingProblemGracePeriod`, measured from the later of the press and the last
+recorder-pipeline transition, because a healthy start passes through the same states on its way up.
 
 ## Modal Components
 

@@ -16,6 +16,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private static bool DebugMode => Constants.DebugMode.ChatAudioUI;
 
     private readonly MutableState<Moment?> _stopRecordingAt;
+    private readonly MutableState<Moment> _recordingIntentChangedAt;
     private readonly MutableState<ImmutableDictionary<ChatId, Moment>> _stopListeningAtMap;
     private readonly MutableState<NextBeepState?> _nextBeep;
     private readonly StoredState<Box<bool>> _isPttEnabledOnDevice;
@@ -67,6 +68,10 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         Hub.RegisterDisposable(ReplaySettings);
 
         _stopRecordingAt = stateFactory.NewMutable((Moment?)null, StateCategories.Get(type, nameof(StopRecordingAt)));
+        // Seeded with "now" so an active chat restored as recording still gets its grace period
+        _recordingIntentChangedAt = stateFactory.NewMutable(
+            CpuNow,
+            StateCategories.Get(type, nameof(GetRecordingStatus)));
         _stopListeningAtMap = stateFactory.NewMutable(
             ImmutableDictionary<ChatId, Moment>.Empty,
             StateCategories.Get(type, nameof(GetStopListeningAt)));
@@ -229,6 +234,32 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         return Task.FromResult(recordingChat?.ChatId);
     }
 
+    [ComputeMethod] // Synced
+    public virtual async Task<RecordingStatus> GetRecordingStatus(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var recordingChatId = await GetRecordingChatId().ConfigureAwait(false);
+        if (recordingChatId != chatId)
+            return RecordingStatus.Off;
+
+        var recorderState = await AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
+        if (recorderState is { IsRecording: true, IsConnected: true })
+            return RecordingStatus.Recording;
+
+        // A problem is only as old as the newer of the two things that define it: the press asking
+        // for recording, and the pipeline transition that left it in this state. Neither alone is
+        // enough - the press runs bounded startup waits before the recorder moves at all, and a
+        // mid-session disconnect has no press behind it.
+        var intentChangedAt = await _recordingIntentChangedAt.Use(cancellationToken).ConfigureAwait(false);
+        var graceLeft = Moment.Max(intentChangedAt, recorderState.ChangedAt)
+            + Constants.Audio.RecordingProblemGracePeriod
+            - CpuNow;
+        if (graceLeft <= TimeSpan.Zero)
+            return recorderState.IsRecording ? RecordingStatus.Disconnected : RecordingStatus.StartFailed;
+
+        Computed.GetCurrent().InvalidateSafely(graceLeft);
+        return recorderState.IsRecording ? RecordingStatus.Reconnecting : RecordingStatus.Starting;
+    }
+
     public bool IsRecording()
         => ActiveChatsUI.ActiveChats.Value.Any(c => c.IsRecording);
 
@@ -281,6 +312,9 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         TimeSpan? idleDuration = null,
         bool mustPlayBeginTune = true)
     {
+        var oldRecordingChatId = ActiveChatsUI.ActiveChats.Value.FirstOrDefault(c => c.IsRecording)?.ChatId;
+        if (oldRecordingChatId != chatId)
+            _recordingIntentChangedAt.Value = CpuNow;
         _recordingIdleDurationBox = chatId is null ? null : (object?)idleDuration;
         // Publication: RecordChat reads this from its own flow right before opening the mic.
         Volatile.Write(ref _isBeginTuneSuppressed, chatId is not null && !mustPlayBeginTune);

@@ -981,6 +981,7 @@ public static class LocalizedStringsLocalizerExt
         public string Recording_InChat_Suffix => l["Recording_InChat_Suffix"].Value;
         public string Recording_WillStopIn => l["Recording_WillStopIn"].Value;
         public string Recording_StopRecording => l["Recording_StopRecording"].Value;
+        public string Recording_CantStart => l["Recording_CantStart"].Value;
         public string Replay_Replaying => l["Replay_Replaying"].Value;
         public string Replay_Backward => l["Replay_Backward"].Value;
         public string Replay_Speed => l["Replay_Speed"].Value;
@@ -1344,7 +1345,6 @@ public static class LocalizedStringsLocalizerExt
         public string Call_CameraStillBlockedWeb => l["Call_CameraStillBlockedWeb"].Value;
         public string Call_StartingRecording => l["Call_StartingRecording"].Value;
         public string Call_JoinMuted => l["Call_JoinMuted"].Value;
-        public string Call_RecordingLanguage_Format(object arg0) => l["Call_RecordingLanguage_Format", arg0].Value;
         public string Call_ShareScreen => l["Call_ShareScreen"].Value;
         public string Call_StopScreenShare => l["Call_StopScreenShare"].Value;
         public string Call_Transcribing => l["Call_Transcribing"].Value;
