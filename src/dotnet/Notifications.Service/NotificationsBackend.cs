@@ -1076,17 +1076,31 @@ public class NotificationsBackend(IServiceProvider services)
         return positions.ToDictionary(x => x.ChatId, x => x.ReadEntryLid);
     }
 
-    // Only banners whose tag is now fully gone are owed a close - the chat banner may still be
-    // backed by another active notification under the same tag. The badge is refreshed by the
-    // dismissal push regardless, so an id-only entry still carries its weight.
+    private static List<(ChatId ChatId, long EntryLid)> GetReadAdvances(IEnumerable<Notification> dismissed)
+    {
+        // Dropping an OnRead notification isn't a dismissal on its own - its chat stays unread, so
+        // the unread list keeps it and the next fan-out re-creates it. One advance per chat at the
+        // furthest anchor: ChatPositionsBackend_Set is forward-only, so it subsumes the rest.
+        return dismissed
+            .Where(n => n.DismissMode == NotificationDismissMode.OnRead)
+            .Select(GetReadAnchor)
+            .Where(x => x.ChatId is not null && x.EntryLid > 0)
+            .GroupBy(x => x.ChatId!)
+            .Select(g => (ChatId: g.Key, EntryLid: g.Max(x => x.EntryLid)))
+            .ToList();
+    }
+
     private UserNotificationInfo WithPendingDismissals(
         UserNotificationInfo info, IReadOnlyList<Notification> dismissed)
     {
+        // Only banners whose tag is now fully gone are owed a close - the chat banner may still be
+        // backed by another active notification under the same tag. The badge is refreshed by the
+        // dismissal push regardless, so an id-only entry still carries its weight.
         if (dismissed.Count == 0)
             return info;
 
         var now = Clocks.SystemClock.Now;
-        var survivingTags = info.Items.Select(GetPushGroupKey).ToHashSet(StringComparer.Ordinal);
+        var survivingTags = info.Items.Select(GetPushGroupKey).ToHashSet();
         var pending = dismissed
             .Where(d => !survivingTags.Contains(GetPushGroupKey(d)))
             .Select(d => new PendingDismissal(d.Id, d.GetPushTag() ?? "", now));
@@ -1547,7 +1561,7 @@ public class NotificationsBackend(IServiceProvider services)
             .FirstOrDefaultAsync(x => x.Id == userId.Value, cancellationToken)
             .ConfigureAwait(false);
 
-        var (info, dismissed, silentById, reAnchored) = await Reconcile(
+        var (info, dismissed, requested, silentById, reAnchored) = await Reconcile(
             dbUserNotifications?.ToModel() ?? new UserNotificationInfo(userId)).ConfigureAwait(false);
         if (silentById.Count == 0 && dismissed.Count == 0 && reAnchored.Count == 0)
             return; // Nothing changed (e.g. an already-dismissed OnDismiss, or a redelivered batch)
@@ -1572,7 +1586,7 @@ public class NotificationsBackend(IServiceProvider services)
             dbUserNotifications = await dbContext.UserNotifications.ForUpdate()
                 .FirstAsync(x => x.Id == userId.Value, cancellationToken)
                 .ConfigureAwait(false);
-            (info, dismissed, silentById, reAnchored) = await Reconcile(dbUserNotifications.ToModel())
+            (info, dismissed, requested, silentById, reAnchored) = await Reconcile(dbUserNotifications.ToModel())
                 .ConfigureAwait(false);
             info = WithPendingDismissals(info, dismissed);
             dbUserNotifications.UpdateFrom(info);
@@ -1623,11 +1637,18 @@ public class NotificationsBackend(IServiceProvider services)
             // NotificationConvergeFlow retries it.
             context.Operation.AddEvent(new NotificationsBackend_Converge(userId));
 
+        // Ride the same outbox as the pushes: the advance is committed with the removal it belongs
+        // to, so a dismissal can't clear the banner and then lose the read move that makes it stick.
+        foreach (var (chatId, entryLid) in GetReadAdvances(requested))
+            context.Operation.AddEvent(new ChatPositionsBackend_Set(
+                userId, chatId, ChatPositionKind.Read, new ChatPosition(entryLid)));
+
         return;
 
         async Task<(
             UserNotificationInfo Info,
             IReadOnlyList<Notification> Dismissed,
+            IReadOnlyList<Notification> Requested,
             Dictionary<NotificationId, bool> SilentById,
             List<Notification> ReAnchored)> Reconcile(UserNotificationInfo committed)
         {
@@ -1641,15 +1662,21 @@ public class NotificationsBackend(IServiceProvider services)
                 .ConfigureAwait(false);
             var current = committed;
             var dismissed = new List<Notification>();
+            // Only the caller-requested removals earn a read-position advance. The filter-driven
+            // ones below are removals of notifications the user never acted on - advancing for an
+            // expired or muted one would mark its chat read behind their back.
+            var requested = new List<Notification>();
             foreach (var existing in committed.Items) {
-                var isGone = dismissAll
-                    || dismissedIds.Contains(existing.Id)
+                var isRequested = dismissAll || dismissedIds.Contains(existing.Id);
+                var isGone = isRequested
                     || IsRead(existing, readPositions)
                     || IsSuppressedByMode(existing, modes)
                     || IsExpired(existing, now);
                 if (isGone) {
                     current = current with { Items = current.Items.Without(x => x.Id == existing.Id) };
                     dismissed.Add(existing);
+                    if (isRequested)
+                        requested.Add(existing);
                 }
             }
 
@@ -1730,7 +1757,7 @@ public class NotificationsBackend(IServiceProvider services)
                 LastPushAt = silentById.Count > 0 ? now : current.LastPushAt,
                 IsDormant = current.Items.Count >= Constants.Notification.DormancyThreshold,
             };
-            return (current, dismissed, silentById, reAnchored);
+            return (current, dismissed, requested, silentById, reAnchored);
         }
     }
 

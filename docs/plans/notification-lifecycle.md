@@ -340,9 +340,27 @@ surface, and `UpdateOnActiveChanges` is its only driver.
 now carries a three-dots menu (`NotificationsMenu`, same shape as the Place one)
 with a single "Dismiss all" entry.
 
-Note what it does *not* do: the panel below it lists unread **chats**, so
-dismissing notifications leaves it unchanged. What clears is the app-icon badge
-and the OS-level notifications — the two concepts, behaving as designed.
+### 9 — dismissal that satisfies the mode (done)
+
+Dropping a notification from the set was never a dismissal for the two modes
+that are defined by a condition. An `OnRead` notification is cleared by the Read
+position passing its entry; clearing `Items` alone left that condition standing,
+so the chat stayed unread, the panel kept listing it, and the chat's next fan-out
+re-created it. `Dismiss all` looked like a no-op for exactly the notifications
+users most wanted gone.
+
+`Dismiss` and `Dismiss all` now do the real work per kind: `OnRead` notifications
+get their chat's Read position advanced past their entry, everything else is
+removed as before. `Reconcile` separates caller-*requested* removals from the
+filter-driven ones it also performs on every converge pass — only the requested
+ones earn an advance, so an expired or muted notification can't mark its chat
+read behind the user's back. One advance per chat at the furthest anchor
+(`ChatPositionsBackend_Set` is forward-only, so it subsumes the rest), emitted as
+operation events on the same outbox as the pushes — the moves commit with the
+removal they belong to and can't be lost independently of it.
+
+Advancing the Read position is also what makes the panel update: it lists unread
+**chats**, and the chats are now genuinely read.
 
 ### 7 — reaction view-clearing (client) (done)
 
