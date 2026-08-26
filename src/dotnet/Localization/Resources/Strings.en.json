@@ -212,7 +212,6 @@
   "ChatView_SendingAttachments": "Sending attachments…",
   "ChatView_ShowItems": "Show items",
   "ChatView_HideItems": "Hide items",
-  "ChatView_JoinCall": "Join",
   "ChatView_GoToThread": "Go to the thread",
   "ChatView_CreatedBy": "created by",
   "ChatView_Translation": "Translation",
@@ -596,6 +595,9 @@
   "LocationGuide_MobileSafariStep3": "Change \"Location access on all websites\" to \"Ask\"",
 
   "Common_Block": "Block",
+  // "Join" in the membership sense - becoming a member of a Place or chat.
+  // For entering a live call use Call_Join, which is a different verb in some
+  // languages.
   "Common_Join": "Join",
   "Common_Allow": "Allow",
   "Common_Accept": "Accept",
@@ -1304,6 +1306,10 @@
   "Call_CouldntStart": "Couldn't start the call",
   "Call_RecordingTurnedOffByHost": "Recording turned off by the host",
   "Call_MakeHost": "Make host",
+  // "Join" in the call sense - entering a call that is already running, not
+  // becoming a member of anything. Languages that distinguish the two (ru, uk)
+  // must use the "enter" verb here and keep Common_Join for membership.
+  "Call_Join": "Join",
   "Call_JoinMuted": "Join muted",
   "Call_VideoOff": "Video is off for this call",
   "Call_UnavailableInChat": "Unavailable in this chat",

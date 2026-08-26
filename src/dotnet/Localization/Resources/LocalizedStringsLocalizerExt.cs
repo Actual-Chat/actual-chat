@@ -233,7 +233,6 @@ public static class LocalizedStringsLocalizerExt
         public string ChatView_SendingAttachments => l["ChatView_SendingAttachments"].Value;
         public string ChatView_ShowItems => l["ChatView_ShowItems"].Value;
         public string ChatView_HideItems => l["ChatView_HideItems"].Value;
-        public string ChatView_JoinCall => l["ChatView_JoinCall"].Value;
         public string ChatView_GoToThread => l["ChatView_GoToThread"].Value;
         public string ChatView_CreatedBy => l["ChatView_CreatedBy"].Value;
         public string ChatView_Translation => l["ChatView_Translation"].Value;
@@ -1361,6 +1360,7 @@ public static class LocalizedStringsLocalizerExt
         public string Call_CameraStillBlockedApp => l["Call_CameraStillBlockedApp"].Value;
         public string Call_CameraStillBlockedWeb => l["Call_CameraStillBlockedWeb"].Value;
         public string Call_StartingRecording => l["Call_StartingRecording"].Value;
+        public string Call_Join => l["Call_Join"].Value;
         public string Call_JoinMuted => l["Call_JoinMuted"].Value;
         public string Call_ShareScreen => l["Call_ShareScreen"].Value;
         public string Call_StopScreenShare => l["Call_StopScreenShare"].Value;

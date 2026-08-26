@@ -14,7 +14,7 @@
     <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
     <span class="c-lc-name">@title</span>
     @if (!s.IsJoined && !s.HasOverlay) {
-        <button type="button" class="c-lc-join btn btn-sm btn-transparent" @onclick="@Join">@L.ChatView_JoinCall</button>
+        <button type="button" class="c-lc-join btn btn-sm btn-transparent" @onclick="@Join">@L.Call_Join</button>
     }
     @if (s.CanExpand) {
         <HeaderButton
