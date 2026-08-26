@@ -915,9 +915,12 @@ Prefer it over a component-local tooltip: two tooltip systems over one control o
 pressing a control on a desktop also hovers it. `RecorderToggle` is the worked example — the record
 button auto-shows only a recording failure, and never the healthy path. What counts as a failure is
 `ChatAudioUI.GetRecordingStatus`, a compute method, so every recording control can report the same
-thing: a problem stays `Starting`/`Reconnecting` until it outlasts
-`Constants.Audio.RecordingProblemGracePeriod`, measured from the later of the press and the last
-recorder-pipeline transition, because a healthy start passes through the same states on its way up.
+thing. A problem the pipeline *named* — `RecorderStartResult`, carried up from `getUserMedia`'s
+DOMException name, Android's `AudioRecord` state or Windows' `AudioDeviceNodeCreationStatus` — is a
+verdict and is reported at once. An unnamed one is judged by age instead: it stays
+`Starting`/`Reconnecting` until it outlasts `Constants.Audio.RecordingProblemGracePeriod`, measured
+from the later of the press and the last recorder-pipeline transition, because a healthy start
+passes through the same states on its way up.
 
 ## Modal Components
 

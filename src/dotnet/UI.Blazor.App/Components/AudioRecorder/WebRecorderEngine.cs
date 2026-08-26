@@ -9,23 +9,21 @@ public sealed class WebRecorderEngine(AppUIHub hub) : IAudioRecorderEngine
     private IJSObjectReference _jsRef = null!;
     private AppUIHub Hub { get; } = hub;
 
-    public async Task<RecorderStartResult> Start(
+    public async Task<RecorderStartOutcome> Start(
         ChatId chatId,
         ChatEntryId? repliedChatEntryId,
         CancellationToken cancellationToken = default)
     {
         await EnsureInitialized(cancellationToken).ConfigureAwait(false);
 
-        var isStarted = await _jsRef.InvokeAsync<bool>("startRecording",
+        var failure = await _jsRef.InvokeAsync<string>("startRecording",
                 CancellationToken.None,
                 chatId,
                 repliedChatEntryId)
             .AsTask()
             .WaitAsync(AudioRecorder.StartRecordingTimeout, cancellationToken)
             .ConfigureAwait(false);
-        // The JS recorder gives back a bare false, and on the web that's getUserMedia
-        // denying access far more often than a device that won't open
-        return isStarted ? RecorderStartResult.Started : RecorderStartResult.NoPermission;
+        return RecorderStartOutcome.Parse(failure);
     }
 
     public async Task<bool> Stop(CancellationToken cancellationToken = default)

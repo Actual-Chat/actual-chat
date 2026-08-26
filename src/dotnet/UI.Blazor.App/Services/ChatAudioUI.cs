@@ -11,12 +11,13 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// <summary>
 /// Manages audio listening and recording state for chats in the UI.
 /// </summary>
-public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized, IDebugAudioSync
+public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized, IDebugAudio
 {
     private static bool DebugMode => Constants.DebugMode.ChatAudioUI;
 
     private readonly MutableState<Moment?> _stopRecordingAt;
     private readonly MutableState<Moment> _recordingIntentChangedAt;
+    private readonly MutableState<RecordingStatus?> _forcedRecordingStatus;
     private readonly MutableState<ImmutableDictionary<ChatId, Moment>> _stopListeningAtMap;
     private readonly MutableState<NextBeepState?> _nextBeep;
     private readonly StoredState<Box<bool>> _isPttEnabledOnDevice;
@@ -72,6 +73,9 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _recordingIntentChangedAt = stateFactory.NewMutable(
             CpuNow,
             StateCategories.Get(type, nameof(GetRecordingStatus)));
+        _forcedRecordingStatus = stateFactory.NewMutable(
+            (RecordingStatus?)null,
+            StateCategories.Get(type, nameof(ForceRecordingStatus)));
         _stopListeningAtMap = stateFactory.NewMutable(
             ImmutableDictionary<ChatId, Moment>.Empty,
             StateCategories.Get(type, nameof(GetStopListeningAt)));
@@ -96,6 +100,9 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public void ShowAudioDiagnostics(ChatId chatId)
         => _ = ModalUI.Show(new AudioDiagnosticsModal.Model(chatId));
+
+    public void ForceRecordingStatus(string? status)
+        => _forcedRecordingStatus.Value = status.IsNullOrEmpty() ? null : RecordingStatus.Parse(status);
 
     [ComputeMethod] // Synced
     public virtual Task<ChatAudioState> GetState(ChatId chatId)
@@ -237,19 +244,24 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod] // Synced
     public virtual async Task<RecordingStatus> GetRecordingStatus(ChatId chatId, CancellationToken cancellationToken)
     {
+        var forcedStatus = await _forcedRecordingStatus.Use(cancellationToken).ConfigureAwait(false);
+        if (forcedStatus is not null)
+            return forcedStatus;
+
+        var recorderState = await AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
+        var intentChangedAt = await _recordingIntentChangedAt.Use(cancellationToken).ConfigureAwait(false);
+        // Checked first, and with no grace: a permission refusal never gets as far as recording
+        if (recorderState.LastFailure is { } failure && failure.ChatId == chatId && failure.At >= intentChangedAt)
+            return RecordingStatus.From(failure);
+
         var recordingChatId = await GetRecordingChatId().ConfigureAwait(false);
         if (recordingChatId != chatId)
             return RecordingStatus.Off;
-
-        var recorderState = await AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
         if (recorderState is { IsRecording: true, IsConnected: true })
             return RecordingStatus.Recording;
 
-        // A problem is only as old as the newer of the two things that define it: the press asking
-        // for recording, and the pipeline transition that left it in this state. Neither alone is
-        // enough - the press runs bounded startup waits before the recorder moves at all, and a
-        // mid-session disconnect has no press behind it.
-        var intentChangedAt = await _recordingIntentChangedAt.Use(cancellationToken).ConfigureAwait(false);
+        // Unnamed, so it's judged by age - and it's only as old as the newer of the press and the
+        // pipeline transition: startup waits precede the first, a disconnect has no press at all.
         var graceLeft = Moment.Max(intentChangedAt, recorderState.ChangedAt)
             + Constants.Audio.RecordingProblemGracePeriod
             - CpuNow;

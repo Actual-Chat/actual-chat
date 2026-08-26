@@ -1,10 +1,9 @@
 .ac-tooltip {
     @apply absolute top-0 left-0 z-tooltip;
     @apply block;
-    @apply max-w-none md:max-w-80;
+    @apply max-w-64 md:max-w-80;
     @apply px-[12px] py-[7px];
     @apply rounded-lg;
-    @apply whitespace-nowrap;
     @apply bg-01;
     @apply text-text-1 text-02;
     @apply pointer-events-none;
@@ -39,7 +38,10 @@
     @apply bg-banner-error;
 }
 .ac-tooltip-text {
-    @apply truncate;
+    /* Wraps rather than truncates: an error message that ends in an ellipsis isn't actionable.
+       break-words is what keeps a long unbroken platform error code inside the bubble. */
+    @apply line-clamp-3;
+    @apply text-center break-words;
 }
 
 .ac-tooltip-arrow {

@@ -450,6 +450,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
             catch (e) {
                 this.state = 'stopped';
                 this.stopHeartbeat();
+                AudioRecorderState.setFailed(chatId, e);
                 await this.stopMicrophoneStream();
                 throw e;
             }
@@ -637,6 +638,9 @@ export class OpusMediaRecorder implements RecorderStateServer {
         } catch (e) {
             await this.stopMicrophoneStream();
             warnLog?.log('startMicrophoneStream(): getMicrophoneStream() failed:', e);
+            // Still swallowed, but reported: above here only the absence of a stream was visible.
+            if (this.chatId)
+                AudioRecorderState.setFailed(this.chatId, e);
         }
     }
 
