@@ -11,7 +11,7 @@ public static class ExceptionExt
         public string UserFriendlyMessage => error switch
         {
             SecurityException or UnauthorizedAccessException => AppStrings.L.ShareExt_CannotSendToContact,
-            _ => AppStrings.L.ShareExt_UploadFailed,
+            _ => AppStrings.L.ShareExt_SharingFailed,
         };
     }
 }

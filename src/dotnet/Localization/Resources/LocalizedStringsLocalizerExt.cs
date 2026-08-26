@@ -1009,7 +1009,7 @@ public static class LocalizedStringsLocalizerExt
         public string ShareExt_Done => l["ShareExt_Done"].Value;
         public string ShareExt_StartupFailed => l["ShareExt_StartupFailed"].Value;
         public string ShareExt_CannotSendToContact => l["ShareExt_CannotSendToContact"].Value;
-        public string ShareExt_UploadFailed => l["ShareExt_UploadFailed"].Value;
+        public string ShareExt_SharingFailed => l["ShareExt_SharingFailed"].Value;
 
         public string Ptt_UseOnThisDevice => l["Ptt_UseOnThisDevice"].Value;
         public string Ptt_UseOnThisDeviceCaption => l["Ptt_UseOnThisDeviceCaption"].Value;

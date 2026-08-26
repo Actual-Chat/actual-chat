@@ -967,7 +967,7 @@
   "Share_CopyLink": "Копирај линк",
   "Share_LinkCopied": "Линк је копиран!",
   "Share_WhoToShareWith": "С ким желите поделити",
-  "Share_AddComment": "Додајте коментар (опционално)",
+  "Share_AddComment": "Додајте коментар",
   "Share_SendToSelected": "Пошаљи одабраним контактима",
 
   // The iOS share extension - native UIKit, so it renders outside the app's WebView.
@@ -977,7 +977,7 @@
   "ShareExt_Done": "Готово!",
   "ShareExt_StartupFailed": "Нешто је пошло наопако. Молимо покушајте поново.",
   "ShareExt_CannotSendToContact": "Не можете слати овом контакту",
-  "ShareExt_UploadFailed": "Отпремање није успело",
+  "ShareExt_SharingFailed": "Дељење није успело",
 
   "Ptt_UseOnThisDevice": "Користи Притисни и говори на овом уређају",
   "Ptt_UseOnThisDeviceCaption": "Када је искључено, овај уређај се неће будити, репродуцирати ни слати глас путем Притисни и говори.",

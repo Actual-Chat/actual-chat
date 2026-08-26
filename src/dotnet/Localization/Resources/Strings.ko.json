@@ -967,7 +967,7 @@
   "Share_CopyLink": "링크 복사",
   "Share_LinkCopied": "링크가 복사되었습니다!",
   "Share_WhoToShareWith": "누구와 공유할까요",
-  "Share_AddComment": "댓글 추가 (선택 사항)",
+  "Share_AddComment": "댓글 추가",
   "Share_SendToSelected": "선택한 연락처로 보내기",
 
   // The iOS share extension - native UIKit, so it renders outside the app's WebView.
@@ -977,7 +977,7 @@
   "ShareExt_Done": "완료!",
   "ShareExt_StartupFailed": "문제가 발생했습니다. 다시 시도해 주세요.",
   "ShareExt_CannotSendToContact": "이 연락처로는 보낼 수 없습니다",
-  "ShareExt_UploadFailed": "업로드 실패",
+  "ShareExt_SharingFailed": "공유 실패",
 
   "Ptt_UseOnThisDevice": "이 기기에서 푸시 투 토크 사용",
   "Ptt_UseOnThisDeviceCaption": "끄면 이 기기는 푸시 투 토크 음성으로 깨어나거나 재생·전송하지 않습니다.",

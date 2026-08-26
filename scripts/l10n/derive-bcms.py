@@ -100,9 +100,8 @@ CROATIAN = [
     ("neko ", "netko "), ("Neko", "Netko"),
     ("svako ", "svatko "),
     ("ko otvori", "tko otvori"), ("ko je još", "tko je još"),
-    # Before the noun swap below: "prijenos" is masculine where "otpremanje" is neuter,
-    # so a predicate agreeing with it has to be rewritten whole.
-    ("Otpremanje nije uspjelo", "Prijenos nije uspio"),
+    # "prijenos" is masculine where "otpremanje" is neuter, so a predicate agreeing with it
+    # needs its own whole-phrase entry above this line rather than a word swap.
     ("Otpremi", "Prenesi"), ("otpremanje", "prijenos"), ("Otpremanje", "Prijenos"),
     ("otpremite", "prenesite"), ("Otpremite", "Prenesite"),
     ("otpremljeno", "preneseno"), ("Otpremljeno", "Preneseno"),

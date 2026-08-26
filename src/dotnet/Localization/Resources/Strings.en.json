@@ -967,7 +967,7 @@
   "Share_CopyLink": "Copy link",
   "Share_LinkCopied": "Link copied!",
   "Share_WhoToShareWith": "Who would you like to share with",
-  "Share_AddComment": "Add your comment (optional)",
+  "Share_AddComment": "Add a comment",
   "Share_SendToSelected": "Send to selected contacts",
 
   // The iOS share extension - native UIKit, so it renders outside the app's WebView.
@@ -977,7 +977,7 @@
   "ShareExt_Done": "Done!",
   "ShareExt_StartupFailed": "Something went wrong. Please try again.",
   "ShareExt_CannotSendToContact": "You can't send to this contact",
-  "ShareExt_UploadFailed": "Upload failed",
+  "ShareExt_SharingFailed": "Sharing failed",
 
   "Ptt_UseOnThisDevice": "Use Push-to-talk on this device",
   "Ptt_UseOnThisDeviceCaption": "When off, this device won't wake, play, or transmit Push-to-talk voice.",
