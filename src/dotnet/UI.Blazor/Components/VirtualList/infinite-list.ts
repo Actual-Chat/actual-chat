@@ -98,6 +98,21 @@ const MaxOverscrollScreens = 3;
 // Past twice the allowance the blank is not something scrolling can produce - the view and its chain
 // have come apart, and only a re-pin brings them back.
 const StrandedGapFactor = 2;
+// Every other correction the list makes runs off an event - a render, a settle, a scroll - and a
+// blank viewport gives the user nothing to scroll with to produce one. This is the clock the standing
+// check runs on instead.
+const PositionGuardIntervalMs = 1000;
+// How many consecutive checks a fault has to survive to be one. Nothing legitimate holds the position
+// outside the band for a whole interval, but a correction booked for a frame that has not run yet can
+// be seen out there once.
+const PositionGuardChecks = 2;
+// A crossing this small is the model and the DOM disagreeing about a fraction of a pixel.
+const PositionGuardEpsilon = 4;
+// How long after an excursion the position is still the gesture's own rather than something to fix.
+const PositionGuardOverscrollQuietMs = 500;
+// A viewport with no content on it is legal while a query can still fill it - that is how reading
+// further back starts - so the blank is a fault only once this many checks have gone by without one.
+const OffContentChecks = 3;
 const DriftWarnThresholdPx = 8;
 const ContentOverflowThresholdPx = 2;
 const DefaultItemHeight = 48;
@@ -182,6 +197,7 @@ export class InfiniteList extends VirtualList {
     private readonly stability = new StabilityTracker();
     private readonly heights: ItemHeightController | null;
     private readonly visibleKeys = new Set<string>();
+    private readonly positionGuardTimer: ReturnType<typeof setInterval>;
 
     private items = new Array<InfiniteListItem>();
     private indexByKey = new Map<string, number>();
@@ -208,12 +224,21 @@ export class InfiniteList extends VirtualList {
     private isEndSkeletonShown = false;
     private revealedAt = 0;
     private interactiveAnchor: { key: string; at: number } | null = null;
-    // An element the caller has promised to render again under the same id, whose position on screen
-    // must survive the next render. Recorded as rendered rather than modelled, which is the whole
-    // point of it: a stuck sticky element is not where the model puts it, and an element inside a
-    // group has no modelled position at all.
-    private screenAnchor:
-        { id: string; top: number; at: number; isPlaced: boolean; corrected: number } | null = null;
+    // An element whose position on screen must survive the next render, recorded as rendered rather
+    // than modelled - a stuck sticky element is not where the model puts it, and an element inside a
+    // group has no modelled position at all. Addressed by data-vl-anchor id, or by item key for a
+    // data-anchor="below" hold; a key-addressed anchor also records the content key above it, and is
+    // placed only by the render that changes that - the one that actually inserts the revealed rows -
+    // so the unrelated renders a live chat streams in the meantime pass through without spending it.
+    private screenAnchor: {
+        id: string | null;
+        key: string | null;
+        aboveKey: string | null;
+        top: number;
+        at: number;
+        isPlaced: boolean;
+        corrected: number;
+    } | null = null;
     private isWatchingScreenAnchor = false;
     private stickyShift = 0;
     // Keys that left a recent render, with the height they had, so an item that comes straight back is
@@ -235,6 +260,8 @@ export class InfiniteList extends VirtualList {
     private mustRecentre = false;
     private lastWrapperSize = 0;
     private handledScrollToKey: string | null = null;
+    private outOfBandChecks = 0;
+    private offContentChecks = 0;
 
     public static create(
         ref: HTMLElement,
@@ -323,6 +350,7 @@ export class InfiniteList extends VirtualList {
         this.skeletonObserver.observe(this.spacerRef);
         this.skeletonObserver.observe(this.endSpacerRef);
 
+        this.positionGuardTimer = setInterval(() => this.checkPosition(), PositionGuardIntervalMs);
         InfiniteList.instances.add(this);
         (globalThis as unknown as { InfiniteList: typeof InfiniteList }).InfiniteList = InfiniteList;
         this.start();
@@ -333,6 +361,7 @@ export class InfiniteList extends VirtualList {
         super.dispose();
         InfiniteList.setPageLock(this, false);
         InfiniteList.instances.delete(this);
+        clearInterval(this.positionGuardTimer);
         this.stability.dispose();
         this.heights?.dispose();
         this.scrollController.dispose();
@@ -489,9 +518,13 @@ export class InfiniteList extends VirtualList {
             && !oldKeys.some(key => this.indexByKey.has(key));
         if (isFullReplacement) {
             // Nothing on screen survives, so no animation can be interrupted and nothing needs holding
-            // in place: whatever was animating is gone, and the list is stable by construction.
+            // in place: whatever was animating is gone, and the list is stable by construction. A
+            // key-addressed anchor's item went with everything else, and reanchor - the path that
+            // releases a vanished one - is skipped for a full replacement.
             this.heights?.applyAllInstantly();
             this.stability.releaseAllAnimations();
+            if (this.screenAnchor?.key != null)
+                this.releaseScreenAnchor();
         }
         if (!sameKeys(oldKeys, this.items))
             this.lastSentQuery = null;
@@ -726,8 +759,11 @@ export class InfiniteList extends VirtualList {
         // single row - so keeping the raw offset into that gap drops the view clean past the row, onto
         // whatever happens to sit that far below. Landing at the top of the gap puts the collapsed
         // block where the user was already looking.
+        // With nothing surviving after it the gap is the rest of the chain, which is the same fall
+        // with nothing at all to land on: the live conversation at the end of the chat folding into
+        // its summary, and the newest message shrinking under a view parked at its tail.
         const gap = after < 0
-            ? Number.POSITIVE_INFINITY
+            ? this.chainSize - this.offsets[newBefore]
             : this.offsets[this.indexByKey.get(oldKeys[after])!] - this.offsets[newBefore];
         this.chainStart = oldChainStart + oldOffsets[before] - this.offsets[newBefore]
             + (offset > gap ? offset : 0);
@@ -797,13 +833,20 @@ export class InfiniteList extends VirtualList {
         // follow stays as the fallback for the frames this one may not write.
         if (this.pinnedEdge != null && this.canCorrectPosition)
             this.applyFollow(this.measureFollow(), 'layout');
-        // Clamping needs the real sizes, and mid-animation the DOM does not have them yet; onceStable
-        // re-runs it with the content where it will actually be.
         // Skipped entirely while pinned, because a pinned list is about to correct itself by re-pinning
         // and the clamp would get there first with a scroll write - which is the one thing the re-pin
         // exists to avoid. The re-pin lands inside the band by construction, and the settled pass
         // clamps behind it either way.
-        if (!this.stability.isAnimating && this.pinnedEdge == null)
+        if (this.pinnedEdge != null)
+            return;
+
+        // Clamping needs the real sizes, and mid-animation the DOM does not have them yet, so it waits
+        // for the settled pass instead - which an unpinned list has to book for itself. Left to the
+        // pinned path alone, a block that collapses under a view that is not at an edge got no clamp
+        // at all: the render skipped it for the animation, and nothing re-ran it afterwards.
+        if (this.stability.isAnimating)
+            this.repinWhenStable();
+        else
             this.scrollController.clampToLimits();
     }
 
@@ -1712,6 +1755,8 @@ export class InfiniteList extends VirtualList {
             this.interactiveAnchor = null;
             this.screenAnchor = {
                 id: anchorId,
+                key: null,
+                aboveKey: null,
                 top: anchorRef.getBoundingClientRect().top - this.ref.getBoundingClientRect().top,
                 at: performance.now(),
                 isPlaced: false,
@@ -1726,11 +1771,30 @@ export class InfiniteList extends VirtualList {
 
         this.setPinnedEdge(null);
         // A control marked data-anchor="below" reveals rows ABOVE itself, so the item below it is what
-        // must keep its screen position - otherwise the revealed rows push everything downward.
-        const anchorKey = target.closest('[data-anchor="below"]') != null
-            ? this.getFirstContentKeyBelow(key) ?? key
-            : key;
-        this.interactiveAnchor = { key: anchorKey, at: performance.now() };
+        // must keep its screen position - otherwise the revealed rows push everything downward. It is
+        // held as a key-addressed screen anchor rather than an interactive one: the render it waits
+        // for can be seconds away on WASM, and the rows it inserts then grow in from zero - the
+        // pending TTL covers the first, watchScreenAnchor the second, and the interactive anchor's
+        // model-level hold covers neither.
+        const belowKey = target.closest('[data-anchor="below"]') != null
+            ? this.getFirstContentKeyBelow(key)
+            : null;
+        if (belowKey != null) {
+            const belowRef = this.items[this.indexByKey.get(belowKey)!].ref;
+            this.interactiveAnchor = null;
+            this.screenAnchor = {
+                id: null,
+                key: belowKey,
+                aboveKey: this.getFirstContentKeyAbove(belowKey),
+                top: belowRef.getBoundingClientRect().top - this.ref.getBoundingClientRect().top,
+                at: performance.now(),
+                isPlaced: false,
+                corrected: 0,
+            };
+            return;
+        }
+
+        this.interactiveAnchor = { key, at: performance.now() };
     };
 
     // Puts the anchored element back where it was on screen. Both readings are rendered positions,
@@ -1746,10 +1810,17 @@ export class InfiniteList extends VirtualList {
             return false;
         }
 
-        const anchorRef = this.containerRef
-            .querySelector<HTMLElement>(`:scope [data-vl-anchor="${CSS.escape(anchor.id)}"]`);
-        if (anchorRef == null)
+        const anchorRef = this.getScreenAnchorRef(anchor);
+        if (anchorRef == null) {
+            // An id names an element its owner promises to render again, so its absence is worth
+            // waiting out. A key names a list item, and an item that has left the set has nothing to
+            // come back as - the live block folding away is the case, and a hold left standing there
+            // keeps checkPosition from fixing the very view the fold stranded.
+            if (anchor.key != null)
+                this.releaseScreenAnchor();
+
             return false;
+        }
 
         // Placed once, on the render the interaction caused. Re-placing it on every render that
         // follows drags the view further off each time, because those renders are the ones growing the
@@ -1759,6 +1830,13 @@ export class InfiniteList extends VirtualList {
             this.watchScreenAnchor();
             return false;
         }
+
+        // A key-addressed anchor is spent on the render that inserts content directly above its item -
+        // that is what data-anchor="below" reveals. A live chat keeps rendering while that one is
+        // still seconds away, and placing on whichever render lands first would start (and retire) the
+        // watch before there is anything to hold.
+        if (anchor.key != null && this.getFirstContentKeyAbove(anchor.key) === anchor.aboveKey)
+            return false;
 
         anchor.isPlaced = true;
         anchor.at = performance.now();
@@ -1816,8 +1894,9 @@ export class InfiniteList extends VirtualList {
 
             // A frame the list may not write is not the element standing still: counting it would
             // release the hold with the correction still owing - twelve frames of a resting finger is
-            // all it takes.
-            const isDeferred = !this.canCorrectPosition;
+            // all it takes. An anchor still waiting on its render has nothing to correct yet either -
+            // and correctScreenAnchor's own 2s deadline would retire it mid-wait if it were asked.
+            const isDeferred = !this.canCorrectPosition || !anchor.isPlaced;
             const moved = isDeferred ? false : this.correctScreenAnchor();
             if (moved == null) {
                 this.releaseScreenAnchor();
@@ -1851,10 +1930,9 @@ export class InfiniteList extends VirtualList {
         if (anchor == null || this.isDisposed || performance.now() - anchor.at > InteractiveAnchorTtlMs)
             return null;
 
-        const anchorRef = this.containerRef
-            .querySelector<HTMLElement>(`:scope [data-vl-anchor="${CSS.escape(anchor.id)}"]`);
+        const anchorRef = this.getScreenAnchorRef(anchor);
         if (anchorRef == null)
-            return false;
+            return anchor.key != null ? null : false;
 
         // Rendered, not flow: this holds what is on screen against content moving under it. An element
         // the viewport edge has stuck is already still and reads a delta of zero, which is right for it.
@@ -1878,6 +1956,13 @@ export class InfiniteList extends VirtualList {
         // bound at all within about thirty of them.
         anchor.corrected += applied;
         return Math.abs(anchor.corrected) > this.maxOverscroll ? null : true;
+    }
+
+    private getScreenAnchorRef(anchor: { id: string | null; key: string | null }): HTMLElement | null {
+        const selector = anchor.key != null
+            ? `:scope .item[data-key="${CSS.escape(anchor.key)}"]`
+            : `:scope [data-vl-anchor="${CSS.escape(anchor.id ?? '')}"]`;
+        return this.containerRef.querySelector<HTMLElement>(selector);
     }
 
     private hasFreshScreenAnchor(): boolean {
@@ -1911,6 +1996,18 @@ export class InfiniteList extends VirtualList {
             return null;
 
         for (let i = index + 1; i < this.items.length; i++)
+            if (!this.items[i].mustSkipKey)
+                return this.items[i].key;
+
+        return null;
+    }
+
+    private getFirstContentKeyAbove(key: string): string | null {
+        const index = this.indexByKey.get(key);
+        if (index == null)
+            return null;
+
+        for (let i = index - 1; i >= 0; i--)
             if (!this.items[i].mustSkipKey)
                 return this.items[i].key;
 
@@ -2100,6 +2197,74 @@ export class InfiniteList extends VirtualList {
             priority: JumpPriority.stranded,
             reason: 'stranded',
         });
+    }
+
+    // The standing check on where the view actually is. Every other correction runs off an event -
+    // a render, a settle, a scroll - and the case none of them covers is a block collapsing under an
+    // unpinned view: the render's clamp waits for the settled sizes, the settle it waits for is a
+    // pinned list's, and what the user is left looking at is blank, which gives them nothing to scroll
+    // with to raise the scroll event that would fix it. So this asks on its own clock instead.
+    private checkPosition(): void {
+        if (this.isDisposed || this.items.length === 0 || !this.isInitiallyPlaced)
+            return;
+        // A finger, a fling, a bounce or a correction already booked all own the position, and a
+        // fresh anchor means a click of the user's is deliberately holding it somewhere.
+        if (!this.canCorrectPosition
+            || this.scrollController.isOverscrollRecent(PositionGuardOverscrollQuietMs)
+            || this.pendingJump != null
+            || this.isFollowScheduled
+            || this.hasFreshScreenAnchor()
+            || this.getFreshInteractiveAnchorKey() != null)
+            return;
+
+        const clientHeight = this.ref.clientHeight;
+        if (clientHeight <= 0)
+            return;
+
+        // Not gated on the height animations the render's own clamp waits for: what the limits are
+        // built from is the model, which carries settled heights, so this reads the same numbers the
+        // settled pass would. Persistence is what separates a fault from a frame in transit.
+        const limits = this.scrollController.getEffectiveScrollLimits();
+        const scrollTop = this.ref.scrollTop;
+        const outOfBand = Math.max(limits.min - scrollTop, scrollTop - limits.max);
+        if (outOfBand > PositionGuardEpsilon) {
+            this.offContentChecks = 0;
+            if (++this.outOfBandChecks < PositionGuardChecks)
+                return;
+
+            // Exactly what the first scroll event out here would have found, so answer it the same
+            // way: clampToLimits is the snap that event's own handler performs.
+            this.outOfBandChecks = 0;
+            warnLog?.log(`[${this.identity}] checkPosition: ${outOfBand.toFixed(0)}px out of band, snapping back`);
+            this.scrollController.clampToLimits();
+            return;
+        }
+
+        this.outOfBandChecks = 0;
+        const scrollOffset = this.scrollOffset;
+        const isOffContent = scrollOffset + clientHeight <= this.chainStart
+            || scrollOffset >= this.chainEnd + this.endAnchorSize;
+        if (!isOffContent || this.isRequestingData) {
+            this.offContentChecks = 0;
+            return;
+        }
+
+        // Legal, but with nothing on screen: the band grants three screens past what is loaded because
+        // that is how reading further back starts, so the first answer is the query that space is for.
+        if (++this.offContentChecks < OffContentChecks) {
+            this.updateViewportThrottled();
+            return;
+        }
+
+        // Nothing came, so there is nothing out here to come back to. Back to the near end of the
+        // chain rather than to the default edge - this is the position the user scrolled to, and the
+        // nearest place it puts content on screen is where scrolling itself would have stopped.
+        this.offContentChecks = 0;
+        const atChainStart = this.chainStart;
+        const atChainEnd = this.chainEnd + this.endAnchorSize - clientHeight;
+        const target = clamp(scrollOffset, Math.min(atChainStart, atChainEnd), Math.max(atChainStart, atChainEnd));
+        warnLog?.log(`[${this.identity}] checkPosition: off content, moving by ${(target - scrollOffset).toFixed(0)}`);
+        this.setScrollOffset(target);
     }
 
     // The wrapper stays CSS-hidden until the chain is positioned, so the user never sees the frames
