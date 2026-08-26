@@ -973,7 +973,7 @@
   // The iOS share extension - native UIKit, so it renders outside the app's WebView.
   "ShareExt_ShareWith": "分享给",
   "ShareExt_SignInPrompt_Format": "登录 {0} 即可分享内容",
-  "ShareExt_Uploading": "正在上传…",
+  "ShareExt_Uploading": "正在上传...",
   "ShareExt_Done": "完成！",
   "ShareExt_StartupFailed": "出错了，请重试。",
   "ShareExt_CannotSendToContact": "你无法发送给该联系人",

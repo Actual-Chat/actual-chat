@@ -975,7 +975,7 @@
   "ShareExt_SignInPrompt_Format": "Войдите в {0}, чтобы делиться контентом",
   "ShareExt_Uploading": "Загрузка...",
   "ShareExt_Done": "Готово!",
-  "ShareExt_StartupFailed": "Что-то пошло не так. Пожалуйста, попробуйте ещё раз.",
+  "ShareExt_StartupFailed": "Что-то пошло не так. Попробуйте ещё раз.",
   "ShareExt_CannotSendToContact": "Вы не можете отправлять этому контакту",
   "ShareExt_UploadFailed": "Не удалось загрузить",
 
