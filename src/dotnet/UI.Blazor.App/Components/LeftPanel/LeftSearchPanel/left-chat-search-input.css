@@ -1,11 +1,10 @@
 .left-chat-search-input {
     @apply relative z-10;
     @apply flex-none flex-y gap-y-0 self-end;
-    @apply min-h-14;
+    @apply w-44 min-h-14;
     @apply p-0;
+    @apply bg-transparent;
     @apply pointer-events-auto;
-    width: calc(100% - 4rem);
-    background-color: transparent;
     transition: width 200ms ease-out;
     transition-behavior: allow-discrete;
 }
@@ -16,7 +15,7 @@
     @apply w-full;
     transition: width 200ms ease-out 0ms;
     @starting-style {
-        width: calc(100% - 4rem);
+        width: 11rem;
     }
 }
 .left-chat-search-input > .c-search {

@@ -1,21 +1,107 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@implements IDisposable
+@inherits ComputedStateComponent<AppUIHub, LeftPanelContent.Model>
+@{
+    var m = State.Value;
+    var place = m.Place;
+    // The place variant runs its own full-panel overlay instead - see LeftPanelContentHeader
+    var isSwapOpen = m.IsSearchOpen && place is null;
+    var layerKey = isSwapOpen ? "search" : "chats";
+    // The results sit above the list they replace, so opening sweeps down and closing sweeps up
+    var swapEffect = _swapDirection.WipeVertical(isSwapOpen ? 0 : 1);
+    // Moving between a place and the chat list while search stays open swaps this region from one
+    // search view to the other, and the place variant's own overlay covers it either way. Animating
+    // that hand-off is what showed the chat list underneath for the length of a wipe.
+    if (m.IsSearchOpen && _wasSearchOpen)
+        swapEffect = ContentSwapEffect.None;
+    _wasSearchOpen = m.IsSearchOpen;
+    var searchCls = m.IsSearchOpen ? "search-open" : "";
+}
 
-<div class="left-panel-content">
+<div class="left-panel-content @searchCls">
     <div class="safe-area-top"></div>
-    <LeftPanelContentHeader/>
+    <LeftPanelContentHeader Place="@place" IsNotifications="@m.IsNotifications"/>
     <div class="left-panel-content-main-wrapper">
-        <div class="left-panel-content-main">
-            @if (ScreenSize.IsNarrow()) {
-                <ReconnectBanner/>
-                <IncomingCallBanner/>
-            }
-            <DownloadAppBanner CanBeClosed="true"/>
-            <NavbarContent/>
-            <div class="safe-area-bottom safe-area-bottom-overlay"></div>
-        </div>
+        <ContentSwap LayerKey="@layerKey" Effect="@swapEffect">
+            <ChildContent>
+                @if (isSwapOpen) {
+                    <div class="left-panel-content-search">
+                        <LeftPlaceSearchOverlayPanel/>
+                    </div>
+                } else {
+                    <div class="left-panel-content-main">
+                        @if (ScreenSize.IsNarrow()) {
+                            <ReconnectBanner/>
+                            <IncomingCallBanner/>
+                        }
+                        <DownloadAppBanner CanBeClosed="true"/>
+                        <NavbarContent/>
+                    </div>
+                }
+            </ChildContent>
+        </ContentSwap>
+        @* Outside the swap: every list the panel can show wants the same dissolve, and inside it
+           the search and notification layers got none. *@
+        <div class="safe-area-bottom safe-area-bottom-overlay"></div>
     </div>
 </div>
 
 @code {
+    private readonly ContentSwapDirection _swapDirection = new();
+    private bool _wasSearchOpen;
+
+    private IPlaces Places => Hub.Places;
+    private SearchUI SearchUI => Hub.SearchUI;
+    private NavbarUI NavbarUI => Hub.NavbarUI;
+
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    protected override async Task OnInitializedAsync() {
+        NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupOrTitleChanged;
+        NavbarUI.SelectedGroupTitleUpdated += OnNavbarSelectedGroupOrTitleChanged;
+        await base.OnInitializedAsync();
+    }
+
+    public void Dispose() {
+        NavbarUI.SelectedGroupChanged -= OnNavbarSelectedGroupOrTitleChanged;
+        NavbarUI.SelectedGroupTitleUpdated -= OnNavbarSelectedGroupOrTitleChanged;
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new Model(null),
+            // Same tick as LeftChatSearchInput's own state: the swap has to start with the input's
+            // expand animation, not a delayer's worth of frames after it
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var session = Session;
+        var isNotifications = NavbarUI.SelectedGroupId == NavbarGroupIds.Unread;
+        var searchPlaceId = await SearchUI.PlaceId.Use(cancellationToken).ConfigureAwait(false);
+        var isSearchOn = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
+        var isShowRecentOn = await SearchUI.IsShowRecentOn.Use(cancellationToken).ConfigureAwait(false);
+        var isSearchOpen = !isNotifications && (isSearchOn || isShowRecentOn);
+        if (isSearchOn && searchPlaceId is null)
+            return new Model(null, isNotifications, isSearchOpen);
+
+        var placeId = NavbarUI.IsPlaceSelected(out var selectedPlaceId)
+            ? selectedPlaceId
+            : NavbarUI.IsPinnedChatSelected(out var pinnedChatId)
+                ? (pinnedChatId as PlaceChatId)?.PlaceId
+                : null;
+
+        var place = placeId is null
+            ? null
+            : await Places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
+        return new Model(place, isNotifications, isSearchOpen);
+    }
+
+    private void OnNavbarSelectedGroupOrTitleChanged(object? s, EventArgs e)
+        => State.Invalidate();
+
+    // Nested types
+
+    public sealed record Model(Place? Place, bool IsNotifications = false, bool IsSearchOpen = false);
 }

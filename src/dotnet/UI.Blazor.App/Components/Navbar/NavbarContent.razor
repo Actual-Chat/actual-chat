@@ -16,7 +16,6 @@
     if (isUnread)
         isChats = false;
     var isTestPages = NavbarUI.SelectedGroupId == NavbarGroupIds.TestPages;
-    // Chats and notifications display the swap through their list; nothing else in here loads
     var hasList = isUnread || isChats;
     var cls = isChats || isUnread ? "navbar-chats" : "navbar-pages";
     var groupKey = isUnread ? "unread"
@@ -27,7 +26,11 @@
 
 <div class="navbar-content">
     <div class="navbar-group @cls">
-        <ContentSwap LayerKey="@groupKey" Class="c-swap" Effect="@ContentSwapEffect.WipeRight">
+        <ContentSwap
+            LayerKey="@groupKey"
+            Class="c-swap"
+            Effect="@ContentSwapEffect.WipeRight"
+            MustPropagateDisplay="true">
             <ChildContent>
                 @if (isUnread) {
                     <NotificationsNavbarWidget/>
