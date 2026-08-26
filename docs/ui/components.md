@@ -890,6 +890,30 @@ both turn a fixed registry into an unbounded one that pins whatever it holds.
 An example of the pair in use is the conversation collapse — see
 [The virtual list](./virtual-list.md) §3.10.
 
+## Tooltips
+
+One `TooltipHost` serves the whole page, driven entirely from `data-*` attributes. The standard
+buttons (`Button`, `ButtonRound`, `ButtonSquare`, `HeaderButton`) render the first three from their
+`Tooltip`, `TooltipPosition` and `TooltipSeverity` parameters; any other element can write them
+directly.
+
+| Attribute | Meaning |
+|-----------|---------|
+| `data-tooltip` | The text. Resolved by walking up from the hovered node, so it can sit on a wrapper. |
+| `data-tooltip-position` | A `FloatingPosition`; defaults to `top`. |
+| `data-tooltip-severity` | `error` paints the pink/red variant. Absent or empty is the default look. |
+| `data-render-script-tooltip-auto-show` | Non-empty shows that text with no pointer involved; empty clears it. |
+| `data-tooltip-auto-show-duration` | Milliseconds for the auto-shown tooltip. Absent picks the default for the severity — 3s normal, 10s error; an explicit `0` keeps it up until the value clears. |
+
+Auto-show is the only path that reaches a touch device, and it is a [render script](#render-scripts):
+its value is the text, so a changed message re-triggers it while a re-render carrying the same one
+does not. Hover always wins for display, and an auto-shown tooltip re-asserts itself once the pointer
+leaves rather than being cancelled by a passing hover. A shown tooltip tracks its trigger's
+attributes, so text and severity stay right even while the pointer never moves.
+
+Prefer it over a component-local tooltip: two tooltip systems over one control overlap, because
+pressing a control on a desktop also hovers it.
+
 ## Modal Components
 
 ### Structure

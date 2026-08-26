@@ -8,6 +8,7 @@
         autofocus="@IsAutofocused"
         data-tooltip="@Tooltip"
         data-tooltip-position="@(TooltipPosition.ToPositionString())"
+        data-tooltip-severity="@(TooltipSeverity.ToSeverityString())"
         @attributes="@AdditionalAttributes"
         @onclick="@OnClick">
     <div class="@ContentClass btn-content" tabindex="-1">
@@ -27,6 +28,7 @@
     [Parameter] public bool IsAutofocused { get; set; }
     [Parameter] public string Tooltip { get; set; } = "";
     [Parameter] public FloatingPosition TooltipPosition { get; set; }
+    [Parameter] public TooltipSeverity TooltipSeverity { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 

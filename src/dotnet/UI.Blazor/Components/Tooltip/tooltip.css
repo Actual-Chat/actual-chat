@@ -24,6 +24,20 @@
         transform: scale(0);
     }
 }
+.ac-tooltip.error {
+    @apply bg-banner-error;
+    @apply text-banner-error;
+    /* A 45deg-rotated arrow can't carry a border on just its two outer sides without knowing the
+       placement, so the frame is drawn as an outline around the whole silhouette, arrow included. */
+    filter:
+        drop-shadow(1px 0 0 var(--border-banner-error))
+        drop-shadow(-1px 0 0 var(--border-banner-error))
+        drop-shadow(0 1px 0 var(--border-banner-error))
+        drop-shadow(0 -1px 0 var(--border-banner-error));
+}
+.ac-tooltip.error .ac-tooltip-arrow {
+    @apply bg-banner-error;
+}
 .ac-tooltip-text {
     @apply truncate;
 }
