@@ -6,6 +6,9 @@ import { HAS_VF_ROTATION_INIT, wrapWithRotation } from '../video-frame-caps';
 const { warnLog } = getLogs('VideoPipeline');
 // Log first, then 1-in-N — prevents flooding when a device-level failure drops every clone.
 const LogEveryN = 30;
+// WebKit's VideoTrackGenerator can stop draining for good — a new <video> on the
+// same track stays frozen too, so only a fresh generator clears it.
+const JamThresholdMs = 1000;
 
 export interface PreviewSinkOptions {
     // iOS Safari's <video> auto-orients a generated (VTG) track to upright on
@@ -18,6 +21,8 @@ export interface PreviewSinkOptions {
     getWriter: () => WritableStreamDefaultWriter<VideoFrame> | null;
     reportFrame?: (frame: VideoFrame) => void | Promise<void>;
     reportPresentation?: (presentation: PreviewFramePresentation) => void;
+    // Writer refused every frame for JamThresholdMs; host should rebuild it.
+    onWriterJam?: () => void;
 }
 
 // The self-preview tap. `forward` takes a clone of the normalized ceiling
@@ -47,13 +52,37 @@ export interface PreviewSink {
 }
 
 export function createPreviewSink(opts: PreviewSinkOptions): PreviewSink {
-    const { isIos, getWriter, reportFrame, reportPresentation } = opts;
+    const { isIos, getWriter, reportFrame, reportPresentation, onWriterJam } = opts;
     let failures = 0;
     let lastReportedRotation: number | null = null;
+    let refusedCount = 0;
+    let firstRefusalAtMs = 0;
     const reportFailure = (where: string, e: unknown): void => {
         failures++;
         if (failures === 1 || failures % LogEveryN === 0)
             warnLog?.log(`previewSink: ${where} failed (#${failures}):`, e);
+    };
+    // Re-arms itself: the window restarts after each report, so a generator that
+    // stays dead re-reports once per JamThresholdMs instead of once ever.
+    const noteWriterRefusal = (): void => {
+        const nowMs = performance.now();
+        if (refusedCount === 0)
+            firstRefusalAtMs = nowMs;
+
+        refusedCount++;
+        const elapsedMs = nowMs - firstRefusalAtMs;
+        if (elapsedMs < JamThresholdMs)
+            return;
+
+        warnLog?.log(
+            `previewSink: writer jammed — ${refusedCount} frames refused over ` +
+            `${Math.round(elapsedMs)}ms; asking the host for a fresh generator`);
+        refusedCount = 0;
+        try {
+            onWriterJam?.();
+        } catch (e) {
+            reportFailure('onWriterJam', e);
+        }
     };
     const reportPresentationOnce = (rotation: number): void => {
         if (!reportPresentation || lastReportedRotation === rotation)
@@ -127,10 +156,14 @@ export function createPreviewSink(opts: PreviewSinkOptions): PreviewSink {
             // Writer back-pressure: drop instead of buffer. The downstream
             // <video> element drains MSTG at its render cadence; if desiredSize
             // is exhausted, the renderer is stalled and queueing here only
-            // delays the same drop while holding a GPU plane.
-            if (writer && writer.desiredSize !== null && writer.desiredSize <= 0)
+            // delays the same drop while holding a GPU plane. A stall that
+            // never clears is a dead generator, not a slow renderer.
+            if (writer && writer.desiredSize !== null && writer.desiredSize <= 0) {
+                noteWriterRefusal();
                 return;
+            }
 
+            refusedCount = 0;
             let clone: VideoFrame;
             try {
                 clone = source.clone();

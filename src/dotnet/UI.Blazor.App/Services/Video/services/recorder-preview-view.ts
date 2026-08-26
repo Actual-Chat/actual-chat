@@ -22,7 +22,7 @@ import {
 } from './bg-canvas';
 import { applyRotationLayout, chooseFit, updateCollapsedIslandAspect } from './tile-fit';
 
-const { infoLog } = getLogs('VideoRecorder');
+const { infoLog, warnLog } = getLogs('VideoRecorder');
 const BG_DRAW_GATE_TOLERANCE_MS = 20;
 
 export interface RecorderPreviewViewOptions {
@@ -37,6 +37,18 @@ export interface RecorderPreviewViewOptions {
     onFirstFrame?: () => void;
     onStartingChange?: (starting: boolean) => void;
     onBlurChange?: (blurActive: boolean) => void;
+}
+
+// A pending play() rejects with AbortError whenever a re-attach swaps srcObject
+// underneath it - routine during recorder startup, and noise that used to reach
+// the console as an unhandled rejection. Anything else is worth seeing.
+function playPreview(videoEl: HTMLVideoElement): void {
+    videoEl.play().catch((e: unknown) => {
+        if (e instanceof DOMException && e.name === 'AbortError')
+            return;
+
+        warnLog?.log('playPreview: play() failed:', e);
+    });
 }
 
 export class RecorderPreviewView {
@@ -288,7 +300,7 @@ export class RecorderPreviewView {
                 videoEl.pause();
             } else {
                 videoEl.srcObject ??= new MediaStream([this.attachedTrack]);
-                void videoEl.play();
+                playPreview(videoEl);
             }
         }
 
@@ -318,7 +330,7 @@ export class RecorderPreviewView {
         const videoEl = this.options.videoEl;
         if (track) {
             videoEl.srcObject = new MediaStream([track]);
-            void videoEl.play();
+            playPreview(videoEl);
             this.videoLoadedDataListener = () => this.fireFirstFrame();
             videoEl.addEventListener('loadeddata', this.videoLoadedDataListener);
         } else {
