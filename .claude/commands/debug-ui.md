@@ -316,6 +316,17 @@ the reload actually pick up the new hashed bundle.
    end. This is the final confirmation that the WASM build behaves
    the same.
 
+**Step 1 is not just a speed tip — it is what keeps a session recoverable.**
+In WASM the browser can end up holding cached assemblies that no longer match
+the ones the server serves. The page then reload-loops on an assembly
+mismatch, and **nothing you can do from inside that tab fixes it**: reloading
+is what is already looping, so an agent driving that page is stuck and the run
+is finished. Server mode has no such state.
+
+If you do hit it, the way out is outside the browser — a hard restart of the
+loop, which purges the WASM build outputs: `touch tmp/server-loop-hard-restart`
+(or `h` in the loop terminal). See `/server-loop` → **Hard restart**.
+
 Mixing in `'a'` (Auto) muddies the picture — the same session ends up
 running partly server-rendered, partly WASM, and "is this a
 server-only bug or a WASM bug?" gets harder to localize.

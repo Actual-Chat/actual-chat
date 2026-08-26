@@ -17,6 +17,14 @@
 # Pressing 'j' in the loop terminal requests exactly the same thing, for when
 # the developer already has the loop terminal focused.
 #
+# Creating tmp/server-loop-hard-restart (or pressing 'h') asks for a hard
+# restart: stop the server, purge the WASM build outputs, then rebuild both
+# steps from scratch. For when the browser caches assemblies that no longer
+# match the server's and the page reload-loops on a mismatch — a state nothing
+# inside the browser can recover from.
+#   pwsh:  New-Item -ItemType File tmp/server-loop-hard-restart -Force
+#   sh:    touch tmp/server-loop-hard-restart
+#
 # Per-step output goes to tmp/server-loop-<step>.log. Stage transitions are
 # appended to tmp/server-loop.log. On any failure, a final marker line
 # "Last step failed, remove this file to restart the loop." is appended to
@@ -70,6 +78,23 @@ $allLoopLogs = @($loopLog, $npmBuildLog, $dotnetBuildLog, $serverRunOutLog, $ser
 # environment (host, WSL, Docker) already shares — but when the developer does
 # have the terminal focused, a keypress beats spelling out a path.
 $rebundleFlag = Join-Path $tmpDir "server-loop-rebundle"
+
+# Sentinel (or 'h') asking for a stop plus a purge of the WASM build outputs
+# before the next iteration. The case it exists for: the browser holds cached
+# assemblies that no longer match the ones the server serves, the page reload-
+# loops on an assembly mismatch, and nothing reachable from inside the browser
+# can recover it — an agent driving that tab is simply stuck. Dropping the
+# stamps alone is not enough, because MSBuild considers the stale outputs
+# up to date; they have to go.
+$hardRestartFlag = Join-Path $tmpDir "server-loop-hard-restart"
+
+# Purged by a hard restart. Scoped to the WASM app on purpose: it is the only
+# output whose staleness the browser can be poisoned by, and wiping all of
+# artifacts/ would turn a 1-minute recovery into a very long one.
+$hardRestartPurgePaths = @(
+    (Join-Path $ScriptDir "artifacts/obj/App.Wasm"),
+    (Join-Path $ScriptDir "artifacts/bin/App.Wasm")
+)
 
 # Passed to every .NET build the loop runs, in every configuration.
 #
@@ -479,7 +504,10 @@ Write-Host "  server-run    $serverRunOutLog (stdout)"
 Write-Host "                $serverRunErrLog (stderr)"
 Write-Host "                $devLog (DevLog)"
 Write-Host "Press 'j' here, or create $rebundleFlag, while the server runs to rebuild the bundle without restarting it."
+Write-Host "Press 'h' here, or create $hardRestartFlag, to stop, purge the WASM build outputs and rebuild from scratch."
 Write-Host ""
+
+$hardRestartRequested = $false
 
 while ($true) {
     Reset-LoopLogs
@@ -487,6 +515,25 @@ while ($true) {
     # covered by Step 1 below — drop it instead of firing a redundant npm build
     # seconds after the fresh one.
     Remove-Item $rebundleFlag -Force -ErrorAction SilentlyContinue
+    # Purge here rather than where it was asked for: the server still held the
+    # files then. Dropping the stamps too, or Steps 1 and 2 would skip and the
+    # purged outputs would never be rebuilt.
+    if ($hardRestartRequested) {
+        $hardRestartRequested = $false
+        Remove-Item $npmStamp, $dotnetStamp -Force -ErrorAction SilentlyContinue
+        foreach ($path in $hardRestartPurgePaths) {
+            if (-not (Test-Path $path)) { continue }
+
+            try {
+                Remove-Item $path -Recurse -Force -ErrorAction Stop
+                Write-LoopLog "Hard restart: purged $path."
+            }
+            catch {
+                Write-LoopLog "Hard restart: could not purge $path - $_"
+            }
+        }
+        Write-LoopLog "Hard restart: stamps dropped, so npm-build and dotnet-build both run below."
+    }
     $failureMessage = $null
 
     # Step 1: npm-build
@@ -573,7 +620,7 @@ while ($true) {
             -ServerArgs       $ServerArgs `
             -StdoutPath       $serverRunOutLog `
             -StderrPath       $serverRunErrLog
-        Write-Host "Keyboard: 'j' = rebundle in place (npm only, server keeps running); any other key = stop the server (forwarded to /health/stop; force-kill after 30s)." -ForegroundColor Cyan
+        Write-Host "Keyboard: 'j' = rebundle in place (npm only, server keeps running); 'h' = hard restart (stop, purge the WASM build outputs, full rebuild); any other key = stop the server (forwarded to /health/stop; force-kill after 30s)." -ForegroundColor Cyan
 
         # Watchdog state: probe /healthz/live once we've learned the port
         # from the MeshWatcher log line. Two consecutive misses
@@ -607,6 +654,9 @@ while ($true) {
                     if ([char]::ToLowerInvariant($key.KeyChar) -eq 'j') {
                         $rebundleRequested = $true
                     }
+                    elseif ([char]::ToLowerInvariant($key.KeyChar) -eq 'h') {
+                        $hardRestartRequested = $true
+                    }
                     elseif (-not $keyStopForceKillAt) {
                         Send-StopSignal
                         $stopRequested = $true
@@ -628,6 +678,21 @@ while ($true) {
             if (Test-Path $rebundleFlag) {
                 Remove-Item $rebundleFlag -Force -ErrorAction SilentlyContinue
                 $rebundleRequested = $true
+            }
+
+            if (Test-Path $hardRestartFlag) {
+                Remove-Item $hardRestartFlag -Force -ErrorAction SilentlyContinue
+                $hardRestartRequested = $true
+            }
+
+            # A hard restart is a stop plus a purge, so it goes down the same
+            # path as a keyboard stop - the purge itself waits for the process
+            # to release the files.
+            if ($hardRestartRequested -and -not $keyStopForceKillAt) {
+                Write-LoopLog "Hard restart requested: stopping the server, then purging the WASM build outputs."
+                Send-StopSignal
+                $stopRequested = $true
+                $keyStopForceKillAt = (Get-Date).AddSeconds(30)
             }
 
             if ($rebundleRequested) {
