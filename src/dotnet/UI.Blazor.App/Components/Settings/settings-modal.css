@@ -42,6 +42,12 @@ body.narrow .close-settings-btn {
 
 /* ── Push to Talk tab ── */
 
+/* The tab content's flex gap reaches its direct children only, so this wrapper has to
+   repeat it - otherwise every tile-topic's -mb-2 lands on the tile below with nothing
+   to cancel it out. */
+.settings-tab .ptt-settings-body {
+    @apply flex-y gap-y-4;
+}
 .settings-tab .ptt-settings-body.off {
     @apply opacity-50;
     @apply pointer-events-none;
