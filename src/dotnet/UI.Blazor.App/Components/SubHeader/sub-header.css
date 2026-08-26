@@ -1,12 +1,10 @@
+/* Same cap and breakpoint as .banner - subheaders and banners share the layout-subheader stack,
+   so a different threshold leaves one overhanging the other between the two breakpoints. */
 sub-header {
+    @apply lg:max-w-192;
     opacity: 0;
     overflow: hidden;
     max-height: 0;
-}
-@media (min-width: 1280px) {
-    sub-header {
-        max-width: 48rem;
-    }
 }
 sub-header.enter {
     animation: showSubHeader 150ms ease-in forwards;
