@@ -339,27 +339,39 @@ body.hoverable .conversation-attachments .image-attachment:hover {
     @apply bg-cr-badge-selected;
     @apply text-cr-badge-selected-text;
 }
-/* Joined live block: the group is the single container - it owns the purple outline, the tint fill,
-   and the rounding, wrapping the sticky header, the scrollable card, the author entries, and the live
-   footer as one box. The tint is the block's own background (no overflow:hidden needed - which is what
-   lets position:sticky author badges and the sticky header work). The outline is a border-box layer,
-   not border-image, which would drop the rounded corners; the opaque bg-01 base carries the tint. */
+/* Joined live block: the group is the single container - it owns the rounding and the opaque bg-01 base,
+   wrapping the sticky header, the scrollable card, the author entries, and the live footer as one box.
+   The violet tint is painted by the ::before overlay below - in FRONT of the sticky header so it can
+   scroll up off it; position:relative anchors that overlay. */
 .virtual-list .c-virtual-container .group.has-joined-live-card,
 .virtual-list .c-virtual-container .group.has-live-block {
+    @apply relative;
     isolation: isolate;
     /* mx-1 matches the 4px horizontal padding on regular conversation .item wrappers, so the live
        block's box lines up with regular conversations and the message hover highlight (same width). */
-    @apply rounded-2xl border border-solid border-transparent mx-1;
-    background:
-        linear-gradient(249deg,
-            rgba(166, 53, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 52%, rgba(166, 53, 255, 0.1) 97%) padding-box,
-        linear-gradient(var(--background-01), var(--background-01)) padding-box,
-        linear-gradient(to bottom,
-            var(--violet-60) 0%, var(--violet-60) 50%, var(--c-live-tint, rgba(166, 53, 255, 0.1)) 100%) border-box;
+    @apply mx-1;
+    @apply rounded-2xl;
+    @apply bg-01;
 }
+/* Tint overlay: the violet tint fading down, painted in FRONT of the sticky live header (z-30 > the
+   header item's z-20) but scrolling with the block. At rest it tints the top; as you scroll it slides up
+   off the pinned opaque header, so the header occludes the transcript cleanly. pointer-events:none keeps
+   the header's Join/expand buttons clickable through it. */
+.virtual-list .c-virtual-container .group.has-joined-live-card::before,
+.virtual-list .c-virtual-container .group.has-live-block::before {
+    @apply content-empty;
+    @apply absolute inset-0 z-30;
+    @apply pointer-events-none;
+    border-radius: inherit;
+    background: linear-gradient(180deg,
+        rgba(166, 53, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 30%, transparent 100%);
+}
+/* overflow:clip (not hidden): clips the block content to the rounded corners just like hidden, but
+   without making the group a scroll container - so the live header's position:sticky still pins against
+   the transcript instead of being trapped inside this group. */
 .virtual-list .c-virtual-container .group.has-live-block {
     @apply px-0;
-    @apply overflow-hidden;
+    overflow: clip;
 }
 
 /* Unjoined (never-attended) live block: the same unified shell, but painted with the flat unjoined
@@ -367,8 +379,7 @@ body.hoverable .conversation-attachments .image-attachment:hover {
    never-attended block - so a leaver's frozen block (which shows the expand chevron, not Join) keeps
    the joined violet tint. The extra .c-lc-join in the :has() also outranks the joined tint rule above,
    so this wins whenever it matches. Its match set is a strict subset of the base shell rule's
-   expanded arm, so mx-1 and the transparent border cascade in from there - only the tint is overridden
-   here. */
+   expanded arm, so mx-1 cascades in from there - only the tint is overridden here. */
 .virtual-list .c-virtual-container .group.has-live-block-join {
     isolation: isolate;
     @apply rounded-2xl;
@@ -378,24 +389,23 @@ body.hoverable .conversation-attachments .image-attachment:hover {
 }
 
 /* Mirrors virtual-list.css's .item.has-conversation-header rule - that one only matches the literal
-   conversation-header class, not this component's own live-conversation-header. Wide screens only:
-   this header is much taller than a regular conversation header, so pinning it on a narrow screen
-   eats too much of the viewport. It scrolls away there; regular headers stay sticky everywhere. */
-body.wide .virtual-list .c-virtual-container .item.has-live-header {
+   conversation-header class, not this component's own live-conversation-header. Sticky lives on the
+   header's list item - its box in the list, the header row alone (no card). A bare position:sticky on
+   the inner .live-conversation-header would be confined to this same item and never pin. Transparent:
+   the block's own top tint shows through, and the pinned header overlaps the content sliding under it. */
+.virtual-list .c-virtual-container .item.has-live-header {
     @apply sticky -top-px z-20;
 }
 
-/* Live conversation header - the block's top row. Carries the same opaque tint fill as the container
-   so it reads as part of the block AND occludes the scrollable card sliding up behind it when pinned.
-   Padding matches the regular conversation header (.conversation-header .bg-wrapper: p-4, min-h-14). */
+/* Live conversation header - the block's top row. Padding matches the regular conversation header
+   (.conversation-header .bg-wrapper: p-4, min-h-14). Opaque bg-01 so the pinned (sticky) header occludes
+   the transcript sliding under it; the violet tint is the group ::before overlay in front, which scrolls
+   up off this header as you scroll. */
 .virtual-list .c-virtual-container .live-conversation-header {
     @apply flex items-center gap-x-3;
     @apply p-4 min-h-14;
     @apply rounded-t-2xl;
-    background:
-        linear-gradient(249deg,
-            rgba(166, 53, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 52%, rgba(166, 53, 255, 0.1) 97%),
-        linear-gradient(var(--background-01), var(--background-01));
+    @apply bg-01;
 }
 /* Unjoined header shares the block's magenta tint instead of the joined violet, so the sticky header,
    body, and faded preview all read as one surface. Keyed on its own Join button. */
