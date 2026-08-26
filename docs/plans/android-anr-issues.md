@@ -18,7 +18,7 @@ Implementation notes (deviations from the plan below):
   launches MainActivity raises the service moments later anyway.
 - Crashlytics (Android) stays — the developer confirmed it's deliberate
   (open question 2 closed: keep).
-- Instrumentation landed: a `start reason: Importance/ImportanceReasonCode`
+- Instrumentation landed: a `Start reason: Importance/ImportanceReasonCode`
   mark at the top of `CreateMauiApp`, an `Application.OnCreate completed`
   mark, and `MauiStartupBreadcrumbs` now buffers marks and flushes them in
   one append off the main thread (250ms debounce; rotation deferred off the

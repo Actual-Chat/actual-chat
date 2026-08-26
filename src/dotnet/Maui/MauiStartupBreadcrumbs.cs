@@ -35,7 +35,7 @@ public static class MauiStartupBreadcrumbs
             _filePath = cacheDir & "startup-breadcrumbs.txt";
             _previousFilePath = cacheDir & "startup-breadcrumbs.prev.txt";
             Volatile.Write(ref _isInitialized, true);
-            Add("process started");
+            Add("Process started");
         }
         catch {
             Volatile.Write(ref _isInitialized, false);

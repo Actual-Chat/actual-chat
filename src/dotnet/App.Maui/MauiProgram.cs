@@ -43,7 +43,7 @@ public static partial class MauiProgram
         using var _1 = Tracer.MethodRegion();
         MauiStartupBreadcrumbs.Add("CreateMauiApp");
 #if ANDROID
-        MauiStartupBreadcrumbs.Add($"start reason: {AndroidUtils.GetProcessStartReason()}");
+        MauiStartupBreadcrumbs.Add($"Start reason: {AndroidUtils.GetProcessStartReason()}");
 #endif
 
         // Parse -t <seconds> for auto-shutdown (used for AOT testing)
@@ -104,7 +104,7 @@ public static partial class MauiProgram
             StaticLog.Factory = app.Services.LoggerFactory();
 
             AppNonScopedServiceStarter.WarmupStaticServices(HostInfo);
-            MauiStartupBreadcrumbs.Add("static services warmed up");
+            MauiStartupBreadcrumbs.Add("Static services warmed up");
 
 #pragma warning disable CA2025
             BlazorWebViewApp.Initialize(() => BuildBlazorViewAppInternal(app));

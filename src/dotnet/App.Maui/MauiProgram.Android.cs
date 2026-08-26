@@ -58,14 +58,14 @@ public static partial class MauiProgram
             android.OnResume(_ => MauiWebView.LogResume());
             android.OnStart(_ => {
                 Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnBecameForeground");
-                MauiStartupBreadcrumbs.Add("foreground");
+                MauiStartupBreadcrumbs.Add("Became foreground");
                 SetBackgroundState(false);
                 if (MainPage.Current is { Content: null } mainPage)
                     BeginDispatchToMainThread(() => mainPage.RecreateWebView());
             });
             android.OnStop(_ => {
                 Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnBecameBackground");
-                MauiStartupBreadcrumbs.Add("background");
+                MauiStartupBreadcrumbs.Add("Became background");
                 SetBackgroundState(true);
             });
             #if false

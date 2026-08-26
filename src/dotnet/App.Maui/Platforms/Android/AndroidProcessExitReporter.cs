@@ -30,7 +30,7 @@ public static class AndroidProcessExitReporter
 
         _ = BackgroundTask.Run(async () => {
             await LoadingUI.WhenAppRendered.ConfigureAwait(false);
-            MauiStartupBreadcrumbs.Add("app rendered");
+            MauiStartupBreadcrumbs.Add("App rendered");
             await Task.Delay(StartDelay).ConfigureAwait(false);
             Report();
         }, Log, "Previous process exit reporting failed");

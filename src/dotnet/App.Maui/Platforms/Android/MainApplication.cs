@@ -9,12 +9,6 @@ namespace ActualChat.App.Maui;
 [Application]
 public sealed class MainApplication : MauiApplication, AndroidX.Work.Configuration.IProvider
 {
-    // On-demand WorkManager init: AndroidManifest.xml removes WorkManagerInitializer to keep its
-    // db + threads off the process-start path, and this keeps WorkManager.getInstance() working
-    // for the transitive dependencies that may still call it.
-    public AndroidX.Work.Configuration WorkManagerConfiguration
-        => new AndroidX.Work.Configuration.Builder().Build();
-
     public MainApplication(IntPtr handle, JniHandleOwnership ownership)
         : base(handle, ownership)
         => Android.Util.Log.Info(MauiDiagnostics.LogTag, "---- Started ----");
@@ -34,6 +28,12 @@ public sealed class MainApplication : MauiApplication, AndroidX.Work.Configurati
         if (!OperatingSystem.IsAndroidVersionAtLeast(31) && MauiPreferences.IsPttArmed)
             AndroidActivitiesForegroundService.TryStartArmed(this);
     }
+
+    // On-demand WorkManager init: AndroidManifest.xml removes WorkManagerInitializer to keep its
+    // db + threads off the process-start path, and this keeps WorkManager.getInstance() working
+    // for the transitive dependencies that may still call it.
+    public AndroidX.Work.Configuration WorkManagerConfiguration
+        => new AndroidX.Work.Configuration.Builder().Build();
 
     protected override MauiApp CreateMauiApp()
         => MauiProgram.CreateMauiApp();
