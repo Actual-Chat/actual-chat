@@ -967,7 +967,7 @@
   "Share_CopyLink": "Copiar enlace",
   "Share_LinkCopied": "¡Enlace copiado!",
   "Share_WhoToShareWith": "¿Con quién quieres compartir?",
-  "Share_AddComment": "Añade un comentario (opcional)",
+  "Share_AddComment": "Añade un comentario",
   "Share_SendToSelected": "Enviar a los contactos seleccionados",
 
   // The iOS share extension - native UIKit, so it renders outside the app's WebView.
@@ -977,7 +977,7 @@
   "ShareExt_Done": "¡Listo!",
   "ShareExt_StartupFailed": "Algo salió mal. Vuelve a intentarlo.",
   "ShareExt_CannotSendToContact": "No puedes enviar a este contacto",
-  "ShareExt_UploadFailed": "Error al subir",
+  "ShareExt_SharingFailed": "Error al compartir",
 
   "Ptt_UseOnThisDevice": "Usar Pulsar para hablar en este dispositivo",
   "Ptt_UseOnThisDeviceCaption": "Si está desactivado, este dispositivo no se despertará, no reproducirá ni transmitirá voz de Pulsar para hablar.",

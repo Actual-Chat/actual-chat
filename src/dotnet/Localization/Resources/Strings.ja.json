@@ -967,7 +967,7 @@
   "Share_CopyLink": "リンクをコピー",
   "Share_LinkCopied": "リンクをコピーしました!",
   "Share_WhoToShareWith": "誰と共有しますか",
-  "Share_AddComment": "コメントを追加(任意)",
+  "Share_AddComment": "コメントを追加",
   "Share_SendToSelected": "選択した連絡先に送信",
 
   // The iOS share extension - native UIKit, so it renders outside the app's WebView.
@@ -977,7 +977,7 @@
   "ShareExt_Done": "完了!",
   "ShareExt_StartupFailed": "問題が発生しました。もう一度お試しください。",
   "ShareExt_CannotSendToContact": "この連絡先には送信できません",
-  "ShareExt_UploadFailed": "アップロードに失敗しました",
+  "ShareExt_SharingFailed": "共有に失敗しました",
 
   "Ptt_UseOnThisDevice": "この端末でプッシュ・トゥ・トークを使う",
   "Ptt_UseOnThisDeviceCaption": "オフにすると、この端末はプッシュ・トゥ・トークの音声で起動・再生・送信しません。",
