@@ -151,6 +151,7 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Users.PhoneAuth_ValidateTotp>();
         CodeKeeper.KeepSerializable<global::ActualChat.Users.PhoneAuth_VerifyPhone>();
         CodeKeeper.KeepSerializable<global::ActualChat.Users.RecaptchaValidationResult>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Users.RpcEndpointReport>();
         CodeKeeper.KeepSerializable<global::ActualChat.Users.ServerApiInfo>();
         CodeKeeper.KeepSerializable<global::ActualChat.Users.SessionTemporals_Set>();
         CodeKeeper.KeepSerializable<global::ActualChat.Users.SystemProperties_InvalidateEverything>();
@@ -1150,6 +1151,12 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.RecaptchaValidationResult>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.RecaptchaValidationResult>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.RecaptchaValidationResult>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.RpcEndpointReason>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.RpcEndpointReason>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.RpcEndpointReason>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.RpcEndpointReport>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.RpcEndpointReport>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.RpcEndpointReport>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.ServerApiInfo>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.ServerApiInfo>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Users.ServerApiInfo>>>>();
@@ -2064,6 +2071,8 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+PhoneAuth_ValidateTotpFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+PhoneAuth_VerifyPhoneFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+RecaptchaValidationResultFormatter, ActualChat.Api.Contracts");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+RpcEndpointReasonFormatter, ActualChat.Api.Contracts");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+RpcEndpointReportFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+ServerApiInfoFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+SessionInfoFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+SessionInfoFullFormatter, ActualChat.Api");
@@ -2226,6 +2235,7 @@ internal partial class ApiContractsAotSource : IAotSource
             (typeof(global::ActualChat.Users.PhoneAuth_ValidateTotp), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Users.PhoneAuth_VerifyPhone), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Users.RecaptchaValidationResult), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Users.RpcEndpointReport), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Users.ServerApiInfo), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Users.SessionTemporals_Set), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Users.SystemProperties_InvalidateEverything), AotTypeKind.Serializable),
