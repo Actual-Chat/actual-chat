@@ -16,6 +16,10 @@ public class NotificationsPanelUI : UIWorkerBase<AppUIHub>, IComputeService, INo
     private readonly StoredState<RetainedRead[]> _reads;
     private readonly MutableState<int> _tick;
     private readonly MutableState<Moment?> _panelOpenedAt;
+    // Last observed unread set per filter, and the chats an explicit dismissal has opted out of
+    // retention. Both are per-filter and only ever touched under _lock.
+    private readonly Dictionary<string, HashSet<ChatId>> _lastUnread = new();
+    private readonly Dictionary<string, HashSet<ChatId>> _suppressed = new();
 
     private ChatListUI ChatListUI => Hub.ChatListUI;
     private Moment Now => Clocks.SystemClock.Now;
@@ -44,6 +48,20 @@ public class NotificationsPanelUI : UIWorkerBase<AppUIHub>, IComputeService, INo
 
     public void Close()
         => _panelOpenedAt.Value = null;
+
+    public void DismissAll()
+    {
+        // Retention exists so the list doesn't vanish under someone who is reading; an explicit
+        // dismissal is the one case where it must not keep chats on screen. The chats it clears go
+        // read only once the server round-trip lands, so clearing _reads alone would race with the
+        // Track loop re-adding them - the currently unread ones are opted out up front instead.
+        lock (_lock) {
+            foreach (var (filterId, unread) in _lastUnread)
+                _suppressed[filterId] = [..unread];
+            if (_reads.Value.Length > 0)
+                _reads.Value = [];
+        }
+    }
 
     // Read chats still retained for the given panel filter under the current retention setting.
     [ComputeMethod]
