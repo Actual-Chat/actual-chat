@@ -1360,7 +1360,7 @@
   "Date_MonthYearPattern": "yyyy年M月",
   "Date_Parts_Format": "{0} {1}",
   "Date_At_Format": "{0} {1}",
-  "Conversation_DurationAt_Format": "{0} {1}",
+  "Conversation_DurationAt_Format": "{0} · {1}",
   "Conversation_StartedAt_Format": "开始于 {0}",
   "Conversation_ShowMore_Format": "显示 {0}/{1}",
   "Conversation_VoiceOnly": "仅语音",

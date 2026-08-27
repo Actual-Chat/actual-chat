@@ -35,6 +35,21 @@ public sealed class DateFormatter(IServiceProvider services) : IFormatProvider
             _ => localTime.ToString(localTime.Year == localNow.Year ? "m" : "d", Formats),
         };
 
+    public string FormatListTime(DateTime localTime, DateTime localNow)
+        => localNow.Date == localTime.Date
+            ? localTime.ToString("t", Formats)
+            : FormatRelativeDate(localTime, localNow);
+
+    public string FormatTimestamp(DateTime localTime, DateTime localNow)
+    {
+        var time = localTime.ToString("t", Formats);
+        return (localNow.Date - localTime.Date).Days switch {
+            0 => time,
+            1 => L.LiveTime_YesterdayAt_Format(time),
+            _ => L.Date_At_Format(FormatRelativeDate(localTime, localNow), time),
+        };
+    }
+
     public string FormatDuration(TimeSpan duration)
     {
         if (duration < TimeSpan.Zero)

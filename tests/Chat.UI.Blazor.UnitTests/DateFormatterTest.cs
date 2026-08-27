@@ -12,6 +12,7 @@ public class DateFormatterTest
     [InlineData(0, "Today")]
     [InlineData(1, "Yesterday")]
     [InlineData(3, "Tue")]
+    [InlineData(8, "Aug 6")]
     [InlineData(30, "Jul 15")]
     [InlineData(400, "Jul 10, 2025")]
     public void EnglishShouldRenderTheRelativeDate(int daysAgo, string expected)

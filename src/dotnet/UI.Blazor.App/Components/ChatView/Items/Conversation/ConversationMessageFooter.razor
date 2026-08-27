@@ -49,15 +49,7 @@
     private string GetConversationTimeInfoString() {
         var now = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now);
         var timeRange = DateFormatter.FormatDuration(EndsAt - StartsAt);
-        var time = StartsAt.ToString("t", DateFormatter);
-        // Elapsed 24h spans rather than calendar days - a message from 23:00 stays
-        // "today" until 23:00 the next day, as it did before.
-        var timestamp = (now - StartsAt).Days switch {
-            0 => time,
-            1 => L.Date_Parts_Format(time, L.Common_Yesterday),
-            < 8 => L.Date_Parts_Format(time, StartsAt.ToString("ddd", DateFormatter)),
-            _ => L.Date_Parts_Format(time, StartsAt.ToString(now.Year == StartsAt.Year ? "m" : "d", DateFormatter)),
-        };
+        var timestamp = DateFormatter.FormatTimestamp(StartsAt, now);
         return L.Conversation_DurationAt_Format(timeRange, timestamp);
     }
 }
