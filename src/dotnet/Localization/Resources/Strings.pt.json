@@ -65,6 +65,7 @@
   "YourAccount_ShareYourContact": "Compartilhar seu contato",
   "YourAccount_MyAvatars": "Meus avatares",
 
+  "AppSettings_Connection": "Conexão",
   "AppSettings_TelemetryDataCollection": "Coleta de dados de telemetria",
   "AppSettings_AllowTelemetry": "Permitir coleta de dados de telemetria",
   "AppSettings_TelemetryAllowed": "A coleta de dados de telemetria está permitida.",

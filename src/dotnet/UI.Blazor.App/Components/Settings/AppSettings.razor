@@ -13,6 +13,7 @@
 @if (HostInfo.HostKind != HostKind.MauiApp) {
     <RenderModeSelector/>
 }
+<RpcEndpoints/>
 <TileTopic Topic="@L.AppSettings_TelemetryDataCollection"/>
 <Tile Class="data-collection-consent">
     <TileItem Click="@OnEnableTelemetryClick">

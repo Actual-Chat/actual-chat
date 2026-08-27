@@ -65,6 +65,7 @@
   "YourAccount_ShareYourContact": "連絡先を共有",
   "YourAccount_MyAvatars": "マイアバター",
 
+  "AppSettings_Connection": "接続",
   "AppSettings_TelemetryDataCollection": "テレメトリデータの収集",
   "AppSettings_AllowTelemetry": "テレメトリデータの収集を許可",
   "AppSettings_TelemetryAllowed": "テレメトリデータの収集が許可されています。",

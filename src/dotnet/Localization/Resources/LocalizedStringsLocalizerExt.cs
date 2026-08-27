@@ -80,6 +80,7 @@ public static class LocalizedStringsLocalizerExt
         public string YourAccount_ShareYourContact => l["YourAccount_ShareYourContact"].Value;
         public string YourAccount_MyAvatars => l["YourAccount_MyAvatars"].Value;
 
+        public string AppSettings_Connection => l["AppSettings_Connection"].Value;
         public string AppSettings_TelemetryDataCollection => l["AppSettings_TelemetryDataCollection"].Value;
         public string AppSettings_AllowTelemetry => l["AppSettings_AllowTelemetry"].Value;
         public string AppSettings_TelemetryAllowed => l["AppSettings_TelemetryAllowed"].Value;

@@ -1,0 +1,75 @@
+@inherits ComputedStateComponent<AppUIHub, ImmutableArray<RpcEndpointMonitor.EndpointInfo>>
+@{
+    var endpoints = State.Value;
+}
+
+@if (endpoints.Length != 0) {
+    <TileTopic Topic="@L.AppSettings_Connection"/>
+    <Tile Class="rpc-endpoints">
+        @foreach (var endpoint in endpoints) {
+            <TileItem>
+                <Icon>
+                    <div class="c-status @GetStatusClass(endpoint)"></div>
+                </Icon>
+                <Content>@endpoint.Host</Content>
+                <Caption>@GetRoundTripText(endpoint)</Caption>
+                <Right>
+                    <i class="@(endpoint.IsSelected ? "icon-checkmark-simple" : "icon-checkmark-simple invisible")"></i>
+                </Right>
+            </TileItem>
+        }
+    </Tile>
+}
+
+@code {
+    private static readonly TimeSpan RefreshPeriod = TimeSpan.FromSeconds(5);
+
+    private CancellationTokenSource? _measureCts;
+    private RpcEndpointMonitor Monitor => field ??= Services.GetRequiredService<RpcEndpointMonitor>();
+    private ILogger Log => field ??= Services.LogFor(GetType());
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        // Measuring costs traffic on every client, so it runs only while this panel is open.
+        _measureCts = new CancellationTokenSource();
+        _ = MeasureLoop(_measureCts.Token);
+    }
+
+    public override async ValueTask DisposeAsync() {
+        _measureCts.CancelAndDisposeSilently();
+        _measureCts = null;
+        await base.DisposeAsync().ConfigureAwait(true);
+    }
+
+    protected override ComputedState<ImmutableArray<RpcEndpointMonitor.EndpointInfo>>.Options GetStateOptions()
+        => new() { InitialValue = Monitor.Endpoints.Value };
+
+    protected override async Task<ImmutableArray<RpcEndpointMonitor.EndpointInfo>> ComputeState(
+        CancellationToken cancellationToken)
+        => await Monitor.Endpoints.Use(cancellationToken).ConfigureAwait(false);
+
+    private async Task MeasureLoop(CancellationToken cancellationToken) {
+        while (!cancellationToken.IsCancellationRequested) {
+            try {
+                await Monitor.MeasureEndpoints(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
+                Log.LogWarning(e, "Failed to measure RPC endpoints");
+            }
+            await Clocks.CpuClock.Delay(RefreshPeriod, cancellationToken).SilentAwait(false);
+        }
+    }
+
+    private static string GetStatusClass(RpcEndpointMonitor.EndpointInfo endpoint)
+        => endpoint.IsReachable switch {
+            true => "on",
+            false => "off",
+            _ => "",
+        };
+
+    private static string GetRoundTripText(RpcEndpointMonitor.EndpointInfo endpoint)
+        // Values, not prose: the dot carries reachability, so no language has to be picked here.
+        => endpoint.MeanRoundTrip is { } roundTrip
+            ? $"{roundTrip.TotalMilliseconds:F0} ms"
+            : endpoint.IsReachable is null ? "…" : "—";
+}

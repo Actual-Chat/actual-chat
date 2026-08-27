@@ -51,8 +51,12 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
     private static readonly string JSSetRpcBaseUriMethod
         = $"{BlazorUICoreModule.ImportName}.BrowserInit.setRpcBaseUri";
     private static readonly TimeSpan PushToJSTimeout = TimeSpan.FromSeconds(2);
+    // Enough to smooth a single unlucky sample without making the reading lag a real change.
+    private const int MeanRoundTripSampleCount = 3;
+    private readonly Dictionary<string, EndpointMeasurement> _measurements = new(StringComparer.OrdinalIgnoreCase);
     private int _selectedVersion = -1;
     private int _verifiedVersion = -1;
+    private int _measuredVersion = -1;
     private string _pushedEndpoint = "";
     private RpcEndpointReport? _pendingReport;
     private Moment _selectedAt;
@@ -65,6 +69,36 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
     private ServerTimeSync? TimeSync => field ??= Services.GetService<ServerTimeSync>();
     private RpcClientPeer? Peer => Hub.RpcHub.GetClientPeer(RpcRef.Default);
     private bool IsBackgroundIdle => ActivityState.State.Value == AppActivityState.BackgroundIdle;
+    private MutableState<ImmutableArray<EndpointInfo>> MutableEndpoints
+        => field ??= StateFactory.NewMutable(GetEndpoints());
+    public IState<ImmutableArray<EndpointInfo>> Endpoints => MutableEndpoints;
+
+    public async Task MeasureEndpoints(CancellationToken cancellationToken)
+    {
+        // The unsized probe is 2 bytes, so this times distance rather than throughput - the
+        // reading stays meaningful on a link too slow to carry the app.
+        if (RpcEndpointSelector.Instance is not { } selector)
+            return;
+
+        var candidates = selector.Candidates;
+        var roundTripTasks = candidates
+            .Select(x => ServerProbe.MeasureRoundTrip(x, RoundTripTimeout, cancellationToken))
+            .ToArray();
+        var roundTrips = await Task.WhenAll(roundTripTasks).ConfigureAwait(false);
+        var current = selector.Current;
+        ImmutableArray<EndpointInfo> endpoints;
+        lock (_measurements) {
+            DropStaleMeasurements(selector);
+            for (var i = 0; i < candidates.Count; i++) {
+                var measurement = GetMeasurement(candidates[i]);
+                measurement.IsReachable = roundTrips[i] is not null;
+                if (roundTrips[i] is { } roundTrip)
+                    measurement.RoundTrip.AppendSample(roundTrip.TotalMilliseconds);
+            }
+            endpoints = [..candidates.Select(x => ToEndpointInfo(x, current))];
+        }
+        MutableEndpoints.Value = endpoints;
+    }
 
     // Protected/internal methods
 
@@ -390,10 +424,71 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
         ReconnectUI.ResetReconnectDelays();
     }
 
+    private ImmutableArray<EndpointInfo> GetEndpoints()
+    {
+        if (RpcEndpointSelector.Instance is not { } selector)
+            return [];
+
+        var current = selector.Current;
+        lock (_measurements) {
+            DropStaleMeasurements(selector);
+            return [..selector.Candidates.Select(x => ToEndpointInfo(x, current))];
+        }
+    }
+
+    private void DropStaleMeasurements(RpcEndpointSelector selector)
+    {
+        // A new network makes every earlier reading meaningless: the same host is a
+        // different distance away once the route out changes.
+        var version = selector.Version;
+        if (version == _measuredVersion)
+            return;
+
+        _measuredVersion = version;
+        _measurements.Clear();
+    }
+
+    private EndpointMeasurement GetMeasurement(string host)
+    {
+        if (!_measurements.TryGetValue(host, out var measurement))
+            _measurements[host] = measurement = new EndpointMeasurement();
+
+        return measurement;
+    }
+
+    private EndpointInfo ToEndpointInfo(string host, string current)
+    {
+        var measurement = _measurements.GetValueOrDefault(host);
+        var meanRoundTrip = measurement is { RoundTrip.SampleCount: > 0 }
+            ? TimeSpan.FromMilliseconds(measurement.RoundTrip.Value)
+            : (TimeSpan?)null;
+        return new EndpointInfo(host,
+            string.Equals(host, current, StringComparison.OrdinalIgnoreCase),
+            measurement?.IsReachable,
+            meanRoundTrip);
+    }
+
     private static double ToMilliseconds(TimeSpan? elapsed)
         => elapsed?.TotalMilliseconds ?? -1;
 
     // Nested types
+
+    /// <summary>
+    /// One RPC endpoint as a support readout: is it the one in use, does it
+    /// answer, and how far away it is.
+    /// </summary>
+    public sealed record EndpointInfo(
+        string Host,
+        bool IsSelected,
+        // Null rather than false until measured, so "not asked yet" doesn't read as "down".
+        bool? IsReachable,
+        TimeSpan? MeanRoundTrip);
+
+    private sealed class EndpointMeasurement
+    {
+        public RunningEma RoundTrip { get; } = new(0, MeanRoundTripSampleCount);
+        public bool? IsReachable { get; set; }
+    }
 
     private sealed record Selection(string Endpoint, TimeSpan? OriginElapsed, TimeSpan? EndpointElapsed);
 
