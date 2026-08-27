@@ -17,6 +17,6 @@ export class PrefetchUI {
 
         debugLog?.log(`request:`, prefetchRef);
         this.backendRef.invokeMethodAsync('OnPrefetchRequest', prefetchRef)
-            .catch(e => warnLog?.log(`request: failed`, e));
+            .catch((e: unknown) => warnLog?.log(`request: failed`, e));
     }
 }
