@@ -4,7 +4,7 @@ using Bunit;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
-public class DeltaTextTest
+public sealed class DeltaTextTest
 {
     private static readonly DateTime Now = new(2026, 8, 14, 21, 5, 0, DateTimeKind.Unspecified);
 
@@ -12,13 +12,13 @@ public class DeltaTextTest
     [InlineData(-3, "just now")]
     [InlineData(3, "just now")]
     [InlineData(-8, "just now")]
-    [InlineData(-30, "few seconds ago")]
+    [InlineData(-30, "few seconds")]
     [InlineData(30, "in few seconds")]
-    [InlineData(-90, "a minute ago")]
+    [InlineData(-90, "a minute")]
     [InlineData(90, "in about 1 minute")]
-    [InlineData(-3 * 60, "few minutes ago")]
+    [InlineData(-3 * 60, "few minutes")]
     [InlineData(3 * 60, "in few minutes")]
-    [InlineData(-7 * 60, "7 minutes ago")]
+    [InlineData(-7 * 60, "7 minutes")]
     [InlineData(7 * 60, "in 7 minutes")]
     [InlineData(-3 * 3600, "18:05")]
     [InlineData(-24 * 3600, "yesterday at 21:05")]
@@ -55,7 +55,7 @@ public class DeltaTextTest
         };
 
         // assert
-        rendered.Should().Equal("только что", "7 мин. назад", "вчера в 21:05", "вс в 21:05");
+        rendered.Should().Equal("только что", "7 минут", "вчера в 21:05", "вс в 21:05");
     }
 
     [Theory]
