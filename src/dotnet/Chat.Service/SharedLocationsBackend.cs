@@ -94,7 +94,8 @@ public class SharedLocationsBackend(IServiceProvider services)
                 if (live is not null)
                     return live;
 
-                var liveCount = await CountLiveShares(dbContext, chatId, now, cancellationToken).ConfigureAwait(false);
+                var liveCount = await CountChatLiveShares(dbContext, authorId, now, cancellationToken)
+                    .ConfigureAwait(false);
                 if (liveCount >= Constants.Location.MaxSharingAuthorsPerChat)
                     throw StandardError.Constraint(
                         $"This chat already has the maximum of {Constants.Location.MaxSharingAuthorsPerChat} "
@@ -158,16 +159,20 @@ public class SharedLocationsBackend(IServiceProvider services)
         return dbShares.Select(x => x.ToModel()).FirstOrDefault(x => x.IsLive(now));
     }
 
-    private static Task<int> CountLiveShares(
+    private static Task<int> CountChatLiveShares(
         ChatDbContext dbContext,
-        ChatId chatId,
+        AuthorId authorId,
         Moment now,
         CancellationToken cancellationToken)
     {
+        var chatId = authorId.ChatId;
         var nowUtc = now.ToDateTime();
         return dbContext.SharedLocations
             .CountAsync(
-                x => x.ChatId == chatId.Value && x.StoppedAt == null && x.CreatedAt + x.Duration > nowUtc,
+                x => x.ChatId == chatId.Value
+                    && x.AuthorId != authorId.Value
+                    && x.StoppedAt == null
+                    && x.CreatedAt + x.Duration > nowUtc,
                 cancellationToken);
     }
 }
