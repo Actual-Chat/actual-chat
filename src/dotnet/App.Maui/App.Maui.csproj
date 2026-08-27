@@ -918,6 +918,52 @@
     </AdditionalAppExtensions>
   </ItemGroup>
 
+  <!-- iOS notification service extension. src/swift/VoxtNotificationService turns chat pushes
+       into communication notifications (chat avatar in place of the app icon). Swift, not .NET,
+       because a UNNotificationServiceExtension gets a hard 24MB memory limit - well under what
+       the managed runtime needs. Everything below mirrors the VoxtActivities block above; see
+       it for why each knob exists. -->
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('osx')) and $(TargetFramework.Contains('-ios'))">
+    <VoxtNotificationServiceDir>$(MSBuildThisFileDirectory)..\..\swift\VoxtNotificationService\</VoxtNotificationServiceDir>
+    <VoxtNotificationServiceSdk>iphoneos</VoxtNotificationServiceSdk>
+    <VoxtNotificationServiceSdk Condition="$(RuntimeIdentifier.StartsWith('iossimulator-'))">iphonesimulator</VoxtNotificationServiceSdk>
+    <VoxtNotificationServiceOutDir>build/$(Configuration)-$(VoxtNotificationServiceSdk)</VoxtNotificationServiceOutDir>
+    <VoxtNotificationServiceId>$(ApplicationId).notification</VoxtNotificationServiceId>
+    <VoxtNotificationServiceTeamId Condition="'$(VoxtNotificationServiceTeamId)' == ''">$(CodesignTeamId)</VoxtNotificationServiceTeamId>
+    <VoxtNotificationServiceIdentity Condition="'$(VoxtNotificationServiceIdentity)' == ''"></VoxtNotificationServiceIdentity>
+    <VoxtNotificationServiceProfile Condition="'$(VoxtNotificationServiceProfile)' == ''"></VoxtNotificationServiceProfile>
+    <!-- A device build has to give the appex its own embedded.mobileprovision: its
+         application-identifier isn't the app's, so the app's profile can't authorize it, and the
+         SDK never provisions an AdditionalAppExtensions appex. CI passes all three explicitly;
+         these Debug defaults are what make a local device build work, and they mirror the
+         CodesignProvision/CodesignKey pair in the Debug|net11.0-ios block above. -->
+    <VoxtNotificationServiceTeamId Condition="'$(VoxtNotificationServiceTeamId)' == '' and '$(VoxtNotificationServiceSdk)' == 'iphoneos' and '$(Configuration)' == 'Debug'">M287G8G83F</VoxtNotificationServiceTeamId>
+    <VoxtNotificationServiceIdentity Condition="'$(VoxtNotificationServiceIdentity)' == '' and '$(VoxtNotificationServiceSdk)' == 'iphoneos' and '$(Configuration)' == 'Debug'">Apple Development</VoxtNotificationServiceIdentity>
+    <VoxtNotificationServiceProfile Condition="'$(VoxtNotificationServiceProfile)' == '' and '$(VoxtNotificationServiceSdk)' == 'iphoneos' and '$(Configuration)' == 'Debug'">chat.actual.dev.app.notification</VoxtNotificationServiceProfile>
+    <!-- Unlike the widget's, these carry a real capability - com.apple.developer.usernotifications.communication -
+         so the App ID behind the profile must have Communication Notifications enabled. -->
+    <VoxtNotificationServiceEntitlements Condition="'$(VoxtNotificationServiceEntitlements)' == '' and '$(IsDevMaui)' == 'true'">Entitlements.dev.plist</VoxtNotificationServiceEntitlements>
+    <VoxtNotificationServiceEntitlements Condition="'$(VoxtNotificationServiceEntitlements)' == ''">Entitlements.prod.plist</VoxtNotificationServiceEntitlements>
+    <MaciOSPrepareForBuildDependsOn>BuildVoxtNotificationService;$(MaciOSPrepareForBuildDependsOn)</MaciOSPrepareForBuildDependsOn>
+  </PropertyGroup>
+
+  <Target Name="BuildVoxtNotificationService" BeforeTargets="_ExtendAppExtensionReferences"
+          Condition="$([MSBuild]::IsOSPlatform('osx')) and $(TargetFramework.Contains('-ios'))">
+    <Exec Command="sh &quot;$(VoxtNotificationServiceDir)build.sh&quot; &quot;$(Configuration)&quot; &quot;$(VoxtNotificationServiceSdk)&quot; &quot;$(VoxtNotificationServiceId)&quot; &quot;$(ApplicationDisplayVersion)&quot; &quot;$(ApplicationVersion)&quot; &quot;$(VoxtNotificationServiceTeamId)&quot; &quot;$(VoxtNotificationServiceIdentity)&quot; &quot;$(VoxtNotificationServiceProfile)&quot; &quot;$(VoxtNotificationServiceEntitlements)&quot;" />
+  </Target>
+
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('osx')) and $(TargetFramework.Contains('-ios'))">
+    <AdditionalAppExtensions Include="$(VoxtNotificationServiceDir)">
+      <Name>VoxtNotificationService</Name>
+      <BuildOutput>$(VoxtNotificationServiceOutDir)</BuildOutput>
+      <!-- The SDK re-signs every embedded appex, and without this it does so with no
+           entitlements at all - which strips the capability and makes updating(from:) fail at
+           runtime while the build stays green. The widget needs no entitlements, so it gets
+           away without it; this one does not. -->
+      <CodesignEntitlements>$(VoxtNotificationServiceDir)$(VoxtNotificationServiceEntitlements)</CodesignEntitlements>
+    </AdditionalAppExtensions>
+  </ItemGroup>
+
   <!-- Native AOT — single source of truth, and the only runtime alternative to CoreCLR:
        the per-platform Release blocks above describe the default CoreCLR + ReadyToRun
        behavior and run regardless of UseNativeAot. This block then overrides what

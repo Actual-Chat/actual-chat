@@ -1,0 +1,40 @@
+name: VoxtNotificationService
+
+options:
+  bundleIdPrefix: chat.actual
+  createIntermediateGroups: true
+  minimumXcodeGenVersion: "2.38.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    # Unsigned on purpose: build.sh overrides these when a team id is supplied, and the
+    # .NET iOS SDK re-signs the .appex when it embeds it.
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: ""
+    DEVELOPMENT_TEAM: ""
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+
+targets:
+  VoxtNotificationService:
+    type: app-extension
+    platform: iOS
+    # Matches App.Maui's SupportedOSPlatformVersion; communication notifications need 15.0.
+    deploymentTarget: "16.4"
+    sources:
+      - path: Service
+        excludes: [Info.plist]
+      - path: Service/Info.plist
+        buildPhase: none
+    settings:
+      base:
+        # PRODUCT_NAME drives the .appex name and must stay in step with the
+        # AdditionalAppExtensions Name metadata; the bundle id is independent of it.
+        PRODUCT_NAME: VoxtNotificationService
+        # Overridden per flavor from build.sh; the app's own id + ".notification".
+        PRODUCT_BUNDLE_IDENTIFIER: chat.actual.dev.app.notification
+        INFOPLIST_FILE: Service/Info.plist
+        SKIP_INSTALL: YES
+        LD_RUNPATH_SEARCH_PATHS: [$(inherited), "@executable_path/Frameworks", "@executable_path/../../Frameworks"]

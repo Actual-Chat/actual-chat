@@ -629,6 +629,20 @@ jobs:
         with:
           base64: ${{ secrets.PROVISIONING_PROFILE_WIDGET_PROD_BASE64 }}
 
+      - name: Install Provisioning Profile (Notification service extension) for DEV
+        id: notification-profile-dev
+        uses: ./.github/actions/install-provisioning-profile
+        if: ${{env.IS_DEV_MAUI == 'true'}}
+        with:
+          base64: ${{ secrets.PROVISIONING_PROFILE_NOTIFICATION_DEV_BASE64 }}
+
+      - name: Install Provisioning Profile (Notification service extension) for PROD
+        id: notification-profile-prod
+        uses: ./.github/actions/install-provisioning-profile
+        if: ${{env.IS_DEV_MAUI == 'false'}}
+        with:
+          base64: ${{ secrets.PROVISIONING_PROFILE_NOTIFICATION_PROD_BASE64 }}
+
       - name: Install the Apple distribution certificate
         env:
           BUILD_CERTIFICATE_BASE64: ${{secrets.APPLE_DISTRIBUTION_CERT_BASE64}}
@@ -662,8 +676,8 @@ jobs:
       - name: Install workloads (pinned to the .NET 11 preview 7 workload band — see #3839)
         run: dotnet workload install maui ios maui-ios --from-rollback-file ${{github.workspace}}/.github/workloads-net11-p7.json
 
-      # VoxtActivities.xcodeproj is generated from project.yml, not committed - the iOS build
-      # (src/swift/VoxtActivities/build.sh) fails without xcodegen.
+      # The Xcode projects under src/swift/ are generated from their project.yml, not
+      # committed - each one's build.sh, invoked by the iOS build, fails without xcodegen.
       - name: Install xcodegen
         run: brew install xcodegen
 
@@ -737,6 +751,9 @@ jobs:
           VoxtActivitiesTeamId: M287G8G83F
           VoxtActivitiesIdentity: Apple Distribution
           VoxtActivitiesProfile: ${{ env.IS_DEV_MAUI == 'true' && steps.widget-profile-dev.outputs.name || steps.widget-profile-prod.outputs.name }}
+          VoxtNotificationServiceTeamId: M287G8G83F
+          VoxtNotificationServiceIdentity: Apple Distribution
+          VoxtNotificationServiceProfile: ${{ env.IS_DEV_MAUI == 'true' && steps.notification-profile-dev.outputs.name || steps.notification-profile-prod.outputs.name }}
         run: |-
           ./run-build.cmd publish-ios --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}" --use-native-aot "${{ github.event.inputs.useNativeAot || 'false' }}"
           pushd artifacts/publish/App.Maui/release_net11.0-ios_ios-arm64
@@ -751,6 +768,7 @@ jobs:
           for appex in Payload/ActualChat.app/PlugIns/*; do
             case "$(basename "$appex")" in
               VoxtActivitiesWidget.appex) entitlements=${{github.workspace}}/src/swift/VoxtActivities/${{env.ENTITLEMENTS_FILE}} ;;
+              VoxtNotificationService.appex) entitlements=${{github.workspace}}/src/swift/VoxtNotificationService/${{env.ENTITLEMENTS_FILE}} ;;
               *) entitlements=${{github.workspace}}/src/dotnet/App.Maui.IosShareExt/${{env.ENTITLEMENTS_FILE}} ;;
             esac
             codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" --entitlements "$entitlements" "$appex"

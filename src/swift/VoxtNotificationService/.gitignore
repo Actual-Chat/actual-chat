@@ -1,0 +1,4 @@
+build/
+VoxtNotificationService.xcodeproj/
+*.xcuserdatad/
+xcuserdata/
