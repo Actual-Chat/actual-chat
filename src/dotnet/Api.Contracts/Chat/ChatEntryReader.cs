@@ -250,14 +250,16 @@ public sealed class ChatEntryReader(
 
             waitForInvalidation:
 
-            // It's presumably the last tile, so we have to wait for some
-            var completedTask = await Task.WhenAny(
-                cTile.WhenInvalidated(cancellationToken),
-                cIdRange.WhenInvalidated(cancellationToken)
+            // It's presumably the last tile, so we have to wait for some.
+            // The wait is scoped so the loser's handler doesn't stay on its computed - the winner
+            // is usually cTile, while cIdRange survives the iteration and would collect one per entry.
+            using var waitCts = cancellationToken.CreateLinkedTokenSource();
+            await Task.WhenAny(
+                cTile.WhenInvalidated(waitCts.Token),
+                cIdRange.WhenInvalidated(waitCts.Token)
                 ).ConfigureAwait(false);
-#pragma warning disable MA0004
-            await completedTask.ConfigureAwait(false); // Will throw an exception on cancellation
-#pragma warning restore MA0004
+            waitCts.CancelAndDisposeSilently();
+            cancellationToken.ThrowIfCancellationRequested();
         }
     }
 

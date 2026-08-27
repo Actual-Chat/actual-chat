@@ -28,7 +28,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
     private Moment CatchUpFrom { get; }
     private ILiveAudioStreams LiveAudioStreams => field ??= Services.GetRequiredService<ILiveAudioStreams>();
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
-    private ILogger Log => field ??= Services.LogFor<ListeningStreamMuxer>();
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     public ChannelReader<MuxedAudioStreamItem> Output => _output.Reader;
 
@@ -111,12 +111,16 @@ public sealed class ListeningStreamMuxer : WorkerBase
                         isColdSnapshot = false;
 
                         var retryTask = _whenRetryNeededSource.Task;
-                        var invalidatedTask = computed.WhenInvalidated(cancellationToken);
+                        // Scoped so a retry win doesn't leave the handler registered on a computed
+                        // this loop is about to replace, pinning it for the muxer's lifetime.
+                        using var waitCts = cancellationToken.CreateLinkedTokenSource();
+                        var invalidatedTask = computed.WhenInvalidated(waitCts.Token);
                         var completedTask = await Task
                             .WhenAny(invalidatedTask, retryTask)
                             .ConfigureAwait(false);
+                        waitCts.CancelAndDisposeSilently();
                         if (ReferenceEquals(completedTask, invalidatedTask))
-                            await invalidatedTask.ConfigureAwait(false);
+                            cancellationToken.ThrowIfCancellationRequested();
                         else
                             ResetRetryNeeded(retryTask);
                     }

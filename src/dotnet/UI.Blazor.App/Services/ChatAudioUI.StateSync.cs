@@ -662,12 +662,12 @@ public partial class ChatAudioUI
                 using var delayCts = ct.CreateLinkedTokenSource();
                 var whenTimeout = Task.Delay(remaining, delayCts.Token);
                 await Task.WhenAny(
-                    cHasActivity.WhenInvalidated(ct),
-                    cHasRecorder.WhenInvalidated(ct),
-                    cIsWatching.WhenInvalidated(ct),
-                    cHasRemoteStreams.WhenInvalidated(ct),
-                    cOwnSourceKind.WhenInvalidated(ct),
-                    cSetting.WhenInvalidated(ct),
+                    cHasActivity.WhenInvalidated(delayCts.Token),
+                    cHasRecorder.WhenInvalidated(delayCts.Token),
+                    cIsWatching.WhenInvalidated(delayCts.Token),
+                    cHasRemoteStreams.WhenInvalidated(delayCts.Token),
+                    cOwnSourceKind.WhenInvalidated(delayCts.Token),
+                    cSetting.WhenInvalidated(delayCts.Token),
                     whenTimeout
                     ).ConfigureAwait(false);
                 delayCts.CancelAndDisposeSilently();

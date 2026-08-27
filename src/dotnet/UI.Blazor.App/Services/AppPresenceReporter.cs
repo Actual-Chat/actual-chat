@@ -39,7 +39,7 @@ public class AppPresenceReporter : UIWorkerBase<AppUIHub>, IComputeService
             }
 
             using var delayCts = cancellationToken.CreateLinkedTokenSource();
-            var whenInvalidated = cIsActive.WhenInvalidated(cancellationToken);
+            var whenInvalidated = cIsActive.WhenInvalidated(delayCts.Token);
             var whenDue = Task.Delay(dueIn, delayCts.Token);
             await Task.WhenAny(whenInvalidated, whenDue).ConfigureAwait(false);
             delayCts.CancelAndDisposeSilently();

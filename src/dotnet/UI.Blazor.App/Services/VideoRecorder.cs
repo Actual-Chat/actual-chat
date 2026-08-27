@@ -1,4 +1,4 @@
-using ActualChat.Streaming;
+﻿using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.Video;
 
@@ -79,6 +79,7 @@ public sealed class VideoRecorder : IAsyncDisposable
     {
         if (_startRequest.HasValue)
             throw StandardError.Constraint("Start request already set");
+
         _startRequest = (chatId, true);
         var codecs = await GetInitialAudienceCodecs(chatId).ConfigureAwait(false);
         // Always-on simulcast: JS startRecording builds up to a 3-tier ladder
@@ -98,6 +99,7 @@ public sealed class VideoRecorder : IAsyncDisposable
     {
         if (_startRequest.HasValue)
             throw StandardError.Constraint("Start request already set");
+
         _startRequest = (chatId, true);
         var codecs = await GetInitialAudienceCodecs(chatId).ConfigureAwait(false);
         await _jsRef
@@ -116,6 +118,7 @@ public sealed class VideoRecorder : IAsyncDisposable
             Log.LogWarning(nameof(OpenGate) + " called but recorder is not in warmup state");
             return;
         }
+
         await _jsRef
             .InvokeVoidAsync("openGate", cancellationToken, maxLayerCount)
             .ConfigureAwait(false);
@@ -129,6 +132,7 @@ public sealed class VideoRecorder : IAsyncDisposable
     {
         if (!IsWarmedUp)
             return;
+
         await _jsRef
             .InvokeVoidAsync("cancelWarmup", cancellationToken)
             .ConfigureAwait(false);
@@ -139,6 +143,7 @@ public sealed class VideoRecorder : IAsyncDisposable
     {
         if (_startRequest.HasValue)
             throw StandardError.Constraint("Start request already set");
+
         _startRequest = (chatId, false);
         var codecs = await GetInitialAudienceCodecs(chatId).ConfigureAwait(false);
         await _jsRef
@@ -318,8 +323,9 @@ public sealed class VideoRecorder : IAsyncDisposable
                                 .ConfigureAwait(false);
                             lastThumbnailOnly = info.ThumbnailViewersOnly;
                         }
+                        using var waitCts = cancellationToken.CreateLinkedTokenSource();
                         try {
-                            await cState.WhenInvalidated(cancellationToken)
+                            await cState.WhenInvalidated(waitCts.Token)
                                 .WaitAsync(DemandReassertPeriod, cancellationToken)
                                 .ConfigureAwait(false);
                         }
@@ -329,6 +335,11 @@ public sealed class VideoRecorder : IAsyncDisposable
                             // happens to change — re-assert the current value instead.
                             lastMask = int.MinValue;
                             lastThumbnailOnly = null;
+                        }
+                        finally {
+                            // The reassert timeout is the common path here, and it would
+                            // otherwise leave a handler registered on cState every period.
+                            waitCts.CancelAndDisposeSilently();
                         }
                     }
                 }
@@ -345,6 +356,7 @@ public sealed class VideoRecorder : IAsyncDisposable
                             "SubscribeToDemand: DemandInfo unavailable, falling back to legacy methods");
                         break;
                     }
+
                     Log.LogWarning(e,
                         "SubscribeToDemand: DemandInfo faulted (attempt {Attempt}), retrying", failures);
                     await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
@@ -401,6 +413,7 @@ public sealed class VideoRecorder : IAsyncDisposable
                         + "falling back to MaxRequestedLayerId");
                     break;
                 }
+
                 Log.LogWarning(e,
                     "SubscribeToLayerDemandLegacy: RequestedLayersMask faulted (attempt {Attempt}), retrying",
                     primaryFailures);
@@ -534,6 +547,7 @@ public sealed class VideoRecorder : IAsyncDisposable
                         .ConfigureAwait(false);
                     return;
                 }
+
                 Log.LogWarning(e,
                     "SubscribeToThumbnailOnlyLegacy: faulted (attempt {Attempt}), retrying", failures);
                 await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
@@ -548,10 +562,12 @@ public sealed class VideoRecorder : IAsyncDisposable
     private async Task SubscribeToVoiceActivity(ChatId chatId, CancellationToken cancellationToken) {
         try {
             bool? lastSpeaking = null;
-            await foreach (var (state, _) in Hub.AudioRecorder.State.Computed.Changes(cancellationToken).ConfigureAwait(false)) {
+            var changes = Hub.AudioRecorder.State.Computed.Changes(cancellationToken);
+            await foreach (var (state, _) in changes.ConfigureAwait(false)) {
                 var speaking = state.IsVoiceActive && state.ChatId == chatId;
                 if (speaking == lastSpeaking)
                     continue;
+
                 lastSpeaking = speaking;
                 await _jsRef.InvokeVoidAsync("setSpeaking", cancellationToken, speaking).ConfigureAwait(false);
             }
@@ -569,8 +585,11 @@ public sealed class VideoRecorder : IAsyncDisposable
                 () => LiveVideoStreams.GetSupportedCodecs(Session, chatId, cancellationToken),
                 cancellationToken).ConfigureAwait(false);
             await foreach (var (codecs, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-                Log.LogInformation("SubscribeToSupportedDecoderCodecs: received codecs=[{Codecs}]", string.Join(", ", codecs));
-                await _jsRef.InvokeVoidAsync("updateSupportedDecoderCodecs", cancellationToken, (object)codecs.ToArray()).ConfigureAwait(false);
+                Log.LogInformation("SubscribeToSupportedDecoderCodecs: received codecs=[{Codecs}]",
+                    string.Join(", ", codecs));
+                await _jsRef
+                    .InvokeVoidAsync("updateSupportedDecoderCodecs", cancellationToken, (object)codecs.ToArray())
+                    .ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }

@@ -319,10 +319,18 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                 var timeout = wakeAt is { } w
                     ? (w - Clocks.ServerClock.Now).Positive()
                     : TimeSpan.FromHours(1);
+                using var waitCts = cancellationToken.CreateLinkedTokenSource();
                 try {
-                    await cInputs.WhenInvalidated(cancellationToken).WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
+                    await cInputs.WhenInvalidated(waitCts.Token)
+                        .WaitAsync(timeout, cancellationToken)
+                        .ConfigureAwait(false);
                 }
                 catch (TimeoutException) { }
+                finally {
+                    // Releases the invalidation handler the timeout path would otherwise leave
+                    // registered on cInputs and on cancellationToken.
+                    waitCts.CancelAndDisposeSilently();
+                }
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                 Log.LogError(e, "Fold governor iteration failed");

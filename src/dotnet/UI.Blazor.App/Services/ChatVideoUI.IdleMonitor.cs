@@ -1,4 +1,4 @@
-using ActualChat.Localization;
+﻿using ActualChat.Localization;
 namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class ChatVideoUI
@@ -32,6 +32,7 @@ public partial class ChatVideoUI
             Log.LogInformation("IdleMonitor[{ChatId}]: IsOwnTranscribingInChat — idRange empty", chatId);
             return false;
         }
+
         const int maxScan = 32;
         var startId = Math.Max(idRange.Start, idRange.End - maxScan);
         var reader = Hub.NewEntryReader(chatId);
@@ -42,7 +43,8 @@ public partial class ChatVideoUI
                 cancellationToken)
             .ConfigureAwait(false);
         Log.LogInformation(
-            "IdleMonitor[{ChatId}]: IsOwnTranscribingInChat — idRange=[{Start}..{End}), scan>={ScanStart}, found={EntryId} streaming={Streaming}",
+            "IdleMonitor[{ChatId}]: IsOwnTranscribingInChat — idRange=[{Start}..{End}), "
+            + "scan>={ScanStart}, found={EntryId} streaming={Streaming}",
             chatId, idRange.Start, idRange.End, startId,
             entry?.Id.ToString() ?? "<none>", entry?.IsContentStreaming);
         return entry is not null;
@@ -116,7 +118,8 @@ public partial class ChatVideoUI
                 var isVadRecent = lastVadActiveAt != default
                     && cpuClock.Now - lastVadActiveAt <= Constants.Video.VadActiveGrace;
                 Log.LogInformation(
-                    "IdleMonitor[{ChatId}]: vadActiveHere={Vad}, lastVadActiveAt={LastVad}, isVadRecent={IsVadRecent}, isOwnTranscribing={IsOwnTranscribing}",
+                    "IdleMonitor[{ChatId}]: vadActiveHere={Vad}, lastVadActiveAt={LastVad}, "
+                    + "isVadRecent={IsVadRecent}, isOwnTranscribing={IsOwnTranscribing}",
                     activeChatId, vadActiveHere, lastVadActiveAt, isVadRecent, cIsOwnTranscribing.Value);
                 if (cIsOwnTranscribing.Value && isVadRecent) {
                     lastVoiceActiveAt = cpuClock.Now;
@@ -138,19 +141,28 @@ public partial class ChatVideoUI
             var wait = (firesAt - cpuClock.Now).Positive();
 
             Log.LogInformation(
-                "IdleMonitor[{ChatId}]: vadActiveHere={Vad}, hasOwnStream={HasOwnStream}, userActiveUntil={UserActiveUntil}, lastVoiceActiveAt={LastVoiceActiveAt}, effectiveActiveUntil={Effective}, inactivityFiresAt={InactivityFiresAt}, sessionFiresAt={SessionFiresAt}, wait={WaitSec}s",
+                "IdleMonitor[{ChatId}]: vadActiveHere={Vad}, hasOwnStream={HasOwnStream}, "
+                + "userActiveUntil={UserActiveUntil}, lastVoiceActiveAt={LastVoiceActiveAt}, "
+                + "effectiveActiveUntil={Effective}, inactivityFiresAt={InactivityFiresAt}, "
+                + "sessionFiresAt={SessionFiresAt}, wait={WaitSec}s",
                 activeChatId, vadActiveHere, hasOwnStream, userActiveUntil, lastVoiceActiveAt, effectiveActiveUntil,
                 inactivityFiresAt, sessionFiresAt, wait.TotalSeconds);
 
             if (wait > IdleMonitorEpsilon) {
                 using var delayCts = cancellationToken.CreateLinkedTokenSource();
-                var whenActiveChatChanges = cActiveChat.WhenInvalidated(cancellationToken);
-                var whenActivityChanges = cActiveUntil.WhenInvalidated(cancellationToken);
-                var whenAudioChanges = cAudioRecorderState.WhenInvalidated(cancellationToken);
-                var whenTranscriptionChanges = cIsOwnTranscribing?.WhenInvalidated(cancellationToken)
+                var whenActiveChatChanges = cActiveChat.WhenInvalidated(delayCts.Token);
+                var whenActivityChanges = cActiveUntil.WhenInvalidated(delayCts.Token);
+                var whenAudioChanges = cAudioRecorderState.WhenInvalidated(delayCts.Token);
+                var whenTranscriptionChanges = cIsOwnTranscribing?.WhenInvalidated(delayCts.Token)
                     ?? TaskExt.NeverEnding(delayCts.Token);
                 var whenTimeout = Task.Delay(wait, delayCts.Token);
-                await Task.WhenAny(whenActiveChatChanges, whenActivityChanges, whenAudioChanges, whenTranscriptionChanges, whenTimeout).ConfigureAwait(false);
+                await Task.WhenAny(
+                    whenActiveChatChanges,
+                    whenActivityChanges,
+                    whenAudioChanges,
+                    whenTranscriptionChanges,
+                    whenTimeout
+                    ).ConfigureAwait(false);
                 delayCts.CancelAndDisposeSilently();
                 cActiveChat = await cActiveChat.Update(cancellationToken).ConfigureAwait(false);
                 continue;
@@ -177,6 +189,7 @@ public partial class ChatVideoUI
                     reason, activeChatId);
                 await EndSession().ConfigureAwait(false);
             }
+
             cActiveChat = await cActiveChat.Update(cancellationToken).ConfigureAwait(false);
         }
     }
@@ -221,6 +234,7 @@ public partial class ChatVideoUI
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
             await Dispatcher.InvokeAsync(() => modalRef.Close(force: true)).ConfigureAwait(false);
         }
+
         return confirmed;
     }
 
