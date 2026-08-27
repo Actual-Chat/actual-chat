@@ -38,17 +38,24 @@ void ServiceWorker.init();
 void (async () => {
     if (window.visualViewport) {
         let vhRafId = 0;
-        window.visualViewport.addEventListener('resize', () => {
+        const updateViewportVars = () => {
             if (vhRafId !== 0)
                 return;
+
             vhRafId = window.requestAnimationFrame(() => {
                 vhRafId = 0;
-                if (!window.visualViewport)
+                const viewport = window.visualViewport;
+                if (!viewport)
                     return;
-                const vh = window.visualViewport.height * 0.01;
-                window.document.documentElement.style.setProperty('--vh', `${vh}px`);
+
+                const style = window.document.documentElement.style;
+                style.setProperty('--vh', `${viewport.height * 0.01}px`);
+                style.setProperty('--vv-top', `${viewport.offsetTop}px`);
             });
-        });
+        };
+        window.visualViewport.addEventListener('resize', updateViewportVars);
+        // The keyboard panning the visual viewport changes offsetTop, and that fires scroll, not resize
+        window.visualViewport.addEventListener('scroll', updateViewportVars);
     }
 
     // Landscape mobile has too little vertical room for inline video + full header,

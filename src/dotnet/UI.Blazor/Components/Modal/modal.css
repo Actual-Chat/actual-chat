@@ -28,6 +28,9 @@ body.narrow .modal-overlay {
 body.device-ios .modal-overlay,
 body.device-android .modal-overlay {
     @apply has-viewport-height;
+    /* The keyboard pans the visual viewport instead of resizing the layout one, and a fixed overlay
+       anchors to the layout viewport - so without this it sits offsetTop above the visible band. */
+    top: var(--vv-top, 0px);
 }
 
 .modal-focus-trap {
