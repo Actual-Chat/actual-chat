@@ -19,8 +19,8 @@ public sealed class DeltaText(IServiceProvider services)
         if (!isFuture)
             delta = TimeSpan.Zero - delta;
 
-        if (delta.TotalSeconds <= 5)
-            return (L.LiveTime_JustNow, TimeSpan.FromSeconds(5) - delta);
+        if (delta.TotalSeconds <= 10)
+            return (L.LiveTime_JustNow, TimeSpan.FromSeconds(10) - delta);
         if (delta.TotalMinutes < 1)
             return (isFuture ? L.LiveTime_InFewSeconds : L.LiveTime_FewSecondsAgo,
                 TimeSpan.FromMinutes(1) - delta);
@@ -47,6 +47,6 @@ public sealed class DeltaText(IServiceProvider services)
         if (!isFuture && date == today.AddDays(-1))
             return (L.LiveTime_YesterdayAt_Format(time), untilTomorrow);
 
-        return (L.Date_At_Format(localTime.ToString("d", DateFormatter), time), TimeSpan.MaxValue);
+        return (L.Date_At_Format(DateFormatter.FormatRelativeDate(localTime, localNow), time), TimeSpan.MaxValue);
     }
 }

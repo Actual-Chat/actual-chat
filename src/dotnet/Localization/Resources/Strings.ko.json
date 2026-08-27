@@ -1360,7 +1360,7 @@
   "Date_MonthYearPattern": "yyyy년 M월",
   "Date_Parts_Format": "{0} {1}",
   "Date_At_Format": "{0} {1}",
-  "Conversation_DurationAt_Format": "{0} {1}",
+  "Conversation_DurationAt_Format": "{0} · {1}",
   "Conversation_StartedAt_Format": "시작: {0}",
   "Conversation_ShowMore_Format": "{1}개 중 {0}개 표시",
   "Conversation_VoiceOnly": "음성만",

@@ -61,10 +61,11 @@ internal static class ContentListPlumbing
     public static string GetItemDate(Moment at, AppUIHub hub)
     {
         var l = hub.StringLocalizer;
+        var formatter = hub.DateFormatter;
         var date = hub.DateTimeConverter.ToLocalTime(at);
         var today = hub.DateTimeConverter.ToLocalTime(hub.Clocks.SystemClock.Now);
-        var pattern = date.Year == today.Year ? l.Date_DayMonthTimePattern : l.Date_DayMonthYearTimePattern;
-        return date.ToString(pattern, hub.DateFormatter);
+        var datePart = date.ToString(date.Year == today.Year ? "m" : "d", formatter);
+        return l.Date_At_Format(datePart, date.ToString("t", formatter));
     }
 
     // Day-level label shown by the floating date-visor — finer than the month group headers.
