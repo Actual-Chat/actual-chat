@@ -65,6 +65,7 @@
   "YourAccount_ShareYourContact": "연락처 공유",
   "YourAccount_MyAvatars": "내 아바타",
 
+  "AppSettings_Connection": "연결",
   "AppSettings_TelemetryDataCollection": "원격 측정 데이터 수집",
   "AppSettings_AllowTelemetry": "원격 측정 데이터 수집 허용",
   "AppSettings_TelemetryAllowed": "원격 측정 데이터 수집이 허용되어 있습니다.",

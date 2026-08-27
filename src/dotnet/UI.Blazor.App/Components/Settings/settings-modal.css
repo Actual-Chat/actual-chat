@@ -104,6 +104,23 @@ body.narrow .close-settings-btn {
     @apply text-02;
 }
 
+/* ── Connection endpoints ── */
+
+/* An unmeasured endpoint takes the icon slot's own text color: --background-03 is
+   the tile background in the dark theme, so a dot painted with it is invisible. */
+.rpc-endpoints .c-status {
+    @apply self-center;
+    @apply w-2 h-2;
+    @apply rounded-full;
+    background-color: currentColor;
+}
+.rpc-endpoints .c-status.on {
+    @apply bg-success;
+}
+.rpc-endpoints .c-status.off {
+    @apply bg-danger;
+}
+
 /* ── Host Switcher ── */
 
 .host-switcher-tile .form-block.with-input-radio .tile-item {

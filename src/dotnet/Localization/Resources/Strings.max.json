@@ -65,6 +65,7 @@
   "YourAccount_ShareYourContact": "Compartilhar seu contato",
   "YourAccount_MyAvatars": "Ảnh đại diện của tôi",
 
+  "AppSettings_Connection": "Соединение",
   "AppSettings_TelemetryDataCollection": "Прикупљање телеметријских података",
   "AppSettings_AllowTelemetry": "Дозволите прикупљање телеметријских података",
   "AppSettings_TelemetryAllowed": "Прикупљање телеметријских података је дозвољено.",

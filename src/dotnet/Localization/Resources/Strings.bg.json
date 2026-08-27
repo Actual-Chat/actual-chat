@@ -65,6 +65,7 @@
   "YourAccount_ShareYourContact": "Споделете своя контакт",
   "YourAccount_MyAvatars": "Моите аватари",
 
+  "AppSettings_Connection": "Връзка",
   "AppSettings_TelemetryDataCollection": "Събиране на телеметрични данни",
   "AppSettings_AllowTelemetry": "Разрешете събирането на телеметрични данни",
   "AppSettings_TelemetryAllowed": "Събирането на телеметрични данни е разрешено.",

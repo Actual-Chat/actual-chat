@@ -65,6 +65,7 @@
   "YourAccount_ShareYourContact": "Sdílet svůj kontakt",
   "YourAccount_MyAvatars": "Moje avatary",
 
+  "AppSettings_Connection": "Připojení",
   "AppSettings_TelemetryDataCollection": "Sběr telemetrických dat",
   "AppSettings_AllowTelemetry": "Povolit sběr telemetrických dat",
   "AppSettings_TelemetryAllowed": "Sběr telemetrických dat je povolen.",

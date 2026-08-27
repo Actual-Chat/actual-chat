@@ -65,6 +65,7 @@
   "YourAccount_ShareYourContact": "Kişi bilginizi paylaşın",
   "YourAccount_MyAvatars": "Avatarlarım",
 
+  "AppSettings_Connection": "Bağlantı",
   "AppSettings_TelemetryDataCollection": "Telemetri Veri Toplama",
   "AppSettings_AllowTelemetry": "Telemetri veri toplamaya izin ver",
   "AppSettings_TelemetryAllowed": "Telemetri veri toplamaya izin verildi.",
