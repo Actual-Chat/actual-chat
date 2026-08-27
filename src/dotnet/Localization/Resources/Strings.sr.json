@@ -1164,7 +1164,7 @@
   "Download_SignInToWebApp": "Пријавите се у wеб апликацију",
   "Download_QrCode_Format": "QR код — {0}",
   "Download_GetApp_Format": "Преузми {0}",
-  "Download_GetAppBanner_Format": "Преузми апликацију {0}",
+  "Download_GetAppBanner_Format": "Инсталирај {0}",
   "Redirect_To": "Преусмјеравање на",
   "Unavailable_Title": "Недоступно",
   "Unavailable_PageNotFound": "Ова страница не постоји.",

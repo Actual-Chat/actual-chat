@@ -1164,7 +1164,7 @@
   "Download_SignInToWebApp": "登录网页版",
   "Download_QrCode_Format": "{0} 二维码",
   "Download_GetApp_Format": "获取 {0}",
-  "Download_GetAppBanner_Format": "获取 {0} 应用",
+  "Download_GetAppBanner_Format": "安装 {0}",
   "Redirect_To": "正在跳转到",
   "Unavailable_Title": "不可用",
   "Unavailable_PageNotFound": "此页面不存在。",

@@ -1164,7 +1164,7 @@
   "Download_SignInToWebApp": "Web アプリにサインイン",
   "Download_QrCode_Format": "{0} の QR コード",
   "Download_GetApp_Format": "{0} を入手",
-  "Download_GetAppBanner_Format": "{0} アプリを入手",
+  "Download_GetAppBanner_Format": "{0} をインストール",
   "Redirect_To": "リダイレクト先:",
   "Unavailable_Title": "利用できません",
   "Unavailable_PageNotFound": "このページは存在しません。",
