@@ -159,28 +159,36 @@ public partial class ChatUI
         var chatLidRangeTask = Chats.GetIdRange(Session, chatId, cancellationToken);
         var readPositionTask = ChatPositions.GetOwn(Session, chatId, ChatPositionKind.Read, cancellationToken);
 
-        var chat = await chatTask.ConfigureAwait(false);
-        ChatSwitchTrace.Mark("ChatUI.Prefetch: Chats.Get done", chat is null ? "null - BAILING" : "ok");
-        if (chat == null) {
-            _ = Task.WhenAll(liveConversationTask, rawLiveTask, blockStateTask, chatLidRangeTask, readPositionTask)
-                .SilentAwait(false);
-            return;
-        }
+        // The anchor comes from the chat list's own ChatInfo whenever that's already there, because
+        // awaiting GetIdRange + GetOwn is itself a round trip on a cold chat - and issuing the tile
+        // warms a round trip late is the one thing this method exists to prevent.
+        var (anchorLid, lidRangeStart, showConversations) = GetPrefetchAnchor(chatId);
+        if (anchorLid is null) {
+            var chat = await chatTask.ConfigureAwait(false);
+            if (chat == null) {
+                _ = Task.WhenAll(liveConversationTask, rawLiveTask, blockStateTask, chatLidRangeTask, readPositionTask)
+                    .SilentAwait(false);
+                return;
+            }
 
-        var chatLidRange = await chatLidRangeTask.ConfigureAwait(false);
-        ChatSwitchTrace.Mark("ChatUI.Prefetch: GetIdRange done", chatLidRange.Format());
-        var readPosition = await readPositionTask.ConfigureAwait(false);
-        var anchorLid = readPosition.EntryLid > 0 ? readPosition.EntryLid : chatLidRange.End - 1;
-        ChatSwitchTrace.Mark("ChatUI.Prefetch: anchor resolved", $"anchor={anchorLid}");
+            var chatLidRange = await chatLidRangeTask.ConfigureAwait(false);
+            var readPosition = await readPositionTask.ConfigureAwait(false);
+            anchorLid = readPosition.EntryLid > 0 ? readPosition.EntryLid : chatLidRange.End - 1;
+            lidRangeStart = chatLidRange.Start;
+            showConversations = chat.IsSummarized ?? false;
+            ChatSwitchTrace.Mark("ChatUI.Prefetch: anchor awaited (ChatInfo miss)", $"anchor={anchorLid}");
+        }
+        else
+            ChatSwitchTrace.Mark("ChatUI.Prefetch: anchor from ChatInfo (no await)", $"anchor={anchorLid}");
         if (anchorLid < 0)
             return;
 
         // Mirrors GetChatDataQuery's navigation case: the anchor lands near the top of the viewport,
         // so most of the load zone sits below it
         var initialLoadLimit = InitialLoadLimit;
-        var anchorTile = IdTileStack.LastLayer.GetTile(anchorLid).Range;
+        var anchorTile = IdTileStack.LastLayer.GetTile(anchorLid.Value).Range;
         var loadZone = new Range<long>(
-            Math.Max(chatLidRange.Start, anchorTile.Start - (initialLoadLimit / 3)),
+            Math.Max(lidRangeStart, anchorTile.Start - (initialLoadLimit / 3)),
             anchorTile.End + (initialLoadLimit * 2 / 3));
         var idTiles = IdTileStack.LastLayer
             .GetCoveringTiles(loadZone)
@@ -191,8 +199,6 @@ public partial class ChatUI
             .GetCoveringTiles(loadZone.Expand(LoadLimit))
             .Where(t => t.Start >= 0)
             .ToList();
-        var showConversations = chat.IsSummarized ?? false;
-
         var metaTask = metaIdTiles
             .Select(t => Chats.GetChatRangeMeta(Session, chatId, t.Range.Start, cancellationToken))
             .Collect(ApiConstants.Concurrency.High, cancellationToken);
@@ -1416,6 +1422,20 @@ public partial class ChatUI
 
     private static void RecordPhase(long elapsedMs, string phase)
         => GetChatItemsDuration.Record(elapsedMs, new KeyValuePair<string, object?>("phase", phase));
+
+    private (long? AnchorLid, long LidRangeStart, bool ShowConversations) GetPrefetchAnchor(ChatId chatId)
+    {
+        // GetExisting rather than a call: this must not start a computation it would then have to await
+        var cChatInfo = Computed.GetExisting(() => Get(chatId, default));
+        if (cChatInfo?.IsConsistent() != true
+            || !cChatInfo.IsValue(out var chatInfo)
+            || chatInfo?.News is not { } news)
+            return (null, 0, false);
+
+        var lidRange = news.TextEntryLidRange;
+        var anchorLid = chatInfo.ReadEntryLid > 0 ? chatInfo.ReadEntryLid : lidRange.End - 1;
+        return (anchorLid, lidRange.Start, chatInfo.Chat.IsSummarized ?? false);
+    }
 
     private Task PrefetchLoadZone(
         ChatId chatId,
