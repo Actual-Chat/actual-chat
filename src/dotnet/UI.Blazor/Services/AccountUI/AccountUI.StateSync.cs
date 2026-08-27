@@ -98,12 +98,26 @@ public partial class AccountUI
             // An error means we couldn't ask, not that the answer is no - offline keeps the session
             if (error != null || sessionInfo is { IsActive: true })
                 continue;
+            // Fusion serves the last cached value while the peer reconnects - and every session
+            // switch disconnects it - so an unsynchronized answer describes the session we replaced.
+            // Precise, because Safe assumes synchronized exactly when disconnected.
+            if (!cSessionInfo.IsSynchronized(ComputedSynchronizer.Precise.Instance))
+                continue;
 
             Log.LogWarning("Session is no longer valid - replacing it");
             // Recreating the WebView while the first scope is still initializing leaves a
             // half-disposed scope with a disconnected JS runtime, so let it finish rendering first.
             await Hub.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-            await ReloadUI.ReplaceSession(cancellationToken).ConfigureAwait(false);
+            var isReplaced = await ReloadUI
+                .ReplaceSession(sessionInfo?.Session, cancellationToken)
+                .ConfigureAwait(false);
+            if (!isReplaced) {
+                // The session we saw as dead isn't the current one anymore, so this was a cached
+                // answer from before someone else replaced it - wait for one that isn't.
+                Log.LogWarning("Session was already replaced - that answer was a stale one");
+                continue;
+            }
+
             return; // The reload owns everything past this point
         }
     }

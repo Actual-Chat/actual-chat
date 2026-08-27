@@ -9,14 +9,12 @@ public sealed class MauiSession(IServiceProvider services)
 {
     private const string SessionStorageKey = "Fusion.SessionId";
     private static readonly Tracer Tracer = Tracer.Default[nameof(MauiSession)];
-    private static ILogger? _log;
-    private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<MauiSession>();
-
     private static readonly Lock Lock = new();
     // Validate-and-replace can be driven from more than one place, and each call to the server mints
     // its own session - without this two of them race and the resolver and the storage end up split.
     private static readonly SemaphoreSlim ReplaceLock = new(1, 1);
     private static Task<Session?>? _readSessionTask;
+    private static ILogger Log => field ??= StaticLog.Factory.CreateLogger<MauiSession>();
 
     private IServiceProvider Services { get; } = services;
     private TrueSessionResolver TrueSessionResolver { get; } = services.GetRequiredService<TrueSessionResolver>();
@@ -66,17 +64,22 @@ public sealed class MauiSession(IServiceProvider services)
         });
     }
 
-    public async Task Replace(CancellationToken cancellationToken)
+    public async Task<bool> Replace(Session? invalidSession, CancellationToken cancellationToken)
     {
         if (!TrueSessionResolver.HasSession)
-            return;
+            return false;
 
-        var invalidSession = TrueSessionResolver.Session;
+        // Callers learn a session is invalid from a compute method, which Fusion may answer from its
+        // cache while the peer reconnects - so "invalid" can name a session we already replaced.
+        invalidSession ??= TrueSessionResolver.Session;
+        if (TrueSessionResolver.Session != invalidSession)
+            return false;
+
         await ReplaceLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
             // Someone else replaced it while we were waiting for the lock
             if (TrueSessionResolver.Session != invalidSession)
-                return;
+                return false;
 
             var session = await MobileSessions
                 .CreateSession(MauiSettings.AppUserAgent, cancellationToken)
@@ -86,6 +89,7 @@ public sealed class MauiSession(IServiceProvider services)
             await SwitchTo(session).ConfigureAwait(false);
             await Store(session).ConfigureAwait(false);
             Log.LogInformation("Replaced an invalid Session");
+            return true;
         }
         finally {
             ReplaceLock.Release();
@@ -104,6 +108,7 @@ public sealed class MauiSession(IServiceProvider services)
             // Ignored, see:
             // - https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
         }
+
         return Task.CompletedTask;
     }
 
@@ -157,6 +162,7 @@ public sealed class MauiSession(IServiceProvider services)
             // TODO: configure selective backup, to prevent app crashes after re-installing
             // https://learn.microsoft.com/en-us/xamarin/essentials/secure-storage?tabs=android#selective-backup
         }
+
         return null;
     }
 

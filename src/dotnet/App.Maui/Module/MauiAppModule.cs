@@ -43,7 +43,8 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         fusion.AddService<AccountUI, MauiAccountUI>(ServiceLifetime.Scoped);
 
         // UI
-        services.AddSingleton<ScopedServicesAccessor>(_ => static () => TryGetScopedServices(out var c) ? c : null); // Scoped in WASM/SSB, singleton in MAUI
+        // Scoped in WASM/SSB, singleton in MAUI
+        services.AddSingleton<ScopedServicesAccessor>(_ => static () => TryGetScopedServices(out var c) ? c : null);
         services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c.UIHub()));
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c.UIHub()));
         services.AddScoped<KeepWebViewAliveUI>(c => new (c.UIHub()));
@@ -59,8 +60,9 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<ExternalMapOpener>(c => new MauiMapOpener(c.AppUIHub()));
 #endif
         services.AddScoped<IMediaMetadataUI>(c => new MediaMetadataUI(c.AppUIHub()));
-        services.AddSingleton<ReloadUI>(c => new MauiReloadUI(c)); // Replaces scoped ReloadUI
-        services.AddSingleton<BackgroundStateTracker>(_ => new MauiBackgroundStateTracker()); // Replaces scoped WebBackgroundStateTracker
+        services.AddScoped<ReloadUI>(c => new MauiReloadUI(c)); // Replaces base ReloadUI
+        // Replaces scoped WebBackgroundStateTracker
+        services.AddSingleton<BackgroundStateTracker>(_ => new MauiBackgroundStateTracker());
         services.AddSingleton<ThermalTracker>(c => new MauiThermalTracker(c)); // Replaces scoped WebThermalTracker
         services.AddSingleton<MauiTestPage.IMauiTestPageBackend>(_ => new MauiTestPageBackend());
 
