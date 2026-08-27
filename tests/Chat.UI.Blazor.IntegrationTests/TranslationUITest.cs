@@ -173,6 +173,33 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     }
 
     [Fact]
+    public async Task MustNotTranslateOwnStreamingEntry()
+    {
+        // arrange
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15).Debuggable());
+        var cancellationToken = cts.Token;
+        var chatId = await CreateChat(cancellationToken);
+        await TranslationUI.SetTargetLanguage(chatId, Languages.English, cancellationToken);
+        await TranslationUI.SetIsOn(chatId, true, cancellationToken);
+
+        // act
+        var otherEntry = await AliceTester
+            .CreateStreamingEntry(chatId, Languages.French, cancellationToken: cancellationToken);
+        var ownEntry = await BobTester
+            .CreateStreamingEntry(chatId, Languages.French, cancellationToken: cancellationToken);
+
+        // assert
+        await AssertMustTranslate(otherEntry.ChatEntrySlim, true);
+        await AssertMustTranslate(ownEntry.ChatEntrySlim, false);
+
+        // act
+        ownEntry = await BobTester.FinalizeStreamingEntry(ownEntry, "Bonjour!", cancellationToken);
+
+        // assert - own messages are still translated once they stop streaming
+        await AssertMustTranslate(ownEntry.ChatEntrySlim, true);
+    }
+
+    [Fact]
     public async Task ShouldTranslateHistoricalTranscribedMessages()
     {
         // arrange
