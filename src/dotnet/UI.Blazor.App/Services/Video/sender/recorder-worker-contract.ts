@@ -27,6 +27,9 @@ export interface WireSafeRecorderConfig {
     normalizeSize?: { width: number; height: number };
     // Sender downscaler backend (diagnostics toggle). Defaults to 'webgl'.
     downscalerMode?: DownscalerMode;
+    // Diagnostics: raw encoder-fail-injection value ('<category>[:worker]') —
+    // threaded from main because workers can't read localStorage.
+    encoderFailInjection?: string;
     keyframeIntervalFrames: number;
     maxKeyFrameIntervalMs?: number;
     // Idle keepalive cadence: re-emit the last captured frame when the source
@@ -79,7 +82,12 @@ export interface PreviewTrace {
 }
 
 // Structural subset of `AppConstants` — anything assignable to AppConstants fits.
-export interface AppConstantsLike { readonly appName: string; readonly prodHost: string; readonly video: unknown; readonly audio: unknown }
+export interface AppConstantsLike {
+    readonly appName: string;
+    readonly prodHost: string;
+    readonly video: unknown;
+    readonly audio: unknown;
+}
 
 // Methods ordered by lifecycle:
 //   init → connectivity → source → run → query → stop → dispose.

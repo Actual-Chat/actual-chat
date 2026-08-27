@@ -63,11 +63,13 @@ function makeArrived(stats: PlayerStats, isKeyFrame: boolean, index = 0): Arrive
     };
 }
 
-function makeBridge(): { bridge: VideoDecoderBridge; decoders: MockDecoder[]; clock: { now: number } } {
+function makeBridge(
+    codec = 'avc1.640028',
+): { bridge: VideoDecoderBridge; decoders: MockDecoder[]; clock: { now: number } } {
     const decoders: MockDecoder[] = [];
     const clock = { now: 0 };
     const bridge = new VideoDecoderBridge({
-        initialConfig: { codec: 'avc1.640028' },
+        initialConfig: { codec },
         createDecoder: handlers => {
             const d = new MockDecoder(handlers);
             decoders.push(d);
@@ -223,5 +225,31 @@ describe('VideoDecoderBridge', () => {
         // assert
         expect(unpairedCloseCount).toBe(1);
         expect(stats.decodedReadyCount).toBe(1);
+    });
+
+    it('configures VP9 from a description-less keyframe', () => {
+        // arrange: VP9 has no out-of-band config record, so the wire never carries one
+        const { bridge, decoders } = makeBridge('vp09.00.41.08');
+        const stats = createEmptyPlayerStats();
+
+        // act
+        bridge.submit(makeArrived(stats, true, 0));
+
+        // assert
+        expect(decoders[0].state).toBe('configured');
+        expect(decoders[0].decodeCalls).toBe(1);
+    });
+
+    it('keeps requiring a description for HEVC', () => {
+        // arrange
+        const { bridge, decoders } = makeBridge('hev1.1.6.L120.B0');
+        const stats = createEmptyPlayerStats();
+
+        // act
+        bridge.submit(makeArrived(stats, true, 0));
+
+        // assert
+        expect(decoders[0].state).toBe('unconfigured');
+        expect(decoders[0].decodeCalls).toBe(0);
     });
 });

@@ -66,9 +66,10 @@ interface PendingDecode {
 }
 
 // HEVC (hev1/hvc1) needs a description; AVC and AV1 inline codec parameters in
-// the bytestream and can configure without one.
+// the bytestream, and VP9 has no out-of-band config record at all — all three
+// configure without one.
 function canConfigureWithoutDescription(codec: string): boolean {
-    return codec.startsWith('avc1') || codec.startsWith('av01');
+    return codec.startsWith('avc1') || codec.startsWith('av01') || codec.startsWith('vp09');
 }
 
 // Owns the WebCodecs decoder lifecycle and the push→pull bridge: holds the

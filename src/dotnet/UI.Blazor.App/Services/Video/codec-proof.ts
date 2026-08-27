@@ -2,11 +2,19 @@ import { getLogs } from 'logging';
 
 const { infoLog } = getLogs('VideoPipeline');
 
-export const IS_CODEC_PROOF_ENABLED = false;
+// Encoder proof is on: with h264 runtime-excludable (Firefox, bugzil.la/1918769)
+// it's the guard that keeps a transient failure of an already-shipping codec
+// from permanently excluding it mid-session. Decoder proof stays off.
+export const IS_ENCODER_CODEC_PROOF_ENABLED = true;
+export const IS_DECODER_CODEC_PROOF_ENABLED = false;
 export const FramesUntilCodecProven = 10;
 
-export function isCodecProofEnabled(): boolean {
-    return IS_CODEC_PROOF_ENABLED;
+export function isEncoderCodecProofEnabled(): boolean {
+    return IS_ENCODER_CODEC_PROOF_ENABLED;
+}
+
+export function isDecoderCodecProofEnabled(): boolean {
+    return IS_DECODER_CODEC_PROOF_ENABLED;
 }
 
 // Codec categories ('h264' | 'hevc' | 'av1' | 'vp9') we've already encoded or
@@ -18,47 +26,51 @@ const disabledEncoderProofLogged = new Set<string>();
 const disabledDecoderProofLogged = new Set<string>();
 
 export function markEncoderCodecProven(category: string): void {
-    if (!isCodecProofEnabled()) {
+    if (!isEncoderCodecProofEnabled()) {
         if (!disabledEncoderProofLogged.has(category)) {
             disabledEncoderProofLogged.add(category);
             infoLog?.log(`Encoder codec '${category}' proof ignored - codec-proof is disabled`);
         }
         return;
     }
+
     if (provenEncoderCodecs.has(category))
         return;
+
     infoLog?.log(`Encoder codec '${category}' proven - exclusion suppressed for the rest of the session`);
     provenEncoderCodecs.add(category);
 }
 
 export function isEncoderCodecProven(category: string): boolean {
-    return isCodecProofEnabled() && provenEncoderCodecs.has(category);
+    return isEncoderCodecProofEnabled() && provenEncoderCodecs.has(category);
 }
 
 export function getProvenEncoderCodecs(): string[] {
-    return isCodecProofEnabled() ? [...provenEncoderCodecs] : [];
+    return isEncoderCodecProofEnabled() ? [...provenEncoderCodecs] : [];
 }
 
 export function markDecoderCodecProven(category: string): void {
-    if (!isCodecProofEnabled()) {
+    if (!isDecoderCodecProofEnabled()) {
         if (!disabledDecoderProofLogged.has(category)) {
             disabledDecoderProofLogged.add(category);
             infoLog?.log(`Decoder codec '${category}' proof ignored - codec-proof is disabled`);
         }
         return;
     }
+
     if (provenDecoderCodecs.has(category))
         return;
+
     infoLog?.log(`Decoder codec '${category}' proven - exclusion suppressed for the rest of the session`);
     provenDecoderCodecs.add(category);
 }
 
 export function isDecoderCodecProven(category: string): boolean {
-    return isCodecProofEnabled() && provenDecoderCodecs.has(category);
+    return isDecoderCodecProofEnabled() && provenDecoderCodecs.has(category);
 }
 
 export function getProvenDecoderCodecs(): string[] {
-    return isCodecProofEnabled() ? [...provenDecoderCodecs] : [];
+    return isDecoderCodecProofEnabled() ? [...provenDecoderCodecs] : [];
 }
 
 export interface CodecProofTracker {
@@ -112,7 +124,7 @@ class AlwaysUnprovenCodecProofTracker implements CodecProofTracker {
 export function createCodecProofTracker(
     framesUntilProven: number = FramesUntilCodecProven,
 ): CodecProofTracker {
-    return isCodecProofEnabled()
+    return isDecoderCodecProofEnabled()
         ? new TopLayerCodecProofTracker(framesUntilProven)
         : new AlwaysUnprovenCodecProofTracker();
 }

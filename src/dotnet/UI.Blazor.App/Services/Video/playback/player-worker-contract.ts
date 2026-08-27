@@ -25,7 +25,7 @@ export interface PlayerWorkerOptions {
     // -- decode --
     // First keyframe's description (if present) is merged in by the
     // `decode` operator before configure(). Codec-only is OK for
-    // AVC/AV1; HEVC needs the wire to deliver one.
+    // AVC/AV1/VP9; HEVC needs the wire to deliver one.
     initialDecoderConfig: {
         codec: string;
         codedWidth?: number;

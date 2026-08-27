@@ -13,6 +13,10 @@ import {
     getCaptureFpsOverride as getCaptureFpsOverrideImpl,
     setCaptureFpsOverride as setCaptureFpsOverrideImpl,
 } from '../../Services/Video/capture-fps-override';
+import {
+    getEncoderFailInjection as getEncoderFailInjectionImpl,
+    setEncoderFailInjection as setEncoderFailInjectionImpl,
+} from '../../Services/Video/encoder-fail-injection';
 import { ServerClock } from 'clocks';
 
 export { collectPresentRate } from './present-rate-meter';
@@ -36,7 +40,9 @@ export function collectServerClockDiagnostics(): { offsetMs: number } {
 
 export async function collectRemoteStreamDiagnostics(streamId: string): Promise<RemoteStreamDiagnostics | null> {
     const player = getActivePlayers().get(streamId);
-    if (!player) return null;
+    if (!player)
+        return null;
+
     return player.getDiagnosticsAsync();
 }
 
@@ -85,6 +91,7 @@ export interface VideoDebugSettings {
     estBandwidthMultiplier: number;
     downscalerMode: DownscalerMode;
     captureFpsOverride: number | null;
+    encoderFailInjection: string;
 }
 
 export function getVideoDebugSettings(): VideoDebugSettings {
@@ -95,6 +102,7 @@ export function getVideoDebugSettings(): VideoDebugSettings {
         estBandwidthMultiplier: getBandwidthMultiplier(),
         downscalerMode: getDownscalerModeImpl(),
         captureFpsOverride: getCaptureFpsOverrideImpl(),
+        encoderFailInjection: getEncoderFailInjectionImpl(),
     };
 }
 
@@ -110,6 +118,10 @@ export function setVideoDebugForceH264Only(enabled: boolean): void {
 
 export function setVideoDebugDownscalerMode(mode: DownscalerMode): void {
     setDownscalerModeImpl(mode);
+}
+
+export function setVideoDebugEncoderFailInjection(raw: string): void {
+    setEncoderFailInjectionImpl(raw);
 }
 
 export function setVideoDebugMaxOutboundLayerCount(layerCount: number | null): void {
@@ -168,13 +180,16 @@ function normalizeLayerCount(layerCount: number | null): number | null {
         return null;
     if (layerCount < 1 || layerCount > 3)
         return null;
+
     return layerCount;
 }
 
 function getBandwidthMultiplier(): number {
     try {
         const raw = globalThis.localStorage.getItem(EST_BANDWIDTH_MULTIPLIER_KEY);
-        if (raw === null) return 1;
+        if (raw === null)
+            return 1;
+
         const v = Number(raw);
         return Number.isFinite(v) && v > 0 ? v : 1;
     } catch {

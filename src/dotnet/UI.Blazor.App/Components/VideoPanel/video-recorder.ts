@@ -29,7 +29,6 @@
 import {
     AC,
     VIDEO,
-    getVideoCodecEfficiency,
     getVideoLayerBitrateKbps,
     getVideoLayerBitratesKbps,
     kbpsToBitsPerSecond,
@@ -53,6 +52,7 @@ import {
     getSoftwareH264Codec,
     getCodecCategory,
     getActiveEncoderCategoriesByPriority,
+    listEncoderCandidatesByEfficiency,
     probeEncoder,
     excludeEncoderCodec,
     isEncoderCodecExcluded,
@@ -60,6 +60,7 @@ import {
     markEncoderCodecProven,
     type CodecInfo,
 } from '../../Services/Video/codec-support';
+import { getEncoderFailInjection } from '../../Services/Video/encoder-fail-injection';
 import {
     buildLadder,
     type LayerConfig,
@@ -125,6 +126,11 @@ const RECOVER_NOW_TIMEOUT_MS = 15_000;
 // Kept free of codec/encoder/internals — actionable only.
 const USER_FACING_RESTART_MESSAGE =
     'Please restart the app or device to be able to use video.';
+// Shown when no WebCodecs encoder can be initialized in this browser at all —
+// e.g. Firefox whose H.264 encoder fails to configure (bugzil.la/1918769) with
+// no accepted fallback codec. A restart won't help, so name the real way out.
+const USER_FACING_NO_ENCODER_MESSAGE =
+    'Video encoding is not supported in this browser. Please try another browser.';
 
 interface PreviewTrackGenerator {
     track: MediaStreamTrack;
@@ -880,6 +886,9 @@ export class VideoRecorder {
             this.supportedEncoderCategories = this.extractEncoderCategories(supportedCodecs);
 
             const codecString = this.pickInitialCodec(supportedCodecs, audienceCodecs, probeSize);
+            if (!codecString)
+                throw new Error(USER_FACING_NO_ENCODER_MESSAGE);
+
             const codecInfo = supportedCodecs.find(c => c.codec === codecString);
             this.currentCodecString = codecString;
             this.currentCodecHardwareAccel = codecInfo?.hardwareAccelerated ?? false;
@@ -1261,7 +1270,11 @@ export class VideoRecorder {
                     warnLog?.log(
                         `All probe attempts failed (initialPick=${initialPick}) — ` +
                         `aborting startRecording, HW+SW encoders appear unavailable`);
-                    throw new Error(USER_FACING_RESTART_MESSAGE);
+                    // An excluded h264 means configure() itself is broken (a
+                    // browser-level gap, not a wedged GPU) — restarting won't fix it.
+                    throw new Error(isEncoderCodecExcluded('h264')
+                        ? USER_FACING_NO_ENCODER_MESSAGE
+                        : USER_FACING_RESTART_MESSAGE);
                 }
             }
             this.currentHardwareAcceleration = chosenHwAccel;
@@ -1386,6 +1399,9 @@ export class VideoRecorder {
             };
             const targetSize: Size = screenTopByTier[tierCap];
             const bestCodecString = this.pickInitialCodec(supportedCodecs, audienceCodecs, targetSize);
+            if (!bestCodecString)
+                throw new Error(USER_FACING_NO_ENCODER_MESSAGE);
+
             const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
 
             const screenCastLadder = buildLadder({
@@ -1502,6 +1518,11 @@ export class VideoRecorder {
 
         const pickedCodecString = this.pickBestCodecByEfficiency(this.supportedCodecs, codecs)
             ?? getDefaultCodec(this.supportedCodecs, this.cameraWidth || 1280, this.cameraHeight || 720);
+        if (!pickedCodecString) {
+            warnLog?.log('updateSupportedDecoderCodecs: no eligible codec left, keeping current codec');
+            return;
+        }
+
         const pickedCategory = getCodecCategory(pickedCodecString);
         const currentCategory = getCodecCategory(this.currentCodecString);
 
@@ -2168,6 +2189,7 @@ export class VideoRecorder {
             encoderConfigs,
             normalizeSize,
             downscalerMode: getDownscalerMode(),
+            encoderFailInjection: getEncoderFailInjection() || undefined,
             // Frame-counted 3s GOP: thermal fps pacing stretches it in wall
             // time (keyframe load relaxes with it); PLI covers joins/upgrades.
             // The 5s wall cap bounds a lost-PLI join/decoder-reset to <=5s black.
@@ -2256,12 +2278,17 @@ export class VideoRecorder {
                 refreshedCodecs,
                 this.audienceCodecs,
                 { width: w, height: h });
-            if (nextCodec === this.currentCodecString) {
+            if (!nextCodec || nextCodec === this.currentCodecString) {
+                // No alternative codec exists — retrying the same codec is a
+                // guaranteed loop (its init failure is deterministic), so
+                // escalate straight to the SW fallback / fatal error instead
+                // of burning recovery attempts.
                 warnLog?.log(
-                    `repickCodecAndRestart: re-pick returned same codec ${nextCodec} ` +
-                    `— excluded category may already be h264 or no fallback exists; ` +
-                    `falling back to scheduleRecovery`);
-                this.scheduleRecovery(reason);
+                    `repickCodecAndRestart: re-pick returned ${nextCodec ?? 'nothing'} ` +
+                    `(current ${this.currentCodecString}) — escalating to encoder fallback`);
+                if (!await this.engageEncoderFallback(reason))
+                    void this.blazorRef.invokeMethodAsync('OnRecordingError', USER_FACING_NO_ENCODER_MESSAGE);
+
                 return;
             }
             const prevCodec = this.currentCodecString;
@@ -2315,7 +2342,7 @@ export class VideoRecorder {
         this.recoveryScheduled = true;
         this.recoveryAttempts++;
         // recoveryAttempts is reset to 0 by the recorder-health monitor as soon
-        // as a successful bundle ships (see ~line 1557). Crossing the cap means
+        // as a successful bundle ships (see reportRecorderStats). Crossing the cap means
         // every attempt since the last success has failed — surface a fatal
         // error to the user instead of looping forever.
         if (this.recoveryAttempts > MAX_RECOVERY_ATTEMPTS) {
@@ -2377,7 +2404,8 @@ export class VideoRecorder {
             return false;
 
         const currentCategory = getCodecCategory(this.currentCodecString);
-        if (currentCategory !== 'h264') {
+        // Once h264 itself is runtime-excluded, re-picking hardware H.264 would loop — drop to SW H.264.
+        if (currentCategory !== 'h264' && !isEncoderCodecExcluded('h264')) {
             excludeEncoderCodec(currentCategory);
             this.recoveryAttempts = 0;
             infoLog?.log(
@@ -3019,10 +3047,17 @@ export class VideoRecorder {
         // disposes the encoder in finally — failed codec category gets
         // excluded ONLY if excludeOnFail (last fallback) so earlier failures
         // don't prevent subsequent attempts from trying the same codec
-        // under different config.
-        for (const codecInfo of this.listCodecCandidatesByEfficiency(supportedCodecs, audienceCodecs)) {
-            if (excludeCategory && codecInfo.category === excludeCategory)
-                continue;
+        // under different config. Candidates are RECOMPUTED after every failed
+        // probe: an exclusion can make a previously gated candidate eligible
+        // (SW VP9 becomes the last resort once h264/hevc are gone).
+        const triedCategories = new Set<CodecInfo['category']>();
+        for (;;) {
+            const codecInfo = this.listCodecCandidatesByEfficiency(supportedCodecs, audienceCodecs)
+                .find(c => !triedCategories.has(c.category) && c.category !== excludeCategory);
+            if (!codecInfo)
+                return null;
+
+            triedCategories.add(codecInfo.category);
             const layersWithBitrates = this.withCodecBitrates(ladder, codecInfo.codec);
             const result = await probeEncoder(
                 codecInfo.codec, layersWithBitrates, undefined, undefined, hardwareAcceleration);
@@ -3031,20 +3066,23 @@ export class VideoRecorder {
                 infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) PASS @ ${top.width}x${top.height} (${ladder.length} layer(s)), hwAccel=${hardwareAcceleration}, median=${result.medianEncodeMs.toFixed(1)}ms`);
                 return codecInfo.codec;
             }
+
             infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) FAIL stage=${result.failedStage}, hwAccel=${hardwareAcceleration}`);
             if (excludeOnFail) {
                 // Last-resort fallback also failed for this codec — exclude
                 // it for the session so server-driven updateSupportedDecoderCodecs
                 // won't later switch into a codec proven non-functional.
-                // No-op for h264 (universal fallback) and for codecs proven
-                // working this session.
+                // No-op for codecs proven working this session.
                 excludeEncoderCodec(codecInfo.category);
             }
         }
-        return null;
     }
 
-    private pickInitialCodec(supportedCodecs: CodecInfo[], audienceCodecs: string[] | undefined, size: Size): string {
+    private pickInitialCodec(
+        supportedCodecs: CodecInfo[],
+        audienceCodecs: string[] | undefined,
+        size: Size,
+    ): string | null {
         return this.pickBestCodecByEfficiency(supportedCodecs, audienceCodecs)
             ?? getDefaultCodec(supportedCodecs, size.width, size.height);
     }
@@ -3057,20 +3095,7 @@ export class VideoRecorder {
         supportedCodecs: CodecInfo[],
         audienceCodecs: string[] | undefined,
     ): CodecInfo[] {
-        const allowedCategories = this.allowedCodecCategories(audienceCodecs);
-        const bestByCategory = new Map<CodecInfo['category'], CodecInfo>();
-        for (const codecInfo of supportedCodecs) {
-            if (!codecInfo.supported) continue;
-            if (allowedCategories && !allowedCategories.has(codecInfo.category)) continue;
-            if (isEncoderCodecExcluded(codecInfo.category)) continue;
-            const current = bestByCategory.get(codecInfo.category);
-            if (!current || (!current.hardwareAccelerated && codecInfo.hardwareAccelerated))
-                bestByCategory.set(codecInfo.category, codecInfo);
-        }
-        return [...bestByCategory.values()]
-            .sort((a, b) =>
-                getVideoCodecEfficiency(b.codec) - getVideoCodecEfficiency(a.codec)
-                || Number(b.hardwareAccelerated) - Number(a.hardwareAccelerated));
+        return listEncoderCandidatesByEfficiency(supportedCodecs, this.allowedCodecCategories(audienceCodecs));
     }
 
     private allowedCodecCategories(codecs: string[] | undefined): Set<CodecInfo['category']> | null {

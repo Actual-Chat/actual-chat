@@ -16,6 +16,8 @@ public partial class VideoDiagnosticsModal
         $"{BlazorUIAppModule.ImportName}.setVideoDebugEstBandwidthMultiplier";
     private static readonly string JSSetCaptureFpsOverrideMethod =
         $"{BlazorUIAppModule.ImportName}.setVideoDebugCaptureFpsOverride";
+    private static readonly string JSSetEncoderFailInjectionMethod =
+        $"{BlazorUIAppModule.ImportName}.setVideoDebugEncoderFailInjection";
     private static readonly string JSCollectStreamHintsMethod =
         $"{BlazorUIAppModule.ImportName}.collectActiveStreamHints";
     private static readonly string JSGetShowFpsOverlayMethod =
@@ -26,8 +28,11 @@ public partial class VideoDiagnosticsModal
     private static readonly double[] BandwidthMultiplierOptions =
         [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5];
     private static readonly int[] CaptureFpsOptions = [30, 24, 15, 10, 5];
+    private static readonly string[] EncoderFailInjectionOptions =
+        ["", "h264", "h264:worker", "hevc", "vp9"];
 
     private bool _forceH264Only;
+    private string _encoderFailInjection = "";
     private string _downscalerMode = "metadata";
     private int? _captureFpsOverride;
     private bool _showFpsOverlay;
@@ -40,10 +45,12 @@ public partial class VideoDiagnosticsModal
     {
         if (_settingsLoaded)
             return;
+
         _settingsLoaded = true;
         try {
             var settings = await Hub.JS.InvokeAsync<VideoDebugSettings>(JSGetSettingsMethod);
             _forceH264Only = settings.ForceH264Only;
+            _encoderFailInjection = settings.EncoderFailInjection ?? "";
             _downscalerMode = settings.DownscalerMode ?? "metadata";
             _captureFpsOverride = settings.CaptureFpsOverride;
             _maxOutboundLayerCount = settings.MaxOutboundLayerCount;
@@ -68,6 +75,14 @@ public partial class VideoDiagnosticsModal
         _forceH264Only = !_forceH264Only;
         StateHasChanged();
         await Hub.JS.InvokeVoidAsync(JSSetForceH264OnlyMethod, _forceH264Only);
+    }
+
+    private async Task OnEncoderFailInjectionChange(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString() ?? "";
+        _encoderFailInjection = EncoderFailInjectionOptions.Contains(raw) ? raw : "";
+        StateHasChanged();
+        await Hub.JS.InvokeVoidAsync(JSSetEncoderFailInjectionMethod, _encoderFailInjection);
     }
 
     private async Task OnDownscalerModeChange(ChangeEventArgs e)
@@ -127,16 +142,10 @@ public partial class VideoDiagnosticsModal
             : null;
 
     private static string FormatBandwidthMultiplier(double value)
-        => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        => value.ToString("0.##", null);
 
     private static double ParseMultiplier(string? value)
-        => double.TryParse(
-                value,
-                System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture,
-                out var v)
-            ? v
-            : 1.0;
+        => double.TryParse(value, out var v) ? v : 1.0;
 
     private static double NormalizeMultiplier(double value)
     {
@@ -163,6 +172,8 @@ public partial class VideoDiagnosticsModal
         return hints;
     }
 
+    // Nested types
+
     private sealed record JsHint(string streamId, int currentLayerId);
 
     public sealed record VideoDebugSettings(
@@ -171,5 +182,6 @@ public partial class VideoDiagnosticsModal
         int? MaxInboundLayerCount,
         double EstBandwidthMultiplier,
         string? DownscalerMode,
-        int? CaptureFpsOverride);
+        int? CaptureFpsOverride,
+        string? EncoderFailInjection);
 }

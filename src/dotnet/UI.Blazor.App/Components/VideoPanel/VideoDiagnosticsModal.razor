@@ -672,6 +672,30 @@
                             </div>
                         </Right>
                     </TileItem>
+                    <TileItem IsHoverable="false">
+                        <Content>Fail encoder configure</Content>
+                        <Caption>
+                            Makes VideoEncoder.configure() fail for the selected
+                            codec while isConfigSupported() still reports it as
+                            supported — reproduces Firefox's broken H.264 encoder
+                            (Mozilla bug 1918769) on any browser. The
+                            <b>worker only</b> variant lets the pre-flight probe
+                            pass, exercising the runtime exclusion/re-pick path.
+                            Takes effect on the next stream — set, then re-join
+                            the call.
+                        </Caption>
+                        <Right>
+                            <select class="diag-select"
+                                    value="@_encoderFailInjection"
+                                    @onchange="@OnEncoderFailInjectionChange">
+                                <option value="">Off</option>
+                                <option value="h264">H.264</option>
+                                <option value="h264:worker">H.264 (worker only)</option>
+                                <option value="hevc">HEVC</option>
+                                <option value="vp9">VP9</option>
+                            </select>
+                        </Right>
+                    </TileItem>
                 </Tile>
             </div>
             <div class="diag-section">

@@ -1,7 +1,16 @@
 import { getLogs } from 'logging';
-import { kbpsToBitsPerSecond } from 'app-constants';
+import { getVideoCodecEfficiency, kbpsToBitsPerSecond } from 'app-constants';
 import { DeviceInfo } from 'device-info';
 import { isDecoderCodecProven, isEncoderCodecProven } from './codec-proof';
+import { getEncoderFailInjection, matchesEncoderFailInjection } from './encoder-fail-injection';
+
+// Yield a macrotask between close() and `new VideoEncoder()` so the platform
+// releases the HW codec slot — otherwise Chrome NVENC/VA-API throws
+// OperationError 'Encoder creation error'.
+export async function awaitHwReleased(): Promise<void> {
+    await Promise.resolve();
+    await new Promise<void>(resolve => setTimeout(resolve, 0));
+}
 
 export {
     getProvenDecoderCodecs,
@@ -110,14 +119,17 @@ export function detectSupportedCodecs(width = 1920, height = 1080): Promise<Code
 // priority order. The actual encoder profile string is then derived from
 // getCodecForCategory(category, w, h). Reduces startup probes ~7× vs per-profile.
 //
-// VP9 and AV1 selection disabled — see commit 3ae12d7f8. To re-enable, uncomment
-// the entry. Detection, modal-time probe, recorder probe, default-codec
-// fallback, and audience ordering all derive from this list (directly, or
-// via `supportedCodecs`), so a single change here cascades everywhere.
+// AV1 selection disabled (mobile issues) — see commit 3ae12d7f8; re-enable by
+// uncommenting. VP9 is the fallback for browsers whose H.264 encoder is broken
+// or absent (Firefox, bugzil.la/1918769) — selection eligibility is gated in
+// listEncoderCandidatesByEfficiency (HW-ranked, SW only when nothing else is
+// left). Detection, modal-time probe, recorder probe, default-codec fallback,
+// and audience ordering all derive from this list (directly, or via
+// `supportedCodecs`), so a single change here cascades everywhere.
 const REPRESENTATIVE_CODECS: { category: CodecInfo['category']; name: string; codec: string }[] = [
     // { category: 'av1',  name: 'AV1 Main L3.0',      codec: 'av01.0.05M.08' },
     { category: 'hevc', name: 'HEVC Main L3.1',     codec: 'hev1.1.6.L93.B0' },
-    // { category: 'vp9',  name: 'VP9 Profile 0 L3.1', codec: 'vp09.00.31.08' },
+    { category: 'vp9',  name: 'VP9 Profile 0 L3.1', codec: 'vp09.00.31.08' },
     { category: 'h264', name: 'H.264 Main 3.1',     codec: 'avc1.4D401F' },
 ];
 
@@ -278,44 +290,91 @@ async function probeEncoderUncached(
     budgetMs: number,
     hardwareAcceleration: HardwareAcceleration,
 ): Promise<EncoderProbeResult> {
-    // Codec support is decided by `VideoEncoder.isConfigSupported` alone.
-    // The previous implementation spun up a real encoder and pushed 8
-    // synthetic OffscreenCanvas frames at the top resolution to verify HW
-    // throughput; under GPU contention (modal preview + bg-blur shader +
-    // camera capture all running) that synthetic load false-fails on
-    // healthy systems, especially iOS (1 HW encoder slot) and Windows MFT.
-    // Real-frame validation now happens at the running pipeline's
-    // boundary: encoder errors during actual recording drive codec
-    // fallback at runtime, not in a pre-flight probe.
+    // Support is decided by isConfigSupported plus a real configure() check —
+    // no frames are encoded. The old 8-synthetic-frame throughput probe
+    // false-failed healthy systems under GPU contention (modal preview +
+    // bg-blur + capture; worst on iOS's single HW slot and Windows MFT), so
+    // throughput validation stays at the running pipeline's boundary. But
+    // isConfigSupported alone is not trustworthy either: Firefox reports
+    // H.264 as supported while the real configure() fails (bugzil.la/1918769),
+    // so the codec must survive an actual configure()+flush() to pass.
     if (layers.length === 0)
         return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
     void frameCount;
     void budgetMs;
     const category = getCodecCategory(codec);
     const top = layers[layers.length - 1];
-
+    const config: VideoEncoderConfig = {
+        codec,
+        width: top.width,
+        height: top.height,
+        bitrate: kbpsToBitsPerSecond(top.bitrateKbps),
+        framerate: 30,
+        latencyMode: 'realtime',
+        hardwareAcceleration,
+    };
+    if (category === 'h264')
+        config.avc = { format: 'annexb' };
     try {
-        const config: VideoEncoderConfig = {
-            codec,
-            width: top.width,
-            height: top.height,
-            bitrate: kbpsToBitsPerSecond(top.bitrateKbps),
-            framerate: 30,
-            latencyMode: 'realtime',
-            hardwareAcceleration,
-        };
-        if (category === 'h264')
-            config.avc = { format: 'annexb' };
         const support = await VideoEncoder.isConfigSupported(config);
         if (!support.supported) {
             debugLog?.log(`probeEncoder: isConfigSupported=false for ${codec} at ${top.width}x${top.height}`);
             return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
         }
-        debugLog?.log(`probeEncoder: isConfigSupported=true for ${codec} at ${top.width}x${top.height} (hwAccel=${hardwareAcceleration})`);
-        return { supported: true, medianEncodeMs: 0, failedStage: null };
     } catch (error) {
         errorLog?.log('probeEncoder: unexpected error', error);
         return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
+    }
+    if (matchesEncoderFailInjection(getEncoderFailInjection(), category, 'probe')) {
+        warnLog?.log(`probeEncoder: debug fail injection active for ${category} — reporting unsupported`);
+        return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
+    }
+
+    const isConfigureOk = await verifyEncoderConfigure(config);
+    debugLog?.log(
+        `probeEncoder: ${codec} at ${top.width}x${top.height} (hwAccel=${hardwareAcceleration}): `
+        + `configure ${isConfigureOk ? 'PASS' : 'FAIL'}`);
+    return isConfigureOk
+        ? { supported: true, medianEncodeMs: 0, failedStage: null }
+        : { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
+}
+
+const CONFIGURE_PROBE_TIMEOUT_MS = 3000;
+
+// Creates a real encoder, configure()s it, awaits flush(), closes it. A sync
+// throw, the WebCodecs error callback, or a flush rejection all mean the codec
+// cannot actually initialize. A timeout counts as PASS: a slow-but-live encoder
+// must not be false-failed here — only a lying isConfigSupported.
+async function verifyEncoderConfigure(config: VideoEncoderConfig): Promise<boolean> {
+    let encoder: VideoEncoder | null = null;
+    try {
+        let rejectOnError: (e: unknown) => void = () => undefined;
+        const whenErrored = new Promise<never>((_, reject) => rejectOnError = reject);
+        encoder = new VideoEncoder({
+            output: () => undefined,
+            error: e => rejectOnError(e),
+        });
+        encoder.configure(config);
+        const whenTimedOut = new Promise<'timeout'>(
+            resolve => setTimeout(() => resolve('timeout'), CONFIGURE_PROBE_TIMEOUT_MS));
+        const result = await Promise.race([
+            encoder.flush().then(() => 'ok' as const),
+            whenErrored,
+            whenTimedOut,
+        ]);
+        if (result === 'timeout')
+            warnLog?.log(`verifyEncoderConfigure: ${config.codec} flush timed out — treating as supported`);
+
+        return true;
+    } catch (error) {
+        warnLog?.log(`verifyEncoderConfigure: ${config.codec} failed:`, error);
+        return false;
+    } finally {
+        try {
+            if (encoder && encoder.state !== 'closed')
+                encoder.close();
+        } catch { /* already closed */ }
+        await awaitHwReleased();
     }
 }
 
@@ -366,30 +425,63 @@ export function getSoftwareH264Codec(width: number, height: number): string {
     return 'avc1.42E01F';                          // L3.1 (≤720p)
 }
 
-export function getDefaultCodec(supportedCodecs: CodecInfo[], width: number, height: number): string {
-    // Firefox: H.264 Main 3.1 is the only reliable encoder profile.
-    if (DeviceInfo.isFirefox) {
-        return 'avc1.4D401F';
+// Best candidate per category (HW preferred within one), ordered by codec
+// efficiency with HW as the tie-break. VP9 is gated: SW VP9 is eligible only as
+// the last resort — no H.264/HEVC candidate left (e.g. Firefox with its broken
+// H.264 encoder excluded at runtime, bugzil.la/1918769) — and mobile requires
+// HW VP9 unconditionally (VP9-SW on Android silently drops all frames).
+export function listEncoderCandidatesByEfficiency(
+    supportedCodecs: CodecInfo[],
+    allowedCategories: ReadonlySet<CodecInfo['category']> | null,
+): CodecInfo[] {
+    const bestByCategory = new Map<CodecInfo['category'], CodecInfo>();
+    for (const codecInfo of supportedCodecs) {
+        if (!codecInfo.supported)
+            continue;
+        if (allowedCategories && !allowedCategories.has(codecInfo.category))
+            continue;
+        if (isEncoderCodecExcluded(codecInfo.category))
+            continue;
+
+        const current = bestByCategory.get(codecInfo.category);
+        if (!current || (!current.hardwareAccelerated && codecInfo.hardwareAccelerated))
+            bestByCategory.set(codecInfo.category, codecInfo);
     }
+    const vp9 = bestByCategory.get('vp9');
+    if (vp9 && !vp9.hardwareAccelerated) {
+        const isLastResort = !DeviceInfo.isMobile
+            && !bestByCategory.has('h264')
+            && !bestByCategory.has('hevc');
+        if (!isLastResort)
+            bestByCategory.delete('vp9');
+    }
+    return [...bestByCategory.values()]
+        .sort((a, b) =>
+            getVideoCodecEfficiency(b.codec) - getVideoCodecEfficiency(a.codec)
+            || Number(b.hardwareAccelerated) - Number(a.hardwareAccelerated));
+}
 
+// Null means no encoder category is left at all (every category runtime-excluded)
+// — the caller must surface a fatal error, not fabricate a codec: the historic
+// unconditional H.264 fallback resurrected the exact codec whose exclusion
+// triggered the re-pick.
+export function getDefaultCodec(supportedCodecs: CodecInfo[], width: number, height: number): string | null {
     const isMobile = DeviceInfo.isMobile; // includes iOS
+    const candidates = supportedCodecs.filter(c => c.supported && !isEncoderCodecExcluded(c.category));
 
-    // Priority: AV1 HW > HEVC HW > VP9 HW > H.264 HW (profile by platform) > H.264 SW
+    // Priority: AV1 HW > HEVC HW > VP9 HW > H.264 HW (profile by platform) > VP9 SW > H.264 SW
 
-    const av1HW = supportedCodecs.find(
-        c => c.category === 'av1' && c.supported && c.hardwareAccelerated
-    );
-    if (av1HW) return av1HW.codec;
+    const av1HW = candidates.find(c => c.category === 'av1' && c.hardwareAccelerated);
+    if (av1HW)
+        return av1HW.codec;
 
-    const hevcHW = supportedCodecs.find(
-        c => c.category === 'hevc' && c.supported && c.hardwareAccelerated
-    );
-    if (hevcHW) return hevcHW.codec;
+    const hevcHW = candidates.find(c => c.category === 'hevc' && c.hardwareAccelerated);
+    if (hevcHW)
+        return hevcHW.codec;
 
-    const vp9HW = supportedCodecs.find(
-        c => c.category === 'vp9' && c.supported && c.hardwareAccelerated
-    );
-    if (vp9HW) return vp9HW.codec;
+    const vp9HW = candidates.find(c => c.category === 'vp9' && c.hardwareAccelerated);
+    if (vp9HW)
+        return vp9HW.codec;
 
     // Mobile prefers Main>Baseline>High (power); desktop prefers High>Main (compression).
     const h264ProfileOrder = isMobile
@@ -397,34 +489,35 @@ export function getDefaultCodec(supportedCodecs: CodecInfo[], width: number, hei
         : ['6400', '4D40'];
 
     for (const profile of h264ProfileOrder) {
-        const match = supportedCodecs.find(
-            c => c.category === 'h264' && c.supported && c.hardwareAccelerated && c.codec.includes(profile)
-        );
-        if (match) return match.codec;
+        const match = candidates.find(
+            c => c.category === 'h264' && c.hardwareAccelerated && c.codec.includes(profile));
+        if (match)
+            return match.codec;
     }
-    const anyH264HW = supportedCodecs.find(
-        c => c.category === 'h264' && c.supported && c.hardwareAccelerated
-    );
-    if (anyH264HW) return anyH264HW.codec;
 
-    // VP9 SW beats H.264 SW on compression.
-    const vp9SW = supportedCodecs.find(
-        c => c.category === 'vp9' && c.supported
-    );
-    if (vp9SW) return vp9SW.codec;
+    const anyH264HW = candidates.find(c => c.category === 'h264' && c.hardwareAccelerated);
+    if (anyH264HW)
+        return anyH264HW.codec;
+
+    // VP9 SW beats H.264 SW on compression, but is broken on mobile
+    // (VP9-SW on Android silently drops all frames).
+    if (!isMobile) {
+        const vp9SW = candidates.find(c => c.category === 'vp9');
+        if (vp9SW)
+            return vp9SW.codec;
+    }
 
     for (const profile of h264ProfileOrder) {
-        const match = supportedCodecs.find(
-            c => c.category === 'h264' && c.supported && c.codec.includes(profile)
-        );
-        if (match) return match.codec;
+        const match = candidates.find(c => c.category === 'h264' && c.codec.includes(profile));
+        if (match)
+            return match.codec;
     }
-    const anyH264 = supportedCodecs.find(
-        c => c.category === 'h264' && c.supported
-    );
-    if (anyH264) return anyH264.codec;
 
-    return getCodecForCategory('h264', width, height);
+    const anyH264 = candidates.find(c => c.category === 'h264');
+    if (anyH264)
+        return anyH264.codec;
+
+    return isEncoderCodecExcluded('h264') ? null : getCodecForCategory('h264', width, height);
 }
 
 export async function getAV1CodecSupport(): Promise<CodecInfo[]> {
@@ -464,8 +557,12 @@ async function isDecoderCodecSupported(codec: string, width: number, height: num
 // device. Mirrors excludedDecoderCodecs.
 const excludedEncoderCodecs = new Set<string>();
 
+// h264 is excludable too: on Firefox the H.264 encoder can be entirely absent
+// while isConfigSupported still reports it (bugzil.la/1918769) — a "universal
+// fallback" guard here just loops the re-pick forever. The proven-guard keeps
+// a codec that already shipped bundles this session from being excluded by a
+// transient failure.
 export function excludeEncoderCodec(category: string): void {
-    if (category === 'h264') return; // never exclude — universal fallback
     if (isEncoderCodecProven(category)) {
         warnLog?.log(`excludeEncoderCodec: ignoring '${category}' — already proven this session`);
         return;
@@ -543,8 +640,17 @@ async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
         warnLog?.log(`Decoder HEVC: excluded at runtime`);
     }
 
-    // VP9 — TEMPORARILY DISABLED.
-    infoLog?.log('Decoder VP9: temporarily disabled');
+    if (!excludedDecoderCodecs.has('vp9')) {
+        try {
+            const isVp9Supported = await isDecoderCodecSupported('vp09.00.31.08', 1280, 720);
+            infoLog?.log(`Decoder VP9 (vp09.00.31.08): supported=${isVp9Supported}`);
+            if (isVp9Supported) codecs.push('vp9');
+        } catch (e) {
+            warnLog?.log(`Decoder VP9 (vp09.00.31.08): error=${e}`);
+        }
+    } else {
+        warnLog?.log('Decoder VP9: excluded at runtime');
+    }
 
     infoLog?.log(`detectSupportedDecoderCodecsUncached: [${codecs.join(', ')}]${excludedDecoderCodecs.size > 0 ? ` (excluded: [${[...excludedDecoderCodecs].join(', ')}])` : ''}`);
     return codecs;

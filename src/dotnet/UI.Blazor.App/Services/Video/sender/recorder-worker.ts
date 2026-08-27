@@ -15,6 +15,7 @@ import { setVideoTraceKill, type VideoTraceKillPeriod } from '../frame-drop-trac
 import { ScreenOrientation, DeviceOrientation } from 'orientation';
 import { SenderSession } from './session';
 import { getCodecCategory } from '../codec-support';
+import { matchesEncoderFailInjection, newInjectedEncoderConfigureError } from '../encoder-fail-injection';
 import { MediaCapture } from '../services/media-capture';
 import {
     createWorkerVideoTrackGenerator,
@@ -296,6 +297,9 @@ export const recorderWorkerImpl: RecorderWorker = {
             // hit, the encoder is reset (queue cleared) but the codec config
             // is set by configure() below.
             const category = getCodecCategory(layerCfg.codec);
+            if (matchesEncoderFailInjection(config.encoderFailInjection, category, 'worker'))
+                throw newInjectedEncoderConfigureError(category);
+
             const handle = session.encoderPool.acquire(
                 category,
                 () => deps.createEncoder(session, layerCfg, layerId),

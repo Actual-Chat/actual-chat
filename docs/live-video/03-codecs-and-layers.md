@@ -13,23 +13,31 @@ category to keep startup cheap. Categories:
 
 - **AV1** (`av01.*`) — currently disabled (mobile parity issues).
 - **HEVC** (`hev1.*` / `hvc1.*`).
-- **VP9** (`vp09.*`) — disabled by default; H.264 is preferred over VP9 for
-  consistent HW support.
-- **H.264** (`avc1.*`) — universal fallback.
+- **VP9** (`vp09.*`) — HW VP9 competes by efficiency; SW VP9 is a last-resort
+  fallback only (see the eligibility gating below).
+- **H.264** (`avc1.*`) — default, but NOT unconditionally trusted: Firefox
+  reports it via `isConfigSupported()` while the real `configure()` fails
+  (Mozilla bug 1918769), so runtime init failures exclude it like any other
+  category.
 
-For each enabled category, `isCodecSupported()`:
+For each enabled category, `isCodecSupported()` first tries `prefer-hardware`,
+then `no-preference` (Firefox is bad about the former).
 
-1. First tries `prefer-hardware`, then `no-preference` (Firefox is bad about
-   the former).
-2. Probes scalability modes (`L1T1`, `L1T2`, `L1T3`) to learn whether SVC
-   temporal layers are available.
+Result: `CodecInfo { codec, category, supported, hardwareAccelerated }`.
 
-Result: `CodecInfo { codec, hardwareAccelerated, scalabilityModes }`.
+`listEncoderCandidatesByEfficiency(supported, allowedCategories)` is the
+selection core: best candidate per category (HW preferred), ordered by codec
+efficiency with HW as the tie-break. VP9 gating: SW VP9 is eligible only when
+no H.264/HEVC candidate remains (e.g. Firefox with its H.264 encoder excluded
+at runtime); mobile requires HW VP9 unconditionally (VP9-SW on Android
+silently drops all frames).
 
-`getDefaultCodec(supported, w, h)` picks in priority order:
-**AV1 HW > HEVC HW > VP9 HW > H.264 HW (profile-tuned) > H.264 SW**.
-On Firefox, H.264 Main 3.1 is forced (only profile that works reliably). On
-mobile, the policy prefers Main over High for power efficiency.
+`getDefaultCodec(supported, w, h)` is the no-candidate fallback, in priority
+order **AV1 HW > HEVC HW > VP9 HW > H.264 HW (profile-tuned) > VP9 SW (desktop)
+> H.264 SW**; it respects runtime exclusions and returns `null` when nothing is
+left — the caller surfaces a fatal "video not supported in this browser" error
+instead of retrying. On mobile, the policy prefers Main over High for power
+efficiency.
 
 `getCodecForCategory(category, w, h)` always returns the highest level in the
 category (e.g. H.264 High 5.2) and keeps it constant within a session, so a
@@ -38,9 +46,12 @@ cold NVENC re-init. Encoders are NOT pooled across `start/stop` cycles —
 every recorder run constructs a fresh `VideoEncoder` so its first chunk is
 guaranteed to be an intra-coded keyframe (see `02-sender.md`).
 
-`probeEncoder(codec, layers)` measures steady-state encode time (median of
-last 5 frames after 3 warm-up). The 33 ms budget = one frame at 30 fps.
-Cache key: `codec@WxH×layer-count`.
+`probeEncoder(codec, layers)` validates `isConfigSupported()` AND a real
+`configure()` + `flush()` on a live encoder (no frames encoded — frame-level
+throughput probing false-failed under GPU contention and lives at the running
+pipeline's boundary instead). The configure step catches browsers whose
+`isConfigSupported()` lies (Firefox H.264, Mozilla bug 1918769); a probe
+timeout counts as PASS. Cache key: `codec@WxH×layer-count×hwAccel`.
 
 ### Receiver-side codec selection
 
@@ -92,7 +103,7 @@ fallback has been removed.
 File: `src/dotnet/UI.Blazor.App/Components/VideoPanel/layer-ladder.ts`.
 
 A `LayerConfig[]` is bottom-first (index 0 = base, last = top). Each layer
-has `{ width, height, bitrateKbps, baseBitrateKbps, scalabilityMode? }`. All
+has `{ width, height, bitrateKbps, baseBitrateKbps }`. All
 layers in a single run share the same codec.
 
 `buildLadder({ topWidth, topHeight, tierCount, maxTierCount, bitratesKbps, … })`:

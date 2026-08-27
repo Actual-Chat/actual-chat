@@ -1,17 +1,9 @@
 import { getLogs } from 'logging';
 import Denque from 'denque';
 import type { MonotonicTime } from 'clocks';
-import { getCodecCategory, getCodecForCategory } from './codec-support';
+import { awaitHwReleased, getCodecCategory, getCodecForCategory } from './codec-support';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoEncoder');
-
-// Yield a macrotask between close() and `new VideoEncoder()` so the platform
-// releases the HW codec slot — otherwise Chrome NVENC/VA-API throws
-// OperationError 'Encoder creation error'.
-async function awaitHwReleased(): Promise<void> {
-    await Promise.resolve();
-    await new Promise<void>(resolve => setTimeout(resolve, 0));
-}
 
 // Dedupe error logs by key within a 1s window — guards against cascades from
 // the WebCodecs error callback firing faster than the dead-encoder watchdog reacts.

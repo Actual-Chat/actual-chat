@@ -129,6 +129,12 @@ Two Blazor components:
   supplied).
 - `setForceH264Only(true)` — TS helper, also wired through the
   diagnostics settings modal. Resets the codec-detection cache.
+- `setVideoDebugEncoderFailInjection('h264')` — makes the real
+  `VideoEncoder.configure()` fail for the category while `isConfigSupported()`
+  still reports it (emulates Firefox's broken H.264, Mozilla bug 1918769).
+  `'h264:worker'` fails only the worker encoder so the pre-flight probe passes
+  and the runtime exclusion/re-pick path runs. Also in the settings modal
+  ("Fail encoder configure"); applies on the next stream.
 - `excludeDecoderCodec(codec)` — adds a codec string to the localStorage
   exclusion set; affects the next `RegisterMember` call.
 
