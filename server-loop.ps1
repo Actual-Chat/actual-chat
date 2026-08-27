@@ -43,7 +43,7 @@
 [CmdletBinding()]
 param(
     [Alias('c')]
-    [string]$Configuration = "Release",
+    [string]$Configuration = "Debug",
     # Anything after the named params is forwarded to `dotnet run` AFTER
     # the `--` separator — i.e. it goes to App.Server.exe as command-line
     # arguments. Example:
@@ -114,8 +114,9 @@ $stopDeadlineSeconds = 10
 # sending Accept-Encoding: gzip — so a rebundle (npm only) would leave the
 # browser on the OLD bundle. Directory.Build.props disables compression
 # globally, but App.Wasm.csproj re-enables it for Release; a global property
-# overrides both. It's scoped to *build* deliberately: `dotnet publish` still
-# precompresses, which is what real deployments want.
+# overrides both, so -c Release stays as safe here as the default -c Debug.
+# It's scoped to *build* deliberately: `dotnet publish` still precompresses,
+# which is what real deployments want.
 #
 # Both Step 2 and Step 3 must pass it. Global properties are part of a project's
 # build identity, so `dotnet build` with it and `dotnet run` without it are two

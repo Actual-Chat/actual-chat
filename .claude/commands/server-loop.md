@@ -178,8 +178,8 @@ to any browser sending `Accept-Encoding: gzip`. Only `dotnet build`
 regenerates them, so a rebundle — which runs npm and nothing else — would be
 **invisible** to the browser while looking like it worked.
 `Directory.Build.props` sets `CompressionEnabled=false` globally, but
-`App.Wasm.csproj` re-enables it for `Release` (the loop's default `-c`); a
-command-line global property overrides both.
+`App.Wasm.csproj` re-enables it for `Release`; a command-line global property
+overrides both, so `-c Release` is as safe here as the default `-c Debug`.
 
 Two notes for anyone touching this:
 
