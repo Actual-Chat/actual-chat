@@ -22,7 +22,10 @@ const PrePullDistance2 = 20; // Pre-pull distance over control
 const PrePullDurationMs = 20;
 const MinPullDurationMs = 20;
 const MaxChatViewScroll = 40;
-const MaxSetVisibilityWaitDurationMs = 500;
+const MaxTransitionWaitDurationMs = 300;
+// SSB round-trips the visibility change through the server, so this has to outlast a slow
+// network - the finally below disposes before it waits, so a long bound blocks nothing
+const MaxSetVisibilityWaitDurationMs = 3000;
 // Native history navigation can take over without dispatching the final touch event.
 const PullGestureStaleMs = 1000;
 
@@ -104,13 +107,13 @@ export class SideNav extends DisposableBag {
         });
     }
 
-    /** Call during RAF */
+    // Call during RAF
     public resetTransform(): void {
         debugLog?.log('resetTransform()');
         this.setTransform(this.isOpen ? 1 : 0);
     }
 
-    /** Call during RAF */
+    // Call during RAF
     public setTransform(openRatio: number): void {
         const mustTransform = !ScreenSize.isWide() && (this.isOpen ? openRatio < 1 : openRatio > 0);
         if (!mustTransform) {
@@ -146,7 +149,7 @@ export class SideNav extends DisposableBag {
         await this.blazorRef.invokeMethodAsync('OnVisibilityChanged', isOpen);
     });
 
-    /** Call during RAF */
+    // Call during RAF
     private updateBodyClassList(): void {
         if (this.isOpen) {
             document.body.classList.add(this.bodyClassWhenOpen);
@@ -207,7 +210,7 @@ class SideNavPullDetectGesture extends Gesture {
             }
 
             for (const activeGesture of Gestures.activeGestures) {
-                if (activeGesture instanceof SideNavPullGesture)
+                if (activeGesture instanceof SideNavPullGesture && activeGesture.isActive)
                     return;
             }
 
@@ -321,7 +324,8 @@ class SideNavPullDetectGesture extends Gesture {
 class SideNavPullGesture extends Gesture {
     private state: MoveState | null = null;
     private staleTimeout: Timeout | null = null;
-
+    // False once endMove starts - i.e. during the settle, well before dispose()
+    public get isActive() { return this.state !== null; }
     constructor(
         public readonly sideNav: SideNav,
         public readonly origin: Vector2D,
@@ -380,14 +384,22 @@ class SideNavPullGesture extends Gesture {
                 sideNav.setTransform(mustBeOpen ? 1 : 0);
 
                 const transitionEnded = new PromiseSourceWithTimeout<void>();
-                transitionEnded.setTimeout(MaxSetVisibilityWaitDurationMs);
+                transitionEnded.setTimeout(MaxTransitionWaitDurationMs);
                 sideNav.element.addEventListener('transitionend', () => {
                     transitionEnded.resolve(undefined);
                 }, { once: true });
 
                 // Wait when the changes are applied to DOM
                 await transitionEnded;
-                await sideNav.setVisibility(mustBeOpen);
+                // A stopped WebView leaves this interop call unresolved, and setVisibility is
+                // serialized - unbounded, it would strand the finally below and with it dispose()
+                const visibilityChanged = new PromiseSourceWithTimeout<void>();
+                visibilityChanged.setTimeout(
+                    MaxSetVisibilityWaitDurationMs, () => visibilityChanged.resolve(undefined));
+                void sideNav.setVisibility(mustBeOpen)
+                    .catch(() => undefined)
+                    .then(() => visibilityChanged.resolve(undefined));
+                await visibilityChanged;
 
                 const endTime = performance.now() + MaxSetVisibilityWaitDurationMs;
                 while (sideNav.isOpen != mustBeOpen && performance.now() < endTime) {
@@ -395,9 +407,12 @@ class SideNavPullGesture extends Gesture {
                     await fastReadRafAsync();
                 }
             } finally {
-                await fastWriteRafAsync();
-                sideNav.setTransform(mustBeOpen ? 1 : 0);
+                // Unregisters before the await, not after: rAF never fires in a backgrounded
+                // WebView, and a gesture left active blocks every later pull
                 this.dispose();
+                await fastWriteRafAsync();
+                if (!sideNav.isPulling)
+                    sideNav.setTransform(mustBeOpen ? 1 : 0);
             }
         };
 
@@ -461,7 +476,8 @@ class SideNavPullGesture extends Gesture {
                     this.addDisposables(
                         DocumentEvents.capturedActive.touchEnd$.subscribe(e => { void endMove(e, false); }),
                         DocumentEvents.capturedActive.touchCancel$.subscribe(e => { void endMove(e, true); }),
-                        DocumentEvents.capturedActive.touchStart$.subscribe(e => { void endMove(e, true); }), // Just in case
+                        // Just in case
+                        DocumentEvents.capturedActive.touchStart$.subscribe(e => { void endMove(e, true); }),
                         DocumentEvents.capturedActive.touchMove$.subscribe(e => { void move(e); }),
                         chatViewDiv
                             ? Disposables.fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(() => {
@@ -480,7 +496,6 @@ class SideNavPullGesture extends Gesture {
             },
         });
     }
-
 
     public dispose() {
         if (this.isDisposed)
@@ -522,7 +537,8 @@ class MoveState {
         const decelerationDistance = this.velocity * decelerationTime / 2; // a*t^2/2
         this.terminalOpenRatio = openRatio + decelerationDistance;
         s.prevMoveState = null;
-        // debugLog?.log(`MoveState: ${openRatio} + ${decelerationDistance} (v = ${this.velocity}) = ${this.terminalOpenRatio}`);
+        // debugLog?.log(`MoveState: ${openRatio} + ${decelerationDistance}`,
+        //     `(v = ${this.velocity}) = ${this.terminalOpenRatio}`);
     }
 }
 
