@@ -56,9 +56,10 @@ public static partial class MauiProgram
             android.OnCreate(OnCreate);
             android.OnPostCreate(OnPostCreate);
             android.OnResume(_ => MauiWebView.LogResume());
-            // These fire for every activity in the process, and only MainActivity hosts the WebView.
+            // These fire for every activity in the process, and only the live MainActivity hosts
+            // the WebView.
             android.OnStart(activity => {
-                if (activity is not MainActivity)
+                if (!MainActivity.IsCurrent(activity))
                     return;
 
                 Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnBecameForeground");
@@ -68,7 +69,7 @@ public static partial class MauiProgram
                     BeginDispatchToMainThread(() => mainPage.RecreateWebView());
             });
             android.OnStop(activity => {
-                if (activity is not MainActivity)
+                if (!MainActivity.IsCurrent(activity))
                     return;
 
                 Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnBecameBackground");
