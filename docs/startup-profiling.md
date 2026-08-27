@@ -80,7 +80,7 @@ interpreted for the life of the process — so what is worth recording here is n
 compile" but "what we failed to compile": the interpreted set.
 
 That set is then fed back in. iOS Release supplies **three** `.mibc` files to crossgen2 —
-`ios-interactive.mibc`, `merged.mibc` and `aothelper.mibc` — to compile away what would
+`ios.mibc`, `merged.mibc` and `aothelper.mibc` — to compile away what would
 otherwise stay interpreted, not to shrink anything: it costs ~1MB of bundle and removes 95%
 of the interpreted methods (2835 → 140, measured on device 2026-08-09). See
 [ios-specific.md → The three profiles iOS Release feeds crossgen2](./ios-specific.md#the-three-profiles-ios-release-feeds-crossgen2).

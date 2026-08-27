@@ -365,7 +365,7 @@ iOS the map is the only way to separate "never compiled, interpreted forever" fr
 
 ### The three profiles iOS Release feeds crossgen2
 
-`ios-interactive.mibc` and `merged.mibc` are recordings — they know which instantiations a
+`ios.mibc` and `merged.mibc` are recordings — they know which instantiations a
 real session actually ran, which nothing static can. `aothelper.mibc` is emitted from the
 current tree by `update-aot-helpers.cmd`, from the CodeKeeper type set plus what ActualLab's
 proxy keepers and the async machinery construct reflectively.

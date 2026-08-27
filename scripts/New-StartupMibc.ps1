@@ -87,16 +87,17 @@ if ($LASTEXITCODE -ne 0) {
 
 & $pgo dump -i $Output -o (Join-Path $repoRoot "tmp/mibc/$([IO.Path]::GetFileNameWithoutExtension($Output))-dump.txt")
 
-# merged.mibc is what both platforms actually compile against, so it has to be rebuilt
+# merged.mibc is what every platform actually compiles against, so it has to be rebuilt
 # whenever either input changes - regenerating it here is the only way that invariant
 # survives contact with someone re-recording just one platform. The union costs a little
 # image size and buys coverage: each platform picks up the shared startup path as the
 # other one exercised it, and crossgen2 skips whatever does not resolve for its target.
 # android-notif.mibc is a kept artifact, not something re-recorded on every pass: capturing
 # it needs a push sent by hand. So it is merged in from disk each time rather than being a
-# by-product of this run.
+# by-product of this run. ios.mibc is the same: it is recorded on the Mac (see
+# docs/ios-specific.md -> Measuring what runs interpreted) and merged in from disk.
 $profilingDir = Join-Path $repoRoot "src/dotnet/App.Maui/_Profiling"
-$inputs = @("android.mibc", "android-notif.mibc", "windows.mibc") |
+$inputs = @("android.mibc", "android-notif.mibc", "windows.mibc", "ios.mibc") |
     ForEach-Object { Join-Path $profilingDir $_ } |
     Where-Object { Test-Path $_ }
 if ($inputs.Count -eq 0) {

@@ -391,6 +391,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.LanguageShortcut>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.NativeAppSettingsView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.PrivacySettings>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.RpcEndpoints>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.ServerInstanceSelector>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.SessionSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.SettingsModal>();
@@ -1154,6 +1155,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.LanguageShortcut), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.NativeAppSettingsView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.PrivacySettings), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.RpcEndpoints), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.ServerInstanceSelector), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.SessionSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.SettingsModal), AotTypeKind.Component),
