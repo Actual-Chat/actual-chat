@@ -67,7 +67,7 @@
             Class="c-tab-content"
             Effect="@SwapEffect()"
             MustPropagateDisplay="@MustPropagateDisplay"
-            IsEnabled="@_isUserSelection">
+            IsEnabled="@IsUserSelection">
             <ChildContent>
                 @RenderBody()
             </ChildContent>
@@ -83,7 +83,6 @@
     private readonly ContentSwapDirection _swapDirection = new();
     private IReadOnlyList<TabDef> _lastTabs = [];
     private int _selectedTabIndex = -1;
-    private bool _isUserSelection;
 
     private IJSObjectReference? JSRef { get; set; }
     private ElementReference Ref { get; set; }
@@ -111,6 +110,10 @@
         }
     }
 
+    // Public because a swap area outside the panel draws the same distinction, and only the panel
+    // can tell a clicked tab from a resolved one
+    public bool IsUserSelection { get; private set; }
+
     public async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
@@ -129,7 +132,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         // Consumed by the render this click produced. Anything that changes the selection without a
         // click - the initial resolution, or a tab going away with the chat - is a cut, not a swipe.
-        _isUserSelection = false;
+        IsUserSelection = false;
         if (!firstRender || !BottomHill)
             return;
 
@@ -176,7 +179,7 @@
             : _swapDirection.Swipe(_selectedTabIndex);
 
     private void SelectTab(string tabId) {
-        _isUserSelection = true;
+        IsUserSelection = true;
         SelectedTabId = tabId;
     }
 }

@@ -1,8 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits FusionComponentBase<AppUIHub>
 @{
-    var showFilters = true; // Chats and regular Places.
-    var supportThreads = PlaceId is null || Constants.Place.SystemPlaceIds.All(c => PlaceId.Value != c.Value);
+    var mustShowFilters = true; // Chats and regular Places.
+    var isThreadsSupported = PlaceId is null || Constants.Place.SystemPlaceIds.All(c => PlaceId.Value != c.Value);
 
     TabDef NewTab(string id, string title, ChatListFilter? filter)
         => new(id, title) {
@@ -18,13 +18,13 @@
         };
 
     var tabs = ChatListFilter.All.Select(x => NewTab(x.Id.Value, GetFilterTitle(x), x)).ToList();
-    if (supportThreads)
+    if (isThreadsSupported)
         tabs.Add(NewTab(ThreadsTabId, L.ChatList_TabThreads, null));
 }
 
 <div class="c-container">
     <div class="c-all-chats">
-        @if (showFilters) {
+        @if (mustShowFilters) {
             <TabPanel
                 @ref="@_tabPanel"
                 Tabs="@tabs"
@@ -37,13 +37,16 @@
                 </AdditionalButton>
             </TabPanel>
         }
+        @* The place's own filter arrives a render after the switch, and the panel around it already
+           animates that - so only a tab the user picked slides. *@
         <ContentSwap
             LayerKey="@_selectedTabId"
             Class="c-list-swap"
             Effect="@_swapDirection.Swipe(GetTabIndex(_selectedTabId))"
-            MustPropagateDisplay="true">
+            MustPropagateDisplay="true"
+            IsEnabled="@(_tabPanel?.IsUserSelection == true)">
             <ChildContent>
-                @if (_showThreadsList) {
+                @if (_mustShowThreadsList) {
                     <ThreadList PlaceId="@PlaceId" />
                 } else {
                     <ChatList @key="@ChatList.GetKey(PlaceId, true, null)" PlaceId="@PlaceId" UsePlaceChatListSettings="@true"/>
@@ -63,7 +66,7 @@
     private readonly ContentSwapDirection _swapDirection = new();
     private string _selectedTabId = "";
     private TabPanel? _tabPanel;
-    private bool _showThreadsList;
+    private bool _mustShowThreadsList;
     private PlaceChatListSettings? _placeChatListSettings;
     private string? _tabPanelSelectedTabId;
 
@@ -97,8 +100,8 @@
     private void OnSelectedTabIdChanged(string? tabId) {
         tabId ??= "";
         _selectedTabId = tabId;
-        _showThreadsList = tabId == ThreadsTabId;
-        if (!_showThreadsList) { // Show ChatList
+        _mustShowThreadsList = tabId == ThreadsTabId;
+        if (!_mustShowThreadsList) { // Show ChatList
             var filterId = tabId;
             _placeChatListSettings?.SetFilter(filterId);
         }
