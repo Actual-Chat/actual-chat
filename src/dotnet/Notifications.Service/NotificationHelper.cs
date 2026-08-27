@@ -30,7 +30,8 @@ public static class NotificationHelper
         };
 
     public static string GetIconUrl(Chat.Chat chat, AuthorFull author, UrlMapper urlMapper)
-        => urlMapper.IconUrl(chat.GetIconQuery(author));
+        => urlMapper.IconUrl(chat.GetIconQuery(author, renderAvatarTitle: true));
+
     public static string GetVoiceChatStartedText(IReadOnlyList<string> authorNames, IStringLocalizer l)
     {
         var shown = authorNames.Take(Constants.Notification.MaxSummaryAuthors).ToList();
