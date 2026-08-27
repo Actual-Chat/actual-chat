@@ -1,5 +1,6 @@
 using System.Diagnostics.Metrics;
 using ActualChat.Diagnostics;
+using ActualChat.UI.Blazor.Diagnostics;
 using CommunityToolkit.HighPerformance;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -142,6 +143,68 @@ public partial class ChatUI
             var rows = (int)Math.Ceiling(VirtualListLoadZoneSize * windowHeight / AssumedItemSize);
             return Math.Clamp(rows, SecondTileSize * 2, SecondTileSize * 8);
         }
+    }
+
+    public async Task Prefetch(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // The load zone is guessed rather than derived: the real one needs range meta, and waiting for
+        // that is the serialized round trip this exists to overlap. A miss costs a few extra tile fetches.
+        ChatSwitchTrace.TryStart(Links.Chat(chatId).Value, "ChatUI.Prefetch (pointer down)");
+        ChatSwitchTrace.Mark("ChatUI.Prefetch: entered", chatId.Value);
+        // Everything GetChatItemsInternal issues before its first await, in the same order
+        var chatTask = Chats.Get(Session, chatId, cancellationToken);
+        var liveConversationTask = Hub.LiveSessionUI.GetConversation(chatId, cancellationToken);
+        var rawLiveTask = Hub.LiveSessionUI.GetBlockSnapshot(chatId, cancellationToken);
+        var blockStateTask = Hub.LiveBlockUI.GetBlockState(chatId, cancellationToken);
+        var chatLidRangeTask = Chats.GetIdRange(Session, chatId, cancellationToken);
+        var readPositionTask = ChatPositions.GetOwn(Session, chatId, ChatPositionKind.Read, cancellationToken);
+
+        var chat = await chatTask.ConfigureAwait(false);
+        ChatSwitchTrace.Mark("ChatUI.Prefetch: Chats.Get done", chat is null ? "null - BAILING" : "ok");
+        if (chat == null) {
+            _ = Task.WhenAll(liveConversationTask, rawLiveTask, blockStateTask, chatLidRangeTask, readPositionTask)
+                .SilentAwait(false);
+            return;
+        }
+
+        var chatLidRange = await chatLidRangeTask.ConfigureAwait(false);
+        ChatSwitchTrace.Mark("ChatUI.Prefetch: GetIdRange done", chatLidRange.Format());
+        var readPosition = await readPositionTask.ConfigureAwait(false);
+        var anchorLid = readPosition.EntryLid > 0 ? readPosition.EntryLid : chatLidRange.End - 1;
+        ChatSwitchTrace.Mark("ChatUI.Prefetch: anchor resolved", $"anchor={anchorLid}");
+        if (anchorLid < 0)
+            return;
+
+        // Mirrors GetChatDataQuery's navigation case: the anchor lands near the top of the viewport,
+        // so most of the load zone sits below it
+        var initialLoadLimit = InitialLoadLimit;
+        var anchorTile = IdTileStack.LastLayer.GetTile(anchorLid).Range;
+        var loadZone = new Range<long>(
+            Math.Max(chatLidRange.Start, anchorTile.Start - (initialLoadLimit / 3)),
+            anchorTile.End + (initialLoadLimit * 2 / 3));
+        var idTiles = IdTileStack.LastLayer
+            .GetCoveringTiles(loadZone)
+            .Select(t => t.Range)
+            .Where(r => r.Start >= 0)
+            .ToList();
+        var metaIdTiles = ServerIdTileStack.LastLayer
+            .GetCoveringTiles(loadZone.Expand(LoadLimit))
+            .Where(t => t.Start >= 0)
+            .ToList();
+        var showConversations = chat.IsSummarized ?? false;
+
+        var metaTask = metaIdTiles
+            .Select(t => Chats.GetChatRangeMeta(Session, chatId, t.Range.Start, cancellationToken))
+            .Collect(ApiConstants.Concurrency.High, cancellationToken);
+        var conversationTilesTask = metaIdTiles
+            .Select(t => Conversations.GetTile(Session, chatId, t.Range, cancellationToken))
+            .Collect(ApiConstants.Concurrency.High, cancellationToken);
+        var loadZoneTask = PrefetchLoadZone(chatId, idTiles, showConversations, cancellationToken);
+        ChatSwitchTrace.Mark("ChatUI.Prefetch: warm requests issued",
+            $"{idTiles.Count} idTiles, {metaIdTiles.Count} metaTiles, anchor={anchorLid}");
+        await Task.WhenAll(metaTask, conversationTilesTask, loadZoneTask).ConfigureAwait(false);
+        await Task.WhenAll(liveConversationTask, rawLiveTask, blockStateTask).SilentAwait(false);
+        ChatSwitchTrace.Mark("ChatUI.Prefetch: done");
     }
 
     public Task<ChatItems> GetChatItems(
@@ -607,6 +670,9 @@ public partial class ChatUI
             }
             // The log carries the split because nothing else does on a device: the Meter has no exporter
             // there, and Sentry drops Activity tags (it stores no AC.* span attribute at all).
+            ChatSwitchTrace.Mark("ChatUI.GetChatItems: phases",
+                $"total={totalMs} (live={liveMs} [chat={chatMs} conv={conversationMs} amInLive={amInLiveMs} "
+                + $"snapshot={snapshotMs} blockState={blockStateMs}], meta={metaMs}, load={loadMs}, build={buildMs})");
             if (totalMs > SlowBuildMs && !wasBackgrounded)
                 Log.LogWarning(
                     "GetChatItems: {ChatId} took {TotalMs}ms (live {LiveMs} = chat {ChatMs} "

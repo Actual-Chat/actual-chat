@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.Components.Internal;
+using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Fusion.Internal;
 
@@ -74,6 +75,7 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
     [JSInvokable]
     public async Task RequestData(VirtualListDataQuery query)
     {
+        ChatSwitchTrace.Mark("VirtualList.RequestData (from JS)", Identity);
         Query = query;
         while (State == null)
             await Task.Delay(100);
@@ -104,10 +106,13 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
         // so we can't use Hub.IsPrerendering here. RendererInfo is set before SetParametersAsync and is
         // per-circuit: IsInteractive is false during prerender SSR, true once the list is interactive.
         var shouldSetInitialData = RendererInfo.IsInteractive && RenderIndex == 0;
-        if (shouldSetInitialData)
+        if (shouldSetInitialData) {
+            ChatSwitchTrace.Mark("VirtualList: initial GetData -> in (BLOCKS FIRST RENDER)", Identity);
             _initialData = await DataSource.GetData(VirtualListDataQuery.None,
                 VirtualListData<TItem>.None,
                 CancellationToken.None);
+            ChatSwitchTrace.Mark("VirtualList: initial GetData <- out", Identity);
+        }
         else
             _initialData = null;
 
@@ -139,8 +144,10 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
             return;
 
         if (firstRender) {
+            ChatSwitchTrace.Mark("VirtualList: first render done, creating JS side", Identity);
             BlazorRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
             JSRef = await CreateJSRef();
+            ChatSwitchTrace.Mark("VirtualList: JS side created", Identity);
         }
     }
 

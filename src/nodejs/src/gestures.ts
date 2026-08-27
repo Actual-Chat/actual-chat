@@ -12,6 +12,7 @@ import { Tune, TuneName, TuneUI } from '../../dotnet/UI.Blazor/Services/TuneUI/t
 import { Vector2D } from 'math';
 import { getLogs } from 'logging';
 import { BrowserInfo } from '../../dotnet/UI.Blazor/Services/BrowserInfo/browser-info';
+import { PrefetchUI } from '../../dotnet/UI.Blazor/Services/PrefetchUI/prefetch-ui';
 
 const { debugLog } = getLogs('Gestures');
 
@@ -24,6 +25,7 @@ export class Gestures {
     public static init(): void {
         // Used gestures
         DataHrefGesture.use();
+        DataPrefetchGesture.use();
         SuppressDefaultContextMenuGesture.use();
         ContextMenuGesture.use();
         DismissKeyboardOnDragGesture.use();
@@ -141,8 +143,29 @@ class DataHrefGesture extends Gesture {
                     mustReplace = !except || path !== except;
                 }
             }
+            History.lastClickAt = event.timeStamp;
             void History.navigateTo(href, mustReplace); // Internal URL
         }
+    }
+}
+
+// Warms whatever `data-prefetch` names as soon as the pointer goes down on it, so the round trips the
+// click needs are already in flight when it lands. Passive and fire-and-forget: it never affects the
+// click that follows, and a pointer down that turns out to be a scroll only costs the warm-up.
+class DataPrefetchGesture extends Gesture {
+    public static use(): void {
+        debugLog?.log(`DataPrefetchGesture.use`);
+
+        DocumentEvents.passive.pointerDown$.subscribe((event: PointerEvent) => {
+            if (event.button !== 0) // Only primary button
+                return;
+
+            const [, prefetchRef] = getOrInheritData(event.target, 'prefetch');
+            if (prefetchRef === null)
+                return;
+
+            PrefetchUI.request(prefetchRef);
+        });
     }
 }
 

@@ -30,6 +30,7 @@
     Class="@navbarItemCls"
     data-menu="@(MenuRef.New<ChatMenu>(chat.Id.Value, listKind.Format()).ToString())"
     data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())"
+    data-prefetch="@(PrefetchRef.New<ChatPrefetcher>(chat.Id.Value).ToString())"
     @attributes="@attributes">
     <ChildContent>
         <div class="c-container">

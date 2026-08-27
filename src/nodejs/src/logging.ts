@@ -58,6 +58,7 @@ export type LogScope =
     | 'MainThreadDiagnostics'
     | 'MenuHost'
     | 'ModalHost'
+    | 'PrefetchUI'
     | 'OnDeviceAwake'
     | 'promises'
     | 'ResilientStream'
@@ -174,6 +175,7 @@ const defaults: Record<LogScope, LogLevel> = {
     MainThreadDiagnostics: LogLevel.Info,
     MenuHost: LogLevel.Warn,
     ModalHost: LogLevel.Warn,
+    PrefetchUI: LogLevel.Warn,
     OnDeviceAwake: LogLevel.Warn,
     promises: LogLevel.Warn,
     ResilientStream: LogLevel.Warn,

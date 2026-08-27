@@ -10,6 +10,9 @@ export class History {
 
     public static navigationManager: any
     public static whenReady: PromiseSource<void> = new PromiseSource<void>();
+    // Temporary chat-switch instrumentation: the gap from the originating click to navigateTo, plus
+    // the round trip, are the only parts of a switch that .NET can't time from its own side.
+    public static lastClickAt = -1;
 
     public static init(
         backendRef1: DotNet.DotNetObject,
@@ -36,7 +39,11 @@ export class History {
     ): Promise<void> {
         infoLog?.log(`navigateTo:`, url, mustReplace, force, addInFront);
         await this.whenReady;
-        await this.backendRef.invokeMethodAsync('NavigateTo', url, mustReplace, force, addInFront);
+        const clickAt = this.lastClickAt;
+        this.lastClickAt = -1;
+        const clickToInvokeMs = clickAt >= 0 ? performance.now() - clickAt : -1;
+        await this.backendRef.invokeMethodAsync(
+            'NavigateTo', url, mustReplace, force, addInFront, clickToInvokeMs);
     };
 
     public static async forceReload(url: string, mustReplace: boolean, historyEntryState: string) {
