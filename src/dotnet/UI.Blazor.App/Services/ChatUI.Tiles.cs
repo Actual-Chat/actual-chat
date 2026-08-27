@@ -1,5 +1,6 @@
 using System.Diagnostics.Metrics;
 using ActualChat.Diagnostics;
+using ActualChat.UI.Blazor.Diagnostics;
 using CommunityToolkit.HighPerformance;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -144,6 +145,102 @@ public partial class ChatUI
         }
     }
 
+    public async Task Prefetch(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // NOTE: Has to stay in sync with GetChatItemsInternal and GetChatDataQuery: Fusion dedupes on
+        // ComputedInput, so an argument that drifts by one tile boundary warms a different entry and
+        // buys nothing - silently, with no failing test to catch it, just a slower switch.
+        // The load zone is guessed rather than derived: the real one needs range meta, and waiting for
+        // that is the serialized round trip this exists to overlap.
+        ChatSwitchTracer.TryStart(Links.Chat(chatId).Value, "ChatUI.Prefetch (pointer down)");
+        ChatSwitchTracer.Mark("ChatUI.Prefetch: entered", chatId);
+        // Everything GetChatItemsInternal issues before its first await, in the same order
+        var chatTask = Chats.Get(Session, chatId, cancellationToken);
+        var liveConversationTask = Hub.LiveSessionUI.GetConversation(chatId, cancellationToken);
+        var rawLiveTask = Hub.LiveSessionUI.GetBlockSnapshot(chatId, cancellationToken);
+        var blockStateTask = Hub.LiveBlockUI.GetBlockState(chatId, cancellationToken);
+        var chatLidRangeTask = Chats.GetIdRange(Session, chatId, cancellationToken);
+        var readPositionTask = ChatPositions.GetOwn(Session, chatId, ChatPositionKind.Read, cancellationToken);
+        var pending = new List<Task> {
+            chatTask, liveConversationTask, rawLiveTask, blockStateTask, chatLidRangeTask, readPositionTask,
+        };
+        try {
+            // The anchor is read from the cached ChatInfo rather than awaited, because on a cold chat
+            // awaiting GetIdRange + GetOwn is a round trip of its own - and it measured 77-81ms there,
+            // which pushed the warm requests past the click they were meant to arrive before.
+            var (lidRange, readEntryLid, showConversations) = GetPrefetchAnchor(chatId);
+            if (lidRange is null) {
+                var chat = await chatTask.ConfigureAwait(false);
+                if (chat == null)
+                    return;
+
+                lidRange = await chatLidRangeTask.ConfigureAwait(false);
+                readEntryLid = (await readPositionTask.ConfigureAwait(false)).EntryLid;
+                showConversations = chat.IsSummarized ?? false;
+                ChatSwitchTracer.Mark("ChatUI.Prefetch: anchor awaited (ChatInfo miss)", $"lid={readEntryLid}");
+            }
+            else
+                ChatSwitchTracer.Mark("ChatUI.Prefetch: anchor from ChatInfo (no await)", $"lid={readEntryLid}");
+
+            // NOTE: Issued only after the peek above - calling it first would register a still-Computing
+            // computed that GetExisting then returns, and reading such a computed's Output throws.
+            // It runs whether or not the peek hit, so a ChatInfo that needs recomputing gets it in advance.
+            var chatInfoTask = Get(chatId, cancellationToken);
+            pending.Add(chatInfoTask);
+
+            var range = lidRange.Value;
+            if (range.End <= range.Start)
+                return;
+
+            // Mirrors GetChatDataQuery: a chat opens at its read position when there is a usable one, and
+            // at the tail otherwise - the two cases centre on different tiles and split the zone differently
+            var initialLoadLimit = InitialLoadLimit;
+            var firstTileSize = IdTileStack.FirstLayer.TileSize;
+            var hasViewEntry = readEntryLid > 0 && readEntryLid < range.End;
+            var anchorLid = hasViewEntry
+                ? readEntryLid
+                : Math.Max(range.Start, range.End - firstTileSize);
+            var anchorTile = IdTileStack.LastLayer.GetTile(anchorLid).Range;
+            var startOffset = hasViewEntry ? initialLoadLimit / 3 : initialLoadLimit / 2;
+            var endOffset = hasViewEntry ? initialLoadLimit * 2 / 3 : initialLoadLimit / 2;
+            // Clamped to the chat: the real query never asks past the end, so warming there is pure waste
+            var loadZone = new Range<long>(
+                Math.Max(range.Start, anchorTile.Start - startOffset),
+                Math.Min(range.End, anchorTile.End + endOffset));
+            if (loadZone.End <= loadZone.Start)
+                return;
+
+            var idTiles = IdTileStack.LastLayer
+                .GetCoveringTiles(loadZone)
+                .Select(t => t.Range)
+                .Where(r => r.Start >= 0)
+                .ToList();
+            var metaIdTiles = ServerIdTileStack.LastLayer
+                .GetCoveringTiles(loadZone.Expand(LoadLimit))
+                .Where(t => t.Start >= 0)
+                .ToList();
+            var metaTask = metaIdTiles
+                .Select(t => Chats.GetChatRangeMeta(Session, chatId, t.Range.Start, cancellationToken))
+                .Collect(ApiConstants.Concurrency.High, cancellationToken);
+            var conversationTilesTask = metaIdTiles
+                .Select(t => Conversations.GetTile(Session, chatId, t.Range, cancellationToken))
+                .Collect(ApiConstants.Concurrency.High, cancellationToken);
+            var loadZoneTask = PrefetchLoadZone(chatId, idTiles, showConversations, cancellationToken);
+            pending.Add(metaTask);
+            pending.Add(conversationTilesTask);
+            pending.Add(loadZoneTask);
+            ChatSwitchTracer.Mark("ChatUI.Prefetch: warm requests issued",
+                $"{idTiles.Count} idTiles, {metaIdTiles.Count} metaTiles, anchor={anchorLid}");
+            await Task.WhenAll(metaTask, conversationTilesTask, loadZoneTask).ConfigureAwait(false);
+            ChatSwitchTracer.Mark("ChatUI.Prefetch: done");
+        }
+        finally {
+            // NOTE: Every task above is observed on every exit path, including the early returns - an
+            // unobserved fault here would surface as an UnobservedTaskException per pointer down.
+            await Task.WhenAll(pending).SilentAwait(false);
+        }
+    }
+
     public Task<ChatItems> GetChatItems(
         ChatId chatId,
         ChatDataQuery dataQuery,
@@ -167,6 +264,8 @@ public partial class ChatUI
         CancellationToken cancellationToken)
     {
         // DebugLog?.LogDebug("GetTiles: {ChatId} {IdRange} {ShownReadyEntryLid}", chatId, dataQuery, shownReadyEntryLid);
+        // NOTE: Changing what this requests? Review Prefetch - it warms these same calls in advance, and only
+        // helps while its arguments still match the ones below.
         var startedAt = CpuTimestamp.Now;
         // Captured to detect a background stretch inside this build: GetData gates on visibility before
         // calling us, but the app can background AFTER that gate, and the in-flight RPCs below then don't
@@ -607,6 +706,9 @@ public partial class ChatUI
             }
             // The log carries the split because nothing else does on a device: the Meter has no exporter
             // there, and Sentry drops Activity tags (it stores no AC.* span attribute at all).
+            ChatSwitchTracer.Mark("ChatUI.GetChatItems: phases",
+                $"total={totalMs} (live={liveMs} [chat={chatMs} conv={conversationMs} amInLive={amInLiveMs} "
+                + $"snapshot={snapshotMs} blockState={blockStateMs}], meta={metaMs}, load={loadMs}, build={buildMs})");
             if (totalMs > SlowBuildMs && !wasBackgrounded)
                 Log.LogWarning(
                     "GetChatItems: {ChatId} took {TotalMs}ms (live {LiveMs} = chat {ChatMs} "
@@ -1350,6 +1452,25 @@ public partial class ChatUI
 
     private static void RecordPhase(long elapsedMs, string phase)
         => GetChatItemsDuration.Record(elapsedMs, new KeyValuePair<string, object?>("phase", phase));
+
+    private (Range<long>? LidRange, long ReadEntryLid, bool ShowConversations) GetPrefetchAnchor(ChatId chatId)
+    {
+        // NOTE: GetExisting rather than a call - this must not start a computation it would then await.
+        // Computing is the one state to reject, because reading its Output throws; an invalidated value
+        // is still fine to aim a load zone with. The registry never hands out an invalidated computed,
+        // but the one it hands out can be invalidated right after - and since ConsistencyState only
+        // moves forward, observing "not Computing" here stays true for the reads below.
+        var cChatInfo = Computed.GetExisting(() => Get(chatId, default));
+        if (cChatInfo is null
+            || cChatInfo.IsComputing()
+            || !cChatInfo.IsValue(out var chatInfo)
+            || chatInfo?.News is not { } news)
+            return (null, 0, false);
+
+        // A single-author chat reports long.MaxValue as "fully read"; the tail branch handles it
+        var readEntryLid = chatInfo.ReadEntryLid == long.MaxValue ? 0 : chatInfo.ReadEntryLid;
+        return (news.TextEntryLidRange, readEntryLid, chatInfo.Chat.IsSummarized ?? false);
+    }
 
     private Task PrefetchLoadZone(
         ChatId chatId,

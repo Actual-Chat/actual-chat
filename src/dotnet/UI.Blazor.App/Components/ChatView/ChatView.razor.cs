@@ -4,6 +4,7 @@ using ActualChat.Pooling;
 using ActualChat.UI.Blazor.App.Events;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Diagnostics;
 using Microsoft.Extensions.Localization;
@@ -90,6 +91,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     protected override async Task OnInitializedAsync()
     {
         Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
+        ChatSwitchTracer.Mark("ChatView.OnInitializedAsync: entered", Chat.Id);
         Nav.LocationChanged += OnLocationChanged;
         try {
             var type = GetType();
@@ -102,13 +104,18 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _shownReadEntryLid = StateFactory.NewMutable(
                 0L,
                 StateCategories.Get(type, nameof(ShownReadEntryLid)));
+            ChatSwitchTracer.Mark("ChatView.OnInitializedAsync: LeaseReadPositionState -> in");
             _readPositionLease = await ChatUI.LeaseReadPositionState(Chat.Id, DisposeToken);
+            ChatSwitchTracer.Mark("ChatView.OnInitializedAsync: LeaseReadPositionState <- out");
             _viewPositionLease = await ChatUI.LeaseViewPositionState(Chat.Id, DisposeToken);
+            ChatSwitchTracer.Mark("ChatView.OnInitializedAsync: LeaseViewPositionState <- out");
             var readPosition = _readPositionLease.Resource.Value;
             _shownReadEntryLid.Value = readPosition.EntryLid;
             if (_viewPositionLease.Resource.Value.EntryLid is 0 && readPosition.EntryLid > 0)
                 _viewPositionLease.Resource.Value = readPosition;
             _whenInitializedSource.TrySetResult();
+            ChatSwitchTracer.Mark("ChatView.OnInitializedAsync: WhenInitialized SET",
+                $"readEntryLid={readPosition.EntryLid}");
             _updateReadStateTask = AsyncChain.From(UpdateReadState)
                 .Log(LogLevel.Debug, Log)
                 .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)
@@ -149,6 +156,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (_disposeTokenSource.IsCancellationRequested)
             return;
 
+        ChatSwitchTracer.Mark("ChatView.Dispose (outgoing view)", Chat.Id);
         _disposeTokenSource.CancelAndDisposeSilently();
         _whenInitializedSource.TrySetCanceled();
         _readPositionLease.DisposeSilently();
@@ -217,6 +225,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         await WhenInitialized;
         if (updateReadPosition)
             _shownReadEntryLid.Value = UpdateReadPosition(entryLid);
+        ChatSwitchTracer.Mark("ChatView.NavigateTo: nav set", $"entryLid={entryLid}, highlight={highlight}");
         _nextNavigation.Value = new ChatViewNavigation(entryLid, highlight, KeepConversationsCollapsed: keepConversationsCollapsed);
     }
 
@@ -237,6 +246,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (!localUrl.IsChat(out _, out long entryId) || entryId <= 0)
             return;
 
+        ChatSwitchTracer.Mark("ChatView.NavigateToUrlFragment: entry nav", $"entryLid={entryId}");
         var cts = new CancellationTokenSource();
         var cancellationToken = cts.Token;
         _ = History
@@ -398,10 +408,16 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         var chatId = Chat.Id;
         var startedAt = CpuTimestamp.Now;
+        var isFirstGetData = renderedData.IsNone && query.IsNone;
+        if (isFirstGetData)
+            ChatSwitchTracer.Mark("ChatView.GetData#1: entered", chatId);
         await WhenInitialized;
+        if (isFirstGetData)
+            ChatSwitchTracer.Mark("ChatView.GetData#1: WhenInitialized awaited");
 
         var isChatViewVisible = RegionVisibility.IsVisible;
         if (!isChatViewVisible.Value) {
+            ChatSwitchTracer.Mark("ChatView.GetData: SUSPENDED - region not visible", chatId);
             // Chat is invisible now, let's suspend & await for it to become visible
             ChatUI.ResetItemVisibility(chatId);
             using (Computed.BeginIsolation())
@@ -411,6 +427,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _itemVisibility.Value = ChatViewItemVisibility.Empty;
             // A report from the pre-suspend rendering may have landed while we awaited visibility
             ChatUI.ResetItemVisibility(chatId);
+            ChatSwitchTracer.Mark("ChatView.GetData: RESUMED - region visible", chatId);
         }
 
         // Update delay: we want to collect as many dependencies as possible here,
@@ -444,11 +461,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             nav = null;
 
         var mustScrollToEntry = nav != null && ItemVisibility.Value.IsScrollRequired(nav.EntryLid);
+        if (isFirstGetData)
+            ChatSwitchTracer.Mark("ChatView.GetData#1: nav resolved", $"nav={nav?.EntryLid}");
         Computed<Range<long>> cChatIdRange;
         using (Computed.BeginIsolation())
             cChatIdRange = await Computed.Capture(
                 () => Chats.GetIdRange(Session, chatId, cancellationToken),
                 cancellationToken);
+        if (isFirstGetData)
+            ChatSwitchTracer.Mark("ChatView.GetData#1: GetIdRange done");
         // Rethrows via Use() to register the dependency - an isolated failure has nothing to recover on,
         // so the view would stay stale for Fusion's 30s error horizon rather than until access returns.
         if (cChatIdRange.HasError)
@@ -484,7 +505,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (chat == null)
             return VirtualListData<ChatMessage>.None;
 
+        if (isFirstGetData)
+            ChatSwitchTracer.Mark("ChatView.GetData#1: GetChatItems -> in", dataQuery);
         var (items, hasBefore, hasAfter) = await ChatUI.GetChatItems(chatId, dataQuery, readEntryLid, cancellationToken).ConfigureAwait(false);
+        if (isFirstGetData)
+            ChatSwitchTracer.Mark("ChatView.GetData#1: GetChatItems <- out", $"{items.Count} items");
         if (items.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
@@ -605,6 +630,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             Metadata = new ChatViewMetadata(chat.IsSummarized ?? false),
         };
 
+        if (isFirstGetData)
+            ChatSwitchTracer.Mark("ChatView.GetData#1: exit - data built",
+                $"{items.Count} items, build={buildMs}ms, scrollToKey={scrollToKey}");
+
         // do not return new instance if data is the same to prevent re-renders
         return !mustScrollToEntry && result.IsSimilarTo(renderedData)
             ? renderedData
@@ -617,6 +646,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         ChatViewNavigation? navigation,
         Range<long> chatLidRange)
     {
+        // NOTE: Changing the ranges this produces? Review ChatUI.Prefetch - it guesses this query's load zone
+        // in advance, and only helps while the guess still lands on the same tiles.
         var firstLayer = ChatUI.IdTileStack.FirstLayer;
         var secondLayer = ChatUI.IdTileStack.LastLayer;
         var itemVisibility = ItemVisibility.Value;
@@ -687,6 +718,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         DebugLog?.LogDebug(
             "GetChatDataQuery: case={Case}, result={DataQuery}, chatIdRange={IdRange}",
             caseName, dataQuery.Format(), chatLidRange.Format());
+        ChatSwitchTracer.Mark($"ChatView.GetChatDataQuery: case={caseName}", dataQuery);
 
         return dataQuery;
     }

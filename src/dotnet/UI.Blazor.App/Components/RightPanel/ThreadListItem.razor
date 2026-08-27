@@ -7,7 +7,9 @@
     _renderedModel = m;
 }
 
-<div class="thread-list-item" role="option" tabindex="0" @onclick="OnItemClicked">
+@* data-prefetch tracks OnItemClicked's target - Chat.Id, not the model's chat *@
+<div class="thread-list-item" role="option" tabindex="0" @onclick="OnItemClicked"
+     data-prefetch="@(PrefetchRef.New<ChatPrefetcher>(Chat.Id.Value).ToString())">
     <div class="c-description">
         <div class="c-top">
             <span class="c-chat-title">

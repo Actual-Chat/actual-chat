@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Services.Internal;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -39,6 +40,7 @@ public partial class PanelsUI : UIWorkerBase<UIHub>
         if (IsWide())
             return;
 
+        ChatSwitchTracer.Mark("PanelsUI.HidePanels");
         Left.SetIsVisible(false);
         Right.SetIsVisible(false);
     }

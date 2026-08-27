@@ -3,6 +3,7 @@ using ActualChat.Kvas;
 using ActualChat.Localization;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.App.Events;
+using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 using MathExt = ActualLab.Mathematics.MathExt;
@@ -521,10 +522,14 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         ChatId chatId,
         CancellationToken cancellationToken)
     {
+        ChatSwitchTracer.Mark("ChatUI.LeaseReadPositionState: Rent -> in", chatId);
         var lease = await _readPositionStates.Rent(chatId, cancellationToken).ConfigureAwait(false);
         try {
             var state = lease.Resource;
+            ChatSwitchTracer.Mark("ChatUI.LeaseReadPositionState: Rent <- out",
+                state.WhenFirstTimeRead.IsCompleted ? "already read (pool hit)" : "first read pending");
             await state.WhenFirstTimeRead.WaitAsync(cancellationToken).ConfigureAwait(false);
+            ChatSwitchTracer.Mark("ChatUI.LeaseReadPositionState: WhenFirstTimeRead awaited");
             InvokeReadPositionUpdated(state);
             state.Updated += (s, stateEventKind) => {
                 if (stateEventKind == StateEventKind.Updated)
@@ -672,7 +677,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             TimeSpan.FromSeconds(1),
             command => Commander.Run(command, CancellationToken.None));
 
+        ChatSwitchTracer.Mark("ChatUI.CreateReadPositionState: Chats.Get -> in", chatId);
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        ChatSwitchTracer.Mark("ChatUI.CreateReadPositionState: Chats.Get <- out");
         var hasSingleAuthor = chat?.HasSingleAuthor == true;
         return StateFactory.NewCustomSynced<ReadPosition>(
             new (
@@ -681,8 +688,10 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                     if (hasSingleAuthor) // Notes chat should always appear as fully read
                         return ReadPosition.NewFullyRead(chatId);
 
+                    ChatSwitchTracer.Mark("ChatUI.ReadPosition.Read: ChatPositions.GetOwn -> in (SYNCHRONIZED)");
                     using var _ = ComputedSynchronizer.Default.Activate();
                     var (entryLid, origin) = await ChatPositions.GetOwn(Session, chatId, ChatPositionKind.Read, ct).ConfigureAwait(false);
+                    ChatSwitchTracer.Mark("ChatUI.ReadPosition.Read: ChatPositions.GetOwn <- out", $"lid={entryLid}");
                     return new ReadPosition(chatId, entryLid, origin);
                 },
                 // Writer
