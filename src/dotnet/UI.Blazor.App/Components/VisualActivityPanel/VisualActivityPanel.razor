@@ -131,13 +131,16 @@
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         var isWatching = watchingChatId == chatId;
 
-        // Auto-open video panel when user is listening and someone is streaming
+        // Auto-open the video panel when the user is listening and someone else is streaming.
+        // Remote-only on purpose: own streams already open it from ChatVideoUI's start paths,
+        // and counting them here would reopen the panel VideoPanel just closed on own-stop —
+        // for as long as the server still lists the stopped stream.
         if (!isWatching) {
             var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
             if (audioState.IsListening || audioState.IsRecording) {
-                var isAnyoneStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken)
+                var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken)
                     .ConfigureAwait(false);
-                if (isAnyoneStreaming) {
+                if (hasRemoteStreams) {
                     ChatVideoUI.OpenVideoPanel(chatId);
                     isWatching = true;
                 }
