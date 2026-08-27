@@ -1,0 +1,32 @@
+.dt-test {
+    @apply flex-y gap-8;
+    @apply p-4;
+}
+.dt-test-top {
+    @apply flex items-center justify-between gap-4;
+}
+.dt-test-lang {
+    @apply text-sm text-02;
+}
+.dt-section {
+    @apply flex-y gap-2;
+}
+.dt-section-title {
+    @apply text-lg font-semibold text-primary;
+}
+.dt-section-note {
+    @apply text-sm text-02;
+}
+.dt-rows {
+    @apply flex-y gap-1;
+}
+.dt-row {
+    @apply flex items-baseline gap-3;
+}
+.dt-label {
+    @apply w-44 shrink-0;
+    @apply text-sm text-02;
+}
+.dt-value {
+    @apply font-medium text-primary;
+}

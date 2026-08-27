@@ -1,0 +1,125 @@
+@page "/test/datetime"
+
+<RequireAccount MustBeAdmin="true"/>
+
+<MainHeader>Date &amp; Time Formats</MainHeader>
+
+<div class="test-page-wrapper">
+    <div class="dt-test">
+        <div class="dt-test-top">
+            <div class="dt-test-lang">Current UI language: @Lang</div>
+            <Button Class="btn-primary btn-sm" Click="@(_ => Refresh())">Refresh</Button>
+        </div>
+        @foreach (var section in Sections) {
+            <div class="dt-section">
+                <div class="dt-section-title">@section.Title</div>
+                @if (!section.Note.IsNullOrEmpty()) {
+                    <div class="dt-section-note">@section.Note</div>
+                }
+                <div class="dt-rows">
+                    @foreach (var row in section.Rows) {
+                        <div class="dt-row">
+                            <div class="dt-label">@row.Label</div>
+                            <div class="dt-value">@row.Value</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Inject] protected AppUIHub Hub { get; init; } = null!;
+    [Inject] protected DeltaText DeltaText { get; init; } = null!;
+
+    private DateFormatter DateFormatter => Hub.DateFormatter;
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
+    private MomentClockSet Clocks => Hub.Clocks;
+    private IStringLocalizer L => Hub.StringLocalizer;
+
+    private sealed record Row(string Label, string Value);
+    private sealed record Section(string Title, string Note, IReadOnlyList<Row> Rows);
+
+    private string Lang { get; set; } = "";
+    private IReadOnlyList<Section> Sections { get; set; } = [];
+
+    protected override void OnInitialized()
+        => Rebuild();
+
+    private void Refresh() {
+        Rebuild();
+        StateHasChanged();
+    }
+
+    private void Rebuild() {
+        var now = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now);
+        var nowMoment = Clocks.SystemClock.Now;
+        var language = ((IHasUILanguage)L).UILanguage;
+        Lang = $"{language.Title} ({language.IsoCode})";
+
+        string Msg(TimeSpan ago) => DeltaText.Get(now - ago, now).Text;
+        string Sidebar(TimeSpan ago) => DateFormatter.FormatListTime(now - ago, now);
+        string Foot(TimeSpan ago)
+            => L.Conversation_DurationAt_Format(
+                DateFormatter.FormatDuration(TimeSpan.FromMinutes(2)),
+                DateFormatter.FormatTimestamp(now - ago, now));
+        string Item(TimeSpan ago) => ContentListPlumbing.GetItemDate(nowMoment - ago, Hub);
+        string Group(TimeSpan ago, ContentGrouping by)
+            => ContentListPlumbing.GetLocalGroup(nowMoment - ago, by, DateTimeConverter, DateFormatter).Title;
+
+        var bareTime = now.ToString("t", DateFormatter);
+        Sections = [
+            new Section("1. Messages (live delta)", "LiveTimeDeltaText next to the author name", [
+                new Row("3 sec ago", Msg(TimeSpan.FromSeconds(3))),
+                new Row("8 sec ago", Msg(TimeSpan.FromSeconds(8))),
+                new Row("30 sec ago", Msg(TimeSpan.FromSeconds(30))),
+                new Row("90 sec ago", Msg(TimeSpan.FromSeconds(90))),
+                new Row("3 min ago", Msg(TimeSpan.FromMinutes(3))),
+                new Row("7 min ago", Msg(TimeSpan.FromMinutes(7))),
+                new Row("Today (3 h ago)", Msg(TimeSpan.FromHours(3))),
+                new Row("Yesterday", Msg(TimeSpan.FromDays(1))),
+                new Row("This week (3 d ago)", Msg(TimeSpan.FromDays(3))),
+                new Row("This year (30 d ago)", Msg(TimeSpan.FromDays(30))),
+                new Row("Last year (400 d ago)", Msg(TimeSpan.FromDays(400))),
+                new Row("2 years ago (800 d)", Msg(TimeSpan.FromDays(800))),
+            ]),
+            new Section("2. Conversation footer", "duration · timestamp (sample duration = 2 min)", [
+                new Row("Today", Foot(TimeSpan.FromHours(3))),
+                new Row("Yesterday", Foot(TimeSpan.FromDays(1))),
+                new Row("This week", Foot(TimeSpan.FromDays(3))),
+                new Row("This year", Foot(TimeSpan.FromDays(30))),
+                new Row("Last year", Foot(TimeSpan.FromDays(400))),
+            ]),
+            new Section("Duration formats", "FormatDuration — the footer's left part", [
+                new Row("< 1 min", DateFormatter.FormatDuration(TimeSpan.FromSeconds(45))),
+                new Row("45 min", DateFormatter.FormatDuration(TimeSpan.FromMinutes(45))),
+                new Row("Hours + min", DateFormatter.FormatDuration(TimeSpan.FromMinutes(125))),
+                new Row("> 1 day", DateFormatter.FormatDuration(TimeSpan.FromHours(26))),
+            ]),
+            new Section("3. Chat list (sidebar)", "FormatListTime — compact, time only for today", [
+                new Row("Today", Sidebar(TimeSpan.FromHours(3))),
+                new Row("Yesterday", Sidebar(TimeSpan.FromDays(1))),
+                new Row("This week", Sidebar(TimeSpan.FromDays(3))),
+                new Row("This year", Sidebar(TimeSpan.FromDays(30))),
+                new Row("Last year", Sidebar(TimeSpan.FromDays(400))),
+                new Row("2 years ago", Sidebar(TimeSpan.FromDays(800))),
+            ]),
+            new Section("4. Message timestamp (bare)", "always just the time, whatever the date", [
+                new Row("In-gutter (hover)", bareTime),
+                new Row("Live card", L.Conversation_StartedAt_Format(bareTime)),
+            ]),
+            new Section("5. Content-list rows", "Media / Files / Links — ContentListPlumbing.GetItemDate", [
+                new Row("This year", Item(TimeSpan.FromDays(30))),
+                new Row("Last year", Item(TimeSpan.FromDays(400))),
+                new Row("2 years ago", Item(TimeSpan.FromDays(800))),
+            ]),
+            new Section("6. Content-list headers & visor", "day / month group titles and the floating date visor", [
+                new Row("Day group (today)", Group(TimeSpan.Zero, ContentGrouping.Day)),
+                new Row("Day group (last year)", Group(TimeSpan.FromDays(400), ContentGrouping.Day)),
+                new Row("Month group", Group(TimeSpan.Zero, ContentGrouping.Month)),
+                new Row("Floating visor", ContentListPlumbing.GetVisorDate(nowMoment, DateTimeConverter, DateFormatter)),
+            ]),
+        ];
+    }
+}
