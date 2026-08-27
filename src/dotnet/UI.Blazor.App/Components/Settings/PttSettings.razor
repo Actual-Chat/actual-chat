@@ -22,7 +22,7 @@
 <Tile>
     @foreach (var chat in m.AllowedChats) {
         <TileItem Click="@(() => OnTurnOff(chat.Id))" Caption="@GetPlaceCaption(chat)">
-            <Icon><i class="icon-talking text-2xl"></i></Icon>
+            <Icon><i class="icon-push-to-talk text-2xl"></i></Icon>
             <Content>@chat.Title</Content>
             <Right>
                 <Toggle IsChecked="true" IsCheckedChanged="@(_ => OnTurnOff(chat.Id))"/>
@@ -37,7 +37,7 @@
     <Tile>
         @foreach (var chat in m.AvailableChats) {
             <TileItem Click="@(() => OnAllow(chat))" Caption="@GetPlaceCaption(chat)">
-                <Icon><i class="icon-talking text-2xl"></i></Icon>
+                <Icon><i class="icon-push-to-talk text-2xl"></i></Icon>
                 <Content>@chat.Title</Content>
                 <Right>
                     <Toggle
@@ -99,7 +99,7 @@
         <TileTopic Topic="@L.Ptt_LockScreenTopic"/>
         <Tile>
             <TileItem Click="@OnTogglePttTransmit">
-                <Icon><i class="icon-talking text-2xl"></i></Icon>
+                <Icon><i class="icon-push-to-talk text-2xl"></i></Icon>
                 <Content>@L.Ptt_LockScreenTalk</Content>
                 <Caption>@L.Ptt_LockScreenTalkCaption</Caption>
                 <Right><Toggle IsChecked="@(m.Settings.IsPttTransmitEnabled ?? true)" IsCheckedChanged="@(_ => OnTogglePttTransmit())"/></Right>

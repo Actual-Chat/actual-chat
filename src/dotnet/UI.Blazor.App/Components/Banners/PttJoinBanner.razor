@@ -11,7 +11,7 @@
     ShowDismissButton="true"
     Dismiss="@OnDismiss">
     <Icon>
-        <i class="icon-talking text-2xl"></i>
+        <i class="icon-push-to-talk text-2xl"></i>
     </Icon>
     <Body>
         @(kind == PttJoinBannerKind.EnableDevice ? L.Banner_PttUseDevice : L.Banner_PttAllow)
@@ -109,7 +109,7 @@
             // one-tap way back for someone who only meant to arm their other devices.
             ToastUI.Show(
                 L.Ptt_DeviceEnabledToast,
-                "icon-talking",
+                "icon-push-to-talk",
                 () => ChatAudioUI.SetIsPttEnabledOnDevice(false),
                 L.Ptt_NotOnThisDevice,
                 ToastDismissDelay.Long);
