@@ -45,10 +45,8 @@ public abstract class FusionComponentBase<THub> : FusionComponentBase, IHasCircu
     protected bool IsInteractive => Hub.IsInteractive;
     protected bool ShouldAutoFocusField => Hub.BrowserInfo.ShouldAutoFocusField;
 
-    private RenderGate RenderGate => field ??= Services.GetRequiredService<RenderGate>();
-
     protected override bool ShouldRender()
-        => !RenderGate.TryPostpone(this);
+        => !Hub.RenderGate.TryPostpone(this);
 
     // Explicit IHasFusionHub & IHasServices implementation
     CircuitHub IHasCircuitHub.CircuitHub => Hub;

@@ -47,10 +47,8 @@ public abstract class ComponentBase<THub> : ComponentBase, IHasCircuitHub
     protected bool IsPrerendering => Hub.IsPrerendering;
     protected bool IsInteractive => Hub.IsInteractive;
 
-    private RenderGate RenderGate => field ??= Services.GetRequiredService<RenderGate>();
-
     protected override bool ShouldRender()
-        => !RenderGate.TryPostpone(this);
+        => !Hub.RenderGate.TryPostpone(this);
 
     // Explicit IHasFusionHub & IHasServices implementation
     CircuitHub IHasCircuitHub.CircuitHub => Hub;

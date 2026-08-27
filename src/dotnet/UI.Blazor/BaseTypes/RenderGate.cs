@@ -1,144 +1,102 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.UI.Blazor;
 
 // A backgrounded WebView stops acknowledging Blazor's render batches while .NET keeps producing
 // them, and every batch produced in that window is one the host can drop - which desyncs the
 // renderer permanently. Holding renders back until the app is visible keeps that window empty.
-public sealed class RenderGate : WorkerBase
+public sealed class RenderGate : UIWorkerBase<UIHub>
 {
     // Elsewhere the render batch transport is in-process, so nothing can be lost and postponing
     // would only add latency.
     public const bool IsEnabledOnMauiApp = true;
-    private static readonly TimeSpan WatchdogPeriod = TimeSpan.FromSeconds(2);
-    // Long enough that a resume racing a render never trips it, short enough that a lost one
-    // doesn't read as a frozen app.
-    private static readonly TimeSpan MaxForegroundPostponeDuration = TimeSpan.FromSeconds(2);
-    private static readonly TimeSpan StuckReportPeriod = TimeSpan.FromMinutes(1);
 
     private readonly BackgroundStateTracker? _backgroundStateTracker;
-    private readonly HashSet<ComponentBase> _postponed = new();
-    private readonly Lock _lock = new();
-    private CpuTimestamp _postponedAt;
-    private CpuTimestamp _reportedStuckAt;
+    // Non-null exactly while the app is backgrounded: its existence is the gate, so nothing joins
+    // a set already flushed. Dispatcher-only, like TryPostpone - hence no synchronization.
+    private HashSet<ComponentBase>? _postponed;
 
-    private ILogger Log { get; }
     public bool IsEnabled => _backgroundStateTracker != null;
 
-    public RenderGate(IServiceProvider services)
+    public RenderGate(UIHub hub) : base(hub)
     {
-        Log = services.LogFor(GetType());
-        _backgroundStateTracker = IsEnabledOnMauiApp && services.HostInfo().HostKind.IsMauiApp()
-            ? services.GetService<BackgroundStateTracker>()
+        _backgroundStateTracker = IsEnabledOnMauiApp && HostInfo.HostKind.IsMauiApp()
+            ? Services.GetService<BackgroundStateTracker>()
             : null;
         if (IsEnabled)
             this.Start();
     }
 
-    // Runs inside ShouldRender for every component on every render, so it must never throw:
-    // one exception here would stop the whole app rendering rather than one component.
     public bool TryPostpone(ComponentBase renderer)
     {
-        if (_backgroundStateTracker is not { } backgroundStateTracker)
+        // Runs inside ShouldRender for every component on every render, so it must never throw:
+        // one exception here would stop the whole app rendering rather than one component.
+        if (_postponed is not { } postponed)
             return false;
 
-        var computed = backgroundStateTracker.IsBackground.Computed;
-        if (computed.HasError || !computed.Value)
-            return false;
-
-        lock (_lock) {
-            if (_postponed.Count == 0)
-                _postponedAt = CpuTimestamp.Now;
-            _postponed.Add(renderer);
-        }
-
+        postponed.Add(renderer);
         return true;
     }
 
     // Protected methods
 
     protected override Task OnRun(CancellationToken cancellationToken)
-    {
-        var baseChains = new[] {
-            AsyncChain.From(ResumeWhenForeground),
-            AsyncChain.From(WatchPostponed),
-        };
-        var retryDelays = RetryDelaySeq.Exp(0.1, 1);
-        return baseChains
-            .Select(chain => chain.Log(LogLevel.Debug, Log).RetryForever(retryDelays, Log))
+        => AsyncChain.From(TrackBackgroundState)
+            .Log(LogLevel.Debug, Log)
+            .RetryForever(RetryDelaySeq.Exp(0.1, 1), Log)
             .RunIsolated(cancellationToken);
-    }
 
     // Private methods
 
-    private async Task ResumeWhenForeground(CancellationToken cancellationToken)
+    private async Task TrackBackgroundState(CancellationToken cancellationToken)
     {
+        await Hub.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
         var isBackgroundState = _backgroundStateTracker!.IsBackground;
         var cIsBackground = await Computed
             .Capture(() => isBackgroundState.Use(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        var wasBackground = cIsBackground.Value;
+        // Every value is applied, not just transitions, so a retry re-syncs instead of awaiting an
+        // edge it already missed; an error stops postponing, since a gate stuck shut freezes the UI.
         await foreach (var c in cIsBackground.Changes(cancellationToken).ConfigureAwait(false)) {
-            if (c.HasError)
-                continue;
-
-            var isBackground = c.Value;
-            if (wasBackground && !isBackground)
-                Resume();
-            wasBackground = isBackground;
+            var (isBackground, error) = c;
+            var isPostponing = error == null && isBackground;
+            await Dispatcher.InvokeSafeAsync(() => SetIsPostponing(isPostponing), Log).ConfigureAwait(false);
         }
     }
 
-    private async Task WatchPostponed(CancellationToken cancellationToken)
+    private void SetIsPostponing(bool isPostponing)
     {
-        // The gate has exactly one way out - a background -> foreground transition - so a resume
-        // that never arrives leaves the UI frozen with nothing to say so. Resuming is only safe
-        // while the app reports itself foreground; a genuinely backgrounded WebView still must not
-        // be handed batches it would drop, so a stuck background flag is reported rather than
-        // overridden.
-        var isBackgroundState = _backgroundStateTracker!.IsBackground;
-        while (true) {
-            await Task.Delay(WatchdogPeriod, cancellationToken).ConfigureAwait(false);
-            var computed = isBackgroundState.Computed;
-            var isBackground = !computed.HasError && computed.Value;
-            int count;
-            TimeSpan duration;
-            lock (_lock) {
-                count = _postponed.Count;
-                duration = count == 0 ? TimeSpan.Zero : _postponedAt.Elapsed;
-            }
-
-            if (count == 0)
-                continue;
-
-            if (!isBackground) {
-                if (duration >= MaxForegroundPostponeDuration) {
-                    Log.LogWarning("{Count} render(s) postponed for {Duration} while foreground - resuming",
-                        count, duration.ToShortString());
-                    Resume();
-                }
-                continue;
-            }
-
-            if (duration < StuckReportPeriod || _reportedStuckAt.Elapsed < StuckReportPeriod)
-                continue;
-
-            _reportedStuckAt = CpuTimestamp.Now;
-            Log.LogWarning("{Count} render(s) postponed for {Duration} - the app still reports it is backgrounded",
-                count, duration.ToShortString());
+        if (isPostponing) {
+            _postponed ??= [];
+            return;
         }
-    }
 
-    private void Resume()
-    {
-        ComponentBase[] postponed;
-        lock (_lock) {
-            if (_postponed.Count == 0)
-                return;
+        if (_postponed is not { } postponed)
+            return;
 
-            postponed = _postponed.ToArray();
-            _postponed.Clear();
+        // Cleared before the flush, so a NotifyStateHasChanged that re-enters TryPostpone renders
+        // inline instead of rejoining a set nothing will drain.
+        _postponed = null;
+        if (postponed.Count == 0)
+            return;
+
+        Log.LogInformation("Resuming {Count} postponed render(s)", postponed.Count);
+        // One component that throws must not strand the rest, and logging inside the loop would
+        // turn a systemic failure into a log storm - so the first error is reported once, after.
+        var errorCount = 0;
+        Exception? firstError = null;
+        foreach (var renderer in postponed) {
+            try {
+                renderer.NotifyStateHasChanged();
+            }
+            catch (Exception e) {
+                errorCount++;
+                firstError ??= e;
+            }
         }
-        Log.LogInformation("Resuming {Count} postponed render(s)", postponed.Length);
-        foreach (var renderer in postponed)
-            renderer.NotifyStateHasChanged();
+
+        if (firstError != null)
+            Log.LogError(firstError, "SetIsPostponing: {ErrorCount}/{Count} postponed render(s) failed",
+                errorCount, postponed.Count);
     }
 }

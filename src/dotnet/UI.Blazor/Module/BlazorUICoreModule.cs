@@ -113,7 +113,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
             services.AddScoped<AudioFocusUI>(_ => new AudioFocusUI());
             services.AddScoped<TuneUI>(c => new WebTuneUI(c.UIHub()));
         }
-        services.AddScoped(c => new RenderGate(c));
+        services.AddScoped(c => new RenderGate(c.UIHub()));
         services.AddScoped(c => new ClipboardUI(c.UIHub()));
         services.AddScoped(c => new ExternalUrlOpener(c.UIHub()));
         services.AddScoped(c => new ExternalMapOpener(c.UIHub()));

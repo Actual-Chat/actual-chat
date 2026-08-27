@@ -43,7 +43,8 @@ public abstract class ComputedStateComponent<THub, TState> : ComputedStateCompon
     protected bool ShouldAutoFocusField => Hub.BrowserInfo.ShouldAutoFocusField;
 
     protected ComputedStateComponent()
-        => Options = DefaultOptions | ComputedStateComponentOptions.ComputeStateOnThreadPool; // Prevent blocking the UI thread
+        // ComputeStateOnThreadPool: prevents blocking the UI thread
+        => Options = DefaultOptions | ComputedStateComponentOptions.ComputeStateOnThreadPool;
 
     public override Task SetParametersAsync(ParameterView parameters)
     {
@@ -51,8 +52,6 @@ public abstract class ComputedStateComponent<THub, TState> : ComputedStateCompon
         return base.SetParametersAsync(parameters);
     }
 
-    private RenderGate RenderGate => field ??= Hub.Services.GetRequiredService<RenderGate>();
-
     protected override bool ShouldRender()
-        => base.ShouldRender() && !RenderGate.TryPostpone(this);
+        => base.ShouldRender() && !Hub.RenderGate.TryPostpone(this);
 }
