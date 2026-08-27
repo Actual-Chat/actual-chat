@@ -42,6 +42,9 @@ host app (ITMS-90473). The target therefore depends on `NBGV_SetVersionForMauiIO
 NBGV target that fills `ApplicationDisplayVersion` / `ApplicationVersion` — because it
 otherwise runs before it and would pass empty strings.
 
+`build.sh` is a thin wrapper: the xcodegen and signing plumbing lives in `../appex-build.sh`,
+shared with `../VoxtNotificationService`, which is also where that empty-version check lives.
+
 Manually:
 
 ```sh
