@@ -75,7 +75,7 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
     [JSInvokable]
     public async Task RequestData(VirtualListDataQuery query)
     {
-        ChatSwitchTrace.Mark("VirtualList.RequestData (from JS)", Identity);
+        ChatSwitchTracer.Mark("VirtualList.RequestData (from JS)", Identity);
         Query = query;
         while (State == null)
             await Task.Delay(100);
@@ -107,11 +107,11 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
         // per-circuit: IsInteractive is false during prerender SSR, true once the list is interactive.
         var shouldSetInitialData = RendererInfo.IsInteractive && RenderIndex == 0;
         if (shouldSetInitialData) {
-            ChatSwitchTrace.Mark("VirtualList: initial GetData -> in (BLOCKS FIRST RENDER)", Identity);
+            ChatSwitchTracer.Mark("VirtualList: initial GetData -> in (BLOCKS FIRST RENDER)", Identity);
             _initialData = await DataSource.GetData(VirtualListDataQuery.None,
                 VirtualListData<TItem>.None,
                 CancellationToken.None);
-            ChatSwitchTrace.Mark("VirtualList: initial GetData <- out", Identity);
+            ChatSwitchTracer.Mark("VirtualList: initial GetData <- out", Identity);
         }
         else
             _initialData = null;
@@ -144,10 +144,10 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
             return;
 
         if (firstRender) {
-            ChatSwitchTrace.Mark("VirtualList: first render done, creating JS side", Identity);
+            ChatSwitchTracer.Mark("VirtualList: first render done, creating JS side", Identity);
             BlazorRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
             JSRef = await CreateJSRef();
-            ChatSwitchTrace.Mark("VirtualList: JS side created", Identity);
+            ChatSwitchTracer.Mark("VirtualList: JS side created", Identity);
         }
     }
 

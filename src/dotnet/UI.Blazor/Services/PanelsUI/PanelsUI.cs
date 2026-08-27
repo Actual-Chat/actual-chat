@@ -40,7 +40,7 @@ public partial class PanelsUI : UIWorkerBase<UIHub>
         if (IsWide())
             return;
 
-        ChatSwitchTrace.Mark("PanelsUI.HidePanels");
+        ChatSwitchTracer.Mark("PanelsUI.HidePanels");
         Left.SetIsVisible(false);
         Right.SetIsVisible(false);
     }

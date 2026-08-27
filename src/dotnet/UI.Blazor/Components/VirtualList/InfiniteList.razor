@@ -7,7 +7,7 @@
 #pragma warning disable IL2026
 
     var renderIndex = RenderIndex++;
-    ChatSwitchTrace.Mark($"InfiniteList: render #{renderIndex}",
+    ChatSwitchTracer.Mark($"InfiniteList: render #{renderIndex}",
         $"{Identity}, {Data.Count} items, scrollToKey={Data.ScrollToKey}");
 
     // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract

@@ -19,12 +19,12 @@ public partial class History
             eventArgs.IsNavigationIntercepted ? "intercepted" : "internal",
             eventArgs.Location, parsedHistoryEntryState?.Format() ?? "null", historyEntryState);
 
-        ChatSwitchTrace.Mark("History.LocationChange: entered", eventArgs.Location);
+        ChatSwitchTracer.Mark("History.LocationChange: entered", eventArgs.Location);
         Action? exitAction = null;
         try {
             // Saving the current state
             Save();
-            ChatSwitchTrace.Mark("History.LocationChange: Save() done");
+            ChatSwitchTracer.Mark("History.LocationChange: Save() done");
 
             var url = _url = Nav.GetLocalUrl().Value;
             var lastItem = _currentItem;
@@ -74,13 +74,13 @@ public partial class History
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
                 $"LocationChange: transition #{lastItem.Id} -> #{CurrentItem.Id}, {transition}");
             Transition(transition);
-            ChatSwitchTrace.Mark("History.LocationChange: Transition() done");
+            ChatSwitchTracer.Mark("History.LocationChange: Transition() done");
         }
         finally {
             _state.Value = _currentItem;
             try {
                 LocationChanged?.Invoke(this, eventArgs);
-                ChatSwitchTrace.Mark("History.LocationChange: LocationChanged handlers done");
+                ChatSwitchTracer.Mark("History.LocationChange: LocationChanged handlers done");
             }
             catch (Exception e) {
                 Log.LogError(e, "LocationChange: One of LocationChanged handlers failed");

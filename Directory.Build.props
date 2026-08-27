@@ -57,6 +57,10 @@
   <PropertyGroup>
     <UseMemoryPack Condition="'$(UseMemoryPack)' == ''">true</UseMemoryPack>
     <DefineConstants Condition="$(UseMemoryPack)">$(DefineConstants);USE_MEMORYPACK</DefineConstants>
+    <!-- Compiles in ChatSwitchTracer's calls - see its EnableSymbol. Off by default; turn on with
+         `dotnet build -p:EnableChatSwitchTracer=true` or `b app build windows -p:...`. -->
+    <EnableChatSwitchTracer Condition="'$(EnableChatSwitchTracer)' == ''">false</EnableChatSwitchTracer>
+    <DefineConstants Condition="$(EnableChatSwitchTracer)">$(DefineConstants);CHAT_SWITCH_TRACER</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup>

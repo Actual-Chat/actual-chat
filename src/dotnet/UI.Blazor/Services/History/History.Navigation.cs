@@ -37,11 +37,11 @@ public partial class History
         double clickToInvokeMs = -1)
     {
         Dispatcher.AssertAccess();
-        ChatSwitchTrace.TryStart(url, "History.NavigateTo");
-        ChatSwitchTrace.Mark("History.NavigateTo: entered",
+        ChatSwitchTracer.TryStart(url, "History.NavigateTo");
+        ChatSwitchTracer.Mark("History.NavigateTo: entered",
             $"{url} (JS click -> navigateTo: {clickToInvokeMs:F1}ms)");
         await WhenNavigationCompletedOrTimeout().ConfigureAwait(true);
-        ChatSwitchTrace.Mark("History.NavigateTo: nav queue drained");
+        ChatSwitchTracer.Mark("History.NavigateTo: nav queue drained");
 
         var localUrl = new LocalUrl(url);
         var fixedUriLogLevel = LogLevel.Warning;
@@ -68,17 +68,17 @@ public partial class History
 
             DebugLog?.LogDebug("{Entry}", title);
             var itemId = mustReplace ? _currentItem.Id : NewItemId();
-            ChatSwitchTrace.Mark("History.NavigateTo: Nav.NavigateTo -> in");
+            ChatSwitchTracer.Mark("History.NavigateTo: Nav.NavigateTo -> in");
             Nav.NavigateTo(url, new NavigationOptions() {
                 ForceLoad = force,
                 ReplaceHistoryEntry = mustReplace,
                 HistoryEntryState = ItemIdFormatter.Format(itemId),
             });
-            ChatSwitchTrace.Mark("History.NavigateTo: Nav.NavigateTo <- out");
+            ChatSwitchTracer.Mark("History.NavigateTo: Nav.NavigateTo <- out");
             return itemId;
         });
         await entry.WhenCompleted.ConfigureAwait(false);
-        ChatSwitchTrace.Mark("History.NavigateTo: queue entry completed");
+        ChatSwitchTracer.Mark("History.NavigateTo: queue entry completed");
     }
 
     public bool TryGetStepBackUrl(out string backUrl)

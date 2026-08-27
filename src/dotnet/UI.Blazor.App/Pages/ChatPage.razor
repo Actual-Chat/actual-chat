@@ -7,7 +7,7 @@
 @using ActualChat.UI.Blazor.Diagnostics
 @inherits ComputedStateComponent<AppUIHub, ChatPage.Model?>
 @{
-    ChatSwitchTrace.Mark("ChatPage: render");
+    ChatSwitchTracer.Mark("ChatPage: render");
     var m = Rendered = State.Value;
     if (_isVeryFirstLoad && !PanelsUI.Middle.IsVisible.Value)
         return;
@@ -135,24 +135,24 @@
            || State.Value != Rendered;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        ChatSwitchTrace.Mark("ChatPage.ComputeState: entered");
+        ChatSwitchTracer.Mark("ChatPage.ComputeState: entered");
         var lastState = State.ValueOrDefault;
         var hostInfo = HostInfo;
         var routeState = await _routeState.Use(cancellationToken).ConfigureAwait(false);
         var parsedRoute = routeState.Parsed;
         var fixedRoute = routeState.Fixed;
         if (fixedRoute is null) {
-            ChatSwitchTrace.Mark("ChatPage.ComputeState: exit - no fixed route (synchronizing)");
+            ChatSwitchTracer.Mark("ChatPage.ComputeState: exit - no fixed route (synchronizing)");
             return lastState; // Synchronizing
         }
 
         if (!ChatUI.WhenReady.IsCompleted)
             await ChatUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
         var chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-        ChatSwitchTrace.Mark("ChatPage.ComputeState: SelectedChatId used", chatId?.Value);
+        ChatSwitchTracer.Mark("ChatPage.ComputeState: SelectedChatId used", chatId);
 
         if (chatId != fixedRoute.ChatId) {
-            ChatSwitchTrace.Mark("ChatPage.ComputeState: exit - chatId != route (synchronizing)");
+            ChatSwitchTracer.Mark("ChatPage.ComputeState: exit - chatId != route (synchronizing)");
             return lastState; // Synchronizing
         }
 
@@ -166,7 +166,7 @@
         }
 
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        ChatSwitchTrace.Mark("ChatPage.ComputeState: OwnAccount used");
+        ChatSwitchTracer.Mark("ChatPage.ComputeState: OwnAccount used");
         if (chatId is null)
             return Model.NewUnavailable(account, fixedRoute, false);
 
@@ -188,7 +188,7 @@
                 .Get(Session, chatId, cancellationToken)
                 .WaitAsync(LoadTimeout, cancellationToken)
                 .ConfigureAwait(false);
-            ChatSwitchTrace.Mark("ChatPage.ComputeState: Chats.Get done", chat is null ? "null" : "ok");
+            ChatSwitchTracer.Mark("ChatPage.ComputeState: Chats.Get done", chat is null ? "null" : "ok");
             var chatContext = chat is not null
                 ? new ChatContext(Hub, chat)
                 : null;
@@ -205,9 +205,9 @@
                 }
             }
             var footerModel = await GetFooterModel(chat, account, cancellationToken).ConfigureAwait(false);
-            ChatSwitchTrace.Mark("ChatPage.ComputeState: GetFooterModel done");
+            ChatSwitchTracer.Mark("ChatPage.ComputeState: GetFooterModel done");
             var enableIncompleteUI = await enableIncompleteUITask.ConfigureAwait(false);
-            ChatSwitchTrace.Mark("ChatPage.ComputeState: exit - new Model");
+            ChatSwitchTracer.Mark("ChatPage.ComputeState: exit - new Model");
             return new(account, fixedRoute, chatContext, footerModel, canSendJoinPlaceRequest, enableIncompleteUI);
         }
         catch (TimeoutException) {
@@ -282,7 +282,7 @@
     }
 
     protected async Task SetRoute(string? route) {
-        ChatSwitchTrace.Mark("ChatPage.SetRoute: entered", route);
+        ChatSwitchTracer.Mark("ChatPage.SetRoute: entered", route);
         _routeState.Value = new RouteState(null, null);
         ChatId? chatId;
 
@@ -323,9 +323,9 @@
 
         var fixedRoute = chatId is null ? parsedRoute : new RouteResult(chatId);
         _routeState.Value = new RouteState(parsedRoute, fixedRoute);
-        ChatSwitchTrace.Mark("ChatPage.SetRoute: route state set", chatId?.Value);
+        ChatSwitchTracer.Mark("ChatPage.SetRoute: route state set", chatId);
         ChatUI.SelectChatOnNavigation(chatId);
-        ChatSwitchTrace.Mark("ChatPage.SetRoute: SelectChatOnNavigation done");
+        ChatSwitchTracer.Mark("ChatPage.SetRoute: SelectChatOnNavigation done");
     }
 
     protected async ValueTask<RouteResult> ResolveAliasRoute(string? route) {

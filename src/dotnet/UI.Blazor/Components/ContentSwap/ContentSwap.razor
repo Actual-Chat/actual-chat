@@ -74,7 +74,7 @@
 
     [JSInvokable]
     public void OnDisplayed() {
-        ChatSwitchTrace.Mark($"ContentSwap[{TraceName}].OnDisplayed",
+        ChatSwitchTracer.Mark($"ContentSwap[{TraceName}].OnDisplayed",
             _holdToken is null ? "not holding" : "hold dropped by JS");
         if (_holdToken is null)
             return;
@@ -165,12 +165,12 @@
         _holdToken = _swapIndex.Format();
         _animator ??= new ComponentAnimator(this, Duration);
         _animator.BeginAnimation(MaxDisplayDelay);
-        ChatSwitchTrace.Mark($"ContentSwap[{TraceName}].StartSwap - HOLD STARTS",
+        ChatSwitchTracer.Mark($"ContentSwap[{TraceName}].StartSwap - HOLD STARTS",
             $"key={LayerKey}, max={MaxDisplayDelay.TotalMilliseconds}ms");
     }
 
     private void Display() {
-        ChatSwitchTrace.Mark($"ContentSwap[{TraceName}].Display - CONTENT SWAPPED");
+        ChatSwitchTracer.Mark($"ContentSwap[{TraceName}].Display - CONTENT SWAPPED");
         _holdToken = null;
         _outgoingLayer!.Context.SetState(ContentSwapLayerState.Replaced);
         _currentLayer.Context.SetState(ContentSwapLayerState.Displayed);
@@ -178,7 +178,7 @@
     }
 
     private void EndSwap() {
-        ChatSwitchTrace.Mark($"ContentSwap[{TraceName}].EndSwap - outgoing layer dropped");
+        ChatSwitchTracer.Mark($"ContentSwap[{TraceName}].EndSwap - outgoing layer dropped");
         _outgoingLayer!.Context.Detach();
         _outgoingLayer = null;
         _currentLayer.CssClass = "";

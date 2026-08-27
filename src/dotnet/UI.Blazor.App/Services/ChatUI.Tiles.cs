@@ -149,8 +149,8 @@ public partial class ChatUI
     {
         // The load zone is guessed rather than derived: the real one needs range meta, and waiting for
         // that is the serialized round trip this exists to overlap. A miss costs a few extra tile fetches.
-        ChatSwitchTrace.TryStart(Links.Chat(chatId).Value, "ChatUI.Prefetch (pointer down)");
-        ChatSwitchTrace.Mark("ChatUI.Prefetch: entered", chatId.Value);
+        ChatSwitchTracer.TryStart(Links.Chat(chatId).Value, "ChatUI.Prefetch (pointer down)");
+        ChatSwitchTracer.Mark("ChatUI.Prefetch: entered", chatId);
         // Everything GetChatItemsInternal issues before its first await, in the same order
         var chatTask = Chats.Get(Session, chatId, cancellationToken);
         var liveConversationTask = Hub.LiveSessionUI.GetConversation(chatId, cancellationToken);
@@ -181,10 +181,10 @@ public partial class ChatUI
             anchorLid = readPosition.EntryLid > 0 ? readPosition.EntryLid : chatLidRange.End - 1;
             lidRangeStart = chatLidRange.Start;
             showConversations = chat.IsSummarized ?? false;
-            ChatSwitchTrace.Mark("ChatUI.Prefetch: anchor awaited (ChatInfo miss)", $"anchor={anchorLid}");
+            ChatSwitchTracer.Mark("ChatUI.Prefetch: anchor awaited (ChatInfo miss)", $"anchor={anchorLid}");
         }
         else
-            ChatSwitchTrace.Mark("ChatUI.Prefetch: anchor from ChatInfo (no await)", $"anchor={anchorLid}");
+            ChatSwitchTracer.Mark("ChatUI.Prefetch: anchor from ChatInfo (no await)", $"anchor={anchorLid}");
         if (anchorLid < 0)
             return;
 
@@ -211,11 +211,11 @@ public partial class ChatUI
             .Select(t => Conversations.GetTile(Session, chatId, t.Range, cancellationToken))
             .Collect(ApiConstants.Concurrency.High, cancellationToken);
         var loadZoneTask = PrefetchLoadZone(chatId, idTiles, showConversations, cancellationToken);
-        ChatSwitchTrace.Mark("ChatUI.Prefetch: warm requests issued",
+        ChatSwitchTracer.Mark("ChatUI.Prefetch: warm requests issued",
             $"{idTiles.Count} idTiles, {metaIdTiles.Count} metaTiles, anchor={anchorLid}");
         await Task.WhenAll(metaTask, conversationTilesTask, loadZoneTask).ConfigureAwait(false);
         await Task.WhenAll(liveConversationTask, rawLiveTask, blockStateTask, chatInfoTask).SilentAwait(false);
-        ChatSwitchTrace.Mark("ChatUI.Prefetch: done");
+        ChatSwitchTracer.Mark("ChatUI.Prefetch: done");
     }
 
     public Task<ChatItems> GetChatItems(
@@ -681,7 +681,7 @@ public partial class ChatUI
             }
             // The log carries the split because nothing else does on a device: the Meter has no exporter
             // there, and Sentry drops Activity tags (it stores no AC.* span attribute at all).
-            ChatSwitchTrace.Mark("ChatUI.GetChatItems: phases",
+            ChatSwitchTracer.Mark("ChatUI.GetChatItems: phases",
                 $"total={totalMs} (live={liveMs} [chat={chatMs} conv={conversationMs} amInLive={amInLiveMs} "
                 + $"snapshot={snapshotMs} blockState={blockStateMs}], meta={metaMs}, load={loadMs}, build={buildMs})");
             if (totalMs > SlowBuildMs && !wasBackgrounded)
