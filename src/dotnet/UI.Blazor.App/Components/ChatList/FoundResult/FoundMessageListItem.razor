@@ -15,7 +15,10 @@
         return;
 }
 
-<NavbarItem Class="found-result message" IsSelected="@m.IsSelected" Url="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
+@* The entry lid matches m.Link's ?n= - the view opens there, so that's what the prefetch must aim at *@
+<NavbarItem Class="found-result message" IsSelected="@m.IsSelected" Url="@m.Link"
+            data-prefetch="@(PrefetchRef.New<ChatPrefetcher>(chat.Id.Value, m.Entry.LocalId.Format()).ToString())"
+            @onclick="@(() => SearchUI.Select(m.Item))">
     <div class="c-content">
         <div class="c-container">
             <ChatIcon Chat="@chatState.Chat"/>
