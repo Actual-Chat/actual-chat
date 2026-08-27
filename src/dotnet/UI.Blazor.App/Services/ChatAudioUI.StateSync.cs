@@ -261,8 +261,13 @@ public partial class ChatAudioUI
             whenIdle = ForegroundTask.Run(async () => {
                 var options = GetRecordingIdleOptions((TimeSpan?)_recordingIdleDurationBox, AudioSettings);
                 var streamingIdleBoundaries = ObserveStreamingIdleBoundaries(chatId, options, abortToken);
-                await foreach (var serverStopAt in streamingIdleBoundaries.ConfigureAwait(false))
-                    _stopRecordingAt.Value = serverStopAt.Convert(serverClock, cpuClock);
+                await foreach (var serverStopAt in streamingIdleBoundaries.ConfigureAwait(false)) {
+                    // MutableState.Set invalidates unconditionally, and the boundaries repeat the
+                    // same stopAt on every countdown tick - each redundant set re-renders the header.
+                    var stopAt = serverStopAt.Convert(serverClock, cpuClock);
+                    if (_stopRecordingAt.Value != stopAt)
+                        _stopRecordingAt.Value = stopAt;
+                }
             }, abortToken);
             whenWinner = await Task.WhenAny(whenStopped, whenIdle, whenRecorderStopped).ConfigureAwait(false);
             // No need to await for the result of WhenAny: we're stopping anyway
@@ -998,46 +1003,61 @@ public partial class ChatAudioUI
         await Task.Yield();
         yield return null;
 
-        // We just started, so it's ok to await for the countdown interval first
-        await Task.Delay(options.PreCountdownTimeout, cancellationToken).ConfigureAwait(false);
-        var lastActivityAt = Clocks.ServerClock.Now; // Reset after pre-countdown wait to avoid stale timestamp on repeat activations
+        var cHasActivity = await Computed
+            .Capture(() => LiveStreamUI.HasActivity(chatId, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        var cIsWatching = await Computed
+            .Capture(() => ChatVideoUI.IsWatching(chatId, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        var cOwnSourceKind = await Computed
+            .Capture(() => ChatVideoUI.GetOwnSourceKind(chatId, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        var lastActivityAt = ServerNow;
         while (!cancellationToken.IsCancellationRequested) {
-            // If own video is streaming for this chat, treat as activity — don't countdown
-            var ownSourceKind = await ChatVideoUI.GetOwnSourceKind(chatId, cancellationToken).ConfigureAwait(false);
-            var isWatching = await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false);
-            if (ownSourceKind is not null || isWatching) {
-                lastActivityAt = Clocks.ServerClock.Now;
+            // The holds are observed by invalidation rather than polled: HasActivity is a level
+            // that clears at the end of every VAD utterance, so a sampled reading anchors the
+            // countdown to whichever pause the sample landed in, not to the end of the conversation.
+            var isHeld = cHasActivity.Value
+                || cIsWatching.Value
+                || cOwnSourceKind.Value is not null;
+            if (isHeld) {
                 yield return null; // No countdown
-                await Task.Delay(options.CheckPeriod, cancellationToken).ConfigureAwait(false);
+
+                using var holdCts = cancellationToken.CreateLinkedTokenSource();
+                await Task.WhenAny(
+                    cHasActivity.WhenInvalidated(holdCts.Token),
+                    cIsWatching.WhenInvalidated(holdCts.Token),
+                    cOwnSourceKind.WhenInvalidated(holdCts.Token)
+                    ).ConfigureAwait(false);
+                holdCts.CancelAndDisposeSilently();
+                // The hold spanned this whole wait, so the countdown counts from its end - keeping
+                // the pre-wait timestamp would backdate the stop by the length of the last activity.
+                lastActivityAt = ServerNow;
+                cHasActivity = await cHasActivity.Update(cancellationToken).ConfigureAwait(false);
+                cIsWatching = await cIsWatching.Update(cancellationToken).ConfigureAwait(false);
+                cOwnSourceKind = await cOwnSourceKind.Update(cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
-            var hasActivity = await LiveStreamUI.HasActivity(chatId, cancellationToken).ConfigureAwait(false);
-            if (hasActivity)
-                lastActivityAt = ServerNow;
-
-            var idleAt = lastActivityAt + options.IdleTimeout;
-            var idleDelay = (idleAt - ServerNow).Positive();
-            if (idleDelay <= Epsilon) {
-                // We must stop right now
+            var (stopAt, wait, mustStop) = GetRecordingIdleStep(lastActivityAt, ServerNow, options);
+            if (mustStop) {
                 yield return null;
                 yield break;
             }
 
-            var countdownAt = lastActivityAt + options.PreCountdownTimeout;
-            var countdownDelay = (countdownAt - ServerNow).Positive();
-            if (countdownDelay <= Epsilon) {
-                // Start the countdown
-                yield return idleAt;
-                await Task
-                    .Delay(TimeSpanExt.Min(idleDelay, options.CheckPeriod), cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            else {
-                // Too early to countdown
-                yield return null;
-                await Task.Delay(countdownDelay, cancellationToken).ConfigureAwait(false);
-            }
+            yield return stopAt;
+
+            using var waitCts = cancellationToken.CreateLinkedTokenSource();
+            await Task.WhenAny(
+                cHasActivity.WhenInvalidated(waitCts.Token),
+                cIsWatching.WhenInvalidated(waitCts.Token),
+                cOwnSourceKind.WhenInvalidated(waitCts.Token),
+                Task.Delay(wait, waitCts.Token)
+                ).ConfigureAwait(false);
+            waitCts.CancelAndDisposeSilently();
+            cHasActivity = await cHasActivity.Update(cancellationToken).ConfigureAwait(false);
+            cIsWatching = await cIsWatching.Update(cancellationToken).ConfigureAwait(false);
+            cOwnSourceKind = await cOwnSourceKind.Update(cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -1092,6 +1112,13 @@ public partial class ChatAudioUI
     public sealed record NextBeepState(
         Moment At, // CPU time
         bool IsPreviousCancelled);
+
+    /// <summary>
+    /// One step of the recording idle watcher: how long to wait before re-deciding,
+    /// the countdown target to show meanwhile (null = no countdown yet), and whether
+    /// the idle timeout has already expired.
+    /// </summary>
+    public sealed record RecordingIdleStep(Moment? StopAt, TimeSpan Wait, bool MustStop);
 
     public sealed record RecordingIdleOptions
     {

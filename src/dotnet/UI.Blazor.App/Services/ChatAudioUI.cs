@@ -290,6 +290,21 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             audioSettings.IdleRecordingCheckPeriod);
     }
 
+    // Static so tests can exercise the boundaries without a host
+    public static RecordingIdleStep GetRecordingIdleStep(
+        Moment lastActivityAt, Moment now, RecordingIdleOptions options)
+    {
+        var idleAt = lastActivityAt + options.IdleTimeout;
+        var idleDelay = (idleAt - now).Positive();
+        if (idleDelay <= Epsilon)
+            return new(null, TimeSpan.Zero, true);
+
+        var countdownDelay = (lastActivityAt + options.PreCountdownTimeout - now).Positive();
+        return countdownDelay <= Epsilon
+            ? new(idleAt, TimeSpanExt.Min(idleDelay, options.CheckPeriod), false)
+            : new(null, countdownDelay, false);
+    }
+
     public static Moment ComputeStopListeningAt(
         Moment lastActivityAt, bool hasRecorded, TimeSpan listenerTimeout, TimeSpan speakerTimeout)
         // A speaker session (the user recorded during it) ends per their listening-linger
