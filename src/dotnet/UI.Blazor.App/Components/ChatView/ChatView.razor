@@ -72,6 +72,7 @@
         DataSource="@this"
         Identity="@Chat.Id.Value"
         IsContentSwapDependency="true"
+        SkipPreRenderGetDataCall="@HasUrlEntryLid"
         DefaultEdge="@VirtualListEdge.End"
         RenderDirection="@VirtualListRenderDirection.Reverse"
         AnimateItemHeight="true"
