@@ -11,9 +11,14 @@ public sealed class ChatPrefetcher(AppUIHub hub) : IPrefetcher
     private ChatUI ChatUI => hub.ChatUI;
     public Task Prefetch(string[] arguments, CancellationToken cancellationToken)
     {
-        if (arguments.Length != 1 || !ChatId.TryParse(arguments[0], out var chatId))
+        // The optional second argument is the entry lid a /chat/{id}?n={lid} link opens at
+        if (arguments.Length is < 1 or > 2 || !ChatId.TryParse(arguments[0], out var chatId))
             return Task.CompletedTask;
 
-        return ChatUI.Prefetch(chatId, cancellationToken);
+        var entryLid = 0L;
+        if (arguments.Length == 2 && !long.TryParse(arguments[1], out entryLid))
+            return Task.CompletedTask;
+
+        return ChatUI.Prefetch(chatId, entryLid, cancellationToken);
     }
 }

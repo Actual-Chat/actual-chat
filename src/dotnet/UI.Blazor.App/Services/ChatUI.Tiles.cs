@@ -145,8 +145,13 @@ public partial class ChatUI
         }
     }
 
-    public async Task Prefetch(ChatId chatId, CancellationToken cancellationToken)
+    public Task Prefetch(ChatId chatId, CancellationToken cancellationToken)
+        => Prefetch(chatId, 0, cancellationToken);
+
+    public async Task Prefetch(ChatId chatId, long entryLid, CancellationToken cancellationToken)
     {
+        // entryLid > 0 aims the zone at that entry rather than the read position - what /chat/{id}?n={lid}
+        // does - and needs no lookup at all to do it, since the lid alone decides every tile.
         // NOTE: Has to stay in sync with GetChatItemsInternal and GetChatDataQuery: Fusion dedupes on
         // ComputedInput, so an argument that drifts by one tile boundary warms a different entry and
         // buys nothing - silently, with no failing test to catch it, just a slower switch.
@@ -169,7 +174,7 @@ public partial class ChatUI
             // awaiting GetIdRange + GetOwn is a round trip of its own - and it measured 77-81ms there,
             // which pushed the warm requests past the click they were meant to arrive before.
             var (lidRange, readEntryLid, showConversations) = GetPrefetchAnchor(chatId);
-            if (lidRange is null) {
+            if (lidRange is null && entryLid <= 0) {
                 var chat = await chatTask.ConfigureAwait(false);
                 if (chat == null)
                     return;
@@ -179,8 +184,16 @@ public partial class ChatUI
                 showConversations = chat.IsSummarized ?? false;
                 ChatSwitchTracer.Mark("ChatUI.Prefetch: anchor awaited (ChatInfo miss)", $"lid={readEntryLid}");
             }
+            else if (lidRange is null) {
+                // An entry-anchored prefetch skips the await entirely - a searched-for message is often in
+                // a chat the list never rendered, and the lid is all the tile maths needs. Summarization
+                // is on by default, so assuming it costs at most a few unused conversation tiles.
+                showConversations = true;
+                ChatSwitchTracer.Mark("ChatUI.Prefetch: entry anchor, no ChatInfo", $"entryLid={entryLid}");
+            }
             else
-                ChatSwitchTracer.Mark("ChatUI.Prefetch: anchor from ChatInfo (no await)", $"lid={readEntryLid}");
+                ChatSwitchTracer.Mark("ChatUI.Prefetch: anchor from ChatInfo (no await)",
+                    $"lid={readEntryLid}, entryLid={entryLid}");
 
             // NOTE: Issued only after the peek above - calling it first would register a still-Computing
             // computed that GetExisting then returns, and reading such a computed's Output throws.
@@ -188,25 +201,36 @@ public partial class ChatUI
             var chatInfoTask = Get(chatId, cancellationToken);
             pending.Add(chatInfoTask);
 
-            var range = lidRange.Value;
-            if (range.End <= range.Start)
+            var hasChatRange = lidRange.HasValue;
+            var chatRange = lidRange ?? default;
+            if (hasChatRange && chatRange.End <= chatRange.Start)
                 return;
 
-            // Mirrors GetChatDataQuery: a chat opens at its read position when there is a usable one, and
-            // at the tail otherwise - the two cases centre on different tiles and split the zone differently
+            // Mirrors GetChatDataQuery: the navigation branch when there's an entry to open at - the
+            // explicit one, or the read position - and the tail branch otherwise. They centre on
+            // different tiles and split the zone differently, so the wrong branch warms the wrong set.
             var initialLoadLimit = InitialLoadLimit;
             var firstTileSize = IdTileStack.FirstLayer.TileSize;
-            var hasViewEntry = readEntryLid > 0 && readEntryLid < range.End;
-            var anchorLid = hasViewEntry
-                ? readEntryLid
-                : Math.Max(range.Start, range.End - firstTileSize);
+            var isNavigation = entryLid > 0
+                || (readEntryLid > 0 && (!hasChatRange || readEntryLid < chatRange.End));
+            var anchorLid = entryLid > 0
+                ? entryLid
+                : readEntryLid > 0
+                    ? readEntryLid
+                    : Math.Max(chatRange.Start, chatRange.End - firstTileSize);
             var anchorTile = IdTileStack.LastLayer.GetTile(anchorLid).Range;
-            var startOffset = hasViewEntry ? initialLoadLimit / 3 : initialLoadLimit / 2;
-            var endOffset = hasViewEntry ? initialLoadLimit * 2 / 3 : initialLoadLimit / 2;
-            // Clamped to the chat: the real query never asks past the end, so warming there is pure waste
-            var loadZone = new Range<long>(
-                Math.Max(range.Start, anchorTile.Start - startOffset),
-                Math.Min(range.End, anchorTile.End + endOffset));
+            var startOffset = isNavigation ? initialLoadLimit / 3 : initialLoadLimit / 2;
+            var endOffset = isNavigation ? initialLoadLimit * 2 / 3 : initialLoadLimit / 2;
+            var zoneStart = anchorTile.Start - startOffset;
+            var zoneEnd = anchorTile.End + endOffset;
+            // Clamped to the chat when it's known: the real query never asks past either end, so warming
+            // there is pure waste. An entry-anchored prefetch may not know the range, and doesn't need to.
+            if (hasChatRange) {
+                zoneStart = Math.Max(chatRange.Start, zoneStart);
+                zoneEnd = Math.Min(chatRange.End, zoneEnd);
+            }
+
+            var loadZone = new Range<long>(Math.Max(0, zoneStart), zoneEnd);
             if (loadZone.End <= loadZone.Start)
                 return;
 
