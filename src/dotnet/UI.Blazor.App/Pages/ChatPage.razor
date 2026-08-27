@@ -317,6 +317,10 @@
             }
         }
 
+        // Started here rather than on the route string: the chat the app restores at startup arrives as
+        // an empty route resolved from SelectedChatId, and never goes through History.NavigateTo at all
+        if (chatId is not null)
+            ChatSwitchTracer.TryStart($"/chat/{chatId.Value}", "ChatPage.SetRoute");
         var fixedRoute = chatId is null ? parsedRoute : new RouteResult(chatId);
         _routeState.Value = new RouteState(parsedRoute, fixedRoute);
         ChatSwitchTracer.Mark("ChatPage.SetRoute: route state set", chatId);
