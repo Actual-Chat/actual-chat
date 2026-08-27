@@ -32,6 +32,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private CpuTimestamp _newMessagesLineShownAt;
     private long _debouncedReadEntryLid;
     private long _lastKnownEntryLid = -1;
+    private string _lastNavigatedUri = "";
 
     private static readonly string HoverMenuJSCreateMethod = $"{BlazorUIAppModule.ImportName}.ChatHoverMenu.create";
     private readonly Dictionary<ChatEntryId, MessageHoverMenu> _hoverMenus = new();
@@ -243,9 +244,20 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var sUri = History.Uri;
         var localUrl = new LocalUrl(sUri);
-        if (!localUrl.IsChat(out _, out long entryId) || entryId <= 0)
+        if (!localUrl.IsChat(out var urlChatId, out long entryId) || entryId <= 0)
             return;
 
+        // NOTE: The outgoing ChatView is still alive and subscribed during a swap, so without this it
+        // scrolls itself to an entry lid belonging to the chat being switched to
+        if (urlChatId != Chat.Id)
+            return;
+
+        // NOTE: OnParametersSetAsync lands here on every ChatContext change, so one ?n= navigation
+        // otherwise repeats (measured 4x) - re-scrolling and re-highlighting each time
+        if (sUri == _lastNavigatedUri)
+            return;
+
+        _lastNavigatedUri = sUri;
         ChatSwitchTracer.Mark("ChatView.NavigateToUrlFragment: entry nav", $"entryLid={entryId}");
         var cts = new CancellationTokenSource();
         var cancellationToken = cts.Token;
@@ -324,7 +336,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-        => _ = NavigateToUrlFragment();
+    {
+        // Clearing the guard here is what keeps it a per-navigation one rather than a permanent
+        // "this URL was handled once" - navigating back to the same ?n= URL has to work again
+        _lastNavigatedUri = "";
+        _ = NavigateToUrlFragment();
+    }
 
     private Task OnNavigateToChatEntry(NavigateToChatEntryEvent @event, CancellationToken cancellationToken)
     {
@@ -718,7 +735,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         DebugLog?.LogDebug(
             "GetChatDataQuery: case={Case}, result={DataQuery}, chatIdRange={IdRange}",
             caseName, dataQuery.Format(), chatLidRange.Format());
-        ChatSwitchTracer.Mark($"ChatView.GetChatDataQuery: case={caseName}", dataQuery);
+        ChatSwitchTracer.Mark($"ChatView.GetChatDataQuery: case={caseName}",
+            $"#{Chat.Id} {dataQuery.Format()}");
 
         return dataQuery;
     }
