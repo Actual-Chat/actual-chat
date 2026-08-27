@@ -948,7 +948,10 @@
   </PropertyGroup>
 
   <Target Name="BuildVoxtNotificationService" BeforeTargets="_ExtendAppExtensionReferences"
+          DependsOnTargets="NBGV_SetVersionForMauiIOS"
           Condition="$([MSBuild]::IsOSPlatform('osx')) and $(TargetFramework.Contains('-ios'))">
+    <Error Condition="'$(ApplicationDisplayVersion)' == '' or '$(ApplicationVersion)' == ''"
+           Text="ApplicationDisplayVersion / ApplicationVersion are unset, so the notification service appex would not match the app bundle (ITMS-90473)." />
     <Exec Command="sh &quot;$(VoxtNotificationServiceDir)build.sh&quot; &quot;$(Configuration)&quot; &quot;$(VoxtNotificationServiceSdk)&quot; &quot;$(VoxtNotificationServiceId)&quot; &quot;$(ApplicationDisplayVersion)&quot; &quot;$(ApplicationVersion)&quot; &quot;$(VoxtNotificationServiceTeamId)&quot; &quot;$(VoxtNotificationServiceIdentity)&quot; &quot;$(VoxtNotificationServiceProfile)&quot; &quot;$(VoxtNotificationServiceEntitlements)&quot;" />
   </Target>
 
