@@ -55,6 +55,10 @@ public partial class MainActivity : MauiAppCompatActivity
 
     public static MainActivity Current => _current
         ?? throw StandardError.Internal($"{nameof(MainActivity)} isn't created yet.");
+    // A recreated MainActivity can start before the one it replaces stops, so lifecycle callbacks
+    // have to tell the live instance from the outgoing one rather than just matching the type.
+    internal static bool IsCurrent(Android.App.Activity activity)
+        => ReferenceEquals(activity, _current);
     // Whether an activity has run in THIS process, which is what decides if the foreground service
     // could ever have earned the microphone: Android grants it only to a service started while the
     // app is visible, and the grant then outlives the activity. Unlike Current, this never reverts.
