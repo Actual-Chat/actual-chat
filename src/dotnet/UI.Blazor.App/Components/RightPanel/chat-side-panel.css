@@ -184,9 +184,9 @@ body.narrow .chat-side-panel.has-expanded-header > .c-panel-content {
    width ~100x faster, down to the icon, instead of the title paying the whole shortfall. */
 .chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-content > .status-badge {
     @apply flex-initial shrink-[100];
-    /* 56px: the padding, icon and gap take 34, and Chrome paints a character before the ellipsis,
-       so a complete "P..." needs ~19 of the remainder - 48px only got two of the three dots out. */
-    @apply min-w-14;
+    /* 96px floor: the padding, icon and gap take 34, leaving ~62 for text - enough for the common
+       labels ("Public chat" / "Private chat") to stay whole; longer translations still ellipsise. */
+    @apply min-w-24;
 }
 .chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-content > .c-info {
     @apply flex-x;
