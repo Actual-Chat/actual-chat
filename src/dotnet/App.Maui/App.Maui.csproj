@@ -313,8 +313,8 @@
     <EmbedAssembliesIntoApk Condition="'$(EmbedAssembliesIntoApk)' == ''">True</EmbedAssembliesIntoApk>
   </PropertyGroup>
 
-  <!-- Our own startup profile - the union of on-device Android and on-desktop Windows
-       recordings. Regenerate with /mibc-update, or by hand via
+  <!-- Our own startup profile - the union of the on-device Android, on-desktop Windows and
+       on-device iOS session recordings. Regenerate with /mibc-update, or by hand via
        scripts/Record-{Android,Windows}StartupProfiles.ps1 + scripts/New-StartupMibc.ps1.
        See docs/startup-profiling.md. It reaches crossgen2 as -m:.
 
@@ -335,8 +335,17 @@
        does *not* arrive is the runtime pack's tools/StandardOptimizationData.mibc: it is
        absent from RuntimeList.xml, so it is not a `pgodata` asset and
        PublishReadyToRunUseRuntimePackOptimizationData picks up nothing. -->
-  <ItemGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
     <PublishReadyToRunPgoFiles Include="$(MSBuildThisFileDirectory)_Profiling\merged.mibc" />
+  </ItemGroup>
+
+  <!-- aothelper.mibc is Apple-only. There a profile ADDS roots and a miss is interpreted for
+       the life of the process, so its ~187k reflectively-reachable methods buy coverage for
+       about 1MB of bundle. Android and Windows compile under `partial`, where the profile is
+       a *filter* instead: a miss costs one jit, and rooting this file would multiply the
+       image. Emitted by update-aot-helpers.cmd - see the iOS block below for what it covers. -->
+  <ItemGroup Condition="'$(Configuration)' == 'Release' and ($(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-maccatalyst')))">
+    <PublishReadyToRunPgoFiles Include="$(MSBuildThisFileDirectory)_Profiling\aothelper.mibc" />
   </ItemGroup>
 
   <!-- ActualChat.r2r.map.csv, next to the composite: every method crossgen2 actually
@@ -344,12 +353,12 @@
        that means "no native code existed" from one that means "tier 1 promotion" - the
        distinction the raw jitted-method count hides. Costs build time, not app size.
 
-       On iOS it earns its keep the other way round: there is no jit and no tiering, so
-       cross-referencing the map against a -Mode Jit trace names the methods that run
-       interpreted for the life of the process. Mostly value-type generic instantiations,
+       On the Apple targets it earns its keep the other way round: there is no jit and no
+       tiering, so cross-referencing the map against a -Mode Jit trace names the methods that
+       run interpreted for the life of the process. Mostly value-type generic instantiations,
        which a full-mode image cannot enumerate statically. See
        docs/ios-specific.md -> Measuring what runs interpreted. -->
-  <PropertyGroup Condition="($(TargetFramework.Contains('-android')) or $(TargetFramework.Contains('-ios'))) and '$(Configuration)' == 'Release'">
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' and ($(TargetFramework.Contains('-android')) or $(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-maccatalyst')))">
     <PublishReadyToRunCrossgen2CompositeExtraArgs>$(PublishReadyToRunCrossgen2CompositeExtraArgs);--mapcsv</PublishReadyToRunCrossgen2CompositeExtraArgs>
   </PropertyGroup>
 
@@ -407,31 +416,28 @@
     <RuntimeHostConfigurationOption Include="ArgumentList.AllowGenerics" Value="false" Trim="true" />
   </ItemGroup>
 
-  <!-- iOS: startup profile. The opposite purpose to Android's. There a profile SHRINKS the
+  <!-- Apple targets (iOS / Mac Catalyst): what the two profile ItemGroups above are for.
+       The opposite purpose to Android's. There a profile SHRINKS the
        image (a miss costs one jit); here a miss is interpreted for the life of the process,
        so the profile exists to ADD what a full build cannot enumerate statically: value-type
        generic instantiations, async state-machine boxes, and the reflection-created
        serializers / converters / interception types nothing references from code.
 
-       ios-interactive.mibc is a device recording of a real session (chats + recording +
-       call paths), not a synthetic launch - a launch-only profile leaves the audio paths
-       interpreted. Re-record per docs/ios-specific.md -> Measuring what runs interpreted.
+       merged.mibc is the union of the Android, Windows and iOS session recordings -
+       each a real session (chats + recording + call paths), not a synthetic launch, since
+       a launch-only profile leaves the audio paths interpreted. Re-record per
+       docs/ios-specific.md -> Measuring what runs interpreted.
 
        aothelper.mibc is the static counterpart, emitted by update-aot-helpers.cmd from the
        CodeKeeper type set plus what ActualLab's proxy keepers and the async machinery build
        reflectively. A recording only covers what that session ran and goes stale as the code
        moves; this is regenerated from the current tree. On its own it reaches 99.3% of the
-       methods the two recordings cover, so it is the safety net when they age - not a
+       methods the recordings cover, so it is the safety net when they age - not a
        replacement, since it cannot know which instantiations actually run.
 
        Measured 2026-08-09 on device: interpreted methods 2835 -> 140 (-95%), compiled
        324,076 -> 328,066, bundle 268MB -> 269MB. The residue is objc_msgSend stubs and
        runtime-emitted accessors, neither of which can ever be precompiled. -->
-  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) and '$(Configuration)' == 'Release'">
-    <PublishReadyToRunPgoFiles Include="$(MSBuildThisFileDirectory)_Profiling\ios-interactive.mibc" />
-    <PublishReadyToRunPgoFiles Include="$(MSBuildThisFileDirectory)_Profiling\merged.mibc" />
-    <PublishReadyToRunPgoFiles Include="$(MSBuildThisFileDirectory)_Profiling\aothelper.mibc" />
-  </ItemGroup>
 
   <!-- Apple build properties -->
 
@@ -595,15 +601,13 @@
        MAUI's partial default is gated on TargetPlatformIdentifier == 'android', so crossgen2's
        `partial` switch has to be passed by hand here.
 
-       merged.mibc is the union of the Android and Windows recordings (scripts/
-       Record-*StartupProfiles.ps1 plus scripts/New-StartupMibc.ps1, which rebuilds the
-       union every time either half is re-recorded). Windows on the Android profile alone
-       resolved only ~47% of it and knew nothing about WinUI, WinRT or NAudio: 23.9k methods
-       compiled against 34.0k here, for 2.7MB more image. -->
+       merged.mibc - declared once, up in the Android section - is the union of the Android,
+       Windows and iOS recordings (scripts/Record-*StartupProfiles.ps1 plus
+       scripts/New-StartupMibc.ps1, which rebuilds the union every time any one of them is
+       re-recorded). Windows on the Android profile alone resolved only ~47% of it and knew
+       nothing about WinUI, WinRT or NAudio: 23.9k methods compiled against 34.0k here, for
+       2.7MB more image. -->
 
-  <ItemGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
-    <PublishReadyToRunPgoFiles Include="$(MSBuildThisFileDirectory)_Profiling\merged.mibc" />
-  </ItemGroup>
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
     <PublishReadyToRunCrossgen2CompositeExtraArgs Condition="'$(UsePartialR2R)' == 'true'">$(PublishReadyToRunCrossgen2CompositeExtraArgs);--partial</PublishReadyToRunCrossgen2CompositeExtraArgs>
     <PublishReadyToRunCrossgen2CompositeExtraArgs>$(PublishReadyToRunCrossgen2CompositeExtraArgs);--mapcsv</PublishReadyToRunCrossgen2CompositeExtraArgs>
