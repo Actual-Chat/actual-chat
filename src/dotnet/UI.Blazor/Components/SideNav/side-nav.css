@@ -115,3 +115,11 @@ body.narrow .side-nav.side-nav-right[data-side-nav="closed"] {
 body.narrow .side-nav.side-nav-right[data-side-nav="open"] {
     box-shadow: none;
 }
+
+/* SideNavPullGesture writes style.transform every frame, so a transition on transform restarts a
+   250ms interpolation per frame and the panel chases the finger instead of tracking it. endMove
+   clears isPulling before it sets the settle transform, so the release still animates. */
+body.narrow .side-nav.side-nav-left[data-pulling],
+body.narrow .side-nav.side-nav-right[data-pulling] {
+    transition: none;
+}
