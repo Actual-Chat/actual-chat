@@ -55,6 +55,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private CancellationToken DisposeToken { get; }
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
+    private bool HasUrlEntryLid
+        // NOTE: ?n= means NavigateToUrlFragment is about to set _nextNavigation, and it races the list's
+        // initial GetData - ComponentBase renders before OnParametersSetAsync's task completes
+        => new LocalUrl(History.Uri).IsChat(out var chatId, out long entryLid)
+            && entryLid > 0
+            && chatId == Chat.Id;
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
     private bool IsNewMessagesLineDebounceActive
         => _newMessagesLineShownAt != default

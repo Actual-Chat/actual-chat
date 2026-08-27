@@ -47,6 +47,9 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
     // Opt-in: most lists sit in no swap area at all. Set it where the enclosing area should hold
     // until this list has its content placed - see ContentSwap and virtual-list.ts.
     [Parameter] public bool IsContentSwapDependency { get; set; }
+    // NOTE: Only its value at the first SetParametersAsync matters - set it when a pending navigation
+    // will issue the first query anyway, so the pre-render one would be superseded before it's rendered
+    [Parameter] public bool SkipPreRenderGetDataCall { get; set; }
     [Parameter] public double ExpandMultiplier { get; set; } = 2;
     // This event is intentionally Action vs EventCallback, coz normally it shouldn't
     // trigger StateHasChanged on parent component.
@@ -109,7 +112,7 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
         // NOTE: Hub (and other injected services) aren't available yet in the first SetParametersAsync,
         // so we can't use Hub.IsPrerendering here. RendererInfo is set before SetParametersAsync and is
         // per-circuit: IsInteractive is false during prerender SSR, true once the list is interactive.
-        var shouldSetInitialData = RendererInfo.IsInteractive && RenderIndex == 0;
+        var shouldSetInitialData = RendererInfo.IsInteractive && RenderIndex == 0 && !SkipPreRenderGetDataCall;
         if (shouldSetInitialData) {
             ChatSwitchTracer.Mark("VirtualList: initial GetData -> in (BLOCKS FIRST RENDER)", Identity);
             try {
