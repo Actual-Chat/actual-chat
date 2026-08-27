@@ -19,6 +19,7 @@ export * from './Services/FileUploads/stream-file-upload';
 export * from './Services/FileUploads/web-uploads';
 export * from './Services/FocusUI/focus-ui';
 export * from './Services/History/history';
+export * from './Services/PrefetchUI/prefetch-ui';
 export * from './Services/InteractiveUI/interactive-ui';
 export * from './Services/KeepAwakeUI/keep-awake-ui';
 export * from './Services/KeyboardUI/keyboard-ui';

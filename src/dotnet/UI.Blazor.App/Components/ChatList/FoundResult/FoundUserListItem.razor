@@ -14,7 +14,9 @@
     var chat = chatState.Chat;
 }
 
-<NavbarItem Class="found-result contact" IsSelected="@m.IsSelected" Url="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
+<NavbarItem Class="found-result contact" IsSelected="@m.IsSelected" Url="@m.Link"
+            data-prefetch="@(PrefetchRef.New<ChatPrefetcher>(chat.Id.Value).ToString())"
+            @onclick="@(() => SearchUI.Select(m.Item))">
     <div class="c-content">
         <div class="c-container">
             <ChatIcon Chat="@chat"/>

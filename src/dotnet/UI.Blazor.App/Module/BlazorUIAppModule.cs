@@ -88,6 +88,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped<IActivitySource>(c => c.GetRequiredService<LocationActivitySource>());
         fusion.AddService<UploadActivitySource>(ServiceLifetime.Scoped);
         services.AddScoped<IActivitySource>(c => c.GetRequiredService<UploadActivitySource>());
+        services.AddScoped(c => new ChatPrefetcher(c.AppUIHub()));
         services.AddScoped(c => new SelectionUI(c.AppUIHub()));
         services.AddScoped(c => new ChatPinsUI(c.AppUIHub()));
         services.AddScoped(c => new ActiveChatsUI(c.AppUIHub()));

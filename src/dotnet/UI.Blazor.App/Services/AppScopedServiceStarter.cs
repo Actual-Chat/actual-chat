@@ -95,6 +95,11 @@ public sealed class AppScopedServiceStarter
                 // Ensure that the right panel state is preloaded.
                 await rightPanelStoredState.WhenRead.ConfigureAwait(false);
             _ = Hub.PanelsUI; // Touch
+            var prefetchUI = Hub.Services.GetRequiredService<PrefetchUI>();
+            _ = BackgroundTask.Run(prefetchUI.Initialize,
+                    Log,
+                    $"{nameof(PrefetchUI)}.{nameof(PrefetchUI.Initialize)} failed")
+                .SuppressExceptions();
             if (url.IsChat() && browserInfo.ScreenSize.Value.IsNarrow()) {
                 // We have to open chat root first - to make sure "Back" leads to it
                 await History.Initialize(Links.Chats).ConfigureAwait(false);

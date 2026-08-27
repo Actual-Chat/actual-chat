@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Diagnostics
 @using ActualChat.UI.Blazor.Module
 @using System.Diagnostics.CodeAnalysis
 @inherits ComponentBase<UIHub>
@@ -37,6 +38,7 @@
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<ContentSwap> _blazorRef = null!;
 
+    private string TraceName => _name ?? Class.NullIfEmpty() ?? "?";
     [CascadingParameter] private ContentSwapContext? ParentContext { get; set; }
     [Parameter] public object? LayerKey { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
@@ -72,6 +74,8 @@
 
     [JSInvokable]
     public void OnDisplayed() {
+        ChatSwitchTracer.Mark($"ContentSwap[{TraceName}].OnDisplayed",
+            _holdToken is null ? "not holding" : "hold dropped by JS");
         if (_holdToken is null)
             return;
 
@@ -161,9 +165,12 @@
         _holdToken = _swapIndex.Format();
         _animator ??= new ComponentAnimator(this, Duration);
         _animator.BeginAnimation(MaxDisplayDelay);
+        ChatSwitchTracer.Mark($"ContentSwap[{TraceName}].StartSwap - HOLD STARTS",
+            $"key={LayerKey}, max={MaxDisplayDelay.TotalMilliseconds}ms");
     }
 
     private void Display() {
+        ChatSwitchTracer.Mark($"ContentSwap[{TraceName}].Display - CONTENT SWAPPED");
         _holdToken = null;
         _outgoingLayer!.Context.SetState(ContentSwapLayerState.Replaced);
         _currentLayer.Context.SetState(ContentSwapLayerState.Displayed);
@@ -171,6 +178,7 @@
     }
 
     private void EndSwap() {
+        ChatSwitchTracer.Mark($"ContentSwap[{TraceName}].EndSwap - outgoing layer dropped");
         _outgoingLayer!.Context.Detach();
         _outgoingLayer = null;
         _currentLayer.CssClass = "";

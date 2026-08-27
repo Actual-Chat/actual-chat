@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.Diagnostics;
+
 namespace ActualChat.UI.Blazor.Services;
 
 public partial class History
@@ -27,10 +29,19 @@ public partial class History
     }
 
     [JSInvokable]
-    public async Task NavigateTo(string url, bool mustReplace = false, bool force = false, bool addInFront = false)
+    public async Task NavigateTo(
+        string url,
+        bool mustReplace = false,
+        bool force = false,
+        bool addInFront = false,
+        double clickToInvokeMs = -1)
     {
         Dispatcher.AssertAccess();
+        ChatSwitchTracer.TryStart(url, "History.NavigateTo");
+        ChatSwitchTracer.Mark("History.NavigateTo: entered",
+            $"{url} (JS click -> navigateTo: {clickToInvokeMs:F1}ms)");
         await WhenNavigationCompletedOrTimeout().ConfigureAwait(true);
+        ChatSwitchTracer.Mark("History.NavigateTo: nav queue drained");
 
         var localUrl = new LocalUrl(url);
         var fixedUriLogLevel = LogLevel.Warning;
@@ -57,14 +68,17 @@ public partial class History
 
             DebugLog?.LogDebug("{Entry}", title);
             var itemId = mustReplace ? _currentItem.Id : NewItemId();
+            ChatSwitchTracer.Mark("History.NavigateTo: Nav.NavigateTo -> in");
             Nav.NavigateTo(url, new NavigationOptions() {
                 ForceLoad = force,
                 ReplaceHistoryEntry = mustReplace,
                 HistoryEntryState = ItemIdFormatter.Format(itemId),
             });
+            ChatSwitchTracer.Mark("History.NavigateTo: Nav.NavigateTo <- out");
             return itemId;
         });
         await entry.WhenCompleted.ConfigureAwait(false);
+        ChatSwitchTracer.Mark("History.NavigateTo: queue entry completed");
     }
 
     public bool TryGetStepBackUrl(out string backUrl)
@@ -102,6 +116,7 @@ public partial class History
             backItem = currentItem.GenerateBackItem();
             if (backItem == null)
                 return false; // No way to step back: can't neither get nor generate the back step
+
             backItem = backItem with { Id = NewItemId() }; // Change Id to prevent endless loop
         }
 
@@ -139,7 +154,7 @@ public partial class History
     }
 
     private Task AddHistoryEntry(HistoryItem item, bool addInFront = false)
-        => NavigationQueue.Enqueue(addInFront,  $"AddHistoryEntry: {item}", () => {
+        => NavigationQueue.Enqueue(addInFront, $"AddHistoryEntry: {item}", () => {
             Nav.NavigateTo(item.Url,
                 new NavigationOptions {
                     ForceLoad = false,
