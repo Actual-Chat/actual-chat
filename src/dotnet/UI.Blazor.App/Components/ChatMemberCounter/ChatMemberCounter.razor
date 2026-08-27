@@ -12,8 +12,9 @@
                            <span>@L.Chat_Online_Format(GetCountString(m.OnlineCount))</span>
                            <span class="member-separator"></span>
                        }
-                       @MemberCountText(m.MemberCount)
-
+                       <span>
+                           @MemberCountText(m.MemberCount)
+                       </span>
                    </div>;
         }
         return @<div class="c-text">
