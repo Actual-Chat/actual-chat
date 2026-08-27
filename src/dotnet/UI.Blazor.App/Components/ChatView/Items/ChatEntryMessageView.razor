@@ -113,12 +113,14 @@
             @if (showAuthor) {
                 <div class="c-author-header">
                     <AuthorName AuthorId="@entry.AuthorId" Class="chat-message-author-name" Colorize="@m.Colorize"/>
-                    <div class="c-author-meta">
-                        @if (message.Flags.HasFlag(ChatMessageFlags.Audio)) {
-                            <i class="chat-message-kind-icon icon-voice-to-text-message"></i>
-                        }
-                        <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
-                    </div>
+                    @if (!isStateBadge) {
+                        <div class="c-author-meta">
+                            @if (message.Flags.HasFlag(ChatMessageFlags.Audio)) {
+                                <i class="chat-message-kind-icon icon-voice-to-text-message"></i>
+                            }
+                            <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
+                        </div>
+                    }
                     @* <div class="text-02 opacity-20 text-xxs">id=@entry.Id</div> *@
                 </div>
             }
