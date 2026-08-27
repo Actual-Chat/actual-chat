@@ -492,7 +492,7 @@ body.hoverable .author-list-tab .avatar-badge:hover {
 }
 .thread-list-item {
     @apply flex-x items-center gap-x-2;
-    @apply p-2;
+    @apply min-h-12 p-2;
     @apply cursor-pointer;
     @apply rounded-md;
 }
@@ -506,7 +506,7 @@ body.hoverable .thread-list-item:hover {
 }
 .thread-list-item .c-chat-title {
     @apply w-full;
-    @apply line-clamp-2;
+    @apply truncate;
     @apply text-text-1 text-01;
 }
 .thread-list-item .last-entry-time {
@@ -518,7 +518,7 @@ body.hoverable .thread-list-item:hover {
 }
 .thread-list-item .c-bottom .c-last-message {
     @apply flex-x items-end gap-x-1;
-    @apply w-full h-3.5;
+    @apply w-full h-4.5;
     @apply truncate;
     @apply text-caption-4 text-03;
 }
