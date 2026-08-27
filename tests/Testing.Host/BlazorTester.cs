@@ -1,6 +1,8 @@
 using ActualChat.App.Server;
 using ActualChat.Notifications;
 using ActualChat.Search;
+using ActualChat.UI;
+using ActualChat.UI.Blazor.Services;
 using ActualLab.Versioning;
 using Bunit;
 
@@ -43,6 +45,37 @@ public class BlazorTester : BunitContext, IWebTester
         sessionResolver.Session = Session;
 
         Services.AddTransient(_ => ScopedAppServices.StateFactory());
+        InitializeBrowserInfo();
+    }
+
+    private void InitializeBrowserInfo()
+    {
+        // In the app BrowserInfo is initialized from JS, and there is no JS here - so its WhenReady
+        // never completes on its own, and LanguageUI's missing-value factory, which waits for it to
+        // learn the client languages, leaves LanguageUI.WhenReady pending forever.
+        var browserInfo = ScopedAppServices.GetRequiredService<BrowserInfo>();
+        browserInfo.OnInitialized(new IBrowserInfoBackend.InitResult(
+            ScreenSizeText: nameof(ScreenSize.Unknown),
+            WindowHeight: 0,
+            IsVisible: true,
+            IsHoverable: false,
+            ThemeInfo: new IBrowserInfoBackend.ThemeInfo(null, nameof(Theme.Light), nameof(Theme.Light), ""),
+            // No client languages, so LanguageUI falls back to Languages.Main
+            UILanguageInfo: new IBrowserInfoBackend.UILanguageInfo(null, null, []),
+            DefaultTheme: nameof(Theme.Light),
+            UtcOffset: 0,
+            TimeZone: "UTC",
+            IsMobile: false,
+            IsAndroid: false,
+            IsIos: false,
+            IsMacOS: false,
+            IsChromium: false,
+            IsEdge: false,
+            IsWebKit: false,
+            IsTouchCapable: false,
+            CanVibrate: false,
+            IsWasmReady: false,
+            WindowId: ""));
     }
 
     protected override async ValueTask DisposeAsyncCore()
