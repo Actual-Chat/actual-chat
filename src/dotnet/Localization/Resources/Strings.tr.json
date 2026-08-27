@@ -1164,7 +1164,7 @@
   "Download_SignInToWebApp": "Web uygulamasına giriş yapın",
   "Download_QrCode_Format": "{0} QR kodu",
   "Download_GetApp_Format": "{0} edinin",
-  "Download_GetAppBanner_Format": "{0} uygulamasını edinin",
+  "Download_GetAppBanner_Format": "{0}'u yükle",
   "Redirect_To": "Yönlendiriliyor:",
   "Unavailable_Title": "Kullanılamıyor",
   "Unavailable_PageNotFound": "Bu sayfa mevcut değil.",

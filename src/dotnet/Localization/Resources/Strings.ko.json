@@ -1164,7 +1164,7 @@
   "Download_SignInToWebApp": "웹 앱에 로그인",
   "Download_QrCode_Format": "{0} QR 코드",
   "Download_GetApp_Format": "{0} 받기",
-  "Download_GetAppBanner_Format": "{0} 앱 받기",
+  "Download_GetAppBanner_Format": "{0} 설치",
   "Redirect_To": "리디렉션 중:",
   "Unavailable_Title": "사용할 수 없음",
   "Unavailable_PageNotFound": "이 페이지는 존재하지 않습니다.",

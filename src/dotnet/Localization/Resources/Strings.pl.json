@@ -1164,7 +1164,7 @@
   "Download_SignInToWebApp": "Zaloguj się do aplikacji webowej",
   "Download_QrCode_Format": "Kod QR — {0}",
   "Download_GetApp_Format": "Pobierz {0}",
-  "Download_GetAppBanner_Format": "Pobierz aplikację {0}",
+  "Download_GetAppBanner_Format": "Zainstaluj {0}",
   "Redirect_To": "Przekierowanie do",
   "Unavailable_Title": "Niedostępne",
   "Unavailable_PageNotFound": "Ta strona nie istnieje.",

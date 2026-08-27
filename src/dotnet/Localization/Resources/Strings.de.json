@@ -1164,7 +1164,7 @@
   "Download_SignInToWebApp": "Bei der Web-App anmelden",
   "Download_QrCode_Format": "{0} QR-Code",
   "Download_GetApp_Format": "{0} holen",
-  "Download_GetAppBanner_Format": "Die {0} App holen",
+  "Download_GetAppBanner_Format": "{0} installieren",
   "Redirect_To": "Weiterleitung zu",
   "Unavailable_Title": "Nicht verfügbar",
   "Unavailable_PageNotFound": "Diese Seite existiert nicht.",

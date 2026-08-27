@@ -1164,7 +1164,7 @@
   "Download_SignInToWebApp": "Влезте в уеб приложението",
   "Download_QrCode_Format": "QR код — {0}",
   "Download_GetApp_Format": "Вземи {0}",
-  "Download_GetAppBanner_Format": "Вземи приложението {0}",
+  "Download_GetAppBanner_Format": "Инсталирай {0}",
   "Redirect_To": "Пренасочване към",
   "Unavailable_Title": "Недостъпно",
   "Unavailable_PageNotFound": "Тази страница не съществува.",

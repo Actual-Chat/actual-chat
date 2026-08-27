@@ -1164,7 +1164,7 @@
   "Download_SignInToWebApp": "Přihlásit se do webové aplikace",
   "Download_QrCode_Format": "QR kód — {0}",
   "Download_GetApp_Format": "Získat {0}",
-  "Download_GetAppBanner_Format": "Získat aplikaci {0}",
+  "Download_GetAppBanner_Format": "Instalovat {0}",
   "Redirect_To": "Přesměrování na",
   "Unavailable_Title": "Nedostupné",
   "Unavailable_PageNotFound": "Tato stránka neexistuje.",
