@@ -68,6 +68,14 @@ way. Clients render every banner themselves — no `webpush.notification`, no
   and the bell panel, and are deliberately a different calculation. `ListActive`
   drives the app-icon badge and the OS-level surfaces. Two concepts, one source of
   truth each — not two sources for one thing.
+- **Banner rendering** — Android builds its own banner from the data message
+  (`Platforms/Android/Notifications/NotificationHelper.cs`, `MessagingStyle` with
+  the avatar as the sender's icon). iOS renders `aps.alert` itself, and
+  `src/swift/VoxtNotificationService` (a `UNNotificationServiceExtension`, Swift
+  because of its 24 MB memory limit) rewrites it into a *communication
+  notification* so the chat avatar replaces the app icon. Its
+  `conversationIdentifier` must stay equal to the thread id the dismissal path
+  matches on — see that project's README.
 - **App-icon badge** — `AppIconBadgeUpdater.cs` (single source of truth) plus
   native `AppIconBadge` on iOS (`App.Maui/MaciOS/AppIconBadge.cs`) and Windows
   (`Platforms/Windows/WindowsAppIconBadge.cs`). On iOS the badge of a
@@ -83,3 +91,4 @@ way. Clients render every banner themselves — no `webpush.notification`, no
 | Notification lingers after read | clear-on-read → silent dismissal push; `NotificationReconciler` prune |
 | Duplicate / noisy pushes | soft-buffer coalescing + throttle window in `NotificationsBackend` |
 | Active set looks wrong | `/test/notifications` — dumps `INotifications.ListActive` as JSON |
+| iOS banner shows the app icon, not the chat avatar | is `VoxtNotificationService.appex` in the bundle's `PlugIns/`, and does the build have the `com.apple.developer.usernotifications.communication` entitlement on both the app and the extension? |
