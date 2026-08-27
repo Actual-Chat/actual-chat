@@ -159,9 +159,14 @@ public partial class ChatUI
         var chatLidRangeTask = Chats.GetIdRange(Session, chatId, cancellationToken);
         var readPositionTask = ChatPositions.GetOwn(Session, chatId, ChatPositionKind.Read, cancellationToken);
 
-        // The anchor comes from the chat list's own ChatInfo whenever that's already there, because
-        // awaiting GetIdRange + GetOwn is itself a round trip on a cold chat - and issuing the tile
-        // warms a round trip late is the one thing this method exists to prevent.
+        // Issued whether or not the cached value below ends up being used: a stale ChatInfo still aims
+        // the load zone well enough, but it has to be revalidated, and doing that in advance is the
+        // whole point of this method.
+        var chatInfoTask = Get(chatId, cancellationToken);
+
+        // The anchor is read from the cached ChatInfo rather than awaited, because on a cold chat
+        // awaiting GetIdRange + GetOwn is a round trip of its own - and it measured 77-81ms there,
+        // which pushed the warm requests past the click they were meant to arrive before.
         var (anchorLid, lidRangeStart, showConversations) = GetPrefetchAnchor(chatId);
         if (anchorLid is null) {
             var chat = await chatTask.ConfigureAwait(false);
@@ -209,7 +214,7 @@ public partial class ChatUI
         ChatSwitchTrace.Mark("ChatUI.Prefetch: warm requests issued",
             $"{idTiles.Count} idTiles, {metaIdTiles.Count} metaTiles, anchor={anchorLid}");
         await Task.WhenAll(metaTask, conversationTilesTask, loadZoneTask).ConfigureAwait(false);
-        await Task.WhenAll(liveConversationTask, rawLiveTask, blockStateTask).SilentAwait(false);
+        await Task.WhenAll(liveConversationTask, rawLiveTask, blockStateTask, chatInfoTask).SilentAwait(false);
         ChatSwitchTrace.Mark("ChatUI.Prefetch: done");
     }
 
@@ -1425,9 +1430,11 @@ public partial class ChatUI
 
     private (long? AnchorLid, long LidRangeStart, bool ShowConversations) GetPrefetchAnchor(ChatId chatId)
     {
-        // GetExisting rather than a call: this must not start a computation it would then have to await
+        // GetExisting rather than a call: this must not start a computation it would then have to await.
+        // An inconsistent value is taken as-is - it only has to aim a load zone, and Prefetch has the
+        // real call in flight, so anything it gets wrong is corrected by the rebuild that follows.
         var cChatInfo = Computed.GetExisting(() => Get(chatId, default));
-        if (cChatInfo?.IsConsistent() != true
+        if (cChatInfo is null
             || !cChatInfo.IsValue(out var chatInfo)
             || chatInfo?.News is not { } news)
             return (null, 0, false);
