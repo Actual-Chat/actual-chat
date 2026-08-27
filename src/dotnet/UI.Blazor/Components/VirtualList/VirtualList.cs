@@ -13,6 +13,10 @@ namespace ActualChat.UI.Blazor.Components;
 public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, VirtualListData<TItem>>, IVirtualListBackend
     where TItem : class, IVirtualListItem
 {
+    // Long enough that a warm first load always uses it (1.5-8ms measured), short enough that a cold one
+    // (1114ms at app start) falls back to skeletons instead of holding the whole list blank
+    private static readonly TimeSpan InitialDataTimeout = TimeSpan.FromSeconds(0.3);
+
     private VirtualListData<TItem>? _initialData;
 
     private ILogger Log => field ??= Hub.LogFor(GetType());
@@ -108,10 +112,20 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
         var shouldSetInitialData = RendererInfo.IsInteractive && RenderIndex == 0;
         if (shouldSetInitialData) {
             ChatSwitchTracer.Mark("VirtualList: initial GetData -> in (BLOCKS FIRST RENDER)", Identity);
-            _initialData = await DataSource.GetData(VirtualListDataQuery.None,
-                VirtualListData<TItem>.None,
-                CancellationToken.None);
-            ChatSwitchTracer.Mark("VirtualList: initial GetData <- out", Identity);
+            try {
+                _initialData = await DataSource.GetData(VirtualListDataQuery.None,
+                        VirtualListData<TItem>.None,
+                        CancellationToken.None)
+                    .WaitAsync(InitialDataTimeout);
+                ChatSwitchTracer.Mark("VirtualList: initial GetData <- out", Identity);
+            }
+            catch (TimeoutException) {
+                // NOTE: The abandoned call is left running rather than cancelled - it warms exactly what
+                // the follow-up GetData needs, so what it costs from here is the item building, not the
+                // round trips. Rendering skeletons now beats holding the list blank until it lands.
+                _initialData = null;
+                ChatSwitchTracer.Mark("VirtualList: initial GetData TIMED OUT - skeletons", Identity);
+            }
         }
         else
             _initialData = null;
