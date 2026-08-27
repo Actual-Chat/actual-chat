@@ -62,6 +62,9 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
         if (!entry.SupportsTranslation(isForStreaming))
             return false;
 
+        if (isForStreaming && await IsOwnEntry(entry, cancellationToken).ConfigureAwait(false))
+            return false;
+
         if (!isForStreaming && !entry.HasAudio)
             // always for typed text entries
             return true;
@@ -233,6 +236,11 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
         if (mustTranslateOwnMessages)
             return false;
 
+        return await IsOwnEntry(entry, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<bool> IsOwnEntry(ChatEntry entry, CancellationToken cancellationToken)
+    {
         var ownAuthor = await AuthorUI.GetOwn(entry.ChatId, cancellationToken).ConfigureAwait(false);
         return ownAuthor.Id == entry.AuthorId;
     }
