@@ -95,7 +95,13 @@
             <i class="icon-globe"></i>
         </Icon>
         <Content>
-            @(_timeZoneName ?? L.YourAccount_TimeZoneNotSet)
+            @if (_selectedTimeZone is not null) {
+                <span>@_selectedTimeZone.City</span>
+                <span class="text-caption-6 text-03 ml-1">@_selectedTimeZone.GetUtcOffsetText()</span>
+            }
+            else {
+                @L.YourAccount_TimeZoneNotSet
+            }
         </Content>
         <Caption>
             @L.YourAccount_TimeZone
@@ -132,7 +138,7 @@
 <OwnAvatarList Account="@account"/>
 
 @code {
-    private string? _timeZoneName;
+    private TimeZone? _selectedTimeZone;
     private IReadOnlyCollection<TimeZone>? _timeZones;
 
     private ITimeZones TimeZones => Hub.TimeZones;
@@ -145,13 +151,9 @@
 
     protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken) {
         var account = await AccountUI.OwnAccount.Use(cancellationToken);
-        _timeZoneName = await TimeZones.FindDisplayName("en-US", account.TimeZone, cancellationToken);
+        _timeZones = await TimeZones.List("en-US", cancellationToken);
+        _selectedTimeZone = _timeZones.FirstOrDefault(z => z.Id == account.TimeZone);
         return account;
-    }
-
-    protected override async Task OnInitializedAsync() {
-        await base.OnInitializedAsync();
-        _timeZones = await TimeZones.List("en-US", CancellationToken.None);
     }
 
     public void Dispose() { }

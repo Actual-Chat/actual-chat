@@ -1,19 +1,47 @@
+.time-zone-editor-modal .dialog-body {
+    @apply px-2 gap-2;
+}
+/* Narrow: fill the dialog body down to the safe area (grow + min-h-0 so it scrolls
+   inside the flex column) - a fixed vh height would clip the last row and leave a gap.
+   Desktop: fixed height so narrowing the search results never shrinks the modal. */
 .time-zone-editor-modal .time-zone-list {
     @apply flex-y gap-y-1;
-    @apply md:max-h-96;
-    @apply px-2;
+    @apply grow min-h-0 md:grow-0 md:h-96;
     @apply overflow-y-auto custom-scrollbar;
 }
 .time-zone-editor-modal .time-zone-item {
-    @apply px-2 py-1;
+    @apply flex items-center gap-x-3;
+    @apply px-2 py-1.5;
     @apply cursor-pointer;
     @apply rounded-md;
 }
-body.hoverable .time-zone-editor-modal .time-zone-item:hover,
-.touch-capable .time-zone-editor-modal .time-zone-item:active {
+.time-zone-editor-modal .time-zone-item .c-info {
+    @apply flex-y grow min-w-0;
+}
+.time-zone-editor-modal .time-zone-item .c-city {
+    @apply flex items-center gap-x-1;
+    @apply truncate;
+    @apply text-headline-1 text-01;
+}
+.time-zone-editor-modal .time-zone-item .c-detected-mark {
+    @apply text-base text-primary;
+}
+.time-zone-editor-modal .time-zone-item .c-meta {
+    @apply text-caption-6 text-03;
+    @apply truncate;
+}
+.time-zone-editor-modal .time-zone-item .c-time {
+    @apply shrink-0;
+    @apply text-headline-1 text-03 tabular-nums;
+}
+body.hoverable .time-zone-editor-modal .time-zone-item:not(.selected):hover,
+.touch-capable .time-zone-editor-modal .time-zone-item:not(.selected):active {
     @apply bg-hover;
 }
 .time-zone-editor-modal .time-zone-item.selected {
     @apply bg-selected;
+}
+.time-zone-editor-modal .time-zone-item.selected .c-city,
+.time-zone-editor-modal .time-zone-item.selected .c-time {
     @apply text-primary;
 }
