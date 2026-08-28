@@ -415,8 +415,11 @@ ul.list-markup li::before {
 .theme-dark {
     --quote-markup-border: #e879f9; /* fuchsia-400 */
 }
+/* min-height keeps the bar visible for a quote that renders no height of its own: a lone ">"
+   is a blank line, and .blank-line-markup is a margin rather than an empty line by design. */
 .quote-markup {
     @apply py-0 pl-2;
+    @apply min-h-5;
     border-left: 2px solid var(--quote-markup-border);
 }
 

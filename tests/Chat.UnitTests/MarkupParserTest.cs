@@ -1145,20 +1145,27 @@ code
         completed.Should().BeTrue("parsing must complete within 5s (no regex backtracking)");
     }
 
+
     // Block quotes
 
     [Fact]
-    public void BlockQuoteSingleLineTest()
+    public void BlockQuoteShouldParseSingleLine()
     {
+        // act
         var bq = Parse<BlockQuoteMarkup>("> hello");
-        bq.Content.Should().BeAssignableTo<TextMarkup>().Which.Text.Should().Be("hello");
+
+        // assert
+        QuoteText(bq).Should().BeAssignableTo<TextMarkup>().Which.Text.Should().Be("hello");
     }
 
     [Fact]
-    public void BlockQuoteMultiLineTest()
+    public void BlockQuoteShouldKeepAdjacentLinesInOneParagraph()
     {
+        // act
         var bq = Parse<BlockQuoteMarkup>("> a\n> b");
-        var seq = bq.Content.Should().BeOfType<MarkupSeq>().Subject;
+
+        // assert
+        var seq = QuoteText(bq).Should().BeOfType<MarkupSeq>().Subject;
         seq.Items.Count(x => x is NewLineMarkup).Should().Be(1);
         var texts = seq.Items.OfType<TextMarkup>().Select(t => t.Text).ToList();
         texts.Should().Contain("a");
@@ -1166,71 +1173,251 @@ code
     }
 
     [Fact]
-    public void BlockQuoteWithMentionTest()
+    public void BlockQuoteShouldParseMention()
     {
+        // act
         var bq = Parse<BlockQuoteMarkup>("> hi @u:userId");
-        var seq = bq.Content.Should().BeOfType<MarkupSeq>().Subject;
+
+        // assert
+        var seq = QuoteText(bq).Should().BeOfType<MarkupSeq>().Subject;
         seq.Items.OfType<UserMention>().Should().NotBeEmpty();
     }
 
     [Fact]
-    public void BlockQuoteWithBoldTest()
+    public void BlockQuoteShouldParseBold()
     {
+        // act
         var bq = Parse<BlockQuoteMarkup>("> **bold**");
-        bq.Content.Should().BeOfType<StylizedMarkup>().Which.Style.Should().Be(TextStyle.Bold);
+
+        // assert
+        QuoteText(bq).Should().BeOfType<StylizedMarkup>().Which.Style.Should().Be(TextStyle.Bold);
     }
 
     [Fact]
-    public void BlockQuoteMultiLineWithMentionAndStyleTest()
+    public void BlockQuoteShouldParseMentionAndStyleAcrossLines()
     {
-        // Mentions + styles across multiple quoted lines stay inside one block quote.
+        // act
         var bq = Parse<BlockQuoteMarkup>("> hey @u:userId\n> see **this**");
-        var seq = bq.Content.Should().BeOfType<MarkupSeq>().Subject;
+
+        // assert
+        var seq = QuoteText(bq).Should().BeOfType<MarkupSeq>().Subject;
         seq.Items.OfType<UserMention>().Should().NotBeEmpty();
         seq.Items.OfType<StylizedMarkup>().Any(s => s.Style == TextStyle.Bold).Should().BeTrue();
         seq.Items.Count(x => x is NewLineMarkup).Should().Be(1);
     }
 
     [Fact]
-    public void BlockQuoteThenParagraphTest()
+    public void UnquotedLineAfterBlockQuoteShouldStartParagraph()
     {
+        // act
         var seq = Parse<MarkupSeq>("> quote\ntext", validateFormat: false);
+
+        // assert
         seq.Items[0].Should().BeOfType<BlockQuoteMarkup>();
         seq.Items[1].Should().BeOfType<ParagraphMarkup>();
     }
 
     [Fact]
-    public void ParagraphThenBlockQuoteTest()
+    public void QuotedLineAfterParagraphShouldStartBlockQuote()
     {
+        // act
         var seq = Parse<MarkupSeq>("text\n> quote", validateFormat: false);
+
+        // assert
         seq.Items[0].Should().BeOfType<ParagraphMarkup>();
         seq.Items[1].Should().BeOfType<BlockQuoteMarkup>();
     }
 
     [Fact]
-    public void GreaterWithoutSpaceIsNotBlockQuoteTest()
+    public void MarkerWithoutSpaceShouldNotStartBlockQuote()
     {
-        // ">foo" (no space after '>') is plain text, not a block quote.
+        // act
         var p = Parse<ParagraphMarkup>(">foo");
-        p.Content.Should().BeAssignableTo<TextMarkup>();
+
+        // assert
+        p.Content.Should().BeAssignableTo<TextMarkup>(
+            "'>' must be followed by whitespace or end the line to mark a quote");
     }
 
     [Fact]
-    public void BlockQuoteCannotContainCodeBlockTest()
+    public void BlockQuoteFormatShouldRoundTrip()
     {
-        // A '```' inside a quoted line is not a code block — the inner content is inline-only.
-        var bq = Parse<BlockQuoteMarkup>("> ```not code```", validateFormat: false);
-        bq.Content.Should().NotBeOfType<CodeBlockMarkup>();
-    }
-
-    [Fact]
-    public void BlockQuoteFormatRoundTripsTest()
-    {
+        // arrange
         var bq = new BlockQuoteMarkup(new MarkupSeq(
             new PlainTextMarkup("a"),
             NewLineMarkup.Instance,
             new PlainTextMarkup("b")));
-        bq.Format().Should().Be("> a\n> b");
+
+        // act
+        var text = bq.Format().NormalizeNewLines("\n");
+
+        // assert
+        text.Should().Be("> a\n> b");
+    }
+
+    // Block quotes: blank lines
+
+    [Fact]
+    public void BareMarkerShouldParseAsEmptyBlockQuote()
+    {
+        // act
+        var bq = Parse<BlockQuoteMarkup>(">");
+
+        // assert
+        bq.Content.Should().BeOfType<ParagraphMarkup>().Which.IsEmpty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void BlockQuoteOfBareMarkersShouldParseAsBlankLines()
+    {
+        // act
+        var bq = Parse<BlockQuoteMarkup>(">\n>");
+
+        // assert
+        bq.Content.ToReadableText().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void BlankQuotedLineShouldSplitParagraphs()
+    {
+        // act
+        var bq = Parse<BlockQuoteMarkup>("> a\n>\n> b");
+
+        // assert
+        var seq = bq.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items.Length.Should().Be(2);
+        seq.Items.Should().AllSatisfy(x => x.Should().BeOfType<ParagraphMarkup>());
+    }
+
+    [Fact]
+    public void BlankQuotedLineWithTrailingSpaceShouldFormatAsBareMarker()
+    {
+        // act
+        var bq = Parse<BlockQuoteMarkup>("> a\n> \n> b", validateFormat: false);
+
+        // assert
+        bq.Format().NormalizeNewLines("\n").Should().Be("> a\n>\n> b",
+            "the trailing space is stripped on the way back in, so Format must not emit it");
+    }
+
+    [Fact]
+    public void UnquotedBlankLineShouldEndBlockQuote()
+    {
+        // act
+        var seq = Parse<MarkupSeq>("> a\n\n> b");
+
+        // assert
+        seq.Items[0].Should().BeOfType<BlockQuoteMarkup>();
+        seq.Items[1].Should().BeOfType<ParagraphMarkup>().Which.IsEmpty.Should().BeTrue();
+        seq.Items[2].Should().BeOfType<BlockQuoteMarkup>();
+    }
+
+    // Block quotes: nested block content
+
+    [Fact]
+    public void BlockQuoteShouldContainCodeBlock()
+    {
+        // act
+        var bq = Parse<BlockQuoteMarkup>("> ```js\n> const a = 1;\n> ```");
+
+        // assert
+        var codeBlock = bq.Content.Should().BeOfType<CodeBlockMarkup>().Subject;
+        codeBlock.Language.Should().Be("js");
+        codeBlock.Code.Should().Be("const a = 1;");
+    }
+
+    [Fact]
+    public void BlockQuoteShouldContainHeader()
+    {
+        // act
+        var bq = Parse<BlockQuoteMarkup>("> ## Title");
+
+        // assert
+        bq.Content.Should().BeOfType<HeaderMarkup>().Which.Level.Should().Be(2);
+    }
+
+    [Fact]
+    public void BlockQuoteShouldContainList()
+    {
+        // act
+        var bq = Parse<BlockQuoteMarkup>("> - a\n> - b");
+
+        // assert
+        bq.Content.Should().BeOfType<ListMarkup>().Which.Items.Length.Should().Be(2);
+    }
+
+    [Fact]
+    public void BlockQuoteShouldContainTable()
+    {
+        // act
+        var bq = Parse<BlockQuoteMarkup>("> | a | b |\n> | --- | --- |");
+
+        // assert
+        bq.Content.Should().BeOfType<TableMarkup>().Which.Alignments.Length.Should().Be(2);
+    }
+
+    [Fact]
+    public void BlockQuoteShouldContainMixedBlocks()
+    {
+        // act
+        var bq = Parse<BlockQuoteMarkup>("> # Title\n> text\n> ```\n> code\n> ```");
+
+        // assert
+        var seq = bq.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items[0].Should().BeOfType<HeaderMarkup>();
+        seq.Items[1].Should().BeOfType<ParagraphMarkup>();
+        seq.Items[2].Should().BeOfType<CodeBlockMarkup>();
+    }
+
+    // Block quotes: nesting
+
+    [Fact]
+    public void BlockQuoteShouldNest()
+    {
+        // act
+        var bq = Parse<BlockQuoteMarkup>("> > inner");
+
+        // assert
+        var inner = bq.Content.Should().BeOfType<BlockQuoteMarkup>().Subject;
+        QuoteText(inner).Should().BeAssignableTo<TextMarkup>().Which.Text.Should().Be("inner");
+    }
+
+    [Fact]
+    public void BlockQuoteShouldNestToMaxLevel()
+    {
+        // act
+        var bq = Parse<BlockQuoteMarkup>("> > > deep");
+
+        // assert
+        QuoteNestingLevel(bq).Should().Be(BlockQuoteMarkup.MaxLevel);
+    }
+
+    [Fact]
+    public void BlockQuoteNestingShouldStopAtMaxLevel()
+    {
+        // act
+        var bq = Parse<BlockQuoteMarkup>("> > > > too deep");
+
+        // assert
+        QuoteNestingLevel(bq).Should().Be(BlockQuoteMarkup.MaxLevel);
+        var innermost = (BlockQuoteMarkup)((BlockQuoteMarkup)bq.Content).Content;
+        QuoteText(innermost).Should().BeAssignableTo<TextMarkup>().Which.Text.Should().Be("> too deep",
+            "the 4th marker is past the cap, so it stays literal text inside the innermost quote");
+    }
+
+    [Fact]
+    public void NestedBlockQuoteShouldContainBlocks()
+    {
+        // act
+        var bq = Parse<BlockQuoteMarkup>("> outer\n> > # Inner\n> > - a");
+
+        // assert
+        var seq = bq.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items[0].Should().BeOfType<ParagraphMarkup>();
+        var innerSeq = seq.Items[1].Should().BeOfType<BlockQuoteMarkup>()
+            .Which.Content.Should().BeOfType<MarkupSeq>().Subject;
+        innerSeq.Items[0].Should().BeOfType<HeaderMarkup>();
+        innerSeq.Items[1].Should().BeOfType<ListMarkup>();
     }
 
     // Regression: stray/ambiguous markup must never truncate the document
@@ -1666,13 +1853,6 @@ code
     }
 
     [Fact]
-    public void TableInBlockQuoteIsNotATableTest()
-    {
-        var bq = Parse<BlockQuoteMarkup>("> | a | b |\n> | --- | --- |", validateFormat: false);
-        bq.Content.IsBlockMarkup().Should().BeFalse();
-    }
-
-    [Fact]
     public void TableIsBlockMarkupTest()
     {
         var t = Parse<TableMarkup>("| a |\n| --- |");
@@ -1895,6 +2075,17 @@ code
         }
         return result;
     }
+
+    private static Markup QuoteText(BlockQuoteMarkup markup)
+        // A quote holding a single line of inline markup wraps it into a paragraph, like any document
+        => markup.Content.Should().BeOfType<ParagraphMarkup>().Subject.Content;
+
+    private static int QuoteNestingLevel(Markup markup)
+        => markup switch {
+            BlockQuoteMarkup blockQuote => 1 + QuoteNestingLevel(blockQuote.Content),
+            MarkupSeq seq => seq.Items.Max(QuoteNestingLevel),
+            _ => 0,
+        };
 
     // Every top-level markup produced by the parser must be a BlockMarkup
     // (or a MarkupSeq whose items are all BlockMarkup).
