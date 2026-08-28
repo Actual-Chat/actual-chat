@@ -516,7 +516,7 @@
        still declares the background mode is the mismatch a reviewer would find. -->
   <Target Name="VerifyIosProdCapabilities" BeforeTargets="_CompileAppManifest"
           Condition="'$(IsDevMaui)' != 'true' and $(TargetFramework.Contains('-ios'))">
-    <Error Condition="$([System.IO.File]::ReadAllText($(VoxtIosAppManifest)).Contains('push-to-talk'))"
+    <Error Condition="$([System.IO.File]::ReadAllText($(VoxtIosAppManifest)).Contains('&lt;string&gt;push-to-talk&lt;/string&gt;'))"
            Text="A prod build must not declare the push-to-talk background mode - the prod entitlements don't grant it. Strip it from Platforms/iOS/Info.plist (the ipa workflow does this)." />
   </Target>
 
