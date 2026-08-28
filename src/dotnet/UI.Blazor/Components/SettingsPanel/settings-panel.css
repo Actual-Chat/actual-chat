@@ -141,12 +141,8 @@ body.wide .settings-tab {
 .tile {
     @apply flex-y gap-y-2;
     @apply p-2;
-    @apply rounded-lg;
+    @apply rounded-lg border border-separator;
     @apply bg-tile;
-    @apply shadow-modal-header-btn;
-}
-body.hoverable .tile:hover {
-    @apply shadow-lg;
 }
 .tile-topic {
     @apply pt-2 -mb-2;
@@ -280,7 +276,7 @@ body.narrow .settings-tab-header {
 }
 @media (min-width: 820px) {
     .settings-tab-header {
-        box-shadow: 0 0 1rem 1rem var(--background-01);
+        box-shadow: 0 0 0.5rem 0.5rem var(--background-01);
     }
 }
 
