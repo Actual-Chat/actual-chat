@@ -47,11 +47,11 @@ body.narrow .ac-menu {
 @keyframes ac-menu-show {
     0% {
         filter: opacity(0);
-        transform: translateY(1rem);
+        transform: translateY(1rem) scale(0.95);
     }
     99% {
         filter: opacity(1);
-        transform: translateY(0rem);
+        transform: translateY(0rem) scale(1);
     }
 }
 
