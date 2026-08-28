@@ -81,7 +81,14 @@
     @apply shadow-md shadow-shadow-main;
 }
 .chat-list-fab.btn.btn-round .btn-content > i {
+    @apply text-3.5xl;
+    transition: transform 200ms ease-in-out, font-size 200ms ease-in-out;
+}
+/* .marked-message lands on the trigger while its menu is open (see menu-host.ts),
+   so the plus spins into an X (and shrinks) on open and unwinds on close. */
+.chat-list-fab.btn.btn-round.marked-message .btn-content > i {
     @apply text-2xl;
+    transform: rotate(225deg);
 }
 .navbar-chats .c-active-chats:has(> .active-chats) .chat-list-fab {
     @apply bottom-full -mb-7;
