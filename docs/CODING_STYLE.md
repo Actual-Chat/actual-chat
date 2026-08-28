@@ -727,6 +727,30 @@ public override async Task Require(CancellationToken cancellationToken)
 
 9. **Prefer `sealed` classes and records** unless inheritance is intended.
 
+    **Exception — proxied service types must stay unsealed.** ActualLab
+    generates a proxy that *derives* from the service class and overrides its
+    intercepted members, so those members have to stay `virtual` — and a
+    sealed type can't declare one (CS0549). This applies to every
+    `IRequiresAsyncProxy` descendant, which is the base of the whole service
+    hierarchy: `IRpcService`, `ICommandService`, `IComputeService` (and
+    `IRequiresFullProxy`). In practice that's essentially every `*Backend`,
+    `*UI`, and other service class with `[ComputeMethod]` or
+    `[CommandHandler]` members. Don't add these to
+    [.claude/style-bypasses.md](../.claude/style-bypasses.md) — they're not
+    violations.
+
+    ```csharp
+    // Correct - not sealed: Fusion overrides GetBlockState in the generated proxy
+    public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeService
+    {
+        [ComputeMethod]
+        public virtual async Task<LiveBlockState> GetBlockState(...)
+    }
+    ```
+
+    Nested types, records, options classes, and any other non-proxied type in
+    the same file still follow the `sealed`-by-default rule.
+
 10. **Prefer `LogFor(GetType())` over `LogFor<T>()`** for the current type in non-static context.
 
 11. **Prefer primary constructors for services** when acceptable.
