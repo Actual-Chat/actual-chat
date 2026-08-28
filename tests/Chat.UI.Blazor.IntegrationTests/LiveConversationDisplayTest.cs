@@ -910,6 +910,87 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task ClosedBlockNeverDropsItsFooter(bool mustLeaveBeforeClose)
+    {
+        // HasSplitFooter and the block's appended footer are decided from the same liveBlockId, so a
+        // snapshot carrying a suppressed card and no footer for it means the two disagreed - the card
+        // then renders with nothing below its description.
+
+        // arrange - joined live session with a landed summary, card collapsed like the reported case
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, $"footerless-card-test-{mustLeaveBeforeClose}");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_320);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.EffectiveVisibleStartLid;
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                EndEntryLid = v + 2, MessageCount = 3, IsExpandedByDefault = false,
+            }, CancellationToken.None);
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
+        }, TimeSpan.FromSeconds(10));
+
+        using var cts = new CancellationTokenSource();
+        var violations = new List<string>();
+        var samplerTask = Task.Run(async () => {
+            while (!cts.IsCancellationRequested) {
+                var items = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
+                var violation = FindFooterlessCard(items);
+                if (violation != null && violations.Count < 5)
+                    violations.Add(violation);
+                await Task.Delay(TimeSpan.FromMilliseconds(20), CancellationToken.None);
+            }
+        }, CancellationToken.None);
+
+        // act - the viewer either leaves first (freezing the block while the session runs on) or stays
+        // to the end; either way both participants hang up and the session finalizes
+        if (mustLeaveBeforeClose) {
+            await chatAudioUI.SetListeningState(chat.Id, false);
+            InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
+            await Task.Delay(TimeSpan.FromSeconds(2));
+        }
+        await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
+        await Task.Delay(TimeSpan.FromSeconds(2));
+        if (!mustLeaveBeforeClose) {
+            await chatAudioUI.SetListeningState(chat.Id, false);
+            InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
+            await Task.Delay(TimeSpan.FromSeconds(2));
+        }
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"after-close-{i}");
+        await Task.Delay(TimeSpan.FromSeconds(2));
+        chatUI.ToggleExpandConversation(ConversationId.New(chat.Id, v));
+        await Task.Delay(TimeSpan.FromSeconds(2));
+
+        // assert
+        cts.Cancel();
+        await samplerTask;
+        violations.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task StopKeepsRenderKeysUnique(bool hasPreLatchContext)
     {
         // Every snapshot along the live -> ordinary conversation switch must stay @key-unique.
@@ -2023,6 +2104,31 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
                 .Select(m => m.Conversation!.Id.Value),
             "conversation starts",
             items);
+    }
+
+    private static string? FindFooterlessCard(ChatItems items)
+    {
+        // A suppressed footer must be supplied by the card's own block - one sitting elsewhere in the
+        // list is a different band on screen, so "somewhere in the tree" is too weak a check here.
+        var orphans = new List<ConversationId>();
+        foreach (var item in items.Items) {
+            var siblings = item is ExpandedConversationMessage block ? block.Items : [item];
+            foreach (var card in siblings.OfType<ConversationMessage>()) {
+                if (!card.HasSplitFooter)
+                    continue;
+
+                var conversationId = card.Conversation!.Id;
+                var hasFooter = siblings.Any(m =>
+                    m is ConversationFooter or LiveConversationFooter && m.Conversation!.Id == conversationId);
+                if (!hasFooter)
+                    orphans.Add(conversationId);
+            }
+        }
+
+        return orphans.Count == 0
+            ? null
+            : "Card(s) suppressing a footer their block does not supply: "
+                + $"{orphans.Select(id => id.Value).ToDelimitedString()}\n{Dump(items)}";
     }
 
     private static void AssertUniqueKeys(IEnumerable<string> keys, string scope, ChatItems items)

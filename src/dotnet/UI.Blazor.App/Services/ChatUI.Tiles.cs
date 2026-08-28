@@ -1468,6 +1468,9 @@ public partial class ChatUI
                     }
                     : new ConversationFooter(conversation) {
                         Kind = ChatMessageKind.ConversationEnd,
+                        // Its lid is EndEntryLid - below the frozen tail rows it sits under - so as list
+                        // content it would hand the query an end key under its own start.
+                        ShouldSkipKey = true,
                         PreviousMessage = items.Count > 0 ? items[^1] : null,
                     });
             result.Add(new ExpandedConversationMessage(conversation, items));
