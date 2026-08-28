@@ -245,17 +245,16 @@ export class ItemHeightController {
 
     private setUnsettled(state: ItemHeightState, isUnsettled: boolean): void {
         state.isUnsettled = isUnsettled;
-        state.ref.classList.toggle('c-height-unsettled', isUnsettled);
+        addOrRemoveClass(state.ref, 'c-height-unsettled', isUnsettled);
     }
 
-    // Re-applies what Blazor's class rewrite drops. Without this the item keeps the height written to
-    // it while losing the rules that make that height mean anything: the min-height floor comes back,
-    // the clip goes, and the content spills over the item below.
+    // Re-applies what Blazor's class rewrite drops, or the item keeps its written height while losing
+    // the rules that give it meaning: the min-height floor returns and the clip goes.
     private reassertClasses(state: ItemHeightState): void {
         if (state.isControlled)
-            state.ref.classList.add('c-height-controlled');
+            addOrRemoveClass(state.ref, 'c-height-controlled', true);
         if (state.isUnsettled)
-            state.ref.classList.add('c-height-unsettled');
+            addOrRemoveClass(state.ref, 'c-height-unsettled', true);
     }
 
     private onItemDomChanged = (mutations: MutationRecord[]): void => {
@@ -304,7 +303,7 @@ export class ItemHeightController {
 
             state.applied = target;
             state.isControlled = true;
-            state.ref.classList.add('c-height-controlled');
+            addOrRemoveClass(state.ref, 'c-height-controlled', true);
             this.setUnsettled(state, false);
             state.ref.style.transition = 'none';
             state.ref.style.height = `${target}px`;
@@ -524,7 +523,7 @@ export class ItemHeightController {
         const itemRef = state.ref;
         state.applied = target;
         state.isControlled = true;
-        itemRef.classList.add('c-height-controlled');
+        addOrRemoveClass(itemRef, 'c-height-controlled', true);
         this.onHeightChanged(key);
         if (isAnimated) {
             this.setUnsettled(state, true);
@@ -667,6 +666,14 @@ function withoutOwnClasses(value: string): string {
         .filter(x => x !== '' && x !== 'c-height-controlled' && x !== 'c-height-unsettled')
         .sort()
         .join(' ');
+}
+
+// classList.add/remove rewrite the whole class attribute even when the token set is already what was
+// asked for, which invalidates the item's style and hands domObserver a record to re-check. These run
+// on every item on every render, so the no-op case has to cost nothing.
+function addOrRemoveClass(itemRef: HTMLElement, name: string, isOn: boolean): void {
+    if (itemRef.classList.contains(name) !== isOn)
+        itemRef.classList.toggle(name, isOn);
 }
 
 // Hands the item back to the stylesheet: whatever height was written to it describes content that is

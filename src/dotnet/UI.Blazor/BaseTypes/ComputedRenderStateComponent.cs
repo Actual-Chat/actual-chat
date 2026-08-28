@@ -39,11 +39,17 @@ public abstract class ComputedRenderStateComponent<THub, TState> : ComputedRende
     protected bool IsInteractive => Hub.IsInteractive;
 
     protected ComputedRenderStateComponent()
-        => Options = DefaultOptions | ComputedStateComponentOptions.ComputeStateOnThreadPool; // Prevent blocking the UI thread
+        // ComputeStateOnThreadPool: prevents blocking the UI thread
+        => Options = DefaultOptions | ComputedStateComponentOptions.ComputeStateOnThreadPool;
 
     public override Task SetParametersAsync(ParameterView parameters)
     {
         _hub ??= (THub)CircuitHub;
         return base.SetParametersAsync(parameters);
     }
+
+    protected override bool ShouldRender()
+        // TryPostpone first: the base consumes the render-state snapshot, so the resume would find
+        // nothing changed and drop the very render it exists to deliver.
+        => !Hub.RenderDelayer.TryPostpone(this) && base.ShouldRender();
 }

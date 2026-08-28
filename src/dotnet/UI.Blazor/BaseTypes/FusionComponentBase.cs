@@ -46,7 +46,7 @@ public abstract class FusionComponentBase<THub> : FusionComponentBase, IHasCircu
     protected bool ShouldAutoFocusField => Hub.BrowserInfo.ShouldAutoFocusField;
 
     protected override bool ShouldRender()
-        => !Hub.RenderGate.TryPostpone(this);
+        => !Hub.RenderDelayer.TryPostpone(this);
 
     // Explicit IHasFusionHub & IHasServices implementation
     CircuitHub IHasCircuitHub.CircuitHub => Hub;

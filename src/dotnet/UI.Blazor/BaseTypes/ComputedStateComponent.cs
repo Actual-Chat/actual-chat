@@ -53,5 +53,5 @@ public abstract class ComputedStateComponent<THub, TState> : ComputedStateCompon
     }
 
     protected override bool ShouldRender()
-        => base.ShouldRender() && !Hub.RenderGate.TryPostpone(this);
+        => base.ShouldRender() && !Hub.RenderDelayer.TryPostpone(this);
 }
