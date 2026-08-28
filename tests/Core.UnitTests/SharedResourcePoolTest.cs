@@ -5,15 +5,20 @@ namespace ActualChat.Core.UnitTests;
 
 public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
 {
+    private const int TestTimeoutMs = 30_000;
+    private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(10);
+
     [Fact]
-    public async Task BasicTest()
+    public async Task PoolShouldShareResourceAndDisposeItAfterLastRent()
     {
+        // arrange
         var cancellationToken = CancellationToken.None;
         using var testClock = new TestClock();
         var pool = new SharedResourcePool<int, Resource>(ResourceFactory) {
             ResourceDisposeDelay = TimeSpan.Zero,
         };
 
+        // act & assert
         var l = await pool.Rent(10, cancellationToken);
         using (var _ = l) {
             l.IsRented.Should().BeTrue();
@@ -24,20 +29,22 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
             l.IsRented.Should().BeTrue();
             l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
         }
-        l.IsRented.Should().BeFalse();
 
-        await l.Resource.WhenDisposed.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
+        l.IsRented.Should().BeFalse();
+        await l.Resource.WhenDisposed.WaitAsync(WaitTimeout, cancellationToken);
     }
 
     [Fact]
-    public async Task DisposeDelayTest()
+    public async Task ResourceDisposeDelayShouldPostponeDisposal()
     {
+        // arrange
         var cancellationToken = CancellationToken.None;
         using var testClock = new TestClock();
         var pool = new SharedResourcePool<int, Resource>(ResourceFactory) {
             ResourceDisposeDelay = TimeSpan.FromSeconds(0.5),
         };
 
+        // act & assert
         var l = await pool.Rent(10, cancellationToken);
         using (var l1 = l) {
             l.IsRented.Should().BeTrue();
@@ -48,21 +55,23 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
             l.IsRented.Should().BeTrue();
             l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
         }
+
         l.IsRented.Should().BeFalse();
         l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
-
-        await l.Resource.WhenDisposed.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
+        await l.Resource.WhenDisposed.WaitAsync(WaitTimeout, cancellationToken);
     }
 
     [Fact]
-    public async Task DisposeDelayCancellationTest()
+    public async Task NewRentShouldCancelPendingDelayedDisposal()
     {
+        // arrange
         var cancellationToken = CancellationToken.None;
         using var testClock = new TestClock();
         var pool = new SharedResourcePool<int, Resource>(ResourceFactory) {
             ResourceDisposeDelay = TimeSpan.FromSeconds(0.2),
         };
 
+        // act & assert
         var l = await pool.Rent(10, cancellationToken);
         using (var l1 = l) {
             l.IsRented.Should().BeTrue();
@@ -73,6 +82,7 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
             l.IsRented.Should().BeTrue();
             l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
         }
+
         l.IsRented.Should().BeFalse();
         l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
 
@@ -85,25 +95,22 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
             l.IsRented.Should().BeTrue();
             l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
         }
-        l.IsRented.Should().BeFalse();
 
-        await l.Resource.WhenDisposed.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
+        l.IsRented.Should().BeFalse();
+        await l.Resource.WhenDisposed.WaitAsync(WaitTimeout, cancellationToken);
     }
 
-    [Fact(Timeout = 5000)]
+    [Fact(Timeout = TestTimeoutMs)]
     public async Task DisposeShouldDisposeResourceCreatedDuringDispose()
     {
-        // Verifies the multi-round dispose: when a factory finishes mid-dispose,
-        // the produced resource is picked up by a subsequent round and disposed.
-
-        var factoryStarted = new TaskCompletionSource();
-        var factoryGate = new TaskCompletionSource<Resource>();
+        // arrange
+        var factoryStarted = TaskCompletionSourceExt.New();
+        var factoryGate = TaskCompletionSourceExt.New<Resource>();
         var producedResource = new Resource();
 
         async Task<Resource> SlowFactory(int _, CancellationToken ct) {
+            // Ignores cancellation, so its resource surfaces in a later dispose round
             factoryStarted.TrySetResult();
-            // Ignore cancellation: we want the factory to deliver a resource that
-            // shows up in a later dispose round.
             return await factoryGate.Task.ConfigureAwait(false);
         }
 
@@ -122,30 +129,27 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
             }
         });
 
-        await factoryStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
-
+        // act
+        await factoryStarted.Task.WaitAsync(WaitTimeout);
         var disposeTask = pool.DisposeAsync().AsTask();
-        // Let dispose start and observe the in-flight lease in its first round(s).
+        // Lets dispose observe the in-flight lease in its first round(s)
         await Task.Delay(150);
-        // Now hand the factory a resource — a later dispose round should pick it up.
         factoryGate.TrySetResult(producedResource);
 
-        await disposeTask.WaitAsync(TimeSpan.FromSeconds(3));
+        // assert
+        await disposeTask.WaitAsync(WaitTimeout);
         producedResource.WhenDisposed.IsCompleted.Should().BeTrue();
 
         rentCts.Cancel();
-        await rentTask.WaitAsync(TimeSpan.FromSeconds(2));
+        await rentTask.WaitAsync(WaitTimeout);
     }
 
-    [Fact(Timeout = 5000)]
+    [Fact(Timeout = TestTimeoutMs)]
     public async Task DisposeShouldCancelInFlightFactory()
     {
-        // Verifies the pool-level cancellation: an in-flight factory honoring its
-        // cancellation token gets cancelled by DisposeAsync, the lease self-cleans,
-        // and dispose completes before the wall-clock timeout.
-
-        var factoryStarted = new TaskCompletionSource();
-        var factoryCancelled = new TaskCompletionSource();
+        // arrange
+        var factoryStarted = TaskCompletionSourceExt.New();
+        var factoryCancelled = TaskCompletionSourceExt.New();
 
         async Task<Resource> CancellableFactory(int _, CancellationToken ct) {
             factoryStarted.TrySetResult();
@@ -173,16 +177,20 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
             }
         });
 
-        await factoryStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        // act
+        await factoryStarted.Task.WaitAsync(WaitTimeout);
 
-        await pool.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3));
-        await factoryCancelled.Task.WaitAsync(TimeSpan.FromSeconds(2));
-        await rentTask.WaitAsync(TimeSpan.FromSeconds(2));
+        // assert
+        await pool.DisposeAsync().AsTask().WaitAsync(WaitTimeout);
+        await factoryCancelled.Task.WaitAsync(WaitTimeout);
+        await rentTask.WaitAsync(WaitTimeout);
     }
 
-    [Fact(Timeout = 5000)]
+    [Fact(Timeout = TestTimeoutMs)]
     public async Task DisposeShouldCancelPendingDelayedEndRent()
     {
+        // arrange
+        var disposeDelay = TimeSpan.FromMilliseconds(100);
         var disposeCount = 0;
         var pool = new SharedResourcePool<int, Resource>(
             ResourceFactory,
@@ -191,27 +199,26 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
                 resource.Dispose();
                 return default;
             }) {
-            ResourceDisposeDelay = TimeSpan.FromMilliseconds(100),
+            ResourceDisposeDelay = disposeDelay,
         };
 
+        // act
         var lease = await pool.Rent(10);
         lease.Dispose();
-
         await pool.DisposeAsync();
-        await Task.Delay(TimeSpan.FromMilliseconds(250));
+        // Gives the delayed EndRent scheduled by lease.Dispose() a chance to misfire
+        await Task.Delay(disposeDelay * 3);
 
-        disposeCount.Should().Be(1);
+        // assert
+        disposeCount.Should().Be(1, "the resource must be disposed exactly once");
     }
 
-    [Fact(Timeout = 5000)]
+    [Fact(Timeout = TestTimeoutMs)]
     public async Task DisposeShouldNotHangWhenResourceFactoryIsInFlight()
     {
-        // Reproduces the dispose deadlock: Lease.Resource does a synchronous
-        // _resourceTask.GetAwaiter().GetResult(), so SharedResourcePool.DisposeAsync
-        // blocks forever when a Rent's factory is still in flight at disposal time.
-
-        var factoryStarted = new TaskCompletionSource();
-        var factoryGate = new TaskCompletionSource<Resource>();
+        // arrange
+        var factoryStarted = TaskCompletionSourceExt.New();
+        var factoryGate = TaskCompletionSourceExt.New<Resource>();
 
         async Task<Resource> SlowFactory(int _, CancellationToken ct) {
             factoryStarted.TrySetResult();
@@ -234,27 +241,26 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
             }
         });
 
-        // Wait until the factory is invoked — at this point the lease is in _leases
-        // and _resourceTask is running but not completed.
-        await factoryStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
-
-        // This is the key assertion: DisposeAsync must complete promptly even though
-        // a Rent's factory is in flight. Without the fix, the pool blocks on
-        // Lease.Resource's sync .GetAwaiter().GetResult() forever.
+        // act
+        // Once the factory is invoked, the lease is in _leases with a running _resourceTask
+        await factoryStarted.Task.WaitAsync(WaitTimeout);
         var disposeTask = pool.DisposeAsync().AsTask();
-        await disposeTask.WaitAsync(TimeSpan.FromSeconds(2));
 
-        // Cleanup — unblock the factory and the pending rent.
+        // assert
+        // Regression: Lease.Resource's sync .GetAwaiter().GetResult() used to block this forever
+        await disposeTask.WaitAsync(WaitTimeout);
+
         rentCts.Cancel();
         factoryGate.TrySetCanceled();
-        await rentTask.WaitAsync(TimeSpan.FromSeconds(2));
+        await rentTask.WaitAsync(WaitTimeout);
     }
 
-    [FlakyFact("AY: Time-dependent", 3, Timeout = 5000)]
+    [FlakyFact("AY: Time-dependent", 3, Timeout = TestTimeoutMs)]
     public async Task ShouldNotStuckWhenCancellationTokenIsFired()
     {
-        // When a resource factory task fails asynchronously with a non-transient error,
-        // it causes that pool infinitely tries to execute Lease.BeginRent.
+        // arrange
+        // A resource factory failing asynchronously with a non-transient error used to
+        // make the pool retry Lease.BeginRent forever.
         async Task<Resource> ResourceFactory1(int _, CancellationToken cancellationToken) {
             await Task.Delay(1500, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
@@ -267,17 +273,23 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
             ResourceDisposeDelay = TimeSpan.Zero,
         };
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            async () => await pool.Rent(10, cancellationToken));
+        // act
+        var rent = () => pool.Rent(10, cancellationToken).AsTask();
+
+        // assert
+        await rent.Should().ThrowAsync<OperationCanceledException>();
     }
+
+    // Private methods
 
     private Task<Resource> ResourceFactory(int _, CancellationToken cancellationToken)
         => Task.FromResult(new Resource());
 
+    // Nested types
+
     private sealed class Resource : IDisposable
     {
-        private readonly TaskCompletionSource _whenDisposed = new();
-
+        private readonly TaskCompletionSource _whenDisposed = TaskCompletionSourceExt.New();
         public Task WhenDisposed => _whenDisposed.Task;
 
         public void Dispose()
