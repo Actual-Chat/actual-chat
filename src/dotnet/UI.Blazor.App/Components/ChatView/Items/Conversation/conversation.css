@@ -149,6 +149,11 @@ body.hoverable .c-lc-showmore:hover {
     @apply flex-y gap-y-2;
     @apply w-full;
 }
+/* Last child = no footer under the card (the block supplies its own one item below), and without it
+   the description ends flush against the card's bottom edge. A footer's own p-4 already spaces it. */
+.conversation-message .c-details:last-child {
+    @apply pb-4;
+}
 .conversation-message .c-summary {
     @apply flex-y;
 }
@@ -280,6 +285,15 @@ body.hoverable .conversation-message .c-long .show-more-btn:hover {
 .conversation-message .c-long .show-more-btn {
     @apply self-center;
     @apply w-fit;
+}
+/* The link continues the description's last line, and MarkupView renders every paragraph as a block
+   <p> - which would drop it onto a line of its own, with the margin below showing as a stray indent.
+   Matched via the link so a description ending in a list or a code block keeps that block's own box. */
+.conversation-message .c-summary .c-short > p.paragraph-markup:has(+ .show-more-btn) {
+    @apply inline;
+}
+.conversation-message .c-summary .c-short .show-more-btn {
+    @apply ml-1;
 }
 
 .conversation-message .mention-markup {
