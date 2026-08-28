@@ -174,6 +174,10 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
                 Title = "Latch", Description = "d", Summary = "s",
                 EndEntryLid = v + 2, MessageCount = 3,
             }, CancellationToken.None);
+        // The block needs the 3 summarised rows plus a full MinTailEntryCount tail below them, or the
+        // tail floor caps the latched boundary before it can be observed.
+        for (var i = 0; i < 3 + LiveFoldMath.MinTailEntryCount; i++)
+            await Tester.CreateTextEntry(chat.Id, $"live {i}");
 
         // act
         var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
@@ -754,8 +758,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await Task.Delay(700);
         LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None)).Should().Equal(beforeLids);
 
-        // act 2 - the reader scrolls further: a later message becomes the topmost visible one
+        // act 2 - the reader scrolls further: a later message becomes the topmost visible one, with a
+        // full MinTailEntryCount tail below it so the floor doesn't hold the fold back on its own
         var tailEntry = await Tester.CreateTextEntry(chat.Id, "tail-3");
+        for (var i = 4; i < 3 + LiveFoldMath.MinTailEntryCount; i++)
+            await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
         chatUI.SetItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, tailEntry.LocalId) },
@@ -1343,7 +1350,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
         }, CancellationToken.None);
         var lids = new List<long>();
-        for (var i = 0; i < 8; i++)
+        // 5 rows above the viewport top, then a full MinTailEntryCount tail from it down - anything
+        // shorter and the tail floor, not the summary gate, would be what holds the fold back.
+        for (var i = 0; i < 5 + LiveFoldMath.MinTailEntryCount; i++)
             lids.Add((await Tester.CreateTextEntry(chat.Id, $"m-{i}")).LocalId);
 
         var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
@@ -1656,7 +1665,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
             Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
         }, CancellationToken.None);
-        for (var i = 0; i < 20; i++)
+        // Enough that one reveal batch leaves rows still folded: revealing the whole backlog would
+        // collapse FoldRange to the empty range, and the freeze would have nothing to preserve.
+        for (var i = 0; i < 40; i++)
             await Tester.CreateTextEntry(chat.Id, $"m-{i}");
 
         var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
@@ -1741,7 +1752,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
                 TargetAuthorName = "Peer",
                 HasLeft = false,
             })));
-        for (var i = 3; i < 8; i++)
+        // 5 rows above the viewport top, then a full MinTailEntryCount tail from it down, or the tail
+        // floor would hold the fold back and there'd be nothing swallowed to count.
+        for (var i = 3; i < 5 + LiveFoldMath.MinTailEntryCount; i++)
             lids.Add((await Tester.CreateTextEntry(chat.Id, $"m-{i}")).LocalId);
 
         var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();

@@ -245,10 +245,8 @@
         var revealBatch = 0;
         if (isJoined && !isExpanded) {
             swallowedCount = await LiveBlockUI.GetSwallowedCount(chatId, cancellationToken).ConfigureAwait(true);
-            if (swallowedCount > 0) {
-                var visibleCount = ChatUI.ItemVisibility.Value.VisibleMessageLids.Count;
-                revealBatch = Math.Min(Math.Max(5, ((visibleCount + 4) / 5) * 5), swallowedCount);
-            }
+            if (swallowedCount > 0)
+                revealBatch = Math.Min(LiveFoldMath.RevealBatchSize, swallowedCount);
         }
         var isAnyoneTalking = isLive
             && await LiveStreamUI.IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(true);
