@@ -34,12 +34,6 @@ the original start line and only a hint, since it drifts as the file changes;
 the rule is an abbreviated label, since its wording changes as the guide is
 edited. The reason can be as short as whose decision it was.
 
-## src/dotnet/UI.Blazor.App/Testing/VirtualListTestService.cs
-
-- L3 `public class VirtualListTestService(IServiceProvider services) : IComputeService`
-  — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
-  members, so they must stay `virtual`, and a sealed type can't declare one (CS0549)
-
 ## src/dotnet/Api/Users/UserLanguageSettings.cs
 
 - L24 `[DataMember, MemoryPackOrder(4), Key(4)]` on `UILanguage`
@@ -49,9 +43,6 @@ edited. The reason can be as short as whose decision it was.
 
 ## src/dotnet/UI.Blazor.App/Services/LanguageUI/LanguageUI.cs
 
-- L11 `public class LanguageUI : UIWorkerBase<AppUIHub>, IComputeService, IDisposable`
-  — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
-  members, so they must stay `virtual`, and a sealed type can't declare one (CS0549)
 - L26 `public LanguageUI(AppUIHub hub) : base(hub)`
   — not a primary constructor — required: the `Settings` initializer uses `StateFactory`
   (a base member) and the `CreateLanguageSettings` method group, and `this` isn't
@@ -59,9 +50,6 @@ edited. The reason can be as short as whose decision it was.
 
 ## src/dotnet/UI.Blazor.App/Services/LocalizationUI.cs
 
-- L14 `public class LocalizationUI : UIServiceBase<AppUIHub>, IUITextLocalizer, IComputeService, IAsyncDisposable`
-  — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
-  members, so they must stay `virtual`, and a sealed type can't declare one (CS0549)
 - L20 `private readonly AsyncTaskMethodBuilder _whenReadySource = AsyncTaskMethodBuilderExt.New();`
   — task-source field naming — matches `AccountUI.cs:13` and `WebShareInfo.cs:9`
   verbatim; this is the established idiom for a `WhenXxx` gate
@@ -72,17 +60,8 @@ edited. The reason can be as short as whose decision it was.
   — `LogFor<T>()` instead of `LogFor(GetType())` — intended: the logger belongs to the
   `ConcurrentProcessor` it's handed to, not to `LocalizationUI`
 
-## src/dotnet/UI.Blazor.App/Components/ChatView/Items/TranscriptUI.cs
-
-- L5 `public class TranscriptUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService`
-  — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
-  members, so they must stay `virtual`, and a sealed type can't declare one (CS0549)
-
 ## src/dotnet/UI.Blazor.App/Services/TranslationUI/ThrottledTranslations.cs
 
-- L5 `public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IAsyncDisposable`
-  — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
-  members, so they must stay `virtual`, and a sealed type can't declare one (CS0549)
 - L17 `public ThrottledTranslations(AppUIHub hub) : base(hub)`
   — explicit constructor instead of a primary one — required: both fields are built
   from the instance methods `WhenTranslated` / `WhenLanguageDetected`, which a field
@@ -106,13 +85,6 @@ edited. The reason can be as short as whose decision it was.
 - L450 `private class InternalParsers(bool useUnparsedTextMarkup)`
   — type not sealed — required: `IncompleteInternalParsers` derives from it and
   overrides its `protected virtual` factory methods, so sealing it is CS0509
-
-## src/dotnet/Invite.Service/InvitesBackend.cs
-
-- L8 `public class InvitesBackend(IServiceProvider services)`
-  — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
-  and `[CommandHandler]` members, so they must stay `virtual`, and a sealed type
-  can't declare one (CS0549)
 
 ## tests/Users.IntegrationTests/MauiAuthControllerTest.cs
 
@@ -160,8 +132,6 @@ edited. The reason can be as short as whose decision it was.
 
 ## src/dotnet/UI.Blazor.App/Services/NotificationsPanelUI.cs
 
-- L10 `public class NotificationsPanelUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized`
-  — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
 - L23 `public NotificationsPanelUI(AppUIHub hub) : base(hub)`
   — explicit constructor instead of a primary one — required: the body reads
   `StateFactory`, a base-class member, which a primary constructor's field
