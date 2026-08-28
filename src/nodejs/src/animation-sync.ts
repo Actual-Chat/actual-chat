@@ -27,7 +27,6 @@ export const animationGridMs = 100;
 // style the phase is published through.
 const pseudoByClass = new Map<string, string>([
     ['recorder-wrapper', '::before'],       // rotate-ring
-    ['listen-only-btn', '::before'],        // gradientShake
     ['streaming-entry-badge', '::before'],  // badge-shimmer
     ['author-circle', '::before'],          // rotate-border-gradient
     ['layout-subfooter', '::before'],       // bottomWave

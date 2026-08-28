@@ -49,13 +49,6 @@ body.hoverable .chat-audio-panel .listen-only-btn.btn:hover {
     height: 180%;
     background: linear-gradient(180deg, #C60077 -18.32%, #2970FF 132%);
     border-radius: inherit;
-    will-change: transform;
-    /* All infinite animations here use steps(): on mobile WebView every
-       animation tick redraws the whole screen (the WebView functor has no
-       partial damage), so smooth 60Hz interpolation costs real battery.
-       steps() caps ticks at ~10/s; counts are per keyframe segment. */
-    animation: gradientShake 3s steps(30) infinite alternate;
-    animation-delay: var(--anim-phase, 0s);
 }
 .chat-audio-panel .record-off-btn.btn,
 body.hoverable .chat-audio-panel .record-off-btn.btn:hover {
@@ -247,6 +240,10 @@ body.narrow .chat-message-editor.has-related-entry .chat-audio-panel .volume-set
     -webkit-mask: radial-gradient(circle closest-side at center, transparent calc(100% - 3px), black calc(100% - 1px));
     mask: radial-gradient(circle closest-side at center, transparent calc(100% - 3px), black calc(100% - 1px));
     will-change: transform;
+    /* All infinite animations here use steps(): on mobile WebView every
+       animation tick redraws the whole screen (the WebView functor has no
+       partial damage), so smooth 60Hz interpolation costs real battery.
+       steps() caps ticks at ~10/s; counts are per keyframe segment. */
     animation: rotate-ring 2.5s 1s steps(25) infinite;
     animation-delay: var(--anim-phase, 1s);
 }
@@ -922,7 +919,6 @@ body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings
 
 /* Video call open: pause the decorative recorder animations — see the
    matching block in chat-activity-panel.css for why. */
-body.video-panel-shown .chat-audio-panel .listen-only-btn.btn::before,
 body.video-panel-shown .chat-audio-panel .recorder-wrapper.record-on::before,
 body.video-panel-shown .chat-audio-panel .recorder-wrapper.record-off-to-on::before,
 body.video-panel-shown .chat-audio-panel .recorder-wrapper.record-on .record-on-btn.btn,
@@ -932,10 +928,6 @@ body.video-panel-shown .recorder-btn-skeleton {
 
 /* === 15. Keyframe Animations === */
 
-@keyframes gradientShake {
-    from { transform: translateY(18%); }
-    to   { transform: translateY(-18%); }
-}
 @keyframes playback-btn-glow {
     0%, 100% {
         opacity: 0;
