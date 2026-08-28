@@ -1487,8 +1487,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // assert - the fold stops below the streaming entry
         await ComputedTest.When(async ct => {
+            var streamingTail = await chatUI.GetStreamingTail(chat.Id, author.Id, ct);
+            streamingTail.FloorLid.Should().Be(streamingLid);
             var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.StreamingFloorLid.Should().Be(streamingLid);
             s.FoldBoundaryLid.Should().BeLessThanOrEqualTo(streamingLid,
                 "a still-transcribing entry must stay outside the fold");
         }, TimeSpan.FromSeconds(15));
@@ -1496,13 +1497,98 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // act - the transcript closes
         await Tester.FinalizeStreamingEntry(streaming, "done");
 
-        // assert - the block re-compacts past it
+        // assert - the block re-compacts past it, without waiting on a fresh viewport signal: the
+        // governor re-runs on the streaming tail's own invalidation and re-advances against the
+        // viewport top it already holds
         await ComputedTest.When(async ct => {
+            var streamingTail = await chatUI.GetStreamingTail(chat.Id, author.Id, ct);
+            streamingTail.FloorLid.Should().Be(long.MaxValue);
             var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.StreamingFloorLid.Should().Be(long.MaxValue);
             s.FoldBoundaryLid.Should().BeGreaterThan(streamingLid,
                 "closing the transcript releases the fold");
         }, TimeSpan.FromSeconds(15));
+    }
+
+    [Fact]
+    public async Task FrozenBlockShouldHoldItsTailWhenTheStreamingFloorLapses()
+    {
+        // §7: a transcript closing under a frozen block must not re-open the fold. The floor lapsing to
+        // "no cap" used to hand the fold straight back to the monotonic boundary the viewport had reached
+        // earlier, swallowing the rows the frozen reader was still looking at. LiveFoldMath.Advance bounds
+        // every advance by the viewport top instead, so the lapse can't cross it.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "frozen-streaming-lapse-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_430);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var v = live!.EffectiveVisibleStartLid;
+        await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+        }, CancellationToken.None);
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"before-{i}");
+        var streaming = await Tester.CreateStreamingEntry(chat.Id, Languages.English);
+        var streamingLid = streaming.ChatEntrySlim.LocalId;
+        for (var i = 0; i < LiveFoldMath.MinTailEntryCount; i++)
+            await Tester.CreateTextEntry(chat.Id, $"after-{i}");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+
+        void SetViewportTop(long lid)
+            => chatUI.SetItemVisibility(new ChatViewItemVisibility(
+                chat.Id,
+                new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, lid) },
+                false,
+                false));
+
+        // act - the reader reaches the live tail, so the fold would run well past the streaming entry,
+        // and only the streaming floor holds it there
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        SetViewportTop(idRange.End - 1);
+        await ComputedTest.When(async ct => {
+            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
+            s.FoldBoundaryLid.Should().Be(streamingLid, "the streaming entry is what stops the fold");
+        }, TimeSpan.FromSeconds(15));
+
+        // act - the reader scrolls back up onto the streaming entry, then leaves: the block freezes with
+        // that row, and the ones under it, on screen
+        SetViewportTop(streamingLid);
+        await chatAudioUI.SetListeningState(chat.Id, false);
+        InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
+
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        List<long> frozenLids = null!;
+        await ComputedTest.When(async ct => {
+            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
+            s.Overlay.Should().NotBeNull();
+            frozenLids = LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, ct));
+            frozenLids.Should().Contain(streamingLid, "the frozen render still shows the streaming row");
+        }, TimeSpan.FromSeconds(10));
+
+        // act - the transcript closes under the frozen block, so its floor lapses to "no cap"
+        await Tester.FinalizeStreamingEntry(streaming, "done");
+        await ComputedTest.When(async ct => {
+            var streamingTail = await chatUI.GetStreamingTail(chat.Id, author.Id, ct);
+            streamingTail.FloorLid.Should().Be(long.MaxValue, "the floor has to actually lapse");
+        }, TimeSpan.FromSeconds(15));
+
+        // assert - the frozen render is unchanged: the lapse may only let the fold reach the viewport
+        // top, which is the streaming row itself, so nothing the reader had is swallowed
+        await Task.Delay(500);
+        var afterLapse = await liveBlockUI.GetBlockState(chat.Id, CancellationToken.None);
+        afterLapse.FoldBoundaryLid.Should().BeLessThanOrEqualTo(streamingLid,
+            "a lapsing floor must not push the fold past the frozen reader's viewport top");
+        LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None))
+            .Should().Equal(frozenLids, "closing the transcript must not re-fold a frozen block");
     }
 
     [Fact]

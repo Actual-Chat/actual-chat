@@ -19,18 +19,16 @@ public sealed record LiveBlockOverlay(
     bool IsDissolving = false);
 
 /// <summary>
-/// The live block's fold state. <see cref="FoldBoundaryLid"/> as returned by
-/// <see cref="LiveBlockUI.GetBlockState"/> is already capped by <see cref="StreamingFloorLid"/> and
-/// <see cref="TailFloorLid"/>; the raw monotonic value lives in the governor's own state.
+/// The live block's fold state. <see cref="FoldBoundaryLid"/> is the governed fold end, already
+/// bounded by the viewport top and by both floors when it was advanced - see
+/// <see cref="LiveFoldMath.Advance"/> - so consumers use it as-is.
 /// </summary>
 public sealed record LiveBlockState(
     long FoldBoundaryLid,
     LiveBlockOverlay? Overlay,
     bool WasAttending = false,
     bool IsDissolving = false,
-    long RevealedBoundaryLid = long.MaxValue,
-    long StreamingFloorLid = long.MaxValue,
-    long TailFloorLid = long.MaxValue)
+    long RevealedBoundaryLid = long.MaxValue)
 {
     public static readonly LiveBlockState None = new(0, null);
 }
@@ -69,12 +67,8 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         var amInLive = raw != null
             && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
         lock (Lock) {
-            // Capped, not governed: the monotonic value stays untouched, so the block re-compacts the
-            // moment the streaming entry closes or the tail grows past the floor.
-            var foldBoundaryLid = CapBoundary(baseState);
-            var effectiveBoundaryLid = Math.Min(foldBoundaryLid, chatState.RevealedBoundaryLid);
+            var effectiveBoundaryLid = Math.Min(baseState.FoldBoundaryLid, chatState.RevealedBoundaryLid);
             return baseState with {
-                FoldBoundaryLid = foldBoundaryLid,
                 Overlay = DeriveOverlay(chatState, effectiveBoundaryLid, raw, amInLive),
                 RevealedBoundaryLid = chatState.RevealedBoundaryLid,
             };
@@ -115,7 +109,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                 return;
             chatState = s;
             v = t.V;
-            effectiveBoundary = Math.Min(CapBoundary(chatState.State.Value), chatState.RevealedBoundaryLid);
+            effectiveBoundary = Math.Min(chatState.State.Value.FoldBoundaryLid, chatState.RevealedBoundaryLid);
         }
         if (effectiveBoundary <= v)
             return;
@@ -276,7 +270,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         LiveBlockSnapshot? raw;
         bool isJoined;
         FrozenTemplate? template = null;
-        var tailFloorLid = long.MaxValue;
+        var floorLid = long.MaxValue;
         using (Computed.BeginIsolation()) {
             raw = await LiveSessionUI.GetBlockSnapshot(chatId, cancellationToken).ConfigureAwait(false);
             isJoined = raw != null
@@ -286,21 +280,20 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             // the template GetBlockState needs to derive the overlay.
             if (raw is { IsLatched: true } && isJoined)
                 template = await BuildTemplate(chatId, raw, cancellationToken).ConfigureAwait(false);
-            // Seeded for the same reason: the latch below folds to the raw fold end, and without the
-            // floor already in place the first render swallows a short tail and hands it back a beat
-            // later, once the governor's first iteration lands.
+            // The seed is the one fold end no advance produced, so the floors have to bound it here
+            // instead: the governed value only ever grows, and a seed above them could never be
+            // walked back.
             if (raw is { IsLatched: true })
-                tailFloorLid = await GetTailFloorLid(chatId, raw.VisibleStartLid, cancellationToken)
-                    .ConfigureAwait(false);
+                floorLid = await GetFloorLid(chatId, raw, cancellationToken).ConfigureAwait(false);
         }
-        var foldEndLid = GetRawFoldEndLid(raw);
+        var foldEndLid = Math.Min(GetRawFoldEndLid(raw), floorLid);
         lock (Lock) {
             if (_chatStates.TryGetValue(chatId, out var existing))
                 return existing;
 
             var chatState = new ChatFoldState {
                 State = StateFactory.NewMutable(
-                    new LiveBlockState(foldEndLid, null, isJoined, TailFloorLid: tailFloorLid),
+                    new LiveBlockState(foldEndLid, null, isJoined),
                     StateCategories.Get(GetType(), nameof(GetBlockState), "[*]")),
                 WasAttending = isJoined,
                 Template = template,
@@ -370,7 +363,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
 
     private async Task<Moment?> ProcessChat(ChatId chatId, GovernorInputs inputs, CancellationToken cancellationToken)
     {
-        var (_, raw, visibility, isJoined, rawStreamingFloorLid, rawTailFloorLid) = inputs;
+        var (_, raw, visibility, isJoined, rawStreamingFloorLid, tailFloorLid) = inputs;
         var chatState = await GetOrCreateChatState(chatId, cancellationToken).ConfigureAwait(false);
 
         // While the viewer is attending a live session, keep a frozen template ready - the exact
@@ -379,10 +372,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         var template = raw is { IsLatched: true } && isJoined
             ? await BuildTemplate(chatId, raw, cancellationToken).ConfigureAwait(false)
             : null;
-        // A transcript that started before the block latched isn't the block's to hold open.
-        var streamingFloorLid = raw is { IsLatched: true } && rawStreamingFloorLid >= raw.VisibleStartLid
-            ? rawStreamingFloorLid
-            : long.MaxValue;
+        var streamingFloorLid = StreamingFloorOf(raw, rawStreamingFloorLid);
 
         var clearedReveal = false;
         Moment? wakeAt = null;
@@ -417,17 +407,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             else if (raw != null)
                 chatState.IsClosed = false;
 
-            // The floor freezes with the template: past the leave, letting it rise with the growing tail
-            // (or lapse to "no cap" on close) would re-open the fold under the frozen render and swallow
-            // the rows the reader is still on.
-            var tailFloorLid = raw is { IsLatched: true } && isJoined
-                ? rawTailFloorLid
-                : chatState.State.Value.TailFloorLid;
-            var state = chatState.State.Value with {
-                WasAttending = chatState.WasAttending,
-                StreamingFloorLid = streamingFloorLid,
-                TailFloorLid = tailFloorLid,
-            };
+            var state = chatState.State.Value with { WasAttending = chatState.WasAttending };
 
             // A tier-1 (never-summarized) close leaves no card behind. DeriveOverlay dissolves the
             // block immediately (synchronously) so the animation actually starts; the governor only
@@ -448,16 +428,17 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
 
             if (raw is { IsLatched: true }) {
                 var v = raw.VisibleStartLid;
+                // 0 means no part of the block is visible, which holds the fold where LiveFoldMath left it.
                 var minVisibleLid = visibility.ChatId == chatId && !visibility.IsEmpty
-                    ? visibility.VisibleMessageLids.Where(lid => lid >= v).DefaultIfEmpty(long.MaxValue).Min()
-                    : long.MaxValue;
+                    ? visibility.VisibleMessageLids.Where(lid => lid >= v).DefaultIfEmpty(0).Min()
+                    : 0;
                 var oldBoundary = state.FoldBoundaryLid;
                 var boundaryLid = LiveFoldMath.Advance(
-                    oldBoundary, minVisibleLid == long.MaxValue ? null : minVisibleLid);
+                    oldBoundary, minVisibleLid, streamingFloorLid, tailFloorLid);
                 // A reveal is a temporary peek. Latch that the viewport entered the revealed region (above
                 // the governed boundary); once the reader scrolls back down so every revealed row is above
                 // the viewport again, re-swallow them - the block re-compacts on return to the live tail.
-                if (chatState.RevealedBoundaryLid != long.MaxValue && minVisibleLid != long.MaxValue) {
+                if (chatState.RevealedBoundaryLid != long.MaxValue && minVisibleLid != 0) {
                     if (minVisibleLid < oldBoundary)
                         chatState.RevealScrolledInto = true;
                     else if (chatState.RevealScrolledInto) {
@@ -466,8 +447,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                         clearedReveal = true;
                     }
                 }
-                state = new LiveBlockState(boundaryLid, null, chatState.WasAttending,
-                    StreamingFloorLid: streamingFloorLid, TailFloorLid: tailFloorLid);
+                state = new LiveBlockState(boundaryLid, null, chatState.WasAttending);
             }
 
             if (!Equals(chatState.State.Value, state))
@@ -495,8 +475,22 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                 _ = GetBlockState(chatId, default);
     }
 
-    private static long CapBoundary(LiveBlockState state)
-        => Math.Min(state.FoldBoundaryLid, Math.Min(state.StreamingFloorLid, state.TailFloorLid));
+    private async Task<long> GetFloorLid(ChatId chatId, LiveBlockSnapshot raw, CancellationToken cancellationToken)
+    {
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var streamingTail = await Hub.ChatUI
+            .GetStreamingTail(chatId, ownAuthor?.Id ?? default, cancellationToken)
+            .ConfigureAwait(false);
+        var tailFloorLid = await GetTailFloorLid(chatId, raw.VisibleStartLid, cancellationToken)
+            .ConfigureAwait(false);
+        return Math.Min(StreamingFloorOf(raw, streamingTail.FloorLid), tailFloorLid);
+    }
+
+    private static long StreamingFloorOf(LiveBlockSnapshot? raw, long rawStreamingFloorLid)
+        // A transcript that started before the block latched isn't the block's to hold open.
+        => raw is { IsLatched: true } && rawStreamingFloorLid >= raw.VisibleStartLid
+            ? rawStreamingFloorLid
+            : long.MaxValue;
 
     // Nested types
 

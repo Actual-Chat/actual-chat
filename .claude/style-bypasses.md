@@ -146,3 +146,11 @@ edited. The reason can be as short as whose decision it was.
   whose cause lives in two CSS properties in another file. Without the reasoning
   written down the next reader deletes it. Records the WebKit bug id, the
   measured evidence, and why `contain`/`will-change` are nudged, not removed.
+
+## src/dotnet/UI.Blazor.App/Services/LiveFoldMath.cs
+
+- L12 `public static long Advance(long lastFoldEndLid, long minVisibleLid, long streamingFloorLid, long tailFloorLid)`
+  — multi-paragraph comment on a single-expression member, and two bullets that describe
+  `LiveBlockUI` members rather than this one — Alex Yakunin's decision: the fold rule's
+  accepted trade-offs must be listed together at the rule itself, not scattered across the
+  call sites that happen to cause them
