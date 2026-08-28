@@ -20,8 +20,18 @@ body.narrow .close-settings-btn {
 
 /* ── Tile-item blocks (theme, render mode, listening linger, ...) ── */
 
-/* A tile-item row already carries 10px of air around its 20px content, so a
-   block of them pads by 6 to leave the same 24px gap an input block gets from 16 */
+/* This modal lines tile rows, input rows, and icons up to one left edge - the .settings-tab-content
+   inset. The shared base is left untouched (it pads .form-block and .tile-item and left-aligns the
+   form icon slot for other modals); those insets are zeroed here, scoped to .settings-modal only. */
+.settings-modal .form-block {
+    @apply p-0;
+}
+/* first-tile-item (the account header) keeps the base left-aligned icon; every other form icon,
+   which .form left-aligns via justify-start, falls back to the base centered slot. */
+.settings-modal .tile-item:not(.first-tile-item) .tile-item-icon {
+    @apply justify-center;
+}
+/* A block of tile rows keeps a little vertical air so it doesn't butt against the section gap. */
 .settings-tab .form-block:has(> .tile-item) {
     @apply py-1.5;
 }
@@ -142,12 +152,6 @@ body.narrow .close-settings-btn {
 .email-form > section .form-section-validation,
 .time-zone-form > section .form-section-validation {
     @apply bg-tile;
-}
-
-/* ── Data Collection & Early Access ── */
-
-.data-collection-consent.tile .tile-item {
-    @apply h-12;
 }
 
 /* ── Your Account tab ── */

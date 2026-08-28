@@ -30,21 +30,21 @@
 </Tile>
 
 <TileTopic Topic="@L.UserInterface_WalkThrough"/>
-<Button
-    Class="add-avatar-btn"
-    Click="@(OnRestartWalkThrough)">
-    <Icon><i class="icon-refresh text-xl"></i></Icon>
-    <Title>@L.UserInterface_RestartWalkThrough</Title>
-</Button>
+<Tile>
+    <TileItem Click="@(OnRestartWalkThrough)">
+        <Icon><i class="icon-refresh text-2xl"></i></Icon>
+        <Content>@L.UserInterface_RestartWalkThrough</Content>
+    </TileItem>
+</Tile>
 
 @if (m.IsAdmin) {
     <TileTopic Topic="@L.UserInterface_Onboarding"/>
-    <Button
-        Class="add-avatar-btn"
-        Click="@(OnRestartOnboarding)">
-        <Icon><i class="icon-refresh text-xl"></i></Icon>
-        <Title>@L.UserInterface_RestartOnboarding</Title>
-    </Button>
+    <Tile>
+        <TileItem Click="@(OnRestartOnboarding)">
+            <Icon><i class="icon-refresh text-2xl"></i></Icon>
+            <Content>@L.UserInterface_RestartOnboarding</Content>
+        </TileItem>
+    </Tile>
 }
 
 @code {
