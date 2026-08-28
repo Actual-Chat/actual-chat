@@ -48,7 +48,7 @@ public abstract class ComponentBase<THub> : ComponentBase, IHasCircuitHub
     protected bool IsInteractive => Hub.IsInteractive;
 
     protected override bool ShouldRender()
-        => !Hub.RenderGate.TryPostpone(this);
+        => !Hub.RenderDelayer.TryPostpone(this);
 
     // Explicit IHasFusionHub & IHasServices implementation
     CircuitHub IHasCircuitHub.CircuitHub => Hub;

@@ -241,8 +241,11 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     --text-animation: none;
 }
 
+/* No `forwards`: it would pin the last keyframe's filter - blur(0), a no-op to look at but still a
+   filter - on the parent of the spans that keep changing, and a filtered element re-rasters its whole
+   subtree every time anything inside it moves. Reverting to the base `filter: none` looks identical. */
 .chat-message-markup.translating .changes {
-    animation: toTranslatedBlur 1.25s steps(10, end) forwards;
+    animation: toTranslatedBlur 1.25s steps(10, end);
 }
 @keyframes toTranslatedBlur {
     0% { filter: blur(2px); }
@@ -275,26 +278,27 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     @apply opacity-50;
 }
 
-.chat-message-markup .changes:empty {
-    filter: opacity(0);
-}
-
-.chat-message-markup .changes {
-    @apply underline underline-offset-2 decoration-1;
-}
-
-.chat-message-markup .change-item {
-    transition-behavior: allow-discrete;
-}
-
+/* An animation rather than a transition with @starting-style: the spans persist across updates, so a
+   transition would only ever fire on the first one - alternating animation-name via .c-alt is what
+   restarts the fade. Duration and delay are written by the component, which derives both from
+   Constants.Transcription.ThrottlePeriod so each slice lands before the next update arrives.
+   opacity, not filter: opacity() - a filter on an inline span sends every frame through the filter
+   pipeline on the main thread, once per streaming message. */
 .chat-message-markup .changes .change-item {
-    filter: opacity(1);
-    transition-property: filter, -webkit-filter;
-    transition-timing-function: linear;
-    transition-duration: 200ms;
-    @starting-style {
-        filter: opacity(0);
-    }
+    animation-name: changeItemIn;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+}
+.chat-message-markup .changes.c-alt .change-item {
+    animation-name: changeItemInAlt;
+}
+@keyframes changeItemIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+@keyframes changeItemInAlt {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
 }
 
 .chat-message-markup .chat-message-sending-status {

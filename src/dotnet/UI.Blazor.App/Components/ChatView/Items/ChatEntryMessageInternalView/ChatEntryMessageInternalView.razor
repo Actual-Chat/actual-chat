@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Module
 @inherits ComputedRenderStateComponent<AppUIHub, ChatEntryMessageInternalView.Model>
+@implements IRenderSyncTarget
 @{
     var m = State.Value;
     var sm = m.Streaming;
@@ -22,6 +23,10 @@
         // is shorter than the final markup and the streaming→non-streaming transition visibly jumps.
         _temporaryText = oldStreaming.Text;
     }
+    // AnimatedText is entirely newly arrived characters, so its fade restarts on every update; the
+    // spans persist across updates, so alternating the animation name is what restarts it.
+    if (m.IsStreaming && !ReferenceEquals(sm, oldStreaming) && !sm.AnimatedText.IsNullOrEmpty())
+        _isAltAnimation = !_isAltAnimation;
 
     _rendered = m;
     var streamingCls = "";
@@ -47,11 +52,9 @@
     if (entry.IsSending) {
         if (!entry.HasUploadingAttachments)
             status = ChatMessageSendingStatus.MessageStatus.Sending;
-    }
-    else if (entry.HasUploadingAttachments) {
+    } else if (entry.HasUploadingAttachments) {
         // Use default
-    }
-    else if (IsUnreadByOthers) {
+    } else if (IsUnreadByOthers) {
         if (entry.Attachments.Length == 0)
             status = ChatMessageSendingStatus.MessageStatus.Unread;
     }
@@ -87,8 +90,7 @@
                 IsVoiceActive="@true"
                 IsLanguageKnown="@m.IsChatLanguageSelected"
                 VoiceStartedAt="@entry.BeginsAt"/>
-        }
-        else if (!IsOwnMessage && sm.IsTextEmpty) {
+        } else if (!IsOwnMessage && sm.IsTextEmpty) {
             @* Someone else is speaking and their first words have not arrived. The badge is for our
                own recording; this only has to say that the message is on its way, and it keeps the
                row from being an author header over nothing. *@
@@ -97,17 +99,15 @@
         @if (!sm.RetainedText.IsNullOrEmpty()) {
             <span class="retained">@sm.RetainedText</span>
         }
-        <span class="changes">
+        <span class="changes @(_isAltAnimation ? "c-alt" : "")">
             <span class="changed-item">@sm.ChangedText</span>
             @{
                 for (var spanIndex = 0; spanIndex < AnimationSpanCount; spanIndex++) {
                     var spanStart = sm.AnimatedText.Length * spanIndex / AnimationSpanCount;
                     var spanEnd = sm.AnimatedText.Length * (spanIndex + 1) / AnimationSpanCount;
-                    if (spanStart >= spanEnd)
-                        continue;
-
                     var spanDelay = (int)Math.Round(AnimationSpanDurationMs * spanIndex);
-                    var style = $"transition-delay: {spanDelay}ms;";
+                    var spanDuration = (int)Math.Round(AnimationSpanDurationMs);
+                    var style = $"animation-delay: {spanDelay}ms; animation-duration: {spanDuration}ms;";
                     <span class="change-item" style="@style">@sm.AnimatedText[spanStart..spanEnd]</span>
                 }
             }
@@ -146,6 +146,7 @@
     private static readonly double AnimationSpanDurationMs = AnimationDurationMs / AnimationSpanCount;
 
     private string? _temporaryText;
+    private bool _isAltAnimation;
     private Model? _rendered;
     private ChatEntryId _textEntryId = null!;
 
@@ -166,15 +167,22 @@
     [Parameter] public bool IsUnreadByOthersBlockStart { get; set; }
     [Parameter] public bool IsOwnMessage { get; set; }
 
-    protected override void OnInitialized() {
-        var messageEntry = Message.Entry;
-        _textEntryId = ChatEntryId.New(messageEntry.ChatId, messageEntry.LocalId);
-    }
+    public bool MustSyncRender
+        // Only a streaming message renders often enough to be worth pacing, and only once it is on
+        // screen: the first render is the one the reader is waiting for.
+        => _rendered is not null && State.Value.IsStreaming;
 
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         await base.DisposeAsync().ConfigureAwait(false);
+    }
+
+    // Protected/internal methods
+
+    protected override void OnInitialized() {
+        var messageEntry = Message.Entry;
+        _textEntryId = ChatEntryId.New(messageEntry.ChatId, messageEntry.LocalId);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -196,7 +204,8 @@
                     || _rendered.Translation != stateValue.Translation
                     || _rendered.IsUnread != stateValue.IsUnread
                     || _rendered.IsUnreadBlockStart != stateValue.IsUnreadBlockStart);
-        return shouldRender;
+
+        return shouldRender && !Hub.RenderDelayer.TryPostpone(this);
     }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
@@ -206,10 +215,10 @@
             IsUnreadByOthers, IsUnreadByOthersBlockStart);
         return new() {
             InitialValue = initialData, // To show the original text immediately
-            // The default delayer collapses to ~32ms whenever UIActionTracker reports
-            // instant updates — ~30 render batches/sec per streaming message, each one a
-            // synchronous DOM patch. 0.2s is the grid the streaming markup already animates on.
-            UpdateDelayer = FixedDelayer.Get(0.2),
+            // The default delayer collapses to ~32ms whenever UIActionTracker reports instant
+            // updates — ~30 render batches/sec per streaming message, each one a synchronous DOM
+            // patch. RenderDelayer's grid also puts every streaming message on one tick.
+            UpdateDelayer = Hub.RenderDelayer.UpdateDelayer,
             Category = GetStateCategory(GetType()),
         };
     }
