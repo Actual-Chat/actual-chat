@@ -192,7 +192,7 @@ public sealed partial class MarkupParser : IMarkupParser
         Lookahead(Try(CodeBlockToken.ThenReturn('`'))
             .Or(Try(OneOf(Char('-'), Char('*')).Before(WhitespaceChar)))
             .Or(Try(HeaderLevel.ThenReturn('#')))
-            .Or(Try(Char('>').Before(WhitespaceChar)))
+            .Or(Try(Char('>').Before(WhitespaceChar.Or(EndOfLineChar).OrEnd())))
             .Or(Try(TableStart)));
     // What ends an inline run at the start of a line: an empty line (i.e. a paragraph break),
     // or any block element.
@@ -337,8 +337,12 @@ public sealed partial class MarkupParser : IMarkupParser
     // A single paragraph line (can be empty - 0 or more chars)
     private static readonly Parser<char, string> ParagraphLine = CharRun.String(IsNotEndOfLineChar);
 
+    // A quoted line is '>' plus one whitespace char (dropped, as in Markdown) and the rest of the
+    // line, or a bare '>' - which is how a blank line inside a quote is written.
     private static readonly Parser<char, string> QuoteContentLine =
-        Char('>').Then(WhitespaceChar).Then(ParagraphLine);
+        Char('>').Then(SafeTryOneOf(
+            WhitespaceChar.Then(ParagraphLine),
+            Lookahead(NotEndOfLineChar.SafeNot()).ThenReturn("")));
 
     private static readonly Parser<char, Markup> FullMarkup =
         new InternalParsers(false).Build();
@@ -450,7 +454,20 @@ public sealed partial class MarkupParser : IMarkupParser
 
     private class InternalParsers(bool useUnparsedTextMarkup)
     {
+        // Indexed by the number of enclosing block quotes. Built on demand: the parser for level N
+        // is only reachable once a quote at level N-1 matched, and most messages have no quote at
+        // all. A race here just builds the same parser twice, which is why there's no lock.
+        private readonly Parser<char, Markup>?[] _documents =
+            new Parser<char, Markup>?[BlockQuoteMarkup.MaxLevel + 1];
+
         private bool UseUnparsedTextMarkup { get; } = useUnparsedTextMarkup;
+
+        // These four are the level-independent half of a document, so Build makes them once and
+        // BuildDocument reuses them for every quote level.
+        private Parser<char, Markup> ListBlock { get; set; } = null!;
+        private Parser<char, Markup> Header { get; set; } = null!;
+        private Parser<char, Markup> Table { get; set; } = null!;
+        private Parser<char, Markup> Paragraph { get; set; } = null!;
 
         // Assigned by Build before any parsing, and read through Rec(...) so the stylized parsers
         // can recurse back into the text block that contains them.
@@ -529,18 +546,6 @@ public sealed partial class MarkupParser : IMarkupParser
                 select BuildHeader(level, line.TrimEnd(), inlineParser)
                 ).Debug("<Header>");
 
-            // Block quote: one or more consecutive "> " lines; inner content is inline markup
-            // (mentions/styles/urls/emoji/newlines) — no nested block elements like code blocks.
-            var blockquote = (
-                from firstLine in QuoteContentLine
-                from restLines in Try(
-                    from nl in EndOfLine
-                    from line in QuoteContentLine
-                    select "\n" + line
-                ).Many()
-                select BuildBlockQuote(firstLine, restLines, inlineParser)
-                ).Debug("<BlockQuote>");
-
             // Table: a header row, a delimiter row, and any number of body rows. Cells hold inline
             // markup only, and a body row is padded/truncated to the header's cell count (as in GFM).
             var table = (
@@ -553,22 +558,11 @@ public sealed partial class MarkupParser : IMarkupParser
                 .Select(x => x!)
                 .Debug("<Table>");
 
-            // Any standalone block (list/code/header/quote/table, or paragraph including empty/inline-only).
-            var blockOrHeader = SafeTryOneOf(CodeBlock, listBlock, header, blockquote, table);
-            var block = SafeTryOneOf(blockOrHeader, paragraph);
-
-            // After the first block, every subsequent block is preceded by one or more
-            // newlines. We capture the count and let BuildBlockSequence translate
-            // (leadingNewlines − minSep) extra newlines into ParagraphMarkup.Empty
-            // entries — one per blank line beyond the minimum block-boundary separator.
-            var separatorAndNextBlock =
-                from nls in Try(EndOfLine).AtLeastOnce()
-                from item in block
-                select (nls.Count(), item);
-
-            return from first in block
-                from rest in Try(separatorAndNextBlock).Many()
-                select BuildBlockSequence(first, rest);
+            ListBlock = listBlock;
+            Header = header;
+            Table = table;
+            Paragraph = paragraph;
+            return GetDocument(0);
         }
 
         // Protected methods
@@ -584,6 +578,50 @@ public sealed partial class MarkupParser : IMarkupParser
                 .Select(t => (Markup)new StylizedMarkup(t, style));
 
         // Private methods
+
+        private Parser<char, Markup> GetDocument(int quoteLevel)
+            => _documents[quoteLevel] ??= BuildDocument(quoteLevel);
+
+        private Parser<char, Markup> BuildDocument(int quoteLevel)
+        {
+            // Any standalone block (list/code/header/quote/table, or paragraph including empty/inline-only).
+            // Past the nesting cap the quote alternative is gone, so a "> " line there is just text.
+            var blockOrHeader = quoteLevel < BlockQuoteMarkup.MaxLevel
+                ? SafeTryOneOf(CodeBlock, ListBlock, Header, CreateBlockQuote(quoteLevel), Table)
+                : SafeTryOneOf(CodeBlock, ListBlock, Header, Table);
+            var block = SafeTryOneOf(blockOrHeader, Paragraph);
+
+            // After the first block, every subsequent block is preceded by one or more
+            // newlines. We capture the count and let BuildBlockSequence translate
+            // (leadingNewlines − minSep) extra newlines into ParagraphMarkup.Empty
+            // entries — one per blank line beyond the minimum block-boundary separator.
+            var separatorAndNextBlock =
+                from nls in Try(EndOfLine).AtLeastOnce()
+                from item in block
+                select (nls.Count(), item);
+
+            return from first in block
+                from rest in Try(separatorAndNextBlock).Many()
+                select BuildBlockSequence(first, rest);
+        }
+
+        private Parser<char, Markup> CreateBlockQuote(int quoteLevel)
+            // A run of consecutive quoted lines, re-parsed as a whole document one level deeper -
+            // so a quote may hold headers, lists, code blocks, tables and further quotes.
+            => (from firstLine in QuoteContentLine
+                from restLines in Try(
+                    from nl in EndOfLine
+                    from line in QuoteContentLine
+                    select "\n" + line
+                ).Many()
+                select BuildBlockQuote(firstLine, restLines, quoteLevel + 1)
+                ).Debug("<BlockQuote>");
+
+        private Markup BuildBlockQuote(string firstLine, IEnumerable<string> restLines, int contentQuoteLevel)
+        {
+            var content = firstLine + string.Concat(restLines);
+            return new BlockQuoteMarkup(GetDocument(contentQuoteLevel).ParseOrThrow(content, ParserConfiguration));
+        }
 
         private static Markup BuildBlockSequence(
             Markup first,
@@ -637,15 +675,6 @@ public sealed partial class MarkupParser : IMarkupParser
 
         private static Markup BuildHeader(int level, string line, Parser<char, Markup> inlineParser)
             => new HeaderMarkup(level, inlineParser.ParseOrThrow(line, ParserConfiguration));
-
-        private static Markup BuildBlockQuote(
-            string firstLine,
-            IEnumerable<string> restLines,
-            Parser<char, Markup> inlineParser)
-        {
-            var content = firstLine + string.Concat(restLines);
-            return new BlockQuoteMarkup(inlineParser.ParseOrThrow(content, ParserConfiguration));
-        }
 
         private static Markup? TryBuildTable(
             string headerLine,

@@ -139,11 +139,9 @@ public abstract record MarkupFormatterBase : MarkupVisitorWithState<StringBuilde
 
     protected override void VisitBlockQuote(BlockQuoteMarkup markup, ref StringBuilder state)
     {
-        var inner = new StringBuilder();
+        var inner = ActualLab.Text.StringBuilderExt.Acquire();
         Visit(markup.Content, ref inner);
-        var newLine = NewLineMarkup.Instance.Text;
-        state.Append("> ");
-        state.Append(inner.ToString().NormalizeNewLines("\n").Replace("\n", newLine + "> "));
+        BlockQuoteMarkup.AppendQuoted(inner.ToStringAndRelease(), state);
     }
 
     protected override void VisitStylized(StylizedMarkup markup, ref StringBuilder state)
@@ -231,6 +229,7 @@ public sealed record MarkupFormatter(
             state.Append(StylizedMarkup.Mask(inner.ToStringAndRelease()));
             return;
         }
+
         if (ShowStyleTokens)
             state.Append(markup.StyleToken);
         Visit(markup.Content, ref state);
