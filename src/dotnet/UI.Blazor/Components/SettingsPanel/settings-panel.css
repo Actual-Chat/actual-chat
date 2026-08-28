@@ -251,7 +251,7 @@ body.hoverable .tile-btn:hover,
     @apply flex-y gap-y-4;
     @apply w-full md:w-100;
     @apply min-w-0;
-    @apply p-2 md:px-4 md:pb-4;
+    @apply p-4 md:pb-4;
     @apply overflow-y-auto md:overflow-y-visible custom-scrollbar;
 }
 body.narrow .settings-tab-content {
