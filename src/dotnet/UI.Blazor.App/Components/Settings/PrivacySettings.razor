@@ -1,25 +1,7 @@
 @using ActualChat.Contacts
-@using ActualChat.Hosting
-@using ActualChat.UI.Blazor.App.Services.Gestures
 @inherits ComputedStateComponent<AppUIHub, PrivacySettings.Model>
 @{
     var m = State.Value;
-    var hasSensors = HostInfo.HostKind.IsMauiApp() && GestureUI.Feed.IsAccelerometerAvailable;
-}
-
-@if (hasSensors && m.EnableIncompleteUI) {
-    <TileTopic Topic="@L.Privacy_MicrophoneTopic"/>
-
-    <Tile>
-        <TileItem Click="@OnToggleFaceDownStop">
-            <Icon><i class="icon-mic-off text-2xl"></i></Icon>
-            <Content>@L.Privacy_FaceDownStop</Content>
-            <Caption>@L.Privacy_FaceDownStopCaption</Caption>
-            <Right>
-                <Toggle IsChecked="@m.IsFaceDownMicStopEnabled" IsCheckedChanged="@(_ => OnToggleFaceDownStop())"/>
-            </Right>
-        </TileItem>
-    </Tile>
 }
 
 <TileTopic Topic="@L.Privacy_BlockedUsers"/>
@@ -71,7 +53,6 @@
     private bool _isExpanded;
 
     private IContacts Contacts => Hub.Contacts;
-    private GestureUI GestureUI => Hub.GestureUI;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -91,11 +72,7 @@
             var name = contact.PreferredPeerName ?? avatar.Name;
             items.Add(new Item(id, name, avatar));
         }
-        var isFaceDownMicStopEnabled = await UserSettingsUI.UserAppSettings()
-            .Get(x => !(x.IsFaceDownMicStopDisabled ?? false), cancellationToken)
-            .ConfigureAwait(false);
-        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
-        return new Model(items, isFaceDownMicStopEnabled, enableIncompleteUI);
+        return new Model(items);
     }
 
     private void OnToggleExpand() {
@@ -106,15 +83,10 @@
     private Task OnUnblock(ContactId contactId)
         => Hub.PeerBlockUI.SetBlocked(contactId, false);
 
-    private Task OnToggleFaceDownStop()
-        => UserSettingsUI.UserAppSettings().Update(
-            x => x with { IsFaceDownMicStopDisabled = !(x.IsFaceDownMicStopDisabled ?? false) },
-            CancellationToken.None);
-
     // Nested types
 
-    public sealed record Model(IReadOnlyList<Item> Items, bool IsFaceDownMicStopEnabled, bool EnableIncompleteUI) {
-        public static readonly Model None = new(Array.Empty<Item>(), false, false);
+    public sealed record Model(IReadOnlyList<Item> Items) {
+        public static readonly Model None = new(Array.Empty<Item>());
     }
 
     public sealed record Item(ContactId ContactId, string Name, Avatar Avatar);

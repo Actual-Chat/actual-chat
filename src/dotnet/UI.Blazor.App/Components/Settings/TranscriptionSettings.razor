@@ -1,4 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Hosting
+@using ActualChat.UI.Blazor.App.Services.Gestures
 @inherits ComputedStateComponent<AppUIHub, TranscriptionSettings.Model>
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2091:GenericArgumentDoNotHaveAnnotation", Justification = "Primitive types will be preserved.")]
 @{
@@ -11,6 +13,7 @@
     _formModel.SecondaryLanguageId = languages.GetOrDefault(1)?.Value ?? "";
     _formModel.TertiaryLanguageId = languages.GetOrDefault(2)?.Value ?? "";
     var shouldDisplayTranscriberEngineSettings = m.EnableIncompleteUI;
+    var hasSensors = HostInfo.HostKind.IsMauiApp() && GestureUI.Feed.IsAccelerometerAvailable;
 }
 
 <TileTopic Topic="@L.Transcription_Languages"/>
@@ -76,6 +79,20 @@
     <ListeningLingerSettings/>
 </Tile>
 
+@if (hasSensors && m.EnableIncompleteUI) {
+    <TileTopic Topic="@L.Transcription_MicrophoneTopic"/>
+    <Tile>
+        <TileItem Click="@OnToggleFaceDownStop">
+            <Icon><i class="icon-mic-off text-2xl"></i></Icon>
+            <Content>@L.Transcription_FaceDownStop</Content>
+            <Caption>@L.Transcription_FaceDownStopCaption</Caption>
+            <Right>
+                <Toggle IsChecked="@m.IsFaceDownMicStopEnabled" IsCheckedChanged="@(_ => OnToggleFaceDownStop())"/>
+            </Right>
+        </TileItem>
+    </Tile>
+}
+
 @if (shouldDisplayTranscriberEngineSettings) {
     <TileTopic Topic="@L.Transcription_Engines"/>
     <Tile Class="theme-tile">
@@ -87,6 +104,7 @@
     private FormModel _formModel = null!;
 
     private LanguageUI LanguageUI => Hub.LanguageUI;
+    private GestureUI GestureUI => Hub.GestureUI;
 
     protected override void OnInitialized()
         => _formModel = new FormModel(ComponentIdGenerator);
@@ -94,7 +112,10 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var languages = await LanguageUI.Settings.Use(LanguageUI.WhenReady, cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
-        return new(languages, enableIncompleteUI);
+        var isFaceDownMicStopEnabled = await UserSettingsUI.UserAppSettings()
+            .Get(x => !(x.IsFaceDownMicStopDisabled ?? false), cancellationToken)
+            .ConfigureAwait(false);
+        return new(languages, enableIncompleteUI, isFaceDownMicStopEnabled);
     }
 
     private async Task OnLanguageChanged(int index, string languageId) {
@@ -102,6 +123,11 @@
         await LanguageUI.UpdateSettings(x => x.With(index, language));
         _ = State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
     }
+
+    private Task OnToggleFaceDownStop()
+        => UserSettingsUI.UserAppSettings().Update(
+            x => x with { IsFaceDownMicStopDisabled = !(x.IsFaceDownMicStopDisabled ?? false) },
+            CancellationToken.None);
 
     // Nested types
 
@@ -125,5 +151,6 @@
 
     public sealed record Model(
         UserLanguageSettings Languages,
-        bool EnableIncompleteUI);
+        bool EnableIncompleteUI,
+        bool IsFaceDownMicStopEnabled);
 }

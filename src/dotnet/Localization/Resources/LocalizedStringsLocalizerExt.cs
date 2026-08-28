@@ -110,9 +110,11 @@ public static class LocalizedStringsLocalizerExt
         public string ListeningLinger_5Seconds => l["ListeningLinger_5Seconds"].Value;
         public string ListeningLinger_10Seconds => l["ListeningLinger_10Seconds"].Value;
         public string ListeningLinger_30Seconds => l["ListeningLinger_30Seconds"].Value;
+        public string Transcription_MicrophoneTopic => l["Transcription_MicrophoneTopic"].Value;
+        public string Transcription_FaceDownStop => l["Transcription_FaceDownStop"].Value;
+        public string Transcription_FaceDownStopCaption => l["Transcription_FaceDownStopCaption"].Value;
         public string Transcription_LanguageDetected_Format(object arg0, object arg1)
             => l["Transcription_LanguageDetected_Format", arg0, arg1].Value;
-
 
         public string Sessions_CurrentSession => l["Sessions_CurrentSession"].Value;
         public string Sessions_Current => l["Sessions_Current"].Value;
@@ -1052,9 +1054,6 @@ public static class LocalizedStringsLocalizerExt
         public string Ptt_AudibleCues => l["Ptt_AudibleCues"].Value;
         public string Ptt_AudibleCuesCaption => l["Ptt_AudibleCuesCaption"].Value;
         public string Ptt_ChatAtCapacity_Format(object arg0) => l["Ptt_ChatAtCapacity_Format", arg0].Value;
-        public string Privacy_MicrophoneTopic => l["Privacy_MicrophoneTopic"].Value;
-        public string Privacy_FaceDownStop => l["Privacy_FaceDownStop"].Value;
-        public string Privacy_FaceDownStopCaption => l["Privacy_FaceDownStopCaption"].Value;
         public string Privacy_BlockedUsers => l["Privacy_BlockedUsers"].Value;
         public string LocationAccuracy_High => l["LocationAccuracy_High"].Value;
         public string LocationAccuracy_HighCaption => l["LocationAccuracy_HighCaption"].Value;
