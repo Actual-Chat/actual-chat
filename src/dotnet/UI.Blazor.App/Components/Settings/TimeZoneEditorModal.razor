@@ -1,6 +1,8 @@
+@using System.Globalization
 @using TimeZone = ActualChat.Users.TimeZone
 @inherits ComponentBase<AppUIHub>
 @implements IModalView<TimeZoneEditorModal.Model>
+@implements IDisposable
 
 <DialogFrame
     Class="time-zone-editor-modal"
@@ -8,15 +10,30 @@
     HasCloseButton="true"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
     <Body>
+        <SearchBox
+            Class="time-zone-search"
+            Placeholder="@L.Common_Search"
+            ClearButton="true"
+            TextChanged="@OnSearchChanged"/>
         <div class="time-zone-list" role="listbox">
-            @foreach (var timeZone in ModalModel.TimeZones) {
+            @foreach (var timeZone in _filtered) {
                 var isSelected = timeZone.Id == _selectedTimeZoneId;
-                <div class="time-zone-item @(isSelected ? "selected" : "")"
+                var isDetected = timeZone.Id == _detectedTimeZoneId;
+                <div class="time-zone-item @(isSelected ? "selected" : "") @(isDetected ? "detected" : "")"
                      role="option"
                      tabindex="0"
                      aria-selected="@(isSelected ? "true" : "false")"
                      @onclick="@(() => OnTimeZoneSelected(timeZone))">
-                    @timeZone.IanaName
+                    <div class="c-info">
+                        <div class="c-city">
+                            <span>@timeZone.City</span>
+                            @if (isDetected) {
+                                <i class="icon-location-current c-detected-mark"></i>
+                            }
+                        </div>
+                        <div class="c-meta">@FormatMeta(timeZone)</div>
+                    </div>
+                    <div class="c-time">@FormatZoneTime(timeZone.UtcOffsetMinutes)</div>
                 </div>
             }
         </div>
@@ -24,14 +41,66 @@
 </DialogFrame>
 
 @code {
+    private IReadOnlyList<TimeZone> _all = [];
+    private List<TimeZone> _filtered = [];
     private string _selectedTimeZoneId = "";
+    private string _detectedTimeZoneId = "";
+    private string _search = "";
+    private Timer? _clockTimer;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override void OnInitialized() {
+        _all = ModalModel.TimeZones as IReadOnlyList<TimeZone> ?? ModalModel.TimeZones.ToList();
         _selectedTimeZoneId = Hub.AccountUI.OwnAccount.Value.TimeZone;
+        var detected = Hub.BrowserInfo.TimeZone;
+        _detectedTimeZoneId = _all.Any(z => z.Id == detected) ? detected : "";
+        if (_selectedTimeZoneId.IsNullOrEmpty())
+            _selectedTimeZoneId = _detectedTimeZoneId;
+        ApplyFilter();
+        _clockTimer = new Timer(_ => InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
     }
+
+    public void Dispose()
+        => _clockTimer?.Dispose();
+
+    private void OnSearchChanged(string text) {
+        _search = text;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter() {
+        IEnumerable<TimeZone> query = _all;
+        if (!_search.IsNullOrEmpty()) {
+            var search = _search.Trim();
+            query = query.Where(z => Matches(z, search));
+        }
+        var ordered = query.ToList();
+        if (!_detectedTimeZoneId.IsNullOrEmpty()) {
+            var index = ordered.FindIndex(z => z.Id == _detectedTimeZoneId);
+            if (index > 0) {
+                var detected = ordered[index];
+                ordered.RemoveAt(index);
+                ordered.Insert(0, detected);
+            }
+        }
+        _filtered = ordered;
+    }
+
+    private static bool Matches(TimeZone timeZone, string search)
+        => timeZone.City.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || timeZone.CountryName.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || timeZone.IanaName.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || timeZone.GetUtcOffsetText().Contains(search, StringComparison.OrdinalIgnoreCase);
+
+    private static string FormatMeta(TimeZone timeZone)
+        => timeZone.CountryName.IsNullOrEmpty()
+            ? timeZone.GetUtcOffsetText()
+            : $"{timeZone.GetUtcOffsetText()} · {timeZone.CountryName}";
+
+    private static string FormatZoneTime(int minutes)
+        => DateTime.UtcNow.AddMinutes(minutes).ToString("HH:mm", CultureInfo.InvariantCulture);
 
     private async Task OnTimeZoneSelected(TimeZone timeZone) {
         var account = await Hub.Accounts.GetOwn(Session, default);
