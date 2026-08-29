@@ -71,7 +71,7 @@ b
 | `--simulator` | iOS only — simulator instead of a connected device |
 | `--publish` / `--no-publish` | force `dotnet publish` / `dotnet build` |
 | `--no-web` | skip the npm web asset build (much faster when only C# changed) |
-| `--package` | Windows only — build an MSIX package instead of the unpackaged app |
+| `--package` | Windows — build an MSIX package instead of the unpackaged app; implied on the other platforms |
 | `-l`, `--launch` / `--no-launch` | override whether it launches |
 
 The three commands differ only in how far they go; `--launch` implies install, so

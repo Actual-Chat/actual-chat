@@ -97,7 +97,7 @@ Common flags:
 | `--aot` | build with Native AOT |
 | `--simulator` | iOS only — target a simulator instead of a connected device |
 | `--no-web` | skip the npm web asset build |
-| `--package` | Windows only — build an MSIX package instead of the unpackaged app |
+| `--package` | Windows — build an MSIX package instead of the unpackaged app; implied on the other platforms |
 | `--publish` / `--no-publish` | force `dotnet publish` / `dotnet build` |
 
 Examples:
@@ -137,6 +137,8 @@ by package family name.
 `app install windows` implies `--package` — an unpackaged build has nothing to
 deploy, so the flag would be the only thing that made the command meaningful.
 `--aot` can't be packaged at all, so `app install windows --aot` is rejected.
+On Android, iOS and macOS packaging is the only mode, so `--package` is accepted
+there but warns that it's redundant.
 
 > **`--package` is currently broken.** It registers `<output>/AppX/AppxManifest.xml`,
 > and no `AppX` layout is produced — a packaged `dotnet build` writes a manifest to
@@ -239,7 +241,7 @@ b
 │   │   ├── --publish  Force dotnet publish (the default for Release)
 │   │   ├── --no-publish  Force dotnet build
 │   │   ├── --no-web  Skip the npm web asset build
-│   │   ├── --package     Windows only: build an MSIX package instead of the unpackaged app
+│   │   ├── --package     Windows: build an MSIX package instead of the unpackaged app; implied elsewhere
 │   │   ├── -l|--launch  Launch the app after installing it (the default for 'app run')
 │   │   ├── --no-launch  Don't launch the app (the default for 'app build' and 'app install')
 │   │   └── --dry-run  Print the commands that would run, without running them

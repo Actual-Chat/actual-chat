@@ -57,7 +57,7 @@ public sealed class AppSettings : PlanSettings
     public bool MustSkipWebBuild { get; init; }
 
     [CommandOption("--package")]
-    [Description("Windows only: build an MSIX package instead of the unpackaged app")]
+    [Description("Windows: build an MSIX package instead of the unpackaged app; implied elsewhere")]
     public bool MustPackage { get; init; }
 
     [CommandOption("-l|--launch")]
@@ -100,8 +100,6 @@ public sealed class AppSettings : PlanSettings
             return ValidationResult.Error($"Launching the {Platform} app needs macOS.");
         if (UseSimulator && Platform != AppPlatform.Ios)
             return ValidationResult.Error("--simulator is only supported for the ios platform.");
-        if (MustPackage && Platform != AppPlatform.Windows)
-            return ValidationResult.Error("--package is only supported for the windows platform.");
         if (UseNativeAot && Platform is AppPlatform.MacOs)
             return ValidationResult.Error("--aot is not wired for the macos platform.");
         if (!OrdinalIgnoreCaseEquals(ResolvedConfiguration, "Debug")

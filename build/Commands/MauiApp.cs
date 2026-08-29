@@ -1,3 +1,5 @@
+using Spectre.Console;
+
 namespace Build.Commands;
 
 /// <summary>
@@ -15,6 +17,10 @@ internal static class MauiApp
 
     public static CommandPlan GetPlan(AppSettings settings, bool isInstalledByDefault, bool isLaunchedByDefault)
     {
+        if (settings.MustPackage && settings.Platform != AppPlatform.Windows)
+            AnsiConsole.MarkupLine(
+                $"[yellow]--package is redundant:[/] {settings.Platform} builds are always packaged.");
+
         var mustLaunch = settings.ResolveMustLaunch(isLaunchedByDefault);
         var mustInstall = settings.ResolveMustInstall(isInstalledByDefault, isLaunchedByDefault);
         var plan = new CommandPlan();
