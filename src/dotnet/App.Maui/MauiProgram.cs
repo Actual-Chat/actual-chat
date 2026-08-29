@@ -139,6 +139,12 @@ public static partial class MauiProgram
         MauiStartupBreadcrumbs.Add("Static services warmed up");
         SetupBlazorViewAppPostBuildRoutine();
         LoadingUI.MarkAppBuilt();
+        // MainPage waits for both before it attaches the WebView, so they start here - alongside
+        // MAUI's own startup - instead of when the Activity is already asking for them.
+        BlazorWebViewApp.EnsureStarted();
+#if ANDROID
+        _ = AndroidUtils.WarmUpWebView();
+#endif
     }
 
     private static HostInfo CreateHostInfo(IConfiguration configuration)

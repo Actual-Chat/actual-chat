@@ -17,6 +17,8 @@ public static class AndroidUtils
     private const int ImageDownloadTimeoutSeconds = 5;
     private const string Tag = Firebase.Messaging.Constants.Tag;
     private const string ThreadNetworkIo = "Firebase-Messaging-Network-Io";
+    private static readonly Lock WebViewWarmUpLock = new();
+    private static Task? _whenWebViewWarm;
 
     public static bool? IsAppForeground()
     {
@@ -62,6 +64,35 @@ public static class AndroidUtils
         return processInfo is null
             ? "Unknown"
             : $"{processInfo.Importance}/{processInfo.ImportanceReasonCode}";
+    }
+
+    public static Task WarmUpWebView()
+    {
+        // Takes Chromium's provider lock off the UI thread, which BlazorAndroidWebView's ctor
+        // would otherwise take on it. Never block the UI thread on the result: Chromium posts
+        // its native init back there, so waiting would deadlock.
+        // Volatile pair: the lock's release does not publish to a reader that skips the lock.
+        var whenWarm = Volatile.Read(ref _whenWebViewWarm);
+        if (whenWarm is not null)
+            return whenWarm;
+
+        lock (WebViewWarmUpLock) {
+            whenWarm = _whenWebViewWarm;
+            if (whenWarm is not null)
+                return whenWarm;
+
+            // Started inside the lock, so a lost race cannot leave a second provider load running.
+            whenWarm = Task.Run(() => {
+                try {
+                    _ = Android.Webkit.WebSettings.GetDefaultUserAgent(Application.Context);
+                }
+                catch (System.Exception e) {
+                    Android.Util.Log.Warn(MauiDiagnostics.LogTag, $"WebView warm-up failed: {e.Message}");
+                }
+            });
+            Volatile.Write(ref _whenWebViewWarm, whenWarm);
+            return whenWarm;
+        }
     }
 
     public static bool IsMainThread()
