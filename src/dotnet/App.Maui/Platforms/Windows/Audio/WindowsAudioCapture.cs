@@ -18,7 +18,7 @@ namespace ActualChat.App.Maui.Audio;
 public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCapture
 {
     private const int CaptureBufferMs = Constants.Audio.ApmFrameDurationMs;
-    private const int MicDelayMs = 40;
+    private const int MicDelayMs = 10;
     private const int MicDelaySamples = Constants.Audio.RecordingSampleRate * MicDelayMs / 1000;
     private static readonly TimeSpan GraphRetryDelay = TimeSpan.FromMilliseconds(250);
     private ILogger Log { get; } = log;
@@ -31,6 +31,7 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
         var apm = new AudioProcessingModule(
             new StreamConfig(Constants.Audio.RecordingSampleRate, Constants.Audio.Channels),
             new StreamConfig(Constants.Audio.RecordingSampleRate, Constants.Audio.Channels));
+        var apmTap = ApmTap.TryStart(Log);
 
         try {
             apm.Configure(cfg => cfg
@@ -224,6 +225,8 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                             lastAppliedVolume = recommendedVolume;
                         }
 
+                        apmTap?.Add(micIn, loopIn, outSpan, hasLoopback);
+
                         // Fire-and-forget: drop if full
                         outputBuffer.TryWrite(outSpan);
                         ArrayPools.SharedFloatPool.Return(micArray);
@@ -376,6 +379,7 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                         /* Ignore */
                     }
                 }
+                apmTap?.Stop();
 
                 RestoreMicrophoneVolume();
                 apm.DisposeSilently();
