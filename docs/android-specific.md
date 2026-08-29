@@ -155,14 +155,42 @@ Samsung `SM-S948U1` (`m3q`), Android 16, Release + composite ReadyToRun, from
 [`MauiStartupBreadcrumbs`](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Maui/MauiStartupBreadcrumbs.cs)
 and `@trace` marks.
 
-| Phase | Interactive | Headless | Headless + notification tap |
-|-------|-------------|----------|------------------------------|
+**Main-thread block durations.** Each region below is synchronous on the main thread, so
+nothing else dispatches while it runs.
+
+| Region | Interactive | Headless | Headless + notification tap |
+|--------|-------------|----------|------------------------------|
 | `CreateMauiApp` | 35 ms | 36 ms | 36 ms |
 | `base.OnCreate` | 31 ms | — | 30 ms |
-| `MainActivity.OnCreate` | 41 ms | — | 33 ms |
-| WebView constructed | 231 ms | — | 128 ms after promote |
-| Splash removed | 1103 ms | — | 794 ms after promote |
-| UI-thread blocks logged | 0 | 0 | 0 |
+| `MainActivity.OnCreate` (total) | 41 ms | — | 33 ms |
+
+**Elapsed since process start** — timestamps, not durations.
+
+| Milestone | Interactive | Headless + notification tap |
+|-----------|-------------|------------------------------|
+| WebView constructed | 231 ms | 128 ms after promote |
+| Splash removed | 1103 ms | 794 ms after promote |
+| `SetMauiContext` had to wait | no | no |
+
+::: warning What these numbers do **not** cover
+`SetMauiContext` is a single point check, not a sampled one: it tests
+`WhenAppReady.IsCompleted` **once**, on the one call per `RecreateWebView`, and warn-logs a
+duration only if it then has to block. "No" means the container was already built at that
+moment — not that nothing else blocked the main thread.
+
+The regions above are also not the **longest uninterrupted block**, which is what actually
+causes an ANR. On the push path that block is the whole of `Application.onCreate`, and
+`CreateMauiApp` is only part of it — `MainApplication.OnCreate` adds the breadcrumb
+`Application.OnCreate completed` precisely because the delta from `CreateMauiApp completed`
+is pure MAUI framework overhead. Those breadcrumbs are persisted and reported on the *next*
+launch, and were not collected here, so **36 ms is a floor, not the block**.
+
+To measure blocks properly, turn on `MauiSettings.Diagnostics.EnableMainThreadMonitor`:
+`AndroidMainThreadMonitor` times *every* main-looper dispatch via `Looper.SetMessageLogging`
+and warn-logs the ones past its threshold. It was off for these runs. Note it perturbs what
+it measures — any `Looper` printer makes `loopOnce` build two strings per message and adds
+two JNI upcalls.
+:::
 
 Exactly one `MauiWebView` is created per launch (`Current = #1`). The foreground handler in
 [`MauiProgram.Android.cs`](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/MauiProgram.Android.cs)
