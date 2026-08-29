@@ -68,7 +68,7 @@ watch the real command line assemble itself.
 ```bash
 b app build <platform>     # build only
 b app install <platform>   # build + install on the device
-b app run <platform>       # build + install + launch
+b app run <platform>       # build + launch (+ install where the platform needs it)
 b app pack <platform>      # build the store package
 ```
 
@@ -78,12 +78,15 @@ b app pack <platform>      # build the store package
 |---|---|---|---|
 | `b app build` | ✓ | | |
 | `b app install` | ✓ | ✓ | |
-| `b app run` | ✓ | ✓ | ✓ |
+| `b app run` | ✓ | ✓¹ | ✓ |
 
 `--launch` / `-l` and `--no-launch` override the default either way, and
 launching implies installing — so `b app build android -l` is the same as
 `b app run android`, and `b app run android --no-launch` is the same as
 `b app install android`.
+
+¹ Except an unpackaged Windows build, which is launched straight from its `.exe`
+and so installs nothing — see [Windows](#windows).
 
 Common flags:
 
@@ -94,7 +97,7 @@ Common flags:
 | `--aot` | build with Native AOT |
 | `--simulator` | iOS only — target a simulator instead of a connected device |
 | `--no-web` | skip the npm web asset build |
-| `--no-package` | Windows only — build unpackaged instead of MSIX |
+| `--package` | Windows only — build an MSIX package instead of the unpackaged app |
 | `--publish` / `--no-publish` | force `dotnet publish` / `dotnet build` |
 
 Examples:
@@ -103,8 +106,8 @@ Examples:
 b app run android                        # dev build on a connected device
 b app run android --release --prod       # production build, signed
 b app run ios --simulator                # iOS simulator
-b app run windows                        # Windows, packaged (MSIX)
-b app run windows --no-package           # ... unpackaged, just runs the .exe
+b app run windows                        # Windows, unpackaged - just runs the .exe
+b app run windows --package              # ... packaged (MSIX): installs, then launches
 b app run windows --release --aot        # Windows, Native AOT
 b app pack android --prod                # the .aab you upload to Play Console
 ```
@@ -121,18 +124,24 @@ Output: artifacts/publish/App.Maui/release_net11.0-android/chat.actual.app-Signe
 
 ### Windows
 
-Windows builds are packaged (MSIX) by default, so the app runs with a package
-identity — that's what toast notifications, the `voxt-dev://` protocol handler
-and the startup task need. `app install` registers the build in place, and
-`app run` activates it by package family name, since a packaged app can't be
-started from its `.exe`. Run `b app run windows --dry-run` to see both commands.
+Windows builds are **unpackaged by default**: `app run windows` launches
+`artifacts/.../ActualChat.exe` directly and blocks until the app exits. Deploying is
+`app install`'s job — `app run` never registers anything on its own.
 
-**What gets registered is `<output>/AppX/`**, the MSIX layout MSBuild stages —
-the same folder Visual Studio and Rider deploy. MSBuild also drops an
-`AppxManifest.xml` in the output root; it looks identical but that folder isn't
-a package layout, and an app registered from it starts with a WebView that
-can't load its own content (`https://0.0.0.1/` → `ERR_ADDRESS_UNREACHABLE`)
-while the .NET side runs normally.
+`--package` builds an MSIX instead, so the app gets a package identity — that's
+what toast notifications, the `voxt-dev://` protocol handler and the startup task
+need. A packaged app can't be started from its `.exe`, so `--package` implies
+deployment: `app run windows --package` registers the build and then activates it
+by package family name. Run `b app run windows --package --dry-run` to see both
+commands.
+
+> **`--package` is currently broken.** It registers `<output>/AppX/AppxManifest.xml`,
+> and no `AppX` layout is produced — a packaged `dotnet build` writes a manifest to
+> the output root and stages only the Windows App Runtime dependency under
+> `obj/.../MsixContent/`. The step fails with `Not found: ...AppX/AppxManifest.xml`
+> rather than doing anything harmful. Getting a loose layout probably needs
+> `GenerateAppxPackageOnBuild` or an explicit layout target; until then use the
+> default unpackaged run.
 
 The identity is whatever the checked-in `Platforms/Windows/Package.appxmanifest`
 says — `ActualChatInc.ActualChat.Local`, which doesn't collide with an installed
@@ -144,11 +153,11 @@ Since the registration points into `artifacts/`, a rebuild updates the installed
 app in place; re-running `app run` re-registers it. Stop the running app before
 rebuilding — otherwise MSBuild can't overwrite `ActualChat.exe`, packaged or not.
 
-`--no-package` builds with `WindowsPackageType=None` and launches
-`artifacts/.../ActualChat.exe` directly, which is what `b` did unconditionally
-before; that run blocks until the app exits, while the packaged one returns as
-soon as the app is activated. `--aot` implies `--no-package`: Native AOT
-publishes a self-contained exe rather than an MSIX.
+The default build passes `WindowsPackageType=None` and launches
+`artifacts/.../ActualChat.exe` directly; that run blocks until the app exits,
+while a packaged one returns as soon as the app is activated. `--aot` forces the
+unpackaged path regardless: Native AOT publishes a self-contained exe rather than
+an MSIX.
 
 ### iOS and Mac Catalyst
 
@@ -227,7 +236,7 @@ b
 │   │   ├── --publish  Force dotnet publish (the default for Release)
 │   │   ├── --no-publish  Force dotnet build
 │   │   ├── --no-web  Skip the npm web asset build
-│   │   ├── --no-package  Windows only: build the unpackaged app (WindowsPackageType=None) instead of an MSIX one
+│   │   ├── --package     Windows only: build an MSIX package instead of the unpackaged app
 │   │   ├── -l|--launch  Launch the app after installing it (the default for 'app run')
 │   │   ├── --no-launch  Don't launch the app (the default for 'app build' and 'app install')
 │   │   └── --dry-run  Print the commands that would run, without running them

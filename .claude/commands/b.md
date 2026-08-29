@@ -46,7 +46,7 @@ command definitions, so it can't go stale. Current shape:
 ```
 b
 ├── app ...                Build & run the Voxt client apps (MAUI)
-│   ├── run <PLATFORM>     build + install + launch
+│   ├── run <PLATFORM>     build + launch (+ install where needed)
 │   ├── install <PLATFORM> build + install
 │   ├── build <PLATFORM>   build only
 │   └── pack <PLATFORM>    the store package (App Store / Play Store / MS Store)
@@ -71,19 +71,22 @@ b
 | `--simulator` | iOS only — simulator instead of a connected device |
 | `--publish` / `--no-publish` | force `dotnet publish` / `dotnet build` |
 | `--no-web` | skip the npm web asset build (much faster when only C# changed) |
-| `--no-package` | Windows only — unpackaged build (`WindowsPackageType=None`) |
+| `--package` | Windows only — build an MSIX package instead of the unpackaged app |
 | `-l`, `--launch` / `--no-launch` | override whether it launches |
 
 The three commands differ only in how far they go; `--launch` implies install, so
 `b app build android -l` == `b app run android`, and `b app run android
---no-launch` == `b app install android`.
+--no-launch` == `b app install android`. The exception is an unpackaged Windows
+build: it's launched straight from its `.exe`, so `app run windows` installs
+nothing.
 
-Windows builds are **packaged (MSIX)** by default — that's what gives the app
-toast notifications, the `voxt-dev://` protocol handler and the startup task.
-`--no-package` restores the old unpackaged run, which launches `ActualChat.exe`
-directly and therefore blocks until the app exits; the packaged path returns as
-soon as the app is activated. See
-[`docs/build-tool.md` → Windows](../../docs/build-tool.md#windows).
+Windows builds are **unpackaged** by default. `--package` builds an MSIX instead
+— that's what gives the app toast notifications, the `voxt-dev://` protocol
+handler and the startup task — and since an MSIX can only start through its
+registered identity, `--package` deploys before launching. **`--package` is
+currently broken**: it registers `<output>/AppX/AppxManifest.xml` and no `AppX`
+layout is produced, so the step fails with `Not found`. Use the default
+unpackaged run. See [`docs/build-tool.md` → Windows](../../docs/build-tool.md#windows).
 
 `app pack` takes only `<PLATFORM>`, `--prod` and `--aot`.
 

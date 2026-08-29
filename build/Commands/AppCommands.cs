@@ -56,9 +56,9 @@ public class AppSettings : PlanSettings
     [Description("Skip the npm web asset build")]
     public bool MustSkipWebBuild { get; init; }
 
-    [CommandOption("--no-package")]
-    [Description("Windows only: build the unpackaged app (WindowsPackageType=None) instead of an MSIX one")]
-    public bool MustNotPackage { get; init; }
+    [CommandOption("--package")]
+    [Description("Windows only: build an MSIX package instead of the unpackaged app")]
+    public bool MustPackage { get; init; }
 
     [CommandOption("-l|--launch")]
     [Description("Launch the app after installing it (the default for 'app run')")]
@@ -72,7 +72,7 @@ public class AppSettings : PlanSettings
     public bool IsDev => !IsProd;
     public bool IsWindowsPackaged
         // Native AOT publishes a self-contained exe rather than an MSIX, so it's never packaged
-        => Platform == AppPlatform.Windows && !MustNotPackage && !UseNativeAot;
+        => Platform == AppPlatform.Windows && MustPackage && !UseNativeAot;
     public bool MustUsePublish
         // Android is always published: that's where the signed APK comes from, in Debug too.
         => !MustNotPublish
@@ -84,7 +84,10 @@ public class AppSettings : PlanSettings
         => !MustNotLaunch && (MustLaunch || isLaunchedByDefault);
 
     public bool ResolveMustInstall(bool isInstalledByDefault, bool isLaunchedByDefault)
-        => isInstalledByDefault || ResolveMustLaunch(isLaunchedByDefault);
+        // Only an unpackaged Windows build can be launched without deploying it first
+        => isInstalledByDefault
+            || (ResolveMustLaunch(isLaunchedByDefault)
+                && (Platform != AppPlatform.Windows || IsWindowsPackaged));
 
     public override ValidationResult Validate()
     {
@@ -96,8 +99,8 @@ public class AppSettings : PlanSettings
             return ValidationResult.Error($"Launching the {Platform} app needs macOS.");
         if (UseSimulator && Platform != AppPlatform.Ios)
             return ValidationResult.Error("--simulator is only supported for the ios platform.");
-        if (MustNotPackage && Platform != AppPlatform.Windows)
-            return ValidationResult.Error("--no-package is only supported for the windows platform.");
+        if (MustPackage && Platform != AppPlatform.Windows)
+            return ValidationResult.Error("--package is only supported for the windows platform.");
         if (UseNativeAot && Platform is AppPlatform.MacOs)
             return ValidationResult.Error("--aot is not wired for the macos platform.");
         if (!OrdinalIgnoreCaseEquals(ResolvedConfiguration, "Debug")
@@ -128,5 +131,5 @@ public sealed class AppInstallCommand(CliContext context) : PlanCommand<AppSetti
 public sealed class AppRunCommand(CliContext context) : PlanCommand<AppSettings>(context)
 {
     protected override CommandPlan GetPlan(AppSettings settings)
-        => MauiApp.GetPlan(settings, true, true);
+        => MauiApp.GetPlan(settings, false, true);
 }
