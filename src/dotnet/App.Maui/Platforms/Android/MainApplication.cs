@@ -9,9 +9,13 @@ namespace ActualChat.App.Maui;
 [Application]
 public sealed class MainApplication : MauiApplication, AndroidX.Work.Configuration.IProvider
 {
+    private static CpuTimestamp _startedAt;
     public MainApplication(IntPtr handle, JniHandleOwnership ownership)
         : base(handle, ownership)
-        => Android.Util.Log.Info(MauiDiagnostics.LogTag, "---- Started ----");
+    {
+        _startedAt = CpuTimestamp.Now;
+        Android.Util.Log.Info(MauiDiagnostics.LogTag, "---- Started ----");
+    }
 
     public override void OnCreate()
     {
@@ -19,6 +23,12 @@ public sealed class MainApplication : MauiApplication, AndroidX.Work.Configurati
         // The moment the main looper is free to dispatch the broadcast that may have started us;
         // the delta from "CreateMauiApp completed" is pure MAUI framework overhead.
         MauiStartupBreadcrumbs.Add("Application.OnCreate completed");
+        // AndroidMainThreadMonitor is blind to this dispatch - it is installed from inside it, so
+        // the ">>>>>" it would pair with has already gone by. Same wording, so one grep finds both.
+        if (MauiSettings.Diagnostics.EnableMainThreadMonitor)
+            Android.Util.Log.Warn(MauiDiagnostics.LogTag,
+                $"Main thread was blocked for {(CpuTimestamp.Now - _startedAt).ToShortString()}"
+                + $" by: Application.onCreate ({MauiStart.Kind})");
         // Any process start, not only a user launch. A message push starts us with no MainActivity
         // and no Blazor scope, so nothing else raises the armed service - leaving no PTT badge and
         // no media session for the headset button. Android 12+ bans foreground-service starts from
