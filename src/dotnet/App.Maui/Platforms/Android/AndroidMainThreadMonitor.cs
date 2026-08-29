@@ -11,7 +11,7 @@ namespace ActualChat.App.Maui;
 public sealed class AndroidMainThreadMonitor : Java.Lang.Object, IPrinter
 {
     private const int MaxMessageLength = 300;
-    private static readonly TimeSpan Threshold = MauiSettings.Diagnostics.MainThreadBlockThreshold;
+    private static readonly TimeSpan Threshold = TimeSpan.FromSeconds(1);
 
     private CpuTimestamp _startedAt;
     private string? _message;

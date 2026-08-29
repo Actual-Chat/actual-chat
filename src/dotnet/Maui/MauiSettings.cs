@@ -75,8 +75,5 @@ public static class MauiSettings
         // Looper.loopOnce build two strings per main-thread message and adds two JNI upcalls,
         // i.e. it feeds the ART GC pressure and native->Runnable transitions it's meant to observe.
         public const bool EnableMainThreadMonitor = false;
-        // What EnableMainThreadMonitor warns at. 1s is Android's own broadcast deadline; drop it
-        // to ~300ms when measuring startup, where no single dispatch should get near that.
-        public static readonly TimeSpan MainThreadBlockThreshold = TimeSpan.FromSeconds(1);
     }
 }
