@@ -18,9 +18,11 @@ namespace ActualChat.App.Maui.Audio;
 public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCapture
 {
     private const int CaptureBufferMs = Constants.Audio.ApmFrameDurationMs;
-    private const int MicDelaySamples = Constants.Audio.RecordingSampleRate * 40 / 1000;
+    private const int MicDelayMs = 40;
+    private const int MicDelaySamples = Constants.Audio.RecordingSampleRate * MicDelayMs / 1000;
     private static readonly TimeSpan GraphRetryDelay = TimeSpan.FromMilliseconds(250);
     private ILogger Log { get; } = log;
+
     public async Task<AudioCaptureResult> Capture(CancellationToken cancellationToken)
     {
         // Set by TryCreateGraph: WinRT already names the failure, and it's the only place
@@ -37,7 +39,6 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                 .EnableAutomaticGainControl(true)
                 .EnableHighPassFilter(true)
                 .SetPipeline(false, false));
-            apm.SetDelay(MicDelaySamples);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Failed to configure AudioProcessingModule; proceeding without APM features");
@@ -177,7 +178,8 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                                     windowPeak = level;
                             }
                             var silenceCheckStamp = Stopwatch.GetTimestamp();
-                            if (Stopwatch.GetElapsedTime(lastSilenceCheckStamp, silenceCheckStamp).TotalSeconds >= 1.0) {
+                            var sinceLastCheck = Stopwatch.GetElapsedTime(lastSilenceCheckStamp, silenceCheckStamp);
+                            if (sinceLastCheck.TotalSeconds >= 1.0) {
                                 lastSilenceCheckStamp = silenceCheckStamp;
                                 if (windowPeak > 0f) {
                                     isSilent = false;
@@ -202,6 +204,11 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
 
                         apm.AnalyzeReverseStream(loopIn);
 
+                        // The APM clears the stream delay after every ProcessStream, so it has to be
+                        // re-stated per frame. It's the buffering delay between the reverse frame and
+                        // the capture frame carrying its echo - i.e. the mic hold-back above.
+                        apm.SetDelay(MicDelayMs);
+
                         // The APM's analog level is 0..255, the system scalar is 0..1
                         var currentLevel = Math.Clamp((int)MathF.Round(currentVolume * 255f), 0, 255);
                         apm.SetAnalogLevel(currentLevel);
@@ -211,6 +218,9 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                         var recommendedVolume = Math.Clamp(Math.Clamp(recommendedLevel, 0, 255) / 255f, 0f, 1f);
                         if (Math.Abs(currentVolume - recommendedVolume) > 0.02f) {
                             endpointVolume?.MasterVolumeLevelScalar = recommendedVolume;
+                            // OnVolumeChanged lands asynchronously, so without this the same write
+                            // repeats on every 10 ms frame until the notification catches up
+                            currentVolume = recommendedVolume;
                             lastAppliedVolume = recommendedVolume;
                         }
 
