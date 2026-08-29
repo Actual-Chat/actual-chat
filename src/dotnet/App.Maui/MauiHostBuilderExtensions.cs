@@ -12,13 +12,11 @@ public static class MauiHostBuilderExtensions
         where TApp : class, IApplication
     {
         builder.Services.TryAddSingleton<IApplication, TApp>();
-        var dependencyServiceType = typeof(DependencyService);
-        dependencyServiceType.GetMethod("SetToInitialized", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, []);
-        var addDependencyTypeIfNeededMethodInfo = dependencyServiceType.GetMethod("AddDependencyTypeIfNeeded", BindingFlags.Static | BindingFlags.NonPublic);
+        SetToInitialized(null);
         var resourceLoaderType = Type.GetType("Microsoft.Maui.Controls.Xaml.ResourcesLoader, Microsoft.Maui.Controls.Xaml");
         var valueConverterProviderType = Type.GetType("Microsoft.Maui.Controls.Xaml.ValueConverterProvider, Microsoft.Maui.Controls.Xaml");
-        addDependencyTypeIfNeededMethodInfo!.Invoke(null, [resourceLoaderType]);
-        addDependencyTypeIfNeededMethodInfo!.Invoke(null, [valueConverterProviderType]);
+        AddDependencyTypeIfNeeded(null, resourceLoaderType!);
+        AddDependencyTypeIfNeeded(null, valueConverterProviderType!);
         Type? resourceProviderType = null;
 #if WINDOWS
         resourceProviderType = Type.GetType("Microsoft.Maui.Controls.Compatibility.Platform.UWP.WindowsResourcesProvider, Microsoft.Maui.Controls")!;
@@ -27,7 +25,7 @@ public static class MauiHostBuilderExtensions
 #elif IOS
         resourceProviderType = Type.GetType("Microsoft.Maui.Controls.Compatibility.Platform.iOS.ResourcesProvider, Microsoft.Maui.Controls")!;
 #endif
-        addDependencyTypeIfNeededMethodInfo.Invoke(null, [resourceProviderType]);
+        AddDependencyTypeIfNeeded(null, resourceProviderType!);
 
         builder
             .ConfigureMauiHandlers(handlers =>
@@ -37,9 +35,26 @@ public static class MauiHostBuilderExtensions
                 handlers.AddHandler<Application, ApplicationHandler>();
             });
 
-        typeof(VisualElement).GetMethod("RemapForControls", BindingFlags.Static | BindingFlags.NonPublic, [])!.Invoke(null, []);
-        typeof(ContentPage).GetMethod("RemapForControls", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, []);
+        VisualElementRemapForControls(null);
+        ContentPageRemapForControls(null);
 
         return builder;
     }
+
+    // Private methods
+
+    [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "SetToInitialized")]
+    private static extern void SetToInitialized(
+        [UnsafeAccessorType("Microsoft.Maui.Controls.DependencyService, Microsoft.Maui.Controls")] object? _);
+
+    [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "AddDependencyTypeIfNeeded")]
+    private static extern void AddDependencyTypeIfNeeded(
+        [UnsafeAccessorType("Microsoft.Maui.Controls.DependencyService, Microsoft.Maui.Controls")] object? _,
+        Type type);
+
+    [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "RemapForControls")]
+    private static extern void VisualElementRemapForControls(VisualElement? _);
+
+    [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "RemapForControls")]
+    private static extern void ContentPageRemapForControls(ContentPage? _);
 }

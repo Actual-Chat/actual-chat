@@ -13,11 +13,10 @@ public class Form : EditForm, IDisposable
 
     public bool IsValid { get; private set; } = true;
 
-    public Form() // The same private field declared in the base class, we just need to pull its value here
+    public Form()
     {
-        _handleSubmitCached = (Func<Task>)typeof(EditForm)
-            .GetField("_handleSubmitDelegate", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .GetValue(this)!;
+        // The same private field is declared in the base class - we just pull its value here.
+        _handleSubmitCached = HandleSubmitDelegate(this);
     }
 
     public void Dispose()
@@ -116,4 +115,7 @@ public class Form : EditForm, IDisposable
         IsValid = isValid;
         StateHasChanged();
     }
+
+    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_handleSubmitDelegate")]
+    private static extern ref Func<Task> HandleSubmitDelegate(EditForm @this);
 }

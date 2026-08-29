@@ -31,13 +31,14 @@ public sealed class EventHandlerRegistry(IServiceProvider services)
 
     private CommandHandler[] ListAllEventHandlers()
     {
-        var filter = (Func<CommandHandler, Type, bool>)CommandHandlerResolver.GetType()
-            .GetProperty("Filter", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .GetValue(CommandHandlerResolver)!;
+        var filter = GetFilter(CommandHandlerResolver);
         return CommandHandlerRegistry.Handlers
             .Where(h => !h.IsFilter
                 && typeof(IEventCommand).IsAssignableFrom(h.CommandType)
                 && filter.Invoke(h, h.CommandType))
             .ToArray();
     }
+
+    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "get_Filter")]
+    private static extern Func<CommandHandler, Type, bool> GetFilter(CommandHandlerResolver @this);
 }

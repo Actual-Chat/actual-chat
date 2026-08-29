@@ -59,7 +59,7 @@ public partial class MauiWebView
         try {
             // using var deferral = args.GetDeferral();
             Stream content = File.OpenRead(filePath);
-            var contentType = WebResourceUtils.GetResponseContentTypeOrDefault(filePath);
+            var contentType = WebResourceUtils.GetResponseContentTypeOrDefault(null, filePath);
             var headers = WebResourceUtils.GetResponseHeaders(contentType);
             var headersString = WebResourceUtils.GetHeaderString(headers);
             // NOTE(DF): we need to wrap a file stream into a stream that does close the underlying
@@ -140,18 +140,13 @@ public partial class MauiWebView
 
     private static class WebResourceUtils
     {
-        private static readonly Func<string, string> GetResponseContentTypeOrDefaultFunc;
-        static WebResourceUtils()
-        {
-            var assembly = typeof(BlazorWebViewHandler).Assembly;
-            var type = assembly.GetType("Microsoft.AspNetCore.Components.WebView.Maui.StaticContentProvider")!;
-            var methodInfo = type.GetMethod("GetResponseContentTypeOrDefault",
-                BindingFlags.Static | BindingFlags.NonPublic)!;
-            GetResponseContentTypeOrDefaultFunc = methodInfo.CreateDelegate<Func<string, string>>();
-        }
-
-        public static string GetResponseContentTypeOrDefault(string path)
-            => GetResponseContentTypeOrDefaultFunc.Invoke(path);
+        private const string StaticContentProviderType =
+            "Microsoft.AspNetCore.Components.WebView.Maui.StaticContentProvider"
+            + ", Microsoft.AspNetCore.Components.WebView.Maui";
+        [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "GetResponseContentTypeOrDefault")]
+        public static extern string GetResponseContentTypeOrDefault(
+            [UnsafeAccessorType(StaticContentProviderType)] object? _,
+            string path);
         public static IDictionary<string, string> GetResponseHeaders(string contentType)
             => new Dictionary<string, string> {
                 { "Content-Type", contentType },
