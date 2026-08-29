@@ -26,6 +26,14 @@ public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
     private ByteBuffer? _stateOutputBuffer;
     private ByteBuffer? _contextOutputBuffer;
 
+    // Float views over the buffers above: AsFloatBuffer() leaks an undisposed JNI global ref per call
+    private FloatBuffer? _framesInputView;
+    private FloatBuffer? _stateInputView;
+    private FloatBuffer? _contextInputView;
+    private FloatBuffer? _probsOutputView;
+    private FloatBuffer? _stateOutputView;
+    private FloatBuffer? _contextOutputView;
+
     // Cached tensor indices to avoid lookup loops per inference
     private int _framesInputIdx = -1;
     private int _stateInputIdx = -1;
@@ -85,13 +93,13 @@ public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
         _interpreter?.Dispose();
         _interpreter = null;
 
-        // Clear buffers (optional, GC will handle)
-        _framesInputBuffer = null;
-        _stateInputBuffer = null;
-        _contextInputBuffer = null;
-        _probsOutputBuffer = null;
-        _stateOutputBuffer = null;
-        _contextOutputBuffer = null;
+        // Disposed rather than dropped: each holds a JNI global ref until someone releases it.
+        DisposeBuffer(ref _framesInputView, ref _framesInputBuffer);
+        DisposeBuffer(ref _stateInputView, ref _stateInputBuffer);
+        DisposeBuffer(ref _contextInputView, ref _contextInputBuffer);
+        DisposeBuffer(ref _probsOutputView, ref _probsOutputBuffer);
+        DisposeBuffer(ref _stateOutputView, ref _stateOutputBuffer);
+        DisposeBuffer(ref _contextOutputView, ref _contextOutputBuffer);
         _inputsArray = null;
     }
 
@@ -136,9 +144,9 @@ public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
 
         // Read results
         var probs = new float[frames];
-        ReadBufferToFloatArray(_probsOutputBuffer!, probs, frames);
-        ReadBufferToFloatArray(_stateOutputBuffer!, _state, _state.Length);
-        ReadBufferToFloatArray(_contextOutputBuffer!, _context, _context.Length);
+        ReadFloatView(_probsOutputView!, probs, frames);
+        ReadFloatView(_stateOutputView!, _state, _state.Length);
+        ReadFloatView(_contextOutputView!, _context, _context.Length);
 
         return probs;
     }
@@ -177,32 +185,40 @@ public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
     {
         // Fixed buffers (create once if null)
         var stateTensor = interpreter.GetInputTensor(_stateInputIdx)!;
-        if (_stateInputBuffer == null)
+        if (_stateInputBuffer == null) {
             _stateInputBuffer = CreateEmptyBufferForTensor(stateTensor);
+            _stateInputView = CreateFloatView(_stateInputBuffer);
+        }
         else {
             _stateInputBuffer.Position(0);
             _stateInputBuffer.Limit(stateTensor.NumBytes());
         }
 
         var contextTensor = interpreter.GetInputTensor(_contextInputIdx)!;
-        if (_contextInputBuffer == null)
+        if (_contextInputBuffer == null) {
             _contextInputBuffer = CreateEmptyBufferForTensor(contextTensor);
+            _contextInputView = CreateFloatView(_contextInputBuffer);
+        }
         else {
             _contextInputBuffer.Position(0);
             _contextInputBuffer.Limit(contextTensor.NumBytes());
         }
 
         var stateOutTensor = interpreter.GetOutputTensor(_stateOutputIdx)!;
-        if (_stateOutputBuffer == null)
+        if (_stateOutputBuffer == null) {
             _stateOutputBuffer = CreateEmptyBufferForTensor(stateOutTensor);
+            _stateOutputView = CreateFloatView(_stateOutputBuffer);
+        }
         else {
             _stateOutputBuffer.Position(0);
             _stateOutputBuffer.Limit(stateOutTensor.NumBytes());
         }
 
         var contextOutTensor = interpreter.GetOutputTensor(_contextOutputIdx)!;
-        if (_contextOutputBuffer == null)
+        if (_contextOutputBuffer == null) {
             _contextOutputBuffer = CreateEmptyBufferForTensor(contextOutTensor);
+            _contextOutputView = CreateFloatView(_contextOutputBuffer);
+        }
         else {
             _contextOutputBuffer.Position(0);
             _contextOutputBuffer.Limit(contextOutTensor.NumBytes());
@@ -216,18 +232,20 @@ public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
             interpreter.AllocateTensors();
             Log.LogInformation("VAD resized input tensor to {Frames}x{WindowSamples}", frames, WindowSamples);
         }
-        int framesBytes = sizeof(float) * frames * WindowSamples;
+        var framesBytes = sizeof(float) * frames * WindowSamples;
         if (_framesInputBuffer == null || _framesInputBuffer.Capacity() < framesBytes) {
-            int newCapacity = Math.Max(framesBytes, (_framesInputBuffer?.Capacity() ?? 0) * 2);
+            var newCapacity = Math.Max(framesBytes, (_framesInputBuffer?.Capacity() ?? 0) * 2);
             _framesInputBuffer = ByteBuffer.AllocateDirect(newCapacity).Order(ByteOrder.NativeOrder()!);
+            _framesInputView = CreateFloatView(_framesInputBuffer);
         }
         _framesInputBuffer.Position(0);
         _framesInputBuffer.Limit(framesBytes);
 
-        int probsBytes = sizeof(float) * frames * 1;
+        var probsBytes = sizeof(float) * frames * 1;
         if (_probsOutputBuffer == null || _probsOutputBuffer.Capacity() < probsBytes) {
-            int newCapacity = Math.Max(probsBytes, (_probsOutputBuffer?.Capacity() ?? 0) * 2);
+            var newCapacity = Math.Max(probsBytes, (_probsOutputBuffer?.Capacity() ?? 0) * 2);
             _probsOutputBuffer = ByteBuffer.AllocateDirect(newCapacity).Order(ByteOrder.NativeOrder()!);
+            _probsOutputView = CreateFloatView(_probsOutputBuffer);
         }
         _probsOutputBuffer.Position(0);
         _probsOutputBuffer.Limit(probsBytes);
@@ -239,22 +257,22 @@ public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
         var monoPcmLength = monoPcm.Length;
         EnsureFrameBuffer(monoPcmLength);
         monoPcm.CopyTo(_frameBuffer!.AsSpan(0, monoPcmLength));
-        var framesFb = _framesInputBuffer!.AsFloatBuffer();
+        var framesFb = _framesInputView!;
         framesFb.Position(0);
         framesFb.Put(_frameBuffer, 0, monoPcmLength);
-        _framesInputBuffer.Position(0);
+        _framesInputBuffer!.Position(0);
 
         // State input
-        var stateFb = _stateInputBuffer!.AsFloatBuffer();
+        var stateFb = _stateInputView!;
         stateFb.Position(0);
         stateFb.Put(_state);
-        _stateInputBuffer.Position(0);
+        _stateInputBuffer!.Position(0);
 
         // Context input
-        var contextFb = _contextInputBuffer!.AsFloatBuffer();
+        var contextFb = _contextInputView!;
         contextFb.Position(0);
         contextFb.Put(_context);
-        _contextInputBuffer.Position(0);
+        _contextInputBuffer!.Position(0);
     }
 
     // Rent/release frames array to avoid allocations
@@ -276,7 +294,6 @@ public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
         _frameBuffer = null;
     }
 
-    // Helper: Create an empty direct ByteBuffer for a tensor (enforces float32)
     private static ByteBuffer CreateEmptyBufferForTensor(ITensor tensor)
     {
         var byteBuffer = ByteBuffer.AllocateDirect(tensor.NumBytes())
@@ -285,11 +302,25 @@ public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
         return byteBuffer;
     }
 
-    // Helper: Read tensor data from a ByteBuffer into a float[]; expects float32 tensors only
-    private static void ReadBufferToFloatArray(ByteBuffer buffer, float[] destination, int length)
+    private static FloatBuffer CreateFloatView(ByteBuffer buffer)
     {
+        // Spans the whole capacity, so the per-inference Limit() changes can't invalidate the view.
         buffer.Position(0);
-        var fb = buffer.AsFloatBuffer();
-        fb.Get(destination, 0, length);
+        buffer.Limit(buffer.Capacity());
+        return buffer.AsFloatBuffer()!;
+    }
+
+    private static void ReadFloatView(FloatBuffer view, float[] destination, int length)
+    {
+        view.Position(0);
+        view.Get(destination, 0, length);
+    }
+
+    private static void DisposeBuffer(ref FloatBuffer? view, ref ByteBuffer? buffer)
+    {
+        view?.Dispose();
+        view = null;
+        buffer?.Dispose();
+        buffer = null;
     }
 }
