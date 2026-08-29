@@ -30,24 +30,31 @@ internal static class MauiApp
             return plan;
         }
 
+        var isPackaged = settings.ResolveIsWindowsPackaged(mustInstall);
+        // Native AOT publishes a self-contained exe, so there's no package to register
+        if (mustInstall && settings.Platform == AppPlatform.Windows && !isPackaged)
+            throw new WithoutStackException(
+                "A Native AOT Windows build has nothing to install - it runs from artifacts/ as-is."
+                + " Drop --aot, or use 'b app build windows --aot'.");
+
         if (!settings.MustSkipWebBuild)
             plan.AddRun(Utils.FindNpmExe(), ["run", $"build:{settings.ResolvedConfiguration}"]);
 
-        AddDotnet(plan, settings);
+        AddDotnet(plan, settings, isPackaged);
         // Announced before the install step, so the path stays visible once the app takes over the console.
         if (GetArtifactPath(settings) is { } artifactPath)
             plan.AddOutput(artifactPath);
         if (mustInstall)
-            AddInstall(plan, settings);
+            AddInstall(plan, settings, isPackaged);
         if (mustLaunch)
-            AddLaunch(plan, settings);
+            AddLaunch(plan, settings, isPackaged);
 
         return plan;
     }
 
     // Private methods
 
-    private static void AddDotnet(CommandPlan plan, AppSettings settings)
+    private static void AddDotnet(CommandPlan plan, AppSettings settings, bool isPackaged)
     {
         var args = new List<string> {
             settings.MustUsePublish ? "publish" : "build",
@@ -66,7 +73,7 @@ internal static class MauiApp
                 AddAndroidSigning(plan, args);
             break;
         case AppPlatform.Windows:
-            if (!settings.IsWindowsPackaged)
+            if (!isPackaged)
                 args.Add("-p:WindowsPackageType=None");
             break;
         }
@@ -88,14 +95,13 @@ internal static class MauiApp
         args.Add($"-p:AndroidSigningStorePass={storePass}");
     }
 
-    private static void AddInstall(CommandPlan plan, AppSettings settings)
+    private static void AddInstall(CommandPlan plan, AppSettings settings, bool isPackaged)
     {
         switch (settings.Platform) {
         case AppPlatform.Android when GetArtifactPath(settings) is { } apkPath:
             plan.Add(new RunStep("adb", ["install", "-r", apkPath]) { RequiredPath = apkPath });
             break;
-        case AppPlatform.Windows when settings.IsWindowsPackaged:
-            // The unpackaged variant gets no arm here - its build output is already "installed".
+        case AppPlatform.Windows when isPackaged:
             var manifestPath = GetAppxManifestPath(settings);
             plan.Add(PowerShell($"Add-AppxPackage -Register '{manifestPath}'"
                     + " -ForceUpdateFromAnyVersion -ForceApplicationShutdown")
@@ -104,7 +110,7 @@ internal static class MauiApp
         }
     }
 
-    private static void AddLaunch(CommandPlan plan, AppSettings settings)
+    private static void AddLaunch(CommandPlan plan, AppSettings settings, bool isPackaged)
     {
         switch (settings.Platform) {
         case AppPlatform.Android:
@@ -112,7 +118,7 @@ internal static class MauiApp
             plan.AddRun("adb",
                 ["shell", "monkey", "-p", GetAppId(settings), "-c", "android.intent.category.LAUNCHER", "1"]);
             break;
-        case AppPlatform.Windows when settings.IsWindowsPackaged:
+        case AppPlatform.Windows when isPackaged:
             // A packaged app can't be started by its .exe - it has to be activated by package family
             // name, and the name comes from the manifest the build just generated.
             plan.Add(PowerShell(

@@ -17,7 +17,7 @@ public enum AppPlatform
 /// Replaces the r-android*/r-windows*/run-ios*/run-macos* script family: the
 /// platform is an argument, everything those scripts hardcoded is a flag.
 /// </summary>
-public class AppSettings : PlanSettings
+public sealed class AppSettings : PlanSettings
 {
     [CommandArgument(0, "<PLATFORM>")]
     [Description("android | ios | windows | macos")]
@@ -70,15 +70,16 @@ public class AppSettings : PlanSettings
 
     public string ResolvedConfiguration => IsRelease ? "Release" : Configuration;
     public bool IsDev => !IsProd;
-    public bool IsWindowsPackaged
-        // Native AOT publishes a self-contained exe rather than an MSIX, so it's never packaged
-        => Platform == AppPlatform.Windows && MustPackage && !UseNativeAot;
     public bool MustUsePublish
         // Android is always published: that's where the signed APK comes from, in Debug too.
         => !MustNotPublish
             && (MustPublish
                 || Platform == AppPlatform.Android
                 || OrdinalIgnoreCaseEquals(ResolvedConfiguration, "Release"));
+
+    // Installing on Windows means registering an MSIX, so "app install" implies --package
+    public bool ResolveIsWindowsPackaged(bool mustInstall)
+        => Platform == AppPlatform.Windows && (MustPackage || mustInstall) && !UseNativeAot;
 
     public bool ResolveMustLaunch(bool isLaunchedByDefault)
         => !MustNotLaunch && (MustLaunch || isLaunchedByDefault);
@@ -87,7 +88,7 @@ public class AppSettings : PlanSettings
         // Only an unpackaged Windows build can be launched without deploying it first
         => isInstalledByDefault
             || (ResolveMustLaunch(isLaunchedByDefault)
-                && (Platform != AppPlatform.Windows || IsWindowsPackaged));
+                && (Platform != AppPlatform.Windows || (MustPackage && !UseNativeAot)));
 
     public override ValidationResult Validate()
     {

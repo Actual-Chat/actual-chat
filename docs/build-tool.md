@@ -132,8 +132,11 @@ Windows builds are **unpackaged by default**: `app run windows` launches
 what toast notifications, the `voxt-dev://` protocol handler and the startup task
 need. A packaged app can't be started from its `.exe`, so `--package` implies
 deployment: `app run windows --package` registers the build and then activates it
-by package family name. Run `b app run windows --package --dry-run` to see both
-commands.
+by package family name.
+
+`app install windows` implies `--package` — an unpackaged build has nothing to
+deploy, so the flag would be the only thing that made the command meaningful.
+`--aot` can't be packaged at all, so `app install windows --aot` is rejected.
 
 > **`--package` is currently broken.** It registers `<output>/AppX/AppxManifest.xml`,
 > and no `AppX` layout is produced — a packaged `dotnet build` writes a manifest to

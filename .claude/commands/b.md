@@ -83,7 +83,8 @@ nothing.
 Windows builds are **unpackaged** by default. `--package` builds an MSIX instead
 — that's what gives the app toast notifications, the `voxt-dev://` protocol
 handler and the startup task — and since an MSIX can only start through its
-registered identity, `--package` deploys before launching. **`--package` is
+registered identity, `--package` deploys before launching. `app install windows`
+implies it. **`--package` is
 currently broken**: it registers `<output>/AppX/AppxManifest.xml` and no `AppX`
 layout is produced, so the step fails with `Not found`. Use the default
 unpackaged run. See [`docs/build-tool.md` → Windows](../../docs/build-tool.md#windows).
