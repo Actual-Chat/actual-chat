@@ -68,12 +68,21 @@ public static class AndroidUtils
 
     public static Task WarmUpWebView()
     {
-        // Without this the WebView provider is loaded on the UI thread inside performStart, right
-        // before BlazorAndroidWebView is constructed. GetDefaultUserAgent forces the same load and
-        // is safe off the UI thread. Nothing may block the UI thread on the returned task:
-        // Chromium posts its native init back to that thread, so waiting there would deadlock.
-        lock (WebViewWarmUpLock)
-            return _whenWebViewWarm ??= Task.Run(() => {
+        // Takes Chromium's provider lock off the UI thread, which BlazorAndroidWebView's ctor
+        // would otherwise take on it. Never block the UI thread on the result: Chromium posts
+        // its native init back there, so waiting would deadlock.
+        // Volatile pair: the lock's release does not publish to a reader that skips the lock.
+        var whenWarm = Volatile.Read(ref _whenWebViewWarm);
+        if (whenWarm is not null)
+            return whenWarm;
+
+        lock (WebViewWarmUpLock) {
+            whenWarm = _whenWebViewWarm;
+            if (whenWarm is not null)
+                return whenWarm;
+
+            // Started inside the lock, so a lost race cannot leave a second provider load running.
+            whenWarm = Task.Run(() => {
                 try {
                     _ = Android.Webkit.WebSettings.GetDefaultUserAgent(Application.Context);
                 }
@@ -81,6 +90,9 @@ public static class AndroidUtils
                     Android.Util.Log.Warn(MauiDiagnostics.LogTag, $"WebView warm-up failed: {e.Message}");
                 }
             });
+            Volatile.Write(ref _whenWebViewWarm, whenWarm);
+            return whenWarm;
+        }
     }
 
     public static bool IsMainThread()
