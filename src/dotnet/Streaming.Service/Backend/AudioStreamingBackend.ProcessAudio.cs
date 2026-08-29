@@ -11,6 +11,8 @@ public partial class AudioStreamingBackend
     [GeneratedRegex("^\\s*$")]
     private static partial Regex EmptyRegexFactory();
     private static readonly Regex EmptyRegex = EmptyRegexFactory();
+    // Snippets shorter than this are often misclassified, so detection waits for more context.
+    private const int MinLanguageDetectionLength = 15;
 
     public virtual async Task ProcessAudio(
         AudioRecord record,
@@ -315,7 +317,8 @@ public partial class AudioStreamingBackend
         CancellationToken requestToken,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        _ = streamId; // reserved for diagnostics
+        // Kept in the signature for diagnostics
+        _ = streamId;
         // Frame-silence watchdog: cancels watchdogCts if no frame arrives within silenceTimeout.
         // Each frame resets the deadline; CancellationTokenSource reuses a single internal timer.
         // On a pure silence timeout (watchdog fired but the request itself wasn't cancelled — i.e. the
@@ -433,7 +436,7 @@ public partial class AudioStreamingBackend
         return settings.GetTranscriberId();
     }
 
-    private async Task<(ChatEntryId, Language)?> TranscribeAudio(
+    private async Task TranscribeAudio(
         OpenAudioSegment audioSegment,
         Moment beginsAt,
         string? liveStreamId,
@@ -444,57 +447,27 @@ public partial class AudioStreamingBackend
         CancellationToken cancellationToken)
     {
         var (chatLanguage, userLanguageSettings) = audioSegment.Languages;
+        TranscriptionOptions transcriptionOptions;
         if (chatLanguage is not null) {
             refineTranscriptLanguageTcs.TrySetResult(chatLanguage);
-            var transcriptionOptions = new TranscriptionOptions {
+            transcriptionOptions = new TranscriptionOptions {
                 Language = chatLanguage,
             };
-            var chatEntryId = await TranscribeAudio(
-                    audioSegment,
-                    transcriptionOptions,
-                    beginsAt,
-                    liveStreamId,
-                    audioMediaIdTask,
-                    refineTranscriptLanguageTcs,
-                    realtimeTextTcs,
-                    refinedTranscriptTask,
-                    cancellationToken)
-                .ConfigureAwait(false);
-            return chatEntryId is not null ? (chatEntryId, chatLanguage) : null;
         }
-        else {
-            var languageCandidates = userLanguageSettings.ListSpoken().ToArray();
-            Language? detectedLanguage = null;
-            Action<Language[]> onLanguageDetected = detectedLanguages => {
-                if (detectedLanguage is not null)
-                    return;
-
-                foreach (var languageCandidate in languageCandidates) {
-                    if (detectedLanguages.Contains(languageCandidate)) {
-                        detectedLanguage = languageCandidate;
-                        DebugLog?.LogDebug("Detected language: {Language} for AudioSegment: {AudioSegment}",
-                            detectedLanguage, audioSegment.StreamId);
-                        ApplyTranscriptionDetectedLanguage(audioSegment.Record, detectedLanguage, default);
-                        break;
-                    }
-                }
-            };
-            var transcriptionOptions = TranscriptionOptions.AutoDetectLanguage(languageCandidates, onLanguageDetected);
-            var chatEntryId = await TranscribeAudio(
-                    audioSegment,
-                    transcriptionOptions,
-                    beginsAt,
-                    liveStreamId,
-                    audioMediaIdTask,
-                    refineTranscriptLanguageTcs,
-                    realtimeTextTcs,
-                    refinedTranscriptTask,
-                    cancellationToken)
-                .ConfigureAwait(false);
-            if (detectedLanguage is not null && chatEntryId is not null)
-                return (chatEntryId, detectedLanguage);
-            return null;
-        }
+        else
+            transcriptionOptions = TranscriptionOptions.AutoDetectLanguage(
+                userLanguageSettings.ListSpoken().ToArray());
+        await TranscribeAudio(
+                audioSegment,
+                transcriptionOptions,
+                beginsAt,
+                liveStreamId,
+                audioMediaIdTask,
+                refineTranscriptLanguageTcs,
+                realtimeTextTcs,
+                refinedTranscriptTask,
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task<ChatEntryId?> TranscribeAudio(
@@ -552,9 +525,12 @@ public partial class AudioStreamingBackend
         Transcript? lastTranscript = null;
         ChatEntry? textEntry = null;
         ChatEntryLanguage? entryLanguage = null;
+        Language? detectedLanguage = null;
         try {
             await foreach (var transcript in transcripts.Replay(cancellationToken).ConfigureAwait(false)) {
                 lastTranscript = transcript;
+                if (transcriptionOptions.DetectLanguage && detectedLanguage is null)
+                    detectedLanguage = TryApplyDetectedLanguage(transcript);
                 // NOTE(DF): in detect language mode, we should persist languages only on text entry finalization.
                 if (!transcriptionOptions.DetectLanguage)
                     if (entryLanguage?.Languages.Length is null or 0 && textEntry != null)
@@ -627,7 +603,27 @@ public partial class AudioStreamingBackend
             realtimeTextTcs.TrySetResult("");
             await transcriptDiffStream.DisposeSilentlyAsync().ConfigureAwait(false);
         }
+
         return textEntry?.Id;
+
+        Language? TryApplyDetectedLanguage(Transcript transcript)
+        {
+            if (transcript.Text.Length < MinLanguageDetectionLength)
+                return null;
+
+            // A language the user doesn't speak is a misdetection, so it's dropped rather than
+            // counted as ambiguity; what's left has to name a single language to switch to.
+            var spokenLanguages = transcript.Languages
+                .Where(x => transcriptionOptions.LanguageCandidates.Contains(x))
+                .ToArray();
+            if (spokenLanguages is not [var language])
+                return null;
+
+            DebugLog?.LogDebug("Detected language: {Language} for AudioSegment: {AudioSegment}",
+                language, audioSegment.StreamId);
+            ApplyTranscriptionDetectedLanguage(audioSegment.Record, language, default);
+            return language;
+        }
 
         async Task<ChatEntry> CreateTextEntry(Transcript transcript)
         {

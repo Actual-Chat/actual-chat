@@ -1,14 +1,10 @@
 namespace ActualChat.Transcription;
 
-/// <summary>
-/// Configures transcription settings including language and detection.
-/// </summary>
-public record TranscriptionOptions
+public sealed record TranscriptionOptions
 {
     public Language Language { get; init; } = Languages.Main;
     public bool DetectLanguage { get; init; }
     public Language[] LanguageCandidates { get; init; } = [];
-    public Action<Language[]>? LanguageDetectedCallback { get; init; }
     public TranscriptionContext Context { get; init; } = TranscriptionContext.None;
 
     public string[] GetLanguageHints(Func<Language, string>? toCode = null)
@@ -20,12 +16,9 @@ public record TranscriptionOptions
             : [toCode(Language)];
     }
 
-    public static TranscriptionOptions AutoDetectLanguage(
-        Language[] languageCandidates,
-        Action<Language[]>? languageDetectedCallback)
-        => new () {
+    public static TranscriptionOptions AutoDetectLanguage(Language[] languageCandidates)
+        => new() {
             DetectLanguage = true,
             LanguageCandidates = languageCandidates,
-            LanguageDetectedCallback = languageDetectedCallback,
         };
 }

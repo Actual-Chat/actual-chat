@@ -62,7 +62,7 @@ public class TranscriberRegistryTest(ITestOutputHelper @out) : TestBase(@out)
             new TranscriptionSettings { StreamRanking = "no-detect,detects" },
             NewStream("no-detect"),
             NewStream("detects", isLanguageDetectionSupported: true));
-        var options = TranscriptionOptions.AutoDetectLanguage([Languages.English, Languages.Russian], null);
+        var options = TranscriptionOptions.AutoDetectLanguage([Languages.English, Languages.Russian]);
 
         // act
         var chain = registry.ListStream(options, TranscriberId.None);

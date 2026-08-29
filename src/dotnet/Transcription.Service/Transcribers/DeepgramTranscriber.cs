@@ -228,11 +228,6 @@ public sealed partial class DeepgramTranscriber : ITranscriber
         var detectedLanguages = alternative?.Languages?.Select(DeepgramLanguage.FromDeepgram)
             .Distinct().ToArray() ?? [];
         var languages = detectedLanguages.Length > 0 ? detectedLanguages : [options.Language];
-        // Snippets shorter than this are often misclassified, so detection waits for more context.
-        const int minLanguageDetectionLength = 20;
-        if (options.DetectLanguage && detectedLanguages.Length > 0
-            && suffix.Length >= minLanguageDetectionLength)
-            options.LanguageDetectedCallback?.Invoke(languages);
         var endTime = (float?)result.Duration ?? 0;
         if (isFinal) {
             if (TryParseFinal(state, result, out suffix, out var map))
