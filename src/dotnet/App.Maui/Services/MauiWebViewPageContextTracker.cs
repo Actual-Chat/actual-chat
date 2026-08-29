@@ -8,7 +8,7 @@ public sealed class MauiWebViewPageContextTracker(IServiceProvider services) : I
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<MauiWebViewPageContextTracker>();
-    private readonly Lock _lock = new ();
+    private readonly Lock _lock = new();
     private readonly UIHub _hub = services.GetRequiredService<UIHub>();
     private readonly SafeJSRuntime _safeJSRuntime = services.GetRequiredService<SafeJSRuntime>();
     private MauiWebView? _mauiWebView;
@@ -66,8 +66,10 @@ public sealed class MauiWebViewPageContextTracker(IServiceProvider services) : I
                 Log.LogDebug("DisconnectJSRuntime has been already invoked earlier");
                 return;
             }
+
             _disconnectJSRuntimeRequested = true;
         }
+
         try {
             _safeJSRuntime.MarkDisconnected();
         }
@@ -84,8 +86,10 @@ public sealed class MauiWebViewPageContextTracker(IServiceProvider services) : I
                 Log.LogDebug("MonitorDisposeCompletion has been already invoked earlier");
                 return;
             }
+
             _monitorDisposeCompletionRequested = true;
         }
+
         var cancellationToken = _hub.StopToken;
         try {
             await Task.Delay(TimeSpan.FromSeconds(15), cancellationToken).ConfigureAwait(false);
@@ -94,13 +98,8 @@ public sealed class MauiWebViewPageContextTracker(IServiceProvider services) : I
             if (cancellationToken.IsCancellationRequested) {
                 Log.LogDebug("ScopedServices have been disposed");
 #if DEBUG
-                if (_pageContext is not null) {
-                    Log.LogDebug("About to dispose _pageContext");
-                    await _pageContext.DisposeAsync().ConfigureAwait(false);
-                    Log.LogDebug("Disposed _pageContext");
-                }
-                else
-                    Log.LogDebug("No _pageContext");
+                // Not disposed here: MAUI disposes it on reload, and it isn't idempotent.
+                Log.LogDebug(_pageContext is not null ? "PageContext is captured" : "No _pageContext");
 #endif
                 return;
             }
@@ -109,6 +108,7 @@ public sealed class MauiWebViewPageContextTracker(IServiceProvider services) : I
             Log.LogWarning(e, "Unexpected exception during monitoring dispose completion");
             return;
         }
+
         Log.LogWarning("ScopedServices aren't disposed in 15 seconds!");
     }
 }

@@ -55,6 +55,9 @@ public class AndroidWebChromeClient : WebChromeClient
     private readonly VisualMediaFileChooser _visualMediaFileChooser;
     private ILogger Log { get; }
     private bool IsDisconnected { get; set; }
+    private bool CanForward
+        // MAUI disposes the wrapped client on disconnect, but this wrapper lives on until Destroy().
+        => !IsDisconnected && _client.IsValid();
 
     // ReSharper disable once ConvertToPrimaryConstructor
     public AndroidWebChromeClient(
@@ -131,6 +134,9 @@ public class AndroidWebChromeClient : WebChromeClient
         IValueCallback? filePathCallback,
         FileChooserParams? fileChooserParams)
     {
+        if (!CanForward)
+            return false;
+
         var acceptTypes = fileChooserParams?.GetAcceptTypes() ?? [];
         if (filePathCallback is not null
             && acceptTypes.Length > 0
@@ -148,7 +154,11 @@ public class AndroidWebChromeClient : WebChromeClient
     public override Bitmap? DefaultVideoPoster => _client.DefaultVideoPoster;
     public override View? VideoLoadingProgressView => _client.VideoLoadingProgressView;
     public override void GetVisitedHistory(IValueCallback? callback)
-        => _client.GetVisitedHistory(callback);
+    {
+        if (CanForward)
+            _client.GetVisitedHistory(callback);
+    }
+
     // Not overridden in prod: every JS console message crosses JNI into managed code on the UI thread
     // and allocates a ConsoleMessage peer holding a JNI global ref. Once the process nears the 51200-ref
     // cap, .NET for Android forces a full GC per new ref, which parks the UI thread and ANRs the app.
@@ -175,20 +185,33 @@ public class AndroidWebChromeClient : WebChromeClient
             return false;
         }
     }
+
     public override void OnCloseWindow(WebView? window)
-        => _client.OnCloseWindow(window);
+    {
+        if (CanForward)
+            _client.OnCloseWindow(window);
+    }
+
     public override void OnGeolocationPermissionsHidePrompt()
-        => _client.OnGeolocationPermissionsHidePrompt();
+    {
+        if (CanForward)
+            _client.OnGeolocationPermissionsHidePrompt();
+    }
+
     public override bool OnJsAlert(WebView? view, string? url, string? message, JsResult? result)
-        => _client.OnJsAlert(view, url, message, result);
+        => CanForward && _client.OnJsAlert(view, url, message, result);
     public override bool OnJsBeforeUnload(WebView? view, string? url, string? message, JsResult? result)
-        => _client.OnJsBeforeUnload(view, url, message, result);
+        => CanForward && _client.OnJsBeforeUnload(view, url, message, result);
     public override bool OnJsConfirm(WebView? view, string? url, string? message, JsResult? result)
-        => _client.OnJsConfirm(view, url, message, result);
+        => CanForward && _client.OnJsConfirm(view, url, message, result);
     public override bool OnJsPrompt(WebView? view, string? url, string? message, string? defaultValue, JsPromptResult? result)
-        => _client.OnJsPrompt(view, url, message, defaultValue, result);
+        => CanForward && _client.OnJsPrompt(view, url, message, defaultValue, result);
+
     public override void OnPermissionRequestCanceled(PermissionRequest? request)
-        => _client.OnPermissionRequestCanceled(request);
+    {
+        if (CanForward)
+            _client.OnPermissionRequestCanceled(request);
+    }
 
     public override void OnProgressChanged(WebView? view, int newProgress)
     {
@@ -223,7 +246,10 @@ public class AndroidWebChromeClient : WebChromeClient
     }
 
     public override void OnRequestFocus(WebView? view)
-        => _client.OnRequestFocus(view);
+    {
+        if (CanForward)
+            _client.OnRequestFocus(view);
+    }
     #endregion
 
     #region Excluded Unremarkable overrides
