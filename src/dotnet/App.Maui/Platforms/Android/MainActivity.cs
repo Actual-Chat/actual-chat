@@ -83,7 +83,6 @@ public partial class MainActivity : MauiAppCompatActivity
         // started headless for a push, so PromoteToInteractive runs whatever that start skipped.
         MauiStart.MarkInteractive();
         MauiProgram.PromoteToInteractive();
-        WarmUpWebView();
 
         // Before base.OnCreate, which calls setContentView - the listener has to be registered
         // before that for the dismissal logic to see it.
@@ -297,26 +296,6 @@ public partial class MainActivity : MauiAppCompatActivity
     }
 
     // Private methods
-
-    private static void WarmUpWebView()
-    {
-        // Without this the WebView provider is loaded on the UI thread inside performStart, right
-        // before BlazorAndroidWebView is constructed. GetDefaultUserAgent forces the same load and
-        // is safe off the UI thread, moving ~10ms off the critical path. Here rather than in
-        // MainApplication.OnCreate: a push-started process has no WebView coming, and the eager
-        // ThreadPool spin-up + JNI type-load only added lock contention to the FCM cold start.
-        // Nothing waits on this: Chromium's own provider lock already makes WebView construction
-        // block until the load finishes, and it posts its native init back to the UI thread - so
-        // blocking the UI thread on this task instead would deadlock.
-        _ = Task.Run(() => {
-            try {
-                _ = Android.Webkit.WebSettings.GetDefaultUserAgent(Platform.AppContext);
-            }
-            catch (Exception e) {
-                Android.Util.Log.Warn(MauiDiagnostics.LogTag, $"WebView warm-up failed: {e.Message}");
-            }
-        });
-    }
 
     private void CloseHeadlessScope()
     {
