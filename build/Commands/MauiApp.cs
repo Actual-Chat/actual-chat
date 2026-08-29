@@ -10,6 +10,8 @@ internal static class MauiApp
     private const string TargetFrameworkPrefix = "net11.0";
     private const string WindowsTargetFramework = $"{TargetFrameworkPrefix}-windows10.0.22621.0";
     private const string ProjectDir = "src/dotnet/App.Maui";
+    // Windows PowerShell rather than pwsh: the Appx module is in-box there, and pwsh may not be installed
+    private const string PowerShellExe = "powershell";
 
     public static CommandPlan GetPlan(AppSettings settings, bool isInstalledByDefault, bool isLaunchedByDefault)
     {
@@ -64,9 +66,11 @@ internal static class MauiApp
                 AddAndroidSigning(plan, args);
             break;
         case AppPlatform.Windows:
-            args.Add("-p:WindowsPackageType=None");
+            if (!settings.IsWindowsPackaged)
+                args.Add("-p:WindowsPackageType=None");
             break;
         }
+
         args.AddRange(settings.ExtraArgs);
         plan.AddRun(Utils.FindDotnetExe(), args);
     }
@@ -86,11 +90,18 @@ internal static class MauiApp
 
     private static void AddInstall(CommandPlan plan, AppSettings settings)
     {
-        // Windows runs unpackaged - the build output is already "installed".
-        if (settings.Platform != AppPlatform.Android || GetArtifactPath(settings) is not { } apkPath)
-            return;
-
-        plan.Add(new RunStep("adb", ["install", "-r", apkPath]) { RequiredPath = apkPath });
+        switch (settings.Platform) {
+        case AppPlatform.Android when GetArtifactPath(settings) is { } apkPath:
+            plan.Add(new RunStep("adb", ["install", "-r", apkPath]) { RequiredPath = apkPath });
+            break;
+        case AppPlatform.Windows when settings.IsWindowsPackaged:
+            // The unpackaged variant gets no arm here - its build output is already "installed".
+            var manifestPath = GetAppxManifestPath(settings);
+            plan.Add(PowerShell($"Add-AppxPackage -Register '{manifestPath}'"
+                    + " -ForceUpdateFromAnyVersion -ForceApplicationShutdown")
+                with { RequiredPath = manifestPath });
+            break;
+        }
     }
 
     private static void AddLaunch(CommandPlan plan, AppSettings settings)
@@ -100,6 +111,15 @@ internal static class MauiApp
             // monkey launches by package, so the generated MainActivity name isn't needed.
             plan.AddRun("adb",
                 ["shell", "monkey", "-p", GetAppId(settings), "-c", "android.intent.category.LAUNCHER", "1"]);
+            break;
+        case AppPlatform.Windows when settings.IsWindowsPackaged:
+            // A packaged app can't be started by its .exe - it has to be activated by package family
+            // name, and the name comes from the manifest the build just generated.
+            plan.Add(PowerShell(
+                $"$n = ([xml](Get-Content '{GetAppxManifestPath(settings)}')).Package.Identity.Name;"
+                + " $p = (Get-AppxPackage -Name $n).PackageFamilyName;"
+                + " if (-not $p) { throw ('Not registered: ' + $n) };"
+                + @" Start-Process ('shell:AppsFolder\' + $p + '!App')"));
             break;
         case AppPlatform.Windows when GetArtifactPath(settings) is { } exePath:
             plan.Add(new RunStep(exePath, []) { RequiredPath = exePath });
@@ -124,6 +144,17 @@ internal static class MauiApp
             AppPlatform.Windows => Path.Combine(GetOutputDir(settings), "ActualChat.exe"),
             _ => null,
         };
+
+    private static RunStep PowerShell(string command)
+        // Arguments reach the process unescaped (see CommandPlan.RunStepAsync), so -Command is
+        // quoted here rather than at every call site - keep double quotes out of the script itself
+        => new(PowerShellExe, ["-NoProfile", "-NonInteractive", "-Command", $"\"{command}\""]);
+
+    private static string GetAppxManifestPath(AppSettings settings)
+        // AppX/ is the MSIX layout MSBuild stages, and the one VS and Rider deploy; the manifest in
+        // the output root looks the same but registering it breaks the WebView's own content.
+        // Absolute, because Add-AppxPackage rejects a relative path.
+        => Path.GetFullPath(Path.Combine(GetOutputDir(settings), "AppX", "AppxManifest.xml"));
 
     private static string GetAppId(AppSettings settings)
         => settings.IsDev ? "chat.actual.dev.app" : "chat.actual.app";

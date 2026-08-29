@@ -71,11 +71,19 @@ b
 | `--simulator` | iOS only — simulator instead of a connected device |
 | `--publish` / `--no-publish` | force `dotnet publish` / `dotnet build` |
 | `--no-web` | skip the npm web asset build (much faster when only C# changed) |
+| `--no-package` | Windows only — unpackaged build (`WindowsPackageType=None`) |
 | `-l`, `--launch` / `--no-launch` | override whether it launches |
 
 The three commands differ only in how far they go; `--launch` implies install, so
 `b app build android -l` == `b app run android`, and `b app run android
 --no-launch` == `b app install android`.
+
+Windows builds are **packaged (MSIX)** by default — that's what gives the app
+toast notifications, the `voxt-dev://` protocol handler and the startup task.
+`--no-package` restores the old unpackaged run, which launches `ActualChat.exe`
+directly and therefore blocks until the app exits; the packaged path returns as
+soon as the app is activated. See
+[`docs/build-tool.md` → Windows](../../docs/build-tool.md#windows).
 
 `app pack` takes only `<PLATFORM>`, `--prod` and `--aot`.
 

@@ -56,6 +56,10 @@ public class AppSettings : PlanSettings
     [Description("Skip the npm web asset build")]
     public bool MustSkipWebBuild { get; init; }
 
+    [CommandOption("--no-package")]
+    [Description("Windows only: build the unpackaged app (WindowsPackageType=None) instead of an MSIX one")]
+    public bool MustNotPackage { get; init; }
+
     [CommandOption("-l|--launch")]
     [Description("Launch the app after installing it (the default for 'app run')")]
     public bool MustLaunch { get; init; }
@@ -66,8 +70,11 @@ public class AppSettings : PlanSettings
 
     public string ResolvedConfiguration => IsRelease ? "Release" : Configuration;
     public bool IsDev => !IsProd;
-    // Android is always published: that's where the signed APK comes from, in Debug too.
+    public bool IsWindowsPackaged
+        // Native AOT publishes a self-contained exe rather than an MSIX, so it's never packaged
+        => Platform == AppPlatform.Windows && !MustNotPackage && !UseNativeAot;
     public bool MustUsePublish
+        // Android is always published: that's where the signed APK comes from, in Debug too.
         => !MustNotPublish
             && (MustPublish
                 || Platform == AppPlatform.Android
@@ -89,6 +96,8 @@ public class AppSettings : PlanSettings
             return ValidationResult.Error($"Launching the {Platform} app needs macOS.");
         if (UseSimulator && Platform != AppPlatform.Ios)
             return ValidationResult.Error("--simulator is only supported for the ios platform.");
+        if (MustNotPackage && Platform != AppPlatform.Windows)
+            return ValidationResult.Error("--no-package is only supported for the windows platform.");
         if (UseNativeAot && Platform is AppPlatform.MacOs)
             return ValidationResult.Error("--aot is not wired for the macos platform.");
         if (!OrdinalIgnoreCaseEquals(ResolvedConfiguration, "Debug")
