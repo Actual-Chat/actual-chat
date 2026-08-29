@@ -28,12 +28,14 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
         // Set by TryCreateGraph: WinRT already names the failure, and it's the only place
         // AccessDenied can be told apart from a device that simply isn't there.
         var failure = RecorderStartOutcome.Started;
-        var apm = new AudioProcessingModule(
-            new StreamConfig(Constants.Audio.RecordingSampleRate, Constants.Audio.Channels),
-            new StreamConfig(Constants.Audio.RecordingSampleRate, Constants.Audio.Channels));
         var apmTap = ApmTap.TryStart(Log);
 
+        // Constructing it loads webrtc-apm, so a missing or wrong-architecture native throws here
+        AudioProcessingModule? apm = null;
         try {
+            apm = new AudioProcessingModule(
+                new StreamConfig(Constants.Audio.RecordingSampleRate, Constants.Audio.Channels),
+                new StreamConfig(Constants.Audio.RecordingSampleRate, Constants.Audio.Channels));
             apm.Configure(cfg => cfg
                 .EnableEchoCanceller(true)
                 .EnableNoiseSuppression(true, NoiseSuppressionLevel.Moderate)
@@ -42,7 +44,7 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                 .SetPipeline(false, false));
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Failed to configure AudioProcessingModule; proceeding without APM features");
+            Log.LogWarning(e, "Failed to set up AudioProcessingModule; proceeding without APM features");
         }
 
         var micEncoding = AudioEncodingProperties.CreatePcm(
@@ -203,26 +205,30 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                             ? loopSpan
                             : emptyMemory.Span;
 
-                        apm.AnalyzeReverseStream(loopIn);
+                        if (apm == null)
+                            micIn.CopyTo(outSpan); // No APM: raw capture beats no capture
+                        else {
+                            apm.AnalyzeReverseStream(loopIn);
 
-                        // The APM clears the stream delay after every ProcessStream, so it has to be
-                        // re-stated per frame. It's the buffering delay between the reverse frame and
-                        // the capture frame carrying its echo - i.e. the mic hold-back above.
-                        apm.SetDelay(MicDelayMs);
+                            // The APM clears the stream delay after every ProcessStream, so it has to
+                            // be re-stated per frame. It's the buffering delay between the reverse
+                            // frame and the capture frame carrying its echo - i.e. the mic hold-back.
+                            apm.SetDelay(MicDelayMs);
 
-                        // The APM's analog level is 0..255, the system scalar is 0..1
-                        var currentLevel = Math.Clamp((int)MathF.Round(currentVolume * 255f), 0, 255);
-                        apm.SetAnalogLevel(currentLevel);
-                        apm.ProcessStream(micIn, outSpan);
+                            // The APM's analog level is 0..255, the system scalar is 0..1
+                            var currentLevel = Math.Clamp((int)MathF.Round(currentVolume * 255f), 0, 255);
+                            apm.SetAnalogLevel(currentLevel);
+                            apm.ProcessStream(micIn, outSpan);
 
-                        var recommendedLevel = apm.GetRecommendedAnalogLevel();
-                        var recommendedVolume = Math.Clamp(Math.Clamp(recommendedLevel, 0, 255) / 255f, 0f, 1f);
-                        if (Math.Abs(currentVolume - recommendedVolume) > 0.02f) {
-                            endpointVolume?.MasterVolumeLevelScalar = recommendedVolume;
-                            // OnVolumeChanged lands asynchronously, so without this the same write
-                            // repeats on every 10 ms frame until the notification catches up
-                            currentVolume = recommendedVolume;
-                            lastAppliedVolume = recommendedVolume;
+                            var recommendedLevel = apm.GetRecommendedAnalogLevel();
+                            var recommendedVolume = Math.Clamp(Math.Clamp(recommendedLevel, 0, 255) / 255f, 0f, 1f);
+                            if (Math.Abs(currentVolume - recommendedVolume) > 0.02f) {
+                                endpointVolume?.MasterVolumeLevelScalar = recommendedVolume;
+                                // OnVolumeChanged lands asynchronously, so without this the same write
+                                // repeats on every 10 ms frame until the notification catches up
+                                currentVolume = recommendedVolume;
+                                lastAppliedVolume = recommendedVolume;
+                            }
                         }
 
                         apmTap?.Add(micIn, loopIn, outSpan, hasLoopback);
