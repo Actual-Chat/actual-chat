@@ -6,6 +6,9 @@
 // report a Validation_* key directly instead, so they live in Strings.*.json.
 // An Error_* value that no longer matches the code silently falls back to AI translation -
 // ServerErrorLocalizationTest is what keeps the two in sync.
+// An end user reads these in a toast, one at a time and with no surrounding context, so each
+// has to be a complete sentence that names what failed and, where it can, what to do instead.
+// Role names (Owner, Moderator) must match the Members_* keys in Strings.*.json.
 // TODO(FC): the Validation_* entries here are temporary - see MessageIndex. The .NET 11 pipeline
 // resolves IStringLocalizerFactory per call as of preview.7, so once the SDK is bumped off
 // preview.6 the BCL attributes localize forwards too and only Error_ strings remain here.

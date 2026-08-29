@@ -1,4 +1,28 @@
+// Voxt's UI strings, addressed by key. Server errors and validation messages live in the
+// companion Messages.*.json; a key belongs to exactly one of the two catalogs.
+//
+// This file is JSONC - '//' comments and trailing commas are allowed. The comments below say
+// where each group appears on screen and what it is really about, because a translator
+// cannot recover that from the value alone. Keep a new key inside the group it belongs to.
+//
+// What constrains a translation:
+//   {0}, {1}     Placeholders. Every one the English value has must survive; a _Format
+//                suffix on the key marks a value that carries them.
+//   a|b|c        Plural forms of one key, ordered one|few|many. List only as many as the
+//                language actually has - docs/i18n.md has the per-language rules.
+//   _Prefix / Target / _Suffix
+//                One sentence split around markup - an emphasized span or a child
+//                component. Either side may be empty where word order demands it, and any
+//                {0} belongs to the _Prefix part.
+//   Leading and trailing spaces are load-bearing wherever a fragment is concatenated.
+//
+// docs/i18n.md carries the rest: the product terms (Place, Public/Private, Join, cookies),
+// the politeness register each language uses, and how bs/cnr/hr/sr/max are derived.
 {
+  // Buttons and menu labels reused across the whole app, so each has to stand alone with no
+  // surrounding sentence. Common_Listen and Common_Mute act on a chat's live audio and are
+  // verbs, not media-player nouns. Further Common_* groups appear lower down, each next to
+  // the screen that introduced it.
   "Common_Save": "Save",
   "Common_Cancel": "Cancel",
   "Common_Close": "Close",
@@ -21,6 +45,9 @@
   "Common_Start": "Start",
   "Common_Stop": "Stop",
 
+  // The Settings modal: its title and the nav entries down its left side, each of which opens
+  // one of the settings pages grouped below. Settings_UILanguage* is the picker that chooses
+  // the language everything in this file is displayed in.
   "Settings_Title": "Settings",
   "Settings_Language": "Language",
   "Settings_UILanguage": "UI language",
@@ -41,6 +68,8 @@
   "Settings_LogOut": "Log out",
   "Settings_Quit_Format": "Quit {0}",
 
+  // Settings > User Interface. "Walk-through" means the Bubble_* coach marks and "Onboarding"
+  // the Onboarding_* first-run steps - two different things, and each entry resets its own.
   "UserInterface_Font": "Font",
   "UserInterface_Theme": "Theme",
   "UserInterface_WalkThrough": "Walk-through",
@@ -52,6 +81,8 @@
   "UserInterface_Chats": "Chats",
   "UserInterface_ColorizeAuthorNames": "Colorize author names",
 
+  // Settings > Your Account - the summary rows. The time zone is the one the digest email is
+  // scheduled against, which is why the label says so.
   "YourAccount_Information": "Information",
   "YourAccount_Name": "Name",
   "YourAccount_UserLink": "User link",
@@ -65,6 +96,8 @@
   "YourAccount_ShareYourContact": "Share your contact",
   "YourAccount_MyAvatars": "My avatars",
 
+  // Settings > Application - the server connection row and the telemetry consent toggle with
+  // the paragraph explaining it. {0} is the app name.
   "AppSettings_Connection": "Connection",
   "AppSettings_TelemetryDataCollection": "Telemetry Data Collection",
   "AppSettings_AllowTelemetry": "Allow Telemetry Data Collection",
@@ -72,11 +105,16 @@
   "AppSettings_TelemetryDisallowed": "Disallowed",
   "AppSettings_TelemetryDescription_Format": "Help us to identify user experience issues faster by allowing {0} to collect and process data on certain in-app events, such as critical user actions, errors, and crashes.",
 
+  // The theme picker in Settings > User Interface. "Link Water" is a colour name: a proper
+  // noun, not a description.
   "ThemeSettings_Light": "Light",
   "ThemeSettings_LightLinkWater": "Light, Link Water accent",
   "ThemeSettings_Dark": "Dark",
   "ThemeSettings_MatchSystem": "Match system theme",
 
+  // Settings > Voice & Transcription. These are the *spoken* languages a user's speech is
+  // transcribed from - unrelated to the UI language above. ListeningLinger_* fills the
+  // dropdown for how long listening continues after a conversation ends.
   "Transcription_Languages": "Languages",
   "Transcription_PrimaryLanguage": "Primary language",
   "Transcription_SecondLanguage": "2nd language",
@@ -94,6 +132,7 @@
   "ListeningLinger_30Seconds": "30 seconds",
   "Transcription_LanguageDetected_Format": "Detected transcription language for chat '{0}' is {1}.",
 
+  // Settings > Sessions - the signed-in devices and the sign-out actions.
   "Sessions_CurrentSession": "Current Session",
   "Sessions_Current": "Current",
   "Sessions_Sessions": "Sessions",
@@ -106,6 +145,8 @@
   "Sessions_SignOutAllConfirm": "This will sign out all other sessions. Continue?",
   "Sessions_SignOutAllTitle": "Sign out all?",
 
+  // Settings > API Keys - the key list. Its create form and reveal page are the two groups
+  // after this one.
   "ApiKeys_CreateApiKey": "Create API Key",
   "ApiKeys_YourApiKeys": "Your API Keys",
   "ApiKeys_Deactivated": "Deactivated",
@@ -116,6 +157,8 @@
   "ApiKeys_DeactivateAllConfirm": "This will deactivate all your API keys. Continue?",
   "ApiKeys_DeactivateAllTitle": "Deactivate all API keys?",
 
+  // Settings > Developer tools. These toggles are localized, but the diagnostics panels they
+  // open are deliberately left in English - see docs/i18n.md.
   "DevTools_Host": "Host",
   "DevTools_EarlyAccess": "Early Access",
   "DevTools_EarlyAccessFeatures": "Early access features",
@@ -131,10 +174,14 @@
   "Diagnostics_Video": "Video diagnostics",
   "Diagnostics_Audio": "Audio diagnostics",
 
+  // Settings > Documents - links to the legal pages. The documents themselves stay English.
   "Documents_PrivacyPolicy": "Privacy Policy",
   "Documents_TermsConditions": "Terms & Conditions",
   "Documents_Cookies": "Cookies",
 
+  // The rendering-mode picker in Settings > Developer tools. "WebAssembly" and "Server-Side
+  // Rendering" are technical terms - word them the way developer documentation in this
+  // language does.
   "RenderMode_Title": "Rendering Mode",
   "RenderMode_Auto": "Auto",
   "RenderMode_AutoDescription": "Starts in Server-Side Rendering mode and loads WebAssembly Client in the background. Switches to WebAssembly Client once it's loaded.",
@@ -143,27 +190,38 @@
   "RenderMode_Wasm": "WebAssembly Client",
   "RenderMode_WasmDescription": "Works best on more powerful devices; more responsive, requires less bandwidth, but downloads ~10MB once you enable this mode.",
 
+  // The time-zone picker, reached from Settings > Your Account and from onboarding.
   "TimeZone_SelectTitle": "Select time zone",
   "TimeZone_Question": "What is your time zone?",
   "TimeZone_Updated": "Time zone has been updated",
 
+  // Settings > Application on the Windows desktop app: the "start when I log on" toggle and
+  // the three reasons it can be unavailable. "Task Manager" and "Startup" name Windows' own
+  // UI, so use the wording Windows ships in this language.
   "NativeApp_AutoStart": "Auto-start on log-on",
   "NativeApp_AutoStartEnabledByPolicy": "Auto-start is enabled by group/machine policy.",
   "NativeApp_AutoStartDisabledByPolicy": "Auto-start is disabled by group/machine policy or is not supported on this device.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "{0} auto-start is disabled in Task Manager. You can re-enable it in its Startup tab.",
 
+  // The email editor page in Settings > Your Account.
   "Email_Title": "Email",
   "Email_Label": "Email",
 
+  // The API key creation form. ApiKeyCreate_Placeholder is the example text inside the empty
+  // Name field, not a value.
   "ApiKeyCreate_Title": "Create API Key",
   "ApiKeyCreate_Name": "Name",
   "ApiKeyCreate_Placeholder": "My API key",
   "ApiKeyCreate_ExpiresInDays": "Expires in (days)",
   "ApiKeyCreate_Create": "Create",
 
+  // The one-time page that shows a freshly created API key.
   "ApiKeyReveal_CopyWarning": "Copy this key now. It will not be shown again.",
   "ApiKeyReveal_Title": "Your new API key",
 
+  // The chat list in the left panel: filter tabs, sort menu, the Active Chats section, and the
+  // preview line under a chat's title. ChatList_Talking and ChatList_Live_Format render on
+  // that preview line while someone is speaking.
   "ChatList_TabAll": "All",
   "ChatList_TabGroups": "Groups",
   "ChatList_TabPeople": "People",
@@ -182,6 +240,7 @@
   "ChatList_SharedLiveLocation": "Shared live location",
   "ChatList_SentLocation": "Sent a location",
 
+  // The context menu of a chat list item - long press on mobile, right click on desktop.
   "ChatMenu_AddMembers": "Add members",
   "ChatMenu_EditContact": "Edit contact",
   "ChatMenu_LeaveChat": "Leave chat",
@@ -196,9 +255,13 @@
   "ChatMenu_StopRecording": "Stop recording",
   "ChatMenu_RemoveFromActiveChats": "Remove from Active Chats",
 
+  // The toast shown when an action fails and carries no better message of its own.
   "ErrorToast_ActionFailed": "Action failed!",
   "ErrorToast_UnknownError": "Unknown error.",
 
+  // The chat transcript: empty-chat placeholders, the scroll buttons, and per-message chrome.
+  // ChatView_CreatedBy, ChatView_Notified and ChatView_And are fragments assembled around
+  // author names, which is why they are lowercase and read as sentence middles.
   "ChatView_ScrollUp": "Scroll chat up",
   "ChatView_ScrollDown": "Scroll chat down",
   "ChatView_NoChatSelected": "Select a chat to start messaging.",
@@ -222,6 +285,7 @@
   "ChatView_PrevSearchResult": "Navigate to previous search result",
   "ChatView_NextSearchResult": "Navigate to next search result",
 
+  // The grey system lines inside the transcript - someone joined, left, or asked for attention.
   // The first three follow the author name, which renders as a separate mention node:
   // keep the leading space and word them so the name reads as the sentence's subject.
   "SystemEntry_MemberJoined": " has joined the chat.",
@@ -229,6 +293,9 @@
   "SystemEntry_AttentionRequested": " asked for attention.",
   "SystemEntry_Someone": "Someone",
 
+  // The bar that replaces the message editor when you cannot post: a read-only chat, a block in
+  // either direction, or a chat you have not joined yet. Most of these are fragments wrapped
+  // around a Join button, so they end without punctuation.
   "ChatFooter_ReadOnly": "This chat is read-only",
   "ChatFooter_YouBlockedUser": "You blocked this user.",
   "ChatFooter_Unblock": "Unblock",
@@ -242,6 +309,9 @@
   "ChatFooter_JoinAnonymously": "Join anonymously",
   "ChatFooter_ToJoinThisChat": "to join this chat",
 
+  // The welcome block at the top of an empty chat. ChatWelcome_Notes is the built-in personal
+  // Notes chat; ChatWelcome_PublicLink and _PrivateJoinLink label a URL, so they keep the
+  // borrowed public/private pair rather than the open/closed one used for access modes.
   "ChatWelcome_Notes": "Welcome! You can store your notes in this chat, including recorded ones.",
   "ChatWelcome_ShareContact_Prefix": "To share ",
   "ChatWelcome_ShareContact_Suffix": "'s contact, use:",
@@ -250,6 +320,8 @@
   "ChatWelcome_PrivateJoinLink": "Private join link",
   "ChatWelcome_PublicLink": "Public link",
 
+  // The context menu on a message, and the same menu opened on an attachment, a file, an audio
+  // file or a link preview.
   "MessageMenu_Reply": "Reply",
   "MessageMenu_CopyText": "Copy text",
   "MessageMenu_CopyLink": "Copy link",
@@ -276,15 +348,20 @@
   "MessageMenu_PinMessage": "Pin message",
   "MessageMenu_UnpinMessage": "Unpin message",
 
+  // The context menu of a conversation card - an AI-summarized run of messages in the
+  // transcript. "Re-summarize" regenerates that summary.
   "ConversationMenu_Expand": "Expand conversation",
   "ConversationMenu_Collapse": "Collapse conversation",
   "ConversationMenu_ReSummarize": "Re-summarize",
   "ConversationMenu_CopySummary": "Copy summary",
   "ConversationMenu_CopySummaryLink": "Copy summary link",
 
+  // The context menu of a thread card in the transcript.
   "ThreadMenu_GoToThread": "Go to thread",
   "ThreadMenu_CopyThread": "Copy thread",
 
+  // A location posted into a chat. LocationMessage_Place is the plain geographic word for a pin
+  // on a map - NOT the product term Place, which docs/i18n.md rules on separately.
   "LocationMessage_Live": "Live location",
   "LocationMessage_Static": "Location",
   "LocationMessage_Place": "Place",
@@ -293,6 +370,8 @@
   "LocationMessage_DistanceFromYou_Format": "{0} from you",
   "LocationMessage_ShareBack": "Share your location back",
 
+  // The message editor: its attachment menu, the attachment list, and the prompt offered when a
+  // very large text is pasted.
   "Editor_ChoosePhoto": "Choose Photo",
   "Editor_SelectVideo": "Select Video",
   "Editor_AddEmoji": "Add Emoji",
@@ -308,6 +387,9 @@
   "Editor_KeepAsText": "Keep as text",
   "Editor_DropFilesToAttach": "Drop files to attach",
 
+  // "Alert" is the notify-everyone action in the message editor. An alert is loud and behaves
+  // like an incoming call, which is why this whole group reads as a warning - keep one word for
+  // it throughout, and keep it distinct from an ordinary notification.
   "Alert_Alert_Format": "Alert {0}",
   "Alert_TargetEveryone": "everyone",
   "Alert_TargetCompanion": "companion",
@@ -332,6 +414,8 @@
   "Alert_CallAll": "Call all",
   "Alert_ConfirmEveryone": "Are you sure you want to alert everyone?",
 
+  // Multi-select in the transcript: the header that replaces the chat header once messages are
+  // selected, and the forward and delete flows started from it.
   "Selection_Cancel": "Cancel selection",
   "Selection_Messages": "{0} message|{0} messages",
   "Selection_ConvertToThread": "Convert to thread",
@@ -349,6 +433,7 @@
   "Selection_ForwardSubmit": "Send",
   "Selection_ForwardSearchPlaceholder": "Who would you like to share with",
 
+  // The navbar and the logo menu along the left edge.
   "Navbar_NewChat": "New Chat",
   "Navbar_NewPlace": "New Place",
   "Navbar_Chats": "Chats",
@@ -359,15 +444,20 @@
   "Navbar_SignIn": "Sign in",
   "Navbar_TestPages": "Test Pages",
 
+  // Headers and buttons in the left panel, outside the chat list itself.
   "LeftPanel_AddNewMembers": "Add new members",
   "LeftPanel_JoinPlace": "Join",
   "LeftPanel_PublicChatsAndPlaces": "Public chats & places",
   "LeftPanel_Show": "Show",
 
+  // The empty state of a search result list.
   "NoResults_Title": "No results.",
   "NoResults_TryAnotherRequest": "Try another request.",
   "NoResults_SearchOutsidePlace": "Try searching outside the place.",
 
+  // The right-hand chat panel: its tabs and the member list inside it.
+  // RightPanel_GroupTitle_Format composes a heading like "Owners - 3", and the
+  // RightPanel_HiddenMembers_* pair wraps a member count in one sentence.
   "RightPanel_TabCall": "Call",
   "RightPanel_TabMembers": "Members",
   "RightPanel_TabThreads": "Threads",
@@ -389,6 +479,8 @@
   "RightPanel_GroupOffline": "Offline",
   "RightPanel_GroupUnreported": "Unreported",
 
+  // The search filter menus in the left panel - where to search, and what kind of result to
+  // return.
   "Search_LocationTitle": "Search location",
   "Search_LocationAnywhere": "Anywhere",
   "Search_LocationInChat": "In this chat",
@@ -405,6 +497,8 @@
   "Search_RecentSearches": "Recent searches",
   "Search_RecentlyViewed": "Recently viewed",
 
+  // The player for an audio attachment, and the prompt shown when playing one would interrupt a
+  // live conversation.
   "AudioPlayer_Backward": "Backward",
   "AudioPlayer_Forward": "Forward",
   "AudioPlayer_Seek": "Seek",
@@ -413,6 +507,8 @@
   "AudioPlayer_InterruptMany_Format": "Playing this audio will stop {0} active conversations.",
   "AudioPlayer_Confirm": "Confirm",
 
+  // The Call tab of the right panel: the live member list and the reasons a mute is refused.
+  // More Call_* groups follow further down.
   "Call_NoActiveCall": "No active call.",
   "Call_Dialing": "Dialing…",
   "Call_Rules": "Rules",
@@ -439,21 +535,27 @@
   "Call_CantMuteOwner": "You can't turn off an Owner's microphone.",
   "Call_CantMuteOthers": "Only the call host, a chat Owner or Moderator can turn off someone's microphone.",
 
+  // The per-chat notification mode menu in the right panel.
   "NotificationMode_Title": "Notifications:",
   "NotificationMode_AllMessages": "All messages",
   "NotificationMode_ImportantOnly": "Important only",
   "NotificationMode_Muted": "Muted",
 
+  // Inline validation under the custom-link field of a chat or a place.
   "Alias_LinkAvailable": "This link is available.",
   "Alias_LinkInUse": "This link is already in use.",
   "Alias_PlaceLinkRequired": "Custom place link should be set first.",
 
+  // The account editor modal. Common_Optional is appended to a field label, so its leading
+  // space is part of the value.
   "AccountEditor_Title": "Edit account",
   "AccountEditor_DeleteAccount": "Delete account",
   "Common_Optional": " (optional)",
   "Common_Verified": "Verified",
   "Common_Unverified": "Unverified",
 
+  // Form validation messages, rendered under the field they belong to. These are looked up by
+  // key from ActualChat.Core rather than through a typed member.
   "Validation_EmailInvalid": "Email address is invalid.",
   "Validation_PhoneInvalidCharacters": "Phone number contains invalid characters.",
   "Validation_PhoneTooShort": "Phone number is too short.",
@@ -462,6 +564,8 @@
   "Validation_AliasTooShort": "Custom link is too short.",
   "Validation_AliasInvalidCharacters": "Custom link should contain only 0-9, a-Z, - and _.",
 
+  // Field labels shared by the form modals - new chat, new place, new thread, and the account
+  // and avatar editors.
   "Form_ChatTitle": "Chat title",
   "Form_ChatDescription": "Chat description",
   "Form_ThreadTitle": "Thread title",
@@ -478,6 +582,9 @@
   "Form_Phone": "Phone",
   "Form_CustomLink": "Custom link",
 
+  // The delete-account confirmation. Every sentence is split so its middle renders emphasized.
+  // DeleteAccount_Proposal_* wraps the word the user has to type back, and that word stays the
+  // English "DELETE" in every language because it is compared against their input.
   "DeleteAccount_Title": "Delete your account",
   "DeleteAccount_Question_Prefix": "Are you sure you want to ",
   "DeleteAccount_QuestionTarget": "delete your account",
@@ -491,6 +598,10 @@
   "DeleteAccount_Proposal_Prefix": "Type ",
   "DeleteAccount_Proposal_Suffix": " below to confirm you want to permanently delete your account and everything associated with it.",
 
+  // The "microphone access is blocked" help, one screen per browser and platform; the Guide_*
+  // keys are the heading that selects one. Every step below names UI inside someone else's
+  // product, so quote what Chrome, Edge, Safari, Android or iOS actually calls that item in
+  // this language instead of translating the English literally.
   "MicGuide_Title": "Microphone access is blocked, but you can fix this!",
   "MicGuide_BlockedImageAlt": "Microphone access is blocked",
   "MicGuide_Intro_Format": "{0} requires microphone access to record and transcribe your messages.",
@@ -502,6 +613,7 @@
   "Guide_EnableInMobileSafari": "To enable it in Safari or any other browser on iOS:",
   "Guide_EnableInPhoneSettings": "To enable it in your phone settings:",
 
+  // Desktop browser steps: Chrome, then Edge, then Safari.
   "MicGuide_WebChromeStep1": "Click \"More\" button in the upper right corner, and then click \"Settings\"",
   "MicGuide_WebChromeStep2": "Choose \"Privacy and security\" on the left side",
   "MicGuide_WebChromeStep3": "Select \"Site settings\"",
@@ -519,6 +631,7 @@
   "MicGuide_WebSafariStep3": "Select \"Microphone\" on the left",
   "MicGuide_WebSafariStep4_Format": "Change \"{0}\" entry's value from \"Deny\" to \"Allow\" or \"Ask\"",
 
+  // Mobile browser steps, then the steps for the native Android and iOS apps.
   "MicGuide_MobileChromeStep1": "Tap on \"⋮\"",
   "MicGuide_MobileChromeStep2": "Click \"Settings\"",
   "MicGuide_MobileChromeStep3": "Open \"Site settings\"",
@@ -545,6 +658,8 @@
   "MicGuide_IosAppStep2_Format": "Scroll to Apps and open {0}",
   "MicGuide_IosAppStep3_Format": "Allow {0} app to record audio",
 
+  // The fallback shown when recording fails for an unknown reason, plus the troubleshooter
+  // modal's title.
   "MicGuide_UnknownTitle_Format": "{0} is unable to start audio recording",
   "MicGuide_UnknownIntro": "The most likely cause is that the microphone access permission isn't granted, although it could also be due to an issue on our end. To address this problem:",
   "MicGuide_UnknownReload_Prefix": "",
@@ -554,6 +669,7 @@
   "MicGuide_UnknownCheckInternet": "If the above steps are not effective, please verify whether the app has internet access.",
   "MicGuide_TroubleshooterTitle": "Recording troubleshooter",
 
+  // The location-permission help, mirroring the microphone guide above screen for screen.
   "Common_Later": "Later",
   "LocationGuide_ModalTitle": "Location access",
   "LocationGuide_Title": "Location access is blocked, but you can fix this!",
@@ -562,6 +678,7 @@
   "LocationGuide_AndroidAppInstructions_Format": "Tap \"Settings\" below to open {0} settings, then go to \"Permissions\" > \"Location\" and allow location access.",
   "LocationGuide_IosAppInstructions_Format": "Tap \"Settings\" below to open {0} settings, then tap \"Location\" and allow location access.",
 
+  // Desktop browser steps for location access.
   "LocationGuide_WebChromeStep1": "Click \"More\" button in the upper right corner, and then click \"Settings\"",
   "LocationGuide_WebChromeStep2": "Choose \"Privacy and security\" on the left side",
   "LocationGuide_WebChromeStep3": "Select \"Site settings\"",
@@ -579,6 +696,7 @@
   "LocationGuide_WebSafariStep3": "Select \"Location\" on the left",
   "LocationGuide_WebSafariStep4_Format": "Change \"{0}\" entry's value from \"Deny\" to \"Allow\" or \"Ask\"",
 
+  // Mobile browser steps for location access.
   "LocationGuide_MobileChromeStep1": "Tap on \"⋮\"",
   "LocationGuide_MobileChromeStep2": "Click \"Settings\"",
   "LocationGuide_MobileChromeStep3": "Open \"Site settings\"",
@@ -596,6 +714,7 @@
   "LocationGuide_MobileSafariStep2": "Go to \"Settings for websites\" (section) > Location",
   "LocationGuide_MobileSafariStep3": "Change \"Location access on all websites\" to \"Ask\"",
 
+  // More shared button labels, these introduced by the banners and modals that follow.
   "Common_Block": "Block",
   // "Join" in the membership sense - becoming a member of a Place or chat.
   // For entering a live call use Call_Join, which is a different verb in some
@@ -611,6 +730,11 @@
   "Common_Publish": "Publish",
   "Common_Skip": "Skip",
 
+  // The banners that stack above a chat, and the connection-state strip. The _Prefix / Target /
+  // _Suffix trios wrap a link inside one sentence and {0} is the app name.
+  // Banner_Connected through Reconnect_Title are connection states; DemandInteraction_* is the
+  // modal asking for one tap, because the browser will not let a pending operation continue
+  // without a user gesture.
   "Banner_OnlyPersonInChat": "You are the only person in this chat!",
   "Banner_AddMembers": "Add members",
   "Banner_NotInContacts": "This user is not in your contact list yet",
@@ -645,6 +769,9 @@
   "Banner_CallNoAnswer": "No answer",
   "Banner_CancelCall": "Cancel call",
 
+  // "Bubbles" are the coach-mark tooltips of the first-run walk-through: shown once, then
+  // dismissed. Bubble_Counter_Format is the "3 of 7" step counter. Each is a title plus a short
+  // body or bullet list rendered in a small floating card, so length matters here.
   "Bubble_Counter_Format": "{0} of {1}",
   "Bubble_ChatListTabsTitle": "Chats and contacts",
   "Bubble_ChatListTabsItem1": "Use tabs to see only personal or group chats",
@@ -673,6 +800,8 @@
   "Bubble_RecordButtonTitle": "\"Record\" button",
   "Bubble_RecordButtonBody": "Tap this button to start or stop recording + listening. When you record, we stream your voice and instantly transcribe it into text. Recording automatically stops if you remain silent for 30 seconds.",
 
+  // More walk-through bubbles. The privacy pair is the app speaking in its own voice, so it
+  // reads as prose rather than as UI chrome.
   "Bubble_PrivacyTitle": "Your privacy is crucial for us",
   "Bubble_PrivacyBelieve_Prefix": "We believe that ",
   "Bubble_PrivacyBelieveTarget": "delivering the best communication experience is the best way for us to grow.",
@@ -696,6 +825,8 @@
   "Bubble_VoiceSettingsBody1": "Click here to change your transcription language or to disable voice streaming.",
   "Bubble_VoiceSettingsBody2": "Voice settings are stored on a per-chat basis, so you normally need to change them just once for a given chat.",
 
+  // The first-run onboarding, shown once after sign-up: telemetry consent, permissions, the
+  // languages the user speaks, and email or phone verification. {0} is the app name.
   "Onboarding_StartMessaging": "Start messaging",
   "Onboarding_Welcome_Format": "Welcome to {0}!",
   "Onboarding_Telemetry_Prefix": "{0} collects certain telemetry data, such as critical user actions preceding errors and crashes, to help us fix user experience issues faster. The data is currently processed by ",
@@ -718,6 +849,8 @@
   "Onboarding_EnterCode": "Enter code",
   "Onboarding_VerifyPhoneText_Format": "Please verify your phone number to be able to sign in with it and to allow your friends to find your account in their list of contacts on {0}.",
 
+  // The rest of onboarding: the suggested starter chats, the four tutorial slides, phone and
+  // email collection, and the avatar step.
   "Onboarding_CreateChatsTitle": "Create some chats!",
   "Onboarding_ChatFamily": "Family",
   "Onboarding_ChatFamilyDescription": "Chat with your family members",
@@ -745,6 +878,9 @@
   "Onboarding_NameAndAvatar": "Your user name and avatar",
   "Onboarding_GenerateAvatar": "Generate avatar",
   "Onboarding_UploadPhoto": "Upload your photo",
+
+  // The rationale shown above each OS permission prompt. The system dialog itself is not ours
+  // and stays in the OS language; only this explanation is translated.
   "Permission_Microphone": "Microphone",
   "Permission_MicrophoneRationale_Format": "Live-transcribed voice messaging is where {0} shines, but this feature won't work without microphone access.",
   "Permission_Notifications": "Notifications",
@@ -752,6 +888,8 @@
   "Permission_BackgroundActivity": "Background activity",
   "Permission_BackgroundActivityRationale_Format": "Keeps calls ringing when Android tries to put {0} to sleep.",
 
+  // The profile card opened by tapping an author, and the owner/moderator actions on it. Owner
+  // and Moderator are role names - keep them capitalized and identical to the Members_* keys.
   "Account_UserProfile": "User profile",
   "Account_YourProfile": "Your profile",
   "Account_AnonymousProfile": "Anonymous profile",
@@ -774,6 +912,8 @@
   "Account_ModeratorCaption": "Moderators can delete messages, manage calls and members, and edit this chat - but not delete it.",
   "Account_RemoveFromGroup": "Remove from group",
 
+  // Avatars: choosing one for a chat, the avatar editor, the image cropper, and the peer
+  // contact editor. An avatar is a per-chat identity - a "look", not merely a picture.
   "AvatarSelect_ChooseTitle": "Choose your avatar",
   "AvatarSelect_RevealTitle": "Reveal yourself",
   "AvatarSelect_ChangeTitle": "Change your avatar",
@@ -811,6 +951,9 @@
   "PeerContact_BlockCaption": "They won't be able to message or call you",
   "PeerContact_Unblock": "Unblock",
 
+  // Chats and Places: their settings modals, member management, type pickers, and the
+  // copy-a-chat-into-a-place flow. Place is a product term and Public/Private an access mode;
+  // docs/i18n.md rules on both per language. Several values here carry plural forms.
   "Share_Contact": "Share contact",
   "Share_ContactOf_Format": "Share {0}'s contact",
   "Share_Chat": "Share chat",
@@ -863,6 +1006,8 @@
   "Place_PublishChatConfirm_Format": "You are about to publish copied chat '{0}' from place '{1}'. Do you want to proceed?",
   "Place_PublishChatSuccess_Format": "Chat '{0}' was successfully published.",
   "Place_NewPlace": "New place",
+
+  // Role names, reused everywhere a member is listed.
   "Members_Owner": "Owner",
   "Members_Moderator": "Moderator",
   "Members_YourProfile": "Your profile",
@@ -872,6 +1017,9 @@
   "Chat_OpenRightPanel": "Open right panel",
   "AddMember_Title": "Add members",
 
+  // A few more shared labels - Common_Today and Common_Yesterday are the day separators in the
+  // transcript - then the video call join modal with its camera preview and permission hints.
+  // Call_IncomingFrom ends with a space because the caller's name follows it.
   "Common_Pause": "Pause",
   "Common_Hide": "Hide",
   "Common_Open": "Open",
@@ -901,6 +1049,7 @@
   "Call_TabMap": "Map",
   "Call_PinPanel": "Pin panel",
 
+  // Sharing a location, and the map panel.
   "MapPanel_StopSharing": "Stop sharing",
   "MapPanel_ShareYourLocation": "Share your location",
   "MapPanel_LocateMe": "Locate me",
@@ -916,16 +1065,23 @@
   "Location_ShareForDurationCaption": "Updated in real time as you move",
   "Location_ChoosePlaceOnMap": "Choose a place on the map",
   "Location_ChoosePlaceCaption": "Any point — not necessarily where you are",
+
+  // Empty states of the right panel's Media, Files and Links tabs.
   "Content_NoFiles": "No files yet",
   "Content_NoLinks": "No links yet",
   "Content_NoMedia": "No media yet",
   "Content_LinkUnavailable": "[link unavailable]",
   "Content_GoToMessage": "Go to message",
   "Content_Seek": "Seek",
+
+  // The emoji and GIF picker. KLIPY is the GIF provider's brand name and stays as it is.
   "Emoji_Title": "Emoji",
   "Emoji_Recent": "Recent",
   "Emoji_SearchGifs": "Search KLIPY",
   "Emoji_NoGifsFound": "No GIFs found",
+
+  // Chrome rendered inside a message: the code block controls and the mention tooltip.
+  // Markup_HasRead and Markup_HasNotRead describe a person, so they must not assume gender.
   "Markup_Wrap": "Wrap",
   "Markup_CopyCode": "Copy code",
   "Markup_ClickToCopy": "Click to copy",
@@ -933,6 +1089,8 @@
   "Markup_HasNotRead": "Has not read",
   "Markup_NotAMember": "Not a member of this chat",
 
+  // The per-chat voice bar above the message editor. VoiceSettings_Setup keeps its leading
+  // space - it is appended directly to a language name.
   "VoiceSettings_Title": "Voice settings",
   "VoiceSettings_VoiceStreaming": "Voice streaming",
   "VoiceSettings_DisabledForAnonymous": "Disabled for anonymous users",
@@ -947,6 +1105,8 @@
   "VoiceSettings_AddLanguage": "+ Add",
   "VoiceSettings_SecondLanguageHint_Prefix": "You secondary language is not selected. You can add it in ",
   "VoiceSettings_SecondLanguageHint_Suffix": ".",
+
+  // The recording sub-header, and the reasons recording cannot start.
   "Recording_InChat_Prefix": "Recording in",
   "Recording_InChat_Suffix": "chat!",
   "Recording_WillStopIn": "Recording will stop in ",
@@ -956,17 +1116,25 @@
   "Recording_MicrophoneBusy": "Another app uses microphone",
   "Recording_UnknownError": "Unknown error",
   "Recording_UnknownError_Format": "Unknown error ({0})",
+
+  // The replay sub-header - playing a chat's audio back.
   "Replay_Replaying": "Replaying",
   "Replay_Backward": "Backward",
   "Replay_Speed": "Speed",
   "Replay_SpeedMenuTitle": "Replay speed:",
+
+  // The per-chat translation target language.
   "Translation_TranslateTo": "Translate to",
   "Translation_TranslateToColon": "Translate to:",
   "Translation_Setup": "(setup)",
   "Translation_ModalTitle": "Translation language",
   "Translation_TranslateOwnMessages": "Translate own messages",
+
+  // The warning shown when leaving with uploads still in flight.
   "Uploads_Pending": "There are pending file uploads.",
   "Uploads_Resume": "Resume",
+
+  // The share sheet.
   "Share_ShareExternally": "Share Externally",
   "Share_CopyLink": "Copy link",
   "Share_LinkCopied": "Link copied!",
@@ -983,6 +1151,9 @@
   "ShareExt_CannotSendToContact": "You can't send to this contact",
   "ShareExt_SharingFailed": "Sharing failed",
 
+  // Settings > Push-to-talk. "Push-to-talk" is a product term, translated as a familiar
+  // imperative ("press and speak") - the one place docs/i18n.md keeps that form. A *Topic key
+  // is a section heading on this page and a *Caption key the grey line under a toggle.
   "Ptt_UseOnThisDevice": "Use Push-to-talk on this device",
   "Ptt_UseOnThisDeviceCaption": "When off, this device won't wake, play, or transmit Push-to-talk voice.",
   "Ptt_DeviceEnabledToast": "Push-to-talk is now active on this device.",
@@ -1024,20 +1195,32 @@
   "Ptt_AudibleCues": "Audible cues",
   "Ptt_AudibleCuesCaption": "Play a sound when a reply starts and ends",
   "Ptt_ChatAtCapacity_Format": "Push-to-talk is on for this chat, but you're already in {0} - allow it in Settings.",
+
+  // Back on Settings > Voice & Transcription.
   "Transcription_MicrophoneTopic": "Microphone",
   "Transcription_FaceDownStop": "Stop recording when face down",
   "Transcription_FaceDownStopCaption": "Turning the phone face down or pocketing it closes the mic",
+
+  // Settings > Privacy.
   "Privacy_BlockedUsers": "Blocked users",
+
+  // The location-accuracy options; each caption is the grey line under its option.
   "LocationAccuracy_High": "High",
   "LocationAccuracy_HighCaption": "Highest precision; uses more battery.",
   "LocationAccuracy_Balanced": "Balanced",
   "LocationAccuracy_BalancedCaption": "Good precision with moderate battery use.",
   "LocationAccuracy_Low": "Low",
   "LocationAccuracy_LowCaption": "Lowest precision; saves the most battery.",
+
+  // The toast after switching server instance in Settings > Developer tools.
   "ServerInstance_HostChanged": "Host has been changed.",
   "ServerInstance_HostChangedCaption": "Changes will be applied after app restart. Please sign in again.",
 
+  // From here to the Shortcuts_* group: screens that never grew a group of their own. Each run
+  // below is one of them.
   "Common_Send": "Send",
+
+  // The in-app log viewer and the report modal it can open.
   "LogView_Disabled_Prefix": "Local logs are disabled. To enable go to ",
   "LogView_DisabledSettingsLink": "settings",
   "LogView_Disabled_Suffix": "",
@@ -1046,18 +1229,27 @@
   "Report_Title": "Send a report",
   "Report_Description": "We'll attach the current log buffer to help diagnose the issue. Add a short note describing what happened (optional).",
   "Report_Placeholder": "What were you doing? What went wrong?",
+
+  // Shown when a chat or place URL resolves to nothing.
   "ChatNotFound_Chat": "Chat not found.",
   "ChatNotFound_Place": "Place not found.",
   "ChatNotFound_ChooseAnother": "Choose another one.",
   "ChatNotFound_SignIn": "You can try to sign in to see it",
+
+  // The cover shown when this client is too old for the server API; the placeholders are the
+  // app name and two version numbers.
   "ClientUpgrade_Title_Format": "Please update {0}",
   "ClientUpgrade_Version_Prefix": "You are using {0} client ",
   "ClientUpgrade_Version_Middle": ", and it is incompatible with the current server API ",
   "ClientUpgrade_Version_Suffix": ".",
+
+  // The tabs of the in-chat search panel.
   "SearchTabs_Chat": "Chat",
   "SearchTabs_Tags": "Tags",
   "SearchTabs_Contacts": "Contacts",
   "SearchTabs_Date": "Date",
+
+  // The notification list in the left panel.
   "Notifications_AllCaughtUp": "You're all caught up",
   "Notifications_DismissAll": "Dismiss all",
   // Notification text composed on the server. The names, message text and chat titles
@@ -1070,45 +1262,70 @@
   "Notification_ThreadCreated_Format": "Thread '{0}' has been created",
   "Notification_AttentionRequested_Format": "{0} asks for attention",
   "Notification_Reaction_Format": "{0} to {1}",
+
+  // The search result list: the "In <chat>" label on a hit, and its expand/collapse toggle.
   "Search_In": "In",
   "Search_CloseSearch": "Close search",
   "Search_ShowMore": "Show more",
   "Search_ShowLess": "Show less",
+
+  // The quick-jump palette that finds a chat or person by name.
   "QuickNav_Placeholder": "Jump to…",
   "QuickNav_NoMatches": "No matches",
+
+  // The autocomplete popup opened by "@" in the message editor.
   "MentionList_NoMatches": "No matches found",
   "MentionList_FilterAll": "All categories",
   "MentionList_FilterUsers": "Users only",
   "MentionList_FilterChats": "Chats only",
   "MentionList_FilterEmoji": "Emoji only",
+
+  // The photo-library permission prompt; the sentence is split around a link to OS settings.
   "Photo_Title": "Photo library access",
   "Photo_Intro_Prefix": "{0} needs access to your photo library to save photos and videos. Please enable it in ",
   "Photo_Intro_Suffix": ".",
+
+  // The "open this location in..." app chooser.
   "MapApp_Title": "Open in",
+
+  // The chat header bar above the transcript.
   "ChatHeader_ChatProperties": "Chat properties",
   "ChatHeader_StartCall": "Start call",
   "ChatHeader_CallUnavailable": "You can call this user after they add you to contacts or reply",
   "ChatHeader_FollowThread": "Follow thread",
   "ChatHeader_UnfollowThread": "Unfollow thread",
+
+  // The chat list's create button, and the Push-to-talk indicator on a chat row.
   "ChatList_NewChatOrPlace": "New chat or place",
   "ChatList_TurnOffPtt": "Turn off Push-to-talk",
+
+  // More transcript chrome: the conversation summary toggle, the jump-to buttons, and the
+  // placeholders for a chat or author that could not be resolved.
   "ChatView_CollapseSummary": "Collapse summary",
   "ChatView_ExpandSummary": "Expand summary",
   "ChatView_GoToUnread": "Go to the unread part",
   "ChatView_GoToLastMessage": "Go to the last message",
   "ChatView_UnknownChat": "Unknown chat",
   "ChatView_UnknownAuthor": "Unknown author",
+
+  // Receiving a share from another app: the target picker, its progress, and its error text.
   "IncomingShare_Title": "Share to",
   "IncomingShare_Failed": "Failed to share {0} file|Failed to share {0} files",
   "IncomingShare_CountOfTotal_Format": "{0} of {1}",
   "IncomingShare_ImagesShared": "{0} image shared|{0} images shared",
   "IncomingShare_VideosShared": "{0} video shared|{0} videos shared",
   "IncomingShare_FilesShared": "{0} file shared|{0} files shared",
+
+  // The page that runs while an invite link is being redeemed.
   "ChatInvite_Title": "Joining via invite link",
   "ChatInvite_Processing": "Processing invite, please wait..",
   "ChatInvite_Failed_Format": "Failed to join chat: {0}",
+
+  // The empty state of any "pick some contacts" list.
   "MemberSelector_NoContacts": "You don't have any contacts yet. Share your own account with your friends to see them here.",
 
+  // The keyboard shortcuts modal on desktop. The key names themselves are not localized - only
+  // these descriptions of what each shortcut does.
   "Shortcuts_Title": "Keyboard shortcuts",
   "Shortcuts_CloseAriaLabel": "Close keyboard shortcuts",
   "Shortcuts_General": "General",
@@ -1135,8 +1352,11 @@
   "Shortcuts_ToggleTheme": "Toggle light or dark theme",
   "Shortcuts_ToggleSafeAreas": "Toggle safe areas",
 
+  // The section heading above the LocationAccuracy_* options further up.
   "LocationAccuracy_Topic": "Location Accuracy",
 
+  // The leave/delete confirmation modal, one title and question per target. "Leave" removes
+  // only you; "Delete" destroys the thing for everyone - keep the two verbs clearly apart.
   "Common_Leave": "Leave",
   "LeaveConfirm_LeaveChatTitle": "Leave chat",
   "LeaveConfirm_LeaveChatQuestion": "Are you sure you want to leave this chat?",
@@ -1149,6 +1369,7 @@
   "LeaveConfirm_DeletePlaceTitle": "Delete place",
   "LeaveConfirm_DeletePlaceQuestion": "Are you sure you want to delete this place?",
 
+  // Shared labels once more, then the download page and the error pages.
   "Common_Continue": "Continue",
   "Common_Verify": "Verify",
   "Common_Dismiss": "Dismiss",
@@ -1158,6 +1379,8 @@
   "Common_Change": "Change",
   "Common_Apply": "Apply",
   "Common_Unknown": "Unknown",
+
+  // The download page and the "install the app" banner. The platform names are proper nouns.
   "Download_AndroidApp": "Android App",
   "Download_MobileTablet": "Mobile, Tablet",
   "Download_IosApp": "iOS App",
@@ -1169,11 +1392,16 @@
   "Download_QrCode_Format": "{0} QR code",
   "Download_GetApp_Format": "Get {0}",
   "Download_GetAppBanner_Format": "Install {0}",
+
+  // The redirect notice and the unavailable / not-found pages. Unavailable_NotFound_Format puts
+  // the name after a colon on purpose, so that no language has to inflect it.
   "Redirect_To": "Redirecting to",
   "Unavailable_Title": "Unavailable",
   "Unavailable_PageNotFound": "This page doesn't exist.",
   "Unavailable_NotFound_Format": "Not found: {0}",
   "Unavailable_Chat": "This chat is unavailable",
+
+  // Error pages, and the error barrier that replaces a component which failed to render.
   "Error_AwSnap": "Aw, Snap!",
   "Error_Title": "Error!",
   "Error_AccountSuspendedTitle": "Your account is suspended.",
@@ -1190,6 +1418,8 @@
   "Error_ReloadIn_Format": "Reload in {0}s",
   "Error_Label": "Error:",
 
+  // Sign-in and verification. The Verify_EnterCodeSentTo_* family is one sentence with four
+  // possible endings, so word each suffix to read naturally after the same prefix.
   "Verify_PleaseVerifyEmail": "Please verify your email",
   "Verify_EnterCodeSentTo_Prefix": "Enter the code we've sent to ",
   "Verify_EnterCodeSentTo_Suffix": "",
@@ -1205,8 +1435,12 @@
   "Phone_TryAgainLater": "Please try again later.",
   "Phone_TryAgainInMinutes": "You can try again in a few minutes.",
   "Phone_VerifyToSignIn_Format": "Verify your phone number to sign in to {0}.",
+
+  // The two ways to set a picture, reused by the avatar and place editors.
   "PicUpload_UploadImage": "Upload image",
   "PicUpload_GenerateAvatar": "Generate avatar",
+
+  // The sign-in modal and its provider list.
   "SignIn_SignIn": "Sign in",
   "SignIn_SignOut": "Sign out",
   "SignIn_EnterCode": "Enter the code",
@@ -1220,10 +1454,14 @@
   "SignIn_InvalidPhoneOrEmail": "Invalid phone number or email address.",
   "SignIn_VerifyPhoneText_Format": "Please verify your phone number to continue and make it discoverable to friends on {0}.",
   "SignIn_VerifyEmailText_Format": "Please verify your email address to continue and make it discoverable to friends on {0}.",
+
+  // Asking to join a place that does not accept open joins.
   "JoinRequest_NotMember": "Not member yet",
   "JoinRequest_Text": "Send a join request and admins will consider you for addition to the Place",
   "JoinRequest_Send": "Send Request",
   "Stepper_StepCompleted": "This step is already completed!",
+
+  // The info sheet of the media viewer; these labels keep their trailing colon.
   "MediaInfo_Title": "Media Info",
   "MediaInfo_FileName": "File name:",
   "MediaInfo_Size": "Size:",
@@ -1232,16 +1470,22 @@
   "MediaInfo_Dimensions": "Dimensions:",
   "MediaInfo_ContentType": "Content type:",
   "MediaViewer_CopyImage": "Copy image",
+
+  // The reCAPTCHA footer - the fragments wrap links to Google's policies. "reCAPTCHA" and
+  // "Google" are brand names and stay as they are.
   "Captcha_Protected_Prefix": "This site is protected by reCAPTCHA and the Google ",
   "Captcha_And": " and ",
   "Captcha_Protected_Suffix": " apply.",
 
+  // The generic discard/confirm modal.
   "Confirm_DiscardTitle": "Discard changes",
   "Confirm_ConfirmTitle": "Confirm changes",
   "Confirm_DiscardText": "Are you sure you want to discard all changes?",
   "Confirm_ConfirmText": "Are you sure you want to confirm all changes?",
   "Confirm_Discard": "Discard",
   "Confirm_Confirm": "Confirm",
+
+  // The upload stages shown on an attachment tile while it is being sent.
   "Attachment_Failed_Format": "Failed: {0}",
   "Attachment_UnknownStage": "Unknown stage",
   "Attachment_ClientProcessing": "Client processing",
@@ -1249,17 +1493,26 @@
   "Attachment_Uploaded": "Uploaded",
   "Attachment_ServerProcessing": "Server processing",
   "Attachment_Ready": "Ready",
+
+  // Confirmations and toasts for role changes.
   "Members_PromoteConfirm_Format": "Are you sure you want to promote '{0}' to Owner? This action cannot be undone.",
   "Members_PromotedToOwner_Format": "{0} is promoted to Owner",
   "Members_NowModerator_Format": "{0} is now a Moderator",
   "Members_NoLongerModerator_Format": "{0} is no longer a Moderator",
+
+  // The prompt before starting a replay, and the pin/unpin toasts.
   "Replay_ConfirmTitle": "Start replay?",
   "Replay_ConfirmText": "Replay will pause listening, then resume it after you stop replay. Continue?",
   "Pin_MessagePinned": "Message pinned",
   "Pin_MessageUnpinned": "Message unpinned",
+
+  // Archiving a chat.
   "Chat_ArchiveTitle": "Archive chat",
   "Chat_Archive": "Archive",
   "Chat_ArchiveWarning_Format": "You are going to archive chat '{0}'. Nobody will be able to access it except owners, who can still access it with direct link.",
+
+  // The chat type picker in the new-chat modal and in chat settings; each *Hint is the grey
+  // line under its option, and the *Thread variants are the same three options for a thread.
   "Chat_PublicChat": "Public chat",
   "Chat_PlaceChat": "Place chat",
   "Chat_PublicChatHint": "Anyone can join this chat by navigating to its URL",
@@ -1279,6 +1532,8 @@
   "Chat_GeneratingSmartTitle": "Busy generating smart title and description based on source messages...",
   "Chat_GeneratingSmartTitleHint": "Keep fields empty to get them filled in automatically.",
 
+  // The presence badge on an avatar. Presence_LastSeen_* wraps a relative time taken from the
+  // LiveTime_* group below.
   "Presence_Online": "Online",
   "Presence_Away": "Away",
   "Presence_Offline": "Offline",
@@ -1287,6 +1542,7 @@
   "Presence_LastSeen_Prefix": "Last seen ",
   "Presence_LastSeen_Suffix": "",
 
+  // Video calls and screen sharing: the "still there?" idle prompts and the camera controls.
   "Video_IdleTitle": "Still there?",
   "Video_ContinueSessionTitle": "Continue video session?",
   "Video_IdleRecordingText_Format": "You've been inactive for {0}. Continue video recording?",
@@ -1304,6 +1560,8 @@
   "Video_ShowChat": "Show chat",
   "Video_HideChat": "Hide chat",
   "Video_Connecting": "Connecting...",
+
+  // Call state text and the call action buttons.
   "Call_Ended": "Call ended",
   "Call_CouldntStart": "Couldn't start the call",
   "Call_RecordingTurnedOffByHost": "Recording turned off by the host",
@@ -1330,6 +1588,9 @@
   "Call_CameraStillBlockedApp": "Camera is still blocked. Please allow camera access in system settings first.",
   "Call_CameraStillBlockedWeb": "Camera is still blocked. Please allow camera access in your browser settings first.",
   "Call_StartingRecording": "Starting recording...",
+
+  // The text the share sheet hands to another app. In the _Format values the last placeholder
+  // is the app name.
   "Share_FailedToShareFiles": "Failed to share files",
   "Share_PrivateChatJoinLink": "Share private chat join link",
   "Share_PrivatePlaceJoinLink": "Share private place join link",
@@ -1337,19 +1598,29 @@
   "Share_TextTitled_Format": "\"{0}\" on {1}",
   "Share_TextNamed_Format": "{0} on {1}",
   "Share_ThreadText_Format": "Thread \"{0}\" on {1}: {2}",
+
+  // Shown when someone signs in with an identity that has no account yet.
   "Account_RegisterTitle": "Register new account?",
   "Account_RegisterText_Format": "We didn't find an account for {0}. Would you like to register a new one?",
   "Account_RegisterThisAccount": "this account",
   "Account_Register": "Register",
+
+  // Toasts from the log viewer and the report modal.
   "Settings_NothingToCopy": "Nothing to copy",
   "Settings_LogEntriesCopied": "Visible log entries copied",
   "Report_Sent": "Report sent — thanks!",
+
+  // The message editor's placeholder text, and the stub tooltip on an unfinished button.
   "Editor_ButtonNotImplemented": "This button doesn't do anything yet",
   "Editor_PlaceholderShort": "Message...",
   "Editor_Placeholder": "Write a message - or simply record one!",
 
+  // The plural counterpart of Share_FailedToShareFiles above.
   "Share_FailedToShareCount": "Failed to share {0} file|Failed to share {0} files",
 
+  // Everything that renders a date, a time or a duration: the transcript's day separators, the
+  // conversation card header, and relative times such as "few minutes ago".
+  //
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
   // 12/7 entries, and the *Pattern values are .NET date format strings - localize the
   // field order and separators, never the format tokens themselves.
@@ -1367,6 +1638,9 @@
   "Date_MonthYearPattern": "MMMM yyyy",
   "Date_Parts_Format": "{0}, {1}",
   "Date_At_Format": "{0} at {1}",
+
+  // The header of a conversation card. Conversation_ShowMore_Format counts the messages still
+  // hidden, and the name-list formats join speaker names.
   "Conversation_DurationAt_Format": "{0} · {1}",
   "Conversation_StartedAt_Format": "Started at {0}",
   "Conversation_ShowMore_Format": "Show {0} of {1}",
@@ -1374,6 +1648,9 @@
   "Conversation_TwoNames_Format": "{0} and {1}",
   "Conversation_ThreeNames_Format": "{0}, {1} and {2}",
   "Conversation_NamesAndOthers_Format": "{0}, {1} and {2} others",
+
+  // Relative times, recomputed as they age. They render mid-sentence - after "Last seen", for
+  // one - so keep them lowercase wherever the language allows it.
   "LiveTime_JustNow": "just now",
   "LiveTime_InFewSeconds": "in few seconds",
   "LiveTime_FewSecondsAgo": "few seconds ago",
@@ -1389,12 +1666,16 @@
   "Duration_Hours_Format": "{0} h",
   "Duration_Minutes_Format": "{0} min",
 
+  // Invite link management in chat and place settings. A join link is a URL, so "private" here
+  // is the borrowed adjective, not the closed/open pair used for access modes.
   "Invite_ManageLinks": "Manage links",
   "Invite_NewPrivateLink": "New private join link",
   "Invite_UnknownLink": "Unknown link",
 
+  // Two more rows in chat settings.
   "ChatSettings_UsePlaceSettingsForMembers": "Use place settings to edit members",
   "ChatSettings_LeaveChatAndDelete": "Leave chat & delete",
 
+  // The destructive action at the bottom of place settings.
   "PlaceSettings_LeavePlaceAndDelete": "Leave place & delete"
 }

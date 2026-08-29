@@ -1,4 +1,28 @@
+// Voxt's UI strings, addressed by key. Server errors and validation messages live in the
+// companion Messages.*.json; a key belongs to exactly one of the two catalogs.
+//
+// This file is JSONC - '//' comments and trailing commas are allowed. The comments below say
+// where each group appears on screen and what it is really about, because a translator
+// cannot recover that from the value alone. Keep a new key inside the group it belongs to.
+//
+// What constrains a translation:
+//   {0}, {1}     Placeholders. Every one the English value has must survive; a _Format
+//                suffix on the key marks a value that carries them.
+//   a|b|c        Plural forms of one key, ordered one|few|many. List only as many as the
+//                language actually has - docs/i18n.md has the per-language rules.
+//   _Prefix / Target / _Suffix
+//                One sentence split around markup - an emphasized span or a child
+//                component. Either side may be empty where word order demands it, and any
+//                {0} belongs to the _Prefix part.
+//   Leading and trailing spaces are load-bearing wherever a fragment is concatenated.
+//
+// docs/i18n.md carries the rest: the product terms (Place, Public/Private, Join, cookies),
+// the politeness register each language uses, and how bs/cnr/hr/sr/max are derived.
 {
+  // Buttons and menu labels reused across the whole app, so each has to stand alone with no
+  // surrounding sentence. Common_Listen and Common_Mute act on a chat's live audio and are
+  // verbs, not media-player nouns. Further Common_* groups appear lower down, each next to
+  // the screen that introduced it.
   "Common_Save": "Сохранить",
   "Common_Cancel": "キャンセル",
   "Common_Close": "Затворите",
@@ -21,6 +45,9 @@
   "Common_Start": "Покрените",
   "Common_Stop": "Остановить",
 
+  // The Settings modal: its title and the nav entries down its left side, each of which opens
+  // one of the settings pages grouped below. Settings_UILanguage* is the picker that chooses
+  // the language everything in this file is displayed in.
   "Settings_Title": "Налаштування",
   "Settings_Language": "Ngôn ngữ",
   "Settings_UILanguage": "ユーザーインターフェースの言語",
@@ -41,6 +68,8 @@
   "Settings_LogOut": "Se déconnecter",
   "Settings_Quit_Format": "{0} uygulamasından çıkın",
 
+  // Settings > User Interface. "Walk-through" means the Bubble_* coach marks and "Onboarding"
+  // the Onboarding_* first-run steps - two different things, and each entry resets its own.
   "UserInterface_Font": "Phông chữ",
   "UserInterface_Theme": "Giao diện",
   "UserInterface_WalkThrough": "Hướng dẫn sử dụng",
@@ -52,6 +81,8 @@
   "UserInterface_Chats": "Cuộc trò chuyện",
   "UserInterface_ColorizeAuthorNames": "Colorear los nombres de los autores",
 
+  // Settings > Your Account - the summary rows. The time zone is the one the digest email is
+  // scheduled against, which is why the label says so.
   "YourAccount_Information": "Информације",
   "YourAccount_Name": "Nombre",
   "YourAccount_UserLink": "Посилання на профіль",
@@ -65,6 +96,8 @@
   "YourAccount_ShareYourContact": "Compartilhar seu contato",
   "YourAccount_MyAvatars": "Ảnh đại diện của tôi",
 
+  // Settings > Application - the server connection row and the telemetry consent toggle with
+  // the paragraph explaining it. {0} is the app name.
   "AppSettings_Connection": "Соединение",
   "AppSettings_TelemetryDataCollection": "Прикупљање телеметријских података",
   "AppSettings_AllowTelemetry": "Дозволите прикупљање телеметријских података",
@@ -72,11 +105,16 @@
   "AppSettings_TelemetryDisallowed": "許可されていません",
   "AppSettings_TelemetryDescription_Format": "Aidez-nous à identifier plus rapidement les problèmes d'expérience utilisateur en autorisant {0} à collecter et traiter des données sur certains événements dans l'application, comme les actions critiques des utilisateurs, les erreurs et les plantages.",
 
+  // The theme picker in Settings > User Interface. "Link Water" is a colour name: a proper
+  // noun, not a description.
   "ThemeSettings_Light": "Светлая",
   "ThemeSettings_LightLinkWater": "ライト、Link Water アクセント",
   "ThemeSettings_Dark": "Sombre",
   "ThemeSettings_MatchSystem": "Zgodny z motywem systemu",
 
+  // Settings > Voice & Transcription. These are the *spoken* languages a user's speech is
+  // transcribed from - unrelated to the UI language above. ListeningLinger_* fills the
+  // dropdown for how long listening continues after a conversation ends.
   "Transcription_Languages": "Languages",
   "Transcription_PrimaryLanguage": "Langue principale",
   "Transcription_SecondLanguage": "Ngôn ngữ thứ 2",
@@ -94,6 +132,7 @@
   "ListeningLinger_30Seconds": "30 Sekunden",
   "Transcription_LanguageDetected_Format": "La langue de transcription détectée pour la discussion « {0} » est {1}.",
 
+  // Settings > Sessions - the signed-in devices and the sign-out actions.
   "Sessions_CurrentSession": "現在のセッション",
   "Sessions_Current": "Поточний",
   "Sessions_Sessions": "Phiên làm việc",
@@ -106,6 +145,8 @@
   "Sessions_SignOutAllConfirm": "他のすべてのセッションがサインアウトされます。続行しますか？",
   "Sessions_SignOutAllTitle": "모든 세션을 로그아웃하시겠습니까?",
 
+  // Settings > API Keys - the key list. Its create form and reveal page are the two groups
+  // after this one.
   "ApiKeys_CreateApiKey": "API-Schlüssel erstellen",
   "ApiKeys_YourApiKeys": "Вашите API ключове",
   "ApiKeys_Deactivated": "Devre dışı bırakıldı",
@@ -116,6 +157,8 @@
   "ApiKeys_DeactivateAllConfirm": "Spowoduje to dezaktywację wszystkich Twoich kluczy API. Kontynuować?",
   "ApiKeys_DeactivateAllTitle": "Tüm API anahtarları devre dışı bırakılsın mı?",
 
+  // Settings > Developer tools. These toggles are localized, but the diagnostics panels they
+  // open are deliberately left in English - see docs/i18n.md.
   "DevTools_Host": "Máy chủ",
   "DevTools_EarlyAccess": "Acesso antecipado",
   "DevTools_EarlyAccessFeatures": "Funzionalità ad accesso anticipato",
@@ -131,10 +174,14 @@
   "Diagnostics_Video": "वीडियो डायग्नोस्टिक्स",
   "Diagnostics_Audio": "ऑडियो डायग्नोस्टिक्स",
 
+  // Settings > Documents - links to the legal pages. The documents themselves stay English.
   "Documents_PrivacyPolicy": "Политика конфиденциальности",
   "Documents_TermsConditions": "Allgemeine Geschäftsbedingungen",
   "Documents_Cookies": "Cookie datoteke",
 
+  // The rendering-mode picker in Settings > Developer tools. "WebAssembly" and "Server-Side
+  // Rendering" are technical terms - word them the way developer documentation in this
+  // language does.
   "RenderMode_Title": "Режим на изобразяване",
   "RenderMode_Auto": "Автоматический",
   "RenderMode_AutoDescription": "サーバーサイドレンダリングモードで起動し、バックグラウンドで WebAssembly クライアントを読み込みます。読み込み完了後、WebAssembly クライアントに切り替わります。",
@@ -143,27 +190,38 @@
   "RenderMode_Wasm": "WebAssembly クライアント",
   "RenderMode_WasmDescription": "Funktioniert am besten auf leistungsstärkeren Geräten; reaktionsschneller, benötigt weniger Bandbreite, lädt aber einmalig ca. 10 MB herunter, wenn dieser Modus aktiviert wird.",
 
+  // The time-zone picker, reached from Settings > Your Account and from onboarding.
   "TimeZone_SelectTitle": "Sélectionner le fuseau horaire",
   "TimeZone_Question": "タイムゾーンはどちらですか?",
   "TimeZone_Updated": "Strefa czasowa została zaktualizowana",
 
+  // Settings > Application on the Windows desktop app: the "start when I log on" toggle and
+  // the three reasons it can be unavailable. "Task Manager" and "Startup" name Windows' own
+  // UI, so use the wording Windows ships in this language.
   "NativeApp_AutoStart": "Démarrer automatiquement à la connexion",
   "NativeApp_AutoStartEnabledByPolicy": "Le démarrage automatique est activé par une stratégie de groupe ou de l'appareil.",
   "NativeApp_AutoStartDisabledByPolicy": "Le démarrage automatique est désactivé par une stratégie de groupe ou de l'appareil, ou n'est pas pris en charge sur cet appareil.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Аутоматско покретање апликације {0} искључено је у Управитељу задатака. Можете га поново укључити на картици Покретање.",
 
+  // The email editor page in Settings > Your Account.
   "Email_Title": "Электронная почта",
   "Email_Label": "Электронная почта",
 
+  // The API key creation form. ApiKeyCreate_Placeholder is the example text inside the empty
+  // Name field, not a value.
   "ApiKeyCreate_Title": "API-Schlüssel erstellen",
   "ApiKeyCreate_Name": "Название",
   "ApiKeyCreate_Placeholder": "Minha chave de API",
   "ApiKeyCreate_ExpiresInDays": "Kedaluwarsa dalam (hari)",
   "ApiKeyCreate_Create": "Креирајте",
 
+  // The one-time page that shows a freshly created API key.
   "ApiKeyReveal_CopyWarning": "Kopieren Sie diesen Schlüssel jetzt. Er wird nicht erneut angezeigt.",
   "ApiKeyReveal_Title": "La tua nuova chiave API",
 
+  // The chat list in the left panel: filter tabs, sort menu, the Active Chats section, and the
+  // preview line under a chat's title. ChatList_Talking and ChatList_Live_Format render on
+  // that preview line while someone is speaking.
   "ChatList_TabAll": "Wszystkie",
   "ChatList_TabGroups": "グループ",
   "ChatList_TabPeople": "Personnes",
@@ -182,6 +240,7 @@
   "ChatList_SharedLiveLocation": "Сподели местоположение на живо",
   "ChatList_SentLocation": "Изпрати местоположение",
 
+  // The context menu of a chat list item - long press on mobile, right click on desktop.
   "ChatMenu_AddMembers": "Добавить участников",
   "ChatMenu_EditContact": "Редактирайте контакта",
   "ChatMenu_LeaveChat": "Rời khỏi cuộc trò chuyện",
@@ -196,9 +255,13 @@
   "ChatMenu_StopRecording": "Arrêter l'enregistrement",
   "ChatMenu_RemoveFromActiveChats": "Xóa khỏi cuộc trò chuyện đang hoạt động",
 
+  // The toast shown when an action fails and carries no better message of its own.
   "ErrorToast_ActionFailed": "Не удалось выполнить действие!",
   "ErrorToast_UnknownError": "Kesalahan tidak dikenal.",
 
+  // The chat transcript: empty-chat placeholders, the scroll buttons, and per-message chrome.
+  // ChatView_CreatedBy, ChatView_Notified and ChatView_And are fragments assembled around
+  // author names, which is why they are lowercase and read as sentence middles.
   "ChatView_ScrollUp": "Faire défiler la discussion vers le haut",
   "ChatView_ScrollDown": "Faire défiler la discussion vers le bas",
   "ChatView_NoChatSelected": "Sélectionnez une discussion pour commencer à écrire.",
@@ -222,6 +285,7 @@
   "ChatView_PrevSearchResult": "Przejdź do poprzedniego wyniku wyszukiwania",
   "ChatView_NextSearchResult": "Przejdź do następnego wyniku wyszukiwania",
 
+  // The grey system lines inside the transcript - someone joined, left, or asked for attention.
   // The first three follow the author name, which renders as a separate mention node:
   // keep the leading space and word them so the name reads as the sentence's subject.
   "SystemEntry_MemberJoined": " さんがチャットに参加しました。",
@@ -229,6 +293,9 @@
   "SystemEntry_AttentionRequested": " さんが注目を求めています。",
   "SystemEntry_Someone": "Seseorang",
 
+  // The bar that replaces the message editor when you cannot post: a read-only chat, a block in
+  // either direction, or a chat you have not joined yet. Most of these are fragments wrapped
+  // around a Join button, so they end without punctuation.
   "ChatFooter_ReadOnly": "Цей чат доступний лише для читання",
   "ChatFooter_YouBlockedUser": "Вы заблокировали этого пользователя.",
   "ChatFooter_Unblock": "Разблокировать",
@@ -242,6 +309,9 @@
   "ChatFooter_JoinAnonymously": "Присъединете се анонимно",
   "ChatFooter_ToJoinThisChat": "за да се присъедините към този чат",
 
+  // The welcome block at the top of an empty chat. ChatWelcome_Notes is the built-in personal
+  // Notes chat; ChatWelcome_PublicLink and _PrivateJoinLink label a URL, so they keep the
+  // borrowed public/private pair rather than the open/closed one used for access modes.
   "ChatWelcome_Notes": "Chào mừng bạn! Bạn có thể lưu ghi chú trong cuộc trò chuyện này, kể cả ghi chú bằng giọng nói.",
   "ChatWelcome_ShareContact_Prefix": "Para compartilhar o contato de ",
   "ChatWelcome_ShareContact_Suffix": " さんの連絡先を共有するには、次を使います:",
@@ -250,6 +320,8 @@
   "ChatWelcome_PrivateJoinLink": "Liên kết tham gia riêng tư",
   "ChatWelcome_PublicLink": "Herkese açık bağlantı",
 
+  // The context menu on a message, and the same menu opened on an attachment, a file, an audio
+  // file or a link preview.
   "MessageMenu_Reply": "Одговорите",
   "MessageMenu_CopyText": "テキストをコピー",
   "MessageMenu_CopyLink": "Копіювати посилання",
@@ -276,15 +348,20 @@
   "MessageMenu_PinMessage": "Закріпити повідомлення",
   "MessageMenu_UnpinMessage": "メッセージのピン留めを解除",
 
+  // The context menu of a conversation card - an AI-summarized run of messages in the
+  // transcript. "Re-summarize" regenerates that summary.
   "ConversationMenu_Expand": "Développer la conversation",
   "ConversationMenu_Collapse": "Comprimi la conversazione",
   "ConversationMenu_ReSummarize": "Оновити стислий виклад",
   "ConversationMenu_CopySummary": "Zusammenfassung kopieren",
   "ConversationMenu_CopySummaryLink": "Копіювати посилання на стислий виклад",
 
+  // The context menu of a thread card in the transcript.
   "ThreadMenu_GoToThread": "Перейти до треду",
   "ThreadMenu_CopyThread": "Копирайте нишката",
 
+  // A location posted into a chat. LocationMessage_Place is the plain geographic word for a pin
+  // on a map - NOT the product term Place, which docs/i18n.md rules on separately.
   "LocationMessage_Live": "Местоположение на живо",
   "LocationMessage_Static": "Местоположение",
   "LocationMessage_Place": "Địa điểm",
@@ -293,6 +370,8 @@
   "LocationMessage_DistanceFromYou_Format": "{0} von Ihnen entfernt",
   "LocationMessage_ShareBack": "Споделете местоположението си в отговор",
 
+  // The message editor: its attachment menu, the attachment list, and the prompt offered when a
+  // very large text is pasted.
   "Editor_ChoosePhoto": "Одаберите фотографију",
   "Editor_SelectVideo": "Одаберите видео",
   "Editor_AddEmoji": "Thêm biểu tượng cảm xúc",
@@ -308,6 +387,9 @@
   "Editor_KeepAsText": "テキストのままにする",
   "Editor_DropFilesToAttach": "添付するファイルをドロップしてください",
 
+  // "Alert" is the notify-everyone action in the message editor. An alert is loud and behaves
+  // like an incoming call, which is why this whole group reads as a warning - keep one word for
+  // it throughout, and keep it distinct from an ordinary notification.
   "Alert_Alert_Format": "{0} dringend benachrichtigen",
   "Alert_TargetEveryone": "tout le monde",
   "Alert_TargetCompanion": "den Gesprächspartner",
@@ -332,6 +414,8 @@
   "Alert_CallAll": "Zadzwoń do wszystkich",
   "Alert_ConfirmEveryone": "Herkese acil bildirim göndermek istediğinizden emin misiniz?",
 
+  // Multi-select in the transcript: the header that replaces the chat header once messages are
+  // selected, and the forward and delete flows started from it.
   "Selection_Cancel": "Отменить выделение",
   "Selection_Messages": "{0} 件のメッセージ",
   "Selection_ConvertToThread": "Перетворити на тред",
@@ -349,6 +433,7 @@
   "Selection_ForwardSubmit": "Пошаљите",
   "Selection_ForwardSearchPlaceholder": "Com quem você quer compartilhar",
 
+  // The navbar and the logo menu along the left edge.
   "Navbar_NewChat": "Cuộc trò chuyện mới",
   "Navbar_NewPlace": "新しいプレイス",
   "Navbar_Chats": "Discussions",
@@ -359,15 +444,20 @@
   "Navbar_SignIn": "Пријавите се",
   "Navbar_TestPages": "Тестовые страницы",
 
+  // Headers and buttons in the left panel, outside the chat list itself.
   "LeftPanel_AddNewMembers": "Neue Mitglieder hinzufügen",
   "LeftPanel_JoinPlace": "Присъединете се",
   "LeftPanel_PublicChatsAndPlaces": "Cuộc trò chuyện và Địa điểm công khai",
   "LeftPanel_Show": "Прикажите",
 
+  // The empty state of a search result list.
   "NoResults_Title": "結果がありません。",
   "NoResults_TryAnotherRequest": "Versuchen Sie eine andere Anfrage.",
   "NoResults_SearchOutsidePlace": "Versuchen Sie, außerhalb des Place zu suchen.",
 
+  // The right-hand chat panel: its tabs and the member list inside it.
+  // RightPanel_GroupTitle_Format composes a heading like "Owners - 3", and the
+  // RightPanel_HiddenMembers_* pair wraps a member count in one sentence.
   "RightPanel_TabCall": "Обаждане",
   "RightPanel_TabMembers": "Thành viên",
   "RightPanel_TabThreads": "スレッド",
@@ -389,6 +479,8 @@
   "RightPanel_GroupOffline": "Desconectados",
   "RightPanel_GroupUnreported": "Tanpa status",
 
+  // The search filter menus in the left panel - where to search, and what kind of result to
+  // return.
   "Search_LocationTitle": "Обхват на търсенето",
   "Search_LocationAnywhere": "Em qualquer lugar",
   "Search_LocationInChat": "Trong cuộc trò chuyện này",
@@ -405,6 +497,8 @@
   "Search_RecentSearches": "Ostatnie wyszukiwania",
   "Search_RecentlyViewed": "Недавно просмотренные",
 
+  // The player for an audio attachment, and the prompt shown when playing one would interrupt a
+  // live conversation.
   "AudioPlayer_Backward": "Backward",
   "AudioPlayer_Forward": "Do przodu",
   "AudioPlayer_Seek": "Se déplacer dans la piste",
@@ -413,6 +507,8 @@
   "AudioPlayer_InterruptMany_Format": "Wenn Sie dieses Audio abspielen, werden {0} laufende Gespräche beendet.",
   "AudioPlayer_Confirm": "Подтвердить",
 
+  // The Call tab of the right panel: the live member list and the reasons a mute is refused.
+  // More Call_* groups follow further down.
   "Call_NoActiveCall": "Không có cuộc gọi nào đang diễn ra.",
   "Call_Dialing": "कॉल किया जा रहा है…",
   "Call_Rules": "Правила",
@@ -439,21 +535,27 @@
   "Call_CantMuteOwner": "Sie können das Mikrofon eines Eigentümers nicht ausschalten.",
   "Call_CantMuteOthers": "Chỉ người chủ trì cuộc gọi, chủ sở hữu hoặc người kiểm duyệt cuộc trò chuyện mới có thể tắt micrô của người khác.",
 
+  // The per-chat notification mode menu in the right panel.
   "NotificationMode_Title": "Benachrichtigungen:",
   "NotificationMode_AllMessages": "Wszystkie wiadomości",
   "NotificationMode_ImportantOnly": "Importants uniquement",
   "NotificationMode_Muted": "Stummgeschaltet",
 
+  // Inline validation under the custom-link field of a chat or a place.
   "Alias_LinkAvailable": "このリンクは使用できます。",
   "Alias_LinkInUse": "このリンクはすでに使われています。",
   "Alias_PlaceLinkRequired": "Primero debes establecer un enlace personalizado para el Lugar.",
 
+  // The account editor modal. Common_Optional is appended to a field label, so its leading
+  // space is part of the value.
   "AccountEditor_Title": "Редагування облікового запису",
   "AccountEditor_DeleteAccount": "Видалити обліковий запис",
   "Common_Optional": " (необязательно)",
   "Common_Verified": "Подтверждено",
   "Common_Unverified": "Не подтверждено",
 
+  // Form validation messages, rendered under the field they belong to. These are looked up by
+  // key from ActualChat.Core rather than through a typed member.
   "Validation_EmailInvalid": "Некорректный адрес электронной почты.",
   "Validation_PhoneInvalidCharacters": "Le numéro de téléphone contient des caractères non valides.",
   "Validation_PhoneTooShort": "El número de teléfono es demasiado corto.",
@@ -462,6 +564,8 @@
   "Validation_AliasTooShort": "Пользовательская ссылка слишком короткая.",
   "Validation_AliasInvalidCharacters": "Пользовательская ссылка может содержать только 0-9, a-Z, - и _.",
 
+  // Field labels shared by the form modals - new chat, new place, new thread, and the account
+  // and avatar editors.
   "Form_ChatTitle": "Tiêu đề cuộc trò chuyện",
   "Form_ChatDescription": "Description de la discussion",
   "Form_ThreadTitle": "Име на нишката",
@@ -478,6 +582,9 @@
   "Form_Phone": "Téléphone",
   "Form_CustomLink": "Користувацьке посилання",
 
+  // The delete-account confirmation. Every sentence is split so its middle renders emphasized.
+  // DeleteAccount_Proposal_* wraps the word the user has to type back, and that word stays the
+  // English "DELETE" in every language because it is compared against their input.
   "DeleteAccount_Title": "Видалення облікового запису",
   "DeleteAccount_Question_Prefix": "Tem certeza de que deseja ",
   "DeleteAccount_QuestionTarget": "видалити свій обліковий запис",
@@ -491,6 +598,10 @@
   "DeleteAccount_Proposal_Prefix": "Wpisz poniżej ",
   "DeleteAccount_Proposal_Suffix": " unten ein, um zu bestätigen, dass Sie Ihr Konto und alles damit Verbundene dauerhaft löschen möchten.",
 
+  // The "microphone access is blocked" help, one screen per browser and platform; the Guide_*
+  // keys are the heading that selects one. Every step below names UI inside someone else's
+  // product, so quote what Chrome, Edge, Safari, Android or iOS actually calls that item in
+  // this language instead of translating the English literally.
   "MicGuide_Title": "O acesso ao microfone está bloqueado, mas você pode corrigir isso!",
   "MicGuide_BlockedImageAlt": "マイクへのアクセスがブロックされています",
   "MicGuide_Intro_Format": "メッセージを録音して文字起こしするために、{0} はマイクへのアクセスを必要とします。",
@@ -502,6 +613,7 @@
   "Guide_EnableInMobileSafari": "So aktivieren Sie ihn in Safari oder einem anderen Browser unter iOS:",
   "Guide_EnableInPhoneSettings": "So aktivieren Sie ihn in den Einstellungen Ihres Telefons:",
 
+  // Desktop browser steps: Chrome, then Edge, then Safari.
   "MicGuide_WebChromeStep1": "Haz clic en el botón \"Más\" en la esquina superior derecha y luego en \"Configuración\"",
   "MicGuide_WebChromeStep2": "Слева выберите «Конфиденциальность и безопасность»",
   "MicGuide_WebChromeStep3": "Изберете „Настройки на сайтовете“",
@@ -519,6 +631,7 @@
   "MicGuide_WebSafariStep3": "Одаберите „Микрофон“ с лијеве стране",
   "MicGuide_WebSafariStep4_Format": "Ändern Sie den Wert des Eintrags \"{0}\" von \"Ablehnen\" zu \"Erlauben\" oder \"Fragen\"",
 
+  // Mobile browser steps, then the steps for the native Android and iOS apps.
   "MicGuide_MobileChromeStep1": "\"⋮\" simgesine dokunun",
   "MicGuide_MobileChromeStep2": "Tippen Sie auf \"Einstellungen\"",
   "MicGuide_MobileChromeStep3": "Отворете „Настройки на сайтовете“",
@@ -545,6 +658,8 @@
   "MicGuide_IosAppStep2_Format": "Uygulamalar bölümüne kaydırın ve {0} uygulamasını açın",
   "MicGuide_IosAppStep3_Format": "Разрешите приложению {0} записывать звук",
 
+  // The fallback shown when recording fails for an unknown reason, plus the troubleshooter
+  // modal's title.
   "MicGuide_UnknownTitle_Format": "{0} ne parvient pas à démarrer l'enregistrement audio",
   "MicGuide_UnknownIntro": "La causa più probabile è che il permesso di accesso al microfono non sia stato concesso, ma potrebbe anche trattarsi di un problema dalla nostra parte. Per risolverlo:",
   "MicGuide_UnknownReload_Prefix": "Uygulamayı sıcak yeniden başlatmak için ",
@@ -554,6 +669,7 @@
   "MicGuide_UnknownCheckInternet": "上記の手順で解決しない場合は、アプリがインターネットに接続できているか確認してください。",
   "MicGuide_TroubleshooterTitle": "Rozwiązywanie problemów z nagrywaniem",
 
+  // The location-permission help, mirroring the microphone guide above screen for screen.
   "Common_Later": "Daha sonra",
   "LocationGuide_ModalTitle": "Достъп до местоположението",
   "LocationGuide_Title": "Достъпът до местоположението е блокиран, но може да го поправите!",
@@ -562,6 +678,7 @@
   "LocationGuide_AndroidAppInstructions_Format": "Tippen Sie unten auf \"Einstellungen\", um die {0}-Einstellungen zu öffnen, gehen Sie dann zu \"Berechtigungen\" > \"Standort\" und erlauben Sie den Standortzugriff.",
   "LocationGuide_IosAppInstructions_Format": "Tippen Sie unten auf \"Einstellungen\", um die {0}-Einstellungen zu öffnen, tippen Sie dann auf \"Standort\" und erlauben Sie den Standortzugriff.",
 
+  // Desktop browser steps for location access.
   "LocationGuide_WebChromeStep1": "Haz clic en el botón \"Más\" en la esquina superior derecha y luego en \"Configuración\"",
   "LocationGuide_WebChromeStep2": "Слева выберите «Конфиденциальность и безопасность»",
   "LocationGuide_WebChromeStep3": "Изберете „Настройки на сайтовете“",
@@ -579,6 +696,7 @@
   "LocationGuide_WebSafariStep3": "Одаберите „Локација“ с лијеве стране",
   "LocationGuide_WebSafariStep4_Format": "Ändern Sie den Wert des Eintrags \"{0}\" von \"Ablehnen\" zu \"Erlauben\" oder \"Fragen\"",
 
+  // Mobile browser steps for location access.
   "LocationGuide_MobileChromeStep1": "\"⋮\" simgesine dokunun",
   "LocationGuide_MobileChromeStep2": "Tippen Sie auf \"Einstellungen\"",
   "LocationGuide_MobileChromeStep3": "Отворете „Настройки на сайтовете“",
@@ -596,6 +714,7 @@
   "LocationGuide_MobileSafariStep2": "Перейдіть до розділу «Налаштування для вебсайтів» > «Геопозиція»",
   "LocationGuide_MobileSafariStep3": "Установите для «Доступ к геопозиции на всех веб-сайтах» значение «Спрашивать»",
 
+  // More shared button labels, these introduced by the banners and modals that follow.
   "Common_Block": "Заблокировать",
   // "Join" in the membership sense - becoming a member of a Place or chat.
   // For entering a live call use Call_Join, which is a different verb in some
@@ -611,6 +730,11 @@
   "Common_Publish": "Veröffentlichen",
   "Common_Skip": "Überspringen",
 
+  // The banners that stack above a chat, and the connection-state strip. The _Prefix / Target /
+  // _Suffix trios wrap a link inside one sentence and {0} is the app name.
+  // Banner_Connected through Reconnect_Title are connection states; DemandInteraction_* is the
+  // modal asking for one tap, because the browser will not let a pending operation continue
+  // without a user gesture.
   "Banner_OnlyPersonInChat": "Vous êtes la seule personne dans cette discussion !",
   "Banner_AddMembers": "Добавить участников",
   "Banner_NotInContacts": "Tego użytkownika nie ma jeszcze na Twojej liście kontaktów",
@@ -645,6 +769,9 @@
   "Banner_CallNoAnswer": "Nessuna risposta",
   "Banner_CancelCall": "Отменете обаждането",
 
+  // "Bubbles" are the coach-mark tooltips of the first-run walk-through: shown once, then
+  // dismissed. Bubble_Counter_Format is the "3 of 7" step counter. Each is a title plus a short
+  // body or bullet list rendered in a small floating card, so length matters here.
   "Bubble_Counter_Format": "{1} 件中 {0} 件目",
   "Bubble_ChatListTabsTitle": "Discussions et contacts",
   "Bubble_ChatListTabsItem1": "Utilisez les onglets pour n'afficher que les discussions personnelles ou de groupe",
@@ -673,6 +800,8 @@
   "Bubble_RecordButtonTitle": "Schaltfläche \"Aufnehmen\"",
   "Bubble_RecordButtonBody": "Нажмите эту кнопку, чтобы начать или остановить запись и прослушивание. Во время записи мы передаём ваш голос и мгновенно расшифровываем его в текст. Запись автоматически останавливается после 30 секунд молчания.",
 
+  // More walk-through bubbles. The privacy pair is the app speaking in its own voice, so it
+  // reads as prose rather than as UI chrome.
   "Bubble_PrivacyTitle": "私たちはあなたのプライバシーを何より大切にしています",
   "Bubble_PrivacyBelieve_Prefix": "Kami percaya bahwa ",
   "Bubble_PrivacyBelieveTarget": "memberikan pengalaman komunikasi terbaik adalah cara terbaik bagi kami untuk bertumbuh.",
@@ -696,6 +825,8 @@
   "Bubble_VoiceSettingsBody1": "文字起こしの言語を変更したり、音声ストリーミングを無効にするには、ここをクリックします。",
   "Bubble_VoiceSettingsBody2": "Les réglages vocaux sont enregistrés par discussion : vous n'avez normalement à les modifier qu'une seule fois par discussion.",
 
+  // The first-run onboarding, shown once after sign-up: telemetry consent, permissions, the
+  // languages the user speaks, and email or phone verification. {0} is the app name.
   "Onboarding_StartMessaging": "Commencer à discuter",
   "Onboarding_Welcome_Format": "{0} uygulamasına hoş geldiniz!",
   "Onboarding_Telemetry_Prefix": "{0} mengumpulkan sebagian data telemetri, seperti tindakan penting pengguna sebelum kesalahan dan kegagalan, agar kami bisa memperbaiki masalah pengalaman pengguna lebih cepat. Saat ini data diproses oleh ",
@@ -718,6 +849,8 @@
   "Onboarding_EnterCode": "Introduce el código",
   "Onboarding_VerifyPhoneText_Format": "Vérifiez votre numéro de téléphone pour pouvoir vous connecter avec et permettre à vos amis de trouver votre compte dans leurs contacts sur {0}.",
 
+  // The rest of onboarding: the suggested starter chats, the four tutorial slides, phone and
+  // email collection, and the avatar step.
   "Onboarding_CreateChatsTitle": "Créez quelques discussions !",
   "Onboarding_ChatFamily": "Семейство",
   "Onboarding_ChatFamilyDescription": "Чатете с членовете на семейството си",
@@ -745,6 +878,9 @@
   "Onboarding_NameAndAvatar": "Tên người dùng và ảnh đại diện của bạn",
   "Onboarding_GenerateAvatar": "Сгенерировать аватар",
   "Onboarding_UploadPhoto": "Отпремите своју фотографију",
+
+  // The rationale shown above each OS permission prompt. The system dialog itself is not ours
+  // and stays in the OS language; only this explanation is translated.
   "Permission_Microphone": "माइक्रोफ़ोन",
   "Permission_MicrophoneRationale_Format": "Голосові повідомлення з розшифруванням у реальному часі — головна сила {0}, але без доступу до мікрофона вони не працюють.",
   "Permission_Notifications": "Benachrichtigungen",
@@ -752,6 +888,8 @@
   "Permission_BackgroundActivity": "Активност във фонов режим",
   "Permission_BackgroundActivityRationale_Format": "Sorgt dafür, dass Anrufe weiter klingeln, wenn Android {0} in den Ruhezustand schicken will.",
 
+  // The profile card opened by tapping an author, and the owner/moderator actions on it. Owner
+  // and Moderator are role names - keep them capitalized and identical to the Members_* keys.
   "Account_UserProfile": "Потребителски профил",
   "Account_YourProfile": "あなたのプロフィール",
   "Account_AnonymousProfile": "Анонимный профиль",
@@ -774,6 +912,8 @@
   "Account_ModeratorCaption": "Модераторите може да изтриват съобщения, да управляват обажданията и участниците и да редактират този чат — но не и да го изтрият.",
   "Account_RemoveFromGroup": "Aus der Gruppe entfernen",
 
+  // Avatars: choosing one for a chat, the avatar editor, the image cropper, and the peer
+  // contact editor. An avatar is a per-chat identity - a "look", not merely a picture.
   "AvatarSelect_ChooseTitle": "Wählen Sie Ihren Avatar",
   "AvatarSelect_RevealTitle": "Tampilkan identitas Anda",
   "AvatarSelect_ChangeTitle": "Промените свој аватар",
@@ -811,6 +951,9 @@
   "PeerContact_BlockCaption": "Diese Person kann Ihnen dann nicht mehr schreiben oder Sie anrufen",
   "PeerContact_Unblock": "Разблокировать",
 
+  // Chats and Places: their settings modals, member management, type pickers, and the
+  // copy-a-chat-into-a-place flow. Place is a product term and Public/Private an access mode;
+  // docs/i18n.md rules on both per language. Several values here carry plural forms.
   "Share_Contact": "Поделиться контактом",
   "Share_ContactOf_Format": "Compartilhar o contato de {0}",
   "Share_Chat": "Chia sẻ cuộc trò chuyện",
@@ -863,6 +1006,8 @@
   "Place_PublishChatConfirm_Format": "Sie sind dabei, den kopierten Chat „{0}“ aus dem Place „{1}“ zu veröffentlichen. Möchten Sie fortfahren?",
   "Place_PublishChatSuccess_Format": "Der Chat „{0}“ wurde erfolgreich veröffentlicht.",
   "Place_NewPlace": "新しいプレイス",
+
+  // Role names, reused everywhere a member is listed.
   "Members_Owner": "Собственик",
   "Members_Moderator": "Người kiểm duyệt",
   "Members_YourProfile": "あなたのプロフィール",
@@ -872,6 +1017,9 @@
   "Chat_OpenRightPanel": "Ouvrir le panneau de droite",
   "AddMember_Title": "Добавить участников",
 
+  // A few more shared labels - Common_Today and Common_Yesterday are the day separators in the
+  // transcript - then the video call join modal with its camera preview and permission hints.
+  // Call_IncomingFrom ends with a space because the caller's name follows it.
   "Common_Pause": "Wstrzymaj",
   "Common_Hide": "Sembunyikan",
   "Common_Open": "Отворите",
@@ -901,6 +1049,7 @@
   "Call_TabMap": "मानचित्र",
   "Call_PinPanel": "Épingler le panneau",
 
+  // Sharing a location, and the map panel.
   "MapPanel_StopSharing": "Interrompi la condivisione",
   "MapPanel_ShareYourLocation": "Споделете местоположението си",
   "MapPanel_LocateMe": "Trova la mia posizione",
@@ -916,16 +1065,23 @@
   "Location_ShareForDurationCaption": "Обновляется в реальном времени по мере движения",
   "Location_ChoosePlaceOnMap": "Chọn một địa điểm trên bản đồ",
   "Location_ChoosePlaceCaption": "Herhangi bir nokta - bulunduğunuz yer olmak zorunda değil",
+
+  // Empty states of the right panel's Media, Files and Links tabs.
   "Content_NoFiles": "ファイルはまだありません",
   "Content_NoLinks": "リンクはまだありません",
   "Content_NoMedia": "メディアはまだありません",
   "Content_LinkUnavailable": "[リンクは利用できません]",
   "Content_GoToMessage": "Перейти до повідомлення",
   "Content_Seek": "Перемотування",
+
+  // The emoji and GIF picker. KLIPY is the GIF provider's brand name and stays as it is.
   "Emoji_Title": "Biểu tượng cảm xúc",
   "Emoji_Recent": "Zuletzt verwendet",
   "Emoji_SearchGifs": "Rechercher sur KLIPY",
   "Emoji_NoGifsFound": "Не са намерени GIF файлове",
+
+  // Chrome rendered inside a message: the code block controls and the mention tooltip.
+  // Markup_HasRead and Markup_HasNotRead describe a person, so they must not assume gender.
   "Markup_Wrap": "Перенесення рядків",
   "Markup_CopyCode": "Копирайте кода",
   "Markup_ClickToCopy": "Нажмите, чтобы скопировать",
@@ -933,6 +1089,8 @@
   "Markup_HasNotRead": "Hat nicht gelesen",
   "Markup_NotAMember": "Không phải thành viên của cuộc trò chuyện này",
 
+  // The per-chat voice bar above the message editor. VoiceSettings_Setup keeps its leading
+  // space - it is appended directly to a language name.
   "VoiceSettings_Title": "Налаштування голосу",
   "VoiceSettings_VoiceStreaming": "Передавання голосу",
   "VoiceSettings_DisabledForAnonymous": "Отключено для анонимных пользователей",
@@ -947,6 +1105,8 @@
   "VoiceSettings_AddLanguage": "+ Hinzufügen",
   "VoiceSettings_SecondLanguageHint_Prefix": "Votre langue secondaire n'est pas sélectionnée. Vous pouvez l'ajouter dans ",
   "VoiceSettings_SecondLanguageHint_Suffix": "에서 추가할 수 있습니다.",
+
+  // The recording sub-header, and the reasons recording cannot start.
   "Recording_InChat_Prefix": "Nagrywanie w czacie",
   "Recording_InChat_Suffix": "sohbetinde!",
   "Recording_WillStopIn": "녹음이 다음 시간 후 중지됩니다: ",
@@ -956,17 +1116,25 @@
   "Recording_MicrophoneBusy": "Друго приложение използва микрофона",
   "Recording_UnknownError": "Kesalahan tidak diketahui",
   "Recording_UnknownError_Format": "Kesalahan tidak diketahui ({0})",
+
+  // The replay sub-header - playing a chat's audio back.
   "Replay_Replaying": "Yeniden oynatılıyor",
   "Replay_Backward": "Retroceder",
   "Replay_Speed": "Geschwindigkeit",
   "Replay_SpeedMenuTitle": "Скорост на възпроизвеждане:",
+
+  // The per-chat translation target language.
   "Translation_TranslateTo": "Перекладати на",
   "Translation_TranslateToColon": "Перекладати на:",
   "Translation_Setup": "(налаштувати)",
   "Translation_ModalTitle": "Übersetzungssprache",
   "Translation_TranslateOwnMessages": "Превеждай собствените съобщения",
+
+  // The warning shown when leaving with uploads still in flight.
   "Uploads_Pending": "保留中のファイルアップロードがあります。",
   "Uploads_Resume": "Продовжити",
+
+  // The share sheet.
   "Share_ShareExternally": "Поділитися поза застосунком",
   "Share_CopyLink": "Копіювати посилання",
   "Share_LinkCopied": "リンクをコピーしました!",
@@ -983,6 +1151,9 @@
   "ShareExt_CannotSendToContact": "Вы не можете отправлять этому контакту",
   "ShareExt_SharingFailed": "Udostępnianie nie powiodło się",
 
+  // Settings > Push-to-talk. "Push-to-talk" is a product term, translated as a familiar
+  // imperative ("press and speak") - the one place docs/i18n.md keeps that form. A *Topic key
+  // is a section heading on this page and a *Caption key the grey line under a toggle.
   "Ptt_UseOnThisDevice": "Използвайте Натисни и говори на това устройство",
   "Ptt_UseOnThisDeviceCaption": "Когато е изключено, това устройство няма да се събужда, възпроизвежда или предава глас с Натисни и говори.",
   "Ptt_DeviceEnabledToast": "この端末でプッシュ・トゥ・トークが有効になりました。",
@@ -1024,20 +1195,32 @@
   "Ptt_AudibleCues": "Sygnały dźwiękowe",
   "Ptt_AudibleCuesCaption": "Reproducir un sonido al empezar y terminar una respuesta",
   "Ptt_ChatAtCapacity_Format": "このチャットではプッシュトゥトークが有効ですが、すでに {0} 件に参加しています。設定で許可してください。",
+
+  // Back on Settings > Voice & Transcription.
   "Transcription_MicrophoneTopic": "माइक्रोफ़ोन",
   "Transcription_FaceDownStop": "Останавливать запись, когда телефон экраном вниз",
   "Transcription_FaceDownStopCaption": "Обръщането на телефона с екрана надолу или прибирането му в джоба изключва микрофона",
+
+  // Settings > Privacy.
   "Privacy_BlockedUsers": "Заблокированные пользователи",
+
+  // The location-accuracy options; each caption is the grey line under its option.
   "LocationAccuracy_High": "Высокая",
   "LocationAccuracy_HighCaption": "Максимальная точность; расходует больше заряда.",
   "LocationAccuracy_Balanced": "Сбалансированная",
   "LocationAccuracy_BalancedCaption": "Buena precisión con un consumo de batería moderado.",
   "LocationAccuracy_Low": "Rendah",
   "LocationAccuracy_LowCaption": "精度は最も低いですが、バッテリーを最も節約します。",
+
+  // The toast after switching server instance in Settings > Developer tools.
   "ServerInstance_HostChanged": "ホストが変更されました。",
   "ServerInstance_HostChangedCaption": "Die Änderungen werden nach einem Neustart der App wirksam. Bitte melden Sie sich erneut an.",
 
+  // From here to the Shortcuts_* group: screens that never grew a group of their own. Each run
+  // below is one of them.
   "Common_Send": "Пошаљите",
+
+  // The in-app log viewer and the report modal it can open.
   "LogView_Disabled_Prefix": "Локалните логове са изключени. За да ги включите, отидете в ",
   "LogView_DisabledSettingsLink": "налаштування",
   "LogView_Disabled_Suffix": "を開いてください。",
@@ -1046,18 +1229,27 @@
   "Report_Title": "Invia una segnalazione",
   "Report_Description": "Kami akan melampirkan buffer log saat ini untuk membantu mendiagnosis masalahnya. Tambahkan catatan singkat tentang apa yang terjadi (opsional).",
   "Report_Placeholder": "Was haben Sie gerade gemacht? Was ist schiefgelaufen?",
+
+  // Shown when a chat or place URL resolves to nothing.
   "ChatNotFound_Chat": "Không tìm thấy cuộc trò chuyện.",
   "ChatNotFound_Place": "プレイスが見つかりません。",
   "ChatNotFound_ChooseAnother": "Wählen Sie einen anderen aus.",
   "ChatNotFound_SignIn": "Можете се покушати пријавити да бисте га видјели",
+
+  // The cover shown when this client is too old for the server API; the placeholders are the
+  // app name and two version numbers.
   "ClientUpgrade_Title_Format": "Lütfen {0} uygulamasını güncelleyin",
   "ClientUpgrade_Version_Prefix": "Você está usando o cliente do {0} ",
   "ClientUpgrade_Version_Middle": ", која није компатибилна с тренутним серверским API-јем ",
   "ClientUpgrade_Version_Suffix": "와(과) 호환되지 않습니다.",
+
+  // The tabs of the in-chat search panel.
   "SearchTabs_Chat": "Trò chuyện",
   "SearchTabs_Tags": "Etiquetas",
   "SearchTabs_Contacts": "Contactos",
   "SearchTabs_Date": "Tanggal",
+
+  // The notification list in the left panel.
   "Notifications_AllCaughtUp": "Sie sind auf dem neuesten Stand",
   "Notifications_DismissAll": "Odrzuć wszystkie",
   // Notification text composed on the server. The names, message text and chat titles
@@ -1070,45 +1262,70 @@
   "Notification_ThreadCreated_Format": "スレッド「{0}」が作成されました",
   "Notification_AttentionRequested_Format": "{0} さんが注目を求めています",
   "Notification_Reaction_Format": "{1} mesajına {0}",
+
+  // The search result list: the "In <chat>" label on a hit, and its expand/collapse toggle.
   "Search_In": "Şurada:",
   "Search_CloseSearch": "Затворете търсенето",
   "Search_ShowMore": "Tampilkan lebih banyak",
   "Search_ShowLess": "Tampilkan lebih sedikit",
+
+  // The quick-jump palette that finds a chat or person by name.
   "QuickNav_Placeholder": "Springen Sie zu…",
   "QuickNav_NoMatches": "一致するものがありません",
+
+  // The autocomplete popup opened by "@" in the message editor.
   "MentionList_NoMatches": "Nenhuma correspondência encontrada",
   "MentionList_FilterAll": "Toutes les catégories",
   "MentionList_FilterUsers": "Utilisateurs uniquement",
   "MentionList_FilterChats": "Discussions uniquement",
   "MentionList_FilterEmoji": "Chỉ biểu tượng cảm xúc",
+
+  // The photo-library permission prompt; the sentence is split around a link to OS settings.
   "Photo_Title": "Приступ галерији фотографија",
   "Photo_Intro_Prefix": "{0} benötigt Zugriff auf Ihre Fotomediathek, um Fotos und Videos zu speichern. Aktivieren Sie ihn in den ",
   "Photo_Intro_Suffix": "「設定」で有効にしてください。",
+
+  // The "open this location in..." app chooser.
   "MapApp_Title": "他のアプリで開く",
+
+  // The chat header bar above the transcript.
   "ChatHeader_ChatProperties": "Thuộc tính cuộc trò chuyện",
   "ChatHeader_StartCall": "Започнете обаждане",
   "ChatHeader_CallUnavailable": "Vous pourrez appeler cette personne lorsqu'elle vous aura ajouté à ses contacts ou vous aura répondu",
   "ChatHeader_FollowThread": "Подписаться на тред",
   "ChatHeader_UnfollowThread": "スレッドのフォローを解除",
+
+  // The chat list's create button, and the Push-to-talk indicator on a chat row.
   "ChatList_NewChatOrPlace": "Cuộc trò chuyện hoặc Địa điểm mới",
   "ChatList_TurnOffPtt": "プッシュ・トゥ・トークをオフにする",
+
+  // More transcript chrome: the conversation summary toggle, the jump-to buttons, and the
+  // placeholders for a chat or author that could not be resolved.
   "ChatView_CollapseSummary": "Zusammenfassung einklappen",
   "ChatView_ExpandSummary": "Zusammenfassung ausklappen",
   "ChatView_GoToUnread": "Buka bagian yang belum dibaca",
   "ChatView_GoToLastMessage": "Перейти до останнього повідомлення",
   "ChatView_UnknownChat": "Cuộc trò chuyện không xác định",
   "ChatView_UnknownAuthor": "Tác giả không xác định",
+
+  // Receiving a share from another app: the target picker, its progress, and its error text.
   "IncomingShare_Title": "Compartilhar com",
   "IncomingShare_Failed": "{0} 件のファイルを共有できませんでした",
   "IncomingShare_CountOfTotal_Format": "{1} 个中的 {0} 个",
   "IncomingShare_ImagesShared": "Споделени са {0} изображения",
   "IncomingShare_VideosShared": "동영상 {0}개를 공유했습니다",
   "IncomingShare_FilesShared": "{0} 件のファイルを共有しました",
+
+  // The page that runs while an invite link is being redeemed.
   "ChatInvite_Title": "Приєднання за посиланням-запрошенням",
   "ChatInvite_Processing": "초대를 처리하는 중입니다. 잠시만 기다려 주세요…",
   "ChatInvite_Failed_Format": "Неуспешно присъединяване към чата: {0}",
+
+  // The empty state of any "pick some contacts" list.
   "MemberSelector_NoContacts": "У вас поки немає контактів. Поділіться своїм обліковим записом із друзями, щоб побачити їх тут.",
 
+  // The keyboard shortcuts modal on desktop. The key names themselves are not localized - only
+  // these descriptions of what each shortcut does.
   "Shortcuts_Title": "キーボードショートカット",
   "Shortcuts_CloseAriaLabel": "キーボードショートカットを閉じる",
   "Shortcuts_General": "Allgemein",
@@ -1135,8 +1352,11 @@
   "Shortcuts_ToggleTheme": "Переключить светлую или тёмную тему",
   "Shortcuts_ToggleSafeAreas": "Переключить безопасные области",
 
+  // The section heading above the LocationAccuracy_* options further up.
   "LocationAccuracy_Topic": "Точност на местоположението",
 
+  // The leave/delete confirmation modal, one title and question per target. "Leave" removes
+  // only you; "Delete" destroys the thing for everyone - keep the two verbs clearly apart.
   "Common_Leave": "Напуснете",
   "LeaveConfirm_LeaveChatTitle": "Quitter la discussion",
   "LeaveConfirm_LeaveChatQuestion": "Bu sohbetten ayrılmak istediğinize emin misiniz?",
@@ -1149,6 +1369,7 @@
   "LeaveConfirm_DeletePlaceTitle": "Изтрийте Мястото",
   "LeaveConfirm_DeletePlaceQuestion": "Наистина ли искате да изтриете това Място?",
 
+  // Shared labels once more, then the download page and the error pages.
   "Common_Continue": "Продовжити",
   "Common_Verify": "Подтвердить",
   "Common_Dismiss": "Ausblenden",
@@ -1158,6 +1379,8 @@
   "Common_Change": "Промените",
   "Common_Apply": "Übernehmen",
   "Common_Unknown": "Tidak diketahui",
+
+  // The download page and the "install the app" banner. The platform names are proper nouns.
   "Download_AndroidApp": "Приложение для Android",
   "Download_MobileTablet": "Điện thoại, máy tính bảng",
   "Download_IosApp": "Приложение для iOS",
@@ -1169,11 +1392,16 @@
   "Download_QrCode_Format": "Código QR do {0}",
   "Download_GetApp_Format": "Встановити {0}",
   "Download_GetAppBanner_Format": "{0} をインストール",
+
+  // The redirect notice and the unavailable / not-found pages. Unavailable_NotFound_Format puts
+  // the name after a colon on purpose, so that no language has to inflect it.
   "Redirect_To": "यहाँ रीडायरेक्ट हो रहा है:",
   "Unavailable_Title": "Không khả dụng",
   "Unavailable_PageNotFound": "Такой страницы не существует.",
   "Unavailable_NotFound_Format": "No se ha encontrado: {0}",
   "Unavailable_Chat": "Cuộc trò chuyện này không khả dụng",
+
+  // Error pages, and the error barrier that replaces a component which failed to render.
   "Error_AwSnap": "エラーが発生しました",
   "Error_Title": "Kesalahan!",
   "Error_AccountSuspendedTitle": "Ваш обліковий запис заблоковано.",
@@ -1190,6 +1418,8 @@
   "Error_ReloadIn_Format": "{0} sn içinde yeniden yükleyin",
   "Error_Label": "Kesalahan:",
 
+  // Sign-in and verification. The Verify_EnterCodeSentTo_* family is one sentence with four
+  // possible endings, so word each suffix to read naturally after the same prefix.
   "Verify_PleaseVerifyEmail": "Bitte bestätigen Sie Ihre E-Mail-Adresse",
   "Verify_EnterCodeSentTo_Prefix": "次の宛先に送信したコードを入力してください: ",
   "Verify_EnterCodeSentTo_Suffix": " gesendet haben",
@@ -1205,8 +1435,12 @@
   "Phone_TryAgainLater": "しばらくしてからもう一度お試しください。",
   "Phone_TryAgainInMinutes": "Вы сможете повторить попытку через несколько минут.",
   "Phone_VerifyToSignIn_Format": "{0} uygulamasında oturum açmak için telefon numaranızı doğrulayın.",
+
+  // The two ways to set a picture, reused by the avatar and place editors.
   "PicUpload_UploadImage": "Завантажити зображення",
   "PicUpload_GenerateAvatar": "Сгенерировать аватар",
+
+  // The sign-in modal and its provider list.
   "SignIn_SignIn": "Пријавите се",
   "SignIn_SignOut": "Se déconnecter",
   "SignIn_EnterCode": "Introduce el código",
@@ -1220,10 +1454,14 @@
   "SignIn_InvalidPhoneOrEmail": "電話番号またはメールアドレスが正しくありません。",
   "SignIn_VerifyPhoneText_Format": "Devam etmek ve arkadaşlarınızın sizi {0} uygulamasında bulabilmesi için lütfen telefon numaranızı doğrulayın.",
   "SignIn_VerifyEmailText_Format": "続けるにはメールアドレスを確認してください。{0} で友だちがあなたを見つけられるようになります。",
+
+  // Asking to join a place that does not accept open joins.
   "JoinRequest_NotMember": "まだメンバーではありません",
   "JoinRequest_Text": "Изпратете заявка за присъединяване — администраторите ще преценят добавянето ви в Мястото",
   "JoinRequest_Send": "Envoyer la demande",
   "Stepper_StepCompleted": "Questo passaggio è già stato completato!",
+
+  // The info sheet of the media viewer; these labels keep their trailing colon.
   "MediaInfo_Title": "Информације о медију",
   "MediaInfo_FileName": "Nombre del archivo:",
   "MediaInfo_Size": "Dimensione:",
@@ -1232,16 +1470,22 @@
   "MediaInfo_Dimensions": "크기(가로×세로):",
   "MediaInfo_ContentType": "コンテンツタイプ:",
   "MediaViewer_CopyImage": "Копирайте изображението",
+
+  // The reCAPTCHA footer - the fragments wrap links to Google's policies. "reCAPTCHA" and
+  // "Google" are brand names and stay as they are.
   "Captcha_Protected_Prefix": "Diese Website ist durch reCAPTCHA geschützt; es gelten die Google ",
   "Captcha_And": " et les ",
   "Captcha_Protected_Suffix": " společnosti Google.",
 
+  // The generic discard/confirm modal.
   "Confirm_DiscardTitle": "Annuler les modifications",
   "Confirm_ConfirmTitle": "Confirmer les modifications",
   "Confirm_DiscardText": "Tem certeza de que deseja descartar todas as alterações?",
   "Confirm_ConfirmText": "Tem certeza de que deseja confirmar todas as alterações?",
   "Confirm_Discard": "Скасувати",
   "Confirm_Confirm": "Подтвердить",
+
+  // The upload stages shown on an attachment tile while it is being sent.
   "Attachment_Failed_Format": "Fehlgeschlagen: {0}",
   "Attachment_UnknownStage": "Giai đoạn không xác định",
   "Attachment_ClientProcessing": "Przetwarzanie po stronie klienta",
@@ -1249,17 +1493,26 @@
   "Attachment_Uploaded": "アップロード完了",
   "Attachment_ServerProcessing": "Przetwarzanie po stronie serwera",
   "Attachment_Ready": "Připraveno",
+
+  // Confirmations and toasts for role changes.
   "Members_PromoteConfirm_Format": "Наистина ли искате да направите „{0}“ собственик? Това действие не може да бъде отменено.",
   "Members_PromotedToOwner_Format": "{0}님이 소유자로 승격되었습니다",
   "Members_NowModerator_Format": "{0} をモデレーターにしました",
   "Members_NoLongerModerator_Format": "{0} のモデレーターを解除しました",
+
+  // The prompt before starting a replay, and the pin/unpin toasts.
   "Replay_ConfirmTitle": "Да започнем ли възпроизвеждането?",
   "Replay_ConfirmText": "Възпроизвеждането ще спре слушането и ще го възобнови, след като приключите. Да продължим ли?",
   "Pin_MessagePinned": "メッセージを固定しました",
   "Pin_MessageUnpinned": "メッセージの固定を解除しました",
+
+  // Archiving a chat.
   "Chat_ArchiveTitle": "Lưu trữ cuộc trò chuyện",
   "Chat_Archive": "Архивировать",
   "Chat_ArchiveWarning_Format": "Anda akan mengarsipkan obrolan “{0}”. Tidak ada yang bisa mengaksesnya kecuali pemilik, yang tetap bisa membukanya lewat tautan langsung.",
+
+  // The chat type picker in the new-chat modal and in chat settings; each *Hint is the grey
+  // line under its option, and the *Thread variants are the same three options for a thread.
   "Chat_PublicChat": "Cuộc trò chuyện công khai",
   "Chat_PlaceChat": "Cuộc trò chuyện của Địa điểm",
   "Chat_PublicChatHint": "Siapa pun bisa bergabung ke obrolan ini dengan membuka tautannya",
@@ -1279,6 +1532,8 @@
   "Chat_GeneratingSmartTitle": "Trwa generowanie inteligentnej nazwy i opisu na podstawie wiadomości źródłowych...",
   "Chat_GeneratingSmartTitleHint": "Deixe os campos vazios para que sejam preenchidos automaticamente.",
 
+  // The presence badge on an avatar. Presence_LastSeen_* wraps a relative time taken from the
+  // LiveTime_* group below.
   "Presence_Online": "オンライン",
   "Presence_Away": "Немає на місці",
   "Presence_Offline": "Sin conexión",
@@ -1287,6 +1542,7 @@
   "Presence_LastSeen_Prefix": "Последняя активность: ",
   "Presence_LastSeen_Suffix": "",
 
+  // Video calls and screen sharing: the "still there?" idle prompts and the camera controls.
   "Video_IdleTitle": "まだご利用中ですか?",
   "Video_ContinueSessionTitle": "Да продължим ли видеосесията?",
   "Video_IdleRecordingText_Format": "Nie było Cię aktywnego przez {0}. Kontynuować nagrywanie wideo?",
@@ -1304,6 +1560,8 @@
   "Video_ShowChat": "Hiện cuộc trò chuyện",
   "Video_HideChat": "Masquer la discussion",
   "Video_Connecting": "Menghubungkan...",
+
+  // Call state text and the call action buttons.
   "Call_Ended": "통화가 종료되었습니다",
   "Call_CouldntStart": "Anruf konnte nicht gestartet werden",
   "Call_RecordingTurnedOffByHost": "Nagrywanie wyłączone przez prowadzącego",
@@ -1330,6 +1588,9 @@
   "Call_CameraStillBlockedApp": "カメラは引き続きブロックされています。まずシステム設定でカメラへのアクセスを許可してください。",
   "Call_CameraStillBlockedWeb": "カメラは引き続きブロックされています。まずブラウザの設定でカメラへのアクセスを許可してください。",
   "Call_StartingRecording": "Démarrage de l'enregistrement...",
+
+  // The text the share sheet hands to another app. In the _Format values the last placeholder
+  // is the app name.
   "Share_FailedToShareFiles": "Файловете не можаха да бъдат споделени",
   "Share_PrivateChatJoinLink": "Споделете линка за присъединяване към затворен чат",
   "Share_PrivatePlaceJoinLink": "Споделете линка за присъединяване към затворено Място",
@@ -1337,19 +1598,29 @@
   "Share_TextTitled_Format": "{1} üzerinde \"{0}\"",
   "Share_TextNamed_Format": "{1} üzerinde {0}",
   "Share_ThreadText_Format": "{1} üzerindeki \"{0}\" konusu: {2}",
+
+  // Shown when someone signs in with an identity that has no account yet.
   "Account_RegisterTitle": "Зареєструвати новий обліковий запис?",
   "Account_RegisterText_Format": "Nous n'avons pas trouvé de compte pour {0}. Voulez-vous en créer un nouveau ?",
   "Account_RegisterThisAccount": "цього облікового запису",
   "Account_Register": "Зарегистрировать",
+
+  // Toasts from the log viewer and the report modal.
   "Settings_NothingToCopy": "コピーする項目がありません",
   "Settings_LogEntriesCopied": "Se copiaron las entradas de registro visibles",
   "Report_Sent": "レポートを送信しました。ありがとうございます!",
+
+  // The message editor's placeholder text, and the stub tooltip on an unfinished button.
   "Editor_ButtonNotImplemented": "이 버튼은 아직 아무 동작도 하지 않습니다",
   "Editor_PlaceholderShort": "Повідомлення...",
   "Editor_Placeholder": "Schreiben Sie eine Nachricht – oder nehmen Sie sie einfach auf!",
 
+  // The plural counterpart of Share_FailedToShareFiles above.
   "Share_FailedToShareCount": "{0} 件のファイルを共有できませんでした",
 
+  // Everything that renders a date, a time or a duration: the transcript's day separators, the
+  // conversation card header, and relative times such as "few minutes ago".
+  //
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
   // 12/7 entries, and the *Pattern values are .NET date format strings - localize the
   // field order and separators, never the format tokens themselves.
@@ -1367,6 +1638,9 @@
   "Date_MonthYearPattern": "MMMM yyyy",
   "Date_Parts_Format": "{0}, {1}",
   "Date_At_Format": "{0} at {1}",
+
+  // The header of a conversation card. Conversation_ShowMore_Format counts the messages still
+  // hidden, and the name-list formats join speaker names.
   "Conversation_DurationAt_Format": "{0} · {1}",
   "Conversation_StartedAt_Format": "Rozpoczęto o {0}",
   "Conversation_ShowMore_Format": "{1} öğeden {0} tanesini gösterin",
@@ -1374,6 +1648,9 @@
   "Conversation_TwoNames_Format": "{0} und {1}",
   "Conversation_ThreeNames_Format": "{0}, {1} und {2}",
   "Conversation_NamesAndOthers_Format": "{0}, {1} và {2} người khác",
+
+  // Relative times, recomputed as they age. They render mid-sentence - after "Last seen", for
+  // one - so keep them lowercase wherever the language allows it.
   "LiveTime_JustNow": "agora mesmo",
   "LiveTime_InFewSeconds": "через несколько секунд",
   "LiveTime_FewSecondsAgo": "несколько секунд назад",
@@ -1389,12 +1666,16 @@
   "Duration_Hours_Format": "{0} godz.",
   "Duration_Minutes_Format": "{0} phút",
 
+  // Invite link management in chat and place settings. A join link is a URL, so "private" here
+  // is the borrowed adjective, not the closed/open pair used for access modes.
   "Invite_ManageLinks": "Управление на линковете",
   "Invite_NewPrivateLink": "Нове приватне посилання-запрошення",
   "Invite_UnknownLink": "Liên kết không xác định",
 
+  // Two more rows in chat settings.
   "ChatSettings_UsePlaceSettingsForMembers": "सदस्यों को संपादित करने के लिए प्लेस सेटिंग्स का उपयोग करें",
   "ChatSettings_LeaveChatAndDelete": "Quitter la discussion et la supprimer",
 
+  // The destructive action at the bottom of place settings.
   "PlaceSettings_LeavePlaceAndDelete": "Напуснете Мястото и изтрий"
 }
