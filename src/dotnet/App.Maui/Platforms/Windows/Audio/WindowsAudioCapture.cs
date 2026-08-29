@@ -28,7 +28,7 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
         // Set by TryCreateGraph: WinRT already names the failure, and it's the only place
         // AccessDenied can be told apart from a device that simply isn't there.
         var failure = RecorderStartOutcome.Started;
-        var apmTap = ApmTap.TryStart(Log);
+        var apmTap = WebRtcApmTap.TryStart(Log);
 
         // Constructing it loads webrtc-apm, so a missing or wrong-architecture native throws here
         AudioProcessingModule? apm = null;

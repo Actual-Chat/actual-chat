@@ -7,7 +7,7 @@ namespace ActualChat.App.Maui.Audio;
 /// render/capture alignment can be replayed and measured offline. Enabled by creating
 /// an <c>aec-tap.on</c> file in the app data directory.
 /// </summary>
-public sealed class ApmTap
+public sealed class WebRtcApmTap
 {
     private const string MarkerFileName = "aec-tap.on";
     private const string OutputDirName = "AecTaps";
@@ -27,14 +27,14 @@ public sealed class ApmTap
     private int _frameCount;
     private ILogger Log { get; }
 
-    public static ApmTap? TryStart(ILogger log)
+    public static WebRtcApmTap? TryStart(ILogger log)
     {
         try {
             if (!File.Exists((FilePath)FileSystem.AppDataDirectory & MarkerFileName))
                 return null;
 
             log.LogWarning("APM tap is ON - recording up to {Duration}s of APM input", MaxDurationSeconds);
-            return new ApmTap(log);
+            return new WebRtcApmTap(log);
         }
         catch (Exception e) {
             log.LogWarning(e, "Failed to start the APM tap");
@@ -42,7 +42,7 @@ public sealed class ApmTap
         }
     }
 
-    private ApmTap(ILogger log)
+    private WebRtcApmTap(ILogger log)
         => Log = log;
 
     public void Add(
