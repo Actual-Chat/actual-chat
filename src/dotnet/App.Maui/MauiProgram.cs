@@ -26,6 +26,7 @@ namespace ActualChat.App.Maui;
 
 public static partial class MauiProgram
 {
+    private static int _areInteractiveServicesStarted;
     private static HostInfo HostInfo => Constants.HostInfo;
     private static ILogger Log => field ??= StaticLog.For(typeof(MauiProgram));
     private static Tracer Tracer => field ??= Tracer.Default[nameof(MauiProgram)];
@@ -103,17 +104,15 @@ public static partial class MauiProgram
             MauiStartupBreadcrumbs.Add("MauiApp built");
             StaticLog.Factory = app.Services.LoggerFactory();
 
-            AppNonScopedServiceStarter.WarmupStaticServices(HostInfo);
-            MauiStartupBreadcrumbs.Add("Static services warmed up");
-
+            // Registering the factory is just storing a lambda, and a notification tap on a
+            // headless process needs it, so it happens on both paths.
 #pragma warning disable CA2025
             BlazorWebViewApp.Initialize(() => BuildBlazorViewAppInternal(app));
 #pragma warning restore CA2025
 
-            SetupBlazorViewAppPostBuildRoutine();
-
-            LoadingUI.MarkAppBuilt();
-            MauiStartupBreadcrumbs.Add("CreateMauiApp completed");
+            if (!MauiStart.IsHeadless)
+                StartInteractiveServices();
+            MauiStartupBreadcrumbs.Add($"CreateMauiApp completed ({MauiStart.Kind})");
 
             return app;
         }
@@ -121,6 +120,31 @@ public static partial class MauiProgram
             Log.LogCritical(ex, "Failed to build MAUI app");
             throw;
         }
+    }
+
+    public static void PromoteToInteractive()
+        // An Activity reached a process that started headless - a notification tap. Idempotent,
+        // so the ordinary interactive start, which already ran this, pays nothing for the call.
+        => StartInteractiveServices();
+
+    private static void StartInteractiveServices()
+    {
+        // None of this serves the FCM handler, and a push-woken process runs inside the deadline
+        // Android gives Application.onCreate - where the ThreadPool spin-up alone competes with
+        // the broadcast it was started to deliver.
+        if (Interlocked.Exchange(ref _areInteractiveServicesStarted, 1) != 0)
+            return;
+
+        AppNonScopedServiceStarter.WarmupStaticServices(HostInfo);
+        MauiStartupBreadcrumbs.Add("Static services warmed up");
+        SetupBlazorViewAppPostBuildRoutine();
+        LoadingUI.MarkAppBuilt();
+        // MainPage waits for both before it attaches the WebView, so they start here - alongside
+        // MAUI's own startup - instead of when the Activity is already asking for them.
+        BlazorWebViewApp.EnsureStarted();
+#if ANDROID
+        _ = AndroidUtils.WarmUpWebView();
+#endif
     }
 
     private static HostInfo CreateHostInfo(IConfiguration configuration)
@@ -256,11 +280,13 @@ public static partial class MauiProgram
             Log.LogWarning("Can't add SafeJSRuntime: IJSRuntime registration is not found");
             return;
         }
+
         var webViewJSRuntimeType = jsRuntimeRegistration.ImplementationType;
         if (webViewJSRuntimeType == null) {
             Log.LogWarning("Can't add SafeJSRuntime: IJSRuntime registration has no ImplementationType");
             return;
         }
+
         services.Remove(jsRuntimeRegistration);
         services.Add(new ServiceDescriptor(
             typeof(SafeJSRuntime),
@@ -337,6 +363,7 @@ public static partial class MauiProgram
             if (e.Message == "Timeout while waiting for RPC keep-alive.")
                 return true;
         }
+
         return false;
     }
 #endif

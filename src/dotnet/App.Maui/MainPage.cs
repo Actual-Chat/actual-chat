@@ -1,10 +1,16 @@
 namespace ActualChat.App.Maui;
 
-public partial class MainPage : ContentPage
+public sealed partial class MainPage : ContentPage
 {
-    private static volatile MainPage _current = null!;
-
-    public static MainPage Current => _current;
+    // Past this the WebView waits for the container itself - the old behaviour - rather than
+    // leaving a blank splash on screen forever.
+    private static readonly TimeSpan MaxAttachDelay = TimeSpan.FromSeconds(10);
+    private static MainPage _current = null!;
+    private int _isWebViewAttachPending = 1;
+    public static MainPage Current => Volatile.Read(ref _current);
+    public bool IsWebViewAttachPending
+        // Tells "no WebView yet, still starting up" from "it went away while backgrounded".
+        => Volatile.Read(ref _isWebViewAttachPending) != 0;
 
     public MainPage()
     {
@@ -12,7 +18,7 @@ public partial class MainPage : ContentPage
 
         // Safe areas handled by CSS via viewport-fit=cover and env(safe-area-inset-*)
         BackgroundColor = MauiSettings.SplashBackgroundColor;
-        RecreateWebView();
+        _ = AttachWebViewWhenReady();
 
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
@@ -39,6 +45,8 @@ public partial class MainPage : ContentPage
     public void Unload()
         => Content = null;
 
+    // Private methods
+
     private void OnLoaded(object? sender, EventArgs e)
         => OnLoaded_Platform();
 
@@ -48,5 +56,19 @@ public partial class MainPage : ContentPage
         Unloaded -= OnUnloaded;
     }
 
+    private async Task AttachWebViewWhenReady()
+    {
+        // Off the UI thread on purpose: the BlazorWebView ctor blocks it on Chromium's provider
+        // lock, and the handler then waits there for the container. The background stands in.
+        var whenReady = Task.WhenAll(BlazorWebViewApp.WhenAppReady, WhenPlatformWebViewReady());
+        await whenReady.WaitAsync(MaxAttachDelay).SilentAwait(false);
+        Volatile.Write(ref _isWebViewAttachPending, 0);
+        if (!ReferenceEquals(Volatile.Read(ref _current), this))
+            return; // A newer MainPage took over while we were waiting
+
+        BeginDispatchToMainThread(RecreateWebView);
+    }
+
     private partial void OnLoaded_Platform();
+    private partial Task WhenPlatformWebViewReady();
 }

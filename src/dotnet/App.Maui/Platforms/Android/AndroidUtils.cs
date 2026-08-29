@@ -17,6 +17,8 @@ public static class AndroidUtils
     private const int ImageDownloadTimeoutSeconds = 5;
     private const string Tag = Firebase.Messaging.Constants.Tag;
     private const string ThreadNetworkIo = "Firebase-Messaging-Network-Io";
+    private static readonly Lock WebViewWarmUpLock = new();
+    private static Task? _whenWebViewWarm;
 
     public static bool? IsAppForeground()
     {
@@ -32,7 +34,7 @@ public static class AndroidUtils
 
         // Screen is on and unlocked, now check if the process is in the foreground
 
-        int pid = Android.OS.Process.MyPid();
+        var pid = Android.OS.Process.MyPid();
         var appProcesses = activityManager.RunningAppProcesses;
         if (appProcesses != null) {
             foreach (var process in appProcesses) {
@@ -40,22 +42,45 @@ public static class AndroidUtils
                     return process.Importance == Importance.Foreground;
             }
         }
+
         return false;
+    }
+
+    public static ActivityManager.RunningAppProcessInfo? GetProcessInfo()
+    {
+        try {
+            var processInfo = new ActivityManager.RunningAppProcessInfo();
+            ActivityManager.GetMyMemoryState(processInfo);
+            return processInfo;
+        }
+        catch (System.Exception) {
+            return null;
+        }
     }
 
     public static string GetProcessStartReason()
     {
-        // Importance separates a broadcast-started process from a user launch: an FCM wake reads
-        // as a receiver/cached importance, a user launch as Foreground (AMS marks the process
-        // top-bound at bind time, before any activity exists).
-        try {
-            var processInfo = new ActivityManager.RunningAppProcessInfo();
-            ActivityManager.GetMyMemoryState(processInfo);
-            return $"{processInfo.Importance}/{processInfo.ImportanceReasonCode}";
-        }
-        catch (System.Exception e) {
-            return e.GetType().Name;
-        }
+        var processInfo = GetProcessInfo();
+        return processInfo is null
+            ? "Unknown"
+            : $"{processInfo.Importance}/{processInfo.ImportanceReasonCode}";
+    }
+
+    public static Task WarmUpWebView()
+    {
+        // Without this the WebView provider is loaded on the UI thread inside performStart, right
+        // before BlazorAndroidWebView is constructed. GetDefaultUserAgent forces the same load and
+        // is safe off the UI thread. Nothing may block the UI thread on the returned task:
+        // Chromium posts its native init back to that thread, so waiting there would deadlock.
+        lock (WebViewWarmUpLock)
+            return _whenWebViewWarm ??= Task.Run(() => {
+                try {
+                    _ = Android.Webkit.WebSettings.GetDefaultUserAgent(Application.Context);
+                }
+                catch (System.Exception e) {
+                    Android.Util.Log.Warn(MauiDiagnostics.LogTag, $"WebView warm-up failed: {e.Message}");
+                }
+            });
     }
 
     public static bool IsMainThread()
@@ -84,6 +109,7 @@ public static class AndroidUtils
             var networkIoExecutor = NewNetworkIoExecutor();
             imageDownload.Start(networkIoExecutor);
         }
+
         return imageDownload;
     }
 
@@ -125,6 +151,7 @@ public static class AndroidUtils
              * when it is updated.
              */
         }
+
         return null;
     }
 }

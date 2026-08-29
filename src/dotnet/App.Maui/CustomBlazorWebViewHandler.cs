@@ -5,23 +5,22 @@ namespace ActualChat.App.Maui;
 /// <summary>
 /// Custom Blazor WebView handler that ensures the app services are ready before configuring the MAUI context.
 /// </summary>
-public partial class CustomBlazorWebViewHandler : BlazorWebViewHandler
+public sealed partial class CustomBlazorWebViewHandler : BlazorWebViewHandler
 {
-    private ILogger Log => field ??= StaticLog.For<CustomBlazorWebViewHandler>();
+    private ILogger Log => field ??= StaticLog.For(GetType());
 
     public override void SetMauiContext(IMauiContext mauiContext)
     {
         BlazorWebViewApp.EnsureStarted();
 
-        // Await blazor app is ready
+        // MainPage attaches the WebView only once the app is ready, so this normally doesn't wait
+        // at all; it still can via MainPage.MaxAttachDelay. Blocking rather than spinning matters
+        // there - the old poll burned the core that finishes the build it was waiting for.
         if (!BlazorWebViewApp.WhenAppReady.IsCompleted) {
-            var sw = Stopwatch.GetTimestamp();
-            while (!BlazorWebViewApp.WhenAppReady.IsCompleted)
-                Thread.Sleep(5);
-            var elapsed = Stopwatch.GetElapsedTime(sw);
-
-            var log = StaticLog.Factory.CreateLogger<CustomBlazorWebViewHandler>();
-            log.LogDebug("Awaiting BlazorWebViewApp readiness took {Elapsed}ms", (int)elapsed.TotalMilliseconds);
+            var startedAt = CpuTimestamp.Now;
+            BlazorWebViewApp.WhenAppReady.Wait();
+            Log.LogWarning("Awaiting BlazorWebViewApp readiness blocked the UI thread for {Elapsed}",
+                (CpuTimestamp.Now - startedAt).ToShortString());
         }
 
         var services = BlazorWebViewApp.Current.Services;
