@@ -306,6 +306,7 @@
   "Editor_LargeTextMessage_Format": "चिपकाया गया टेक्स्ट {0} अक्षरों का है। क्या इसे .txt फ़ाइल के रूप में भेजें या सामान्य टेक्स्ट संदेश ही रहने दें?",
   "Editor_SendAsFile": "फ़ाइल के रूप में भेजें",
   "Editor_KeepAsText": "टेक्स्ट ही रहने दें",
+  "Editor_DropFilesToAttach": "अटैच करने के लिए फ़ाइलें छोड़ें",
 
   "Alert_Alert_Format": "{0} को अलर्ट करें",
   "Alert_TargetEveryone": "सभी",

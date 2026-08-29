@@ -306,6 +306,7 @@
   "Editor_LargeTextMessage_Format": "Поставеният текст е с дължина {0} знака. Да го изпратим ли като файл .txt, или да остане обикновено текстово съобщение?",
   "Editor_SendAsFile": "Изпратете като файл",
   "Editor_KeepAsText": "Оставете като текст",
+  "Editor_DropFilesToAttach": "Пуснете файловете, за да ги прикачите",
 
   "Alert_Alert_Format": "Предупреди {0}",
   "Alert_TargetEveryone": "всички",

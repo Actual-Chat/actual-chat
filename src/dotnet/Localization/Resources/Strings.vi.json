@@ -306,6 +306,7 @@
   "Editor_LargeTextMessage_Format": "Văn bản đã dán dài {0} ký tự. Bạn muốn gửi dưới dạng tệp .txt hay giữ làm tin nhắn văn bản thông thường?",
   "Editor_SendAsFile": "Gửi dưới dạng tệp",
   "Editor_KeepAsText": "Giữ làm văn bản",
+  "Editor_DropFilesToAttach": "Thả tệp để đính kèm",
 
   "Alert_Alert_Format": "Báo động cho {0}",
   "Alert_TargetEveryone": "mọi người",

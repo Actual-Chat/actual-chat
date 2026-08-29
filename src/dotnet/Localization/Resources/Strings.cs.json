@@ -306,6 +306,7 @@
   "Editor_LargeTextMessage_Format": "Vložený text má {0} znaků. Odeslat jako soubor .txt, nebo ponechat jako běžnou textovou zprávu?",
   "Editor_SendAsFile": "Odeslat jako soubor",
   "Editor_KeepAsText": "Ponechat jako text",
+  "Editor_DropFilesToAttach": "Přetáhněte sem soubory pro přiložení",
 
   "Alert_Alert_Format": "Upozornit {0}",
   "Alert_TargetEveryone": "všechny",

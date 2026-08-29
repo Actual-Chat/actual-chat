@@ -306,6 +306,7 @@
   "Editor_LargeTextMessage_Format": "O texto colado tem {0} caracteres. Quer enviá-lo como arquivo .txt ou mantê-lo como mensagem de texto comum?",
   "Editor_SendAsFile": "Enviar como arquivo",
   "Editor_KeepAsText": "Manter como texto",
+  "Editor_DropFilesToAttach": "Solte os arquivos para anexar",
 
   "Alert_Alert_Format": "Alertar {0}",
   "Alert_TargetEveryone": "todos",

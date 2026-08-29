@@ -306,6 +306,7 @@
   "Editor_LargeTextMessage_Format": "Длина вставленного текста — {0} символов. Отправить его как файл .txt или оставить обычным текстовым сообщением?",
   "Editor_SendAsFile": "Отправить файлом",
   "Editor_KeepAsText": "Оставить текстом",
+  "Editor_DropFilesToAttach": "Отпустите файлы, чтобы прикрепить",
 
   "Alert_Alert_Format": "Срочное уведомление: {0}",
   "Alert_TargetEveryone": "всем",

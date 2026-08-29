@@ -306,6 +306,7 @@
   "Editor_LargeTextMessage_Format": "붙여넣은 텍스트는 {0}자입니다. .txt 파일로 보낼까요, 아니면 일반 텍스트 메시지로 둘까요?",
   "Editor_SendAsFile": "파일로 보내기",
   "Editor_KeepAsText": "텍스트로 두기",
+  "Editor_DropFilesToAttach": "첨부하려면 파일을 놓으세요",
 
   "Alert_Alert_Format": "{0}에게 긴급 알림",
   "Alert_TargetEveryone": "모두",

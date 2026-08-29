@@ -306,6 +306,7 @@
   "Editor_LargeTextMessage_Format": "Der eingefügte Text ist {0} Zeichen lang. Möchten Sie ihn als .txt-Datei senden oder als normale Textnachricht behalten?",
   "Editor_SendAsFile": "Als Datei senden",
   "Editor_KeepAsText": "Als Text behalten",
+  "Editor_DropFilesToAttach": "Dateien ablegen, um sie anzuhängen",
 
   "Alert_Alert_Format": "{0} dringend benachrichtigen",
   "Alert_TargetEveryone": "alle",

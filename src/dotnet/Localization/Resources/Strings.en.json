@@ -306,6 +306,7 @@
   "Editor_LargeTextMessage_Format": "The pasted text is {0} characters long. Do you want to send it as a .txt file or keep it as a regular text message?",
   "Editor_SendAsFile": "Send as file",
   "Editor_KeepAsText": "Keep as text",
+  "Editor_DropFilesToAttach": "Drop files to attach",
 
   "Alert_Alert_Format": "Alert {0}",
   "Alert_TargetEveryone": "everyone",

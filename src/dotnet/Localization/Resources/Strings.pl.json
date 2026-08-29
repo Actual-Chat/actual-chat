@@ -306,6 +306,7 @@
   "Editor_LargeTextMessage_Format": "Wklejony tekst ma {0} znaków. Wysłać go jako plik .txt czy zostawić jako zwykłą wiadomość tekstową?",
   "Editor_SendAsFile": "Wyślij jako plik",
   "Editor_KeepAsText": "Zostaw jako tekst",
+  "Editor_DropFilesToAttach": "Upuść pliki, aby je załączyć",
 
   "Alert_Alert_Format": "Zaalarmuj {0}",
   "Alert_TargetEveryone": "wszystkich",

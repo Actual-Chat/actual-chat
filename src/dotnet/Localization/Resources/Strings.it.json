@@ -306,6 +306,7 @@
   "Editor_LargeTextMessage_Format": "Il testo incollato è lungo {0} caratteri. Vuoi inviarlo come file .txt o tenerlo come normale messaggio di testo?",
   "Editor_SendAsFile": "Invia come file",
   "Editor_KeepAsText": "Tieni come testo",
+  "Editor_DropFilesToAttach": "Rilascia i file per allegarli",
 
   "Alert_Alert_Format": "Avvisa {0}",
   "Alert_TargetEveryone": "tutti",

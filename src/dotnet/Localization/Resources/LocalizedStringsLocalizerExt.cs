@@ -329,6 +329,7 @@ public static class LocalizedStringsLocalizerExt
             => l["Editor_LargeTextMessage_Format", arg0].Value;
         public string Editor_SendAsFile => l["Editor_SendAsFile"].Value;
         public string Editor_KeepAsText => l["Editor_KeepAsText"].Value;
+        public string Editor_DropFilesToAttach => l["Editor_DropFilesToAttach"].Value;
 
         public string Alert_Alert_Format(object arg0) => l["Alert_Alert_Format", arg0].Value;
         public string Alert_TargetEveryone => l["Alert_TargetEveryone"].Value;

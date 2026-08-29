@@ -306,6 +306,7 @@
   "Editor_LargeTextMessage_Format": "貼り付けたテキストは {0} 文字です。.txt ファイルとして送信しますか、それとも通常のテキストメッセージのままにしますか?",
   "Editor_SendAsFile": "ファイルとして送信",
   "Editor_KeepAsText": "テキストのままにする",
+  "Editor_DropFilesToAttach": "添付するファイルをドロップしてください",
 
   "Alert_Alert_Format": "{0} に緊急通知",
   "Alert_TargetEveryone": "全員",

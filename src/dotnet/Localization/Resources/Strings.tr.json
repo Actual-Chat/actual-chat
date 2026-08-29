@@ -306,6 +306,7 @@
   "Editor_LargeTextMessage_Format": "Yapıştırılan metin {0} karakter uzunluğunda. Bunu .txt dosyası olarak mı göndermek istersiniz, yoksa normal metin mesajı olarak mı kalsın?",
   "Editor_SendAsFile": "Dosya olarak gönderin",
   "Editor_KeepAsText": "Metin olarak bırakın",
+  "Editor_DropFilesToAttach": "Eklemek için dosyaları bırakın",
 
   "Alert_Alert_Format": "{0} için acil bildirim",
   "Alert_TargetEveryone": "herkes",

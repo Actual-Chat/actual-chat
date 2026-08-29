@@ -180,7 +180,8 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IAttachmentWebFilePickerBackend>(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                JSCreateMethod, Ref, BlazorRef, L.Editor_DropFilesToAttach);
             await MarkupEditorRef.WhenReady;
             if (JSRef == null! || MarkupEditorRef.JSRef == null!)
                 return; // Dispose may happen during await above

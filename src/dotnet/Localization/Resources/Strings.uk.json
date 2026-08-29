@@ -306,6 +306,7 @@
   "Editor_LargeTextMessage_Format": "Довжина вставленого тексту — {0} символів. Надіслати його як файл .txt чи залишити звичайним текстовим повідомленням?",
   "Editor_SendAsFile": "Надіслати файлом",
   "Editor_KeepAsText": "Залишити текстом",
+  "Editor_DropFilesToAttach": "Відпустіть файли, щоб прикріпити",
 
   "Alert_Alert_Format": "Термінове сповіщення: {0}",
   "Alert_TargetEveryone": "усім",

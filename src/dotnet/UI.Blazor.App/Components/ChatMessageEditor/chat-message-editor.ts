@@ -53,11 +53,19 @@ export class ChatMessageEditor {
     private dragCounter = 0;
     private chatPanel: HTMLElement | null = null;
 
-    static create(editorDiv: HTMLDivElement, filePickerBlazorRef: DotNet.DotNetObject): ChatMessageEditor {
-        return new ChatMessageEditor(editorDiv, filePickerBlazorRef);
+    static create(
+        editorDiv: HTMLDivElement,
+        filePickerBlazorRef: DotNet.DotNetObject,
+        dropFilesCaption: string,
+    ): ChatMessageEditor {
+        return new ChatMessageEditor(editorDiv, filePickerBlazorRef, dropFilesCaption);
     }
 
-    constructor(editorDiv: HTMLDivElement, filePickerBlazorRef: DotNet.DotNetObject) {
+    constructor(
+        editorDiv: HTMLDivElement,
+        filePickerBlazorRef: DotNet.DotNetObject,
+        dropFilesCaption: string,
+    ) {
         const bodyClassList = document.body.classList;
         this.editorDiv = editorDiv;
         this.postPanelDiv = this.editorDiv.querySelector(':scope .post-panel')!;
@@ -114,11 +122,14 @@ export class ChatMessageEditor {
         if (this.chatPanel) {
             this.dragDropOverlay = document.createElement('div');
             this.dragDropOverlay.className = 'drag-drop-overlay';
-            this.dragDropOverlay.innerHTML =
-                '<div class="drag-drop-overlay-content">' +
-                '<i class="icon-upload-cloud text-4xl"></i>' +
-                '<span>Drop files to attach</span>' +
-                '</div>';
+            const overlayContent = document.createElement('div');
+            overlayContent.className = 'drag-drop-overlay-content';
+            const overlayIcon = document.createElement('i');
+            overlayIcon.className = 'icon-upload-cloud text-4xl';
+            const overlayCaption = document.createElement('span');
+            overlayCaption.textContent = dropFilesCaption;
+            overlayContent.append(overlayIcon, overlayCaption);
+            this.dragDropOverlay.appendChild(overlayContent);
             const panelStyle = getComputedStyle(this.chatPanel);
             if (panelStyle.position === 'static')
                 (this.chatPanel).style.position = 'relative';
@@ -195,6 +206,49 @@ export class ChatMessageEditor {
 
     // Public methods
 
+    // Called by Blazor
+    public notifyAttachmentListChanged(hasAttachments: boolean) {
+        this.hasAttachments = hasAttachments;
+        this.updateHasContent();
+    }
+
+    // Called by Blazor
+    public onNestedControlsReady(markupEditor: MarkupEditor) {
+        this.markupEditor = markupEditor;
+
+        fromEvent(this.postPanelDiv, 'click')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: MouseEvent) => this.onPostPanelClick(event));
+        fromEvent<ClipboardEvent>(this.input, 'paste', { capture: true })
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: ClipboardEvent) => this.onInputPaste(event));
+
+        this.markupEditor.changed = () => {
+            this.backupRequired$.next();
+            this.updateHasContent();
+        }
+        this.updateHasContent();
+        if (this.isNarrowScreen)
+            this.markupEditor.contentDiv.blur(); // We want to see the placeholder on mobile when you open a chat
+    }
+
+    // Called by Blazor
+    public setChatId(chatId: string) {
+        this.chatId = chatId;
+        void this.restoreDraft();
+    }
+
+    // Called by Blazor
+    public showWebFilePickerDialog = ((acceptTypes: string) => {
+        void this.filePicker.showFilePicker(acceptTypes);
+        if (this.panelModel == 'Narrow') {
+            this.markupEditor.focus();
+            this.updateHasContent();
+        }
+    });
+
+    // Private methods
+
     private addAttachmentsObserver() {
         const lastElement = this.attachmentListElement?.querySelector('.last-element');
         if (lastElement == null) {
@@ -217,7 +271,6 @@ export class ChatMessageEditor {
             childList: true,
             subtree: true,
         });
-
     }
 
     private updatePostPanelBorderRadius: ResizeObserverCallback = (entries) => {
@@ -262,50 +315,6 @@ export class ChatMessageEditor {
         preventDefaultForEvent(event);
         this.attachmentListElement?.scrollBy({ left: event.deltaY < 0 ? -30 : 30, });
     });
-
-    /** Called by Blazor */
-    public notifyAttachmentListChanged(hasAttachments: boolean) {
-        this.hasAttachments = hasAttachments;
-        this.updateHasContent();
-    }
-
-    /** Called by Blazor */
-    public onNestedControlsReady(markupEditor: MarkupEditor)
-    {
-        this.markupEditor = markupEditor;
-
-        fromEvent(this.postPanelDiv, 'click')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event: MouseEvent) => this.onPostPanelClick(event));
-        fromEvent<ClipboardEvent>(this.input, 'paste', { capture: true })
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event: ClipboardEvent) => this.onInputPaste(event));
-
-        this.markupEditor.changed = () => {
-            this.backupRequired$.next();
-            this.updateHasContent();
-        }
-        this.updateHasContent();
-        if (this.isNarrowScreen)
-            this.markupEditor.contentDiv.blur(); // We want to see the placeholder on mobile when you open a chat
-    }
-
-    /** Called by Blazor */
-    public setChatId(chatId: string) {
-        this.chatId = chatId;
-        void this.restoreDraft();
-    }
-
-    /** Called by Blazor */
-    public showWebFilePickerDialog = ((acceptTypes: string)=> {
-        void this.filePicker.showFilePicker(acceptTypes);
-        if (this.panelModel == 'Narrow') {
-            this.markupEditor.focus();
-            this.updateHasContent();
-        }
-    });
-
-    // Event handlers
 
     private onPostPanelClick = ((event: MouseEvent) => {
         if (event.target === this.postPanelDiv)
@@ -371,8 +380,6 @@ export class ChatMessageEditor {
         void this.filePickerBackend.add([{ file: file, fileHandle: null }]);
     }
 
-    // Drag-and-drop handlers
-
     private hasFiles(e: DragEvent): boolean {
         return e.dataTransfer?.types?.includes('Files') ?? false;
     }
@@ -412,8 +419,6 @@ export class ChatMessageEditor {
             fileResults.push({ file: file, fileHandle: null });
         void this.filePickerBackend.add(fileResults);
     }
-
-    // Private methods
 
     private updateLayout = () => {
         const width = window.visualViewport?.width ?? window.innerWidth;

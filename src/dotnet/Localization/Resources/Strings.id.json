@@ -306,6 +306,7 @@
   "Editor_LargeTextMessage_Format": "Teks yang ditempel panjangnya {0} karakter. Kirim sebagai file .txt atau biarkan sebagai pesan teks biasa?",
   "Editor_SendAsFile": "Kirim sebagai file",
   "Editor_KeepAsText": "Biarkan sebagai teks",
+  "Editor_DropFilesToAttach": "Lepaskan file untuk melampirkan",
 
   "Alert_Alert_Format": "Beri peringatan ke {0}",
   "Alert_TargetEveryone": "semua orang",

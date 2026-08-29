@@ -306,6 +306,7 @@
   "Editor_LargeTextMessage_Format": "Zalijepljeni tekst ima {0} znakova. Poslati ga kao .txt datoteka ili ostaviti kao običnu tekstualnu poruku?",
   "Editor_SendAsFile": "Pošaljite kao datoteka",
   "Editor_KeepAsText": "Ostavite kao tekst",
+  "Editor_DropFilesToAttach": "Pustite datoteke da ih priložite",
 
   "Alert_Alert_Format": "Upozori {0}",
   "Alert_TargetEveryone": "sve",

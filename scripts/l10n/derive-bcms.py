@@ -72,6 +72,7 @@ CROATIAN = [
      "sij|velj|ožu|tra|svi|lip|srp|kol|ruj|lis|stu|pro"),
     # Vocabulary.
     ("fajlova", "datoteka"), ("fajlovi", "datoteke"), ("Fajlovi", "Datoteke"),
+    ("fajlove", "datoteke"), ("Fajlove", "Datoteke"),
     ("fajla", "datoteke"), ("fajl", "datoteka"), ("Fajl", "Datoteka"),
     ("uslov", "uvjet"), ("Uslov", "Uvjet"),
     ("interfejsa", "sučelja"), ("Interfejsa", "Sučelja"),

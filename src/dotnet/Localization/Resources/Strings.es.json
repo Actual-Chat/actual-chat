@@ -306,6 +306,7 @@
   "Editor_LargeTextMessage_Format": "El texto pegado tiene {0} caracteres. ¿Quieres enviarlo como archivo .txt o mantenerlo como mensaje de texto normal?",
   "Editor_SendAsFile": "Enviar como archivo",
   "Editor_KeepAsText": "Mantener como texto",
+  "Editor_DropFilesToAttach": "Suelta los archivos para adjuntarlos",
 
   "Alert_Alert_Format": "Avisar a {0}",
   "Alert_TargetEveryone": "todos",
