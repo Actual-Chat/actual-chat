@@ -149,6 +149,10 @@ public class AndroidWebChromeClient : WebChromeClient
     public override View? VideoLoadingProgressView => _client.VideoLoadingProgressView;
     public override void GetVisitedHistory(IValueCallback? callback)
         => _client.GetVisitedHistory(callback);
+    // Not overridden in prod: every JS console message crosses JNI into managed code on the UI thread
+    // and allocates a ConsoleMessage peer holding a JNI global ref. Once the process nears the 51200-ref
+    // cap, .NET for Android forces a full GC per new ref, which parks the UI thread and ANRs the app.
+#if !IS_PRODUCTION_ENV || DEBUG
     public override bool OnConsoleMessage(ConsoleMessage? consoleMessage)
     {
         if (IsDisconnected)
@@ -156,6 +160,7 @@ public class AndroidWebChromeClient : WebChromeClient
 
         return _client.OnConsoleMessage(consoleMessage);
     }
+#endif
 
     public override bool OnCreateWindow(WebView? view, bool isDialog, bool isUserGesture, Message? resultMsg)
     {
