@@ -36,7 +36,7 @@ namespace ActualChat.App.Maui;
     ConfigurationChanges =
         ConfigChanges.UiMode |
         ConfigChanges.Density | ConfigChanges.FontScale | ConfigChanges.FontWeightAdjustment |
-        ConfigChanges.ScreenSize |  ConfigChanges.SmallestScreenSize | ConfigChanges.ScreenLayout |
+        ConfigChanges.ScreenSize | ConfigChanges.SmallestScreenSize | ConfigChanges.ScreenLayout |
         ConfigChanges.Orientation | ConfigChanges.LayoutDirection |
         ConfigChanges.Touchscreen | ConfigChanges.Keyboard | ConfigChanges.KeyboardHidden
     )]
@@ -79,6 +79,10 @@ public partial class MainActivity : MauiAppCompatActivity
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
+        // Before anything that reads MauiStart: an Activity means this process shows UI even if it
+        // started headless for a push, so PromoteToInteractive runs whatever that start skipped.
+        MauiStart.MarkInteractive();
+        MauiProgram.PromoteToInteractive();
         WarmUpWebView();
 
         // Before base.OnCreate, which calls setContentView - the listener has to be registered
@@ -117,7 +121,7 @@ public partial class MainActivity : MauiAppCompatActivity
         _isFirstTime = false;
 
         // ReSharper disable once ExplicitCallerInfoArgument
-        using(Tracer.Region("Calling base.OnCreate"))
+        using (Tracer.Region("Calling base.OnCreate"))
             base.OnCreate(Bundle.Empty);
 
         // base.OnCreate call hides native splash screen. Set NavigationBar color the same as web splash screen
@@ -136,7 +140,8 @@ public partial class MainActivity : MauiAppCompatActivity
         // https://github.com/firebase/quickstart-android/issues/368#issuecomment-683151061
         // seems it does not help
         var componentName = new ComponentName(this, Java.Lang.Class.FromType(typeof(FirebaseMessagingService)));
-        PackageManager?.SetComponentEnabledSetting(componentName, ComponentEnabledState.Enabled, ComponentEnableOption.DontKillApp);
+        PackageManager?.SetComponentEnabledSetting(
+            componentName, ComponentEnabledState.Enabled, ComponentEnableOption.DontKillApp);
 
         // Create launcher to request permissions
         _permissionRequestLauncher = RegisterForActivityResult(
@@ -242,28 +247,6 @@ public partial class MainActivity : MauiAppCompatActivity
         keyguardManager.RequestDismissKeyguard(this, new CallKeyguardDismissCallback(this, onResult));
     }
 
-    private sealed class CallKeyguardDismissCallback(MainActivity activity, Action<bool> onResult)
-        : KeyguardManager.KeyguardDismissCallback
-    {
-        public override void OnDismissSucceeded()
-        {
-            activity.DisableShowWhenLocked();
-            onResult(true);
-        }
-
-        public override void OnDismissError()
-        {
-            activity.DisableShowWhenLocked();
-            onResult(false);
-        }
-
-        public override void OnDismissCancelled()
-        {
-            activity.DisableShowWhenLocked();
-            onResult(false);
-        }
-    }
-
     public override void OnTrimMemory(TrimMemory level)
     {
         Log.LogInformation("OnTrimMemory, Level: {Level}", level);
@@ -299,7 +282,7 @@ public partial class MainActivity : MauiAppCompatActivity
 
     public void PickVisualMedia(PickVisualMediaKind kind, Action<Uri[]> onReceiveResult)
     {
-        _onReceivePickVisualMedialResult?.Invoke(Array.Empty<Uri>());
+        _onReceivePickVisualMedialResult?.Invoke([]);
         _onReceivePickVisualMedialResult = onReceiveResult;
 
         ActivityResultContracts.PickVisualMedia.IVisualMediaType visualMediaType = kind switch {
@@ -312,6 +295,8 @@ public partial class MainActivity : MauiAppCompatActivity
              .Build();
         _pickVisualMediaLauncher.Launch(pickVisualMediaRequest);
     }
+
+    // Private methods
 
     private static void WarmUpWebView()
     {
@@ -353,7 +338,8 @@ public partial class MainActivity : MauiAppCompatActivity
             Log.LogInformation("MemoryClass: {MemoryClass}", memoryClass);
             var memoryInfo = new ActivityManager.MemoryInfo();
             activityManager.GetMemoryInfo(memoryInfo);
-            Log.LogInformation("MemoryInfo: AvailMem={AvailMem}, TotalMem={TotalMem}, LowMemory={LowMemory}, Threshold={Threshold}",
+            Log.LogInformation(
+                "MemoryInfo: AvailMem={AvailMem}, TotalMem={TotalMem}, LowMemory={LowMemory}, Threshold={Threshold}",
                 memoryInfo.AvailMem,
                 memoryInfo.TotalMem,
                 memoryInfo.LowMemory,
@@ -361,7 +347,8 @@ public partial class MainActivity : MauiAppCompatActivity
             var processInfo = new ActivityManager.RunningAppProcessInfo();
             ActivityManager.GetMyMemoryState(processInfo);
             Log.LogInformation(
-                "MyMemoryState: Pid={Pid}, LastTrimLevel={LastTrimLevel}, Lru={Lru}, Importance={Importance}, ImportanceReasonCode={ImportanceReasonCode}",
+                "MyMemoryState: Pid={Pid}, LastTrimLevel={LastTrimLevel}, Lru={Lru}"
+                + ", Importance={Importance}, ImportanceReasonCode={ImportanceReasonCode}",
                 processInfo.Pid,
                 processInfo.LastTrimLevel,
                 processInfo.Lru,
@@ -370,6 +357,30 @@ public partial class MainActivity : MauiAppCompatActivity
         }
         catch (Exception e) {
             Log.LogWarning(e, "DumpMemoryInfo failed");
+        }
+    }
+
+    // Nested types
+
+    private sealed class CallKeyguardDismissCallback(MainActivity activity, Action<bool> onResult)
+        : KeyguardManager.KeyguardDismissCallback
+    {
+        public override void OnDismissSucceeded()
+        {
+            activity.DisableShowWhenLocked();
+            onResult(true);
+        }
+
+        public override void OnDismissError()
+        {
+            activity.DisableShowWhenLocked();
+            onResult(false);
+        }
+
+        public override void OnDismissCancelled()
+        {
+            activity.DisableShowWhenLocked();
+            onResult(false);
         }
     }
 
@@ -391,7 +402,7 @@ public partial class MainActivity : MauiAppCompatActivity
         }
     }
 
-    private class SplashDelayer(AView contentView) : JObject, ViewTreeObserver.IOnPreDrawListener
+    private sealed class SplashDelayer(AView contentView) : JObject, ViewTreeObserver.IOnPreDrawListener
     {
         // Cap the pre-draw hold: if the WebView callback never arrives, holding forever starves
         // input dispatch and Android reports a "no focused window" ANR.

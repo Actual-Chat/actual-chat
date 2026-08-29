@@ -32,7 +32,7 @@ public static class AndroidUtils
 
         // Screen is on and unlocked, now check if the process is in the foreground
 
-        int pid = Android.OS.Process.MyPid();
+        var pid = Android.OS.Process.MyPid();
         var appProcesses = activityManager.RunningAppProcesses;
         if (appProcesses != null) {
             foreach (var process in appProcesses) {
@@ -40,22 +40,28 @@ public static class AndroidUtils
                     return process.Importance == Importance.Foreground;
             }
         }
+
         return false;
+    }
+
+    public static ActivityManager.RunningAppProcessInfo? GetProcessInfo()
+    {
+        try {
+            var processInfo = new ActivityManager.RunningAppProcessInfo();
+            ActivityManager.GetMyMemoryState(processInfo);
+            return processInfo;
+        }
+        catch (System.Exception) {
+            return null;
+        }
     }
 
     public static string GetProcessStartReason()
     {
-        // Importance separates a broadcast-started process from a user launch: an FCM wake reads
-        // as a receiver/cached importance, a user launch as Foreground (AMS marks the process
-        // top-bound at bind time, before any activity exists).
-        try {
-            var processInfo = new ActivityManager.RunningAppProcessInfo();
-            ActivityManager.GetMyMemoryState(processInfo);
-            return $"{processInfo.Importance}/{processInfo.ImportanceReasonCode}";
-        }
-        catch (System.Exception e) {
-            return e.GetType().Name;
-        }
+        var processInfo = GetProcessInfo();
+        return processInfo is null
+            ? "Unknown"
+            : $"{processInfo.Importance}/{processInfo.ImportanceReasonCode}";
     }
 
     public static bool IsMainThread()
@@ -84,6 +90,7 @@ public static class AndroidUtils
             var networkIoExecutor = NewNetworkIoExecutor();
             imageDownload.Start(networkIoExecutor);
         }
+
         return imageDownload;
     }
 
@@ -125,6 +132,7 @@ public static class AndroidUtils
              * when it is updated.
              */
         }
+
         return null;
     }
 }
