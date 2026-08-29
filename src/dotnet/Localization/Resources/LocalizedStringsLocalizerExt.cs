@@ -234,8 +234,8 @@ public static class LocalizedStringsLocalizerExt
         public string ChatView_ForwardedFrom => l["ChatView_ForwardedFrom"].Value;
         public string ChatView_MessageDeleted => l["ChatView_MessageDeleted"].Value;
         public string ChatView_SendingAttachments => l["ChatView_SendingAttachments"].Value;
-        public string ChatView_ShowItems => l["ChatView_ShowItems"].Value;
-        public string ChatView_HideItems => l["ChatView_HideItems"].Value;
+        public string ChatView_ShowDetails => l["ChatView_ShowDetails"].Value;
+        public string ChatView_HideDetails => l["ChatView_HideDetails"].Value;
         public string ChatView_GoToThread => l["ChatView_GoToThread"].Value;
         public string ChatView_CreatedBy => l["ChatView_CreatedBy"].Value;
         public string ChatView_Translation => l["ChatView_Translation"].Value;

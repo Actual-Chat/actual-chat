@@ -84,6 +84,8 @@ CROATIAN = [
     ("kompanije", "tvrtke"),
     ("opšte", "opće"), ("Opšte", "Opće"), ("opšt", "opć"),
     ("tačk", "točk"), ("Tačk", "Točk"),
+    ("detalje", "pojedinosti"), ("Detalje", "Pojedinosti"),
+    ("detalja", "pojedinosti"), ("detalji", "pojedinosti"), ("Detalji", "Pojedinosti"),
     ("obavještenjima", "obavijestima"), ("obavještenja", "obavijesti"),
     ("obavještenju", "obavijesti"), ("obavještenje", "obavijest"),
     ("Obavještenjima", "Obavijestima"), ("Obavještenja", "Obavijesti"),
