@@ -172,24 +172,50 @@ nothing else dispatches while it runs.
 | Splash removed | 1103 ms | 794 ms after promote |
 | `SetMauiContext` had to wait | no | no |
 
-::: warning What these numbers do **not** cover
-`SetMauiContext` is a single point check, not a sampled one: it tests
+::: tip
+The last row is a single point check, not a sampled one: `SetMauiContext` tests
 `WhenAppReady.IsCompleted` **once**, on the one call per `RecreateWebView`, and warn-logs a
 duration only if it then has to block. "No" means the container was already built at that
-moment — not that nothing else blocked the main thread.
+moment. For actual block durations, see below.
+:::
 
-The regions above are also not the **longest uninterrupted block**, which is what actually
-causes an ANR. On the push path that block is the whole of `Application.onCreate`, and
-`CreateMauiApp` is only part of it — `MainApplication.OnCreate` adds the breadcrumb
-`Application.OnCreate completed` precisely because the delta from `CreateMauiApp completed`
-is pure MAUI framework overhead. Those breadcrumbs are persisted and reported on the *next*
-launch, and were not collected here, so **36 ms is a floor, not the block**.
+### Longest main-thread block
 
-To measure blocks properly, turn on `MauiSettings.Diagnostics.EnableMainThreadMonitor`:
-`AndroidMainThreadMonitor` times *every* main-looper dispatch via `Looper.SetMessageLogging`
-and warn-logs the ones past its threshold. It was off for these runs. Note it perturbs what
-it measures — any `Looper` printer makes `loopOnce` build two strings per message and adds
-two JNI upcalls.
+Measured with `MauiSettings.Diagnostics.EnableMainThreadMonitor` on and its threshold at
+30 ms, three runs each, same device and build.
+
+| Block | Interactive (launcher tap) | Headless (push) |
+|-------|---------------------------|-----------------|
+| `Application.onCreate` | 51–53 ms | **46–48 ms** |
+| Activity launch transaction (`ActivityThread$H … 159`) | 64–86 ms | — |
+| Posted C# action (`android.os.Handler … RunnableImplementor`) | 123–139 ms | — |
+| MAUI dispatcher (`PlatformDispatcher … RunnableImplementor`) | 34–53 ms | — |
+| First WebView raster frame (`Choreographer$FrameHandler`) | **224–285 ms** | — |
+| **Longest single block** | **285 ms** | **48 ms** |
+| Blocks over 30 ms, per run | 7–9 | **1** |
+
+Two things this says:
+
+- **On the push path, `Application.onCreate` is the only main-thread block over 30 ms at
+  all** — the FCM handler itself runs on an FCM dispatch thread, and nothing the headless
+  start does reaches the looper. 48 ms against a broadcast deadline measured in seconds.
+- **On the launch path the longest block is the first WebView raster frame**, not our
+  startup code. That corroborates the note on `SplashExitAnimator`: a long WebView frame
+  starves the splash animation. The largest block we actually control is the ~130 ms posted
+  C# action, which is the same shape as the `mono.java.lang.RunnableImplementor.n_run`
+  cluster in Play Vitals.
+
+::: warning
+`AndroidMainThreadMonitor` cannot see the dispatch that contains `Application.onCreate`:
+`Activate()` runs from inside `CreateMauiApp`, i.e. inside that very looper message, so the
+`>>>>>` it would pair with has already gone by and the `<<<<<` is dropped. That row comes
+from an explicit `CpuTimestamp` in
+[`MainApplication`](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/Android/MainApplication.cs)
+instead, logged with the same wording so one grep finds both.
+
+The monitor also perturbs what it measures — any `Looper` printer makes `loopOnce` build two
+strings per main-thread message and adds two JNI upcalls — so treat these as upper bounds.
+It is off by default for that reason.
 :::
 
 Exactly one `MauiWebView` is created per launch (`Current = #1`). The foreground handler in
