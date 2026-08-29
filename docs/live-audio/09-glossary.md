@@ -148,7 +148,7 @@ src/dotnet/
 │  └ Constants.Audio.cs, AppConstants.Audio.cs
 ├ Core.Audio/
 │  ├ {Onnx,Noop}VoiceActivityDetector.cs, VoiceActivityChange.cs, VadResult.cs
-│  └ APM/   (currently unused)
+│  └ APM/   (native WebRTC APM wrapper — Windows capture path only)
 ├ Streaming.Contracts/
 │  ├ AudioRecord.cs
 │  ├ IAudioStreamingBackend.cs, ILiveAudioBackend.cs

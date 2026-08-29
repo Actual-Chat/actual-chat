@@ -147,12 +147,23 @@ exotic devices).
 
 ## What about Audio Processing Module (APM)?
 
-`Core.Audio/APM/` exists in the C# project (Web Audio Processing Module
-references). It is currently unused in the live-audio path — the
-echo-cancellation and noise-suppression you get is whatever
-`getUserMedia({audio: { echoCancellation: true, noiseSuppression: true }})`
-delivers, which is platform-provided. APM might be reintroduced for
-deeper processing later, but no recording code links against it today.
+`Core.Audio/APM/` wraps the native WebRTC Audio Processing Module
+(`webrtc-apm` — see `APM/runtimes/<rid>/native/`). Whether it's in the
+recording path depends on the platform:
+
+- **Web, Android, iOS/macOS** — not used. Echo cancellation, noise
+  suppression and gain control are whatever the platform provides:
+  `getUserMedia({audio: { echoCancellation: true, noiseSuppression: true }})`
+  in the browser, and the OS voice-processing modes natively.
+- **Windows** — used. `WindowsAudioCapture` runs every 10 ms capture frame
+  through the APM with the echo canceller, noise suppression, AGC and
+  high-pass filter enabled. The far-end reference the echo canceller needs
+  is a **WASAPI loopback capture of the default render endpoint**, fed to
+  `AnalyzeReverseStream` one frame per capture frame (zeros when the render
+  endpoint is idle and the loopback delivers nothing). The capture graph
+  deliberately uses `AudioRenderCategory.Other` / `MediaCategory.Other` and
+  clears `EffectDefinitions`, so Windows' own voice processing is bypassed
+  and the APM is the only echo canceller in the path.
 
 ## Constants summary
 
