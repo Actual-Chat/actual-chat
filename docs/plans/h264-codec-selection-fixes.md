@@ -5,8 +5,11 @@ description: Six defects in H.264 profile selection and fallback — we probe on
 
 # H.264 codec selection fixes
 
-Status: **decided, not started.** Supersedes the libav.js wasm-fallback plan,
-which was dropped — see [Why not libav](#why-not-libav) below.
+Status: **implemented on `fix/h264-codec-selection`.** Supersedes the libav.js
+wasm-fallback plan, which was dropped — see [Why not libav](#why-not-libav)
+below. Field verification on Firefox/Linux is still outstanding; the two open
+strategy questions in [Wider codec strategy](#wider-codec-strategy) are
+untouched.
 
 ## Summary
 
@@ -104,12 +107,16 @@ On any device where Main 3.1 encodes but High 4.0 does not, detection reports
 `supported: true, codec: avc1.640028` and `configure()` then fails — the exact
 shape of the reported bug, on a browser that never lied.
 
-**Fix (chosen):** probe a short descending ladder per category and report the
-first that passes — High 4.0 → Main 4.1 → Main 3.1 → CBP 3.1.
-`CODEC_PROFILES.h264` already lists exactly these twelve entries and is
-**dead code** (only `CODEC_PROFILES.av1` is read, by `getAV1CodecSupport`), so
-the table is free. Costs ~3 extra probes at startup, cached per `WxH`, and
-yields a *verified* profile instead of an inferred one.
+**Fix (as built):** `getEncoderCodecLadder` returns a best-first list and
+detection reports the first entry `isCodecSupported` accepts. For H.264 that is
+the platform's preferred profile, then Main at the matching level, then
+Constrained Baseline; other categories keep a single entry. Levels come from
+the same pixel tiers `getSoftwareH264Codec` already used, rather than from
+`CODEC_PROFILES` — a flat twelve-entry table has no level-matching logic, so
+walking it would probe profiles that cannot fit the dimensions. `CODEC_PROFILES`
+is still put back to work: it now names the chosen profile in `CodecInfo.name`.
+Costs at most two extra probes at startup, cached per `WxH`, and yields a
+*verified* profile instead of an inferred one.
 
 This dissolves fixes 3 and 5 as side effects.
 
