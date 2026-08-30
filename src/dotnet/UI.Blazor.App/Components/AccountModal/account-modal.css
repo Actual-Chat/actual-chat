@@ -92,13 +92,13 @@
     @apply max-w-fit;
 }
 body.hoverable .author-modal .tile,
-body.hoverable .author-modal .tile:hover {
-    @apply p-0;
+body.hoverable .author-modal .tile:hover,
+.author-modal .tile {
+    @apply p-2;
     @apply shadow-none;
 }
-.author-modal .tile {
-    @apply p-0;
-    @apply shadow-none;
+.author-modal .tile-item {
+    @apply pr-0;
 }
 .author-modal .anonymous-bio * {
     @apply text-danger;
@@ -112,6 +112,7 @@ body.hoverable .author-modal .tile:hover {
 }
 
 .author-modal .separator {
+    @apply m-0;
     @apply border-b border-separator;
 }
 
