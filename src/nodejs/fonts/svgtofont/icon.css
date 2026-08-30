@@ -1,10 +1,10 @@
 @font-face {
   font-family: "icon";
-  src: url('icon.woff2?t=1788102963272') format('woff2');
+  src: url('icon.woff2?t=1788102982144') format('woff2');
 }
 
 [class^="icon-"], [class*=" icon-"] {
-  font-family: 'icon' !important;
+  font-family: 'icon' !important;font-size: undefined;
   font-style:normal;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
