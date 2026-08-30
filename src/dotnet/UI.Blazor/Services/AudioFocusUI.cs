@@ -139,6 +139,7 @@ public sealed record AppleAudioSessionDiagnostics(
     string Mode,
     bool IsOtherAudioPlaying,
     IReadOnlyList<string> OutputRoutes,
+    IReadOnlyList<string> InputRoutes,
     double SampleRate,
     double IOBufferDuration,
     int InputChannelCount)
@@ -151,9 +152,10 @@ public sealed record AppleAudioSessionDiagnostics(
             && SampleRate.Equals(other.SampleRate)
             && IOBufferDuration.Equals(other.IOBufferDuration)
             && InputChannelCount == other.InputChannelCount
-            && OutputRoutes.SequenceEqual(other.OutputRoutes);
+            && OutputRoutes.SequenceEqual(other.OutputRoutes)
+            && InputRoutes.SequenceEqual(other.InputRoutes);
 
     public override int GetHashCode()
         => HashCode.Combine(Category, Mode, IsOtherAudioPlaying, OutputRoutes.Count,
-            SampleRate, IOBufferDuration, InputChannelCount);
+            InputRoutes.Count, SampleRate, IOBufferDuration, InputChannelCount);
 }

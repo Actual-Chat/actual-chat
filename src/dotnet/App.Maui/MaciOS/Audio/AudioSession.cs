@@ -74,14 +74,16 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
     {
         try {
             var session = AVAudioSession.SharedInstance();
-            var outputs = session.CurrentRoute.Outputs;
-            var routes = outputs.Select(output => $"{output.PortName} ({output.PortType})").ToList();
+            var route = session.CurrentRoute;
+            var outputRoutes = route.Outputs.Select(Describe).ToList();
+            var inputRoutes = route.Inputs.Select(Describe).ToList();
             // SampleRate/IOBufferDuration are what the OS actually granted, not what we asked for -
             // VoiceProcessingIO commonly overrides both, and the granted rate drives AEC cost.
             return new AppleAudioSessionDiagnostics(session.Category,
                 session.Mode,
                 session.OtherAudioPlaying,
-                routes,
+                outputRoutes,
+                inputRoutes,
                 session.SampleRate,
                 session.IOBufferDuration,
                 (int)session.InputNumberOfChannels);
@@ -90,6 +92,9 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             Log.LogError(e, "Failed to get audio session diagnostics");
             return null;
         }
+
+        static string Describe(AVAudioSessionPortDescription port)
+            => $"{port.PortName} ({port.PortType})";
     }
 
     // Private methods
@@ -294,14 +299,30 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             return;
 
         var isOverridden = ForceOverride(session, portOverride, out var error);
+        // None means an external device won the output, and the mic has to follow it: the override
+        // moves playback only, so iOS leaves a headset that arrived mid-recording unheard.
+        var input = ApplyPreferredInput(portOverride is AVAudioSessionPortOverride.None);
         Log.LogInformation(
-            "ApplyOutputRoute: mode={Mode}, sessionMode={SessionMode}, {Outputs} -> {Override} -> {Result}",
+            "ApplyOutputRoute: mode={Mode}, sessionMode={SessionMode}, {Outputs} -> {Override} -> {Result}, input={Input}",
             mode,
             session.Mode,
             Describe(outputs),
             portOverride,
-            isOverridden ? Describe(session.CurrentRoute.Outputs) : $"failed: {error.LocalizedDescription}");
+            isOverridden ? Describe(session.CurrentRoute.Outputs) : $"failed: {error.LocalizedDescription}",
+            input);
         return;
+
+        string ApplyPreferredInput(bool mustPreferExternal) {
+            // Anything that isn't the built-in mic is the user's own device, same rule as the
+            // output side; null hands the choice back to iOS.
+            var input = mustPreferExternal
+                ? session.AvailableInputs?.FirstOrDefault(x => x.PortType != AVAudioSession.PortBuiltInMic)
+                : null;
+            if (!session.SetPreferredInput(input, out var inputError))
+                Log.LogWarning("ApplyOutputRoute: failed to set preferred input: {Error}",
+                    inputError.LocalizedDescription);
+            return input?.PortType ?? "default";
+        }
 
         static string Describe(AVAudioSessionPortDescription[] outputs)
             => string.Join(", ", outputs.Select(x => x.PortType));

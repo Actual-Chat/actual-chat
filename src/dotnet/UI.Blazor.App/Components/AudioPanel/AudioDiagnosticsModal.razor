@@ -112,7 +112,7 @@
                         </div>
                     }
                     @if (m.Focus.Session is { } session) {
-                        <div class="diag-group-header">AVAudioSession</div>
+                        <div class="diag-group-header">Audio Session</div>
                         <div class="diag-row">
                             <span class="diag-label">Category</span>
                             <span class="diag-value">@session.Category</span>
@@ -133,12 +133,18 @@
                             <span class="diag-label">IO buffer</span>
                             <span class="diag-value">@($"{session.IOBufferDuration * 1000:N1} ms")</span>
                         </div>
+                        <div class="diag-group-header">Input</div>
                         <div class="diag-row">
-                            <span class="diag-label">Input channels</span>
-                            <span class="diag-value">@session.InputChannelCount</span>
+                            <span class="diag-label">Device</span>
+                            <span class="diag-value multiline">@(session.InputRoutes.Count > 0 ? string.Join(", ", session.InputRoutes) : "none")</span>
                         </div>
                         <div class="diag-row">
-                            <span class="diag-label">Output</span>
+                            <span class="diag-label">Channels</span>
+                            <span class="diag-value">@session.InputChannelCount</span>
+                        </div>
+                        <div class="diag-group-header">Output</div>
+                        <div class="diag-row">
+                            <span class="diag-label">Device</span>
                             <span class="diag-value multiline">@(session.OutputRoutes.Count > 0 ? string.Join(", ", session.OutputRoutes) : "none")</span>
                         </div>
                     }
