@@ -276,6 +276,7 @@
   "MessageMenu_ShareFile": "Поделиться файлом",
   "MessageMenu_CopyDownloadLink": "Копировать ссылку для скачивания",
   "MessageMenu_Download": "Скачать",
+  "MessageMenu_DownloadAll": "Скачать все",
   "MessageMenu_PinMessage": "Закрепить сообщение",
   "MessageMenu_UnpinMessage": "Открепить сообщение",
 

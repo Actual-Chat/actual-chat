@@ -16,6 +16,8 @@
     var canCopyCode = !ClickedCode.IsNullOrEmpty();
     var canCopyImage = !ClickedImageUrl.IsNullOrEmpty();
     var canCopyMessageLink = !IsSystem;
+    var attachmentCount = e.Attachments.Length;
+    var canDownloadAttachments = attachmentCount > 0 && !hasSelection;
     var canForward = !e.IsContentStreaming && !IsSystem && !hasSelection;
     var canStartThread = !e.IsContentStreaming && !IsSystem && !hasSelection;
     var canPin = CanPin && isTextEntry && !IsSystem && !hasSelection;
@@ -105,6 +107,13 @@
                 </MenuEntry>
             </CopyTrigger>
         }
+        @if (canDownloadAttachments) {
+            <MenuEntry
+                Icon="icon-download"
+                Text="@(attachmentCount > 1 ? L.MessageMenu_DownloadAll : L.MessageMenu_Download)"
+                Click="@DownloadAttachments">
+            </MenuEntry>
+        }
         @if (canForward) {
             <MenuEntry
                 Icon="icon-share"
@@ -181,6 +190,7 @@
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private ChatPinsUI ChatPinsUI => Hub.ChatPinsUI;
+    private FileDownloadUI FileDownloadUI => Hub.FileDownloadUI;
     private OptimisticReactions OptimisticReactions => Hub.OptimisticReactions;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -201,6 +211,14 @@
 
     private Task Pin()
         => IsPinned ? ChatPinsUI.Unpin(ChatEntry.Id) : ChatPinsUI.Pin(ChatEntry.Id);
+
+    private async Task DownloadAttachments() {
+        var attachments = ChatEntry.Attachments;
+        foreach (var attachment in attachments) {
+            var media = attachment.Media;
+            await FileDownloadUI.Download(media.BlobId, media.FileName, media.ContentType).ConfigureAwait(false);
+        }
+    }
 
     private void ShowAllReactions()
         => _showAllReactions = true;

@@ -276,6 +276,7 @@
   "MessageMenu_ShareFile": "ファイルを共有",
   "MessageMenu_CopyDownloadLink": "ダウンロードリンクをコピー",
   "MessageMenu_Download": "ダウンロード",
+  "MessageMenu_DownloadAll": "すべてダウンロード",
   "MessageMenu_PinMessage": "メッセージをピン留め",
   "MessageMenu_UnpinMessage": "メッセージのピン留めを解除",
 

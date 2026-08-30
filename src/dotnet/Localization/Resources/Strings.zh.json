@@ -276,6 +276,7 @@
   "MessageMenu_ShareFile": "分享文件",
   "MessageMenu_CopyDownloadLink": "复制下载链接",
   "MessageMenu_Download": "下载",
+  "MessageMenu_DownloadAll": "下载全部",
   "MessageMenu_PinMessage": "置顶消息",
   "MessageMenu_UnpinMessage": "取消置顶消息",
 

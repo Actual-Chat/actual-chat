@@ -276,6 +276,7 @@
   "MessageMenu_ShareFile": "Podijelite datoteka",
   "MessageMenu_CopyDownloadLink": "Kopirajte link za preuzimanje",
   "MessageMenu_Download": "Preuzmite",
+  "MessageMenu_DownloadAll": "Preuzmite sve",
   "MessageMenu_PinMessage": "Zakačite poruku",
   "MessageMenu_UnpinMessage": "Otkačite poruku",
 

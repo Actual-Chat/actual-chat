@@ -276,6 +276,7 @@
   "MessageMenu_ShareFile": "Bagikan file",
   "MessageMenu_CopyDownloadLink": "Salin tautan unduhan",
   "MessageMenu_Download": "Unduh",
+  "MessageMenu_DownloadAll": "Unduh semua",
   "MessageMenu_PinMessage": "Sematkan pesan",
   "MessageMenu_UnpinMessage": "Lepas sematan pesan",
 

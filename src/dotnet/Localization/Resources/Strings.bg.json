@@ -276,6 +276,7 @@
   "MessageMenu_ShareFile": "Споделете файла",
   "MessageMenu_CopyDownloadLink": "Копирайте линка за изтегляне",
   "MessageMenu_Download": "Изтеглете",
+  "MessageMenu_DownloadAll": "Изтеглете всичко",
   "MessageMenu_PinMessage": "Закачете съобщението",
   "MessageMenu_UnpinMessage": "Откачете съобщението",
 

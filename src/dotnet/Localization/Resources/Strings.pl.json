@@ -276,6 +276,7 @@
   "MessageMenu_ShareFile": "Udostępnij plik",
   "MessageMenu_CopyDownloadLink": "Kopiuj link do pobrania",
   "MessageMenu_Download": "Pobierz",
+  "MessageMenu_DownloadAll": "Pobierz wszystko",
   "MessageMenu_PinMessage": "Przypnij wiadomość",
   "MessageMenu_UnpinMessage": "Odepnij wiadomość",
 

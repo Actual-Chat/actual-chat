@@ -297,6 +297,7 @@ public static class LocalizedStringsLocalizerExt
         public string MessageMenu_ShareFile => l["MessageMenu_ShareFile"].Value;
         public string MessageMenu_CopyDownloadLink => l["MessageMenu_CopyDownloadLink"].Value;
         public string MessageMenu_Download => l["MessageMenu_Download"].Value;
+        public string MessageMenu_DownloadAll => l["MessageMenu_DownloadAll"].Value;
         public string MessageMenu_PinMessage => l["MessageMenu_PinMessage"].Value;
         public string MessageMenu_UnpinMessage => l["MessageMenu_UnpinMessage"].Value;
 
