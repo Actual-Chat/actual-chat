@@ -1156,3 +1156,17 @@ if (BrowserInfo.hostKind !== 'MauiApp') {
         void audioContextSource.addTrait(new DestinationFallbackTrait());
     }
 }
+
+// Resumes both contexts from a click on anything matching `selector`. Delegated, so buttons
+// rendered after this call are covered too, and capturing, so it runs inside the user-gesture
+// stack that resume() requires.
+export function initAudioContextsOnClick(selector: string): void {
+    document.addEventListener('click', (event: Event) => {
+        const target = event.target;
+        if (!(target instanceof Element) || !target.closest(selector))
+            return;
+
+        void recordingAudioContextSource.initContextInteractively();
+        void audioContextSource.initContextInteractively();
+    }, { capture: true, passive: true });
+}

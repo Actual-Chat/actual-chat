@@ -166,8 +166,13 @@ export class AudioRecorder {
     }
 
     private readonly heartbeatThrottled = throttle(() => this.heartbeat(), HEARTBEAT_INTERVAL);
+    // Skipped while starting: frames start flowing before startRecording()'s state roundtrip
+    // reaches Blazor, so a heartbeat in that window reads "not recording" and stops the start.
     private async heartbeat(): Promise<void> {
         try {
+            if (this.state === 'starting')
+                return;
+
             const chatId = this.chatId;
             if (!chatId) {
                 void this.stopRecording();
