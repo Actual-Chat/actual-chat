@@ -23,7 +23,7 @@ public static partial class MauiProgram
     {
         if (MauiSettings.IsDevApp)
             // Enable delivery data export per instance.
-            // https://firebase.google.com/docs/cloud-messaging/understand-delivery?platform=android#enable-message-delivery-data-export
+            // https://firebase.google.com/docs/cloud-messaging/understand-delivery?platform=android
             FirebaseMessaging.Instance.SetDeliveryMetricsExportToBigQuery(true);
 
         services.AddSingleton<Java.Util.Concurrent.IExecutorService>(_ =>
@@ -47,7 +47,8 @@ public static partial class MauiProgram
         services.AddSingleton(c => new NativeGoogleAuth(c));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
         services.AddScoped<IMauiLogAccessor>(c => new AndroidLogAccessor(c));
-        services.AddScoped<IAudioCapture>(c => new AndroidAudioCapture(c.LogFor<AndroidAudioCapture>()));
+        services.AddScoped<IAudioCapture>(c => new AndroidAudioCapture(c));
+        services.AddFusion().AddService<ICarConnection, AndroidCarConnection>(ServiceLifetime.Scoped);
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
@@ -55,7 +56,7 @@ public static partial class MauiProgram
             AndroidLifecycleLogger.Activate(android);
             android.OnCreate(OnCreate);
             android.OnPostCreate(OnPostCreate);
-            android.OnResume(_ => MauiWebView.LogResume());
+            android.OnResume(_ => OnResume());
             // These fire for every activity in the process, and only the live MainActivity hosts
             // the WebView.
             android.OnStart(activity => {
@@ -106,9 +107,20 @@ public static partial class MauiProgram
             IntentHandler.Activate(android);
         });
 
+    private static void OnResume()
+    {
+        MauiWebView.LogResume();
+        // The gearhead broadcast is the only other signal, and a car can be plugged in or
+        // unplugged while we're stopped - without this the state stays cached forever.
+        _ = DispatchToBlazor(
+            c => c.GetService<ICarConnection>()?.InvalidateProjectionState(),
+            nameof(ICarConnection.InvalidateProjectionState));
+    }
+
     private static async Task OnBackPressed(Activity activity)
     {
-        var couldStepBack = await DispatchToBlazor(c => c.GetRequiredService<History>().TryStepBack()).ConfigureAwait(true);
+        var couldStepBack = await DispatchToBlazor(c => c.GetRequiredService<History>().TryStepBack())
+            .ConfigureAwait(true);
         if (!couldStepBack)
             activity.MoveTaskToBack(true);
     }
@@ -124,7 +136,9 @@ public static partial class MauiProgram
 
     private static void OnPostCreate(Activity activity, Bundle? savedInstanceState)
     {
-        NotificationHelper.EnsureDefaultNotificationChannelExist(activity, NotificationHelper.Constants.DefaultChannelId);
+        NotificationHelper.EnsureDefaultNotificationChannelExist(
+            activity,
+            NotificationHelper.Constants.DefaultChannelId);
         NotificationHelper.EnsureActivityChannelsExist(activity);
         ChatAttentionService.Instance.Init();
     }

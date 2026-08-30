@@ -116,5 +116,7 @@
     <package android:name="com.nhn.android.nmap"/>
     <package android:name="net.daum.android.map"/>
     <package android:name="com.ubercab"/>
+    <!-- Lets AndroidCarConnection read the gearhead content provider on Android 11+ -->
+    <package android:name="com.google.android.projection.gearhead"/>
   </queries>
 </manifest>
