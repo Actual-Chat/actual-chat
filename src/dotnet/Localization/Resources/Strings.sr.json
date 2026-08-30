@@ -773,6 +773,11 @@
   "Account_RemoveModerator": "Уклоните улогу модератора",
   "Account_ModeratorCaption": "Модератори могу брисати поруке, управљати позивима и члановима те уређивати овај чет — али га не могу обрисати.",
   "Account_RemoveFromGroup": "Уклоните из групе",
+  "Account_InContacts": "На вашој листи контаката",
+  "Account_NotInContacts": "Није на вашој листи контаката",
+  "Account_RemoveFromContacts": "Уклони из контаката",
+  "Account_RemoveFromContactsConfirm_Format": "Уклонити из контаката: {0}? Можете их додати назад било када.",
+  "Account_BlockConfirm_Format": "Блокирати: {0}? Неће вам више моћи писати ни звати вас.",
 
   "AvatarSelect_ChooseTitle": "Одаберите свој аватар",
   "AvatarSelect_RevealTitle": "Откријте се",

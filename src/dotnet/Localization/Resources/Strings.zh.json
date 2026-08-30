@@ -773,6 +773,11 @@
   "Account_RemoveModerator": "取消管理员",
   "Account_ModeratorCaption": "管理员可以删除消息、管理通话和成员，并编辑此聊天——但不能删除它。",
   "Account_RemoveFromGroup": "从群组中移除",
+  "Account_InContacts": "已在你的联系人中",
+  "Account_NotInContacts": "不在你的联系人中",
+  "Account_RemoveFromContacts": "从联系人中移除",
+  "Account_RemoveFromContactsConfirm_Format": "将 {0} 从联系人中移除？你可以随时重新添加。",
+  "Account_BlockConfirm_Format": "屏蔽 {0}？对方将无法给你发消息或通话。",
 
   "AvatarSelect_ChooseTitle": "选择你的头像",
   "AvatarSelect_RevealTitle": "公开你的身份",

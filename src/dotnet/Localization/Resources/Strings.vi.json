@@ -773,6 +773,11 @@
   "Account_RemoveModerator": "Gỡ người kiểm duyệt",
   "Account_ModeratorCaption": "Người kiểm duyệt có thể xóa tin nhắn, quản lý cuộc gọi và thành viên, và chỉnh sửa cuộc trò chuyện này — nhưng không thể xóa nó.",
   "Account_RemoveFromGroup": "Xóa khỏi nhóm",
+  "Account_InContacts": "Có trong danh bạ của bạn",
+  "Account_NotInContacts": "Không có trong danh bạ của bạn",
+  "Account_RemoveFromContacts": "Xóa khỏi danh bạ",
+  "Account_RemoveFromContactsConfirm_Format": "Xóa {0} khỏi danh bạ? Bạn có thể thêm lại bất cứ lúc nào.",
+  "Account_BlockConfirm_Format": "Chặn {0}? Người này sẽ không thể nhắn tin hay gọi cho bạn.",
 
   "AvatarSelect_ChooseTitle": "Chọn ảnh đại diện",
   "AvatarSelect_RevealTitle": "Tiết lộ danh tính",

@@ -773,6 +773,11 @@
   "Account_RemoveModerator": "मॉडरेटर हटाएँ",
   "Account_ModeratorCaption": "मॉडरेटर संदेश हटा सकते हैं, कॉल और सदस्यों को प्रबंधित कर सकते हैं और इस चैट को संपादित कर सकते हैं — लेकिन हटा नहीं सकते।",
   "Account_RemoveFromGroup": "समूह से हटाएँ",
+  "Account_InContacts": "आपकी संपर्क सूची में",
+  "Account_NotInContacts": "आपकी संपर्क सूची में नहीं",
+  "Account_RemoveFromContacts": "संपर्कों से हटाएँ",
+  "Account_RemoveFromContactsConfirm_Format": "{0} को अपने संपर्कों से हटाएँ? आप उन्हें कभी भी वापस जोड़ सकते हैं।",
+  "Account_BlockConfirm_Format": "{0} को ब्लॉक करें? वे आपको संदेश या कॉल नहीं कर पाएंगे।",
 
   "AvatarSelect_ChooseTitle": "अपना अवतार चुनें",
   "AvatarSelect_RevealTitle": "अपनी पहचान बताएँ",

@@ -918,6 +918,11 @@
   "Account_RemoveModerator": "Remove Moderator",
   "Account_ModeratorCaption": "Moderators can delete messages, manage calls and members, and edit this chat - but not delete it.",
   "Account_RemoveFromGroup": "Remove from group",
+  "Account_InContacts": "In your contact list",
+  "Account_NotInContacts": "Not in your contact list",
+  "Account_RemoveFromContacts": "Remove from contacts",
+  "Account_RemoveFromContactsConfirm_Format": "Remove {0} from your contacts? You can add them back at any time.",
+  "Account_BlockConfirm_Format": "Block {0}? They won't be able to message or call you.",
 
   // Avatars: choosing one for a chat, the avatar editor, the image cropper, and the peer
   // contact editor. An avatar is a per-chat identity - a "look", not merely a picture.

@@ -773,6 +773,11 @@
   "Account_RemoveModerator": "Премахнете ролята модератор",
   "Account_ModeratorCaption": "Модераторите може да изтриват съобщения, да управляват обажданията и участниците и да редактират този чат — но не и да го изтрият.",
   "Account_RemoveFromGroup": "Премахнете от групата",
+  "Account_InContacts": "В списъка ви с контакти",
+  "Account_NotInContacts": "Не е в списъка ви с контакти",
+  "Account_RemoveFromContacts": "Премахване от контакти",
+  "Account_RemoveFromContactsConfirm_Format": "Да се премахне ли от контактите: {0}? Можете да го добавите отново по всяко време.",
+  "Account_BlockConfirm_Format": "Да се блокира ли: {0}? Няма да може да ви пише или да ви се обажда.",
 
   "AvatarSelect_ChooseTitle": "Изберете своя аватар",
   "AvatarSelect_RevealTitle": "Разкрийте се",

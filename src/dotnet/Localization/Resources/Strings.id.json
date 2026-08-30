@@ -773,6 +773,11 @@
   "Account_RemoveModerator": "Cabut status moderator",
   "Account_ModeratorCaption": "Moderator bisa menghapus pesan, mengelola panggilan dan anggota, serta mengedit obrolan ini — tapi tidak bisa menghapusnya.",
   "Account_RemoveFromGroup": "Keluarkan dari grup",
+  "Account_InContacts": "Ada di daftar kontak Anda",
+  "Account_NotInContacts": "Tidak ada di daftar kontak Anda",
+  "Account_RemoveFromContacts": "Hapus dari kontak",
+  "Account_RemoveFromContactsConfirm_Format": "Hapus {0} dari kontak Anda? Anda bisa menambahkannya lagi kapan saja.",
+  "Account_BlockConfirm_Format": "Blokir {0}? Dia tidak akan bisa mengirim pesan atau menelepon Anda.",
 
   "AvatarSelect_ChooseTitle": "Pilih avatar Anda",
   "AvatarSelect_RevealTitle": "Tampilkan identitas Anda",

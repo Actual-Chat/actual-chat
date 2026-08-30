@@ -35,10 +35,6 @@
                 </ButtonRound>
             }
 
-            @if (!IsOwn) {
-                <AddToContactsButton Author="@Author"/>
-            }
-
             @if (_shareModalModel is not null) {
                 <ButtonRound
                     Class="btn-sm"
@@ -82,8 +78,8 @@
 
     protected override async Task OnParametersSetAsync() {
         var cancellationToken = CancellationToken.None;
-        _shareModalModel = await GetShareModalModel(cancellationToken);
-        _peerOwnName = await GetPeerOwnName(cancellationToken);
+        _shareModalModel = await GetShareModalModel(cancellationToken).ConfigureAwait(true);
+        _peerOwnName = await GetPeerOwnName(cancellationToken).ConfigureAwait(true);
     }
 
     private async Task<string?> GetPeerOwnName(CancellationToken cancellationToken) {
@@ -99,7 +95,7 @@
         if (IsOwn)
             return await ShareUI.GetOwnAccountModel(cancellationToken).ConfigureAwait(false);
 
-        var account = await Authors.GetAccount(Session, Author.ChatId, Author.Id, default);
+        var account = await Authors.GetAccount(Session, Author.ChatId, Author.Id, default).ConfigureAwait(true);
         if (account == null)
             return null;
 
