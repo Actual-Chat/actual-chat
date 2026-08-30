@@ -1,5 +1,7 @@
 // HEVC codec-string derivation + WebCodecs decoder candidate selection.
-// HW-only: returns null if no candidate is HW-supported (no SW fallback by policy).
+// Candidates are probed hardware-first, then again with no-preference before
+// giving up — Firefox routinely rejects 'prefer-hardware' for a codec it can
+// decode in software, and the encoder-side probe has always allowed for that.
 
 import { getLogs } from 'logging';
 
@@ -10,9 +12,11 @@ export interface DecoderDimensions {
     height: number;
 }
 
+export type DecoderHardwareAcceleration = 'prefer-hardware' | 'no-preference';
+
 export interface DecoderCodecSelection {
     codec: string;
-    hardwareAcceleration: 'prefer-hardware';
+    hardwareAcceleration: DecoderHardwareAcceleration;
 }
 
 // HEVC: tries high-level candidates using SPS tier (bitstream truth), then
@@ -81,7 +85,31 @@ export function getCodecCandidates(codec: string, description?: ArrayBuffer): st
         return candidates;
     }
 
-    return [mapCodecToWebCodecs(codec, description)];
+    const mapped = mapCodecToWebCodecs(codec, description);
+    if (!mapped.startsWith('avc1.'))
+        return [mapped];
+
+    return getAvcCandidates(mapped);
+}
+
+// Only ever widens: a decoder configured for a higher profile or level decodes
+// everything below it, while declaring less than the bitstream carries makes
+// configure() succeed and decode() drop chunks silently. So the fallbacks are
+// the same profile at the top level, then High at the top level.
+function getAvcCandidates(codec: string): string[] {
+    const match = /^avc1\.([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(codec);
+    if (!match)
+        return [codec];
+
+    const [, profile, constraints] = match;
+    const topLevel = '34'; // L5.2 — the highest level our ladders ever declare
+    const candidates = [
+        codec,
+        `avc1.${profile}${constraints}${topLevel}`,
+        `avc1.6400${topLevel}`,
+    ];
+
+    return candidates.filter((c, i) => candidates.indexOf(c) === i);
 }
 
 function replaceHevcTier(codec: string, tier: 'H' | 'L'): string {
@@ -97,24 +125,29 @@ export async function selectDecoderCodec(
     dimensions?: DecoderDimensions,
     excluded?: ReadonlySet<string>,
 ): Promise<DecoderCodecSelection | null> {
-    for (const candidate of candidates) {
-        if (excluded?.has(candidate)) continue;
-        try {
-            const config: VideoDecoderConfig = {
-                codec: candidate,
-                hardwareAcceleration: 'prefer-hardware',
-            };
-            if (description) config.description = description;
-            if (dimensions) {
-                config.codedWidth = dimensions.width;
-                config.codedHeight = dimensions.height;
-            }
-            const { supported } = await VideoDecoder.isConfigSupported(config);
-            if (supported) {
-                return { codec: candidate, hardwareAcceleration: 'prefer-hardware' };
-            }
-        } catch { /* continue to next candidate */ }
+    for (const hardwareAcceleration of ['prefer-hardware', 'no-preference'] as const) {
+        for (const candidate of candidates) {
+            if (excluded?.has(candidate))
+                continue;
+
+            try {
+                const config: VideoDecoderConfig = {
+                    codec: candidate,
+                    hardwareAcceleration,
+                };
+                if (description) config.description = description;
+                if (dimensions) {
+                    config.codedWidth = dimensions.width;
+                    config.codedHeight = dimensions.height;
+                }
+                const { supported } = await VideoDecoder.isConfigSupported(config);
+                if (supported) {
+                    return { codec: candidate, hardwareAcceleration };
+                }
+            } catch { /* continue to next candidate */ }
+        }
     }
+
     return null;
 }
 

@@ -22,6 +22,7 @@ import { WedgeDetector, type WedgeDiagnosis } from '../../Services/Video/playbac
 import {
     getCodecCandidates,
     selectDecoderCodec,
+    type DecoderHardwareAcceleration,
 } from '../../Services/Video/hevc-codec-selection';
 import { isDecoderCodecProven, markDecoderCodecProven } from '../../Services/Video/codec-support';
 import { consumeVideoTraceKill, registerVideoTraceKillWorker } from '../../Services/Video/video-trace-kill-control';
@@ -182,6 +183,7 @@ export class VideoPlayer {
     /** Codec WebCodecs string the worker was started with — populated by
      *  `initPlayerWorker` once codec selection completes. */
     private selectedCodec: string | null = null;
+    private selectedCodecHardwareAccel: DecoderHardwareAcceleration = 'prefer-hardware';
     private selectedCodecedWidth: number | undefined;
     private selectedCodecedHeight: number | undefined;
     private codecCategory = '';
@@ -586,6 +588,7 @@ export class VideoPlayer {
             }
             const codecString = selection.codec;
             this.selectedCodec = codecString;
+            this.selectedCodecHardwareAccel = selection.hardwareAcceleration;
             this.selectedCodecedWidth = width || undefined;
             this.selectedCodecedHeight = height || undefined;
             this.codecCategory = VideoPlayer.getCodecCategory(codecString);
@@ -1140,7 +1143,7 @@ export class VideoPlayer {
                     codec: this.selectedCodec,
                     codedWidth: this.selectedCodecedWidth,
                     codedHeight: this.selectedCodecedHeight,
-                    hardwareAcceleration: 'prefer-hardware',
+                    hardwareAcceleration: this.selectedCodecHardwareAccel,
                     optimizeForLatency: true,
                 },
                 targetBufferSpanMs: VIDEO.targetBufferSpanMs,
