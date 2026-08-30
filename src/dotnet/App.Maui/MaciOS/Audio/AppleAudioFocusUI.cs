@@ -344,8 +344,11 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
             if (!shouldRecover) {
                 // A headset that just arrived or left changes which port the session should be
                 // on, and the speaker override that outlived it has to be restated or dropped.
+                // An arrival is invisible until that override goes, so it can't be read past.
+                var mustDropOverride = reason is AVAudioSessionRouteChangeReason.NewDeviceAvailable;
                 Log.LogInformation("Route change ({Reason}) - re-applying the output route", reason);
-                await AudioSession.ApplyOutputRoute(_activeScopes.GetMode()).ConfigureAwait(false);
+                await AudioSession.ApplyOutputRoute(_activeScopes.GetMode(), mustDropOverride)
+                    .ConfigureAwait(false);
             }
         }
 

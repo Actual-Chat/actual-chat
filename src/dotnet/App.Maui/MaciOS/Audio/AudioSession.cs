@@ -67,8 +67,8 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
     public Task<AudioSessionSetup> Reactivate(AudioFocusMode mode)
         => DispatchToMainThread(() => ReactivateUnsafe(mode));
 
-    public Task ApplyOutputRoute(AudioFocusMode mode)
-        => DispatchToMainThread(() => ApplyOutputRouteUnsafe(mode));
+    public Task ApplyOutputRoute(AudioFocusMode mode, bool mustDropOverride = false)
+        => DispatchToMainThread(() => ApplyOutputRouteUnsafe(mode, mustDropOverride));
 
     public AppleAudioSessionDiagnostics? GetDiagnostics()
     {
@@ -269,7 +269,7 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             Log.LogWarning("Failed to deactivate audio session: {Error}", error.LocalizedDescription);
     }
 
-    private void ApplyOutputRouteUnsafe(AudioFocusMode mode)
+    private void ApplyOutputRouteUnsafe(AudioFocusMode mode, bool mustDropOverride = false)
     {
         if (!AudioSessionOwnership.MayConfigure(Owner, mode))
             return;
@@ -279,6 +279,11 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             return;
 
         var session = AVAudioSession.SharedInstance();
+        // CurrentRoute reports the speaker while our own override holds it there, which hides a
+        // device that just arrived and would outrank it - the override has to go before the read.
+        if (mustDropOverride)
+            session.OverrideOutputAudioPort(AVAudioSessionPortOverride.None, out _);
+
         var outputs = session.CurrentRoute.Outputs;
         if (outputs.Length == 0) {
             Log.LogWarning("ApplyOutputRoute: no output ports found");
