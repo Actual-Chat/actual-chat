@@ -85,6 +85,9 @@ public class AndroidAudioCapture(IServiceProvider services) : IAudioCapture
         }
 
         var buffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
+        // The consumer parks on the ring buffer with no timeout, so a producer that dies has to
+        // say so - otherwise the whole recording wedges behind a wait nothing will ever satisfy.
+        var whenProducerEndedCts = new CancellationTokenSource();
         // Dedicated high-priority thread instead of ThreadPool. Two reasons:
         //   1) AudioRecord.Read() is a blocking JNI call; running it on a ThreadPool
         //      worker means each read holds a worker for ~40ms and resumption after
@@ -211,10 +214,13 @@ public class AndroidAudioCapture(IServiceProvider services) : IAudioCapture
                 Log.LogError(ex, "Error while capturing audio on Android");
             }
             finally {
-                // The consumer parks on the ring buffer with no timeout, so a producer that ends
-                // before cancellation wedges the whole recording silently.
                 if (!cancellationToken.IsCancellationRequested)
                     Log.LogWarning("Capture producer ended before the recording was stopped");
+                // Silently, because the consumer disposes this source and usually gets there
+                // first - this thread is still parked in a blocking Read. Cancel() on a disposed
+                // source throws, which would skip the rest of this finally: the mic would stay
+                // held until finalization and the throw would escape a raw Thread entry point.
+                whenProducerEndedCts.CancelSilently();
                 floatReadBuffer.Release();
                 try {
                     if (recorder.RecordingState == RecordState.Recording)
@@ -233,19 +239,26 @@ public class AndroidAudioCapture(IServiceProvider services) : IAudioCapture
 
         async IAsyncEnumerable<IMemoryOwner<float>> Enumerate([EnumeratorCancellation] CancellationToken ct)
         {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct, whenProducerEndedCts.Token);
             try {
                 const int frameSize = Constants.Audio.OpusFrameLength;
-                while (!ct.IsCancellationRequested) {
+                while (!cts.IsCancellationRequested) {
                     var owner = ArrayPools.SharedFloatPool.LeaseArrayOwner(frameSize, true);
                     if (!buffer.TryRead(owner.Span, out var whenReady)) {
                         owner.Dispose();
-                        await whenReady.WaitAsync(ct).ConfigureAwait(false);
-                        continue;
+                        if (await whenReady.TryWaitAsync(cts.Token).ConfigureAwait(false))
+                            continue;
+
+                        // A real stop still cancels as it always did; only a dead producer ends
+                        // the stream, which is what lets PushRecordingState restart the recorder.
+                        ct.ThrowIfCancellationRequested();
+                        yield break;
                     }
                     yield return owner;
                 }
             }
             finally {
+                whenProducerEndedCts.DisposeSilently();
                 buffer.DisposeSilently();
             }
         }

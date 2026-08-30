@@ -89,7 +89,8 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
 
         if (_lastAudioFocusHolder.Scopes.Count == 0) {
             _lastAudioFocusHolder.Handle.Release();
-            _restoreAudioFocusHandlers.Clear();
+            lock (_restoreAudioFocusHandlers)
+                _restoreAudioFocusHandlers.Clear();
             _lastAudioFocusHolder = null;
             return;
         }
@@ -110,7 +111,8 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
         var audioFocusHandle = await RequestAudioFocus(desiredMode).ConfigureAwait(false);
         if (audioFocusHandle is null) {
             Log.LogInformation("Failed to get/update audio focus");
-            _restoreAudioFocusHandlers.Clear();
+            lock (_restoreAudioFocusHandlers)
+                _restoreAudioFocusHandlers.Clear();
             _lastAudioFocusHolder = null;
             InvokeLostFocus(temp, false, false);
             return null;
@@ -133,7 +135,16 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
         };
         audioFocusHandle.FocusRecover += () => {
             holder.Suspend(false);
-            foreach (var handler in _restoreAudioFocusHandlers) {
+            // Taken and cleared, because they were only ever added: the Nth recover replayed every
+            // restore from all N cycles, racing StartReplay against itself and growing unbounded
+            // over a long session. The snapshot also keeps this off the live list, which these
+            // callbacks touch from the Android main thread while other threads mutate it.
+            AudioFocusRestoreHandler[] handlers;
+            lock (_restoreAudioFocusHandlers) {
+                handlers = [.. _restoreAudioFocusHandlers];
+                _restoreAudioFocusHandlers.Clear();
+            }
+            foreach (var handler in handlers) {
                 handler.Invoke();
             }
         };
@@ -150,10 +161,12 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
             scope.Suspend(true);
             var restoreHandler = requester.AudioFocusLostHandler(mayRecover, canDuck);
             if (restoreHandler is not null) {
-                _restoreAudioFocusHandlers.Add(() => {
-                    scope.Suspend(false);
-                    restoreHandler.Invoke();
-                });
+                lock (_restoreAudioFocusHandlers) {
+                    _restoreAudioFocusHandlers.Add(() => {
+                        scope.Suspend(false);
+                        restoreHandler.Invoke();
+                    });
+                }
             }
         }
     }

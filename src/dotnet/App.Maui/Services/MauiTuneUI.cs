@@ -89,8 +89,16 @@ public class MauiTuneUI : TuneUI
             if (scope is null)
                 return;
 
-            await player.PlayAsync(CancellationToken.None).ConfigureAwait(false);
-            ReleaseAudioFocus();
+            // In a finally, because a throw from PlayAsync used to skip the release: the tune's
+            // scope then kept the holder non-empty, so the "last scope released" cleanup that
+            // abandons focus, restores Mode.Normal and stops SCO never ran until the next tune
+            // that happened to succeed.
+            try {
+                await player.PlayAsync(CancellationToken.None).ConfigureAwait(false);
+            }
+            finally {
+                ReleaseAudioFocus();
+            }
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to play sound {SoundName}", soundName);
