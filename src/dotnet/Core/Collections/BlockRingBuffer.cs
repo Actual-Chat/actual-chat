@@ -26,6 +26,7 @@ public sealed class BlockRingBuffer<T> : IDisposable
     private int _writePos;  // physical position in [0, 2*capacity)
     private int _wrapPos;   // physical position where data ends before gap; -1 = no gap
     private volatile int _count; // valid readable items
+    private bool _isDisposed;
 
     private Task<int>? _whenReadyToRead;
     private Task<int>? _whenReadyToWrite;
@@ -50,12 +51,18 @@ public sealed class BlockRingBuffer<T> : IDisposable
     {
         Task<int>? t1, t2;
         lock (_lock) {
+            if (_isDisposed)
+                return;
+
+            _isDisposed = true;
             (t1, t2) = (_whenReadyToRead, _whenReadyToWrite);
             (_whenReadyToRead, _whenReadyToWrite) = (null, null);
+            // Under the lock, because TryWrite and TryRead copy under it too: outside, a producer
+            // could still be writing into an array the pool had handed to someone else.
+            _pool.Return(_buffer, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
         }
         TrySetCanceled(t1);
         TrySetCanceled(t2);
-        _pool.Return(_buffer, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
     }
 
     /// <summary>
@@ -89,6 +96,14 @@ public sealed class BlockRingBuffer<T> : IDisposable
 
         Task<int>? completedWhenReadyToWrite;
         lock (_lock) {
+            if (_isDisposed) {
+                // Cancelled, not null and not completed: null breaks NotNullWhen(false), and a
+                // completed task turns a wait loop into a spin.
+                writtenCount = 0;
+                whenReadyToWrite = Task.FromCanceled(new CancellationToken(true));
+                return false;
+            }
+
             var free = _capacity - _count;
             var toWrite = Math.Min(data.Length, free);
 
@@ -145,6 +160,12 @@ public sealed class BlockRingBuffer<T> : IDisposable
 
         Task<int>? completedWhenReadyToWrite;
         lock (_lock) {
+            if (_isDisposed) {
+                // See TryWrite - a completed task here spun WindowsAudioCapture's Enumerate.
+                whenReadyToRead = Task.FromCanceled(new CancellationToken(true));
+                return false;
+            }
+
             if (_count < destination.Length) {
                 _whenReadyToRead ??= AsyncTaskMethodBuilderExt.New<int>().Task;
                 whenReadyToRead = _whenReadyToRead;
@@ -189,6 +210,9 @@ public sealed class BlockRingBuffer<T> : IDisposable
     public Task? WhenReadyToRead()
     {
         lock (_lock) {
+            if (_isDisposed)
+                return Task.FromCanceled(new CancellationToken(true));
+
             return _count > 0
                 ? null
                 : _whenReadyToRead ??= AsyncTaskMethodBuilderExt.New<int>().Task;

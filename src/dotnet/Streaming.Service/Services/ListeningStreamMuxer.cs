@@ -19,6 +19,9 @@ public sealed class ListeningStreamMuxer : WorkerBase
     private readonly ConcurrentDictionary<AuthorId, StreamEntry> _streamByAuthor = new();
     private readonly ConcurrentDictionary<string, byte> _excludedStreamIds = new();
     private readonly ConcurrentDictionary<string, int> _preStartRetryCountByStreamId = new();
+    // Restarted after failing mid-relay: marked preexisting so GetSkipTo serves them live rather
+    // than replaying the utterance.
+    private readonly ConcurrentDictionary<string, byte> _resumedStreamIds = new();
     private TaskCompletionSource _whenRetryNeededSource = TaskCompletionSourceExt.New();
     private int _nextStreamIndex;
 
@@ -101,7 +104,8 @@ public sealed class ListeningStreamMuxer : WorkerBase
                                 Interlocked.Increment(ref _nextStreamIndex),
                                 streamInfo,
                                 cancellationToken.CreateLinkedTokenSource()) {
-                                IsPreexisting = isColdSnapshot,
+                                IsPreexisting = isColdSnapshot
+                                    || _resumedStreamIds.ContainsKey(streamInfo.StreamId),
                             };
                             Log.LogDebug(
                                 "Starting stream #{StreamIndex} for {AuthorId} stream #{StreamId}",
@@ -150,9 +154,9 @@ public sealed class ListeningStreamMuxer : WorkerBase
         var streamStopToken = streamStopTokenSource.Token;
         var frameCount = 0;
         var mustRetry = false;
-        var mustExclude = false;
         var isStartEmitted = false;
         var shouldRetry = false;
+        var mustResume = false;
         try {
             if (!TryRegister(streamEntry))
                 return; // See `finally` block below
@@ -190,11 +194,12 @@ public sealed class ListeningStreamMuxer : WorkerBase
         }
         catch (RpcReconnectFailedException e) {
             if (isStartEmitted)
-                mustExclude = true;
+                mustResume = true;
             else
                 mustRetry = true;
             Log.LogWarning(e,
-                "Reconnect failed processing stream #{StreamIndex} for {AuthorId} #{StreamId}, {FrameCount} frames emitted",
+                "Reconnect failed processing stream #{StreamIndex} for {AuthorId} #{StreamId}, "
+                + "{FrameCount} frames emitted",
                 streamIndex, authorId, streamId, frameCount);
         }
         catch (OperationCanceledException)
@@ -209,7 +214,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
         }
         catch (Exception e) {
             if (isStartEmitted)
-                mustExclude = true;
+                mustResume = true;
             else
                 mustRetry = true;
             Log.LogWarning(e,
@@ -220,8 +225,24 @@ public sealed class ListeningStreamMuxer : WorkerBase
             streamStopTokenSource.CancelAndDisposeSilently();
             await EmitEndSafe().ConfigureAwait(false);
 
-            if (mustExclude)
-                _excludedStreamIds.TryAdd(streamId, 0);
+            if (mustResume) {
+                // Excluding here silenced the speaker until their next utterance. The retry path
+                // builds a fresh entry with a new index, so the listener gets a clean start item.
+                var resumeCount = _preStartRetryCountByStreamId.AddOrUpdate(streamId, 1, (_, count) => count + 1);
+                if (resumeCount <= MaxPreStartRetryCount) {
+                    _resumedStreamIds.TryAdd(streamId, 0);
+                    await Task.Delay(PreStartRetryDelays[resumeCount], CancellationToken.None).ConfigureAwait(false);
+                    shouldRetry = true;
+                }
+                else {
+                    Log.LogWarning(
+                        "ProcessStream: Stream #{StreamId} failed mid-relay {ResumeCount} times, excluding",
+                        streamId, MaxPreStartRetryCount);
+                    _excludedStreamIds.TryAdd(streamId, 0);
+                    _preStartRetryCountByStreamId.TryRemove(streamId, out _);
+                    _resumedStreamIds.TryRemove(streamId, out _);
+                }
+            }
             if (mustRetry) {
                 var retryCount = _preStartRetryCountByStreamId.AddOrUpdate(streamId, 1, (_, count) => count + 1);
                 if (retryCount <= MaxPreStartRetryCount) {
@@ -234,14 +255,18 @@ public sealed class ListeningStreamMuxer : WorkerBase
                         streamId, MaxPreStartRetryCount);
                     _excludedStreamIds.TryAdd(streamId, 0);
                     _preStartRetryCountByStreamId.TryRemove(streamId, out _);
+                    _resumedStreamIds.TryRemove(streamId, out _);
                 }
             }
-            else if (!mustExclude) {
+            else if (mustResume) {
+                // Nothing to clear: the resume block owns the counter, and falling through to the
+                // else below wiped the increment it had just made.
+            }
+            else {
                 _preStartRetryCountByStreamId.TryRemove(streamId, out _);
+                _resumedStreamIds.TryRemove(streamId, out _);
                 await Task.Delay(EvictionDelay, CancellationToken.None).ConfigureAwait(false);
             }
-            else
-                _preStartRetryCountByStreamId.TryRemove(streamId, out _);
 
             // Unregister the stream
             _streamById.TryRemove(streamId, streamEntry);
@@ -272,19 +297,26 @@ public sealed class ListeningStreamMuxer : WorkerBase
             entry.AuthorId,
             _ => entry,
             (_, existing) => {
-                if (entry.StreamId != existing.StreamId && entry.BeginsAt > existing.BeginsAt) {
+                // Ties go to the newcomer: a retry within MaxBeginsAtDrift claims a start equal to
+                // the call it replaces, and keeping the older entry means keeping the dead one.
+                if (entry.StreamId != existing.StreamId && entry.BeginsAt >= existing.BeginsAt) {
                     // New stream is fresher — cancel the old one
                     Log.LogInformation(
-                        "Author {AuthorId}: stream {NewStreamId} (beginsAt={NewBeginsAt}) replaces {OldStreamId} (beginsAt={OldBeginsAt})",
+                        "Author {AuthorId}: stream {NewStreamId} (beginsAt={NewBeginsAt}) replaces "
+                        + "{OldStreamId} (beginsAt={OldBeginsAt})",
                         entry.AuthorId, entry.StreamId, entry.BeginsAt, existing.StreamId, existing.BeginsAt);
                     try { existing.StopTokenSource.CancelAndDisposeSilently(); }
                     catch (ObjectDisposedException) { }
+                    // Excluded so the scanner can't recreate it: with ties to the newcomer it
+                    // would come back, win against the live one, and replay from position 0.
+                    _excludedStreamIds.TryAdd(existing.StreamId, 0);
                     return entry;
                 }
 
                 // It's either the same stream or existing stream is fresher — cancel ourselves
                 Log.LogInformation(
-                    "Author {AuthorId}: stream {NewStreamId} (beginsAt={NewBeginsAt}) is stale, keeping {OldStreamId} (beginsAt={OldBeginsAt})",
+                    "Author {AuthorId}: stream {NewStreamId} (beginsAt={NewBeginsAt}) is stale, keeping "
+                    + "{OldStreamId} (beginsAt={OldBeginsAt})",
                     entry.AuthorId, entry.StreamId, entry.BeginsAt, existing.StreamId, existing.BeginsAt);
                 entry.StopTokenSource.CancelAndDisposeSilently();
                 return existing;

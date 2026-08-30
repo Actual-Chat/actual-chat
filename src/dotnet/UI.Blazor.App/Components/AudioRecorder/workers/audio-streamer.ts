@@ -47,7 +47,6 @@ export class AudioStream implements Disposable {
             try {
                 await this.stream();
             } catch { }
-            await delayAsync(AUDIO.stream.interStreamDelayMs);
         })();
     }
 
@@ -128,6 +127,7 @@ export class AudioStream implements Disposable {
         // Natural termination (source returned after `isCompleted && frames empty`) also resolves
         // whenSent; the loop guard handles that case.
         const self = this;
+        let sentFrameCount = 0;
         try {
             while (!this.isDisposed) {
                 if (this.isCompleted && this.frames.length === 0)
@@ -140,12 +140,13 @@ export class AudioStream implements Disposable {
                 const liveAudioStreams = streamingApi.liveAudioStreams;
                 const peer = Api.peer;
 
-                // frameIndex and sourceStartedAt are per-PushAudio (per chat entry on the
-                // server); each retry iteration is a fresh entry, so both reset.
-                // debugOffsetMs is a DebugUI knob that lets us bias the source-time stamp
-                // forwards/backwards to simulate drift; in production it's always 0.
+                // frameIndex is per-PushAudio, so it resets; the claimed start doesn't - it
+                // advances by what earlier calls sent. Repeating it makes the server register the
+                // retry with a BeginsAt equal to the dead call's, and the muxer keeps the dead one.
+                // debugOffsetMs is a DebugUI knob to simulate drift; in production it's 0.
                 let frameIndex = 0;
-                const sourceStartedAtMs = this.sourceStartedAtMs ?? ServerClock.now();
+                const sourceStartedAtMs = (this.sourceStartedAtMs ?? ServerClock.now())
+                    + sentFrameCount * AUDIO.frameDurationMs;
                 const sourceStartOffsetSeconds = (sourceStartedAtMs + AudioStreamer.debugOffsetMs) / 1000;
                 infoLog?.log(`${this.name}: PushAudio sourceStartOffset=${sourceStartOffsetSeconds.toFixed(3)}s ` +
                     `(sourceStartedAtMs=${sourceStartedAtMs.toFixed(0)}, ` +
@@ -196,6 +197,13 @@ export class AudioStream implements Disposable {
                 this.repliedChatEntryId = undefined;
 
                 await stream.whenSent;
+                sentFrameCount += frameIndex;
+                if (this.isDisposed || (this.isCompleted && this.frames.length === 0))
+                    return;
+
+                // Only once we know this is a retry: addStream chains each stream on the previous
+                // one's whenDisposed, so an unconditional delay pushes back every later utterance.
+                await delayAsync(AUDIO.stream.streamErrorRetryDelayMs);
             }
         } catch (error) {
             warnLog?.log(`${this.name}: stream error:`, error);
