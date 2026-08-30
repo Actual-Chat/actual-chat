@@ -17,19 +17,30 @@ category to keep startup cheap. Categories:
   consistent HW support.
 - **H.264** (`avc1.*`) — universal fallback.
 
-For each enabled category, `isCodecSupported()`:
+For each enabled category, detection walks a best-first ladder of profiles
+(`getEncoderCodecLadder`) and reports the **first entry that passes**, so we
+never advertise a profile that wasn't probed. H.264's ladder is the platform's
+preferred profile, then Main at the matching level, then Constrained Baseline;
+other categories have a single entry. Each entry is probed by
+`isCodecSupported()`, which first tries `prefer-hardware`, then
+`no-preference` (Firefox is bad about the former).
 
-1. First tries `prefer-hardware`, then `no-preference` (Firefox is bad about
-   the former).
-2. Probes scalability modes (`L1T1`, `L1T2`, `L1T3`) to learn whether SVC
-   temporal layers are available.
+Result: `CodecInfo { name, codec, category, supported, hardwareAccelerated }`.
 
-Result: `CodecInfo { codec, hardwareAccelerated, scalabilityModes }`.
+Temporal SVC is gone — `scalabilityMode` is not probed, not on `LayerConfig`,
+and appears nowhere in `src/`. It was removed in `3ae12d7f8`; only vestigial
+`TemporalLayerId` / `TemporalLayerCount` remain on the receive-side wire DTO.
+
+A profile that fails `configure()` at runtime is excluded by **codec string**
+(`excludeEncoderCodecString`), not by category: H.264 has no category below it,
+so category-level exclusion is refused for it and a failed `avc1.640028` would
+otherwise be re-picked forever.
 
 `getDefaultCodec(supported, w, h)` picks in priority order:
 **AV1 HW > HEVC HW > VP9 HW > H.264 HW (profile-tuned) > H.264 SW**.
-On Firefox, H.264 Main 3.1 is forced (only profile that works reliably). On
-mobile, the policy prefers Main over High for power efficiency.
+Firefox and mobile prefer H.264 Main over High — that policy lives solely in
+`getCodecForCategory`; on mobile it's power efficiency, on Firefox it's the
+profile that works most reliably.
 
 `getCodecForCategory(category, w, h)` always returns the highest level in the
 category (e.g. H.264 High 5.2) and keeps it constant within a session, so a
@@ -92,8 +103,10 @@ fallback has been removed.
 File: `src/dotnet/UI.Blazor.App/Components/VideoPanel/layer-ladder.ts`.
 
 A `LayerConfig[]` is bottom-first (index 0 = base, last = top). Each layer
-has `{ width, height, bitrateKbps, baseBitrateKbps, scalabilityMode? }`. All
-layers in a single run share the same codec.
+has `{ width, height, bitrateKbps, baseBitrateKbps, layerId? }`. All layers in
+a single run share the same codec string, so `wireSend` declares the top tier's
+codec for the whole stream and warns if any layer's encoder resolved to a
+different one.
 
 `buildLadder({ topWidth, topHeight, tierCount, maxTierCount, bitratesKbps, … })`:
 
