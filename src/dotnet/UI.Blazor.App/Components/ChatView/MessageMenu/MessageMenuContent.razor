@@ -212,12 +212,12 @@
     private Task Pin()
         => IsPinned ? ChatPinsUI.Unpin(ChatEntry.Id) : ChatPinsUI.Pin(ChatEntry.Id);
 
-    private async Task DownloadAttachments() {
-        var attachments = ChatEntry.Attachments;
-        foreach (var attachment in attachments) {
-            var media = attachment.Media;
-            await FileDownloadUI.Download(media.BlobId, media.FileName, media.ContentType).ConfigureAwait(false);
-        }
+    private Task DownloadAttachments() {
+        var files = ChatEntry.Attachments
+            .Select(a => a.Media)
+            .Select(m => new FileToSave(UrlMapper.ContentDownloadUrl(m.BlobId), m.FileName, m.ContentType))
+            .ToList();
+        return FileDownloadUI.Download(files);
     }
 
     private void ShowAllReactions()
