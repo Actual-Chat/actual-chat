@@ -13,12 +13,6 @@ public class App : Application
 
     public App(IServiceProvider services)
     {
-#if WINDOWS
-        // Allows loading of mixed content into WebView on Windows
-        Environment.SetEnvironmentVariable(
-            "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
-            "--disable-features=AutoupgradeMixedContent");
-#endif
         Services = services;
     }
 
