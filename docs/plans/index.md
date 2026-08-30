@@ -13,6 +13,15 @@ candidate tasks. A plan is removed from here once its work ships.
 
 Recently added, larger efforts — in progress or next up.
 
+### H.264 codec selection fixes
+
+[H.264 codec selection fixes](./h264-codec-selection-fixes.md) — a Firefox/Linux
+user report exposed six defects in H.264 profile selection: detection probes
+Main 3.1 and declares High 4.0, `excludeEncoderCodec('h264')` is a hard no-op
+so a failed encoder re-picks itself forever, and the receiver builds a single
+decoder candidate with no software-decode retry. Two of them reproduce the same
+frozen-tile symptom on browsers that behave correctly.
+
 ### Android ANRs — FCM cold-start stalls
 
 [Android ANRs](./android-anr-issues.md) — two thirds of Voxt's Android ANRs are
