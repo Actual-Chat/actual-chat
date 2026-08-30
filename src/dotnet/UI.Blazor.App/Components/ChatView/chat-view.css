@@ -520,8 +520,7 @@ body.narrow .chat-link .c-link-buttons {
 .chat-link i {
     @apply text-xl;
 }
-.chat-link i.icon-copy,
-.chat-link i.fa-check {
+.chat-link i.icon-copy {
     @apply text-lg;
 }
 .chat-link .c-link-wrapper {

@@ -45,6 +45,7 @@ Landed: **19.4 MB, 19.7% of the package.**
 | Landing images split three ways | 14.7 MB | 14.7 MB | landed |
 | No production sourcemaps (net of `keepNames`) | 4.8 MB | 4.7 MB | landed |
 | R2R exclusions | 2.6 MB | — | **blocked** — crashes crossgen2, see below |
+| `woff2`-only fonts | 1.8 MB | 3.4 MB in `dist`, APK not re-measured | landed |
 
 Verified in the shipped APK: zero `.map` entries, zero `images/webonly` and `images/unused`
 entries, and `images/landing` down from 16.7 MB to 2.0 MB.
@@ -320,11 +321,34 @@ Address the forward as `127.0.0.1`, not `localhost` — on Windows `localhost` c
 `::1` while `adb forward` listens on IPv4 only, which hangs rather than failing. Run
 `adb forward --remove tcp:9333` when done.
 
+## Fonts: `woff2` only
+
+esbuild copies whatever a `@font-face` names, not what the browser ends up fetching, so
+every legacy format listed as a fallback shipped in full while `woff2` served every
+request. woff2 works in WKWebView (iOS 10+), Chromium (Android WebView, WebView2) and
+every browser since 2016 — far below our floors of iOS 16.4 / API 28 / Windows 10 17763,
+so the fallbacks were dead weight in all three chains that had them:
+
+| Chain | Cut by |
+|---|---|
+| Icon font | `excludeFormat` in `.svgtofontrc`, so `npm run font` emits `woff2` alone |
+| TT Commons Pro | one `src` per `@font-face` in `tt-commons-pro.css` |
+| fork-awesome | dependency dropped — see below |
+
+`dist/assets` went from 4.0 MB of fonts across five formats to 388 KB of `woff2`. The
+`.otf`/`.ttf` files stay in `src/nodejs/fonts/`: `scripts/l10n/derive-max.py` measures
+glyph advances from `TT-Commons-Pro-Regular.ttf`.
+
+fork-awesome cost 1.2 MB plus ~37 KB of CSS for **one** glyph — a `fa-exclamation-triangle`
+in `UnknownMarkupView`, the fallback shown when a markup type has no view — and its webfont
+was even preloaded in `index.htm`. Our own font already had `alert-triangle`, so the glyph
+moved there and the package went with it. Its `@font-face` could not have been narrowed in
+place anyway: it lives in the vendored `fork-awesome.min.css`.
+
 ## Still on the table
 
 | Candidate | Saving | Note |
 |---|---|---|
-| Ship only `woff2` fonts | re-measure | woff2 works in WKWebView (iOS 10+), Chromium (Android WebView, WebView2) and every browser since 2016 — well below our floors of iOS 16.4 / API 28 / Windows 10 17763. Two of the three chains are done — `.svgtofontrc` sets `excludeFormat` so `npm run font` emits woff2 only, and `tt-commons-pro.css` names one source per face — which took 3.1 MB of `eot`/`woff`/`ttf`/`otf`/`svg` out of `dist`. What's left is fork-awesome: its `fork-awesome.min.css` lives in `node_modules` and pulls `eot`/`woff`/`ttf`/`svg` (1.1 MB uncompressed) that esbuild dutifully copies, so cutting it means overriding the vendored `@font-face` — or dropping the dependency, since our own icon font could absorb the few glyphs still used. The 1.8 MB above was APK-compressed and predates both cuts — re-measure before quoting it. |
 | Drop the ONNX-wasm VAD on Android | 1.8 MB | `vad_batched.ort` (1.06 MB) + `ort-wasm-simd.wasm` (750 KB). Android resolves `VoiceActivityDetector` to `TfLiteVoiceActivityDetector`, which uses `res/raw/vad_batched_fp16.tflite` and `libLiteRt.so`; the `.ort` is loaded only under `#if WINDOWS` in `MauiAppModule`. Confirm the JS recorder never runs on Android before cutting. |
 | Trim unused AndroidX / Play Services packages | up to 9.7 MB | The dex payload. Real risk — this removes Java, not just precompiled code. |
 
