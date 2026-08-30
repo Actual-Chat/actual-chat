@@ -351,13 +351,13 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 ChatEntryId = ChatEntryId.New(request.ChatId, request.NewChatEntryLocalId.Value);
             var result = ChatEntryId is null
                 ? await ExecutePostRequestViaQueue(request, cancellationToken1).ConfigureAwait(false)
-                : await TryGetExistentPostMessage(ChatEntryId, cancellationToken1).ConfigureAwait(false);
+                : await TryGetExistingPostMessage(ChatEntryId, cancellationToken1).ConfigureAwait(false);
 
             var chatSendingMessages = GetChatSendingMessages(request.ChatId);
             if (result.IsValue(out var chatEntry1, out var exception)) {
                 ChatEntryId = chatEntry1.Id;
                 var hasAttachmentUploads = request.AttachmentUploads is not null;// chatEntry1.HasUploadingAttachments || chatEntry1.Attachments.Any(c => !(c.Media?.IsReady ?? false));
-                chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now, !hasAttachmentUploads);
+                chatSendingMessages.ConfirmMessageWasSent(sendingMessage, chatEntry1, Now, !hasAttachmentUploads);
                 _mediaUploadsUI.Invalidate(sendingMessage);
                 try {
                     if (hasAttachmentUploads)
@@ -454,7 +454,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         return result;
     }
 
-    private async Task<Result<ChatEntry>> TryGetExistentPostMessage(ChatEntryId chatEntryId, CancellationToken cancellationToken1)
+    private async Task<Result<ChatEntry>> TryGetExistingPostMessage(ChatEntryId chatEntryId, CancellationToken cancellationToken1)
     {
         Result<ChatEntry> result;
         var chatEntry = await Hub.Chats.GetEntry(Hub.Session, chatEntryId, cancellationToken1).ConfigureAwait(false);
@@ -475,14 +475,14 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         if (request.AttachmentUploads is null) {
             // NOTE(DF): this should never happen.
             Log.LogError("Attachment uploads are not set for message with local id '{LocalId}'", chatEntry.LocalId);
-            chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry, Now, true);
+            chatSendingMessages.ConfirmMessageWasSent(sendingMessage, chatEntry, Now, true);
             return chatEntry;
         }
 
         if (!request.NewChatEntryLocalId.HasValue)
             // Persist that the message has been sent before we continue further processing with attachments.
             await _requestsRepo
-                .MarkMessageHasCreated(request.Uuid, chatEntry.LocalId, cancellationToken)
+                .MarkMessageWasCreated(request.Uuid, chatEntry.LocalId, cancellationToken)
                 .ConfigureAwait(false);
 
         ChatEntry? chatEntry1;
@@ -521,7 +521,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             chatEntry1 = await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
         }
 
-        chatSendingMessages.ConfirmMessageAttachmentsHaveSent(sendingMessage, chatEntry1, Now);
+        chatSendingMessages.ConfirmMessageAttachmentsWereSent(sendingMessage, chatEntry1, Now);
         // Delete upload info with delay to avoid flickering in the UI.
         // Linked to service lifetime so it's cancelled on dispose instead of running against a disposed scope.
         var serviceToken = _cancellationTokenSource.Token;

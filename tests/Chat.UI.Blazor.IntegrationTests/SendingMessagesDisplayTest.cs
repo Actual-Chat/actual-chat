@@ -58,6 +58,63 @@ public class SendingMessagesDisplayTest(ChatAppHostFixture fixture, ITestOutputH
             .Should().Contain("TEST_SENDING");
     }
 
+    // The optimistic copy is dropped only when ProcessLoadedEntriesRange sees PostedChatEntry, and that
+    // is set by ConfirmMessageWasSent - which can land after the real entry has already rendered, since
+    // the post result and the entry's invalidation reach the client over unordered channels. Confirming
+    // has to invalidate the tail tile, or the message keeps a stuck "sending" twin next to itself.
+    [Fact]
+    public async Task ShouldDropSendingMessageConfirmedAfterEntryRendered()
+    {
+        // arrange: the real entry is already posted and rendered, but its send is still unconfirmed
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "sending-confirm-test");
+        var entry = await Tester.CreateTextEntry(chat.Id, "CONFIRM_RACE");
+
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var sendingMessages = Tester.ScopedAppServices.GetRequiredService<SendingMessages>();
+        var now = Tester.AppServices.Clocks().SystemClock.Now;
+
+        var accessor = sendingMessages.GetSendingMessages(chat.Id);
+        var sendingMessage = new SendingMessage(
+            Guid.NewGuid().ToString(),
+            chat.Id,
+            null,
+            now,
+            "CONFIRM_RACE",
+            HashString.None,
+            null,
+            () => { });
+        accessor.ChatSendingMessages.AddSendingMessage(sendingMessage);
+
+        // act
+        await ComputedTest.When(async ct => {
+            var sending = await GetSendingContents(chatUI, chat.Id, ct);
+            sending.Should().Equal("CONFIRM_RACE");
+        }, TimeSpan.FromSeconds(10));
+
+        accessor.ChatSendingMessages.ConfirmMessageWasSent(sendingMessage, entry, now, true);
+
+        // assert: the optimistic twin is gone
+        await ComputedTest.When(async ct => {
+            var sending = await GetSendingContents(chatUI, chat.Id, ct);
+            sending.Should().BeEmpty();
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    private async Task<List<string>> GetSendingContents(
+        ChatUI chatUI,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chatId, cancellationToken);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        var items = await chatUI.GetChatItems(chatId, query, 0, cancellationToken);
+        return items.Items.OfType<ChatEntryMessage>()
+            .Where(m => m.Entry.IsSending)
+            .Select(m => m.Entry.Content)
+            .ToList();
+    }
+
     // Each chat-items entry renders with a @key; duplicate sibling keys throw inside Blazor's keyed
     // render-tree diff and tear down the circuit. A conversation at the chat tail used to be emitted
     // twice - once by the last loaded tile, once by the explicit tail-tile fallback - producing a

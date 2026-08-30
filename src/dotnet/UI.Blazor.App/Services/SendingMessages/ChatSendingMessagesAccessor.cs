@@ -32,7 +32,7 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
             return chatEntry;
 
         if (sendingMessage.PostedChatEntry is not null && sendingMessage.PostedChatEntry.Version <= chatEntry.Version)
-            ChatSendingMessages.ConfirmEditedMessagedHasLoaded(sendingMessage);
+            ChatSendingMessages.ConfirmEditedMessageWasLoaded(sendingMessage);
         else {
             chatEntry = chatEntry with {
                 //BeginsAt = e2.BeginsAt,
