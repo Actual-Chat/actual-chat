@@ -223,22 +223,55 @@ export class AudioContextAction implements Disposable {
 
     private async execute(action: (context: AudioContext) => Promise<void>): Promise<void> {
         try {
-            // Wait for context to be ready or ref to be disposed
-            const context = await Promise.race([
-                this._ref.whenReady(),
-                this._ref.whenDisposed().then(() => null),
-            ]);
+            while (!this._disposed) {
+                // Wait for context to be ready or ref to be disposed
+                const context = await Promise.race([
+                    this._ref.whenReady(),
+                    this._ref.whenDisposed().then(() => null),
+                ]);
 
-            if (!context || this._disposed) {
-                return;
+                if (!context || this._disposed) {
+                    return;
+                }
+
+                // A rejection is an outcome rather than a throw: when the context dies the
+                // action's own awaits fail first, and racing that settled the loop without a re-run.
+                let actionError: unknown;
+                const actionTask = action(context).then(
+                    () => 'completed' as const,
+                    e => { actionError = e; return 'errored' as const; });
+                const outcome = await Promise.race([
+                    actionTask,
+                    this._ref.whenFailed().then(() => 'failed' as const),
+                    this._ref.whenDisposed().then(() => 'disposed' as const),
+                ]);
+                if (outcome === 'completed' || outcome === 'disposed' || this._disposed)
+                    return;
+
+                if (outcome === 'errored') {
+                    // context.state is synchronous and authoritative; isReady alone isn't, since
+                    // the ref only flips it when the maintain loop closes the context.
+                    if (this._ref.isReady && context.state !== 'closed') {
+                        warnLog?.log('AudioContextAction failed:', actionError);
+                        return;
+                    }
+
+                    warnLog?.log('AudioContextAction: action failed with a dead context:', actionError);
+                    // Wait for the source to acknowledge the death: whenReady still holds the dead
+                    // context until _setFailed re-arms it, so looping now re-runs against that one -
+                    // and the recorder's early-out then matches dead against dead and exits for good.
+                    const failure = await Promise.race([
+                        this._ref.whenFailed().then(() => 'failed' as const),
+                        this._ref.whenDisposed().then(() => 'disposed' as const),
+                    ]);
+                    if (failure === 'disposed' || this._disposed)
+                        return;
+                }
+
+                // attach() rebuilds only the bare pipeline on a recycle - whatever the action
+                // initialized on top of it stays bound to the dead context until it runs again.
+                warnLog?.log('AudioContextAction: context failed, re-running on the new one');
             }
-
-            // Run the action, racing against failure/disposal
-            await Promise.race([
-                action(context),
-                this._ref.whenFailed(),
-                this._ref.whenDisposed(),
-            ]);
         } catch (e) {
             if (!this._disposed) {
                 warnLog?.log('AudioContextAction failed:', e);
