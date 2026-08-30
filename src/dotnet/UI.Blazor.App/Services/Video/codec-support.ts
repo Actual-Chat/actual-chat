@@ -145,17 +145,23 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
         }
     }
     const results: CodecInfo[] = [];
-    for (const { category, name, codec } of probeList) {
-        const { supported, hardwareAccelerated } = await isCodecSupported(codec, category, width, height);
-        // WebCodecs level ladders are backward-compatible: a working low-level
-        // profile implies higher ones at the same dims work too.
-        const chosenCodec = supported ? getCodecForCategory(category, width, height) : codec;
+    for (const { category } of probeList) {
+        const ladder = getEncoderCodecLadder(category, width, height);
+        let chosen: { codec: string; hardwareAccelerated: boolean } | null = null;
+        for (const codec of ladder) {
+            const { supported, hardwareAccelerated } = await isCodecSupported(codec, category, width, height);
+            if (supported) {
+                chosen = { codec, hardwareAccelerated };
+                break;
+            }
+        }
+        const codec = chosen?.codec ?? ladder[0];
         results.push({
-            name,
-            codec: chosenCodec,
+            name: getCodecProfileName(codec) ?? codec,
+            codec,
             category,
-            supported,
-            hardwareAccelerated,
+            supported: chosen !== null,
+            hardwareAccelerated: chosen?.hardwareAccelerated ?? false,
         });
     }
     const supported = results.filter(c => c.supported);
@@ -346,12 +352,10 @@ export function getCodecForCategory(category: 'h264' | 'hevc' | 'av1' | 'vp9', w
         return ultraHi ? 'hev1.1.6.L150.B0' : 'hev1.1.6.L120.B0';
     }
     // H.264: Firefox/mobile = Main, desktop = High (better compression).
-    if (isMobile || DeviceInfo.isFirefox) {
-        if (ultraHi) return 'avc1.4D4034';
-        return 'avc1.4D4029';
-    }
-    if (ultraHi) return 'avc1.640034';
-    return 'avc1.640028';
+    if (isMobile || DeviceInfo.isFirefox)
+        return ultraHi ? 'avc1.4D4034' : 'avc1.4D4029';
+
+    return ultraHi ? 'avc1.640034' : 'avc1.640028';
 }
 
 // Chrome's software H.264 encoder (OpenH264) implements only Constrained
@@ -361,16 +365,52 @@ export function getCodecForCategory(category: 'h264' | 'hevc' | 'av1' | 'vp9', w
 // decodable, which keeps the HW→SW switch transparent to viewers.
 export function getSoftwareH264Codec(width: number, height: number): string {
     const pixels = width * height;
-    if (pixels > 2_073_600) return 'avc1.42E034'; // L5.2 (>1080p)
-    if (pixels > 921_600) return 'avc1.42E028';    // L4.0 (1080p)
-    return 'avc1.42E01F';                          // L3.1 (≤720p)
+    if (pixels > 2_073_600)
+        return 'avc1.42E034'; // L5.2 (>1080p)
+    if (pixels > 921_600)
+        return 'avc1.42E028'; // L4.0 (1080p)
+
+    return 'avc1.42E01F'; // L3.1 (≤720p)
+}
+
+function getMainH264Codec(width: number, height: number): string {
+    const pixels = width * height;
+    if (pixels > 2_073_600)
+        return 'avc1.4D4034'; // L5.2 (>1080p)
+    if (pixels > 921_600)
+        return 'avc1.4D4029'; // L4.1 (1080p)
+
+    return 'avc1.4D401F'; // L3.1 (≤720p)
+}
+
+// Profiles to probe for one category, best-first. Detection reports the first
+// entry that `isConfigSupported` accepts, so we never advertise a profile we
+// didn't test: Main → High is a profile change, not a level step, and a device
+// that encodes Main 3.1 may well reject High 4.0. Only H.264 gets alternatives
+// — it's the one category with no other category to fall back to.
+function getEncoderCodecLadder(category: CodecInfo['category'], width: number, height: number): string[] {
+    const preferred = getCodecForCategory(category, width, height);
+    if (category !== 'h264')
+        return [preferred];
+
+    const ladder = [preferred, getMainH264Codec(width, height), getSoftwareH264Codec(width, height)];
+    return ladder.filter((codec, i) => ladder.indexOf(codec) === i);
+}
+
+function getCodecProfileName(codec: string): string | null {
+    for (const profiles of Object.values(CODEC_PROFILES)) {
+        const match = profiles.find(p => p.codec === codec);
+        if (match)
+            return match.name;
+    }
+
+    return null;
 }
 
 export function getDefaultCodec(supportedCodecs: CodecInfo[], width: number, height: number): string {
     // Firefox: H.264 Main 3.1 is the only reliable encoder profile.
-    if (DeviceInfo.isFirefox) {
+    if (DeviceInfo.isFirefox)
         return 'avc1.4D401F';
-    }
 
     const isMobile = DeviceInfo.isMobile; // includes iOS
 
