@@ -1353,6 +1353,14 @@
 
   "Share_FailedToShareCount": "Не удалось поделиться {0} файлом|Не удалось поделиться {0} файлами",
 
+  "FileSaver_SavedToGallery": "{0} файл сохранён в галерею|{0} файла сохранено в галерею|{0} файлов сохранено в галерею",
+  "FileSaver_SavedToMusic": "{0} файл сохранён в Music|{0} файла сохранено в Music|{0} файлов сохранено в Music",
+  "FileSaver_SavedToDownloads": "{0} файл сохранён в Downloads|{0} файла сохранено в Downloads|{0} файлов сохранено в Downloads",
+  "FileSaver_SavedToLibrary": "{0} файл сохранён в медиатеку|{0} файла сохранено в медиатеку|{0} файлов сохранено в медиатеку",
+  "FileSaver_Saved": "{0} файл сохранён|{0} файла сохранено|{0} файлов сохранено",
+  "FileSaver_PartiallySaved": "Сохранён {0} файл из {1}|Сохранено {0} файла из {1}|Сохранено {0} файлов из {1}",
+  "FileSaver_SaveFailed": "Не удалось сохранить файл|Не удалось сохранить файлы",
+
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
   // 12/7 entries, and the *Pattern values are .NET date format strings - localize the
   // field order and separators, never the format tokens themselves.

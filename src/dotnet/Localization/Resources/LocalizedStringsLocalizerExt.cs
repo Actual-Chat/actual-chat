@@ -1399,6 +1399,20 @@ public static class LocalizedStringsLocalizerExt
 
         public string Share_FailedToShareCount(long count, object arg0)
             => l.Plural("Share_FailedToShareCount", count, arg0);
+        public string FileSaver_SavedToGallery(long count, object arg0)
+            => l.Plural("FileSaver_SavedToGallery", count, arg0);
+        public string FileSaver_SavedToMusic(long count, object arg0)
+            => l.Plural("FileSaver_SavedToMusic", count, arg0);
+        public string FileSaver_SavedToDownloads(long count, object arg0)
+            => l.Plural("FileSaver_SavedToDownloads", count, arg0);
+        public string FileSaver_SavedToLibrary(long count, object arg0)
+            => l.Plural("FileSaver_SavedToLibrary", count, arg0);
+        public string FileSaver_Saved(long count, object arg0)
+            => l.Plural("FileSaver_Saved", count, arg0);
+        public string FileSaver_PartiallySaved(long count, object arg0, object arg1)
+            => l.Plural("FileSaver_PartiallySaved", count, arg0, arg1);
+        public string FileSaver_SaveFailed(long count)
+            => l.Plural("FileSaver_SaveFailed", count);
 
         public string Date_MonthNames => l["Date_MonthNames"].Value;
         public string Date_MonthGenitiveNames => l["Date_MonthGenitiveNames"].Value;

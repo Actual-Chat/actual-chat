@@ -1353,6 +1353,14 @@
 
   "Share_FailedToShareCount": "{0} 件のファイルを共有できませんでした",
 
+  "FileSaver_SavedToGallery": "{0} 件のファイルをギャラリーに保存しました",
+  "FileSaver_SavedToMusic": "{0} 件のファイルを Music に保存しました",
+  "FileSaver_SavedToDownloads": "{0} 件のファイルを Downloads に保存しました",
+  "FileSaver_SavedToLibrary": "{0} 件のファイルをライブラリに保存しました",
+  "FileSaver_Saved": "{0} 件のファイルを保存しました",
+  "FileSaver_PartiallySaved": "{1} 件中 {0} 件を保存しました",
+  "FileSaver_SaveFailed": "ファイルを保存できませんでした",
+
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
   // 12/7 entries, and the *Pattern values are .NET date format strings - localize the
   // field order and separators, never the format tokens themselves.

@@ -1631,6 +1631,17 @@
   // The plural counterpart of Share_FailedToShareFiles above.
   "Share_FailedToShareCount": "Failed to share {0} file|Failed to share {0} files",
 
+  // Toasts the native file savers show after a Download / Save action. The group is
+  // reported as one outcome, so every key counts files; the place is baked into the
+  // phrase rather than spliced in, since it has to inflect.
+  "FileSaver_SavedToGallery": "{0} file saved to the gallery|{0} files saved to the gallery",
+  "FileSaver_SavedToMusic": "{0} file saved to Music|{0} files saved to Music",
+  "FileSaver_SavedToDownloads": "{0} file saved to Downloads|{0} files saved to Downloads",
+  "FileSaver_SavedToLibrary": "{0} file saved to the library|{0} files saved to the library",
+  "FileSaver_Saved": "{0} file saved|{0} files saved",
+  "FileSaver_PartiallySaved": "{0} of {1} files saved",
+  "FileSaver_SaveFailed": "Failed to save the file|Failed to save the files",
+
   // Everything that renders a date, a time or a duration: the transcript's day separators, the
   // conversation card header, and relative times such as "few minutes ago".
   //

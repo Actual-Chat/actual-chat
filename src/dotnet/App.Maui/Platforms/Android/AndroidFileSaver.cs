@@ -1,5 +1,7 @@
+using ActualChat.Localization;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.IO;
+using Microsoft.Extensions.Localization;
 using Android;
 using Android.Content;
 using Android.Content.PM;
@@ -19,9 +21,11 @@ public sealed class AndroidFileSaver(IServiceProvider services)
 {
     private const string AppSubFolder = CoreConstants.AppName;
 
-    private ToastUI ToastUI => field ??= services.GetRequiredService<ToastUI>();
-    private IHttpClientFactory HttpClientFactory => field ??= services.GetRequiredService<IHttpClientFactory>();
-    private ILogger Log => field ??= services.LogFor(GetType());
+    private IServiceProvider Services { get; } = services;
+    private ToastUI ToastUI => field ??= Services.GetRequiredService<ToastUI>();
+    private IHttpClientFactory HttpClientFactory => field ??= Services.GetRequiredService<IHttpClientFactory>();
+    private IStringLocalizer L => field ??= Services.GetRequiredService<IStringLocalizer>();
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     public async Task Save(IReadOnlyList<FileToSave> files)
     {
@@ -34,18 +38,13 @@ public sealed class AndroidFileSaver(IServiceProvider services)
             .Run(() => SaveAll(files), CancellationToken.None)
             .ConfigureAwait(true);
 
-        // A mixed group lands in several places at once, so the toast names none of them.
-        var targets = files.Select(f => GetTarget(f.ContentType)).Distinct().ToList();
-        var suffix = targets.Count == 1 ? $" to {targets[0]}" : "";
         if (savedCount == 0)
-            ToastUI.Show($"Failed to save{suffix}", "icon-alert-circle", ToastDismissDelay.Long);
+            ToastUI.Show(L.FileSaver_SaveFailed(files.Count), "icon-alert-circle", ToastDismissDelay.Long);
         else if (savedCount < files.Count)
-            ToastUI.Show($"{savedCount} of {files.Count} files saved{suffix}",
+            ToastUI.Show(L.FileSaver_PartiallySaved(savedCount, savedCount, files.Count),
                 "icon-alert-circle", ToastDismissDelay.Long);
-        else {
-            var fileText = savedCount == 1 ? "1 file" : $"{savedCount} files";
-            ToastUI.Show($"{fileText} saved{suffix}", "icon-checkmark-circle-2", ToastDismissDelay.Short);
-        }
+        else
+            ToastUI.Show(GetSavedText(files, savedCount), "icon-checkmark-circle-2", ToastDismissDelay.Short);
     }
 
     // Private methods
@@ -53,9 +52,10 @@ public sealed class AndroidFileSaver(IServiceProvider services)
     private async Task<int> SaveAll(IReadOnlyList<FileToSave> files)
     {
         var savedCount = 0;
-        foreach (var file in files)
+        foreach (var file in files) {
             if (await SaveOne(file).ConfigureAwait(false))
                 savedCount++;
+        }
 
         return savedCount;
     }
@@ -156,6 +156,7 @@ public sealed class AndroidFileSaver(IServiceProvider services)
             var filePath = directoryPath & fileName;
             if (System.IO.File.Exists(filePath))
                 filePath = EnsureFilePathIsFree(directoryPath, fileName);
+
             var outputStream = System.IO.File.OpenWrite(filePath);
             await using var _1 = outputStream.ConfigureAwait(false);
             await inputStream.CopyToAsync(outputStream).ConfigureAwait(false);
@@ -193,11 +194,25 @@ public sealed class AndroidFileSaver(IServiceProvider services)
         return (disposition?.FileNameStar ?? disposition?.FileName)?.Trim('"').NullIfEmpty();
     }
 
-    private static string GetTarget(string contentType)
+    private string GetSavedText(IReadOnlyList<FileToSave> files, int savedCount)
+    {
+        // A mixed group lands in several places at once, so the toast names none of them.
+        var targets = files.Select(f => GetTarget(f.ContentType)).Distinct().ToList();
+        if (targets.Count != 1)
+            return L.FileSaver_Saved(savedCount, savedCount);
+
+        return targets[0] switch {
+            SaveTarget.Gallery => L.FileSaver_SavedToGallery(savedCount, savedCount),
+            SaveTarget.Music => L.FileSaver_SavedToMusic(savedCount, savedCount),
+            _ => L.FileSaver_SavedToDownloads(savedCount, savedCount),
+        };
+    }
+
+    private static SaveTarget GetTarget(string contentType)
         => GetContentKind(contentType) switch {
-            ContentKind.Image or ContentKind.Video => "the gallery",
-            ContentKind.Audio => "Music",
-            _ => "Downloads",
+            ContentKind.Image or ContentKind.Video => SaveTarget.Gallery,
+            ContentKind.Audio => SaveTarget.Music,
+            _ => SaveTarget.Downloads,
         };
 
     private static ContentKind GetContentKind(string contentType)
@@ -230,7 +245,7 @@ public sealed class AndroidFileSaver(IServiceProvider services)
         return directoryPath & NewFileName(System.Environment.TickCount64);
 
         FilePath NewFileName(long index) {
-            var newFileName = fileNameWithoutExtension + " (" + index.ToString() + ")";
+            var newFileName = fileNameWithoutExtension + " (" + index + ")";
             if (!extension.IsNullOrEmpty())
                 newFileName += extension;
 
@@ -241,6 +256,8 @@ public sealed class AndroidFileSaver(IServiceProvider services)
     // Nested types
 
     private enum ContentKind { Image, Video, Audio, Other }
+
+    private enum SaveTarget { Gallery, Music, Downloads }
 
     private sealed class ScanCompletedListener(Action<string, Uri> onScanCompleted)
         : JObject, MediaScannerConnection.IOnScanCompletedListener

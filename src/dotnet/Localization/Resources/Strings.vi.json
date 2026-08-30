@@ -1353,6 +1353,14 @@
 
   "Share_FailedToShareCount": "Không thể chia sẻ {0} tệp",
 
+  "FileSaver_SavedToGallery": "Đã lưu {0} tệp vào thư viện ảnh",
+  "FileSaver_SavedToMusic": "Đã lưu {0} tệp vào Music",
+  "FileSaver_SavedToDownloads": "Đã lưu {0} tệp vào Downloads",
+  "FileSaver_SavedToLibrary": "Đã lưu {0} tệp vào thư viện",
+  "FileSaver_Saved": "Đã lưu {0} tệp",
+  "FileSaver_PartiallySaved": "Đã lưu {0} trong {1} tệp",
+  "FileSaver_SaveFailed": "Không thể lưu tệp",
+
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
   // 12/7 entries, and the *Pattern values are .NET date format strings - localize the
   // field order and separators, never the format tokens themselves.

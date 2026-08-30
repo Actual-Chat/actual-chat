@@ -1353,6 +1353,14 @@
 
   "Share_FailedToShareCount": "파일 {0}개를 공유하지 못했습니다",
 
+  "FileSaver_SavedToGallery": "{0}개 파일을 갤러리에 저장했습니다",
+  "FileSaver_SavedToMusic": "{0}개 파일을 Music에 저장했습니다",
+  "FileSaver_SavedToDownloads": "{0}개 파일을 Downloads에 저장했습니다",
+  "FileSaver_SavedToLibrary": "{0}개 파일을 라이브러리에 저장했습니다",
+  "FileSaver_Saved": "{0}개 파일을 저장했습니다",
+  "FileSaver_PartiallySaved": "{1}개 중 {0}개를 저장했습니다",
+  "FileSaver_SaveFailed": "파일을 저장하지 못했습니다",
+
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
   // 12/7 entries, and the *Pattern values are .NET date format strings - localize the
   // field order and separators, never the format tokens themselves.
