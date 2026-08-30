@@ -26,4 +26,5 @@ public sealed record ActiveNotificationInfo(
     string Text,
     string IconUrl,
     string Url,
-    ApiArray<NotificationMessage> Messages = default);
+    ApiArray<NotificationMessage> Messages = default,
+    ChatId? ChatId = null);

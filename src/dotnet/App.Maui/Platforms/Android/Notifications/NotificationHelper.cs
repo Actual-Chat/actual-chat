@@ -15,12 +15,13 @@ namespace ActualChat.App.Maui;
 
 public static class NotificationHelper
 {
-    private const int ImageCacheSize = 5;
-    private const int MaxUploadLines = 5;
-    private static readonly ThreadSafeLruCache<string, Bitmap?> ImagesCache = new (ImageCacheSize);
-    private static ILogger? _log;
     public static readonly AtomicInteger RequestCodeProvider =
         new((int)Android.OS.SystemClock.ElapsedRealtime());
+
+    private const int ImageCacheSize = 5;
+    private const int MaxUploadLines = 5;
+    private static readonly ThreadSafeLruCache<string, Bitmap?> ImagesCache = new(ImageCacheSize);
+    private static ILogger? _log;
     public static string NotificationViewAction => Application.Context.PackageName + ".NotificationView";
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger(typeof(NotificationHelper));
 
@@ -38,11 +39,15 @@ public static class NotificationHelper
         manager.CreateNotificationChannel(channel);
     }
 
-    // Builds and shows a chat notification under the given tag. Shared by the FCM receive path
-    // and the client reconciler's create-missing path so they stay identical.
     public static void ShowChatNotification(
-        string tag, string title, string body, string? imageUrl, string? link,
-        bool silent = false, IReadOnlyList<PushMessage>? messages = null)
+        ChatId? chatId,
+        string tag,
+        string title,
+        string body,
+        string? imageUrl,
+        string? link,
+        bool silent = false,
+        IReadOnlyList<PushMessage>? messages = null)
     {
         var context = Application.Context;
         var contentIntent = CreateViewIntent(context, link);
@@ -50,8 +55,9 @@ public static class NotificationHelper
             contentIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
         var largeImage = imageUrl.IsNullOrEmpty() ? null : GetImage(imageUrl!);
+        var icon = largeImage is null ? null : AndroidChatShortcuts.CreateIcon(largeImage);
         var (senderName, conversationTitle) = SplitTitle(title);
-        var style = CreateStyle(senderName, conversationTitle, body, largeImage, messages);
+        var style = CreateStyle(senderName, conversationTitle, body, icon, messages);
         var builder = new NotificationCompat.Builder(context, Constants.DefaultChannelId)
             .SetContentTitle(title)!
             .SetSmallIcon(Resource.Drawable.notification_app_icon)!
@@ -66,68 +72,21 @@ public static class NotificationHelper
         if (style is NotificationCompat.MessagingStyle && !conversationTitle.IsNullOrEmpty())
             builder.SetSubText(conversationTitle);
         builder.SetStyle(style);
-        if (largeImage != null)
+        // Naming a long-lived shortcut is what promotes this to a conversation notification, and
+        // that's the only mode where the system draws the avatar itself - masked, in its own
+        // circle - instead of showing our bitmap as-is in the collapsed banner's icon box.
+        // The shortcut is launched from outside the app, so its intent needs the absolute chat URL;
+        // callers that pass an in-app relative link just stay ordinary notifications.
+        if (chatId is not null && Uri.TryCreate(link, UriKind.Absolute, out _)) {
+            AndroidChatShortcuts.PushOnce(
+                context, chatId, conversationTitle.NullIfEmpty() ?? senderName, link!, icon);
+            builder.SetShortcutId(chatId.Value);
+        }
+        // MessagingStyle already carries the avatar on its Person, so a large icon here is a second,
+        // unmasked copy of it.
+        if (largeImage != null && style is not NotificationCompat.MessagingStyle)
             builder.SetLargeIcon(largeImage);
         NotificationManagerCompat.From(context)!.Notify(tag, 0, builder.Build());
-    }
-
-    // Telegram-style rendering: one MessagingStyle line per pushed message (sender + text +
-    // timestamp) when structured messages are present; single-message and BigTextStyle fallbacks
-    // keep old-server pushes and non-chat titles working.
-    private static NotificationCompat.Style CreateStyle(
-        string senderName,
-        string? conversationTitle,
-        string body,
-        Bitmap? largeImage,
-        IReadOnlyList<PushMessage>? messages)
-    {
-        var bigText = new NotificationCompat.BigTextStyle().BigText(body)!;
-        if (senderName.IsNullOrEmpty())
-            return bigText;
-
-        try {
-            var self = new Person.Builder().SetName("You")!.Build();
-            var style = new NotificationCompat.MessagingStyle(self);
-            if (!conversationTitle.IsNullOrEmpty()) {
-                style.SetGroupConversation(true);
-                style.SetConversationTitle(conversationTitle);
-            }
-            if (messages is { Count: > 0 }) {
-                // Only the newest sender carries the avatar — it's the banner headline's icon.
-                var newestName = messages[^1].AuthorName.NullIfEmpty() ?? senderName;
-                var persons = new Dictionary<string, Person>();
-                foreach (var message in messages) {
-                    var name = message.AuthorName.NullIfEmpty() ?? senderName;
-                    if (!persons.TryGetValue(name, out var person)) {
-                        var personBuilder = new Person.Builder().SetName(name)!;
-                        if (name == newestName && largeImage != null)
-                            personBuilder.SetIcon(IconCompat.CreateWithBitmap(largeImage));
-                        person = personBuilder.Build();
-                        persons.Add(name, person);
-                    }
-                    style.AddMessage(message.Text, message.SentAtMs, person);
-                }
-            }
-            else {
-                var senderBuilder = new Person.Builder().SetName(senderName)!;
-                if (largeImage != null)
-                    senderBuilder.SetIcon(IconCompat.CreateWithBitmap(largeImage));
-                style.AddMessage(body, Java.Lang.JavaSystem.CurrentTimeMillis(), senderBuilder.Build());
-            }
-            return style;
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "Failed to build MessagingStyle; falling back to BigTextStyle");
-            return bigText;
-        }
-    }
-
-    private static (string SenderName, string? ConversationTitle) SplitTitle(string title)
-    {
-        var index = title.IndexOf(" @ ");
-        return index >= 0
-            ? (title[..index].Trim(), title[(index + 3)..].Trim())
-            : (title, null);
     }
 
     public static Bitmap? GetImage(string imageUrl)
@@ -152,24 +111,6 @@ public static class NotificationHelper
         return tcs.Task;
     }
 
-    private static Bitmap? DownloadImage(string imageUrl)
-    {
-        var sw = Stopwatch.GetTimestamp();
-        Bitmap? largeImage = null;
-        try {
-            var imageDownload = AndroidUtils.StartImageDownloadInBackground(imageUrl.ToUri());
-            largeImage = AndroidUtils.WaitForAndApplyImageDownload(imageDownload);
-        }
-        catch (Exception e) {
-            Log.LogError(e, "Failed to download image '{Url}'", imageUrl);
-        }
-        var elapsed = (int)Stopwatch.GetElapsedTime(sw).TotalMilliseconds;
-        Log.Log(elapsed > 5000 ? LogLevel.Warning : LogLevel.Information,
-            "Downloading image '{Url}' took {Elapsed} ms",
-            imageUrl, elapsed);
-        return largeImage;
-    }
-
     public static Intent? CreateViewIntent(Context context, string? link)
     {
         var uri = !link.IsNullOrEmpty() ? Android.Net.Uri.Parse(link) : null;
@@ -180,6 +121,7 @@ public static class NotificationHelper
         var intent = context.PackageManager!.GetLaunchIntentForPackage(context.PackageName!);
         if (intent == null)
             Log.LogWarning("No activity found to launch app");
+
         return intent;
     }
 
@@ -211,18 +153,18 @@ public static class NotificationHelper
                 // ReSharper disable once AccessToStaticMemberViaDerivedType
                 + Microsoft.Maui.Resource.Raw.attention_ringtone);
             channel.SetSound(ringtoneUri, attrs);
-            var vibratePattern = new long[]{0, 700, 500, 700, 500, 500};
+            var vibratePattern = new long[] { 0, 700, 500, 700, 500, 500 };
             channel.SetVibrationPattern(vibratePattern);
             notificationManager.CreateNotificationChannel(channel);
         }
     }
 
-    // Shared by the foreground service (when uploading is the primary activity) and
-    // AndroidActivitiesBackend (when it isn't and needs its own notification).
     public static Android.App.Notification BuildUploadNotification(
         Context context,
         UploadActivity upload)
     {
+        // Shared by the foreground service (when uploading is the primary activity) and
+        // AndroidActivitiesBackend (when it isn't and needs its own notification).
         var percent = upload.TotalBytes == 0 ? 0 : (int)(100.0 * upload.BytesUploaded / upload.TotalBytes);
         var title = upload.FileCount == 1 ? "Uploading 1 file" : $"Uploading {upload.FileCount} files";
         var summary = $"{FormatBytes(upload.BytesUploaded)} / {FormatBytes(upload.TotalBytes)} ({percent}%)";
@@ -256,6 +198,85 @@ public static class NotificationHelper
     }
 
     // Private methods
+
+    private static NotificationCompat.Style CreateStyle(
+        string senderName,
+        string? conversationTitle,
+        string body,
+        IconCompat? icon,
+        IReadOnlyList<PushMessage>? messages)
+    {
+        // Telegram-style rendering: one MessagingStyle line per pushed message (sender + text +
+        // timestamp) when structured messages are present; single-message and BigTextStyle
+        // fallbacks keep old-server pushes and non-chat titles working.
+        var bigText = new NotificationCompat.BigTextStyle().BigText(body)!;
+        if (senderName.IsNullOrEmpty())
+            return bigText;
+
+        try {
+            var self = new Person.Builder().SetName("You")!.Build();
+            var style = new NotificationCompat.MessagingStyle(self);
+            if (!conversationTitle.IsNullOrEmpty()) {
+                style.SetGroupConversation(true);
+                style.SetConversationTitle(conversationTitle);
+            }
+            if (messages is { Count: > 0 }) {
+                // Only the newest sender carries the avatar — it's the banner headline's icon.
+                var newestName = messages[^1].AuthorName.NullIfEmpty() ?? senderName;
+                var persons = new Dictionary<string, Person>();
+                foreach (var message in messages) {
+                    var name = message.AuthorName.NullIfEmpty() ?? senderName;
+                    if (!persons.TryGetValue(name, out var person)) {
+                        var personBuilder = new Person.Builder().SetName(name)!;
+                        if (name == newestName && icon != null)
+                            personBuilder.SetIcon(icon);
+                        person = personBuilder.Build();
+                        persons.Add(name, person);
+                    }
+                    style.AddMessage(message.Text, message.SentAtMs, person);
+                }
+            }
+            else {
+                var senderBuilder = new Person.Builder().SetName(senderName)!;
+                if (icon != null)
+                    senderBuilder.SetIcon(icon);
+                style.AddMessage(body, Java.Lang.JavaSystem.CurrentTimeMillis(), senderBuilder.Build());
+            }
+
+            return style;
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to build MessagingStyle; falling back to BigTextStyle");
+            return bigText;
+        }
+    }
+
+    private static (string SenderName, string? ConversationTitle) SplitTitle(string title)
+    {
+        var index = title.IndexOf(" @ ");
+        return index >= 0
+            ? (title[..index].Trim(), title[(index + 3)..].Trim())
+            : (title, null);
+    }
+
+    private static Bitmap? DownloadImage(string imageUrl)
+    {
+        var sw = Stopwatch.GetTimestamp();
+        Bitmap? largeImage = null;
+        try {
+            var imageDownload = AndroidUtils.StartImageDownloadInBackground(imageUrl.ToUri());
+            largeImage = AndroidUtils.WaitForAndApplyImageDownload(imageDownload);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to download image '{Url}'", imageUrl);
+        }
+        var elapsed = (int)Stopwatch.GetElapsedTime(sw).TotalMilliseconds;
+        Log.Log(elapsed > 5000 ? LogLevel.Warning : LogLevel.Information,
+            "Downloading image '{Url}' took {Elapsed} ms",
+            imageUrl, elapsed);
+
+        return largeImage;
+    }
 
     private static string FormatBytes(long bytes)
     {

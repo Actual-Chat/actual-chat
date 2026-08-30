@@ -6,14 +6,13 @@ using ActualLab.IO;
 
 namespace ActualChat.Users;
 
-/// <summary>
-/// Service for avatar picture generation with file caching.
-/// </summary>
 public sealed class AvatarPictures(IServiceProvider services)
 {
+    private const string RendererVersion = "2";
+
     private FilePath? _cacheDir;
 
-    private ILogger Log => field ??= services.LogFor<AvatarPictures>();
+    private ILogger Log => field ??= services.LogFor(GetType());
     private UsersSettings Settings => field ??= services.GetRequiredService<UsersSettings>();
     private HostInfo HostInfo => field ??= services.GetRequiredService<HostInfo>();
     private CoreSettings CoreSettings => field ??= services.GetRequiredService<CoreSettings>();
@@ -28,6 +27,7 @@ public sealed class AvatarPictures(IServiceProvider services)
         var baseDir = FilePath.GetApplicationTempDirectory();
         if (HostInfo.IsTested)
             baseDir |= $"tst-{CoreSettings.Instance}";
+
         return baseDir | "avatars";
     }
 
@@ -46,7 +46,8 @@ public sealed class AvatarPictures(IServiceProvider services)
             .Select(f => new FileInfo(f))
             .OrderBy(f => f.LastWriteTimeUtc);
         foreach (var file in files)
-            cache.TryAdd(Path.GetFileNameWithoutExtension(file.Name), file.FullName);
+            cache.TryAdd(((FilePath)file.Name).FileNameWithoutExtension, file.FullName);
+
         return cache;
     }
 
@@ -90,7 +91,9 @@ public sealed class AvatarPictures(IServiceProvider services)
 
     private static string GetCacheKey(AvatarQuery query)
     {
-        var cacheKey = $"{query.Kind}_{query.Key}_{query.Format}_{query.Size ?? 0}_{query.Title ?? ""}";
+        // Bump RendererVersion whenever the generators change what they draw: cached files outlive a deploy.
+        var cacheKey =
+            $"{RendererVersion}_{query.Kind}_{query.Key}_{query.Format}_{query.Size ?? 0}_{query.Title ?? ""}";
         return cacheKey.Hash().SHA256().AlphaNumeric();
     }
 

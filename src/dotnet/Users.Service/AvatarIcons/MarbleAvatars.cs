@@ -3,18 +3,20 @@ using SkiaSharp;
 
 namespace ActualChat.Users.AvatarIcons;
 
-/// <summary>
-/// Generates marble-style PNG avatars using SkiaSharp.
-/// </summary>
 public static class MarbleAvatars
 {
     private const int Size = 80;
     private const int Elements = 3;
     private const float BlurSigma = 7f;
     private const float FontSize = Size * 0.5f;
-    private static readonly string[] DefaultColors = ["F56095", "F5CD65", "00B27D", "37D3F5", "2F89EB"];
+    private const string TitleFontResourceName = "TT-Commons-Pro-Medium.ttf";
     private const string BasePathData = "M32.414 59.35L50.376 70.5H72.5v-71H33.728L26.5 13.381l19.057 27.08L32.414 59.35z";
     private const string OverlayPathData = "M22.216 24L0 46.75l14.108 38.129L78 86l-3.081-59.276-22.378 4.005 12.972 20.186-23.35 27.395L22.215 24z";
+    private static readonly string[] DefaultColors = ["F56095", "F5CD65", "00B27D", "37D3F5", "2F89EB"];
+    private static readonly SKTypeface TitleTypeface = LoadTitleTypeface();
+    private static ILogger? _log;
+
+    private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger(typeof(MarbleAvatars));
 
     public static void GeneratePng(string key, FilePath filePath, string title = "", bool doNotBlur = false, int? size = null)
     {
@@ -153,14 +155,32 @@ public static class MarbleAvatars
         canvas.Restore();
     }
 
+    private static SKTypeface LoadTitleTypeface()
+    {
+        try {
+            using var stream = typeof(MarbleAvatars).Assembly.GetManifestResourceStream(TitleFontResourceName);
+            if (stream is not null && SKTypeface.FromStream(stream) is { } typeface)
+                return typeface;
+
+            Log.LogWarning("'{Resource}' isn't embedded - avatar titles will use the host's default font",
+                TitleFontResourceName);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to load '{Resource}' - avatar titles will use the host's default font",
+                TitleFontResourceName);
+        }
+
+        var fontStyle = new SKFontStyle(SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright);
+        return SKTypeface.FromFamilyName(null, fontStyle) ?? SKTypeface.Default;
+    }
+
     private static void DrawTitle(SKCanvas canvas, string title)
     {
         using var paint = new SKPaint();
         paint.Color = SKColors.White;
         paint.IsAntialias = true;
 
-        var typeface = SKTypeface.FromFamilyName(null, new SKFontStyle(SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright));
-        using var font = new SKFont(typeface, FontSize);
+        using var font = new SKFont(TitleTypeface, FontSize);
 
         var metrics = font.Metrics;
         var x = Size / 2f;
@@ -203,10 +223,7 @@ public static class MarbleAvatars
 
     // Nested types
 
-    /// <summary>
-    /// Properties for a colored element in a marble avatar.
-    /// </summary>
-    private record ColorProperty
+    private sealed record ColorProperty
     {
         public required string Color { get; init; }
         public required double TranslateX { get; init; }

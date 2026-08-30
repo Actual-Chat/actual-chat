@@ -124,6 +124,7 @@ public static class PttWakeHandler
         // Tagged by chat id, so a whole night of suppressed wakes collapses into one entry
         // per chat instead of stacking.
         => NotificationHelper.ShowChatNotification(
+            chatId,
             chatId.Value,
             "Voxt",
             "Someone is talking in a chat you keep listening to",

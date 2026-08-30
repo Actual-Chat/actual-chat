@@ -16,31 +16,18 @@ namespace ActualChat.App.Maui;
 #pragma warning disable CA1861 // Prefer 'static readonly' fields over constant array arguments
 [IntentFilter(["com.google.firebase.MESSAGING_EVENT"])]
 #pragma warning restore CA1861
-public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingService
+public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingService
 {
     private static ILogger? _log;
-    /**
-    * Request code used by display notification pending intents.
-    *
-    * Android only keeps one PendingIntent instance if it thinks multiple pending intents match.
-    * Our intents often only differ by the payload which is stored in intent extras. As comparing
-    * PendingIntents/Intents does not inspect the payload data, multiple pending intents, such as the
-    * ones for click/dismiss will conflict.
-    *
-    * We also need to avoid conflicts with notifications started by an earlier launch of the app,
-    * so use the truncated uptime of when the class was instantiated. The uptime will only overflow
-    * every ~50 days, and even then chances of conflict will be rare.
-    */
-
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<FirebaseMessagingService>();
     private static ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
- #pragma warning disable CS0169 // Field is never used
- #pragma warning disable CA1823
+#pragma warning disable CS0169 // Field is never used
+#pragma warning disable CA1823
     // Keep reference to FirebaseAnalytics type to ensure FA package is used and will be initialized.
     private FirebaseAnalytics? _firebaseAnalytics;
- #pragma warning restore CA1823
- #pragma warning restore CS0169 // Field is never used
+#pragma warning restore CA1823
+#pragma warning restore CS0169 // Field is never used
 
     public override void OnNewToken(string token)
     {
@@ -81,7 +68,8 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     {
         Log.LogDebug("OnMessageReceived: message #{MessageId}, CollapseKey='{CollapseKey}'" +
             ", Priority={Priority}, OriginalPriority={OriginalPriority}, IsDeprioritized={IsDeprioritized}",
-            message.MessageId, message.CollapseKey, message.Priority, message.OriginalPriority, message.Priority != message.OriginalPriority);
+            message.MessageId, message.CollapseKey, message.Priority, message.OriginalPriority,
+            message.Priority != message.OriginalPriority);
 
         // There are 2 types of messages:
         // https://firebase.google.com/docs/cloud-messaging/concept-options#notifications_and_data_messages
@@ -101,6 +89,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             foreach (var tag in data.DismissedTags)
                 notificationManager.Cancel(tag, 0);
             ClearForegroundCallRings(data.DismissedTags);
+
             return;
         }
 
@@ -130,12 +119,11 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
     // Private methods
 
-    // Decides whether this device should suppress the banner using its own (fresher-than-server)
-    // read/view state. Fail-open: this runs on background deliveries too, where the Blazor scope
-    // may be disposed and the scoped-service calls throw — a failed check must never suppress a
-    // message or crash, so it returns false (show the notification) on any error.
     private static bool ShouldSuppressForDevice(ChatId chatId, long entryLid)
     {
+        // Fail-open: this runs on background deliveries too, where the Blazor scope may be disposed
+        // and the scoped-service calls throw - a failed check must never suppress a message or
+        // crash, so it returns false (show the notification) on any error.
         try {
             if (!TryGetScopedServices(out var scopedServices))
                 return false;
@@ -171,6 +159,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             return false;
         }
     }
+
     private static void ClearForegroundCallRings(IReadOnlyList<string> dismissedTags)
     {
         // A foreground ring lives in the in-app banner/ringer, not a system notification, so a
@@ -213,9 +202,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
                 "IncomingCallUI.OnRing");
     }
 
-    private static bool ShowGetAttentionNotification(
-        NotificationData data,
-        long messageSentTime)
+    private static bool ShowGetAttentionNotification(NotificationData data, long messageSentTime)
     {
         var chatId = data.ChatId;
         if (chatId is null) {
@@ -238,6 +225,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     {
         Log.LogDebug("-> ShowChatMessageNotification, text: '{Text}', silent: {Silent}", data.Body!.ToPrivate(), data.Silent);
         NotificationHelper.ShowChatNotification(
-            data.Tag!, data.Title!, data.Body!, data.ImageUrl, data.Link, data.Silent, data.Messages);
+            data.ChatId, data.Tag!, data.Title!, data.Body!, data.ImageUrl, data.Link,
+            data.Silent, data.Messages);
     }
 }

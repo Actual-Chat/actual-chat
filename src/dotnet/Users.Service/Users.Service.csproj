@@ -5,6 +5,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The letter on a generated avatar has to be the same glyph the app draws in its own UI, and
+         SkiaSharp resolves family names through the host's fontconfig - which on the server image is
+         whatever it happens to ship. Carrying the face itself is the only way to pin it. -->
+    <EmbeddedResource Include="..\..\nodejs\fonts\TT-Commons-Pro-Medium.ttf" LogicalName="TT-Commons-Pro-Medium.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Chat.ML\Chat.ML.csproj" />
     <ProjectReference Include="..\Core.Server\Core.Server.csproj" />
     <ProjectReference Include="..\Db\Db.csproj" />
