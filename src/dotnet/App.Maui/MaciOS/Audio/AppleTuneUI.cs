@@ -15,6 +15,7 @@ public sealed class AppleTuneUI(UIHub hub) : MauiTuneUI(hub)
     };
 
     private AudioEngines AudioEngines => field ??= Hub.Services.GetRequiredService<AudioEngines>();
+    private AudioFocusUI AudioFocusUI => field ??= Hub.Services.GetRequiredService<AudioFocusUI>();
 #if IOS
     private Haptics Haptics => field ??= Hub.Services.GetRequiredService<Haptics>();
 #endif
@@ -42,6 +43,10 @@ public sealed class AppleTuneUI(UIHub hub) : MauiTuneUI(hub)
             using var node = engine.NewPlayer(audioFile.ProcessingFormat);
             engine.EnsureRunning();
             node.Play();
+            // A tune started while the recording engine's VoiceProcessingIO runs is a source
+            // started after it, so it lands on the earpiece unless the route is restated - and
+            // the recording-confirm tune plays right after that engine starts, every time.
+            await AudioFocusUI.EnsureOutputRoute(cancellationToken).ConfigureAwait(false);
             using var cts = cancellationToken.CreateLinkedTokenSource(TimeSpan.FromSeconds(10));
             await node.ScheduleFileAndWait(audioFile, cts.Token).ConfigureAwait(false);
         }

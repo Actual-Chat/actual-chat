@@ -27,8 +27,9 @@ public class AudioEngines : ProcessorBase
         Hub = hub;
         Tunes = new AudioEngine(AudioFocusMode.Tune, hub, TuneIdleReleaseDelay);
         Playback = new AudioEngine(AudioFocusMode.Playback, hub, PlaybackIdleReleaseDelay);
-        // Recording has no player nodes - it's released explicitly, when the capture ends.
-        Recording = new AudioEngine(AudioFocusMode.Recording, hub);
+        // Recording has no player nodes - it's released explicitly, when the capture ends. Its
+        // silent output is the exception, and stays off that list so it can't trigger a release.
+        Recording = new AudioEngine(AudioFocusMode.Recording, hub, hasSilentOutput: true);
         _configurationChangeSubscription =
             Disposable.New(AVAudioEngine.Notifications.ObserveConfigurationChange(OnConfigurationChange),
                 NSNotificationCenter.DefaultCenter.RemoveObserver);
@@ -48,6 +49,15 @@ public class AudioEngines : ProcessorBase
         Tunes.Pause();
         Playback.Pause();
         Recording.Pause();
+    }
+
+    // Apple's contract after a media-services reset: the engines are invalid and have to be
+    // recreated, not restarted. Releasing them is what makes the next use build fresh ones.
+    public void Release()
+    {
+        Tunes.Release();
+        Playback.Release();
+        Recording.Release();
     }
 
     public void Resume(AudioFocusMode mode)
