@@ -181,6 +181,7 @@ export class AudioPlayer implements Resettable {
     private lastReportAttemptedPlayingAt: number | null = null;
     private lastReportAttemptedIsPaused: boolean | null = null;
     private lastReportAttemptedIsBufferLow: boolean | null = null;
+    private lastReportAttemptedIsStarving: boolean | null = null;
     private lastReportAttemptedAtMs = 0;
     private lastReportFailedAtMs = 0;
     private static readonly ReportPlayingMaxIntervalMs = 1000;
@@ -291,6 +292,7 @@ export class AudioPlayer implements Resettable {
         this.lastReportAttemptedPlayingAt = null;
         this.lastReportAttemptedIsPaused = null;
         this.lastReportAttemptedIsBufferLow = null;
+        this.lastReportAttemptedIsStarving = null;
         this.lastReportAttemptedAtMs = 0;
         this.lastReportFailedAtMs = 0;
         this.warnedFeederMissingInFrame = false;
@@ -536,7 +538,10 @@ export class AudioPlayer implements Resettable {
             }
             const isPaused = state.playbackState === 'paused';
             const isBufferLow = state.bufferState !== 'ok';
-            void this.reportPlaying(state.playingAt, isPaused, isBufferLow);
+            // 'low' only means below the jitter target, which is where the feed loop deliberately
+            // keeps it; 'starving' is the one that means playback actually ran dry.
+            const isStarving = state.playbackState === 'starving';
+            void this.reportPlaying(state.playingAt, isPaused, isBufferLow, isStarving);
         }
     }
 
@@ -576,7 +581,7 @@ export class AudioPlayer implements Resettable {
 
     // Backend invocation methods
 
-    private reportPlaying = async (playingAt: number, isPaused: boolean, isBufferLow: boolean) => {
+    private reportPlaying = async (playingAt: number, isPaused: boolean, isBufferLow: boolean, isStarving: boolean) => {
         // Skip if nothing material changed since the last attempted dispatch,
         // unless ReportPlayingMaxIntervalMs has elapsed (heartbeat so the server
         // knows we're still alive). playingAt advances continuously; quantize to
@@ -588,7 +593,8 @@ export class AudioPlayer implements Resettable {
         const nowMs = performance.now();
         const heartbeatDue = nowMs - this.lastReportAttemptedAtMs >= AudioPlayer.ReportPlayingMaxIntervalMs;
         const statusChanged = isPaused !== this.lastReportAttemptedIsPaused
-            || isBufferLow !== this.lastReportAttemptedIsBufferLow;
+            || isBufferLow !== this.lastReportAttemptedIsBufferLow
+            || isStarving !== this.lastReportAttemptedIsStarving;
         const positionChanged = playingAtBucket !== lastBucket;
         const retryBackoffActive = this.lastReportFailedAtMs > 0
             && nowMs - this.lastReportFailedAtMs < AudioPlayer.ReportPlayingMaxIntervalMs;
@@ -598,6 +604,7 @@ export class AudioPlayer implements Resettable {
         this.lastReportAttemptedPlayingAt = playingAt;
         this.lastReportAttemptedIsPaused = isPaused;
         this.lastReportAttemptedIsBufferLow = isBufferLow;
+        this.lastReportAttemptedIsStarving = isStarving;
         this.lastReportAttemptedAtMs = nowMs;
         try {
             const stateText = isPaused ? 'paused' : 'playing';
@@ -606,7 +613,7 @@ export class AudioPlayer implements Resettable {
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (EnableFrequentDebugLog)
                 debugLog?.log(`#${this.internalId}.reportPlaying: ${stateText} @ ${playingAt}, buffer: ${bufferText}`);
-            await this.blazorRef?.invokeMethodAsync('OnPlaying', playingAt, isPaused, isBufferLow);
+            await this.blazorRef?.invokeMethodAsync('OnPlaying', playingAt, isPaused, isBufferLow, isStarving);
             this.lastReportFailedAtMs = 0;
         }
         catch (e) {

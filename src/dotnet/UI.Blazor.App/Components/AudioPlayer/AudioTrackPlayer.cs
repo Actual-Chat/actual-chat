@@ -31,6 +31,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private CpuTimestamp _lastBufferAdjustAt;
     private bool _isOwnStream;
     private int _underrunCount;
+    private bool _isStarving;
     private int _bufferLowTimeoutCount;
     private int _lagReportSampleIn;
 
@@ -56,11 +57,14 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     }
 
     [JSInvokable]
-    public void OnPlaying(double offset, bool isPaused, bool isBufferLow)
+    public void OnPlaying(double offset, bool isPaused, bool isBufferLow, bool isStarving = false)
     {
         DebugLog?.LogDebug(
             "[AudioTrackPlayer #{AudioTrackPlayerId}] OnPlayingAt: {Offset}, {IsPaused}, buffer: {IsBufferLow}",
             _id, offset, isPaused ? "paused" : "playing", isBufferLow ? "low" : "ok");
+        if (isStarving && !_isStarving)
+            _underrunCount++;
+        _isStarving = isStarving;
         UpdateBufferState(isBufferLow);
         SetPlaybackState(TimeSpan.FromSeconds(offset * TrackInfo.Speed), isPaused);
     }
@@ -200,7 +204,9 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         }
         finally {
             // Diagnostic only, and at Information because DebugMode is off in production:
-            // underruns say whether the fixed jitter target is why a track fell behind.
+            // underruns say whether the fixed jitter target is why a track fell behind. Counted
+            // from 'starving', not from buffer-low - the latter is the feed loop's own demand
+            // signal, so counting it reported one underrun per frame played.
             if (_underrunCount > 0)
                 Log.LogInformation(
                     "[AudioTrackPlayer #{AudioTrackPlayerId}] Ended after {PlayDuration}, "
@@ -329,8 +335,6 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private void UpdateBufferState(bool isBufferLow)
     {
         if (isBufferLow) {
-            if (!_whenBufferLowSource.Task.IsCompleted)
-                _underrunCount++;
             _whenBufferLowSource.TrySetResult();
         }
         else {
