@@ -1511,7 +1511,7 @@ export class VideoRecorder {
         }
 
         infoLog?.log(`Switching codec ${currentCategory} → ${pickedCategory} (${pickedCodecString})`);
-        const pickedInfo = this.supportedCodecs.find(c => c.codec === pickedCodecString);
+        const pickedInfo = this.findCodecInfo(this.supportedCodecs, pickedCodecString);
         this.currentCodecString = pickedCodecString;
         this.currentCodecHardwareAccel = pickedInfo?.hardwareAccelerated ?? false;
         this.repriceCurrentLadders();
@@ -2272,7 +2272,7 @@ export class VideoRecorder {
             }
             const prevCodec = this.currentCodecString;
             this.currentCodecString = nextCodec;
-            const nextCodecInfo = refreshedCodecs.find(c => c.codec === nextCodec);
+            const nextCodecInfo = this.findCodecInfo(refreshedCodecs, nextCodec);
             this.currentCodecHardwareAccel = nextCodecInfo?.hardwareAccelerated ?? false;
             this.repriceCurrentLadders();
             infoLog?.log(
@@ -3049,6 +3049,14 @@ export class VideoRecorder {
             }
         }
         return null;
+    }
+
+    // Falls back to a category match: a codec string picked outside the
+    // detected list (a hard-coded fallback, a ladder entry detection skipped)
+    // would otherwise report hardwareAccelerated=false whatever the truth.
+    private findCodecInfo(codecs: CodecInfo[], codec: string): CodecInfo | undefined {
+        return codecs.find(c => c.codec === codec)
+            ?? codecs.find(c => c.category === getCodecCategory(codec) && c.supported);
     }
 
     private pickInitialCodec(supportedCodecs: CodecInfo[], audienceCodecs: string[] | undefined, size: Size): string {

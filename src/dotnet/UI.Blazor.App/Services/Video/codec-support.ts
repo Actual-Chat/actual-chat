@@ -410,10 +410,6 @@ function getCodecProfileName(codec: string): string | null {
 }
 
 export function getDefaultCodec(supportedCodecs: CodecInfo[], width: number, height: number): string {
-    // Firefox: H.264 Main 3.1 is the only reliable encoder profile.
-    if (DeviceInfo.isFirefox)
-        return 'avc1.4D401F';
-
     const isMobile = DeviceInfo.isMobile; // includes iOS
 
     // Priority: AV1 HW > HEVC HW > VP9 HW > H.264 HW (profile by platform) > H.264 SW
