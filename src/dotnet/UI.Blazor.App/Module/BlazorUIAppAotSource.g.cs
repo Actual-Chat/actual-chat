@@ -60,6 +60,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Banners>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.BreakableWord>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CameraMenu>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CarAudioSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivities>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivityPanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivityPanelNarrowScreenWrapper>();
@@ -92,7 +93,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListSortMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListTabUnreadCount>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListTabsBubble>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListenToggle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMemberCounter>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuAddMember>();
@@ -226,7 +226,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LinkPreviewMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LinkPreviewView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LinkRow>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ListenButtonBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ListeningLingerSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ListeningTimerBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LiveActivitiesDisabledBanner>();
@@ -341,7 +340,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceSettingsOwnerModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceSettingsStartModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlacesTutorialStep>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaybackToggle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttJoinBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttPracticePanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttReplyWindowSettings>();
@@ -824,6 +822,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.Banners), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.BreakableWord), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CameraMenu), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CarAudioSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivities), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivityPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivityPanelNarrowScreenWrapper), AotTypeKind.Component),
@@ -856,7 +855,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListSortMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListTabUnreadCount), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListTabsBubble), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListenToggle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMemberCounter), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuAddMember), AotTypeKind.Component),
@@ -990,7 +988,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.LinkPreviewMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LinkPreviewView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LinkRow), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.ListenButtonBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ListeningLingerSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ListeningTimerBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LiveActivitiesDisabledBanner), AotTypeKind.Component),
@@ -1105,7 +1102,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceSettingsOwnerModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceSettingsStartModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlacesTutorialStep), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.PlaybackToggle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttJoinBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttPracticePanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttReplyWindowSettings), AotTypeKind.Component),

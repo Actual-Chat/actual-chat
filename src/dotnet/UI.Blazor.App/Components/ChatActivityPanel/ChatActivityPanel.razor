@@ -14,7 +14,6 @@
     var isOwnVideoStreaming = m.IsOwnVideoStreaming;
     var isActive = m.IsAnyoneTalking;
     var iconMode = m.HasRemoteStreams ? "video" : "audio";
-    var tooltip = isListening ? L.Call_ListeningCountdown : L.Common_Listen;
     var cls = isListening ? " listening" : "";
     if (m.HasRemoteStreams)
         cls += " video-streaming";
@@ -72,9 +71,7 @@
                     Class="btn-sm btn-transparent unhovered not-listening"
                     StopPropagation="true"
                     PreventDefault="true"
-                    Click="@OnJoinClick"
-                    Tooltip="@tooltip"
-                    TooltipPosition="FloatingPosition.Bottom">
+                    Click="@OnJoinClick">
                     @joinButtonText
                 </Button>
             } else {

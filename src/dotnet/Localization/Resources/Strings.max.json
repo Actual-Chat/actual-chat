@@ -20,9 +20,8 @@
 // the politeness register each language uses, and how bs/cnr/hr/sr/max are derived.
 {
   // Buttons and menu labels reused across the whole app, so each has to stand alone with no
-  // surrounding sentence. Common_Listen and Common_Mute act on a chat's live audio and are
-  // verbs, not media-player nouns. Further Common_* groups appear lower down, each next to
-  // the screen that introduced it.
+  // surrounding sentence. Further Common_* groups appear lower down, each next to the screen
+  // that introduced it.
   "Common_Save": "Сохранить",
   "Common_Cancel": "キャンセル",
   "Common_Close": "Затворите",
@@ -40,8 +39,6 @@
   "Common_Remove": "Премахнете",
   "Common_Copy": "Копировать",
   "Common_Share": "Compartilhar",
-  "Common_Listen": "Poslouchat",
-  "Common_Mute": "Отключить звук",
   "Common_Start": "Покрените",
   "Common_Stop": "Остановить",
 
@@ -241,7 +238,7 @@
   "ChatList_SortByUnreadCount": "Количеству непрочитанных сообщений",
   "ChatList_SortByAlphabet": "Ordre alphabétique",
   "ChatList_ActiveChats": "Cuộc trò chuyện đang hoạt động",
-  "ChatList_ActiveChatsTooltip": "Obrolan tempat Anda mendengarkan, merekam, atau memakai mode Tekan untuk bicara",
+  "ChatList_ActiveChatsTooltip": "Chats, in denen Sie gerade im Anruf sind, aufnehmen oder den Push-to-Talk-Modus nutzen",
   "ChatList_Talking": "बात हो रही है",
   "ChatList_Live_Format": "{0} · langsung",
   "ChatList_Thread_Format": "スレッド「{0}」",
@@ -524,7 +521,9 @@
   "AudioPlayer_Confirm": "Подтвердить",
 
   // The Call tab of the right panel: the live member list and the reasons a mute is refused.
-  // More Call_* groups follow further down.
+  // Call_Listening and Call_StopListening are the one place headphone language survives - the
+  // linger timer that keeps a chat audible for a while after you stop recording. Everything
+  // else about being in a call uses Call_HangUp / Call_InCall. More Call_* groups follow.
   "Call_NoActiveCall": "Không có cuộc gọi nào đang diễn ra.",
   "Call_Dialing": "कॉल किया जा रहा है…",
   "Call_Rules": "Правила",
@@ -547,6 +546,7 @@
   "Call_Listening": "Saya mendengarkan",
   "Call_HangUp": "कॉल समाप्त करें",
   "Call_ListeningCountdown": "Écoute en cours…",
+  "Call_StopListening": "Остановить прослушивание",
   "Call_CantMutePeer": "Dans une discussion en tête-à-tête, vous ne pouvez pas couper le micro de l’autre personne.",
   "Call_CantMuteOwner": "Sie können das Mikrofon eines Eigentümers nicht ausschalten.",
   "Call_CantMuteOthers": "Chỉ người chủ trì cuộc gọi, chủ sở hữu hoặc người kiểm duyệt cuộc trò chuyện mới có thể tắt micrô của người khác.",
@@ -801,10 +801,6 @@
   "Bubble_ContextMenuOpen_Middle": " (długiego przytrzymania) na urządzeniu mobilnym\n            lub ",
   "Bubble_ContextMenuRightClick": "clique com o botão direito",
   "Bubble_ContextMenuOpen_Suffix": " auf dem Desktop.",
-  "Bubble_ListenButtonTitle": "Schaltfläche \"Zuhören\"",
-  "Bubble_ListenButtonBody": "Mit dieser Schaltfläche starten oder beenden Sie das Zuhören in diesem Chat.",
-  "Bubble_ListenButtonItem1": "Когда вы записываете в режиме «Звонок», прослушивание тоже включается.",
-  "Bubble_ListenButtonItem2": "Et elle se désactive automatiquement si personne ne parle pendant environ une minute.",
   "Bubble_ListeningTimerBody": "La escucha se detendrá automáticamente cuando termine el temporizador.",
   "Bubble_ListeningTimerSettings": "Налаштування прослуховування",
   "Bubble_ManageAccountTitle": "Ваш обліковий запис і налаштування",

@@ -28,8 +28,6 @@ public static class LocalizedStringsLocalizerExt
         public string Common_Remove => l["Common_Remove"].Value;
         public string Common_Copy => l["Common_Copy"].Value;
         public string Common_Share => l["Common_Share"].Value;
-        public string Common_Listen => l["Common_Listen"].Value;
-        public string Common_Mute => l["Common_Mute"].Value;
         public string Common_Start => l["Common_Start"].Value;
         public string Common_Stop => l["Common_Stop"].Value;
         public string Common_Optional => l["Common_Optional"].Value;
@@ -476,6 +474,7 @@ public static class LocalizedStringsLocalizerExt
         public string Call_Listening => l["Call_Listening"].Value;
         public string Call_HangUp => l["Call_HangUp"].Value;
         public string Call_ListeningCountdown => l["Call_ListeningCountdown"].Value;
+        public string Call_StopListening => l["Call_StopListening"].Value;
         public string Call_CantMutePeer => l["Call_CantMutePeer"].Value;
         public string Call_CantMuteOwner => l["Call_CantMuteOwner"].Value;
         public string Call_CantMuteOthers => l["Call_CantMuteOthers"].Value;
@@ -691,10 +690,6 @@ public static class LocalizedStringsLocalizerExt
         public string Bubble_ContextMenuOpen_Middle => l["Bubble_ContextMenuOpen_Middle"].Value;
         public string Bubble_ContextMenuRightClick => l["Bubble_ContextMenuRightClick"].Value;
         public string Bubble_ContextMenuOpen_Suffix => l["Bubble_ContextMenuOpen_Suffix"].Value;
-        public string Bubble_ListenButtonTitle => l["Bubble_ListenButtonTitle"].Value;
-        public string Bubble_ListenButtonBody => l["Bubble_ListenButtonBody"].Value;
-        public string Bubble_ListenButtonItem1 => l["Bubble_ListenButtonItem1"].Value;
-        public string Bubble_ListenButtonItem2 => l["Bubble_ListenButtonItem2"].Value;
         public string Bubble_ListeningTimerBody => l["Bubble_ListeningTimerBody"].Value;
         public string Bubble_ListeningTimerSettings => l["Bubble_ListeningTimerSettings"].Value;
         public string Bubble_ManageAccountTitle => l["Bubble_ManageAccountTitle"].Value;
