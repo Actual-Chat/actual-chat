@@ -138,11 +138,18 @@ public partial class ChatAudioUI
             .ConfigureAwait(false);
         var restartDelays = RetryDelaySeq.Exp(0.5, 8);
         var restartAttempt = 0;
+        var restartChatId = (ChatId?)null;
         while (!cancellationToken.IsCancellationRequested) {
             var cRecordingState = await cRecordingStateBase
                 .When(x => x.ChatId is not null, FixedDelayer.MinDelay, cancellationToken)
                 .ConfigureAwait(false);
             var intendedChatId = cRecordingState.Value.ChatId;
+            // A chat switched to during the backoff delay is a fresh user start, not attempt N+1 -
+            // it gets its own begin tune and its own retry budget.
+            if (intendedChatId != restartChatId) {
+                restartAttempt = 0;
+                restartChatId = intendedChatId;
+            }
             if (restartAttempt > 0)
                 Log.LogInformation(
                     nameof(PushRecordingState) + ": retrying recorder for chat #{ChatId} (attempt {Attempt})",
@@ -217,6 +224,7 @@ public partial class ChatAudioUI
                 var operation = $"recording in \"{chat.Title}\"";
                 isConfirmed = await InteractiveUI.Demand(operation, cancellationToken).ConfigureAwait(false);
             }
+
             if (!isConfirmed) {
                 await SetRecordingChatId(null).ConfigureAwait(false);
                 return;
@@ -226,6 +234,8 @@ public partial class ChatAudioUI
         if (!cRecordingState.IsConsistent())
             return;
 
+        Task? whenStopped = null;
+        Task? whenRecorderStopped = null;
         Task? whenIdle = null;
         Task? whenWinner = null;
         var abortTokenSource = cancellationToken.CreateLinkedTokenSource();
@@ -247,12 +257,13 @@ public partial class ChatAudioUI
             await TuneUI.PlayAndWait(Tune.BeginRecording, mustPlay: mustPlayBeginTune).ConfigureAwait(false);
             // Install before StartRecording so we don't miss a fast false→true→false
             // transition (e.g., pipeline dies during JS init).
-            var whenRecorderStopped = ForegroundTask.Run(async () => {
+            whenRecorderStopped = ForegroundTask.Run(async () => {
                 var sawRecording = false;
                 await foreach (var c in AudioRecorder.State.Computed.Changes(abortToken).ConfigureAwait(false)) {
                     var s = c.Value;
                     if (s.ChatId != chatId)
                         continue;
+
                     if (s.IsRecording)
                         sawRecording = true;
                     else if (sawRecording)
@@ -261,7 +272,7 @@ public partial class ChatAudioUI
             }, abortToken);
             await AudioRecorder.StartRecording(chatId, repliedEntryId, abortToken).ConfigureAwait(false);
             _ = IncomingShareSuggestions?.Push(chatId);
-            var whenStopped = ForegroundTask.Run(
+            whenStopped = ForegroundTask.Run(
                 async () => await cRecordingState
                     .When(x => x.ChatId != chatId || x.Language != language, abortToken)
                     .ConfigureAwait(false),
@@ -290,10 +301,16 @@ public partial class ChatAudioUI
         finally {
             abortTokenSource.CancelAndDisposeSilently();
             _stopRecordingAt.Value = null;
-            // Winner identity, not whenIdle.IsCompleted: the latter races with abortToken-triggered
-            // cancellation. Identity also means it completed before that cancellation, so the
-            // success check below can only reject a watcher that actually failed.
-            if (ReferenceEquals(whenWinner, whenIdle) && whenIdle.IsCompletedSuccessfully) {
+            // The losers fault unobserved otherwise - the cancellation above ends most of them,
+            // but a watcher that throws on its way out would go unreported.
+            _ = whenStopped?.SilentAwait(false);
+            _ = whenRecorderStopped?.SilentAwait(false);
+            _ = whenIdle?.SilentAwait(false);
+            // Only a whenIdle that ran to completion means the mic went idle. Anything else -
+            // a fault, or a throw before whenIdle was even assigned, which is every failure to
+            // open the microphone - used to land here as ReferenceEquals(null, null) and clear
+            // the user's recording intent with nothing but an "idle threshold reached" log.
+            if (whenIdle is { IsCompletedSuccessfully: true } && ReferenceEquals(whenWinner, whenIdle)) {
                 Log.LogInformation(
                     nameof(RecordChat) + ": idle threshold reached for chat #{ChatId}, stopping recording",
                     chatId);
@@ -306,6 +323,7 @@ public partial class ChatAudioUI
                     _ = TuneUI.Play(Tune.EndRecording);
                     break;
                 }
+
                 if (tryIndex >= MaxStopRecordingTryCount) {
                     Log.LogError(nameof(RecordChat) + ": couldn't stop recording in {TryCount} tries",
                         MaxStopRecordingTryCount);

@@ -451,9 +451,14 @@ export class OpusMediaRecorder implements RecorderStateServer {
                 AudioRecorderState.setRecording(this.isRecording);
             }
             catch (e) {
+                const isStillWanted = this.chatId === chatId;
                 this.state = 'stopped';
                 this.stopHeartbeat();
-                AudioRecorderState.setFailed(chatId, e);
+                // A stop that landed first already cleared chatId - reporting then would put a
+                // failure tooltip on a toggle the user has already switched off.
+                if (isStillWanted)
+                    AudioRecorderState.setFailed(chatId, e);
+
                 await this.stopMicrophoneStream();
                 throw e;
             }
