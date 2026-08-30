@@ -6,6 +6,17 @@ The default is that **every** style violation gets fixed, including ones that
 were already in a file before the edit that surfaced them. An entry belongs here
 only when a human has explicitly decided to keep the code as it is.
 
+## General
+
+These hold everywhere and need no per-file entry.
+
+- **A URL is reproduced verbatim.** Wherever it appears — a comment, a string, a
+  doc — a link is never shortened, wrapped, re-anchored or otherwise rewritten to
+  satisfy the line length limit or any other formatting rule. The limit yields to
+  the link. Trimming `#section` off a URL to save 30 characters costs the reader
+  the paragraph the author meant to point at, and nothing about formatting is
+  worth that.
+
 One `##` subheader per file, one bullet per bypassed violation:
 
 ```

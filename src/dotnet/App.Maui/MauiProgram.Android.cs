@@ -23,7 +23,7 @@ public static partial class MauiProgram
     {
         if (MauiSettings.IsDevApp)
             // Enable delivery data export per instance.
-            // https://firebase.google.com/docs/cloud-messaging/understand-delivery?platform=android
+            // https://firebase.google.com/docs/cloud-messaging/understand-delivery?platform=android#enable-message-delivery-data-export
             FirebaseMessaging.Instance.SetDeliveryMetricsExportToBigQuery(true);
 
         services.AddSingleton<Java.Util.Concurrent.IExecutorService>(_ =>
