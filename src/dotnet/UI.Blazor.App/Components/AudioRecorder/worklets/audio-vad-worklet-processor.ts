@@ -101,8 +101,11 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
 
             if (this.buffer.pull([vadArray])) {
                 if (this.worker)
-                    this.promiseQueue = this.promiseQueue.then(() =>
-                        this.worker.onFrame(vadArrayBuffer, rpcNoWait));
+                    // See the same guard in opus-encoder-worklet-processor: without it one
+                    // rejection poisons the chain and the VAD stops receiving frames for good.
+                    this.promiseQueue = this.promiseQueue
+                        .then(() => this.worker.onFrame(vadArrayBuffer, rpcNoWait))
+                        .catch((e: unknown) => warnLog?.log('process: failed to hand a frame to the worker', e));
                 else
                     warnLog?.log('process: worklet port is still undefined!');
             } else {

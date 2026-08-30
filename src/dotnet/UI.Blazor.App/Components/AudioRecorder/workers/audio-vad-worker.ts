@@ -219,9 +219,12 @@ async function processQueue(): Promise<void> {
                 const expectedSampleRate = AUDIO.rec.sampleRate;
                 const actualSampleRate = Math.floor(samplesBuffer.byteLength / 4 / vads.windowSizeMs * 1000 / 100) * 100;
                 const resampler = await resamplerLoader.getResampler(actualSampleRate, expectedSampleRate);
-                const samples = resampler.resample(samplesBuffer, new Float32Array(samplesBuffer, 0, expectedWindowSizeSamples));
-                vadRingBuffer.push([samples]);
-                if (samples.length != 0)
+                // Its own array, not a view over samplesBuffer - see the same fix in
+                // opus-encoder-worker: the view is sized for the 48kHz window and the buffer
+                // isn't, so it threw RangeError instead of resampling.
+                const samples = resampler.resample(samplesBuffer, new Float32Array(expectedWindowSizeSamples));
+                // Once, not twice: the second push was a leftover that double-fed the ring.
+                if (samples.length !== 0)
                     vadRingBuffer.push([samples]);
             }
             void vadWorklet.releaseBuffer(samplesBuffer, rpcNoWait);

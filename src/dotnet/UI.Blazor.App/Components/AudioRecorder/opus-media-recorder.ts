@@ -422,8 +422,11 @@ export class OpusMediaRecorder implements RecorderStateServer {
         this.recordingAction = this.recordingContextRef.run(async (context) => {
             try {
                 debugLog?.log(`start(): awaiting encoder worker start, worklet start and vad worker reset ...`);
-                if (this.chatId === chatId && this.stream)
-                    return; // Already started
+                // The context matters as much as the chat: after a context failure this action
+                // re-runs on the new one, and the pipeline, worklets and mic source all still
+                // belong to the dead context. startMicrophoneStream makes the same comparison.
+                if (this.chatId === chatId && this.stream && this.source?.context === context)
+                    return; // Already started on this context
 
                 // Get the attached pipeline
                 const pipeline = this.recordingContextRef?.getTrait<AttachedRecordingPipeline>(this.recordingPipelineTrait);

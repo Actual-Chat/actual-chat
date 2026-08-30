@@ -234,7 +234,14 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         try {
             if (item === 'end') {
                 debugLog?.log(`#${this.streamId}.process: got 'end'`, this.mustAbort);
-                await this.systemDecoder?.flush();
+                // A rejecting flush - what a closed AudioDecoder does - must not swallow the end,
+                // or the feeder never reports 'ended' and TrackPlayer waits forever.
+                try {
+                    await this.systemDecoder?.flush();
+                }
+                catch (e) {
+                    errorLog?.log(`#${this.streamId}.process: system decoder flush failed`, e);
+                }
 
                 void this.feederWorklet.end(this.mustAbort, rpcNoWait);
                 return true;
@@ -257,6 +264,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
                 const typedViewSamples = this.decoder.decode(item.data);
                 if (typedViewSamples == null || typedViewSamples.length === 0) {
                     warnLog?.log(`#${this.streamId}.process: decoder returned empty result`);
+                    this.rearmDecodeDemand();
                     return true;
                 }
 
@@ -282,9 +290,17 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         }
         catch (e) {
             errorLog?.log(`#${this.streamId}.process: error:`, e);
+            this.rearmDecodeDemand();
         }
         // Keep running for reuse
         return true;
+    }
+
+    // Flow control is one token per side, and a pass that emits no frame loses both at once: the
+    // feeder never asks again and the decoder never dequeues again. Re-arm to skip the bad packet.
+    private rearmDecodeDemand(): void {
+        this.frameRequested = true;
+        this.flushDecodeDemand();
     }
 
     private onSystemDecoderError = (error: DOMException): void => {

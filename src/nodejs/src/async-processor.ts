@@ -56,6 +56,9 @@ export class AsyncProcessor<T> {
             throw e;
         }
         finally {
+            // The loop is gone either way, so the flag has to say so: left true after a throw,
+            // enqueue goes on silently accepting items nothing will ever process.
+            this._isRunning = false;
             this.queue.clear();
         }
     }

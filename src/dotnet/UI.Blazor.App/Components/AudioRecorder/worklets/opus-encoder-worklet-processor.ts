@@ -113,8 +113,14 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
 
                 if (this.buffer.pull([audioArray])) {
                     if (this.worker != null)
-                        this.promiseQueue = this.promiseQueue.then(() =>
-                            this.worker.onEncoderWorkletSamples(audioArrayBuffer, capturedAtMs, rpcNoWait));
+                        // The catch keeps the chain alive: one rejection - a DataCloneError on a
+                        // detached pooled buffer, a disposed proxy - leaves promiseQueue
+                        // permanently rejected, so every later .then is skipped and mic samples
+                        // stop reaching the encoder for good, with nothing but an unhandled
+                        // rejection to show for it.
+                        this.promiseQueue = this.promiseQueue
+                            .then(() => this.worker.onEncoderWorkletSamples(audioArrayBuffer, capturedAtMs, rpcNoWait))
+                            .catch((e: unknown) => warnLog?.log('process: failed to hand samples to the worker', e));
                     else
                         warnLog?.log('process: worklet port is still undefined!');
                 } else {

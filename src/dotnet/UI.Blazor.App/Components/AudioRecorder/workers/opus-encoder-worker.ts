@@ -225,7 +225,10 @@ function onSystemEncoderError(error: DOMException): void {
 let lastRecoveryAt = 0;
 const RECOVERY_MIN_INTERVAL_MS = 2000;
 function ensureAudioStream(): void {
-    if (!audioStream?.isDisposed)
+    // Note the shape: a null stream has to fall through to the recovery below. `!audioStream?.
+    // isDisposed` returned early for null too, so once a disconnect nulled it, recovery was
+    // unreachable and every later frame was discarded even after the connection came back.
+    if (audioStream && !audioStream.isDisposed)
         return;
 
     // Don't retry if peer not connected or too soon after last recovery
@@ -361,7 +364,11 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
                 const expectedSampleRate = AUDIO.rec.sampleRate;
                 const actualSampleRate = Math.floor(samplesBuffer.byteLength / 4 / 20 * 1000 / 100) * 100;
                 const resampler = await resamplerLoader.getResampler(actualSampleRate, expectedSampleRate);
-                samples = resampler.resample(samplesBuffer, new Float32Array(samplesBuffer, 0, expectedWindowSizeSamples));
+                // The output has to be its own array: a view over samplesBuffer is sized for the
+                // 48kHz window while the buffer holds the device's smaller one (882 samples at
+                // 44.1kHz), so constructing it threw RangeError before resample was even called -
+                // every frame dropped, silent sender, on any 44.1kHz device under Firefox.
+                samples = resampler.resample(samplesBuffer, new Float32Array(expectedWindowSizeSamples));
                 if (samples.length === 0) {
                     // resampler needs more data
                     continue;
