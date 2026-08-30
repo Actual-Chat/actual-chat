@@ -668,6 +668,10 @@ so color and size are controlled with the usual text utilities
 |---|---|
 | SVG sources, one file per icon | `src/nodejs/icons/<name>.svg` |
 | Generated font + CSS (never edit by hand) | `src/nodejs/fonts/svgtofont/` |
+| Generator config | `.svgtofontrc` |
+
+`excludeFormat` in `.svgtofontrc` keeps the output down to `woff2` — the other
+font formats are legacy fallbacks no target of ours needs.
 
 Both the sources **and** the generated output are committed to git. The CSS
 class is derived from the file name: `marker-pin.svg` → `.icon-marker-pin`.
