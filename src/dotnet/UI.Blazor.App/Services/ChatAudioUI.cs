@@ -333,7 +333,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             : stats.GetSpeechDuration(ownAuthorId) >= audioSettings.SpeechDurationThreshold;
     }
 
-    public ValueTask SetRecordingChatId(
+    public async ValueTask SetRecordingChatId(
         ChatId? chatId,
         bool isPtt = false,
         TimeSpan? idleDuration = null,
@@ -347,70 +347,66 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         Volatile.Write(ref _isBeginTuneSuppressed, chatId is not null && !mustPlayBeginTune);
         if (chatId is not null)
             Hub.AudioAttachmentPlayer.OnConversationJoined();
-        return ActiveChatsUI.UpdateActiveChats(activeChats => {
-                var oldRecordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
-                if (oldRecordingChat?.ChatId == chatId)
-                    return activeChats;
 
-                var now = CpuNow;
-                if (chatId is null) {
-                    // End recording
-                    if (oldRecordingChat != null) {
-                        activeChats = activeChats.WithOrReplace(oldRecordingChat with {
-                            IsRecording = false,
-                            Recency = now,
-                        }).ToArray();
-                        _ = RestoreListening(StopToken);
-                    }
-                    return activeChats;
-                }
-
-                // Begin recording
-                var chat = activeChats.FirstOrDefault(c => c.ChatId == chatId);
-                var mustListen = !isPtt;
-                if (chat == null)
-                    chat = new ActiveChat(chatId, mustListen, true, now, mustListen ? now : default);
-                else {
-                    var isListening = mustListen || chat.IsListening;
-                    chat = chat with {
-                        IsListening = isListening,
-                        IsRecording = true,
-                        Recency = now,
-                        ListeningRecency = isListening && !chat.IsListening ? now : chat.ListeningRecency,
-                    };
-                }
-                activeChats = activeChats.WithOrReplace(chat, true).ToArray();
-                // Turn off listening for all the rest chats if mustListen
-                activeChats = mustListen
-                    ? activeChats.WithUpdate(
-                        c => c.ChatId != chatId && (c.IsRecording || c.IsListening),
-                        c => c with { IsRecording = false, IsListening = false })
-                        .ToArray()
-                    : activeChats.WithUpdate(
-                        c => c.ChatId != chatId && c.IsRecording,
-                        c => c with { IsRecording = false })
-                        .ToArray();
+        var hasStoppedRecording = false;
+        await ActiveChatsUI.UpdateActiveChats(activeChats => {
+            var oldRecordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
+            if (oldRecordingChat?.ChatId == chatId)
                 return activeChats;
 
-                async Task RestoreListening(CancellationToken ct)
-                {
-                    var chatIdsToListenTo = await GetChatsYouNeedToKeepListeningTo(ct).ConfigureAwait(false);
-                    foreach (var cid in chatIdsToListenTo) {
-                        chat = activeChats.FirstOrDefault(c => c.ChatId == cid);
-                        chat = chat == null
-                            ? new ActiveChat(cid,
-                                true,
-                                false,
-                                now,
-                                now)
-                            : chat with {
-                                IsListening = true,
-                                ListeningRecency = now,
-                            };
-                        activeChats = activeChats.WithOrReplace(chat).ToArray();
-                    }
+            var now = CpuNow;
+            if (chatId is null) {
+                // End recording
+                if (oldRecordingChat != null) {
+                    activeChats = activeChats.WithOrReplace(oldRecordingChat with {
+                        IsRecording = false,
+                        Recency = now,
+                    }).ToArray();
+                    hasStoppedRecording = true;
                 }
-            },
-            StopToken);
+                return activeChats;
+            }
+
+            // Begin recording
+            var chat = activeChats.FirstOrDefault(c => c.ChatId == chatId);
+            var mustListen = !isPtt;
+            if (chat == null)
+                chat = new ActiveChat(chatId, mustListen, true, now, mustListen ? now : default);
+            else {
+                var isListening = mustListen || chat.IsListening;
+                chat = chat with {
+                    IsListening = isListening,
+                    IsRecording = true,
+                    Recency = now,
+                    ListeningRecency = isListening && !chat.IsListening ? now : chat.ListeningRecency,
+                };
+            }
+            activeChats = activeChats.WithOrReplace(chat, true).ToArray();
+            // Turn off listening for all the rest chats if mustListen
+            activeChats = mustListen
+                ? activeChats.WithUpdate(
+                    c => c.ChatId != chatId && (c.IsRecording || c.IsListening),
+                    c => c with { IsRecording = false, IsListening = false })
+                    .ToArray()
+                : activeChats.WithUpdate(
+                    c => c.ChatId != chatId && c.IsRecording,
+                    c => c with { IsRecording = false })
+                    .ToArray();
+            return activeChats;
+        }, StopToken).ConfigureAwait(false);
+
+        if (hasStoppedRecording)
+            await RestoreKeepListeningChats(StopToken).ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private async Task RestoreKeepListeningChats(CancellationToken cancellationToken)
+    {
+        // Runs after UpdateActiveChats rather than inside its updater: only the array the updater
+        // returns is published, so writes made to the captured one afterwards are lost.
+        var chatIdsToListenTo = await GetChatsYouNeedToKeepListeningTo(cancellationToken).ConfigureAwait(false);
+        foreach (var chatId in chatIdsToListenTo)
+            await SetListeningState(chatId, true).ConfigureAwait(false);
     }
 }
