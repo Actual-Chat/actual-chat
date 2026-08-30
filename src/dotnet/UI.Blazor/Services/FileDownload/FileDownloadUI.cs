@@ -17,11 +17,23 @@ public sealed class FileDownloadUI(UIHub hub)
     public Task Download(string blobId, string fileName, string contentType)
         => DownloadUrl(Hub.UrlMapper.ContentDownloadUrl(blobId), fileName, contentType);
 
+    public async Task Download(IReadOnlyList<FileToSave> files)
+    {
+        if (files.Count == 0)
+            return;
+
+        if (FileSaver is { } fileSaver) {
+            await fileSaver.Save(files).ConfigureAwait(false);
+            return;
+        }
+
+        foreach (var file in files)
+            await Hub.JS.InvokeVoidAsync(JSDownloadFileMethod, file.Url, file.FileName).ConfigureAwait(false);
+    }
+
     public Task Preview(string blobId)
         => Hub.ExternalUrlOpener.Open(Hub.UrlMapper.ContentUrl(blobId));
 
     public Task DownloadUrl(string url, string fileName, string contentType)
-        => FileSaver is { } fileSaver
-            ? fileSaver.Save(url, fileName, contentType)
-            : Hub.JS.InvokeVoidAsync(JSDownloadFileMethod, url, fileName).AsTask();
+        => Download([new FileToSave(url, fileName, contentType)]);
 }

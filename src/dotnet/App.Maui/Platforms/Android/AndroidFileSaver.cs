@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.Services;
+using ActualLab.IO;
 using Android;
 using Android.Content;
 using Android.Content.PM;
@@ -13,7 +14,7 @@ using Uri = Android.Net.Uri;
 
 namespace ActualChat.App.Maui;
 
-public class AndroidFileSaver(IServiceProvider services)
+public sealed class AndroidFileSaver(IServiceProvider services)
     : IFileSaver
 {
     private const string AppSubFolder = CoreConstants.AppName;
@@ -22,48 +23,65 @@ public class AndroidFileSaver(IServiceProvider services)
     private IHttpClientFactory HttpClientFactory => field ??= services.GetRequiredService<IHttpClientFactory>();
     private ILogger Log => field ??= services.LogFor(GetType());
 
-    public async Task Save(string url, string fileName, string contentType)
+    public async Task Save(IReadOnlyList<FileToSave> files)
     {
-        // TODO(DF): Add special handling to ensure reliable file loading. Provide visual feedback for long loading files.
-        var succeeded = await BackgroundTask.Run(
-                () => SaveInternally(url, contentType, fileName),
-            CancellationToken.None)
-            .ConfigureAwait(true); // Continue on Blazor context.
+        if (files.Count == 0)
+            return;
 
-        var target = GetContentKind(contentType) switch {
-            ContentKind.Image or ContentKind.Video => "the gallery",
-            ContentKind.Audio => "Music",
-            _ => "Downloads",
-        };
-        if (succeeded)
-            ToastUI.Show($"1 file saved to {target}", "icon-checkmark-circle-2", ToastDismissDelay.Short);
-        else
-            ToastUI.Show($"Failed to save to {target}", "icon-alert-circle", ToastDismissDelay.Long);
+        // TODO(DF): Add special handling to ensure reliable file loading.
+        // Provide visual feedback for long loading files.
+        var savedCount = await BackgroundTask
+            .Run(() => SaveAll(files), CancellationToken.None)
+            .ConfigureAwait(true);
+
+        // A mixed group lands in several places at once, so the toast names none of them.
+        var targets = files.Select(f => GetTarget(f.ContentType)).Distinct().ToList();
+        var suffix = targets.Count == 1 ? $" to {targets[0]}" : "";
+        if (savedCount == 0)
+            ToastUI.Show($"Failed to save{suffix}", "icon-alert-circle", ToastDismissDelay.Long);
+        else if (savedCount < files.Count)
+            ToastUI.Show($"{savedCount} of {files.Count} files saved{suffix}",
+                "icon-alert-circle", ToastDismissDelay.Long);
+        else {
+            var fileText = savedCount == 1 ? "1 file" : $"{savedCount} files";
+            ToastUI.Show($"{fileText} saved{suffix}", "icon-checkmark-circle-2", ToastDismissDelay.Short);
+        }
     }
 
-    private async Task<bool> SaveInternally(string sUri, string contentType, string fileName)
+    // Private methods
+
+    private async Task<int> SaveAll(IReadOnlyList<FileToSave> files)
     {
-        var succeeded = false;
+        var savedCount = 0;
+        foreach (var file in files)
+            if (await SaveOne(file).ConfigureAwait(false))
+                savedCount++;
+
+        return savedCount;
+    }
+
+    private async Task<bool> SaveOne(FileToSave file)
+    {
+        var isSaved = false;
         try {
             using var client = HttpClientFactory.CreateClient(nameof(AndroidFileSaver));
-            using var response = await client.GetAsync(sUri, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+            using var response = await client
+                .GetAsync(file.Url, HttpCompletionOption.ResponseHeadersRead)
+                .ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
-            if (fileName.IsNullOrEmpty())
-                fileName = GetResponseFileName(response) ?? "download";
+            var fileName = file.FileName.IsNullOrEmpty()
+                ? GetResponseFileName(response) ?? "download"
+                : file.FileName;
             var inputStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
             await using var _1 = inputStream.ConfigureAwait(false);
-            succeeded = await SaveImageToGallery(inputStream, fileName, contentType).ConfigureAwait(false);
+            isSaved = await SaveImageToGallery(inputStream, fileName, file.ContentType).ConfigureAwait(false);
         }
         catch (Exception e) {
-            Log.LogError(e, "Failed to save media. ContentType: '{ContentType}', Uri: '{Uri}'", contentType, sUri);
+            Log.LogError(e, "Failed to save media. ContentType: '{ContentType}', Uri: '{Uri}'",
+                file.ContentType, file.Url);
         }
-        return succeeded;
-    }
 
-    private static string? GetResponseFileName(HttpResponseMessage response)
-    {
-        var disposition = response.Content.Headers.ContentDisposition;
-        return (disposition?.FileNameStar ?? disposition?.FileName)?.Trim('"').NullIfEmpty();
+        return isSaved;
     }
 
     private async Task<bool> SaveImageToGallery(Stream inputStream, string fileName, string contentType)
@@ -106,25 +124,6 @@ public class AndroidFileSaver(IServiceProvider services)
         }
     }
 
-    private static ContentKind GetContentKind(string contentType)
-        => contentType switch {
-            _ when contentType.StartsWith("image/") => ContentKind.Image,
-            _ when contentType.StartsWith("video/") => ContentKind.Video,
-            _ when contentType.StartsWith("audio/") => ContentKind.Audio,
-            _ => ContentKind.Other,
-        };
-
-    private static string GetSubDirectoryForContentKind(ContentKind contentKind)
-    {
-        var contentTypeSubDirectory = contentKind switch {
-            ContentKind.Image => Environment.DirectoryPictures!,
-            ContentKind.Video => Environment.DirectoryMovies!,
-            ContentKind.Audio => Environment.DirectoryMusic!,
-            _ => Environment.DirectoryDownloads!
-        };
-        return contentTypeSubDirectory;
-    }
-
     private async Task<bool> SaveImageToGalleryCompat(Stream inputStream, string fileName, string contentType)
     {
         try {
@@ -132,7 +131,8 @@ public class AndroidFileSaver(IServiceProvider services)
             var writeStoragePermission = activity.CheckSelfPermission(Manifest.Permission.WriteExternalStorage);
             if (writeStoragePermission != Permission.Granted) {
                 var completionSource = AsyncTaskMethodBuilderExt.New<bool>();
-                activity.RequestPermission(Manifest.Permission.WriteExternalStorage, hasGranted1 => completionSource.TrySetResult(hasGranted1));
+                activity.RequestPermission(Manifest.Permission.WriteExternalStorage,
+                    hasGranted1 => completionSource.TrySetResult(hasGranted1));
                 var hasGranted = await completionSource.Task.ConfigureAwait(false);
                 if (!hasGranted) {
                     Log.LogInformation("Permission to store files to external storage was not granted");
@@ -141,25 +141,28 @@ public class AndroidFileSaver(IServiceProvider services)
             }
 
             var contentKind = GetContentKind(contentType);
-            var directory = new File(Environment.GetExternalStoragePublicDirectory(GetSubDirectoryForContentKind(contentKind)), AppSubFolder);
-            var directoryExists = directory.Exists();
-            if (!directoryExists) {
-                directoryExists = directory.Mkdirs();
-                if (!directoryExists) {
+            var subDirectory = GetSubDirectoryForContentKind(contentKind);
+            var directory = new File(Environment.GetExternalStoragePublicDirectory(subDirectory), AppSubFolder);
+            var hasDirectory = directory.Exists();
+            if (!hasDirectory) {
+                hasDirectory = directory.Mkdirs();
+                if (!hasDirectory) {
                     Log.LogWarning("Failed to create directory '{Dir}'", directory.AbsolutePath);
                     return false;
                 }
             }
-            var filePath = Path.Combine(directory.AbsolutePath, fileName);
+
+            var directoryPath = (FilePath)directory.AbsolutePath;
+            var filePath = directoryPath & fileName;
             if (System.IO.File.Exists(filePath))
-                filePath = EnsureFilePathIsFree(directory.AbsolutePath, fileName);
+                filePath = EnsureFilePathIsFree(directoryPath, fileName);
             var outputStream = System.IO.File.OpenWrite(filePath);
             await using var _1 = outputStream.ConfigureAwait(false);
             await inputStream.CopyToAsync(outputStream).ConfigureAwait(false);
             Log.LogDebug("File saved to: '{FilePath}'", filePath);
 
             var contentValues = new ContentValues();
-            contentValues.Put(MediaStore.IMediaColumns.Data, filePath);
+            contentValues.Put(MediaStore.IMediaColumns.Data, filePath.Value);
             contentValues.Put(MediaStore.IMediaColumns.MimeType, contentType);
             var uriToInsert = contentKind switch {
                 ContentKind.Image => MediaStore.Images.Media.ExternalContentUri!,
@@ -171,7 +174,7 @@ public class AndroidFileSaver(IServiceProvider services)
             contentResolver.Insert(uriToInsert, contentValues);
 
             MediaScannerConnection.ScanFile(activity,
-                [filePath],
+                [filePath.Value],
                 [contentType],
                 new ScanCompletedListener(
                     (path, uri) => Log.LogDebug("Scanned '{Path}' -> uri='{Uri}'", path, uri)));
@@ -184,23 +187,53 @@ public class AndroidFileSaver(IServiceProvider services)
         }
     }
 
-    private static string EnsureFilePathIsFree(string directoryAbsolutePath, string fileName)
+    private static string? GetResponseFileName(HttpResponseMessage response)
     {
-        var extension = Path.GetExtension(fileName);
-        var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
+        var disposition = response.Content.Headers.ContentDisposition;
+        return (disposition?.FileNameStar ?? disposition?.FileName)?.Trim('"').NullIfEmpty();
+    }
 
-        for (int i = 1; i <= 20; i++) {
-            var filePath = Path.Combine(directoryAbsolutePath, NewFileName(i));
+    private static string GetTarget(string contentType)
+        => GetContentKind(contentType) switch {
+            ContentKind.Image or ContentKind.Video => "the gallery",
+            ContentKind.Audio => "Music",
+            _ => "Downloads",
+        };
+
+    private static ContentKind GetContentKind(string contentType)
+        => contentType switch {
+            _ when contentType.StartsWith("image/") => ContentKind.Image,
+            _ when contentType.StartsWith("video/") => ContentKind.Video,
+            _ when contentType.StartsWith("audio/") => ContentKind.Audio,
+            _ => ContentKind.Other,
+        };
+
+    private static string GetSubDirectoryForContentKind(ContentKind contentKind)
+        => contentKind switch {
+            ContentKind.Image => Environment.DirectoryPictures!,
+            ContentKind.Video => Environment.DirectoryMovies!,
+            ContentKind.Audio => Environment.DirectoryMusic!,
+            _ => Environment.DirectoryDownloads!,
+        };
+
+    private static FilePath EnsureFilePathIsFree(FilePath directoryPath, FilePath fileName)
+    {
+        var extension = fileName.Extension;
+        var fileNameWithoutExtension = fileName.FileNameWithoutExtension;
+
+        for (var i = 1; i <= 20; i++) {
+            var filePath = directoryPath & NewFileName(i);
             if (!System.IO.File.Exists(filePath))
                 return filePath;
         }
-        return Path.Combine(directoryAbsolutePath, NewFileName(System.Environment.TickCount64));
 
-        string NewFileName(long index)
-        {
+        return directoryPath & NewFileName(System.Environment.TickCount64);
+
+        FilePath NewFileName(long index) {
             var newFileName = fileNameWithoutExtension + " (" + index.ToString() + ")";
             if (!extension.IsNullOrEmpty())
                 newFileName += extension;
+
             return newFileName;
         }
     }
@@ -209,14 +242,10 @@ public class AndroidFileSaver(IServiceProvider services)
 
     private enum ContentKind { Image, Video, Audio, Other }
 
-    private class ScanCompletedListener : JObject, MediaScannerConnection.IOnScanCompletedListener
+    private sealed class ScanCompletedListener(Action<string, Uri> onScanCompleted)
+        : JObject, MediaScannerConnection.IOnScanCompletedListener
     {
-        private readonly Action<string, Uri> _onScanCompleted;
-
-        public ScanCompletedListener(Action<string, Uri> onScanCompleted)
-            => _onScanCompleted = onScanCompleted;
-
         public void OnScanCompleted(string? path, Uri? uri)
-            => _onScanCompleted(path!, uri!);
+            => onScanCompleted(path!, uri!);
     }
 }

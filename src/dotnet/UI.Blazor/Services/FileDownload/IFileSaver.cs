@@ -7,5 +7,7 @@ namespace ActualChat.UI.Blazor.Services;
 /// </summary>
 public interface IFileSaver
 {
-    Task Save(string url, string fileName, string contentType);
+    // Takes the whole group so the implementation reports it as one outcome
+    // rather than one toast (and, on iOS, one share sheet) per file.
+    Task Save(IReadOnlyList<FileToSave> files);
 }

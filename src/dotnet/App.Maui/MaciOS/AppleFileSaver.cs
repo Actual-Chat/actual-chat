@@ -1,5 +1,7 @@
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
+using ActualLab.Generators;
+using ActualLab.IO;
 using Foundation;
 using Photos;
 using UIKit;
@@ -7,30 +9,27 @@ using DataTransfer = Microsoft.Maui.ApplicationModel.DataTransfer;
 
 namespace ActualChat.App.Maui;
 
-public class AppleFileSaver(UIHub hub) : UIServiceBase<UIHub>(hub), IFileSaver
+public sealed class AppleFileSaver(UIHub hub) : UIServiceBase<UIHub>(hub), IFileSaver
 {
     private HttpClient HttpClient
         => field ??= Hub.Services.HttpClientFactory().CreateClient(GetType().Name);
     private AddPhotoPermissionHandler PermissionHandler
         => field ??= Hub.Services.GetRequiredService<AddPhotoPermissionHandler>();
 
-    public async Task Save(string url, string fileName, string contentType)
+    public async Task Save(IReadOnlyList<FileToSave> files)
     {
+        if (files.Count == 0)
+            return;
+
         try {
             // There's no shared Downloads location on iOS - anything that isn't gallery
             // media goes to the share sheet, where "Save to Files" is the user's save.
-            if (!MediaTypeExt.IsSupportedVisualMedia(contentType)) {
-                await SaveViaShareSheet(url, fileName, contentType).ConfigureAwait(false);
-                return;
-            }
-
-            var granted = await PermissionHandler.CheckOrRequest(CancellationToken.None).ConfigureAwait(false);
-            if (!granted)
-                throw StandardError.Unauthorized("No permission to add photos/videos to library");
-
-            var tempFilePath = await DownloadToTempFile(url, fileName, contentType).ConfigureAwait(false);
-            await DispatchToBlazor(_ => Save(tempFilePath, GetResourceType(contentType))).ConfigureAwait(false);
-            ToastUI.Show("Successfully saved media to library", "icon-checkmark-circle-2", ToastDismissDelay.Short);
+            var media = files.Where(f => MediaTypeExt.IsSupportedVisualMedia(f.ContentType)).ToList();
+            var others = files.Where(f => !MediaTypeExt.IsSupportedVisualMedia(f.ContentType)).ToList();
+            if (media.Count != 0)
+                await SaveToLibrary(media).ConfigureAwait(false);
+            if (others.Count != 0)
+                await SaveViaShareSheet(others).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to save media to library");
@@ -40,19 +39,37 @@ public class AppleFileSaver(UIHub hub) : UIServiceBase<UIHub>(hub), IFileSaver
 
     // Private methods
 
-    private async Task SaveViaShareSheet(string url, string fileName, string contentType)
+    private async Task SaveToLibrary(IReadOnlyList<FileToSave> files)
     {
-        var tempFilePath = await DownloadToTempFile(url, fileName, contentType).ConfigureAwait(false);
+        var isGranted = await PermissionHandler.CheckOrRequest(CancellationToken.None).ConfigureAwait(false);
+        if (!isGranted)
+            throw StandardError.Unauthorized("No permission to add photos/videos to library");
+
+        foreach (var file in files) {
+            var tempFilePath = await DownloadToTempFile(file).ConfigureAwait(false);
+            await DispatchToBlazor(_ => Save(tempFilePath, GetResourceType(file.ContentType))).ConfigureAwait(false);
+        }
+
+        var fileText = files.Count == 1 ? "1 file" : $"{files.Count} files";
+        ToastUI.Show($"{fileText} saved to library", "icon-checkmark-circle-2", ToastDismissDelay.Short);
+    }
+
+    private async Task SaveViaShareSheet(IReadOnlyList<FileToSave> files)
+    {
+        var shareFiles = new List<DataTransfer.ShareFile>(files.Count);
+        foreach (var file in files)
+            shareFiles.Add(new DataTransfer.ShareFile(await DownloadToTempFile(file).ConfigureAwait(false)));
+
         // The share sheet is a UIViewController presentation, so it must happen on the main
         // thread - off it, iOS drops it silently. The await above lands us on a pool thread.
         await MainThread.InvokeOnMainThreadAsync(
-            () => DataTransfer.Share.Default.RequestAsync(new DataTransfer.ShareFileRequest {
-                Title = fileName,
-                File = new DataTransfer.ShareFile(tempFilePath),
+            () => DataTransfer.Share.Default.RequestAsync(new DataTransfer.ShareMultipleFilesRequest {
+                Title = files.Count == 1 ? files[0].FileName : $"{files.Count} files",
+                Files = shareFiles,
             })).ConfigureAwait(false);
     }
 
-    private Task Save(string tempFilePath, PHAssetResourceType type)
+    private Task Save(FilePath tempFilePath, PHAssetResourceType type)
     {
         var completedSource = AsyncTaskMethodBuilderExt.New();
         PHPhotoLibrary.SharedPhotoLibrary.PerformChanges(
@@ -82,27 +99,27 @@ public class AppleFileSaver(UIHub hub) : UIServiceBase<UIHub>(hub), IFileSaver
         return completedSource.Task;
     }
 
-    private async Task<string> DownloadToTempFile(string url, string fileName, string contentType)
+    private async Task<FilePath> DownloadToTempFile(FileToSave file)
     {
-        var response = await HttpClient.GetAsync(url).ConfigureAwait(false);
+        var response = await HttpClient.GetAsync(file.Url).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
         await using var _ = stream.ConfigureAwait(false);
 
         // A per-download subfolder keeps the real file name - which the share sheet shows and
         // "Save to Files" reuses - without colliding with earlier downloads.
-        var downloadsFolder = Directory.CreateDirectory(Path.Combine(
-            FileSystem.Current.CacheDirectory,
-            "downloads",
-            Guid.NewGuid().ToString("N")));
-        var tempFilePath = Path.Combine(downloadsFolder.FullName, GetFileName(fileName, contentType));
+        var cacheDirectory = (FilePath)FileSystem.Current.CacheDirectory;
+        var downloadsFolder = Directory.CreateDirectory(
+            cacheDirectory & "downloads" & RandomStringGenerator.Default.Next());
+        var tempFilePath = (FilePath)downloadsFolder.FullName & GetFileName(file.FileName, file.ContentType);
         var fs = File.OpenWrite(tempFilePath);
         await using var __ = fs.ConfigureAwait(false);
         await stream.CopyToAsync(fs).ConfigureAwait(false);
+
         return tempFilePath;
     }
 
-    private static string GetFileName(string fileName, string contentType)
+    private static FilePath GetFileName(string fileName, string contentType)
     {
         if (!fileName.IsNullOrEmpty())
             return fileName;
