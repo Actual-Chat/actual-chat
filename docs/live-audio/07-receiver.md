@@ -356,8 +356,12 @@ audio is short, voice-gated, and rarely overlapping.
   - `canDuck = true` (transient): ignore (no ducking implementation;
     keeps playing).
   - `canDuck = false` (loss): pause or stop.
-- On focus regain: resume from paused offset (live → resume listening,
-  replay → resume from saved position).
+- On focus regain: replay resumes from its saved position. **Live listening does
+  not resume** — a non-duckable loss clears the listening chats
+  (`ChatAudioUI.OnAudioFocusLost`) and only replay registers a restore handler,
+  so the user re-enables listening themselves. This is deliberate: coming back
+  from a phone call into a live conversation that resumed unattended is worse
+  than a toggle.
 
 iOS uses MAUI-side audio session APIs in the iOS app; on the web this
 collapses to "always have focus".

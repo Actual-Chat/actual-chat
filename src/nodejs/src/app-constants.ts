@@ -185,18 +185,12 @@ export interface AudioStreamConstants {
     readonly maxPackFrames: number;
     readonly maxBufferedFrames: number;
     readonly maxSpeed: number;
-    readonly interStreamDelayMs: number;
-    readonly streamErrorDelayMs: number;
-    readonly connectErrorDelayMs: number;
+    readonly streamErrorRetryDelayMs: number;
     readonly debugRandomDisconnectPeriodMs: number;
     readonly recordingRpcStreamAckPeriod: number;
     readonly deliveryRpcStreamAckPeriod: number;
     readonly rpcAckPeriod: number;
     readonly rpcBufferSize: number;
-    // Derived in TS (seconds aliases)
-    readonly interStreamDelay: number;
-    readonly streamErrorDelay: number;
-    readonly connectErrorDelay: number;
 }
 
 export interface AudioVadConstants {
@@ -400,12 +394,6 @@ function expandAudio(audio: AudioConstants): AudioConstants {
             frameSamples: recSamplesPerMs * frameDurationMs,
             frameBytes,
             frameBufferBytes: 2 * frameBytes,
-        },
-        stream: {
-            ...audio.stream,
-            interStreamDelay: audio.stream.interStreamDelayMs / 1000,
-            streamErrorDelay: audio.stream.streamErrorDelayMs / 1000,
-            connectErrorDelay: audio.stream.connectErrorDelayMs / 1000,
         },
         vad: {
             ...audio.vad,
