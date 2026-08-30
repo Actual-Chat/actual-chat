@@ -308,8 +308,8 @@ export function mapCodecToWebCodecs(codec: string, description?: ArrayBuffer): s
         return avcCodecStringFromDescription(description);
 
     const codecMap: Record<string, string> = {
-        'h264': 'avc1.640028',
-        'avc1': 'avc1.640028',
+        'h264': 'avc1.42E01F',
+        'avc1': 'avc1.42E01F',
         'h265': 'hvc1.1.6.L93.90',
         'hevc': 'hvc1.1.6.L93.90',
         'vp8': 'vp8',
@@ -323,5 +323,7 @@ export function mapCodecToWebCodecs(codec: string, description?: ArrayBuffer): s
     if (codec.includes('.'))
         return codec;
 
-    return 'avc1.640028';
+    // Constrained Baseline: the most portable profile, and the right guess for
+    // a stream that never said what it is.
+    return 'avc1.42E01F';
 }
