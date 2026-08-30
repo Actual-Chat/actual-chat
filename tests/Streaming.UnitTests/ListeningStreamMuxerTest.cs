@@ -61,7 +61,7 @@ public class ListeningStreamMuxerTest
     }
 
     [Fact]
-    public void TryRegisterSameBeginsAtKeepsExisting()
+    public void TryRegisterSameBeginsAtPrefersTheNewcomer()
     {
         var h = new MuxerHarness();
         var cts1 = new CancellationTokenSource();
@@ -69,11 +69,29 @@ public class ListeningStreamMuxerTest
         var t = Now();
 
         h.Register(Author1, "stream-1", t, cts1).Should().BeTrue();
-        h.Register(Author1, "stream-2", t, cts2).Should().BeFalse("equal BeginsAt uses strict >, existing keeps");
+        h.Register(Author1, "stream-2", t, cts2)
+            .Should().BeTrue("a sender retrying its push within MaxBeginsAtDrift claims a start "
+                + "equal to the call it replaces, and keeping the older entry keeps the dead one");
 
-        h.GetActiveStreamId(Author1).Should().Be("stream-1");
-        cts1.IsCancellationRequested.Should().BeFalse();
-        cts2.IsCancellationRequested.Should().BeTrue();
+        h.GetActiveStreamId(Author1).Should().Be("stream-2");
+        cts1.IsCancellationRequested.Should().BeTrue("the superseded stream should be cancelled");
+        cts2.IsCancellationRequested.Should().BeFalse();
+    }
+
+    [Fact]
+    public void TryRegisterExcludesTheStreamItSupersedes()
+    {
+        var h = new MuxerHarness();
+        var t1 = Now();
+        var t2 = t1 + TimeSpan.FromSeconds(5);
+
+        h.Register(Author1, "stream-1", t1, new CancellationTokenSource()).Should().BeTrue();
+        h.Register(Author1, "stream-2", t2, new CancellationTokenSource()).Should().BeTrue();
+
+        h.IsExcluded("stream-1").Should().BeTrue(
+            "a superseded stream the server still lists would otherwise be recreated, win the tie "
+            + "back against the live one, and be served from position 0");
+        h.IsExcluded("stream-2").Should().BeFalse();
     }
 
     [Fact]
@@ -189,8 +207,17 @@ public class ListeningStreamMuxerTest
             // Allocate without running constructor (which starts the worker)
             _muxer = (ListeningStreamMuxer)RuntimeHelpers.GetUninitializedObject(MuxerType);
 
-            StreamByIdField.SetValue(_muxer, Activator.CreateInstance(StreamByIdField.FieldType));
-            StreamByAuthorField.SetValue(_muxer, Activator.CreateInstance(StreamByAuthorField.FieldType));
+            // Every dictionary, not just the two TryRegister happened to touch when this harness
+            // was written: GetUninitializedObject leaves them all null, so one that TryRegister
+            // starts using later fails here as a NullReferenceException rather than as a
+            // recognisable gap. Initialising them by shape keeps that from recurring.
+            foreach (var field in MuxerType.GetFields(BindingFlags.NonPublic | BindingFlags.Instance)) {
+                if (field.GetValue(_muxer) is not null)
+                    continue;
+                if (field.FieldType is { IsGenericType: true } type
+                    && type.GetGenericTypeDefinition() == typeof(ConcurrentDictionary<,>))
+                    field.SetValue(_muxer, Activator.CreateInstance(field.FieldType));
+            }
             _streamById = StreamByIdField.GetValue(_muxer)!;
             _streamByAuthor = StreamByAuthorField.GetValue(_muxer)!;
 
@@ -222,6 +249,14 @@ public class ListeningStreamMuxerTest
             if (!(bool)tryGetValue.Invoke(_streamByAuthor, args)!)
                 return null;
             return (string)StreamIdProp.GetValue(args[1]!)!;
+        }
+
+        public bool IsExcluded(string streamId)
+        {
+            var excluded = MuxerType
+                .GetField("_excludedStreamIds", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .GetValue(_muxer)!;
+            return (bool)excluded.GetType().GetMethod("ContainsKey")!.Invoke(excluded, [streamId])!;
         }
 
         public bool HasById(string streamId)
