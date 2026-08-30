@@ -131,7 +131,10 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
 
             if (deviceEnumerator != null) {
                 try {
-                    deviceWatcher = new DefaultCaptureDeviceWatcher(OnDefaultCaptureDeviceChanged);
+                    // The endpoint the graph actually opened, so a re-pick landing back on it is
+                    // ignored: WinRT ids embed the WASAPI endpoint id the notification carries.
+                    var openedDeviceId = inputNode?.Device?.Id;
+                    deviceWatcher = new DefaultCaptureDeviceWatcher(openedDeviceId, OnDefaultCaptureDeviceChanged);
                     deviceEnumerator.RegisterEndpointNotificationCallback(deviceWatcher);
                 }
                 catch (Exception e) {
@@ -556,12 +559,22 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
 
     // Nested types
 
-    private sealed class DefaultCaptureDeviceWatcher(Action onChanged) : IMMNotificationClient
+    private sealed class DefaultCaptureDeviceWatcher(
+        string? openedDeviceId,
+        Action onChanged
+        ) : IMMNotificationClient
     {
         public void OnDefaultDeviceChanged(DataFlow dataFlow, Role role, string defaultDeviceId)
         {
-            if (dataFlow == DataFlow.Capture && role == Role.Multimedia)
-                onChanged();
+            if (dataFlow != DataFlow.Capture || role != Role.Multimedia)
+                return;
+            // Still the endpoint the graph holds
+            if (openedDeviceId != null
+                && !defaultDeviceId.IsNullOrEmpty()
+                && openedDeviceId.Contains(defaultDeviceId, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            onChanged();
         }
 
         public void OnDeviceStateChanged(string deviceId, DeviceState newState) { }

@@ -184,6 +184,15 @@ internal sealed class WindowsAudioPlaybackEngine(
         }
 
         if (_graph != null) {
+            // Stopped before it's disposed: a graph left running wedges WinRT audio for the whole
+            // process, and every later AudioGraph.CreateAsync - capture included - then fails.
+            try {
+                _frameInput?.Stop();
+                _graph.Stop();
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Failed to stop the playback AudioGraph before disposing it");
+            }
             _frameInput.DisposeSilently();
             _deviceOutput.DisposeSilently();
             _graph.DisposeSilently();
