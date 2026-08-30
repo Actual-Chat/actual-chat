@@ -1,0 +1,194 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, CarAudioSettings.Model>
+@{
+#pragma warning disable IL2091
+    if (State.IsInitial(out var m))
+        return;
+    if (!m.IsSupported)
+        return;
+
+    _formModel.FromModel(m.Settings);
+}
+
+<TileTopic Topic="@L.CarAudio_Microphone"/>
+<Tile Class="car-audio-tile">
+    <Form Model="@_formModel">
+        <DataAnnotationsValidator/>
+
+        <FormBlock>
+            <InputRadioGroup
+                TValue="@CarAudioDevice"
+                Name="car-audio-microphone"
+                DisplayName="@L.CarAudio_Microphone"
+                @bind-Value="_formModel.Microphone">
+
+                @foreach (var device in MicrophoneDevices) {
+                    var formId = _formModel.GetMicrophoneFormId(device);
+                    <TileItem
+                        Class="@GetMicrophoneTileItemClass(device)"
+                        Caption="@GetMicrophoneCaption(device)"
+                        Click="@(_ => OnMicrophoneTileClick(device))">
+                        <Icon>
+                            <FormRadio TValue="@CarAudioDevice" Id="@formId" Value="@device"/>
+                        </Icon>
+                        <Content>
+                            <Label InputId="@formId" Text="@DeviceTitle(device)" IsRequired="true"></Label>
+                        </Content>
+                    </TileItem>
+                }
+
+            </InputRadioGroup>
+        </FormBlock>
+    </Form>
+</Tile>
+
+<TileTopic Topic="@L.CarAudio_Output"/>
+<Tile Class="car-audio-tile">
+    <Form Model="@_formModel">
+        <DataAnnotationsValidator/>
+
+        <FormBlock>
+            <InputRadioGroup
+                TValue="@CarAudioDevice"
+                Name="car-audio-output"
+                DisplayName="@L.CarAudio_Output"
+                @bind-Value="_formModel.Output">
+
+                @foreach (var device in OutputDevices) {
+                    var formId = _formModel.GetOutputFormId(device);
+                    <TileItem
+                        Class="@GetOutputTileItemClass(device)"
+                        Caption="@GetOutputCaption(device)"
+                        Click="@(_ => OnOutputTileClick(device))">
+                        <Icon>
+                            <FormRadio TValue="@CarAudioDevice" Id="@formId" Value="@device"/>
+                        </Icon>
+                        <Content>
+                            <Label InputId="@formId" Text="@DeviceTitle(device)" IsRequired="true"></Label>
+                        </Content>
+                    </TileItem>
+                }
+
+            </InputRadioGroup>
+        </FormBlock>
+    </Form>
+</Tile>
+
+@code {
+    private static readonly CarAudioDevice[] MicrophoneDevices =
+        [CarAudioDevice.Auto, CarAudioDevice.Phone, CarAudioDevice.Car];
+
+    private static readonly CarAudioDevice[] OutputDevices =
+        [CarAudioDevice.Auto, CarAudioDevice.Phone, CarAudioDevice.Car];
+
+    private FormModel _formModel = null!;
+
+    protected override void OnInitialized() {
+        _formModel = new(ComponentIdGenerator);
+        _formModel.MicrophoneChanged += OnMicrophoneChanged;
+        _formModel.OutputChanged += OnOutputChanged;
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var isSupported = Hub.Services.GetService<ICarConnection>() != null;
+        if (!isSupported)
+            return Model.None;
+
+        var settings = await UserSettingsUI.UserCarAudioSettings().Get(cancellationToken).ConfigureAwait(false);
+        return new(true, settings);
+    }
+
+    private async Task OnMicrophoneChanged(CarAudioDevice device) {
+        await UserSettingsUI.UserCarAudioSettings().Update(x => x with { Microphone = device }, CancellationToken.None);
+        await State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
+    }
+
+    private async Task OnOutputChanged(CarAudioDevice device) {
+        await UserSettingsUI.UserCarAudioSettings().Update(x => x with { Output = device }, CancellationToken.None);
+        await State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
+    }
+
+    private void OnMicrophoneTileClick(CarAudioDevice device)
+        => _formModel.Microphone = device;
+
+    private void OnOutputTileClick(CarAudioDevice device)
+        => _formModel.Output = device;
+
+    private RenderFragment? GetMicrophoneCaption(CarAudioDevice device)
+        => device == CarAudioDevice.Auto
+            ? b => b.AddContent(0, L.CarAudio_MicrophoneCaption)
+            : null;
+
+    private RenderFragment? GetOutputCaption(CarAudioDevice device)
+        => device == CarAudioDevice.Auto
+            ? b => b.AddContent(0, L.CarAudio_OutputCaption)
+            : null;
+
+    private string GetMicrophoneTileItemClass(CarAudioDevice device)
+        => _formModel.Microphone == device ? "selected transparent" : "transparent";
+
+    private string GetOutputTileItemClass(CarAudioDevice device)
+        => _formModel.Output == device ? "selected transparent" : "transparent";
+
+    private string DeviceTitle(CarAudioDevice device)
+        => device switch {
+            CarAudioDevice.Phone => L.CarAudio_Phone,
+            CarAudioDevice.Car => L.CarAudio_Car,
+            _ => L.CarAudio_Auto,
+        };
+
+    // Nested types
+
+    public sealed record Model(bool IsSupported, UserCarAudioSettings Settings) {
+        public static readonly Model None = new(false, new UserCarAudioSettings());
+    }
+
+    public sealed class FormModel {
+        private CarAudioDevice _microphone;
+        private CarAudioDevice _output;
+
+        private string FormId { get; }
+
+        public CarAudioDevice Microphone {
+            get => _microphone;
+            set {
+                if (_microphone == value)
+                    return;
+
+                _microphone = value;
+                _ = MicrophoneChanged?.Invoke(value);
+            }
+        }
+
+        public CarAudioDevice Output {
+            get => _output;
+            set {
+                if (_output == value)
+                    return;
+
+                _output = value;
+                _ = OutputChanged?.Invoke(value);
+            }
+        }
+
+        public event Func<CarAudioDevice, Task>? MicrophoneChanged;
+        public event Func<CarAudioDevice, Task>? OutputChanged;
+
+        public FormModel(ComponentIdGenerator componentIdGenerator)
+            => FormId = componentIdGenerator.Next("car-audio-form");
+
+        public string GetMicrophoneFormId(CarAudioDevice device)
+            => $"{FormId}-microphone-{device}";
+
+        public string GetOutputFormId(CarAudioDevice device)
+            => $"{FormId}-output-{device}";
+
+        public void FromModel(UserCarAudioSettings settings) {
+            _microphone = settings.Microphone;
+            _output = settings.Output;
+        }
+    }
+}

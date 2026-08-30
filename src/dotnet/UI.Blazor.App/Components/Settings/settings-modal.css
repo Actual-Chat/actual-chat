@@ -95,7 +95,8 @@ body.narrow .close-settings-btn {
 /* ── Theme & Render Mode ── */
 
 .settings-tab .theme-tile .tile-item:hover,
-.settings-tab .render-mode-tile .tile-item:hover {
+.settings-tab .render-mode-tile .tile-item:hover,
+.settings-tab .car-audio-tile .tile-item:hover {
     @apply bg-transparent;
 }
 .render-mode-tile .label {
