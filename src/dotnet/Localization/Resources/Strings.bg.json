@@ -222,6 +222,9 @@
   "ChatView_PrevSearchResult": "Към предишния резултат от търсенето",
   "ChatView_NextSearchResult": "Към следващия резултат от търсенето",
 
+  "LinkPreview_InChat_Prefix": "в",
+  "LinkPreview_InChat_Suffix": "",
+
   // The first three follow the author name, which renders as a separate mention node:
   // keep the leading space and word them so the name reads as the sentence's subject.
   "SystemEntry_MemberJoined": " се присъедини към чата.",

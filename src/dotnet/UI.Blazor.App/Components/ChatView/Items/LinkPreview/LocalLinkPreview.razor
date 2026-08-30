@@ -18,8 +18,7 @@
         entry = chatLocalLinkInfo.Entry;
         author = chatLocalLinkInfo.Author;
         place = chatLocalLinkInfo.Place;
-    }
-    else if (data is UserLocalLinkInfo userLocalLinkInfo) {
+    } else if (data is UserLocalLinkInfo userLocalLinkInfo) {
         user = userLocalLinkInfo.Account;
         chat = userLocalLinkInfo.Chat;
     } else if (data is PlaceLocalLinkInfo placeLocalLinkInfo) {
@@ -31,6 +30,8 @@
             ? " local-link-chat local-link-user"
             : " local-link-chat";
     var showBg = chat is not null;
+    var inChatPrefix = entry is null ? "" : L.LinkPreview_InChat_Prefix;
+    var inChatSuffix = entry is null ? "" : L.LinkPreview_InChat_Suffix;
 }
 
 <div class="link-preview local-link unfocusable @cls">
@@ -44,16 +45,13 @@
             <AuthorCircle
                 AuthorId="@entry.AuthorId"
                 Size="SquareSize.Size10"/>
-
         } else if (user is not null) {
             <AccountCircle
                 UserId="@user.Id"
-                Size="@SquareSize.Size10" />
-        }
-        else if (chat is not null) {
+                Size="@SquareSize.Size10"/>
+        } else if (chat is not null) {
             <ChatIcon Chat="@chat" Size="SquareSize.Size10"/>
-        }
-        else if (place is not null) {
+        } else if (place is not null) {
             <Pic
                 Title="@place.Title"
                 Picture="@place.Picture.ToPicture()"
@@ -95,13 +93,12 @@
         }
 
         <span class="c-domain">
-            @if (entry is not null) {
-                <span>in</span>
+            @if (!inChatPrefix.IsNullOrEmpty()) {
+                <span>@inChatPrefix</span>
             }
             @if (user is not null) {
                 <a class="domain-link" href="@Data.LocalUrl.Value" @onclick:preventDefault="true" @onclick="NavigateToUrl">@user.Avatar.Name</a>
-            }
-            else if (chat is not null) {
+            } else if (chat is not null) {
                 var linkText = chat.Title;
                 if (place?.Id is not null)
                     linkText += $", {place.Title}";
@@ -109,13 +106,15 @@
                 var useDirectChatLink = entry is not null;
                 var chatLink = useDirectChatLink ? Links.Chat(chat.Id) : Data.LocalUrl;
                 <a class="domain-link" href="@chatLink" @onclick:preventDefault="true" @onclick="@(() => NavigateTo(chatLink))">@linkText</a>
-            }
-            else if (place is not null) {
+            } else if (place is not null) {
                 <a class="domain-link" href="@Data.LocalUrl.Value" @onclick:preventDefault="true" @onclick="NavigateToUrl">@place.Title</a>
+            }
+            @if (!inChatSuffix.IsNullOrEmpty()) {
+                <span>@inChatSuffix</span>
             }
         </span>
         @if (chat is not null && chat.Kind is not ChatKind.Peer && entry is null && m.MemberCount > 0) {
-            var typeLabel = chat.Kind == ChatKind.Place
+            var typeLabel = chat.Id is PlaceChatId { IsRoot: true }
                 ? L.Chat_TypePlace
                 : chat.IsPublic ? L.Chat_Public : L.Chat_Private;
             var memberCount = L.Chat_Members(m.MemberCount, m.MemberCount);
@@ -142,7 +141,6 @@
         var data = Data;
         if (data is not ChatLocalLinkInfo { Chat: { } chat, Entry: null })
             return Model.Loading;
-
         if (chat.Kind is ChatKind.Peer)
             return Model.Loading;
 

@@ -222,6 +222,9 @@
   "ChatView_PrevSearchResult": "पिछले खोज परिणाम पर जाएँ",
   "ChatView_NextSearchResult": "अगले खोज परिणाम पर जाएँ",
 
+  "LinkPreview_InChat_Prefix": "",
+  "LinkPreview_InChat_Suffix": "में",
+
   // The first three follow the author name, which renders as a separate mention node:
   // keep the leading space and word them so the name reads as the sentence's subject.
   "SystemEntry_MemberJoined": " चैट में शामिल हुए।",
