@@ -45,7 +45,8 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
     /// <summary>
     /// Starts playing the track which is represented by <see cref="IMediaSource"/> (from ctor).
     /// </summary>
-    /// <returns>A running task, which will be completed after playing all media frames or on a cancel + disposing things</returns>
+    /// <returns>A running task, which will be completed after playing all media frames
+    /// or on a cancel + disposing things</returns>
     public Task Play(CancellationToken cancellationToken = default)
     {
         // Hint: the code here is almost a copy of WorkerBase.Run
@@ -83,7 +84,8 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
     /// <summary>
     /// Stops the playback.
     /// </summary>
-    /// <returns>A running task which is completed when you can run <see cref="Play(CancellationToken)"/> again</returns>
+    /// <returns>A running task which is completed when you can run
+    /// <see cref="Play(CancellationToken)"/> again</returns>
     public Task Stop()
     {
         PlayTokenSource.CancelAndDisposeSilently();
@@ -103,6 +105,11 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
             var frameCount = 0;
             var frames = Source.GetFramesUntyped(cancellationToken);
             await foreach (var frame in frames.ConfigureAwait(false)) {
+                // An engine that already reported its end - errored, or its device died - would
+                // otherwise be fed for as long as the source keeps producing.
+                if (State.IsEnded)
+                    break;
+
                 if (!isPlayCommandProcessed) {
                     await playTask.ConfigureAwait(false);
                     isPlayCommandProcessed = true;
@@ -118,7 +125,17 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
             // this prevents sending (end + stop) commands simultaneously, don't change this.
             // change to get (end + stop) exists, for example, with a thread abort exception,
             // but it's a pretty rare situation
-            await ProcessCommand(EndCommand.Instance, CancellationToken.None).ConfigureAwait(false);
+            // Bounded: it's the one engine call on the normal path that wasn't, and
+            // Playback.OnAbortCommand awaits this task inline in its command loop.
+            try {
+                await ProcessCommand(EndCommand.Instance, CancellationToken.None).AsTask()
+                    .WaitAsync(StopTimeout, CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+            catch (TimeoutException) {
+                Log.LogWarning("PlayInternal: the engine didn't finish End in {Timeout}, abandoning it",
+                    StopTimeout.ToShortString());
+            }
 
             // Now we're waiting for a report when the client side has actually played all frames or Cancel()
             // At the same time we need to pump commands queue in case pause or resume command arrive.

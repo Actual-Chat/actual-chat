@@ -399,12 +399,17 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         // un-ACKed window at peer-change are lost (the old server-side entry ends there);
         // everything in the channel is preserved.
         var session = _hub.Session;
+        var sentFrameCount = 0;
 
         while (!cancellationToken.IsCancellationRequested) {
             // Per-call state: each iteration is a fresh PushAudio = fresh chat entry,
-            // so packetIndex (→ frame Offset) and sourceStartOffset reset.
+            // so packetIndex (→ frame Offset) resets. The claimed start advances by what earlier
+            // calls sent: repeating it registers the retry with a BeginsAt equal to the dead
+            // call's, and ListeningStreamMuxer then keeps the dead one.
             var packetIndex = 0;
-            var sourceStartOffsetSeconds = firstFrameSourceCapturedAt.EpochOffset.TotalSeconds;
+            var callStartAt = firstFrameSourceCapturedAt
+                + TimeSpan.FromMilliseconds(sentFrameCount * Constants.Audio.OpusFrameDurationMs);
+            var sourceStartOffsetSeconds = callStartAt.EpochOffset.TotalSeconds;
 
             // Cadence tracking: warn when wall-clock between successful yields drifts
             // above 60ms (3+ frames of expected 20ms pace). Bursty send → all listeners
@@ -496,10 +501,11 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 // The channel still holds whatever packets weren't yet consumed, and the encoder
                 // keeps writing new ones.
                 Log.LogWarning(e, "PushAudio call ended ({SentFrames} frames), retrying with a new call", packetIndex);
+                sentFrameCount += packetIndex;
                 repliedChatEntryId = null; // Only the initial segment carries the reply target.
                 // Short delay to avoid tight-looping on a persistent failure; the recording CT
-                // cancels this delay when the user stops recording.
-                await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
+                // cancels this delay when the user stops recording. Shared with the web sender.
+                await Task.Delay(Constants.Audio.StreamErrorRetryDelay, cancellationToken).ConfigureAwait(false);
             }
         }
     }
@@ -565,7 +571,10 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
         private readonly BlockRingBuffer<float> _vadBuffer = new (Constants.Audio.RecordingSampleRate * 2); // 2s
         private readonly BlockRingBuffer<float> _encodingBuffer = new (Constants.Audio.RecordingSampleRate / 2); // 500ms
-        private readonly Queue<Moment> _encodingFrameSourceCapturedAts = new();
+        // Concurrent: written from the capture task, read from the encode worker. A plain
+        // Queue<T> can corrupt or throw when a grow races a dequeue, and corruption here skews
+        // firstFrameSourceCapturedAt - the stream's BeginsAt and the A/V-sync anchor.
+        private readonly ConcurrentQueue<Moment> _encodingFrameSourceCapturedAts = new();
 
         private FuncWorker? _encodeSendWorker;
         private bool _voiceActive;
@@ -851,8 +860,16 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                     if (packet.Memory.Length == 0)
                         continue;
 
-                    if (!stream.TryWrite(packet))
-                        await stream.WaitToWriteAsync(cancellationToken).ConfigureAwait(false);
+                    // Retried, not just waited on: a bare wait drops this packet - 20ms of speech,
+                    // exactly during the RPC stall this buffer exists to bridge.
+                    while (!stream.TryWrite(packet)) {
+                        if (await stream.WaitToWriteAsync(cancellationToken).ConfigureAwait(false))
+                            continue;
+
+                        // The reader is gone, so nothing else will ever release this packet.
+                        packet.Dispose();
+                        return;
+                    }
                 }
             }
             catch (OperationCanceledException) {

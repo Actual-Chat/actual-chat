@@ -27,6 +27,7 @@ public sealed class OpusAudioCodec(ILogger<OpusAudioCodec> log) : IAudioCodec
 
 #if WINDOWS || ANDROID
                 OpusSharp.Core.OpusEncoder? encoder = null;
+                Exception? error = null;
                 try {
                     encoder = new OpusSharp.Core.OpusEncoder(
                         Constants.Audio.RecordingSampleRate,
@@ -120,12 +121,18 @@ public sealed class OpusAudioCodec(ILogger<OpusAudioCodec> log) : IAudioCodec
                 catch (OperationCanceledException) {
                     /* Ignore */
                 }
+                catch (Exception e) {
+                    // Completing without it would tell the reader the utterance ended normally,
+                    // and this task is discarded, so the throw would surface nowhere at all.
+                    log.LogError(e, "Opus encoding failed");
+                    error = e;
+                }
                 finally {
                     try { encoder?.Dispose(); }
                     catch {
                         /* Ignore */
                     }
-                    channel.Writer.TryComplete();
+                    channel.Writer.TryComplete(error);
                 }
 #else
             // Other platforms default to not implemented to avoid accidental use without Opus
@@ -157,6 +164,7 @@ public sealed class OpusAudioCodec(ILogger<OpusAudioCodec> log) : IAudioCodec
         _ = Task.Run(async () => {
 #if WINDOWS || ANDROID
                 OpusSharp.Core.OpusDecoder? decoder = null;
+                Exception? error = null;
                 try {
                     decoder = new OpusSharp.Core.OpusDecoder(
                         Constants.Audio.PlaybackSampleRate,
@@ -193,12 +201,18 @@ public sealed class OpusAudioCodec(ILogger<OpusAudioCodec> log) : IAudioCodec
                 catch (OperationCanceledException) {
                     /* Ignore */
                 }
+                catch (Exception e) {
+                    // Completing without it would tell the reader the track ended normally, and
+                    // this task is discarded, so the throw would surface nowhere at all.
+                    log.LogError(e, "Opus decoding failed");
+                    error = e;
+                }
                 finally {
                     try { decoder?.Dispose(); }
                     catch {
                         /* Ignore */
                     }
-                    channel.Writer.TryComplete();
+                    channel.Writer.TryComplete(error);
                 }
 #else
             try {

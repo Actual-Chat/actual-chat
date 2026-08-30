@@ -12,6 +12,8 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     // flow control takes over after that.
     private static readonly TimeSpan PacingHeadStartDuration = TimeSpan.FromMilliseconds(30);
     private static readonly TimeSpan PacingDuration = TimeSpan.FromMilliseconds(200);
+    private static readonly TimeSpan BufferLowTimeout = TimeSpan.FromSeconds(10);
+    private const int MaxBufferLowTimeoutCount = 3;
     private const int AudioSyncPolicySamplePeriodFrames = 10;
     // OnPresentationLag arrives at ~2 Hz per track; report every 5th, so ~1 sample per 2.5 s.
     private const int LagReportSamplePeriod = 5;
@@ -29,6 +31,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private CpuTimestamp _lastBufferAdjustAt;
     private bool _isOwnStream;
     private int _underrunCount;
+    private int _bufferLowTimeoutCount;
     private int _lagReportSampleIn;
 
     private IServiceProvider Services { get; }
@@ -164,16 +167,29 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             ApplyAudioSync();
             await _playbackEngine.PushFrame(audioFrame, cancellationToken).ConfigureAwait(false);
             await _whenBufferLowSource.Task
-                .WaitAsync(TimeSpan.FromSeconds(10), cancellationToken)
+                .WaitAsync(BufferLowTimeout, cancellationToken)
                 .ConfigureAwait(false);
+            _bufferLowTimeoutCount = 0;
         }
         catch (TimeoutException e) {
+            // The signal only ever comes from the engine, so its absence means the engine stopped
+            // reporting. Swallowing every timeout turns that into one frame per BufferLowTimeout.
             Log.LogError(
                 e,
                 "[AudioTrackPlayer #{AudioTrackPlayerId}] ProcessMediaFrame: "
-                + "ready-to-buffer wait timed out, offset={FrameOffset}",
+                + "ready-to-buffer wait timed out ({TimeoutCount}/{MaxTimeoutCount}), offset={FrameOffset}",
                 _id,
+                _bufferLowTimeoutCount + 1,
+                MaxBufferLowTimeoutCount,
                 frame.Offset);
+            // Not while paused: no engine consumes its buffer then, so buffer-low can never
+            // arrive and this would kill any track paused longer than the threshold.
+            if (State.IsPaused)
+                _bufferLowTimeoutCount = 0;
+            else if (++_bufferLowTimeoutCount >= MaxBufferLowTimeoutCount)
+                throw StandardError.External(
+                    $"The playback engine stopped reporting buffer state for "
+                    + $"{(MaxBufferLowTimeoutCount * BufferLowTimeout).ToShortString()}.");
         }
     }
 
@@ -190,7 +206,16 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     "[AudioTrackPlayer #{AudioTrackPlayerId}] Ended after {PlayDuration}, "
                     + "{UnderrunCount} underruns",
                     _id, _playDuration.ToShortString(), _underrunCount);
-            await _playbackEngine.DisposeSilentlyAsync().ConfigureAwait(false);
+            // Bounded for the same reason End is - a hang here holds up every PlayTask waiter.
+            try {
+                await _playbackEngine.DisposeSilentlyAsync().AsTask()
+                    .WaitAsync(StopTimeout, CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+            catch (TimeoutException) {
+                Log.LogWarning("[AudioTrackPlayer #{AudioTrackPlayerId}] the engine didn't dispose in {Timeout}",
+                    _id, StopTimeout.ToShortString());
+            }
         }
     }
 
