@@ -1,33 +1,52 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase<AppUIHub>
+@inherits ComputedStateComponent<AppUIHub, Moment?>
 @{
-    var replayingClass = ChatState.IsReplaying ? "opacity-60" : "";
-    var listeningClass = ChatState.IsListening ? "on" : "off";
-    var cls = $"play {listeningClass} {replayingClass}";
+    // Headphones only while the linger timer runs - that's the one state where listening is all
+    // that's left. Anything else is still a call, so it ends with the phone. Same rule as
+    // ChatAudioControls, which renders the timer itself.
+    var isCountingDown = !ChatState.IsRecording && State.Value > Now;
+    var cls = ChatState.IsReplaying ? "opacity-60" : "";
 }
 
-@if (!ChatState.IsListening) {
+@if (isCountingDown) {
     <MenuEntry
         Class="@cls"
         Icon="icon-listen"
-        Text="@L.Common_Listen"
-        Click="@OnClick"
-        MustKeepAwake="true">
+        Text="@L.Call_StopListening"
+        Click="@OnStopListening">
     </MenuEntry>
 } else {
     <MenuEntry
         Class="@cls"
-        Icon="icon-not-listen"
-        Text="@L.Common_Mute"
-        Click="@OnClick">
+        Icon="icon-phone-off"
+        Text="@L.Call_HangUp"
+        Click="@OnHangUp">
     </MenuEntry>
 }
 
 @code {
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private Moment Now => Hub.Clocks.CpuClock.Now;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
-    private void OnClick()
-        => _ = ChatAudioUI.SetListeningState(ChatState.Id, !ChatState.IsListening);
+    protected override ComputedState<Moment?>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Moment?>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override Task<Moment?> ComputeState(CancellationToken cancellationToken)
+        => ChatAudioUI.GetStopListeningAt(ChatState.Id, cancellationToken);
+
+    private void OnStopListening()
+        => _ = ChatAudioUI.SetListeningState(ChatState.Id, false);
+
+    private async Task OnHangUp() {
+        if (ChatState.IsRecording)
+            await ChatAudioUI.SetRecordingChatId(default).ConfigureAwait(true);
+
+        _ = ChatAudioUI.SetListeningState(ChatState.Id, false);
+    }
 }

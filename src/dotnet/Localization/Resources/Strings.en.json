@@ -20,9 +20,8 @@
 // the politeness register each language uses, and how bs/cnr/hr/sr/max are derived.
 {
   // Buttons and menu labels reused across the whole app, so each has to stand alone with no
-  // surrounding sentence. Common_Listen and Common_Mute act on a chat's live audio and are
-  // verbs, not media-player nouns. Further Common_* groups appear lower down, each next to
-  // the screen that introduced it.
+  // surrounding sentence. Further Common_* groups appear lower down, each next to the screen
+  // that introduced it.
   "Common_Save": "Save",
   "Common_Cancel": "Cancel",
   "Common_Close": "Close",
@@ -40,8 +39,6 @@
   "Common_Remove": "Remove",
   "Common_Copy": "Copy",
   "Common_Share": "Share",
-  "Common_Listen": "Listen",
-  "Common_Mute": "Mute",
   "Common_Start": "Start",
   "Common_Stop": "Stop",
 
@@ -241,7 +238,7 @@
   "ChatList_SortByUnreadCount": "Count of unread messages",
   "ChatList_SortByAlphabet": "Alphabet",
   "ChatList_ActiveChats": "Active Chats",
-  "ChatList_ActiveChatsTooltip": "Chats where you are listening, recording, or in Push-to-talk mode",
+  "ChatList_ActiveChatsTooltip": "Chats where you are in a call, recording, or in Push-to-talk mode",
   "ChatList_Talking": "talking",
   "ChatList_Live_Format": "{0} · live",
   "ChatList_Thread_Format": "Thread '{0}'",
@@ -524,7 +521,9 @@
   "AudioPlayer_Confirm": "Confirm",
 
   // The Call tab of the right panel: the live member list and the reasons a mute is refused.
-  // More Call_* groups follow further down.
+  // Call_Listening and Call_StopListening are the one place headphone language survives - the
+  // linger timer that keeps a chat audible for a while after you stop recording. Everything
+  // else about being in a call uses Call_HangUp / Call_InCall. More Call_* groups follow.
   "Call_NoActiveCall": "No active call.",
   "Call_Dialing": "Dialing…",
   "Call_Rules": "Rules",
@@ -547,6 +546,7 @@
   "Call_Listening": "Listening",
   "Call_HangUp": "Hang up",
   "Call_ListeningCountdown": "Listening...",
+  "Call_StopListening": "Stop listening",
   "Call_CantMutePeer": "You can't turn off the other person's microphone in a one-on-one chat.",
   "Call_CantMuteOwner": "You can't turn off an Owner's microphone.",
   "Call_CantMuteOthers": "Only the call host, a chat Owner or Moderator can turn off someone's microphone.",
@@ -801,10 +801,6 @@
   "Bubble_ContextMenuOpen_Middle": " (long push) on mobile\n            or ",
   "Bubble_ContextMenuRightClick": "right click",
   "Bubble_ContextMenuOpen_Suffix": " on desktop.",
-  "Bubble_ListenButtonTitle": "\"Listen\" button",
-  "Bubble_ListenButtonBody": "Use this button to start or stop listening in this chat.",
-  "Bubble_ListenButtonItem1": "When you record in \"Call\" mode, the listening mode turns on as well.",
-  "Bubble_ListenButtonItem2": "And it automatically turns off if no one speaks for about 1 minute.",
   "Bubble_ListeningTimerBody": "Listening will automatically stop once the timer runs out.",
   "Bubble_ListeningTimerSettings": "Listening settings",
   "Bubble_ManageAccountTitle": "Your account and settings",

@@ -72,7 +72,7 @@ body.hoverable .live-session-member-list .c-member-row:hover {
 .live-session-member-list .c-member-state i.muted {
     @apply text-03;
 }
-.live-session-member-list .c-member-state i.listening {
+.live-session-member-list .c-member-state i.in-call {
     @apply text-primary;
 }
 .live-session-member-list .c-mic-btn {
