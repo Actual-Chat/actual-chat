@@ -10,6 +10,10 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
 {
     private static readonly TimeSpan InputNodeHoldTimeout = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan InputNodeHeartbeatTimeout = TimeSpan.FromSeconds(30);
+    // A tap delivers continuously regardless of speech, so a gap this long isn't silence.
+    private static readonly TimeSpan CaptureStallTimeout = TimeSpan.FromSeconds(5);
+    // Past InterruptionEndTimeout, so a Began that never gets its End can't hold this open.
+    private static readonly TimeSpan MaxInterruptionDeferral = TimeSpan.FromSeconds(60);
 
     private static long _inputNodeHeldAt;
     private static long _inputNodeHeartbeatAt;
@@ -47,7 +51,8 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
         // their iterator: here the whole AVAudioEngine setup is inside CaptureInternal.
         => Task.FromResult(AudioCaptureResult.Ok(CaptureInternal(cancellationToken)));
 
-    private async IAsyncEnumerable<IMemoryOwner<float>> CaptureInternal([EnumeratorCancellation] CancellationToken cancellationToken)
+    private async IAsyncEnumerable<IMemoryOwner<float>> CaptureInternal(
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         // First statement, before TryTake() stops the pre-roll engine: everything below is
         // blocking native work, and a press landing in that window would see a free input node
@@ -119,13 +124,38 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
             await AudioFocusUI.EnsureOutputRoute(cancellationToken).ConfigureAwait(false);
 
             var frameLen = Constants.Audio.OpusFrameLength;
+            var deferringSince = default(CpuTimestamp?);
             while (!cancellationToken.IsCancellationRequested) {
                 var owner = ArrayPools.SharedFloatPool.LeaseArrayOwner(frameLen, true);
                 if (!outBuffer.TryRead(owner.Span, out var whenReady)) {
                     owner.Dispose();
-                    await whenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
-                    continue;
+                    if (await whenReady.TryWaitAsync(CaptureStallTimeout, cancellationToken).ConfigureAwait(false))
+                        continue;
+
+                    // hwFormat, the resampler and the tap are pinned at start, and Reconnect()
+                    // rebuilds none of them - so a route change that moves the mic (AirPods swap
+                    // 48kHz built-in for 8/16kHz HFP) leaves them built for a format that never
+                    // arrives, silently. Ending lets PushRecordingState rebuild the lot.
+                    cancellationToken.ThrowIfCancellationRequested();
+                    // An interruption stops the tap legitimately and RecoverInternal resumes the
+                    // engine after it, so ending here would split the recording. Bounded, though:
+                    // the flag is a raw latch with no expiry outside SetModeUnsafe, and iOS
+                    // doesn't guarantee an End.
+                    var focus = AudioFocusUI.GetDiagnostics();
+                    var isDeferred = focus is { IsInterrupted: true } or { IsSuspended: true };
+                    if (isDeferred) {
+                        deferringSince ??= CpuTimestamp.Now;
+                        if (deferringSince.GetValueOrDefault().Elapsed < MaxInterruptionDeferral)
+                            continue;
+                    }
+
+                    Log.LogWarning("CaptureInternal: no samples for {Elapsed} ({Reason}) - ending the capture",
+                        (deferringSince?.Elapsed ?? CaptureStallTimeout).ToShortString(),
+                        isDeferred ? "still interrupted" : "input stopped");
+                    yield break;
                 }
+
+                deferringSince = null;
                 yield return owner;
             }
             yield break;
@@ -136,7 +166,8 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
                 // The engine is alive and still owns the input node - see IsInputNodeHeld.
                 Volatile.Write(ref _inputNodeHeartbeatAt, CpuTimestamp.Now.Value);
                 try {
-                    var estimatedResampledLength = pcmBuffer.FrameLength / hwFormat.SampleRate * AudioEngine.VoiceRecordingFormat.SampleRate;
+                    var estimatedResampledLength = pcmBuffer.FrameLength / hwFormat.SampleRate
+                        * AudioEngine.VoiceRecordingFormat.SampleRate;
                     if (outBuffer.RemainingCapacity < estimatedResampledLength) {
                         Log.LogWarning("Buffer full, dropping samples");
                         return;

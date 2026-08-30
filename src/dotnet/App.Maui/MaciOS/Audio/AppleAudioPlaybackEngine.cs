@@ -7,7 +7,7 @@ using ActualLab.Opus.MaciOS;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class AppleAudioPlaybackEngine(
+public sealed class AppleAudioPlaybackEngine(
     string playerId,
     TrackInfo info,
     IAudioPlayerBackend backend,
@@ -44,9 +44,6 @@ public class AppleAudioPlaybackEngine(
     public async Task Play(CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation("#{PlayerId}.Play", playerId);
-        // Focus is taken seconds before the first frames arrive, and a route the session picked
-        // back then may no longer be the one this track should come out of.
-        await hub.AudioFocusUI.EnsureOutputRoute(cancellationToken).ConfigureAwait(false);
         _frames.SetTargetDuration(GetEncodedBufferDuration(info.TargetBufferSize));
 
         _voicePlayer = new VoicePlayer(playerId, hub);
@@ -58,6 +55,8 @@ public class AppleAudioPlaybackEngine(
             "Failed to decode/feed iOS audio",
             _decodeFeedCts.Token);
         _voicePlayer.Play();
+        // After Play(), not before: starting the player is what builds the engine and moves the route.
+        await hub.AudioFocusUI.EnsureOutputRoute(cancellationToken).ConfigureAwait(false);
     }
 
     public Task Pause(CancellationToken cancellationToken)
@@ -71,7 +70,9 @@ public class AppleAudioPlaybackEngine(
     {
         DebugLog?.LogInformation("#{PlayerId}.Resume", playerId);
         _voicePlayer.Play();
-        return Task.CompletedTask;
+        // Same reason as Play(): resuming restarts the engine, and a restart that lands after
+        // voice processing came up needs the route restated.
+        return hub.AudioFocusUI.EnsureOutputRoute(cancellationToken);
     }
 
     public Task End(bool abort, CancellationToken cancellationToken)
@@ -85,6 +86,7 @@ public class AppleAudioPlaybackEngine(
         }
         else
             _frames.Complete();
+
         return Task.CompletedTask;
     }
 
@@ -103,8 +105,13 @@ public class AppleAudioPlaybackEngine(
         await foreach (var cPosition in _voicePlayer.PlaybackState.Computed.Changes(cancellationToken).ConfigureAwait(false)) {
             var state = cPosition.Value;
             backend.OnPlaying(state.Position.TotalSeconds, !state.IsPlaying, state.IsBufferLow);
-            if (state.IsPlaying && state.Position > TimeSpan.Zero)
+            if (state.IsPlaying && state.Position > TimeSpan.Zero) {
+                // Rendering progress, not frames handed in: TrackPlayer keeps pushing into a dead
+                // engine, so a push-based heartbeat would tell the owner watchdog the session is
+                // fine in precisely the case it exists to rescue.
+                AudioSession.NotifyPlaybackActivity();
                 TryReportPresentationLag(state.Position);
+            }
         }
     }
 
@@ -113,6 +120,7 @@ public class AppleAudioPlaybackEngine(
         var nowTicks = Environment.TickCount64;
         if (nowTicks < Interlocked.Read(ref _nextLagReportAtTicks))
             return;
+
         Interlocked.Exchange(ref _nextLagReportAtTicks, nowTicks + LagReportIntervalMs);
 
         var anchor = info.SourceRecordedAt != default ? info.SourceRecordedAt : info.RecordedAt;

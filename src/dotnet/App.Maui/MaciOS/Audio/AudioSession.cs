@@ -5,20 +5,26 @@ using Foundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class AudioSession(AppUIHub hub) : IAsyncDisposable
+public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
 {
     // Past the hot window: while that window is open the owner legitimately stays PTT-held with
     // no callback in between, so anything shorter would revert a live PTT session.
     private static readonly TimeSpan OwnerWatchdogTimeout =
         Constants.Audio.PttIdleTimeout + TimeSpan.FromMinutes(1);
     private static readonly TimeSpan OwnerWatchdogPeriod = TimeSpan.FromSeconds(30);
+    // A heartbeat, not a hold - so unlike a leaked latch it can't wedge the watchdog.
+    private static readonly TimeSpan PlaybackActivityTimeout = TimeSpan.FromSeconds(10);
 
     private static readonly Lock OwnerLock = new();
     private static int _owner;
     private static long _ownerChangedAt;
     private static int _isOwnerWatchdogRunning;
     private static Action? _ownerWatchdogRecovery;
+    private static long _playbackActivityAt;
 
+    private AppUIHub Hub { get; } = hub;
+    private static ILogger OwnerLog => field ??= StaticLog.For(typeof(AudioSession));
+    private ILogger Log => field ??= Hub.LogFor(GetType());
     public static AudioSessionOwner Owner => (AudioSessionOwner)Volatile.Read(ref _owner);
     public static bool MayActivateNow => AudioSessionOwnership.MayActivate(Owner);
 
@@ -36,8 +42,8 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     public static void SetOwnerWatchdogRecovery(Action recovery)
         => Volatile.Write(ref _ownerWatchdogRecovery, recovery);
 
-    private static ILogger OwnerLog => field ??= StaticLog.For(typeof(AudioSession));
-    private ILogger Log => field ??= hub.LogFor(GetType());
+    public static void NotifyPlaybackActivity()
+        => Volatile.Write(ref _playbackActivityAt, CpuTimestamp.Now.Value);
 
     public ValueTask DisposeAsync()
         => BackgroundTask.Run(() => DispatchToMainThread(() => {
@@ -146,6 +152,12 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     {
         // Every PTT callback republishes the owner, so an old stamp means none arrived.
         if (OwnerHeldFor() < OwnerWatchdogTimeout)
+            return false;
+
+        // The idle window restarts on activity but the owner's timestamp doesn't, so sustained
+        // traffic grows OwnerHeldFor without bound. Playing audio proves the session is wanted.
+        var playbackActivityAt = Volatile.Read(ref _playbackActivityAt);
+        if (playbackActivityAt != 0 && new CpuTimestamp(playbackActivityAt).Elapsed < PlaybackActivityTimeout)
             return false;
 
         // A live recorder may only defer the revert, never cancel it: the latch is cleared by
@@ -276,14 +288,31 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
         if (GetPortOverride(outputs) is not { } portOverride)
             return;
 
-        Log.LogInformation("ApplyOutputRoute: mode={Mode}, outputs={Outputs} -> {Override}",
-            mode, string.Join(", ", outputs.Select(x => x.PortType)), portOverride);
-        if (!session.OverrideOutputAudioPort(portOverride, out var error))
-            Log.LogWarning("ApplyOutputRoute: override failed: {Error}", error.LocalizedDescription);
+        var isOverridden = ForceOverride(session, portOverride, out var error);
+        Log.LogInformation(
+            "ApplyOutputRoute: mode={Mode}, sessionMode={SessionMode}, {Outputs} -> {Override} -> {Result}",
+            mode,
+            session.Mode,
+            Describe(outputs),
+            portOverride,
+            isOverridden ? Describe(session.CurrentRoute.Outputs) : $"failed: {error.LocalizedDescription}");
         return;
 
-        // Null means the route is already where it should be - which also covers Macs, where
-        // there's no receiver to be pushed off.
+        static string Describe(AVAudioSessionPortDescription[] outputs)
+            => string.Join(", ", outputs.Select(x => x.PortType));
+
+        // Restating an override the session already holds is a no-op, and a no-op won't move a
+        // source started after VoiceProcessingIO. Clearing first makes it a real transition.
+        static bool ForceOverride(AVAudioSession session, AVAudioSessionPortOverride portOverride, out NSError error) {
+            if (portOverride is AVAudioSessionPortOverride.None)
+                return session.OverrideOutputAudioPort(portOverride, out error);
+
+            return session.OverrideOutputAudioPort(AVAudioSessionPortOverride.None, out error)
+                && session.OverrideOutputAudioPort(portOverride, out error);
+        }
+
+        // Null means there's nothing to state - which covers Macs, where there's no receiver to
+        // be pushed off.
         static AVAudioSessionPortOverride? GetPortOverride(AVAudioSessionPortDescription[] outputs) {
             // An external device is the user's own choice of where to listen, so it outranks the
             // speaker default - and clearing the override is also what hands the route back to a
@@ -291,9 +320,11 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
             if (outputs.Any(x => IsExternalPort(x.PortType)))
                 return AVAudioSessionPortOverride.None;
 
-            return outputs.Any(x => x.PortType == AVAudioSession.PortBuiltInReceiver)
-                ? AVAudioSessionPortOverride.Speaker
-                : null;
+            // Unconditional: the session reports the speaker even while a post-VPIO source plays
+            // on the receiver, so the old "only if I see the receiver" test never once fired.
+            return OperatingSystem.IsMacCatalyst()
+                ? null
+                : AVAudioSessionPortOverride.Speaker;
         }
     }
 
@@ -311,13 +342,10 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     {
         Log.LogInformation("Configure: mode={Mode}", mode);
         if (mode is AudioFocusMode.Recording) {
-            // Mode is a sticky global the framework sets, so it has to be stated explicitly in
-            // both directions: VoiceChat carries the PTT call's AEC and must survive under a PTT
-            // owner, but it must go back to Default once the app owns the session again - stacked
-            // under SetVoiceProcessingEnabled, and paired with AllowBluetoothA2DP, it fights the
-            // app's own recording.
+            // VoiceChat carries the PTT call's AEC under a PTT owner. VideoChat, not Default, for
+            // ours: SetVoiceProcessingEnabled replaces Default and drops DefaultToSpeaker with it.
             var sessionMode = Owner == AudioSessionOwner.App
-                ? AVAudioSessionMode.Default
+                ? AVAudioSessionMode.VideoChat
                 : AVAudioSessionMode.VoiceChat;
             session.SetCategory(AVAudioSessionCategory.PlayAndRecord,
                     sessionMode,

@@ -17,7 +17,7 @@ public static class AVAudioPcmBufferExt
 
     public static AVAudioPcmBuffer ToPcmBuffer2(this Span<float> data, AVAudioFormat format)
     {
-        var buffer = new AVAudioPcmBuffer(AudioEngine.VoiceRecordingFormat, (uint)data.Length);
+        var buffer = new AVAudioPcmBuffer(format, (uint)data.Length);
         buffer.SetData(data);
         return buffer;
     }

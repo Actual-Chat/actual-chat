@@ -73,9 +73,15 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     {
         using var _1 = await _lock.Lock(StopToken).ConfigureAwait(false);
         var scope = _activeScopes.Get(requester);
-        if (scope is not null) {
+        if (scope is { IsDisposed: false }) {
             Log.LogInformation("Returning existing scope {Scope} ({Mode})", scope, requester.Kind);
             return scope;
+        }
+        if (scope is not null) {
+            // Its Release is queued behind this very lock; handing it back would let that Release
+            // tear the engine down under whatever the caller starts next.
+            Log.LogInformation("Dropping disposed scope {Scope} ({Mode})", scope, requester.Kind);
+            _activeScopes.TryRemove(requester, scope);
         }
 
         var needsReconfigure = !_isSessionConfigured
@@ -215,9 +221,10 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     {
         using var _1 = await _lock.Lock(cancellationToken).ConfigureAwait(false);
         if (_activeScopes.IsEmpty) {
-            // Nothing wants the session, so recovering it would just re-acquire the cost
-            // SetModeUnsafe released - the next acquire reactivates anyway.
+            // Nothing wants the session; the next acquire reactivates anyway. The flag still has
+            // to go - left set, it disables configuration-change handling for every later scope.
             Log.LogInformation("Recover: no active scopes, leaving the session deactivated");
+            _isSuspended = false;
             return;
         }
 
@@ -302,15 +309,20 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     {
         using var _1 = await _lock.Lock(cancellationToken).ConfigureAwait(false);
         (_isSessionConfigured, _isSessionActivated) = (false, false);
-        if (_activeScopes.IsEmpty)
+        if (_activeScopes.IsEmpty) {
+            _isSuspended = false;
             return;
+        }
 
         var mode = _activeScopes.GetMode();
-        Log.LogWarning("Rebuild: reconfiguring session in {Mode}", mode);
-        AudioEngines.Pause();
+        Log.LogWarning("Rebuild: rebuilding engines and session in {Mode}", mode);
+        // Released, not paused: the reset invalidated these instances, and Apple's contract is
+        // to dispose and rebuild. Pause/Resume left zombies, so the "rebuild" restarted nothing.
+        AudioEngines.Release();
         var setup = await AudioSession.Reconfigure(mode).ConfigureAwait(false);
         (_isSessionConfigured, _isSessionActivated) = (setup.IsConfigured, setup.IsActivated);
-        AudioEngines.Resume(mode);
+        // No Resume: Release cleared _isStarted, so it'd no-op. Recovery is the restore handlers
+        // below plus the capture stall and buffer-low timeouts, which rebuild what was live.
         InvokeRestoreUnsafe();
         _isSuspended = false;
     }
@@ -379,11 +391,20 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
 
     private sealed class Scope(AppleAudioFocusUI owner, AudioFocusRequester requester) : AudioFocusScope
     {
+        private int _isDisposed;
+
         public AudioFocusRequester Requester => requester;
         public AudioFocusRestoreHandler? PendingRestore { get; set; }
+        // Set before Release is queued, so a TryAcquire winning the lock sees it's on its way out.
+        public bool IsDisposed => Volatile.Read(ref _isDisposed) != 0;
 
         public override void Dispose()
-            => _ = owner.Release(requester, this);
+        {
+            if (Interlocked.Exchange(ref _isDisposed, 1) != 0)
+                return;
+
+            _ = owner.Release(requester, this);
+        }
     }
 
     private sealed class ActiveScopes(ILogger log) : IDisposable
@@ -413,7 +434,10 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
 
         public bool TryRemove(AudioFocusRequester requester, Scope scope)
         {
-            if (!_byMode[requester.Kind].Remove(requester, out var existing)) {
+            // Peek before removing: removing first evicted whoever held the key, so a late
+            // Release for a superseded scope threw away the live scope that replaced it.
+            var scopes = _byMode[requester.Kind];
+            if (!scopes.TryGetValue(requester, out var existing)) {
                 log.LogWarning("Requester {Requester} not found in active scopes", requester);
                 return false;
             }
@@ -426,6 +450,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
                 return false;
             }
 
+            scopes.Remove(requester);
             return true;
         }
 

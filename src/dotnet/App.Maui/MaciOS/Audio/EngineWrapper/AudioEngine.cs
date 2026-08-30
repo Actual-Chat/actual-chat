@@ -14,21 +14,27 @@ namespace ActualChat.App.Maui.Audio;
 /// <summary>
 /// An <see cref="AVAudioEngine"/> that exists only while it has at least one player node.
 /// </summary>
-public class AudioEngine : IDisposable
+public sealed class AudioEngine : IDisposable
 {
-    public static readonly AVAudioFormat VoicePlaybackFormat = new (AVAudioCommonFormat.PCMFloat32, Constants.Audio.PlaybackSampleRate, 1, false);
-    public static readonly AVAudioFormat VoiceRecordingFormat = new (AVAudioCommonFormat.PCMFloat32, Constants.Audio.RecordingSampleRate, 1, false);
+    public static readonly AVAudioFormat VoicePlaybackFormat =
+        new (AVAudioCommonFormat.PCMFloat32, Constants.Audio.PlaybackSampleRate, 1, false);
+    public static readonly AVAudioFormat VoiceRecordingFormat =
+        new (AVAudioCommonFormat.PCMFloat32, Constants.Audio.RecordingSampleRate, 1, false);
+    private static readonly AVAudioFormat SilentOutputFormat =
+        new (AVAudioCommonFormat.PCMFloat32, Constants.Audio.PlaybackSampleRate, 2, false);
 
     private readonly Lock _lock = new ();
     private readonly ComputedState<bool> _isRunning;
     private readonly Debouncer<Unit> _idleReleaseDebouncer;
     private readonly List<PlayerNode> _playerNodes = new();
+    private readonly bool _hasSilentOutput;
     private AVAudioEngine? _engine;
+    private AVAudioPlayerNode? _silentOutputNode;
     private InputNode? _inputNode;
     private bool _isStarted;
     private bool _isDisposed;
     private AudioFocusMode Mode { get; }
-    private AppUIHub Hub { get;  }
+    private AppUIHub Hub { get; }
     private ILogger Log => field ??= Hub.LogFor(GetType());
     public IState<bool> IsRunning => _isRunning;
 
@@ -41,10 +47,15 @@ public class AudioEngine : IDisposable
 
     private AVAudioEngine EngineUnsafe => _engine ??= new AVAudioEngine();
 
-    public AudioEngine(AudioFocusMode mode, AppUIHub hub, TimeSpan idleReleaseDelay = default)
+    public AudioEngine(
+        AudioFocusMode mode,
+        AppUIHub hub,
+        TimeSpan idleReleaseDelay = default,
+        bool hasSilentOutput = false)
     {
         Mode = mode;
         Hub = hub;
+        _hasSilentOutput = hasSilentOutput;
         _isRunning = hub.StateFactory.NewComputed(GetIsRunning, StateCategories.Get(GetType(), nameof(IsRunning)));
         _idleReleaseDebouncer = Debouncer.New<Unit>(idleReleaseDelay, ReleaseIfIdle);
     }
@@ -124,6 +135,8 @@ public class AudioEngine : IDisposable
                 // that's the only thing observed to bring the sound back after a change.
                 foreach (var playerNode in playerNodes)
                     engine.Connect(playerNode.Node, engine.MainMixerNode, playerNode.Format);
+                if (_silentOutputNode is { } silentOutputNode)
+                    engine.Connect(silentOutputNode, engine.MainMixerNode, SilentOutputFormat);
             }
             if (!TryEnsureEngineRunningUnsafe()) {
                 Log.LogWarning("{Mode}.Reconnect: Engine failed, attempting reset", Mode);
@@ -236,15 +249,32 @@ public class AudioEngine : IDisposable
         if (_engine is null)
             return;
 
+        // Every native call here is wrapped: after a media-services reset the engine and its
+        // nodes are already invalid, and this is the path that has to dispose them anyway.
         // Reached through the cached wrapper, never through Input - see Release().
-        _inputNode?.Reset();
-        _engine.Stop();
+        InvokeSilently(() => _inputNode?.Reset());
+        InvokeSilently(() => _engine.Stop());
         // Before the engine, so the node is released while the graph that owns it is still there.
-        _inputNode?.Dispose();
+        InvokeSilently(() => _inputNode?.Dispose());
+        if (_silentOutputNode is { } silentOutput) {
+            InvokeSilently(() => _engine.DetachNode(silentOutput));
+            silentOutput.DisposeSilently();
+            _silentOutputNode = null;
+        }
         _engine.DisposeSilently();
         _engine = null;
         _inputNode = null;
         _isStarted = false;
+        return;
+
+        void InvokeSilently(Action action) {
+            try {
+                action.Invoke();
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "{Mode}.ReleaseUnsafe: a native call failed, continuing", Mode);
+            }
+        }
     }
 
     private void DisposeNode(AVAudioNode node)
@@ -266,6 +296,7 @@ public class AudioEngine : IDisposable
     private void EnsureEngineRunningUnsafe()
     {
         var engine = EngineUnsafe;
+        EnsureSilentOutputUnsafe();
         if (!engine.Running) {
             Log.LogInformation("{Mode}.EnsureEngineRunningUnsafe: Engine not running, starting", Mode);
             engine.StartAndReturnError(out var nsError);
@@ -274,15 +305,30 @@ public class AudioEngine : IDisposable
         _isStarted = true;
     }
 
+    private void EnsureSilentOutputUnsafe()
+    {
+        // Owned by the engine, not by a capture: it's what gives VoiceProcessingIO an output side,
+        // and it must never reach _playerNodes, whose emptying is what releases the engine.
+        if (!_hasSilentOutput || _silentOutputNode is not null)
+            return;
+
+        var engine = EngineUnsafe;
+        _silentOutputNode = new AVAudioPlayerNode();
+        engine.AttachNode(_silentOutputNode);
+        engine.Connect(_silentOutputNode, engine.MainMixerNode, SilentOutputFormat);
+    }
+
     private bool TryEnsureEngineRunningUnsafe()
     {
         var engine = EngineUnsafe;
+        EnsureSilentOutputUnsafe();
         if (engine.Running)
             return true;
 
         Log.LogInformation("{Mode}.TryEnsureEngineRunningUnsafe: Engine not running, attempting to start", Mode);
         if (!engine.StartAndReturnError(out var nsError)) {
-            Log.LogWarning("{Mode}.TryEnsureEngineRunningUnsafe: Failed to start: {Error}", Mode, nsError.LocalizedDescription);
+            Log.LogWarning("{Mode}.TryEnsureEngineRunningUnsafe: Failed to start: {Error}",
+                Mode, nsError.LocalizedDescription);
             return false;
         }
         _isStarted = true;
