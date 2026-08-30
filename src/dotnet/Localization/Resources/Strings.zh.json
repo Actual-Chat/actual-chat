@@ -77,6 +77,14 @@
   "ThemeSettings_Dark": "深色",
   "ThemeSettings_MatchSystem": "跟随系统主题",
 
+  "CarAudio_Microphone": "麦克风",
+  "CarAudio_MicrophoneCaption": "使用手机的麦克风",
+  "CarAudio_Output": "声音",
+  "CarAudio_OutputCaption": "通过车载扬声器播放",
+  "CarAudio_Auto": "自动",
+  "CarAudio_Phone": "手机",
+  "CarAudio_Car": "车",
+
   "Transcription_Languages": "语言",
   "Transcription_PrimaryLanguage": "主要语言",
   "Transcription_SecondLanguage": "第二语言",

@@ -112,6 +112,14 @@
   "ThemeSettings_Dark": "Sombre",
   "ThemeSettings_MatchSystem": "Zgodny z motywem systemu",
 
+  "CarAudio_Microphone": "माइक्रोफ़ोन",
+  "CarAudio_MicrophoneCaption": "Використовується мікрофон телефону",
+  "CarAudio_Output": "Âm thanh",
+  "CarAudio_OutputCaption": "Gibt über die Lautsprecher des Autos wieder",
+  "CarAudio_Auto": "Автоматически",
+  "CarAudio_Phone": "Téléphone",
+  "CarAudio_Car": "Samochód",
+
   // Settings > Voice & Transcription. These are the *spoken* languages a user's speech is
   // transcribed from - unrelated to the UI language above. ListeningLinger_* fills the
   // dropdown for how long listening continues after a conversation ends.

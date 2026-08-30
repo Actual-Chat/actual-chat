@@ -77,6 +77,14 @@
   "ThemeSettings_Dark": "Тъмна",
   "ThemeSettings_MatchSystem": "Според системната тема",
 
+  "CarAudio_Microphone": "Микрофон",
+  "CarAudio_MicrophoneCaption": "Използва се микрофонът на телефона",
+  "CarAudio_Output": "Звук",
+  "CarAudio_OutputCaption": "Използват се говорителите на колата",
+  "CarAudio_Auto": "Автоматично",
+  "CarAudio_Phone": "Телефон",
+  "CarAudio_Car": "Кола",
+
   "Transcription_Languages": "Езици",
   "Transcription_PrimaryLanguage": "Основен език",
   "Transcription_SecondLanguage": "2-ри език",
