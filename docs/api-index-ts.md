@@ -430,7 +430,6 @@ See also: [C# Full API Index](api-index-full.md), [Condensed API Index](api-inde
 - `ChatActivityPanel` (class) - Chat activity display panel.
 - `ActiveRecordingSvg` (class) - Active recording indicator SVG.
 - `NarrowRecordingSvg` (class) - Narrow recording indicator SVG.
-- `PlaybackToggle` (class) - Audio playback toggle control.
 - `RecorderToggle` (class) - Recording toggle control.
 - `AttachmentWebFilePickerRegistry` (class) - Registry for file picker backends.
 - `PickFileResult` (interface) - File picker result.

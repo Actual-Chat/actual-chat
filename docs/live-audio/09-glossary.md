@@ -190,9 +190,9 @@ src/dotnet/
    │  ├ workers/opus-decoder-worker*.ts, opus-decoder.ts
    │  └ worklets/feeder-audio-worklet-{processor,node,contract}.ts
    ├ Components/ChatAudioPanel/
-   │  ├ ChatAudioPanel.razor, RecorderToggle.razor, PlaybackToggle.razor
-   │  ├ VoiceSettings*.razor, VideoToggle.razor
-   │  └ {recorder-toggle,playback-toggle}.ts, *-svg.lit.ts
+   │  ├ ChatAudioPanel.razor, RecorderToggle.razor
+   │  ├ VoiceSettings*.razor, VideoToggle.razor, LanguageButtonGroup.razor
+   │  └ recorder-toggle.ts, *-svg.lit.ts
    └ Services/
       ├ AudioInitializer.cs, audio-initializer.ts
       ├ ChatAudioUI.cs, ChatAudioUI.{Players,StateSync}.cs
