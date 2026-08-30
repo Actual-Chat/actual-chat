@@ -202,6 +202,15 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         _hasFocus = result == AudioFocusRequest.Granted;
         _isCommunicationFocus = _hasFocus && isCommunication;
         _log.LogInformation("Requested audio focus for '{Usage}', granted = {Result}", audioUsageKind, _hasFocus);
+        if (isCommunication && !_hasFocus) {
+            // The mode was raised before the request, and a denial - the normal answer during a
+            // real phone call, which is exactly when a PTT wake arrives - used to leave it on
+            // InCommunication with no focus. Nothing resets it after that: AbandonFocus is
+            // unreachable because the failure path nulls _focusRequest, so ringtones and media
+            // kept routing to the earpiece until some later full cycle happened to fix it.
+            _log.LogWarning("Audio focus denied for '{Usage}' - restoring Mode.Normal", audioUsageKind);
+            _audioManager.Mode = Mode.Normal;
+        }
 
         // After gaining focus, apply routing preference (handles external devices like Bluetooth)
         if (_hasFocus && isCommunication)

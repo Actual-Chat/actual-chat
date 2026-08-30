@@ -281,6 +281,14 @@ internal sealed class AndroidAudioPlaybackEngine(
                     var written = await audioTrack
                         .WriteAsync(audioData, skip, playSamples, WriteMode.Blocking)
                         .ConfigureAwait(false);
+                    if (written < 0) {
+                        // An AudioTrack error code - ERROR_DEAD_OBJECT after an audioserver restart
+                        // or a route teardown. The track still reports Initialized/Playing, so
+                        // CanContinuePlaying never trips and later writes discard audio in silence.
+                        _frames.Complete();
+                        throw StandardError.External($"AudioTrack.Write failed with {written}.");
+                    }
+
                     // Interlocked, not Volatile.Write: this publishes a delta, not the latest value.
                     if (written > 0)
                         Interlocked.Add(ref _fedSampleCount, written);
@@ -398,7 +406,19 @@ internal sealed class AndroidAudioPlaybackEngine(
         if (pauseEndTokenSource is null)
             return;
 
-        await TaskExt.NeverEnding(pauseEndTokenSource.Token).SilentAwait(false);
+        CancellationToken pauseEndToken;
+        try {
+            pauseEndToken = pauseEndTokenSource.Token;
+        }
+        catch (ObjectDisposedException) {
+            // Resume() and End() cancel-and-dispose this source from the command loop, racing the
+            // read above. A disposed source means the pause is already over, so returning is
+            // right - and the alternative was this exception reaching DecodeAndFeed's catch and
+            // ending a live track, on a path that runs every time focus churns.
+            return;
+        }
+
+        await TaskExt.NeverEnding(pauseEndToken).SilentAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
     }
 
