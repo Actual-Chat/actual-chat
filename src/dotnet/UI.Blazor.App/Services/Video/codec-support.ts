@@ -146,7 +146,8 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
     }
     const results: CodecInfo[] = [];
     for (const { category } of probeList) {
-        const ladder = getEncoderCodecLadder(category, width, height);
+        const ladder = getEncoderCodecLadder(category, width, height)
+            .filter(c => !excludedEncoderCodecStrings.has(c));
         let chosen: { codec: string; hardwareAccelerated: boolean } | null = null;
         for (const codec of ladder) {
             const { supported, hardwareAccelerated } = await isCodecSupported(codec, category, width, height);
@@ -155,7 +156,8 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
                 break;
             }
         }
-        const codec = chosen?.codec ?? ladder[0];
+        const codec = chosen?.codec
+            ?? (ladder.length > 0 ? ladder[0] : getCodecForCategory(category, width, height));
         results.push({
             name: getCodecProfileName(codec) ?? codec,
             codec,
@@ -464,7 +466,10 @@ export function getDefaultCodec(supportedCodecs: CodecInfo[], width: number, hei
     );
     if (anyH264) return anyH264.codec;
 
-    return getCodecForCategory('h264', width, height);
+    const ladder = getEncoderCodecLadder('h264', width, height)
+        .filter(c => !excludedEncoderCodecStrings.has(c));
+
+    return ladder.length > 0 ? ladder[0] : getCodecForCategory('h264', width, height);
 }
 
 export async function getAV1CodecSupport(): Promise<CodecInfo[]> {
@@ -503,6 +508,26 @@ async function isDecoderCodecSupported(codec: string, width: number, height: num
 // Categories that probe as supported but fail at runtime configure() on this
 // device. Mirrors excludedDecoderCodecs.
 const excludedEncoderCodecs = new Set<string>();
+// Individual profiles that failed configure() on this device, e.g. a specific
+// avc1.* string. Independent of the category set above.
+const excludedEncoderCodecStrings = new Set<string>();
+
+// Excludes one exact profile rather than a whole category. H.264 has no
+// category to fall back to, so `excludeEncoderCodec` refuses to drop it and a
+// failed avc1.640028 would otherwise be re-picked forever; dropping just that
+// string still leaves Main and Constrained Baseline to try.
+export function excludeEncoderCodecString(codec: string): void {
+    if (excludedEncoderCodecStrings.has(codec))
+        return;
+
+    warnLog?.log(`Excluding encoder codec: ${codec}`);
+    excludedEncoderCodecStrings.add(codec);
+    encoderCodecCache.clear();
+}
+
+export function isEncoderCodecStringExcluded(codec: string): boolean {
+    return excludedEncoderCodecStrings.has(codec);
+}
 
 export function excludeEncoderCodec(category: string): void {
     if (category === 'h264') return; // never exclude — universal fallback

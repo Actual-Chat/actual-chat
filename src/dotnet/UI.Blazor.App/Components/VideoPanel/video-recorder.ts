@@ -55,6 +55,7 @@ import {
     getActiveEncoderCategoriesByPriority,
     probeEncoder,
     excludeEncoderCodec,
+    excludeEncoderCodecString,
     isEncoderCodecExcluded,
     isEncoderCodecProven,
     markEncoderCodecProven,
@@ -1939,8 +1940,13 @@ export class VideoRecorder {
                         warnLog?.log(
                             `RecorderWorker: encoder init failure for codec=${failedCodec} ` +
                             `(category=${failedCategory}) — excluding and re-picking`);
+                        // Always drop the exact profile: excludeEncoderCodec refuses to
+                        // drop the h264 category, so without this the same string is
+                        // re-picked on every attempt.
+                        if (failedCodec)
+                            excludeEncoderCodecString(failedCodec);
                         excludeEncoderCodec(failedCategory);
-                        void this.repickCodecAndRestart(`encoder init failed: ${failedCategory}`);
+                        void this.repickCodecAndRestart(`encoder init failed: ${failedCodec ?? failedCategory}`);
                         return;
                     }
                     if (failedCategory && isEncoderCodecProven(failedCategory))
@@ -2259,7 +2265,7 @@ export class VideoRecorder {
             if (nextCodec === this.currentCodecString) {
                 warnLog?.log(
                     `repickCodecAndRestart: re-pick returned same codec ${nextCodec} ` +
-                    `— excluded category may already be h264 or no fallback exists; ` +
+                    `— every profile in its ladder is excluded or unsupported; ` +
                     `falling back to scheduleRecovery`);
                 this.scheduleRecovery(reason);
                 return;
@@ -2378,6 +2384,7 @@ export class VideoRecorder {
 
         const currentCategory = getCodecCategory(this.currentCodecString);
         if (currentCategory !== 'h264') {
+            excludeEncoderCodecString(this.currentCodecString);
             excludeEncoderCodec(currentCategory);
             this.recoveryAttempts = 0;
             infoLog?.log(
