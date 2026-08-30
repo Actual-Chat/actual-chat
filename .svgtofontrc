@@ -2,5 +2,6 @@
     "fontName": "icon",
     "emptyDist": true,
     "css": true,
-    "outSVGReact": false
+    "outSVGReact": false,
+    "excludeFormat": ["eot", "woff", "ttf", "svg", "symbol.svg"]
 }
