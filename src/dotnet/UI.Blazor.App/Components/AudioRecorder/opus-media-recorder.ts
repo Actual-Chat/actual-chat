@@ -641,9 +641,9 @@ export class OpusMediaRecorder implements RecorderStateServer {
         } catch (e) {
             await this.stopMicrophoneStream();
             warnLog?.log('startMicrophoneStream(): getMicrophoneStream() failed:', e);
-            // Still swallowed, but reported: above here only the absence of a stream was visible.
-            if (this.chatId)
-                AudioRecorderState.setFailed(this.chatId, e);
+            // Rethrown so start()'s handler runs: swallowing it left state === 'recording' and
+            // the heartbeat alive for a pipeline with no microphone behind it.
+            throw e;
         }
     }
 
