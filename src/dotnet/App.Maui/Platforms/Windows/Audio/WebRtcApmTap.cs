@@ -5,7 +5,8 @@ namespace ActualChat.App.Maui.Audio;
 /// <summary>
 /// Records the exact frames <see cref="WindowsAudioCapture"/> hands the APM, so the
 /// render/capture alignment can be replayed and measured offline. Enabled by creating
-/// an <c>aec-tap.on</c> file in the app data directory.
+/// an <c>aec-tap.on</c> file in the app data directory. Dev builds only - it writes raw
+/// microphone audio to disk, so the marker isn't even looked for in a production build.
 /// </summary>
 public sealed class WebRtcApmTap
 {
@@ -29,6 +30,10 @@ public sealed class WebRtcApmTap
 
     public static WebRtcApmTap? TryStart(ILogger log)
     {
+#if !IS_DEV_MAUI
+        _ = log;
+        return null;
+#else
         try {
             if (!File.Exists((FilePath)FileSystem.AppDataDirectory & MarkerFileName))
                 return null;
@@ -40,6 +45,7 @@ public sealed class WebRtcApmTap
             log.LogWarning(e, "Failed to start the APM tap");
             return null;
         }
+#endif
     }
 
     private WebRtcApmTap(ILogger log)
