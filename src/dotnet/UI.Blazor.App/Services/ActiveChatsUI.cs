@@ -80,15 +80,15 @@ public class ActiveChatsUI : UIServiceBase<AppUIHub>
             .Collect(ApiConstants.Concurrency.High, cancellationToken)
             .ConfigureAwait(false);
 
-        var recordingChat = chatsAndRules
+        var recordingChatId = chatsAndRules
             .Where(x => x.Chat.IsRecording && x.Rules.CanWrite())
             .OrderByDescending(x => x.Chat.Recency)
             .FirstOrDefault()
-            .Chat;
+            .Chat?.ChatId;
         foreach (var (chat, rules) in chatsAndRules) {
-            // There must be just 1 recording chat
+            // There must be just 1 recording chat, and none when write access is gone
             var newChat = chat;
-            if (newChat.IsRecording && newChat.ChatId != recordingChat.ChatId)
+            if (newChat.IsRecording && newChat.ChatId != recordingChatId)
                 newChat = newChat with { IsRecording = false };
             if (!(newChat.IsListening || newChat.IsRecording)) // Must be active
                 newChat = null;

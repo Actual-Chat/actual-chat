@@ -49,9 +49,7 @@ public partial class ChatAudioUI
         // A SetListeningState landing before the stored active chats are read would make
         // StoredState discard them.
         await ActiveChatsUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
-        var chatIdsToListenTo = await GetChatsYouNeedToKeepListeningTo(cancellationToken).ConfigureAwait(false);
-        foreach (var chatId in chatIdsToListenTo)
-            await SetListeningState(chatId, true).ConfigureAwait(false);
+        await RestoreKeepListeningChats(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task StopListeningWhenPttDisarmed(CancellationToken cancellationToken)
@@ -150,7 +148,7 @@ public partial class ChatAudioUI
                     nameof(PushRecordingState) + ": retrying recorder for chat #{ChatId} (attempt {Attempt})",
                     intendedChatId, restartAttempt);
             await BackgroundTask.Run(
-                () => RecordChat(cRecordingState, cancellationToken),
+                () => RecordChat(cRecordingState, restartAttempt > 0, cancellationToken),
                 Log, $"{nameof(RecordChat)} failed",
                 cancellationToken
                 ).SilentAwait(false);
@@ -162,14 +160,17 @@ public partial class ChatAudioUI
                 restartAttempt++;
                 var delay = restartDelays[restartAttempt];
                 Log.LogWarning(
-                    nameof(PushRecordingState) + ": recorder for chat #{ChatId} exited with user intent intact (attempt {Attempt}); restarting in {Delay}",
+                    nameof(PushRecordingState)
+                    + ": recorder for chat #{ChatId} exited with user intent intact"
+                    + " (attempt {Attempt}); restarting in {Delay}",
                     intendedChatId, restartAttempt, delay);
                 await Clocks.CpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
             else {
                 if (restartAttempt > 0)
                     Log.LogInformation(
-                        nameof(PushRecordingState) + ": recorder for chat #{ChatId} stopped after {Attempt} restart attempt(s)",
+                        nameof(PushRecordingState)
+                        + ": recorder for chat #{ChatId} stopped after {Attempt} restart attempt(s)",
                         intendedChatId, restartAttempt);
                 restartAttempt = 0;
             }
@@ -191,11 +192,16 @@ public partial class ChatAudioUI
             var chatId = cRecordingState.Value.ChatId;
             if (_replayState.Value is { } replayState && replayState.ChatId != chatId)
                 StopReplay();
-            cRecordingState = await cRecordingState.When(x => x.ChatId is null || x.ChatId != chatId, cancellationToken).ConfigureAwait(false);
+            cRecordingState = await cRecordingState
+                .When(x => x.ChatId is null || x.ChatId != chatId, cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 
-    private async Task RecordChat(Computed<RecordingState> cRecordingState, CancellationToken cancellationToken)
+    private async Task RecordChat(
+        Computed<RecordingState> cRecordingState,
+        bool isRestart,
+        CancellationToken cancellationToken)
     {
         AudioInitializer.StartInitialization();
         var serverClock = Clocks.ServerClock;
@@ -235,8 +241,10 @@ public partial class ChatAudioUI
             // audioSession is set to 'play-and-record' after getUserMedia,
             // and WebKit AEC does not register the DestinationFallbackTrait
             // playback path, so a tune playing into a live mic feeds back.
-            await TuneUI.PlayAndWait(Tune.BeginRecording, mustPlay: !Volatile.Read(ref _isBeginTuneSuppressed))
-                .ConfigureAwait(false);
+            // A restart is the recorder recovering, not the user starting: chiming on each one
+            // turns a run of capture failures into a burst of tones.
+            var mustPlayBeginTune = !isRestart && !Volatile.Read(ref _isBeginTuneSuppressed);
+            await TuneUI.PlayAndWait(Tune.BeginRecording, mustPlay: mustPlayBeginTune).ConfigureAwait(false);
             // Install before StartRecording so we don't miss a fast false→true→false
             // transition (e.g., pipeline dies during JS init).
             var whenRecorderStopped = ForegroundTask.Run(async () => {
@@ -272,13 +280,20 @@ public partial class ChatAudioUI
                 }
             }, abortToken);
             whenWinner = await Task.WhenAny(whenStopped, whenIdle, whenRecorderStopped).ConfigureAwait(false);
-            // No need to await for the result of WhenAny: we're stopping anyway
+            // Task.WhenAny never throws, so a faulted watcher wins the race indistinguishably from
+            // a clean one - and a faulted whenIdle would read as a genuine idle timeout below.
+            if (whenWinner is { IsCompletedSuccessfully: false, IsCanceled: false })
+                Log.LogError(whenWinner.Exception,
+                    nameof(RecordChat) + ": a recording watcher failed for chat #{ChatId}",
+                    chatId);
         }
         finally {
             abortTokenSource.CancelAndDisposeSilently();
             _stopRecordingAt.Value = null;
-            // Use winner identity, not whenIdle.IsCompleted: the latter races with abortToken-triggered cancellation
-            if (ReferenceEquals(whenWinner, whenIdle)) {
+            // Winner identity, not whenIdle.IsCompleted: the latter races with abortToken-triggered
+            // cancellation. Identity also means it completed before that cancellation, so the
+            // success check below can only reject a watcher that actually failed.
+            if (ReferenceEquals(whenWinner, whenIdle) && whenIdle.IsCompletedSuccessfully) {
                 Log.LogInformation(
                     nameof(RecordChat) + ": idle threshold reached for chat #{ChatId}, stopping recording",
                     chatId);
@@ -292,7 +307,8 @@ public partial class ChatAudioUI
                     break;
                 }
                 if (tryIndex >= MaxStopRecordingTryCount) {
-                    Log.LogError(nameof(RecordChat) + ": couldn't stop recording in {TryCount} tries", MaxStopRecordingTryCount);
+                    Log.LogError(nameof(RecordChat) + ": couldn't stop recording in {TryCount} tries",
+                        MaxStopRecordingTryCount);
                     break;
                 }
 
@@ -405,7 +421,8 @@ public partial class ChatAudioUI
             var delay = restartDelays[restartAttempt];
             Log.LogWarning(
                 nameof(KeepListeningPlayerAlive)
-                + ": listener for chat #{ChatId} exited with user intent intact (attempt {Attempt}); restarting in {Delay}",
+                + ": listener for chat #{ChatId} exited with user intent intact"
+                + " (attempt {Attempt}); restarting in {Delay}",
                 chatId, restartAttempt, delay);
             await Clocks.CpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
         }
@@ -467,7 +484,9 @@ public partial class ChatAudioUI
                 _ = BackgroundTask.Run(async () => {
                     var endPlaybackTask = await startTask.ConfigureAwait(false);
                     await endPlaybackTask.ConfigureAwait(false);
-                    await Clocks.CpuClock.Delay(RestorePreviousPlaybackStateDelay, cancellationToken).ConfigureAwait(false);
+                    await Clocks.CpuClock
+                        .Delay(RestorePreviousPlaybackStateDelay, cancellationToken)
+                        .ConfigureAwait(false);
                     // Don't clear state if it was paused or changed since we started
                     var currentState = _replayState.Value;
                     if (ReferenceEquals(currentState, newState))
@@ -812,10 +831,13 @@ public partial class ChatAudioUI
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         while (!cancellationToken.IsCancellationRequested) {
-            var cNextBeep = await _nextBeep.Computed.When(x => x != null && x.At > CpuNow, cancellationToken).ConfigureAwait(false);
+            var cNextBeep = await _nextBeep.Computed
+                .When(x => x != null && x.At > CpuNow, cancellationToken)
+                .ConfigureAwait(false);
             var nextBeepAt = cNextBeep.Value!.At;
             var nextBeepIn = nextBeepAt - CpuNow;
-            await Task.Delay(TimeSpanExt.Max(nextBeepIn, TimeSpan.FromMilliseconds(50)), cancellationToken).ConfigureAwait(false);
+            await Task.Delay(TimeSpanExt.Max(nextBeepIn, TimeSpan.FromMilliseconds(50)), cancellationToken)
+                .ConfigureAwait(false);
             if (!await IsNotCancelled(nextBeepAt).ConfigureAwait(false))
                 continue;
 
@@ -956,7 +978,8 @@ public partial class ChatAudioUI
     }
 
     [ComputeMethod]
-    protected virtual async Task<(ChatId? ChatId, bool IsTroubleshootRequired)> GetRecordingTroubleshootState(CancellationToken cancellationToken)
+    protected virtual async Task<(ChatId? ChatId, bool IsTroubleshootRequired)> GetRecordingTroubleshootState(
+        CancellationToken cancellationToken)
     {
         var chatId = await GetRecordingChatId().ConfigureAwait(false);
         var state = await AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
@@ -1019,9 +1042,11 @@ public partial class ChatAudioUI
             // The holds are observed by invalidation rather than polled: HasActivity is a level
             // that clears at the end of every VAD utterance, so a sampled reading anchors the
             // countdown to whichever pause the sample landed in, not to the end of the conversation.
-            var isHeld = cHasActivity.Value
-                || cIsWatching.Value
-                || cOwnSourceKind.Value is not null;
+            // HasError first: reading an errored dependency would end this method, which
+            // RecordChat takes for an idle timeout. Unreadable counts as held.
+            var isHeld = cHasActivity.HasError || cHasActivity.Value
+                || cIsWatching.HasError || cIsWatching.Value
+                || cOwnSourceKind.HasError || cOwnSourceKind.Value is not null;
             if (isHeld) {
                 yield return null; // No countdown
 

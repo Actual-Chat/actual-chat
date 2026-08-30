@@ -274,13 +274,11 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
     private void MarkStarting(ChatId chatId)
     {
+        // Per-session flags belong to the session that just ended; only IsConnected is transport-level.
         var currentState = State.Value;
         var (_, isRecording, isSignalDetected, isConnected, isVoiceActive) = currentState;
         UpdateState(new AudioRecorderState(chatId) {
-            IsRecording = isRecording,
-            IsSignalDetected = isSignalDetected,
             IsConnected = isConnected,
-            IsVoiceActive = isVoiceActive,
             RecordingStartTime = currentState.RecordingStartTime,
         });
         // ReSharper disable once ExplicitCallerInfoArgument

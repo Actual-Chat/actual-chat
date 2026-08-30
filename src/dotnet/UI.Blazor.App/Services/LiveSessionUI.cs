@@ -18,6 +18,9 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(45);
     // Give up watching if the call we just started never shows up as dialing.
     private static readonly TimeSpan DialingWaitTimeout = TimeSpan.FromSeconds(15);
+    // How long a mute verdict must survive before it stops a recording - long enough for a
+    // peer's own mute lift to come back from the server, short enough to feel immediate.
+    private static readonly TimeSpan MuteEnforcementDelay = TimeSpan.FromSeconds(1);
 
     private static readonly string JSStartRingback = $"{BlazorUIAppModule.ImportName}.OutgoingCallRingback.start";
     private static readonly string JSStopRingback = $"{BlazorUIAppModule.ImportName}.OutgoingCallRingback.stop";
@@ -150,13 +153,29 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         return await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false);
     }
 
-    public Task SetParticipation(ChatId chatId, ParticipationKind kind, bool isActive, CancellationToken cancellationToken)
+    public Task SetParticipation(
+        ChatId chatId,
+        ParticipationKind kind,
+        bool isActive,
+        CancellationToken cancellationToken)
         => LiveSessions.SetParticipation(Session, chatId, kind, isActive, cancellationToken);
 
-    protected override async Task OnRun(CancellationToken cancellationToken)
-        => await Task.WhenAll(
-            RunParticipationSync(cancellationToken),
-            RunMuteEnforcement(cancellationToken)).ConfigureAwait(false);
+    protected override Task OnRun(CancellationToken cancellationToken)
+    {
+        // Retried rather than awaited together: UIWorkerBase never restarts a worker that threw,
+        // so one errored computed used to end participation reporting for the rest of the session.
+        var baseChains = new[] {
+            AsyncChain.From(RunParticipationSync),
+            AsyncChain.From(RunMuteEnforcement),
+        };
+        var retryDelays = RetryDelaySeq.Exp(0.5, 8);
+        return (
+            from chain in baseChains
+            select chain
+                .Log(LogLevel.Debug, Log)
+                .RetryForever(retryDelays, Log)
+            ).RunIsolated(cancellationToken);
+    }
 
     private async Task RunParticipationSync(CancellationToken cancellationToken)
     {
@@ -167,21 +186,25 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         var lastHeartbeatAt = Clocks.CpuClock.Now;
         try {
             while (!cancellationToken.IsCancellationRequested) {
-                var next = cParticipations.Value;
-                var now = Clocks.CpuClock.Now;
-                var isHeartbeat = now - lastHeartbeatAt >= HeartbeatInterval;
-                if (isHeartbeat)
-                    lastHeartbeatAt = now;
+                // Reading an errored computed would throw and drop every reported participation;
+                // skipping the pass keeps them until the next recompute succeeds.
+                if (!cParticipations.HasError) {
+                    var next = cParticipations.Value;
+                    var now = Clocks.CpuClock.Now;
+                    var isHeartbeat = now - lastHeartbeatAt >= HeartbeatInterval;
+                    if (isHeartbeat)
+                        lastHeartbeatAt = now;
 
-                foreach (var chatId in current.Keys.Except(next.Keys).ToList()) {
-                    await SetParticipation(chatId, current[chatId], false, cancellationToken).ConfigureAwait(false);
-                    current.Remove(chatId);
-                }
-                foreach (var (chatId, kind) in next)
-                    if (isHeartbeat || !current.TryGetValue(chatId, out var existing) || existing != kind) {
-                        await SetParticipation(chatId, kind, true, cancellationToken).ConfigureAwait(false);
-                        current[chatId] = kind;
+                    foreach (var chatId in current.Keys.Except(next.Keys).ToList()) {
+                        await SetParticipation(chatId, current[chatId], false, cancellationToken).ConfigureAwait(false);
+                        current.Remove(chatId);
                     }
+                    foreach (var (chatId, kind) in next)
+                        if (isHeartbeat || !current.TryGetValue(chatId, out var existing) || existing != kind) {
+                            await SetParticipation(chatId, kind, true, cancellationToken).ConfigureAwait(false);
+                            current[chatId] = kind;
+                        }
+                }
 
                 using var cts = cancellationToken.CreateLinkedTokenSource();
                 var whenInvalidated = cParticipations.WhenInvalidated(cts.Token);
@@ -196,23 +219,37 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         }
     }
 
-    // Soft mute enforcement: when the host turns off my recording (MicMuted) — either
-    // per-peer or via mute-all — my own recorder stops and I'm told why. MicMuted is
-    // peer-revocable: tapping record clears it (see RecorderToggle).
     private async Task RunMuteEnforcement(CancellationToken cancellationToken)
     {
+        // Soft mute enforcement: when the host turns off my recording (MicMuted) — either
+        // per-peer or via mute-all — my own recorder stops and I'm told why. MicMuted is
+        // peer-revocable: tapping record clears it (see RecorderToggle).
         var cMuted = await Computed
             .Capture(() => GetMutedRecordingChat(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         while (!cancellationToken.IsCancellationRequested) {
-            if (cMuted.Value is { } chatId && !chatId.Value.IsNullOrEmpty()) {
-                await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
-                Hub.ToastUI.Show(L.Call_RecordingTurnedOffByHost, "icon-mic-off", ToastDismissDelay.Short);
+            if (IsMuted(cMuted)) {
+                // Tapping record lifts the mute server-side before it sets the recording intent,
+                // but only the intent invalidates locally - the lifted session snapshot arrives a
+                // round trip later. Acting on the first read would stop the recording it was for.
+                await Clocks.CpuClock.Delay(MuteEnforcementDelay, cancellationToken).ConfigureAwait(false);
+                cMuted = await cMuted.Update(cancellationToken).ConfigureAwait(false);
+                if (IsMuted(cMuted)) {
+                    await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
+                    Hub.ToastUI.Show(L.Call_RecordingTurnedOffByHost, "icon-mic-off", ToastDismissDelay.Short);
+                }
             }
 
             await cMuted.WhenInvalidated(cancellationToken).ConfigureAwait(false);
             cMuted = await cMuted.Update(cancellationToken).ConfigureAwait(false);
         }
+        return;
+
+        // An errored computed must not reach .Value: the throw would take down the whole worker.
+        static bool IsMuted(Computed<ChatId?> computed)
+            => !computed.HasError
+                && computed.Value is { } chatId
+                && !chatId.Value.IsNullOrEmpty();
     }
 
     // Protected/internal methods
@@ -242,7 +279,8 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     }
 
     [ComputeMethod]
-    protected virtual async Task<ImmutableDictionary<ChatId, ParticipationKind>> GetMyParticipations(CancellationToken cancellationToken)
+    protected virtual async Task<ImmutableDictionary<ChatId, ParticipationKind>> GetMyParticipations(
+        CancellationToken cancellationToken)
     {
         var result = ImmutableDictionary.CreateBuilder<ChatId, ParticipationKind>();
         var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
