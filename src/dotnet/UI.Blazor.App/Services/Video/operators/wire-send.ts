@@ -262,6 +262,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                         if (!initSent && isKeyFrame && sender.init) {
                             const description = top.description ?? null;
                             const topCfg = cur[cur.length - 1];
+                            warnOnLayerCodecDivergence(bundle);
                             sender.init({
                                 codec: top.metadata.decoderConfig?.codec ?? topCfg.codec,
                                 width: topCfg.width,
@@ -319,4 +320,22 @@ function bytesToBase64(bytes: Uint8Array): string {
         s += String.fromCharCode(...slice);
     }
     return btoa(s);
+}
+
+// Every layer requests the same profile, so a divergence here can only be a
+// browser-side downgrade on one encoder - survivable, since the receiver's one
+// decoder is configured from the top tier and decodes anything below it.
+function warnOnLayerCodecDivergence(bundle: EncodedBundle): void {
+    const layers = bundle.layers;
+    const topCodec = layers[layers.length - 1].metadata.decoderConfig?.codec;
+    if (!topCodec)
+        return;
+
+    for (const layer of layers) {
+        const codec = layer.metadata.decoderConfig?.codec;
+        if (codec && codec !== topCodec)
+            warnLog?.log(
+                `wireSend: layer ${layer.layerId} encoded as ${codec} but the stream `
+                + `declares ${topCodec} — the receiver configures one decoder for both`);
+    }
 }
