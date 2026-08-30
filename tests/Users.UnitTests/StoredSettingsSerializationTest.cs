@@ -389,6 +389,40 @@ public partial class StoredSettingsSerializationTest
             ],
         });
 
+    [Fact]
+    public void UserCarAudioSettingsUnionRoundTrip()
+    {
+        // arrange
+        var settings = new UserCarAudioSettings {
+            Origin = "union-car-audio-test",
+            Microphone = CarAudioDevice.Phone,
+            Output = CarAudioDevice.Car,
+        };
+
+        // act
+        using var buffer = KvasSerializer.Default.Write<StoredSettings>(settings);
+        var bytes = buffer.WrittenMemory;
+        var result = KvasSerializer.Default.Read<StoredSettings>(ref bytes);
+
+        // assert
+        result.Should().BeOfType<UserCarAudioSettings>();
+        var typed = (UserCarAudioSettings)result!;
+        typed.Origin.Should().Be(settings.Origin);
+        typed.Microphone.Should().Be(CarAudioDevice.Phone);
+        typed.Output.Should().Be(CarAudioDevice.Car);
+    }
+
+    [Fact]
+    public void UserCarAudioSettingsShouldDefaultToAuto()
+    {
+        // arrange & act
+        var settings = new UserCarAudioSettings();
+
+        // assert
+        settings.Microphone.Should().Be(CarAudioDevice.Auto);
+        settings.Output.Should().Be(CarAudioDevice.Auto);
+    }
+
     private static void AssertBaseTypeRoundTrip<T>(T value)
         where T : StoredSettings
     {
