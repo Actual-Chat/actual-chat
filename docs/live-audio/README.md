@@ -14,7 +14,10 @@ the side that adapts in A/V sync.
 The **PTT** layer ([doc 10](./10-push-to-talk.md)) rides on this very
 pipeline: it adds a wake push, a headless playback scope and a push-to-talk
 reply on the mobile apps, but every frame it produces or consumes still travels
-the capture → publish → fan-out → playback path described in docs 02–07.
+the capture → publish → fan-out → playback path described in docs 02–07. The
+**Android Auto** layer ([doc 11](./11-android-auto.md)) is narrower still: it
+leaves the path alone and only chooses which physical microphone and speaker
+sit at its ends while the phone projects into a car.
 
 ## Reading order
 
@@ -30,6 +33,7 @@ the capture → publish → fan-out → playback path described in docs 02–07.
 | 8 | [08-diagnostics-and-tuning.md](./08-diagnostics-and-tuning.md) | Meters, debug hooks, tunable constants |
 | 9 | [09-glossary.md](./09-glossary.md) | Glossary of types, files, and abbreviations |
 | 10 | [10-push-to-talk.md](./10-push-to-talk.md) | PTT: wake push, headless playback, PTT reply, heard receipts |
+| 11 | [11-android-auto.md](./11-android-auto.md) | Car projection: why recording took over the car's screen, and the microphone / sound settings that control it |
 
 For the design-intent vs. current-shape discussion of buffering and A/V
 sync — that's in
