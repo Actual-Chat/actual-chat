@@ -352,6 +352,7 @@
   "MessageMenu_ShareFile": "Поделиться файлом",
   "MessageMenu_CopyDownloadLink": "Копіювати посилання для завантаження",
   "MessageMenu_Download": "Herunterladen",
+  "MessageMenu_DownloadAll": "すべてダウンロード",
   "MessageMenu_PinMessage": "Закріпити повідомлення",
   "MessageMenu_UnpinMessage": "メッセージのピン留めを解除",
 

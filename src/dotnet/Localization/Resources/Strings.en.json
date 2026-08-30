@@ -352,6 +352,7 @@
   "MessageMenu_ShareFile": "Share file",
   "MessageMenu_CopyDownloadLink": "Copy download link",
   "MessageMenu_Download": "Download",
+  "MessageMenu_DownloadAll": "Download all",
   "MessageMenu_PinMessage": "Pin message",
   "MessageMenu_UnpinMessage": "Unpin message",
 

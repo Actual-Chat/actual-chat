@@ -276,6 +276,7 @@
   "MessageMenu_ShareFile": "Dosyayı paylaşın",
   "MessageMenu_CopyDownloadLink": "İndirme bağlantısını kopyalayın",
   "MessageMenu_Download": "İndirin",
+  "MessageMenu_DownloadAll": "Tümünü indirin",
   "MessageMenu_PinMessage": "Mesajı sabitleyin",
   "MessageMenu_UnpinMessage": "Mesajın sabitlemesini kaldırın",
 

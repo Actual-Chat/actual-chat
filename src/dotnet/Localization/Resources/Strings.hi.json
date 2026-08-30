@@ -276,6 +276,7 @@
   "MessageMenu_ShareFile": "फ़ाइल साझा करें",
   "MessageMenu_CopyDownloadLink": "डाउनलोड लिंक कॉपी करें",
   "MessageMenu_Download": "डाउनलोड करें",
+  "MessageMenu_DownloadAll": "सभी डाउनलोड करें",
   "MessageMenu_PinMessage": "संदेश पिन करें",
   "MessageMenu_UnpinMessage": "संदेश अनपिन करें",
 

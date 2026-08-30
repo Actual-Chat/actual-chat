@@ -276,6 +276,7 @@
   "MessageMenu_ShareFile": "Sdílet soubor",
   "MessageMenu_CopyDownloadLink": "Kopírovat odkaz ke stažení",
   "MessageMenu_Download": "Stáhnout",
+  "MessageMenu_DownloadAll": "Stáhnout vše",
   "MessageMenu_PinMessage": "Připnout zprávu",
   "MessageMenu_UnpinMessage": "Odepnout zprávu",
 

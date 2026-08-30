@@ -276,6 +276,7 @@
   "MessageMenu_ShareFile": "Condividi il file",
   "MessageMenu_CopyDownloadLink": "Copia il link di download",
   "MessageMenu_Download": "Scarica",
+  "MessageMenu_DownloadAll": "Scarica tutto",
   "MessageMenu_PinMessage": "Fissa il messaggio",
   "MessageMenu_UnpinMessage": "Rimuovi il messaggio fissato",
 

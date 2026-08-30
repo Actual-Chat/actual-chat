@@ -276,6 +276,7 @@
   "MessageMenu_ShareFile": "파일 공유",
   "MessageMenu_CopyDownloadLink": "다운로드 링크 복사",
   "MessageMenu_Download": "다운로드",
+  "MessageMenu_DownloadAll": "모두 다운로드",
   "MessageMenu_PinMessage": "메시지 고정",
   "MessageMenu_UnpinMessage": "메시지 고정 해제",
 
