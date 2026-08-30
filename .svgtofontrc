@@ -1,7 +1,8 @@
 {
     "fontName": "icon",
     "emptyDist": true,
-    "css": true,
+    "css": { "include": "\\.css$" },
     "outSVGReact": false,
+    "outSVGPath": false,
     "excludeFormat": ["eot", "woff", "ttf", "svg", "symbol.svg"]
 }

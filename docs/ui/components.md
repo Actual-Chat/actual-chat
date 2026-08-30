@@ -670,8 +670,12 @@ so color and size are controlled with the usual text utilities
 | Generated font + CSS (never edit by hand) | `src/nodejs/fonts/svgtofont/` |
 | Generator config | `.svgtofontrc` |
 
-`excludeFormat` in `.svgtofontrc` keeps the output down to `woff2` — the other
-font formats are legacy fallbacks no target of ours needs.
+The output is exactly two files, `icon.woff2` and `icon.css`. `.svgtofontrc`
+trims svgtofont down to them: `excludeFormat` drops the legacy font formats no
+target of ours needs, `css.include` drops the less/scss/styl copies of the
+stylesheet, and `outSVGPath: false` drops the 266 KB `icon.json` path dump the
+CLI writes by default. Every one of those is rewritten on each run, so leaving
+them in would put five unrelated diffs into every commit that adds an icon.
 
 Both the sources **and** the generated output are committed to git. The CSS
 class is derived from the file name: `marker-pin.svg` → `.icon-marker-pin`.
