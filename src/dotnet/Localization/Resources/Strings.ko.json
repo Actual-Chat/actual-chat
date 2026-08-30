@@ -77,6 +77,14 @@
   "ThemeSettings_Dark": "다크",
   "ThemeSettings_MatchSystem": "시스템 테마에 맞추기",
 
+  "CarAudio_Microphone": "마이크",
+  "CarAudio_MicrophoneCaption": "휴대폰의 마이크를 사용합니다",
+  "CarAudio_Output": "사운드",
+  "CarAudio_OutputCaption": "차량 스피커로 재생합니다",
+  "CarAudio_Auto": "자동",
+  "CarAudio_Phone": "휴대폰",
+  "CarAudio_Car": "차량",
+
   "Transcription_Languages": "언어",
   "Transcription_PrimaryLanguage": "기본 언어",
   "Transcription_SecondLanguage": "2번째 언어",

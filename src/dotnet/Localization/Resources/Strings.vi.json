@@ -77,6 +77,14 @@
   "ThemeSettings_Dark": "Tối",
   "ThemeSettings_MatchSystem": "Theo giao diện hệ thống",
 
+  "CarAudio_Microphone": "Micrô",
+  "CarAudio_MicrophoneCaption": "Dùng micrô của điện thoại",
+  "CarAudio_Output": "Âm thanh",
+  "CarAudio_OutputCaption": "Phát qua loa ô tô",
+  "CarAudio_Auto": "Tự động",
+  "CarAudio_Phone": "Điện thoại",
+  "CarAudio_Car": "Ô tô",
+
   "Transcription_Languages": "Ngôn ngữ",
   "Transcription_PrimaryLanguage": "Ngôn ngữ chính",
   "Transcription_SecondLanguage": "Ngôn ngữ thứ 2",

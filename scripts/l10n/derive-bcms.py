@@ -169,7 +169,7 @@ EKAVIAN = [
 # together with any lowercase suffix glued on, so "Windowsu" survives whole.
 KEEP_LATIN = [
     "WebAssembly", "reCAPTCHA", "Microsoft Edge", "Google Chrome", "Apple Safari",
-    "macOS", "Windows", "Android", "iOS", "Google", "Safari", "Chrome", "Edge",
+    "Android Auto", "macOS", "Windows", "Android", "iOS", "Google", "Safari", "Chrome", "Edge",
     "Telegram", "KLIPY", "GIF", "API", "URL", "SMS", "ID", "QR", "OK",
     "emoji", "Emoji", "Cookie", "cookie",
     "Live Activities", "AI", "txt", "MB", "&nbsp;", "&ndash;", "Welcome", "DELETE", "Voxt",

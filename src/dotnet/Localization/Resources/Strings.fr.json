@@ -77,6 +77,14 @@
   "ThemeSettings_Dark": "Sombre",
   "ThemeSettings_MatchSystem": "Suivre le thème du système",
 
+  "CarAudio_Microphone": "Microphone",
+  "CarAudio_MicrophoneCaption": "Utilise le microphone du téléphone",
+  "CarAudio_Output": "Son",
+  "CarAudio_OutputCaption": "Diffuse via les haut-parleurs de la voiture",
+  "CarAudio_Auto": "Automatique",
+  "CarAudio_Phone": "Téléphone",
+  "CarAudio_Car": "Voiture",
+
   "Transcription_Languages": "Langues",
   "Transcription_PrimaryLanguage": "Langue principale",
   "Transcription_SecondLanguage": "2e langue",

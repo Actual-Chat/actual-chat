@@ -77,6 +77,14 @@
   "ThemeSettings_Dark": "ダーク",
   "ThemeSettings_MatchSystem": "システムテーマに合わせる",
 
+  "CarAudio_Microphone": "マイク",
+  "CarAudio_MicrophoneCaption": "スマートフォンのマイクを使用します",
+  "CarAudio_Output": "サウンド",
+  "CarAudio_OutputCaption": "車のスピーカーで再生します",
+  "CarAudio_Auto": "自動",
+  "CarAudio_Phone": "スマホ",
+  "CarAudio_Car": "車",
+
   "Transcription_Languages": "言語",
   "Transcription_PrimaryLanguage": "主要言語",
   "Transcription_SecondLanguage": "第2言語",

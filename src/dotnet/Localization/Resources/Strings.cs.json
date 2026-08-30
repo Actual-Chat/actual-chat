@@ -77,6 +77,14 @@
   "ThemeSettings_Dark": "Tmavý",
   "ThemeSettings_MatchSystem": "Podle motivu systému",
 
+  "CarAudio_Microphone": "Mikrofon",
+  "CarAudio_MicrophoneCaption": "Použije se mikrofon telefonu",
+  "CarAudio_Output": "Zvuk",
+  "CarAudio_OutputCaption": "Použijí se reproduktory auta",
+  "CarAudio_Auto": "Automaticky",
+  "CarAudio_Phone": "Telefon",
+  "CarAudio_Car": "Auto",
+
   "Transcription_Languages": "Jazyky",
   "Transcription_PrimaryLanguage": "Hlavní jazyk",
   "Transcription_SecondLanguage": "2. jazyk",

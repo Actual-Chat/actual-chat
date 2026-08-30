@@ -77,6 +77,14 @@
   "ThemeSettings_Dark": "Gelap",
   "ThemeSettings_MatchSystem": "Ikuti tema sistem",
 
+  "CarAudio_Microphone": "Mikrofon",
+  "CarAudio_MicrophoneCaption": "Menggunakan mikrofon ponsel",
+  "CarAudio_Output": "Suara",
+  "CarAudio_OutputCaption": "Diputar melalui speaker mobil",
+  "CarAudio_Auto": "Otomatis",
+  "CarAudio_Phone": "Ponsel",
+  "CarAudio_Car": "Mobil",
+
   "Transcription_Languages": "Bahasa",
   "Transcription_PrimaryLanguage": "Bahasa utama",
   "Transcription_SecondLanguage": "Bahasa ke-2",

@@ -77,6 +77,14 @@
   "ThemeSettings_Dark": "डार्क",
   "ThemeSettings_MatchSystem": "सिस्टम थीम से मिलाएं",
 
+  "CarAudio_Microphone": "माइक्रोफ़ोन",
+  "CarAudio_MicrophoneCaption": "फ़ोन के माइक्रोफ़ोन का उपयोग होता है",
+  "CarAudio_Output": "ध्वनि",
+  "CarAudio_OutputCaption": "कार के स्पीकर का उपयोग होता है",
+  "CarAudio_Auto": "स्वचालित",
+  "CarAudio_Phone": "फ़ोन",
+  "CarAudio_Car": "कार",
+
   "Transcription_Languages": "भाषाएं",
   "Transcription_PrimaryLanguage": "प्राथमिक भाषा",
   "Transcription_SecondLanguage": "दूसरी भाषा",

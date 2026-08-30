@@ -93,6 +93,14 @@ public static class LocalizedStringsLocalizerExt
         public string ThemeSettings_Dark => l["ThemeSettings_Dark"].Value;
         public string ThemeSettings_MatchSystem => l["ThemeSettings_MatchSystem"].Value;
 
+        public string CarAudio_Microphone => l["CarAudio_Microphone"].Value;
+        public string CarAudio_MicrophoneCaption => l["CarAudio_MicrophoneCaption"].Value;
+        public string CarAudio_Output => l["CarAudio_Output"].Value;
+        public string CarAudio_OutputCaption => l["CarAudio_OutputCaption"].Value;
+        public string CarAudio_Auto => l["CarAudio_Auto"].Value;
+        public string CarAudio_Phone => l["CarAudio_Phone"].Value;
+        public string CarAudio_Car => l["CarAudio_Car"].Value;
+
         public string Transcription_Languages => l["Transcription_Languages"].Value;
         public string Transcription_PrimaryLanguage => l["Transcription_PrimaryLanguage"].Value;
         public string Transcription_SecondLanguage => l["Transcription_SecondLanguage"].Value;
