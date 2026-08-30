@@ -45,7 +45,7 @@ public class ChatSendingMessages
         InvalidateCollection(sendingMessage);
     }
 
-    public void ConfirmMessageHasSent(SendingMessage sendingMessage, ChatEntry chatEntry, Moment now, bool complete)
+    public void ConfirmMessageWasSent(SendingMessage sendingMessage, ChatEntry chatEntry, Moment now, bool complete)
     {
         lock (_lock) {
             sendingMessage.Posted(chatEntry, now);
@@ -55,7 +55,7 @@ public class ChatSendingMessages
         OnMessageSent(sendingMessage);
     }
 
-    public void ConfirmMessageAttachmentsHaveSent(SendingMessage sendingMessage, ChatEntry? chatEntry, Moment now)
+    public void ConfirmMessageAttachmentsWereSent(SendingMessage sendingMessage, ChatEntry? chatEntry, Moment now)
     {
         lock (_lock) {
             if (chatEntry is not null)
@@ -89,7 +89,7 @@ public class ChatSendingMessages
         }
     }
 
-    public void ConfirmEditedMessagedHasLoaded(SendingMessage sendingMessage)
+    public void ConfirmEditedMessageWasLoaded(SendingMessage sendingMessage)
         => sendingMessage.MarkToRemove();
 
     public void PruneSentMessages(Moment now)
@@ -129,8 +129,10 @@ public class ChatSendingMessages
 
     private void OnMessageSent(SendingMessage sendingMessage)
     {
-        if (sendingMessage.LocalId.HasValue)
-            InvalidateCollection(sendingMessage);
+        // New messages must invalidate the collection too: the tail tile drops the optimistic copy only
+        // when ProcessLoadedEntriesRange sees PostedChatEntry, which is set right here - so if the real
+        // entry rendered first, nothing else would ever recompute that tile and both rows would stick.
+        InvalidateCollection(sendingMessage);
         using (Invalidation.Begin())
             _ = _triggers.IsSending(sendingMessage);
     }

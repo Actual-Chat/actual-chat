@@ -3,14 +3,14 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class AnalyticEvents
 {
-    public event EventHandler<MessagePostedEventArgs>? MessagedPosted;
+    public event EventHandler<MessagePostedEventArgs>? MessagePosted;
     public event EventHandler? RecordingStarted;
     public event EventHandler<RecordingCompletedEventArgs>? RecordingCompleted;
     public event EventHandler<VideoStreamStartedEventArgs>? VideoStreamStarted;
     public event EventHandler<ModalStateChangedEventArgs>? ModalStateChanged;
 
     public void RaiseMessagePosted(bool isReply, bool hasText, int attachmentCount)
-        => MessagedPosted?.Invoke(this, new MessagePostedEventArgs(isReply, hasText, attachmentCount));
+        => MessagePosted?.Invoke(this, new MessagePostedEventArgs(isReply, hasText, attachmentCount));
 
     public void RaiseRecordingStarted()
         => RecordingStarted?.Invoke(this, EventArgs.Empty);

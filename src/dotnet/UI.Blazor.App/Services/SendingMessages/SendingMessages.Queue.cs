@@ -40,7 +40,7 @@ partial class SendingMessages
     {
         var request = item.Request;
         if (request.CheckResend) {
-            var chatEntry1 = await TryFindPreviouslySendEntry(request.ChatId, request.ClientId, cancellationToken).ConfigureAwait(false);
+            var chatEntry1 = await TryFindPreviouslySentEntry(request.ChatId, request.ClientId, cancellationToken).ConfigureAwait(false);
             if (chatEntry1 is not null)
                 return chatEntry1;
         }
@@ -84,7 +84,7 @@ partial class SendingMessages
         return chatEntry;
     }
 
-    private async Task<ChatEntry?> TryFindPreviouslySendEntry(ChatId chatId, string clientId, CancellationToken cancellationToken)
+    private async Task<ChatEntry?> TryFindPreviouslySentEntry(ChatId chatId, string clientId, CancellationToken cancellationToken)
     {
         var range = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (range.IsEmpty)

@@ -45,7 +45,7 @@ public class SendMessageRequestsRepo
         await _internal.Flush(cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task MarkMessageHasCreated(string requestUuid, long chatEntryLocalId, CancellationToken cancellationToken)
+    public async Task MarkMessageWasCreated(string requestUuid, long chatEntryLocalId, CancellationToken cancellationToken)
     {
         using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
         var entry = await _internal.Get<SendMessageRequestEntry>(requestUuid, cancellationToken).ConfigureAwait(false);

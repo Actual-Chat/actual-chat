@@ -42,7 +42,7 @@ public static class FirebaseAnalyticsExt
             _history.LocationChanged += OnLocationChanged;
             var analyticEvents = hub.AnalyticEvents;
             analyticEvents.ModalStateChanged += OnAnalyticEventsOnModalStateChanged;
-            analyticEvents.MessagedPosted += OnMessagePosted;
+            analyticEvents.MessagePosted += OnMessagePosted;
             analyticEvents.RecordingStarted += OnRecordingStarted;
             analyticEvents.RecordingCompleted += OnRecordingCompleted;
             analyticEvents.VideoStreamStarted += OnVideoStreamStarted;
