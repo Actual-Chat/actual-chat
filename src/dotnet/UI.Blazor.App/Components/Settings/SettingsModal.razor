@@ -12,6 +12,8 @@
     // Push-to-talk is a device feature; on the web it's an admin-only preview, local hosts only.
     var isPttPreview = account.IsAdmin && HostInfo.BaseUrlKind == BaseUrlKind.Local;
     var showPtt = m.EnableIncompleteUI && Ptt.IsSupported(HostInfo) && (HostInfo.HostKind.IsMauiApp() || isPttPreview);
+    // The tab only exists where a car connection is detectable at all, i.e. Android alone.
+    var showCarAudio = Hub.Services.GetService<ICarConnection>() != null;
     var quitTitle = L.Settings_Quit_Format(CoreConstants.AppName);
 
     var tabs = new List<SettingsTabDef>();
@@ -38,6 +40,11 @@
         IconClass = "icon-settings",
         Content = @<AppSettings/>,
     });
+    if (showCarAudio)
+        tabs.Add(new(SettingsTabId.CarAudio, "Android Auto") {
+            IconClass = "icon-car",
+            Content = @<CarAudioSettings/>,
+        });
     if (showMyAccount) {
         tabs.Add(new(SettingsTabId.Sessions, L.Settings_Sessions) {
             IconClass = "icon-lock",

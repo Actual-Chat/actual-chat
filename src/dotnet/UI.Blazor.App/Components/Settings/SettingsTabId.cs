@@ -3,6 +3,7 @@ namespace ActualChat.UI.Blazor.App.Components;
 public static class SettingsTabId
 {
     public static readonly string App = nameof(App).Decapitalize();
+    public static readonly string CarAudio = nameof(CarAudio).Decapitalize();
     public static readonly string Account = nameof(Account).Decapitalize();
     public static readonly string Notifications = nameof(Notifications).Decapitalize();
     public static readonly string Transcription = nameof(Transcription).Decapitalize();

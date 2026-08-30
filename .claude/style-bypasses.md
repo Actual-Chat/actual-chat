@@ -147,6 +147,15 @@ edited. The reason can be as short as whose decision it was.
   written down the next reader deletes it. Records the WebKit bug id, the
   measured evidence, and why `contain`/`will-change` are nudged, not removed.
 
+## src/dotnet/UI.Blazor.App/Components/Settings/SettingsModal.razor
+
+- L44 `tabs.Add(new(SettingsTabId.CarAudio, "Android Auto") {`
+  — hardcoded English tab title instead of `L.Settings_*` — Dmitrii's decision:
+  "Android Auto" is a third-party product name, the same category
+  CODING_STYLE.md's Localization section already exempts (`GIF`, `Google Play`,
+  `Sentry`); it is the tab title itself here, not an incidental mention, but the
+  exemption's rationale (brand names aren't translated) applies identically
+
 ## src/dotnet/UI.Blazor.App/Services/LiveFoldMath.cs
 
 - L12 `public static long Advance(long lastFoldEndLid, long minVisibleLid, long streamingFloorLid, long tailFloorLid)`
