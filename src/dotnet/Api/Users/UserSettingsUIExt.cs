@@ -55,4 +55,7 @@ public static class UserSettingsUIExt
         this UserSettingsUI settingsUI)
         => new(settingsUI, nameof(UserPttSettings));
 
+    public static UserSettingsAccessor<UserCarAudioSettings> UserCarAudioSettings(
+        this UserSettingsUI settingsUI)
+        => new(settingsUI, nameof(UserCarAudioSettings));
 }
