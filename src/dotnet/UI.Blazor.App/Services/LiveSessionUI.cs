@@ -186,10 +186,9 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         var lastHeartbeatAt = Clocks.CpuClock.Now;
         try {
             while (!cancellationToken.IsCancellationRequested) {
-                // Reading an errored computed would throw and drop every reported participation;
-                // skipping the pass keeps them until the next recompute succeeds.
-                if (!cParticipations.HasError) {
-                    var next = cParticipations.Value;
+                // ValueOrDefault is null only when the computed errored; skipping the pass keeps
+                // the reported participations until a recompute succeeds, where .Value would throw.
+                if (cParticipations.ValueOrDefault is { } next) {
                     var now = Clocks.CpuClock.Now;
                     var isHeartbeat = now - lastHeartbeatAt >= HeartbeatInterval;
                     if (isHeartbeat)
@@ -245,11 +244,9 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         }
         return;
 
-        // An errored computed must not reach .Value: the throw would take down the whole worker.
+        // ValueOrDefault, not Value: an errored computed would throw and take the whole worker down.
         static bool IsMuted(Computed<ChatId?> computed)
-            => !computed.HasError
-                && computed.Value is { } chatId
-                && !chatId.Value.IsNullOrEmpty();
+            => computed.ValueOrDefault is { } chatId && !chatId.Value.IsNullOrEmpty();
     }
 
     // Protected/internal methods
