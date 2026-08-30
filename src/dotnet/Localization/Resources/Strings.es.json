@@ -1353,6 +1353,14 @@
 
   "Share_FailedToShareCount": "No se pudo compartir {0} archivo|No se pudieron compartir {0} archivos",
 
+  "FileSaver_SavedToGallery": "{0} archivo guardado en la galería|{0} archivos guardados en la galería",
+  "FileSaver_SavedToMusic": "{0} archivo guardado en Music|{0} archivos guardados en Music",
+  "FileSaver_SavedToDownloads": "{0} archivo guardado en Downloads|{0} archivos guardados en Downloads",
+  "FileSaver_SavedToLibrary": "{0} archivo guardado en la fototeca|{0} archivos guardados en la fototeca",
+  "FileSaver_Saved": "{0} archivo guardado|{0} archivos guardados",
+  "FileSaver_PartiallySaved": "{0} de {1} archivos guardados",
+  "FileSaver_SaveFailed": "No se pudo guardar el archivo|No se pudieron guardar los archivos",
+
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
   // 12/7 entries, and the *Pattern values are .NET date format strings - localize the
   // field order and separators, never the format tokens themselves.

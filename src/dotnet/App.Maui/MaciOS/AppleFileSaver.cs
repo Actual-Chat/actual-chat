@@ -1,3 +1,4 @@
+using ActualChat.Localization;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Generators;
@@ -50,8 +51,8 @@ public sealed class AppleFileSaver(UIHub hub) : UIServiceBase<UIHub>(hub), IFile
             await DispatchToBlazor(_ => Save(tempFilePath, GetResourceType(file.ContentType))).ConfigureAwait(false);
         }
 
-        var fileText = files.Count == 1 ? "1 file" : $"{files.Count} files";
-        ToastUI.Show($"{fileText} saved to library", "icon-checkmark-circle-2", ToastDismissDelay.Short);
+        ToastUI.Show(L.FileSaver_SavedToLibrary(files.Count, files.Count),
+            "icon-checkmark-circle-2", ToastDismissDelay.Short);
     }
 
     private async Task SaveViaShareSheet(IReadOnlyList<FileToSave> files)
@@ -64,7 +65,7 @@ public sealed class AppleFileSaver(UIHub hub) : UIServiceBase<UIHub>(hub), IFile
         // thread - off it, iOS drops it silently. The await above lands us on a pool thread.
         await MainThread.InvokeOnMainThreadAsync(
             () => DataTransfer.Share.Default.RequestAsync(new DataTransfer.ShareMultipleFilesRequest {
-                Title = files.Count == 1 ? files[0].FileName : $"{files.Count} files",
+                Title = files.Count == 1 ? files[0].FileName : L.Editor_Files(files.Count, files.Count),
                 Files = shareFiles,
             })).ConfigureAwait(false);
     }

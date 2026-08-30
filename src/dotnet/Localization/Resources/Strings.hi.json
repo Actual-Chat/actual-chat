@@ -1353,6 +1353,14 @@
 
   "Share_FailedToShareCount": "{0} फ़ाइल साझा नहीं हो सकी|{0} फ़ाइलें साझा नहीं हो सकीं",
 
+  "FileSaver_SavedToGallery": "{0} फ़ाइल गैलरी में सहेजी गई|{0} फ़ाइलें गैलरी में सहेजी गईं",
+  "FileSaver_SavedToMusic": "{0} फ़ाइल Music में सहेजी गई|{0} फ़ाइलें Music में सहेजी गईं",
+  "FileSaver_SavedToDownloads": "{0} फ़ाइल Downloads में सहेजी गई|{0} फ़ाइलें Downloads में सहेजी गईं",
+  "FileSaver_SavedToLibrary": "{0} फ़ाइल लाइब्रेरी में सहेजी गई|{0} फ़ाइलें लाइब्रेरी में सहेजी गईं",
+  "FileSaver_Saved": "{0} फ़ाइल सहेजी गई|{0} फ़ाइलें सहेजी गईं",
+  "FileSaver_PartiallySaved": "{1} में से {0} फ़ाइलें सहेजी गईं",
+  "FileSaver_SaveFailed": "फ़ाइल सहेजी नहीं जा सकी|फ़ाइलें सहेजी नहीं जा सकीं",
+
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
   // 12/7 entries, and the *Pattern values are .NET date format strings - localize the
   // field order and separators, never the format tokens themselves.

@@ -1353,6 +1353,14 @@
 
   "Share_FailedToShareCount": "{0} dosya paylaşılamadı",
 
+  "FileSaver_SavedToGallery": "{0} dosya galeriye kaydedildi",
+  "FileSaver_SavedToMusic": "{0} dosya Music klasörüne kaydedildi",
+  "FileSaver_SavedToDownloads": "{0} dosya Downloads klasörüne kaydedildi",
+  "FileSaver_SavedToLibrary": "{0} dosya kitaplığa kaydedildi",
+  "FileSaver_Saved": "{0} dosya kaydedildi",
+  "FileSaver_PartiallySaved": "{1} dosyadan {0} tanesi kaydedildi",
+  "FileSaver_SaveFailed": "Dosya kaydedilemedi",
+
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
   // 12/7 entries, and the *Pattern values are .NET date format strings - localize the
   // field order and separators, never the format tokens themselves.

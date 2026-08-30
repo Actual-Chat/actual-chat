@@ -1353,6 +1353,14 @@
 
   "Share_FailedToShareCount": "Neuspješno dijeljenje {0} datoteke|Neuspješno dijeljenje {0} datoteke|Neuspješno dijeljenje {0} datoteka",
 
+  "FileSaver_SavedToGallery": "{0} datoteka sačuvan u galeriju|{0} datoteke sačuvana u galeriju|{0} datoteka sačuvano u galeriju",
+  "FileSaver_SavedToMusic": "{0} datoteka sačuvan u Music|{0} datoteke sačuvana u Music|{0} datoteka sačuvano u Music",
+  "FileSaver_SavedToDownloads": "{0} datoteka sačuvan u Downloads|{0} datoteke sačuvana u Downloads|{0} datoteka sačuvano u Downloads",
+  "FileSaver_SavedToLibrary": "{0} datoteka sačuvan u biblioteku|{0} datoteke sačuvana u biblioteku|{0} datoteka sačuvano u biblioteku",
+  "FileSaver_Saved": "{0} datoteka sačuvan|{0} datoteke sačuvana|{0} datoteka sačuvano",
+  "FileSaver_PartiallySaved": "Sačuvano {0} od {1} datoteka",
+  "FileSaver_SaveFailed": "Datoteka nije sačuvan|Datoteke nisu sačuvani",
+
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
   // 12/7 entries, and the *Pattern values are .NET date format strings - localize the
   // field order and separators, never the format tokens themselves.
