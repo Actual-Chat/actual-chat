@@ -1,15 +1,18 @@
 using System.Buffers;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.UI.Blazor.App.Components;
+using ActualChat.UI.Blazor.App.Services;
+using Android.Content;
 using Android.Media;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCapture
+public class AndroidAudioCapture(IServiceProvider services) : IAudioCapture
 {
-    public ILogger<AndroidAudioCapture> Log { get; } = log;
+    private ChatAudioUI ChatAudioUI => field ??= services.GetRequiredService<ChatAudioUI>();
+    public ILogger<AndroidAudioCapture> Log { get; } = services.LogFor<AndroidAudioCapture>();
 
-    public Task<AudioCaptureResult> Capture(CancellationToken cancellationToken)
+    public async Task<AudioCaptureResult> Capture(CancellationToken cancellationToken)
     {
         // Configure AudioRecord for float32 PCM mono at desired sample rate (API 23+ supports PCM_FLOAT)
         var sampleRate = Constants.Audio.RecordingSampleRate;
@@ -18,7 +21,12 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
 
         var minBufferBytes = AudioRecord.GetMinBufferSize(sampleRate, channelConfig, encoding);
         if (minBufferBytes <= 0)
-            return Task.FromResult(AudioCaptureResult.Failed(RecorderStartResult.NoDevice, $"MinBufferSize={minBufferBytes}"));
+            return AudioCaptureResult.Failed(RecorderStartResult.NoDevice, $"MinBufferSize={minBufferBytes}");
+
+        // Fetched before the recorder exists so no await sits between a successful native init and
+        // captureThread.Start() - an exception here (e.g. OperationCanceledException on a quick PTT
+        // tap-and-release) must not leave an opened AudioRecord stranded with nothing to release it.
+        var route = await ChatAudioUI.GetCarAudioRoute(cancellationToken).ConfigureAwait(false);
 
         // We'll read at least VAD frame size per push
         var frameSamples = Constants.Audio.OpusFrameLength; // 20 ms at 16 kHz = 320 samples
@@ -48,12 +56,13 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                 Log.LogWarning("AudioRecord didn't initialize (state = {State}) - is the mic available?",
                     recorder.State);
                 recorder.Release();
-                return Task.FromResult(AudioCaptureResult.Failed(RecorderStartResult.Unknown, $"AudioRecord.{recorder.State}"));
+                return AudioCaptureResult.Failed(RecorderStartResult.Unknown, $"AudioRecord.{recorder.State}");
             }
 
             var actualFrames = recorder.BufferSizeInFrames;
             Log.LogInformation(
-                "AudioRecord initialized: requested {RequestedBytes}B, actual {ActualFrames} frames ({ActualMs}ms at {SampleRate}Hz)",
+                "AudioRecord initialized: requested {RequestedBytes}B, actual {ActualFrames} frames "
+                + "({ActualMs}ms at {SampleRate}Hz)",
                 bufferBytes, actualFrames, actualFrames * 1000 / sampleRate, sampleRate);
         }
         catch (Exception e) {
@@ -64,7 +73,15 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
             catch {
                  /* Ignore */
             }
-            return Task.FromResult(AudioCaptureResult.Failed(RecorderStartResult.Unknown, e.GetType().Name));
+            return AudioCaptureResult.Failed(RecorderStartResult.Unknown, e.GetType().Name);
+        }
+
+        if (route.Input == AudioEndpoint.Builtin) {
+            var audioManager = (AudioManager)Platform.AppContext.GetSystemService(Context.AudioService)!;
+            var builtinMic = audioManager.GetDevices(GetDevicesTargets.Inputs)!
+                .FirstOrDefault(d => d.Type == AudioDeviceType.BuiltinMic);
+            if (builtinMic != null && !recorder.SetPreferredDevice(builtinMic))
+                Log.LogWarning("Couldn't pin the capture to the built-in microphone");
         }
 
         var buffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
@@ -83,7 +100,7 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
         };
         captureThread.Start();
         // Return enumerator
-        return Task.FromResult(AudioCaptureResult.Ok(Enumerate(cancellationToken)));
+        return AudioCaptureResult.Ok(Enumerate(cancellationToken));
 
         void Producer()
         {
@@ -142,14 +159,11 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                         continue;
                     }
 
-                    // Only while the mic has never produced anything: the peak feeds the
-                    // digital-silence check below, which goes quiet once real audio arrives.
-                    if (isSilent)
-                        for (var i = 0; i < readCount; i++) {
-                            var level = MathF.Abs(floatReadBuffer.Buffer[i]);
-                            if (level > windowPeak)
-                                windowPeak = level;
-                        }
+                    for (var i = 0; i < readCount; i++) {
+                        var level = MathF.Abs(floatReadBuffer.Buffer[i]);
+                        if (level > windowPeak)
+                            windowPeak = level;
+                    }
 
                     // Push to ring buffer (fire-and-forget: drop if full)
                     buffer.TryWrite(floatReadBuffer.Buffer.AsSpan(0, readCount));
@@ -171,22 +185,19 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                         var gen2 = GC.CollectionCount(2) - readGen2Start;
                         if (readGapsInWindow > 0)
                             Log.LogWarning(
-                                "audio-capture-cadence: {Gaps} gap(s) >80ms in last second; max gap {MaxMs:F0}ms; gc 0/1/2={Gen0}/{Gen1}/{Gen2}",
+                                "audio-capture-cadence: {Gaps} gap(s) >80ms in last second; max gap {MaxMs:F0}ms; "
+                                + "gc 0/1/2={Gen0}/{Gen1}/{Gen2}",
                                 readGapsInWindow, readMaxGapMs, gen0, gen1, gen2);
-                        // Only while nothing has ever arrived: all-zero samples are what the OS
-                        // hands a process it has quietly denied the mic to, but VoiceCommunication's
-                        // noise suppressor also gates ordinary pauses to exact zeros, so warning on
-                        // every silent second would cry wolf through every normal recording.
-                        if (isSilent) {
-                            if (windowPeak > 0f) {
-                                isSilent = false;
-                                Log.LogInformation("audio-capture: first audio, peak {Peak:F3}", windowPeak);
-                            }
-                            else {
-                                Log.LogWarning(
-                                    "audio-capture: the microphone has delivered nothing but digital silence");
-                            }
-                        }
+                        // Only while nothing has ever arrived: all-zero samples are what the OS hands a
+                        // process it has quietly denied the mic to, but VoiceCommunication's noise
+                        // suppressor also gates ordinary pauses to exact zeros, so warning on every
+                        // silent second would cry wolf through every normal recording - hence the latch.
+                        if (isSilent && windowPeak > 0f)
+                            isSilent = false;
+                        if (isSilent)
+                            Log.LogWarning("audio-capture: the microphone has delivered nothing but digital silence");
+                        else
+                            Log.LogInformation("audio-capture: peak {Peak:F3}", windowPeak);
 
                         windowPeak = 0f;
                         readGapsInWindow = 0;
