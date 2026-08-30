@@ -1,0 +1,66 @@
+using ActualChat.Notifications;
+using Notification = ActualChat.Notifications.Notification;
+
+namespace ActualChat.UI.Blazor.App.Services;
+
+/// <summary>
+/// Per-kind and per-chat projections of the user's active notification set, so the
+/// notifications panel, its badges and the navbar bell share one computed over
+/// <see cref="INotifications.ListActive"/>.
+/// </summary>
+public class NotificationsUI(AppUIHub hub) : IComputeService
+{
+    private AppUIHub Hub { get; } = hub;
+    private INotifications Notifications => field ??= Hub.Notifications;
+    private Session Session => Hub.Session;
+
+    [ComputeMethod]
+    public virtual async Task<ApiArray<Notification>> ListByKind(
+        NotificationKind kind, CancellationToken cancellationToken = default)
+    {
+        var active = await Notifications.ListActive(Session, cancellationToken).ConfigureAwait(false);
+        return SelectByKind(active, kind);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<ChatReactionState> GetReactionState(
+        ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        var active = await Notifications.ListActive(Session, cancellationToken).ConfigureAwait(false);
+        return SelectReactionState(active, chatId);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<ApiArray<ChatId>> ListReactedChatIds(CancellationToken cancellationToken = default)
+    {
+        var active = await Notifications.ListActive(Session, cancellationToken).ConfigureAwait(false);
+        return active
+            .OfType<ReactionNotification>()
+            .Select(x => x.ChatId)
+            .Distinct()
+            .ToApiArray();
+    }
+
+    // Protected/internal methods
+
+    // Internal rather than private so the projections can be tested without a hub.
+    internal static ApiArray<Notification> SelectByKind(ApiArray<Notification> active, NotificationKind kind)
+        => active
+            .Where(x => x.Kind == kind)
+            .OrderByDescending(x => x.SentAt)
+            .ToApiArray();
+
+    internal static ChatReactionState SelectReactionState(ApiArray<Notification> active, ChatId chatId)
+    {
+        var newest = active
+            .OfType<ReactionNotification>()
+            .Where(x => x.ChatId == chatId)
+            .MaxBy(x => x.SentAt);
+        if (newest is null)
+            return default;
+
+        return new ChatReactionState(newest.Emojis.LastOrDefault(), newest.SentAt);
+    }
+}
+
+public readonly record struct ChatReactionState(Emoji? Emoji, Moment SentAt);
