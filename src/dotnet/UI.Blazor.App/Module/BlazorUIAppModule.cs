@@ -58,6 +58,11 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped<SystemEntryMarkupBuilder>(c => new LocalizedSystemEntryMarkupBuilder(c));
 
         // Chat UI
+        fusion.AddClientCommandQueue();
+        // The queue is a client-side concern: on the server a command is already where it's
+        // going, and its filter would deadlock against ApiCommandDeduplicator's Uuid claim.
+        if (HostInfo.HostKind != HostKind.Server)
+            fusion.Commander.AddHandlers<ClientCommandQueue>();
         fusion.AddService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddService<ConversationUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatListUI>(ServiceLifetime.Scoped);

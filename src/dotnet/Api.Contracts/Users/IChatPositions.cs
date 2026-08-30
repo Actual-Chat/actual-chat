@@ -17,9 +17,14 @@ public interface IChatPositions : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record ChatPositions_Set : ApiCommand<Unit>, INotDeduplicated
+public sealed partial record ChatPositions_Set : ApiCommand<Unit>, INotDeduplicated, IQueuedCommand
 {
     [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
     [DataMember(Order = 3), Key(3)] public required ChatPositionKind Kind { get; init; }
     [DataMember(Order = 4), Key(4)] public required ChatPosition Position { get; init; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public string PartitionKey => ChatId.Value;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public QueuedCommandCoalescing Coalescing => QueuedCommandCoalescing.ReplaceWaiting;
 }
