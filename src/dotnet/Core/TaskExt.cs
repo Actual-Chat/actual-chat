@@ -9,6 +9,36 @@ public static class TaskExt
     public static Task NeverEnding(CancellationToken cancellationToken)
         => Task.Delay(System.Threading.Timeout.Infinite, cancellationToken);
 
+    // TryWaitAsync
+
+    // False means the wait was cut short rather than the task completing, so the caller decides
+    // what that was - both current callers re-check their own token right after.
+    public static async Task<bool> TryWaitAsync(this Task task, CancellationToken cancellationToken)
+    {
+        try {
+            await task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (OperationCanceledException) {
+            return false;
+        }
+    }
+
+    public static async Task<bool> TryWaitAsync(
+        this Task task, TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        try {
+            await task.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (OperationCanceledException) {
+            return false;
+        }
+        catch (TimeoutException) {
+            return false;
+        }
+    }
+
     // WithDelay
 
     public static async Task WithDelay(

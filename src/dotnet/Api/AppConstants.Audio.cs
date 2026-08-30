@@ -94,9 +94,8 @@ partial record AppConstants
             public int MaxBufferedFrames { get; init; } = 1500;
             // Max streaming speed relative to real-time.
             public int MaxSpeed { get; init; } = 2;
-            public int InterStreamDelayMs { get; init; } = 100;
-            public int StreamErrorDelayMs { get; init; } = 1000;
-            public int ConnectErrorDelayMs { get; init; } = 1000;
+            public int StreamErrorRetryDelayMs { get; init; } =
+                (int)Constants.Audio.StreamErrorRetryDelay.TotalMilliseconds;
             // Debug switch — random disconnect period (0 = disabled).
             public int DebugRandomDisconnectPeriodMs { get; init; } = 0;
             public int RecordingRpcStreamAckPeriod { get; init; } = Constants.Audio.RecordingRpcStreamAckPeriod;

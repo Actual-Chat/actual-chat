@@ -94,6 +94,11 @@ public static partial class Constants
         public static readonly TimeSpan RecorderDrainTimeout = TimeSpan.FromSeconds(1);
         // Startup waits the recorder proceeds without rather than lose the utterance.
         public static readonly TimeSpan RecorderStartupWaitTimeout = TimeSpan.FromSeconds(3);
+        // Between a failed audio push and the retry that replaces it. Short, because the usual
+        // cause is a peer change that the next attempt resolves - it exists to stop a persistent
+        // rejection tight-looping, not to pace a reconnect - and every millisecond here is
+        // silence for the listeners.
+        public static readonly TimeSpan StreamErrorRetryDelay = TimeSpan.FromMilliseconds(100);
         // How long the mic staying shut or the connection staying down must last before the UI
         // calls it a failure: a healthy start passes through both states on its way up.
         public static readonly TimeSpan RecordingProblemGracePeriod = TimeSpan.FromSeconds(1.5);
