@@ -1,0 +1,53 @@
+.command-queue-test-page {
+    @apply flex-y;
+    @apply h-full;
+    @apply p-2;
+    @apply overflow-y-auto;
+    @apply select-text;
+}
+.command-queue-test-page .c-hint {
+    @apply text-sm text-03;
+}
+.command-queue-test-page .c-toolbar {
+    @apply flex-x items-center gap-x-2;
+}
+.command-queue-test-page .c-status {
+    @apply text-sm text-03;
+}
+.command-queue-test-page .c-status.paused {
+    @apply text-danger;
+}
+.command-queue-test-page .c-table-wrapper {
+    @apply shrink-0;
+    @apply rounded-lg border border-separator;
+    @apply overflow-y-auto;
+}
+.command-queue-test-page table {
+    @apply w-full;
+    @apply border-collapse;
+    @apply text-sm;
+}
+.command-queue-test-page thead tr {
+    @apply sticky top-0;
+    @apply border-b border-separator;
+    @apply bg-01;
+    @apply text-03;
+}
+.command-queue-test-page tbody tr {
+    @apply border-b border-separator;
+}
+.command-queue-test-page th,
+.command-queue-test-page td {
+    @apply p-2;
+    @apply text-left;
+}
+.command-queue-test-page .c-number {
+    @apply w-16;
+    @apply text-right;
+}
+.command-queue-test-page .c-time {
+    @apply w-24;
+}
+.command-queue-test-page .c-error {
+    @apply text-danger;
+}

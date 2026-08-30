@@ -302,6 +302,14 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
                 c.GetRequiredService<VideoQualityUI>().BeginRecordingQualityTest(period);
             debugUI.TestVideoPlaybackQualityChangeHandler = period =>
                 c.GetRequiredService<VideoQualityUI>().BeginPlaybackQualityTest(period);
+            debugUI.SuspendCommandQueueHandler = suspend => {
+                var queue = c.GetRequiredService<ClientCommandQueue>();
+                if (suspend)
+                    queue.Pause();
+                else
+                    queue.Resume();
+                return queue.IsPaused;
+            };
             return debugUI;
         });
 

@@ -458,6 +458,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AudioBlobDownloadTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.ChatInvitePage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.ChatPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.CommandQueueTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.DigestTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.EmojisTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.ExternalContactsTestPage>();
@@ -1222,6 +1223,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Pages.AudioBlobDownloadTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.ChatInvitePage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.ChatPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Pages.CommandQueueTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.DigestTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.EmojisTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.ExternalContactsTestPage), AotTypeKind.Component),
