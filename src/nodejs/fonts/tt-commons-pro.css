@@ -1,8 +1,10 @@
+/* woff2 only - every target we support reads it, and naming a fallback format here
+   would make esbuild copy that file into dist even though nothing ever fetches it.
+   The .otf/.ttf next to this file stay: scripts/l10n/derive-max.py measures glyph
+   advances from TT-Commons-Pro-Regular.ttf. */
 @font-face {
     font-family: 'TT Commons Pro';
-    src: url("TT-Commons-Pro-DemiBold.woff2") format("woff2"),
-    url("TT-Commons-Pro-DemiBold.otf") format("opentype"),
-    url("TT-Commons-Pro-DemiBold.ttf") format("truetype");
+    src: url("TT-Commons-Pro-DemiBold.woff2") format("woff2");
     font-weight: 600;
     font-style: normal;
     font-stretch: normal;
@@ -11,9 +13,7 @@
 
 @font-face {
     font-family: 'TT Commons Pro';
-    src: url("TT-Commons-Pro-Light.woff2") format("woff2"),
-    url("TT-Commons-Pro-Light.otf") format("opentype"),
-    url("TT-Commons-Pro-Light.ttf") format("truetype");
+    src: url("TT-Commons-Pro-Light.woff2") format("woff2");
     font-weight: 300;
     font-style: normal;
     font-stretch: normal;
@@ -22,9 +22,7 @@
 
 @font-face {
     font-family: 'TT Commons Pro';
-    src: url("TT-Commons-Pro-Medium.woff2") format("woff2"),
-    url("TT-Commons-Pro-Medium.otf") format("opentype"),
-    url("TT-Commons-Pro-Medium.ttf") format("truetype");
+    src: url("TT-Commons-Pro-Medium.woff2") format("woff2");
     font-weight: 500;
     font-style: normal;
     font-stretch: normal;
@@ -33,9 +31,7 @@
 
 @font-face {
     font-family: 'TT Commons Pro';
-    src: url("TT-Commons-Pro-Regular.woff2") format("woff2"),
-    url("TT-Commons-Pro-Regular.otf") format("opentype"),
-    url("TT-Commons-Pro-Regular.ttf") format("truetype");
+    src: url("TT-Commons-Pro-Regular.woff2") format("woff2");
     font-weight: 400;
     font-style: normal;
     font-stretch: normal;
@@ -45,9 +41,7 @@
 
 @font-face {
     font-family: 'TT Commons Pro Mono';
-    src: url("TT-Commons-Pro-Mono-Regular.woff2") format("woff2"),
-    url("TT-Commons-Pro-Mono-Regular.otf") format("opentype"),
-    url("TT-Commons-Pro-Mono-Regular.ttf") format("truetype");
+    src: url("TT-Commons-Pro-Mono-Regular.woff2") format("woff2");
     font-weight: 400;
     font-style: normal;
     font-stretch: normal;
