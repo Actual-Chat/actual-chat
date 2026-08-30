@@ -28,6 +28,9 @@ public static class NotificationExt
             _ => null,
         };
 
+    public static ChatId? GetChatId(this Notification notification)
+        => ChatId.TryParse(notification.GetChatTag() ?? "", out var chatId) ? chatId : null;
+
     // The in-app deep link a notification points at (entry if it has one, else the chat).
     // Mirrors the link the FCM send path builds; used by the client reconciler to create a
     // missing notification with a working tap target.
@@ -41,8 +44,7 @@ public static class NotificationExt
         };
         if (entryId is { } e)
             return Links.Chat(e);
-        return ChatId.TryParse(notification.GetChatTag() ?? "", out var chatId)
-            ? Links.Chat(chatId)
-            : Links.Chats;
+
+        return notification.GetChatId() is { } chatId ? Links.Chat(chatId) : Links.Chats;
     }
 }

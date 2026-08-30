@@ -11,9 +11,9 @@ namespace ActualChat.UI.Blazor.App.Services;
 // - Create: re-shows a notification that newly entered the active set but isn't on the device —
 //   healing a dropped delivery push. Only newly-added tags are create candidates, so dismissing a
 //   banner (which doesn't change the active set) never resurrects it. iOS is prune-only.
-public class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
+public sealed class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
 {
-    private HashSet<string> _lastActiveTags = new(StringComparer.Ordinal);
+    private HashSet<string> _lastActiveTags = new();
     private bool _isInitialized;
 
     private UrlMapper UrlMapper => field ??= Services.UrlMapper();
@@ -40,7 +40,7 @@ public class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
     {
         // Reseed on every (re)start: carrying the previous run's tags across a restart would make
         // the first observation look like a diff and re-create banners the user already dismissed.
-        _lastActiveTags = new HashSet<string>(StringComparer.Ordinal);
+        _lastActiveTags = new HashSet<string>();
         _isInitialized = false;
         var cActive = await Computed
             .Capture(() => Hub.Notifications.ListActive(Hub.Session, cancellationToken), cancellationToken)
@@ -50,7 +50,7 @@ public class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
                 continue;
 
             var infos = ToInfos(c.Value);
-            var currentTags = infos.Select(x => x.Tag).ToHashSet(StringComparer.Ordinal);
+            var currentTags = infos.Select(x => x.Tag).ToHashSet();
             // First observation seeds the baseline without creating, so existing unread chats
             // don't all pop as banners on startup.
             var createTags = _isInitialized
@@ -90,6 +90,7 @@ public class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
                     Log.LogWarning(e, "Foreground notification reconcile failed");
                 }
             }
+
             wasBackground = isBackground;
         }
     }
@@ -104,6 +105,7 @@ public class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
                 x.Notification.Text,
                 x.Notification.IconUrl,
                 UrlMapper.ToAbsolute(x.Notification.GetChatLink()),
-                (x.Notification as ChatEntryRelatedNotification)?.RecentMessages ?? default))
+                (x.Notification as ChatEntryRelatedNotification)?.RecentMessages ?? default,
+                x.Notification.GetChatId()))
             .ToList();
 }

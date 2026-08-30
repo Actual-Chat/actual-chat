@@ -16,10 +16,10 @@ public class AndroidDeviceNotifications : IDeviceNotifications
         IReadOnlyCollection<string> createTags,
         CancellationToken cancellationToken)
     {
-        var activeTags = active.Select(x => x.Tag).ToHashSet(StringComparer.Ordinal);
+        var activeTags = active.Select(x => x.Tag).ToHashSet();
         var notificationManager = NotificationManagerCompat.From(Android.App.Application.Context);
 
-        var shownTags = new HashSet<string>(StringComparer.Ordinal);
+        var shownTags = new HashSet<string>();
         var shown = notificationManager?.ActiveNotifications;
         if (shown != null)
             foreach (var statusBarNotification in shown) {
@@ -45,9 +45,11 @@ public class AndroidDeviceNotifications : IDeviceNotifications
                 IncomingCallNotifications.Show(callChatId, tag, info.Url, info.Title, info.IconUrl);
             else
                 // Healing a dropped banner must not alert — it's a reconcile, not a new event.
-                NotificationHelper.ShowChatNotification(info.Tag, info.Title, info.Text, info.IconUrl, info.Url,
+                NotificationHelper.ShowChatNotification(
+                    info.ChatId, info.Tag, info.Title, info.Text, info.IconUrl, info.Url,
                     silent: true, messages: info.Messages.IsEmpty ? null : PushMessage.From(info.Messages));
         }
+
         return Task.CompletedTask;
     }
 }

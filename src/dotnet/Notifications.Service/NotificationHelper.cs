@@ -30,7 +30,8 @@ public static class NotificationHelper
         };
 
     public static string GetIconUrl(Chat.Chat chat, AuthorFull author, UrlMapper urlMapper)
-        => urlMapper.IconUrl(chat.GetIconQuery(author, renderAvatarTitle: true));
+        // Unsized, the generator draws its 80px base, which an avatar slot on a 3x screen upscales.
+        => urlMapper.IconUrl(chat.GetIconQuery(author, AvatarQuery.SupportedSizes[^1], renderAvatarTitle: true));
 
     public static string GetVoiceChatStartedText(IReadOnlyList<string> authorNames, IStringLocalizer l)
     {
