@@ -85,6 +85,9 @@ COPY resources/sounds/converted /src/resources/sounds/converted
 RUN npm run build:Release
 
 FROM dotnet-restore AS base
+# Users.Service embeds src/nodejs/fonts/TT-Commons-Pro-Medium.ttf as a resource,
+# so the .ttf files have to be here even though nothing else of src/nodejs/ is
+COPY src/nodejs/fonts/*.ttf src/nodejs/fonts/
 COPY src/dotnet/ src/dotnet/
 COPY tests/ tests/
 COPY *.props *.targets ./
