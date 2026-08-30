@@ -180,13 +180,13 @@ body.narrow .chat-side-panel.has-expanded-header > .c-panel-content {
     @apply text-headline-7 text-02;
     @apply truncate;
 }
-/* The badge is decoration, the title is what says which chat this is - so the badge gives up its
-   width ~100x faster, down to the icon, instead of the title paying the whole shortfall. */
+/* The badge is exactly as wide as its own text, capped at 96px: the title is what says which chat
+   this is, so a label a locale makes long ellipsises instead of squeezing the title out. min-w-0 is
+   what lets it truncate at all - a flex item's automatic minimum is its (nowrap) text otherwise -
+   and shrink-[100] makes the badge, not the title, pay any shortfall left below that cap. */
 .chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-content > .status-badge {
     @apply flex-initial shrink-[100];
-    /* 96px floor: the padding, icon and gap take 34, leaving ~62 for text - enough for the common
-       labels ("Public chat" / "Private chat") to stay whole; longer translations still ellipsise. */
-    @apply min-w-24;
+    @apply min-w-0 max-w-24;
 }
 .chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-content > .c-info {
     @apply flex-x;
