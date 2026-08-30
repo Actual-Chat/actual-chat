@@ -297,13 +297,11 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
     private void MarkStopped()
     {
+        // Reached only once the engine is stopped, so "recording, but in no chat" is never true here.
         var currentState = State.Value;
         var (_, isRecording, isSignalDetected, isConnected, isVoiceActive) = currentState;
         UpdateState(new AudioRecorderState(null) {
-            IsRecording = isRecording,
-            IsSignalDetected = isSignalDetected,
             IsConnected = isConnected,
-            IsVoiceActive = isVoiceActive,
             RecordingStartTime = currentState.RecordingStartTime,
         });
         _recordingActivity
