@@ -19,6 +19,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
     private bool _hasFocus;
     private bool _isCommunicationFocus;
     private bool _isCommunicationModeYielded;
+    public bool IsCommunicationFocus => _isCommunicationFocus;
 
     public event Action<AudioFocus>? OnFocusChanged;
     public event Action? OnOutputDevicesChanged;
@@ -49,8 +50,12 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         _audioManager.UnregisterAudioDeviceCallback(_deviceCallback);
     }
 
-    public Task<bool> RequestFocusForCall()
-        => RequestFocus(AudioFocus.GainTransient, AudioUsageKind.VoiceCommunication, AudioContentType.Speech);
+    public Task<bool> RequestFocusForCall(bool useCommunicationRoute)
+        // Without the communication route we never open SCO - and opening SCO outside a real
+        // call is an HFP virtual call, which makes a car head unit take over its screen.
+        => useCommunicationRoute
+            ? RequestFocus(AudioFocus.GainTransient, AudioUsageKind.VoiceCommunication, AudioContentType.Speech)
+            : RequestFocus(AudioFocus.GainTransient, AudioUsageKind.Media, AudioContentType.Speech);
 
     public Task<bool> RequestFocusForPlayback()
         // Playback needs no microphone, and the communication route drops a BT peer to SCO - a virtual call.
@@ -62,8 +67,11 @@ public sealed class AndroidAudioFocusHelper : IDisposable
             AudioUsageKind.AssistanceSonification,
             AudioContentType.Sonification);
 
-    public async Task WarmUpAudioMode()
+    public async Task WarmUpAudioMode(bool isProjectionActive)
     {
+        if (isProjectionActive)
+            return; // Priming the comm pipeline flips the mode, which is exactly what we avoid in a car
+
         if (_hasFocus || _audioManager.Mode == Mode.InCommunication)
             return; // Already in communication mode, nothing to warm up
         if (_audioManager.IsMusicActive)
@@ -105,6 +113,11 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         => _isCommunicationFocus
             ? _deviceRouter.SelectCommunicationDevice(cancellationToken)
             : Task.FromResult(false);
+
+    public Task<bool> SelectBuiltinSpeaker(CancellationToken cancellationToken)
+        // Deliberately bypasses the priority list in SelectCommunicationDevice: a Bluetooth device
+        // here would raise an HFP virtual call, which is what pinning playback to the phone avoids.
+        => _deviceRouter.SelectBuiltinSpeaker(cancellationToken);
 
     public void YieldCommunicationMode()
     {
@@ -249,6 +262,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
     {
         // Completes only once the route has actually landed, not when it's requested.
         Task<bool> SelectCommunicationDevice(CancellationToken ct);
+        Task<bool> SelectBuiltinSpeaker(CancellationToken ct);
         void ClearCommunicationDevice();
         Task OnDevicesChanged(CancellationToken ct);
     }
@@ -298,26 +312,28 @@ public sealed class AndroidAudioFocusHelper : IDisposable
                     return false;
                 }
 
-                var currentDevice = _audioManager.CommunicationDevice;
-                if (currentDevice == null || currentDevice.Type != device.Type) {
-                    _log.LogInformation("Setting communication device to: {Type}", device.Type);
-                    if (!_audioManager.SetCommunicationDevice(device))
-                        _log.LogWarning("SetCommunicationDevice returned false for device: {Type}", device.Type);
-                }
-
-                // SetCommunicationDevice only accepts the request - the route lands later, and a
-                // cold Normal -> InCommunication transition takes ~300ms to settle. Returning early
-                // lets the first AudioTrack be created while the earpiece is still selected, and a
-                // started track doesn't reliably follow a later switch: that's the wake-path bug
-                // where the first utterance played out of the earpiece for its whole duration.
-                var isRouted = await WhenCommunicationDeviceIs(device.Type, ct).ConfigureAwait(false);
-                if (!isRouted)
-                    _log.LogWarning("Communication device didn't become {Type} in time (now: {Actual})",
-                        device.Type, _audioManager.CommunicationDevice?.Type);
-                return isRouted;
+                return await SetAndAwaitCommunicationDevice(device, ct).ConfigureAwait(false);
             }
             catch (Exception e) {
                 _log.LogWarning(e, "Failed to set communication device");
+                return false;
+            }
+        }
+
+        public async Task<bool> SelectBuiltinSpeaker(CancellationToken ct)
+        {
+            try {
+                var device = _audioManager.AvailableCommunicationDevices
+                    .FirstOrDefault(d => d.Type == AudioDeviceType.BuiltinSpeaker);
+                if (device == null) {
+                    _log.LogWarning("Built-in speaker not available among communication devices");
+                    return false;
+                }
+
+                return await SetAndAwaitCommunicationDevice(device, ct).ConfigureAwait(false);
+            }
+            catch (Exception e) {
+                _log.LogWarning(e, "Failed to set built-in speaker as communication device");
                 return false;
             }
         }
@@ -350,6 +366,27 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         }
 
         // Private methods
+
+        private async Task<bool> SetAndAwaitCommunicationDevice(AudioDeviceInfo device, CancellationToken ct)
+        {
+            var currentDevice = _audioManager.CommunicationDevice;
+            if (currentDevice == null || currentDevice.Type != device.Type) {
+                _log.LogInformation("Setting communication device to: {Type}", device.Type);
+                if (!_audioManager.SetCommunicationDevice(device))
+                    _log.LogWarning("SetCommunicationDevice returned false for device: {Type}", device.Type);
+            }
+
+            // SetCommunicationDevice only accepts the request - the route lands later, and a
+            // cold Normal -> InCommunication transition takes ~300ms to settle. Returning early
+            // lets the first AudioTrack be created while the earpiece is still selected, and a
+            // started track doesn't reliably follow a later switch: that's the wake-path bug
+            // where the first utterance played out of the earpiece for its whole duration.
+            var isRouted = await WhenCommunicationDeviceIs(device.Type, ct).ConfigureAwait(false);
+            if (!isRouted)
+                _log.LogWarning("Communication device didn't become {Type} in time (now: {Actual})",
+                    device.Type, _audioManager.CommunicationDevice?.Type);
+            return isRouted;
+        }
 
         private async Task<bool> WhenCommunicationDeviceIs(AudioDeviceType type, CancellationToken ct)
         {
@@ -454,6 +491,20 @@ public sealed class AndroidAudioFocusHelper : IDisposable
                 // Fallback to speakerphone
                 _audioManager.SpeakerphoneOn = true;
                 return true;
+            }
+        }
+
+        public Task<bool> SelectBuiltinSpeaker(CancellationToken ct)
+        {
+            try {
+                ClearCommunicationDevice(); // Drop any active SCO route - we want the speaker, not Bluetooth
+                _audioManager.SpeakerphoneOn = true;
+                _log.LogInformation("Forcing built-in speaker (legacy)");
+                return Task.FromResult(true);
+            }
+            catch (Exception e) {
+                _log.LogWarning(e, "Failed to force built-in speaker (legacy)");
+                return Task.FromResult(false);
             }
         }
 

@@ -5,10 +5,12 @@ using Android.Media;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class AndroidAudioFocusUI : MauiAudioFocusUI
+public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
 {
     private readonly AndroidAudioFocusHelper _focusHelper;
     private MauiAudioFocusHandle? _handle;
+    private CarAudioRoute _carAudioRoute = CarAudioRoute.Default;
+    public override bool IsCommunicationFocus => _focusHelper.IsCommunicationFocus;
 
     public AndroidAudioFocusUI(AppUIHub hub)
         : base(hub)
@@ -40,11 +42,23 @@ public class AndroidAudioFocusUI : MauiAudioFocusUI
         await _focusHelper.EnsureCommunicationRoute(cancellationToken).ConfigureAwait(false);
     }
 
+    public override async Task<AudioFocusScope?> TryAcquire(AudioFocusRequester requester)
+    {
+        // Hoisted above the OperationLock base takes: the lookup blocks on a content provider and,
+        // on a cold cache, on an RPC - and an incoming ring waits on that same lock to pull the
+        // ringtone out of the earpiece via YieldCommunicationMode.
+        await UpdateCarAudioRoute().ConfigureAwait(false);
+        return await base.TryAcquire(requester).ConfigureAwait(false);
+    }
+
     public override async Task WarmUp()
     {
+        var route = await UpdateCarAudioRoute().ConfigureAwait(false);
         using var releaser = await OperationLock.Lock(CancellationToken.None).ConfigureAwait(false);
         releaser.MarkLockedLocally();
-        await Task.Run(() => _focusHelper.WarmUpAudioMode(), CancellationToken.None).ConfigureAwait(false);
+        var isProjectionActive = route != CarAudioRoute.Default;
+        await Task.Run(() => _focusHelper.WarmUpAudioMode(isProjectionActive), CancellationToken.None)
+            .ConfigureAwait(false);
     }
 
     public override async Task YieldCommunicationMode()
@@ -61,14 +75,24 @@ public class AndroidAudioFocusUI : MauiAudioFocusUI
         await _focusHelper.RestoreCommunicationMode().ConfigureAwait(false);
     }
 
-    // Protected and private methods
+    public override async Task EnsureBuiltinSpeakerRoute(CancellationToken cancellationToken = default)
+    {
+        using var releaser = await OperationLock.Lock(cancellationToken).ConfigureAwait(false);
+        releaser.MarkLockedLocally();
+        await _focusHelper.SelectBuiltinSpeaker(cancellationToken).ConfigureAwait(false);
+    }
+
+    // Protected/internal methods
 
     protected override async Task<MauiAudioFocusHandle?> RequestAudioFocus(AudioFocusMode mode)
     {
         Log.LogInformation("-> RequestAudioFocus, requested mode: '{Mode}', active handle: '{Handle}'", mode, _handle);
 
+        // The route is read, never awaited, here: this runs under OperationLock.
+        var useCommunicationRoute = mode != AudioFocusMode.Recording
+            || Volatile.Read(ref _carAudioRoute).Input != AudioEndpoint.Builtin;
         var success = await Task.Run(() => mode switch {
-                AudioFocusMode.Recording => _focusHelper.RequestFocusForCall(),
+                AudioFocusMode.Recording => _focusHelper.RequestFocusForCall(useCommunicationRoute),
                 AudioFocusMode.Playback => _focusHelper.RequestFocusForPlayback(),
                 AudioFocusMode.Tune => _focusHelper.RequestFocusForNotification(),
                 _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unsupported audio focus mode"),
@@ -93,6 +117,16 @@ public class AndroidAudioFocusUI : MauiAudioFocusUI
                 _handle = null;
             }
         }
+    }
+
+    // Private methods
+
+    private async Task<CarAudioRoute> UpdateCarAudioRoute()
+    {
+        var route = await Hub.ChatAudioUI.GetCarAudioRoute(CancellationToken.None).ConfigureAwait(false);
+        // Published for RequestAudioFocus, which can't await it from under OperationLock.
+        Volatile.Write(ref _carAudioRoute, route);
+        return route;
     }
 
     private void OnFocusChanged(AudioFocus af)

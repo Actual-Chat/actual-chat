@@ -40,6 +40,10 @@ public abstract class AudioFocusScope : IDisposable
 public class AudioFocusUI : ProcessorBase
 {
     public virtual AudioFocusMode ActiveMode => AudioFocusMode.Tune;
+    public virtual bool IsCommunicationFocus
+        // Whether the focus we hold actually took the communication route. ActiveMode no longer
+        // implies it: a recording under car projection asks for Media usage and stays in Normal.
+        => false;
 
     public virtual Task<AudioFocusScope?> TryAcquire(AudioFocusRequester requester)
         => Task.FromResult<AudioFocusScope?>(FakeScope.Instance);
@@ -63,6 +67,11 @@ public class AudioFocusUI : ProcessorBase
         => Task.CompletedTask;
 
     public virtual Task RestoreCommunicationMode()
+        => Task.CompletedTask;
+
+    public virtual Task EnsureBuiltinSpeakerRoute(CancellationToken cancellationToken = default)
+        // Playback pinned to the phone speaker (car audio settings) needs an explicit route: unlike
+        // EnsureOutputRoute, this must never fall back to a Bluetooth device.
         => Task.CompletedTask;
 
     public virtual AudioFocusDiagnostics GetDiagnostics()
@@ -106,7 +115,14 @@ public sealed record AudioFocusDiagnostics(
             && Scopes.SequenceEqual(other.Scopes);
 
     public override int GetHashCode()
-        => HashCode.Combine(IsSupported, ActiveMode, IsInterrupted, IsSuspended, IsSessionConfigured, Scopes.Count, Session);
+        => HashCode.Combine(
+            IsSupported,
+            ActiveMode,
+            IsInterrupted,
+            IsSuspended,
+            IsSessionConfigured,
+            Scopes.Count,
+            Session);
 }
 
 /// <summary>
