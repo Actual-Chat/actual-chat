@@ -280,6 +280,7 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         UpdateState(new AudioRecorderState(chatId) {
             IsConnected = isConnected,
             RecordingStartTime = currentState.RecordingStartTime,
+            LastFailure = currentState.LastFailure,
         });
         // ReSharper disable once ExplicitCallerInfoArgument
         _recordingActivity = AppUIInstruments.ActivitySource.StartActivity(GetType(), "Record");
@@ -303,6 +304,7 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         UpdateState(new AudioRecorderState(null) {
             IsConnected = isConnected,
             RecordingStartTime = currentState.RecordingStartTime,
+            LastFailure = currentState.LastFailure,
         });
         _recordingActivity
             ?.AddSentrySimulatedEvent(new ActivityEvent("Recording is stopped",
