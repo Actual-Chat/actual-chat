@@ -26,7 +26,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "live-block-boundary-test");
+        var chat = await CreateSettledChat("live-block-boundary-test");
         var tileSize = ChatUI.IdTileStack.FirstLayer.TileSize;
         ChatEntry entry;
         do {
@@ -65,7 +65,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(true, "conv-first-entry-test");
+        var chat = await CreateSettledChat("conv-first-entry-test", isPublic: true);
         var first = await Tester.CreateTextEntry(chat.Id, "opens the conversation");
         ChatEntry last = first;
         for (var i = 0; i < 4; i++)
@@ -108,7 +108,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "live-dup-key-test");
+        var chat = await CreateSettledChat("live-dup-key-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_080);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -158,7 +158,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "Governor latch");
+        var chat = await CreateSettledChat("Governor latch");
         for (var i = 0; i < 5; i++)
             await Tester.CreateTextEntry(chat.Id, $"entry {i}");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
@@ -195,7 +195,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "leave-freeze-test");
+        var chat = await CreateSettledChat("leave-freeze-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_100);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -258,7 +258,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "live-footer-test");
+        var chat = await CreateSettledChat("live-footer-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_180);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -303,7 +303,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange - same joined-block setup with a landed title
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "live-split-test");
+        var chat = await CreateSettledChat("live-split-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_190);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -350,7 +350,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "leave-freeze-new-entries-test");
+        var chat = await CreateSettledChat("leave-freeze-new-entries-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_110);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -420,7 +420,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "close-freeze-test");
+        var chat = await CreateSettledChat("close-freeze-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_120);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -493,7 +493,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "close-context-test");
+        var chat = await CreateSettledChat("close-context-test");
         var context0 = await Tester.CreateTextEntry(chat.Id, "context-0");
         await Tester.CreateTextEntry(chat.Id, "context-1");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
@@ -575,7 +575,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "close-toggle-test");
+        var chat = await CreateSettledChat("close-toggle-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_130);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -635,7 +635,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "close-retoggle-test");
+        var chat = await CreateSettledChat("close-retoggle-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_135);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -706,7 +706,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "viewport-guard-test");
+        var chat = await CreateSettledChat("viewport-guard-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_150);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -787,7 +787,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "leave-reactive-test");
+        var chat = await CreateSettledChat("leave-reactive-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_170);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -851,7 +851,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "closed-completed-test");
+        var chat = await CreateSettledChat("closed-completed-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_200);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -918,7 +918,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange - joined live session with a landed summary, card collapsed like the reported case
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, $"footerless-card-test-{mustLeaveBeforeClose}");
+        var chat = await CreateSettledChat($"footerless-card-test-{mustLeaveBeforeClose}");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_320);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -997,7 +997,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, $"stop-dup-key-test-{hasPreLatchContext}");
+        var chat = await CreateSettledChat($"stop-dup-key-test-{hasPreLatchContext}");
         var context0 = await Tester.CreateTextEntry(chat.Id, "context-0");
         await Tester.CreateTextEntry(chat.Id, "context-1");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
@@ -1072,7 +1072,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange - joined live session with a landed summary
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "frozen-thread-split-test");
+        var chat = await CreateSettledChat("frozen-thread-split-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_250);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -1151,7 +1151,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // arrange - the thread opens a tile, and exactly one more tile follows it, so a tail-pinned
         // window loads that last tile and reaches the thread's tile only by widening
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "thread-widened-tile-test");
+        var chat = await CreateSettledChat("thread-widened-tile-test");
         var tileSize = (int)ChatUI.IdTileStack.FirstLayer.TileSize;
         ChatEntry entry;
         do {
@@ -1196,7 +1196,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange - a joined live session that never gets a summary
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "tier1-dissolve-test");
+        var chat = await CreateSettledChat("tier1-dissolve-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_210);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -1241,7 +1241,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "expanded-no-desc-test");
+        var chat = await CreateSettledChat("expanded-no-desc-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_320);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -1280,7 +1280,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     {
         // arrange - a live session this Bob has not joined
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "join-records-test");
+        var chat = await CreateSettledChat("join-records-test");
         var peerId = AuthorId.New(chat.Id, 777_310);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
@@ -1303,7 +1303,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     {
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "pre-summary-meta-test");
+        var chat = await CreateSettledChat("pre-summary-meta-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_330);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -1331,7 +1331,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     public async Task UnjoinedLiveBlockUsesStickyHeader()
     {
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "unjoined-shell-test");
+        var chat = await CreateSettledChat("unjoined-shell-test");
         var peerId = AuthorId.New(chat.Id, 777_340);
         var peer2Id = AuthorId.New(chat.Id, 777_341);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -1368,7 +1368,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "unjoined-no-leak-test");
+        var chat = await CreateSettledChat("unjoined-no-leak-test");
         var peerId = AuthorId.New(chat.Id, 777_350);
         var peer2Id = AuthorId.New(chat.Id, 777_351);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -1376,8 +1376,12 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, peer2Id, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         var v = live!.EffectiveVisibleStartLid;
+        var spokenLids = new List<long>();
         for (var i = 0; i < 3; i++)
-            await CreateSpokenEntry(chat.Id, $"a-{i}");   // v, v+1, v+2
+            spokenLids.Add((await CreateSpokenEntry(chat.Id, $"a-{i}")).LocalId);
+        // Guards the arrangement, not the behavior: an entry that lands at V on its own - nothing
+        // spoke it, so nothing hides it - reads to the assertions below exactly like a leak.
+        spokenLids.Should().Equal([v, v + 1, v + 2], "the live entries must be the ones V points at");
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
             Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v + 2, MessageCount = 3,
         }, CancellationToken.None);
@@ -1417,7 +1421,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "swallow-above-viewport-test");
+        var chat = await CreateSettledChat("swallow-above-viewport-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_400);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -1481,7 +1485,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "streaming-tail-test");
+        var chat = await CreateSettledChat("streaming-tail-test");
         var ownAuthor = await Tester.GetOwnAuthor(chat.Id).Require();
         var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
         await Tester.CreateTextEntry(chat.Id, "typed");
@@ -1534,7 +1538,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "streaming-fold-test");
+        var chat = await CreateSettledChat("streaming-fold-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_420);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -1600,7 +1604,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "frozen-streaming-lapse-test");
+        var chat = await CreateSettledChat("frozen-streaming-lapse-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_430);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -1680,7 +1684,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "reveal-more-test");
+        var chat = await CreateSettledChat("reveal-more-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_410);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -1749,7 +1753,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "reveal-reswallow-test");
+        var chat = await CreateSettledChat("reveal-reswallow-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_411);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -1821,7 +1825,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "reveal-leave-freeze-test");
+        var chat = await CreateSettledChat("reveal-leave-freeze-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_420);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -1891,7 +1895,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "swallowed-count-test");
+        var chat = await CreateSettledChat("swallowed-count-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_420);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -1963,7 +1967,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "live-snapshot-memory-test");
+        var chat = await CreateSettledChat("live-snapshot-memory-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_090);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -1981,8 +1985,6 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             .Should().Be(snapshot, "the computed read must leave a stand-in behind");
     }
 
-    // Private methods
-
     [Fact]
     public async Task RestartedSessionSurfacesItsEntriesForAViewerWhoLeftTheLastOne()
     {
@@ -1992,7 +1994,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // arrange
         await Tester.SignInAsUniqueBob();
-        var (chat, _) = await Tester.CreateAndGetChat(false, "restart-after-close-test");
+        var chat = await CreateSettledChat("restart-after-close-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_140);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -2063,6 +2065,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         Out.WriteLine($"visible lids: {string.Join(", ", finalLids)}");
         finalLids.Should().Contain(typed.Select(e => e.Id.LocalId));
     }
+
+    // Private methods
 
     private static string Describe(LiveBlockState? state)
     {
@@ -2156,6 +2160,22 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         }
 
         return sb.ToString();
+    }
+
+    private async Task<Chat> CreateSettledChat(string title, bool isPublic = false)
+    {
+        // A fresh chat's "member added" entry is written by an async event handler, so a live session
+        // latched right after creation can take V from a lid range that entry has not reached yet.
+        // It then lands at V itself and stays visible there (it was never spoken), while every entry
+        // the test creates sits one lid past where its V + n arithmetic puts it. Wait it out here.
+        var (chat, _) = await Tester.CreateAndGetChat(isPublic, title);
+        await ComputedTest.When(async ct => {
+            var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, ct);
+            // Start is the lowest entry lid, and 0 while there is none - the range of an empty chat
+            // is (0, 1), so its size can't tell an empty chat from one holding a single entry.
+            idRange.Start.Should().BePositive("V must latch past the chat's opening system entry");
+        }, TimeSpan.FromSeconds(10));
+        return chat;
     }
 
     // An entry the call itself produced. CreateTextEntry alone makes a typed message, which the
