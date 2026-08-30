@@ -100,10 +100,15 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
 
             try {
                 deviceEnumerator = new MMDeviceEnumerator();
-                micDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications);
+                // Multimedia, matching what CreateDeviceInputNodeAsync opens below. Under
+                // Communications, AGC drove a mic nobody was recording and never converged.
+                micDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia);
                 var loopbackDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
                 loopbackCapture = new CustomWasapiLoopbackCapture(loopbackDevice, true, CaptureBufferMs);
                 loopbackCapture.DataAvailable += OnLoopbackCaptureOnDataAvailable;
+                // NAudio's only channel for a capture-thread failure. Unsubscribed, losing the
+                // render endpoint silently ends the AEC reference for the rest of the session.
+                loopbackCapture.RecordingStopped += OnLoopbackRecordingStopped;
                 loopbackCapture.WaveFormat =
                     WaveFormat.CreateIeeeFloatWaveFormat(Constants.Audio.RecordingSampleRate, 1);
             }
@@ -244,15 +249,29 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                     /* Expected */
                 }
                 catch (Exception ex) {
-                    Log.LogError(ex, "Mic processing loop failed");
+                    // Ending is what lets it restart: dying quietly leaves the graph and loopback
+                    // running with the heartbeat stopped, so the mic stays hot and nothing records.
+                    Log.LogError(ex, "Mic processing loop failed - ending the capture");
+                    _ = Stop();
                 }
                 finally {
                     ArrayPools.SharedFloatPool.Return(emptyArray);
                 }
             }, processingCts.Token);
 
+            if (loopbackCapture is not null)
+                try {
+                    loopbackCapture.StartRecording();
+                }
+                catch (Exception e) {
+                    // Degraded, not fatal: WASAPI Initialize happens inside StartRecording, so an
+                    // app holding the render endpoint exclusively used to kill the whole recording.
+                    Log.LogWarning(e, "AEC loopback failed to start; continuing without it");
+                    loopbackCapture.DisposeSilently();
+                    loopbackCapture = null;
+                }
+
             try {
-                loopbackCapture?.StartRecording();
                 graph!.Start();
                 inputNode!.Start();
             }
@@ -436,6 +455,9 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
             catch (Exception e) {
                 Log.LogWarning(e, "Failed to restore the microphone volume");
             }
+            // Its native callback registration otherwise lives until finalization.
+            endpointVolume.DisposeSilently();
+            endpointVolume = null;
         }
 
         void OnUnrecoverableError(AudioGraph sender, AudioGraphUnrecoverableErrorOccurredEventArgs args) {
@@ -443,6 +465,11 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
             // the rest of the process, so end the capture and let the next attempt build a new one.
             Log.LogWarning("AudioGraph hit an unrecoverable error: {Error}", args.Error);
             _ = Stop();
+        }
+
+        void OnLoopbackRecordingStopped(object? sender, StoppedEventArgs e) {
+            if (e.Exception is { } error)
+                Log.LogWarning(error, "AEC loopback capture stopped - echo cancellation is degraded");
         }
 
         void OnDefaultCaptureDeviceChanged() {
@@ -533,7 +560,7 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
     {
         public void OnDefaultDeviceChanged(DataFlow dataFlow, Role role, string defaultDeviceId)
         {
-            if (dataFlow == DataFlow.Capture && role == Role.Communications)
+            if (dataFlow == DataFlow.Capture && role == Role.Multimedia)
                 onChanged();
         }
 

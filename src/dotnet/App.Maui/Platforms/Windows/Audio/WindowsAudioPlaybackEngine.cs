@@ -72,22 +72,36 @@ internal sealed class WindowsAudioPlaybackEngine(
 
         var settings = new AudioGraphSettings(Windows.Media.Render.AudioRenderCategory.Media) {
             QuantumSizeSelectionMode = QuantumSizeSelectionMode.ClosestToDesired,
-            DesiredSamplesPerQuantum = Constants.Audio.RecordingSampleRate / 1000 * Constants.Audio.OpusFrameDurationMs,
+            // Playback rate: the recording rate asked for a third of a frame's samples.
+            DesiredSamplesPerQuantum =
+                Constants.Audio.PlaybackSampleRate / 1000 * Constants.Audio.OpusFrameDurationMs,
         };
 
         var graphCreate = await AudioGraph.CreateAsync(settings).AsTask(cancellationToken).ConfigureAwait(false);
-        if (graphCreate.Status != AudioGraphCreationStatus.Success || graphCreate.Graph is null)
+        if (graphCreate.Status != AudioGraphCreationStatus.Success || graphCreate.Graph is null) {
+            // Logged here because nothing above will - TrackPlayer swallows this and reports a
+            // clean end. ExtendedError carries the HRESULT; without it it's "UnknownFailure".
+            Log.LogError(graphCreate.ExtendedError,
+                "Playback AudioGraph creation failed: {Status}", graphCreate.Status);
             throw new InvalidOperationException($"AudioGraph creation failed: {graphCreate.Status}");
+        }
 
         _graph = graphCreate.Graph;
 
         var deviceOutputResult = await _graph.CreateDeviceOutputNodeAsync().AsTask(cancellationToken).ConfigureAwait(false);
-        if (deviceOutputResult.Status != AudioDeviceNodeCreationStatus.Success || deviceOutputResult.DeviceOutputNode is null)
-            throw new InvalidOperationException($"AudioGraph device output creation failed: {deviceOutputResult.Status}");
+        if (deviceOutputResult.Status != AudioDeviceNodeCreationStatus.Success || deviceOutputResult.DeviceOutputNode is null) {
+            Log.LogError(deviceOutputResult.ExtendedError,
+                "Playback device output creation failed: {Status}", deviceOutputResult.Status);
+            throw new InvalidOperationException(
+                $"AudioGraph device output creation failed: {deviceOutputResult.Status}");
+        }
         _deviceOutput = deviceOutputResult.DeviceOutputNode;
         _frameInput = _graph.CreateFrameInputNode(encoding);
         _frameInput.AddOutgoingConnection(_deviceOutput);
         _frameInput.QuantumStarted += OnQuantumStarted;
+        // Without this a dead graph is silent: QuantumStarted stops firing, nothing reports an
+        // end, and TrackPlayer waits on a completion that never comes.
+        _graph.UnrecoverableErrorOccurred += OnUnrecoverableError;
 
         // Start background decode loop
         var ct = _decodeCts.Token;
@@ -190,14 +204,20 @@ internal sealed class WindowsAudioPlaybackEngine(
             // Wait until we have enough decoded samples buffered before starting playback
             var minSamples = (int)(Constants.Audio.StartPlaybackWhenBufferedDuration.TotalSeconds * Constants.Audio.PlaybackSampleRate);
             if (minSamples > 0)
-                while (_decodeBuffer.Count < minSamples && !cancellationToken.IsCancellationRequested)
+                // Decode completion ends the wait too: a track shorter than the threshold never
+                // reaches minSamples, so it would never start and never end.
+                while (_decodeBuffer.Count < minSamples
+                    && Volatile.Read(ref _decodeCompleted) == 0
+                    && !cancellationToken.IsCancellationRequested)
                     try {
                         var count = _decodeBuffer.Count;
                         if (count > 0) {
                             // Buffer has data but not enough yet; wait estimated time for the rest
                             var remaining = minSamples - count;
+                            // At least 1ms: the estimate rounds to zero under ~48 samples.
+                            var delayMs = Math.Max(1, remaining * 1000 / Constants.Audio.PlaybackSampleRate);
                             await Clocks.CoarseSystemClock
-                                .Delay(remaining * 1000 / Constants.Audio.PlaybackSampleRate, cancellationToken)
+                                .Delay(delayMs, cancellationToken)
                                 .ConfigureAwait(false);
                         }
                         else {
@@ -228,6 +248,12 @@ internal sealed class WindowsAudioPlaybackEngine(
             Log.LogError(e, "Failed to start playback graph");
             throw;
         }
+    }
+
+    private void OnUnrecoverableError(AudioGraph sender, AudioGraphUnrecoverableErrorOccurredEventArgs args)
+    {
+        Log.LogError("Playback AudioGraph failed: {Error}", args.Error);
+        TryReportEnded($"Playback AudioGraph failed: {args.Error}");
     }
 
     private async Task DecodeAndFeed(CancellationToken cancellationToken)
