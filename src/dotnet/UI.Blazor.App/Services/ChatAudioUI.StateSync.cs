@@ -259,7 +259,9 @@ public partial class ChatAudioUI
                     .ConfigureAwait(false),
                 abortToken);
             whenIdle = ForegroundTask.Run(async () => {
-                var options = GetRecordingIdleOptions((TimeSpan?)_recordingIdleDurationBox, AudioSettings);
+                // Paired with the publication in SetRecordingChatId.
+                var idleDuration = (TimeSpan?)Volatile.Read(ref _recordingIdleDurationBox);
+                var options = GetRecordingIdleOptions(idleDuration, AudioSettings);
                 var streamingIdleBoundaries = ObserveStreamingIdleBoundaries(chatId, options, abortToken);
                 await foreach (var serverStopAt in streamingIdleBoundaries.ConfigureAwait(false)) {
                     // MutableState.Set invalidates unconditionally, and the boundaries repeat the

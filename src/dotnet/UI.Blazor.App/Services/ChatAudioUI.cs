@@ -22,8 +22,8 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<NextBeepState?> _nextBeep;
     private readonly StoredState<Box<bool>> _isPttEnabledOnDevice;
     private readonly AsyncTaskMethodBuilder _whenEnabledSource = AsyncTaskMethodBuilderExt.New();
-    // Boxed because the CLR forbids volatile on Nullable<TimeSpan>; null means "no override".
-    private volatile object? _recordingIdleDurationBox;
+    // Boxed because Volatile.Read/Write take a reference; null means "no override".
+    private object? _recordingIdleDurationBox;
     private bool _isBeginTuneSuppressed;
 
     private IChats Chats => Hub.Chats;
@@ -342,8 +342,8 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         var oldRecordingChatId = ActiveChatsUI.ActiveChats.Value.FirstOrDefault(c => c.IsRecording)?.ChatId;
         if (oldRecordingChatId != chatId)
             _recordingIntentChangedAt.Value = CpuNow;
-        _recordingIdleDurationBox = chatId is null ? null : (object?)idleDuration;
-        // Publication: RecordChat reads this from its own flow right before opening the mic.
+        // Publication: RecordChat reads both from its own flow right before opening the mic.
+        Volatile.Write(ref _recordingIdleDurationBox, chatId is null ? null : (object?)idleDuration);
         Volatile.Write(ref _isBeginTuneSuppressed, chatId is not null && !mustPlayBeginTune);
         if (chatId is not null)
             Hub.AudioAttachmentPlayer.OnConversationJoined();
