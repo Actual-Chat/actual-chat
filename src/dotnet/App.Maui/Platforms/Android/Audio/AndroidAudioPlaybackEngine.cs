@@ -1,6 +1,7 @@
 using ActualChat.Audio;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Components;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using Android.Media;
 using AudioFormat = Android.Media.AudioFormat;
@@ -26,18 +27,19 @@ internal sealed class AndroidAudioPlaybackEngine(
         static frame => frame.Duration);
 
     private CancellationTokenSource? _pauseEndTokenSource;
-    private volatile AudioTrack? _audioTrack;
-    private volatile Task? _decodeAndFeedTask;
-    private volatile Task? _positionWatchTask;
+    private AudioTrack? _audioTrack;
+    private Task? _decodeAndFeedTask;
+    private Task? _positionWatchTask;
     private GCHandle _audioTrackHandle;
 
     private int _remainingPreSkip;
-    private volatile int _fedSampleCount;
-    private volatile int _lastPlayedSampleCount;
+    private int _fedSampleCount;
+    private int _lastPlayedSampleCount;
     private int _isEnded;
     private long _nextLagReportAtTicks;
 
     private AudioFocusUI AudioFocusUI => field ??= services.GetRequiredService<AudioFocusUI>();
+    private ChatAudioUI ChatAudioUI => field ??= services.GetRequiredService<ChatAudioUI>();
     private IAudioCodec AudioCodec => field ??= services.GetRequiredService<IAudioCodec>();
     private MomentClockSet Clocks => field ??= services.GetRequiredService<MomentClockSet>();
     private ILogger Log => field ??= services.LogFor<AndroidAudioPlaybackEngine>();
@@ -45,13 +47,21 @@ internal sealed class AndroidAudioPlaybackEngine(
     public async Task Play(CancellationToken cancellationToken)
     {
         Log.LogDebug("Play called: id={Id}", info.TrackId);
-        if (_decodeAndFeedTask is not null)
+        // Guards against a second Play() call; Volatile.Read pairs with the Volatile.Write below.
+        if (Volatile.Read(ref _decodeAndFeedTask) is not null)
             return;
 
         // Before the track exists, not after: Android hands the communication route back to the
         // earpiece once it decides the focus holder is idle, and a wake takes focus seconds before
         // its first frames arrive - a track built then stays on the earpiece for its whole life.
-        await AudioFocusUI.EnsureOutputRoute(cancellationToken).ConfigureAwait(false);
+        // The route lookup leads, so the built-in branch never runs EnsureOutputRoute: that one
+        // picks the best communication device, and a Bluetooth pick there opens SCO - the very
+        // virtual call routing playback to the phone exists to avoid.
+        var route = await ChatAudioUI.GetCarAudioRoute(cancellationToken).ConfigureAwait(false);
+        if (route.Output == AudioEndpoint.Builtin)
+            await AudioFocusUI.EnsureBuiltinSpeakerRoute(cancellationToken).ConfigureAwait(false);
+        else
+            await AudioFocusUI.EnsureOutputRoute(cancellationToken).ConfigureAwait(false);
 
         var audioSource = (AudioSource)source;
         _remainingPreSkip = audioSource.Format.PreSkip;
@@ -70,10 +80,16 @@ internal sealed class AndroidAudioPlaybackEngine(
         var bufferBytes = Math.Max(minBufferBytes, Constants.Audio.PcmFrameLength * 4);
         AudioTrack audioTrack;
         try {
-            // Media keeps a Bluetooth peer on A2DP; only a live capture session needs the SCO route.
-            var usage = AudioFocusUI.ActiveMode >= AudioFocusMode.Recording
-                ? AudioUsageKind.VoiceCommunication
-                : AudioUsageKind.Media;
+            // RemoteSubmix carries Media to the car but doesn't capture VOICE_COMMUNICATION, so that
+            // usage is what pins playback to the phone. Outside a car it's right only while a comm
+            // focus is held: a Media-usage recording focus leaves no comm route, i.e. the earpiece.
+            var usage = route.Output switch {
+                AudioEndpoint.External => AudioUsageKind.Media,
+                AudioEndpoint.Builtin => AudioUsageKind.VoiceCommunication,
+                _ => AudioFocusUI.IsCommunicationFocus
+                    ? AudioUsageKind.VoiceCommunication
+                    : AudioUsageKind.Media,
+            };
             var attributes = new AudioAttributes.Builder()
                 .SetUsage(usage)!
                 .SetContentType(AudioContentType.Speech)!
@@ -99,13 +115,15 @@ internal sealed class AndroidAudioPlaybackEngine(
         }
 
         lock (Lock) {
-            _lastPlayedSampleCount = 0;
+            // Publishing state for the background tasks and for callers of Pause/Resume/End, none of
+            // which take this lock - each Volatile.Write pairs with a Volatile.Read at its call site.
+            Volatile.Write(ref _lastPlayedSampleCount, 0);
             _pauseEndTokenSource = null;
 
-            _audioTrack = audioTrack;
+            Volatile.Write(ref _audioTrack, audioTrack);
             _audioTrackHandle = GCHandle.Alloc(audioTrack, GCHandleType.Normal);
-            _decodeAndFeedTask = BackgroundTask.Run(DecodeAndFeed, CancellationToken.None);
-            _positionWatchTask = BackgroundTask.Run(WatchPlaybackPosition, CancellationToken.None);
+            Volatile.Write(ref _decodeAndFeedTask, BackgroundTask.Run(DecodeAndFeed, CancellationToken.None));
+            Volatile.Write(ref _positionWatchTask, BackgroundTask.Run(WatchPlaybackPosition, CancellationToken.None));
         }
 
         audioTrack.Play();
@@ -118,26 +136,30 @@ internal sealed class AndroidAudioPlaybackEngine(
         // Both background tasks observe StopToken, which ProcessorBase.DisposeAsync cancels before
         // calling this method, so awaiting them here cannot deadlock. Letting them fully stop before
         // releasing the track is what guarantees no callback ever runs against a released track.
-        if (_decodeAndFeedTask is not null) {
-            await _decodeAndFeedTask.SilentAwait();
-            _decodeAndFeedTask = null;
+        // Volatile pairs with the writes in Play(), since neither task's owning field is read under a lock.
+        var decodeAndFeedTask = Volatile.Read(ref _decodeAndFeedTask);
+        if (decodeAndFeedTask is not null) {
+            await decodeAndFeedTask.SilentAwait();
+            Volatile.Write(ref _decodeAndFeedTask, null);
         }
-        if (_positionWatchTask is not null) {
-            await _positionWatchTask.SilentAwait();
-            _positionWatchTask = null;
+        var positionWatchTask = Volatile.Read(ref _positionWatchTask);
+        if (positionWatchTask is not null) {
+            await positionWatchTask.SilentAwait();
+            Volatile.Write(ref _positionWatchTask, null);
         }
 
         lock (Lock) { // We must re-lock after await
-            if (_audioTrack.IsValid()) {
+            var audioTrack = Volatile.Read(ref _audioTrack);
+            if (audioTrack.IsValid()) {
                 try {
-                    if (_audioTrack.PlayState is PlayState.Playing or PlayState.Paused)
-                        _audioTrack.Stop();
+                    if (audioTrack.PlayState is PlayState.Playing or PlayState.Paused)
+                        audioTrack.Stop();
                 }
                 catch { /* Ignore */ }
-                try { _audioTrack.Release(); } catch { /* Ignore */ }
-                _audioTrack.DisposeSilently();
+                try { audioTrack.Release(); } catch { /* Ignore */ }
+                audioTrack.DisposeSilently();
             }
-            _audioTrack = null;
+            Volatile.Write(ref _audioTrack, null);
 
             if (_audioTrackHandle.IsAllocated)
                 _audioTrackHandle.Free();
@@ -146,10 +168,12 @@ internal sealed class AndroidAudioPlaybackEngine(
 
     public Task Pause(CancellationToken cancellationToken)
     {
-        if (_audioTrack is null)
+        // Cross-thread read of the track Play() publishes under Lock.
+        var audioTrack = Volatile.Read(ref _audioTrack);
+        if (audioTrack is null)
             throw StandardError.AudioPlayer.PlayingStateExpected(GetType());
 
-        _audioTrack.Pause();
+        audioTrack.Pause();
         // Enter paused state: create a gate CTS that will be canceled on Resume()
         _pauseEndTokenSource?.CancelAndDisposeSilently();
         _pauseEndTokenSource = new CancellationTokenSource();
@@ -159,24 +183,27 @@ internal sealed class AndroidAudioPlaybackEngine(
 
     public Task Resume(CancellationToken cancellationToken)
     {
-        if (_audioTrack is null)
+        // Cross-thread read of the track Play() publishes under Lock.
+        var audioTrack = Volatile.Read(ref _audioTrack);
+        if (audioTrack is null)
             throw StandardError.AudioPlayer.PlayingStateExpected(GetType());
 
         _pauseEndTokenSource?.CancelAndDisposeSilently();
         _pauseEndTokenSource = null;
-        _audioTrack.Play();
+        audioTrack.Play();
         NotifyPlaying(GetPlayedSampleCount());
         return Task.CompletedTask;
     }
 
     public Task End(bool mustAbort, CancellationToken cancellationToken)
     {
-        var enqueuedSampleCount =_frames.Count;
+        var enqueuedSampleCount = _frames.Count;
         Log.LogDebug(
             "End called: id={Id} abort={Abort} enqueued={Frames} fed={FeedSampleCount}",
-            info.TrackId, mustAbort, enqueuedSampleCount, _fedSampleCount);
+            info.TrackId, mustAbort, enqueuedSampleCount, Volatile.Read(ref _fedSampleCount));
 
-        var audioTrack = _audioTrack.IfValid();
+        // Cross-thread read of the track Play() publishes under Lock.
+        var audioTrack = Volatile.Read(ref _audioTrack).IfValid();
         if (mustAbort) {
             try {
                 if (audioTrack is not null && audioTrack.PlayState is PlayState.Playing or PlayState.Paused)
@@ -200,6 +227,7 @@ internal sealed class AndroidAudioPlaybackEngine(
                 // Ignore
             }
         }
+
         return Task.CompletedTask;
     }
 
@@ -217,7 +245,8 @@ internal sealed class AndroidAudioPlaybackEngine(
 
     private async Task DecodeAndFeed()
     {
-        var audioTrack = _audioTrack!;
+        // Cross-thread read of the track Play() publishes under Lock.
+        var audioTrack = Volatile.Read(ref _audioTrack)!;
         var cancellationToken = StopToken;
         var audioData = new float[Constants.Audio.PcmFrameLength];
         try {
@@ -249,7 +278,10 @@ internal sealed class AndroidAudioPlaybackEngine(
                     }
 
                     pcm.Span.CopyTo(audioData.AsSpan(0, pcm.Length));
-                    var written = await audioTrack.WriteAsync(audioData, skip, playSamples, WriteMode.Blocking).ConfigureAwait(false);
+                    var written = await audioTrack
+                        .WriteAsync(audioData, skip, playSamples, WriteMode.Blocking)
+                        .ConfigureAwait(false);
+                    // Interlocked, not Volatile.Write: this publishes a delta, not the latest value.
                     if (written > 0)
                         Interlocked.Add(ref _fedSampleCount, written);
                 }
@@ -270,9 +302,14 @@ internal sealed class AndroidAudioPlaybackEngine(
     private void NotifyPlaying(int playedSampleCount)
     {
         var played = (double)playedSampleCount / Constants.Audio.PlaybackSampleRate;
-        var buffered = TimeSpan.FromSeconds((double)(_fedSampleCount - playedSampleCount) / Constants.Audio.PlaybackSampleRate);
+        // Cross-thread read of the count DecodeAndFeed accumulates via Interlocked.Add.
+        var fedSampleCount = Volatile.Read(ref _fedSampleCount);
+        var buffered = TimeSpan.FromSeconds(
+            (double)(fedSampleCount - playedSampleCount) / Constants.Audio.PlaybackSampleRate);
         var isBufferLow = buffered < Constants.Audio.LowPlaybackBufferDuration;
-        var isPaused = !_audioTrack.IsValid() || _audioTrack.PlayState is PlayState.Paused or PlayState.Stopped;
+        // Cross-thread read of the track Play() publishes under Lock.
+        var audioTrack = Volatile.Read(ref _audioTrack);
+        var isPaused = !audioTrack.IsValid() || audioTrack.PlayState is PlayState.Paused or PlayState.Stopped;
         try {
             playerBackend.OnPlaying(played, isPaused, isBufferLow);
         }
@@ -288,6 +325,7 @@ internal sealed class AndroidAudioPlaybackEngine(
         var nowTicks = Environment.TickCount64;
         if (nowTicks < Interlocked.Read(ref _nextLagReportAtTicks))
             return;
+
         Interlocked.Exchange(ref _nextLagReportAtTicks, nowTicks + LagReportIntervalMs);
 
         var anchor = info.SourceRecordedAt != default ? info.SourceRecordedAt : info.RecordedAt;
@@ -320,7 +358,8 @@ internal sealed class AndroidAudioPlaybackEngine(
 
     private bool CanContinuePlaying([NotNullWhen(true)] out AudioTrack? audioTrack)
     {
-        audioTrack = _audioTrack;
+        // Cross-thread read of the track Play() publishes under Lock.
+        audioTrack = Volatile.Read(ref _audioTrack);
         try {
             if (!audioTrack.IsValid())
                 return false;
@@ -336,17 +375,20 @@ internal sealed class AndroidAudioPlaybackEngine(
 
     private int GetPlayedSampleCount()
     {
+        // Cross-thread reads of counts DecodeAndFeed/GetPlayedSampleCount publish via Interlocked.
+        var fedSampleCount = Volatile.Read(ref _fedSampleCount);
+        var lastPlayedSampleCount = Volatile.Read(ref _lastPlayedSampleCount);
         if (!CanContinuePlaying(out var audioTrack))
-            return Math.Max(_fedSampleCount, _lastPlayedSampleCount); // Pretend we played everything
+            return Math.Max(fedSampleCount, lastPlayedSampleCount); // Pretend we played everything
 
         try {
-            var playedSampleCount = audioTrack.PlaybackHeadPosition.Clamp(0, _fedSampleCount); // Can't go beyond end
-            playedSampleCount = Math.Max(playedSampleCount, _lastPlayedSampleCount); // Can't decrease
+            var playedSampleCount = audioTrack.PlaybackHeadPosition.Clamp(0, fedSampleCount); // Can't go beyond end
+            playedSampleCount = Math.Max(playedSampleCount, lastPlayedSampleCount); // Can't decrease
             Interlocked.Exchange(ref _lastPlayedSampleCount, playedSampleCount);
             return playedSampleCount;
         }
         catch {
-            return Math.Max(_fedSampleCount, _lastPlayedSampleCount); // Pretend we played everything
+            return Math.Max(fedSampleCount, lastPlayedSampleCount); // Pretend we played everything
         }
     }
 
@@ -381,7 +423,8 @@ internal sealed class AndroidAudioPlaybackEngine(
     {
         var sampleRate = Constants.Audio.PlaybackSampleRate;
         while (CanContinuePlaying(out _)) {
-            var remaining = _fedSampleCount - GetPlayedSampleCount();
+            // Cross-thread read of the count DecodeAndFeed accumulates via Interlocked.Add.
+            var remaining = Volatile.Read(ref _fedSampleCount) - GetPlayedSampleCount();
             if (remaining <= 0)
                 return;
 
