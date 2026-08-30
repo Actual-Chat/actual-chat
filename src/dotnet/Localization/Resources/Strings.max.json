@@ -777,6 +777,7 @@
   "Banner_Connecting": "Menghubungkan...",
   "Banner_Offline": "Bạn đang ngoại tuyến.",
   "Banner_WillReconnectIn": "इतने समय में फिर कनेक्ट होगा:",
+  "Reactions_NotSent": "まだ送信されていません",
   "Reconnect_Title": "Menghubungkan ulang...",
   "DemandInteraction_Updating": "Wird aktualisiert...",
   "DemandInteraction_Continue_Format": "Да продължим ли — {0}?",

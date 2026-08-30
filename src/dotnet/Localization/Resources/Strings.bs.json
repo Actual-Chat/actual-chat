@@ -645,6 +645,7 @@
   "Banner_Connecting": "Povezivanje...",
   "Banner_Offline": "Van veze ste.",
   "Banner_WillReconnectIn": "Ponovno povezivanje za",
+  "Reactions_NotSent": "Još nije poslano",
   "Reconnect_Title": "Ponovno povezivanje...",
   "DemandInteraction_Updating": "Ažuriranje...",
   "DemandInteraction_Continue_Format": "Nastaviti — {0}?",

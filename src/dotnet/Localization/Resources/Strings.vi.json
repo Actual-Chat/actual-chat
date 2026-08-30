@@ -645,6 +645,7 @@
   "Banner_Connecting": "Đang kết nối...",
   "Banner_Offline": "Bạn đang ngoại tuyến.",
   "Banner_WillReconnectIn": "Sẽ kết nối lại sau",
+  "Reactions_NotSent": "Chưa gửi",
   "Reconnect_Title": "Đang kết nối lại...",
   "DemandInteraction_Updating": "Đang cập nhật...",
   "DemandInteraction_Continue_Format": "Tiếp tục {0}?",

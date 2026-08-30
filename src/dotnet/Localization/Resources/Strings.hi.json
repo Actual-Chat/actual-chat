@@ -645,6 +645,7 @@
   "Banner_Connecting": "कनेक्ट हो रहा है...",
   "Banner_Offline": "आप ऑफ़लाइन हैं।",
   "Banner_WillReconnectIn": "इतने समय में फिर कनेक्ट होगा:",
+  "Reactions_NotSent": "अभी तक नहीं भेजा गया",
   "Reconnect_Title": "फिर से कनेक्ट हो रहा है...",
   "DemandInteraction_Updating": "अपडेट हो रहा है...",
   "DemandInteraction_Continue_Format": "{0} जारी रखें?",

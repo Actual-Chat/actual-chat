@@ -645,6 +645,7 @@
   "Banner_Connecting": "Připojování...",
   "Banner_Offline": "Jste offline.",
   "Banner_WillReconnectIn": "Znovu se připojí za",
+  "Reactions_NotSent": "Zatím neodesláno",
   "Reconnect_Title": "Opětovné připojování...",
   "DemandInteraction_Updating": "Aktualizace...",
   "DemandInteraction_Continue_Format": "Pokračovat — {0}?",

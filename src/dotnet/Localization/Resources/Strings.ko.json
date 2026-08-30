@@ -645,6 +645,7 @@
   "Banner_Connecting": "연결 중...",
   "Banner_Offline": "오프라인 상태입니다.",
   "Banner_WillReconnectIn": "재연결까지",
+  "Reactions_NotSent": "아직 전송되지 않음",
   "Reconnect_Title": "다시 연결 중...",
   "DemandInteraction_Updating": "업데이트 중...",
   "DemandInteraction_Continue_Format": "{0}을(를) 계속할까요?",

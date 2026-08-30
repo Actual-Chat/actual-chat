@@ -645,6 +645,7 @@
   "Banner_Connecting": "Connexion...",
   "Banner_Offline": "Vous êtes hors ligne.",
   "Banner_WillReconnectIn": "Reconnexion dans",
+  "Reactions_NotSent": "Pas encore envoyé",
   "Reconnect_Title": "Reconnexion...",
   "DemandInteraction_Updating": "Mise à jour...",
   "DemandInteraction_Continue_Format": "Continuer {0} ?",

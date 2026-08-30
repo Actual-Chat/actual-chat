@@ -645,6 +645,7 @@
   "Banner_Connecting": "正在连接…",
   "Banner_Offline": "你处于离线状态。",
   "Banner_WillReconnectIn": "将在以下时间后重连",
+  "Reactions_NotSent": "尚未发送",
   "Reconnect_Title": "正在重新连接…",
   "DemandInteraction_Updating": "正在更新…",
   "DemandInteraction_Continue_Format": "继续 {0}？",

@@ -668,6 +668,7 @@ public static class LocalizedStringsLocalizerExt
         public string Banner_Connecting => l["Banner_Connecting"].Value;
         public string Banner_Offline => l["Banner_Offline"].Value;
         public string Banner_WillReconnectIn => l["Banner_WillReconnectIn"].Value;
+        public string Reactions_NotSent => l["Reactions_NotSent"].Value;
         public string Reconnect_Title => l["Reconnect_Title"].Value;
         public string DemandInteraction_Updating => l["DemandInteraction_Updating"].Value;
         public string DemandInteraction_Continue_Format(object arg0)

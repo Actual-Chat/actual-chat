@@ -645,6 +645,7 @@
   "Banner_Connecting": "Menghubungkan...",
   "Banner_Offline": "Anda sedang offline.",
   "Banner_WillReconnectIn": "Akan terhubung lagi dalam",
+  "Reactions_NotSent": "Belum terkirim",
   "Reconnect_Title": "Menghubungkan ulang...",
   "DemandInteraction_Updating": "Memperbarui...",
   "DemandInteraction_Continue_Format": "Lanjutkan {0}?",

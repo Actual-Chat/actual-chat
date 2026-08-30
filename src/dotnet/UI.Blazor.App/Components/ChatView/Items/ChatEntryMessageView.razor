@@ -81,7 +81,7 @@
                     </div>
                 </div>
             </div>
-            @if (entry.HasReactions || OptimisticReactions.HasPendingAdd(entry.Id)) {
+            @if (m.HasReactions) {
                 <MessageReactions Entry="@entry"/>
             }
         </div>
@@ -204,7 +204,7 @@
                     }
                 </div>
             }
-            @if (!isStateBadge && (entry.HasReactions || OptimisticReactions.HasPendingAdd(entry.Id))) {
+            @if (!isStateBadge && m.HasReactions) {
                 <MessageReactions Entry="@entry"/>
             }
             @if (!isForward && m.MentionedAuthorIds is not null && m.MentionedAuthorIds.Count != 0) {
@@ -247,7 +247,7 @@
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
-    private OptimisticReactions OptimisticReactions => Hub.OptimisticReactions;
+    private ReactionsUI ReactionsUI => Hub.ReactionsUI;
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
@@ -258,7 +258,6 @@
 
     protected override void OnInitialized() {
         _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
-        OptimisticReactions.Changed += OnOptimisticReactionChanged;
     }
 
     // The hosting ChatView is a single hover-menu coordinator; this instance keeps its inline
@@ -291,17 +290,9 @@
     }
 
     public override ValueTask DisposeAsync() {
-        OptimisticReactions.Changed -= OnOptimisticReactionChanged;
         if (_registeredHoverEntryId is { } registeredId && _messageHoverMenu != null)
             ChatView?.UnregisterHoverMenu(registeredId, _messageHoverMenu);
         return base.DisposeAsync();
-    }
-
-    private void OnOptimisticReactionChanged(ChatEntryId entryId) {
-        if (entryId == Entry.Id && !Entry.HasReactions) {
-            _forceRender = true;
-            this.NotifyStateHasChanged();
-        }
     }
 
     private void OnAuthorBadgeClick(AuthorId authorId)
@@ -413,13 +404,13 @@
             && selectedChatEntries.Contains(nextMessage.Entry.Id)
             && nextMessage.Kind == ChatMessageKind.None;
         var isSelected = selectedChatEntries.Contains(entry.Id);
-
         var isSelectionStart = isSelected && !isPreviousSelected;
         var isSelectionEnd = isSelected && !isNextSelected;
-
+        var hasReactions = await ReactionsUI.HasVisible(entry.Id, entry.HasReactions).ConfigureAwait(false);
         var (isUnreadByOthers, isUnreadBlockStart) = (false, false);
         if (chat is not null && ownAuthorId is not null)
-            (isUnreadByOthers, isUnreadBlockStart) = await IsUnreadByOthers(chat, entry, prevEntry, ownAuthorId, cancellationToken);
+            (isUnreadByOthers, isUnreadBlockStart) =
+                await IsUnreadByOthers(chat, entry, prevEntry, ownAuthorId, cancellationToken).ConfigureAwait(false);
         var appSettings = await UserSettingsUI.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
         var colorize = appSettings.IsAuthorColorsEnabled ?? true;
         var result = new Model(chat) {
@@ -438,6 +429,7 @@
             IsUnreadByOthers = isUnreadByOthers,
             IsUnreadByOthersBlockStart = isUnreadBlockStart,
             MentionedAuthorIds = mentionedAuthorIds,
+            HasReactions = hasReactions,
             Colorize = colorize,
         };
         return result.Equals(_rendered) ? _rendered! : result;
@@ -604,6 +596,7 @@
         public bool IsUnreadByOthers { get; init; }
         public bool IsUnreadByOthersBlockStart { get; init; }
         public IReadOnlyList<AuthorId>? MentionedAuthorIds { get; init; }
+        public bool HasReactions { get; init; }
         public bool Colorize { get; init; } = true;
     }
 }

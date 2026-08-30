@@ -62,7 +62,8 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public AudioDiagnosticsUI AudioDiagnosticsUI => field ??= Services.GetRequiredService<AudioDiagnosticsUI>();
     public LiveStreamUI LiveStreamUI => field ??= Services.GetRequiredService<LiveStreamUI>();
     public TypingUI TypingUI => field ??= Services.GetRequiredService<TypingUI>();
-    public IncomingVoiceActivityUI IncomingVoiceActivityUI => field ??= Services.GetRequiredService<IncomingVoiceActivityUI>();
+    public IncomingVoiceActivityUI IncomingVoiceActivityUI
+        => field ??= Services.GetRequiredService<IncomingVoiceActivityUI>();
     public PttReplyUI PttReplyUI => field ??= Services.GetRequiredService<PttReplyUI>();
     public GestureUI GestureUI => field ??= Services.GetRequiredService<GestureUI>();
     public LiveSessionUI LiveSessionUI => field ??= Services.GetRequiredService<LiveSessionUI>();
@@ -87,8 +88,12 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public IPlaybackFactory PlaybackFactory => field ??= Services.GetRequiredService<IPlaybackFactory>();
     public ActivePlaybackInfo ActivePlaybackInfo => field ??= Services.GetRequiredService<ActivePlaybackInfo>();
     public ActivitiesBackend ActivitiesBackend => field ??= Services.GetRequiredService<ActivitiesBackend>();
-    public AudioAttachmentPlayer AudioAttachmentPlayer => field ??= Services.GetRequiredService<AudioAttachmentPlayer>();
-    public OptimisticReactions OptimisticReactions => field ??= Services.GetRequiredService<OptimisticReactions>();
+    public AudioAttachmentPlayer AudioAttachmentPlayer
+        => field ??= Services.GetRequiredService<AudioAttachmentPlayer>();
+    public ReactionsUI ReactionsUI => field ??= Services.GetRequiredService<ReactionsUI>();
+    public ClientCommandQueue ClientCommandQueue => field ??= Services.GetRequiredService<ClientCommandQueue>();
+    public ClientCommandQueueTriggers ClientCommandQueueTriggers
+        => field ??= Services.GetRequiredService<ClientCommandQueueTriggers>();
 
     public KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory
         => field ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
