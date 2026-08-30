@@ -80,7 +80,10 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover {
 .list-view-layout.has-listening-activity .chat-audio-panel .video-wrapper .btn.btn-round {
     @apply md:bg-01;
 }
-body.narrow .chat-audio-panel .language-button .btn.btn-round,
+body.narrow .chat-audio-panel .language-button .btn.btn-round {
+    @apply bg-audio-panel-button;
+    @apply text-audio-panel-button-text;
+}
 
 /* Buttons, Mobile View */
 body.narrow .chat-audio-panel .language-button,
