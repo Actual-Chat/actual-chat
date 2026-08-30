@@ -285,6 +285,13 @@
   "ChatView_PrevSearchResult": "Przejdź do poprzedniego wyniku wyszukiwania",
   "ChatView_NextSearchResult": "Przejdź do następnego wyniku wyszukiwania",
 
+  // The card a link to a chat, a message, a place or a user expands into inside a message.
+  // The pair wraps the chat name a quoted message came from - "in Design" - and the space
+  // around the name is drawn by the layout, so neither side carries one. Languages that name
+  // the relation before the name fill the prefix; postpositional ones fill the suffix instead.
+  "LinkPreview_InChat_Prefix": "trong",
+  "LinkPreview_InChat_Suffix": "içinde",
+
   // The grey system lines inside the transcript - someone joined, left, or asked for attention.
   // The first three follow the author name, which renders as a separate mention node:
   // keep the leading space and word them so the name reads as the sentence's subject.

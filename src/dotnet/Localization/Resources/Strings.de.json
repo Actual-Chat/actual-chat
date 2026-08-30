@@ -222,6 +222,9 @@
   "ChatView_PrevSearchResult": "Zum vorherigen Suchergebnis",
   "ChatView_NextSearchResult": "Zum nächsten Suchergebnis",
 
+  "LinkPreview_InChat_Prefix": "in",
+  "LinkPreview_InChat_Suffix": "",
+
   // The first three follow the author name, which renders as a separate mention node:
   // keep the leading space and word them so the name reads as the sentence's subject.
   "SystemEntry_MemberJoined": " ist dem Chat beigetreten.",

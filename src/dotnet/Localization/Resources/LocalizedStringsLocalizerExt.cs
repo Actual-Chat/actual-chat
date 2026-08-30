@@ -245,6 +245,9 @@ public static class LocalizedStringsLocalizerExt
         public string ChatView_PrevSearchResult => l["ChatView_PrevSearchResult"].Value;
         public string ChatView_NextSearchResult => l["ChatView_NextSearchResult"].Value;
 
+        public string LinkPreview_InChat_Prefix => l["LinkPreview_InChat_Prefix"].Value;
+        public string LinkPreview_InChat_Suffix => l["LinkPreview_InChat_Suffix"].Value;
+
         public string SystemEntry_MemberJoined => l["SystemEntry_MemberJoined"].Value;
         public string SystemEntry_MemberLeft => l["SystemEntry_MemberLeft"].Value;
         public string SystemEntry_AttentionRequested => l["SystemEntry_AttentionRequested"].Value;

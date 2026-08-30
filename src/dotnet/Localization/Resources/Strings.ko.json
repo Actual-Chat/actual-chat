@@ -222,6 +222,9 @@
   "ChatView_PrevSearchResult": "이전 검색 결과로",
   "ChatView_NextSearchResult": "다음 검색 결과로",
 
+  "LinkPreview_InChat_Prefix": "",
+  "LinkPreview_InChat_Suffix": "에서",
+
   // The first three follow the author name, which renders as a separate mention node:
   // keep the leading space and word them so the name reads as the sentence's subject.
   "SystemEntry_MemberJoined": "님이 채팅에 참여했습니다.",
