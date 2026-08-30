@@ -291,21 +291,15 @@ public partial class ChatAudioUI
                 }
             }, abortToken);
             whenWinner = await Task.WhenAny(whenStopped, whenIdle, whenRecorderStopped).ConfigureAwait(false);
-            // Task.WhenAny never throws, so a faulted watcher wins the race indistinguishably from
-            // a clean one - and a faulted whenIdle would read as a genuine idle timeout below.
-            if (whenWinner is { IsCompletedSuccessfully: false, IsCanceled: false })
-                Log.LogError(whenWinner.Exception,
-                    nameof(RecordChat) + ": a recording watcher failed for chat #{ChatId}",
-                    chatId);
         }
         finally {
             abortTokenSource.CancelAndDisposeSilently();
             _stopRecordingAt.Value = null;
-            // The losers fault unobserved otherwise - the cancellation above ends most of them,
-            // but a watcher that throws on its way out would go unreported.
-            _ = whenStopped?.SilentAwait(false);
-            _ = whenRecorderStopped?.SilentAwait(false);
-            _ = whenIdle?.SilentAwait(false);
+            // Task.WhenAny never throws, so a faulted watcher is indistinguishable from a clean one
+            // here - and until this, a faulted whenIdle read as a genuine idle timeout below.
+            LogWatcherFault(whenStopped, chatId);
+            LogWatcherFault(whenRecorderStopped, chatId);
+            LogWatcherFault(whenIdle, chatId);
             // Only a whenIdle that ran to completion means the mic went idle. Anything else -
             // a fault, or a throw before whenIdle was even assigned, which is every failure to
             // open the microphone - used to land here as ReferenceEquals(null, null) and clear
@@ -334,6 +328,18 @@ public partial class ChatAudioUI
             }
         }
     }
+
+    private void LogWatcherFault(Task? watcherTask, ChatId chatId)
+        // Attached rather than awaited: the losers are still running when RecordChat exits, and an
+        // unobserved fault would otherwise surface as an UnobservedTaskException and nothing else.
+        => _ = watcherTask?.ContinueWith(
+            (t, state) => Log.LogError(t.Exception,
+                nameof(RecordChat) + ": a recording watcher failed for chat #{ChatId}",
+                (ChatId)state!),
+            chatId,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
 
     private async Task StartStopListeningPlayers(CancellationToken cancellationToken)
     {
