@@ -116,15 +116,13 @@
         CloseModal();
     }
 
-    private async Task OnToggleBlock() {
+    private Task OnToggleBlock() {
         if (_contact is null)
-            return;
+            return Task.CompletedTask;
 
-        var (_, error) = await Hub.PeerBlockUI.SetBlocked(_contact.Id, !_contact.IsBlocked);
-        if (error != null)
-            return;
-
+        // Closing first keeps the block confirmation from stacking on top of this modal
         CloseModal();
+        return PeerContactCommands.SetBlocked(Hub, _contact, !_contact.IsBlocked, _peerOwnName ?? "");
     }
 
     private void OnCancel()

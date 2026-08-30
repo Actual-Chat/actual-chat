@@ -773,6 +773,11 @@
   "Account_RemoveModerator": "Quitar moderador",
   "Account_ModeratorCaption": "Los moderadores pueden eliminar mensajes, gestionar llamadas y miembros y editar este chat, pero no eliminarlo.",
   "Account_RemoveFromGroup": "Quitar del grupo",
+  "Account_InContacts": "En tu lista de contactos",
+  "Account_NotInContacts": "No está en tu lista de contactos",
+  "Account_RemoveFromContacts": "Eliminar de contactos",
+  "Account_RemoveFromContactsConfirm_Format": "¿Eliminar a {0} de tus contactos? Puedes volver a añadirlo cuando quieras.",
+  "Account_BlockConfirm_Format": "¿Bloquear a {0}? No podrá escribirte ni llamarte.",
 
   "AvatarSelect_ChooseTitle": "Elige tu avatar",
   "AvatarSelect_RevealTitle": "Revela tu identidad",

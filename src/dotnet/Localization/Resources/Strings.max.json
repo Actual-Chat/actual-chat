@@ -918,6 +918,11 @@
   "Account_RemoveModerator": "Премахнете ролята модератор",
   "Account_ModeratorCaption": "Модераторите може да изтриват съобщения, да управляват обажданията и участниците и да редактират този чат — но не и да го изтрият.",
   "Account_RemoveFromGroup": "Aus der Gruppe entfernen",
+  "Account_InContacts": "На вашој листи контаката",
+  "Account_NotInContacts": "Không có trong danh bạ của bạn",
+  "Account_RemoveFromContacts": "Премахване от контакти",
+  "Account_RemoveFromContactsConfirm_Format": "Да се премахне ли от контактите: {0}? Можете да го добавите отново по всяко време.",
+  "Account_BlockConfirm_Format": "{0} blockieren? Nachrichten und Anrufe an dich sind dann nicht mehr möglich.",
 
   // Avatars: choosing one for a chat, the avatar editor, the image cropper, and the peer
   // contact editor. An avatar is a per-chat identity - a "look", not merely a picture.

@@ -773,6 +773,11 @@
   "Account_RemoveModerator": "Odebrat roli moderátora",
   "Account_ModeratorCaption": "Moderátoři mohou mazat zprávy, spravovat hovory a členy a upravovat tento chat — ale nemohou ho smazat.",
   "Account_RemoveFromGroup": "Odebrat ze skupiny",
+  "Account_InContacts": "Ve vašich kontaktech",
+  "Account_NotInContacts": "Není ve vašich kontaktech",
+  "Account_RemoveFromContacts": "Odebrat z kontaktů",
+  "Account_RemoveFromContactsConfirm_Format": "Odebrat z kontaktů: {0}? Kdykoli je můžete přidat zpět.",
+  "Account_BlockConfirm_Format": "Zablokovat: {0}? Nebude vám moci psát ani volat.",
 
   "AvatarSelect_ChooseTitle": "Vyberte si avatar",
   "AvatarSelect_RevealTitle": "Odhalte se",

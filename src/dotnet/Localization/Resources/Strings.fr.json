@@ -773,6 +773,11 @@
   "Account_RemoveModerator": "Retirer le rôle de modérateur",
   "Account_ModeratorCaption": "Les modérateurs peuvent supprimer des messages, gérer les appels et les membres et modifier cette discussion, mais pas la supprimer.",
   "Account_RemoveFromGroup": "Retirer du groupe",
+  "Account_InContacts": "Dans vos contacts",
+  "Account_NotInContacts": "Pas dans vos contacts",
+  "Account_RemoveFromContacts": "Retirer des contacts",
+  "Account_RemoveFromContactsConfirm_Format": "Retirer {0} de vos contacts ? Vous pourrez le rajouter à tout moment.",
+  "Account_BlockConfirm_Format": "Bloquer {0} ? Cette personne ne pourra plus vous écrire ni vous appeler.",
 
   "AvatarSelect_ChooseTitle": "Choisissez votre avatar",
   "AvatarSelect_RevealTitle": "Révélez votre identité",

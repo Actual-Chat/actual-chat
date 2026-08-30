@@ -773,6 +773,11 @@
   "Account_RemoveModerator": "モデレーターを解除",
   "Account_ModeratorCaption": "モデレーターはメッセージの削除、通話やメンバーの管理、このチャットの編集ができますが、削除はできません。",
   "Account_RemoveFromGroup": "グループから削除",
+  "Account_InContacts": "連絡先に登録済み",
+  "Account_NotInContacts": "連絡先に未登録",
+  "Account_RemoveFromContacts": "連絡先から削除",
+  "Account_RemoveFromContactsConfirm_Format": "{0} を連絡先から削除しますか？いつでも追加し直せます。",
+  "Account_BlockConfirm_Format": "{0} をブロックしますか？メッセージも通話も届かなくなります。",
 
   "AvatarSelect_ChooseTitle": "アバターを選択",
   "AvatarSelect_RevealTitle": "身元を明かす",

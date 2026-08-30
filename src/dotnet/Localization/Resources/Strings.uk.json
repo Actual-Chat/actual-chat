@@ -773,6 +773,11 @@
   "Account_RemoveModerator": "Зняти модератора",
   "Account_ModeratorCaption": "Модератори можуть видаляти повідомлення, керувати дзвінками й учасниками та редагувати цей чат, але не видаляти його.",
   "Account_RemoveFromGroup": "Вилучити з групи",
+  "Account_InContacts": "У списку контактів",
+  "Account_NotInContacts": "Не у списку контактів",
+  "Account_RemoveFromContacts": "Видалити з контактів",
+  "Account_RemoveFromContactsConfirm_Format": "Видалити з контактів: {0}? Повернути можна будь-коли.",
+  "Account_BlockConfirm_Format": "Заблокувати: {0}? Писати та дзвонити вам більше не зможуть.",
 
   "AvatarSelect_ChooseTitle": "Виберіть аватар",
   "AvatarSelect_RevealTitle": "Розкрийтеся",

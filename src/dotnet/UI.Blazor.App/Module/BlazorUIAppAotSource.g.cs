@@ -27,7 +27,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AddMemberModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AddReactionIcon>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AddToContactsBanner>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AddToContactsButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AlertConfirmationInfo>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AliasValidationMessage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AlwaysVisibleComponents>();
@@ -512,6 +511,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.SettingsPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Test.BlazorTestNode>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Test.BlazorTestPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Test.DateTimeTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Test.EmbeddedTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Test.LocationPermissionTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Test.MauiTestPage>();
@@ -791,7 +791,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.AddMemberModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AddReactionIcon), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AddToContactsBanner), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.AddToContactsButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AlertConfirmationInfo), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AliasValidationMessage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AlwaysVisibleComponents), AotTypeKind.Component),
@@ -1276,6 +1275,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Pages.SettingsPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Test.BlazorTestNode), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Test.BlazorTestPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Pages.Test.DateTimeTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Test.EmbeddedTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Test.LocationPermissionTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Test.MauiTestPage), AotTypeKind.Component),

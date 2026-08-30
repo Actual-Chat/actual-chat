@@ -1,8 +1,18 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Contacts
 @inherits ComponentBase<AppUIHub>
+@{
+    var m = EditMemberModel;
+    var contact = PeerContact;
+    var hasBio = Author.IsAnonymous;
+    var hasMembership = UsePlaceSettingsToEditMember
+        || m is { CanPromoteToOwner: true } or { CanSetModerator: true } or { CanRemoveFromGroup: true };
+    if (!hasBio && contact is null && !hasMembership)
+        return;
+}
 
 <Tile>
-    @if (Author.IsAnonymous) {
+    @if (hasBio) {
         <TileItem Class="anonymous-bio">
             <Icon>
                 <i class="icon-alert-triangle text-2xl"></i>
@@ -19,85 +29,134 @@
         </TileItem>
     }
 
-    @{ var m = EditMemberModel; }
-
-    @if (m != null && (m.CanPromoteToOwner || m.CanSetModerator || m.CanRemoveFromGroup) || UsePlaceSettingsToEditMember) {
-        <div class="separator"></div>
+    @if (contact is not null) {
+        if (hasBio) {
+            <div class="separator"></div>
+        }
+        if (contact.IsBlocked) {
+            <TileItem Click="@(() => OnSetBlockedClick(contact, false))">
+                <Icon>
+                    <i class="icon-slash-circle text-2xl text-03"></i>
+                </Icon>
+                <Content>
+                    @L.PeerContact_UnblockUser
+                </Content>
+                <Caption>
+                    @L.PeerContact_BlockedCaption
+                </Caption>
+            </TileItem>
+        } else {
+            if (contact.IsRegular) {
+                <TileItem Click="@(() => OnRemoveFromContactsClick(contact))">
+                    <Icon>
+                        <i class="icon-minus-circle text-2xl text-03"></i>
+                    </Icon>
+                    <Content>
+                        @L.Account_RemoveFromContacts
+                    </Content>
+                    <Caption>
+                        @L.Account_InContacts
+                    </Caption>
+                </TileItem>
+            } else {
+                <TileItem Click="@(() => OnAddToContactsClick(contact))">
+                    <Icon>
+                        <i class="icon-person-add text-2xl text-03"></i>
+                    </Icon>
+                    <Content>
+                        @L.Account_AddToContacts
+                    </Content>
+                    <Caption>
+                        @L.Account_NotInContacts
+                    </Caption>
+                </TileItem>
+            }
+            <TileItem Class="item-danger" Click="@(() => OnSetBlockedClick(contact, true))">
+                <Icon>
+                    <i class="icon-slash-circle text-2xl"></i>
+                </Icon>
+                <Content>
+                    @L.PeerContact_BlockUser
+                </Content>
+                <Caption>
+                    @L.PeerContact_BlockCaption
+                </Caption>
+            </TileItem>
+        }
     }
 
-    @if (UsePlaceSettingsToEditMember) {
-        <TileItem Class="tile-edit-membership">
-            <Icon>
-                <i class="icon-people text-2xl"></i>
-            </Icon>
-            <Content>
-                @L.Account_Member
-            </Content>
-            <Caption>
-                @L.Account_UsePlaceSettings
-            </Caption>
-        </TileItem>
-    } else {
-
-        @if (m is { CanPromoteToOwner: true }) {
-            <TileItem Class="tile-promote-to-owner" Click="@OnPromoteToOwner">
+    @if (hasMembership) {
+        if (hasBio || contact is not null) {
+            <div class="separator"></div>
+        }
+        if (UsePlaceSettingsToEditMember) {
+            <TileItem Class="tile-edit-membership">
                 <Icon>
-                    <i class="icon-crown text-2xl text-03"></i>
+                    <i class="icon-people text-2xl"></i>
                 </Icon>
                 <Content>
-                    @L.Account_PromoteToOwner
+                    @L.Account_Member
                 </Content>
                 <Caption>
-                    @L.Account_PromoteToOwnerCaption
+                    @L.Account_UsePlaceSettings
                 </Caption>
             </TileItem>
-        }
-
-        @if (m is { CanSetModerator: true }) {
-            <TileItem Class="tile-set-moderator" Click="@(() => OnSetModeratorClick(!m.IsModerator))">
-                <Icon>
-                    <i class="icon-shield text-2xl text-03"></i>
-                </Icon>
-                <Content>
-                    @(m.IsModerator ? L.Account_RemoveModerator : L.Account_MakeModerator)
-                </Content>
-                <Caption>
-                    @L.Account_ModeratorCaption
-                </Caption>
-            </TileItem>
-        }
-
-        @if (m is { CanRemoveFromGroup: true }) {
-            <TileItem Class="tile-remove-from-group" Click="@OnRemoveFromGroupClick">
-                <Icon>
-                    <i class="icon-minus-circle text-2xl"></i>
-                </Icon>
-                <Content>
-                    @L.Account_RemoveFromGroup
-                </Content>
-            </TileItem>
+        } else {
+            if (m is { CanPromoteToOwner: true }) {
+                <TileItem Class="tile-promote-to-owner" Click="@OnPromoteToOwner">
+                    <Icon>
+                        <i class="icon-crown text-2xl text-03"></i>
+                    </Icon>
+                    <Content>
+                        @L.Account_PromoteToOwner
+                    </Content>
+                    <Caption>
+                        @L.Account_PromoteToOwnerCaption
+                    </Caption>
+                </TileItem>
+            }
+            if (m is { CanSetModerator: true }) {
+                <TileItem Class="tile-set-moderator" Click="@(() => OnSetModeratorClick(!m.IsModerator))">
+                    <Icon>
+                        <i class="icon-shield text-2xl text-03"></i>
+                    </Icon>
+                    <Content>
+                        @(m.IsModerator ? L.Account_RemoveModerator : L.Account_MakeModerator)
+                    </Content>
+                    <Caption>
+                        @L.Account_ModeratorCaption
+                    </Caption>
+                </TileItem>
+            }
+            if (m is { CanRemoveFromGroup: true }) {
+                <TileItem Class="tile-remove-from-group" Click="@OnRemoveFromGroupClick">
+                    <Icon>
+                        <i class="icon-minus-circle text-2xl"></i>
+                    </Icon>
+                    <Content>
+                        @L.Account_RemoveFromGroup
+                    </Content>
+                </TileItem>
+            }
         }
     }
 </Tile>
 
 @code {
-    private IAuthors Authors => Hub.Authors;
-
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwn { get; set; }
     [Parameter, EditorRequired] public bool UsePlaceSettingsToEditMember { get; set; }
     [Parameter, EditorRequired] public EditChatMemberModel? EditMemberModel { get; set; }
+    [Parameter] public Contact? PeerContact { get; set; }
 
-    private async Task OnShareClick() {
-        if (IsOwn) {
-            _ = ShareUI.ShareOwnAccount();
-            return;
-        }
+    private Task OnAddToContactsClick(Contact contact)
+        => PeerContactCommands.AddToContacts(Hub, contact);
 
-        var account = await Authors.GetAccount(Session, Author.ChatId, Author.Id, default);
-        if (account != null)
-            _ = ShareUI.Share(account.Id);
-    }
+    private Task OnRemoveFromContactsClick(Contact contact)
+        => PeerContactCommands.RemoveFromContacts(Hub, contact, Author.Avatar.Name);
+
+    private Task OnSetBlockedClick(Contact contact, bool isBlocked)
+        => PeerContactCommands.SetBlocked(Hub, contact, isBlocked, Author.Avatar.Name);
 
     private Task OnPromoteToOwner()
         => EditChatMemberCommands.OnPromoteToOwnerClick(Hub, Author);

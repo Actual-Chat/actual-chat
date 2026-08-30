@@ -38,27 +38,17 @@
         return new(!ownAccount.IsGuest, contact);
     }
 
-    private async Task OnAddClick() {
-        var contact = State.Value.Contact!;
-        var command = new Contacts_Change {
-            Session = Session,
-            Id = contact.Id,
-            ExpectedVersion = null,
-            Change = new Change<Contact> {
-                Create = contact,
-            },
-        };
-        await UICommander.Run(command);
-    }
+    private Task OnAddClick()
+        => PeerContactCommands.AddToContacts(Hub, State.Value.Contact!);
 
     private Task OnBlockClick()
-        => Hub.PeerBlockUI.SetBlocked(State.Value.Contact!.Id, true);
+        => PeerContactCommands.SetBlocked(Hub, State.Value.Contact!, true, Chat.Title);
 
     // Nested types
 
     public sealed record Model(bool IsSignedIn, Contact? Contact = null) {
-        public  static readonly Model Loading = new(false);
-
-        public bool CanAddToContacts => IsSignedIn && Contact is { ChatId.Kind: ChatKind.Peer, IsRegular: false, IsBlocked: false };
+        public static readonly Model Loading = new(false);
+        public bool CanAddToContacts => IsSignedIn
+            && Contact is { ChatId.Kind: ChatKind.Peer, IsRegular: false, IsBlocked: false };
     }
 }

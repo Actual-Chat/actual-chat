@@ -773,6 +773,11 @@
   "Account_RemoveModerator": "Moderator entfernen",
   "Account_ModeratorCaption": "Moderatoren können Nachrichten löschen, Anrufe und Mitglieder verwalten und diesen Chat bearbeiten – aber nicht löschen.",
   "Account_RemoveFromGroup": "Aus der Gruppe entfernen",
+  "Account_InContacts": "In deinen Kontakten",
+  "Account_NotInContacts": "Nicht in deinen Kontakten",
+  "Account_RemoveFromContacts": "Aus Kontakten entfernen",
+  "Account_RemoveFromContactsConfirm_Format": "{0} aus deinen Kontakten entfernen? Du kannst sie jederzeit wieder hinzufügen.",
+  "Account_BlockConfirm_Format": "{0} blockieren? Nachrichten und Anrufe an dich sind dann nicht mehr möglich.",
 
   "AvatarSelect_ChooseTitle": "Wählen Sie Ihren Avatar",
   "AvatarSelect_RevealTitle": "Identität zeigen",

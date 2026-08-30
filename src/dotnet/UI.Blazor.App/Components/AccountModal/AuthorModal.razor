@@ -30,6 +30,7 @@
     if (m.OnlyAnonymousChatAllowed)
         tileCls += " unhovered tile-selected";
     var toggleValue = m.OnlyAnonymousChatAllowed || _anonymousChat;
+    var peerContact = m.IsOwnAuthor || author.IsAnonymous ? null : m.PeerChatContact;
     EventCallback onEditClick = default;
     if (m.IsOwnAuthor) {
         if (!author.IsAnonymous)
@@ -50,7 +51,8 @@
             Author="@author"
             IsOwn="@m.IsOwnAuthor"
             UsePlaceSettingsToEditMember="@m.UsePlaceSettingsToEditMember"
-            EditMemberModel="@m.EditMemberModel"/>
+            EditMemberModel="@m.EditMemberModel"
+            PeerContact="@peerContact"/>
     </FormBlock>
     </Body>
     <Buttons>
@@ -95,16 +97,16 @@
                             </span>
                         </Button>
                     }
+                } else if (Features_EnableAnonymousChat.IsEnabled && m.EnableIncompleteUI) {
+                    <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">
+                        <i class="icon-question-mark-bubble text-xl"></i>
+                        <span class="c-title">
+                            <span>@L.Account_ChatWith</span>
+                            <span class="c-name">@authorName</span>
+                        </span>
+                    </Button>
                 } else {
-                    if (Features_EnableAnonymousChat.IsEnabled && m.EnableIncompleteUI) {
-                        <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">
-                            <i class="icon-question-mark-bubble text-xl"></i>
-                            <span class="c-title">
-                                <span>@L.Account_ChatWith</span>
-                                <span class="c-name">@authorName</span>
-                            </span>
-                        </Button>
-                    }
+                    <Button Class="btn-modal" Click="OnCancel">@L.Common_Close</Button>
                 }
 
                 @if (Features_EnableAnonymousChat.IsEnabled && m.EnableIncompleteUI) {
@@ -173,6 +175,8 @@
 
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
 
+        // In a peer chat you're already in the direct chat with this author,
+        // so an anonymous one is the only chat left to start with them
         var onlyAnonymousChatAllowed = chat is { Kind: ChatKind.Peer };
 
         EditChatMemberModel? editMemberModel = null;

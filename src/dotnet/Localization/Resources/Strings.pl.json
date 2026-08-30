@@ -773,6 +773,11 @@
   "Account_RemoveModerator": "Odbierz rolę moderatora",
   "Account_ModeratorCaption": "Moderatorzy mogą usuwać wiadomości, zarządzać rozmowami i uczestnikami oraz edytować ten czat — ale nie mogą go usunąć.",
   "Account_RemoveFromGroup": "Usuń z grupy",
+  "Account_InContacts": "Na liście kontaktów",
+  "Account_NotInContacts": "Nie ma na liście kontaktów",
+  "Account_RemoveFromContacts": "Usuń z kontaktów",
+  "Account_RemoveFromContactsConfirm_Format": "Usunąć z kontaktów: {0}? Możesz je dodać z powrotem w każdej chwili.",
+  "Account_BlockConfirm_Format": "Zablokować: {0}? Ta osoba nie będzie mogła pisać ani dzwonić do Ciebie.",
 
   "AvatarSelect_ChooseTitle": "Wybierz swój awatar",
   "AvatarSelect_RevealTitle": "Ujawnij się",

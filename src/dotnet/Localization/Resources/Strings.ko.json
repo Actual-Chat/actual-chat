@@ -773,6 +773,11 @@
   "Account_RemoveModerator": "운영자 해제",
   "Account_ModeratorCaption": "운영자는 메시지 삭제, 통화와 멤버 관리, 이 채팅 편집을 할 수 있지만 삭제는 할 수 없습니다.",
   "Account_RemoveFromGroup": "그룹에서 제거",
+  "Account_InContacts": "연락처에 있음",
+  "Account_NotInContacts": "연락처에 없음",
+  "Account_RemoveFromContacts": "연락처에서 삭제",
+  "Account_RemoveFromContactsConfirm_Format": "{0} 님을 연락처에서 삭제할까요? 언제든지 다시 추가할 수 있습니다.",
+  "Account_BlockConfirm_Format": "{0} 님을 차단할까요? 메시지와 통화를 보낼 수 없게 됩니다.",
 
   "AvatarSelect_ChooseTitle": "아바타 선택",
   "AvatarSelect_RevealTitle": "신원 공개하기",

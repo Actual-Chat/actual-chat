@@ -773,6 +773,11 @@
   "Account_RemoveModerator": "Moderatörlüğü kaldırın",
   "Account_ModeratorCaption": "Moderatörler mesajları silebilir, aramaları ve üyeleri yönetebilir ve bu sohbeti düzenleyebilir - ancak silemez.",
   "Account_RemoveFromGroup": "Gruptan çıkarın",
+  "Account_InContacts": "Kişilerinizde",
+  "Account_NotInContacts": "Kişilerinizde değil",
+  "Account_RemoveFromContacts": "Kişilerden çıkar",
+  "Account_RemoveFromContactsConfirm_Format": "{0} kişilerinizden çıkarılsın mı? İstediğiniz zaman geri ekleyebilirsiniz.",
+  "Account_BlockConfirm_Format": "{0} engellensin mi? Size mesaj gönderemez ve sizi arayamaz.",
 
   "AvatarSelect_ChooseTitle": "Avatarınızı seçin",
   "AvatarSelect_RevealTitle": "Kimliğinizi gösterin",

@@ -802,6 +802,13 @@ public static class LocalizedStringsLocalizerExt
         public string Account_RemoveModerator => l["Account_RemoveModerator"].Value;
         public string Account_ModeratorCaption => l["Account_ModeratorCaption"].Value;
         public string Account_RemoveFromGroup => l["Account_RemoveFromGroup"].Value;
+        public string Account_InContacts => l["Account_InContacts"].Value;
+        public string Account_NotInContacts => l["Account_NotInContacts"].Value;
+        public string Account_RemoveFromContacts => l["Account_RemoveFromContacts"].Value;
+        public string Account_RemoveFromContactsConfirm_Format(object arg0)
+            => l["Account_RemoveFromContactsConfirm_Format", arg0].Value;
+        public string Account_BlockConfirm_Format(object arg0)
+            => l["Account_BlockConfirm_Format", arg0].Value;
 
         public string AvatarSelect_ChooseTitle => l["AvatarSelect_ChooseTitle"].Value;
         public string AvatarSelect_RevealTitle => l["AvatarSelect_RevealTitle"].Value;
