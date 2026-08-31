@@ -6,7 +6,10 @@ namespace ActualChat.UI.Blazor.App.Components.VideoPanel;
 public partial class VideoDiagnosticsModal
 {
     private static readonly string JSGetSettingsMethod = $"{BlazorUIAppModule.ImportName}.getVideoDebugSettings";
-    private static readonly string JSSetForceFloorCodecOnlyMethod = $"{BlazorUIAppModule.ImportName}.setVideoDebugForceFloorCodecOnly";
+    private static readonly string JSSetForceDecodeCodecMethod =
+        $"{BlazorUIAppModule.ImportName}.setVideoDebugForceDecodeCodec";
+    private static readonly string JSSetPreferredEncodeCodecMethod =
+        $"{BlazorUIAppModule.ImportName}.setVideoDebugPreferredEncodeCodec";
     private static readonly string JSSetDownscalerModeMethod = $"{BlazorUIAppModule.ImportName}.setVideoDebugDownscalerMode";
     private static readonly string JSSetMaxOutboundLayerCountMethod =
         $"{BlazorUIAppModule.ImportName}.setVideoDebugMaxOutboundLayerCount";
@@ -27,7 +30,8 @@ public partial class VideoDiagnosticsModal
         [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5];
     private static readonly int[] CaptureFpsOptions = [30, 24, 15, 10, 5];
 
-    private bool _forceFloorCodecOnly;
+    private string _forceDecodeCodec = "";
+    private string _preferredEncodeCodec = "";
     private string _downscalerMode = "metadata";
     private int? _captureFpsOverride;
     private bool _showFpsOverlay;
@@ -43,7 +47,8 @@ public partial class VideoDiagnosticsModal
         _settingsLoaded = true;
         try {
             var settings = await Hub.JS.InvokeAsync<VideoDebugSettings>(JSGetSettingsMethod);
-            _forceFloorCodecOnly = settings.ForceFloorCodecOnly;
+            _forceDecodeCodec = NormalizeCodec(settings.ForceDecodeCodec);
+            _preferredEncodeCodec = NormalizeCodec(settings.PreferredEncodeCodec);
             _downscalerMode = settings.DownscalerMode ?? "metadata";
             _captureFpsOverride = settings.CaptureFpsOverride;
             _maxOutboundLayerCount = settings.MaxOutboundLayerCount;
@@ -63,11 +68,22 @@ public partial class VideoDiagnosticsModal
         }
     }
 
-    private async Task OnForceFloorCodecOnlyClick()
+    // "" means no override; anything unrecognised is treated the same way.
+    private static string NormalizeCodec(string? codec)
+        => codec is "h264" or "hevc" or "vp9" or "av1" ? codec : "";
+
+    private async Task OnForceDecodeCodecChange(ChangeEventArgs e)
     {
-        _forceFloorCodecOnly = !_forceFloorCodecOnly;
+        _forceDecodeCodec = NormalizeCodec(e.Value?.ToString());
         StateHasChanged();
-        await Hub.JS.InvokeVoidAsync(JSSetForceFloorCodecOnlyMethod, _forceFloorCodecOnly);
+        await Hub.JS.InvokeVoidAsync(JSSetForceDecodeCodecMethod, _forceDecodeCodec);
+    }
+
+    private async Task OnPreferredEncodeCodecChange(ChangeEventArgs e)
+    {
+        _preferredEncodeCodec = NormalizeCodec(e.Value?.ToString());
+        StateHasChanged();
+        await Hub.JS.InvokeVoidAsync(JSSetPreferredEncodeCodecMethod, _preferredEncodeCodec);
     }
 
     private async Task OnDownscalerModeChange(ChangeEventArgs e)
@@ -166,7 +182,8 @@ public partial class VideoDiagnosticsModal
     private sealed record JsHint(string streamId, int currentLayerId);
 
     public sealed record VideoDebugSettings(
-        bool ForceFloorCodecOnly,
+        string? ForceDecodeCodec,
+        string? PreferredEncodeCodec,
         int? MaxOutboundLayerCount,
         int? MaxInboundLayerCount,
         double EstBandwidthMultiplier,

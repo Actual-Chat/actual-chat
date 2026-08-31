@@ -15,6 +15,8 @@ export {
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
+export type CodecCategory = 'h264' | 'hevc' | 'av1' | 'vp9';
+
 export interface CodecInfo {
     name: string;
     codec: string;
@@ -76,37 +78,56 @@ export const FLOOR_CATEGORY = 'vp9';
 // In-flight Promise stored so concurrent callers share work.
 const encoderCodecCache = new Map<string, Promise<CodecInfo[]>>();
 
-// Debug flag persisted in localStorage; toggled from VideoDiagnosticsSettingsModal.
-// Pins negotiation to FLOOR_CATEGORY so a report can be reproduced on the one
-// codec every client is required to speak. Its own key, not the old
-// forceH264Only one: the flag now means a different codec, so an existing
-// "force H.264" setting must not silently become "force VP9".
-const FORCE_FLOOR_CODEC_ONLY_KEY = 'video.debug.forceFloorCodecOnly';
+// Debug overrides set from VideoDiagnosticsModal, both persisted. Note the
+// asymmetry in blast radius: the decode force narrows what this client
+// advertises, so it changes the codec for EVERY member of the call, while the
+// encode preference only reorders this client's own candidates.
+const FORCE_DECODE_CODEC_KEY = 'video.debug.forceDecodeCodec';
+const PREFERRED_ENCODE_CODEC_KEY = 'video.debug.preferredEncodeCodec';
 
-function readForceFloorCodecOnlyFromStorage(): boolean {
+const CODEC_CATEGORIES: readonly CodecCategory[] = ['h264', 'hevc', 'vp9', 'av1'];
+
+function readCategory(store: Storage | undefined, key: string): CodecCategory | null {
     try {
-        return globalThis.localStorage.getItem(FORCE_FLOOR_CODEC_ONLY_KEY) === 'true';
+        const value = store?.getItem(key) as CodecCategory | null;
+        return value && CODEC_CATEGORIES.includes(value) ? value : null;
     } catch {
-        // localStorage throws in private mode / sandboxed contexts.
-        return false;
+        // Storage throws in private mode / sandboxed contexts.
+        return null;
     }
 }
 
-export function getForceFloorCodecOnly(): boolean {
-    return readForceFloorCodecOnlyFromStorage();
-}
-
-export function setForceFloorCodecOnly(enabled: boolean): void {
+function writeCategory(store: Storage | undefined, key: string, value: CodecCategory | null): void {
     try {
-        if (enabled) globalThis.localStorage.setItem(FORCE_FLOOR_CODEC_ONLY_KEY, 'true');
-        else globalThis.localStorage.removeItem(FORCE_FLOOR_CODEC_ONLY_KEY);
+        if (value) store?.setItem(key, value);
+        else store?.removeItem(key);
     } catch (e) {
-        warnLog?.log(`setForceFloorCodecOnly: localStorage write failed: ${String(e)}`);
+        warnLog?.log(`codec debug override write failed for ${key}: ${String(e)}`);
     }
-    // Invalidate detection caches so the next stream re-probes with the new flag.
-    encoderCodecCache.clear();
+}
+
+export function getForceDecodeCodec(): CodecCategory | null {
+    return readCategory(globalThis.localStorage, FORCE_DECODE_CODEC_KEY);
+}
+
+// The floor is always advertised alongside it, so forcing a codec can never
+// leave this client unable to decode what the call falls back to.
+export function setForceDecodeCodec(codec: CodecCategory | null): void {
+    writeCategory(globalThis.localStorage, FORCE_DECODE_CODEC_KEY, codec);
     decoderCodecCache = null;
-    infoLog?.log(`Debug: forceFloorCodecOnly set to ${enabled}; codec detection caches cleared`);
+    infoLog?.log(`Debug: forceDecodeCodec set to ${codec ?? '(none)'}; decoder detection cache cleared`);
+}
+
+export function getPreferredEncodeCodec(): CodecCategory | null {
+    return readCategory(globalThis.localStorage, PREFERRED_ENCODE_CODEC_KEY);
+}
+
+// A preference, not a restriction: if the codec turns out to be unsupported or
+// too slow it simply loses to the normal ordering rather than breaking capture.
+export function setPreferredEncodeCodec(codec: CodecCategory | null): void {
+    writeCategory(globalThis.localStorage, PREFERRED_ENCODE_CODEC_KEY, codec);
+    encoderCodecCache.clear();
+    infoLog?.log(`Debug: preferredEncodeCodec set to ${codec ?? '(none)'}; encoder detection cache cleared`);
 }
 
 
@@ -151,12 +172,7 @@ export function getActiveEncoderCategoriesByPriority(): readonly CodecInfo['cate
 }
 
 async function detectSupportedCodecsUncached(width: number, height: number): Promise<CodecInfo[]> {
-    const forceFloor = readForceFloorCodecOnlyFromStorage();
-    let probeList = forceFloor
-        ? REPRESENTATIVE_CODECS.filter(c => c.category === FLOOR_CATEGORY)
-        : REPRESENTATIVE_CODECS;
-    if (forceFloor)
-        infoLog?.log(`Debug: forceFloorCodecOnly=true → encoder detection limited to ${FLOOR_CATEGORY}`);
+    let probeList = REPRESENTATIVE_CODECS;
     if (excludedEncoderCodecs.size > 0) {
         const before = probeList.length;
         probeList = probeList.filter(c => !excludedEncoderCodecs.has(c.category));
@@ -750,9 +766,13 @@ const DECODER_PROBES: { category: string; codecs: string[] }[] = [
 async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
     const codecs: string[] = [];
 
-    if (readForceFloorCodecOnlyFromStorage()) {
-        infoLog?.log(`Debug: forceFloorCodecOnly=true → decoder detection limited to ${FLOOR_CATEGORY}`);
-        return [FLOOR_CATEGORY];
+    const forced = getForceDecodeCodec();
+    if (forced) {
+        // Always with the floor: a forced codec must not be able to make this
+        // client undecodable for the rest of the call.
+        const result = forced === FLOOR_CATEGORY ? [FLOOR_CATEGORY] : [forced, FLOOR_CATEGORY];
+        infoLog?.log(`Debug: forceDecodeCodec=${forced} → advertising [${result.join(', ')}]`);
+        return result;
     }
 
     for (const { category, codecs: probes } of DECODER_PROBES) {

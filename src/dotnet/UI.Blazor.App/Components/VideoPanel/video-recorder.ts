@@ -57,6 +57,7 @@ import {
     excludeEncoderCodec,
     excludeEncoderCodecString,
     getDefaultHardwareAcceleration,
+    getPreferredEncodeCodec,
     isEncoderCodecExcluded,
     isEncoderCodecProven,
     markEncoderCodecProven,
@@ -3141,9 +3142,14 @@ export class VideoRecorder {
             if (!current || (!current.hardwareAccelerated && codecInfo.hardwareAccelerated))
                 bestByCategory.set(codecInfo.category, codecInfo);
         }
+        // A debug preference outranks efficiency so an operator can reproduce a
+        // report on a specific encoder; it cannot conjure one that failed
+        // probing, since those never reach this list.
+        const preferred = getPreferredEncodeCodec();
         return [...bestByCategory.values()]
             .sort((a, b) =>
-                getVideoCodecEfficiency(b.codec) - getVideoCodecEfficiency(a.codec)
+                Number(b.category === preferred) - Number(a.category === preferred)
+                || getVideoCodecEfficiency(b.codec) - getVideoCodecEfficiency(a.codec)
                 || Number(b.hardwareAccelerated) - Number(a.hardwareAccelerated));
     }
 

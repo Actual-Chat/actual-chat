@@ -1,8 +1,11 @@
 import { getActiveRecorder, getAllActiveRecorders, type OwnStreamDiagnostics } from './video-recorder';
 import { getActivePlayers, recordRequestedReceiveQuality, type RemoteStreamDiagnostics } from './video-player';
 import {
-    getForceFloorCodecOnly as getForceFloorCodecOnlyImpl,
-    setForceFloorCodecOnly as setForceFloorCodecOnlyImpl,
+    getForceDecodeCodec as getForceDecodeCodecImpl,
+    getPreferredEncodeCodec as getPreferredEncodeCodecImpl,
+    setForceDecodeCodec as setForceDecodeCodecImpl,
+    setPreferredEncodeCodec as setPreferredEncodeCodecImpl,
+    type CodecCategory,
 } from '../../Services/Video/codec-support';
 import {
     getDownscalerMode as getDownscalerModeImpl,
@@ -79,7 +82,8 @@ export function setRequestedReceiveQuality(
 // Backed by localStorage; codec flags take effect on the next codec
 // detection pass (typically the next stream).
 export interface VideoDebugSettings {
-    forceFloorCodecOnly: boolean;
+    forceDecodeCodec: string | null;
+    preferredEncodeCodec: string | null;
     maxOutboundLayerCount: number | null;
     maxInboundLayerCount: number | null;
     estBandwidthMultiplier: number;
@@ -89,7 +93,8 @@ export interface VideoDebugSettings {
 
 export function getVideoDebugSettings(): VideoDebugSettings {
     return {
-        forceFloorCodecOnly: getForceFloorCodecOnlyImpl(),
+        forceDecodeCodec: getForceDecodeCodecImpl(),
+        preferredEncodeCodec: getPreferredEncodeCodecImpl(),
         maxOutboundLayerCount: getLayerCount(OUTBOUND_LAYER_COUNT_KEY),
         maxInboundLayerCount: getLayerCount(INBOUND_LAYER_COUNT_KEY),
         estBandwidthMultiplier: getBandwidthMultiplier(),
@@ -104,8 +109,12 @@ export function setVideoDebugCaptureFpsOverride(fps: number | null): void {
         recorder.refreshCaptureFps();
 }
 
-export function setVideoDebugForceFloorCodecOnly(enabled: boolean): void {
-    setForceFloorCodecOnlyImpl(enabled);
+export function setVideoDebugForceDecodeCodec(codec: string | null): void {
+    setForceDecodeCodecImpl(codec ? (codec as CodecCategory) : null);
+}
+
+export function setVideoDebugPreferredEncodeCodec(codec: string | null): void {
+    setPreferredEncodeCodecImpl(codec ? (codec as CodecCategory) : null);
 }
 
 export function setVideoDebugDownscalerMode(mode: DownscalerMode): void {

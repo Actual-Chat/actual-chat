@@ -658,18 +658,44 @@
             <div class="diag-section">
                 <div class="diag-section-header">Codec selection</div>
                 <Tile>
-                    <TileItem Click="@OnForceFloorCodecOnlyClick">
-                        <Content>Force VP9 (floor codec) only</Content>
+                    <TileItem IsHoverable="false">
+                        <Content>Force decode codec</Content>
                         <Caption>
-                            Restrict codec detection to H.264 (AVC). AV1, HEVC and VP9
-                            are excluded for both encoder and decoder. Useful for
-                            reproducing AVC-only behaviour. Takes effect on the next
-                            stream — toggle, then re-join the call.
+                            Advertise only this codec, plus VP9 which every client
+                            must decode. Narrows what the whole call may use, so it
+                            affects every member's encoder — not just yours. Applies
+                            on the next stream.
                         </Caption>
                         <Right>
-                            <div class="pointer-events-none">
-                                <Toggle IsChecked="@_forceFloorCodecOnly"/>
-                            </div>
+                            <select class="diag-select"
+                                    value="@_forceDecodeCodec"
+                                    @onchange="@OnForceDecodeCodecChange">
+                                <option value="">Auto (all supported)</option>
+                                <option value="vp9">VP9</option>
+                                <option value="h264">H.264 (AVC)</option>
+                                <option value="hevc">HEVC (H.265)</option>
+                                <option value="av1">AV1</option>
+                            </select>
+                        </Right>
+                    </TileItem>
+                    <TileItem IsHoverable="false">
+                        <Content>Prefer encode codec</Content>
+                        <Caption>
+                            Rank this codec first when picking your own encoder. A
+                            preference only — one that fails probing or is too slow
+                            still loses. Affects your outgoing video, applies on the
+                            next stream.
+                        </Caption>
+                        <Right>
+                            <select class="diag-select"
+                                    value="@_preferredEncodeCodec"
+                                    @onchange="@OnPreferredEncodeCodecChange">
+                                <option value="">Auto (by efficiency)</option>
+                                <option value="vp9">VP9</option>
+                                <option value="h264">H.264 (AVC)</option>
+                                <option value="hevc">HEVC (H.265)</option>
+                                <option value="av1">AV1</option>
+                            </select>
                         </Right>
                     </TileItem>
                 </Tile>
