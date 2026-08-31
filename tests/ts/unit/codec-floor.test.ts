@@ -5,6 +5,7 @@ import {
     excludeEncoderCodec,
     excludeEncoderCodecString,
     FLOOR_CATEGORY,
+    FORCED_CODEC_MARKER,
     getExcludedDecoderCodecs,
     getExcludedEncoderCodecs,
     isEncoderCodecStringExcluded,
@@ -51,13 +52,16 @@ describe('decoder capability detection', () => {
         expect(h264Probes[0]).toBe('avc1.42E01E');
     });
 
-    it('advertises only the forced codec plus the floor', async () => {
+    it('advertises the forced codec behind the marker, without the floor', async () => {
+        // A pin, not a capability report: the floor must not come back on its
+        // own, or it would outrank H.264 and make forcing it unsatisfiable.
         isConfigSupported.mockResolvedValue({ supported: true });
         setForceDecodeCodec('h264');
 
         const codecs = await detectSupportedDecoderCodecs();
 
-        expect(codecs).toEqual(['h264', FLOOR_CATEGORY]);
+        expect(codecs).toEqual([FORCED_CODEC_MARKER, 'h264']);
+        expect(codecs).not.toContain(FLOOR_CATEGORY);
         setForceDecodeCodec(null);
     });
 
@@ -71,24 +75,11 @@ describe('decoder capability detection', () => {
         expect(codecs).toEqual(['av1', 'hevc', 'vp9', 'h264']);
     });
 
-    it('puts the forced codec ahead of the floor', async () => {
-        // The order is what makes forcing H.264 possible at all: it loses to
-        // the floor on efficiency, so a set with no ranking always picked VP9.
-        isConfigSupported.mockResolvedValue({ supported: true });
-        setForceDecodeCodec('h264');
-
-        const codecs = await detectSupportedDecoderCodecs();
-
-        expect(codecs[0]).toBe('h264');
-        expect(codecs).toContain(FLOOR_CATEGORY);
-        setForceDecodeCodec(null);
-    });
-
-    it('does not duplicate the floor when the floor itself is forced', async () => {
+    it('marks a forced floor as a pin too, so it is not intersected away', async () => {
         isConfigSupported.mockResolvedValue({ supported: true });
         setForceDecodeCodec(FLOOR_CATEGORY);
 
-        expect(await detectSupportedDecoderCodecs()).toEqual([FLOOR_CATEGORY]);
+        expect(await detectSupportedDecoderCodecs()).toEqual([FORCED_CODEC_MARKER, FLOOR_CATEGORY]);
         setForceDecodeCodec(null);
     });
 

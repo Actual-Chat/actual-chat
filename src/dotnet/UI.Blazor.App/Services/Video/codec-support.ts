@@ -72,6 +72,11 @@ const CODEC_PROFILES = {
 // docs/plans/codec-negotiation.md for the numbers.
 export const FLOOR_CATEGORY = 'vp9';
 
+// Advertised ahead of a forced codec. Not a codec — a marker saying "this list
+// is a pin". The server honours it only for admins; for everyone else it is
+// stripped and the list is treated as an ordinary capability report.
+export const FORCED_CODEC_MARKER = 'forced';
+
 // Codec support is per UA+OS for the page lifetime, so each (W,H) probes once.
 // In-flight Promise stored so concurrent callers share work.
 const encoderCodecCache = new Map<string, Promise<CodecInfo[]>>();
@@ -794,12 +799,12 @@ async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
 
     const forced = getForceDecodeCodec();
     if (forced) {
-        // Forced codec FIRST, then the floor. The order is the point: the list
-        // is a preference, and the server keeps a codec that some member ranked
-        // highly ahead of one nobody did. Without that, forcing H.264 was
-        // unsatisfiable — the floor outranks it on efficiency, so the encoder
-        // picked VP9 every time and the control looked broken.
-        const result = forced === FLOOR_CATEGORY ? [FLOOR_CATEGORY] : [forced, FLOOR_CATEGORY];
+        // A pin, not a capability report: the marker tells the server this list
+        // is deliberate, so it must not be intersected with everyone else's or
+        // padded with the floor. Without it the floor came back automatically
+        // and outranked H.264 on efficiency, which made forcing H.264
+        // unsatisfiable no matter what anyone asked for.
+        const result = [FORCED_CODEC_MARKER, forced];
         infoLog?.log(`Debug: forceDecodeCodec=${forced} → advertising [${result.join(', ')}]`);
         return result;
     }

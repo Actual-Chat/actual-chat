@@ -58,6 +58,7 @@ import {
     excludeEncoderCodec,
     excludeEncoderCodecString,
     getDefaultHardwareAcceleration,
+    getForceDecodeCodec,
     getPreferredEncodeCodec,
     isEncoderCodecExcluded,
     isEncoderCodecProven,
@@ -3209,8 +3210,11 @@ export class VideoRecorder {
 
         // A debug preference outranks everything so an operator can reproduce a
         // report on a specific encoder; it cannot conjure one that failed
-        // probing, since those never reach this list.
-        const preferred = getPreferredEncodeCodec();
+        // probing, since those never reach this list. A forced decode codec
+        // implies the same preference for our own encoder: with two admins
+        // forcing different codecs the negotiated set is their union, and each
+        // of them means "send mine", not "send whichever sorts first".
+        const preferred = getPreferredEncodeCodec() ?? getForceDecodeCodec();
         return [...bestByCategory.values()]
             .sort((a, b) =>
                 Number(b.category === preferred) - Number(a.category === preferred)
