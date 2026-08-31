@@ -22,12 +22,17 @@ public static class NotificationHelper
             _ => mode == ChatNotificationMode.Default,
         };
 
-    public static string GetTitle(Chat.Chat chat, AuthorFull author)
+    public static (string SenderName, string GroupTitle) GetTitleParts(Chat.Chat chat, AuthorFull author)
+        // Empty GroupTitle means "this chat isn't a group" - Android turns a non-empty one into
+        // SetGroupConversation(true), so a peer chat must leave it empty however it's titled.
         => chat.Id.GetThreadOutermostParentOrSelf().Kind switch {
-            ChatKind.Group or ChatKind.Place => $"{author.Avatar.Name} @ {chat.Title}",
-            ChatKind.Peer => $"{author.Avatar.Name}",
+            ChatKind.Group or ChatKind.Place => (author.Avatar.Name, chat.Title),
+            ChatKind.Peer => (author.Avatar.Name, ""),
             _ => throw new ArgumentOutOfRangeException($"{nameof(chat)}.{nameof(chat.Kind)}", chat.Kind, null),
         };
+
+    public static string GetTitle(string senderName, string groupTitle)
+        => groupTitle.IsNullOrEmpty() ? senderName : $"{senderName} @ {groupTitle}";
 
     public static string GetIconUrl(Chat.Chat chat, AuthorFull author, UrlMapper urlMapper)
         // Unsized, the generator draws its 80px base, which an avatar slot on a 3x screen upscales.

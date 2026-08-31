@@ -359,6 +359,8 @@ public static partial class Constants
             public const string Link = "link";
             public const string Tag = "tag";
             public const string Title = "title";
+            public const string SenderName = "senderName";
+            public const string GroupTitle = "groupTitle";
             public const string Body = "body";
             public const string ImageUrl = "imageUrl";
             public const string Messages = "messages";
@@ -368,7 +370,7 @@ public static partial class Constants
             public const string Silent = "silent";
 
             public static readonly string[] ValidKeys = {
-                AuthorId, Body, ChatId, ChatEntryId, DismissedIds, DismissedTags, LastEntryLocalId, Icon, ImageUrl, Kind, Link, Messages, NotificationId, Silent, Tag, Title, Timestamp
+                AuthorId, Body, ChatId, ChatEntryId, DismissedIds, DismissedTags, GroupTitle, LastEntryLocalId, Icon, ImageUrl, Kind, Link, Messages, NotificationId, SenderName, Silent, Tag, Title, Timestamp
             };
 
             public static bool IsValidKey(string key)

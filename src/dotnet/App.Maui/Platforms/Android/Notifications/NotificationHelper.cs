@@ -1,3 +1,4 @@
+using _Microsoft.Android.Resource.Designer;
 using ActualChat.Notifications;
 using ActualChat.UI.Blazor.Services;
 using Android.App;
@@ -47,20 +48,21 @@ public static class NotificationHelper
         string? imageUrl,
         string? link,
         bool silent = false,
-        IReadOnlyList<PushMessage>? messages = null)
+        IReadOnlyList<PushMessage>? messages = null,
+        string? senderName = null,
+        string? conversationTitle = null)
     {
         var context = Application.Context;
         var contentIntent = CreateViewIntent(context, link);
         var contentPendingIntent = PendingIntent.GetActivity(context, 0,
             contentIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
-        var largeImage = imageUrl.IsNullOrEmpty() ? null : GetImage(imageUrl!);
+        var largeImage = imageUrl.IsNullOrEmpty() ? null : GetImage(imageUrl);
         var icon = largeImage is null ? null : AndroidChatShortcuts.CreateIcon(largeImage);
-        var (senderName, conversationTitle) = SplitTitle(title);
         var style = CreateStyle(senderName, conversationTitle, body, icon, messages);
         var builder = new NotificationCompat.Builder(context, Constants.DefaultChannelId)
             .SetContentTitle(title)!
-            .SetSmallIcon(Resource.Drawable.notification_app_icon)!
+            .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
             .SetColor(0x0036A3)!
             .SetContentText(body)!
             .SetContentIntent(contentPendingIntent)!
@@ -79,7 +81,7 @@ public static class NotificationHelper
         // callers that pass an in-app relative link just stay ordinary notifications.
         if (chatId is not null && Uri.TryCreate(link, UriKind.Absolute, out _)) {
             AndroidChatShortcuts.PushOnce(
-                context, chatId, conversationTitle.NullIfEmpty() ?? senderName, link!, icon);
+                context, chatId, conversationTitle.NullIfEmpty() ?? senderName ?? "", link, icon);
             builder.SetShortcutId(chatId.Value);
         }
         // MessagingStyle already carries the avatar on its Person, so a large icon here is a second,
@@ -184,7 +186,7 @@ public static class NotificationHelper
             : PendingIntent.GetActivity(context, 3, viewIntent, PendingIntentFlags.Immutable);
 
         var builder = new NotificationCompat.Builder(context, Constants.ActivityUploadChannelId)
-            .SetSmallIcon(Resource.Drawable.notification_app_icon)!
+            .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
             .SetContentTitle(title)!
             .SetContentText(summary)!
             .SetStyle(style)!
@@ -200,7 +202,7 @@ public static class NotificationHelper
     // Private methods
 
     private static NotificationCompat.Style CreateStyle(
-        string senderName,
+        string? senderName,
         string? conversationTitle,
         string body,
         IconCompat? icon,
@@ -230,7 +232,7 @@ public static class NotificationHelper
                         var personBuilder = new Person.Builder().SetName(name)!;
                         if (name == newestName && icon != null)
                             personBuilder.SetIcon(icon);
-                        person = personBuilder.Build();
+                        person = personBuilder.Build()!;
                         persons.Add(name, person);
                     }
                     style.AddMessage(message.Text, message.SentAtMs, person);
@@ -249,14 +251,6 @@ public static class NotificationHelper
             Log.LogWarning(e, "Failed to build MessagingStyle; falling back to BigTextStyle");
             return bigText;
         }
-    }
-
-    private static (string SenderName, string? ConversationTitle) SplitTitle(string title)
-    {
-        var index = title.IndexOf(" @ ");
-        return index >= 0
-            ? (title[..index].Trim(), title[(index + 3)..].Trim())
-            : (title, null);
     }
 
     private static Bitmap? DownloadImage(string imageUrl)

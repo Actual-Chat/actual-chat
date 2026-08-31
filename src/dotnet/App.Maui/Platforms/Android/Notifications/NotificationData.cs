@@ -43,6 +43,12 @@ public class NotificationData(string messageId, Dictionary<string, string> data)
     public string? Title
         => data.GetValueOrDefault(Constants.Notification.MessageDataKeys.Title, "").NullIfEmpty();
 
+    public string? SenderName
+        => data.GetValueOrDefault(Constants.Notification.MessageDataKeys.SenderName, "").NullIfEmpty();
+
+    public string? GroupTitle
+        => data.GetValueOrDefault(Constants.Notification.MessageDataKeys.GroupTitle, "").NullIfEmpty();
+
     public string? Body
         => data.GetValueOrDefault(Constants.Notification.MessageDataKeys.Body, "").NullIfEmpty();
 
@@ -55,25 +61,25 @@ public class NotificationData(string messageId, Dictionary<string, string> data)
     public string? Tag
         => data.GetValueOrDefault(Constants.Notification.MessageDataKeys.Tag, "").NullIfEmpty();
 
-    // Structured transcript lines for MessagingStyle rendering; empty when the push predates them.
     public IReadOnlyList<PushMessage> Messages
+        // Structured transcript lines for MessagingStyle rendering; empty when the push predates them.
         => PushMessage.FromJson(data.GetValueOrDefault(Constants.Notification.MessageDataKeys.Messages));
 
-    // A silent update refreshes the banner content without alerting (sound/vibration).
     public bool Silent
+        // A silent update refreshes the banner content without alerting (sound/vibration).
         => bool.TryParse(data.GetValueOrDefault(Constants.Notification.MessageDataKeys.Silent), out var silent) && silent;
 
-    // The local id of the entry this notification points at (for the read-position skip).
     public long EntryLocalId {
         get {
+            // The local id of the entry this notification points at (for the read-position skip).
             data.TryGetValue(Constants.Notification.MessageDataKeys.ChatEntryId, out var sEntryId);
             return ChatEntryId.TryParse(sEntryId, out var entryId) ? entryId.LocalId : LastEntryLocalId;
         }
     }
 
-    // The wake push's speech-start moment (epoch ms in the Timestamp data key).
     public Moment? StartedAt {
         get {
+            // The wake push's speech-start moment (epoch ms in the Timestamp data key).
             data.TryGetValue(Constants.Notification.MessageDataKeys.Timestamp, out var sTimestamp);
             return long.TryParse(sTimestamp, out var epochMs)
                 ? new Moment(epochMs * 10_000)

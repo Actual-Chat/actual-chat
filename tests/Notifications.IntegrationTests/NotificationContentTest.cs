@@ -27,11 +27,33 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         // assert
         var aliceNotification = await GetNotification(alice, entry.Id);
         aliceNotification.Title.Should().Be($"Bobby @ {chat.Title}");
+        aliceNotification.SenderName.Should().Be("Bobby");
+        aliceNotification.GroupTitle.Should().Be(chat.Title);
         aliceNotification.Text.Should().Be("Bobby: Ok!");
 
         var bobNotification = await GetNotification(bob, entry.Id);
         bobNotification.Title.Should().Be($"Alice @ {chat.Title}");
         bobNotification.Text.Should().Be("❤️ to \"Ok!\"");
+    }
+
+    [Fact]
+    public async Task ShouldCarryTitlePartsForAChatTitledWithTheSeparator()
+    {
+        // arrange
+        var alice = await Tester.SignInAsAlice();
+        var bob = await Tester.SignInAsBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "Design @ Voxt");
+        await Tester.InviteToChat(chat.Id, alice);
+
+        // act
+        await Tester.SignIn(bob);
+        var entry = await Tester.CreateTextEntry(chat.Id, "Ok!");
+
+        // assert
+        var aliceNotification = await GetNotification(alice, entry.Id);
+        aliceNotification.Title.Should().Be("Bobby @ Design @ Voxt");
+        aliceNotification.SenderName.Should().Be("Bobby");
+        aliceNotification.GroupTitle.Should().Be("Design @ Voxt");
     }
 
     [Fact]
@@ -192,12 +214,13 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         notification.IconUrl.Should().Contain("api/content/");
     }
 
-    private async Task<Notification> GetNotification(AccountFull user, ChatEntryId entryId)
+    private async Task<ChatNotification> GetNotification(AccountFull user, ChatEntryId entryId)
     {
-        Notification notification = null!;
+        ChatNotification notification = null!;
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(user.Id, CancellationToken.None);
             var notifications = info.Items
+                .OfType<ChatNotification>()
                 .Where(n => EntryIdOf(n) == entryId)
                 .ToList();
             notifications.Should().HaveCount(1);

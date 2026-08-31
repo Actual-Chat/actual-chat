@@ -9,6 +9,14 @@ public abstract partial record ChatNotification(NotificationId Id, long Version 
 {
     [DataMember(Order = 8), Key(8)]
     public AuthorId? AuthorId { get; init; }
+    [DataMember(Order = 21), Key(21)]
+    public string SenderName {
+        get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
+    } = "";
+    [DataMember(Order = 22), Key(22)]
+    public string GroupTitle {
+        get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
+    } = "";
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]

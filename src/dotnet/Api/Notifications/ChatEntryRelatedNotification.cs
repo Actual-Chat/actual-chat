@@ -96,6 +96,8 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
             // and the banner headline (title/icon) must keep tracking the newest message.
             SentAt = Moment.Max(e.SentAt, SentAt),
             Title = newestIsIncoming ? Title : e.Title,
+            SenderName = newestIsIncoming ? SenderName : e.SenderName,
+            GroupTitle = newestIsIncoming ? GroupTitle : e.GroupTitle,
             IconUrl = newestIsIncoming ? IconUrl : e.IconUrl,
             EntryLid = entryLid,
             StartEntryLid = startEntryLid,

@@ -518,6 +518,7 @@ public class NotificationsBackend(IServiceProvider services)
 
             var notification = ConversationNotification.New(userId, conversationId, endEntryLid) with {
                 Title = chat.Title,
+                SenderName = chat.Title,
                 Text = userText,
                 IconUrl = iconUrl,
                 SentAt = now,
@@ -576,6 +577,7 @@ public class NotificationsBackend(IServiceProvider services)
             var l = await UserLocalizers.Get(a.UserId, cancellationToken).ConfigureAwait(false);
             var notification = CallNotification.New(a.UserId, conversationId, caller, hasVideo) with {
                 Title = chat.Title,
+                SenderName = chat.Title,
                 Text = hasVideo ? l.Call_IncomingVideo : l.Call_Incoming,
                 IconUrl = iconUrl,
                 SentAt = now,
@@ -1352,7 +1354,8 @@ public class NotificationsBackend(IServiceProvider services)
             throw new ArgumentOutOfRangeException(nameof(entryId), "entry.ChatId should match given chatId");
 
         var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
-        var title = NotificationHelper.GetTitle(chat, changeAuthor);
+        var (senderName, groupTitle) = NotificationHelper.GetTitleParts(chat, changeAuthor);
+        var title = NotificationHelper.GetTitle(senderName, groupTitle);
         var iconUrl = NotificationHelper.GetIconUrl(chat, changeAuthor, UrlMapper);
         var now = Clocks.CoarseSystemClock.Now;
         var otherUserIds = userIds.Where(userId => userId != changeAuthor.UserId);
@@ -1366,7 +1369,7 @@ public class NotificationsBackend(IServiceProvider services)
 
             var entryLid = entryId?.LocalId ?? 0;
             var fullEntryId = entryId ?? ChatEntryId.New(chatId, entryLid);
-            Notification notification = kind switch {
+            ChatNotification notification = kind switch {
                 NotificationKind.Message => MessageNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
                 NotificationKind.Reply => ReplyNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
                 NotificationKind.Thread => ThreadNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
@@ -1378,6 +1381,8 @@ public class NotificationsBackend(IServiceProvider services)
             };
             notification = notification with {
                 Title = title,
+                SenderName = senderName,
+                GroupTitle = groupTitle,
                 Text = content,
                 IconUrl = iconUrl,
                 SentAt = now,
