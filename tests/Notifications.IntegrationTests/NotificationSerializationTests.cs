@@ -167,6 +167,57 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     }
 
     [Fact]
+    public void AccumulatedReactorsShouldSurviveRoundtrip()
+    {
+        // arrange
+        var bob = AuthorId.New(TestChatId, 5);
+        var kate = AuthorId.New(TestChatId, 6);
+        var entryId = ChatEntryId.New(TestChatId, 1);
+        var notification = ReactionNotification.New(TestUserId, entryId, kate) with {
+            Version = 1,
+            Title = "Kate",
+            Text = "reacted to your message",
+            AuthorIds = ApiArray.New(bob, kate),
+            Emojis = ApiArray.New(Emojis.Awesome, Emojis.Party),
+            QuotedText = "\"weekend plans\"",
+            LastEmoji = Emojis.Party,
+        };
+
+        // act
+        // Not AssertMessagePackRoundtrip: it compares whole records, and ApiArray is
+        // reference-compared, so a populated one never equals its deserialized copy.
+        var deserialized = notification.PassThroughMessagePackByteSerializer(Out);
+
+        // assert
+        deserialized.AuthorIds.Should().Equal([bob, kate]);
+        deserialized.Emojis.Should().Equal([Emojis.Awesome, Emojis.Party]);
+        deserialized.QuotedText.Should().Be("\"weekend plans\"");
+        deserialized.LastEmoji.Should().Be(Emojis.Party);
+    }
+
+    [Fact]
+    public void ReactionWithoutAccumulatedReactorsShouldRoundtrip()
+    {
+        // arrange
+        // The shape a pre-accumulation blob has: keys 9 and 10 absent.
+        var entryId = ChatEntryId.New(TestChatId, 1);
+        var notification = new ReactionNotification(
+            NotificationId.New(TestUserId, NotificationKind.Reaction, entryId.Value)) with {
+            Version = 1,
+            Title = "Kate",
+            Text = "reacted to your message",
+        };
+
+        // act
+        var deserialized = AssertMessagePackRoundtrip(notification);
+
+        // assert
+        deserialized.AuthorIds.Should().BeEmpty();
+        deserialized.Emojis.Should().BeEmpty();
+        deserialized.Title.Should().Be("Kate");
+    }
+
+    [Fact]
     public void PushTagShouldBePerChatForCoalescingKinds()
     {
         MessageNotification.New(TestUserId, TestChatId, 2067).GetPushTag().Should().Be(TestChatId.Value);

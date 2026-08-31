@@ -412,6 +412,9 @@ public static partial class Constants
         public const int MaxSummaryAuthors = 3;
         // Distinct authors tracked on a coalesced notification (bounds the stored set).
         public const int MaxTrackedAuthors = 8;
+        // Past this many distinct reactors a reaction notification stops changing - and so stops
+        // re-pushing - because further reactors would only move a number the row already shows.
+        public const int MaxReactionAuthors = 5;
 
         public static readonly TimeSpan PermissionRequestDismissPeriod = TimeSpan.FromDays(7);
         public static readonly TimeSpan EntryWaitTimeout = TimeSpan.FromSeconds(0.5);
