@@ -338,6 +338,13 @@ body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on {
     @apply mb-0.5;
     @apply text-headline-1;
 }
+.message-counter-badge.unread-reaction {
+    @apply bg-transparent;
+    @apply p-0;
+}
+.message-counter-badge.unread-reaction img {
+    @apply size-5;
+}
 
 /* Hoverable slot */
 .chat-list .navbar-item .navbar-item-ending .slot {

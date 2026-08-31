@@ -38,4 +38,8 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
 
 // The badge-only projection of ChatInfo - value-compared, so ChatUI.GetUnreadState can consolidate it.
 
-public readonly record struct ChatUnreadState(Trimmed<int> Count, bool HasOwnMention, bool HasUnmutedUnread);
+public readonly record struct ChatUnreadState(
+    Trimmed<int> Count,
+    bool HasOwnMention,
+    bool HasUnmutedUnread,
+    Emoji? ReactionEmoji = null);
