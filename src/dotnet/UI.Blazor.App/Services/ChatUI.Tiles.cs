@@ -451,16 +451,21 @@ public partial class ChatUI
                     .EnsureMonotonic()
                     .ToList();
                 var navigateToId = dataQuery.Navigation.EntryLid;
-                var index = conversationRanges.AsSpan().BinarySearch(r => r.Contains(navigateToId) || r.Start > navigateToId);
+                var index = conversationRanges.AsSpan()
+                    .BinarySearch(r => r.Contains(navigateToId) || r.Start > navigateToId);
                 if (index >= 0) {
                     var conversationRange = conversationRanges[index];
                     if (conversationRange.Contains(navigateToId)) {
                         // Ensure the navigated-to conversation is effective-expanded (flip its override if not).
                         var conversationId = ConversationId.New(chatId, conversationRange.Start);
                         var overrides0 = ConversationExpansionOverrides.Value;
-                        var isExpanded = defaultExpanded.Contains(conversationId) ^ overrides0.Contains(conversationId);
+                        var isOverridden = overrides0.Contains(conversationId);
+                        // An auto-expanded conversation already renders expanded, and stacking an override
+                        // on it would break the "auto set implies no override" invariant the toggle relies on.
+                        var isExpanded = (defaultExpanded.Contains(conversationId) ^ isOverridden)
+                            || _autoExpandedConversations.Value.Contains(conversationId);
                         if (!isExpanded) {
-                            var newOverrides = overrides0.Contains(conversationId)
+                            var newOverrides = isOverridden
                                 ? overrides0.Remove(conversationId)
                                 : overrides0.Add(conversationId);
                             _conversationExpansionOverrides.Value = newOverrides;
@@ -493,7 +498,33 @@ public partial class ChatUI
                     };
             }
 
-            expandedConversations = defaultExpanded.SymmetricExcept(overrides);
+            var autoExpanded = await AutoExpandedConversations.Use(cancellationToken).ConfigureAwait(false);
+            if (!isPrefetch && _witnessedLids.TryGetValue(chatId, out var witnessedLids)) {
+                var newAutoExpansions = GetNewAutoExpansions(
+                    chatId: chatId,
+                    conversationLidRanges: chatRangeMetaList
+                        .SelectMany(m => m.ConversationLidRanges)
+                        .EnsureMonotonic(),
+                    defaultExpanded: defaultExpanded,
+                    overrides: overrides,
+                    autoExpanded: autoExpanded,
+                    isSuppressed: id => _suppressedAutoExpansions.ContainsKey(id),
+                    witnessedLids: witnessedLids,
+                    liveBlockId: liveBlockId,
+                    materializedBlockId: materializedBlockId);
+                if (newAutoExpansions.Count > 0) {
+                    // Re-read under the lock and re-check suppression: a concurrent collapse gesture
+                    // suppresses before it removes, so filtering on the fresh suppression set is what
+                    // keeps this union from resurrecting an id the user just collapsed.
+                    lock (Lock) {
+                        autoExpanded = _autoExpandedConversations.Value.Union(
+                            newAutoExpansions.Where(id => !_suppressedAutoExpansions.ContainsKey(id)));
+                        _autoExpandedConversations.Value = autoExpanded;
+                    }
+                }
+            }
+
+            expandedConversations = defaultExpanded.SymmetricExcept(overrides).Union(autoExpanded);
             // A not-joined viewer can expand the live block to read the whole conversation before joining;
             // when expanded, stop hiding its tail so every entry [V, end] renders (the fold/skip logic
             // already drops the fold range for an expanded block). Collapsed, the hidden tail stands.
@@ -697,6 +728,20 @@ public partial class ChatUI
         }
 
         var groupedItems = GroupAuthorMessages(items);
+
+        if (!isPrefetch && !dataQuery.VisibleLidRange.IsEmpty) {
+            // VisibleLidRange is half-open - ChatView builds its end as MaxMessageLid + 1 - so End itself
+            // is one row below the fold and must not be witnessed. Leaves come in ascending lid order.
+            var visibleLidRange = dataQuery.VisibleLidRange;
+            var witnessed = _witnessedLids.GetOrAdd(chatId, static _ => new LidRangeSet());
+            foreach (var message in groupedItems.SelectMany(i => i.GetLeafMessages())) {
+                if (message.Id >= visibleLidRange.End)
+                    break;
+
+                if (message is ChatEntryMessage && message.Id >= visibleLidRange.Start)
+                    witnessed.Add(new Range<long>(message.Id, message.Id + 1));
+            }
+        }
 
         if (!isPrefetch) {
             var totalMs = (long)startedAt.Elapsed.TotalMilliseconds;

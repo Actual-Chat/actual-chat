@@ -483,20 +483,10 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     public bool IsConversationExpanded(Conversation conversation)
-        => (conversation.IsExpandedByDefault ^ _conversationExpansionOverrides.Value.Contains(conversation.Id))
-            || _autoExpandedConversations.Value.Contains(conversation.Id);
-
-    internal void EnsureConversationCollapsed(ConversationId conversationId, bool isExpandedByDefault)
-    {
-        // Called from LiveBlockUI.TryCollapseOverlay - an explicit collapse gesture, so it must undo
-        // AND suppress auto-expansion, not just flip the override.
-        _suppressedAutoExpansions[conversationId] = default;
-        _autoExpandedConversations.Value = _autoExpandedConversations.Value.Remove(conversationId);
-        var overrides = _conversationExpansionOverrides.Value;
-        _conversationExpansionOverrides.Value = isExpandedByDefault
-            ? overrides.Add(conversationId)
-            : overrides.Remove(conversationId);
-    }
+        => IsConversationExpanded(
+            conversation,
+            _conversationExpansionOverrides.Value,
+            _autoExpandedConversations.Value);
 
     // Helpers
 
@@ -582,6 +572,35 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     // Protected/internal methods
+
+    internal void EnsureConversationCollapsed(ConversationId conversationId, bool isExpandedByDefault)
+    {
+        // Called from LiveBlockUI.TryCollapseOverlay - an explicit collapse gesture, so it must undo
+        // AND suppress auto-expansion, not just flip the override.
+        _suppressedAutoExpansions[conversationId] = default;
+        _autoExpandedConversations.Value = _autoExpandedConversations.Value.Remove(conversationId);
+        var overrides = _conversationExpansionOverrides.Value;
+        _conversationExpansionOverrides.Value = isExpandedByDefault
+            ? overrides.Add(conversationId)
+            : overrides.Remove(conversationId);
+    }
+
+    internal void SuppressAutoExpansion(ConversationId conversationId)
+    {
+        // The removal-only half of EnsureConversationCollapsed, for ids whose IsExpandedByDefault isn't
+        // knowable - a frozen block's render id has no conversation behind it once materialized, so
+        // normalizing the overrides set for it would flip it to expanded instead of collapsed.
+        _suppressedAutoExpansions[conversationId] = default;
+        _autoExpandedConversations.Value = _autoExpandedConversations.Value.Remove(conversationId);
+    }
+
+    // It's internal + static so the views that already .Use() both states can reuse the very same rule
+    internal static bool IsConversationExpanded(
+        Conversation conversation,
+        IImmutableSet<ConversationId> overrides,
+        IImmutableSet<ConversationId> autoExpanded)
+        => (conversation.IsExpandedByDefault ^ overrides.Contains(conversation.Id))
+            || autoExpanded.Contains(conversation.Id);
 
     internal static List<ConversationId> GetNewAutoExpansions(
         ChatId chatId,

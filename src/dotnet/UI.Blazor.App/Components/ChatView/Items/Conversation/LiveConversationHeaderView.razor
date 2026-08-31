@@ -72,7 +72,8 @@
             && blockState.FoldBoundaryLid > rawLive.EffectiveVisibleStartLid;
         var canExpand = isLive && !isVoiceOnly && rawLive is { SessionStartedAt: not null };
         var overrides = await ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(true);
-        var isExpanded = conversation.IsExpandedByDefault ^ overrides.Contains(conversation.Id);
+        var autoExpanded = await ChatUI.AutoExpandedConversations.Use(cancellationToken).ConfigureAwait(true);
+        var isExpanded = ChatUI.IsConversationExpanded(conversation, overrides, autoExpanded);
         var isAnyoneTalking = isLive
             && await LiveStreamUI.IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(true);
         return new LiveConversationHeaderState(
