@@ -127,6 +127,33 @@ Real `configure()` + `encode()`, 60 frames paced at 30 fps:
 
 No drops and no errors on any codec.
 
+### macOS WKWebView too — the suspected Catalyst gap isn't there
+
+Probed inside a real `WKWebView` on the Mac mini (`tmp/wkprobe.swift`, a ~40-line
+AppKit harness using `callAsyncJavaScript`), because Mac Catalyst embeds the
+same system WebKit:
+
+| codec | decode | encode |
+|---|---|---|
+| H.264 | yes | yes |
+| HEVC | yes | yes |
+| **VP8** | **yes** | **yes** |
+| **VP9** | **yes** | **yes** |
+| AV1 | no | no |
+
+Confirmed by real `configure()` + `encode()`: H.264, VP8 and VP9 each took 30
+frames in and produced 30 out, no drops and no errors.
+
+Caveat worth stating plainly: this is an AppKit-hosted `WKWebView`, not literally
+a Catalyst (UIKit-on-macOS) process. They link the same `WebKit.framework` and
+the same media stack — the difference is the UI framework, not codec
+availability — but it is a very close proxy rather than the thing itself.
+
+**So VP9 is present on every surface measured: Chromium, Firefox, desktop
+Safari, iOS WKWebView and macOS WKWebView.** No Apple surface lacks it, which
+means "Closing the VP9 gap" below may have nothing to close — the WASM decoder
+is now insurance for old clients, not a Catalyst workaround.
+
 ### The conclusion this forces
 
 **VP9 encodes and decodes at real-time latency on every engine we ship to** —
@@ -322,10 +349,13 @@ pattern (`src/dotnet/Api.Contracts/Chat/IChats.cs:19-30`):
 
 ## Closing the VP9 gap
 
-Making VP9 mandatory means some client, somewhere, will not have it — an old
-build, or a WebView that turns out to lag its browser. The answer is to ship
-that client a decoder rather than to renegotiate the call, and for VP9 that is
-markedly easier than the H.264 attempt this plan supersedes:
+Making VP9 mandatory means some client, somewhere, will not have it. Measurement
+has since narrowed that to **old builds only** — every current surface has VP9,
+including the macOS WebView that was the suspected gap — so this is contingency,
+not a prerequisite, and should be built only if telemetry shows clients that
+need it. The answer is still to ship such a client a decoder rather than
+renegotiate the call, and for VP9 that is markedly easier than the H.264 attempt
+this plan supersedes:
 
 - **No patent problem.** VP9 is royalty-free under the Open Media licence.
   Every objection that killed the libav H.264 fallback — the AVC pool, Cisco's
@@ -394,12 +424,7 @@ on the `realtime` measurement regardless of what its decoder can do.
 
 1. **VP9 software-encode CPU on Apple**, sustained at 720p30 with the pacing
    removed. The one number left between VP9 and being the default codec.
-2. **Mac Catalyst's WKWebView is unmeasured.** Desktop Safari and the iOS
-   WebView both do VP9, but Catalyst was not probed and is the surface
-   suspected of lacking it. Measure it with `/macos-run` on the Mac mini before
-   assuming the gap is real — if Catalyst has VP9 too, the WASM decoder may not
-   be needed at all.
-3. **AV1 on an M3+/iPhone 15 Pro+.** Both machines measured here predate AV1
+2. **AV1 on an M3+/iPhone 15 Pro+.** Both machines measured here predate AV1
    hardware, so "AV1 decode: no" is a property of these devices, not of Apple
    in 2026. Worth one probe on newer hardware before AV1 is ranked.
 3. **Does any Apple device encode AV1?** Not on the Mac mini (above), and
@@ -440,6 +465,10 @@ on the `realtime` measurement regardless of what its decoder can do.
     reads it. `tmp/t10.js` / `tmp/t11.js` are working examples.
   - A fresh session sits on `about:blank`. Run `~/bin/safari go https://…`
     first or WebCodecs answers from a non-secure context.
+- `tmp/wkprobe.swift` — probes a real macOS `WKWebView` with no app, no
+  inspector and no proxy: `scp` it to the Mac and `swift wkprobe.swift`. Note
+  `callAsyncJavaScript` takes a **function body**, so the script must `return`;
+  passing a bare `(async () => …)()` expression yields `nil` with no error.
 - `tmp/ios-eval.mjs` — evaluates JS in the iPhone's WKWebView through
   `ios_webkit_debug_proxy` (already running on the Mac mini, port 9222).
   It speaks the **WebKit Inspector protocol, not CDP**: every command must be
