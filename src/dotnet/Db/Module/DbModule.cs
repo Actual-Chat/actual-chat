@@ -122,15 +122,10 @@ public sealed class DbModule(IServiceProvider moduleServices)
                     operations.AddRedisOperationLogWatcher();
                 else if (dbKind == DbKind.PostgreSql)
                     operations.AddNpgsqlOperationLogWatcher();
-                // NOTE(DF):
-                // During tests execution for entire test fixture I often bump into a situation when tests fail.
-                // Usually this happens on awaiting that computed value will match the condition
-                // with using `ComputedTest.When`.
-                // But it fails when the default timeout is used.
-                // After examining log files, I found that events processing can be delayed for more than 5 seconds.
-                // So it seems that sometimes event log reader doesn't kick in on time sometimes,
-                // and that's because LocalDbLogWatcher does not signal a new event has been added.
-                // So as a temp. fix, I reduced the check period to 1s.
+                // Caps how long an event waits when LocalDbLogWatcher misses its signal (NOTE(DF, 2024-06):
+                // 5+ second delays failed `ComputedTest.When` waits). Likely obsolete: Fusion 2fbc7d0b
+                // (14.3.34) wakes the publishing host's own readers, and Flow tests passed with 60s here
+                // in 3 of 4 local runs - re-check on CI, and drop this override if it holds.
                 if (HostInfo.IsTested)
                     operations.ConfigureEventLogReader(_ => new DbEventLogReader<TDbContext>.Options() {
                         CheckPeriod = TimeSpan.FromSeconds(1).ToRandom(0.1),
