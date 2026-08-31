@@ -26,6 +26,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private readonly StoredState<IImmutableDictionary<string, ChatId>> _selectedChatIds;
     private readonly MutableState<ChatEntryId?> _highlightedEntryId;
     private readonly MutableState<IImmutableSet<ConversationId>> _conversationExpansionOverrides;
+    private readonly MutableState<IImmutableSet<ConversationId>> _autoExpandedConversations;
+    private readonly ConcurrentDictionary<ChatId, LidRangeSet> _witnessedLids = new();
+    private readonly ConcurrentDictionary<ConversationId, Unit> _suppressedAutoExpansions = new();
     private ChatId? _searchEnabledChatId;
     private List<ChatId>? _pendingSelectedChatIds = new();
 
@@ -59,6 +62,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public IState<IImmutableDictionary<string, ChatId>> SelectedChatIds => _selectedChatIds;
     public IState<ChatEntryId?> HighlightedEntryId => _highlightedEntryId;
     public IState<IImmutableSet<ConversationId>> ConversationExpansionOverrides => _conversationExpansionOverrides;
+    public IState<IImmutableSet<ConversationId>> AutoExpandedConversations => _autoExpandedConversations;
     public Task WhenReady => _selectedChatId.WhenRead;
     public IState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
 
@@ -91,6 +95,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _conversationExpansionOverrides = StateFactory.NewMutable(
             (IImmutableSet<ConversationId>)ImmutableHashSet<ConversationId>.Empty,
             StateCategories.Get(type, nameof(ConversationExpansionOverrides)));
+        _autoExpandedConversations = StateFactory.NewMutable(
+            (IImmutableSet<ConversationId>)ImmutableHashSet<ConversationId>.Empty,
+            StateCategories.Get(type, nameof(AutoExpandedConversations)));
         _itemVisibility = StateFactory.NewMutable(
             ChatViewItemVisibility.Empty,
             StateCategories.Get(type, nameof(ItemVisibility)));
@@ -454,6 +461,16 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (Hub.LiveBlockUI.TryCollapseOverlay(conversationId))
             return;
 
+        _suppressedAutoExpansions[conversationId] = default;
+        var autoExpanded = _autoExpandedConversations.Value;
+        if (autoExpanded.Contains(conversationId)) {
+            // The conversation renders expanded only via auto-expansion (its XOR state is collapsed),
+            // so removing it from the auto set IS the collapse - flipping the override would expand it.
+            _autoExpandedConversations.Value = autoExpanded.Remove(conversationId);
+            Hub.LiveBlockUI.ResetReveal(conversationId.ChatId);
+            return;
+        }
+
         // Membership here flips a conversation's expansion away from its IsExpandedByDefault, so the
         // toggle works regardless of which default (expanded/collapsed) the conversation carries.
         var overrides = _conversationExpansionOverrides.Value;
@@ -466,10 +483,15 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     public bool IsConversationExpanded(Conversation conversation)
-        => conversation.IsExpandedByDefault ^ _conversationExpansionOverrides.Value.Contains(conversation.Id);
+        => (conversation.IsExpandedByDefault ^ _conversationExpansionOverrides.Value.Contains(conversation.Id))
+            || _autoExpandedConversations.Value.Contains(conversation.Id);
 
     internal void EnsureConversationCollapsed(ConversationId conversationId, bool isExpandedByDefault)
     {
+        // Called from LiveBlockUI.TryCollapseOverlay - an explicit collapse gesture, so it must undo
+        // AND suppress auto-expansion, not just flip the override.
+        _suppressedAutoExpansions[conversationId] = default;
+        _autoExpandedConversations.Value = _autoExpandedConversations.Value.Remove(conversationId);
         var overrides = _conversationExpansionOverrides.Value;
         _conversationExpansionOverrides.Value = isExpandedByDefault
             ? overrides.Add(conversationId)
@@ -559,6 +581,40 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         await _viewPositionStates.DisposeAsync().ConfigureAwait(false);
     }
 
+    // Protected/internal methods
+
+    internal static List<ConversationId> GetNewAutoExpansions(
+        ChatId chatId,
+        IEnumerable<Range<long>> conversationLidRanges,
+        IImmutableSet<ConversationId> defaultExpanded,
+        IImmutableSet<ConversationId> overrides,
+        IImmutableSet<ConversationId> autoExpanded,
+        Func<ConversationId, bool> isSuppressed,
+        LidRangeSet witnessedLids,
+        ConversationId? liveBlockId,
+        ConversationId? materializedBlockId)
+    {
+        // A conversation that appeared (or grew) over rows the user has actually seen this visit must
+        // not swallow them in place; it auto-expands until the user leaves the chat. Live/materialized
+        // block ids are excluded - the live overlay machinery owns their expansion.
+        var result = new List<ConversationId>();
+        foreach (var range in conversationLidRanges) {
+            var conversationId = ConversationId.New(chatId, range.Start);
+            if (conversationId == liveBlockId || conversationId == materializedBlockId)
+                continue;
+            if (autoExpanded.Contains(conversationId) || isSuppressed(conversationId))
+                continue;
+
+            var isExpanded = defaultExpanded.Contains(conversationId) ^ overrides.Contains(conversationId);
+            if (isExpanded)
+                continue;
+
+            if (witnessedLids.Intersects(range))
+                result.Add(conversationId);
+        }
+        return result;
+    }
+
     // Private methods
 
     private bool SelectChatInternal(ChatId? chatId)
@@ -576,9 +632,18 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 else
                     _pendingSelectedChatIds.Add(chatId);
             }
+            ClearAutoExpansionState();
             selectedChatId.Value = chatId; // "Resumes" InvalidateSelectedChatDependencies, which does the rest
             return true;
         }
+    }
+
+    private void ClearAutoExpansionState()
+    {
+        _witnessedLids.Clear();
+        _suppressedAutoExpansions.Clear();
+        if (_autoExpandedConversations.Value.Count != 0)
+            _autoExpandedConversations.Value = ImmutableHashSet<ConversationId>.Empty;
     }
 
     private bool SelectPlaceInternal(PlaceId? placeId)
