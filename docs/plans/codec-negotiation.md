@@ -1,6 +1,6 @@
 ---
 title: Codec negotiation — per-client encode assignment
-description: Clients report decode and encode capabilities separately; the server intersects decode sets and assigns each client an encode codec from that intersection.
+description: Clients report decode and encode capabilities separately; the server assigns each client an encode codec by how many members can decode it, so one member's missing codec never disables another's camera.
 ---
 
 # Codec negotiation — per-client encode assignment
@@ -88,7 +88,10 @@ Taken by Alex, 2026-08-30:
 2. **Enable VP9.** **Re-enable AV1**, ranked *below* VP9 until its software
    encode cost is measured.
 3. **Split encode-side from decode-side exclusion.** Excluding H.264 for
-   *encode* must be allowed; decode-side exclusion stays conservative.
+   *encode* must be allowed. Decode-side exclusion is *desirable but not
+   mandatory* — a weight the server balances, never a veto.
+6. **Probe H.264 decode for real** rather than assuming it, using a basic
+   config and an actual decode.
 4. **The server assigns each client its encode codec.**
 5. **Retire the old methods via `[LegacyName]`** if the wire change is
    significant.
