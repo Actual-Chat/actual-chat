@@ -48,6 +48,7 @@ export function setPendingSource(source: ReadableStream<VideoFrame>): void {
 // ~50 ms drain hiccup while leaving plenty of pool headroom (encoder
 // maxInflight × layers + slot + generators stay under 20).
 import { BoundedQueue } from 'buffers';
+import { getEncoderPipelineDepth } from '../codec-support';
 
 const PUSHED_FRAME_QUEUE_CAPACITY = 3;
 
@@ -184,7 +185,7 @@ function createEncoder(
     const enc = new AsyncVideoEncoder<EncodeInput, EncodedFrame>(
         buildOutput,
         onError,
-        { maxInflight: 5, firstTimeoutMs: 0, timeoutMs: 0 },
+        { maxInflight: getEncoderPipelineDepth(), firstTimeoutMs: 0, timeoutMs: 0 },
     );
     return enc;
 }

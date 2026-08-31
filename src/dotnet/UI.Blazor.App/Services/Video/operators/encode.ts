@@ -4,6 +4,7 @@ import { from, type PipeOperator } from 'ix-ext';
 import { AsyncSignal } from 'actuallab-core';
 import { RunningEMA } from 'math';
 import { AsyncVideoEncoder, isAsyncVideoEncoderResetError } from '../adapters';
+import { getEncoderPipelineDepth } from '../codec-support';
 import { isCapturedBundleKeyFrame } from '../bundle-helpers';
 import {
     closeEncodedChunk,
@@ -19,8 +20,9 @@ const RESTART_STREAK_WINDOW_MS = 60_000;
 // How many bundles the operator keeps in flight at the encoder before
 // awaiting the oldest. Equal to `AsyncVideoEncoder.maxInflight` so the
 // encoder pipeline fills exactly once. Higher = more memory + latency,
-// lower = HW encoder pipeline stalls on per-frame variance.
-const MAX_PIPELINE = 5;
+// lower = HW encoder pipeline stalls on per-frame variance. Browser-dependent:
+// see getEncoderPipelineDepth.
+const MAX_PIPELINE = getEncoderPipelineDepth();
 
 // Message prefix stamped on a thrown error when the encode operator rejects
 // without having produced any chunk — VideoRecorder reads it to drive

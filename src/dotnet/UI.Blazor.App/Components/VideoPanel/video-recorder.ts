@@ -2147,68 +2147,54 @@ export class VideoRecorder {
             };
             sourceVideo.requestVideoFrameCallback(onFrame);
 
-            // Firefox delivers at most the first rVFC callback for this
-            // element and then goes silent, while the <video> keeps decoding
-            // normally. It has no MediaStreamTrackProcessor either, so without
-            // a second source of ticks capture stops after one frame and the
-            // stall surfaces as an encoder fault. Poll currentTime instead;
-            // lastPushedMediaTime keeps a paused or slow source from
-            // resubmitting a frame that was already sent.
-            const stopTimerPump = (): void => {
-                if (timerPump === null)
-                    return;
-
-                window.clearInterval(timerPump);
-                timerPump = null;
-            };
+            // rVFC alone does not carry this element on Firefox: it fires a
+            // handful of times over a minute instead of once per source frame,
+            // so capture starves and the stall surfaces as an encoder fault.
+            // A silence threshold can't catch that — the gaps are irregular
+            // rather than absent — so the timer runs unconditionally next to
+            // rVFC and `lastPushedMediaTime` keeps whichever fires second from
+            // resubmitting a frame. Chromium and WebKit take the MSTP path and
+            // never reach this branch.
             const timerPumpPeriodMs = Math.max(1, Math.round(
                 1000 / (DeviceInfo.isMobile ? VIDEO.mobileFrameRate : VIDEO.frameRate)));
-            const startTimerPump = (): void => {
-                if (timerPump !== null)
+            timerPump = window.setInterval(() => {
+                if (this.workerSourceCancelled || sourceVideo.readyState < 2)
                     return;
 
-                warnLog?.log(
-                    `capture: rVFC stopped firing (pump=#${pumpFrameCount}) — `
-                    + `falling back to a ${timerPumpPeriodMs}ms timer pump`);
-                timerPump = window.setInterval(() => {
-                    if (this.workerSourceCancelled || sourceVideo.readyState < 2)
-                        return;
+                const mediaTime = sourceVideo.currentTime;
+                if (mediaTime === lastPushedMediaTime)
+                    return;
 
-                    const mediaTime = sourceVideo.currentTime;
-                    if (mediaTime === lastPushedMediaTime)
-                        return;
+                if (!pushFrame(mediaTime) && timerPump !== null) {
+                    window.clearInterval(timerPump);
+                    timerPump = null;
+                }
+            }, timerPumpPeriodMs);
 
-                    if (!pushFrame(mediaTime))
-                        stopTimerPump();
-                }, timerPumpPeriodMs);
-            };
-
-            // Capture watchdog: fires every 2s. When rVFC has gone quiet it
-            // starts the timer pump and keeps reporting source state; when
-            // rVFC comes back it hands capture over again. Replaces any prior
+            // Capture watchdog: fires every 2s and reports source state only
+            // while nothing is arriving from either pump. Replaces any prior
             // watchdog so we don't stack stale ones across restarts.
             this.workerSourceCaptureWatchdogCancel?.();
+            let lastWatchdogFrameCount = -1;
             const captureWatchdog = window.setInterval(() => {
                 if (this.workerSourceCancelled) return;
-                const sinceTickMs = performance.now() - lastRvfcTickAtMs;
-                if (sinceTickMs <= 1500) {
-                    if (timerPump !== null) {
-                        infoLog?.log('capture: rVFC resumed — stopping the timer pump');
-                        stopTimerPump();
-                    }
-                    return;
-                }
-                startTimerPump();
+                const stalled = pumpFrameCount === lastWatchdogFrameCount;
+                lastWatchdogFrameCount = pumpFrameCount;
+                if (!stalled) return;
                 const t = this.inputTrack;
                 warnLog?.log(
-                    `capture watchdog: pump=#${pumpFrameCount} sinceRvfcTick=${sinceTickMs.toFixed(0)}ms ` +
+                    `capture watchdog: pump=#${pumpFrameCount} ` +
+                `sinceRvfcTick=${(performance.now() - lastRvfcTickAtMs).toFixed(0)}ms ` +
                 `timerPump=${timerPump !== null} ` +
                 `srcVid(rs=${sourceVideo.readyState} ct=${sourceVideo.currentTime.toFixed(2)} ` +
                 `paused=${sourceVideo.paused} ended=${sourceVideo.ended}) ` +
                 `track(rs=${t?.readyState} muted=${t?.muted} enabled=${t?.enabled})`);
             }, 2000);
             this.workerSourceCaptureWatchdogCancel = (): void => {
-                stopTimerPump();
+                if (timerPump !== null) {
+                    window.clearInterval(timerPump);
+                    timerPump = null;
+                }
                 window.clearInterval(captureWatchdog);
             };
         }
