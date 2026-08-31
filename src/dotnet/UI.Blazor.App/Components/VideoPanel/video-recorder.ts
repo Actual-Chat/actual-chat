@@ -29,7 +29,6 @@
 import {
     AC,
     VIDEO,
-    getVideoCodecEfficiency,
     getVideoLayerBitrateKbps,
     getVideoLayerBitratesKbps,
     kbpsToBitsPerSecond,
@@ -49,12 +48,19 @@ import { SharedSettings } from 'shared-settings';
 import { SharedSettingsWorkerSync } from 'shared-settings-worker';
 import {
     detectSupportedCodecs,
+    FLOOR_CATEGORY,
     getDefaultCodec,
     getSoftwareH264Codec,
     getCodecCategory,
     getActiveEncoderCategoriesByPriority,
     probeEncoder,
     excludeEncoderCodec,
+    excludeEncoderCodecString,
+    getDefaultHardwareAcceleration,
+    getEncoderLadder,
+    supportsAcceleration,
+    getForceDecodeCodec,
+    getPreferredEncodeCodec,
     isEncoderCodecExcluded,
     isEncoderCodecProven,
     markEncoderCodecProven,
@@ -385,7 +391,8 @@ export async function probeTopTierEncoderSupport(): Promise<CodecInfo['category'
         maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
         bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
     });
-    const hwPass = await probeOnce(ladderHW, 'prefer-hardware', `${tierCount} layer(s), prefer-hardware`);
+    const preferredAccel = getDefaultHardwareAcceleration();
+    const hwPass = await probeOnce(ladderHW, preferredAccel, `${tierCount} layer(s), ${preferredAccel}`);
     if (hwPass) return hwPass;
 
     // Attempt 2: 1-tier no-preference SW fallback. Mirrors the recorder's
@@ -408,6 +415,26 @@ export async function probeTopTierEncoderSupport(): Promise<CodecInfo['category'
 }
 
 // ---- VideoRecorder --------------------------------------------------------
+
+// Fallback for a codec the ladder didn't rank (a hard-coded string, a category
+// the audience allows but no rung covers). Chrome rejects VideoEncoder creation
+// outright for a codec it can only encode in software when prefer-hardware is
+// asked for, so never ask for hardware unless detection saw one.
+function accelerationFor(codecInfo: CodecInfo | undefined): HardwareAcceleration {
+    return codecInfo && !codecInfo.hardwareSupported
+        ? 'prefer-software'
+        : getDefaultHardwareAcceleration();
+}
+
+interface EncoderCandidate {
+    info: CodecInfo;
+    accel: HardwareAcceleration;
+}
+
+interface EncoderCandidateResult {
+    codec: string;
+    accel: HardwareAcceleration;
+}
 
 export class VideoRecorder {
     private blazorRef: DotNet.DotNetObject;
@@ -512,10 +539,11 @@ export class VideoRecorder {
     private currentCodecString = '';
     private currentCodecHardwareAccel = false;
     // HW-acceleration mode for the runtime encoder, chosen by the
-    // startRecording fallback chain. Default 'prefer-hardware'; flipped to
-    // 'no-preference' when the 1-tier last-resort fallback engages so the
-    // runtime encoder matches the config that actually probed working.
-    private currentHardwareAcceleration: HardwareAcceleration = 'prefer-hardware';
+    // startRecording fallback chain. Starts at the browser's default (Firefox
+    // needs 'no-preference'); flipped to 'no-preference' when the 1-tier
+    // last-resort fallback engages so the runtime encoder matches the config
+    // that actually probed working.
+    private currentHardwareAcceleration: HardwareAcceleration = getDefaultHardwareAcceleration();
     // Set once the desktop-only SW-H.264 fallback engages (after HW recovery is
     // exhausted). Locks the recorder to prefer-software H.264 and blocks server-
     // or health-driven switches back into a wedged HW codec for the session.
@@ -883,7 +911,7 @@ export class VideoRecorder {
             const codecInfo = supportedCodecs.find(c => c.codec === codecString);
             this.currentCodecString = codecString;
             this.currentCodecHardwareAccel = codecInfo?.hardwareAccelerated ?? false;
-            this.currentHardwareAcceleration = 'prefer-hardware';
+            this.currentHardwareAcceleration = this.pickAccelerationFor(supportedCodecs, audienceCodecs, codecString);
 
             // Desktop non-H264 captures at 1080 so the QC ramp can later hot-add
             // a real 1080 top tier (downscaled for lower tiers) — but only when a
@@ -1183,9 +1211,13 @@ export class VideoRecorder {
                 bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
                 ...(ladderTierSizes ? { tierSizes: ladderTierSizes } : {}),
             });
-            // Fallback chain for HW encoder availability:
-            //   1. Tier-cap (3 desktop / 2 mobile) at top resolution, prefer-hardware
-            //   2. (Desktop only) Drop to 2-tier @ 360p, prefer-hardware
+            // Fallback chain for HW encoder availability. Steps 1-2 probe at
+            // the browser's default acceleration — Firefox rejects
+            // 'prefer-hardware' for every H.264 profile, so starting it at
+            // 'no-preference' keeps it on the full ladder rather than dropping
+            // to step 3 and losing simulcast for a reason unrelated to tiers:
+            //   1. Tier-cap (3 desktop / 2 mobile) at top resolution
+            //   2. (Desktop only) Drop to 2-tier @ 360p
             //   3. Last resort: 1-tier at top resolution, no-preference
             //      (lets browser pick SW when HW encoder activation is failing
             //      — e.g. AMD iGPU + Windows MFT hitting concurrent-session
@@ -1193,11 +1225,12 @@ export class VideoRecorder {
             // chosenHwAccel is plumbed into the worker config so the runtime
             // encoder matches the probed config; otherwise the probe says
             // "works with no-preference" but runtime keeps using prefer-hardware.
-            let bestCodecString = await this.pickSimulcastCodec(
-                supportedCodecs, audienceCodecs, ladderTop, 'prefer-hardware', false,
+            const best = await this.pickSimulcastCodec(
+                supportedCodecs, audienceCodecs, ladderTop, undefined, false,
                 tierCap >= 4 ? 'h264' : undefined);
+            let bestCodecString = best?.codec ?? null;
             let ladder: LayerConfig[] = ladderTop;
-            let chosenHwAccel: HardwareAcceleration = 'prefer-hardware';
+            let chosenHwAccel: HardwareAcceleration = best?.accel ?? getDefaultHardwareAcceleration();
             // 4-tier (1080 top) is reserved for non-H264 codecs. If no efficient
             // codec passed, drop the 1080 top and retry a 3-tier @720 ladder with
             // H264 allowed.
@@ -1213,7 +1246,8 @@ export class VideoRecorder {
                 const codec3 = await this.pickSimulcastCodec(
                     supportedCodecs, audienceCodecs, ladder3);
                 if (codec3) {
-                    bestCodecString = codec3;
+                    bestCodecString = codec3.codec;
+                    chosenHwAccel = codec3.accel;
                     ladder = ladder3;
                     ladderTierSizes = undefined;
                 }
@@ -1232,7 +1266,8 @@ export class VideoRecorder {
                 const codec2 = await this.pickSimulcastCodec(
                     supportedCodecs, audienceCodecs, ladder2);
                 if (codec2) {
-                    bestCodecString = codec2;
+                    bestCodecString = codec2.codec;
+                    chosenHwAccel = codec2.accel;
                     ladder = ladder2;
                     ladderTierSizes = undefined;
                 }
@@ -1253,9 +1288,9 @@ export class VideoRecorder {
                 const codec1 = await this.pickSimulcastCodec(
                     supportedCodecs, audienceCodecs, ladder1, 'no-preference', /*excludeOnFail*/ true);
                 if (codec1) {
-                    bestCodecString = codec1;
+                    bestCodecString = codec1.codec;
                     ladder = ladder1;
-                    chosenHwAccel = 'no-preference';
+                    chosenHwAccel = codec1.accel;
                     ladderTierSizes = undefined;
                 } else {
                     warnLog?.log(
@@ -1474,7 +1509,7 @@ export class VideoRecorder {
             this.lastCodecSwitchAt = 0;
             this.startedAtMs = 0;
             this.softwareFallbackEngaged = false;
-            this.currentHardwareAcceleration = 'prefer-hardware';
+            this.currentHardwareAcceleration = getDefaultHardwareAcceleration();
             this.setRecordingState('stopped');
             this.unregister();
             await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
@@ -1485,6 +1520,19 @@ export class VideoRecorder {
         } finally {
             this.isStoppingRecording = false;
         }
+    }
+
+    // Re-runs codec selection against the CURRENT audience set after the debug
+    // overrides changed. Detection is re-probed because the overrides cleared
+    // its cache, and the restart is what makes an override take effect on a
+    // stream that is already live instead of only on the next one.
+    public async refreshCodecSelection(): Promise<void> {
+        if (!this.worker) return;
+
+        const size = this.warmupTopSize ?? { width: this.cameraWidth || 1280, height: this.cameraHeight || 720 };
+        this.supportedCodecs = await detectSupportedCodecs(size.width, size.height);
+        this.supportedEncoderCategories = this.extractEncoderCategories(this.supportedCodecs);
+        await this.updateSupportedDecoderCodecs(this.audienceCodecs ?? []);
     }
 
     public async updateSupportedDecoderCodecs(codecs: string[]): Promise<void> {
@@ -1500,8 +1548,14 @@ export class VideoRecorder {
             return;
         }
 
-        const pickedCodecString = this.pickBestCodecByEfficiency(this.supportedCodecs, codecs)
-            ?? getDefaultCodec(this.supportedCodecs, this.cameraWidth || 1280, this.cameraHeight || 720);
+        const pickedCodecString = this.pickBestCodecByEfficiency(this.supportedCodecs, codecs);
+        if (!pickedCodecString) {
+            // No default fallback here: the whole point of this call is to stay
+            // inside what the audience can decode, and getDefaultCodec answers
+            // without looking at the audience at all.
+            warnLog?.log(`updateSupportedDecoderCodecs: no usable encoder for [${codecs.join(', ')}], keeping current codec`);
+            return;
+        }
         const pickedCategory = getCodecCategory(pickedCodecString);
         const currentCategory = getCodecCategory(this.currentCodecString);
 
@@ -1510,9 +1564,10 @@ export class VideoRecorder {
         }
 
         infoLog?.log(`Switching codec ${currentCategory} → ${pickedCategory} (${pickedCodecString})`);
-        const pickedInfo = this.supportedCodecs.find(c => c.codec === pickedCodecString);
+        const pickedInfo = this.findCodecInfo(this.supportedCodecs, pickedCodecString);
         this.currentCodecString = pickedCodecString;
         this.currentCodecHardwareAccel = pickedInfo?.hardwareAccelerated ?? false;
+        this.currentHardwareAcceleration = this.pickAccelerationFor(this.supportedCodecs, codecs, pickedCodecString);
         this.repriceCurrentLadders();
         await this.restartWithCurrentConfig();
     }
@@ -1882,6 +1937,18 @@ export class VideoRecorder {
         return this.bundlesPerSec;
     }
 
+    public peekCodec(): string | null {
+        return this.currentCodecString || null;
+    }
+
+    public peekKind(): number {
+        return this.registeredKind ?? -1;
+    }
+
+    public notifyDecoderCodecsChanged(): Promise<void> {
+        return this.blazorRef.invokeMethodAsync('OnDecoderCodecsChanged');
+    }
+
     public dispose() {
         if (this.disposed)
             return;
@@ -1939,8 +2006,13 @@ export class VideoRecorder {
                         warnLog?.log(
                             `RecorderWorker: encoder init failure for codec=${failedCodec} ` +
                             `(category=${failedCategory}) — excluding and re-picking`);
+                        // Always drop the exact profile: excludeEncoderCodec refuses to
+                        // drop the h264 category, so without this the same string is
+                        // re-picked on every attempt.
+                        if (failedCodec)
+                            excludeEncoderCodecString(failedCodec);
                         excludeEncoderCodec(failedCategory);
-                        void this.repickCodecAndRestart(`encoder init failed: ${failedCategory}`);
+                        void this.repickCodecAndRestart(`encoder init failed: ${failedCodec ?? failedCategory}`);
                         return;
                     }
                     if (failedCategory && isEncoderCodecProven(failedCategory))
@@ -2044,7 +2116,11 @@ export class VideoRecorder {
         // its realm — source-bound capture, no main-thread rVFC tick. A clone
         // keeps the attempt non-destructive: main retains `inputTrack` for the
         // rVFC fallback and for restarts (which re-clone).
-        if (!useMstp) {
+        if (!useMstp && DeviceInfo.isFirefox) {
+            infoLog?.log(
+                'startWorker: skipping the worker MSTP attempt — Firefox has no '
+                + 'MediaStreamTrackProcessor and cannot transfer a MediaStreamTrack');
+        } else if (!useMstp) {
             try {
                 const clone = this.inputTrack.clone();
                 const ok = await this.worker.setSourceTrack(clone);
@@ -2085,26 +2161,24 @@ export class VideoRecorder {
             this.workerSourceCancelled = false;
             const workerForPump = this.worker;
             let pumpFrameCount = 0;
-            let lastPumpTickAtMs = performance.now();
-            const onFrame = (now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
-                if (this.workerSourceCancelled) return;
-                void now;
-                lastPumpTickAtMs = performance.now();
+            let lastRvfcTickAtMs = performance.now();
+            let timerPump: number | null = null;
 
-                const timestampUs = Math.round(metadata.mediaTime * 1_000_000);
+            // False means the worker rejected the frame, which cancels the
+            // source for good; a failed VideoFrame ctor is only transient.
+            const pushFrame = (mediaTime: number): boolean => {
                 let frame: VideoFrame;
                 try {
-                    frame = new VideoFrame(sourceVideo, { timestamp: timestampUs });
+                    frame = new VideoFrame(sourceVideo, { timestamp: Math.round(mediaTime * 1_000_000) });
                 } catch (e) {
                     warnLog?.log('pushFrame pump: VideoFrame ctor failed', e);
-                    sourceVideo.requestVideoFrameCallback(onFrame);
-                    return;
+                    return true;
                 }
                 pumpFrameCount++;
                 // `rpcNoWait` returns immediately after postMessage transfers
-                // the frame, so the next rVFC tick fires without waiting for
-                // the worker ack. Without this the round-trip easily exceeds
-                // the 33 ms frame interval on Android and caps capture at
+                // the frame, so the next tick fires without waiting for the
+                // worker ack. Without this the round-trip easily exceeds the
+                // 33 ms frame interval on Android and caps capture at
                 // half-rate. Worker absorbs bursts in its ingress queue.
                 try {
                     void workerForPump.pushFrame(frame, rpcNoWait);
@@ -2112,29 +2186,75 @@ export class VideoRecorder {
                     warnLog?.log('pushFrame: worker rejected', e);
                     this.workerSourceCancelled = true;
                     try { frame.close(); } catch { /* ignore */ }
-                    return;
+                    return false;
                 }
                 try { frame.close(); } catch { /* already detached */ }
+                return true;
+            };
+
+            const onFrame = (now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
+                if (this.workerSourceCancelled) return;
+                void now;
+                lastRvfcTickAtMs = performance.now();
+                if (!pushFrame(metadata.mediaTime))
+                    return;
+
                 sourceVideo.requestVideoFrameCallback(onFrame);
             };
             sourceVideo.requestVideoFrameCallback(onFrame);
-            // Capture watchdog: fires every 2s; logs only when the rVFC pump
-            // hasn't ticked recently (= camera/preview frozen) along with
-            // current camera + sourceVideo state for diagnostics. Replaces
-            // any prior watchdog so we don't stack stale ones across restarts.
+
+            // rVFC alone does not carry this element on Firefox: it fires a
+            // handful of times over a minute instead of once per source frame,
+            // so capture starves and the stall surfaces as an encoder fault.
+            // Firefox only — every other engine reaches this fallback when the
+            // worker MSTP attempt fails, and there rVFC is per-frame, so a
+            // second pump would double-submit and keep the capture watchdog
+            // from ever seeing a frozen camera.
+            const timerPumpPeriodMs = Math.max(1, Math.round(
+                1000 / (DeviceInfo.isMobile ? VIDEO.mobileFrameRate : VIDEO.frameRate)));
+            if (DeviceInfo.isFirefox) {
+                timerPump = window.setInterval(() => {
+                    if (this.workerSourceCancelled || sourceVideo.readyState < 2)
+                        return;
+
+                    // Silence, not value equality: rVFC reports a decoded
+                    // frame's `mediaTime` while the timer only has the
+                    // element's `currentTime`, and the two never compare equal,
+                    // so the old dedupe let both pumps submit the same frame.
+                    if (performance.now() - lastRvfcTickAtMs < timerPumpPeriodMs * 2)
+                        return;
+
+                    if (!pushFrame(sourceVideo.currentTime) && timerPump !== null) {
+                        window.clearInterval(timerPump);
+                        timerPump = null;
+                    }
+                }, timerPumpPeriodMs);
+            }
+
+            // Capture watchdog: fires every 2s and reports source state only
+            // while nothing is arriving from either pump. Replaces any prior
+            // watchdog so we don't stack stale ones across restarts.
             this.workerSourceCaptureWatchdogCancel?.();
+            let lastWatchdogFrameCount = -1;
             const captureWatchdog = window.setInterval(() => {
                 if (this.workerSourceCancelled) return;
-                const sinceTickMs = performance.now() - lastPumpTickAtMs;
-                if (sinceTickMs <= 1500) return;
+                const stalled = pumpFrameCount === lastWatchdogFrameCount;
+                lastWatchdogFrameCount = pumpFrameCount;
+                if (!stalled) return;
                 const t = this.inputTrack;
                 warnLog?.log(
-                    `capture watchdog: pump=#${pumpFrameCount} sinceTick=${sinceTickMs.toFixed(0)}ms ` +
+                    `capture watchdog: pump=#${pumpFrameCount} ` +
+                `sinceRvfcTick=${(performance.now() - lastRvfcTickAtMs).toFixed(0)}ms ` +
+                `timerPump=${timerPump !== null} ` +
                 `srcVid(rs=${sourceVideo.readyState} ct=${sourceVideo.currentTime.toFixed(2)} ` +
                 `paused=${sourceVideo.paused} ended=${sourceVideo.ended}) ` +
                 `track(rs=${t?.readyState} muted=${t?.muted} enabled=${t?.enabled})`);
             }, 2000);
             this.workerSourceCaptureWatchdogCancel = (): void => {
+                if (timerPump !== null) {
+                    window.clearInterval(timerPump);
+                    timerPump = null;
+                }
                 window.clearInterval(captureWatchdog);
             };
         }
@@ -2259,14 +2379,14 @@ export class VideoRecorder {
             if (nextCodec === this.currentCodecString) {
                 warnLog?.log(
                     `repickCodecAndRestart: re-pick returned same codec ${nextCodec} ` +
-                    `— excluded category may already be h264 or no fallback exists; ` +
+                    `— every profile in its ladder is excluded or unsupported; ` +
                     `falling back to scheduleRecovery`);
                 this.scheduleRecovery(reason);
                 return;
             }
             const prevCodec = this.currentCodecString;
             this.currentCodecString = nextCodec;
-            const nextCodecInfo = refreshedCodecs.find(c => c.codec === nextCodec);
+            const nextCodecInfo = this.findCodecInfo(refreshedCodecs, nextCodec);
             this.currentCodecHardwareAccel = nextCodecInfo?.hardwareAccelerated ?? false;
             this.repriceCurrentLadders();
             infoLog?.log(
@@ -2304,7 +2424,7 @@ export class VideoRecorder {
         }
         if (nowMs - this.captureStallSinceMs >= CAPTURE_STALL_RECOVERY_MS) {
             this.captureStallSinceMs = 0;
-            this.scheduleRecovery('foreground capture stalled (encoder likely reclaimed)');
+            this.scheduleRecovery('foreground capture stalled (no frames reached the encoder)');
         }
     }
 
@@ -2378,6 +2498,7 @@ export class VideoRecorder {
 
         const currentCategory = getCodecCategory(this.currentCodecString);
         if (currentCategory !== 'h264') {
+            excludeEncoderCodecString(this.currentCodecString);
             excludeEncoderCodec(currentCategory);
             this.recoveryAttempts = 0;
             infoLog?.log(
@@ -3008,10 +3129,10 @@ export class VideoRecorder {
         supportedCodecs: CodecInfo[],
         audienceCodecs: string[] | undefined,
         ladder: LayerConfig[],
-        hardwareAcceleration: HardwareAcceleration = 'prefer-hardware',
+        hardwareAcceleration?: HardwareAcceleration,
         excludeOnFail = false,
         excludeCategory?: CodecInfo['category'],
-    ): Promise<string | null> {
+    ): Promise<EncoderCandidateResult | null> {
         // Live encoder probe at top-layer dims. Result cached per
         // (codec, dims, layerCount, hwAccel) so repeated picks across the
         // fallback chain (3-tier prefer-hardware → 2-tier prefer-hardware →
@@ -3020,23 +3141,27 @@ export class VideoRecorder {
         // excluded ONLY if excludeOnFail (last fallback) so earlier failures
         // don't prevent subsequent attempts from trying the same codec
         // under different config.
-        for (const codecInfo of this.listCodecCandidatesByEfficiency(supportedCodecs, audienceCodecs)) {
+        for (const { info: codecInfo, accel: rungAccel } of
+            this.listCodecCandidatesByEfficiency(supportedCodecs, audienceCodecs)) {
             if (excludeCategory && codecInfo.category === excludeCategory)
                 continue;
+            // The ladder rung carries the acceleration this codec was probed
+            // with; the override exists only for the degraded last resort.
+            const accel = hardwareAcceleration ?? rungAccel;
             const layersWithBitrates = this.withCodecBitrates(ladder, codecInfo.codec);
             const result = await probeEncoder(
-                codecInfo.codec, layersWithBitrates, undefined, undefined, hardwareAcceleration);
+                codecInfo.codec, layersWithBitrates, undefined, undefined, accel);
             if (result.supported) {
                 const top = layersWithBitrates[layersWithBitrates.length - 1];
-                infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) PASS @ ${top.width}x${top.height} (${ladder.length} layer(s)), hwAccel=${hardwareAcceleration}, median=${result.medianEncodeMs.toFixed(1)}ms`);
-                return codecInfo.codec;
+                infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) PASS @ ${top.width}x${top.height} (${ladder.length} layer(s)), hwAccel=${accel}, median=${result.medianEncodeMs.toFixed(1)}ms`);
+                return { codec: codecInfo.codec, accel };
             }
-            infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) FAIL stage=${result.failedStage}, hwAccel=${hardwareAcceleration}`);
+            infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) FAIL stage=${result.failedStage}, hwAccel=${accel}`);
             if (excludeOnFail) {
                 // Last-resort fallback also failed for this codec — exclude
                 // it for the session so server-driven updateSupportedDecoderCodecs
                 // won't later switch into a codec proven non-functional.
-                // No-op for h264 (universal fallback) and for codecs proven
+                // No-op for the negotiation floor and for codecs proven
                 // working this session.
                 excludeEncoderCodec(codecInfo.category);
             }
@@ -3044,48 +3169,103 @@ export class VideoRecorder {
         return null;
     }
 
+    // Falls back to a category match: a codec string picked outside the
+    // detected list (a hard-coded fallback, a ladder entry detection skipped)
+    // would otherwise report hardwareAccelerated=false whatever the truth.
+    private findCodecInfo(codecs: CodecInfo[], codec: string): CodecInfo | undefined {
+        return codecs.find(c => c.codec === codec)
+            ?? codecs.find(c => c.category === getCodecCategory(codec) && c.supported);
+    }
+
     private pickInitialCodec(supportedCodecs: CodecInfo[], audienceCodecs: string[] | undefined, size: Size): string {
-        return this.pickBestCodecByEfficiency(supportedCodecs, audienceCodecs)
-            ?? getDefaultCodec(supportedCodecs, size.width, size.height);
+        const picked = this.pickBestCodecByEfficiency(supportedCodecs, audienceCodecs);
+        if (picked)
+            return picked;
+
+        // Nothing qualified — stream something rather than nothing, but prefer
+        // the floor, which the audience is guaranteed to decode, over a default
+        // chosen without reference to the audience at all.
+        const floor = supportedCodecs.find(c => c.category === FLOOR_CATEGORY && c.supported);
+        return floor?.codec ?? getDefaultCodec(supportedCodecs, size.width, size.height);
     }
 
     private pickBestCodecByEfficiency(supportedCodecs: CodecInfo[], audienceCodecs: string[] | undefined): string | null {
-        return this.listCodecCandidatesByEfficiency(supportedCodecs, audienceCodecs)[0]?.codec ?? null;
+        return this.listCodecCandidatesByEfficiency(supportedCodecs, audienceCodecs)[0]?.info.codec ?? null;
+    }
+
+    // The acceleration the ladder chose for this codec, so the encoder is
+    // configured the way it was probed.
+    private pickAccelerationFor(
+        supportedCodecs: CodecInfo[],
+        audienceCodecs: string[] | undefined,
+        codec: string,
+    ): HardwareAcceleration {
+        const category = this.toCodecCategory(codec);
+        const match = this.listCodecCandidatesByEfficiency(supportedCodecs, audienceCodecs)
+            .find(c => c.info.category === category);
+        return match?.accel ?? accelerationFor(this.findCodecInfo(supportedCodecs, codec));
     }
 
     private listCodecCandidatesByEfficiency(
         supportedCodecs: CodecInfo[],
         audienceCodecs: string[] | undefined,
-    ): CodecInfo[] {
+    ): EncoderCandidate[] {
         const allowedCategories = this.allowedCodecCategories(audienceCodecs);
-        const bestByCategory = new Map<CodecInfo['category'], CodecInfo>();
+        const byCategory = new Map<CodecInfo['category'], CodecInfo>();
         for (const codecInfo of supportedCodecs) {
             if (!codecInfo.supported) continue;
+            // Measured pipeline latency, not a browser check: Firefox's H.264
+            // encoder holds ~18 frames before its first chunk, which is half a
+            // second of added latency and deadlocks the encode pipeline. A
+            // future build that fixes it re-qualifies with no code change.
+            if (codecInfo.realtime === false) continue;
             if (allowedCategories && !allowedCategories.has(codecInfo.category)) continue;
             if (isEncoderCodecExcluded(codecInfo.category)) continue;
-            const current = bestByCategory.get(codecInfo.category);
-            if (!current || (!current.hardwareAccelerated && codecInfo.hardwareAccelerated))
-                bestByCategory.set(codecInfo.category, codecInfo);
+            byCategory.set(codecInfo.category, codecInfo);
         }
-        return [...bestByCategory.values()]
-            .sort((a, b) =>
-                getVideoCodecEfficiency(b.codec) - getVideoCodecEfficiency(a.codec)
-                || Number(b.hardwareAccelerated) - Number(a.hardwareAccelerated));
+
+        // Walk the ladder in order and keep the rungs this device can actually
+        // run. The ladder is over (codec, acceleration) pairs, so software VP9
+        // outranking hardware H.264 is expressible — which efficiency ordering
+        // could not say.
+        const candidates: EncoderCandidate[] = [];
+        for (const rung of getEncoderLadder()) {
+            const info = byCategory.get(rung.category);
+            if (info && supportsAcceleration(info, rung.accel))
+                candidates.push({ info, accel: rung.accel });
+        }
+
+        // A debug preference outranks the ladder so an operator can reproduce a
+        // report on a specific encoder; it cannot conjure one that failed
+        // probing, since those never reach this list. A forced decode codec
+        // implies the same preference for our own encoder: with two admins
+        // forcing different codecs the negotiated set is their union, and each
+        // of them means "send mine", not "send whichever sorts first".
+        const preferred = getPreferredEncodeCodec() ?? getForceDecodeCodec();
+        if (!preferred)
+            return candidates;
+
+        return [
+            ...candidates.filter(c => c.info.category === preferred),
+            ...candidates.filter(c => c.info.category !== preferred),
+        ];
+    }
+
+    // The wire carries bare categories ('h264'), but a codec string
+    // ('avc1.42E01F') is accepted too so callers don't have to care.
+    private toCodecCategory(codec: string): CodecInfo['category'] {
+        const normalized = codec.trim().toLowerCase();
+        return normalized === 'h264' || normalized === 'hevc'
+            || normalized === 'av1' || normalized === 'vp9'
+            ? normalized
+            : getCodecCategory(normalized);
     }
 
     private allowedCodecCategories(codecs: string[] | undefined): Set<CodecInfo['category']> | null {
         if (!codecs || codecs.length === 0)
             return null;
 
-        const result = new Set<CodecInfo['category']>();
-        for (const codec of codecs) {
-            const normalized = codec.trim().toLowerCase();
-            if (normalized === 'h264' || normalized === 'hevc' || normalized === 'av1' || normalized === 'vp9')
-                result.add(normalized);
-            else
-                result.add(getCodecCategory(normalized));
-        }
-        return result;
+        return new Set(codecs.map(codec => this.toCodecCategory(codec)));
     }
 
     private register(kind: number): void {
@@ -3125,22 +3305,19 @@ export class VideoRecorder {
     }
 
     /**
-     * Extract unique encoder codec categories from detected codec support.
+     * Encoder categories this device can actually run, in ladder order. The
+     * ladder is the single source of truth for which (codec, acceleration)
+     * pairs are allowed — it already says software AV1 is off the table, which
+     * used to be an ad-hoc rule right here.
      */
     private extractEncoderCategories(codecs: CodecInfo[]): string[] {
-        const categories = new Set<string>();
-        for (const c of codecs) {
-            if (c.supported) {
-                if (c.category === 'av1' && !c.hardwareAccelerated) continue;
-                if (DeviceInfo.isMobile && !c.hardwareAccelerated && c.category !== 'h264') continue;
-                categories.add(c.category);
-            }
-        }
+        const byCategory = new Map(codecs.filter(c => c.supported).map(c => [c.category, c]));
         const ordered: string[] = [];
-        if (categories.has('av1')) ordered.push('av1');
-        if (categories.has('hevc')) ordered.push('hevc');
-        if (categories.has('vp9')) ordered.push('vp9');
-        if (categories.has('h264')) ordered.push('h264');
+        for (const rung of getEncoderLadder()) {
+            const info = byCategory.get(rung.category);
+            if (info && supportsAcceleration(info, rung.accel) && !ordered.includes(rung.category))
+                ordered.push(rung.category);
+        }
         return ordered;
     }
 }

@@ -6,6 +6,7 @@ import { ScreenSize } from '../ScreenSize/screen-size';
 import { getLogs } from 'logging';
 import { DocumentEvents } from 'event-handling';
 import { Theme, ThemeInfo } from 'theme';
+import { SharedSettings } from 'shared-settings';
 import { LocalizationUI, UILanguageInfo } from 'localization-ui';
 
 const { infoLog } = getLogs('BrowserInfo');
@@ -36,6 +37,8 @@ export class BrowserInfo {
         infoLog?.log(`initializing`);
         this.backendRef = backendRef1;
         this.hostKind = hostKind;
+        // Mirrored to workers, which have no BrowserInfo of their own.
+        SharedSettings.update({ hostKind, appKind });
         this.appKind = appKind;
         this.utcOffset = new Date().getTimezoneOffset();
         this.timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
