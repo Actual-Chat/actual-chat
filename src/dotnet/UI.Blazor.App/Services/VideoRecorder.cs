@@ -667,13 +667,6 @@ public sealed class VideoRecorder : IAsyncDisposable
             hub.ChatVideoUI.OnRecordingStarted(chatId, kind);
         }
 
-        // The debug codec overrides change what this client advertises. Without
-        // this the server would keep the old set until the next registration
-        // heartbeat, so an override would visibly "not work" for up to 20s.
-        [JSInvokable]
-        public void OnDecoderCodecsChanged()
-            => hub.ChatVideoUI.RequestMemberReregistration();
-
         [JSInvokable]
         public void OnRecordingStopped() {
             videoRecorder.OnRecordingStopped();

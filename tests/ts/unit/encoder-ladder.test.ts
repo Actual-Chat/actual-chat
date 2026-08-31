@@ -3,13 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ deviceInfo: { isFirefox: false, isMobile: false } }));
 vi.mock('device-info', () => ({ DeviceInfo: mocks.deviceInfo }));
 
-// Production reads these from the SharedSettings snapshot; the tests pass them
-// explicitly so each case is legible.
-const host = { hostKind: 'WebServer', appKind: 'Unknown' };
+let sharedSettings: typeof import('shared-settings').SharedSettings | undefined;
+
+function setHost(hostKind: string, appKind: string): void {
+    sharedSettings?.update({ hostKind, appKind });
+}
 
 import {
     getEncoderLadder,
-    supportsAcceleration,
+    selectEncoderCandidates,
     type CodecInfo,
 } from '../../../src/dotnet/UI.Blazor.App/Services/Video/codec-support';
 
@@ -29,25 +31,23 @@ function codecInfo(
     };
 }
 
-// Mirrors VideoRecorder.listCodecCandidatesByEfficiency: walk the ladder and
-// keep the rungs this device can run.
-function pick(infos: CodecInfo[]): string[] {
-    const byCategory = new Map(infos.map(i => [i.category, i]));
-    const out: string[] = [];
-    for (const rung of getEncoderLadder(host)) {
-        const info = byCategory.get(rung.category);
-        if (info && supportsAcceleration(info, rung.accel))
-            out.push(`${rung.accel === 'prefer-hardware' ? 'hw' : 'sw'}-${rung.category}`);
-    }
-    return out;
+// The real selection, not a mirror of it: selectEncoderCandidates is what the
+// recorder calls.
+function pick(
+    infos: CodecInfo[],
+    allowed: ReadonlySet<CodecInfo['category']> | null = null,
+    preferred: Parameters<typeof selectEncoderCandidates>[2] = null,
+): string[] {
+    return selectEncoderCandidates(infos, allowed, preferred)
+        .map(c => `${c.accel === 'prefer-hardware' ? 'hw' : 'sw'}-${c.info.category}`);
 }
 
 describe('encoder ladder', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         mocks.deviceInfo.isFirefox = false;
         mocks.deviceInfo.isMobile = false;
-        host.hostKind = 'WebServer';
-        host.appKind = 'Unknown';
+        sharedSettings ??= (await import('shared-settings')).SharedSettings;
+        setHost('WebServer', 'Unknown');
     });
     afterEach(() => vi.unstubAllGlobals());
 
@@ -64,7 +64,7 @@ describe('encoder ladder', () => {
     });
 
     it('never offers software HEVC — Chromium has no such encoder', () => {
-        expect(getEncoderLadder(host).filter(r => r.accel === 'prefer-software').map(r => r.category))
+        expect(getEncoderLadder().filter(r => r.accel === 'prefer-software').map(r => r.category))
             .not.toContain('hevc');
     });
 
@@ -79,19 +79,14 @@ describe('encoder ladder', () => {
     it('withholds software AV1 on the phone MAUI apps only', () => {
         // The MAUI WebView doesn't always report a mobile user agent, so appKind
         // is what settles it there. Desktop MAUI is as capable as the browser.
-        host.hostKind = 'MauiApp';
-
-        host.appKind = 'Ios';
-        expect(pick(everything())).not.toContain('sw-av1');
-
-        host.appKind = 'Android';
-        expect(pick(everything())).not.toContain('sw-av1');
-
-        host.appKind = 'MacOS';
-        expect(pick(everything())).toContain('sw-av1');
-
-        host.appKind = 'Windows';
-        expect(pick(everything())).toContain('sw-av1');
+        for (const appKind of ['Ios', 'Android']) {
+            setHost('MauiApp', appKind);
+            expect(pick(everything())).not.toContain('sw-av1');
+        }
+        for (const appKind of ['MacOS', 'Windows']) {
+            setHost('MauiApp', appKind);
+            expect(pick(everything())).toContain('sw-av1');
+        }
     });
 
     // The machine this was measured on: no VP9 hardware encoder, no HEVC
@@ -118,8 +113,8 @@ describe('encoder ladder', () => {
             codecInfo('h264', true, true),
         ];
 
-        expect(getEncoderLadder(host).map(r => r.category)).not.toContain('h264');
-        expect(getEncoderLadder(host).map(r => r.category)).not.toContain('hevc');
+        expect(getEncoderLadder().map(r => r.category)).not.toContain('h264');
+        expect(getEncoderLadder().map(r => r.category)).not.toContain('hevc');
         expect(pick(all)).toEqual(['hw-av1', 'hw-vp9', 'sw-av1', 'sw-vp9']);
     });
 
@@ -146,6 +141,26 @@ describe('encoder ladder', () => {
             .toContain('prefer-software-av1');
 
         SharedSettings.update({ hostKind: 'WebServer', appKind: 'Unknown' });
+    });
+
+    it('drops a codec the audience cannot decode', () => {
+        const allowed = new Set<CodecInfo['category']>(['vp9', 'h264']);
+
+        expect(pick(everything(), allowed)).toEqual(['hw-vp9', 'sw-vp9', 'hw-h264', 'sw-h264']);
+    });
+
+    it('drops a codec measured as too slow for a call', () => {
+        // Firefox's H.264: realtime === false, so no rung of it survives.
+        const infos = everything().map(i => i.category === 'av1' ? { ...i, realtime: false } : i);
+
+        expect(pick(infos)).toEqual(['hw-vp9', 'hw-hevc', 'sw-vp9', 'hw-h264', 'sw-h264']);
+    });
+
+    it('lets the debug preference outrank the ladder, but not conjure a codec', () => {
+        expect(pick(everything(), null, 'h264')[0]).toBe('hw-h264');
+        // vp9 is not in the audience set, so preferring it changes nothing.
+        const allowed = new Set<CodecInfo['category']>(['av1']);
+        expect(pick(everything(), allowed, 'vp9')).toEqual(['hw-av1', 'sw-av1']);
     });
 
     it('drops a codec with no usable encoder at all', () => {

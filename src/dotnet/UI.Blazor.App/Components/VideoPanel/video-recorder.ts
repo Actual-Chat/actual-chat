@@ -58,10 +58,11 @@ import {
     excludeEncoderCodecString,
     getDefaultHardwareAcceleration,
     getEncoderLadder,
+    selectEncoderCandidates,
+    type EncoderCandidate,
     supportsAcceleration,
     getForceDecodeCodec,
     getPreferredEncodeCodec,
-    isEncoderCodecExcluded,
     isEncoderCodecProven,
     markEncoderCodecProven,
     type CodecInfo,
@@ -344,10 +345,8 @@ export async function probeTopTierEncoderSupport(): Promise<CodecInfo['category'
         : { width: 1280, height: 720 };
     const tierCount = isMobile ? 2 : 3;
     const supportedCodecs = await detectSupportedCodecs(targetSize.width, targetSize.height);
-    // Priority comes from codec-support.ts REPRESENTATIVE_CODECS via the
-    // exported helper — the same list that drives detection, default-codec
-    // selection, and audience ordering. Re-enabling a category there (e.g.
-    // AV1) propagates here automatically; no hardcoded list to keep in sync.
+    // Categories only, for a wedge check before the call starts — this is not
+    // the recorder's pick order, which comes from ENCODER_LADDER.
     const candidates = getActiveEncoderCategoriesByPriority()
         .map(cat => supportedCodecs.find(c => c.category === cat && c.supported && c.hardwareAccelerated))
         .filter((c): c is CodecInfo => Boolean(c));
@@ -424,11 +423,6 @@ function accelerationFor(codecInfo: CodecInfo | undefined): HardwareAcceleration
     return codecInfo && !codecInfo.hardwareSupported
         ? 'prefer-software'
         : getDefaultHardwareAcceleration();
-}
-
-interface EncoderCandidate {
-    info: CodecInfo;
-    accel: HardwareAcceleration;
 }
 
 interface EncoderCandidateResult {
@@ -1539,7 +1533,7 @@ export class VideoRecorder {
         this.audienceCodecs = codecs;
         if (!this.worker) return;
         // SW fallback is sticky: don't let a server-driven codec switch pull us
-        // back into a wedged HW codec (H.264 is always in the audience set).
+        // back into a wedged HW codec.
         if (this.softwareFallbackEngaged) return;
 
         const allowedCategories = this.allowedCodecCategories(codecs);
@@ -1943,10 +1937,6 @@ export class VideoRecorder {
 
     public peekKind(): number {
         return this.registeredKind ?? -1;
-    }
-
-    public notifyDecoderCodecsChanged(): Promise<void> {
-        return this.blazorRef.invokeMethodAsync('OnDecoderCodecsChanged');
     }
 
     public dispose() {
@@ -3210,45 +3200,13 @@ export class VideoRecorder {
         supportedCodecs: CodecInfo[],
         audienceCodecs: string[] | undefined,
     ): EncoderCandidate[] {
-        const allowedCategories = this.allowedCodecCategories(audienceCodecs);
-        const byCategory = new Map<CodecInfo['category'], CodecInfo>();
-        for (const codecInfo of supportedCodecs) {
-            if (!codecInfo.supported) continue;
-            // Measured pipeline latency, not a browser check: Firefox's H.264
-            // encoder holds ~18 frames before its first chunk, which is half a
-            // second of added latency and deadlocks the encode pipeline. A
-            // future build that fixes it re-qualifies with no code change.
-            if (codecInfo.realtime === false) continue;
-            if (allowedCategories && !allowedCategories.has(codecInfo.category)) continue;
-            if (isEncoderCodecExcluded(codecInfo.category)) continue;
-            byCategory.set(codecInfo.category, codecInfo);
-        }
-
-        // Walk the ladder in order and keep the rungs this device can actually
-        // run. The ladder is over (codec, acceleration) pairs, so software VP9
-        // outranking hardware H.264 is expressible — which efficiency ordering
-        // could not say.
-        const candidates: EncoderCandidate[] = [];
-        for (const rung of getEncoderLadder()) {
-            const info = byCategory.get(rung.category);
-            if (info && supportsAcceleration(info, rung.accel))
-                candidates.push({ info, accel: rung.accel });
-        }
-
-        // A debug preference outranks the ladder so an operator can reproduce a
-        // report on a specific encoder; it cannot conjure one that failed
-        // probing, since those never reach this list. A forced decode codec
-        // implies the same preference for our own encoder: with two admins
-        // forcing different codecs the negotiated set is their union, and each
-        // of them means "send mine", not "send whichever sorts first".
-        const preferred = getPreferredEncodeCodec() ?? getForceDecodeCodec();
-        if (!preferred)
-            return candidates;
-
-        return [
-            ...candidates.filter(c => c.info.category === preferred),
-            ...candidates.filter(c => c.info.category !== preferred),
-        ];
+        // A forced decode codec implies the same preference for our own
+        // encoder: with two admins forcing different codecs the negotiated set
+        // is their union, and each of them means "send mine".
+        return selectEncoderCandidates(
+            supportedCodecs,
+            this.allowedCodecCategories(audienceCodecs),
+            getPreferredEncodeCodec() ?? getForceDecodeCodec());
     }
 
     // The wire carries bare categories ('h264'), but a codec string

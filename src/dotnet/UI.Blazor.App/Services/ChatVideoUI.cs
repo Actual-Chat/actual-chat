@@ -28,6 +28,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     // See ChatVideoUI.MemberRegistration.cs
     private readonly MutableState<int> _memberRegistrationEpoch;
+    private DotNetObjectReference<ChatVideoUI>? _registrationHookRef;
 
     // UI-only video panel view options; the panel's mode lives in ChatActivityUI
     private readonly MutableState<bool> _isVideoPanelEqualLayout;
