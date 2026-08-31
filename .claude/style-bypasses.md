@@ -174,3 +174,18 @@ edited. The reason can be as short as whose decision it was.
   `LiveBlockUI` members rather than this one — Alex Yakunin's decision: the fold rule's
   accepted trade-offs must be listed together at the rule itself, not scattered across the
   call sites that happen to cause them
+
+## src/dotnet/UI.Blazor.App/Services/Video/hevc-codec-selection.ts
+
+- L42 `// Ordering: each simulcast layer ships its own HVCC with per-layer`
+  — comment longer than the guide's limit — same category as the
+  `recorder-preview-view.ts` entry: nine lines recording two distinct upstream
+  browser bugs (Chrome's `isConfigSupported` not cross-checking the level against
+  the description, so `decode()` drops chunks silently; Chrome's HEVC encoder
+  writing HVCC tier=Low while the SPS says High) and the candidate ordering they
+  force. Both symptoms are silent, so without the reasoning the next reader
+  shortens the ladder and reintroduces them — Alex Yakunin's decision: keep.
+- L190 `// SPS layout: 2-byte NAL hdr, then RBSP. RBSP byte 1 high bit`
+  — comment on a bit-twiddling expression — it names the bitstream field layout
+  the shift-and-mask decodes, which the expression cannot carry — Alex
+  Yakunin's decision: keep.
