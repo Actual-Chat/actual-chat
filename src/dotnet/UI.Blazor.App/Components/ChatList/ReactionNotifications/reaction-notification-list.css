@@ -1,0 +1,31 @@
+.reaction-notification-list {
+    @apply flex-1 flex-y;
+    @apply overflow-y-auto;
+}
+.reaction-notification-item {
+    @apply flex-x items-start gap-x-2;
+    @apply px-3 py-2;
+    @apply cursor-pointer;
+}
+.reaction-notification-item .c-authors {
+    @apply flex-none;
+}
+.reaction-notification-item .c-body {
+    @apply flex-1 flex-y min-w-0;
+}
+.reaction-notification-item .c-line {
+    @apply flex-x items-center gap-x-1;
+}
+.reaction-notification-item .c-line img {
+    @apply size-5;
+}
+.reaction-notification-item .c-text {
+    @apply truncate;
+}
+.reaction-notification-item .c-meta {
+    @apply flex-x items-center gap-x-2;
+    @apply text-xs text-03;
+}
+.reaction-notification-item .c-chat {
+    @apply truncate;
+}

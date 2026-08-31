@@ -347,6 +347,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttShakeSensitivitySettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionAuthorsMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionBadge>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionNotificationItem>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionNotificationList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionSelect>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionSelectMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReadOnlyChatFooter>();
@@ -1109,6 +1111,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttShakeSensitivitySettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionAuthorsMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionBadge), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionNotificationItem), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionNotificationList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionSelect), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionSelectMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReadOnlyChatFooter), AotTypeKind.Component),
