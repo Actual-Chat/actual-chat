@@ -2,54 +2,38 @@ using ActualChat.App.Maui.IosShareExt.UI;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 using ActualChat.App.Maui.IosShareExt.Services;
 using ActualChat.Maui;
+using CoreFoundation;
 
 namespace ActualChat.App.Maui.IosShareExt.Components;
 
 public sealed class ShareView : ComputedStateView<ShareView.Model>
 {
     private const double FadeDuration = 0.3;
+    private static readonly TimeSpan OptimisticStepDelay = TimeSpan.FromMilliseconds(250);
+
     private StatefulView? _stepView;
     private ShareStep? _displayedStep;
     private ShareUI ShareUI => Hub.ShareUI;
 
     public ShareView(IosHub hub) : base(hub)
     {
-        // OnInitialRender waits on GetStep, and that waits on Accounts.GetOwn - a whole round trip
-        // of blank sheet if the UI waits with it.
+        // GetStep waits on Accounts.GetOwn, which the computed cache now answers - so the sheet is
+        // better off waiting a beat than painting a contact list a guest can't use. The optimistic
+        // paint stays as the cold-cache fallback, where that wait really is a round trip, and the
+        // delay is short enough to sit inside the share sheet's own presentation animation.
         BackgroundColor = AppColors.Background01;
-        ShowContactSelection();
-        _displayedStep = ShareStep.ContactSelection;
+        DispatchQueue.MainQueue.DispatchAfter(new DispatchTime(DispatchTime.Now, OptimisticStepDelay), () => {
+            if (!IsDisposed && _displayedStep is null)
+                ShowStep(ShareStep.ContactSelection);
+        });
     }
 
     protected override void OnInitialRender(Model model)
         => OnStateChanged(model);
 
     protected override void OnStateChanged(Model model)
-    {
         // None only means the suggested-recipient lookup is still running - the guest check is past.
-        var step = model.Step == ShareStep.None ? ShareStep.ContactSelection : model.Step;
-        if (step == _displayedStep)
-            return;
-
-        switch (step) {
-            case ShareStep.SignIn:
-                ShowSignIn();
-                break;
-            case ShareStep.ContactSelection:
-                ShowContactSelection();
-                break;
-            case ShareStep.Uploading:
-                ShowUploading();
-                break;
-            case ShareStep.Failed:
-                ShowFailed();
-                break;
-            case ShareStep.Completed:
-                ShowCompleted();
-                break;
-        }
-        _displayedStep = step;
-    }
+        => ShowStep(model.Step == ShareStep.None ? ShareStep.ContactSelection : model.Step);
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => GetStateOptions(GetType(),
@@ -66,22 +50,32 @@ public sealed class ShareView : ComputedStateView<ShareView.Model>
 
     // Private methods
 
-    private void ShowSignIn()
-        => ShowStep(new SignInView(Hub));
+    private void ShowStep(ShareStep step)
+    {
+        if (step == _displayedStep)
+            return;
 
-    private void ShowContactSelection()
-        => ShowStep(new ContactSelectionView(Hub));
+        switch (step) {
+            case ShareStep.SignIn:
+                SetStepView(new SignInView(Hub));
+                break;
+            case ShareStep.ContactSelection:
+                SetStepView(new ContactSelectionView(Hub));
+                break;
+            case ShareStep.Uploading:
+                SetStepView(new UploadProgressView(Hub));
+                break;
+            case ShareStep.Failed:
+                SetStepView(new ErrorView(Hub));
+                break;
+            case ShareStep.Completed:
+                SetStepView(new SuccessView(Hub));
+                break;
+        }
+        _displayedStep = step;
+    }
 
-    private void ShowUploading()
-        => ShowStep(new UploadProgressView(Hub));
-
-    private void ShowFailed()
-        => ShowStep(new ErrorView(Hub));
-
-    private void ShowCompleted()
-        => ShowStep(new SuccessView(Hub));
-
-    private void ShowStep(StatefulView view)
+    private void SetStepView(StatefulView view)
     {
         // Opaque, and set here rather than in the view's OnInitialRender, which runs too late to
         // cover what this replaces.
