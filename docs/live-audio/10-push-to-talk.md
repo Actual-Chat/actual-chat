@@ -601,7 +601,7 @@ devices:
 | `ShakeSensitivity` | `Medium` | Ordered so `Medium` is the zero default; firing sets nest `Low ⊆ Medium ⊆ High` |
 | `AreGesturesAlwaysOn` | `false` | Sense start gestures outside the answer window |
 | `AnswerWindow` | 15 s | How long after an incoming utterance ends (or the app opens) the hands-free reply triggers stay armed; 15/30/60 s in the UI, shown only while `AreGesturesAlwaysOn` is off. The getter normalizes a missing member (zero) to the default |
-| `HotWindow` | 60 s | Idle duration handed to `SetRecordingChatId` for a PTT reply; clamped to `PttReplyBackgroundHotWindow` (15 s) when the reply starts in background or headless |
+| `HotWindow` | 60 s | Idle duration handed to `SetRecordingChatId` for a PTT reply; 15/30/60 s in the UI, and the getter caps stored values at `PttHotWindowMax` (60 s — blobs may carry the retired 2-minute option); clamped to `PttReplyBackgroundHotWindow` (15 s) when the reply starts in background or headless |
 | `AreAudibleCuesEnabled` | `true` | Begin/end/nothing-heard tunes |
 | `IsHeadsetButtonEnabled` | `null` → `true` | Headset hook / play-pause opens a reply |
 | `IsPttTransmitEnabled` | `null` → `true` | Apple PTT transmission mode (`FullDuplex` vs `ListenOnly`) |

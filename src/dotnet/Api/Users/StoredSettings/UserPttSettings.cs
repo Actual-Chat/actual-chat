@@ -26,8 +26,12 @@ public sealed partial record UserPttSettings
     public ShakeSensitivity ShakeSensitivity { get; init; } = ShakeSensitivity.Medium;
     [DataMember, Key(5)]
     public bool AreGesturesAlwaysOn { get; init; }
+    // The getter caps: blobs written when the UI offered a 2-minute option must read as the cap.
     [DataMember, Key(6)]
-    public TimeSpan HotWindow { get; init; } = TimeSpan.FromSeconds(60);
+    public TimeSpan HotWindow {
+        get => field > Constants.Audio.PttHotWindowMax ? Constants.Audio.PttHotWindowMax : field;
+        init;
+    } = TimeSpan.FromSeconds(60);
     [DataMember, Key(7)]
     public bool AreAudibleCuesEnabled { get; init; } = true;
     // Nullable, read as `?? true`: a blob predating this member reads it as default, not as `= true`.

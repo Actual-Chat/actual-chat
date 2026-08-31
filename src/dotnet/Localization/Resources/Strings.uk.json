@@ -1030,7 +1030,6 @@
   "Ptt_KeepMicOpen": "Тримати мікрофон відкритим",
   "Ptt_Seconds_Format": "{0} секунд",
   "Ptt_OneMinute": "1 хвилина",
-  "Ptt_TwoMinutes": "2 хвилини",
   "Ptt_ReplyWindowCaption": "Скільки мікрофон лишається відкритим у тиші",
   "Ptt_CuesTopic": "Сигнали",
   "Ptt_AudibleCues": "Звукові сигнали",

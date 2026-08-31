@@ -110,6 +110,8 @@ public static partial class Constants
         public static readonly TimeSpan PttReplyMicLiveTimeout = TimeSpan.FromSeconds(4);
         public static readonly TimeSpan PttReplyColdStartTimeout = TimeSpan.FromSeconds(15);
         public static readonly TimeSpan PttReplyBackgroundHotWindow = TimeSpan.FromSeconds(15);
+        // Cap for UserPttSettings.HotWindow; blobs written when the UI offered 2 minutes read as this.
+        public static readonly TimeSpan PttHotWindowMax = TimeSpan.FromSeconds(60);
         // Default for UserPttSettings.AnswerWindow; policy reads the setting, never this directly.
         public static readonly TimeSpan PttAnswerWindowDefault = TimeSpan.FromSeconds(15);
         // Apple PTT transmit: the framework chimes when it activates the session, not when our

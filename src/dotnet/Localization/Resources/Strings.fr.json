@@ -1030,7 +1030,6 @@
   "Ptt_KeepMicOpen": "Garder le micro ouvert",
   "Ptt_Seconds_Format": "{0} secondes",
   "Ptt_OneMinute": "1 minute",
-  "Ptt_TwoMinutes": "2 minutes",
   "Ptt_ReplyWindowCaption": "Durée pendant laquelle le micro reste ouvert en silence",
   "Ptt_CuesTopic": "Signaux",
   "Ptt_AudibleCues": "Signaux sonores",

@@ -23,6 +23,18 @@ public partial class UserPttSettingsTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
+    public void HotWindowIsCappedAtOneMinute()
+    {
+        // arrange: a blob written when the UI still offered a 2-minute option
+        var settings = new UserPttSettings { HotWindow = TimeSpan.FromSeconds(120) };
+
+        // act + assert
+        settings.HotWindow.Should().Be(TimeSpan.FromSeconds(60), "stored values above the cap must read as the cap");
+        new UserPttSettings { HotWindow = TimeSpan.FromSeconds(30) }.HotWindow
+            .Should().Be(TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
     public void ABlobPredatingTheAnswerWindowReadsAsTheDefault()
     {
         // arrange
@@ -150,7 +162,7 @@ public partial class UserPttSettingsTest(ITestOutputHelper @out) : TestBase(@out
             IsFlipToTalkEnabled = false,
             ShakeSensitivity = ShakeSensitivity.High,
             AreGesturesAlwaysOn = true,
-            HotWindow = TimeSpan.FromSeconds(120),
+            HotWindow = TimeSpan.FromSeconds(30),
             AnswerWindow = TimeSpan.FromSeconds(30),
             AreAudibleCuesEnabled = false,
             IsHeadsetButtonEnabled = false,

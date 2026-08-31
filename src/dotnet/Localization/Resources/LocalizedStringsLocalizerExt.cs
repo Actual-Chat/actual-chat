@@ -1066,7 +1066,6 @@ public static class LocalizedStringsLocalizerExt
         public string Ptt_KeepMicOpen => l["Ptt_KeepMicOpen"].Value;
         public string Ptt_Seconds_Format(object arg0) => l["Ptt_Seconds_Format", arg0].Value;
         public string Ptt_OneMinute => l["Ptt_OneMinute"].Value;
-        public string Ptt_TwoMinutes => l["Ptt_TwoMinutes"].Value;
         public string Ptt_ReplyWindowCaption => l["Ptt_ReplyWindowCaption"].Value;
         public string Ptt_CuesTopic => l["Ptt_CuesTopic"].Value;
         public string Ptt_AudibleCues => l["Ptt_AudibleCues"].Value;
