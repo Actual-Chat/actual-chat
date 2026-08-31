@@ -128,7 +128,7 @@ public class AndroidActivitiesBackend : ActivitiesBackend
 
     // Private methods
 
-    private static void ShowImpl(ActivitySet set)
+    private void ShowImpl(ActivitySet set)
     {
         var context = Context;
         var intent = new Intent(context, typeof(AndroidActivitiesForegroundService));
@@ -144,6 +144,14 @@ public class AndroidActivitiesBackend : ActivitiesBackend
             intent.PutExtra(IntentExtras.ChatTitle, audio.Chat.Title);
             intent.PutExtra(IntentExtras.ChatPicUri, audio.Chat.PicUrl);
             intent.PutExtra(IntentExtras.ExtraChatCount, audio.Chat.ExtraChatCount);
+            // Milliseconds-from-now rather than the Moment itself: the service compares against
+            // the device wall clock, and the ServerClock stamp isn't in that domain.
+            if (audio.AnswerWindowEndsAt is { } endsAt) {
+                var remaining = endsAt - Hub.Clocks.ServerClock.Now;
+                if (remaining > TimeSpan.Zero)
+                    intent.PutExtra(
+                        IntentExtras.AnswerWindowRemainingMs, (long)remaining.TotalMilliseconds);
+            }
             break;
         case LocationActivity location:
             intent.PutExtra(IntentExtras.ChatId, location.Chat.Id.Value);
