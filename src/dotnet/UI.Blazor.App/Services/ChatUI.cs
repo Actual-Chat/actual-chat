@@ -462,24 +462,25 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (Hub.LiveBlockUI.TryCollapseOverlay(conversationId))
             return;
 
-        _suppressedAutoExpansions[conversationId] = default;
-        var autoExpanded = _autoExpandedConversations.Value;
-        if (autoExpanded.Contains(conversationId)) {
-            // The conversation renders expanded only via auto-expansion (its XOR state is collapsed),
-            // so removing it from the auto set IS the collapse - flipping the override would expand it.
-            _autoExpandedConversations.Value = autoExpanded.Remove(conversationId);
-            Hub.LiveBlockUI.ResetReveal(conversationId.ChatId);
-            return;
+        // ResetReveal takes LiveBlockUI's lock, so it stays outside this one - a ChatUI -> LiveBlockUI
+        // lock edge would invert the one TryCollapseOverlay acquires in the other direction.
+        lock (Lock) {
+            _suppressedAutoExpansions[conversationId] = default;
+            var autoExpanded = _autoExpandedConversations.Value;
+            if (autoExpanded.Contains(conversationId)) {
+                // The conversation renders expanded only via auto-expansion (its XOR state is collapsed),
+                // so removing it from the auto set IS the collapse - flipping the override would expand it.
+                _autoExpandedConversations.Value = autoExpanded.Remove(conversationId);
+            }
+            else {
+                // Membership here flips a conversation's expansion away from its IsExpandedByDefault, so
+                // the toggle works regardless of which default the conversation carries.
+                var overrides = _conversationExpansionOverrides.Value;
+                _conversationExpansionOverrides.Value = overrides.Contains(conversationId)
+                    ? overrides.Remove(conversationId)
+                    : overrides.Add(conversationId);
+            }
         }
-
-        // Membership here flips a conversation's expansion away from its IsExpandedByDefault, so the
-        // toggle works regardless of which default (expanded/collapsed) the conversation carries.
-        var overrides = _conversationExpansionOverrides.Value;
-        var mustRemove = overrides.Contains(conversationId);
-        overrides = mustRemove
-            ? overrides.Remove(conversationId)
-            : overrides.Add(conversationId);
-        _conversationExpansionOverrides.Value = overrides;
         Hub.LiveBlockUI.ResetReveal(conversationId.ChatId);
     }
 
