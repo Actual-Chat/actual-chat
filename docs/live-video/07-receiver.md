@@ -252,10 +252,22 @@ visible glitches).
 to turn the publisher's codec string into a list of fallback strings to
 try in order. `selectDecoderCodec(candidates, description, dims)` then
 probes them via `VideoDecoder.isConfigSupported()` and picks the first
-match. If the worker reports a hard decode error, the main thread maps
-`getCodecCategory(codecString)`, calls `excludeDecoderCodec(codecString)`
-(localStorage-backed), and the next `RegisterMember` reports the smaller
-list.
+match — every candidate against `prefer-hardware` first, then the whole
+list again against `no-preference`, since Firefox routinely rejects the
+former for a codec it decodes in software. The chosen acceleration is
+threaded into `initialDecoderConfig`, not re-assumed.
+
+H.264 candidates only ever **widen**: the declared string, the same profile
+at L5.2, then High at L5.2. A decoder configured above the bitstream decodes
+it; configured below, `configure()` succeeds and `decode()` drops chunks
+silently, so no lower-profile candidate is offered.
+
+If the worker reports a hard decode error, the main thread maps
+`getCodecCategory(codecString)`, calls `excludeDecoderCodec(codecString)` (an
+in-memory set, so it lasts the page's lifetime and no longer), and the next
+`RegisterMember` reports the smaller list. `FLOOR_CATEGORY` (VP9) is never
+excluded — a client that cannot decode the floor has nothing left to fall back
+to.
 
 ## Quality feedback collected here
 
