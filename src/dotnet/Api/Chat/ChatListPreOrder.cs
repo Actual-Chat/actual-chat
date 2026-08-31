@@ -4,5 +4,6 @@ public enum ChatListPreOrder
 {
     ChatList = 0,
     None,
-    NotesFirst
+    NotesFirst,
+    ReactionsFirst,
 }
