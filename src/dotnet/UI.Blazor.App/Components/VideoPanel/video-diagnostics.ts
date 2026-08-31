@@ -1,8 +1,8 @@
 import { getActiveRecorder, getAllActiveRecorders, type OwnStreamDiagnostics } from './video-recorder';
 import { getActivePlayers, recordRequestedReceiveQuality, type RemoteStreamDiagnostics } from './video-player';
 import {
-    getForceH264Only as getForceH264OnlyImpl,
-    setForceH264Only as setForceH264OnlyImpl,
+    getForceFloorCodecOnly as getForceFloorCodecOnlyImpl,
+    setForceFloorCodecOnly as setForceFloorCodecOnlyImpl,
 } from '../../Services/Video/codec-support';
 import {
     getDownscalerMode as getDownscalerModeImpl,
@@ -79,7 +79,7 @@ export function setRequestedReceiveQuality(
 // Backed by localStorage; codec flags take effect on the next codec
 // detection pass (typically the next stream).
 export interface VideoDebugSettings {
-    forceH264Only: boolean;
+    forceFloorCodecOnly: boolean;
     maxOutboundLayerCount: number | null;
     maxInboundLayerCount: number | null;
     estBandwidthMultiplier: number;
@@ -89,7 +89,7 @@ export interface VideoDebugSettings {
 
 export function getVideoDebugSettings(): VideoDebugSettings {
     return {
-        forceH264Only: getForceH264OnlyImpl(),
+        forceFloorCodecOnly: getForceFloorCodecOnlyImpl(),
         maxOutboundLayerCount: getLayerCount(OUTBOUND_LAYER_COUNT_KEY),
         maxInboundLayerCount: getLayerCount(INBOUND_LAYER_COUNT_KEY),
         estBandwidthMultiplier: getBandwidthMultiplier(),
@@ -104,8 +104,8 @@ export function setVideoDebugCaptureFpsOverride(fps: number | null): void {
         recorder.refreshCaptureFps();
 }
 
-export function setVideoDebugForceH264Only(enabled: boolean): void {
-    setForceH264OnlyImpl(enabled);
+export function setVideoDebugForceFloorCodecOnly(enabled: boolean): void {
+    setForceFloorCodecOnlyImpl(enabled);
 }
 
 export function setVideoDebugDownscalerMode(mode: DownscalerMode): void {

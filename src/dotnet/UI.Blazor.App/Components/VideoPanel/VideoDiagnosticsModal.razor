@@ -658,8 +658,8 @@
             <div class="diag-section">
                 <div class="diag-section-header">Codec selection</div>
                 <Tile>
-                    <TileItem Click="@OnForceH264OnlyClick">
-                        <Content>Force H.264 (AVC) only</Content>
+                    <TileItem Click="@OnForceFloorCodecOnlyClick">
+                        <Content>Force VP9 (floor codec) only</Content>
                         <Caption>
                             Restrict codec detection to H.264 (AVC). AV1, HEVC and VP9
                             are excluded for both encoder and decoder. Useful for
@@ -668,7 +668,7 @@
                         </Caption>
                         <Right>
                             <div class="pointer-events-none">
-                                <Toggle IsChecked="@_forceH264Only"/>
+                                <Toggle IsChecked="@_forceFloorCodecOnly"/>
                             </div>
                         </Right>
                     </TileItem>

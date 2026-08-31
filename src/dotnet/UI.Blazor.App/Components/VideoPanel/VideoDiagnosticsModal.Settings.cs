@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.App.Components.VideoPanel;
 public partial class VideoDiagnosticsModal
 {
     private static readonly string JSGetSettingsMethod = $"{BlazorUIAppModule.ImportName}.getVideoDebugSettings";
-    private static readonly string JSSetForceH264OnlyMethod = $"{BlazorUIAppModule.ImportName}.setVideoDebugForceH264Only";
+    private static readonly string JSSetForceFloorCodecOnlyMethod = $"{BlazorUIAppModule.ImportName}.setVideoDebugForceFloorCodecOnly";
     private static readonly string JSSetDownscalerModeMethod = $"{BlazorUIAppModule.ImportName}.setVideoDebugDownscalerMode";
     private static readonly string JSSetMaxOutboundLayerCountMethod =
         $"{BlazorUIAppModule.ImportName}.setVideoDebugMaxOutboundLayerCount";
@@ -27,7 +27,7 @@ public partial class VideoDiagnosticsModal
         [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5];
     private static readonly int[] CaptureFpsOptions = [30, 24, 15, 10, 5];
 
-    private bool _forceH264Only;
+    private bool _forceFloorCodecOnly;
     private string _downscalerMode = "metadata";
     private int? _captureFpsOverride;
     private bool _showFpsOverlay;
@@ -43,7 +43,7 @@ public partial class VideoDiagnosticsModal
         _settingsLoaded = true;
         try {
             var settings = await Hub.JS.InvokeAsync<VideoDebugSettings>(JSGetSettingsMethod);
-            _forceH264Only = settings.ForceH264Only;
+            _forceFloorCodecOnly = settings.ForceFloorCodecOnly;
             _downscalerMode = settings.DownscalerMode ?? "metadata";
             _captureFpsOverride = settings.CaptureFpsOverride;
             _maxOutboundLayerCount = settings.MaxOutboundLayerCount;
@@ -63,11 +63,11 @@ public partial class VideoDiagnosticsModal
         }
     }
 
-    private async Task OnForceH264OnlyClick()
+    private async Task OnForceFloorCodecOnlyClick()
     {
-        _forceH264Only = !_forceH264Only;
+        _forceFloorCodecOnly = !_forceFloorCodecOnly;
         StateHasChanged();
-        await Hub.JS.InvokeVoidAsync(JSSetForceH264OnlyMethod, _forceH264Only);
+        await Hub.JS.InvokeVoidAsync(JSSetForceFloorCodecOnlyMethod, _forceFloorCodecOnly);
     }
 
     private async Task OnDownscalerModeChange(ChangeEventArgs e)
@@ -166,7 +166,7 @@ public partial class VideoDiagnosticsModal
     private sealed record JsHint(string streamId, int currentLayerId);
 
     public sealed record VideoDebugSettings(
-        bool ForceH264Only,
+        bool ForceFloorCodecOnly,
         int? MaxOutboundLayerCount,
         int? MaxInboundLayerCount,
         double EstBandwidthMultiplier,

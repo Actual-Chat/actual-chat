@@ -77,32 +77,36 @@ export const FLOOR_CATEGORY = 'vp9';
 const encoderCodecCache = new Map<string, Promise<CodecInfo[]>>();
 
 // Debug flag persisted in localStorage; toggled from VideoDiagnosticsSettingsModal.
-const FORCE_H264_ONLY_KEY = 'video.debug.forceH264Only';
+// Pins negotiation to FLOOR_CATEGORY so a report can be reproduced on the one
+// codec every client is required to speak. Its own key, not the old
+// forceH264Only one: the flag now means a different codec, so an existing
+// "force H.264" setting must not silently become "force VP9".
+const FORCE_FLOOR_CODEC_ONLY_KEY = 'video.debug.forceFloorCodecOnly';
 
-function readForceH264OnlyFromStorage(): boolean {
+function readForceFloorCodecOnlyFromStorage(): boolean {
     try {
-        return globalThis.localStorage.getItem(FORCE_H264_ONLY_KEY) === 'true';
+        return globalThis.localStorage.getItem(FORCE_FLOOR_CODEC_ONLY_KEY) === 'true';
     } catch {
         // localStorage throws in private mode / sandboxed contexts.
         return false;
     }
 }
 
-export function getForceH264Only(): boolean {
-    return readForceH264OnlyFromStorage();
+export function getForceFloorCodecOnly(): boolean {
+    return readForceFloorCodecOnlyFromStorage();
 }
 
-export function setForceH264Only(enabled: boolean): void {
+export function setForceFloorCodecOnly(enabled: boolean): void {
     try {
-        if (enabled) globalThis.localStorage.setItem(FORCE_H264_ONLY_KEY, 'true');
-        else globalThis.localStorage.removeItem(FORCE_H264_ONLY_KEY);
+        if (enabled) globalThis.localStorage.setItem(FORCE_FLOOR_CODEC_ONLY_KEY, 'true');
+        else globalThis.localStorage.removeItem(FORCE_FLOOR_CODEC_ONLY_KEY);
     } catch (e) {
-        warnLog?.log(`setForceH264Only: localStorage write failed: ${String(e)}`);
+        warnLog?.log(`setForceFloorCodecOnly: localStorage write failed: ${String(e)}`);
     }
     // Invalidate detection caches so the next stream re-probes with the new flag.
     encoderCodecCache.clear();
     decoderCodecCache = null;
-    infoLog?.log(`Debug: forceH264Only set to ${enabled}; codec detection caches cleared`);
+    infoLog?.log(`Debug: forceFloorCodecOnly set to ${enabled}; codec detection caches cleared`);
 }
 
 
@@ -147,12 +151,12 @@ export function getActiveEncoderCategoriesByPriority(): readonly CodecInfo['cate
 }
 
 async function detectSupportedCodecsUncached(width: number, height: number): Promise<CodecInfo[]> {
-    const forceH264 = readForceH264OnlyFromStorage();
-    let probeList = forceH264
-        ? REPRESENTATIVE_CODECS.filter(c => c.category === 'h264')
+    const forceFloor = readForceFloorCodecOnlyFromStorage();
+    let probeList = forceFloor
+        ? REPRESENTATIVE_CODECS.filter(c => c.category === FLOOR_CATEGORY)
         : REPRESENTATIVE_CODECS;
-    if (forceH264)
-        infoLog?.log('Debug: forceH264Only=true → encoder detection limited to H.264');
+    if (forceFloor)
+        infoLog?.log(`Debug: forceFloorCodecOnly=true → encoder detection limited to ${FLOOR_CATEGORY}`);
     if (excludedEncoderCodecs.size > 0) {
         const before = probeList.length;
         probeList = probeList.filter(c => !excludedEncoderCodecs.has(c.category));
@@ -746,9 +750,9 @@ const DECODER_PROBES: { category: string; codecs: string[] }[] = [
 async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
     const codecs: string[] = [];
 
-    if (readForceH264OnlyFromStorage()) {
-        infoLog?.log('Debug: forceH264Only=true → decoder detection limited to H.264');
-        return ['h264'];
+    if (readForceFloorCodecOnlyFromStorage()) {
+        infoLog?.log(`Debug: forceFloorCodecOnly=true → decoder detection limited to ${FLOOR_CATEGORY}`);
+        return [FLOOR_CATEGORY];
     }
 
     for (const { category, codecs: probes } of DECODER_PROBES) {

@@ -9,7 +9,7 @@ import {
     getExcludedEncoderCodecs,
     isEncoderCodecStringExcluded,
     probeEncoderLatencyFrames,
-    setForceH264Only,
+    setForceFloorCodecOnly,
 } from '../../../src/dotnet/UI.Blazor.App/Services/Video/codec-support';
 
 type DecoderProbe = (config: VideoDecoderConfig) => Promise<{ supported: boolean }>;
@@ -21,7 +21,7 @@ describe('decoder capability detection', () => {
         isConfigSupported = vi.fn<DecoderProbe>();
         vi.stubGlobal('VideoDecoder', { isConfigSupported });
         // detectSupportedDecoderCodecs memoises; this is the public reset.
-        setForceH264Only(false);
+        setForceFloorCodecOnly(false);
     });
 
     afterEach(() => {
