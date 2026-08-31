@@ -9,7 +9,7 @@ coalesced per partition; first consumer is chat read-position writes.
 
 **Architecture:** `PartitionedCommandQueue<TItem>` (Core) is a synchronous
 per-partition coordinator (running flag + single waiting slot, coalesced via
-`QueueEdits`). `ClientCommandQueue` (UI.Blazor.App) is the client filter handler:
+`QueueEdits`). `ClientCommandHandler` (UI.Blazor.App) is the client filter handler:
 it enqueues a marked command via `Update`, and when the lane is idle it drives
 `Commander.Run` in a loop (transient retry) advancing the lane via `OnCompleted`.
 Re-dispatch uses an `AsyncLocal` pass-through flag, so each run is a fresh
@@ -25,7 +25,7 @@ ActualLab.Fusion (`[ComputeMethod]`, `MutableState`).
 - **Coding style (`docs/CODING_STYLE.md`):** no `Async` suffix; no XML doc
   comments; tests use AAA with lowercase `// arrange` / `// act` / `// assert`.
 - **Placement:** `IQueuedCommand`, `PartitionedCommandQueue`, `QueueEdits` in
-  `ActualChat.Core` (no UI/server deps); `ClientCommandQueue` in `UI.Blazor.App`.
+  `ActualChat.Core` (no UI/server deps); `ClientCommandHandler` in `UI.Blazor.App`.
 - **Transient errors:** `OperationCanceledException` or `TimeoutException` retry;
   everything else is permanent.
 
@@ -70,12 +70,12 @@ ActualLab.Fusion (`[ComputeMethod]`, `MutableState`).
 - [x] `public interface IQueuedCommand : ICommand { string PartitionKey { get; } }`
   (namespace `ActualChat`, next to `IApiCommand`). No `CoalesceKey`.
 
-### Task 4: `ClientCommandQueue` — client filter handler + registration — done
+### Task 4: `ClientCommandHandler` — client filter handler + registration — done
 
-**Files:** `src/dotnet/UI.Blazor.App/Services/ClientCommandQueue.cs`;
+**Files:** `src/dotnet/UI.Blazor.App/Services/ClientCommandHandler.cs`;
 `src/dotnet/UI.Blazor.App/Module/BlazorUIAppModule.cs`.
 
-- [x] `sealed class ClientCommandQueue(ICommander commander) : ICommandHandler<IQueuedCommand>, IDisposable`
+- [x] `sealed class ClientCommandHandler(ICommander commander) : ICommandHandler<IQueuedCommand>, IDisposable`
   holding a `PartitionedCommandQueue<IQueuedCommand>` and a `_stopCts`.
 - [x] `[CommandFilter(Priority = CommanderCommandHandlerPriority.RpcRoutingCommandHandler + 1000)]`
   `OnCommand`: if `IsRunningFromQueue.Value` → `InvokeRemainingHandlers` (run for
@@ -88,7 +88,7 @@ ActualLab.Fusion (`[ComputeMethod]`, `MutableState`).
 - [x] `int GetPendingCount(string)`, `event Action? Changed` (delegated to the
   queue), `Dispose()` → `_stopCts.CancelAndDisposeSilently()`.
 - [x] Registration in `BlazorUIAppModule.InjectServices`:
-  `services.AddScoped<ClientCommandQueue>(); fusion.Commander.AddHandlers<ClientCommandQueue>();`
+  `services.AddScoped<ClientCommandHandler>(); fusion.Commander.AddHandlers<ClientCommandHandler>();`
 
 ### Task 5: read-position through the queue — done
 
@@ -104,7 +104,7 @@ ActualLab.Fusion (`[ComputeMethod]`, `MutableState`).
   untouched.
 - [x] **Enumeration removed as YAGNI:** an earlier
   `ChatUI.GetPendingReadPositionCount` compute method + `MutableState<long>`
-  version + `ClientCommandQueue.Changed` subscription were dropped (no consumer).
+  version + `ClientCommandHandler.Changed` subscription were dropped (no consumer).
   The primitive's `GetPendingCount`/`Changed` hooks stay for a future consumer.
 
 ## Verification status
@@ -114,7 +114,7 @@ ActualLab.Fusion (`[ComputeMethod]`, `MutableState`).
   succeeded**, healthz 200.
 - [x] Runtime: server boots with the filter registered (startup validates
   `AddHandlers`); a Blazor circuit constructs `ChatUI` with no exception.
-  `ClientCommandQueue`'s DI + `ICommander` wiring constructed cleanly in an
+  `ClientCommandHandler`'s DI + `ICommander` wiring constructed cleanly in an
   earlier run (when `ChatUI` still resolved it); it is now lazy on first dispatch.
 - [ ] Manual E2E (offline coalescing drain in the browser) — blocked by a
   background/`document.hidden` automation tab (message list doesn't render);

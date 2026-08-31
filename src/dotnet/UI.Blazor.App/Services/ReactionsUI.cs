@@ -11,8 +11,8 @@ public class ReactionsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeS
     private readonly HashSet<(string EntryId, string EmojiId)> _pendingAnimations = new();
     private readonly ConcurrentDictionary<IQueuedCommand, bool> _isRemoveIntents = new();
     private IReactions Reactions => Hub.Reactions;
-    private ClientCommandQueue Queue => Hub.ClientCommandQueue;
-    private ClientCommandQueueTriggers Triggers => Hub.ClientCommandQueueTriggers;
+    private ClientCommandHandler Handler => Hub.ClientCommandHandler;
+    private ClientCommandHandlerTriggers Triggers => Hub.ClientCommandHandlerTriggers;
 
     [ComputeMethod]
     public virtual async Task<ReactionsModel?> Get(ChatEntryId entryId, CancellationToken cancellationToken)
@@ -58,7 +58,7 @@ public class ReactionsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeS
         // only knowable from the state it was queued against. The first observation wins;
         // by then the server hasn't applied it yet, which is exactly the state we need.
         var own = serverOwnReaction;
-        foreach (var entry in Queue.GetEntries(entryId.Value)) {
+        foreach (var entry in Handler.GetEntries(entryId.Value)) {
             if (entry.Command is not Reactions_React react)
                 continue;
 
@@ -75,7 +75,7 @@ public class ReactionsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeS
     {
         // Confirming here rather than on completion keeps the effect from blinking
         // between the command finishing and its invalidation reaching the UI.
-        foreach (var entry in Queue.GetEntries(entryId.Value)) {
+        foreach (var entry in Handler.GetEntries(entryId.Value)) {
             if (entry.Command is not Reactions_React react)
                 continue;
             if (entry.Stage != QueuedCommandStage.Completed)
@@ -87,13 +87,13 @@ public class ReactionsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeS
             if (!isReflected)
                 continue;
 
-            Queue.Confirm(entry.Command);
+            Handler.Confirm(entry.Command);
             _isRemoveIntents.TryRemove(entry.Command, out _);
         }
     }
 
     private IReadOnlyList<QueuedCommandEntry> GetPending(ChatEntryId entryId)
-        => Queue.GetEntries(entryId.Value)
+        => Handler.GetEntries(entryId.Value)
             .Where(x => x is { Stage: not QueuedCommandStage.Failed, Command: Reactions_React })
             .ToArray();
 }

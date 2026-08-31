@@ -61,8 +61,8 @@
 </div>
 
 @code {
-    private ClientCommandQueue Queue => Hub.ClientCommandQueue;
-    private ClientCommandQueueTriggers Triggers => Hub.ClientCommandQueueTriggers;
+    private ClientCommandHandler Handler => Hub.ClientCommandHandler;
+    private ClientCommandHandlerTriggers Triggers => Hub.ClientCommandHandlerTriggers;
     private bool IsServerHost => Hub.HostInfo.HostKind.IsServer();
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -74,14 +74,14 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         await Triggers.OnAnyChanged().ConfigureAwait(false);
-        return new Model(Queue.GetEntries(), Queue.IsPaused);
+        return new Model(Handler.GetEntries(), Handler.IsPaused);
     }
 
     private void OnPauseResumeClick() {
-        if (Queue.IsPaused)
-            Queue.Resume();
+        if (Handler.IsPaused)
+            Handler.Resume();
         else
-            Queue.Pause();
+            Handler.Pause();
     }
 
     // Nested types

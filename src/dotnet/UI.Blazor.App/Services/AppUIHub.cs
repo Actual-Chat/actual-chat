@@ -91,9 +91,9 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public AudioAttachmentPlayer AudioAttachmentPlayer
         => field ??= Services.GetRequiredService<AudioAttachmentPlayer>();
     public ReactionsUI ReactionsUI => field ??= Services.GetRequiredService<ReactionsUI>();
-    public ClientCommandQueue ClientCommandQueue => field ??= Services.GetRequiredService<ClientCommandQueue>();
-    public ClientCommandQueueTriggers ClientCommandQueueTriggers
-        => field ??= Services.GetRequiredService<ClientCommandQueueTriggers>();
+    public ClientCommandHandler ClientCommandHandler => field ??= Services.GetRequiredService<ClientCommandHandler>();
+    public ClientCommandHandlerTriggers ClientCommandHandlerTriggers
+        => field ??= Services.GetRequiredService<ClientCommandHandlerTriggers>();
 
     public KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory
         => field ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();

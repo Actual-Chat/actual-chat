@@ -4,7 +4,7 @@
 
 **Goal:** Make the client command queue observable (per-command stage, retries, errors) and let a queued command's effect show in the UI before the server confirms it, with reactions as the first consumer.
 
-**Architecture:** `ClientCommandQueue` gains a status registry (`Waiting → Running → Retrying → Completed → gone`, or `Failed`) while `PartitionedCommandQueue` stays an untouched ordering coordinator. Status reaches the UI through Fusion trigger compute methods. A new `ReactionsUI` compute service folds a partition's queued `Reactions_React` commands over server data and confirms them back to the queue once the server reflects them, replacing `OptimisticReactions` entirely.
+**Architecture:** `ClientCommandHandler` gains a status registry (`Waiting → Running → Retrying → Completed → gone`, or `Failed`) while `PartitionedCommandQueue` stays an untouched ordering coordinator. Status reaches the UI through Fusion trigger compute methods. A new `ReactionsUI` compute service folds a partition's queued `Reactions_React` commands over server data and confirms them back to the queue once the server reflects them, replacing `OptimisticReactions` entirely.
 
 **Tech Stack:** C# / .NET 11, ActualLab.CommandR (`ICommandHandler`, `[CommandFilter]`), ActualLab.Fusion (`[ComputeMethod]`, `Invalidation.Begin()`, `FixedDelayer`), Blazor, xUnit + AwesomeAssertions.
 
@@ -25,8 +25,8 @@
 |---|---|
 | `src/dotnet/Core/Commands/IQueuedCommand.cs` (modify) | Marker + partition key + coalescing policy |
 | `src/dotnet/Core/Commands/QueuedCommandEntry.cs` (create) | `QueuedCommandStage`, `QueuedCommandCoalescing`, `QueuedCommandEntry` — the shared status contract |
-| `src/dotnet/UI.Blazor.App/Services/ClientCommandQueue.cs` (modify) | Filter + runner + status registry + `Confirm` |
-| `src/dotnet/UI.Blazor.App/Services/ClientCommandQueueTriggers.cs` (create) | Fusion triggers the registry invalidates |
+| `src/dotnet/UI.Blazor.App/Services/ClientCommandHandler.cs` (modify) | Filter + runner + status registry + `Confirm` |
+| `src/dotnet/UI.Blazor.App/Services/ClientCommandHandlerTriggers.cs` (create) | Fusion triggers the registry invalidates |
 | `src/dotnet/UI.Blazor.App/Services/ReactionsUI.cs` (create) | Compute service: server reactions + queued overlay, animation flags |
 | `src/dotnet/UI.Blazor.App/Services/ReactionsOverlay.cs` (create) | Pure folding/reconciliation functions — the main unit under test |
 | `src/dotnet/UI.Blazor.App/Pages/CommandQueueTestPage.razor` (create) | Admin-only diagnostics table |
@@ -35,16 +35,16 @@
 
 ---
 
-### Task 1: Status contract + registry in `ClientCommandQueue`
+### Task 1: Status contract + registry in `ClientCommandHandler`
 
 **Files:**
 - Create: `src/dotnet/Core/Commands/QueuedCommandEntry.cs`
-- Modify: `src/dotnet/UI.Blazor.App/Services/ClientCommandQueue.cs`
-- Test: `tests/Chat.UI.Blazor.UnitTests/ClientCommandQueueTest.cs`
+- Modify: `src/dotnet/UI.Blazor.App/Services/ClientCommandHandler.cs`
+- Test: `tests/Chat.UI.Blazor.UnitTests/ClientCommandHandlerTest.cs`
 
 **Interfaces:**
 - Consumes: `IQueuedCommand`, `PartitionedCommandQueue<TItem>`, `QueueEdits<TItem>` (all exist).
-- Produces: `QueuedCommandStage`, `QueuedCommandEntry`, `ClientCommandQueue.GetEntries()`, `GetEntries(string)`, `Confirm(IQueuedCommand)`. Task 3 invalidates on registry change; Task 4 reads `GetEntries(string)` and calls `Confirm`; Task 6 renders `GetEntries()`.
+- Produces: `QueuedCommandStage`, `QueuedCommandEntry`, `ClientCommandHandler.GetEntries()`, `GetEntries(string)`, `Confirm(IQueuedCommand)`. Task 3 invalidates on registry change; Task 4 reads `GetEntries(string)` and calls `Confirm`; Task 6 renders `GetEntries()`.
 
 - [ ] **Step 1: Write the status contract**
 
@@ -70,21 +70,21 @@ public sealed record QueuedCommandEntry(
 
 - [ ] **Step 2: Write the failing tests**
 
-`tests/Chat.UI.Blazor.UnitTests/ClientCommandQueueTest.cs`. The queue must be testable without a real commander, so Task 1 also adds an executor seam (Step 4).
+`tests/Chat.UI.Blazor.UnitTests/ClientCommandHandlerTest.cs`. The queue must be testable without a real commander, so Task 1 also adds an executor seam (Step 4).
 
 ```csharp
 using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
-public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@out)
+public sealed class ClientCommandHandlerTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact]
     public async Task SuccessfulCommandShouldBeKeptUntilConfirmed()
     {
         // arrange
         using var clock = new TestClock();
-        var queue = new ClientCommandQueue((_, _) => Task.CompletedTask, clock);
+        var queue = new ClientCommandHandler((_, _) => Task.CompletedTask, clock);
         var command = new TestCommand("a");
 
         // act
@@ -104,7 +104,7 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
     {
         // arrange
         using var clock = new TestClock();
-        var queue = new ClientCommandQueue((_, _) => throw new InvalidOperationException("nope"), clock);
+        var queue = new ClientCommandHandler((_, _) => throw new InvalidOperationException("nope"), clock);
         var command = new TestCommand("a");
 
         // act
@@ -122,7 +122,7 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
         // arrange
         using var clock = new TestClock();
         var tryCount = 0;
-        var queue = new ClientCommandQueue((_, _) => {
+        var queue = new ClientCommandHandler((_, _) => {
             tryCount++;
             return tryCount < 3 ? throw new TimeoutException() : Task.CompletedTask;
         }, clock) { RetryDelay = TimeSpan.Zero };
@@ -139,7 +139,7 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
     {
         // arrange
         using var clock = new TestClock();
-        var queue = new ClientCommandQueue((_, _) => Task.CompletedTask, clock);
+        var queue = new ClientCommandHandler((_, _) => Task.CompletedTask, clock);
         await queue.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
 
         // act
@@ -160,16 +160,16 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
 
 - [ ] **Step 3: Run the tests to verify they fail**
 
-Run: `dotnet test tests/Chat.UI.Blazor.UnitTests --filter "FullyQualifiedName~ClientCommandQueueTest"`
-Expected: compile failure — `ClientCommandQueue` has no such constructor, no `GetEntries`, no `Confirm`.
+Run: `dotnet test tests/Chat.UI.Blazor.UnitTests --filter "FullyQualifiedName~ClientCommandHandlerTest"`
+Expected: compile failure — `ClientCommandHandler` has no such constructor, no `GetEntries`, no `Confirm`.
 
 - [ ] **Step 4: Add the executor seam and the registry**
 
-In `ClientCommandQueue`, replace the primary constructor with one that admits an
+In `ClientCommandHandler`, replace the primary constructor with one that admits an
 executor and a clock (both defaulted for DI), and add the registry:
 
 ```csharp
-public sealed class ClientCommandQueue : ICommandHandler<IQueuedCommand>, IDisposable
+public sealed class ClientCommandHandler : ICommandHandler<IQueuedCommand>, IDisposable
 {
     private static readonly AsyncLocal<bool> IsRunningFromQueue = new();
     public static readonly TimeSpan CompletedTtl = TimeSpan.FromSeconds(10);
@@ -182,18 +182,18 @@ public sealed class ClientCommandQueue : ICommandHandler<IQueuedCommand>, IDispo
     private readonly MomentClock _clock;
 
     public TimeSpan RetryDelay { get; init; } = TimeSpan.FromSeconds(1);
-    private ClientCommandQueueTriggers? Triggers { get; }
+    private ClientCommandHandlerTriggers? Triggers { get; }
 
     // The DI constructor. Triggers is resolved in Task 3; until then pass null.
-    public ClientCommandQueue(ICommander commander, ClientCommandQueueTriggers? triggers = null)
+    public ClientCommandHandler(ICommander commander, ClientCommandHandlerTriggers? triggers = null)
         : this((c, ct) => commander.Run(c, ct), null, triggers)
     { }
 
     // For tests: drives the queue without a commander or a real clock
-    internal ClientCommandQueue(
+    internal ClientCommandHandler(
         Func<IQueuedCommand, CancellationToken, Task> executor,
         MomentClock? clock = null,
-        ClientCommandQueueTriggers? triggers = null)
+        ClientCommandHandlerTriggers? triggers = null)
     {
         _executor = executor;
         _clock = clock ?? MomentClockSet.Default.SystemClock;
@@ -289,7 +289,7 @@ makes it invalidate the Fusion triggers too.
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `dotnet test tests/Chat.UI.Blazor.UnitTests --filter "FullyQualifiedName~ClientCommandQueueTest"`
+Run: `dotnet test tests/Chat.UI.Blazor.UnitTests --filter "FullyQualifiedName~ClientCommandHandlerTest"`
 Expected: PASS (4 tests).
 
 - [ ] **Step 6: Build the app project**
@@ -303,9 +303,9 @@ Expected: Build succeeded.
 
 **Files:**
 - Modify: `src/dotnet/Core/Commands/IQueuedCommand.cs`
-- Modify: `src/dotnet/UI.Blazor.App/Services/ClientCommandQueue.cs`
+- Modify: `src/dotnet/UI.Blazor.App/Services/ClientCommandHandler.cs`
 - Modify: `src/dotnet/Api.Contracts/Users/IChatPositions.cs`
-- Test: `tests/Chat.UI.Blazor.UnitTests/ClientCommandQueueTest.cs` (extend)
+- Test: `tests/Chat.UI.Blazor.UnitTests/ClientCommandHandlerTest.cs` (extend)
 
 **Interfaces:**
 - Consumes: Task 1's registry.
@@ -313,7 +313,7 @@ Expected: Build succeeded.
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `ClientCommandQueueTest`:
+Append to `ClientCommandHandlerTest`:
 
 ```csharp
     [Fact]
@@ -322,7 +322,7 @@ Append to `ClientCommandQueueTest`:
         // arrange
         var runCount = 0;
         var gate = TaskCompletionSourceExt.New<Unit>();
-        var queue = new ClientCommandQueue(async (_, _) => {
+        var queue = new ClientCommandHandler(async (_, _) => {
             runCount++;
             await gate.Task.ConfigureAwait(false);
         });
@@ -344,7 +344,7 @@ Append to `ClientCommandQueueTest`:
         // arrange
         var runCount = 0;
         var gate = TaskCompletionSourceExt.New<Unit>();
-        var queue = new ClientCommandQueue(async (_, _) => {
+        var queue = new ClientCommandHandler(async (_, _) => {
             runCount++;
             await gate.Task.ConfigureAwait(false);
         });
@@ -368,7 +368,7 @@ Append to `ClientCommandQueueTest`:
 
 - [ ] **Step 2: Run to verify failure**
 
-Run: `dotnet test tests/Chat.UI.Blazor.UnitTests --filter "FullyQualifiedName~ClientCommandQueueTest"`
+Run: `dotnet test tests/Chat.UI.Blazor.UnitTests --filter "FullyQualifiedName~ClientCommandHandlerTest"`
 Expected: compile failure — `QueuedCommandCoalescing` is not defined.
 
 - [ ] **Step 3: Add the policy**
@@ -391,7 +391,7 @@ public interface IQueuedCommand : ICommand
 }
 ```
 
-In `ClientCommandQueue.OnCommand`, honour it:
+In `ClientCommandHandler.OnCommand`, honour it:
 
 ```csharp
         var toRun = _queue.Update(command.PartitionKey, pending => {
@@ -416,7 +416,7 @@ In `ClientCommandQueue.OnCommand`, honour it:
 
 - [ ] **Step 5: Run the tests**
 
-Run: `dotnet test tests/Chat.UI.Blazor.UnitTests --filter "FullyQualifiedName~ClientCommandQueueTest"`
+Run: `dotnet test tests/Chat.UI.Blazor.UnitTests --filter "FullyQualifiedName~ClientCommandHandlerTest"`
 Expected: PASS (6 tests).
 
 ---
@@ -424,20 +424,20 @@ Expected: PASS (6 tests).
 ### Task 3: Fusion triggers
 
 **Files:**
-- Create: `src/dotnet/UI.Blazor.App/Services/ClientCommandQueueTriggers.cs`
-- Modify: `src/dotnet/UI.Blazor.App/Services/ClientCommandQueue.cs`
+- Create: `src/dotnet/UI.Blazor.App/Services/ClientCommandHandlerTriggers.cs`
+- Modify: `src/dotnet/UI.Blazor.App/Services/ClientCommandHandler.cs`
 - Modify: `src/dotnet/UI.Blazor.App/Module/BlazorUIAppModule.cs`
 
 **Interfaces:**
 - Consumes: `OnEntriesChanged` from Task 1.
-- Produces: `ClientCommandQueueTriggers.OnChanged(string)` / `OnAnyChanged()`, which Tasks 4 and 6 await inside their compute methods.
+- Produces: `ClientCommandHandlerTriggers.OnChanged(string)` / `OnAnyChanged()`, which Tasks 4 and 6 await inside their compute methods.
 
 - [ ] **Step 1: Add the triggers service**
 
 ```csharp
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class ClientCommandQueueTriggers : IComputeService
+public class ClientCommandHandlerTriggers : IComputeService
 {
     [ComputeMethod]
     public virtual Task<Unit> OnChanged(string partitionKey)
@@ -451,7 +451,7 @@ public class ClientCommandQueueTriggers : IComputeService
 
 - [ ] **Step 2: Invalidate from the registry**
 
-The constructor from Task 1 already accepts `ClientCommandQueueTriggers?` — nothing
+The constructor from Task 1 already accepts `ClientCommandHandlerTriggers?` — nothing
 to change there. Only `OnEntriesChanged` grows the invalidation, in the same style as
 `ChatSendingMessages.InvalidateCollection`:
 
@@ -474,9 +474,9 @@ to change there. Only `OnEntriesChanged` grows the invalidation, in the same sty
 `BlazorUIAppModule.InjectServices`, next to the existing queue registration:
 
 ```csharp
-        fusion.AddService<ClientCommandQueueTriggers>(ServiceLifetime.Scoped);
-        services.AddScoped<ClientCommandQueue>();
-        fusion.Commander.AddHandlers<ClientCommandQueue>();
+        fusion.AddService<ClientCommandHandlerTriggers>(ServiceLifetime.Scoped);
+        services.AddScoped<ClientCommandHandler>();
+        fusion.Commander.AddHandlers<ClientCommandHandler>();
 ```
 
 - [ ] **Step 4: Build**
@@ -495,7 +495,7 @@ Expected: Build succeeded.
 - Test: `tests/Chat.UI.Blazor.UnitTests/ReactionsOverlayTest.cs`
 
 **Interfaces:**
-- Consumes: `ClientCommandQueue.GetEntries(string)`, `Confirm`, `ClientCommandQueueTriggers.OnChanged`.
+- Consumes: `ClientCommandHandler.GetEntries(string)`, `Confirm`, `ClientCommandHandlerTriggers.OnChanged`.
 - Produces: `ReactionsModel(ReactionSummary[] Summaries, Reaction? OwnReaction, QueuedCommandStage? PendingStage)`, `ReactionsUI.Get(ChatEntryId, CancellationToken)`, `ReactionsUI.HasVisible(ChatEntryId, bool)`, plus the animation methods Task 5 moves over.
 
 - [ ] **Step 1: Make `Reactions_React` queueable**
@@ -678,8 +678,8 @@ public sealed class ReactionsUI(AppUIHub hub) : IComputeService
 
     private AppUIHub Hub { get; } = hub;
     private IReactions Reactions => Hub.Reactions;
-    private ClientCommandQueue Queue => Hub.ClientCommandQueue;
-    private ClientCommandQueueTriggers Triggers => Hub.ClientCommandQueueTriggers;
+    private ClientCommandHandler Queue => Hub.ClientCommandHandler;
+    private ClientCommandHandlerTriggers Triggers => Hub.ClientCommandHandlerTriggers;
     private Session Session => Hub.Session();
 
     [ComputeMethod]
@@ -730,7 +730,7 @@ public sealed class ReactionsUI(AppUIHub hub) : IComputeService
 ```
 
 Register in `BlazorUIAppModule`: `fusion.AddService<ReactionsUI>(ServiceLifetime.Scoped);`
-and add `ClientCommandQueue`, `ClientCommandQueueTriggers`, `ReactionsUI` properties
+and add `ClientCommandHandler`, `ClientCommandHandlerTriggers`, `ReactionsUI` properties
 to `AppUIHub` in the existing `field ??= Services.GetRequiredService<T>()` style.
 
 - [ ] **Step 7: Build**
@@ -873,7 +873,7 @@ Expected: Build succeeded; localization test PASS (it fails the build if a catal
 - Modify: `src/dotnet/UI.Blazor.App/Module/BlazorUIAppAotSource.g.cs` (regenerated, not hand-edited)
 
 **Interfaces:**
-- Consumes: `ClientCommandQueue.GetEntries()`, `ClientCommandQueueTriggers.OnAnyChanged()`.
+- Consumes: `ClientCommandHandler.GetEntries()`, `ClientCommandHandlerTriggers.OnAnyChanged()`.
 - Produces: nothing.
 
 - [ ] **Step 1: Write the page**
@@ -925,8 +925,8 @@ Modelled on `FlowsTestPage.razor`; English, not localized:
 </div>
 
 @code {
-    private ClientCommandQueue Queue => Hub.ClientCommandQueue;
-    private ClientCommandQueueTriggers Triggers => Hub.ClientCommandQueueTriggers;
+    private ClientCommandHandler Queue => Hub.ClientCommandHandler;
+    private ClientCommandHandlerTriggers Triggers => Hub.ClientCommandHandlerTriggers;
 
     protected override ComputedState<IReadOnlyList<QueuedCommandEntry>>.Options GetStateOptions()
         => new() {
@@ -965,7 +965,7 @@ the server data catches up.
 
 ## Verification summary
 
-- `dotnet test tests/Chat.UI.Blazor.UnitTests` — `ClientCommandQueueTest` (6), `ReactionsOverlayTest` (4), `AppLocalizationTest` green.
+- `dotnet test tests/Chat.UI.Blazor.UnitTests` — `ClientCommandHandlerTest` (6), `ReactionsOverlayTest` (4), `AppLocalizationTest` green.
 - `dotnet test tests/Core.UnitTests --filter "FullyQualifiedName~Queue"` — the existing 9 queue tests still green (the primitive is untouched).
 - `dotnet test tests/Chat.IntegrationTests --filter "FullyQualifiedName~ReactionDeduplicationTest"` — server-side toggle + dedup still green; this is what makes retrying a toggle safe.
 - `dotnet build src/dotnet/App.Server/App.Server.csproj` — Build succeeded.

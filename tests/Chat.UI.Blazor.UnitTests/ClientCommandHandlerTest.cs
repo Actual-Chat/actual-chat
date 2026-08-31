@@ -3,27 +3,27 @@ using ActualLab.Time.Testing;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
-public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@out)
+public sealed class ClientCommandHandlerTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact]
     public async Task SuccessfulCommandShouldBeKeptUntilConfirmed()
     {
         // arrange
         using var clock = new TestClock();
-        var queue = new ClientCommandQueue((_, _) => Task.CompletedTask, clock);
+        var handler = new ClientCommandHandler((_, _) => Task.CompletedTask, clock);
         var command = new TestCommand("a");
 
         // act
-        await queue.OnCommand(command, null!, CancellationToken.None);
+        await handler.OnCommand(command, null!, CancellationToken.None);
 
         // assert
-        var entries = queue.GetEntries("a");
+        var entries = handler.GetEntries("a");
         entries.Should().HaveCount(1);
         entries[0].Stage.Should().Be(QueuedCommandStage.Completed,
             because: "the entry survives until a consumer confirms it");
 
-        queue.Confirm(command);
-        queue.GetEntries("a").Should().BeEmpty(because: "confirmation drops the entry");
+        handler.Confirm(command);
+        handler.GetEntries("a").Should().BeEmpty(because: "confirmation drops the entry");
     }
 
     [Fact]
@@ -31,13 +31,13 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
     {
         // arrange
         using var clock = new TestClock();
-        var queue = new ClientCommandQueue((_, _) => throw new InvalidOperationException("nope"), clock);
+        var handler = new ClientCommandHandler((_, _) => throw new InvalidOperationException("nope"), clock);
 
         // act
-        await queue.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
+        await handler.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
 
         // assert
-        var entry = queue.GetEntries("a").Single();
+        var entry = handler.GetEntries("a").Single();
         entry.Stage.Should().Be(QueuedCommandStage.Failed);
         entry.Error.Should().BeOfType<InvalidOperationException>();
     }
@@ -48,17 +48,17 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
         // arrange
         using var clock = new TestClock();
         var tryCount = 0;
-        var queue = new ClientCommandQueue((_, _) => {
+        var handler = new ClientCommandHandler((_, _) => {
             tryCount++;
             return tryCount < 3 ? throw new TimeoutException() : Task.CompletedTask;
         }, clock) { RetryDelay = TimeSpan.Zero };
 
         // act
-        await queue.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
+        await handler.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
 
         // assert
         tryCount.Should().Be(3, because: "two transient failures are retried");
-        queue.GetEntries("a").Single().TryIndex.Should().Be(2, because: "the try index counts the retries");
+        handler.GetEntries("a").Single().TryIndex.Should().Be(2, because: "the try index counts the retries");
     }
 
     [Fact]
@@ -66,14 +66,14 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
     {
         // arrange
         using var clock = new TestClock();
-        var queue = new ClientCommandQueue((_, _) => Task.CompletedTask, clock);
-        await queue.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
+        var handler = new ClientCommandHandler((_, _) => Task.CompletedTask, clock);
+        await handler.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
 
         // act
         clock.OffsetBy(TimeSpan.FromSeconds(11));
 
         // assert
-        queue.GetEntries("a").Should().BeEmpty(because: "an unconfirmed completed entry expires after 10s");
+        handler.GetEntries("a").Should().BeEmpty(because: "an unconfirmed completed entry expires after 10s");
     }
 
     [Fact]
@@ -82,15 +82,15 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
         // arrange
         var runCount = 0;
         var gate = TaskCompletionSourceExt.New<Unit>();
-        var queue = new ClientCommandQueue(async (_, _) => {
+        var handler = new ClientCommandHandler(async (_, _) => {
             runCount++;
             await gate.Task.ConfigureAwait(false);
         });
 
         // act
-        var firstTask = queue.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
-        await queue.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
-        await queue.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
+        var firstTask = handler.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
+        await handler.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
+        await handler.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
         gate.SetResult(default);
         await firstTask;
 
@@ -104,15 +104,15 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
         // arrange
         var runCount = 0;
         var gate = TaskCompletionSourceExt.New<Unit>();
-        var queue = new ClientCommandQueue(async (_, _) => {
+        var handler = new ClientCommandHandler(async (_, _) => {
             runCount++;
             await gate.Task.ConfigureAwait(false);
         });
 
         // act
-        var firstTask = queue.OnCommand(new CoalescingTestCommand("a"), null!, CancellationToken.None);
-        await queue.OnCommand(new CoalescingTestCommand("a"), null!, CancellationToken.None);
-        await queue.OnCommand(new CoalescingTestCommand("a"), null!, CancellationToken.None);
+        var firstTask = handler.OnCommand(new CoalescingTestCommand("a"), null!, CancellationToken.None);
+        await handler.OnCommand(new CoalescingTestCommand("a"), null!, CancellationToken.None);
+        await handler.OnCommand(new CoalescingTestCommand("a"), null!, CancellationToken.None);
         gate.SetResult(default);
         await firstTask;
 
@@ -126,15 +126,15 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
         // Commander.Run suppresses the context flow, so an AsyncLocal flag wouldn't survive here
 
         // arrange
-        ClientCommandQueue? queue = null;
+        ClientCommandHandler? handler = null;
         var isRunningFromQueue = false;
-        queue = new ClientCommandQueue(async (command, _) => {
+        handler = new ClientCommandHandler(async (command, _) => {
             using var _1 = ExecutionContextExt.TrySuppressFlow();
-            await Task.Run(() => isRunningFromQueue = queue!.IsRunningFromQueue(command));
+            await Task.Run(() => isRunningFromQueue = handler!.IsRunningFromQueue(command));
         });
 
         // act
-        await queue.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
+        await handler.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
 
         // assert
         isRunningFromQueue.Should().BeTrue(
@@ -146,21 +146,21 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
     {
         // arrange
         var runCount = 0;
-        var queue = new ClientCommandQueue((_, _) => {
+        var handler = new ClientCommandHandler((_, _) => {
             runCount++;
             return Task.CompletedTask;
         });
-        queue.Pause();
+        handler.Pause();
 
         // act
-        var runTask = queue.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
+        var runTask = handler.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
 
         // assert
-        queue.IsPaused.Should().BeTrue();
-        runCount.Should().Be(0, because: "a paused queue behaves like a lost connection");
-        queue.GetEntries("a").Single().Stage.Should().Be(QueuedCommandStage.Waiting);
+        handler.IsPaused.Should().BeTrue();
+        runCount.Should().Be(0, because: "a paused handler behaves like a lost connection");
+        handler.GetEntries("a").Single().Stage.Should().Be(QueuedCommandStage.Waiting);
 
-        queue.Resume();
+        handler.Resume();
         await runTask;
         runCount.Should().Be(1, because: "resuming releases the command");
     }
@@ -170,21 +170,21 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
     {
         // arrange
         var runCount = 0;
-        var queue = new ClientCommandQueue((_, _) => {
+        var handler = new ClientCommandHandler((_, _) => {
             runCount++;
             return Task.CompletedTask;
         });
-        queue.Pause();
+        handler.Pause();
 
         // act
-        var firstTask = queue.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
-        await queue.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
-        await queue.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
-        queue.Resume();
+        var firstTask = handler.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
+        await handler.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
+        await handler.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
+        handler.Resume();
         await firstTask;
 
         // assert
-        runCount.Should().Be(3, because: "the backlog drains in order once the queue resumes");
+        runCount.Should().Be(3, because: "the backlog drains in order once the handler resumes");
     }
 
     [Fact]
@@ -193,20 +193,20 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
         // arrange
         var hasStarted = TaskCompletionSourceExt.New<Unit>();
         var serverReply = TaskCompletionSourceExt.New<Unit>();
-        var queue = new ClientCommandQueue(async (_, _) => {
+        var handler = new ClientCommandHandler(async (_, _) => {
             hasStarted.TrySetResult(default);
             await serverReply.Task.ConfigureAwait(false);
         });
 
         // act
-        var runTask = queue.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
+        var runTask = handler.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
         await hasStarted.Task;
-        queue.Pause();
+        handler.Pause();
         serverReply.SetResult(default);
         await runTask;
 
         // assert
-        queue.GetEntries("a").Single().Stage.Should().Be(QueuedCommandStage.Completed,
+        handler.GetEntries("a").Single().Stage.Should().Be(QueuedCommandStage.Completed,
             because: "an attempt already in flight is left to finish");
     }
 
@@ -214,15 +214,15 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
     public async Task DiRegisteredQueueMustSurviveThePerCommandScope()
     {
         // CommandContext resolves handlers from a DI scope it creates per outermost command,
-        // so a queue that isn't shared across scopes hands every re-dispatch a fresh, empty
+        // so a handler that isn't shared across scopes hands every re-dispatch a fresh, empty
         // instance - which queues the command again, forever
 
         // arrange
         var services = new ServiceCollection();
         services.AddLogging();
         var fusion = services.AddFusion();
-        fusion.AddClientCommandQueue();
-        fusion.Commander.AddHandlers<ClientCommandQueue>();
+        fusion.AddClientCommandHandler();
+        fusion.Commander.AddHandlers<ClientCommandHandler>();
         services.AddSingleton<TestCommandTarget>();
         fusion.Commander.AddHandlers<TestCommandTarget>();
         await using var c = services.BuildServiceProvider();
@@ -234,13 +234,13 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
             .WaitAsync(TimeSpan.FromSeconds(5));
 
         // assert
-        target.CallCount.Should().Be(1, because: "the queue must run the command exactly once");
+        target.CallCount.Should().Be(1, because: "the handler must run the command exactly once");
 
         using var scope1 = c.CreateScope();
         using var scope2 = c.CreateScope();
-        scope1.ServiceProvider.GetRequiredService<ClientCommandQueue>().Should().BeSameAs(
-            scope2.ServiceProvider.GetRequiredService<ClientCommandQueue>(),
-            because: "the queue's lane, entries and re-dispatch flag are instance state, "
+        scope1.ServiceProvider.GetRequiredService<ClientCommandHandler>().Should().BeSameAs(
+            scope2.ServiceProvider.GetRequiredService<ClientCommandHandler>(),
+            because: "the handler's lane, entries and re-dispatch flag are instance state, "
                 + "so a per-scope instance loses all of it between the dispatch and its re-dispatch");
     }
 

@@ -34,7 +34,7 @@ than growing to three.
 - **The queue owns command status; the overlay owns domain meaning.** One registry,
   one source of truth about what is in flight.
 - **`PartitionedCommandQueue<TItem>` is not modified.** It stays a dumb ordering
-  coordinator; its 9 unit tests keep passing. Status lives in `ClientCommandQueue`,
+  coordinator; its 9 unit tests keep passing. Status lives in `ClientCommandHandler`,
   which already runs the commands, counts retries and sees the exceptions.
 - **The effect reaches the UI through Fusion**, not through a hand-rolled event:
   the overlay is an `IComputeService` and components just read it. This removes the
@@ -56,7 +56,7 @@ than growing to three.
 
 - **`PartitionedCommandQueue<TItem>` / `QueueEdits<TItem>`** (`Core/Messaging/`) —
   unchanged, used as-is for ordering and coalescing.
-- **`ClientCommandQueue`** (`UI.Blazor.App/Services/`) — extended in place; it is
+- **`ClientCommandHandler`** (`UI.Blazor.App/Services/`) — extended in place; it is
   already the command filter, the runner and the retry loop.
 - **The trigger-compute-method pattern of `ChatSendingMessagesTriggers`**
   (`Services/SendingMessages/`) — an empty `[ComputeMethod]` invalidated by hand,
@@ -78,7 +78,7 @@ than growing to three.
 | Component | Placement | Why |
 |---|---|---|
 | `QueuedCommandStage`, `QueuedCommandEntry`, `QueuedCommandCoalescing` | `ActualChat.Core` (`Core/Commands/`, next to `IQueuedCommand`) | Part of the command contract, no UI or server dependency — shared by construction |
-| `ClientCommandQueueTriggers` | `UI.Blazor.App/Services/` | Fusion trigger for a client-only service; belongs with its owner |
+| `ClientCommandHandlerTriggers` | `UI.Blazor.App/Services/` | Fusion trigger for a client-only service; belongs with its owner |
 | `ReactionsUI` + `ReactionsOverlay` (pure functions) | `UI.Blazor.App/Services/` | Domain-specific to chat reactions; nothing else can consume it |
 
 `ReactionsUI` is a new UI service rather than an extension of an existing one
@@ -102,7 +102,7 @@ public sealed record QueuedCommandEntry(
     Moment UpdatedAt);
 ```
 
-`ClientCommandQueue` keeps a registry of running/completed/failed entries and reads
+`ClientCommandHandler` keeps a registry of running/completed/failed entries and reads
 waiting ones out of the queue's lanes, exposing:
 
 ```csharp
@@ -126,14 +126,14 @@ that limitation is unchanged.)
 ### 2. Reactivity
 
 ```csharp
-public class ClientCommandQueueTriggers : IComputeService
+public class ClientCommandHandlerTriggers : IComputeService
 {
     [ComputeMethod] public virtual Task<Unit> OnChanged(string partitionKey) => TaskExt.UnitTask;
     [ComputeMethod] public virtual Task<Unit> OnAnyChanged() => TaskExt.UnitTask;
 }
 ```
 
-`ClientCommandQueue` invalidates both on every registry change. The existing
+`ClientCommandHandler` invalidates both on every registry change. The existing
 `Changed` event stays — it is what invalidation hangs off, and it keeps a non-Fusion
 path available.
 
@@ -178,7 +178,7 @@ public interface IQueuedCommand : ICommand
 
 The default is `None` — losing a command must never be the accident of a missing
 override. `ChatPositions_Set` declares `ReplaceWaiting`; `Reactions_React` keeps
-`None` and gets `PartitionKey => Reaction.EntryId.Value`. `ClientCommandQueue`
+`None` and gets `PartitionKey => Reaction.EntryId.Value`. `ClientCommandHandler`
 stops unconditionally clearing the waiting list and honours the policy instead.
 
 ### 5. UI changes
@@ -223,7 +223,7 @@ regenerated with `App.AotHelper -g` rather than edited.
 A global pause that makes the queue behave as it does with no connection, so the
 backlog can be watched piling up and draining on demand.
 
-`ClientCommandQueue` holds a resume gate — a `TaskCompletionSource<Unit>`, completed
+`ClientCommandHandler` holds a resume gate — a `TaskCompletionSource<Unit>`, completed
 while running — in the shape of `GatedUpdateDelayer`. `Pause()` replaces it with a
 pending one, `Resume()` completes it, `IsPaused` reports the state, and `Run` awaits
 it **before every attempt**. That single wait point covers the first attempt, every
@@ -253,7 +253,7 @@ July queue rather than introduced here, and both are now fixed.
   `ActualLab.Collections.Slim.ReferenceEqualityComparer<T>.Instance` — reference
   identity matters, because commands are records with value equality. The entry
   registry uses the same comparer for the same reason. Pinned by
-  `ClientCommandQueueTest.ReDispatchFlagShouldSurviveSuppressedExecutionContext`.
+  `ClientCommandHandlerTest.ReDispatchFlagShouldSurviveSuppressedExecutionContext`.
 - **The filter must outrank `ApiCommandDeduplicator`.** The deduplicator sits at
   `CommandTracer - 1_000_000`; the queue's original `RpcRoutingCommandHandler + 1000`
   put it *after*, so the outer dispatch claimed the `Uuid`, then waited for a
@@ -287,10 +287,10 @@ The same defect silently disabled everything scope-bound: `/test/command-queue`
 read the UI scope's queue and always showed it empty, and `debugUI.suspendCommandQueue`
 paused an instance no command ever ran on.
 
-Registration now lives in `ClientCommandQueueExt.AddClientCommandQueue()` and makes
+Registration now lives in `ClientCommandHandlerExt.AddClientCommandHandler()` and makes
 both the queue and its triggers **singletons**; the queue holds no scope-bound state,
 so this is safe. Pinned by
-`ClientCommandQueueTest.DiRegisteredQueueMustSurviveThePerCommandScope`, which
+`ClientCommandHandlerTest.DiRegisteredQueueMustSurviveThePerCommandScope`, which
 asserts two DI scopes hand out the same instance — the invariant the whole
 re-dispatch design rests on.
 
@@ -321,7 +321,7 @@ re-dispatch design rests on.
 
 - **Unit (`Chat.UI.Blazor.UnitTests`)** — the folding function: toggle chain cancels
   out, emoji replacement, removal, `Completed` reconciliation, `Failed` yields no effect.
-- **Unit (`Chat.UI.Blazor.UnitTests`)** — `ClientCommandQueue` with a fake `ICommander`: stage
+- **Unit (`Chat.UI.Blazor.UnitTests`)** — `ClientCommandHandler` with a fake `ICommander`: stage
   transitions, `TryIndex` growth on retries, `Completed`/`Failed` TTLs, `Confirm`,
   and both coalescing policies.
 - **Integration** — `ReactionDeduplicationTest` (`Chat.IntegrationTests`) must stay

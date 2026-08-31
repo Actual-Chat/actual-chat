@@ -72,7 +72,7 @@ unsent *messages*, storing the client command id in the message, a durable
   (`Core/Commands/IQueuedCommand.cs`), next to `IApiCommand`.
 - **`PartitionedCommandQueue<TItem>` + `QueueEdits<TItem>`** → **`ActualChat.Core`**
   (`Core/Messaging/`). Reusable, no UI/server deps.
-- **`ClientCommandQueue`** (the filter handler) → `UI.Blazor.App/Services/`.
+- **`ClientCommandHandler`** (the filter handler) → `UI.Blazor.App/Services/`.
   Client-only by construction; registered in `BlazorUIAppModule`.
 - Read-position enumeration (`GetPendingReadPositionCount`) → `ChatUI`.
 
@@ -110,7 +110,7 @@ event Action? Changed;                                  // fires on Update / OnC
 `QueueEdits<TItem>` expresses `Replace`/`Remove`/`Add` by **reference**
 identity, preserving positions.
 
-### 3. `ClientCommandQueue` — the client filter handler (UI.Blazor.App)
+### 3. `ClientCommandHandler` — the client filter handler (UI.Blazor.App)
 
 A `[CommandFilter]` on `IQueuedCommand`, registered in the client commander
 above RPC routing:
@@ -151,7 +151,7 @@ public async Task OnCommand(IQueuedCommand command, CommandContext context, Canc
 ### 4. Enumeration hook (primitive only)
 
 `PartitionedCommandQueue` exposes `GetPending`/`GetPendingCount` and a `Changed`
-event; `ClientCommandQueue` re-exposes `GetPendingCount`/`Changed`. These are a
+event; `ClientCommandHandler` re-exposes `GetPendingCount`/`Changed`. These are a
 low-cost hook left in place for a future consumer (e.g. a visible "unsent"
 counter). **No reactive UI surface is built in this slice** — an earlier
 `ChatUI.GetPendingReadPositionCount` compute method (plus its `MutableState`
@@ -176,8 +176,8 @@ not shown as an "unsent tail" and it had no consumer.
 ## Registration
 
 ```csharp
-services.AddScoped<ClientCommandQueue>();
-fusion.Commander.AddHandlers<ClientCommandQueue>();
+services.AddScoped<ClientCommandHandler>();
+fusion.Commander.AddHandlers<ClientCommandHandler>();
 ```
 
 (`AddHandlers<T>` registers the filter but not the DI service, hence the
@@ -216,8 +216,8 @@ requires `ICommandService` and builds an unneeded proxy.)
   running; partitions are independent; `Changed` fires; `QueueEdits`
   replace/remove/add semantics by reference. **9 tests green.**
 - **Build:** `UI.Blazor.App` and the full server compile; the server boots with
-  `AddHandlers<ClientCommandQueue>()` (registration is validated at startup), and
-  a Blazor circuit constructs `ChatUI` without error. `ClientCommandQueue` is now
+  `AddHandlers<ClientCommandHandler>()` (registration is validated at startup), and
+  a Blazor circuit constructs `ChatUI` without error. `ClientCommandHandler` is now
   instantiated lazily on the first `IQueuedCommand` dispatch (its DI + `ICommander`
   wiring was confirmed to construct cleanly in an earlier run when `ChatUI` still
   resolved it).

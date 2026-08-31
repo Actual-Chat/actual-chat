@@ -8,7 +8,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// one command per partition runs at a time, transient failures are retried until the command
 /// reaches the server, and every command's stage stays visible via <see cref="GetEntries()"/>.
 /// </summary>
-public sealed class ClientCommandQueue : ICommandHandler<IQueuedCommand>, IDisposable
+public sealed class ClientCommandHandler : ICommandHandler<IQueuedCommand>, IDisposable
 {
     public static readonly TimeSpan CompletedTtl = TimeSpan.FromSeconds(10);
     public static readonly TimeSpan FailedTtl = TimeSpan.FromMinutes(1);
@@ -33,17 +33,17 @@ public sealed class ClientCommandQueue : ICommandHandler<IQueuedCommand>, IDispo
     public bool IsPaused => !Volatile.Read(ref _resumeGate).Task.IsCompleted;
     public event Action? Changed;
 
-    private ClientCommandQueueTriggers? Triggers { get; }
+    private ClientCommandHandlerTriggers? Triggers { get; }
 
-    public ClientCommandQueue(ICommander commander, ClientCommandQueueTriggers triggers)
+    public ClientCommandHandler(ICommander commander, ClientCommandHandlerTriggers triggers)
         : this((command, cancellationToken) => commander.Run(command, cancellationToken), null, triggers)
     { }
 
     // Internal to let the tests drive the queue without a commander, a clock or Fusion
-    internal ClientCommandQueue(
+    internal ClientCommandHandler(
         Func<IQueuedCommand, CancellationToken, Task> executor,
         MomentClock? clock = null,
-        ClientCommandQueueTriggers? triggers = null)
+        ClientCommandHandlerTriggers? triggers = null)
     {
         _executor = executor;
         _clock = clock ?? MomentClockSet.Default.SystemClock;
