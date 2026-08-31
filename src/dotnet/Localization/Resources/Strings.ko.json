@@ -1018,6 +1018,8 @@
   "Ptt_ShakeHigh": "높음 - 가볍게 흔들기",
   "Ptt_AlwaysListen": "항상 제스처 감지",
   "Ptt_AlwaysListenCaption": "배터리를 더 소모합니다. 끄면 누군가 말한 직후에만 제스처가 동작합니다.",
+  "Ptt_AnswerWindow": "제스처 응답 시간",
+  "Ptt_AnswerWindowCaption": "메시지가 끝난 후 이 시간 동안 제스처로 답장을 시작할 수 있습니다.",
   "Ptt_NoMotionSensor": "이 기기에는 모션 센서가 없어 제스처를 사용할 수 없습니다.",
   "Ptt_LockScreenTopic": "잠금 화면",
   "Ptt_LockScreenTalk": "잠금 화면 대화 버튼",

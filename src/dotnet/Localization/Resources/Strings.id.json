@@ -1018,6 +1018,8 @@
   "Ptt_ShakeHigh": "Tinggi — goyangan ringan",
   "Ptt_AlwaysListen": "Selalu pantau gerakan",
   "Ptt_AlwaysListenCaption": "Memakai lebih banyak baterai. Nonaktif: gerakan hanya berfungsi tepat setelah ada yang bicara.",
+  "Ptt_AnswerWindow": "Jendela balasan gerakan",
+  "Ptt_AnswerWindowCaption": "Setelah pesan berakhir, gerakan masih dapat memulai balasan selama waktu ini.",
   "Ptt_NoMotionSensor": "Perangkat ini tidak punya sensor gerak, jadi gerakan tidak tersedia.",
   "Ptt_LockScreenTopic": "Layar kunci",
   "Ptt_LockScreenTalk": "Tombol bicara di layar kunci",

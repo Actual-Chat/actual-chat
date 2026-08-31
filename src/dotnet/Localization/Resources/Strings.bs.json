@@ -1018,6 +1018,8 @@
   "Ptt_ShakeHigh": "Visoka — lagano protresanje",
   "Ptt_AlwaysListen": "Uvijek prati pokrete",
   "Ptt_AlwaysListenCaption": "Troši više baterije. Isključeno: pokreti rade samo odmah nakon što neko progovori.",
+  "Ptt_AnswerWindow": "Prozor za odgovor pokretom",
+  "Ptt_AnswerWindowCaption": "Nakon što poruka završi, pokreti još toliko dugo mogu započeti odgovor.",
   "Ptt_NoMotionSensor": "Ovaj uređaj nema senzor pokreta, pa pokreti nisu dostupni.",
   "Ptt_LockScreenTopic": "Zaključani ekran",
   "Ptt_LockScreenTalk": "Dugme za govor na zaključanom ekranu",

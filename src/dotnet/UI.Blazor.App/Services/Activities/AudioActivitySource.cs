@@ -84,7 +84,12 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
             var pttChatIds = _isAndroidHost
                 ? await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false)
                 : [];
-            if (GetArmedChat(pttChatIds) is not { } armed)
+            var answerWindow = _isAndroidHost
+                ? await Hub.UserSettingsUI.UserPttSettings()
+                    .Get(x => x.AnswerWindow, cancellationToken)
+                    .ConfigureAwait(false)
+                : Constants.Audio.PttAnswerWindowDefault;
+            if (GetArmedChat(pttChatIds, answerWindow) is not { } armed)
                 return null;
 
             // Nothing plays while merely armed, so there is no player a Pause could reach.
@@ -111,7 +116,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
             _ = GetActivity(default);
     }
 
-    private (ChatId ChatId, int ExtraChatCount)? GetArmedChat(List<ChatId> pttChatIds)
+    private (ChatId ChatId, int ExtraChatCount)? GetArmedChat(List<ChatId> pttChatIds, TimeSpan answerWindow)
     {
         // Android only, and the reason is the foreground service the backend drives: Android grants
         // microphone access on the serviceType of the last startForeground call, and only if the app
@@ -123,16 +128,15 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
 
         var extraChatCount = pttChatIds.Count - 1;
         var now = Hub.Clocks.ServerClock.Now;
-        var recencyWindow = Constants.Audio.PttReplyRecencyWindow;
         var lastIncomingVoiceAt = IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
         var answer = GestureActivationPolicy.GetAnswerWindowChat(
-            pttChatIds, lastIncomingVoiceAt, now, recencyWindow);
+            pttChatIds, lastIncomingVoiceAt, now, answerWindow);
         if (answer is not { } vAnswer)
             return (pttChatIds[0], extraChatCount);
 
         // Nothing invalidates this state when the window merely lapses, and without the
         // auto-invalidation the source would keep naming the answering chat forever.
-        var expiresIn = vAnswer.At + recencyWindow - now + AnswerWindowExpiryDelay;
+        var expiresIn = vAnswer.At + answerWindow - now + AnswerWindowExpiryDelay;
         Computed.GetCurrent().Invalidate(expiresIn, false);
         return (vAnswer.ChatId, extraChatCount);
     }

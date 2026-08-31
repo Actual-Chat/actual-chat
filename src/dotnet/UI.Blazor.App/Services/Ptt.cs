@@ -24,6 +24,12 @@ public static class Ptt
     public static bool IsStaleWake(Moment startedAt, Moment now)
         => now - startedAt > Constants.Audio.PttStaleWakeAge;
 
+    public static Moment GetWakeAnswerStamp(Moment startedAt, Moment now)
+        // A fresh wake stamps its handling time, so the answer window runs from when the user is
+        // actually alerted and a boot delay can't eat it; a stale wake keeps its original stamp,
+        // so it can't arm a hands-free reply long after the fact.
+        => IsStaleWake(startedAt, now) ? startedAt : now;
+
     public static Moment? ComputeIdleDropAt(
         bool hasAnyActivity, Moment? lastActiveAt, Moment idleSince, TimeSpan idleTimeout)
     {

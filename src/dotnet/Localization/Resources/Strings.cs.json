@@ -1018,6 +1018,8 @@
   "Ptt_ShakeHigh": "Vysoká — lehké zatřesení",
   "Ptt_AlwaysListen": "Vždy sledovat gesta",
   "Ptt_AlwaysListenCaption": "Spotřebuje víc baterie. Vypnuto: gesta fungují jen hned po tom, co někdo promluví.",
+  "Ptt_AnswerWindow": "Okno pro odpověď gestem",
+  "Ptt_AnswerWindowCaption": "Po skončení zprávy mohou gesta ještě po tuto dobu zahájit odpověď.",
   "Ptt_NoMotionSensor": "Toto zařízení nemá pohybový senzor, takže gesta nejsou dostupná.",
   "Ptt_LockScreenTopic": "Zamykací obrazovka",
   "Ptt_LockScreenTalk": "Tlačítko mluvení na zamykací obrazovce",

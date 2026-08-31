@@ -93,6 +93,9 @@
         } else {
             <p class="c-description">@L.Ptt_NoMotionSensor</p>
         }
+        @if ((hasSensors || HostInfo.AppKind == AppKind.Android) && !m.Settings.AreGesturesAlwaysOn) {
+            <PttAnswerWindowSettings/>
+        }
     </Tile>
 
     @if (HostInfo.AppKind == AppKind.Ios) {

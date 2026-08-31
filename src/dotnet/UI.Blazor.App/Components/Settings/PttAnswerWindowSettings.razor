@@ -1,0 +1,75 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, PttAnswerWindowSettings.Model>
+@{
+    var m = State.Value;
+    _formModel.Seconds = m.Seconds;
+}
+
+<Form Model="@_formModel">
+    <DataAnnotationsValidator/>
+
+    <FormBlock Class="ptt-answer-window-settings">
+        <p class="c-description">
+            @L.Ptt_AnswerWindowCaption
+        </p>
+        <FormSection
+            For="() => _formModel.Seconds"
+            InputId="@_formModel.SecondsFormId"
+            IsLabelInsideInput="true"
+            Label="@L.Ptt_AnswerWindow"
+            IsRequired="true"
+            HideValidationMessage="true">
+            <InputSelect
+                Value="_formModel.Seconds"
+                ValueExpression="@(() => _formModel.Seconds)"
+                ValueChanged="@((int seconds) => OnSecondsChanged(seconds))">
+                @foreach (var option in Options) {
+                    <option value="@option">@GetLabel(option)</option>
+                }
+            </InputSelect>
+        </FormSection>
+    </FormBlock>
+</Form>
+
+@code {
+    private static readonly int[] Options = [15, 30, 60];
+
+    private FormModel _formModel = null!;
+
+    protected override void OnInitialized()
+        => _formModel = new FormModel(ComponentIdGenerator);
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var settings = await UserSettingsUI.UserPttSettings().Get(cancellationToken).ConfigureAwait(false);
+        return new((int)settings.AnswerWindow.TotalSeconds);
+    }
+
+    private Task OnSecondsChanged(int seconds) {
+        _formModel.Seconds = seconds;
+        return UserSettingsUI.UserPttSettings()
+            .Update(x => x with { AnswerWindow = TimeSpan.FromSeconds(seconds) }, CancellationToken.None);
+    }
+
+    private string GetLabel(int seconds)
+        => seconds switch {
+            60 => L.Ptt_OneMinute,
+            _ => L.Ptt_Seconds_Format(seconds),
+        };
+
+    // Nested types
+
+    public sealed class FormModel {
+        public int Seconds { get; set; }
+        public string SecondsFormId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator)
+            => SecondsFormId = componentIdGenerator.Next("ptt-answer-window");
+    }
+
+    public sealed record Model(int Seconds = 15) {
+        public static readonly Model None = new();
+    }
+}

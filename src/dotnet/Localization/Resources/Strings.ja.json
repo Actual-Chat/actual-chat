@@ -1018,6 +1018,8 @@
   "Ptt_ShakeHigh": "高 - 軽く振る",
   "Ptt_AlwaysListen": "常にジェスチャーを検知",
   "Ptt_AlwaysListenCaption": "バッテリー消費が増えます。オフの場合、ジェスチャーは誰かが話した直後のみ有効です。",
+  "Ptt_AnswerWindow": "ジェスチャー返信の受付時間",
+  "Ptt_AnswerWindowCaption": "メッセージの終了後、この時間内はジェスチャーで返信を開始できます。",
   "Ptt_NoMotionSensor": "この端末にはモーションセンサーがないため、ジェスチャーは利用できません。",
   "Ptt_LockScreenTopic": "ロック画面",
   "Ptt_LockScreenTalk": "ロック画面の発話ボタン",

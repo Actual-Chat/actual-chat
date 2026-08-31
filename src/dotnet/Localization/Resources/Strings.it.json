@@ -1018,6 +1018,8 @@
   "Ptt_ShakeHigh": "Alta: una scossa leggera",
   "Ptt_AlwaysListen": "Rileva sempre i gesti",
   "Ptt_AlwaysListenCaption": "Consuma più batteria. Disattivato: i gesti funzionano solo subito dopo che qualcuno ha parlato.",
+  "Ptt_AnswerWindow": "Finestra di risposta con gesti",
+  "Ptt_AnswerWindowCaption": "Dopo la fine di un messaggio, i gesti possono ancora avviare una risposta per questo periodo.",
   "Ptt_NoMotionSensor": "Questo dispositivo non ha un sensore di movimento, quindi i gesti non sono disponibili.",
   "Ptt_LockScreenTopic": "Schermata di blocco",
   "Ptt_LockScreenTalk": "Pulsante per parlare nella schermata di blocco",

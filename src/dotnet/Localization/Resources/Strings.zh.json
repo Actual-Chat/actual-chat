@@ -1018,6 +1018,8 @@
   "Ptt_ShakeHigh": "高——轻轻摇晃",
   "Ptt_AlwaysListen": "始终检测手势",
   "Ptt_AlwaysListenCaption": "更耗电。关闭时：手势仅在有人讲话后立即有效。",
+  "Ptt_AnswerWindow": "手势回复时间窗",
+  "Ptt_AnswerWindowCaption": "消息结束后，在此时间内手势仍可开始回复。",
   "Ptt_NoMotionSensor": "此设备没有运动传感器，因此无法使用手势。",
   "Ptt_LockScreenTopic": "锁屏",
   "Ptt_LockScreenTalk": "锁屏讲话按钮",

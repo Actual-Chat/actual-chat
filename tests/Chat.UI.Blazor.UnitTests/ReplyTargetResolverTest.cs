@@ -16,7 +16,7 @@ public class ReplyTargetResolverTest
         var a = Chat("aaaaaaaaaaaaaaaaaaaa"); var b = Chat("bbbbbbbbbbbbbbbbbbbb");
         var armed = new[] { a, b };
         var last = new Dictionary<ChatId, Moment> { [a] = T0 - TimeSpan.FromSeconds(90), [b] = T0 - TimeSpan.FromSeconds(20) };
-        ReplyTargetResolver.Resolve(armed, last, focusedChatId: null, T0, Window).Should().Be(b);
+        ReplyTargetResolver.Resolve(armed, last, focusedChatId: null, T0, Window, Window).Should().Be(b);
     }
 
     [Fact]
@@ -25,7 +25,7 @@ public class ReplyTargetResolverTest
         var a = Chat("aaaaaaaaaaaaaaaaaaaa"); var b = Chat("bbbbbbbbbbbbbbbbbbbb");
         var armed = new[] { a, b };
         var last = new Dictionary<ChatId, Moment> { [a] = T0 - TimeSpan.FromSeconds(400) };
-        ReplyTargetResolver.Resolve(armed, last, focusedChatId: b, T0, Window).Should().Be(b);
+        ReplyTargetResolver.Resolve(armed, last, focusedChatId: b, T0, Window, Window).Should().Be(b);
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public class ReplyTargetResolverTest
     {
         var a = Chat("aaaaaaaaaaaaaaaaaaaa"); var other = Chat("cccccccccccccccccccc");
         var armed = new[] { a };
-        ReplyTargetResolver.Resolve(armed, new Dictionary<ChatId, Moment>(), focusedChatId: other, T0, Window)
+        ReplyTargetResolver.Resolve(armed, new Dictionary<ChatId, Moment>(), focusedChatId: other, T0, Window, Window)
             .Should().Be(a);
     }
 
@@ -41,7 +41,7 @@ public class ReplyTargetResolverTest
     public void SoleArmedFallback()
     {
         var a = Chat("aaaaaaaaaaaaaaaaaaaa");
-        ReplyTargetResolver.Resolve(new[] { a }, new Dictionary<ChatId, Moment>(), focusedChatId: null, T0, Window)
+        ReplyTargetResolver.Resolve(new[] { a }, new Dictionary<ChatId, Moment>(), focusedChatId: null, T0, Window, Window)
             .Should().Be(a);
     }
 
@@ -49,14 +49,14 @@ public class ReplyTargetResolverTest
     public void AmbiguousColdStart_ReturnsNull()
     {
         var a = Chat("aaaaaaaaaaaaaaaaaaaa"); var b = Chat("bbbbbbbbbbbbbbbbbbbb");
-        ReplyTargetResolver.Resolve(new[] { a, b }, new Dictionary<ChatId, Moment>(), focusedChatId: null, T0, Window)
+        ReplyTargetResolver.Resolve(new[] { a, b }, new Dictionary<ChatId, Moment>(), focusedChatId: null, T0, Window, Window)
             .Should().BeNull();
     }
 
     [Fact]
     public void NoArmedChats_ReturnsNull()
     {
-        ReplyTargetResolver.Resolve(Array.Empty<ChatId>(), new Dictionary<ChatId, Moment>(), null, T0, Window)
+        ReplyTargetResolver.Resolve(Array.Empty<ChatId>(), new Dictionary<ChatId, Moment>(), null, T0, Window, Window)
             .Should().BeNull();
     }
 
@@ -67,9 +67,9 @@ public class ReplyTargetResolverTest
         var longAgo = new Dictionary<ChatId, Moment> { [ChatA] = T0 - TimeSpan.FromDays(30) };
 
         // act
-        var bounded = ReplyTargetResolver.Resolve([ChatA, ChatB], longAgo, null, T0, Window);
+        var bounded = ReplyTargetResolver.Resolve([ChatA, ChatB], longAgo, null, T0, Window, Window);
         var unbounded = ReplyTargetResolver.Resolve(
-            [ChatA, ChatB], longAgo, null, T0, ReplyTargetResolver.UnboundedRecencyWindow);
+            [ChatA, ChatB], longAgo, null, T0, ReplyTargetResolver.UnboundedRecencyWindow, Window);
 
         // assert
         bounded.Should().BeNull();
@@ -87,7 +87,7 @@ public class ReplyTargetResolverTest
 
         // act
         var target = ReplyTargetResolver.Resolve(
-            [ChatA, ChatB], voices, null, T0, ReplyTargetResolver.UnboundedRecencyWindow);
+            [ChatA, ChatB], voices, null, T0, ReplyTargetResolver.UnboundedRecencyWindow, Window);
 
         // assert
         target.Should().Be(ChatB);
@@ -101,7 +101,7 @@ public class ReplyTargetResolverTest
 
         // act
         var target = ReplyTargetResolver.Resolve(
-            [ChatA, ChatB], longAgo, ChatB, T0, ReplyTargetResolver.UnboundedRecencyWindow);
+            [ChatA, ChatB], longAgo, ChatB, T0, ReplyTargetResolver.UnboundedRecencyWindow, Window);
 
         // assert
         target.Should().Be(ChatB);
@@ -115,7 +115,7 @@ public class ReplyTargetResolverTest
 
         // act
         var target = ReplyTargetResolver.Resolve(
-            [ChatA, ChatB], justNow, ChatB, T0, ReplyTargetResolver.UnboundedRecencyWindow);
+            [ChatA, ChatB], justNow, ChatB, T0, ReplyTargetResolver.UnboundedRecencyWindow, Window);
 
         // assert
         target.Should().Be(ChatA);
@@ -130,7 +130,7 @@ public class ReplyTargetResolverTest
 
         // act
         var target = ReplyTargetResolver.Resolve(
-            [ChatA, ChatB], longAgo, unarmedFocus, T0, ReplyTargetResolver.UnboundedRecencyWindow);
+            [ChatA, ChatB], longAgo, unarmedFocus, T0, ReplyTargetResolver.UnboundedRecencyWindow, Window);
 
         // assert
         target.Should().Be(ChatA);
@@ -139,6 +139,28 @@ public class ReplyTargetResolverTest
     [Fact]
     public void AnUnboundedWindowStillReturnsNullWithNoArmedChats()
         => ReplyTargetResolver
-            .Resolve([], new Dictionary<ChatId, Moment>(), null, T0, ReplyTargetResolver.UnboundedRecencyWindow)
+            .Resolve([], new Dictionary<ChatId, Moment>(), null, T0, ReplyTargetResolver.UnboundedRecencyWindow, Window)
             .Should().BeNull();
+
+    [Fact]
+    public void StalenessFollowsTheOrdinaryWindow()
+    {
+        // The user's answer window, not a constant, decides when an unbounded resolution treats a
+        // stamp as a last resort rather than the first choice.
+
+        // arrange
+        var stamps = new Dictionary<ChatId, Moment> { [ChatA] = T0 - TimeSpan.FromSeconds(100) };
+
+        // act
+        var underShortWindow = ReplyTargetResolver.Resolve(
+            [ChatA, ChatB], stamps, ChatB, T0,
+            ReplyTargetResolver.UnboundedRecencyWindow, TimeSpan.FromSeconds(60));
+        var underLongWindow = ReplyTargetResolver.Resolve(
+            [ChatA, ChatB], stamps, ChatB, T0,
+            ReplyTargetResolver.UnboundedRecencyWindow, TimeSpan.FromSeconds(150));
+
+        // assert
+        underShortWindow.Should().Be(ChatB, "a stamp beyond the user's window loses to the focused chat");
+        underLongWindow.Should().Be(ChatA, "a stamp within the user's window is the first choice");
+    }
 }

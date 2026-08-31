@@ -1054,6 +1054,8 @@ public static class LocalizedStringsLocalizerExt
         public string Ptt_ShakeHigh => l["Ptt_ShakeHigh"].Value;
         public string Ptt_AlwaysListen => l["Ptt_AlwaysListen"].Value;
         public string Ptt_AlwaysListenCaption => l["Ptt_AlwaysListenCaption"].Value;
+        public string Ptt_AnswerWindow => l["Ptt_AnswerWindow"].Value;
+        public string Ptt_AnswerWindowCaption => l["Ptt_AnswerWindowCaption"].Value;
         public string Ptt_NoMotionSensor => l["Ptt_NoMotionSensor"].Value;
         public string Ptt_LockScreenTopic => l["Ptt_LockScreenTopic"].Value;
         public string Ptt_LockScreenTalk => l["Ptt_LockScreenTalk"].Value;

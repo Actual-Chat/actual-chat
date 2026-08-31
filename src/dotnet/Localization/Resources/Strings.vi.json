@@ -1018,6 +1018,8 @@
   "Ptt_ShakeHigh": "Cao — lắc nhẹ",
   "Ptt_AlwaysListen": "Luôn lắng nghe cử chỉ",
   "Ptt_AlwaysListenCaption": "Tốn pin hơn. Khi tắt: cử chỉ chỉ hoạt động ngay sau khi có người nói.",
+  "Ptt_AnswerWindow": "Cửa sổ trả lời bằng cử chỉ",
+  "Ptt_AnswerWindowCaption": "Sau khi tin nhắn kết thúc, cử chỉ vẫn có thể bắt đầu trả lời trong khoảng thời gian này.",
   "Ptt_NoMotionSensor": "Thiết bị này không có cảm biến chuyển động nên không dùng được cử chỉ.",
   "Ptt_LockScreenTopic": "Màn hình khóa",
   "Ptt_LockScreenTalk": "Nút nói trên màn hình khóa",

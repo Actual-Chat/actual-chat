@@ -1018,6 +1018,8 @@
   "Ptt_ShakeHigh": "Élevée – une secousse légère",
   "Ptt_AlwaysListen": "Toujours détecter les gestes",
   "Ptt_AlwaysListenCaption": "Consomme plus de batterie. Désactivé : les gestes ne fonctionnent que juste après que quelqu'un a parlé.",
+  "Ptt_AnswerWindow": "Fenêtre de réponse par geste",
+  "Ptt_AnswerWindowCaption": "Après la fin d'un message, les gestes peuvent encore démarrer une réponse pendant cette durée.",
   "Ptt_NoMotionSensor": "Cet appareil n'a pas de capteur de mouvement, les gestes sont donc indisponibles.",
   "Ptt_LockScreenTopic": "Écran verrouillé",
   "Ptt_LockScreenTalk": "Bouton parler sur l'écran verrouillé",

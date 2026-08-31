@@ -1018,6 +1018,8 @@
   "Ptt_ShakeHigh": "Hoch – leicht schütteln",
   "Ptt_AlwaysListen": "Gesten immer erkennen",
   "Ptt_AlwaysListenCaption": "Verbraucht mehr Akku. Aus: Gesten funktionieren nur direkt, nachdem jemand gesprochen hat.",
+  "Ptt_AnswerWindow": "Zeitfenster für Gestenantwort",
+  "Ptt_AnswerWindowCaption": "Nach dem Ende einer Nachricht können Gesten noch so lange eine Antwort starten.",
   "Ptt_NoMotionSensor": "Dieses Gerät hat keinen Bewegungssensor, daher sind Gesten nicht verfügbar.",
   "Ptt_LockScreenTopic": "Sperrbildschirm",
   "Ptt_LockScreenTalk": "Sprechtaste im Sperrbildschirm",
