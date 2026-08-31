@@ -457,6 +457,7 @@ describe('encode operator', () => {
                 });
             },
             dispose(): void { /* ignore */ },
+            flush: (): Promise<void> => Promise.resolve(),
             // The encode operator samples encoder.encodeQueueSize per bundle
             // (queue-depth EMA). Provide a static stub so the sampling path
             // doesn't fault on this fake.

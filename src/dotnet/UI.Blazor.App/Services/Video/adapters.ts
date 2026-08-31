@@ -383,6 +383,17 @@ export class AsyncVideoEncoder<
         this.handleCodecReset();
     }
 
+    // Forces out everything the codec is holding. Needed wherever the caller
+    // must wait for in-flight items without submitting more: an encoder that
+    // only emits after N further submissions (Firefox holds ~18 frames of
+    // H.264) would otherwise never settle them.
+    async flush(): Promise<void> {
+        if (this.encoder.state !== 'configured')
+            return;
+
+        try { await this.encoder.flush(); } catch { /* a reset/close races this */ }
+    }
+
     handleEncoderHang(): void {
         this.handleCodecHang();
     }

@@ -10,8 +10,10 @@ public sealed record VideoCodecDef
         new() { Kind = VideoCodecKind.Unknown, Efficiency = 1 },
         new() { Kind = VideoCodecKind.H264, Efficiency = 1 },
         new() { Kind = VideoCodecKind.Hevc, Efficiency = 1.4 },
-        new() { Kind = VideoCodecKind.Vp9, Efficiency = 1.5 },
-        new() { Kind = VideoCodecKind.Av1, Efficiency = 1.6 },
+        // Just above HEVC: VP9 is the better codec of the two, but only barely,
+        // and the gap is nothing like AV1's.
+        new() { Kind = VideoCodecKind.Vp9, Efficiency = 1.41 },
+        new() { Kind = VideoCodecKind.Av1, Efficiency = 1.7 },
     ];
 
     public VideoCodecKind Kind { get; init; }
