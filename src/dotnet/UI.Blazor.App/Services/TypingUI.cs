@@ -6,45 +6,62 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class TypingUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
-    private ITypingIndicators TypingIndicators => Hub.TypingIndicators;
+    private static readonly TimeSpan RotationPeriod = TimeSpan.FromSeconds(2);
+
+    private IChatTypingActivities ChatTypingActivities => Hub.ChatTypingActivities;
     private IAuthors Authors => Hub.Authors;
     private ConnectivityUI ConnectivityUI => Hub.ConnectivityUI;
 
-    // Authors typing in the chat other than me, ordered by who started first (server order kept).
     [ComputeMethod]
-    public virtual async Task<ApiArray<AuthorId>> ListTypingAuthorIds(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<AuthorId>> ListTypingAuthorIds(
+        ChatId chatId,
+        CancellationToken cancellationToken)
     {
+        // Everyone but me, in the server's "who started first" order.
         // While the RPC peer is down we stop receiving invalidations, so the last known value is stale.
         var isConnected = await ConnectivityUI.IsConnected.Use(cancellationToken).ConfigureAwait(false);
         if (!isConnected)
             return default;
 
-        var authorIds = await TypingIndicators.ListTypingAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var authorIds = await ChatTypingActivities
+            .ListTypingAuthorIds(Session, chatId, cancellationToken)
+            .ConfigureAwait(false);
         if (authorIds.Count == 0)
             return authorIds;
 
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         return ownAuthor is null
             ? authorIds
-            : authorIds.Where(id => id != ownAuthor.Id).ToApiArray();
+            : authorIds.Without(id => id == ownAuthor.Id);
     }
 
-    // The single typist to show - the earliest still typing, or null when nobody is.
-    [ComputeMethod]
+    [ComputeMethod(ConsolidationDelay = 0)]
     public virtual async Task<AuthorId?> GetTypingAuthorId(ChatId chatId, CancellationToken cancellationToken)
     {
+        // The single typist to show. Several of them take turns, one RotationPeriod each,
+        // so nobody stays hidden behind the one who started first.
+        var computed = Computed.GetCurrent();
         var authorIds = await ListTypingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-        return authorIds.Count > 0 ? authorIds[0] : null;
+        if (authorIds.Count == 0)
+            return null;
+        if (authorIds.Count == 1)
+            return authorIds[0];
+
+        var now = Clocks.SystemClock.Now;
+        var slot = now.EpochOffset.Ticks / RotationPeriod.Ticks;
+        var slotEndsAt = new Moment(TimeSpan.FromTicks((slot + 1) * RotationPeriod.Ticks));
+        computed.Invalidate(slotEndsAt - now);
+        return authorIds[(int)(slot % authorIds.Count)];
     }
 
-    // Per-member typing state for the right-panel Members list.
     [ComputeMethod(ConsolidationDelay = 0.2)]
     public virtual async Task<bool> IsTyping(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
     {
+        // Per-member typing state for the right-panel Members list.
         var authorIds = await ListTypingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         return authorIds.Contains(authorId);
     }
 
-    public Task SetTyping(ChatId chatId, TypingKind kind, bool isActive, CancellationToken cancellationToken)
-        => TypingIndicators.SetTyping(Session, chatId, kind, isActive, cancellationToken);
+    public Task SetTyping(ChatId chatId, TypingActivityKind kind, CancellationToken cancellationToken)
+        => ChatTypingActivities.SetTyping(Session, chatId, kind, cancellationToken);
 }
