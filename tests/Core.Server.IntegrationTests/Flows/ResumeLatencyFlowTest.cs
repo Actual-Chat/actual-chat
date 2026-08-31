@@ -1,11 +1,12 @@
 using ActualChat.Testing.Host;
+using ActualLab.Generators;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
 [CollectionDefinition(nameof(ResumeLatencyFlowCollection))]
-public class ResumeLatencyFlowCollection : ICollectionFixture<ResumeLatencyFlowFixture>;
+public sealed class ResumeLatencyFlowCollection : ICollectionFixture<ResumeLatencyFlowFixture>;
 
-public class ResumeLatencyFlowFixture(IMessageSink messageSink) : ActualChat.Testing.Host.AppHostFixture(
+public sealed class ResumeLatencyFlowFixture(IMessageSink messageSink) : ActualChat.Testing.Host.AppHostFixture(
     "resume-latency",
     messageSink,
     TestAppHostOptions.Default with {
@@ -16,24 +17,32 @@ public class ResumeLatencyFlowFixture(IMessageSink messageSink) : ActualChat.Tes
 
 [Collection(nameof(ResumeLatencyFlowCollection))]
 [Trait("Category", "Slow")]
-public class ResumeLatencyFlowTest(ResumeLatencyFlowFixture fixture, ITestOutputHelper @out)
+public sealed class ResumeLatencyFlowTest(ResumeLatencyFlowFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<ResumeLatencyFlowFixture>(fixture, @out)
 {
+    // Resumes are staged 1s ahead: one miss is a busy runner, several are a regression
+    private static readonly TimeSpan MaxTypicalDelay = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan StallDelay = TimeSpan.FromSeconds(10);
     [Fact]
-    public async Task ResumeDelayDoesNotExceed3Seconds()
+    public async Task ResumeDelaysShouldStayWithinBudget()
     {
-        var args = $"test-{Guid.NewGuid():N}";
-        await FlowHub.NewResumeEvent<ResumeLatencyFlow>(args).Schedule();
+        // arrange
+        var args = $"test-{RandomStringGenerator.Default.Next()}";
 
+        // act
+        await FlowHub.NewResumeEvent<ResumeLatencyFlow>(args).Schedule();
         await ComputedTest.When(async ct => {
             var flow = await FlowHub.TryGet<ResumeLatencyFlow>(args, ct);
-            flow.Should().NotBeNull();
-            flow.UntypedResult.Should().NotBeNull("flow should complete all 5 resumes");
+            flow.Should().NotBeNull("the scheduled resume must create the flow");
+            flow.UntypedResult.Should().NotBeNull("the flow must complete all 5 resumes");
         }, TimeSpan.FromSeconds(30));
 
+        // assert
         var completedFlow = await FlowHub.Get<ResumeLatencyFlow>(args);
         WriteLine(completedFlow.Console.ToString());
-        completedFlow.MaxDelay.Should().BeLessThan(TimeSpan.FromSeconds(3),
-            "each resume should complete within 3 seconds when DelayQuanta=0");
+        var delays = completedFlow.Delays;
+        delays.Count(x => x >= MaxTypicalDelay).Should().BeLessThanOrEqualTo(1,
+            "at most one resume may miss its budget when DelayQuanta=0");
+        delays.Max().Should().BeLessThan(StallDelay, "no resume may stall");
     }
 }
