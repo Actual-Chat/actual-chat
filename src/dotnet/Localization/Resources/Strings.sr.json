@@ -239,7 +239,7 @@
   "SystemEntry_AttentionRequested": " тражи пажњу.",
   "SystemEntry_Someone": "Неко",
 
-  "ChatFooter_ReadOnly": "Овај чет је само за читање",
+  "ChatFooter_ReadOnly": "Чет је само за читање",
   "ChatFooter_YouBlockedUser": "Блокирали сте овог корисника.",
   "ChatFooter_Unblock": "Одблокирајте",
   "ChatFooter_BlockedByUser": "Овај корисник вас је блокирао.",

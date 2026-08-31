@@ -239,7 +239,7 @@
   "SystemEntry_AttentionRequested": " просить уваги.",
   "SystemEntry_Someone": "Хтось",
 
-  "ChatFooter_ReadOnly": "Цей чат доступний лише для читання",
+  "ChatFooter_ReadOnly": "Чат доступний лише для читання",
   "ChatFooter_YouBlockedUser": "Ви заблокували цього користувача.",
   "ChatFooter_Unblock": "Розблокувати",
   "ChatFooter_BlockedByUser": "Цей користувач вас заблокував.",

@@ -309,7 +309,7 @@
   // The bar that replaces the message editor when you cannot post: a read-only chat, a block in
   // either direction, or a chat you have not joined yet. Most of these are fragments wrapped
   // around a Join button, so they end without punctuation.
-  "ChatFooter_ReadOnly": "Цей чат доступний лише для читання",
+  "ChatFooter_ReadOnly": "Чат доступний лише для читання",
   "ChatFooter_YouBlockedUser": "Вы заблокировали этого пользователя.",
   "ChatFooter_Unblock": "Разблокировать",
   "ChatFooter_BlockedByUser": "このユーザーにブロックされています。",

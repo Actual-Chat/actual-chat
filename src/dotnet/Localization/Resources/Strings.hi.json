@@ -239,7 +239,7 @@
   "SystemEntry_AttentionRequested": " ने ध्यान देने का अनुरोध किया।",
   "SystemEntry_Someone": "कोई",
 
-  "ChatFooter_ReadOnly": "यह चैट केवल पढ़ने के लिए है",
+  "ChatFooter_ReadOnly": "चैट केवल पढ़ने के लिए है",
   "ChatFooter_YouBlockedUser": "आपने इस उपयोगकर्ता को ब्लॉक किया है।",
   "ChatFooter_Unblock": "अनब्लॉक करें",
   "ChatFooter_BlockedByUser": "इस उपयोगकर्ता ने आपको ब्लॉक किया है।",

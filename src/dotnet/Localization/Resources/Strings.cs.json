@@ -239,7 +239,7 @@
   "SystemEntry_AttentionRequested": " žádá o pozornost.",
   "SystemEntry_Someone": "Někdo",
 
-  "ChatFooter_ReadOnly": "Tento chat je jen pro čtení",
+  "ChatFooter_ReadOnly": "Chat je jen pro čtení",
   "ChatFooter_YouBlockedUser": "Tohoto uživatele jste zablokovali.",
   "ChatFooter_Unblock": "Odblokovat",
   "ChatFooter_BlockedByUser": "Tento uživatel vás zablokoval.",

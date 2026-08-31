@@ -239,7 +239,7 @@
   "SystemEntry_AttentionRequested": " bittet um Aufmerksamkeit.",
   "SystemEntry_Someone": "Jemand",
 
-  "ChatFooter_ReadOnly": "Dieser Chat ist schreibgeschützt",
+  "ChatFooter_ReadOnly": "Chat ist schreibgeschützt",
   "ChatFooter_YouBlockedUser": "Sie haben diesen Nutzer blockiert.",
   "ChatFooter_Unblock": "Freigeben",
   "ChatFooter_BlockedByUser": "Dieser Nutzer hat Sie blockiert.",

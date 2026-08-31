@@ -239,7 +239,7 @@
   "SystemEntry_AttentionRequested": " さんが注目を求めています。",
   "SystemEntry_Someone": "誰か",
 
-  "ChatFooter_ReadOnly": "このチャットは読み取り専用です",
+  "ChatFooter_ReadOnly": "チャットは読み取り専用です",
   "ChatFooter_YouBlockedUser": "このユーザーをブロックしています。",
   "ChatFooter_Unblock": "ブロック解除",
   "ChatFooter_BlockedByUser": "このユーザーにブロックされています。",

@@ -239,7 +239,7 @@
   "SystemEntry_AttentionRequested": " поиска внимание.",
   "SystemEntry_Someone": "Някой",
 
-  "ChatFooter_ReadOnly": "Този чат е само за четене",
+  "ChatFooter_ReadOnly": "Чатът е само за четене",
   "ChatFooter_YouBlockedUser": "Блокирахте този потребител.",
   "ChatFooter_Unblock": "Отблокирайте",
   "ChatFooter_BlockedByUser": "Този потребител ви е блокирал.",

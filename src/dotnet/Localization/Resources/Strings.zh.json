@@ -239,7 +239,7 @@
   "SystemEntry_AttentionRequested": " 请求大家注意。",
   "SystemEntry_Someone": "某人",
 
-  "ChatFooter_ReadOnly": "此聊天为只读",
+  "ChatFooter_ReadOnly": "聊天为只读",
   "ChatFooter_YouBlockedUser": "你已屏蔽此用户。",
   "ChatFooter_Unblock": "解除屏蔽",
   "ChatFooter_BlockedByUser": "此用户已屏蔽你。",

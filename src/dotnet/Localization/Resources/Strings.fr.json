@@ -239,7 +239,7 @@
   "SystemEntry_AttentionRequested": " demande de l'attention.",
   "SystemEntry_Someone": "Quelqu'un",
 
-  "ChatFooter_ReadOnly": "Cette discussion est en lecture seule",
+  "ChatFooter_ReadOnly": "Discussion en lecture seule",
   "ChatFooter_YouBlockedUser": "Vous avez bloqué cet utilisateur.",
   "ChatFooter_Unblock": "Débloquer",
   "ChatFooter_BlockedByUser": "Cet utilisateur vous a bloqué.",

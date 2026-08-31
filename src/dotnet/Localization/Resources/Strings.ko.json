@@ -239,7 +239,7 @@
   "SystemEntry_AttentionRequested": "님이 주목을 요청했습니다.",
   "SystemEntry_Someone": "누군가",
 
-  "ChatFooter_ReadOnly": "이 채팅은 읽기 전용입니다",
+  "ChatFooter_ReadOnly": "읽기 전용 채팅입니다",
   "ChatFooter_YouBlockedUser": "이 사용자를 차단했습니다.",
   "ChatFooter_Unblock": "차단 해제",
   "ChatFooter_BlockedByUser": "이 사용자가 회원님을 차단했습니다.",
