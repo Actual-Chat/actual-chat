@@ -127,7 +127,7 @@ Real `configure()` + `encode()`, 60 frames paced at 30 fps:
 
 No drops and no errors on any codec.
 
-### macOS WKWebView too — the suspected Catalyst gap isn't there
+### macOS WKWebView — measured, but NOT a proxy for Mac Catalyst
 
 Probed inside a real `WKWebView` on the Mac mini (`tmp/wkprobe.swift`, a ~40-line
 AppKit harness using `callAsyncJavaScript`), because Mac Catalyst embeds the
@@ -144,15 +144,39 @@ same system WebKit:
 Confirmed by real `configure()` + `encode()`: H.264, VP8 and VP9 each took 30
 frames in and produced 30 out, no drops and no errors.
 
-Caveat worth stating plainly: this is an AppKit-hosted `WKWebView`, not literally
-a Catalyst (UIKit-on-macOS) process. They link the same `WebKit.framework` and
-the same media stack — the difference is the UI framework, not codec
-availability — but it is a very close proxy rather than the thing itself.
+**This does not describe Mac Catalyst, and the assumption that it did was
+wrong.** A Catalyst app does not get the AppKit `WKWebView` measured above; it
+gets the iOS-derived WebKit build, which is documented as missing APIs the
+AppKit one has (HTML fullscreen is a known case). Per Alex, **Mac Catalyst has
+no WebCodecs at all** — not a missing codec, the whole API.
 
-**So VP9 is present on every surface measured: Chromium, Firefox, desktop
-Safari, iOS WKWebView and macOS WKWebView.** No Apple surface lacks it, which
-means "Closing the VP9 gap" below may have nothing to close — the WASM decoder
-is now insurance for old clients, not a Catalyst workaround.
+So the surfaces with VP9 are: Chromium, Firefox, desktop Safari, iOS WKWebView
+and AppKit macOS WKWebView. Mac Catalyst is a different problem entirely,
+below.
+
+### Mac Catalyst is not a codec problem
+
+If WebCodecs is absent rather than merely limited, no codec choice helps:
+
+- No `VideoDecoder`/`VideoEncoder`, so neither direction works.
+- No `VideoFrame` either — which is the pipeline's envelope type end to end
+  (`CapturedFrame`, `EncodedFrame`, `DecodedFrame` all carry one). Every
+  operator between capture and present is typed on it.
+
+That makes Catalyst a **separate track** from this plan, and a much larger one:
+a WASM decoder alone does not fix it, because there is no `VideoFrame` to hand
+the decoded pixels to and no `EncodedVideoChunk` to carry the wire bytes. It
+needs either a parallel non-WebCodecs path (decode to `ImageData`/canvas, with
+its own envelope type) or a native shim exposed to the WebView.
+
+Do not let it distort the codec design: VP9-as-floor stays correct for every
+surface that has WebCodecs at all, and Catalyst is out of scope here.
+
+**To confirm** (one line, worth doing before anyone builds on this): run the
+Catalyst app and evaluate `typeof VideoEncoder + '/' + typeof VideoFrame` in
+its WebView. The app already gates on `supportsWebCodecs()` in
+`video-player.ts`, so its "WebCodecs not supported" log firing on Catalyst is
+the same evidence.
 
 ### The conclusion this forces
 
@@ -349,11 +373,11 @@ pattern (`src/dotnet/Api.Contracts/Chat/IChats.cs:19-30`):
 
 ## Closing the VP9 gap
 
-Making VP9 mandatory means some client, somewhere, will not have it. Measurement
-has since narrowed that to **old builds only** — every current surface has VP9,
-including the macOS WebView that was the suspected gap — so this is contingency,
-not a prerequisite, and should be built only if telemetry shows clients that
-need it. The answer is still to ship such a client a decoder rather than
+Making VP9 mandatory means some client, somewhere, will not have it. Every
+current surface that has WebCodecs at all does have VP9, so this is contingency
+for old builds rather than a prerequisite, and should be built only if telemetry
+shows clients that need it. It does **not** address Mac Catalyst, which lacks
+WebCodecs entirely and needs the separate track described above. The answer is still to ship such a client a decoder rather than
 renegotiate the call, and for VP9 that is markedly easier than the H.264 attempt
 this plan supersedes:
 
@@ -469,6 +493,8 @@ on the `realtime` measurement regardless of what its decoder can do.
   inspector and no proxy: `scp` it to the Mac and `swift wkprobe.swift`. Note
   `callAsyncJavaScript` takes a **function body**, so the script must `return`;
   passing a bare `(async () => …)()` expression yields `nil` with no error.
+  **It measures the AppKit WebKit build, which is not what Mac Catalyst gets** —
+  do not use it to reason about Catalyst.
 - `tmp/ios-eval.mjs` — evaluates JS in the iPhone's WKWebView through
   `ios_webkit_debug_proxy` (already running on the Mac mini, port 9222).
   It speaks the **WebKit Inspector protocol, not CDP**: every command must be
