@@ -21,7 +21,7 @@ public class ResumeLatencyFlowSerializationTest(ITestOutputHelper @out)
     protected override ResumeLatencyFlow CreatePopulated() => new() {
         RemainingCount = 5,
         LastResumeAt = new Moment(new DateTime(2026, 4, 16, 12, 0, 0, DateTimeKind.Utc)),
-        MaxDelay = TimeSpan.FromMilliseconds(123),
+        Delays = [TimeSpan.FromMilliseconds(123), TimeSpan.FromSeconds(1)],
     };
 }
 
