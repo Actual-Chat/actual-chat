@@ -22,6 +22,8 @@ public abstract class AppRemoteComputedCache : SafeAsyncDisposableBase, IRemoteC
         public TimeSpan ActivationTimeout { get; init; } = TimeSpan.FromSeconds(2);
     }
 
+    private readonly Lock _whenReadyLock = new();
+
     protected Options Settings { get; }
     protected HashSet<Symbol> ForceFlushFor { get; }
     protected RpcHub Hub { get; }
@@ -33,9 +35,14 @@ public abstract class AppRemoteComputedCache : SafeAsyncDisposableBase, IRemoteC
     protected ILogger? DebugLog
         => Constants.DebugMode.RemoteComputedCache ? Log.IfEnabled(LogLevel.Debug) : null;
 
-    protected Task WhenReady
-        // One shared deadline, so a store that never activates costs a launch one wait, not one per lookup
-        => field ??= WhenInitialized.WaitAsync(Settings.ActivationTimeout);
+    protected Task WhenReady {
+        get {
+            // One shared deadline, so a store that never activates costs a launch one wait rather
+            // than one per lookup; the lock keeps racers from each arming their own unawaited timer.
+            lock (_whenReadyLock)
+                return field ??= WhenInitialized.WaitAsync(Settings.ActivationTimeout);
+        }
+    }
 
     public IServiceProvider Services { get; }
     public IKvasStore Store { get; protected init; } = null!; // Must be set by descendant!
