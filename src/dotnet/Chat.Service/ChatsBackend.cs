@@ -865,7 +865,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var dbEntries = await dbContext.ChatEntries.Where(x
                 => x.ChatId == chatId.Value
                 && x.Kind == 0
-                && x.LocalId > minLocalIdExclusive)
+                && x.LocalId > minLocalIdExclusive
+                && !x.IsRemoved)
             .OrderBy(x => x.LocalId)
             .Take(limit)
             .ToListAsync(cancellationToken)
@@ -2105,7 +2106,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (entry, _, kind, _) = eventCommand;
+        var (entry, _, kind, oldEntry) = eventCommand;
         await ResumeContentIndexing(eventCommand, cancellationToken).ConfigureAwait(false);
 
         if (entry.IsContentStreaming)
@@ -2122,8 +2123,17 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (chat == null)
                 return;
 
-            if (chat.IsSummarized == false || kind == ChangeKind.Remove)
+            if (chat.IsSummarized == false)
                 return;
+
+            // Thread deletion soft-removes the parent thread-start entry via Change.Update(IsRemoved),
+            // and restore flips it back - both must refresh the covering summary.
+            var isRemovalOrRestore = kind == ChangeKind.Remove
+                || (kind == ChangeKind.Update && entry.IsRemoved != (oldEntry?.IsRemoved ?? false));
+            if (isRemovalOrRestore) {
+                await ResummarizeCoveringConversation().ConfigureAwait(false);
+                return;
+            }
 
             var endsAt = Moment.Max(entry.GetEndsAt(), Clocks.SystemClock.Now);
             await FlowHub
@@ -2143,6 +2153,31 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                         Settings.Summarization.ChatEntrySummarizationDelayQuanta)
                     .Schedule(cancellationToken)
                     .ConfigureAwait(false);
+        }
+
+        async Task ResummarizeCoveringConversation() {
+            // A removed entry must not linger in an already-persisted summary. The range isn't passed
+            // along: the flow coalesces a burst of removals and re-reads the range when it finally runs.
+            var lid = entry.LocalId;
+            var idTile = IdTileStack.LastLayer.GetTile(lid);
+            var rangeMeta = await ConversationsBackend
+                .GetRangeMeta(entry.ChatId, idTile.Range.Start, cancellationToken)
+                .ConfigureAwait(false);
+            var conversationRange = rangeMeta.ConversationLidRanges.FirstOrDefault(r => r.Contains(lid));
+            if (conversationRange.IsEmpty)
+                return;
+
+            var conversationId = ConversationId.New(entry.ChatId, conversationRange.Start);
+            var conversation = await ConversationsBackend.Get(conversationId, cancellationToken).ConfigureAwait(false);
+            if (conversation is null || !conversation.EntryLidRange.Contains(lid))
+                return; // Not persisted (e.g. a live session's synthetic range)
+
+            await FlowHub.NewResumeEvent<ConversationRefreshFlow>(conversationId.Value)
+                .WithDelay(
+                    Clocks.SystemClock.Now + Settings.Summarization.ResummarizationDelay,
+                    Settings.Summarization.ChatEntrySummarizationDelayQuanta)
+                .Schedule(cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 

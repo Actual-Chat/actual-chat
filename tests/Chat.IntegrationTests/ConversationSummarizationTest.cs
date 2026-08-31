@@ -1,5 +1,9 @@
 using ActualChat.Chat.ML;
+using ActualChat.Chat.Module;
+using ActualChat.Module;
+using ActualChat.Queues;
 using ActualChat.Testing.Host;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -8,7 +12,7 @@ public class ConversationSummarizationTest(ChatCollection.AppHostFixture fixture
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact]
-    public void LimitsMentionsToKnownAuthors()
+    public void ShouldLimitMentionsToKnownAuthors()
     {
         // arrange
         var chatId = ChatId.Parse("the-actual-one");
@@ -32,7 +36,7 @@ public class ConversationSummarizationTest(ChatCollection.AppHostFixture fixture
     }
 
     [Fact]
-    public void CapsConversationSummaryOutputLength()
+    public void ShouldCapConversationSummaryOutputLength()
     {
         // arrange
         var input = new ConversationSummary(
@@ -51,22 +55,22 @@ public class ConversationSummarizationTest(ChatCollection.AppHostFixture fixture
     [Fact]
     public async Task ShouldResolveChatDialogFormatter()
     {
-        // Resolve IChatDialogFormatter — fails if registration is missing
+        // act
         var formatter = AppHost.Services.GetRequiredService<IChatDialogFormatter>();
+
+        // assert
         formatter.Should().NotBeNull();
     }
 
     [Fact]
     public async Task ShouldFormatAndSummarizeEntries()
     {
+        // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
         await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var commander = tester.Commander;
-
         var (chatId, _) = await tester.CreateChat(true);
-
-        // Post messages
         var messages = new[] { "Hello everyone!", "How is the project going?", "Let's discuss the roadmap." };
         var entries = new List<ChatEntry>();
         foreach (var message in messages) {
@@ -74,19 +78,180 @@ public class ConversationSummarizationTest(ChatCollection.AppHostFixture fixture
             var entry = await commander.Call(cmd);
             entries.Add(entry);
         }
-
         var textEntries = entries.Select(e => new ChatEntrySlim(e)).ToList();
 
-        // Test ChatDialogFormatter
+        // act
         var formatter = tester.AppServices.GetRequiredService<IChatDialogFormatter>();
         var formatted = await formatter.EntriesToText(textEntries);
-        foreach (var msg in messages)
-            formatted.Should().Contain(msg);
-
-        // Test ConversationSummarizer (uses stub in test env)
         var summarizer = tester.AppServices.GetRequiredService<IConversationSummarizer>();
         var result = await summarizer.Summarize(textEntries, default);
+
+        // assert
+        foreach (var msg in messages)
+            formatted.Should().Contain(msg);
         result.HasResult.Should().BeTrue();
         result.Summary.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ShouldExcludeRemovedEntriesFromListNewEntries()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var entries = await tester.CreateTextEntries(chatId, "message", 3);
+        var removedEntry = entries[1];
+        await tester.RemoveTextEntry(removedEntry.Id);
+
+        // act
+        var chatsBackend = tester.AppServices.GetRequiredService<IChatsBackend>();
+        var listed = await chatsBackend.ListNewEntries(chatId, 0, 100, default);
+
+        // assert
+        var listedLids = listed.Select(e => e.LocalId).ToArray();
+        listedLids.Should().NotContain(removedEntry.LocalId);
+        listedLids.Should().Contain(entries[0].LocalId);
+        listedLids.Should().Contain(entries[2].LocalId);
+    }
+
+    [Fact]
+    public async Task ShouldExcludeRemovedEntriesFromSummary()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var entries = await tester.CreateTextEntries(chatId, "message", 3);
+        // One-per-entry lid ranges keep async system entries (e.g. "joined") out of the count
+        var lidRanges = entries
+            .Select(e => new Range<long>(e.LocalId, e.LocalId + 1))
+            .ToArray();
+        await tester.RemoveTextEntry(entries[1].Id);
+
+        // act
+        var commander = tester.AppServices.Commander();
+        var conversation = await commander.Call(new ConversationBackend_Summarize(chatId, lidRanges));
+
+        // assert
+        conversation.MessageCount.Should().Be(2);
+        conversation.AuthorIds.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task ShouldRemoveConversationWhenAllItsEntriesAreRemoved()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var entries = await tester.CreateTextEntries(chatId, "message", 2);
+        var lidRanges = entries
+            .Select(e => new Range<long>(e.LocalId, e.LocalId + 1))
+            .ToArray();
+        var commander = tester.AppServices.Commander();
+        var conversation = await commander.Call(new ConversationBackend_Summarize(chatId, lidRanges));
+        conversation.Should().NotBeNull();
+        var conversationsBackend = tester.AppServices.GetRequiredService<IConversationsBackend>();
+
+        // act
+        foreach (var entry in entries)
+            await tester.RemoveTextEntry(entry.Id);
+        await commander.Call(new ConversationBackend_Summarize(chatId, lidRanges));
+
+        // assert
+        var removed = await conversationsBackend.Get(conversation.Id, default);
+        removed.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ShouldResummarizeConversationOnEntryRemoval()
+    {
+        // arrange
+        await using var appHost = await NewAppHost("resummarize-on-delete", options => options with {
+            UseNatsQueues = false,
+            ConfigureHost = (_, cfg) => {
+                cfg.AddInMemory<ChatSettings>((x => x.IsSummarizationEnabled, "true"));
+                cfg.AddInMemory<CoreServerSettings>((x => x.OpenAIKey, "test-key"));
+                var delayKey = $"{nameof(ChatSettings)}:{nameof(ChatSettings.Summarization)}"
+                    + $":{nameof(SummarizationSettings.ResummarizationDelay)}";
+                cfg.AddInMemoryCollection((delayKey, "00:00:01"));
+                // The flow route quantizes the delay, so the default 1-minute quanta must shrink too
+                var quantaKey = $"{nameof(ChatSettings)}:{nameof(ChatSettings.Summarization)}"
+                    + $":{nameof(SummarizationSettings.ChatEntrySummarizationDelayQuanta)}";
+                cfg.AddInMemoryCollection((quantaKey, "00:00:01"));
+            },
+            ConfigureServices = (_, services) => {
+                services.Replace(ServiceDescriptor.Singleton<IConversationSummarizer, ConversationSummarizerStub>());
+            },
+        });
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var entries = await tester.CreateTextEntries(chatId, "message", 3);
+        // Let async follow-up commands (e.g. the system "joined" entry) settle: the removal-triggered
+        // resummary walks the conversation's contiguous lid range, so a late entry would shift counts
+        await appHost.Services.Queues().WhenProcessing(TimeSpan.FromSeconds(1), default);
+        var lidRange = new Range<long>(entries[0].LocalId, entries[2].LocalId + 1);
+        var commander = tester.AppServices.Commander();
+        var conversation = await commander.Call(new ConversationBackend_Summarize(chatId, [lidRange]));
+        var baselineCount = conversation.MessageCount;
+        baselineCount.Should().BeGreaterThanOrEqualTo(3);
+        var conversationsBackend = tester.AppServices.GetRequiredService<IConversationsBackend>();
+
+        // act
+        await tester.RemoveTextEntry(entries[1].Id);
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var updated = await conversationsBackend.Get(conversation.Id, ct);
+            updated.Should().NotBeNull();
+            updated!.MessageCount.Should().Be(baselineCount - 1);
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public async Task ShouldResummarizeConversationOnSoftEntryRemoval()
+    {
+        // arrange
+        await using var appHost = await NewAppHost("resummarize-on-soft-delete", options => options with {
+            UseNatsQueues = false,
+            ConfigureHost = (_, cfg) => {
+                cfg.AddInMemory<ChatSettings>((x => x.IsSummarizationEnabled, "true"));
+                cfg.AddInMemory<CoreServerSettings>((x => x.OpenAIKey, "test-key"));
+                var delayKey = $"{nameof(ChatSettings)}:{nameof(ChatSettings.Summarization)}"
+                    + $":{nameof(SummarizationSettings.ResummarizationDelay)}";
+                cfg.AddInMemoryCollection((delayKey, "00:00:01"));
+                var quantaKey = $"{nameof(ChatSettings)}:{nameof(ChatSettings.Summarization)}"
+                    + $":{nameof(SummarizationSettings.ChatEntrySummarizationDelayQuanta)}";
+                cfg.AddInMemoryCollection((quantaKey, "00:00:01"));
+            },
+            ConfigureServices = (_, services) => {
+                services.Replace(ServiceDescriptor.Singleton<IConversationSummarizer, ConversationSummarizerStub>());
+            },
+        });
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var entries = await tester.CreateTextEntries(chatId, "message", 3);
+        await appHost.Services.Queues().WhenProcessing(TimeSpan.FromSeconds(1), default);
+        var lidRange = new Range<long>(entries[0].LocalId, entries[2].LocalId + 1);
+        var commander = tester.AppServices.Commander();
+        var conversation = await commander.Call(new ConversationBackend_Summarize(chatId, [lidRange]));
+        var baselineCount = conversation.MessageCount;
+        baselineCount.Should().BeGreaterThanOrEqualTo(3);
+        var conversationsBackend = tester.AppServices.GetRequiredService<IConversationsBackend>();
+
+        // act: soft-remove via Update (the thread-deletion path), not Change.Remove
+        var target = entries[1];
+        await commander.Call(new ChatsBackend_ChangeEntry(
+            target.Id, null, Change.Update(new ChatEntryDiff { IsRemoved = true })));
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var updated = await conversationsBackend.Get(conversation.Id, ct);
+            updated.Should().NotBeNull();
+            updated!.MessageCount.Should().Be(baselineCount - 1);
+        }, TimeSpan.FromSeconds(30));
     }
 }
