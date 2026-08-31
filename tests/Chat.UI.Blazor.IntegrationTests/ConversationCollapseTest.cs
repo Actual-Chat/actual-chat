@@ -108,8 +108,6 @@ public sealed class ConversationCollapseTest(ChatAppHostFixture fixture, ITestOu
         // act: leave the chat and come back
         chatUI.SelectChatOnNavigation(otherChat.Id);
         chatUI.SelectChatOnNavigation(chat.Id);
-        // Must be the first build after the return: it re-witnesses as it renders,
-        // so a second build would auto-expand again
         var fresh = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
 
         // assert: the conversation now renders collapsed - its entries are gone, its card is there
@@ -117,6 +115,42 @@ public sealed class ConversationCollapseTest(ChatAppHostFixture fixture, ITestOu
             .Should().NotContain(m => m.Id == entries[5].LocalId, "a fresh visit renders per tier");
         fresh.Items.SelectMany(i => i.GetLeafMessages())
             .Should().Contain(m => m is ConversationMessage && m.Id == conversationId.StartEntryLid);
+
+        // assert: and it stays collapsed - a collapsed conversation emits no entries, so no rebuild
+        // can re-witness the lids it covers and auto-expand it again
+        var rebuiltFresh = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
+        rebuiltFresh.Items.SelectMany(i => i.GetLeafMessages())
+            .Should().NotContain(m => m.Id == entries[5].LocalId,
+                "the conversation stays collapsed across rebuilds on a fresh visit");
+    }
+
+    [Fact]
+    public async Task ShouldNotWitnessEntriesCoveredByCollapsedConversation()
+    {
+        // arrange: the conversation exists (collapsed) BEFORE the first build ever runs
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "deferred-collapse-pre");
+        var entries = new List<ChatEntry>();
+        for (var i = 0; i < 20; i++)
+            entries.Add(await Tester.CreateTextEntry(chat.Id, $"m-{i}"));
+        var conversationId = await Materialize(chat.Id, entries[0], entries[9], isExpandedByDefault: false);
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var query = new ChatDataQuery(
+            new Range<long>(entries[0].LocalId, entries[^1].LocalId + 1),
+            -chatUI.HalfLoadLimit,
+            chatUI.HalfLoadLimit) {
+            VisibleLidRange = new Range<long>(entries[0].LocalId, entries[^1].LocalId + 1),
+        };
+
+        // act: two builds - the first could only witness the visible tail, never the covered lids
+        await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
+        var rebuilt = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
+
+        // assert: the conversation stays collapsed and never enters the auto set
+        rebuilt.Items.SelectMany(i => i.GetLeafMessages())
+            .Should().NotContain(m => m.Id == entries[5].LocalId, "covered lids were never witnessed");
+        chatUI.AutoExpandedConversations.Value.Should().NotContain(conversationId);
     }
 
     [Fact]

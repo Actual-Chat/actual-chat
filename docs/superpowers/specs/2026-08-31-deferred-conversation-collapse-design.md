@@ -44,10 +44,13 @@ schema, or contract changes.
 - `_witnessedLids` — accumulated lid ranges the user has actually seen rendered as plain
   entry rows this visit. Stored as a merged, ordered list of `Range<long>`.
 - `_autoExpandedConversations` — set of `ConversationId` auto-expanded this visit.
-- `_autoExpansionSuppressed` — set of `ConversationId` the user manually toggled this visit;
+- `_suppressedAutoExpansions` — set of `ConversationId` the user manually toggled this visit;
   the auto-expand rule never re-adds these.
 
-All three are cleared when the selected chat changes (and on app restart, being in-memory).
+All three are cleared by `ClearAutoExpansionState`, keyed on the selected chat actually
+*changing*: `SelectChatInternal` returns early when the id is unchanged, so a same-chat
+detour (re-selecting the chat you are already in) does not clear — accepted, since nothing
+about the visit changed either. They are also empty on app restart, being in-memory.
 VirtualList tile unload/reload within a visit must NOT clear them — same reasoning as the
 existing `_knownConversationDefaultExpanded` cache.
 
@@ -63,6 +66,42 @@ The intersection matters: a collapsed block sitting inside the visible range cov
 whose entries were never on screen; those must not count as witnessed. "Plain entry rows"
 includes entries inside expanded conversation blocks and the live block's participant view.
 
+Coverage is enforced **explicitly**, against the effective-collapsed conversation ranges taken
+from the same `chatRangeMetaList` the rule reads — not inferred from what ChatItems happens to
+contain. Presence in the item list is not proof the user saw the row: a transitional build
+served from last-known range meta and conversation tiles can emit boundary entries of a
+collapsed conversation next to that conversation's card, and treating those as witnessed makes
+the next build's rule re-expand a conversation the user just watched collapse. The capture
+therefore skips any message whose lid falls inside a conversation range that is not in
+`expandedConversations`.
+
+Two details of that exclusion are load-bearing:
+
+- `expandedConversations` at that point already includes the auto set, so entries inside an
+  auto-expanded or manually expanded conversation keep being witnessed — which is what lets
+  range growth re-trigger the rule.
+- the live and materialized block ids are deliberately **excluded from the exclusion**: a
+  participant's live entries must stay witnessable, or the conversation materialized out of
+  that block would collapse under the rows they were just reading.
+
+`ChatDataQuery.VisibleLidRange` is populated on only one of `GetChatDataQuery`'s four
+branches (the has-query one), so on a quiet visit — no query, retained data — it arrives
+empty and the capture would never run, leaving the feature inert. The capture therefore
+falls back to `ChatUI._itemVisibility`, the same state `ChatView` derives `VisibleLidRange`
+from, reading `MinMessageLid`..`MaxEntryLid + 1` for the current chat. It reads `.Value`
+rather than `.Use()` on purpose: a Fusion dependency on `ItemVisibility` would rebuild the
+whole chat on every scroll. The range is half-open at both ends.
+
+Both the capture and the auto-set write are gated on a **visit epoch**.
+`ClearAutoExpansionState` increments `_autoExpansionEpoch` before it wipes; every build
+snapshots the epoch before its first await and refuses to witness or to write auto-expansions
+if it has moved since. A `_selectedChatId` check alone is not enough: it matches again once
+the user leaves and returns to *the same chat*, so a build still in flight from the previous
+visit would write its covered lids into the freshly cleared witnessed set and the next build's
+rule would re-expand the conversation the return was supposed to collapse. The chat-id check
+is kept as the cheaper first-line filter. Both guards sit under the same `Lock` the clear runs
+under, so the write-side check is exact.
+
 ### Auto-expand rule
 
 Before resolving `expandedConversations` (the `showConversations` branch):
@@ -70,7 +109,7 @@ Before resolving `expandedConversations` (the `showConversations` branch):
 For each conversation in the loaded tiles that is
 
 1. effective-collapsed (`defaultExpanded XOR overrides` says collapsed), and
-2. not in `_autoExpansionSuppressed` and has no manual override entry, and
+2. not in `_suppressedAutoExpansions` and has no manual override entry, and
 3. whose `EntryLidRange` intersects `_witnessedLids`
 
 → add its id to `_autoExpandedConversations`.
@@ -93,19 +132,48 @@ grouping); no consumer changes needed since only the resolved set's computation 
 
 The expand/collapse handler, before its current XOR-flip logic:
 
-- add the id to `_autoExpansionSuppressed`;
-- if the id is in `_autoExpandedConversations`, remove it — and if the conversation is
-  default-collapsed with no override, that removal alone IS the collapse (no override flip,
-  keeping XOR semantics intact); otherwise proceed with the normal flip.
+- add the id to `_suppressedAutoExpansions`;
+- if the id is in `_autoExpandedConversations`, remove it and **return** — that removal alone
+  IS the collapse, unconditionally. No override flip.
+
+The unconditional return rests on this invariant: **every id in `_autoExpandedConversations`
+is effective-collapsed by XOR**, so dropping it from the set lands on "collapsed" without
+touching the override set. The invariant holds because no writer flips an id to
+XOR-expanded while it sits in the auto set:
+
+- the rule only ever adds ids that are effective-collapsed, and now also skips any id
+  carrying a manual override entry (suppression dies with the visit, an override does not —
+  without this skip, later range growth would undo an earlier visit's deliberate collapse);
+- the navigation-expansion path checks the auto set before flipping an override, so it never
+  stacks one on an already-auto-expanded conversation;
+- the toggle returns before reaching its flip;
+- `EnsureConversationCollapsed` removes from the auto set and forces the override to whatever
+  makes XOR collapsed for the given default.
 
 Expanding manually works unchanged (the id just also lands in the suppressed set, which is
 harmless — suppression only blocks *auto* re-adding).
 
 ### Live→regular swap
 
-No special-casing. Participants saw the session's entries as plain rows → witnessed → the
-materialized conversation intersects and auto-expands. Non-participants saw a collapsed live
-block and a hidden tail → nothing witnessed → the materialized block collapses right away.
+The rule does not participate: it explicitly skips both `liveBlockId` and
+`materializedBlockId`, so neither identity of a block in transition can be auto-expanded.
+The freeze-overlay machinery in `LiveBlockUI` owns that transition end to end — during the
+close window the overlay's `RenderId` *is* the live block's identity even though
+`liveConversation` is already null, which is why the rule is handed the method's
+`liveBlockId` local (overlay-aware) rather than `liveConversation?.Id`.
+
+`TryCollapseOverlay` — the dismiss gesture — makes the collapse total across both
+identities: `EnsureConversationCollapsed(MaterializedId, …)` suppresses, removes from the
+auto set, and normalizes the override; when `LiveRenderId` differs (the `ContextStartLid > 0`
+case) it additionally calls `SuppressAutoExpansion(LiveRenderId)`, which suppresses and
+removes but deliberately does *not* touch the override set — a frozen render id has no
+conversation behind it once materialized, so `defaultExpanded` never contains it and adding
+an override would flip it to *expanded* rather than collapsed.
+
+Once the block has fully materialized into an ordinary conversation, the ordinary rule
+applies again: participants saw the session's entries as plain rows → witnessed → the
+conversation intersects and auto-expands. Non-participants saw a collapsed live block and a
+hidden tail → nothing witnessed → it collapses right away.
 
 ## Edge cases
 

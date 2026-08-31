@@ -56,6 +56,24 @@ public class AutoExpansionRuleTest
     }
 
     [Fact]
+    public void ShouldSkipConversationWithManualOverride()
+    {
+        // arrange: a default-expanded conversation collapsed via override in an earlier visit
+        var witnessed = new LidRangeSet();
+        witnessed.Add(new Range<long>(100, 110));
+        var range = new Range<long>(95, 120);
+        var id = ConversationId.New(TestChatId, 95);
+
+        // act
+        var result = ChatUI.GetNewAutoExpansions(
+            TestChatId, [range], ImmutableHashSet.Create(id), ImmutableHashSet.Create(id), Empty,
+            _ => false, witnessed, null, null);
+
+        // assert
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
     public void ShouldSkipLiveAndMaterializedBlockIds()
     {
         // arrange

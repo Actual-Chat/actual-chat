@@ -29,6 +29,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private readonly MutableState<IImmutableSet<ConversationId>> _autoExpandedConversations;
     private readonly ConcurrentDictionary<ChatId, LidRangeSet> _witnessedLids = new();
     private readonly ConcurrentDictionary<ConversationId, Unit> _suppressedAutoExpansions = new();
+    private int _autoExpansionEpoch;
     private ChatId? _searchEnabledChatId;
     private List<ChatId>? _pendingSelectedChatIds = new();
 
@@ -482,12 +483,6 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         Hub.LiveBlockUI.ResetReveal(conversationId.ChatId);
     }
 
-    public bool IsConversationExpanded(Conversation conversation)
-        => IsConversationExpanded(
-            conversation,
-            _conversationExpansionOverrides.Value,
-            _autoExpandedConversations.Value);
-
     // Helpers
 
     // This method fixes provided ChatId w/ PeerChatId.FixOwnerId, which replaces
@@ -578,7 +573,10 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // Called from LiveBlockUI.TryCollapseOverlay - an explicit collapse gesture, so it must undo
         // AND suppress auto-expansion, not just flip the override.
         _suppressedAutoExpansions[conversationId] = default;
-        _autoExpandedConversations.Value = _autoExpandedConversations.Value.Remove(conversationId);
+        var autoExpanded = _autoExpandedConversations.Value;
+        if (autoExpanded.Contains(conversationId))
+            _autoExpandedConversations.Value = autoExpanded.Remove(conversationId);
+
         var overrides = _conversationExpansionOverrides.Value;
         _conversationExpansionOverrides.Value = isExpandedByDefault
             ? overrides.Add(conversationId)
@@ -591,7 +589,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // knowable - a frozen block's render id has no conversation behind it once materialized, so
         // normalizing the overrides set for it would flip it to expanded instead of collapsed.
         _suppressedAutoExpansions[conversationId] = default;
-        _autoExpandedConversations.Value = _autoExpandedConversations.Value.Remove(conversationId);
+        var autoExpanded = _autoExpandedConversations.Value;
+        if (autoExpanded.Contains(conversationId))
+            _autoExpandedConversations.Value = autoExpanded.Remove(conversationId);
     }
 
     // It's internal + static so the views that already .Use() both states can reuse the very same rule
@@ -615,13 +615,17 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     {
         // A conversation that appeared (or grew) over rows the user has actually seen this visit must
         // not swallow them in place; it auto-expands until the user leaves the chat. Live/materialized
-        // block ids are excluded - the live overlay machinery owns their expansion.
+        // block ids are excluded - the live overlay machinery owns their expansion. An id carrying a
+        // manual override is excluded too: suppression dies with the visit but the override doesn't,
+        // so without this an earlier visit's deliberate collapse would be undone by later range growth.
         var result = new List<ConversationId>();
         foreach (var range in conversationLidRanges) {
             var conversationId = ConversationId.New(chatId, range.Start);
             if (conversationId == liveBlockId || conversationId == materializedBlockId)
                 continue;
-            if (autoExpanded.Contains(conversationId) || isSuppressed(conversationId))
+            if (autoExpanded.Contains(conversationId)
+                || isSuppressed(conversationId)
+                || overrides.Contains(conversationId))
                 continue;
 
             var isExpanded = defaultExpanded.Contains(conversationId) ^ overrides.Contains(conversationId);
@@ -659,6 +663,10 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     private void ClearAutoExpansionState()
     {
+        // Bumped first, and before the wipes: an in-flight build snapshots the epoch at its start, so
+        // moving it here is what tells that build its results belong to a visit that's already over -
+        // including the leave-and-return-to-the-same-chat case, where a chat-id check still matches.
+        Interlocked.Increment(ref _autoExpansionEpoch);
         _witnessedLids.Clear();
         _suppressedAutoExpansions.Clear();
         if (_autoExpandedConversations.Value.Count != 0)

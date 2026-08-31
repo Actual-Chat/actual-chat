@@ -291,6 +291,9 @@ public partial class ChatUI
         // NOTE: Changing what this requests? Review Prefetch - it warms these same calls in advance, and only
         // helps while its arguments still match the ones below.
         var startedAt = CpuTimestamp.Now;
+        // Read before the first await: everything this build later writes to the auto-expansion state
+        // is valid only for the visit it started in.
+        var autoExpansionEpoch = Volatile.Read(ref _autoExpansionEpoch);
         // Captured to detect a background stretch inside this build: GetData gates on visibility before
         // calling us, but the app can background AFTER that gate, and the in-flight RPCs below then don't
         // complete until it returns - which would land the whole background period in the live phase.
@@ -517,9 +520,15 @@ public partial class ChatUI
                     // suppresses before it removes, so filtering on the fresh suppression set is what
                     // keeps this union from resurrecting an id the user just collapsed.
                     lock (Lock) {
-                        autoExpanded = _autoExpandedConversations.Value.Union(
-                            newAutoExpansions.Where(id => !_suppressedAutoExpansions.ContainsKey(id)));
-                        _autoExpandedConversations.Value = autoExpanded;
+                        // ClearAutoExpansionState bumps the epoch under this same lock, so a build that
+                        // began in an earlier visit cannot resurrect that visit's auto-expansions - not
+                        // even when the user left and came back to this very chat.
+                        if (_selectedChatId.Value == chatId
+                            && autoExpansionEpoch == Volatile.Read(ref _autoExpansionEpoch)) {
+                            autoExpanded = _autoExpandedConversations.Value.Union(
+                                newAutoExpansions.Where(id => !_suppressedAutoExpansions.ContainsKey(id)));
+                            _autoExpandedConversations.Value = autoExpanded;
+                        }
                     }
                 }
             }
@@ -729,17 +738,55 @@ public partial class ChatUI
 
         var groupedItems = GroupAuthorMessages(items);
 
-        if (!isPrefetch && !dataQuery.VisibleLidRange.IsEmpty) {
-            // VisibleLidRange is half-open - ChatView builds its end as MaxMessageLid + 1 - so End itself
-            // is one row below the fold and must not be witnessed. Leaves come in ascending lid order.
+        // The epoch check is what makes this safe against leave-and-return-to-the-same-chat: the chat-id
+        // check matches again on return, but a build that began in the previous visit must not witness
+        // its rows into the fresh one - they'd resurrect the auto-expansions the return just cleared.
+        if (!isPrefetch
+            && _selectedChatId.Value == chatId
+            && autoExpansionEpoch == Volatile.Read(ref _autoExpansionEpoch)) {
             var visibleLidRange = dataQuery.VisibleLidRange;
-            var witnessed = _witnessedLids.GetOrAdd(chatId, static _ => new LidRangeSet());
-            foreach (var message in groupedItems.SelectMany(i => i.GetLeafMessages())) {
-                if (message.Id >= visibleLidRange.End)
-                    break;
+            // Only the has-query branch of GetChatDataQuery pins VisibleLidRange, so on a quiet visit
+            // (no query, retained data) it arrives empty - fall back to the state ChatView derives it
+            // from, or the feature never witnesses anything. Read .Value, not .Use(): a Fusion
+            // dependency on ItemVisibility would rebuild the whole chat on every scroll.
+            if (visibleLidRange.IsEmpty
+                && _itemVisibility.Value is { IsEmpty: false } itemVisibility
+                && itemVisibility.ChatId == chatId
+                && itemVisibility.MaxEntryLid >= 0)
+                // MinMessageLid (placeholders included) vs MaxEntryLid (excluded) is deliberate: a low
+                // start only over-witnesses lids the collapsedRanges filter below screens out anyway,
+                // while MaxMessageLid's synthetic tail lids would witness entries that don't exist yet
+                visibleLidRange = new Range<long>(itemVisibility.MinMessageLid, itemVisibility.MaxEntryLid + 1);
+            if (!visibleLidRange.IsEmpty) {
+                // "Rendered as a row" is not by itself proof the user saw the entry: a transitional build
+                // served from last-known range meta can leak boundary entries of a collapsed conversation
+                // into ChatItems alongside its card. So coverage is decided the way the rule decides it -
+                // from the conversation ranges, not from the item list. Live/materialized block ids are
+                // deliberately not excluded here: a participant's live entries must stay witnessable, or
+                // the conversation materialized from that block would collapse under them.
+                // No EnsureMonotonic here (unlike the rule's input): a dropped duplicate would only
+                // under-filter, and Contains checks don't need ordering
+                var collapsedRanges = chatRangeMetaList
+                    .SelectMany(m => m.ConversationLidRanges)
+                    .Where(r => {
+                        var conversationId = ConversationId.New(chatId, r.Start);
+                        return conversationId != liveBlockId
+                            && conversationId != materializedBlockId
+                            && !expandedConversations.Contains(conversationId);
+                    })
+                    .ToList();
+                // The range is half-open - ChatView builds its end as MaxMessageLid + 1 - so End itself
+                // is one row below the fold and must not be witnessed. Leaves come in ascending lid order.
+                var witnessed = _witnessedLids.GetOrAdd(chatId, static _ => new LidRangeSet());
+                foreach (var message in groupedItems.SelectMany(i => i.GetLeafMessages())) {
+                    if (message.Id >= visibleLidRange.End)
+                        break;
 
-                if (message is ChatEntryMessage && message.Id >= visibleLidRange.Start)
-                    witnessed.Add(new Range<long>(message.Id, message.Id + 1));
+                    if (message is ChatEntryMessage
+                        && message.Id >= visibleLidRange.Start
+                        && !collapsedRanges.Any(r => r.Contains(message.Id)))
+                        witnessed.Add(new Range<long>(message.Id, message.Id + 1));
+                }
             }
         }
 
