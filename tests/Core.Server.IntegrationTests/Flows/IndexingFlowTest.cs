@@ -6,24 +6,29 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
 [Collection(nameof(ServerCollection))]
 [Trait("Category", "Slow")]
-public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
+public sealed class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private IndexingFlowTestContext Context { get; } = fixture.AppHost.Services.GetRequiredService<IndexingFlowTestContext>();
+    // Each batch costs a full commit -> event -> resume round-trip, ~40ms locally but up to
+    // ~800ms on a loaded CI runner, so the budget has to scale with the batch count
+    private static readonly TimeSpan BaseTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan TimeoutPerBatch = TimeSpan.FromSeconds(1);
+    private IndexingFlowTestContext Context { get; }
+        = fixture.AppHost.Services.GetRequiredService<IndexingFlowTestContext>();
 
-    [FlakyTheory("AY: Not sure why yet.", 3)]
+    [Theory]
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(10)]
     [InlineData(77)]
-    public async Task MustProcessAllBatches(int batchCount)
+    public async Task ShouldProcessAllBatches(int batchCount)
     {
         // arrange
         var id = RandomStringGenerator.Default.Next();
         var batchSize = 10;
         var batches = Enumerable.Range(1, batchCount)
             .Select(i => {
-                long cursor = i * batchSize;
+                var cursor = i * batchSize;
                 return new BatchIndexingResult<long> {
                     Cursor = cursor,
                     IsTailReached = false,
@@ -43,17 +48,17 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // assert
         await TestExt.When(async () => {
-            Context.ListRemaining(id).Should().BeEmpty();
+            Context.ListRemaining(id).Should().BeEmpty("every batch must be consumed");
             var processed = Context.ListProcessed(id);
-            processed.Should().HaveCount(batchCount + 1);
+            processed.Should().HaveCount(batchCount + 1, "every batch must be processed");
             var flow = await FlowHub.TryGet<SimpleIndexingFlow>(id);
-            flow.Should().NotBeNull();
-            flow.Cursor.Should().Be((batchCount + 1) * batchSize);
-        }, TimeSpan.FromSeconds(10));
+            flow.Should().NotBeNull("the scheduled resume must create the flow");
+            flow.Cursor.Should().Be((batchCount + 1) * batchSize, "the cursor must reach the tail");
+        }, GetTimeout(batchCount));
     }
 
-    [FlakyFact("AY: Not sure why yet.", 3)]
-    public async Task MustEnd()
+    [Fact]
+    public async Task ShouldCompleteOnCompletionReason()
     {
         // arrange
         var id = RandomStringGenerator.Default.Next();
@@ -78,14 +83,14 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         // assert
         await TestExt.When(async () => {
             var flow = await FlowHub.TryGet<SimpleIndexingFlow>(id);
-            flow.Should().NotBeNull();
-            flow.Result.Should().Be(Result.New("Done."));
-            Context.ListRemaining(id).Should().BeEquivalentTo(batches[1..]);
-        }, TimeSpan.FromSeconds(10));
+            flow.Should().NotBeNull("the scheduled resume must create the flow");
+            flow.Result.Should().Be(Result.New("Done."), "the completion reason must end the flow");
+            Context.ListRemaining(id).Should().BeEquivalentTo(batches[1..], "the flow must stop at the first batch");
+        }, GetTimeout(batches.Length));
     }
 
-    [FlakyFact("AY: Not sure why yet.", 3)]
-    public async Task MustWaitForReindexingIfVersionIsBumped()
+    [Fact]
+    public async Task ShouldReindexOnReset()
     {
         // arrange
         var id = RandomStringGenerator.Default.Next();
@@ -112,23 +117,24 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
             },
         ];
         Context.Add(id, batches);
+        await FlowHub.NewResumeEvent<SimpleIndexingFlow>(id).Schedule();
+        await TestExt.When(async () => {
+            var flow = await FlowHub.TryGet<SimpleIndexingFlow>(id).Require();
+            flow.DataVersion.Should().Be(1, "the flow must run at its current data version");
+        }, GetTimeout(batches.Length));
 
         // act
-        await FlowHub.NewResumeEvent<SimpleIndexingFlow>(id).Schedule();
+        await FlowHub.NewResumeEvent<SimpleIndexingFlow>(id).WithReset().Schedule();
 
         // assert
         await TestExt.When(async () => {
             var flow = await FlowHub.TryGet<SimpleIndexingFlow>(id).Require();
-            flow.DataVersion.Should().Be(1);
-        }, TimeSpan.FromSeconds(10));
-
-        // act - bump version to trigger reindex
-        await FlowHub.NewResumeEvent<SimpleIndexingFlow>(id).WithReset().Schedule();
-
-        // assert - flow should reindex (reset cursor and process again)
-        await TestExt.When(async () => {
-            var flow = await FlowHub.TryGet<SimpleIndexingFlow>(id).Require();
-            flow.Console.ToString().Should().Contain("explicit");
-        }, TimeSpan.FromSeconds(10));
+            flow.Console.ToString().Should().Contain("explicit", "the reset must restart the indexing");
+        }, GetTimeout(batches.Length));
     }
+
+    // Private methods
+
+    private static TimeSpan GetTimeout(int batchCount)
+        => BaseTimeout + (TimeoutPerBatch * batchCount);
 }
