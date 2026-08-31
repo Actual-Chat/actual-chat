@@ -49,8 +49,18 @@ public sealed class KvasarRemoteComputedCache : AppRemoteComputedCache
 
     public async Task Activate(Session session)
     {
-        await Kvas.Activate(session.Hash).ConfigureAwait(false);
-        _whenActivated.TrySetResult();
+        try {
+            await Kvas.Activate(session.Hash).ConfigureAwait(false);
+            _whenActivated.TrySetResult();
+        }
+        catch (Exception e) {
+            // Faulted, never left pending: a pending WhenInitialized would silently turn every
+            // Get into a miss and every Set into a no-op for the rest of the process.
+            Log.LogError(e, "Activate failed");
+            _whenActivated.TrySetException(e);
+            _ = _whenActivated.Task.Exception; // Nothing awaits WhenInitialized, so observe it here
+            throw;
+        }
     }
 
     public Task Deactivate(bool clear)
