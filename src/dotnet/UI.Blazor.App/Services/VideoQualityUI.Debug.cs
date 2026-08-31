@@ -204,7 +204,8 @@ public sealed partial class VideoQualityUI
     // Nested types
 
     public sealed record VideoDebugSettings(
-        bool ForceH264Only,
+        string? ForceDecodeCodec,
+        string? PreferredEncodeCodec,
         int? MaxOutboundLayerCount,
         int? MaxInboundLayerCount);
 }

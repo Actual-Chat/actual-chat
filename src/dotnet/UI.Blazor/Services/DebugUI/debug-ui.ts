@@ -436,7 +436,7 @@ export class DebugUI {
     public static async testPushStream(chatId = 'debug-test'): Promise<string> {
         const peer = Api.peer;
         const format: VideoFormatDto = {
-            Codec: 'avc1.640028',
+            Codec: 'avc1.42E01F',
             CodecSettings: '',
             Size: { Width: 1280, Height: 720 },
             SourceSize: { Width: 1280, Height: 720 },
