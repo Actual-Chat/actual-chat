@@ -49,6 +49,7 @@ import { SharedSettings } from 'shared-settings';
 import { SharedSettingsWorkerSync } from 'shared-settings-worker';
 import {
     detectSupportedCodecs,
+    FLOOR_CATEGORY,
     getDefaultCodec,
     getSoftwareH264Codec,
     getCodecCategory,
@@ -412,6 +413,16 @@ export async function probeTopTierEncoderSupport(): Promise<CodecInfo['category'
 }
 
 // ---- VideoRecorder --------------------------------------------------------
+
+// Chrome rejects VideoEncoder creation outright for a codec it can only encode
+// in software when prefer-hardware is asked for — the encoder never starts and
+// the sender silently produces no bundles at all. Detection already knows which
+// codecs those are.
+function accelerationFor(codecInfo: CodecInfo | undefined): HardwareAcceleration {
+    return codecInfo && !codecInfo.hardwareAccelerated
+        ? 'no-preference'
+        : getDefaultHardwareAcceleration();
+}
 
 export class VideoRecorder {
     private blazorRef: DotNet.DotNetObject;
@@ -888,7 +899,7 @@ export class VideoRecorder {
             const codecInfo = supportedCodecs.find(c => c.codec === codecString);
             this.currentCodecString = codecString;
             this.currentCodecHardwareAccel = codecInfo?.hardwareAccelerated ?? false;
-            this.currentHardwareAcceleration = getDefaultHardwareAcceleration();
+            this.currentHardwareAcceleration = accelerationFor(codecInfo);
 
             // Desktop non-H264 captures at 1080 so the QC ramp can later hot-add
             // a real 1080 top tier (downscaled for lower tiers) — but only when a
@@ -1510,8 +1521,14 @@ export class VideoRecorder {
             return;
         }
 
-        const pickedCodecString = this.pickBestCodecByEfficiency(this.supportedCodecs, codecs)
-            ?? getDefaultCodec(this.supportedCodecs, this.cameraWidth || 1280, this.cameraHeight || 720);
+        const pickedCodecString = this.pickBestCodecByEfficiency(this.supportedCodecs, codecs);
+        if (!pickedCodecString) {
+            // No default fallback here: the whole point of this call is to stay
+            // inside what the audience can decode, and getDefaultCodec answers
+            // without looking at the audience at all.
+            warnLog?.log(`updateSupportedDecoderCodecs: no usable encoder for [${codecs.join(', ')}], keeping current codec`);
+            return;
+        }
         const pickedCategory = getCodecCategory(pickedCodecString);
         const currentCategory = getCodecCategory(this.currentCodecString);
 
@@ -1523,6 +1540,7 @@ export class VideoRecorder {
         const pickedInfo = this.findCodecInfo(this.supportedCodecs, pickedCodecString);
         this.currentCodecString = pickedCodecString;
         this.currentCodecHardwareAccel = pickedInfo?.hardwareAccelerated ?? false;
+        this.currentHardwareAcceleration = accelerationFor(pickedInfo);
         this.repriceCurrentLadders();
         await this.restartWithCurrentConfig();
     }
@@ -3119,8 +3137,15 @@ export class VideoRecorder {
     }
 
     private pickInitialCodec(supportedCodecs: CodecInfo[], audienceCodecs: string[] | undefined, size: Size): string {
-        return this.pickBestCodecByEfficiency(supportedCodecs, audienceCodecs)
-            ?? getDefaultCodec(supportedCodecs, size.width, size.height);
+        const picked = this.pickBestCodecByEfficiency(supportedCodecs, audienceCodecs);
+        if (picked)
+            return picked;
+
+        // Nothing qualified — stream something rather than nothing, but prefer
+        // the floor, which the audience is guaranteed to decode, over a default
+        // chosen without reference to the audience at all.
+        const floor = supportedCodecs.find(c => c.category === FLOOR_CATEGORY && c.supported);
+        return floor?.codec ?? getDefaultCodec(supportedCodecs, size.width, size.height);
     }
 
     private pickBestCodecByEfficiency(supportedCodecs: CodecInfo[], audienceCodecs: string[] | undefined): string | null {

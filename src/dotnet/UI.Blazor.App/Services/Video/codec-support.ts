@@ -198,12 +198,17 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
             ?? (ladder.length > 0 ? ladder[0] : getCodecForCategory(category, width, height));
         let realtime: boolean | undefined;
         if (chosen !== null) {
+            // The acceleration the codec was actually accepted with, not the
+            // default: VP9 is rejected outright under prefer-hardware here, so
+            // probing it that way measures an encoder that never gets built.
             const frames = await probeEncoderLatencyFrames(
-                codec, category, getDefaultHardwareAcceleration());
+                codec,
+                category,
+                chosen.hardwareAccelerated ? 'prefer-hardware' : 'no-preference');
             realtime = frames <= MAX_REALTIME_LATENCY_FRAMES;
             if (!realtime) {
                 warnLog?.log(
-                    `Encoder ${codec}: first chunk only after ${frames} frames `
+                    `Encoder ${codec}: stays ${frames} frames behind once warm `
                     + `(> ${MAX_REALTIME_LATENCY_FRAMES}) — not usable for calls`);
             }
         }
@@ -272,14 +277,27 @@ async function isCodecSupported(
 // emits within 2.
 const MAX_REALTIME_LATENCY_FRAMES = 4;
 const MAX_LATENCY_PROBE_FRAMES = 24;
+// Submissions are paced at the frame interval. Without it the whole probe runs
+// inside a few milliseconds, no encoder has emitted anything yet, and every
+// codec measures as infinitely deep — which is exactly what disqualified all
+// four of them on Chromium.
+const LATENCY_PROBE_FRAME_INTERVAL_MS = 33;
+// Consecutive frames at or under the threshold that end the probe early.
+const LATENCY_PROBE_STEADY_FRAMES = 6;
 const latencyProbeCache = new Map<string, Promise<number>>();
 
-// Frames submitted before the encoder produced its first chunk, or
-// MAX_LATENCY_PROBE_FRAMES if it produced none. Deliberately a *count*, not a
-// duration: an earlier synthetic throughput probe was removed from this file
-// because GPU contention made it false-fail on healthy machines. A frame count
-// doesn't move when the machine is busy — it's a property of the encoder's
-// pipeline, so it stays honest under load.
+// Steady-state encoder depth: how many frames stay in flight once the encoder
+// is warm. Deliberately a *count*, not a duration: an earlier synthetic
+// throughput probe was removed from this file because GPU contention made it
+// false-fail on healthy machines. A frame count doesn't move when the machine
+// is busy — it's a property of the encoder's pipeline, so it stays honest
+// under load.
+//
+// Startup is excluded on measurement: Chromium's hardware AV1/H.264/HEVC
+// encoders all emit their first chunk ~215ms in and then track submissions
+// exactly, so first-chunk latency measures one-off initialisation, while depth
+// after warm-up is what actually costs a call latency. Firefox's H.264 stays
+// ~18 frames behind forever, so it still fails.
 export function probeEncoderLatencyFrames(
     codec: string,
     category: CodecInfo['category'],
@@ -309,7 +327,7 @@ async function probeEncoderLatencyFramesUncached(
         // Holder rather than captured `let`s: the callbacks below write these,
         // but a captured `let` narrows to its initializer in the loop
         // condition (same reason `decode`'s feed pump uses one).
-        const state = { submitted: 0, firstOutputAt: -1, failed: false };
+        const state = { submitted: 0, outputs: 0, failed: false };
         const config: VideoEncoderConfig = {
             codec,
             width,
@@ -324,7 +342,7 @@ async function probeEncoderLatencyFramesUncached(
 
         encoder = new VideoEncoder({
             output: (chunk: EncodedVideoChunk) => {
-                if (state.firstOutputAt < 0) state.firstOutputAt = state.submitted;
+                state.outputs++;
                 closeEncodedChunk(chunk);
             },
             error: () => { state.failed = true; },
@@ -336,7 +354,9 @@ async function probeEncoderLatencyFramesUncached(
         if (!ctx)
             return 0;
 
-        for (let i = 0; i < MAX_LATENCY_PROBE_FRAMES && state.firstOutputAt < 0 && !state.failed; i++) {
+        let maxDepth = 0;
+        let steady = 0;
+        for (let i = 0; i < MAX_LATENCY_PROBE_FRAMES && !state.failed; i++) {
             ctx.fillStyle = `hsl(${(i * 37) % 360} 60% 50%)`;
             ctx.fillRect(0, 0, width, height);
             const frame = new VideoFrame(canvas, { timestamp: i * 33_333 });
@@ -348,15 +368,20 @@ async function probeEncoderLatencyFramesUncached(
             } finally {
                 frame.close();
             }
-            // Yield so the output callback can land between submissions —
-            // without this the whole loop runs before any callback fires and
-            // every encoder looks equally slow.
-            await new Promise(resolve => setTimeout(resolve, 0));
-        }
-        if (state.failed)
-            return MAX_LATENCY_PROBE_FRAMES;
+            // Real cadence, so the measurement reflects a live call rather than
+            // how fast this loop can push frames at an encoder.
+            await new Promise(resolve => setTimeout(resolve, LATENCY_PROBE_FRAME_INTERVAL_MS));
+            if (state.outputs === 0)
+                continue; // Still initialising; not part of steady state.
 
-        return state.firstOutputAt < 0 ? MAX_LATENCY_PROBE_FRAMES : state.firstOutputAt;
+            const depth = state.submitted - state.outputs;
+            maxDepth = Math.max(maxDepth, depth);
+            steady = depth <= MAX_REALTIME_LATENCY_FRAMES ? steady + 1 : 0;
+            if (steady >= LATENCY_PROBE_STEADY_FRAMES)
+                return maxDepth;
+        }
+        // Never warmed up at all, or never settled: both are disqualifying.
+        return state.failed || state.outputs === 0 ? MAX_LATENCY_PROBE_FRAMES : maxDepth;
     } catch (e) {
         // An unusable probe must not veto a codec that works; only a
         // successful measurement is allowed to disqualify one.
@@ -487,7 +512,6 @@ export function getCodecCategory(codecString: string): 'h264' | 'hevc' | 'av1' |
 }
 
 export function getCodecForCategory(category: 'h264' | 'hevc' | 'av1' | 'vp9', width: number, height: number): string {
-    const isMobile = DeviceInfo.isMobile; // includes iOS
     // Keep the codec string CONSTANT across resolutions — Chrome's WebCodecs
     // re-inits the underlying NVENC session on any codec-string change (even
     // just a level byte), reproducing 'Encoder initialization error' storms.
@@ -505,11 +529,13 @@ export function getCodecForCategory(category: 'h264' | 'hevc' | 'av1' | 'vp9', w
     if (category === 'hevc') {
         return ultraHi ? 'hev1.1.6.L150.B0' : 'hev1.1.6.L120.B0';
     }
-    // H.264: Firefox/mobile = Main, desktop = High (better compression).
-    if (isMobile || DeviceInfo.isFirefox)
-        return ultraHi ? 'avc1.4D4034' : 'avc1.4D4029';
-
-    return ultraHi ? 'avc1.640034' : 'avc1.640028';
+    // H.264 is Constrained Baseline everywhere. Main and High compress better,
+    // but both carry CABAC and B-frames, which this project does not emit; CBP
+    // is also what every decoder in the fleet accepts and what the software
+    // (OpenH264) encoder implements, so the HW→SW fallback keeps the same
+    // profile. H.264 no longer being the negotiation floor makes the lost
+    // compression cheap — VP9 is what a constrained call falls back to.
+    return getSoftwareH264Codec(width, height);
 }
 
 // Chrome's software H.264 encoder (OpenH264) implements only Constrained
@@ -546,28 +572,12 @@ export function getSoftwareH264Codec(width: number, height: number): string {
     return 'avc1.42E01F'; // L3.1 (≤720p)
 }
 
-function getMainH264Codec(width: number, height: number): string {
-    const pixels = width * height;
-    if (pixels > 2_073_600)
-        return 'avc1.4D4034'; // L5.2 (>1080p)
-    if (pixels > 921_600)
-        return 'avc1.4D4029'; // L4.1 (1080p)
-
-    return 'avc1.4D401F'; // L3.1 (≤720p)
-}
-
 // Profiles to probe for one category, best-first. Detection reports the first
 // entry that `isConfigSupported` accepts, so we never advertise a profile we
-// didn't test: Main → High is a profile change, not a level step, and a device
-// that encodes Main 3.1 may well reject High 4.0. Only H.264 gets alternatives
-// — it's the one category with no other category to fall back to.
+// didn't test. H.264 is Constrained Baseline only — a device that rejects it
+// falls back to another category rather than to Main or High.
 function getEncoderCodecLadder(category: CodecInfo['category'], width: number, height: number): string[] {
-    const preferred = getCodecForCategory(category, width, height);
-    if (category !== 'h264')
-        return [preferred];
-
-    const ladder = [preferred, getMainH264Codec(width, height), getSoftwareH264Codec(width, height)];
-    return ladder.filter((codec, i) => ladder.indexOf(codec) === i);
+    return [getCodecForCategory(category, width, height)];
 }
 
 function getCodecProfileName(codec: string): string | null {

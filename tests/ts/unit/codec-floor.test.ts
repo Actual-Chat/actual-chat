@@ -110,11 +110,15 @@ type EncoderProbe = (config: VideoEncoderConfig) => Promise<VideoEncoderSupport>
 describe('encoder realtime measurement', () => {
     let encoders: FakeEncoder[];
 
-    // Emits its first chunk only after `latencyFrames` submissions, which is
-    // how Firefox's H.264 encoder behaves.
+    // Two independent knobs, because real encoders differ along both:
+    // `startupFrames` is the silent initialisation window, `steadyDepth` is how
+    // many frames stay in flight forever after it. Chromium's hardware encoders
+    // are silent for ~7 frames and then catch up completely (startup 7, depth
+    // 0); Firefox's H.264 stays ~18 frames behind for the whole stream.
     class FakeEncoder {
         state: CodecState = 'unconfigured';
         submitted = 0;
+        emitted = 0;
         private output: (chunk: EncodedVideoChunk) => void;
         constructor(init: { output: (chunk: EncodedVideoChunk) => void; error: (e: Error) => void }) {
             this.output = init.output;
@@ -123,16 +127,24 @@ describe('encoder realtime measurement', () => {
         configure(): void { this.state = 'configured'; }
         encode(): void {
             this.submitted++;
-            if (this.submitted >= FakeEncoder.latencyFrames)
+            if (this.submitted < FakeEncoder.startupFrames)
+                return;
+
+            const target = Math.max(0, this.submitted - FakeEncoder.steadyDepth);
+            while (this.emitted < target) {
+                this.emitted++;
                 this.output({ byteLength: 10, close: () => { /* ignore */ } } as unknown as EncodedVideoChunk);
+            }
         }
         close(): void { this.state = 'closed'; }
-        static latencyFrames = 1;
+        static startupFrames = 1;
+        static steadyDepth = 0;
     }
 
     beforeEach(() => {
         encoders = [];
-        FakeEncoder.latencyFrames = 1;
+        FakeEncoder.startupFrames = 1;
+        FakeEncoder.steadyDepth = 0;
         vi.stubGlobal('VideoEncoder', Object.assign(FakeEncoder, {
             isConfigSupported: vi.fn<EncoderProbe>(),
         }));
@@ -149,20 +161,31 @@ describe('encoder realtime measurement', () => {
         vi.unstubAllGlobals();
     });
 
-    it('reports the submission count at which the first chunk appeared', async () => {
-        FakeEncoder.latencyFrames = 1;
+    it('reports no depth for an encoder that keeps up', async () => {
+        FakeEncoder.startupFrames = 1;
 
-        expect(await probeEncoderLatencyFrames('vp09.00.31.08', 'vp9', 'no-preference')).toBe(1);
+        expect(await probeEncoderLatencyFrames('vp09.00.31.08', 'vp9', 'no-preference')).toBe(0);
+    });
+
+    it('ignores a slow start that the encoder then catches up from', async () => {
+        // Chromium's hardware encoders: ~215ms of silence, then every
+        // submission accounted for. Charging that startup to the codec
+        // disqualified AV1, H.264 and HEVC on machines where all three work.
+        FakeEncoder.startupFrames = 7;
+        FakeEncoder.steadyDepth = 0;
+
+        expect(await probeEncoderLatencyFrames('av01.0.08M.08', 'av1', 'prefer-hardware')).toBe(0);
     });
 
     it('reports a deep pipeline like the one that makes Firefox H.264 unusable', async () => {
-        FakeEncoder.latencyFrames = 18;
+        FakeEncoder.startupFrames = 18;
+        FakeEncoder.steadyDepth = 17;
 
-        expect(await probeEncoderLatencyFrames('avc1.4D4029', 'h264', 'no-preference')).toBe(18);
+        expect(await probeEncoderLatencyFrames('avc1.4D4029', 'h264', 'no-preference')).toBe(17);
     });
 
     it('caches per codec and acceleration', async () => {
-        FakeEncoder.latencyFrames = 2;
+        FakeEncoder.startupFrames = 2;
         await probeEncoderLatencyFrames('vp8', 'vp9', 'no-preference');
         const afterFirst = encoders.length;
         await probeEncoderLatencyFrames('vp8', 'vp9', 'no-preference');

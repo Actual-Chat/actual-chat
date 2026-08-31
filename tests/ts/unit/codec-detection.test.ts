@@ -47,23 +47,24 @@ describe('encoder codec detection', () => {
 
     it('reports the profile it probed, not a higher one it did not', async () => {
         // The old code probed Main 3.1 and then reported High 4.0 regardless.
-        isConfigSupported.mockImplementation(supportOnly('avc1.4D401F'));
+        isConfigSupported.mockImplementation(supportOnly('avc1.42E01F'));
         const size = freshSize();
 
         const h264 = h264Of(await detectSupportedCodecs(size.width, size.height));
 
         expect(h264.supported).toBe(true);
-        expect(h264.codec).toBe('avc1.4D401F');
-        expect(probed).toContain('avc1.4D401F');
+        expect(h264.codec).toBe('avc1.42E01F');
+        expect(probed).toContain('avc1.42E01F');
     });
 
-    it('stops at the first profile that passes', async () => {
-        isConfigSupported.mockImplementation(supportOnly('avc1.640028', 'avc1.4D401F'));
+    it('never probes Main or High, which carry CABAC and B-frames', async () => {
+        isConfigSupported.mockImplementation(supportOnly('avc1.640028', 'avc1.4D401F', 'avc1.42E01F'));
         const size = freshSize();
 
         const h264 = h264Of(await detectSupportedCodecs(size.width, size.height));
 
-        expect(h264.codec).toBe('avc1.640028');
+        expect(h264.codec).toBe('avc1.42E01F');
+        expect(probed).not.toContain('avc1.640028');
         expect(probed).not.toContain('avc1.4D401F');
     });
 
@@ -85,34 +86,25 @@ describe('encoder codec detection', () => {
         expect(h264.hardwareAccelerated).toBe(false);
     });
 
-    it('skips an excluded profile and reports the next one', async () => {
+    // Last in this describe: the exclusion set is module state that only grows,
+    // and H.264 now has exactly one profile string to exclude.
+    it('drops H.264 once its one profile is excluded, re-probing the same size', async () => {
         // The bug this guards: excludeEncoderCodec refuses to drop the h264
         // category, so a failed profile was re-picked on every restart forever.
-        isConfigSupported.mockImplementation(supportOnly('avc1.640028', 'avc1.4D401F'));
-        const firstSize = freshSize();
-        const before = h264Of(await detectSupportedCodecs(firstSize.width, firstSize.height));
-        expect(before.codec).toBe('avc1.640028');
-
-        excludeEncoderCodecString('avc1.640028');
-        expect(isEncoderCodecStringExcluded('avc1.640028')).toBe(true);
-
-        probed = [];
-        const size = freshSize();
-        const after = h264Of(await detectSupportedCodecs(size.width, size.height));
-
-        expect(after.codec).toBe('avc1.4D401F');
-        expect(probed).not.toContain('avc1.640028');
-    });
-
-    it('invalidates the detection cache so the next probe sees the exclusion', async () => {
-        isConfigSupported.mockImplementation(supportOnly('avc1.4D401F', 'avc1.42E01F'));
+        // Re-detecting at the SAME size also proves the detection cache was
+        // invalidated — a stale entry would still report the codec supported.
+        isConfigSupported.mockImplementation(supportOnly('avc1.42E01F'));
         const size = freshSize();
         const before = h264Of(await detectSupportedCodecs(size.width, size.height));
-        expect(before.codec).toBe('avc1.4D401F');
+        expect(before.supported).toBe(true);
 
-        excludeEncoderCodecString('avc1.4D401F');
+        excludeEncoderCodecString('avc1.42E01F');
+        expect(isEncoderCodecStringExcluded('avc1.42E01F')).toBe(true);
+
+        probed = [];
         const after = h264Of(await detectSupportedCodecs(size.width, size.height));
 
-        expect(after.codec).toBe('avc1.42E01F');
+        expect(after.supported).toBe(false);
+        expect(probed).not.toContain('avc1.42E01F');
     });
 });

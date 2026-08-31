@@ -16,6 +16,8 @@ public sealed class VideoRecorder : IAsyncDisposable
     // Well inside LiveVideoBackend.MemberStalenessThreshold (90s), so a member
     // never ages out mid-call.
     private static readonly TimeSpan MemberRegistrationPeriod = TimeSpan.FromSeconds(20);
+    private static readonly string JSGetSupportedDecoderCodecsMethod =
+        $"{BlazorUIAppModule.ImportName}.getSupportedDecoderCodecs";
 
     private readonly TaskCompletionSource _whenStartedTaskCompletionSource = TaskCompletionSourceExt.New();
     private readonly TaskCompletionSource _whenStoppedTaskCompletionSource = TaskCompletionSourceExt.New();
@@ -590,8 +592,8 @@ public sealed class VideoRecorder : IAsyncDisposable
     private async Task KeepMemberRegistered(ChatId chatId, CancellationToken cancellationToken) {
         try {
             while (!cancellationToken.IsCancellationRequested) {
-                var codecs = await _jsRef
-                    .InvokeAsync<string[]>("getSupportedDecoderCodecs", cancellationToken)
+                var codecs = await JS
+                    .InvokeAsync<string[]>(JSGetSupportedDecoderCodecsMethod, cancellationToken)
                     .ConfigureAwait(false);
                 await LiveVideoStreams
                     .RegisterMember(Session, chatId, new ApiArray<string>(codecs), cancellationToken)
