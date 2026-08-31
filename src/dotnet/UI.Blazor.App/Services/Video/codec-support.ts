@@ -621,9 +621,7 @@ function getCodecProfileName(codec: string): string | null {
 }
 
 export function getDefaultCodec(supportedCodecs: CodecInfo[], width: number, height: number): string {
-    const isMobile = DeviceInfo.isMobile; // includes iOS
-
-    // Priority: AV1 HW > HEVC HW > VP9 HW > H.264 HW (profile by platform) > H.264 SW
+    // Priority: AV1 HW > HEVC HW > VP9 HW > H.264 HW > VP9 SW > H.264 SW
 
     const av1HW = supportedCodecs.find(
         c => c.category === 'av1' && c.supported && c.hardwareAccelerated
@@ -640,17 +638,8 @@ export function getDefaultCodec(supportedCodecs: CodecInfo[], width: number, hei
     );
     if (vp9HW) return vp9HW.codec;
 
-    // Mobile prefers Main>Baseline>High (power); desktop prefers High>Main (compression).
-    const h264ProfileOrder = isMobile
-        ? ['4D40', '42E0', '6400']
-        : ['6400', '4D40'];
-
-    for (const profile of h264ProfileOrder) {
-        const match = supportedCodecs.find(
-            c => c.category === 'h264' && c.supported && c.hardwareAccelerated && c.codec.includes(profile)
-        );
-        if (match) return match.codec;
-    }
+    // No profile preference to express: detection only ever yields Constrained
+    // Baseline for H.264, so the old Main/High ordering here could not match.
     const anyH264HW = supportedCodecs.find(
         c => c.category === 'h264' && c.supported && c.hardwareAccelerated
     );
@@ -662,12 +651,6 @@ export function getDefaultCodec(supportedCodecs: CodecInfo[], width: number, hei
     );
     if (vp9SW) return vp9SW.codec;
 
-    for (const profile of h264ProfileOrder) {
-        const match = supportedCodecs.find(
-            c => c.category === 'h264' && c.supported && c.codec.includes(profile)
-        );
-        if (match) return match.codec;
-    }
     const anyH264 = supportedCodecs.find(
         c => c.category === 'h264' && c.supported
     );
