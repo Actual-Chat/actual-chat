@@ -13,6 +13,9 @@ public sealed class VideoRecorder : IAsyncDisposable
     // Demand invalidation is edge-only; re-assert the current aggregate this
     // often so a push lost anywhere along the chain heals without an edge.
     private static readonly TimeSpan DemandReassertPeriod = TimeSpan.FromSeconds(30);
+    // Well inside LiveVideoBackend.MemberStalenessThreshold (90s), so a member
+    // never ages out mid-call.
+    private static readonly TimeSpan MemberRegistrationPeriod = TimeSpan.FromSeconds(20);
 
     private readonly TaskCompletionSource _whenStartedTaskCompletionSource = TaskCompletionSourceExt.New();
     private readonly TaskCompletionSource _whenStoppedTaskCompletionSource = TaskCompletionSourceExt.New();
@@ -226,6 +229,7 @@ public sealed class VideoRecorder : IAsyncDisposable
         var chatId = startRequest.Item1;
         var t1 = SubscribeToKeyFrameRequests(chatId, cancellationToken);
         var t2 = SubscribeToSupportedDecoderCodecs(chatId, cancellationToken);
+        var tReg = KeepMemberRegistered(chatId, cancellationToken);
         var t3 = ForwardRemoteStreamCount(chatId, cancellationToken);
         var t4 = SubscribeToDemand(chatId, cancellationToken);
         var t5 = SubscribeToVoiceActivity(chatId, cancellationToken);
@@ -575,6 +579,42 @@ public sealed class VideoRecorder : IAsyncDisposable
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception e) {
             Log.LogWarning(e, "SubscribeToVoiceActivity failed");
+        }
+    }
+
+    // Nothing called RegisterMember, so the server saw no members and
+    // GetSupportedCodecs always returned its "no viewers, everything allowed"
+    // default — the negotiation read its own output and ignored every client's
+    // actual decode support. Registration re-runs on a timer because the
+    // server drops members that go stale.
+    private async Task KeepMemberRegistered(ChatId chatId, CancellationToken cancellationToken) {
+        try {
+            while (!cancellationToken.IsCancellationRequested) {
+                var codecs = await _jsRef
+                    .InvokeAsync<string[]>("getSupportedDecoderCodecs", cancellationToken)
+                    .ConfigureAwait(false);
+                await LiveVideoStreams
+                    .RegisterMember(Session, chatId, new ApiArray<string>(codecs), cancellationToken)
+                    .ConfigureAwait(false);
+                Log.LogInformation("KeepMemberRegistered({ChatId}): decoder codecs=[{Codecs}]",
+                    chatId, string.Join(", ", codecs));
+                await Task.Delay(MemberRegistrationPeriod, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception e) {
+            Log.LogWarning(e, "KeepMemberRegistered failed");
+        }
+        finally {
+            // Best-effort: a lingering member would keep narrowing the codec set
+            // for everyone still in the call.
+            try {
+                await LiveVideoStreams.UnregisterMember(Session, chatId, CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "KeepMemberRegistered: UnregisterMember failed");
+            }
         }
     }
 

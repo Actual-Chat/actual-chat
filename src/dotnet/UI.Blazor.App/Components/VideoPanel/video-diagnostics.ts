@@ -1,6 +1,7 @@
 import { getActiveRecorder, getAllActiveRecorders, type OwnStreamDiagnostics } from './video-recorder';
 import { getActivePlayers, recordRequestedReceiveQuality, type RemoteStreamDiagnostics } from './video-player';
 import {
+    detectSupportedDecoderCodecs as detectSupportedDecoderCodecsImpl,
     getForceDecodeCodec as getForceDecodeCodecImpl,
     getPreferredEncodeCodec as getPreferredEncodeCodecImpl,
     setForceDecodeCodec as setForceDecodeCodecImpl,
@@ -107,6 +108,12 @@ export function setVideoDebugCaptureFpsOverride(fps: number | null): void {
     setCaptureFpsOverrideImpl(fps);
     for (const recorder of getAllActiveRecorders())
         recorder.refreshCaptureFps();
+}
+
+// The categories this client can decode, for RegisterMember. Honours the
+// "Force decode codec" override.
+export function getSupportedDecoderCodecs(): Promise<string[]> {
+    return detectSupportedDecoderCodecsImpl();
 }
 
 export function setVideoDebugForceDecodeCodec(codec: string | null): void {

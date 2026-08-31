@@ -20,6 +20,14 @@ describe('decoder capability detection', () => {
     beforeEach(() => {
         isConfigSupported = vi.fn<DecoderProbe>();
         vi.stubGlobal('VideoDecoder', { isConfigSupported });
+        // node has no localStorage, so without this the debug overrides read
+        // back as null and the force path is never exercised.
+        const store = new Map<string, string>();
+        vi.stubGlobal('localStorage', {
+            getItem: (k: string) => store.get(k) ?? null,
+            setItem: (k: string, v: string) => { store.set(k, v); },
+            removeItem: (k: string) => { store.delete(k); },
+        });
         // detectSupportedDecoderCodecs memoises; setting the override clears it.
         setForceDecodeCodec(null);
     });
@@ -40,6 +48,24 @@ describe('decoder capability detection', () => {
             .filter(c => c.startsWith('avc1.'));
         expect(h264Probes.length).toBeGreaterThan(0);
         expect(h264Probes[0]).toBe('avc1.42E01E');
+    });
+
+    it('advertises only the forced codec plus the floor', async () => {
+        isConfigSupported.mockResolvedValue({ supported: true });
+        setForceDecodeCodec('h264');
+
+        const codecs = await detectSupportedDecoderCodecs();
+
+        expect(codecs).toEqual(['h264', FLOOR_CATEGORY]);
+        setForceDecodeCodec(null);
+    });
+
+    it('does not duplicate the floor when the floor itself is forced', async () => {
+        isConfigSupported.mockResolvedValue({ supported: true });
+        setForceDecodeCodec(FLOOR_CATEGORY);
+
+        expect(await detectSupportedDecoderCodecs()).toEqual([FLOOR_CATEGORY]);
+        setForceDecodeCodec(null);
     });
 
     it('still advertises the floor when probing says it is unsupported', async () => {
