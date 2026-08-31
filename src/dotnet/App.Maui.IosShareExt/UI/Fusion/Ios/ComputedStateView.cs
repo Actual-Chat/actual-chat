@@ -97,6 +97,8 @@ public abstract class ComputedStateView<T>(IosHub hub) : ComputedStateView(hub),
         });
     }
 
+    // Runs on the first state update, not on construction - so a parent laying this view out must
+    // clear its TranslatesAutoresizingMaskIntoConstraints itself rather than wait for this.
     protected abstract void OnInitialRender(T model);
     protected abstract void OnStateChanged(T model);
     protected abstract Task<T> ComputeState(CancellationToken cancellationToken);

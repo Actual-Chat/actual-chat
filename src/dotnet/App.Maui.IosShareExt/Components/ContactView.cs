@@ -24,6 +24,7 @@ public sealed class ContactView(Contact contact, IosHub hub) : ComputedStateView
 
         // Avatar
         _iconView = new ContactIconView(model.IconQuery, null, contact.Chat.Title, true, Hub);
+        _iconView.TranslatesAutoresizingMaskIntoConstraints = false;
 
         // Text container
         var textContainer = new UIStackView
