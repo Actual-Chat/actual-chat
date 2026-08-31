@@ -1197,6 +1197,8 @@
   "Ptt_ShakeHigh": "Висока — лагано протресање",
   "Ptt_AlwaysListen": "Завжди відстежувати жести",
   "Ptt_AlwaysListenCaption": "Consomme plus de batterie. Désactivé : les gestes ne fonctionnent que juste après que quelqu'un a parlé.",
+  "Ptt_AnswerWindow": "Ventana de respuesta por gestos",
+  "Ptt_AnswerWindowCaption": "Depois que uma mensagem termina, os gestos ainda podem iniciar uma resposta durante esse tempo.",
   "Ptt_NoMotionSensor": "Este dispositivo no tiene sensor de movimiento, así que los gestos no están disponibles.",
   "Ptt_LockScreenTopic": "Schermata di blocco",
   "Ptt_LockScreenTalk": "Pulsante per parlare nella schermata di blocco",

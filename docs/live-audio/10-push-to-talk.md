@@ -45,12 +45,15 @@ consent.
 Between armed and hot sits the **answer window** — the period after incoming
 voice during which a gesture, a headset press or the Apple PTT Talk button may
 open the mic without any further confirmation. `IncomingVoiceActivityUI` stamps
-`_lastIncomingAt[chatId]` on the false→true edge of `HasIncomingVoice` (voice
-from an author other than your own — `ShouldStamp`), and the wake path stamps
-it explicitly via `NoteIncomingVoice` because a wake may arrive for an
-utterance that is already over. `GestureActivationPolicy.HasAnswerWindow` /
-`GetAnswerWindowChat` then ask whether any armed chat has a stamp newer than
-`now - PttReplyRecencyWindow` (150 s).
+`_lastIncomingAt[chatId]` on both edges of `HasIncomingVoice` (voice from an
+author other than your own — `ShouldStamp` / `ShouldStampEnd`), tracks chats
+with live incoming voice so their snapshot stamp reads as `now`
+(`BuildSnapshot`), and the wake path stamps it explicitly via
+`NoteIncomingVoice` because a wake may arrive for an utterance that is already
+over. The net effect: the window covers the whole utterance and runs from its
+END for `UserPttSettings.AnswerWindow` (15/30/60 s, default 15 s).
+`GestureActivationPolicy.HasAnswerWindow` / `GetAnswerWindowChat` ask whether
+any armed chat has a stamp newer than `now - answerWindow`.
 
 ```mermaid
 stateDiagram-v2
@@ -241,8 +244,11 @@ and in the live WebView scope.
 
 1. Sets `ChatAudioUI.IsPttHeadless` when headless, calls
    `ChatAudioUI.Enable()`, and stamps
-   `IncomingVoiceActivityUI.NoteIncomingVoice(chatId, startedAt)` — without this
-   an utterance that ended during the boot would never open an answer window.
+   `IncomingVoiceActivityUI.NoteIncomingVoice(chatId, Ptt.GetWakeAnswerStamp(startedAt, now))`
+   — without this an utterance that ended during the boot would never open an
+   answer window. A fresh wake stamps its handling time (a boot delay must not
+   eat a short answer window); a stale one keeps `startedAt`, so it can't arm
+   a hands-free reply long after the fact.
 2. **Foreground branch**: just `SetListeningState(chatId, true)` and
    `platform.OnForegroundWakeHandled` — the user is in the app and a forced
    replay would hijack their state.
@@ -367,12 +373,14 @@ wake push re-arms it, which is exactly why the drop is safe.
 
 ### `PttReplyUI`
 
-The single owner of a PTT reply. `RequestReply(recencyWindow, ct)`:
+The single owner of a PTT reply. `RequestReply(recencyWindow, ct)` — a `null`
+`recencyWindow` means the user's `AnswerWindow` setting:
 
 1. `ChatAudioUI.Enable()`, then return `null` if a recording is already in
    progress — the method is **idempotent**, and `null` means "this call did not
    open the mic".
-2. Resolve the target via `ReplyTargetResolver.Resolve(armed, snapshot, focused, now, recencyWindow)`;
+2. Resolve the target via
+   `ReplyTargetResolver.Resolve(armed, snapshot, focused, now, recencyWindow, ordinaryRecencyWindow)`;
    no target → failure cue, `null`.
 3. `HasMicrophonePermission` — check, then `CheckOrRequest` only if
    `permission.CanPrompt`; a headless wake cannot prompt.
@@ -436,11 +444,11 @@ permanently.
 
 ### `ReplyTargetResolver`
 
-Given the armed chats, the `IncomingVoiceActivityUI` snapshot, the focused chat
-and a recency window:
+Given the armed chats, the `IncomingVoiceActivityUI` snapshot, the focused chat,
+a resolution window and the ordinary (user's `AnswerWindow`) window:
 
 1. Pick the armed chat with the newest incoming-voice stamp inside the window.
-2. If that best stamp is older than `PttReplyRecencyWindow`, treat it as
+2. If that best stamp is older than the ordinary window, treat it as
    stale and prefer the focused chat when it is armed — otherwise an unbounded
    window would let a days-old stamp outrank the chat you are looking at.
 3. Fall back to the stale best, then to the single armed chat when there is
@@ -592,6 +600,7 @@ devices:
 | `IsDoubleShakeEnabled` | `true` | Double-shake start gesture |
 | `ShakeSensitivity` | `Medium` | Ordered so `Medium` is the zero default; firing sets nest `Low ⊆ Medium ⊆ High` |
 | `AreGesturesAlwaysOn` | `false` | Sense start gestures outside the answer window |
+| `AnswerWindow` | 15 s | How long after an incoming utterance ends (or the app opens) the hands-free reply triggers stay armed; 15/30/60 s in the UI, shown only while `AreGesturesAlwaysOn` is off. The getter normalizes a missing member (zero) to the default |
 | `HotWindow` | 60 s | Idle duration handed to `SetRecordingChatId` for a PTT reply; clamped to `PttReplyBackgroundHotWindow` (15 s) when the reply starts in background or headless |
 | `AreAudibleCuesEnabled` | `true` | Begin/end/nothing-heard tunes |
 | `IsHeadsetButtonEnabled` | `null` → `true` | Headset hook / play-pause opens a reply |
@@ -645,7 +654,7 @@ working if the flag is later turned off; only the UI for changing it goes away.
 | `PttStaleWakeAge` | 60 s | Older wakes skip the from-start catch-up and go straight to live listening |
 | `ListeningCatchUpTolerance` | 2 s | Clock-fuzz allowance between a wake's `startedAt` and the target stream's `BeginsAt` |
 | `PttReplyColdStartTimeout` | 15 s | Cold-start dead-man: no voice within this and the mic closes with the "nothing heard" cue |
-| `PttReplyRecencyWindow` | 150 s | The answer window — how long after incoming voice a hands-free reply may start |
+| `PttAnswerWindowDefault` | 15 s | Default for `UserPttSettings.AnswerWindow` — how long after incoming voice ends a hands-free reply may start |
 | `PttTransmitStartupTimeout` | 8 s | Whole-boot budget for an Apple PTT transmit |
 | `PttPreRollCapacity` | 8 s | Pre-roll ring size; must stay ≤ `AppleAudioCapture`'s 10 s output buffer |
 | `PttPreRollMinDuration` | 0.4 s | Below this the pre-roll isn't drained |

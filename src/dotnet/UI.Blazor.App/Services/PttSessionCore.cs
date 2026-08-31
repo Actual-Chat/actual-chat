@@ -52,7 +52,8 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
                 Log, "Couldn't sync the server clock on wake", CancellationToken.None);
         // The utterance may be over by the time we boot, so HasIncomingVoice would never see an edge
         // for it and the answer window would never open.
-        Hub.IncomingVoiceActivityUI.NoteIncomingVoice(chatId, startedAt);
+        Hub.IncomingVoiceActivityUI.NoteIncomingVoice(
+            chatId, Ptt.GetWakeAnswerStamp(startedAt, Hub.Clocks.ServerClock.Now));
 
         if (isForeground) {
             // The user is in the app: don't hijack their state with a forced replay -

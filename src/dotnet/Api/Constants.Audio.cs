@@ -110,7 +110,8 @@ public static partial class Constants
         public static readonly TimeSpan PttReplyMicLiveTimeout = TimeSpan.FromSeconds(4);
         public static readonly TimeSpan PttReplyColdStartTimeout = TimeSpan.FromSeconds(15);
         public static readonly TimeSpan PttReplyBackgroundHotWindow = TimeSpan.FromSeconds(15);
-        public static readonly TimeSpan PttReplyRecencyWindow = TimeSpan.FromSeconds(150);
+        // Default for UserPttSettings.AnswerWindow; policy reads the setting, never this directly.
+        public static readonly TimeSpan PttAnswerWindowDefault = TimeSpan.FromSeconds(15);
         // Apple PTT transmit: the framework chimes when it activates the session, not when our
         // recorder exists, so audio is captured natively across the gap. Capacity must stay <=
         // 10 s, which is AppleAudioCapture's outBuffer size at RecordingSampleRate.
@@ -149,7 +150,8 @@ public static partial class Constants
 
         // Pre-decoder (encoded frame) buffer sizing. The engine's pre-decoder
         // buffer target is computed as
-        //   max(MinEncodeBufferSize, TrackInfo.TargetBufferSize - DefaultDecodedBufferSize - DefaultAudioEnginePlaybackLatency)
+        //   max(MinEncodeBufferSize,
+        //       TrackInfo.TargetBufferSize - DefaultDecodedBufferSize - DefaultAudioEnginePlaybackLatency)
         // by the code that owns the pre-decoder buffer (TS decoder + MAUI engines).
         public static readonly TimeSpan MinEncodedBufferSize = TimeSpan.FromMilliseconds(30); // 2 frames
         public static readonly TimeSpan DecodedBufferSize = TimeSpan.FromMilliseconds(120); // 6 frames, must be exact

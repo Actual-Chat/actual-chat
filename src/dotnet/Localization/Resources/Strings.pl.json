@@ -1018,6 +1018,8 @@
   "Ptt_ShakeHigh": "Wysoka — lekkie potrząśnięcie",
   "Ptt_AlwaysListen": "Zawsze nasłuchuj gestów",
   "Ptt_AlwaysListenCaption": "Zużywa więcej baterii. Wyłączone: gesty działają tylko zaraz po tym, jak ktoś się odezwie.",
+  "Ptt_AnswerWindow": "Okno odpowiedzi gestem",
+  "Ptt_AnswerWindowCaption": "Po zakończeniu wiadomości gesty mogą jeszcze przez ten czas rozpocząć odpowiedź.",
   "Ptt_NoMotionSensor": "To urządzenie nie ma czujnika ruchu, więc gesty są niedostępne.",
   "Ptt_LockScreenTopic": "Ekran blokady",
   "Ptt_LockScreenTalk": "Przycisk mówienia na ekranie blokady",

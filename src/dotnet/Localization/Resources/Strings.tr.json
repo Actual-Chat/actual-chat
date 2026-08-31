@@ -1018,6 +1018,8 @@
   "Ptt_ShakeHigh": "Yüksek - hafif bir sallama",
   "Ptt_AlwaysListen": "Hareketleri her zaman dinle",
   "Ptt_AlwaysListenCaption": "Daha fazla pil harcar. Kapalıyken hareketler yalnızca biri konuştuktan hemen sonra çalışır.",
+  "Ptt_AnswerWindow": "Hareketle yanıt penceresi",
+  "Ptt_AnswerWindowCaption": "Bir mesaj bittikten sonra hareketler bu süre boyunca yanıt başlatabilir.",
   "Ptt_NoMotionSensor": "Bu cihazda hareket sensörü yok, bu yüzden hareketler kullanılamıyor.",
   "Ptt_LockScreenTopic": "Kilit ekranı",
   "Ptt_LockScreenTalk": "Kilit ekranı konuşma düğmesi",

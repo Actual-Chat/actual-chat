@@ -1018,6 +1018,8 @@
   "Ptt_ShakeHigh": "Alta — um chacoalhão leve",
   "Ptt_AlwaysListen": "Sempre detectar gestos",
   "Ptt_AlwaysListenCaption": "Consome mais bateria. Desativado: os gestos funcionam só logo depois de alguém falar.",
+  "Ptt_AnswerWindow": "Janela de resposta por gesto",
+  "Ptt_AnswerWindowCaption": "Depois que uma mensagem termina, os gestos ainda podem iniciar uma resposta durante esse tempo.",
   "Ptt_NoMotionSensor": "Este dispositivo não tem sensor de movimento, então os gestos não estão disponíveis.",
   "Ptt_LockScreenTopic": "Tela de bloqueio",
   "Ptt_LockScreenTalk": "Botão de falar na tela de bloqueio",

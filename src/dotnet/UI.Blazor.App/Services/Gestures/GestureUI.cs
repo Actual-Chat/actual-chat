@@ -159,7 +159,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                     .ConfigureAwait(false);
                 var lastIncomingVoiceAt = IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
                 var now = Clocks.ServerClock.Now;
-                var recencyWindow = Constants.Audio.PttReplyRecencyWindow;
+                var recencyWindow = settings.AnswerWindow;
                 var sinceForegrounded = _lastForegroundedAt is { } foregroundedAt
                     ? Clocks.CpuClock.Now - foregroundedAt
                     : TimeSpan.MaxValue;

@@ -1197,6 +1197,8 @@
   "Ptt_ShakeHigh": "High - a light shake",
   "Ptt_AlwaysListen": "Always listen for gestures",
   "Ptt_AlwaysListenCaption": "Uses more battery. Off: gestures work only right after someone speaks.",
+  "Ptt_AnswerWindow": "Gesture response window",
+  "Ptt_AnswerWindowCaption": "After a message ends, gestures can still start a reply for this long.",
   "Ptt_NoMotionSensor": "This device has no motion sensor, so gestures are unavailable.",
   "Ptt_LockScreenTopic": "Lock Screen",
   "Ptt_LockScreenTalk": "Lock Screen talk button",

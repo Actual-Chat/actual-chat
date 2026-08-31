@@ -17,8 +17,25 @@ public partial class UserPttSettingsTest(ITestOutputHelper @out) : TestBase(@out
         settings.ShakeSensitivity.Should().Be(ShakeSensitivity.Medium);
         settings.AreGesturesAlwaysOn.Should().BeFalse();
         settings.HotWindow.Should().Be(TimeSpan.FromSeconds(60));
+        settings.AnswerWindow.Should().Be(TimeSpan.FromSeconds(15));
         settings.AreAudibleCuesEnabled.Should().BeTrue();
         (settings.IsHeadsetButtonEnabled ?? true).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ABlobPredatingTheAnswerWindowReadsAsTheDefault()
+    {
+        // arrange
+        var e2Era = new E2UserPttSettings { PttChatIds = [TestChatId], Origin = "test" };
+
+        // act
+        using var buffer = KvasSerializer.Default.Write(e2Era);
+        var bytes = buffer.WrittenMemory;
+        var settings = KvasSerializer.Default.Read<UserPttSettings>(ref bytes);
+
+        // assert: the member is absent from the blob, so it deserializes as zero - the getter
+        // must normalize that to the default rather than hand a zero window to the policy.
+        settings.AnswerWindow.Should().Be(TimeSpan.FromSeconds(15));
     }
 
     [Fact]
@@ -134,6 +151,7 @@ public partial class UserPttSettingsTest(ITestOutputHelper @out) : TestBase(@out
             ShakeSensitivity = ShakeSensitivity.High,
             AreGesturesAlwaysOn = true,
             HotWindow = TimeSpan.FromSeconds(120),
+            AnswerWindow = TimeSpan.FromSeconds(30),
             AreAudibleCuesEnabled = false,
             IsHeadsetButtonEnabled = false,
             Origin = "test",
@@ -150,6 +168,7 @@ public partial class UserPttSettingsTest(ITestOutputHelper @out) : TestBase(@out
                 d.ShakeSensitivity.Should().Be(o.ShakeSensitivity);
                 d.AreGesturesAlwaysOn.Should().Be(o.AreGesturesAlwaysOn);
                 d.HotWindow.Should().Be(o.HotWindow);
+                d.AnswerWindow.Should().Be(o.AnswerWindow);
                 d.AreAudibleCuesEnabled.Should().Be(o.AreAudibleCuesEnabled);
                 d.IsHeadsetButtonEnabled.Should().Be(o.IsHeadsetButtonEnabled);
             });

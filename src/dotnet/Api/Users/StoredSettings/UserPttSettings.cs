@@ -39,6 +39,13 @@ public sealed partial record UserPttSettings
     // The getter normalizes: a blob predating this member deserializes it as null, not as `= []`.
     [DataMember, Key(10)]
     public PttChat[] PttChats { get => field ?? []; init; } = [];
+    // How long after an incoming utterance ends (or the app opens) the reply triggers stay armed.
+    // The getter normalizes: a blob predating this member deserializes it as zero, not as the default.
+    [DataMember, Key(11)]
+    public TimeSpan AnswerWindow {
+        get => field == default ? Constants.Audio.PttAnswerWindowDefault : field;
+        init;
+    }
 
     // PttChats + legacy PttChatIds-only entries (surfaced with JoinedAt = default, so never armed).
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]

@@ -35,9 +35,11 @@ public sealed class PttReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         => !hasSignal && elapsed >= timeout;
 
     public Task<PttReply?> RequestReply(CancellationToken cancellationToken)
-        => RequestReply(Constants.Audio.PttReplyRecencyWindow, cancellationToken);
+        => RequestReply(null, cancellationToken);
 
-    public async Task<PttReply?> RequestReply(TimeSpan recencyWindow, CancellationToken cancellationToken)
+    // A null recencyWindow means "the user's answer window"; it can't be resolved here because
+    // the setting comes from the same settings read the method already awaits.
+    public async Task<PttReply?> RequestReply(TimeSpan? recencyWindow, CancellationToken cancellationToken)
     {
         // Null unless this call itself opened the mic, so no caller can stop someone else's reply.
         ChatAudioUI.Enable();
@@ -51,7 +53,8 @@ public sealed class PttReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         var focused = ChatUI.SelectedChatId.Value;
         var snapshot = IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
         var target = ReplyTargetResolver.Resolve(
-            armed, snapshot, focused, Clocks.ServerClock.Now, recencyWindow);
+            armed, snapshot, focused, Clocks.ServerClock.Now,
+            recencyWindow ?? settings.AnswerWindow, settings.AnswerWindow);
         if (target is not { } chatId) {
             await PlayFailureCue().ConfigureAwait(false);
             return null;

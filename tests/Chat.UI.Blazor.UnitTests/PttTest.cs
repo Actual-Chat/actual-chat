@@ -23,6 +23,25 @@ public class PttTest
     }
 
     [Fact]
+    public void FreshWakeStampsItsHandlingTime()
+    {
+        // A boot delay must not eat the answer window: with a short window a wake stamped at the
+        // utterance's start could expire before the user even hears the tune.
+        var now = T0 + TimeSpan.FromSeconds(30);
+        // act + assert
+        Ptt.GetWakeAnswerStamp(T0, now).Should().Be(now);
+    }
+
+    [Fact]
+    public void StaleWakeKeepsItsOriginalStamp()
+    {
+        var now = T0 + Constants.Audio.PttStaleWakeAge + TimeSpan.FromSeconds(1);
+        // act + assert
+        Ptt.GetWakeAnswerStamp(T0, now)
+            .Should().Be(T0, "a stale wake must not arm a hands-free reply long after the fact");
+    }
+
+    [Fact]
     public void OngoingStreamingYieldsNoDropTime()
     {
         // act
