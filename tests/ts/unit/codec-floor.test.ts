@@ -61,6 +61,29 @@ describe('decoder capability detection', () => {
         setForceDecodeCodec(null);
     });
 
+    it('advertises unforced codecs best-first, so the server can rank them', async () => {
+        // The advertised list is a preference order, not a set: the server
+        // resolves the call's codec from where each member ranked it.
+        isConfigSupported.mockResolvedValue({ supported: true });
+
+        const codecs = await detectSupportedDecoderCodecs();
+
+        expect(codecs).toEqual(['av1', 'hevc', 'vp9', 'h264']);
+    });
+
+    it('puts the forced codec ahead of the floor', async () => {
+        // The order is what makes forcing H.264 possible at all: it loses to
+        // the floor on efficiency, so a set with no ranking always picked VP9.
+        isConfigSupported.mockResolvedValue({ supported: true });
+        setForceDecodeCodec('h264');
+
+        const codecs = await detectSupportedDecoderCodecs();
+
+        expect(codecs[0]).toBe('h264');
+        expect(codecs).toContain(FLOOR_CATEGORY);
+        setForceDecodeCodec(null);
+    });
+
     it('does not duplicate the floor when the floor itself is forced', async () => {
         isConfigSupported.mockResolvedValue({ supported: true });
         setForceDecodeCodec(FLOOR_CATEGORY);

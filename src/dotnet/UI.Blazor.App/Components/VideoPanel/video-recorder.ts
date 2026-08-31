@@ -3194,30 +3194,46 @@ export class VideoRecorder {
             if (!current || (!current.hardwareAccelerated && codecInfo.hardwareAccelerated))
                 bestByCategory.set(codecInfo.category, codecInfo);
         }
-        // A debug preference outranks efficiency so an operator can reproduce a
+        // The audience list is ordered: the server ranks it by how the members
+        // ranked their own decode preferences, so the first entry we can encode
+        // is the call's answer. Efficiency only breaks ties among codecs the
+        // server didn't rank — sorting by efficiency instead is what made a
+        // forced H.264 unreachable, since the floor always outranks it.
+        const audienceRank = new Map<string, number>();
+        for (const [i, codec] of (audienceCodecs ?? []).entries()) {
+            const category = this.toCodecCategory(codec);
+            if (!audienceRank.has(category))
+                audienceRank.set(category, i);
+        }
+        const rankOf = (info: CodecInfo): number => audienceRank.get(info.category) ?? Number.MAX_SAFE_INTEGER;
+
+        // A debug preference outranks everything so an operator can reproduce a
         // report on a specific encoder; it cannot conjure one that failed
         // probing, since those never reach this list.
         const preferred = getPreferredEncodeCodec();
         return [...bestByCategory.values()]
             .sort((a, b) =>
                 Number(b.category === preferred) - Number(a.category === preferred)
+                || rankOf(a) - rankOf(b)
                 || getVideoCodecEfficiency(b.codec) - getVideoCodecEfficiency(a.codec)
                 || Number(b.hardwareAccelerated) - Number(a.hardwareAccelerated));
+    }
+
+    // The wire carries bare categories ('h264'), but a codec string
+    // ('avc1.42E01F') is accepted too so callers don't have to care.
+    private toCodecCategory(codec: string): CodecInfo['category'] {
+        const normalized = codec.trim().toLowerCase();
+        return normalized === 'h264' || normalized === 'hevc'
+            || normalized === 'av1' || normalized === 'vp9'
+            ? normalized
+            : getCodecCategory(normalized);
     }
 
     private allowedCodecCategories(codecs: string[] | undefined): Set<CodecInfo['category']> | null {
         if (!codecs || codecs.length === 0)
             return null;
 
-        const result = new Set<CodecInfo['category']>();
-        for (const codec of codecs) {
-            const normalized = codec.trim().toLowerCase();
-            if (normalized === 'h264' || normalized === 'hevc' || normalized === 'av1' || normalized === 'vp9')
-                result.add(normalized);
-            else
-                result.add(getCodecCategory(normalized));
-        }
-        return result;
+        return new Set(codecs.map(codec => this.toCodecCategory(codec)));
     }
 
     private register(kind: number): void {

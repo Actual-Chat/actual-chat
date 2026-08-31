@@ -769,6 +769,14 @@ export function detectSupportedDecoderCodecs(): Promise<string[]> {
 // supported. H.264 is probed at the FLOOR of the profile ladder, not the
 // ceiling: the question is "is there an H.264 decoder at all", and Constrained
 // Baseline at a small size is the narrowest thing that answers it.
+// Efficiency order, best-first. See detectSupportedDecoderCodecsUncached.
+const DECODER_ADVERTISE_ORDER: readonly string[] = ['av1', 'hevc', 'vp9', 'h264'];
+
+function decoderAdvertiseRank(category: string): number {
+    const rank = DECODER_ADVERTISE_ORDER.indexOf(category);
+    return rank < 0 ? DECODER_ADVERTISE_ORDER.length : rank;
+}
+
 const DECODER_PROBES: { category: string; codecs: string[] }[] = [
     { category: 'h264', codecs: ['avc1.42E01E', 'avc1.42E01F', 'avc1.4D401F'] },
     { category: 'hevc', codecs: [
@@ -786,8 +794,11 @@ async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
 
     const forced = getForceDecodeCodec();
     if (forced) {
-        // Always with the floor: a forced codec must not be able to make this
-        // client undecodable for the rest of the call.
+        // Forced codec FIRST, then the floor. The order is the point: the list
+        // is a preference, and the server keeps a codec that some member ranked
+        // highly ahead of one nobody did. Without that, forcing H.264 was
+        // unsatisfiable — the floor outranks it on efficiency, so the encoder
+        // picked VP9 every time and the control looked broken.
         const result = forced === FLOOR_CATEGORY ? [FLOOR_CATEGORY] : [forced, FLOOR_CATEGORY];
         infoLog?.log(`Debug: forceDecodeCodec=${forced} → advertising [${result.join(', ')}]`);
         return result;
@@ -827,6 +838,11 @@ async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
         codecs.push(FLOOR_CATEGORY);
     }
 
+    // Advertised best-first: the list is this client's preference order, and the
+    // server resolves the call's codec from how the members ranked them. A
+    // literal order rather than getVideoCodecEfficiency() — detection can run
+    // before the server-provided VIDEO constants are loaded.
+    codecs.sort((a, b) => decoderAdvertiseRank(a) - decoderAdvertiseRank(b));
     infoLog?.log(`detectSupportedDecoderCodecsUncached: [${codecs.join(', ')}]${excludedDecoderCodecs.size > 0 ? ` (excluded: [${[...excludedDecoderCodecs].join(', ')}])` : ''}`);
     return codecs;
 }
