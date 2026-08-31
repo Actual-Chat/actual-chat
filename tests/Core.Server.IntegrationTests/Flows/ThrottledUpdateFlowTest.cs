@@ -1,184 +1,170 @@
 using ActualChat.Flows;
 using ActualChat.Testing.Host;
+using ActualLab.Generators;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
 [Collection(nameof(ThrottledUpdateFlowCollection))]
 [Trait("Category", "Slow")]
-public class ThrottledUpdateFlowTest(ThrottledUpdateFlowFixture fixture, ITestOutputHelper @out)
+public sealed class ThrottledUpdateFlowTest(ThrottledUpdateFlowFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<ThrottledUpdateFlowFixture>(fixture, @out)
 {
     private static readonly TimeSpan ThrottlePeriod = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
 
     [Fact]
-    public async Task BasicTest()
+    public async Task ScheduledUpdateShouldRunFlow()
     {
-        // Arrange
-        var target = $"test-{Guid.NewGuid():N}";
+        // arrange
+        var target = $"test-{RandomStringGenerator.Default.Next()}";
         var args = ThrottledUpdateFlow.GetArguments(target);
 
-        // Act - schedule first update
+        // act
         var scheduled = await FlowHub.TryScheduleUpdate<SimpleThrottledUpdateFlow>(target);
 
-        // Assert - should schedule since flow doesn't exist yet
-        scheduled.Should().BeTrue();
-
-        // Wait for flow to run
+        // assert
+        scheduled.Should().BeTrue("the flow doesn't exist yet");
         await ComputedTest.When(async ct => {
             var flow = await FlowHub.TryGet<SimpleThrottledUpdateFlow>(args, ct);
-            flow.Should().NotBeNull();
-            flow!.Console.ToString().Should().Contain("Run() #1 completed");
+            flow.Should().NotBeNull("the scheduled update must create the flow");
+            flow!.Console.ToString().Should().Contain("Run() #1 completed", "the scheduled update must run");
         }, DefaultTimeout);
     }
 
     [Fact]
-    public async Task ThrottlingTest()
+    public async Task SecondUpdateShouldBeThrottled()
     {
-        // Arrange
-        var target = $"test-{Guid.NewGuid():N}";
+        // arrange
+        var target = $"test-{RandomStringGenerator.Default.Next()}";
         var args = ThrottledUpdateFlow.GetArguments(target);
-
-        // Act - schedule first update
-        await FlowHub.TryScheduleUpdate<SimpleThrottledUpdateFlow>(target);
-
-        // Wait for flow to run once
+        await FlowHub.TryScheduleUpdate<LongThrottledUpdateFlow>(target);
         await ComputedTest.When(async ct => {
-            var flow = await FlowHub.TryGet<SimpleThrottledUpdateFlow>(args, ct);
-            flow!.Console.ToString().Should().Contain("Run() #1 completed");
+            var flow = await FlowHub.TryGet<LongThrottledUpdateFlow>(args, ct);
+            flow!.Console.ToString().Should().Contain("Run() #1 completed", "the scheduled update must run");
         }, DefaultTimeout);
 
-        // Act - try to schedule immediately (should be throttled)
-        var scheduled = await FlowHub.TryScheduleUpdate<SimpleThrottledUpdateFlow>(target);
+        // act
+        var scheduled = await FlowHub.TryScheduleUpdate<LongThrottledUpdateFlow>(target);
 
-        // Assert - should not schedule since throttle period hasn't elapsed
-        scheduled.Should().BeFalse();
-
-        // Get flow and verify NextRunAt is in the future
-        var flowAfter = await FlowHub.TryGet<SimpleThrottledUpdateFlow>(args);
-        flowAfter.Should().NotBeNull();
-        flowAfter!.NextRunAt.Should().BeGreaterThan(FlowHub.SystemNow);
+        // assert
+        scheduled.Should().BeFalse("the throttle period hasn't elapsed");
+        var flowAfter = await FlowHub.TryGet<LongThrottledUpdateFlow>(args);
+        flowAfter.Should().NotBeNull("the flow ran at least once");
+        flowAfter!.NextRunAt.Should().BeGreaterThan(FlowHub.SystemNow, "the next run is throttled until later");
     }
 
     [Fact]
-    public async Task MustUpdateTest()
+    public async Task MustUpdateShouldBeFalseWithinThrottlePeriod()
     {
-        // Arrange
-        var target = $"test-{Guid.NewGuid():N}";
+        // arrange
+        var target = $"test-{RandomStringGenerator.Default.Next()}";
         var args = ThrottledUpdateFlow.GetArguments(target);
 
-        // Act & Assert - new target should need update
-        var mustUpdate1 = await FlowHub.MustUpdate<SimpleThrottledUpdateFlow>(target);
-        mustUpdate1.Should().BeTrue();
-
-        // Schedule and wait for completion
-        await FlowHub.TryScheduleUpdate<SimpleThrottledUpdateFlow>(target);
+        // act
+        var mustUpdateBeforeRun = await FlowHub.MustUpdate<LongThrottledUpdateFlow>(target);
+        await FlowHub.TryScheduleUpdate<LongThrottledUpdateFlow>(target);
         await ComputedTest.When(async ct => {
-            var flow = await FlowHub.TryGet<SimpleThrottledUpdateFlow>(args, ct);
-            flow!.Console.ToString().Should().Contain("Run() #1 completed");
+            var flow = await FlowHub.TryGet<LongThrottledUpdateFlow>(args, ct);
+            flow!.Console.ToString().Should().Contain("Run() #1 completed", "the scheduled update must run");
         }, DefaultTimeout);
+        var mustUpdateAfterRun = await FlowHub.MustUpdate<LongThrottledUpdateFlow>(target);
 
-        // Act & Assert - should not need update immediately after
-        var mustUpdate2 = await FlowHub.MustUpdate<SimpleThrottledUpdateFlow>(target);
-        mustUpdate2.Should().BeFalse();
+        // assert
+        mustUpdateBeforeRun.Should().BeTrue("the target was never updated");
+        mustUpdateAfterRun.Should().BeFalse("the throttle period hasn't elapsed");
     }
 
     [Fact]
-    public async Task ThrottledResumeIsIgnoredTest()
+    public async Task ThrottledResumeShouldBeIgnored()
     {
-        // Arrange
-        var target = $"test-{Guid.NewGuid():N}";
+        // arrange
+        var target = $"test-{RandomStringGenerator.Default.Next()}";
         var args = ThrottledUpdateFlow.GetArguments(target);
-
-        // Schedule and wait for first run
-        await FlowHub.TryScheduleUpdate<SimpleThrottledUpdateFlow>(target);
+        await FlowHub.TryScheduleUpdate<LongThrottledUpdateFlow>(target);
         await ComputedTest.When(async ct => {
-            var flow = await FlowHub.TryGet<SimpleThrottledUpdateFlow>(args, ct);
-            flow!.Console.ToString().Should().Contain("Run() #1 completed");
+            var flow = await FlowHub.TryGet<LongThrottledUpdateFlow>(args, ct);
+            flow!.Console.ToString().Should().Contain("Run() #1 completed", "the scheduled update must run");
         }, DefaultTimeout);
 
-        // Force schedule a resume event (bypassing the TryScheduleUpdate check)
-        await FlowHub.NewResumeEvent<SimpleThrottledUpdateFlow>(args).Schedule();
-
-        // Give some time for the resume to be processed
+        // act
+        // A directly scheduled resume event bypasses the TryScheduleUpdate throttle check
+        await FlowHub.NewResumeEvent<LongThrottledUpdateFlow>(args).Schedule();
         await Task.Delay(TimeSpan.FromSeconds(1));
 
-        // Assert - SuccessCount should still be 1 (throttled resume was ignored or not run)
-        var flow = await FlowHub.TryGet<SimpleThrottledUpdateFlow>(args);
-        flow!.SuccessCount.Should().Be(1);
-        flow.Console.ToString().Should().NotContain("Run() #2");
+        // assert
+        var flow = await FlowHub.TryGet<LongThrottledUpdateFlow>(args);
+        flow!.SuccessCount.Should().Be(1, "the throttled resume must be ignored");
+        flow.Console.ToString().Should().NotContain("Run() #2", "the throttled resume must not run");
     }
 
     [Fact]
-    public async Task RunsAfterThrottlePeriodTest()
+    public async Task FlowShouldRunAfterThrottlePeriod()
     {
-        // Arrange
-        var target = $"test-{Guid.NewGuid():N}";
+        // arrange
+        var target = $"test-{RandomStringGenerator.Default.Next()}";
         var args = ThrottledUpdateFlow.GetArguments(target);
-
-        // Schedule and wait for first run
         await FlowHub.TryScheduleUpdate<SimpleThrottledUpdateFlow>(target);
         await ComputedTest.When(async ct => {
             var flow = await FlowHub.TryGet<SimpleThrottledUpdateFlow>(args, ct);
-            flow!.Console.ToString().Should().Contain("Run() #1 completed");
+            flow!.Console.ToString().Should().Contain("Run() #1 completed", "the scheduled update must run");
         }, DefaultTimeout);
 
-        // Wait for throttle period to elapse (add extra buffer for timing)
+        // act
         await Task.Delay(ThrottlePeriod + TimeSpan.FromMilliseconds(500));
-
-        // Schedule another update - should be allowed now
         var scheduled = await FlowHub.TryScheduleUpdate<SimpleThrottledUpdateFlow>(target);
-        scheduled.Should().BeTrue();
 
-        // Wait for second run (increase timeout for this test)
+        // assert
+        scheduled.Should().BeTrue("the throttle period has elapsed");
         await ComputedTest.When(async ct => {
             var flow = await FlowHub.TryGet<SimpleThrottledUpdateFlow>(args, ct);
-            flow!.Console.ToString().Should().Contain("Run() #2 completed");
+            flow!.Console.ToString().Should().Contain("Run() #2 completed", "the second update must run");
         }, DefaultTimeout);
     }
 
     [Fact]
-    public async Task TargetPropertyTest()
+    public async Task TargetShouldSurviveArgumentsEncoding()
     {
-        // Arrange - use unique target with special characters to test encoding
-        var target = $"https://example.com/page?q=test-{Guid.NewGuid():N}";
+        // arrange
+        var target = $"https://example.com/page?q=test-{RandomStringGenerator.Default.Next()}";
         var args = ThrottledUpdateFlow.GetArguments(target);
 
-        // Act
+        // act
         await FlowHub.TryScheduleUpdate<SimpleThrottledUpdateFlow>(target);
 
-        // Wait for flow to run and verify the target was logged
+        // assert
         await ComputedTest.When(async ct => {
             var flow = await FlowHub.TryGet<SimpleThrottledUpdateFlow>(args, ct);
-            flow.Should().NotBeNull();
-            flow!.Console.ToString().Should().Contain("Run() #1 completed");
-            flow.Console.ToString().Should().Contain(target);
+            flow.Should().NotBeNull("the scheduled update must create the flow");
+            flow!.Console.ToString().Should().Contain("Run() #1 completed", "the scheduled update must run");
+            flow.Console.ToString().Should().Contain(target, "Target must decode back to the original string");
         }, DefaultTimeout);
     }
 
     [Fact]
-    public void GetArgumentsEncodesTarget()
+    public void GetArgumentsShouldEncodeTarget()
     {
-        // Arrange
+        // arrange
         var target = "https://example.com/test?foo=bar&baz=qux";
 
-        // Act
+        // act
         var args = ThrottledUpdateFlow.GetArguments(target);
 
-        // Assert
-        args.Should().NotBe(target);
-        args.FromBase64().Should().Be(target);
+        // assert
+        args.Should().NotBe(target, "the target must be encoded");
+        args.FromBase64().Should().Be(target, "the encoding must be reversible");
     }
 }
 
 [CollectionDefinition(nameof(ThrottledUpdateFlowCollection))]
-public class ThrottledUpdateFlowCollection : ICollectionFixture<ThrottledUpdateFlowFixture>;
+public sealed class ThrottledUpdateFlowCollection : ICollectionFixture<ThrottledUpdateFlowFixture>;
 
-public class ThrottledUpdateFlowFixture(IMessageSink messageSink) : ActualChat.Testing.Host.AppHostFixture(
+public sealed class ThrottledUpdateFlowFixture(IMessageSink messageSink) : ActualChat.Testing.Host.AppHostFixture(
     "throttled-update-flow",
     messageSink,
     TestAppHostOptions.Default with {
         ConfigureServices = (_, services) => {
-            services.AddFlows().Add<SimpleThrottledUpdateFlow>();
+            services.AddFlows()
+                .Add<SimpleThrottledUpdateFlow>()
+                .Add<LongThrottledUpdateFlow>();
         },
     });
