@@ -24,8 +24,11 @@ advertise a profile that wasn't probed. H.264 is **Constrained Baseline only**
 and B-frames, which this project does not emit, and CBP is the only profile
 Chromium's software encoder implements, so the hardware→software fallback keeps
 the same profile. A device that rejects it falls back to another *category*.
-Each entry is probed by `isCodecSupported()`, which first tries
-`prefer-hardware`, then `no-preference` (Firefox is bad about the former).
+Each entry is probed by `isCodecSupported()`, which asks `prefer-hardware` and
+`prefer-software` **independently** and believes both answers. The echoed
+config is worthless — it mirrors whatever acceleration was requested — but a
+mode coming back unsupported is real: VP9 has no hardware encoder on many
+machines, HEVC no software one in Chromium.
 
 Detection also measures **encoder latency** (`probeEncoderLatencyFrames`):
 frames submitted at the frame interval, counting how many stay in flight once
@@ -48,12 +51,20 @@ rejects doesn't cost the codec everywhere. Only `FLOOR_CATEGORY` (VP9) is
 protected from exclusion — H.264 lost that protection when it stopped being the
 floor.
 
-`getDefaultCodec(supported, w, h)` is only a last resort now: the sender picks
-from `listCodecCandidatesByEfficiency`, which filters to what the *audience*
-can decode, drops anything with `realtime: false`, and honours the
-"prefer encode codec" debug override. `getDefaultCodec` answers without
-reference to the audience, so it runs only when no candidate qualifies at all,
-and even then the floor is preferred over its answer.
+Selection walks an explicit ladder over (codec, acceleration) pairs, best-first:
+
+    hw-AV1 > hw-VP9 > hw-HEVC > sw-AV1 > sw-VP9 > hw-H.264 > sw-H.264
+
+Software HEVC is absent (Chromium has none); software AV1 is withheld on phones.
+Firefox drops both MPEG rungs. `listCodecCandidatesByEfficiency` filters that
+ladder to what the *audience* can decode, drops anything with `realtime: false`,
+and honours the "prefer encode codec" debug override. `getFallbackCodecs` runs
+only when nothing qualifies at all, returning the same ladder order without
+those filters and with the floor last.
+
+The negotiated codec list is a **set**, not a ranking: a codec is either
+decodable by every member or it is not. Which of them a sender uses is the
+sender's own decision, made from the ladder above.
 
 `getCodecForCategory(category, w, h)` always returns the highest level in the
 category (e.g. H.264 CBP 5.2 above 1080p) and keeps it constant within a

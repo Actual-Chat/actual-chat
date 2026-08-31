@@ -132,12 +132,28 @@ export function setVideoDebugPreferredEncodeCodec(codec: string | null): void {
 // Re-runs selection on every live recorder so an override takes effect on the
 // current stream, and — when what we ADVERTISE changed — asks the server to
 // re-read this client's decode set instead of waiting for the next heartbeat.
+// Set by ChatVideoUI once its registration loop starts.
+let memberRegistrationHook: DotNet.DotNetObject | null = null;
+
+export function initVideoMemberRegistration(hook: DotNet.DotNetObject): void {
+    memberRegistrationHook = hook;
+}
+
 async function applyCodecOverrides(decodeSetChanged: boolean): Promise<void> {
-    const recorders = getAllActiveRecorders();
-    for (const recorder of recorders) {
+    // Told through ChatVideoUI, not through a recorder: the client forcing a
+    // decode codec is usually a viewer with its camera off, and it has no
+    // recorder to carry the message. Without this the override waited for the
+    // next registration heartbeat.
+    if (decodeSetChanged && memberRegistrationHook) {
         try {
-            if (decodeSetChanged)
-                await recorder.notifyDecoderCodecsChanged();
+            await memberRegistrationHook.invokeMethodAsync('RequestMemberReregistration');
+        }
+        catch (e) {
+            warnLog?.log(`applyCodecOverrides: re-registration request failed: ${String(e)}`);
+        }
+    }
+    for (const recorder of getAllActiveRecorders()) {
+        try {
             await recorder.refreshCodecSelection();
         }
         catch (e) {

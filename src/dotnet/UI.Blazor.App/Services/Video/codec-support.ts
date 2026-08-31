@@ -78,7 +78,7 @@ const CODEC_PROFILES = {
 
 // The one codec every client is required to speak, and so the only one no
 // exclusion path may drop. It is VP9 rather than H.264 on measurement — see
-// docs/plans/codec-negotiation.md for the numbers.
+// docs/live-video/03-codecs-and-layers.md for the numbers.
 export const FLOOR_CATEGORY = 'vp9';
 
 // Advertised ahead of a forced codec. Not a codec — a marker saying "this list
@@ -124,8 +124,8 @@ export function getForceDecodeCodec(): CodecCategory | null {
     return readCategory(FORCE_DECODE_CODEC_KEY);
 }
 
-// The floor is always advertised alongside it, so forcing a codec can never
-// leave this client unable to decode what the call falls back to.
+// Advertised as a pin rather than a capability report, so the server neither
+// intersects it with the other members nor pads it with the floor.
 export function setForceDecodeCodec(codec: CodecCategory | null): void {
     writeCategory(FORCE_DECODE_CODEC_KEY, codec);
     decoderCodecCache = null;
@@ -149,7 +149,20 @@ export function detectSupportedCodecs(width = 1920, height = 1080): Promise<Code
     const key = `${width}x${height}`;
     let cached = encoderCodecCache.get(key);
     if (!cached) {
-        cached = detectSupportedCodecsUncached(width, height);
+        cached = detectSupportedCodecsUncached(width, height).then(codecs => {
+            // A disqualifying latency verdict is not cached. The probe itself
+            // already refuses to cache one, but the CodecInfo built around it
+            // was cached here, so a single transient failure - a GPU reset, or
+            // losing the encoder-session race against the live stream - retired
+            // a working codec until the page reloaded.
+            if (codecs.some(c => c.realtime === false))
+                encoderCodecCache.delete(key);
+
+            return codecs;
+        }).catch((e: unknown) => {
+            encoderCodecCache.delete(key);
+            throw e;
+        });
         encoderCodecCache.set(key, cached);
     }
     return cached;
@@ -160,17 +173,10 @@ export function detectSupportedCodecs(width = 1920, height = 1080): Promise<Code
 // priority order. The actual encoder profile string is then derived from
 // getCodecForCategory(category, w, h). Reduces startup probes ~7× vs per-profile.
 //
-// Priority order, best-first. Detection, the modal-time probe, the recorder
-// probe, default-codec fallback and audience ordering all derive from this
-// list (directly or via `supportedCodecs`), so a change here cascades.
-//
-// HEVC first where it exists (Apple hardware, best efficiency of the
-// hardware-backed options), then VP9 — the floor, and the only entry every
-// measured engine encodes and decodes at real-time latency. H.264 sits below
-// VP9 because Firefox's H.264 encoder runs ~18 frames behind and no
-// configuration fixes it. AV1 is last: absent on every Apple device measured
-// and software-only elsewhere, so it is enabled but never preferred until its
-// sustained cost is known.
+// One representative profile per category, and the order detection probes them
+// in. NOT a preference: which codec a sender uses comes from ENCODER_LADDER,
+// which ranks (codec, acceleration) pairs and puts hardware AV1 first. The
+// only thing order does here is decide which category is measured first.
 const REPRESENTATIVE_CODECS: { category: CodecInfo['category']; name: string; codec: string }[] = [
     { category: 'hevc', name: 'HEVC Main L3.1',     codec: 'hev1.1.6.L93.B0' },
     { category: 'vp9',  name: 'VP9 Profile 0 L3.1', codec: 'vp09.00.31.08' },
@@ -627,51 +633,36 @@ function getCodecProfileName(codec: string): string | null {
     return null;
 }
 
+// Fallback candidates in encoder-ladder order, best-first. This is the same
+// ladder selection uses, so there is one device-aware priority rather than a
+// second hand-rolled one that could disagree with it: on a phone or in
+// Firefox the ladder already withholds the rungs those platforms shouldn't
+// use, and the caller inherits that for free.
+//
+// Ignores the audience set and the realtime measurement on purpose — it is
+// reached only when nothing passed those filters, and streaming something the
+// device can encode beats streaming nothing.
+export function getFallbackCodecs(supportedCodecs: CodecInfo[], width: number, height: number): string[] {
+    const byCategory = new Map(supportedCodecs.filter(c => c.supported).map(c => [c.category, c]));
+    const codecs: string[] = [];
+    for (const rung of getEncoderLadder()) {
+        const info = byCategory.get(rung.category);
+        if (info && supportsAcceleration(info, rung.accel) && !codecs.includes(info.codec))
+            codecs.push(info.codec);
+    }
+
+    // The floor last: a device with no usable ladder rung still has to land on
+    // something, and the floor is what the rest of the call can decode.
+    const floor = byCategory.get(FLOOR_CATEGORY)?.codec
+        ?? getCodecForCategory(FLOOR_CATEGORY, width, height);
+    if (!codecs.includes(floor))
+        codecs.push(floor);
+
+    return codecs;
+}
+
 export function getDefaultCodec(supportedCodecs: CodecInfo[], width: number, height: number): string {
-    // Priority: AV1 HW > HEVC HW > VP9 HW > H.264 HW > VP9 SW > H.264 SW
-
-    const av1HW = supportedCodecs.find(
-        c => c.category === 'av1' && c.supported && c.hardwareAccelerated
-    );
-    if (av1HW) return av1HW.codec;
-
-    const hevcHW = supportedCodecs.find(
-        c => c.category === 'hevc' && c.supported && c.hardwareAccelerated
-    );
-    if (hevcHW) return hevcHW.codec;
-
-    const vp9HW = supportedCodecs.find(
-        c => c.category === 'vp9' && c.supported && c.hardwareAccelerated
-    );
-    if (vp9HW) return vp9HW.codec;
-
-    // No profile preference to express: detection only ever yields Constrained
-    // Baseline for H.264, so the old Main/High ordering here could not match.
-    const anyH264HW = supportedCodecs.find(
-        c => c.category === 'h264' && c.supported && c.hardwareAccelerated
-    );
-    if (anyH264HW) return anyH264HW.codec;
-
-    // VP9 SW beats H.264 SW on compression.
-    const vp9SW = supportedCodecs.find(
-        c => c.category === 'vp9' && c.supported
-    );
-    if (vp9SW) return vp9SW.codec;
-
-    const anyH264 = supportedCodecs.find(
-        c => c.category === 'h264' && c.supported
-    );
-    if (anyH264) return anyH264.codec;
-
-    // Last resort is the floor, not H.264: a device with no usable H.264 (any
-    // Firefox) must still land on something it can actually encode.
-    const floor = supportedCodecs.find(c => c.category === FLOOR_CATEGORY && c.supported);
-    if (floor) return floor.codec;
-
-    const ladder = getEncoderCodecLadder('h264', width, height)
-        .filter(c => !excludedEncoderCodecStrings.has(c));
-
-    return ladder.length > 0 ? ladder[0] : getCodecForCategory(FLOOR_CATEGORY, width, height);
+    return getFallbackCodecs(supportedCodecs, width, height)[0];
 }
 
 // prefer-hardware → no-preference fallback (matches video-player.ts init).
@@ -825,12 +816,48 @@ export function supportsAcceleration(info: CodecInfo, accel: HardwareAcceleratio
     return accel === 'prefer-hardware' ? info.hardwareSupported : info.softwareSupported;
 }
 
-// Efficiency order, best-first. See detectSupportedDecoderCodecsUncached.
-const DECODER_ADVERTISE_ORDER: readonly string[] = ['av1', 'hevc', 'vp9', 'h264'];
+export interface EncoderCandidate {
+    info: CodecInfo;
+    accel: HardwareAcceleration;
+}
 
-function decoderAdvertiseRank(category: string): number {
-    const rank = DECODER_ADVERTISE_ORDER.indexOf(category);
-    return rank < 0 ? DECODER_ADVERTISE_ORDER.length : rank;
+// The encoder shortlist, best-first: every ladder rung this device can run,
+// after the filters. Lives here rather than in the recorder so the ladder has
+// one implementation and a test can exercise the real one.
+export function selectEncoderCandidates(
+    supportedCodecs: CodecInfo[],
+    allowedCategories: ReadonlySet<CodecInfo['category']> | null,
+    preferred: CodecCategory | null,
+): EncoderCandidate[] {
+    const byCategory = new Map<CodecInfo['category'], CodecInfo>();
+    for (const codecInfo of supportedCodecs) {
+        if (!codecInfo.supported) continue;
+        // Measured pipeline latency, not a browser check: Firefox's H.264
+        // encoder holds ~18 frames before its first chunk, which is half a
+        // second of added latency and deadlocks the encode pipeline. A future
+        // build that fixes it re-qualifies with no code change.
+        if (codecInfo.realtime === false) continue;
+        if (allowedCategories && !allowedCategories.has(codecInfo.category)) continue;
+        if (isEncoderCodecExcluded(codecInfo.category)) continue;
+        byCategory.set(codecInfo.category, codecInfo);
+    }
+
+    const candidates: EncoderCandidate[] = [];
+    for (const rung of getEncoderLadder()) {
+        const info = byCategory.get(rung.category);
+        if (info && supportsAcceleration(info, rung.accel))
+            candidates.push({ info, accel: rung.accel });
+    }
+    if (!preferred)
+        return candidates;
+
+    // A debug preference outranks the ladder so an operator can reproduce a
+    // report on a specific encoder; it cannot conjure one that failed probing,
+    // since those never reach this list.
+    return [
+        ...candidates.filter(c => c.info.category === preferred),
+        ...candidates.filter(c => c.info.category !== preferred),
+    ];
 }
 
 const DECODER_PROBES: { category: string; codecs: string[] }[] = [
@@ -894,11 +921,6 @@ async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
         codecs.push(FLOOR_CATEGORY);
     }
 
-    // Advertised best-first: the list is this client's preference order, and the
-    // server resolves the call's codec from how the members ranked them. A
-    // literal order rather than getVideoCodecEfficiency() — detection can run
-    // before the server-provided VIDEO constants are loaded.
-    codecs.sort((a, b) => decoderAdvertiseRank(a) - decoderAdvertiseRank(b));
     infoLog?.log(`detectSupportedDecoderCodecsUncached: [${codecs.join(', ')}]${excludedDecoderCodecs.size > 0 ? ` (excluded: [${[...excludedDecoderCodecs].join(', ')}])` : ''}`);
     return codecs;
 }

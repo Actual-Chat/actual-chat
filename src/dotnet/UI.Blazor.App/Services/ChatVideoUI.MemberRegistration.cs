@@ -1,4 +1,5 @@
 using ActualChat.Streaming;
+using Microsoft.JSInterop;
 using ActualChat.UI.Blazor.App.Module;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -16,11 +17,31 @@ public partial class ChatVideoUI
     // participant watching with their camera off is exactly who the negotiation
     // protects, and tying this to the recorder would leave them invisible while
     // the senders upgrade to a codec they cannot play.
+    private static readonly string JSInitMethod =
+        $"{BlazorUIAppModule.ImportName}.initVideoMemberRegistration";
+
     // Bumped when this client's decode capability changes under it — today only
     // the debug overrides do that, and they need the server to see the new set
     // now rather than at the next heartbeat.
+    //
+    // JSInvokable and reached through this service rather than through a
+    // recorder: the client most likely to force a codec is a viewer with its
+    // camera off, and that client has no recorder to route the call through.
+    [JSInvokable]
     public void RequestMemberReregistration()
         => _memberRegistrationEpoch.Value++;
+
+    private async Task PublishRegistrationHook(CancellationToken cancellationToken)
+    {
+        _registrationHookRef ??= DotNetObjectReference.Create(this);
+        try {
+            await Hub.JS.InvokeVoidAsync(JSInitMethod, cancellationToken, _registrationHookRef)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "PublishRegistrationHook failed");
+        }
+    }
 
     [ComputeMethod]
     protected virtual async Task<(ChatId? ChatId, int Epoch)> GetMemberRegistrationInput(
@@ -33,6 +54,8 @@ public partial class ChatVideoUI
 
     private async Task SyncMemberRegistration(CancellationToken cancellationToken)
     {
+        await PublishRegistrationHook(cancellationToken).ConfigureAwait(false);
+
         var cInput = await Computed
             .Capture(() => GetMemberRegistrationInput(cancellationToken), cancellationToken)
             .ConfigureAwait(false);

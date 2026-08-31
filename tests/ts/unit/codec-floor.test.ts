@@ -53,8 +53,8 @@ describe('decoder capability detection', () => {
     });
 
     it('advertises the forced codec behind the marker, without the floor', async () => {
-        // A pin, not a capability report: the floor must not come back on its
-        // own, or it would outrank H.264 and make forcing it unsatisfiable.
+        // A pin, not a capability report: the floor must not come back on
+        // its own, or the call would keep a codec the admin excluded.
         isConfigSupported.mockResolvedValue({ supported: true });
         setForceDecodeCodec('h264');
 
@@ -65,14 +65,14 @@ describe('decoder capability detection', () => {
         setForceDecodeCodec(null);
     });
 
-    it('advertises unforced codecs best-first, so the server can rank them', async () => {
-        // The advertised list is a preference order, not a set: the server
-        // resolves the call's codec from where each member ranked it.
+    it('advertises every decodable codec, as a set', async () => {
+        // Order carries no meaning: the server treats the list as a set, and
+        // which codec a sender uses comes from its own encoder ladder.
         isConfigSupported.mockResolvedValue({ supported: true });
 
         const codecs = await detectSupportedDecoderCodecs();
 
-        expect(codecs).toEqual(['av1', 'hevc', 'vp9', 'h264']);
+        expect([...codecs].sort()).toEqual(['av1', 'h264', 'hevc', 'vp9']);
     });
 
     it('marks a forced floor as a pin too, so it is not intersected away', async () => {
