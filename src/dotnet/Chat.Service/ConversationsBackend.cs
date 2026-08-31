@@ -320,9 +320,10 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var entriesInfo = await GetTextEntries(chatId, entryIdRanges, cancellationToken).ConfigureAwait(false);
         var entries = entriesInfo.TextEntries;
         if (entries.Count == 0) {
-            // Every entry in the range was removed - a summary of nothing must not survive
+            // Every entry in the range was removed - a summary of nothing must not survive, but a stale
+            // command whose range predates the conversation's growth must not delete the grown one.
             var emptyExisting = await Get(conversationId, cancellationToken).ConfigureAwait(false);
-            if (emptyExisting is not null) {
+            if (emptyExisting is not null && emptyExisting.EndEntryLid <= endEntryLid) {
                 var removeCommand = new ConversationBackend_Change(
                     conversationId, emptyExisting.Version, Change.Remove<ConversationDiff>());
                 await DbHub.Commander.Call(removeCommand, false, cancellationToken).ConfigureAwait(false);

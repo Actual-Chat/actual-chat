@@ -7,7 +7,6 @@ using ActualChat.Diagnostics;
 using ActualChat.Flows;
 using ActualChat.Invite;
 using ActualChat.Kvas;
-using ActualChat.Queues;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Resilience;
@@ -2107,7 +2106,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (entry, _, kind, _) = eventCommand;
+        var (entry, _, kind, oldEntry) = eventCommand;
         await ResumeContentIndexing(eventCommand, cancellationToken).ConfigureAwait(false);
 
         if (entry.IsContentStreaming)
@@ -2127,7 +2126,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (chat.IsSummarized == false)
                 return;
 
-            if (kind == ChangeKind.Remove) {
+            // Thread deletion soft-removes the parent thread-start entry via Change.Update(IsRemoved),
+            // and restore flips it back - both must refresh the covering summary.
+            var isRemovalOrRestore = kind == ChangeKind.Remove
+                || (kind == ChangeKind.Update && entry.IsRemoved != (oldEntry?.IsRemoved ?? false));
+            if (isRemovalOrRestore) {
                 await ResummarizeCoveringConversation().ConfigureAwait(false);
                 return;
             }
@@ -2153,10 +2156,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
 
         async Task ResummarizeCoveringConversation() {
-            // A removed entry must not linger in an already-persisted summary, so re-run
-            // summarization over the covering conversation's range (removed entries are
-            // excluded at fetch time). Replies appended from outside the range are dropped
-            // by this re-run; DelayUntil coalesces bursts of removals into one LLM call.
+            // A removed entry must not linger in an already-persisted summary. The range isn't passed
+            // along: the flow coalesces a burst of removals and re-reads the range when it finally runs.
             var lid = entry.LocalId;
             var idTile = IdTileStack.LastLayer.GetTile(lid);
             var rangeMeta = await ConversationsBackend
@@ -2171,10 +2172,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (conversation is null || !conversation.EntryLidRange.Contains(lid))
                 return; // Not persisted (e.g. a live session's synthetic range)
 
-            var summarize = new ConversationBackend_Summarize(entry.ChatId, [conversation.EntryLidRange]) {
-                DelayUntil = Clocks.SystemClock.Now + Settings.Summarization.ResummarizationDelay,
-            };
-            await Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
+            await FlowHub.NewResumeEvent<ConversationRefreshFlow>(conversationId.Value)
+                .WithDelay(
+                    Clocks.SystemClock.Now + Settings.Summarization.ResummarizationDelay,
+                    Settings.Summarization.ChatEntrySummarizationDelayQuanta)
+                .Schedule(cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 

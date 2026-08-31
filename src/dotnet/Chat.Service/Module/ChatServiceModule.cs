@@ -197,6 +197,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             .Add<ConversationSplitMasterFlow>()
             .Add<ConversationSplitFlow>()
             .Add<LiveConversationSummaryFlow>()
+            .Add<ConversationRefreshFlow>()
             .Add<TranslationCleanupFlow>();
         if (Settings.IsChatContentItemIndexingEnabled)
             flows

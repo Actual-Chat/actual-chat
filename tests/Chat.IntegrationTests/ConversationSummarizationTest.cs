@@ -176,6 +176,10 @@ public class ConversationSummarizationTest(ChatCollection.AppHostFixture fixture
                 var delayKey = $"{nameof(ChatSettings)}:{nameof(ChatSettings.Summarization)}"
                     + $":{nameof(SummarizationSettings.ResummarizationDelay)}";
                 cfg.AddInMemoryCollection((delayKey, "00:00:01"));
+                // The flow route quantizes the delay, so the default 1-minute quanta must shrink too
+                var quantaKey = $"{nameof(ChatSettings)}:{nameof(ChatSettings.Summarization)}"
+                    + $":{nameof(SummarizationSettings.ChatEntrySummarizationDelayQuanta)}";
+                cfg.AddInMemoryCollection((quantaKey, "00:00:01"));
             },
             ConfigureServices = (_, services) => {
                 services.Replace(ServiceDescriptor.Singleton<IConversationSummarizer, ConversationSummarizerStub>());
@@ -197,6 +201,51 @@ public class ConversationSummarizationTest(ChatCollection.AppHostFixture fixture
 
         // act
         await tester.RemoveTextEntry(entries[1].Id);
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var updated = await conversationsBackend.Get(conversation.Id, ct);
+            updated.Should().NotBeNull();
+            updated!.MessageCount.Should().Be(baselineCount - 1);
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public async Task ShouldResummarizeConversationOnSoftEntryRemoval()
+    {
+        // arrange
+        await using var appHost = await NewAppHost("resummarize-on-soft-delete", options => options with {
+            UseNatsQueues = false,
+            ConfigureHost = (_, cfg) => {
+                cfg.AddInMemory<ChatSettings>((x => x.IsSummarizationEnabled, "true"));
+                cfg.AddInMemory<CoreServerSettings>((x => x.OpenAIKey, "test-key"));
+                var delayKey = $"{nameof(ChatSettings)}:{nameof(ChatSettings.Summarization)}"
+                    + $":{nameof(SummarizationSettings.ResummarizationDelay)}";
+                cfg.AddInMemoryCollection((delayKey, "00:00:01"));
+                var quantaKey = $"{nameof(ChatSettings)}:{nameof(ChatSettings.Summarization)}"
+                    + $":{nameof(SummarizationSettings.ChatEntrySummarizationDelayQuanta)}";
+                cfg.AddInMemoryCollection((quantaKey, "00:00:01"));
+            },
+            ConfigureServices = (_, services) => {
+                services.Replace(ServiceDescriptor.Singleton<IConversationSummarizer, ConversationSummarizerStub>());
+            },
+        });
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var entries = await tester.CreateTextEntries(chatId, "message", 3);
+        await appHost.Services.Queues().WhenProcessing(TimeSpan.FromSeconds(1), default);
+        var lidRange = new Range<long>(entries[0].LocalId, entries[2].LocalId + 1);
+        var commander = tester.AppServices.Commander();
+        var conversation = await commander.Call(new ConversationBackend_Summarize(chatId, [lidRange]));
+        var baselineCount = conversation.MessageCount;
+        baselineCount.Should().BeGreaterThanOrEqualTo(3);
+        var conversationsBackend = tester.AppServices.GetRequiredService<IConversationsBackend>();
+
+        // act: soft-remove via Update (the thread-deletion path), not Change.Remove
+        var target = entries[1];
+        await commander.Call(new ChatsBackend_ChangeEntry(
+            target.Id, null, Change.Update(new ChatEntryDiff { IsRemoved = true })));
 
         // assert
         await ComputedTest.When(async ct => {
