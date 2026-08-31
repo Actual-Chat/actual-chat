@@ -13,6 +13,7 @@ public partial class ChatVideoUI
             AsyncChain.From(SyncCameraLifecycle),
             AsyncChain.From(SyncScreenCastLifecycle),
             AsyncChain.From(MonitorVideoIdleness),
+            AsyncChain.From(SyncMemberRegistration),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         await (

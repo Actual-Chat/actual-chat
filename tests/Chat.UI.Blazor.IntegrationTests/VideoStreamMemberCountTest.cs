@@ -28,17 +28,17 @@ public class VideoStreamMemberCountTest(ChatAppHostFixture fixture, ITestOutputH
         count.Should().Be(0);
 
         // Register Bob as stream member
-        await backend.RegisterMember(chatId, bobSessionId, new ApiArray<string>(["h264", "av1"]), CancellationToken.None);
+        await backend.RegisterMember(chatId, bobSessionId, new ApiArray<string>(["h264", "av1"]), false, CancellationToken.None);
         count = await backend.GetVideoStreamMemberCount(chatId, CancellationToken.None);
         count.Should().Be(1);
 
         // Register Alice as stream member
-        await backend.RegisterMember(chatId, aliceSessionId, new ApiArray<string>(["h264", "av1"]), CancellationToken.None);
+        await backend.RegisterMember(chatId, aliceSessionId, new ApiArray<string>(["h264", "av1"]), false, CancellationToken.None);
         count = await backend.GetVideoStreamMemberCount(chatId, CancellationToken.None);
         count.Should().Be(2);
 
         // Duplicate registration of Bob should not increase count
-        await backend.RegisterMember(chatId, bobSessionId, new ApiArray<string>(["h264", "av1"]), CancellationToken.None);
+        await backend.RegisterMember(chatId, bobSessionId, new ApiArray<string>(["h264", "av1"]), false, CancellationToken.None);
         count = await backend.GetVideoStreamMemberCount(chatId, CancellationToken.None);
         count.Should().Be(2);
 
@@ -67,7 +67,7 @@ public class VideoStreamMemberCountTest(ChatAppHostFixture fixture, ITestOutputH
         var bobSessionId = bob.Session.Id;
 
         // Register Bob in chat 1 only
-        await backend.RegisterMember(chatId1, bobSessionId, new ApiArray<string>(["h264", "av1"]), CancellationToken.None);
+        await backend.RegisterMember(chatId1, bobSessionId, new ApiArray<string>(["h264", "av1"]), false, CancellationToken.None);
 
         var count1 = await backend.GetVideoStreamMemberCount(chatId1, CancellationToken.None);
         var count2 = await backend.GetVideoStreamMemberCount(chatId2, CancellationToken.None);
@@ -95,7 +95,7 @@ public class VideoStreamMemberCountTest(ChatAppHostFixture fixture, ITestOutputH
         computed.IsConsistent().Should().BeTrue();
 
         // Register a member — computed should become inconsistent
-        await backend.RegisterMember(chatId, bobSessionId, new ApiArray<string>(["h264", "av1"]), CancellationToken.None);
+        await backend.RegisterMember(chatId, bobSessionId, new ApiArray<string>(["h264", "av1"]), false, CancellationToken.None);
         computed.IsConsistent().Should().BeFalse();
 
         // Re-capture — should reflect new value
