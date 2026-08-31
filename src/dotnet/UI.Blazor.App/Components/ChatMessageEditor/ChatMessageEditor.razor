@@ -2,6 +2,7 @@
 @using ActualChat.UI.Blazor.App.Events
 @using ActualChat.UI.Blazor.App.Module
 @using ActualChat.Kvas
+@using ActualChat.Live
 @using ActualLab.Locking
 @using ActualChat.Pooling
 @inherits ComponentBase<AppUIHub>
@@ -204,8 +205,11 @@
         => FileAttachments.TryAddWebFileAttachments(_attachmentListHolder.Attachments, fileInfos);
 
     [JSInvokable]
-    public Task OnTypingChanged(bool isActive)
-        => Hub.TypingUI.SetTyping(Chat.Id, ActualChat.Live.TypingKind.Typing, isActive, CancellationToken.None);
+    public Task OnTypingChanged(bool isTyping)
+        => Hub.TypingUI.SetTyping(
+            Chat.Id,
+            isTyping ? TypingActivityKind.Typing : TypingActivityKind.None,
+            CancellationToken.None);
 
     // Private methods
 
