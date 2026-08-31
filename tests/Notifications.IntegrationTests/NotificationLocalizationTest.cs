@@ -36,13 +36,13 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
     public void AggregatedTextShouldPrefixEveryLineWithItsAuthor()
     {
         // arrange
-        var notification = NewAggregated(shownCount: 2, moreCount: 0);
+        var notification = NewAggregated(shownCount: 2, moreCount: 0, authorCount: 2);
 
         // act
         var text = NotificationHelper.ComposeAggregatedText(notification, Russian);
 
         // assert
-        text.Should().Be("Алиса: сообщение 1\nАлиса: сообщение 0");
+        text.Should().Be("Борис: сообщение 1\nАлиса: сообщение 0");
     }
 
     [Fact]
@@ -153,17 +153,21 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
     private static string[] NewNames(int count)
         => Enumerable.Range(0, count).Select(i => $"Участник{i}").ToArray();
 
-    private static MessageNotification NewAggregated(int shownCount, int moreCount)
+    private static MessageNotification NewAggregated(int shownCount, int moreCount, int authorCount = 1)
     {
-        var authorId = AuthorId.New(TestChatId, 1);
+        var authorIds = Enumerable.Range(0, authorCount)
+            .Select(i => AuthorId.New(TestChatId, i + 1))
+            .ToArray();
+        var authorNames = new[] { "Алиса", "Борис", "Виктор" };
         var messages = Enumerable.Range(0, shownCount)
             .Select(i => NotificationMessage.New(
-                authorId, "Алиса", $"сообщение {i}", 100 + i, Moment.EpochStart + TimeSpan.FromSeconds(i)))
+                authorIds[i % authorCount], authorNames[i % authorCount],
+                $"сообщение {i}", 100 + i, Moment.EpochStart + TimeSpan.FromSeconds(i)))
             .ToApiArray();
-        return MessageNotification.New(TestUserId, TestChatId, 100 + shownCount - 1, authorId) with {
+        return MessageNotification.New(TestUserId, TestChatId, 100 + shownCount - 1, authorIds[^1]) with {
             StartEntryLid = 100,
             UnreadCount = shownCount + moreCount,
-            AuthorIds = new[] { authorId }.ToApiArray(),
+            AuthorIds = authorIds.ToApiArray(),
             RecentMessages = messages,
             LeadText = "сообщение 0",
             LeadCount = 1,
