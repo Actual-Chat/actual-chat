@@ -91,7 +91,7 @@
 }
 .spoiler-markup.revealed {
     @apply bg-02;
-    @apply select-text;
+    @apply select-auto;
     filter: none;
 }
 
@@ -140,7 +140,6 @@
 
 .playable-text-markup {
     @apply whitespace-break-spaces;
-    @apply select-text;
 }
 .playable-text-markup > span {
     @apply inline;
