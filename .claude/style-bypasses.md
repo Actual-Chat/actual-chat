@@ -167,6 +167,13 @@ edited. The reason can be as short as whose decision it was.
   `Sentry`); it is the tab title itself here, not an incidental mention, but the
   exemption's rationale (brand names aren't translated) applies identically
 
+## src/dotnet/UI.Blazor.App/Services/ChatUI.cs
+
+- L971 `public async Task RestoreNavbarSelectedGroup()`
+  — public method inside the `// Private methods` section — placement predates the
+  deferred-conversation-collapse branch and relocating it is unrelated churn.
+  NEEDS ALEX'S CALL
+
 ## src/dotnet/UI.Blazor.App/Services/LiveFoldMath.cs
 
 - L12 `public static long Advance(long lastFoldEndLid, long minVisibleLid, long streamingFloorLid, long tailFloorLid)`

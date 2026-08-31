@@ -26,6 +26,11 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private readonly StoredState<IImmutableDictionary<string, ChatId>> _selectedChatIds;
     private readonly MutableState<ChatEntryId?> _highlightedEntryId;
     private readonly MutableState<IImmutableSet<ConversationId>> _conversationExpansionOverrides;
+    private readonly MutableState<IImmutableSet<ConversationId>> _autoExpandedConversations;
+    // Holds the selected chat's lids only - ClearAutoExpansionState drops it on every chat change
+    private LidRangeSet? _witnessedLids;
+    private readonly ConcurrentDictionary<ConversationId, Unit> _suppressedAutoExpansions = new();
+    private int _autoExpansionEpoch;
     private ChatId? _searchEnabledChatId;
     private List<ChatId>? _pendingSelectedChatIds = new();
 
@@ -60,6 +65,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public IState<IImmutableDictionary<string, ChatId>> SelectedChatIds => _selectedChatIds;
     public IState<ChatEntryId?> HighlightedEntryId => _highlightedEntryId;
     public IState<IImmutableSet<ConversationId>> ConversationExpansionOverrides => _conversationExpansionOverrides;
+    public IState<IImmutableSet<ConversationId>> AutoExpandedConversations => _autoExpandedConversations;
     public Task WhenReady => _selectedChatId.WhenRead;
     public IState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
 
@@ -92,6 +98,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _conversationExpansionOverrides = StateFactory.NewMutable(
             (IImmutableSet<ConversationId>)ImmutableHashSet<ConversationId>.Empty,
             StateCategories.Get(type, nameof(ConversationExpansionOverrides)));
+        _autoExpandedConversations = StateFactory.NewMutable(
+            (IImmutableSet<ConversationId>)ImmutableHashSet<ConversationId>.Empty,
+            StateCategories.Get(type, nameof(AutoExpandedConversations)));
         _itemVisibility = StateFactory.NewMutable(
             ChatViewItemVisibility.Empty,
             StateCategories.Get(type, nameof(ItemVisibility)));
@@ -458,14 +467,24 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (Hub.LiveBlockUI.TryCollapseOverlay(conversationId))
             return;
 
-        // Membership here flips a conversation's expansion away from its IsExpandedByDefault, so the
-        // toggle works regardless of which default (expanded/collapsed) the conversation carries.
-        var overrides = _conversationExpansionOverrides.Value;
-        var mustRemove = overrides.Contains(conversationId);
-        overrides = mustRemove
-            ? overrides.Remove(conversationId)
-            : overrides.Add(conversationId);
-        _conversationExpansionOverrides.Value = overrides;
+        // ResetReveal takes LiveBlockUI's lock, so it stays outside this one - a ChatUI -> LiveBlockUI
+        // lock edge would invert the one TryCollapseOverlay acquires in the other direction.
+        lock (Lock) {
+            var isAutoExpanded = SuppressAutoExpansion(conversationId);
+            var overrides = _conversationExpansionOverrides.Value;
+            var isOverridden = overrides.Contains(conversationId);
+            // Membership here flips a conversation's expansion away from its IsExpandedByDefault, so the
+            // toggle works regardless of which default the conversation carries. Dropping the auto entry
+            // is the whole collapse only while nothing else expands it - the latched default is written
+            // once by whoever sees the conversation first, so it can land as expanded after the rule
+            // recorded the auto-expansion, and flipping then would re-expand what just collapsed.
+            var isExpandedWithoutAuto =
+                _knownConversationDefaultExpanded.GetValueOrDefault(conversationId) ^ isOverridden;
+            if (!isAutoExpanded || isExpandedWithoutAuto)
+                _conversationExpansionOverrides.Value = isOverridden
+                    ? overrides.Remove(conversationId)
+                    : overrides.Add(conversationId);
+        }
         Hub.LiveBlockUI.ResetReveal(conversationId.ChatId);
     }
 
@@ -478,18 +497,8 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             conversation.Id,
             static (_, c) => c.IsExpandedByDefault,
             conversation);
-        return isExpandedByDefault ^ _conversationExpansionOverrides.Value.Contains(conversation.Id);
-    }
-
-    internal void EnsureConversationCollapsed(ConversationId conversationId, bool isExpandedByDefault)
-    {
-        // The caller's flag is the template's close-time value; the effective state is computed from the
-        // latched one, and keying the override off the wrong one leaves the block expanded.
-        var latched = _knownConversationDefaultExpanded.GetOrAdd(conversationId, isExpandedByDefault);
-        var overrides = _conversationExpansionOverrides.Value;
-        _conversationExpansionOverrides.Value = latched
-            ? overrides.Add(conversationId)
-            : overrides.Remove(conversationId);
+        return (isExpandedByDefault ^ _conversationExpansionOverrides.Value.Contains(conversation.Id))
+            || _autoExpandedConversations.Value.Contains(conversation.Id);
     }
 
     // This method fixes provided ChatId w/ PeerChatId.FixOwnerId, which replaces
@@ -573,6 +582,69 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         await _viewPositionStates.DisposeAsync().ConfigureAwait(false);
     }
 
+    // Protected/internal methods
+
+    internal void EnsureConversationCollapsed(ConversationId conversationId, bool isExpandedByDefault)
+    {
+        SuppressAutoExpansion(conversationId);
+        // The caller's flag is the template's close-time value; the effective state is computed from the
+        // latched one, and keying the override off the wrong one leaves the block expanded.
+        var latched = _knownConversationDefaultExpanded.GetOrAdd(conversationId, isExpandedByDefault);
+        var overrides = _conversationExpansionOverrides.Value;
+        _conversationExpansionOverrides.Value = latched
+            ? overrides.Add(conversationId)
+            : overrides.Remove(conversationId);
+    }
+
+    internal bool SuppressAutoExpansion(ConversationId conversationId)
+    {
+        // Returns whether an auto-expansion was dropped - for the toggle, that removal IS the collapse.
+        // Called on its own for ids whose IsExpandedByDefault isn't knowable: a frozen block's render id
+        // has no conversation behind it once materialized, so normalizing its override would expand it.
+        _suppressedAutoExpansions[conversationId] = default;
+        var autoExpanded = _autoExpandedConversations.Value;
+        var isAutoExpanded = autoExpanded.Contains(conversationId);
+        if (isAutoExpanded)
+            _autoExpandedConversations.Value = autoExpanded.Remove(conversationId);
+        return isAutoExpanded;
+    }
+
+    internal static List<ConversationId> GetNewAutoExpansions(
+        ChatId chatId,
+        IEnumerable<Range<long>> conversationLidRanges,
+        IImmutableSet<ConversationId> defaultExpanded,
+        IImmutableSet<ConversationId> overrides,
+        IImmutableSet<ConversationId> autoExpanded,
+        Func<ConversationId, bool> isSuppressed,
+        LidRangeSet witnessedLids,
+        ConversationId? liveBlockId,
+        ConversationId? materializedBlockId)
+    {
+        // A conversation that appeared (or grew) over rows the user has actually seen this visit must
+        // not swallow them in place; it auto-expands until the user leaves the chat. Live/materialized
+        // block ids are excluded - the live overlay machinery owns their expansion. An id carrying a
+        // manual override is excluded too: suppression dies with the visit but the override doesn't,
+        // so without this an earlier visit's deliberate collapse would be undone by later range growth.
+        var result = new List<ConversationId>();
+        foreach (var range in conversationLidRanges) {
+            var conversationId = ConversationId.New(chatId, range.Start);
+            if (conversationId == liveBlockId || conversationId == materializedBlockId)
+                continue;
+            if (autoExpanded.Contains(conversationId)
+                || isSuppressed(conversationId)
+                || overrides.Contains(conversationId))
+                continue;
+
+            var isExpanded = defaultExpanded.Contains(conversationId) ^ overrides.Contains(conversationId);
+            if (isExpanded)
+                continue;
+
+            if (witnessedLids.Intersects(range))
+                result.Add(conversationId);
+        }
+        return result;
+    }
+
     // Private methods
 
     private bool SelectChatInternal(ChatId? chatId)
@@ -590,9 +662,23 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 else
                     _pendingSelectedChatIds.Add(chatId);
             }
+            ClearAutoExpansionState();
             selectedChatId.Value = chatId; // "Resumes" InvalidateSelectedChatDependencies, which does the rest
             return true;
         }
+    }
+
+    private void ClearAutoExpansionState()
+    {
+        // Bumped first, and before the wipes: an in-flight build snapshots the epoch at its start, so
+        // moving it here is what tells that build its results belong to a visit that's already over -
+        // including the leave-and-return-to-the-same-chat case, where a chat-id check still matches.
+        Interlocked.Increment(ref _autoExpansionEpoch);
+        // Released, not just written under Lock: the auto-expansion pass reads this field lock-free.
+        Volatile.Write(ref _witnessedLids, null);
+        _suppressedAutoExpansions.Clear();
+        if (_autoExpandedConversations.Value.Count != 0)
+            _autoExpandedConversations.Value = ImmutableHashSet<ConversationId>.Empty;
     }
 
     private bool SelectPlaceInternal(PlaceId? placeId)

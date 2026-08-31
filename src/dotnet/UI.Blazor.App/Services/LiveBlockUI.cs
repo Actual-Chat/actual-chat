@@ -163,6 +163,8 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
 
                 chatState.WasAttending = false;
                 chatState.State.Value = chatState.State.Value with { WasAttending = false };
+                if (t.LiveRenderId != t.MaterializedId)
+                    Hub.ChatUI.SuppressAutoExpansion(t.LiveRenderId);
                 Hub.ChatUI.EnsureConversationCollapsed(t.MaterializedId, t.IsExpandedByDefault);
                 return true;
             }
