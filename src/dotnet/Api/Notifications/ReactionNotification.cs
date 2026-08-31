@@ -14,12 +14,19 @@ public sealed partial record ReactionNotification(NotificationId Id, long Versio
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public override Moment? ExpiresAt => SentAt + Constants.Notification.ReactionLifespan;
 
-    // Keys 9 and 10 are free within this subtype - union members serialize independently, and
+    // Keys 9..12 are free within this subtype - union members serialize independently, and
     // CallNotification / ConversationNotification already reuse the same range.
     [DataMember(Order = 9), Key(9)]
     public ApiArray<AuthorId> AuthorIds { get; init; }
     [DataMember(Order = 10), Key(10)]
     public ApiArray<Emoji> Emojis { get; init; }
+    // Text is the composed "{emoji} to {quote}" sentence, so surfaces that render the emoji
+    // separately need the bare quote; and Emojis accumulates in arrival order with dedup, so
+    // the chronologically-newest emoji has to be tracked explicitly.
+    [DataMember(Order = 11), Key(11)]
+    public string QuotedText { get; init; } = "";
+    [DataMember(Order = 12), Key(12)]
+    public Emoji? LastEmoji { get; init; }
 
     public static ReactionNotification New(UserId userId, ChatEntryId entryId, AuthorId? authorId = null)
         // AuthorIds/Emojis are left empty here and filled at the send site: ApiArray is
@@ -43,14 +50,15 @@ public sealed partial record ReactionNotification(NotificationId Id, long Versio
         foreach (var emoji in Emojis)
             if (!emojis.Contains(emoji))
                 emojis = emojis.With(emoji);
-        // The queue is at-least-once, so a redelivery must return the existing instance: the notify
-        // path skips the push on reference equality.
-        if (authorIds.Count == e.AuthorIds.Count && emojis.Count == e.Emojis.Count)
-            return e;
-
         // Newest-of-the-two rather than always the incoming: Title/Text/IconUrl/AuthorId are what
         // old clients render, and an out-of-order older event must not regress them.
         var newest = SentAt > e.SentAt ? this : e;
+        // The queue is at-least-once, so a redelivery must return the existing instance: the notify
+        // path skips the push on reference equality. LastEmoji is compared too - an author re-reacting
+        // with an emoji already in the set changes the badge while both sets stay the same.
+        if (authorIds.Count == e.AuthorIds.Count && emojis.Count == e.Emojis.Count && newest.LastEmoji == e.LastEmoji)
+            return e;
+
         return newest with {
             Version = e.Version,
             CreatedAt = e.CreatedAt,

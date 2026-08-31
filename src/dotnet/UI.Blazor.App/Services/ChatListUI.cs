@@ -134,8 +134,10 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     {
         DebugLog?.LogDebug("-> List({PlaceId}, {Settings})", placeId, settings);
         var chatById = await ListUnorderedForDisplay(placeId, settings, cancellationToken).ConfigureAwait(false);
-        // AcrossPlace filters are exactly the notifications panel's, and only it surfaces reactions.
-        var isNotificationsPanel = settings.GetFilter().AcrossPlace;
+        var filter = settings.GetFilter();
+        // AcrossPlace filters are exactly the notifications panel's, but the Mentions tab neither
+        // surfaces reactions nor sorts by them - see ListUnorderedForDisplay.
+        var isNotificationsPanel = filter.AcrossPlace && filter != ChatListFilter.UnreadMentions;
         var reactedAt = isNotificationsPanel
             ? await GetReactedAt(chatById.Keys, cancellationToken).ConfigureAwait(false)
             : null;
@@ -245,8 +247,10 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
                 continue;
 
             // Only chats the filter rejected land here - the ones it accepts are already in chatById.
+            // A reaction relaxes just the ChatInfoFilter (unread) dimension: a chat the Filter (kind)
+            // dimension rejects - e.g. a group chat on the People tab - must stay out.
             var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
-            if (chatInfo is not null && !filter.Invoke(chatInfo))
+            if (chatInfo is not null && !filter.Invoke(chatInfo) && (filter.Filter?.Invoke(chatInfo.Chat) ?? true))
                 result.Add(chatId, chatInfo);
         }
 

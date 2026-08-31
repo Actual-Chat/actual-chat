@@ -46,6 +46,39 @@ public sealed class NotificationsUIProjectionTest
     }
 
     [Fact]
+    public void ReactionStateShouldPreferLastEmojiOverAccumulatedOrder()
+    {
+        // arrange - an out-of-order merge leaves the newest emoji in the middle of the accumulated set
+        var notification = NewReaction(1, Moment.EpochStart + TimeSpan.FromSeconds(2)) with {
+            Emojis = ApiArray.New(Emojis.Party, Emojis.Awesome),
+            LastEmoji = Emojis.Party,
+        };
+        var active = ApiArray.New<Notification>(notification);
+
+        // act
+        var state = NotificationsUI.SelectReactionState(active, ChatA);
+
+        // assert
+        state.Emoji.Should().Be(Emojis.Party);
+    }
+
+    [Fact]
+    public void ReactionStateShouldFallBackToAccumulatedSetWithoutLastEmoji()
+    {
+        // arrange - a notification persisted before LastEmoji existed
+        var notification = NewReaction(1, Moment.EpochStart + TimeSpan.FromSeconds(1)) with {
+            Emojis = ApiArray.New(Emojis.Awesome, Emojis.Party),
+        };
+        var active = ApiArray.New<Notification>(notification);
+
+        // act
+        var state = NotificationsUI.SelectReactionState(active, ChatA);
+
+        // assert
+        state.Emoji.Should().Be(Emojis.Party);
+    }
+
+    [Fact]
     public void ReactionStateShouldBeDefaultForChatWithoutReactions()
     {
         // act

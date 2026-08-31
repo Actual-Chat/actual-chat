@@ -8,11 +8,9 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// notifications panel, its badges and the navbar bell share one computed over
 /// <see cref="INotifications.ListActive"/>.
 /// </summary>
-public class NotificationsUI(AppUIHub hub) : IComputeService
+public class NotificationsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
-    private AppUIHub Hub { get; } = hub;
     private INotifications Notifications => field ??= Hub.Notifications;
-    private Session Session => Hub.Session;
 
     [ComputeMethod]
     public virtual async Task<ApiArray<Notification>> ListByKind(
@@ -59,7 +57,8 @@ public class NotificationsUI(AppUIHub hub) : IComputeService
         if (newest is null)
             return default;
 
-        return new ChatReactionState(newest.Emojis.LastOrDefault(), newest.SentAt);
+        // LastEmoji is null on notifications persisted before it existed; the accumulated set is the fallback.
+        return new ChatReactionState(newest.LastEmoji ?? newest.Emojis.LastOrDefault(), newest.SentAt);
     }
 }
 

@@ -17,7 +17,12 @@
             @foreach (var emoji in Notification.Emojis) {
                 <EmojiIcon Emoji="@emoji" HasPreview="false"/>
             }
-            <span class="c-text">@Notification.Text</span>
+            @* Text is the composed "{emoji} to {quote}" sentence - rendering it next to the icon
+               stack would show the newest emoji twice. QuotedText is empty on notifications
+               persisted before it existed. *@
+            <span class="c-text">
+                @(Notification.QuotedText.IsNullOrEmpty() ? Notification.Text : Notification.QuotedText)
+            </span>
         </div>
         <div class="c-meta">
             <span class="c-chat">@chatTitle</span>

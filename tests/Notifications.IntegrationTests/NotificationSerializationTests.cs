@@ -179,6 +179,8 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
             Text = "reacted to your message",
             AuthorIds = ApiArray.New(bob, kate),
             Emojis = ApiArray.New(Emojis.Awesome, Emojis.Party),
+            QuotedText = "\"weekend plans\"",
+            LastEmoji = Emojis.Party,
         };
 
         // act
@@ -189,6 +191,8 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
         // assert
         deserialized.AuthorIds.Should().Equal([bob, kate]);
         deserialized.Emojis.Should().Equal([Emojis.Awesome, Emojis.Party]);
+        deserialized.QuotedText.Should().Be("\"weekend plans\"");
+        deserialized.LastEmoji.Should().Be(Emojis.Party);
     }
 
     [Fact]

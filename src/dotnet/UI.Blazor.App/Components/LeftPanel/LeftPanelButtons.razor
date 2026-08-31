@@ -46,7 +46,7 @@
 </div>
 
 @code {
-    private bool _hadUnread;
+    private bool _hadAny;
 
     private ChatListUI ChatListUI => Hub.ChatListUI;
     private NavbarUI NavbarUI => Hub.NavbarUI;
@@ -81,12 +81,12 @@
     protected override void OnAfterRender(bool firstRender) {
         var m = State.Value;
         // The Unread group stays selected while the panel still retains recently-read chats;
-        // once there's nothing unread AND nothing retained, we fall back to Chats.
-        if (_hadUnread && !m.HasUnread && !m.HasRetained && !m.HasReactions
+        // once there's nothing unread, retained, or reacted, we fall back to Chats.
+        if (_hadAny && !m.HasUnread && !m.HasRetained && !m.HasReactions
             && NavbarUI.SelectedGroupId == NavbarGroupIds.Unread)
             NavbarUI.SelectGroup(NavbarGroupIds.Chats, false);
 
-        _hadUnread = m.IsActive && m.HasUnread;
+        _hadAny = m.IsActive && (m.HasUnread || m.HasRetained || m.HasReactions);
     }
 
     // Nested types

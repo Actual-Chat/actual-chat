@@ -693,7 +693,7 @@ public class NotificationsBackend(IServiceProvider services)
         var l = await UserLocalizers.Get(author.UserId, cancellationToken).ConfigureAwait(false);
         await EnqueueMessageRelatedNotifications(
             entry.ChatId, entry.Id, reactionAuthor, l.Notification_Reaction_Format(reaction.Emoji, text),
-            NotificationKind.Reaction, similarityKey, "", userIds, reaction.Emoji, cancellationToken)
+            NotificationKind.Reaction, similarityKey, "", userIds, (reaction.Emoji, text), cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -1311,11 +1311,11 @@ public class NotificationsBackend(IServiceProvider services)
         string similarityKey,
         string beepGroup,
         IReadOnlyList<UserId> userIds,
-        Emoji? reactionEmoji,
+        (Emoji Emoji, string QuotedText)? reaction,
         CancellationToken cancellationToken)
         => EnqueueMessageRelatedNotifications(
             chatId, entryId, changeAuthor, content, null, kind, similarityKey, beepGroup,
-            userIds, reactionEmoji, cancellationToken);
+            userIds, reaction, cancellationToken);
 
     // Text that is a sentence: composed once per recipient, in their own language.
     private ValueTask EnqueueMessageRelatedNotifications(
@@ -1343,7 +1343,7 @@ public class NotificationsBackend(IServiceProvider services)
         string similarityKey,
         string beepGroup,
         IReadOnlyList<UserId> userIds,
-        Emoji? reactionEmoji,
+        (Emoji Emoji, string QuotedText)? reaction,
         CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("-> EnqueueMessageRelatedNotifications. ChatId={ChatId}, EntryId={EntryId}, "
@@ -1376,7 +1376,9 @@ public class NotificationsBackend(IServiceProvider services)
                 NotificationKind.Mention => MentionNotification.New(otherUserId, fullEntryId, changeAuthor.Id),
                 NotificationKind.Reaction => ReactionNotification.New(otherUserId, fullEntryId, changeAuthor.Id) with {
                     AuthorIds = ApiArray.New(changeAuthor.Id),
-                    Emojis = reactionEmoji is { } emoji ? ApiArray.New(emoji) : default,
+                    Emojis = reaction is { } r ? ApiArray.New(r.Emoji) : default,
+                    LastEmoji = reaction?.Emoji,
+                    QuotedText = reaction?.QuotedText ?? "",
                 },
                 NotificationKind.Attention => AttentionNotification.New(otherUserId, fullEntryId, changeAuthor.Id),
                 _ => throw StandardError.NotSupported<NotificationsBackend>($"Unsupported notification kind: {kind}."),

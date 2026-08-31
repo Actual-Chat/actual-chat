@@ -104,12 +104,69 @@ public sealed class ReactionNotificationMergeTest(ITestOutputHelper @out) : Test
         result.Should().BeSameAs(atCap, because: "past the cap the notification stops changing and stops re-pushing");
     }
 
+    [Fact]
+    public void MergeShouldKeepLastEmojiOfNewestEvent()
+    {
+        // arrange
+        var bob = AuthorId.New(TestChatId, 5);
+        var kate = AuthorId.New(TestChatId, 6);
+        var newer = NewReaction(kate, Emojis.Party, Moment.EpochStart + TimeSpan.FromSeconds(2));
+        var older = NewReaction(bob, Emojis.Awesome, Moment.EpochStart + TimeSpan.FromSeconds(1));
+
+        // act
+        var merged = (ReactionNotification)older.MergeWith(newer);
+
+        // assert
+        merged.Emojis.Should().Equal([Emojis.Party, Emojis.Awesome], because: "emojis accumulate in arrival order");
+        merged.LastEmoji.Should().Be(Emojis.Party, because: "an out-of-order older event must not steal the badge");
+    }
+
+    [Fact]
+    public void MergeShouldUpdateLastEmojiWhenNewestReusesAnAccumulatedEmoji()
+    {
+        // arrange
+        var bob = AuthorId.New(TestChatId, 5);
+        var kate = AuthorId.New(TestChatId, 6);
+        var mark = AuthorId.New(TestChatId, 7);
+        var accumulated = NewReaction(kate, Emojis.Party, Moment.EpochStart + TimeSpan.FromSeconds(2))
+            .MergeWith(NewReaction(bob, Emojis.Awesome, Moment.EpochStart + TimeSpan.FromSeconds(1)));
+
+        // act
+        var third = NewReaction(mark, Emojis.Awesome, Moment.EpochStart + TimeSpan.FromSeconds(3));
+        var merged = (ReactionNotification)third.MergeWith(accumulated);
+
+        // assert
+        merged.Emojis.Should().Equal([Emojis.Awesome, Emojis.Party], because: "the reused emoji is deduplicated");
+        merged.LastEmoji.Should().Be(Emojis.Awesome);
+    }
+
+    [Fact]
+    public void MergeShouldUpdateBadgeWhenAuthorReReactsWithAccumulatedEmoji()
+    {
+        // arrange
+        var bob = AuthorId.New(TestChatId, 5);
+        var kate = AuthorId.New(TestChatId, 6);
+        var accumulated = NewReaction(kate, Emojis.Party, Moment.EpochStart + TimeSpan.FromSeconds(2))
+            .MergeWith(NewReaction(bob, Emojis.Awesome, Moment.EpochStart + TimeSpan.FromSeconds(1)));
+
+        // act - bob re-reacts with an accumulated emoji that is not the current badge
+        var reReaction = NewReaction(bob, Emojis.Awesome, Moment.EpochStart + TimeSpan.FromSeconds(3));
+        var merged = (ReactionNotification)reReaction.MergeWith(accumulated);
+
+        // assert
+        merged.Should().NotBeSameAs(accumulated, because: "both sets are unchanged, but the badge and SentAt are not");
+        merged.LastEmoji.Should().Be(Emojis.Awesome);
+        merged.SentAt.Should().Be(reReaction.SentAt);
+    }
+
     // Private methods
 
     private static ReactionNotification NewReaction(AuthorId authorId, Emoji emoji, Moment sentAt)
+        // Mirrors the send site: Emojis and LastEmoji are filled together.
         => ReactionNotification.New(TestUserId, TestEntryId, authorId) with {
             AuthorIds = ApiArray.New(authorId),
             Emojis = ApiArray.New(emoji),
+            LastEmoji = emoji,
             SentAt = sentAt,
         };
 }
