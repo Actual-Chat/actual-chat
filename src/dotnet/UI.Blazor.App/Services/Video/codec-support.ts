@@ -22,6 +22,14 @@ export interface CodecInfo {
     codec: string;
     category: 'h264' | 'hevc' | 'av1' | 'vp9';
     supported: boolean;
+    // Probed independently, one acceleration mode at a time. `isConfigSupported`
+    // echoes back whatever hardwareAcceleration was asked for, so the echo says
+    // nothing; what carries information is that a mode can come back
+    // unsupported — VP9 has no hardware encoder on plenty of machines, HEVC no
+    // software one in Chromium.
+    hardwareSupported: boolean;
+    softwareSupported: boolean;
+    // True when a hardware encoder exists. Kept as the name older call sites use.
     hardwareAccelerated: boolean;
     // False when the encoder buffers so many frames before its first output
     // that it can't be used for a call. Undefined when not measured.
@@ -191,11 +199,11 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
     for (const { category } of probeList) {
         const ladder = getEncoderCodecLadder(category, width, height)
             .filter(c => !excludedEncoderCodecStrings.has(c));
-        let chosen: { codec: string; hardwareAccelerated: boolean } | null = null;
+        let chosen: { codec: string; hardware: boolean; software: boolean } | null = null;
         for (const codec of ladder) {
-            const { supported, hardwareAccelerated } = await isCodecSupported(codec, category, width, height);
-            if (supported) {
-                chosen = { codec, hardwareAccelerated };
+            const { hardware, software } = await isCodecSupported(codec, category, width, height);
+            if (hardware || software) {
+                chosen = { codec, hardware, software };
                 break;
             }
         }
@@ -209,7 +217,7 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
             const frames = await probeEncoderLatencyFrames(
                 codec,
                 category,
-                chosen.hardwareAccelerated ? 'prefer-hardware' : 'no-preference');
+                chosen.hardware ? 'prefer-hardware' : 'prefer-software');
             realtime = frames <= MAX_REALTIME_LATENCY_FRAMES;
             if (!realtime) {
                 warnLog?.log(
@@ -222,13 +230,16 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
             codec,
             category,
             supported: chosen !== null,
-            hardwareAccelerated: chosen?.hardwareAccelerated ?? false,
+            hardwareSupported: chosen?.hardware ?? false,
+            softwareSupported: chosen?.software ?? false,
+            hardwareAccelerated: chosen?.hardware ?? false,
             realtime,
         });
     }
     const supported = results.filter(c => c.supported);
     infoLog?.log(`detectSupportedCodecsUncached: ${supported.map(c =>
-        `${c.codec}(${c.hardwareAccelerated ? 'hw' : 'sw'})`).join(', ') || 'none'}`);
+        `${c.codec}(${[c.hardwareSupported ? 'hw' : '', c.softwareSupported ? 'sw' : ''].filter(Boolean).join('+')})`)
+        .join(', ') || 'none'}`);
     return results;
 }
 
@@ -237,7 +248,7 @@ async function isCodecSupported(
     category: 'h264' | 'hevc' | 'av1' | 'vp9',
     width: number,
     height: number
-): Promise<{ supported: boolean; hardwareAccelerated: boolean }> {
+): Promise<{ hardware: boolean; software: boolean }> {
     try {
         const baseConfig: VideoEncoderConfig = {
             codec,
@@ -252,26 +263,21 @@ async function isCodecSupported(
             baseConfig.avc = { format: 'annexb' };
         }
 
-        // Firefox often returns false for 'prefer-hardware' but works with 'no-preference'.
-        let supported = false;
-        let hardwareAccelerated = false;
+        // Ask each mode separately and believe the answers, not the echoed
+        // config. Firefox reports no hardware encoder for anything, so there
+        // it is the software column that carries the support.
+        const ask = async (accel: HardwareAcceleration): Promise<boolean> => {
+            const support = await VideoEncoder.isConfigSupported({ ...baseConfig, hardwareAcceleration: accel });
+            return support.supported === true;
+        };
+        const hardware = await ask('prefer-hardware');
+        const software = await ask('prefer-software');
 
-        for (const accel of ['prefer-hardware', 'no-preference'] as const) {
-            const config = { ...baseConfig, hardwareAcceleration: accel };
-            const support = await VideoEncoder.isConfigSupported(config);
-            if (support.supported) {
-                supported = true;
-                hardwareAccelerated = accel === 'prefer-hardware'
-                    && (support.config?.hardwareAcceleration === 'prefer-hardware');
-                break;
-            }
-        }
-
-        debugLog?.log(`Encoder ${codec}: ${supported ? `supported, hw=${hardwareAccelerated}` : 'not supported'}`);
-        return { supported, hardwareAccelerated };
+        debugLog?.log(`Encoder ${codec}: hw=${hardware}, sw=${software}`);
+        return { hardware, software };
     } catch (error) {
         errorLog?.log(`Error checking codec support for ${codec}:`, error);
-        return { supported: false, hardwareAccelerated: false };
+        return { hardware: false, software: false };
     }
 }
 
@@ -757,6 +763,39 @@ export function detectSupportedDecoderCodecs(): Promise<string[]> {
 // supported. H.264 is probed at the FLOOR of the profile ladder, not the
 // ceiling: the question is "is there an H.264 decoder at all", and Constrained
 // Baseline at a small size is the narrowest thing that answers it.
+// Encoder preference, best-first, over (category, acceleration) pairs rather
+// than categories: whether a codec is worth using depends on which encoder is
+// behind it. Software AV1 and software HEVC are deliberately absent — the first
+// is too expensive to spend a call's CPU budget on, the second doesn't exist in
+// Chromium. Anything not listed here is never chosen as an encoder.
+export interface EncoderRung {
+    category: CodecCategory;
+    accel: HardwareAcceleration;
+}
+
+const ENCODER_LADDER: readonly EncoderRung[] = [
+    { category: 'av1',  accel: 'prefer-hardware' },
+    { category: 'vp9',  accel: 'prefer-hardware' },
+    { category: 'hevc', accel: 'prefer-hardware' },
+    { category: 'vp9',  accel: 'prefer-software' },
+    { category: 'h264', accel: 'prefer-hardware' },
+    { category: 'h264', accel: 'prefer-software' },
+];
+
+// Firefox drops the MPEG rungs entirely: its H.264 encoder runs ~18 frames
+// behind (the realtime probe already rejects it) and it ships no HEVC encoder,
+// so offering either only wastes a probe. That leaves VP9, which is the floor.
+export function getEncoderLadder(): readonly EncoderRung[] {
+    return DeviceInfo.isFirefox
+        ? ENCODER_LADDER.filter(r => r.category !== 'h264' && r.category !== 'hevc')
+        : ENCODER_LADDER;
+}
+
+// Which acceleration modes this codec was actually accepted with.
+export function supportsAcceleration(info: CodecInfo, accel: HardwareAcceleration): boolean {
+    return accel === 'prefer-hardware' ? info.hardwareSupported : info.softwareSupported;
+}
+
 // Efficiency order, best-first. See detectSupportedDecoderCodecsUncached.
 const DECODER_ADVERTISE_ORDER: readonly string[] = ['av1', 'hevc', 'vp9', 'h264'];
 
