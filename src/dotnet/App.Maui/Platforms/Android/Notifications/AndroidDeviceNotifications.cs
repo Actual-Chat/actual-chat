@@ -47,7 +47,8 @@ public class AndroidDeviceNotifications : IDeviceNotifications
                 // Healing a dropped banner must not alert — it's a reconcile, not a new event.
                 NotificationHelper.ShowChatNotification(
                     info.ChatId, info.Tag, info.Title, info.Text, info.IconUrl, info.Url,
-                    silent: true, messages: info.Messages.IsEmpty ? null : PushMessage.From(info.Messages));
+                    silent: true, messages: info.Messages.IsEmpty ? null : PushMessage.From(info.Messages),
+                    senderName: info.SenderName, conversationTitle: info.GroupTitle);
         }
 
         return Task.CompletedTask;

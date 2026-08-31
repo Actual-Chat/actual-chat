@@ -211,10 +211,8 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
         }
 
         var sentTime = new Moment(messageSentTime * 10_000).ToDateTime();
-        var title = data.Title ?? "";
-        var separatorIndex = title.IndexOf('@');
-        if (separatorIndex >= 0)
-            title = title.Substring(separatorIndex + 1).Trim(); // take Chat title only
+        // Names the chat, which for a peer chat is the other party - it carries no group title.
+        var title = data.GroupTitle ?? data.SenderName ?? "";
 
         var request = new ChatAttentionRequest(chatId, data.LastEntryLocalId, sentTime, title, data.Body ?? "", data.ImageUrl ?? "");
         ChatAttentionService.Instance.Ask(request);
@@ -226,6 +224,6 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
         Log.LogDebug("-> ShowChatMessageNotification, text: '{Text}', silent: {Silent}", data.Body!.ToPrivate(), data.Silent);
         NotificationHelper.ShowChatNotification(
             data.ChatId, data.Tag!, data.Title!, data.Body!, data.ImageUrl, data.Link,
-            data.Silent, data.Messages);
+            data.Silent, data.Messages, data.SenderName, data.GroupTitle);
     }
 }

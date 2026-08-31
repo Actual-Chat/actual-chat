@@ -106,6 +106,8 @@ public sealed class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub
                 x.Notification.IconUrl,
                 UrlMapper.ToAbsolute(x.Notification.GetChatLink()),
                 (x.Notification as ChatEntryRelatedNotification)?.RecentMessages ?? default,
-                x.Notification.GetChatId()))
+                x.Notification.GetChatId(),
+                (x.Notification as ChatNotification)?.SenderName.NullIfEmpty(),
+                (x.Notification as ChatNotification)?.GroupTitle.NullIfEmpty()))
             .ToList();
 }

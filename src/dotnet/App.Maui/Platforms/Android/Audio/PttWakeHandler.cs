@@ -130,7 +130,8 @@ public static class PttWakeHandler
             "Someone is talking in a chat you keep listening to",
             null,
             Links.Chat(chatId),
-            silent: silent);
+            silent: silent,
+            senderName: null);
 
     // Nested types
 

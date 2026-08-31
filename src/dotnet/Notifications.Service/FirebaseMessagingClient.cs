@@ -91,6 +91,12 @@ public class FirebaseMessagingClient(
         };
         if (lastEntryLocalId > 0)
             data.Add(Constants.Notification.MessageDataKeys.LastEntryLocalId, lastEntryLocalId.ToString());
+        // Common data, so these ride inside the 4KB APNs budget - hence omitted when empty.
+        if (chatNotification is not null && !chatNotification.SenderName.IsNullOrEmpty()) {
+            data.Add(Constants.Notification.MessageDataKeys.SenderName, chatNotification.SenderName);
+            if (!chatNotification.GroupTitle.IsNullOrEmpty())
+                data.Add(Constants.Notification.MessageDataKeys.GroupTitle, chatNotification.GroupTitle);
+        }
         // Android and web build the banner themselves, so they also need its content. Both platform
         // blocks override the common data rather than merging into it, hence the copy.
         var renderData = new Dictionary<string, string>(data) {
