@@ -178,11 +178,23 @@ Taken by Alex, 2026-08-30:
 3. **Split encode-side from decode-side exclusion.** Excluding H.264 for
    *encode* must be allowed. Decode-side exclusion is *desirable but not
    mandatory* — a weight the server balances, never a veto.
-6. **Probe H.264 decode for real** rather than assuming it, using a basic
-   config and an actual decode.
 4. **The server assigns each client its encode codec.**
 5. **Retire the old methods via `[LegacyName]`** if the wire change is
    significant.
+6. **Probe H.264 decode for real** rather than assuming it, using a basic
+   config and an actual decode.
+7. **VP9 is the mandatory floor.** The server never excludes it, on either
+   side, for any reason. A client that cannot decode VP9 is not a reason to
+   renegotiate the call — it is a client that needs a VP9 decoder, and the
+   answer is to give it one (see "Closing the VP9 gap" below).
+8. **H.264 loses its special status entirely.** It becomes one codec among
+   several: excludable on both the encode and the decode side, with no
+   "universal fallback" guard anywhere.
+
+Note what 7 and 8 do together: the "never exclude" role moves from H.264 to
+VP9. That is not a swap of one assumption for another — H.264 held that role by
+assertion (`// always assumed supported`), while VP9 earns it by measurement on
+all four engines.
 
 ## Design
 
@@ -242,6 +254,15 @@ Ordering of criteria, highest first:
 3. **The sender's own preference order** — efficiency and power, as reported by
    the client.
 
+**VP9 is the floor, which makes the search total.** Because every client is
+required to decode VP9 (decision 7), VP9 always scores 100% coverage, so there
+is always a valid answer and the algorithm never has to choose between "someone
+is invisible" and "nobody sends". Every other codec is an *optimisation*: it is
+picked only when it covers everyone too and ranks higher in the sender's
+preference order — HEVC or H.264 between Apple devices, AV1 where it is cheap.
+Divergence and partial coverage remain possible only for mixed-version calls
+where an old client reports no VP9 at all.
+
 `encode_s = ∅` ⇒ that client is **receive-only**, reported explicitly so the UI
 can explain it. A client that is merely invisible *to some members* is a
 different, softer state and should be reported separately — "2 of 5 members
@@ -252,10 +273,13 @@ downgrades stay immediate.
 
 ### Two kinds of exclusion, deliberately different
 
-- **Encode exclusion** — allowed for any codec including H.264, and needs no
-  server logic: the client omits it from `encode`, so the server can never
-  assign it. "Exclude H.264 only if something else remains" falls out for free
-  — if nothing remains, `E_c` is empty and the client is receive-only.
+- **VP9 is exempt from both.** It is the floor; nothing may remove it. This
+  replaces the old `if (category === 'h264') return` guards, which protected
+  the wrong codec for the wrong reason.
+- **Encode exclusion** — allowed for every other codec including H.264, and
+  needs no server logic: the client omits it from `encode`, so the server can
+  never assign it. "Exclude H.264 only if something else remains" falls out for
+  free — VP9 always remains.
 - **Decode exclusion** — a *preference*, never a veto. Under the coverage model
   above, a client dropping H.264 from `decode_c` no longer forces anything on
   anyone: it lowers H.264's coverage score by one member, which the server
@@ -295,6 +319,25 @@ pattern (`src/dotnet/Api.Contracts/Chat/IChats.cs:19-30`):
   `decode` and deriving `encode` from it exactly as today — so pre-upgrade
   clients degrade to current behaviour rather than breaking.
 - Mark the old methods `[Obsolete]` with the date and the reason.
+
+## Closing the VP9 gap
+
+Making VP9 mandatory means some client, somewhere, will not have it — an old
+build, or a WebView that turns out to lag its browser. The answer is to ship
+that client a decoder rather than to renegotiate the call, and for VP9 that is
+markedly easier than the H.264 attempt this plan supersedes:
+
+- **No patent problem.** VP9 is royalty-free under the Open Media licence.
+  Every objection that killed the libav H.264 fallback — the AVC pool, Cisco's
+  binary-only royalty umbrella, becoming a codec-unit distributor — simply does
+  not apply.
+- **No custom build.** libav.js publishes prebuilt `webm` and `vp8-opus`
+  variants covering VP8/VP9; `D:\Projects\libav.js\dist` already has
+  `libav-6.10.9.0-webm.wasm.wasm` at ~2.3 MB, about half the H.264 build.
+- **Decode only**, which is the cheap direction and needs no openh264.
+
+The `LibavVideoDecoder`-behind-`DecoderLike` shape from the retired plan applies
+unchanged; only the variant and the licensing conclusion differ.
 
 ## Implementation order
 
@@ -351,7 +394,12 @@ on the `realtime` measurement regardless of what its decoder can do.
 
 1. **VP9 software-encode CPU on Apple**, sustained at 720p30 with the pacing
    removed. The one number left between VP9 and being the default codec.
-2. **AV1 on an M3+/iPhone 15 Pro+.** Both machines measured here predate AV1
+2. **Mac Catalyst's WKWebView is unmeasured.** Desktop Safari and the iOS
+   WebView both do VP9, but Catalyst was not probed and is the surface
+   suspected of lacking it. Measure it with `/macos-run` on the Mac mini before
+   assuming the gap is real — if Catalyst has VP9 too, the WASM decoder may not
+   be needed at all.
+3. **AV1 on an M3+/iPhone 15 Pro+.** Both machines measured here predate AV1
    hardware, so "AV1 decode: no" is a property of these devices, not of Apple
    in 2026. Worth one probe on newer hardware before AV1 is ranked.
 3. **Does any Apple device encode AV1?** Not on the Mac mini (above), and
