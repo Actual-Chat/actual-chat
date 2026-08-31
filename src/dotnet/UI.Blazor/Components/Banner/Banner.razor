@@ -61,7 +61,7 @@
     // Opt-out for banners that must stay a single fixed-height line, e.g. the reconnect status strip
     [Parameter] public bool NoWrap { get; set; }
     [Parameter] public bool IsVisible { get; set; } = true;
-    [Parameter] public BannerSeverity Severity { get; set; } = BannerSeverity.Default;
+    [Parameter] public BannerSeverity Severity { get; set; } = BannerSeverity.Info;
     [Parameter] public EventCallback Dismiss { get; set; }
 
     protected override void OnInitialized()

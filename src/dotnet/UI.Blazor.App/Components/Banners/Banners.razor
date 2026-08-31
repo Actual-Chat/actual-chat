@@ -5,21 +5,29 @@
     var chat = Chat;
 }
 
+@* Urgent, actionable banners stay full-size above the stack *@
 <ReconnectBanner/>
 <IncomingCallBanner/>
-@foreach (var banner in m.Banners.Take(MaxCount)) {
-    @banner.View
-}
 @if (chat is not null) {
     <NoComponent @key="Chat">
         <OutgoingCallBanner/>
-        <ChatCopyBanner/>
-        <AddToContactsBanner/>
-        <AddChatMembersBanner/>
-        <PttJoinBanner/>
     </NoComponent>
 }
-<PermissionBannerSwitch/>
+@foreach (var banner in m.Banners.Take(MaxCount)) {
+    @banner.View
+}
+@* Non-urgent nudges collapse into an iOS-style stack so they + pinned bar don't eat the view *@
+<BannerStack>
+    @if (chat is not null) {
+        <NoComponent @key="Chat">
+            <ChatCopyBanner/>
+            <AddToContactsBanner/>
+            <AddChatMembersBanner/>
+            <PttJoinBanner/>
+        </NoComponent>
+    }
+    <PermissionBannerSwitch/>
+</BannerStack>
 
 @code {
     private const int MaxCount = 2;

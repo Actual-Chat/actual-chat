@@ -1,0 +1,19 @@
+.banner-stack {
+    @apply relative;
+    @apply w-full;
+    @apply overflow-hidden;
+    height: var(--bs-height, 0px);
+    transition: height 220ms ease;
+}
+.banner-stack.is-empty {
+    @apply hidden;
+}
+.banner-stack .banner {
+    @apply absolute top-0 left-0 right-0;
+    @apply mx-auto;
+    transform-origin: top center;
+    transition:
+        transform 220ms ease,
+        opacity 220ms ease;
+    will-change: transform, opacity;
+}

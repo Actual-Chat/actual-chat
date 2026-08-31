@@ -1,0 +1,31 @@
+@using ActualChat.UI.Blazor.App.Module
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+@implements IAsyncDisposable
+
+<div @ref="Ref" class="banner-stack @Class">
+    @ChildContent
+</div>
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.BannerStack.create";
+    private IJSObjectReference? _jsRef;
+
+    private ElementReference Ref { get; set; }
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    public async ValueTask DisposeAsync() {
+        if (_jsRef is not null)
+            await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+    }
+}

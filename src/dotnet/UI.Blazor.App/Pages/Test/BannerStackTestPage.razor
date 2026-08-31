@@ -1,0 +1,143 @@
+@page "/test/banner-stack"
+
+<RequireAccount MustBeAdmin="true"/>
+
+<MainHeader>Banner Stack Test Page</MainHeader>
+
+@* Sub-headers sit at the top of the region, exactly like Recording/Audio/Translation (Order -1M) *@
+<RenderIntoStack Name="@LayoutSlots.SubHeader" Order="-1000_000" Key="TestSubHeaders">
+    @foreach (var id in _subHeaders) {
+        <SubHeader @key="id" IsVisible="true" Class="banner-stack-test-subheader">
+            <div class="c-body">
+                <i class="icon-translate text-2xl"></i>
+                <div class="c-text">Sub-header #@id</div>
+                <Button Class="btn-sm btn-transparent" Click="@(_ => RemoveSubHeader(id))">
+                    <i class="icon-close text-2xl"></i>
+                </Button>
+            </div>
+        </SubHeader>
+    }
+</RenderIntoStack>
+
+@* Important banners stay full-size above the stack; the nudges collapse inside BannerStack (Order 1M) *@
+<RenderIntoStack Name="@LayoutSlots.SubHeader" Order="1000_000" Key="TestBanners">
+    @foreach (var id in _importantBanners) {
+        <Banner @key="id"
+                Severity="BannerSeverity.Warning"
+                ShowDismissButton="true"
+                Dismiss="@(() => RemoveImportant(id))">
+            <Body>Important banner #@id — needs your attention right now</Body>
+            <Buttons>
+                <BannerButton>Action</BannerButton>
+            </Buttons>
+        </Banner>
+    }
+    <BannerStack>
+        @foreach (var kind in _addedNudges) {
+            <Banner @key="kind.Key"
+                    Severity="@kind.Severity"
+                    ShowDismissButton="true"
+                    Dismiss="@(() => RemoveNudge(kind.Key))">
+                <Body>@kind.Text</Body>
+                <Buttons>
+                    @foreach (var action in kind.Actions) {
+                        <BannerButton Class="@action.Cls">@action.Label</BannerButton>
+                    }
+                </Buttons>
+            </Banner>
+        }
+    </BannerStack>
+</RenderIntoStack>
+
+@* Pinned bar stand-in reuses the real .pinned-bar markup/CSS at the same spot (Order 1.5M) *@
+<RenderIntoStack Name="@LayoutSlots.SubHeader" Order="1500_000" Key="TestPinnedBar">
+    @if (_pinCount > 0) {
+        <div class="pinned-bar">
+            <button type="button" class="c-cycle">
+                <div class="c-indicator">
+                    @for (var i = 0; i < _pinCount; i++) {
+                        <span class="c-seg @(i == 0 ? "active" : "")"></span>
+                    }
+                </div>
+                <div class="c-text">Pinned message #1 of @_pinCount — tap to cycle in the real chat</div>
+            </button>
+            <i class="c-pin-icon icon-pin"></i>
+        </div>
+    }
+</RenderIntoStack>
+
+<div class="test-page-wrapper">
+    <div class="banner-stack-test">
+        <div class="c-title">Banner stack test</div>
+        <div class="c-note">
+            Buttons add real components into the chat sub-header region above. Tap the collapsed nudge
+            stack to expand it, tap again to collapse. Banner action buttons still work while collapsed.
+        </div>
+        <div class="c-buttons">
+            <Button Class="btn-primary" Click="@(_ => AddNudge())">Add banner (@_addedNudges.Count/@NudgeKinds.Length)</Button>
+            <Button Class="btn-primary" Click="@(_ => AddPin())">Add pinned bar (@_pinCount)</Button>
+            <Button Class="btn-primary" Click="@(_ => AddImportant())">Add important banner (@_importantBanners.Count)</Button>
+            <Button Class="btn-primary" Click="@(_ => AddSubHeader())">Add sub-header (@_subHeaders.Count)</Button>
+            <Button Class="btn-outline" Click="@(_ => ClearAll())">Clear all</Button>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Every banner kind that can live in the BannerStack, in the order they're rendered in Banners.razor.
+    // Button classes mirror the real components so the test matches production styling.
+    private static readonly NudgeKind[] NudgeKinds = [
+        new("add-members", "You're the only person in this chat", BannerSeverity.Warning,
+            [new("Add members", "")]),
+        new("add-contacts", "This user is not in your contacts", BannerSeverity.Info,
+            [new("Block", "btn-danger"), new("Add", "")]),
+        new("ptt", "Enable your device to use push-to-talk in this chat", BannerSeverity.Info,
+            [new("Allow", "")]),
+        new("chat-copy", "This chat was copied to the place — publish it when you're ready", BannerSeverity.Info,
+            [new("Update", ""), new("Publish", "")]),
+        new("notifications", "Turn on notifications so you don't miss messages in this chat and others you follow", BannerSeverity.Info,
+            [new("Configure", "")]),
+    ];
+
+    private readonly List<NudgeKind> _addedNudges = [];
+    private readonly List<int> _importantBanners = [];
+    private readonly List<int> _subHeaders = [];
+    private int _pinCount;
+    private int _nextId;
+
+    private void AddNudge() {
+        foreach (var kind in NudgeKinds)
+            if (!_addedNudges.Exists(a => a.Key == kind.Key)) {
+                _addedNudges.Add(kind);
+                return;
+            }
+    }
+
+    private void AddImportant()
+        => _importantBanners.Add(_nextId++);
+
+    private void AddSubHeader()
+        => _subHeaders.Add(_nextId++);
+
+    private void AddPin()
+        => _pinCount++;
+
+    private void RemoveNudge(string key)
+        => _addedNudges.RemoveAll(k => k.Key == key);
+
+    private void RemoveImportant(int id)
+        => _importantBanners.Remove(id);
+
+    private void RemoveSubHeader(int id)
+        => _subHeaders.Remove(id);
+
+    private void ClearAll() {
+        _addedNudges.Clear();
+        _importantBanners.Clear();
+        _subHeaders.Clear();
+        _pinCount = 0;
+    }
+
+    private sealed record NudgeAction(string Label, string Cls);
+    private sealed record NudgeKind(string Key, string Text, BannerSeverity Severity, NudgeAction[] Actions);
+}
