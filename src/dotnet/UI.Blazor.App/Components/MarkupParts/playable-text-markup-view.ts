@@ -49,10 +49,22 @@ export class PlayableTextMarkupView {
     private onClick = (e: Event) => {
         if (this.element.classList.contains('play-disabled'))
             return;
+        if (this.endsTextSelection())
+            return;
 
         const target = e.target as HTMLElement;
         const word = this.findWord(target);
         this.onWordClick(word);
+    }
+
+    // Selecting text with the mouse ends with a click, which must not start the replay.
+    // mousedown collapses any earlier selection, so a live range here belongs to this very click.
+    private endsTextSelection(): boolean {
+        const selection = getSelection();
+        if (!selection || selection.isCollapsed || selection.rangeCount === 0)
+            return false;
+
+        return selection.getRangeAt(0).intersectsNode(this.element);
     }
 
     private onWordClick(word: Word | null) {
