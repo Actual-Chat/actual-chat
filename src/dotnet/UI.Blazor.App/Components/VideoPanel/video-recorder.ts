@@ -1892,6 +1892,10 @@ export class VideoRecorder {
         return this.bundlesPerSec;
     }
 
+    public peekCodec(): string | null {
+        return this.currentCodecString || null;
+    }
+
     public dispose() {
         if (this.disposed)
             return;

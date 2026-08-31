@@ -653,6 +653,18 @@
                             </div>
                         </Right>
                     </TileItem>
+                    <TileItem Click="@OnShowCodecOverlayClick">
+                        <Content>Show codec on tiles</Content>
+                        <Caption>
+                            Prefixes the FPS readout with the tile's codec, as
+                            <b>AV1⸱30ᶠᵖˢ</b>. Needs the FPS overlay above to be on.
+                        </Caption>
+                        <Right>
+                            <div class="pointer-events-none">
+                                <Toggle IsChecked="@_showCodecOverlay"/>
+                            </div>
+                        </Right>
+                    </TileItem>
                 </Tile>
             </div>
             <div class="diag-section">

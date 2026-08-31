@@ -25,6 +25,10 @@ public partial class VideoDiagnosticsModal
         $"{BlazorUIAppModule.ImportName}.getShowFpsOverlay";
     private static readonly string JSSetShowFpsOverlayMethod =
         $"{BlazorUIAppModule.ImportName}.setShowFpsOverlay";
+    private static readonly string JSGetShowCodecOverlayMethod =
+        $"{BlazorUIAppModule.ImportName}.getShowCodecOverlay";
+    private static readonly string JSSetShowCodecOverlayMethod =
+        $"{BlazorUIAppModule.ImportName}.setShowCodecOverlay";
 
     private static readonly double[] BandwidthMultiplierOptions =
         [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5];
@@ -35,6 +39,7 @@ public partial class VideoDiagnosticsModal
     private string _downscalerMode = "metadata";
     private int? _captureFpsOverride;
     private bool _showFpsOverlay;
+    private bool _showCodecOverlay;
     private int? _maxOutboundLayerCount;
     private int? _maxInboundLayerCount;
     private double _estBandwidthMultiplier = 1.0;
@@ -55,6 +60,7 @@ public partial class VideoDiagnosticsModal
             _maxInboundLayerCount = settings.MaxInboundLayerCount;
             _estBandwidthMultiplier = NormalizeMultiplier(settings.EstBandwidthMultiplier);
             _showFpsOverlay = await Hub.JS.InvokeAsync<bool>(JSGetShowFpsOverlayMethod);
+            _showCodecOverlay = await Hub.JS.InvokeAsync<bool>(JSGetShowCodecOverlayMethod);
             await Hub.VideoQualityUI.SetDebugMaxRecordingLayerCount(_maxOutboundLayerCount, CancellationToken.None);
             await Hub.VideoQualityUI.SetDebugMaxPlaybackLayerCount(
                 _maxInboundLayerCount,
@@ -99,6 +105,13 @@ public partial class VideoDiagnosticsModal
         _showFpsOverlay = !_showFpsOverlay;
         StateHasChanged();
         await Hub.JS.InvokeVoidAsync(JSSetShowFpsOverlayMethod, _showFpsOverlay);
+    }
+
+    private async Task OnShowCodecOverlayClick()
+    {
+        _showCodecOverlay = !_showCodecOverlay;
+        StateHasChanged();
+        await Hub.JS.InvokeVoidAsync(JSSetShowCodecOverlayMethod, _showCodecOverlay);
     }
 
     private async Task OnMaxOutboundLayerCountChange(ChangeEventArgs e)

@@ -1287,6 +1287,10 @@ export class VideoPlayer {
         return this.presentedPerSec;
     }
 
+    public peekCodec(): string | null {
+        return this.selectedCodec;
+    }
+
     private peekWindowedBytesPerSec(): number {
         if (this.bytesSamples.length < 2) return 0;
         const first = this.bytesSamples[0];
