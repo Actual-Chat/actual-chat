@@ -262,7 +262,7 @@ export function probeEncoder(
     layers: readonly ProbeLayer[],
     frameCount = 8,
     budgetMs = 50,
-    hardwareAcceleration: HardwareAcceleration = 'prefer-hardware',
+    hardwareAcceleration: HardwareAcceleration = getDefaultHardwareAcceleration(),
 ): Promise<EncoderProbeResult> {
     if (layers.length === 0)
         return Promise.resolve({ supported: false, medianEncodeMs: 0, failedStage: 'configure' });
@@ -365,6 +365,15 @@ export function getCodecForCategory(category: 'h264' | 'hevc' | 'av1' | 'vp9', w
 // isConfigSupported({hardwareAcceleration:'prefer-software'}) return false, so
 // the SW fallback must request Constrained Baseline (42E0xx). Universally
 // decodable, which keeps the HW→SW switch transparent to viewers.
+// Firefox rejects 'prefer-hardware' for every H.264 profile — isConfigSupported
+// returns false and configure() throws NotSupportedError — while the same
+// profiles encode fine under 'no-preference'. Starting there keeps the probe
+// chain on the acceleration that works, so Firefox gets the full tier ladder
+// instead of falling through to the 1-tier last resort.
+export function getDefaultHardwareAcceleration(): HardwareAcceleration {
+    return DeviceInfo.isFirefox ? 'no-preference' : 'prefer-hardware';
+}
+
 export function getSoftwareH264Codec(width: number, height: number): string {
     const pixels = width * height;
     if (pixels > 2_073_600)

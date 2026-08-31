@@ -56,6 +56,7 @@ import {
     probeEncoder,
     excludeEncoderCodec,
     excludeEncoderCodecString,
+    getDefaultHardwareAcceleration,
     isEncoderCodecExcluded,
     isEncoderCodecProven,
     markEncoderCodecProven,
@@ -386,7 +387,8 @@ export async function probeTopTierEncoderSupport(): Promise<CodecInfo['category'
         maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
         bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
     });
-    const hwPass = await probeOnce(ladderHW, 'prefer-hardware', `${tierCount} layer(s), prefer-hardware`);
+    const preferredAccel = getDefaultHardwareAcceleration();
+    const hwPass = await probeOnce(ladderHW, preferredAccel, `${tierCount} layer(s), ${preferredAccel}`);
     if (hwPass) return hwPass;
 
     // Attempt 2: 1-tier no-preference SW fallback. Mirrors the recorder's
@@ -513,10 +515,11 @@ export class VideoRecorder {
     private currentCodecString = '';
     private currentCodecHardwareAccel = false;
     // HW-acceleration mode for the runtime encoder, chosen by the
-    // startRecording fallback chain. Default 'prefer-hardware'; flipped to
-    // 'no-preference' when the 1-tier last-resort fallback engages so the
-    // runtime encoder matches the config that actually probed working.
-    private currentHardwareAcceleration: HardwareAcceleration = 'prefer-hardware';
+    // startRecording fallback chain. Starts at the browser's default (Firefox
+    // needs 'no-preference'); flipped to 'no-preference' when the 1-tier
+    // last-resort fallback engages so the runtime encoder matches the config
+    // that actually probed working.
+    private currentHardwareAcceleration: HardwareAcceleration = getDefaultHardwareAcceleration();
     // Set once the desktop-only SW-H.264 fallback engages (after HW recovery is
     // exhausted). Locks the recorder to prefer-software H.264 and blocks server-
     // or health-driven switches back into a wedged HW codec for the session.
@@ -884,7 +887,7 @@ export class VideoRecorder {
             const codecInfo = supportedCodecs.find(c => c.codec === codecString);
             this.currentCodecString = codecString;
             this.currentCodecHardwareAccel = codecInfo?.hardwareAccelerated ?? false;
-            this.currentHardwareAcceleration = 'prefer-hardware';
+            this.currentHardwareAcceleration = getDefaultHardwareAcceleration();
 
             // Desktop non-H264 captures at 1080 so the QC ramp can later hot-add
             // a real 1080 top tier (downscaled for lower tiers) — but only when a
@@ -1184,9 +1187,13 @@ export class VideoRecorder {
                 bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
                 ...(ladderTierSizes ? { tierSizes: ladderTierSizes } : {}),
             });
-            // Fallback chain for HW encoder availability:
-            //   1. Tier-cap (3 desktop / 2 mobile) at top resolution, prefer-hardware
-            //   2. (Desktop only) Drop to 2-tier @ 360p, prefer-hardware
+            // Fallback chain for HW encoder availability. Steps 1-2 probe at
+            // the browser's default acceleration — Firefox rejects
+            // 'prefer-hardware' for every H.264 profile, so starting it at
+            // 'no-preference' keeps it on the full ladder rather than dropping
+            // to step 3 and losing simulcast for a reason unrelated to tiers:
+            //   1. Tier-cap (3 desktop / 2 mobile) at top resolution
+            //   2. (Desktop only) Drop to 2-tier @ 360p
             //   3. Last resort: 1-tier at top resolution, no-preference
             //      (lets browser pick SW when HW encoder activation is failing
             //      — e.g. AMD iGPU + Windows MFT hitting concurrent-session
@@ -1194,11 +1201,12 @@ export class VideoRecorder {
             // chosenHwAccel is plumbed into the worker config so the runtime
             // encoder matches the probed config; otherwise the probe says
             // "works with no-preference" but runtime keeps using prefer-hardware.
+            const preferredAccel = getDefaultHardwareAcceleration();
             let bestCodecString = await this.pickSimulcastCodec(
-                supportedCodecs, audienceCodecs, ladderTop, 'prefer-hardware', false,
+                supportedCodecs, audienceCodecs, ladderTop, preferredAccel, false,
                 tierCap >= 4 ? 'h264' : undefined);
             let ladder: LayerConfig[] = ladderTop;
-            let chosenHwAccel: HardwareAcceleration = 'prefer-hardware';
+            let chosenHwAccel: HardwareAcceleration = preferredAccel;
             // 4-tier (1080 top) is reserved for non-H264 codecs. If no efficient
             // codec passed, drop the 1080 top and retry a 3-tier @720 ladder with
             // H264 allowed.
@@ -1475,7 +1483,7 @@ export class VideoRecorder {
             this.lastCodecSwitchAt = 0;
             this.startedAtMs = 0;
             this.softwareFallbackEngaged = false;
-            this.currentHardwareAcceleration = 'prefer-hardware';
+            this.currentHardwareAcceleration = getDefaultHardwareAcceleration();
             this.setRecordingState('stopped');
             this.unregister();
             await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
@@ -3015,7 +3023,7 @@ export class VideoRecorder {
         supportedCodecs: CodecInfo[],
         audienceCodecs: string[] | undefined,
         ladder: LayerConfig[],
-        hardwareAcceleration: HardwareAcceleration = 'prefer-hardware',
+        hardwareAcceleration: HardwareAcceleration = getDefaultHardwareAcceleration(),
         excludeOnFail = false,
         excludeCategory?: CodecInfo['category'],
     ): Promise<string | null> {
