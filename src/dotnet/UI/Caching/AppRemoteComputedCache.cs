@@ -19,6 +19,7 @@ public abstract class AppRemoteComputedCache : SafeAsyncDisposableBase, IRemoteC
         public string Version { get; init; } = ApiConstants.VersionString;
         public ImmutableHashSet<Symbol> ForceFlushFor { get; init; } = ImmutableHashSet<Symbol>.Empty
             .Add(RpcMethodDef.ComposeFullName(nameof(IAccounts), nameof(IAccounts.GetOwn)));
+        public TimeSpan ActivationTimeout { get; init; } = TimeSpan.FromSeconds(2);
     }
 
     protected Options Settings { get; }
@@ -31,6 +32,10 @@ public abstract class AppRemoteComputedCache : SafeAsyncDisposableBase, IRemoteC
     protected ILogger Log => field ??= Services.LogFor(GetType());
     protected ILogger? DebugLog
         => Constants.DebugMode.RemoteComputedCache ? Log.IfEnabled(LogLevel.Debug) : null;
+
+    protected Task WhenReady
+        // One shared deadline, so a store that never activates costs a launch one wait, not one per lookup
+        => field ??= WhenInitialized.WaitAsync(Settings.ActivationTimeout);
 
     public IServiceProvider Services { get; }
     public IKvasStore Store { get; protected init; } = null!; // Must be set by descendant!
@@ -74,8 +79,15 @@ public abstract class AppRemoteComputedCache : SafeAsyncDisposableBase, IRemoteC
 
     public async ValueTask<RpcCacheValue?> Get(RpcCacheKey key, CancellationToken cancellationToken = default)
     {
-        if (!WhenInitialized.IsCompleted)
-            return null;
+        if (!WhenInitialized.IsCompleted) {
+            // The store is picked by session and the session id comes from storage, so a launch's
+            // first lookups can beat Activate there - and a miss costs a needless round trip.
+            var whenReady = WhenReady;
+            if (!whenReady.IsCompleted)
+                await whenReady.SilentAwait(false);
+            if (!WhenInitialized.IsCompleted)
+                return null;
+        }
 
         var bytes = await Store.Get(key.ToString(), cancellationToken).ConfigureAwait(false);
         var cacheValue = FromBytes(bytes);

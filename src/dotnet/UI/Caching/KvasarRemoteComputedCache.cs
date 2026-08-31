@@ -20,6 +20,7 @@ public sealed class KvasarRemoteComputedCache : AppRemoteComputedCache
         public TimeSpan FlushDelay { get; init; } = TimeSpan.FromSeconds(0.667);
     }
 
+    private readonly TaskCompletionSource _whenActivated = new(TaskCreationOptions.RunContinuationsAsynchronously);
     public new Options Settings { get; }
     public KvasarKvas Kvas { get; }
 
@@ -41,11 +42,16 @@ public sealed class KvasarRemoteComputedCache : AppRemoteComputedCache
             RequiresActivation = true,
         }, services);
         Store = Kvas;
-        WhenInitialized = Kvas.WhenInitialized;
+        // Not Kvas.WhenInitialized: a RequiresActivation store reports that completed from its
+        // constructor, so it says nothing about whether there's a folder to read from yet.
+        WhenInitialized = _whenActivated.Task;
     }
 
-    public Task Activate(Session session)
-        => Kvas.Activate(session.Hash);
+    public async Task Activate(Session session)
+    {
+        await Kvas.Activate(session.Hash).ConfigureAwait(false);
+        _whenActivated.TrySetResult();
+    }
 
     public Task Deactivate(bool clear)
         => Kvas.Deactivate(clear);
