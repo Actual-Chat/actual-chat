@@ -198,6 +198,7 @@ public static class LocalizedStringsLocalizerExt
         public string ChatList_TabPeople => l["ChatList_TabPeople"].Value;
         public string ChatList_TabThreads => l["ChatList_TabThreads"].Value;
         public string ChatList_TabMentions => l["ChatList_TabMentions"].Value;
+        public string ChatList_TabReactions => l["ChatList_TabReactions"].Value;
         public string ChatList_SortBy => l["ChatList_SortBy"].Value;
         public string ChatList_SortByAnyonesActivity => l["ChatList_SortByAnyonesActivity"].Value;
         public string ChatList_SortByOwnActivity => l["ChatList_SortByOwnActivity"].Value;
