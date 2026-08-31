@@ -227,6 +227,35 @@ describe('decode operator', () => {
         await iter.next();
     });
 
+    it('first keyframe WITHOUT description (vp09) → configure-without-description path', async () => {
+        // VP9 was absent from the codecs allowed to configure without a
+        // description, so every keyframe was rejected, the decoder never
+        // configured, and playback wedged on a full queue with no visible error.
+        const stats = makeStats();
+        let captured: MockDecoder | undefined;
+        const opts: DecodeOptions = {
+            initialConfig: { codec: 'vp09.00.41.08' },
+            createDecoder: handlers => {
+                captured = new MockDecoder(handlers);
+                return captured;
+            },
+        };
+        const arrivals = [
+            makeArrived(stats, { isKeyFrame: true, width: 1280, height: 720 }),
+        ];
+        const seg = decode(opts)(fromArray(arrivals));
+        const iter = seg[Symbol.asyncIterator]();
+        const next = stepIter(iter);
+        await pumpUntil(() => captured !== undefined && captured.decodeCalls.length >= 1);
+        expect(captured!.configureCalls).toHaveLength(1);
+        expect(captured!.configureCalls[0].codec).toBe('vp09.00.41.08');
+        expect(captured!.configureCalls[0].description).toBeUndefined();
+        expect(captured!.decodeCalls).toHaveLength(1);
+        captured!.emitFrame(0);
+        await next;
+        await iter.next();
+    });
+
     it('first keyframe without description and HEVC codec → throws', async () => {
         const stats = makeStats();
         const opts: DecodeOptions = {
