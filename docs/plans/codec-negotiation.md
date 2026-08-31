@@ -120,20 +120,41 @@ knows its own hardware; the server just applies the order it was given. That
 keeps device policy (iOS prefers AV1 → H.264 and never HEVC; desktop prefers
 HEVC) next to the probing code rather than duplicated server-side.
 
-### The server assigns
+### The server assigns — by coverage, not by intersection
 
-1. `D = ∩ decode_c` — what every member can play.
-2. `E_c = encode_c ∩ D` — what client *c* is allowed to send.
-3. **Prefer one codec call-wide:** if `∩ E_c ≠ ∅`, pick the best entry from it
-   and assign it to everyone.
-4. Only if that is empty, assign per-client from `E_c` using *c*'s preference
-   order.
-5. `E_c = ∅` ⇒ client is **receive-only**; the server says so explicitly so the
-   UI can explain why rather than showing a silent failure.
+A hard intersection `D = ∩ decode_c` is wrong, and the Linux/Firefox case shows
+why: one member who cannot decode H.264 removes H.264 from the whole call, so
+an iPhone — which can only encode H.264 or HEVC — is left with an empty encode
+set and goes receive-only. **One Linux user silently disables every Apple
+camera in the call.** That trade is never worth making automatically.
 
-Step 3 is not optional. N distinct codecs in a call means every receiver runs N
-decoders of different families, which exceeds hardware decoder sessions on
-mobile. Diverging codecs is the fallback, not the default.
+The fix is to admit **partial reachability**. A receiver simply does not see a
+sender whose codec it cannot decode; that is a much better outcome than nobody
+seeing the iPhone at all. So the server optimises coverage instead of
+intersecting:
+
+> Receiver `r` sees sender `s` iff `k_s ∈ decode_r`.
+> For each sender `s`, choose `k_s ∈ encode_s` maximising the number of members
+> that can decode it.
+
+This **decomposes per sender** — who can see `s` depends only on `k_s` — so it
+is a small independent choice per client, not a joint optimisation. With a
+handful of codecs it is a loop, not a solver.
+
+Ordering of criteria, highest first:
+
+1. **Coverage** — how many members can decode it (weighted; see below).
+2. **Codec reuse** — prefer a codec already assigned to another sender. N
+   distinct codecs in a call means every receiver runs N decoders of different
+   families, which exceeds hardware decoder sessions on mobile. This is a
+   tie-breaker, *not* a hard rule: it must never cost coverage.
+3. **The sender's own preference order** — efficiency and power, as reported by
+   the client.
+
+`encode_s = ∅` ⇒ that client is **receive-only**, reported explicitly so the UI
+can explain it. A client that is merely invisible *to some members* is a
+different, softer state and should be reported separately — "2 of 5 members
+cannot see you" is actionable; a silent black tile is not.
 
 Codec **upgrades** keep the existing `CodecSwitchHysteresisWindow` (10 s);
 downgrades stay immediate.
@@ -144,9 +165,18 @@ downgrades stay immediate.
   server logic: the client omits it from `encode`, so the server can never
   assign it. "Exclude H.264 only if something else remains" falls out for free
   — if nothing remains, `E_c` is empty and the client is receive-only.
-- **Decode exclusion** — stays conservative. Dropping a codec from `decode_c`
-  shrinks `D` for *everyone* in the call, so a single flaky client must not be
-  able to force the whole call onto a worse codec.
+- **Decode exclusion** — a *preference*, never a veto. Under the coverage model
+  above, a client dropping H.264 from `decode_c` no longer forces anything on
+  anyone: it lowers H.264's coverage score by one member, which the server
+  weighs against the alternatives. If H.264 still reaches more members than
+  anything else the iPhone can send, the iPhone keeps sending H.264 and the
+  excluding client simply does not see it.
+
+  This is what "desirable but not mandatory" means mechanically: exclusion
+  moves a weight, it does not remove an option. The weight can be tuned —
+  a member who *cannot* decode a codec should count more heavily than one who
+  can but would rather not (a slow software path), which is the same
+  cost/efficiency axis the preference order already expresses.
 
 Today one guard (`if (category === 'h264') return`) covers both. Splitting it
 is the smallest independent piece of this work and can land first.
@@ -180,6 +210,10 @@ pattern (`src/dotnet/Api.Contracts/Chat/IChats.cs:19-30`):
 1. **Split encode/decode exclusion** (`codec-support.ts`) — independent, small,
    unblocks everything else. Already half-done on
    `fix/h264-codec-selection` via `excludeEncoderCodecString`.
+1b. **Probe H.264 decode for real** — see below. Today
+   `detectSupportedDecoderCodecs()` hard-codes `['h264']` and never probes it,
+   which is precisely the lie that makes a Linux/Firefox client claim a codec
+   it cannot play.
 2. **Client capability probing**: produce the two sets with `hardware` and
    `realtime` flags. `realtime` is measured the way the numbers above were —
    submit frames until the first output, cache per codec per session.
@@ -193,6 +227,34 @@ pattern (`src/dotnet/Api.Contracts/Chat/IChats.cs:19-30`):
 
 Step 2 is worth doing carefully: a measured `realtime` flag means we never
 again hard-code a browser quirk that a future release fixes.
+
+## Probing H.264 decode honestly
+
+`detectSupportedDecoderCodecs()` currently starts from
+`const codecs: string[] = ['h264']; // always assumed supported`. That
+assumption is the root of the Linux/Firefox problem: the client advertises a
+codec it may not have.
+
+Two properties the replacement needs:
+
+- **Probe the floor, not the ceiling.** Ask about the most basic thing that
+  would still be useful — Constrained Baseline at a small size, e.g.
+  `avc1.42E01E` at 320×240 — under both `prefer-hardware` and `no-preference`.
+  A device that fails *that* has no H.264 decoder at all. Probing High 4.0 at
+  1080p answers a different and much narrower question.
+- **Do not trust `isConfigSupported` alone.** On Linux it is exactly the call
+  that lies ([bug 1918769](https://bugzilla.mozilla.org/show_bug.cgi?id=1918769):
+  reports supported, then `configure()` throws). The decisive test is to
+  **decode one frame**: embed a tiny Annex B IDR (a 16×16 grey keyframe is a
+  couple of hundred bytes), feed it to a real `VideoDecoder`, and require a
+  `VideoFrame` back. That needs no camera, no permissions and no network, runs
+  in a few milliseconds, and is the only check that cannot be fooled.
+
+Cache the result per session. The same "decode one real frame" harness gives
+the `hardware` flag substance for every other codec too.
+
+Encode is unaffected by this probe — Firefox is excluded from H.264 *encode*
+on the `realtime` measurement regardless of what its decoder can do.
 
 ## Open items
 
