@@ -76,6 +76,13 @@ way. Clients render every banner themselves — no `webpush.notification`, no
   notification* so the chat avatar replaces the app icon. Its
   `conversationIdentifier` must stay equal to the thread id the dismissal path
   matches on — see that project's README.
+- **Who a banner is named after** — the chat, on both mobile platforms; the
+  author of each message is named by its body line instead. `Title` still ships
+  the composed `"<author> @ <chat>"` string (web renders it, and it's what an
+  iOS banner falls back to), but a client never splits it back apart — `" @ "`
+  occurs in real names. `ChatNotification.SenderName`/`GroupTitle` carry the two
+  halves, and an empty `GroupTitle` means "not a group", which is what keeps a
+  peer chat from becoming an Android `SetGroupConversation(true)`.
 - **App-icon badge** — `AppIconBadgeUpdater.cs` (single source of truth) plus
   native `AppIconBadge` on iOS (`App.Maui/MaciOS/AppIconBadge.cs`) and Windows
   (`Platforms/Windows/WindowsAppIconBadge.cs`). On iOS the badge of a
