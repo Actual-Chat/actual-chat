@@ -792,15 +792,16 @@ export interface EncoderHostInfo {
     appKind?: string;
 }
 
-// Software AV1 is the most expensive rung on the ladder, so it is offered only
-// where there is CPU headroom to spend: never on mobile, and inside the MAUI app
-// only on Windows. It still ranks below every hardware encoder.
+// Software AV1 is the most expensive rung on the ladder, so it is kept off
+// phones: the user agent settles it for browsers, and appKind for the MAUI app,
+// whose WebView doesn't always say "mobile". Desktop is fine either way. It
+// still ranks below every hardware encoder.
 function allowsSoftwareAv1(host: EncoderHostInfo | undefined): boolean {
     if (DeviceInfo.isMobile)
         return false;
 
-    const { hostKind, appKind } = host ?? SharedSettings.current;
-    return hostKind !== 'MauiApp' || appKind === 'Windows';
+    const { appKind } = host ?? SharedSettings.current;
+    return appKind !== 'Ios' && appKind !== 'Android';
 }
 
 // Firefox drops the MPEG rungs entirely: its H.264 encoder runs ~18 frames

@@ -76,14 +76,19 @@ describe('encoder ladder', () => {
         expect(pick(everything())).not.toContain('sw-av1');
     });
 
-    it('withholds software AV1 in the MAUI app except on Windows', () => {
+    it('withholds software AV1 on the phone MAUI apps only', () => {
+        // The MAUI WebView doesn't always report a mobile user agent, so appKind
+        // is what settles it there. Desktop MAUI is as capable as the browser.
         host.hostKind = 'MauiApp';
-
-        host.appKind = 'MacOS';
-        expect(pick(everything())).not.toContain('sw-av1');
 
         host.appKind = 'Ios';
         expect(pick(everything())).not.toContain('sw-av1');
+
+        host.appKind = 'Android';
+        expect(pick(everything())).not.toContain('sw-av1');
+
+        host.appKind = 'MacOS';
+        expect(pick(everything())).toContain('sw-av1');
 
         host.appKind = 'Windows';
         expect(pick(everything())).toContain('sw-av1');
@@ -131,12 +136,12 @@ describe('encoder ladder', () => {
 
     it('reads host identity from SharedSettings when none is passed', async () => {
         const { SharedSettings } = await import('shared-settings');
-        SharedSettings.update({ hostKind: 'MauiApp', appKind: 'MacOS' });
+        SharedSettings.update({ hostKind: 'MauiApp', appKind: 'Android' });
 
         expect(getEncoderLadder().map(r => `${r.accel}-${r.category}`))
             .not.toContain('prefer-software-av1');
 
-        SharedSettings.update({ hostKind: 'MauiApp', appKind: 'Windows' });
+        SharedSettings.update({ hostKind: 'MauiApp', appKind: 'MacOS' });
         expect(getEncoderLadder().map(r => `${r.accel}-${r.category}`))
             .toContain('prefer-software-av1');
 
