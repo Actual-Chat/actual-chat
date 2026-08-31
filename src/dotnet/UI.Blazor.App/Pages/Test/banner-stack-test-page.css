@@ -1,0 +1,20 @@
+.banner-stack-test {
+    @apply flex-y gap-y-3;
+    @apply p-4;
+}
+.banner-stack-test .c-title {
+    @apply text-headline-1;
+}
+.banner-stack-test .c-note {
+    @apply text-02;
+}
+.banner-stack-test .c-buttons {
+    @apply flex-x flex-wrap gap-2;
+}
+.banner-stack-test-subheader .c-body {
+    @apply flex-1 flex-x items-center gap-x-2;
+    @apply px-2;
+}
+.banner-stack-test-subheader .c-body .c-text {
+    @apply flex-1;
+}

@@ -8,6 +8,7 @@
 @import './Components/AccountModal/account-modal.css';
 @import './Components/Author/author.css';
 @import './Components/Banners/banners.css';
+@import './Components/Banners/banner-stack.css';
 @import './Components/ContactSelector/contact-selector.css';
 @import './Components/ContactView/contact-view.css';
 @import './Components/ChatActivities/chat-activities.css';
@@ -108,6 +109,7 @@
 @import './Pages/user-page.css';
 @import './Pages/emojis-test-page.css';
 @import './Pages/Test/date-time-test-page.css';
+@import './Pages/Test/banner-stack-test-page.css';
 
 @import './Components/AudioRecorder/Guides/guides.css';
 @import './Components/PhotoPermission/photo-troubleshooter-modal.css';

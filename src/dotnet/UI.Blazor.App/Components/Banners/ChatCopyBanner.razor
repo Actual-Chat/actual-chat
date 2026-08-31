@@ -14,14 +14,12 @@
         @L.Banner_ChatCopiedToPlace
     </Body>
     <Buttons>
-        <Button
+        <BannerButton
             IsDisabled="@_isCopying"
-            Class="btn-transparent on"
-            Click="@(() => OnUpdateClick(copiedChat))">@L.Common_Update</Button>
-        <Button
+            Click="@(() => OnUpdateClick(copiedChat))">@L.Common_Update</BannerButton>
+        <BannerButton
             IsDisabled="@(!copiedChat.IsCopiedSuccessfully)"
-            Class="btn-transparent on"
-            Click="@(() => OnPublishClick(copiedChat))">@L.Common_Publish</Button>
+            Click="@(() => OnPublishClick(copiedChat))">@L.Common_Publish</BannerButton>
     </Buttons>
 </Banner>
 

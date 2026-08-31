@@ -2,7 +2,7 @@
     @apply flex-x gap-x-2 items-center justify-center;
     @apply w-full lg:max-w-192 h-14;
     @apply px-2;
-    @apply rounded-lg border-banner-default border-2;
+    @apply rounded-lg border-b border-banner-default;
     @apply bg-banner-default;
     @apply text-banner-default;
 }
@@ -17,14 +17,12 @@
 .banner-body {
     @apply flex-1;
     @apply ml-1;
+    @apply text-text-1;
 }
 .banner-buttons {
     @apply flex-x items-center justify-end gap-x-2;
     @apply ml-auto;
     @apply text-03;
-}
-.banner .btn:not(.close-banner) {
-    @apply px-2;
 }
 .banner.banner-wrap {
     @apply relative;
@@ -51,7 +49,12 @@
     @apply ml-auto;
 }
 .banner.banner-wrap .close-banner-abs {
-    @apply absolute top-2 md:top-3.5 right-2;
+    @apply absolute top-2 right-2;
+}
+/* Desktop: the close button sits at the banner's vertical center; mobile keeps it top-right */
+body.wide .banner.banner-wrap .close-banner-abs {
+    @apply top-1/2 right-2;
+    transform: translateY(-50%);
 }
 /* The query sees the content box, 20px narrower than the banner, so 22rem still fired up to a 380px
    viewport and cost English a row on every phone. A translation that doesn't fit wraps regardless -
@@ -70,9 +73,35 @@
         @apply flex-1;
     }
 }
+/* Mobile: stack the body over a centered button row instead of body-left / buttons-right */
+body.narrow .banner.banner-wrap > .c-content {
+    @apply flex-y items-stretch gap-y-1;
+}
+body.narrow .banner.banner-wrap.banner-dismissible > .c-content {
+    @apply pr-0;
+}
+body.narrow .banner.banner-wrap.banner-dismissible .banner-body {
+    @apply pr-9;
+}
+body.narrow .banner.banner-wrap .banner-body {
+    @apply min-w-0 min-h-6;
+    @apply text-caption-4;
+}
+body.narrow .banner.banner-wrap .banner-buttons {
+    @apply justify-end basis-auto;
+    @apply ml-0;
+}
+/* Banner action buttons are default style, but capped at 2rem tall and half-width */
+.banner .banner-buttons .btn.btn-transparent {
+    @apply min-h-8 max-h-8;
+}
 body.hoverable .banner .btn:hover,
 body.hoverable .banner .btn-h:hover {
     @apply brightness-125 ;
+}
+/* Touch tap keeps only the blur from .btn:active — no background fill */
+.touch-capable .banner .btn.btn-transparent:active::after {
+    @apply hidden;
 }
 .severity-icon {
     @apply flex items-center justify-center;
@@ -116,4 +145,9 @@ body.hoverable .banner .btn-h:hover {
 .bg-banner-error .btn .btn-content,
 .bg-banner-error i {
     @apply text-banner-error;
+}
+/* A danger action stays red even inside a severity-tinted banner */
+.banner .btn.btn-danger .btn-content,
+.banner .btn.btn-danger i {
+    @apply text-danger;
 }

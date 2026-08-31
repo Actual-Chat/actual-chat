@@ -17,9 +17,8 @@
         @(kind == PttJoinBannerKind.EnableDevice ? L.Banner_PttUseDevice : L.Banner_PttAllow)
     </Body>
     <Buttons>
-        <Button
-            Class="btn-transparent unhovered"
-            Click="@OnJoinClick">@L.Common_Allow</Button>
+        <BannerButton
+            Click="@OnJoinClick">@L.Common_Allow</BannerButton>
     </Buttons>
 </Banner>
 
