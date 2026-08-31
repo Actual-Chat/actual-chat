@@ -693,7 +693,7 @@ public class NotificationsBackend(IServiceProvider services)
         var l = await UserLocalizers.Get(author.UserId, cancellationToken).ConfigureAwait(false);
         await EnqueueMessageRelatedNotifications(
             entry.ChatId, entry.Id, reactionAuthor, l.Notification_Reaction_Format(reaction.Emoji, text),
-            NotificationKind.Reaction, similarityKey, "", userIds, cancellationToken)
+            NotificationKind.Reaction, similarityKey, "", userIds, (reaction.Emoji, text), cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -883,7 +883,7 @@ public class NotificationsBackend(IServiceProvider services)
         if (mentioned.Count > 0)
             await EnqueueMessageRelatedNotifications(
                 chatId, entryId, author, text, NotificationKind.Mention,
-                entryId.Value, "", mentioned, cancellationToken)
+                entryId.Value, "", mentioned, null, cancellationToken)
                 .ConfigureAwait(false);
 
         var others = userIds.Where(x => !mentionedUserIds.Contains(x)).ToList();
@@ -892,7 +892,7 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
         await EnqueueMessageRelatedNotifications(
             chatId, entryId, author, text, NotificationKind.Message,
-            chatId.Value, beepGroup, ordinaryUserIds, cancellationToken)
+            chatId.Value, beepGroup, ordinaryUserIds, null, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -1311,10 +1311,11 @@ public class NotificationsBackend(IServiceProvider services)
         string similarityKey,
         string beepGroup,
         IReadOnlyList<UserId> userIds,
+        (Emoji Emoji, string QuotedText)? reaction,
         CancellationToken cancellationToken)
         => EnqueueMessageRelatedNotifications(
             chatId, entryId, changeAuthor, content, null, kind, similarityKey, beepGroup,
-            userIds, cancellationToken);
+            userIds, reaction, cancellationToken);
 
     // Text that is a sentence: composed once per recipient, in their own language.
     private ValueTask EnqueueMessageRelatedNotifications(
@@ -1329,7 +1330,7 @@ public class NotificationsBackend(IServiceProvider services)
         CancellationToken cancellationToken)
         => EnqueueMessageRelatedNotifications(
             chatId, entryId, changeAuthor, null, contentFactory, kind, similarityKey, beepGroup,
-            userIds, cancellationToken);
+            userIds, null, cancellationToken);
 
     // Exactly one of sharedContent / contentFactory is non-null - see the two overloads above.
     private async ValueTask EnqueueMessageRelatedNotifications(
@@ -1342,6 +1343,7 @@ public class NotificationsBackend(IServiceProvider services)
         string similarityKey,
         string beepGroup,
         IReadOnlyList<UserId> userIds,
+        (Emoji Emoji, string QuotedText)? reaction,
         CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("-> EnqueueMessageRelatedNotifications. ChatId={ChatId}, EntryId={EntryId}, "
@@ -1372,7 +1374,12 @@ public class NotificationsBackend(IServiceProvider services)
                 NotificationKind.Thread => ThreadNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
                 NotificationKind.Invitation => InvitationNotification.New(otherUserId, chatId, changeAuthor.Id),
                 NotificationKind.Mention => MentionNotification.New(otherUserId, fullEntryId, changeAuthor.Id),
-                NotificationKind.Reaction => ReactionNotification.New(otherUserId, fullEntryId, changeAuthor.Id),
+                NotificationKind.Reaction => ReactionNotification.New(otherUserId, fullEntryId, changeAuthor.Id) with {
+                    AuthorIds = ApiArray.New(changeAuthor.Id),
+                    Emojis = reaction is { } r ? ApiArray.New(r.Emoji) : default,
+                    LastEmoji = reaction?.Emoji,
+                    QuotedText = reaction?.QuotedText ?? "",
+                },
                 NotificationKind.Attention => AttentionNotification.New(otherUserId, fullEntryId, changeAuthor.Id),
                 _ => throw StandardError.NotSupported<NotificationsBackend>($"Unsupported notification kind: {kind}."),
             };
