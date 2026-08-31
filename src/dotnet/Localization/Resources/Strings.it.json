@@ -184,6 +184,7 @@
   "ChatList_ActiveChats": "Chat attive",
   "ChatList_ActiveChatsTooltip": "Chat in cui sei in chiamata, stai registrando o sei in modalità Push-to-Talk",
   "ChatList_Talking": "sta parlando",
+  "Chat_IsTyping_Format": "{0} sta scrivendo...",
   "ChatList_Live_Format": "{0} · live",
   "ChatList_Thread_Format": "Thread '{0}'",
   "ChatList_SharedLiveLocation": "Posizione live condivisa",
@@ -1295,6 +1296,7 @@
   "Presence_Offline": "Offline",
   "Presence_Speaking": "Sta parlando...",
   "Presence_SpeakingShort": "Sta parlando",
+  "Presence_Typing": "Sta scrivendo...",
   "Presence_LastSeen_Prefix": "Ultimo accesso ",
   "Presence_LastSeen_Suffix": "",
 

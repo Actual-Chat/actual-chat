@@ -29,14 +29,16 @@
                     </div>
                 </div>
                 <div class="c-info">
-                    @if (chat.Kind != ChatKind.Peer) {
-                        @if (chat.Rules.CanJoin()) {
-                            <ChatMemberCounter ChatId="@chat.Id"/>
+                    <ChatTypingIndicator ChatId="@chat.Id">
+                        @if (chat.Kind != ChatKind.Peer) {
+                            @if (chat.Rules.CanJoin()) {
+                                <ChatMemberCounter ChatId="@chat.Id"/>
+                            }
                         }
-                    }
-                    else { // chat.Kind == ChatKind.Peer
-                        <StatusBadge Chat="@chat" IsColorful="@false"/>
-                    }
+                        else { // chat.Kind == ChatKind.Peer
+                            <StatusBadge Chat="@chat" IsColorful="@false"/>
+                        }
+                    </ChatTypingIndicator>
                 </div>
             </div>
             @if (!ScreenSize.IsNarrow()) {

@@ -5,6 +5,7 @@ import {
     Subject,
     takeUntil,
     debounceTime,
+    throttleTime,
     tap,
     fromEvent
 } from 'rxjs';
@@ -28,6 +29,8 @@ export type PanelMode = 'Normal' | 'Narrow';
 export class ChatMessageEditor {
     private readonly isSmooth: boolean = false;
     private readonly backupRequired$ = new Subject<void>();
+    private readonly typing$ = new Subject<void>();
+    private isTyping = false;
     private readonly disposed$: Subject<void> = new Subject<void>();
     private readonly editorDiv: HTMLDivElement;
     private readonly postPanelDiv: HTMLDivElement;
@@ -94,6 +97,15 @@ export class ChatMessageEditor {
             .subscribe(this.onEditorBlur);
 
         this.backupRequired$.pipe(debounceTime(1000), tap(() => this.saveDraft())).subscribe();
+
+        // Typing indicator: re-signal "typing" at most once per 3s while editing,
+        // and clear it after 5s of no activity (send/empty/blur clear it right away).
+        this.typing$
+            .pipe(throttleTime(3000, undefined, { leading: true, trailing: false }), takeUntil(this.disposed$))
+            .subscribe(() => this.setTyping(true));
+        this.typing$
+            .pipe(debounceTime(5000), takeUntil(this.disposed$))
+            .subscribe(() => this.setTyping(false));
 
         this.postPanelHeightObserver = new ResizeObserver(this.updatePostPanelBorderRadius);
         this.postPanelHeightObserver.observe(this.postPanelDiv);
@@ -188,6 +200,8 @@ export class ChatMessageEditor {
         if (this.disposed$.closed)
             return;
 
+        this.setTyping(false);
+        this.typing$.complete();
         this.backupRequired$.complete();
         this.disposed$.next();
         this.disposed$.complete();
@@ -226,6 +240,7 @@ export class ChatMessageEditor {
         this.markupEditor.changed = () => {
             this.backupRequired$.next();
             this.updateHasContent();
+            this.onTypingActivity();
         }
         this.updateHasContent();
         if (this.isNarrowScreen)
@@ -453,6 +468,24 @@ export class ChatMessageEditor {
     private onEditorBlur = () => {
         this.heightAtFocus = null;
         this.applyPanelMode('Normal');
+        this.setTyping(false);
+    }
+
+    private onTypingActivity(): void {
+        if (this.markupEditor?.hasContent ?? false)
+            this.typing$.next();
+        else
+            this.setTyping(false);
+    }
+
+    private setTyping(isActive: boolean): void {
+        // "true" is a throttled keep-alive pulse (~3s): always forward it so the server refreshes its
+        // typing-staleness window and re-adds the entry if it was dropped (e.g. a refresh on the other
+        // end raced a stale "false"). Only collapse repeated "false".
+        if (!isActive && !this.isTyping)
+            return;
+        this.isTyping = isActive;
+        void this.blazorRef.invokeMethodAsync('OnTypingChanged', isActive);
     }
 
     private updateKeyboardPanel = () => {

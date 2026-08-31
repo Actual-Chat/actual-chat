@@ -241,6 +241,7 @@
   "ChatList_ActiveChats": "Cuộc trò chuyện đang hoạt động",
   "ChatList_ActiveChatsTooltip": "Chats, in denen Sie gerade im Anruf sind, aufnehmen oder den Push-to-Talk-Modus nutzen",
   "ChatList_Talking": "बात हो रही है",
+  "Chat_IsTyping_Format": "{0} est en train d'écrire...",
   "ChatList_Live_Format": "{0} · langsung",
   "ChatList_Thread_Format": "スレッド「{0}」",
   "ChatList_SharedLiveLocation": "Сподели местоположение на живо",
@@ -1558,6 +1559,7 @@
   "Presence_Offline": "Sin conexión",
   "Presence_Speaking": "Sta parlando...",
   "Presence_SpeakingShort": "Sta parlando",
+  "Presence_Typing": "En train d'écrire...",
   "Presence_LastSeen_Prefix": "Последняя активность: ",
   "Presence_LastSeen_Suffix": "",
 

@@ -184,6 +184,7 @@
   "ChatList_ActiveChats": "活跃聊天",
   "ChatList_ActiveChatsTooltip": "你正在通话、录音或处于按住说话模式的聊天",
   "ChatList_Talking": "正在交谈",
+  "Chat_IsTyping_Format": "{0} 正在输入...",
   "ChatList_Live_Format": "{0} · 直播中",
   "ChatList_Thread_Format": "话题“{0}”",
   "ChatList_SharedLiveLocation": "分享了实时位置",
@@ -1295,6 +1296,7 @@
   "Presence_Offline": "离线",
   "Presence_Speaking": "正在讲话…",
   "Presence_SpeakingShort": "正在讲话",
+  "Presence_Typing": "正在输入...",
   "Presence_LastSeen_Prefix": "最后在线：",
   "Presence_LastSeen_Suffix": "",
 

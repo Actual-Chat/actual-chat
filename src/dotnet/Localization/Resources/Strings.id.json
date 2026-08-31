@@ -184,6 +184,7 @@
   "ChatList_ActiveChats": "Obrolan aktif",
   "ChatList_ActiveChatsTooltip": "Obrolan tempat Anda dalam panggilan, merekam, atau memakai mode Tekan untuk bicara",
   "ChatList_Talking": "berbicara",
+  "Chat_IsTyping_Format": "{0} sedang mengetik...",
   "ChatList_Live_Format": "{0} · langsung",
   "ChatList_Thread_Format": "Utas “{0}”",
   "ChatList_SharedLiveLocation": "Membagikan lokasi langsung",
@@ -1295,6 +1296,7 @@
   "Presence_Offline": "Offline",
   "Presence_Speaking": "Berbicara...",
   "Presence_SpeakingShort": "Berbicara",
+  "Presence_Typing": "Mengetik...",
   "Presence_LastSeen_Prefix": "Terakhir terlihat ",
   "Presence_LastSeen_Suffix": "",
 

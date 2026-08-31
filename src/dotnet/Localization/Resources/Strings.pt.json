@@ -184,6 +184,7 @@
   "ChatList_ActiveChats": "Chats ativos",
   "ChatList_ActiveChatsTooltip": "Chats em que você está em chamada, gravando ou no modo Pressione para falar",
   "ChatList_Talking": "falando",
+  "Chat_IsTyping_Format": "{0} está digitando...",
   "ChatList_Live_Format": "{0} · ao vivo",
   "ChatList_Thread_Format": "Tópico '{0}'",
   "ChatList_SharedLiveLocation": "Localização ao vivo compartilhada",
@@ -1295,6 +1296,7 @@
   "Presence_Offline": "Off-line",
   "Presence_Speaking": "Falando...",
   "Presence_SpeakingShort": "Falando",
+  "Presence_Typing": "Digitando...",
   "Presence_LastSeen_Prefix": "Visto pela última vez ",
   "Presence_LastSeen_Suffix": "",
 

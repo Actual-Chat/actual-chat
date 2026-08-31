@@ -184,6 +184,7 @@
   "ChatList_ActiveChats": "सक्रिय चैट",
   "ChatList_ActiveChatsTooltip": "चैट जिनमें आप कॉल पर हैं, रिकॉर्ड कर रहे हैं, या पुश टू टॉक मोड में हैं",
   "ChatList_Talking": "बात हो रही है",
+  "Chat_IsTyping_Format": "{0} टाइप कर रहा है...",
   "ChatList_Live_Format": "{0} · लाइव",
   "ChatList_Thread_Format": "थ्रेड '{0}'",
   "ChatList_SharedLiveLocation": "लाइव लोकेशन साझा की",
@@ -1295,6 +1296,7 @@
   "Presence_Offline": "ऑफ़लाइन",
   "Presence_Speaking": "बोल रहे हैं...",
   "Presence_SpeakingShort": "बोल रहे हैं",
+  "Presence_Typing": "टाइप कर रहा है...",
   "Presence_LastSeen_Prefix": "अंतिम बार देखा गया ",
   "Presence_LastSeen_Suffix": "",
 

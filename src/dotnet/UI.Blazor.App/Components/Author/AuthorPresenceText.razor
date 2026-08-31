@@ -4,14 +4,20 @@
     var m = State.Value;
 }
 
-@PresenceFragments.PresenceText((m.Presence, m.LastCheckIn, IsShortText, L))
+@if (m.IsTyping) {
+    <span class="c-typing-indicator">@L.Presence_Typing</span>
+} else {
+    @PresenceFragments.PresenceText((m.Presence, m.LastCheckIn, IsShortText, L))
+}
 
 @code {
     private IAuthors Authors => Hub.Authors;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
+    private TypingUI TypingUI => Hub.TypingUI;
 
     [Parameter, EditorRequired] public AuthorId? AuthorId { get; set; }
     [Parameter] public bool ShowRecording { get; set; }
+    [Parameter] public bool ShowTyping { get; set; }
     [Parameter] public bool IsShortText { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -30,16 +36,25 @@
 
         // The code below doesn't use any component prop, so we can use .ConfigureAwait(false)
         var presence = await Authors.GetPresence(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
+        var isRecording = false;
         if (ShowRecording) {
             var isStreaming = await LiveStreamUI.IsAuthorStreamingAudio(chatId, authorId, cancellationToken).ConfigureAwait(false);
-            if (isStreaming)
+            if (isStreaming) {
                 presence = Presence.Recording;
+                isRecording = true;
+            }
         }
+
+        // Recording (audio) takes priority over typing.
+        var isTyping = ShowTyping
+            && !isRecording
+            && await TypingUI.IsTyping(chatId, authorId, cancellationToken).ConfigureAwait(false);
 
         var lastCheckIn = await Authors.GetLastCheckIn(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         return new() {
             Presence = presence,
             LastCheckIn = lastCheckIn,
+            IsTyping = isTyping,
         };
     }
 
@@ -53,5 +68,6 @@
 
         public required Presence Presence { get; init; }
         public required Moment? LastCheckIn { get; init; }
+        public bool IsTyping { get; init; }
     }
 }

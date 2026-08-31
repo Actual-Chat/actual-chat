@@ -47,32 +47,36 @@
                     <div class="c-last-message">
                         @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
                             <span class="hidden last-entry-id">@m.LastTextEntry?.Id.Value</span>
-                            <span class="c-name">
-                                <AuthorName
-                                    AuthorId="@m.LastAuthorId"
-                                    ShowDetailsOnClick="false"
-                                    ShowAsOwn="true"/>
-                            </span>
-                            <span class="c-colon">:</span>
                         }
-                        @if (m.CallActivity.HasLiveConversation) {
-                            var activity = m.CallActivity;
-                            var activityText = activity.IsLiveSession
-                                ? L.ChatList_Live_Format(activity.ParticipantCount)
-                                : L.ChatList_Talking;
-                            <span class="c-live-talking">
-                                <chat-activity-svg size="3.5" isActive="true"/>
-                                <span class="c-live-text">@activityText</span>
-                            </span>
-                        }
-                        else if (lastTextEntry.IsContentStreaming) {
-                            <chat-activity-svg size="4" isActive="true"/>
-                        }
-                        else {
-                            <span class="c-text">
-                                @((MarkupString)m.LastTextEntryIcons) @m.LastTextEntryText
-                            </span>
-                        }
+                        <ChatTypingIndicator ChatId="@chat.Id" IsEnabled="@(!m.CallActivity.HasLiveConversation)">
+                            @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
+                                <span class="c-name">
+                                    <AuthorName
+                                        AuthorId="@m.LastAuthorId"
+                                        ShowDetailsOnClick="false"
+                                        ShowAsOwn="true"/>
+                                </span>
+                                <span class="c-colon">:</span>
+                            }
+                            @if (m.CallActivity.HasLiveConversation) {
+                                var activity = m.CallActivity;
+                                var activityText = activity.IsLiveSession
+                                    ? L.ChatList_Live_Format(activity.ParticipantCount)
+                                    : L.ChatList_Talking;
+                                <span class="c-live-talking">
+                                    <chat-activity-svg size="3.5" isActive="true"/>
+                                    <span class="c-live-text">@activityText</span>
+                                </span>
+                            }
+                            else if (lastTextEntry.IsContentStreaming) {
+                                <chat-activity-svg size="4" isActive="true"/>
+                            }
+                            else {
+                                <span class="c-text">
+                                    @((MarkupString)m.LastTextEntryIcons) @m.LastTextEntryText
+                                </span>
+                            }
+                        </ChatTypingIndicator>
                         <div class="c-incut"></div>
                         @if (!showEnding) {
                             <UnreadCount

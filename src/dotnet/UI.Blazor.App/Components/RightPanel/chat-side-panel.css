@@ -475,6 +475,9 @@ body.hoverable .author-list-tab .avatar-badge:hover {
 .author-list-tab .avatar-badge .avatar-name {
     @apply font-medium text-02;
 }
+.author-list-tab .avatar-badge .c-status .c-typing-indicator {
+    @apply text-primary;
+}
 
 .thread-list-tab {
     @apply p-2;

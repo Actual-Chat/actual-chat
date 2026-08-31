@@ -208,6 +208,7 @@ public static class LocalizedStringsLocalizerExt
         public string ChatList_ActiveChatsTooltip => l["ChatList_ActiveChatsTooltip"].Value;
         public string ChatList_Talking => l["ChatList_Talking"].Value;
         public string ChatList_Live_Format(object arg0) => l["ChatList_Live_Format", arg0].Value;
+        public string Chat_IsTyping_Format(object arg0) => l["Chat_IsTyping_Format", arg0].Value;
         public string ChatList_Thread_Format(object arg0) => l["ChatList_Thread_Format", arg0].Value;
         public string ChatList_SharedLiveLocation => l["ChatList_SharedLiveLocation"].Value;
         public string ChatList_SentLocation => l["ChatList_SentLocation"].Value;
@@ -1340,6 +1341,7 @@ public static class LocalizedStringsLocalizerExt
         public string Presence_Offline => l["Presence_Offline"].Value;
         public string Presence_Speaking => l["Presence_Speaking"].Value;
         public string Presence_SpeakingShort => l["Presence_SpeakingShort"].Value;
+        public string Presence_Typing => l["Presence_Typing"].Value;
         public string Presence_LastSeen_Prefix => l["Presence_LastSeen_Prefix"].Value;
         public string Presence_LastSeen_Suffix => l["Presence_LastSeen_Suffix"].Value;
 

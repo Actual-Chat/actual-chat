@@ -184,6 +184,7 @@
   "ChatList_ActiveChats": "アクティブなチャット",
   "ChatList_ActiveChatsTooltip": "通話中、録音中、またはプッシュ・トゥ・トークモードのチャット",
   "ChatList_Talking": "会話中",
+  "Chat_IsTyping_Format": "{0}さんが入力中...",
   "ChatList_Live_Format": "{0} · ライブ",
   "ChatList_Thread_Format": "スレッド「{0}」",
   "ChatList_SharedLiveLocation": "ライブ位置情報を共有しました",
@@ -1295,6 +1296,7 @@
   "Presence_Offline": "オフライン",
   "Presence_Speaking": "発言中…",
   "Presence_SpeakingShort": "発言中",
+  "Presence_Typing": "入力中...",
   "Presence_LastSeen_Prefix": "最終アクセス: ",
   "Presence_LastSeen_Suffix": "",
 
