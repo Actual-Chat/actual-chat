@@ -41,12 +41,19 @@ public static class ChatListExt
     public static IEnumerable<ChatInfo> OrderBy(
         this IEnumerable<ChatInfo> chats,
         ChatListOrder order,
-        ChatListPreOrder preOrder)
+        ChatListPreOrder preOrder,
+        IReadOnlyDictionary<ChatId, Moment>? reactedAt = null)
     {
         var preOrderedChats = preOrder switch {
             ChatListPreOrder.ChatList => PreOrderChatListFor(chats, order),
             ChatListPreOrder.None => chats.ToFakeOrderedEnumerable(),
-            ChatListPreOrder.NotesFirst => chats.OrderByDescending(c => c.Chat.SystemTag == Constants.Chat.SystemTags.Notes),
+            ChatListPreOrder.NotesFirst => chats
+                .OrderByDescending(c => c.Chat.SystemTag == Constants.Chat.SystemTags.Notes),
+            // ByLastEventTime sorts on a version, not a Moment, so a reaction time can't be folded
+            // into it - a reacted chat is lifted above the rest instead.
+            ChatListPreOrder.ReactionsFirst => chats
+                .OrderByDescending(c => GetReactedAt(reactedAt, c.Id) is not null)
+                .ThenByDescending(c => GetReactedAt(reactedAt, c.Id) ?? Moment.EpochStart),
             _ => throw new ArgumentOutOfRangeException(nameof(preOrder)),
         };
         return order switch {
@@ -102,4 +109,7 @@ public static class ChatListExt
         => chats
             .OrderByDescending(c => c.Contact.IsPinned)
             .ThenByDescending(c => c.HasUnreadMentions);
+
+    private static Moment? GetReactedAt(IReadOnlyDictionary<ChatId, Moment>? reactedAt, ChatId chatId)
+        => reactedAt is not null && reactedAt.TryGetValue(chatId, out var moment) ? moment : null;
 }
