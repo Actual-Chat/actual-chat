@@ -5,28 +5,33 @@ using ActualChat.Maui;
 
 namespace ActualChat.App.Maui.IosShareExt.Components;
 
-public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
+public sealed class ShareView : ComputedStateView<ShareView.Model>
 {
+    private const double FadeDuration = 0.3;
+    private StatefulView? _stepView;
+    private ShareStep? _displayedStep;
     private ShareUI ShareUI => Hub.ShareUI;
-    private SignInView? _signInView;
-    private ContactSelectionView? _contactSelectionView;
-    private UploadProgressView? _uploadProgressView;
-    private ErrorView? _errorView;
-    private SuccessView? _successView;
-    private ShareStep _displayedStep;
+
+    public ShareView(IosHub hub) : base(hub)
+    {
+        // OnInitialRender waits on GetStep, and that waits on Accounts.GetOwn - a whole round trip
+        // of blank sheet if the UI waits with it.
+        BackgroundColor = AppColors.Background01;
+        ShowContactSelection();
+        _displayedStep = ShareStep.ContactSelection;
+    }
 
     protected override void OnInitialRender(Model model)
-    {
-        BackgroundColor = AppColors.Background01;
-        OnStateChanged(model);
-    }
+        => OnStateChanged(model);
 
     protected override void OnStateChanged(Model model)
     {
-        if (model.Step == _displayedStep)
+        // None only means the suggested-recipient lookup is still running - the guest check is past.
+        var step = model.Step == ShareStep.None ? ShareStep.ContactSelection : model.Step;
+        if (step == _displayedStep)
             return;
 
-        switch (model.Step) {
+        switch (step) {
             case ShareStep.SignIn:
                 ShowSignIn();
                 break;
@@ -43,120 +48,7 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
                 ShowCompleted();
                 break;
         }
-        _displayedStep = model.Step;
-    }
-
-    private void ShowSignIn()
-    {
-        _signInView = new SignInView(Hub);
-        _signInView.TranslatesAutoresizingMaskIntoConstraints = false;
-        AddSubview(_signInView);
-
-        NSLayoutConstraint.ActivateConstraints([
-            _signInView.TopAnchor.ConstraintEqualTo(TopAnchor),
-            _signInView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
-            _signInView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
-            _signInView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
-        ]);
-    }
-
-    private void ShowContactSelection()
-    {
-        _contactSelectionView = new ContactSelectionView(Hub);
-        _contactSelectionView.TranslatesAutoresizingMaskIntoConstraints = false;
-        AddSubview(_contactSelectionView);
-
-        NSLayoutConstraint.ActivateConstraints([
-            _contactSelectionView.TopAnchor.ConstraintEqualTo(TopAnchor),
-            _contactSelectionView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
-            _contactSelectionView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
-            _contactSelectionView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
-        ]);
-    }
-
-    private void ShowUploading()
-    {
-        _uploadProgressView = new UploadProgressView(Hub);
-        _uploadProgressView.TranslatesAutoresizingMaskIntoConstraints = false;
-        _uploadProgressView.Alpha = 0;
-        AddSubview(_uploadProgressView);
-
-        NSLayoutConstraint.ActivateConstraints([
-            _uploadProgressView.TopAnchor.ConstraintEqualTo(TopAnchor),
-            _uploadProgressView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
-            _uploadProgressView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
-            _uploadProgressView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
-        ]);
-
-        var animator = new UIViewPropertyAnimator(0.3,
-            UIViewAnimationCurve.EaseInOut,
-            () => {
-                _contactSelectionView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
-                _uploadProgressView!.Transform = CGAffineTransform.MakeScale(1.0f, 1.0f);
-                _uploadProgressView.Alpha = 1;
-            });
-        animator.AddCompletion(_ => {
-            _contactSelectionView?.RemoveAndDisposeStates();
-        });
-        animator.StartAnimation();
-    }
-
-    private void ShowFailed()
-    {
-        _errorView = new ErrorView(Hub);
-        _errorView.TranslatesAutoresizingMaskIntoConstraints = false;
-        _errorView.Alpha = 0;
-        AddSubview(_errorView);
-
-        NSLayoutConstraint.ActivateConstraints([
-            _errorView.TopAnchor.ConstraintEqualTo(TopAnchor),
-            _errorView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
-            _errorView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
-            _errorView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
-        ]);
-
-        var animator = new UIViewPropertyAnimator(0.5,
-            UIViewAnimationCurve.EaseInOut,
-            () => {
-                _contactSelectionView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
-                _uploadProgressView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
-                _errorView!.Transform = CGAffineTransform.MakeScale(1.0f, 1.0f);
-                _errorView.Alpha = 1;
-            });
-        animator.AddCompletion(_ => {
-            _contactSelectionView?.RemoveAndDisposeStates();
-            _uploadProgressView?.RemoveAndDisposeStates();
-        });
-        animator.StartAnimation();
-    }
-
-    private void ShowCompleted()
-    {
-        _successView = new SuccessView(Hub);
-        _successView.TranslatesAutoresizingMaskIntoConstraints = false;
-        _successView.Alpha = 0;
-        AddSubview(_successView);
-
-        NSLayoutConstraint.ActivateConstraints([
-            _successView.TopAnchor.ConstraintEqualTo(TopAnchor),
-            _successView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
-            _successView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
-            _successView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
-        ]);
-
-        var animator = new UIViewPropertyAnimator(0.5,
-            UIViewAnimationCurve.EaseInOut,
-            () => {
-                _contactSelectionView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
-                _uploadProgressView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
-                _successView!.Transform = CGAffineTransform.MakeScale(1.0f, 1.0f);
-                _successView.Alpha = 1;
-            });
-        animator.AddCompletion(_ => {
-            _contactSelectionView?.RemoveAndDisposeStates();
-            _uploadProgressView?.RemoveAndDisposeStates();
-        });
-        animator.StartAnimation();
+        _displayedStep = step;
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -170,6 +62,60 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
     {
         var step = await ShareUI.GetStep(cancellationToken).ConfigureAwait(false);
         return new Model(step);
+    }
+
+    // Private methods
+
+    private void ShowSignIn()
+        => ShowStep(new SignInView(Hub));
+
+    private void ShowContactSelection()
+        => ShowStep(new ContactSelectionView(Hub));
+
+    private void ShowUploading()
+        => ShowStep(new UploadProgressView(Hub));
+
+    private void ShowFailed()
+        => ShowStep(new ErrorView(Hub));
+
+    private void ShowCompleted()
+        => ShowStep(new SuccessView(Hub));
+
+    private void ShowStep(StatefulView view)
+    {
+        // Opaque, and set here rather than in the view's OnInitialRender, which runs too late to
+        // cover what this replaces.
+        view.BackgroundColor = AppColors.Background01;
+        view.TranslatesAutoresizingMaskIntoConstraints = false;
+        AddSubview(view);
+
+        NSLayoutConstraint.ActivateConstraints([
+            view.TopAnchor.ConstraintEqualTo(TopAnchor),
+            view.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
+            view.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
+            view.BottomAnchor.ConstraintEqualTo(BottomAnchor),
+        ]);
+
+        var isFirst = _stepView is null;
+        _stepView = view;
+        if (isFirst)
+            return;
+
+        // Alpha, never a scale transform: Auto Layout recomputes the frame out from under a
+        // non-identity one, so the outgoing view comes straight back.
+        view.Alpha = 0;
+        var animator = new UIViewPropertyAnimator(FadeDuration, UIViewAnimationCurve.EaseInOut, () => view.Alpha = 1);
+        animator.AddCompletion(_ => RemoveStepViewsExcept(_stepView));
+        animator.StartAnimation();
+    }
+
+    private void RemoveStepViewsExcept(UIView? keep)
+    {
+        // By subview, not by tracked field: an untracked step is exactly the one that would linger.
+        foreach (var subview in Subviews) {
+            if (!ReferenceEquals(subview, keep))
+                subview.RemoveAndDisposeStates();
+        }
     }
 
     // Nested types

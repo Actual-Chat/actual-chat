@@ -65,7 +65,11 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             if (ownAccount.IsGuest)
                 return;
 
+            // The contact list can render before this lands, and CanSendTo filters on _hasFiles
             _hasFiles = await SharedInputs.HasFiles().ConfigureAwait(false);
+            using (Invalidation.Begin())
+                _ = ListContacts(default);
+
             if (await UIKitExt.GetSuggestedRecipient().ConfigureAwait(false) is not { } chatId)
                 return;
 
