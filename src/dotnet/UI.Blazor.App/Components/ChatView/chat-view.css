@@ -9,7 +9,12 @@
     @apply flex-y;
     @apply min-h-6;
     @apply border-l-2 border-transparent rounded-2xl;
-    @apply md:select-text;
+    @apply select-text;
+}
+/* Nothing inside a message may opt back into selection on touch: a long press on selectable text
+   starts the native text selection, which cancels the gesture that opens the message menu. */
+.touch-capable .message-wrapper {
+    @apply select-none;
 }
 .message-wrapper.show-author {
     @apply min-h-12;
@@ -210,11 +215,6 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     @apply h-auto;
     @apply my-0.5 pr-1.5;
     @apply text-02 text-text-1;
-}
-.touch-capable .chat-message-markup {
-    -webkit-user-select: none;
-    user-select: none;
-    -webkit-touch-callout: none;
 }
 .chat-message-markup.empty {
     @apply hidden;
