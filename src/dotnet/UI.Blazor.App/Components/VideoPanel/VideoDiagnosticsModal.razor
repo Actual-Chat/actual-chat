@@ -653,23 +653,62 @@
                             </div>
                         </Right>
                     </TileItem>
+                    <TileItem Click="@OnShowCodecOverlayClick">
+                        <Content>Show codec on tiles</Content>
+                        <Caption>
+                            Prefixes the FPS readout with the tile's codec, as
+                            <b>AV1⸱30ᶠᵖˢ</b>. Needs the FPS overlay above to be on.
+                        </Caption>
+                        <Right>
+                            <div class="pointer-events-none">
+                                <Toggle IsChecked="@_showCodecOverlay"/>
+                            </div>
+                        </Right>
+                    </TileItem>
                 </Tile>
             </div>
             <div class="diag-section">
                 <div class="diag-section-header">Codec selection</div>
                 <Tile>
-                    <TileItem Click="@OnForceH264OnlyClick">
-                        <Content>Force H.264 (AVC) only</Content>
+                    <TileItem IsHoverable="false">
+                        <Content>Force decode codec</Content>
                         <Caption>
-                            Restrict codec detection to H.264 (AVC). AV1, HEVC and VP9
-                            are excluded for both encoder and decoder. Useful for
-                            reproducing AVC-only behaviour. Takes effect on the next
-                            stream — toggle, then re-join the call.
+                            Admin only: pins the whole call to this codec, ignoring
+                            what other members advertise. Several admins pinning at
+                            once get the union of their picks. Your own encoder
+                            follows it too. Applies immediately — a live stream
+                            restarts on the new codec.
                         </Caption>
                         <Right>
-                            <div class="pointer-events-none">
-                                <Toggle IsChecked="@_forceH264Only"/>
-                            </div>
+                            <select class="diag-select"
+                                    value="@_forceDecodeCodec"
+                                    @onchange="@OnForceDecodeCodecChange">
+                                <option value="">Auto (all supported)</option>
+                                <option value="vp9">VP9</option>
+                                <option value="h264">H.264 (AVC)</option>
+                                <option value="hevc">HEVC (H.265)</option>
+                                <option value="av1">AV1</option>
+                            </select>
+                        </Right>
+                    </TileItem>
+                    <TileItem IsHoverable="false">
+                        <Content>Prefer encode codec</Content>
+                        <Caption>
+                            Rank this codec first when picking your own encoder. A
+                            preference only: one the call's members can't decode, or
+                            that fails probing or is too slow, still loses. Affects
+                            your outgoing video, and restarts a live stream to apply.
+                        </Caption>
+                        <Right>
+                            <select class="diag-select"
+                                    value="@_preferredEncodeCodec"
+                                    @onchange="@OnPreferredEncodeCodecChange">
+                                <option value="">Auto (by efficiency)</option>
+                                <option value="vp9">VP9</option>
+                                <option value="h264">H.264 (AVC)</option>
+                                <option value="hevc">HEVC (H.265)</option>
+                                <option value="av1">AV1</option>
+                            </select>
                         </Right>
                     </TileItem>
                 </Tile>
