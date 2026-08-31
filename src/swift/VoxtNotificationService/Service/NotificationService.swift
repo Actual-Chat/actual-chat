@@ -9,8 +9,8 @@ final class NotificationService: UNNotificationServiceExtension {
     // The FCM data keys `FirebaseMessagingClient` sends alongside `aps`.
     private static let iconKey = "icon"
     private static let chatIdKey = "chatId"
-    // `NotificationHelper.GetTitle` composes group-chat titles as "<author> @ <chat>".
-    private static let titleSeparator = " @ "
+    private static let senderNameKey = "senderName"
+    private static let groupTitleKey = "groupTitle"
     // The system allows 30s, but a banner that lands seconds late is worse than an iconless
     // one - and these are 128px avatars, so a slow fetch means the network is gone anyway.
     private static let downloadTimeout: TimeInterval = 5
@@ -101,15 +101,16 @@ final class NotificationService: UNNotificationServiceExtension {
         _ iconData: Data?,
         to content: UNMutableNotificationContent
     ) -> UNNotificationContent {
-        let (senderName, groupName) = splitTitle(content.title)
+        // The chat names the banner: the icon is its picture, and each body line carries its own
+        // author. A peer chat has no group title, so the other party stays the headline.
+        let headline = headline(of: content)
         guard let iconData,
-              let intent = makeIntent(senderName: senderName, groupName: groupName, content: content, iconData: iconData)
+              let intent = makeIntent(headline: headline, content: content, iconData: iconData)
         else { return content }
 
-        // Titling the banner ourselves keeps the sender/chat split readable even when the
-        // update below fails - which it does when the communication entitlement is missing.
-        content.title = senderName
-        content.subtitle = groupName ?? ""
+        // Titling the banner ourselves keeps it right even when the update below fails -
+        // which it does when the communication entitlement is missing.
+        content.title = headline
         let updated: UNNotificationContent
         do {
             updated = try content.updating(from: intent)
@@ -120,7 +121,7 @@ final class NotificationService: UNNotificationServiceExtension {
             return content
         }
 
-        // Makes the sender addressable by Focus ("Allow notifications from") and Siri.
+        // Makes the chat addressable by Focus ("Allow notifications from") and Siri.
         let interaction = INInteraction(intent: intent, response: nil)
         interaction.direction = .incoming
         interaction.donate(completion: nil)
@@ -128,12 +129,11 @@ final class NotificationService: UNNotificationServiceExtension {
     }
 
     private static func makeIntent(
-        senderName: String,
-        groupName: String?,
+        headline: String,
         content: UNMutableNotificationContent,
         iconData: Data
     ) -> INSendMessageIntent? {
-        guard !senderName.isEmpty else { return nil }
+        guard !headline.isEmpty else { return nil }
         // The thread id is the chat tag the server groups banners under, and AppDelegate's
         // dismissal path matches delivered notifications on it. updating(from:) rewrites the
         // thread id from the conversation id, so these two must be the same string.
@@ -143,33 +143,32 @@ final class NotificationService: UNNotificationServiceExtension {
         guard !conversationId.isEmpty else { return nil }
 
         let image = INImage(imageData: iconData)
+        // The chat is the intent's sender. speakableGroupName stays unset on purpose: iOS renders
+        // it as a subtitle beneath the sender, the second line this banner doesn't want.
         let sender = INPerson(
             personHandle: INPersonHandle(value: conversationId, type: .unknown),
             nameComponents: nil,
-            displayName: senderName,
+            displayName: headline,
             image: image,
             contactIdentifier: nil,
             customIdentifier: conversationId)
-        let intent = INSendMessageIntent(
+        return INSendMessageIntent(
             recipients: nil,
             outgoingMessageType: .outgoingMessageText,
             content: nil,
-            speakableGroupName: groupName.map { INSpeakableString(spokenPhrase: $0) },
+            speakableGroupName: nil,
             conversationIdentifier: conversationId,
             serviceName: nil,
             sender: sender,
             attachments: nil)
-        // For a group or place chat the server's icon is the chat's own picture, not the
-        // author's, so it belongs on the group rather than only on the sender.
-        if groupName != nil {
-            intent.setImage(image, forParameterNamed: \.speakableGroupName)
-        }
-        return intent
     }
 
-    private static func splitTitle(_ title: String) -> (senderName: String, groupName: String?) {
-        guard let range = title.range(of: titleSeparator) else { return (title, nil) }
-        let groupName = String(title[range.upperBound...])
-        return (String(title[..<range.lowerBound]), groupName.isEmpty ? nil : groupName)
+    // Empty for a notification composed before the server sent these keys, which leaves the
+    // banner as the server titled it rather than rewriting it into a communication one.
+    private static func headline(of content: UNMutableNotificationContent) -> String {
+        if let group = content.userInfo[groupTitleKey] as? String, !group.isEmpty {
+            return group
+        }
+        return content.userInfo[senderNameKey] as? String ?? ""
     }
 }
