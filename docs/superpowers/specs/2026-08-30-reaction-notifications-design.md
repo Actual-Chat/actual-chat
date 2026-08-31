@@ -146,9 +146,12 @@ sub-component and gets no CSS file of its own.
 - `UnreadCount.razor` gains a third state: the emoji, rendered only when there is no
   count and no mention. `ChatUnreadState` grows a matching field so
   `ChatUI.GetUnreadState` keeps consolidating.
-- Sorting: the notifications panel passes an order that maxes a chat's last-event time
-  with its newest reaction `SentAt`. Scoped to this panel — the main chat list keeps
-  plain `ByLastEventTime`.
+- Sorting: a reacted chat is lifted above the rest, ordered by reaction `SentAt`
+  descending, via a new `ChatListPreOrder.ReactionsFirst`; everything else keeps
+  `ByLastEventTime`. Scoped to the notifications panel — the main chat list is untouched.
+  Maxing the two times, as an earlier draft of this spec proposed, is not expressible:
+  `ByLastEventTime` sorts on `LastTextEntry?.Version ?? Contact.Version`, a version rather
+  than a `Moment`, so there is nothing to max a reaction time against.
 - `LeftPanelButtons.ComputeState` adds the reaction check, or the bell never appears in
   a reaction-only state.
 

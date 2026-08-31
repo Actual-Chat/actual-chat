@@ -134,10 +134,16 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     {
         DebugLog?.LogDebug("-> List({PlaceId}, {Settings})", placeId, settings);
         var chatById = await ListUnorderedForDisplay(placeId, settings, cancellationToken).ConfigureAwait(false);
+        // AcrossPlace filters are exactly the notifications panel's, and only it surfaces reactions.
+        var isNotificationsPanel = settings.GetFilter().AcrossPlace;
+        var reactedAt = isNotificationsPanel
+            ? await GetReactedAt(chatById.Keys, cancellationToken).ConfigureAwait(false)
+            : null;
+        var preOrder = isNotificationsPanel ? ChatListPreOrder.ReactionsFirst : ChatListPreOrder.ChatList;
         DebugLog?.LogDebug(
             "<- List({PlaceId}, {Settings}): {Count} items",
             placeId, settings, chatById.Count);
-        return chatById.Values.OrderBy(settings.Order, ChatListPreOrder.ChatList).ToList();
+        return chatById.Values.OrderBy(settings.Order, preOrder, reactedAt).ToList();
     }
 
     public virtual Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListPeopleOnly(
@@ -408,6 +414,22 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     }
 
     // Private methods
+
+    private async Task<IReadOnlyDictionary<ChatId, Moment>?> GetReactedAt(
+        IEnumerable<ChatId> chatIds, CancellationToken cancellationToken)
+    {
+        var result = (Dictionary<ChatId, Moment>?)null;
+        foreach (var chatId in chatIds) {
+            var state = await NotificationsUI.GetReactionState(chatId, cancellationToken).ConfigureAwait(false);
+            if (state.Emoji is null)
+                continue;
+
+            result ??= new Dictionary<ChatId, Moment>();
+            result.Add(chatId, state.SentAt);
+        }
+
+        return result;
+    }
 
     private async Task<ChatInfo?> GetNotes(CancellationToken cancellationToken = default)
     {
