@@ -2058,7 +2058,11 @@ export class VideoRecorder {
         // its realm — source-bound capture, no main-thread rVFC tick. A clone
         // keeps the attempt non-destructive: main retains `inputTrack` for the
         // rVFC fallback and for restarts (which re-clone).
-        if (!useMstp) {
+        if (!useMstp && DeviceInfo.isFirefox) {
+            infoLog?.log(
+                'startWorker: skipping the worker MSTP attempt — Firefox has no '
+                + 'MediaStreamTrackProcessor and cannot transfer a MediaStreamTrack');
+        } else if (!useMstp) {
             try {
                 const clone = this.inputTrack.clone();
                 const ok = await this.worker.setSourceTrack(clone);
@@ -2099,26 +2103,26 @@ export class VideoRecorder {
             this.workerSourceCancelled = false;
             const workerForPump = this.worker;
             let pumpFrameCount = 0;
-            let lastPumpTickAtMs = performance.now();
-            const onFrame = (now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
-                if (this.workerSourceCancelled) return;
-                void now;
-                lastPumpTickAtMs = performance.now();
+            let lastRvfcTickAtMs = performance.now();
+            let lastPushedMediaTime = -1;
+            let timerPump: number | null = null;
 
-                const timestampUs = Math.round(metadata.mediaTime * 1_000_000);
+            // False means the worker rejected the frame, which cancels the
+            // source for good; a failed VideoFrame ctor is only transient.
+            const pushFrame = (mediaTime: number): boolean => {
                 let frame: VideoFrame;
                 try {
-                    frame = new VideoFrame(sourceVideo, { timestamp: timestampUs });
+                    frame = new VideoFrame(sourceVideo, { timestamp: Math.round(mediaTime * 1_000_000) });
                 } catch (e) {
                     warnLog?.log('pushFrame pump: VideoFrame ctor failed', e);
-                    sourceVideo.requestVideoFrameCallback(onFrame);
-                    return;
+                    return true;
                 }
                 pumpFrameCount++;
+                lastPushedMediaTime = mediaTime;
                 // `rpcNoWait` returns immediately after postMessage transfers
-                // the frame, so the next rVFC tick fires without waiting for
-                // the worker ack. Without this the round-trip easily exceeds
-                // the 33 ms frame interval on Android and caps capture at
+                // the frame, so the next tick fires without waiting for the
+                // worker ack. Without this the round-trip easily exceeds the
+                // 33 ms frame interval on Android and caps capture at
                 // half-rate. Worker absorbs bursts in its ingress queue.
                 try {
                     void workerForPump.pushFrame(frame, rpcNoWait);
@@ -2126,29 +2130,85 @@ export class VideoRecorder {
                     warnLog?.log('pushFrame: worker rejected', e);
                     this.workerSourceCancelled = true;
                     try { frame.close(); } catch { /* ignore */ }
-                    return;
+                    return false;
                 }
                 try { frame.close(); } catch { /* already detached */ }
+                return true;
+            };
+
+            const onFrame = (now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
+                if (this.workerSourceCancelled) return;
+                void now;
+                lastRvfcTickAtMs = performance.now();
+                if (!pushFrame(metadata.mediaTime))
+                    return;
+
                 sourceVideo.requestVideoFrameCallback(onFrame);
             };
             sourceVideo.requestVideoFrameCallback(onFrame);
-            // Capture watchdog: fires every 2s; logs only when the rVFC pump
-            // hasn't ticked recently (= camera/preview frozen) along with
-            // current camera + sourceVideo state for diagnostics. Replaces
-            // any prior watchdog so we don't stack stale ones across restarts.
+
+            // Firefox delivers at most the first rVFC callback for this
+            // element and then goes silent, while the <video> keeps decoding
+            // normally. It has no MediaStreamTrackProcessor either, so without
+            // a second source of ticks capture stops after one frame and the
+            // stall surfaces as an encoder fault. Poll currentTime instead;
+            // lastPushedMediaTime keeps a paused or slow source from
+            // resubmitting a frame that was already sent.
+            const stopTimerPump = (): void => {
+                if (timerPump === null)
+                    return;
+
+                window.clearInterval(timerPump);
+                timerPump = null;
+            };
+            const timerPumpPeriodMs = Math.max(1, Math.round(
+                1000 / (DeviceInfo.isMobile ? VIDEO.mobileFrameRate : VIDEO.frameRate)));
+            const startTimerPump = (): void => {
+                if (timerPump !== null)
+                    return;
+
+                warnLog?.log(
+                    `capture: rVFC stopped firing (pump=#${pumpFrameCount}) — `
+                    + `falling back to a ${timerPumpPeriodMs}ms timer pump`);
+                timerPump = window.setInterval(() => {
+                    if (this.workerSourceCancelled || sourceVideo.readyState < 2)
+                        return;
+
+                    const mediaTime = sourceVideo.currentTime;
+                    if (mediaTime === lastPushedMediaTime)
+                        return;
+
+                    if (!pushFrame(mediaTime))
+                        stopTimerPump();
+                }, timerPumpPeriodMs);
+            };
+
+            // Capture watchdog: fires every 2s. When rVFC has gone quiet it
+            // starts the timer pump and keeps reporting source state; when
+            // rVFC comes back it hands capture over again. Replaces any prior
+            // watchdog so we don't stack stale ones across restarts.
             this.workerSourceCaptureWatchdogCancel?.();
             const captureWatchdog = window.setInterval(() => {
                 if (this.workerSourceCancelled) return;
-                const sinceTickMs = performance.now() - lastPumpTickAtMs;
-                if (sinceTickMs <= 1500) return;
+                const sinceTickMs = performance.now() - lastRvfcTickAtMs;
+                if (sinceTickMs <= 1500) {
+                    if (timerPump !== null) {
+                        infoLog?.log('capture: rVFC resumed — stopping the timer pump');
+                        stopTimerPump();
+                    }
+                    return;
+                }
+                startTimerPump();
                 const t = this.inputTrack;
                 warnLog?.log(
-                    `capture watchdog: pump=#${pumpFrameCount} sinceTick=${sinceTickMs.toFixed(0)}ms ` +
+                    `capture watchdog: pump=#${pumpFrameCount} sinceRvfcTick=${sinceTickMs.toFixed(0)}ms ` +
+                `timerPump=${timerPump !== null} ` +
                 `srcVid(rs=${sourceVideo.readyState} ct=${sourceVideo.currentTime.toFixed(2)} ` +
                 `paused=${sourceVideo.paused} ended=${sourceVideo.ended}) ` +
                 `track(rs=${t?.readyState} muted=${t?.muted} enabled=${t?.enabled})`);
             }, 2000);
             this.workerSourceCaptureWatchdogCancel = (): void => {
+                stopTimerPump();
                 window.clearInterval(captureWatchdog);
             };
         }
@@ -2318,7 +2378,7 @@ export class VideoRecorder {
         }
         if (nowMs - this.captureStallSinceMs >= CAPTURE_STALL_RECOVERY_MS) {
             this.captureStallSinceMs = 0;
-            this.scheduleRecovery('foreground capture stalled (encoder likely reclaimed)');
+            this.scheduleRecovery('foreground capture stalled (no frames reached the encoder)');
         }
     }
 
