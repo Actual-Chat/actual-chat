@@ -1,6 +1,6 @@
 ---
 title: Codec negotiation — per-client encode assignment
-description: Clients report decode and encode capabilities separately; the server assigns each client an encode codec by how many members can decode it, so one member's missing codec never disables another's camera.
+description: VP9 turns out to be real-time on every engine we ship to, so it becomes the default; clients report decode and encode sets separately and the server assigns each an encode codec by coverage for the mixed cases that remain.
 ---
 
 # Codec negotiation — per-client encode assignment
@@ -102,6 +102,56 @@ Two caveats before relying on it:
   pre-M3. AV1 decode should appear on M3+/iPhone 15 Pro+; AV1 *encode* is
   expected to stay absent on every Apple device.
 
+### iOS WKWebView matches desktop Safari
+
+iPhone on iOS 18.7 (A15), reached through `ios_webkit_debug_proxy` into the
+**Voxt MAUI app's own WKWebView** — so this is the shipping surface, not mobile
+Safari. `isConfigSupported` at 640×360:
+
+| codec | decode | encode |
+|---|---|---|
+| H.264 | yes | yes |
+| HEVC | yes | yes |
+| **VP8** | **yes** | **yes** |
+| **VP9** | **yes** | **yes** |
+| AV1 | no | no |
+
+Real `configure()` + `encode()`, 60 frames paced at 30 fps:
+
+| codec | first output after | frames in → out |
+|---|---|---|
+| H.264 | 2 frames | 60 → 60 |
+| HEVC | 2 frames | 60 → 60 |
+| **VP8** | **1 frame** | 60 → 60 |
+| **VP9** | **1 frame** | 60 → 60 |
+
+No drops and no errors on any codec.
+
+### The conclusion this forces
+
+**VP9 encodes and decodes at real-time latency on every engine we ship to** —
+Chromium, Firefox, desktop Safari and iOS WKWebView. There *is* a universal
+codec, and it is not H.264.
+
+That reorders this whole plan:
+
+- **VP9 becomes the default**, not a Firefox escape hatch. A call where every
+  member speaks VP9 needs no per-client divergence at all.
+- **H.264 becomes the legacy fallback** — for clients too old to report a VP9
+  capability, and for the Linux/Firefox decode gap.
+- The **coverage algorithm below stays**, but as a safety net for mixed-version
+  calls and odd devices rather than the everyday path. It is what keeps one
+  member's missing codec from disabling another's camera; it is no longer
+  expected to fire routinely.
+- **AV1 stays low priority.** Absent in both directions on A15 and on the
+  pre-M3 Mac mini, so it buys nothing on Apple today and VP9 already covers
+  everyone.
+
+What is still unmeasured, and is now the *only* thing between VP9 and being the
+default: **sustained CPU at 720p on Apple software VP9.** The 360p run above
+kept up with no drops, but wall-clock was dominated by the 33 ms pacing, so it
+is a latency and drop test, not a throughput one.
+
 ### Chrome/Windows baseline
 
 All four H.264 profiles probe true *and* really encode;
@@ -122,7 +172,9 @@ Taken by Alex, 2026-08-30:
    last-ranked rung — 570 ms is not worth shipping. H.264 stays in Firefox's
    **decode** set, so a Firefox user can still watch an H.264 sender.
 2. **Enable VP9.** **Re-enable AV1**, ranked *below* VP9 until its software
-   encode cost is measured.
+   encode cost is measured. (Since taken further by measurement: VP9 works
+   everywhere, so it should be the *default*, not merely enabled — see
+   "The conclusion this forces".)
 3. **Split encode-side from decode-side exclusion.** Excluding H.264 for
    *encode* must be allowed. Decode-side exclusion is *desirable but not
    mandatory* — a weight the server balances, never a veto.
@@ -297,14 +349,11 @@ on the `realtime` measurement regardless of what its decoder can do.
 
 ## Open items
 
-1. **iOS Safari** — desktop Safari is measured (above); the iPhone is not, and
-   it may differ. Run the same probe against the tethered device
-   (`ios_webkit_debug_proxy` is already running on the Mac mini). Watch for
-   AV1 decode appearing on iPhone 15 Pro+, and for VP9 encode being present on
-   desktop but absent or unusably slow on the phone.
-2. **VP9 software-encode CPU on Apple**, sustained at 720p30. This is the one
-   number that decides whether VP9 becomes the default codec or stays a
-   fallback.
+1. **VP9 software-encode CPU on Apple**, sustained at 720p30 with the pacing
+   removed. The one number left between VP9 and being the default codec.
+2. **AV1 on an M3+/iPhone 15 Pro+.** Both machines measured here predate AV1
+   hardware, so "AV1 decode: no" is a property of these devices, not of Apple
+   in 2026. Worth one probe on newer hardware before AV1 is ranked.
 3. **Does any Apple device encode AV1?** Not on the Mac mini (above), and
    near-certainly nowhere — no Apple silicon has an AV1 encoder and Safari
    ships no software one. Confirm on the iPhone before letting policy depend
@@ -343,3 +392,11 @@ on the `realtime` measurement regardless of what its decoder can do.
     reads it. `tmp/t10.js` / `tmp/t11.js` are working examples.
   - A fresh session sits on `about:blank`. Run `~/bin/safari go https://…`
     first or WebCodecs answers from a non-secure context.
+- `tmp/ios-eval.mjs` — evaluates JS in the iPhone's WKWebView through
+  `ios_webkit_debug_proxy` (already running on the Mac mini, port 9222).
+  It speaks the **WebKit Inspector protocol, not CDP**: every command must be
+  wrapped in `Target.sendMessageToTarget` and replies arrive via
+  `Target.dispatchMessageFromTarget`, addressed to the **frame** target rather
+  than the page target. Uses Node 22's built-in `WebSocket` — there is no `ws`
+  module on that machine. Same start-then-poll pattern as Safari.
+  `node ios-eval.mjs <pageIdx> <file>`; `curl localhost:9222/json` lists pages.
