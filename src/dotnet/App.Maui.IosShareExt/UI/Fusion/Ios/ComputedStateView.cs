@@ -1,5 +1,5 @@
 using ActualLab.Caching;
-using Microsoft.Maui.ApplicationModel;
+using CoreFoundation;
 
 namespace ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 
@@ -82,7 +82,9 @@ public abstract class ComputedStateView<T>(IosHub hub) : ComputedStateView(hub),
     protected override void NotifyStateHasChanged()
     {
         var model = State.Value;
-        MainThread.BeginInvokeOnMainThread(() => {
+        // DispatchAsync, not MainThread.BeginInvokeOnMainThread: that runs inline on the main
+        // thread, and the state starts in the base ctor - a sync computed would render mid-build.
+        DispatchQueue.MainQueue.DispatchAsync(() => {
             try {
                 if (!_isInitiallyRendered) {
                     OnInitialRender(model);
