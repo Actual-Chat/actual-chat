@@ -15,7 +15,7 @@ public class ActivitiesBackend : IDisposable
     private ActivitySet? _lastState;
     private bool? _hasEverBeenArmed;
 
-    private AppUIHub Hub { get; }
+    protected AppUIHub Hub { get; }
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private IncomingVoiceActivityUI IncomingVoiceActivityUI => Hub.IncomingVoiceActivityUI;
     private ActivitiesUI ActivitiesUI => field ??= Hub.Services.GetRequiredService<ActivitiesUI>();

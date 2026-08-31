@@ -22,7 +22,7 @@ namespace ActualChat.App.Maui.Activities;
     ForegroundService.TypeMicrophone |
     ForegroundService.TypeDataSync |
     ForegroundService.TypeLocation)]
-public class AndroidActivitiesForegroundService : Service
+public sealed class AndroidActivitiesForegroundService : Service
 {
     public static class IntentExtras
     {
@@ -34,6 +34,7 @@ public class AndroidActivitiesForegroundService : Service
         public const string ExtraChatCount = nameof(ExtraChatCount);
         public const string IsPaused = nameof(IsPaused);
         public const string CanPause = nameof(CanPause);
+        public const string AnswerWindowRemainingMs = nameof(AnswerWindowRemainingMs);
         public const string UploadFileCount = nameof(UploadFileCount);
         public const string UploadBytesUploaded = nameof(UploadBytesUploaded);
         public const string UploadTotalBytes = nameof(UploadTotalBytes);
@@ -44,6 +45,8 @@ public class AndroidActivitiesForegroundService : Service
 
     public const string ActionShow = "ACTION_SHOW";
     public const string ActionStop = "ACTION_STOP";
+    public const string ActionReply = "ACTION_REPLY";
+    public const string ActionStopTalking = "ACTION_STOP_TALKING";
     private const string ChannelId = "audio_widget";
     private const string RecordingChannelId = "audio_recording";
     private const string RecordingQuietChannelId = "audio_recording_quiet";
@@ -166,16 +169,18 @@ public class AndroidActivitiesForegroundService : Service
         ReleaseMediaSession();
         base.OnDestroy();
     }
-
     public override IBinder? OnBind(Intent? intent) => null;
-
     public override StartCommandResult OnStartCommand(Intent? intent, StartCommandFlags flags, int startId)
     {
-        _requestId = RandomStringGenerator.Default.Next();
         var action = intent?.Action ?? "";
         if (action == ActionStop) {
             // The notification's Stop button - the same door the media session's OnStop takes.
             AndroidActivitiesBackend.Stop();
+            return StartCommandResult.NotSticky;
+        }
+
+        if (action is ActionReply or ActionStopTalking) {
+            TryHandleNotificationReply(isStop: action == ActionStopTalking);
             return StartCommandResult.NotSticky;
         }
 
@@ -188,6 +193,9 @@ public class AndroidActivitiesForegroundService : Service
             return StartCommandResult.NotSticky;
         }
 
+        // Reset only on Show: a reply action arriving mid-bitmap-load must not cancel the
+        // in-flight notification update it has nothing to do with.
+        _requestId = RandomStringGenerator.Default.Next();
         // A Show revives an instance whose deferred stop never reached OnDestroy - otherwise the
         // microphone re-type would stay dead for the rest of its life.
         Volatile.Write(ref _isStopping, false);
@@ -269,6 +277,7 @@ public class AndroidActivitiesForegroundService : Service
             .Build();
         _mediaSession.SetPlaybackState(playbackStateCompat);
 
+        var answerWindowRemainingMs = intent.Extras!.GetLong(IntentExtras.AnswerWindowRemainingMs, 0);
         var lastRequestId = _requestId;
         ResolveBitmapAndRun(
             chatPicUrl,
@@ -285,7 +294,8 @@ public class AndroidActivitiesForegroundService : Service
                 _lastAlbumArt = bitmap;
                 _lastLink = link;
                 SetMetadata(title, text, bitmap);
-                var notification = BuildNotification(_mediaSession, link, kind);
+                var notification = BuildNotification(
+                    _mediaSession, link, kind, title, answerWindowRemainingMs);
                 StartForeground1(notification, kind, requested);
             });
 
@@ -389,7 +399,7 @@ public class AndroidActivitiesForegroundService : Service
 
         try {
             SetMetadata(_lastTitle, GetKindText(kind), _lastAlbumArt);
-            return BuildNotification(_mediaSession, _lastLink, kind);
+            return BuildNotification(_mediaSession, _lastLink, kind, _lastTitle, 0);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Couldn't relabel the notification for {Kind}", kind);
@@ -482,10 +492,11 @@ public class AndroidActivitiesForegroundService : Service
     }
 
     private Android.App.Notification BuildStartingNotification(ActivityKind kind)
+    {
         // Carries real text because the armed start (TryStartArmed) has no chat to name yet and
         // this notification is all the user sees until the backend arrives, which takes as long as
         // Blazor needs to render. A blank one reads as "PTT isn't running".
-        => new NotificationCompat.Builder(this, GetChannelId(kind))
+        var builder = new NotificationCompat.Builder(this, GetChannelId(kind))
             .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
             .SetContentTitle(kind switch {
                 ActivityKind.Armed => "Push-to-talk is on",
@@ -496,17 +507,21 @@ public class AndroidActivitiesForegroundService : Service
             })!
             .SetOngoing(true)!
             .SetOnlyAlertOnce(true)!
-            .SetVisibility(NotificationCompat.VisibilityPublic)!
-            .Build()!;
+            .SetVisibility(NotificationCompat.VisibilityPublic)!;
+        // A null link resolves to the app's launch intent - the placeholder has no chat to open.
+        if (NotificationHelper.CreateViewIntent(this, null) is { } viewIntent)
+            _ = builder.SetContentIntent(
+                PendingIntent.GetActivity(this, 3, viewIntent, PendingIntentFlags.Immutable));
+        AddReplyActions(builder, kind);
+        return builder.Build()!;
+    }
 
-    private Android.App.Notification BuildNotification(MediaSessionCompat mediaSession, string link, ActivityKind kind)
+    private Android.App.Notification BuildNotification(
+        MediaSessionCompat mediaSession, string link, ActivityKind kind,
+        string title, long answerWindowRemainingMs)
     {
         var viewIntent = NotificationHelper.CreateViewIntent(this, link);
         var viewPending = PendingIntent.GetActivity(this, 3, viewIntent, PendingIntentFlags.Immutable);
-
-        var stopIntent = new Intent(this, typeof(AndroidActivitiesForegroundService));
-        stopIntent.SetAction(ActionStop);
-        var stopPending = PendingIntent.GetService(this, 4, stopIntent, PendingIntentFlags.Immutable);
 
         var builder = new NotificationCompat.Builder(this, GetChannelId(kind))
             .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
@@ -517,22 +532,61 @@ public class AndroidActivitiesForegroundService : Service
             .SetOnlyAlertOnce(true)!
             // Public so an open microphone is still legible over the keyguard - that's exactly
             // when the user needs to see it, and it names only a chat they're already in.
-            .SetVisibility(NotificationCompat.VisibilityPublic)!
-            .AddAction(Android.Resource.Drawable.IcMenuCloseClearCancel, "Stop", stopPending)!;
+            .SetVisibility(NotificationCompat.VisibilityPublic)!;
+        AddReplyActions(builder, kind);
 
+        // The media template doesn't render the chronometer, so the answer window gets a
+        // standard-style notification; the media session itself stays alive for the headset button.
+        if (kind is ActivityKind.Armed && answerWindowRemainingMs > 0)
+            return builder
+                .SetContentTitle(title)!
+                .SetContentText("Flip to reply")!
+                .SetLargeIcon(_lastAlbumArt)!
+                .SetShowWhen(true)!
+                .SetUsesChronometer(true)!
+                .SetChronometerCountDown(true)!
+                .SetWhen(Java.Lang.JavaSystem.CurrentTimeMillis() + answerWindowRemainingMs)!
+                .Build()!;
+
+        var compactActions = kind is ActivityKind.Recording ? new[] { 0 } : new[] { 0, 1 };
         var mediaStyle = new AndroidX.Media.App.NotificationCompat.MediaStyle()
             .SetMediaSession(mediaSession.SessionToken)!
-            .SetShowActionsInCompactView(0)!;
+            .SetShowActionsInCompactView(compactActions)!;
         builder.SetStyle(mediaStyle);
 
         return builder.Build()!;
     }
 
+    private void AddReplyActions(NotificationCompat.Builder builder, ActivityKind kind)
+    {
+        // Reply is deliberately everywhere a mic could open: inside the answer window it's an
+        // alternative to the gesture, outside it it still resolves via the unbounded window.
+        if (kind is ActivityKind.Recording) {
+            _ = builder.AddAction(
+                Android.Resource.Drawable.IcMenuCloseClearCancel, "Stop talking",
+                GetServicePendingIntent(6, ActionStopTalking));
+            return;
+        }
+        if (kind is not (ActivityKind.Armed or ActivityKind.Listening or ActivityKind.Replaying))
+            return;
+
+        _ = builder
+            .AddAction(Android.Resource.Drawable.IcButtonSpeakNow, "Reply",
+                GetServicePendingIntent(5, ActionReply))!
+            .AddAction(Android.Resource.Drawable.IcMenuCloseClearCancel, "Stop",
+                GetServicePendingIntent(4, ActionStop));
+    }
+
+    private PendingIntent? GetServicePendingIntent(int requestCode, string action)
+    {
+        var intent = new Intent(this, typeof(AndroidActivitiesForegroundService));
+        intent.SetAction(action);
+        return PendingIntent.GetService(this, requestCode, intent, PendingIntentFlags.Immutable);
+    }
+
     private Android.App.Notification BuildLocationNotification(string chatSid, string chatTitle, int extraChatCount)
     {
-        var stopIntent = new Intent(this, typeof(AndroidActivitiesForegroundService));
-        stopIntent.SetAction(ActionStop);
-        var stopPending = PendingIntent.GetService(this, 4, stopIntent, PendingIntentFlags.Immutable);
+        var stopPending = GetServicePendingIntent(4, ActionStop);
 
         // Opening the shared chat beats opening the app, but an unparsable id must still open something.
         var link = ChatId.TryParse(chatSid, out var chatId) ? Links.Chat(chatId) : Links.Home;
@@ -591,6 +645,33 @@ public class AndroidActivitiesForegroundService : Service
         quietRecordingChannel.EnableVibration(false);
         quietRecordingChannel.LockscreenVisibility = NotificationVisibility.Public;
         manager.CreateNotificationChannel(quietRecordingChannel);
+    }
+
+    private static void TryHandleNotificationReply(bool isStop)
+    {
+        // Same shape as the headset-button path: the hold is taken synchronously inside the
+        // dispatch that Android exempted for the notification tap, which is what lets a
+        // background mic start earn the while-in-use grant.
+        try {
+            if (AppScopeAccessor.Current is not { } services)
+                return;
+
+            var hub = services.GetRequiredService<AppUIHub>();
+            var replyUI = hub.PttReplyUI;
+            // Rehearsing in the Settings practice panel must not transmit.
+            if (!isStop && hub.GestureUI.GetHeadsetButtonState().IsPracticeMode)
+                return;
+
+            var whenHandled = isStop
+                ? replyUI.StopReply()
+                : PttMicCapability.HoldWhile(() => replyUI.RequestReply(
+                    ReplyTargetResolver.UnboundedRecencyWindow, CancellationToken.None));
+            _ = BackgroundTask.Run(() => whenHandled, Log, "Notification reply action failed",
+                CancellationToken.None);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Notification reply action handling failed");
+        }
     }
 
     private static bool TryHandleHeadsetButton(HeadsetKey key, bool isDown, int repeatCount)
@@ -656,7 +737,7 @@ public class AndroidActivitiesForegroundService : Service
 
     // Nested types
 
-    private class Callback : MediaSessionCompat.Callback
+    private sealed class Callback : MediaSessionCompat.Callback
     {
         public override bool OnMediaButtonEvent(Intent? mediaButtonEvent)
         {

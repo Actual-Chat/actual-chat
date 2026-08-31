@@ -80,6 +80,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
         }
 
         var canPause = true;
+        Moment? answerWindowEndsAt = null;
         if (kind is not { } vKind) {
             var pttChatIds = _isAndroidHost
                 ? await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false)
@@ -96,6 +97,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
             vKind = ActivityKind.Armed;
             chatId = armed.ChatId;
             extraChatCount = armed.ExtraChatCount;
+            answerWindowEndsAt = armed.AnswerWindowEndsAt;
             canPause = false;
         }
 
@@ -103,7 +105,24 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
         if (extraChatCount > 0)
             chatInfo = chatInfo with { ExtraChatCount = extraChatCount };
 
-        return new AudioActivity(vKind, chatInfo, isPaused, canPause);
+        return new AudioActivity(vKind, chatInfo, isPaused, canPause, answerWindowEndsAt);
+    }
+
+    public static (ChatId ChatId, int ExtraChatCount, Moment? AnswerWindowEndsAt)? ResolveArmedChat(
+        IReadOnlyList<ChatId> pttChatIds,
+        IReadOnlyDictionary<ChatId, Moment> lastIncomingVoiceAt,
+        Moment now,
+        TimeSpan answerWindow)
+    {
+        if (pttChatIds.Count == 0)
+            return null;
+
+        var extraChatCount = pttChatIds.Count - 1;
+        var answer = GestureActivationPolicy.GetAnswerWindowChat(
+            pttChatIds, lastIncomingVoiceAt, now, answerWindow);
+        return answer is { } vAnswer
+            ? (vAnswer.ChatId, extraChatCount, vAnswer.At + answerWindow)
+            : (pttChatIds[0], extraChatCount, null);
     }
 
     // Private methods
@@ -116,29 +135,25 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
             _ = GetActivity(default);
     }
 
-    private (ChatId ChatId, int ExtraChatCount)? GetArmedChat(List<ChatId> pttChatIds, TimeSpan answerWindow)
+    private (ChatId ChatId, int ExtraChatCount, Moment? AnswerWindowEndsAt)? GetArmedChat(
+        List<ChatId> pttChatIds, TimeSpan answerWindow)
     {
         // Android only, and the reason is the foreground service the backend drives: Android grants
         // microphone access on the serviceType of the last startForeground call, and only if the app
         // wasn't in the background when it ran. A service first started by a wake therefore can never
         // record - so while any chat is armed the service stays up, started while the app is visible.
         // It also keeps the media session (the headset button) alive across the answer window.
-        if (pttChatIds.Count == 0)
-            return null;
-
-        var extraChatCount = pttChatIds.Count - 1;
         var now = Hub.Clocks.ServerClock.Now;
         var lastIncomingVoiceAt = IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
-        var answer = GestureActivationPolicy.GetAnswerWindowChat(
-            pttChatIds, lastIncomingVoiceAt, now, answerWindow);
-        if (answer is not { } vAnswer)
-            return (pttChatIds[0], extraChatCount);
+        var armed = ResolveArmedChat(pttChatIds, lastIncomingVoiceAt, now, answerWindow);
+        if (armed is not { AnswerWindowEndsAt: { } endsAt })
+            return armed;
 
         // Nothing invalidates this state when the window merely lapses, and without the
         // auto-invalidation the source would keep naming the answering chat forever.
-        var expiresIn = vAnswer.At + answerWindow - now + AnswerWindowExpiryDelay;
+        var expiresIn = endsAt - now + AnswerWindowExpiryDelay;
         Computed.GetCurrent().Invalidate(expiresIn, false);
-        return (vAnswer.ChatId, extraChatCount);
+        return armed;
     }
 
     private async Task<ActivityChatInfo> GetChatInfo(ChatId chatId)
