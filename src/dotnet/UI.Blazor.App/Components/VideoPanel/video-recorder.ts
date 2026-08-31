@@ -3097,7 +3097,7 @@ export class VideoRecorder {
                 // Last-resort fallback also failed for this codec — exclude
                 // it for the session so server-driven updateSupportedDecoderCodecs
                 // won't later switch into a codec proven non-functional.
-                // No-op for h264 (universal fallback) and for codecs proven
+                // No-op for the negotiation floor and for codecs proven
                 // working this session.
                 excludeEncoderCodec(codecInfo.category);
             }
@@ -3130,6 +3130,11 @@ export class VideoRecorder {
         const bestByCategory = new Map<CodecInfo['category'], CodecInfo>();
         for (const codecInfo of supportedCodecs) {
             if (!codecInfo.supported) continue;
+            // Measured pipeline latency, not a browser check: Firefox's H.264
+            // encoder holds ~18 frames before its first chunk, which is half a
+            // second of added latency and deadlocks the encode pipeline. A
+            // future build that fixes it re-qualifies with no code change.
+            if (codecInfo.realtime === false) continue;
             if (allowedCategories && !allowedCategories.has(codecInfo.category)) continue;
             if (isEncoderCodecExcluded(codecInfo.category)) continue;
             const current = bestByCategory.get(codecInfo.category);

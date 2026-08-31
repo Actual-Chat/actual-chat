@@ -2,6 +2,7 @@ import { getLogs } from 'logging';
 import { kbpsToBitsPerSecond } from 'app-constants';
 import { DeviceInfo } from 'device-info';
 import { isDecoderCodecProven, isEncoderCodecProven } from './codec-proof';
+import { closeEncodedChunk } from './frame-envelopes';
 
 export {
     getProvenDecoderCodecs,
@@ -20,6 +21,9 @@ export interface CodecInfo {
     category: 'h264' | 'hevc' | 'av1' | 'vp9';
     supported: boolean;
     hardwareAccelerated: boolean;
+    // False when the encoder buffers so many frames before its first output
+    // that it can't be used for a call. Undefined when not measured.
+    realtime?: boolean;
 }
 
 const CODEC_PROFILES = {
@@ -172,12 +176,24 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
         }
         const codec = chosen?.codec
             ?? (ladder.length > 0 ? ladder[0] : getCodecForCategory(category, width, height));
+        let realtime: boolean | undefined;
+        if (chosen !== null) {
+            const frames = await probeEncoderLatencyFrames(
+                codec, category, getDefaultHardwareAcceleration());
+            realtime = frames <= MAX_REALTIME_LATENCY_FRAMES;
+            if (!realtime) {
+                warnLog?.log(
+                    `Encoder ${codec}: first chunk only after ${frames} frames `
+                    + `(> ${MAX_REALTIME_LATENCY_FRAMES}) — not usable for calls`);
+            }
+        }
         results.push({
             name: getCodecProfileName(codec) ?? codec,
             codec,
             category,
             supported: chosen !== null,
             hardwareAccelerated: chosen?.hardwareAccelerated ?? false,
+            realtime,
         });
     }
     const supported = results.filter(c => c.supported);
@@ -226,6 +242,108 @@ async function isCodecSupported(
     } catch (error) {
         errorLog?.log(`Error checking codec support for ${codec}:`, error);
         return { supported: false, hardwareAccelerated: false };
+    }
+}
+
+// An encoder that only emits its first chunk after this many submitted frames
+// is unusable for a call: at 30fps each frame is ~33ms of added latency, and
+// the pipeline would have to hold that many bundles in flight to avoid
+// deadlocking. Firefox's H.264 sits at 18; every other engine/codec measured
+// emits within 2.
+const MAX_REALTIME_LATENCY_FRAMES = 4;
+const MAX_LATENCY_PROBE_FRAMES = 24;
+const latencyProbeCache = new Map<string, Promise<number>>();
+
+// Frames submitted before the encoder produced its first chunk, or
+// MAX_LATENCY_PROBE_FRAMES if it produced none. Deliberately a *count*, not a
+// duration: an earlier synthetic throughput probe was removed from this file
+// because GPU contention made it false-fail on healthy machines. A frame count
+// doesn't move when the machine is busy — it's a property of the encoder's
+// pipeline, so it stays honest under load.
+export function probeEncoderLatencyFrames(
+    codec: string,
+    category: CodecInfo['category'],
+    hardwareAcceleration: HardwareAcceleration,
+): Promise<number> {
+    const key = `${codec}@${hardwareAcceleration}`;
+    let cached = latencyProbeCache.get(key);
+    if (!cached) {
+        cached = probeEncoderLatencyFramesUncached(codec, category, hardwareAcceleration);
+        latencyProbeCache.set(key, cached);
+    }
+
+    return cached;
+}
+
+async function probeEncoderLatencyFramesUncached(
+    codec: string,
+    category: CodecInfo['category'],
+    hardwareAcceleration: HardwareAcceleration,
+): Promise<number> {
+    // Small and cheap: this measures pipeline depth, which doesn't vary with
+    // resolution, so there's no reason to pay for a big frame.
+    const width = 320;
+    const height = 240;
+    let encoder: VideoEncoder | null = null;
+    try {
+        // Holder rather than captured `let`s: the callbacks below write these,
+        // but a captured `let` narrows to its initializer in the loop
+        // condition (same reason `decode`'s feed pump uses one).
+        const state = { submitted: 0, firstOutputAt: -1, failed: false };
+        const config: VideoEncoderConfig = {
+            codec,
+            width,
+            height,
+            bitrate: 400_000,
+            framerate: 30,
+            latencyMode: 'realtime',
+            hardwareAcceleration,
+        };
+        if (category === 'h264')
+            config.avc = { format: 'annexb' };
+
+        encoder = new VideoEncoder({
+            output: (chunk: EncodedVideoChunk) => {
+                if (state.firstOutputAt < 0) state.firstOutputAt = state.submitted;
+                closeEncodedChunk(chunk);
+            },
+            error: () => { state.failed = true; },
+        });
+        encoder.configure(config);
+
+        const canvas = new OffscreenCanvas(width, height);
+        const ctx = canvas.getContext('2d');
+        if (!ctx)
+            return 0;
+
+        for (let i = 0; i < MAX_LATENCY_PROBE_FRAMES && state.firstOutputAt < 0 && !state.failed; i++) {
+            ctx.fillStyle = `hsl(${(i * 37) % 360} 60% 50%)`;
+            ctx.fillRect(0, 0, width, height);
+            const frame = new VideoFrame(canvas, { timestamp: i * 33_333 });
+            try {
+                // Counted before the call: a codec whose output callback fires
+                // synchronously would otherwise be recorded one frame early.
+                state.submitted++;
+                encoder.encode(frame, { keyFrame: i === 0 });
+            } finally {
+                frame.close();
+            }
+            // Yield so the output callback can land between submissions —
+            // without this the whole loop runs before any callback fires and
+            // every encoder looks equally slow.
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        if (state.failed)
+            return MAX_LATENCY_PROBE_FRAMES;
+
+        return state.firstOutputAt < 0 ? MAX_LATENCY_PROBE_FRAMES : state.firstOutputAt;
+    } catch (e) {
+        // An unusable probe must not veto a codec that works; only a
+        // successful measurement is allowed to disqualify one.
+        debugLog?.log(`probeEncoderLatencyFrames(${codec}): ${String(e)}`);
+        return 0;
+    } finally {
+        try { if (encoder && encoder.state !== 'closed') encoder.close(); } catch { /* ignore */ }
     }
 }
 

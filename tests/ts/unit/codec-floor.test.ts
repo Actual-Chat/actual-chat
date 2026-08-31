@@ -8,6 +8,7 @@ import {
     getExcludedDecoderCodecs,
     getExcludedEncoderCodecs,
     isEncoderCodecStringExcluded,
+    probeEncoderLatencyFrames,
     setForceH264Only,
 } from '../../../src/dotnet/UI.Blazor.App/Services/Video/codec-support';
 
@@ -75,5 +76,71 @@ describe('the negotiation floor', () => {
 
         expect(getExcludedEncoderCodecs()).toContain('h264');
         expect(getExcludedDecoderCodecs()).toContain('h264');
+    });
+});
+
+type EncoderProbe = (config: VideoEncoderConfig) => Promise<VideoEncoderSupport>;
+
+describe('encoder realtime measurement', () => {
+    let encoders: FakeEncoder[];
+
+    // Emits its first chunk only after `latencyFrames` submissions, which is
+    // how Firefox's H.264 encoder behaves.
+    class FakeEncoder {
+        state: CodecState = 'unconfigured';
+        submitted = 0;
+        private output: (chunk: EncodedVideoChunk) => void;
+        constructor(init: { output: (chunk: EncodedVideoChunk) => void; error: (e: Error) => void }) {
+            this.output = init.output;
+            encoders.push(this);
+        }
+        configure(): void { this.state = 'configured'; }
+        encode(): void {
+            this.submitted++;
+            if (this.submitted >= FakeEncoder.latencyFrames)
+                this.output({ byteLength: 10, close: () => { /* ignore */ } } as unknown as EncodedVideoChunk);
+        }
+        close(): void { this.state = 'closed'; }
+        static latencyFrames = 1;
+    }
+
+    beforeEach(() => {
+        encoders = [];
+        FakeEncoder.latencyFrames = 1;
+        vi.stubGlobal('VideoEncoder', Object.assign(FakeEncoder, {
+            isConfigSupported: vi.fn<EncoderProbe>(),
+        }));
+        vi.stubGlobal('OffscreenCanvas', class {
+            constructor(public width: number, public height: number) { /* stub */ }
+            getContext(): unknown { return { fillStyle: '', fillRect: () => { /* stub */ } }; }
+        });
+        vi.stubGlobal('VideoFrame', class {
+            close(): void { /* stub */ }
+        });
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('reports the submission count at which the first chunk appeared', async () => {
+        FakeEncoder.latencyFrames = 1;
+
+        expect(await probeEncoderLatencyFrames('vp09.00.31.08', 'vp9', 'no-preference')).toBe(1);
+    });
+
+    it('reports a deep pipeline like the one that makes Firefox H.264 unusable', async () => {
+        FakeEncoder.latencyFrames = 18;
+
+        expect(await probeEncoderLatencyFrames('avc1.4D4029', 'h264', 'no-preference')).toBe(18);
+    });
+
+    it('caches per codec and acceleration', async () => {
+        FakeEncoder.latencyFrames = 2;
+        await probeEncoderLatencyFrames('vp8', 'vp9', 'no-preference');
+        const afterFirst = encoders.length;
+        await probeEncoderLatencyFrames('vp8', 'vp9', 'no-preference');
+
+        expect(encoders.length).toBe(afterFirst);
     });
 });
