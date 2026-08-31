@@ -34,6 +34,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private IAccounts Accounts => Hub.Accounts;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private UserActivityUI UserActivityUI => Hub.UserActivityUI;
+    private NotificationsUI NotificationsUI => Hub.NotificationsUI;
     private IAvatars Avatars => Hub.Avatars;
     private IAuthors Authors => Hub.Authors;
     private IContacts Contacts => Hub.Contacts;
@@ -295,12 +296,15 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return default;
 
         var isReadingTail = await IsReadingTail(chatId, cancellationToken).ConfigureAwait(false);
-        return isReadingTail
-            ? default
-            : new ChatUnreadState(
-                chatInfo.UnreadCount,
-                chatInfo.HasUnreadOwnMention,
-                chatInfo.UnmutedUnreadCount > 0 && chatInfo.UnreadCount > 0);
+        if (isReadingTail)
+            return default;
+
+        var reactionState = await NotificationsUI.GetReactionState(chatId, cancellationToken).ConfigureAwait(false);
+        return new ChatUnreadState(
+            chatInfo.UnreadCount,
+            chatInfo.HasUnreadOwnMention,
+            chatInfo.UnmutedUnreadCount > 0 && chatInfo.UnreadCount > 0,
+            reactionState.Emoji);
     }
 
     // Consolidated so streaming-expansion flaps of the end anchor (pushed out, then restored by the
