@@ -76,8 +76,9 @@
             && rawLive is { SessionStartedAt: not null }
             && blockState.FoldBoundaryLid > rawLive.EffectiveVisibleStartLid;
         var canExpand = isLive && !isVoiceOnly && rawLive is { SessionStartedAt: not null };
-        // Awaited for the dependency; the value itself is read through IsConversationExpanded below.
+        // Awaited for the dependency; the values themselves are read through IsConversationExpanded below.
         await ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(true);
+        await ChatUI.AutoExpandedConversations.Use(cancellationToken).ConfigureAwait(true);
         // Via ChatUI so this reads the same latched default the data layer does - the record's own
         // flag flips when a summary lands, and the two would then disagree for the session.
         var isExpanded = ChatUI.IsConversationExpanded(conversation);
