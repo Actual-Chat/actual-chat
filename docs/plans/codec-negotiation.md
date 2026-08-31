@@ -87,6 +87,32 @@ Confirmed by real `configure()` + `encode()`, measuring frames to first output:
 | **VP8** | **1 frame** | 450 B |
 | **VP9** | **1 frame** | 212 B |
 
+### Correction: first-output latency is the wrong metric
+
+The "frames to first output" numbers above are real, but using them to
+disqualify a codec was a mistake, found when the shipped probe marked *every*
+codec on Chromium/Windows as non-real-time and selection silently fell through
+to an audience-blind default.
+
+Two things were wrong. The probe submitted its whole 24-frame budget within a
+few milliseconds, so no encoder had emitted anything yet — pacing the
+submissions at the frame interval is what makes the measurement mean anything.
+And with pacing, Chromium's hardware encoders measure like this at 320×240:
+
+| codec | first output | steady-state depth |
+|---|---|---|
+| VP9 (software) | 1 frame / 8 ms | 0 |
+| AV1 (hardware) | 7 frames / 222 ms | 0 |
+| H.264 (hardware) | 7 frames / 217 ms | 0 |
+| HEVC (hardware) | 7 frames / 213 ms | 0 |
+
+The ~215 ms is one-off hardware encoder initialisation; afterwards every
+submission is accounted for. Charging that startup to the codec disqualifies
+three codecs that work. What actually costs a call latency is how many frames
+stay in flight *once warm*, so that is what `probeEncoderLatencyFrames` now
+measures. Firefox's H.264 still fails it: it does not catch up, it stays ~18
+frames behind for the whole stream.
+
 **This overturns the "there is no universal codec" premise.** VP9 encodes and
 decodes at real-time latency on Chromium, Firefox *and* Safari. It is a
 genuine candidate for the call-wide codec rather than a Firefox-only escape
@@ -443,8 +469,9 @@ unchanged; only the variant and the licensing conclusion differ.
    which is precisely the lie that makes a Linux/Firefox client claim a codec
    it cannot play.
 2. **Client capability probing**: produce the two sets with `hardware` and
-   `realtime` flags. `realtime` is measured the way the numbers above were —
-   submit frames until the first output, cache per codec per session.
+   `realtime` flags. `realtime` is steady-state encoder depth measured at the
+   frame interval, cached per codec per session — not frames to first output,
+   see the correction above.
    Firefox H.264 fails this and drops out of `encode` on its own, which is
    decision 1 implemented as a *measurement* rather than a browser check.
 3. **Enable VP9 and AV1** in `REPRESENTATIVE_CODECS` with AV1 below VP9.
@@ -455,6 +482,20 @@ unchanged; only the variant and the licensing conclusion differ.
 
 Step 2 is worth doing carefully: a measured `realtime` flag means we never
 again hard-code a browser quirk that a future release fixes.
+
+## H.264 encodes Constrained Baseline only
+
+Encoding used to prefer High on desktop and Main on Firefox/mobile. Both carry
+CABAC and B-frames, which this project does not emit, and both were the source
+of the profile mismatch found in review. Encoding is now Constrained Baseline
+at every resolution (`avc1.42E01F` / `42E028` / `42E034`), which is also the
+only profile Chromium's software encoder (OpenH264) implements — so the
+hardware→software fallback no longer changes profile mid-call.
+
+The probe ladder collapses to that single string: a device that rejects
+Constrained Baseline falls back to another *category*, not to Main or High.
+The lost compression is cheap now that H.264 is no longer the negotiation
+floor — VP9 is what a constrained call falls back to.
 
 ## Probing H.264 decode honestly
 
