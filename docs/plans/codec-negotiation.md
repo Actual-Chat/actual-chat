@@ -66,6 +66,42 @@ For `avc1.640028`, `avc1.4D4029`, `avc1.4D401F`, `avc1.42E01F` at 1280×720:
 reality agree, so [bug 1918769](https://bugzilla.mozilla.org/show_bug.cgi?id=1918769)
 does not reproduce on Windows (the original report was Linux, where it does).
 
+### Desktop Safari does VP8 and VP9 — in both directions
+
+Safari 26.6 on the Mac mini, `isConfigSupported` for 640×360:
+
+| codec | decode | encode |
+|---|---|---|
+| H.264 | yes | yes |
+| HEVC | yes | yes |
+| **VP8** | **yes** | **yes** |
+| **VP9** | **yes** | **yes** |
+| AV1 | no | no |
+
+Confirmed by real `configure()` + `encode()`, measuring frames to first output:
+
+| codec | first output after | first chunk |
+|---|---|---|
+| H.264 | 1 frame | 124 B |
+| HEVC | 2 frames | 488 B |
+| **VP8** | **1 frame** | 450 B |
+| **VP9** | **1 frame** | 212 B |
+
+**This overturns the "there is no universal codec" premise.** VP9 encodes and
+decodes at real-time latency on Chromium, Firefox *and* Safari. It is a
+genuine candidate for the call-wide codec rather than a Firefox-only escape
+hatch — which makes step 3 (enable VP9) the highest-value change in this plan,
+not a supporting one.
+
+Two caveats before relying on it:
+
+- Apple has no VP9 hardware, so this is a software encoder. Latency is fine;
+  **sustained CPU at 720p30 is unmeasured** and is the thing that decides
+  whether VP9 can be the default rather than merely available.
+- AV1 is absent on this machine in both directions, consistent with it being
+  pre-M3. AV1 decode should appear on M3+/iPhone 15 Pro+; AV1 *encode* is
+  expected to stay absent on every Apple device.
+
 ### Chrome/Windows baseline
 
 All four H.264 profiles probe true *and* really encode;
@@ -261,22 +297,22 @@ on the `realtime` measurement regardless of what its decoder can do.
 
 ## Open items
 
-1. **Safari/WebKit VP8, VP9 and AV1 support — still unknown, and it gates
-   step 3.** If WebKit cannot *decode* VP9, then `D` excludes VP9 for any call
-   containing an Apple member, and Firefox's only route to those members is
-   AV1 (iPhone 15 Pro+ / M3+) — otherwise Firefox is receive-only there.
-   `tmp/codec-caps.js` is written and ready; `~/bin/safari eval -f` on the Mac
-   mini returned `null` twice, so the harness needs debugging first (its own
-   header notes Safari's BiDi drops exception details, so the page must hand
-   errors back as data — the probe already does that, so the failure is
-   elsewhere). Also run it against the tethered iPhone.
-2. **Does any Apple device encode AV1?** Near-certainly not — no Apple silicon
-   has an AV1 encoder and Safari ships no software one. Confirm with the same
-   probe before letting policy depend on it.
-3. **AV1 software encode CPU cost.** Firefox emits AV1 on frame 1, but that
+1. **iOS Safari** — desktop Safari is measured (above); the iPhone is not, and
+   it may differ. Run the same probe against the tethered device
+   (`ios_webkit_debug_proxy` is already running on the Mac mini). Watch for
+   AV1 decode appearing on iPhone 15 Pro+, and for VP9 encode being present on
+   desktop but absent or unusably slow on the phone.
+2. **VP9 software-encode CPU on Apple**, sustained at 720p30. This is the one
+   number that decides whether VP9 becomes the default codec or stays a
+   fallback.
+3. **Does any Apple device encode AV1?** Not on the Mac mini (above), and
+   near-certainly nowhere — no Apple silicon has an AV1 encoder and Safari
+   ships no software one. Confirm on the iPhone before letting policy depend
+   on it.
+4. **AV1 software encode CPU cost.** Firefox emits AV1 on frame 1, but that
    measured *latency*, not throughput. Measure sustained 720p30 before AV1
    outranks VP9 anywhere.
-4. **HEVC in the new model.** Currently probed and preferred on Apple; it needs
+5. **HEVC in the new model.** Currently probed and preferred on Apple; it needs
    an entry in both sets and a place in each platform's preference order.
 
 ## Tooling
@@ -297,3 +333,13 @@ on the `realtime` measurement regardless of what its decoder can do.
   editing the `logLevels` localStorage key directly does **not** work.
 - `~/bin/safari` on the Mac mini drives real desktop Safari over
   safaridriver + BiDi (`new | go | eval [-f] | shot | watch | end`).
+  **Two traps, both cost an hour to find:**
+  - Under `script.evaluate` with `awaitPromise`, Safari runs neither timers nor
+    WebCodecs promise resolution — `setTimeout` never fires and a single
+    `isConfigSupported` never settles, so the eval returns `null` with no
+    error. The page runs normally *between* BiDi calls, so the pattern that
+    works is: one **synchronous** eval that kicks off the async work and stashes
+    the result on `globalThis`, then a second eval a few seconds later that
+    reads it. `tmp/t10.js` / `tmp/t11.js` are working examples.
+  - A fresh session sits on `about:blank`. Run `~/bin/safari go https://…`
+    first or WebCodecs answers from a non-secure context.
