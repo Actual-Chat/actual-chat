@@ -6,15 +6,17 @@ using NSContact = ActualChat.App.Maui.IosShareExt.UI.NSHasId<ActualChat.Contacts
 
 namespace ActualChat.App.Maui.IosShareExt.Components;
 
-public sealed class ContactListView(IosHub hub) : ComputedStateView<ContactListView.Model?>(hub), IUICollectionViewDelegate
+public sealed class ContactListView : ComputedStateView<ContactListView.Model?>, IUICollectionViewDelegate
 {
     private static readonly NSString SectionId = (NSString)"Main";
-    private UICollectionViewDiffableDataSource<NSString, NSContact> _dataSource = null!;
-    private UICollectionView _collectionView = null!;
+    private readonly UICollectionViewDiffableDataSource<NSString, NSContact> _dataSource;
+    private readonly UICollectionView _collectionView;
+    private ContactListSkeletonView? _skeletonView;
 
     private ShareUI ShareUI => Hub.ShareUI;
 
-    protected override void OnInitialRender(Model? model)
+    // Built here, not in OnInitialRender: that runs once the contacts are in, too late for a skeleton
+    public ContactListView(IosHub hub) : base(hub)
     {
         TranslatesAutoresizingMaskIntoConstraints = false;
         BackgroundColor = UIColor.Clear;
@@ -22,25 +24,29 @@ public sealed class ContactListView(IosHub hub) : ComputedStateView<ContactListV
         var configuration = new UICollectionLayoutListConfiguration(UICollectionLayoutListAppearance.Plain);
         configuration.ShowsSeparators = false;
         var layout = UICollectionViewCompositionalLayout.GetLayout(configuration);
-        _collectionView = new UICollectionView(CGRect.Empty, layout)
-        {
+        _collectionView = new UICollectionView(CGRect.Empty, layout) {
             TranslatesAutoresizingMaskIntoConstraints = false,
             BackgroundColor = UIColor.Clear,
-            // ContentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentBehavior.Never,
         };
-
         AddSubview(_collectionView);
+
+        _skeletonView = new ContactListSkeletonView();
+        AddSubview(_skeletonView);
 
         NSLayoutConstraint.ActivateConstraints([
             _collectionView.TopAnchor.ConstraintEqualTo(TopAnchor),
             _collectionView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
             _collectionView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
-            _collectionView.BottomAnchor.ConstraintEqualTo(BottomAnchor)
+            _collectionView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
+
+            _skeletonView.TopAnchor.ConstraintEqualTo(TopAnchor),
+            _skeletonView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
+            _skeletonView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
+            _skeletonView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
         ]);
 
         var cellRegistration = UICollectionViewCellRegistrationExt.GetRegistration<UICollectionViewListCell, NSContact>(
-            (cell, _, contact) =>
-            {
+            (cell, _, contact) => {
                 foreach (var subview in cell.ContentView.Subviews) {
                     subview.RemoveFromSuperview();
                     subview.DisposeSilently();
@@ -65,19 +71,10 @@ public sealed class ContactListView(IosHub hub) : ComputedStateView<ContactListV
             _collectionView,
             (collectionView1, indexPath, itemIdentifier) =>
                 collectionView1.DequeueConfiguredReusableCell(cellRegistration, indexPath, itemIdentifier));
-
-        SetContacts(model?.Contacts);
     }
 
-    private void SetContacts(IReadOnlyList<Contact>? contacts)
-    {
-        contacts ??= [];
-        var snapshot = new NSDiffableDataSourceSnapshot<NSString, NSContact>();
-        snapshot.AppendSections([SectionId]);
-        var items = contacts.Select(c => new NSContact(c)).ToArray();
-        snapshot.AppendItems(items, SectionId);
-        _dataSource.ApplySnapshot(snapshot, true);
-    }
+    protected override void OnInitialRender(Model? model)
+        => SetContacts(model?.Contacts);
 
     protected override void OnStateChanged(Model? model)
         => SetContacts(model?.Contacts);
@@ -103,6 +100,32 @@ public sealed class ContactListView(IosHub hub) : ComputedStateView<ContactListV
             return;
 
         ShareUI.ToggleSelection(contact.Id!);
+    }
+
+    // Private methods
+
+    private void SetContacts(IReadOnlyList<Contact>? contacts)
+    {
+        // Null is "no result yet"; an empty list is a real answer, and retires the skeleton
+        if (contacts is not null)
+            HideSkeleton();
+
+        contacts ??= [];
+        var snapshot = new NSDiffableDataSourceSnapshot<NSString, NSContact>();
+        snapshot.AppendSections([SectionId]);
+        var items = contacts.Select(c => new NSContact(c)).ToArray();
+        snapshot.AppendItems(items, SectionId);
+        _dataSource.ApplySnapshot(snapshot, true);
+    }
+
+    private void HideSkeleton()
+    {
+        if (_skeletonView is null)
+            return;
+
+        _skeletonView.RemoveFromSuperview();
+        _skeletonView.DisposeSilently();
+        _skeletonView = null;
     }
 
     // Nested types
