@@ -38,8 +38,8 @@ public sealed class ClientCommandHandlerTest(ITestOutputHelper @out) : TestBase(
 
         // assert
         var entry = handler.GetEntries("a").Single();
-        entry.Stage.Should().Be(QueuedCommandStage.Failed);
-        entry.Error.Should().BeOfType<InvalidOperationException>();
+        entry.Stage.Should().Be(QueuedCommandStage.Failed, because: "a permanent failure isn't retried");
+        entry.Error.Should().BeOfType<InvalidOperationException>(because: "the entry keeps what went wrong");
     }
 
     [Fact]
@@ -156,9 +156,10 @@ public sealed class ClientCommandHandlerTest(ITestOutputHelper @out) : TestBase(
         var runTask = handler.OnCommand(new TestCommand("a"), null!, CancellationToken.None);
 
         // assert
-        handler.IsPaused.Should().BeTrue();
+        handler.IsPaused.Should().BeTrue(because: "Pause takes effect at once");
         runCount.Should().Be(0, because: "a paused handler behaves like a lost connection");
-        handler.GetEntries("a").Single().Stage.Should().Be(QueuedCommandStage.Waiting);
+        handler.GetEntries("a").Single().Stage.Should().Be(QueuedCommandStage.Waiting,
+            because: "the command is held before its first attempt");
 
         handler.Resume();
         await runTask;
@@ -242,6 +243,43 @@ public sealed class ClientCommandHandlerTest(ITestOutputHelper @out) : TestBase(
             scope2.ServiceProvider.GetRequiredService<ClientCommandHandler>(),
             because: "the handler's lane, entries and re-dispatch flag are instance state, "
                 + "so a per-scope instance loses all of it between the dispatch and its re-dispatch");
+    }
+
+    [Fact]
+    public async Task CommandsWithoutAPartitionShouldNotBlockEachOther()
+    {
+        // arrange
+        var runCount = 0;
+        var gate = TaskCompletionSourceExt.New<Unit>();
+        var handler = new ClientCommandHandler(async (_, _) => {
+            runCount++;
+            await gate.Task.ConfigureAwait(false);
+        });
+
+        // act
+        var firstTask = handler.OnCommand(new TestCommand(""), null!, CancellationToken.None);
+        var secondTask = handler.OnCommand(new TestCommand(""), null!, CancellationToken.None);
+
+        // assert
+        runCount.Should().Be(2,
+            because: "an empty partition key asks for retries, not for a place in someone's line");
+
+        gate.SetResult(default);
+        await Task.WhenAll(firstTask, secondTask);
+    }
+
+    [Fact]
+    public async Task AMissingPartitionKeyShouldBeTreatedAsNoPartition()
+    {
+        // arrange
+        var handler = new ClientCommandHandler((_, _) => Task.CompletedTask);
+
+        // act
+        await handler.OnCommand(new TestCommand(null!), null!, CancellationToken.None);
+
+        // assert
+        var entry = handler.GetEntries().Single();
+        entry.Stage.Should().Be(QueuedCommandStage.Completed, because: "a null key must never reach a lane");
     }
 
     // Nested types

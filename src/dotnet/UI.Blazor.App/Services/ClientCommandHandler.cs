@@ -65,9 +65,19 @@ public sealed class ClientCommandHandler : ICommandHandler<IQueuedCommand>, IDis
             return;
         }
 
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _stopCts.Token);
+        if (command.PartitionKey.IsNullOrEmpty()) {
+            // No partition key means there's nothing to order this command against, so it gets
+            // the retry loop and the registry but no lane. Letting it share an empty-key lane
+            // would serialize every such command behind the rest - the exact head-of-line
+            // blocking partitioning exists to remove.
+            SetStage(command, QueuedCommandStage.Waiting, 0, null);
+            await Run(command, cts.Token).ConfigureAwait(false);
+            return;
+        }
+
         // Enqueue, coalescing away the waiting predecessors if the command allows it.
         // A non-null result means the lane was idle, and this dispatch drives it until it drains.
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _stopCts.Token);
         var toRun = _queue.Update(command.PartitionKey, pending => {
             var edits = new QueueEdits<IQueuedCommand>();
             if (command.Coalescing == QueuedCommandCoalescing.ReplaceWaiting) {
@@ -174,9 +184,11 @@ public sealed class ClientCommandHandler : ICommandHandler<IQueuedCommand>, IDis
 
     private void SetStage(IQueuedCommand command, QueuedCommandStage stage, int tryIndex, Exception? error)
     {
+        // A command may declare no partition at all, and the registry is keyed by string
+        var partitionKey = command.PartitionKey ?? "";
         _entries[command] = new QueuedCommandEntry(
-            command.PartitionKey, command, stage, tryIndex, error, _clock.Now);
-        OnEntriesChanged(command.PartitionKey);
+            partitionKey, command, stage, tryIndex, error, _clock.Now);
+        OnEntriesChanged(partitionKey);
     }
 
     private void OnEntriesChanged(string partitionKey)
