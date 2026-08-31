@@ -196,3 +196,12 @@ edited. The reason can be as short as whose decision it was.
   — comment on a bit-twiddling expression — it names the bitstream field layout
   the shift-and-mask decodes, which the expression cannot carry — Alex
   Yakunin's decision: keep.
+
+## tests/Core.Server.IntegrationTests/Flows/ThrottledUpdateFlowTest.cs
+
+- L161 `: ActualChat.Testing.Host.AppHostFixture(`
+  — redundantly fully-qualified name — required: `Collections/ServerCollection.cs`
+  declares `AppHostFixture` in this very namespace, so the unqualified name binds
+  to that type and the 3-argument base call fails with CS1729.
+  `FailingThrottledUpdateFlowTest.cs` and `ResumeLatencyFlowTest.cs` qualify it
+  the same way
