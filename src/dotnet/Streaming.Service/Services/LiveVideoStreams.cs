@@ -20,6 +20,7 @@ public class LiveVideoStreams : ILiveVideoStreams
     private IVideoStreamingBackend VideoStreamingBackend { get; }
     private RemoteVideoStreamCache RemoteVideoCache { get; }
     private IChats Chats { get; }
+    private IAccounts Accounts { get; }
     private LiveStreamAccess Access { get; }
     private MomentClock SystemClock { get; }
     private ILogger Log { get; }
@@ -40,6 +41,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         VideoStreamingBackend = services.GetRequiredService<IVideoStreamingBackend>();
         RemoteVideoCache = services.GetRequiredService<RemoteVideoStreamCache>();
         Chats = services.GetRequiredService<IChats>();
+        Accounts = services.GetRequiredService<IAccounts>();
         Access = services.GetRequiredService<LiveStreamAccess>();
         SystemClock = Services.Clocks().SystemClock;
 
@@ -84,7 +86,12 @@ public class LiveVideoStreams : ILiveVideoStreams
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.ReadVideo);
-        await Backend.RegisterMember(chatId, session.Id, supportedDecoderCodecs, cancellationToken).ConfigureAwait(false);
+        // Resolved here, where the Session is: the backend only ever sees a
+        // session id, and pinning the call's codec is an admin-only power.
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        await Backend
+            .RegisterMember(chatId, session.Id, supportedDecoderCodecs, account.IsAdmin, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public async Task UnregisterMember(

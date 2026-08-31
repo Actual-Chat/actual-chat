@@ -157,9 +157,9 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         return chatState.CurrentSupportedDecoderCodecs;
     }
 
-    public virtual async Task RegisterMember(ChatId chatId, string sessionId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken)
+    public virtual async Task RegisterMember(ChatId chatId, string sessionId, ApiArray<string> supportedDecoderCodecs, bool isAdmin, CancellationToken cancellationToken)
     {
-        var memberInfo = new VideoStreamMemberInfo(supportedDecoderCodecs, SystemClock.Now);
+        var memberInfo = new VideoStreamMemberInfo(supportedDecoderCodecs, SystemClock.Now, isAdmin);
         await _members.Set(chatId.Value, sessionId, memberInfo).ConfigureAwait(false);
         var allMembers = await SafeGetAll(_members, chatId).ConfigureAwait(false);
         var (activeMembers, staleKeys) = FilterStaleMembers(chatId, allMembers);
@@ -211,17 +211,17 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
 
     private static readonly TimeSpan MemberStalenessThreshold = TimeSpan.FromSeconds(90);
 
-    private (Dictionary<string, ApiArray<string>> Active, List<string>? StaleKeys) FilterStaleMembers(
+    private (Dictionary<string, VideoStreamMemberInfo> Active, List<string>? StaleKeys) FilterStaleMembers(
         ChatId chatId,
         Dictionary<string, VideoStreamMemberInfo> allMembers)
     {
         var cutoff = SystemClock.Now - MemberStalenessThreshold;
-        var active = new Dictionary<string, ApiArray<string>>(allMembers.Count, StringComparer.Ordinal);
+        var active = new Dictionary<string, VideoStreamMemberInfo>(allMembers.Count, StringComparer.Ordinal);
         List<string>? staleKeys = null;
 
         foreach (var (sessionId, info) in allMembers)
             if (info.RegisteredAt >= cutoff)
-                active[sessionId] = info.SupportedDecoderCodecs;
+                active[sessionId] = info;
             else {
                 staleKeys ??= new();
                 staleKeys.Add(sessionId);
