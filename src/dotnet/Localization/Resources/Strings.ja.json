@@ -1030,7 +1030,6 @@
   "Ptt_KeepMicOpen": "マイクを開いたままにする",
   "Ptt_Seconds_Format": "{0} 秒",
   "Ptt_OneMinute": "1 分",
-  "Ptt_TwoMinutes": "2 分",
   "Ptt_ReplyWindowCaption": "無音時にマイクを開いたままにする時間",
   "Ptt_CuesTopic": "合図音",
   "Ptt_AudibleCues": "音による合図",

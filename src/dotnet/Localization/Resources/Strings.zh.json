@@ -1030,7 +1030,6 @@
   "Ptt_KeepMicOpen": "保持麦克风开启",
   "Ptt_Seconds_Format": "{0} 秒",
   "Ptt_OneMinute": "1 分钟",
-  "Ptt_TwoMinutes": "2 分钟",
   "Ptt_ReplyWindowCaption": "静默时麦克风保持开启的时长",
   "Ptt_CuesTopic": "提示音",
   "Ptt_AudibleCues": "声音提示",

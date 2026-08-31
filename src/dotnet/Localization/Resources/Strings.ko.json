@@ -1030,7 +1030,6 @@
   "Ptt_KeepMicOpen": "마이크 열어 두기",
   "Ptt_Seconds_Format": "{0}초",
   "Ptt_OneMinute": "1분",
-  "Ptt_TwoMinutes": "2분",
   "Ptt_ReplyWindowCaption": "무음 상태에서 마이크가 열려 있는 시간",
   "Ptt_CuesTopic": "신호음",
   "Ptt_AudibleCues": "소리 신호",

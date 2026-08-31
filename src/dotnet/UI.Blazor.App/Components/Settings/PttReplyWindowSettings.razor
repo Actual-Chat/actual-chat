@@ -34,7 +34,7 @@
 </Tile>
 
 @code {
-    private static readonly int[] Options = [30, 60, 120];
+    private static readonly int[] Options = [15, 30, 60];
 
     private FormModel _formModel = null!;
 
@@ -58,7 +58,6 @@
     private string GetLabel(int seconds)
         => seconds switch {
             60 => L.Ptt_OneMinute,
-            120 => L.Ptt_TwoMinutes,
             _ => L.Ptt_Seconds_Format(seconds),
         };
 
