@@ -4,7 +4,7 @@
 
 **Goal:** Make the client command queue observable (per-command stage, retries, errors) and let a queued command's effect show in the UI before the server confirms it, with reactions as the first consumer.
 
-**Architecture:** `ClientCommandQueue` gains a status registry (`Waiting → Running → Retrying → Settled → gone`, or `Failed`) while `PartitionedCommandQueue` stays an untouched ordering coordinator. Status reaches the UI through Fusion trigger compute methods. A new `ReactionsUI` compute service folds a partition's queued `Reactions_React` commands over server data and confirms them back to the queue once the server reflects them, replacing `OptimisticReactions` entirely.
+**Architecture:** `ClientCommandQueue` gains a status registry (`Waiting → Running → Retrying → Completed → gone`, or `Failed`) while `PartitionedCommandQueue` stays an untouched ordering coordinator. Status reaches the UI through Fusion trigger compute methods. A new `ReactionsUI` compute service folds a partition's queued `Reactions_React` commands over server data and confirms them back to the queue once the server reflects them, replacing `OptimisticReactions` entirely.
 
 **Tech Stack:** C# / .NET 11, ActualLab.CommandR (`ICommandHandler`, `[CommandFilter]`), ActualLab.Fusion (`[ComputeMethod]`, `Invalidation.Begin()`, `FixedDelayer`), Blazor, xUnit + AwesomeAssertions.
 
@@ -17,7 +17,7 @@
 - **Serialization**: `PartitionKey` and any other computed property on a command carries `[JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]`. Never add MemoryPack attributes.
 - **Localization**: user-visible prose goes into `Strings.en.json` **and every hand-written catalog** (bg, bs, cs, de, es, fr, hi, id, it, ja, ko, pl, pt, ru, tr, uk, vi, zh) plus a typed member in `LocalizedStringsLocalizerExt.cs`; derived catalogs are regenerated (`scripts/derive-bcms.cmd`, then `scripts/derive-max.cmd`), never hand-edited. Developer surfaces (test pages, diagnostics) stay English.
 - **No commits.** Dmitrii commits himself; never run `git commit` unless he asks in that turn. Each task ends with a build + test run instead.
-- **TTLs**: `Settled` = 10 s, `Failed` = 1 min, enforced lazily on `Update` / `OnCompleted` / `GetEntries` — no timer, no background sweep.
+- **TTLs**: `Completed` = 10 s, `Failed` = 1 min, enforced lazily on `Update` / `OnCompleted` / `GetEntries` — no timer, no background sweep.
 
 ## File Structure
 
@@ -53,7 +53,7 @@
 ```csharp
 namespace ActualChat;
 
-public enum QueuedCommandStage { Waiting, Running, Retrying, Settled, Failed }
+public enum QueuedCommandStage { Waiting, Running, Retrying, Completed, Failed }
 
 /// <summary>
 /// A queued command together with the stage of its execution;
@@ -80,7 +80,7 @@ namespace ActualChat.Chat.UI.Blazor.UnitTests;
 public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact]
-    public async Task SuccessfulCommandShouldEndUpSettledUntilConfirmed()
+    public async Task SuccessfulCommandShouldBeKeptUntilConfirmed()
     {
         // arrange
         using var clock = new TestClock();
@@ -93,7 +93,7 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
         // assert
         var entries = queue.GetEntries("a");
         entries.Should().HaveCount(1);
-        entries[0].Stage.Should().Be(QueuedCommandStage.Settled, because: "the effect survives until a consumer confirms it");
+        entries[0].Stage.Should().Be(QueuedCommandStage.Completed, because: "the entry survives until a consumer confirms it");
 
         queue.Confirm(command);
         queue.GetEntries("a").Should().BeEmpty(because: "confirmation drops the entry");
@@ -135,7 +135,7 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
     }
 
     [Fact]
-    public async Task SettledEntryShouldExpireAfterTtl()
+    public async Task CompletedEntryShouldExpireAfterTtl()
     {
         // arrange
         using var clock = new TestClock();
@@ -146,7 +146,7 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
         clock.OffsetBy(TimeSpan.FromSeconds(11));
 
         // assert
-        queue.GetEntries("a").Should().BeEmpty(because: "an unconfirmed Settled entry expires after 10s");
+        queue.GetEntries("a").Should().BeEmpty(because: "an unconfirmed completed entry expires after 10s");
     }
 
     // Nested types
@@ -172,7 +172,7 @@ executor and a clock (both defaulted for DI), and add the registry:
 public sealed class ClientCommandQueue : ICommandHandler<IQueuedCommand>, IDisposable
 {
     private static readonly AsyncLocal<bool> IsRunningFromQueue = new();
-    public static readonly TimeSpan SettledTtl = TimeSpan.FromSeconds(10);
+    public static readonly TimeSpan CompletedTtl = TimeSpan.FromSeconds(10);
     public static readonly TimeSpan FailedTtl = TimeSpan.FromMinutes(1);
 
     private readonly PartitionedCommandQueue<IQueuedCommand> _queue = new();
@@ -220,7 +220,7 @@ The run loop records stages:
             SetStage(command, QueuedCommandStage.Running, tryIndex, null);
             try {
                 await RunOnce(command, cancellationToken).ConfigureAwait(false);
-                SetStage(command, QueuedCommandStage.Settled, tryIndex, null);
+                SetStage(command, QueuedCommandStage.Completed, tryIndex, null);
                 return;
             }
             catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
@@ -274,7 +274,7 @@ private void Prune()
     var now = _clock.Now;
     foreach (var (command, entry) in _entries) {
         var ttl = entry.Stage switch {
-            QueuedCommandStage.Settled => SettledTtl,
+            QueuedCommandStage.Completed => CompletedTtl,
             QueuedCommandStage.Failed => FailedTtl,
             _ => (TimeSpan?)null,
         };
@@ -694,10 +694,10 @@ public sealed class ReactionsUI(AppUIHub hub) : IComputeService
         if (entries.Count == 0)
             return summaries.Length == 0 ? null : new ReactionsModel(summaries, ownReaction, null);
 
-        // A Settled command whose result the server already shows is confirmed here,
+        // A Completed command whose result the server already shows is confirmed here,
         // so the effect never blinks between completion and invalidation.
         foreach (var entry in entries) {
-            if (entry.Stage != QueuedCommandStage.Settled || entry.Command is not Reactions_React react)
+            if (entry.Stage != QueuedCommandStage.Completed || entry.Command is not Reactions_React react)
                 continue;
             if (ReactionsOverlay.IsReflected(ownReaction, react.Reaction.Emoji))
                 Queue.Confirm(entry.Command);

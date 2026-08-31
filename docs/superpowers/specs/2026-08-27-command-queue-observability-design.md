@@ -91,7 +91,7 @@ reactions today; components call `IReactions` directly.
 ### 1. Command status in the queue
 
 ```csharp
-public enum QueuedCommandStage { Waiting, Running, Retrying, Settled, Failed }
+public enum QueuedCommandStage { Waiting, Running, Retrying, Completed, Failed }
 
 public sealed record QueuedCommandEntry(
     string PartitionKey,
@@ -102,7 +102,7 @@ public sealed record QueuedCommandEntry(
     Moment UpdatedAt);
 ```
 
-`ClientCommandQueue` keeps a registry of running/settled/failed entries and reads
+`ClientCommandQueue` keeps a registry of running/completed/failed entries and reads
 waiting ones out of the queue's lanes, exposing:
 
 ```csharp
@@ -111,10 +111,10 @@ IReadOnlyList<QueuedCommandEntry> GetEntries(string key);   // one partition, fo
 void Confirm(IQueuedCommand command);                       // "server data reflects this now"
 ```
 
-Stage transitions: `Waiting → Running → (Retrying → Running)* → Settled → gone`,
+Stage transitions: `Waiting → Running → (Retrying → Running)* → Completed → gone`,
 or `→ Failed`.
 
-- **`Settled`** — the command succeeded and the effect must survive until a consumer
+- **`Completed`** — the command succeeded and the effect must survive until a consumer
   confirms it. Cleared by `Confirm`, or by a **10 s** TTL if no consumer ever does.
 - **`Failed`** — a permanent failure, kept **1 min** so it can be seen, then dropped.
   Today such a command is silently discarded.
@@ -157,7 +157,7 @@ from `IReactions`, then **folds every pending command of that partition in order
 over the server state. Folding, not "latest wins": `Reactions_React` is a toggle, so
 two queued clicks on one emoji cancel out.
 
-When the newest entry is `Settled`, `Get` reconciles — `own?.Emoji == pending.Emoji`
+When the newest entry is `Completed`, `Get` reconciles — `own?.Emoji == pending.Emoji`
 for an add, `!=` for a remove — and calls `Confirm` when it matches. Mutating state
 inside `ComputeState` is the established pattern here: `MessageReactions.razor:61-66`
 already calls `TryRemove` there. The loop converges in one extra recomputation,
@@ -300,7 +300,7 @@ re-dispatch design rests on.
   re-sends the same `Uuid`; `ApiCommandDeduplicator` replays the stored result
   instead of toggling a second time. `Reactions_React` must therefore never be
   marked `INotDeduplicated`. A test pins this.
-- **Effect during `Settled` with no consumer** — the 10 s TTL drops it, so a page
+- **Effect during `Completed` with no consumer** — the 10 s TTL drops it, so a page
   with no `MessageReactions` mounted cannot leak entries.
 - **Circuit teardown** — `_stopCts` already cancels the retry loop; the registry dies
   with the scoped service, since everything is in-session.
@@ -320,9 +320,9 @@ re-dispatch design rests on.
 ## Verification
 
 - **Unit (`Chat.UI.Blazor.UnitTests`)** — the folding function: toggle chain cancels
-  out, emoji replacement, removal, `Settled` reconciliation, `Failed` yields no effect.
+  out, emoji replacement, removal, `Completed` reconciliation, `Failed` yields no effect.
 - **Unit (`Chat.UI.Blazor.UnitTests`)** — `ClientCommandQueue` with a fake `ICommander`: stage
-  transitions, `TryIndex` growth on retries, `Settled`/`Failed` TTLs, `Confirm`,
+  transitions, `TryIndex` growth on retries, `Completed`/`Failed` TTLs, `Confirm`,
   and both coalescing policies.
 - **Integration** — `ReactionDeduplicationTest` (`Chat.IntegrationTests`) must stay
   green; it covers the server-side toggle+dedup behaviour the retry path now leans on.

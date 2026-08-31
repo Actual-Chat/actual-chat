@@ -10,7 +10,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public sealed class ClientCommandQueue : ICommandHandler<IQueuedCommand>, IDisposable
 {
-    public static readonly TimeSpan SettledTtl = TimeSpan.FromSeconds(10);
+    public static readonly TimeSpan CompletedTtl = TimeSpan.FromSeconds(10);
     public static readonly TimeSpan FailedTtl = TimeSpan.FromMinutes(1);
 
     private readonly PartitionedCommandQueue<IQueuedCommand> _queue = new();
@@ -102,6 +102,8 @@ public sealed class ClientCommandQueue : ICommandHandler<IQueuedCommand>, IDispo
             .ToArray();
     }
 
+    // Drops the entry once a consumer no longer needs it - e.g. an overlay that has seen the
+    // server data reflect this command. Everything else just waits for the TTL.
     public void Confirm(IQueuedCommand command)
     {
         if (_entries.TryRemove(command, out var entry))
@@ -143,7 +145,7 @@ public sealed class ClientCommandQueue : ICommandHandler<IQueuedCommand>, IDispo
             SetStage(command, QueuedCommandStage.Running, tryIndex, null);
             try {
                 await RunOnce(command, cancellationToken).ConfigureAwait(false);
-                SetStage(command, QueuedCommandStage.Settled, tryIndex, null);
+                SetStage(command, QueuedCommandStage.Completed, tryIndex, null);
                 return;
             }
             catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
@@ -204,7 +206,7 @@ public sealed class ClientCommandQueue : ICommandHandler<IQueuedCommand>, IDispo
         var now = _clock.Now;
         foreach (var (command, entry) in _entries) {
             var ttl = entry.Stage switch {
-                QueuedCommandStage.Settled => SettledTtl,
+                QueuedCommandStage.Completed => CompletedTtl,
                 QueuedCommandStage.Failed => FailedTtl,
                 _ => (TimeSpan?)null,
             };

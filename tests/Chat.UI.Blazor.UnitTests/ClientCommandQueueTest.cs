@@ -6,7 +6,7 @@ namespace ActualChat.Chat.UI.Blazor.UnitTests;
 public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact]
-    public async Task SuccessfulCommandShouldEndUpSettledUntilConfirmed()
+    public async Task SuccessfulCommandShouldBeKeptUntilConfirmed()
     {
         // arrange
         using var clock = new TestClock();
@@ -19,8 +19,8 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
         // assert
         var entries = queue.GetEntries("a");
         entries.Should().HaveCount(1);
-        entries[0].Stage.Should().Be(QueuedCommandStage.Settled,
-            because: "the effect survives until a consumer confirms it");
+        entries[0].Stage.Should().Be(QueuedCommandStage.Completed,
+            because: "the entry survives until a consumer confirms it");
 
         queue.Confirm(command);
         queue.GetEntries("a").Should().BeEmpty(because: "confirmation drops the entry");
@@ -62,7 +62,7 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
     }
 
     [Fact]
-    public async Task SettledEntryShouldExpireAfterTtl()
+    public async Task CompletedEntryShouldExpireAfterTtl()
     {
         // arrange
         using var clock = new TestClock();
@@ -73,7 +73,7 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
         clock.OffsetBy(TimeSpan.FromSeconds(11));
 
         // assert
-        queue.GetEntries("a").Should().BeEmpty(because: "an unconfirmed Settled entry expires after 10s");
+        queue.GetEntries("a").Should().BeEmpty(because: "an unconfirmed completed entry expires after 10s");
     }
 
     [Fact]
@@ -206,7 +206,7 @@ public sealed class ClientCommandQueueTest(ITestOutputHelper @out) : TestBase(@o
         await runTask;
 
         // assert
-        queue.GetEntries("a").Single().Stage.Should().Be(QueuedCommandStage.Settled,
+        queue.GetEntries("a").Single().Stage.Should().Be(QueuedCommandStage.Completed,
             because: "an attempt already in flight is left to finish");
     }
 

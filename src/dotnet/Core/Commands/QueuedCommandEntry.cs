@@ -8,8 +8,7 @@ public enum QueuedCommandStage
     Waiting = 0,
     Running,
     Retrying,
-    // Succeeded, but its effect is still shown: the server data reflecting it hasn't arrived yet
-    Settled,
+    Completed,
     Failed,
 }
 

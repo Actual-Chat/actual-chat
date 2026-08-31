@@ -78,7 +78,7 @@ public class ReactionsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeS
         foreach (var entry in Queue.GetEntries(entryId.Value)) {
             if (entry.Command is not Reactions_React react)
                 continue;
-            if (entry.Stage != QueuedCommandStage.Settled)
+            if (entry.Stage != QueuedCommandStage.Completed)
                 continue;
 
             // A pending remove is reflected when the server no longer shows that emoji
