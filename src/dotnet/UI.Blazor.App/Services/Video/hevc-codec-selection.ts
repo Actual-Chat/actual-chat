@@ -1,5 +1,7 @@
 // HEVC codec-string derivation + WebCodecs decoder candidate selection.
-// HW-only: returns null if no candidate is HW-supported (no SW fallback by policy).
+// Candidates are probed hardware-first, then again with no-preference before
+// giving up — Firefox routinely rejects 'prefer-hardware' for a codec it can
+// decode in software, and the encoder-side probe has always allowed for that.
 
 import { getLogs } from 'logging';
 
@@ -10,9 +12,11 @@ export interface DecoderDimensions {
     height: number;
 }
 
+export type DecoderHardwareAcceleration = 'prefer-hardware' | 'no-preference';
+
 export interface DecoderCodecSelection {
     codec: string;
-    hardwareAcceleration: 'prefer-hardware';
+    hardwareAcceleration: DecoderHardwareAcceleration;
 }
 
 // HEVC: tries high-level candidates using SPS tier (bitstream truth), then
@@ -28,10 +32,11 @@ export function getCodecCandidates(codec: string, description?: ArrayBuffer): st
         const candidates: string[] = [];
         const seen = new Set<string>();
         const addCandidate = (c: string) => {
-            if (!seen.has(c)) {
-                seen.add(c);
-                candidates.push(c);
-            }
+            if (seen.has(c))
+                return;
+
+            seen.add(c);
+            candidates.push(c);
         };
 
         // Ordering: each simulcast layer ships its own HVCC with per-layer
@@ -49,9 +54,8 @@ export function getCodecCandidates(codec: string, description?: ArrayBuffer): st
 
         // Sender's declared string carries the ladder-top level; reconcile tier with SPS.
         const lc = codec.toLowerCase();
-        if (lc.startsWith('hev1.') || lc.startsWith('hvc1.')) {
+        if (lc.startsWith('hev1.') || lc.startsWith('hvc1.'))
             addCandidate(replaceHevcTier(codec, preferredTier));
-        }
 
         // Hardcoded L4.0 fallback (admits up to 1080p).
         addCandidate(`hev1.${generalProfileIdc}.6.${preferredTier}120.B0`);
@@ -74,14 +78,45 @@ export function getCodecCandidates(codec: string, description?: ArrayBuffer): st
 
         const declaredLower = codec.toLowerCase();
         if (!declaredLower.startsWith('hev1') && !declaredLower.startsWith('hvc1')
-            && declaredLower !== 'hevc' && declaredLower !== 'h265') {
+            && declaredLower !== 'hevc' && declaredLower !== 'h265')
             warnLog?.log(`Codec mismatch: declared=${codec} but description is HVCC`);
-        }
 
         return candidates;
     }
 
-    return [mapCodecToWebCodecs(codec, description)];
+    const mapped = mapCodecToWebCodecs(codec, description);
+    if (!mapped.startsWith('avc1.'))
+        return [mapped];
+
+    return getAvcCandidates(mapped);
+}
+
+// Only ever widens: a decoder configured for a higher profile or level decodes
+// everything below it, while declaring less than the bitstream carries makes
+// configure() succeed and decode() drop chunks silently. So the fallbacks are
+// the same profile at the top level, then High at the top level.
+function getAvcCandidates(codec: string): string[] {
+    const match = /^avc1\.([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(codec);
+    if (!match)
+        return [codec];
+
+    const [, profile, constraints] = match;
+    const topLevel = '34'; // L5.2 — the highest level our ladders ever declare
+    const candidates = [
+        codec,
+        `avc1.${profile}${constraints}${topLevel}`,
+        `avc1.6400${topLevel}`,
+    ];
+
+    return candidates.filter((c, i) => candidates.indexOf(c) === i);
+}
+
+// avcC bytes 1..3 are profile_idc, profile_compatibility and level_idc.
+function avcCodecStringFromDescription(description: ArrayBuffer): string {
+    const bytes = new Uint8Array(description);
+    const hex = (b: number): string => b.toString(16).padStart(2, '0');
+
+    return `avc1.${hex(bytes[1])}${hex(bytes[2])}${hex(bytes[3])}`;
 }
 
 function replaceHevcTier(codec: string, tier: 'H' | 'L'): string {
@@ -97,24 +132,33 @@ export async function selectDecoderCodec(
     dimensions?: DecoderDimensions,
     excluded?: ReadonlySet<string>,
 ): Promise<DecoderCodecSelection | null> {
-    for (const candidate of candidates) {
-        if (excluded?.has(candidate)) continue;
-        try {
-            const config: VideoDecoderConfig = {
-                codec: candidate,
-                hardwareAcceleration: 'prefer-hardware',
-            };
-            if (description) config.description = description;
-            if (dimensions) {
-                config.codedWidth = dimensions.width;
-                config.codedHeight = dimensions.height;
-            }
-            const { supported } = await VideoDecoder.isConfigSupported(config);
-            if (supported) {
-                return { codec: candidate, hardwareAcceleration: 'prefer-hardware' };
-            }
-        } catch { /* continue to next candidate */ }
+    // The no-preference pass is deliberate, and not Firefox-only: Chromium
+    // decodes VP9 in software on plenty of GPUs, and VP9 is the negotiation
+    // floor — refusing software decode there leaves a viewer with a black tile
+    // and nothing to fall back to. The cost is CPU on weak devices, which the
+    // quality controller already sheds layers for.
+    for (const hardwareAcceleration of ['prefer-hardware', 'no-preference'] as const) {
+        for (const candidate of candidates) {
+            if (excluded?.has(candidate))
+                continue;
+
+            try {
+                const config: VideoDecoderConfig = {
+                    codec: candidate,
+                    hardwareAcceleration,
+                };
+                if (description) config.description = description;
+                if (dimensions) {
+                    config.codedWidth = dimensions.width;
+                    config.codedHeight = dimensions.height;
+                }
+                const { supported } = await VideoDecoder.isConfigSupported(config);
+                if (supported)
+                    return { codec: candidate, hardwareAcceleration };
+            } catch { /* continue to next candidate */ }
+        }
     }
+
     return null;
 }
 
@@ -123,21 +167,30 @@ export async function selectDecoderCodec(
 // SPS tier=High while HVCC byte[1] says tier=Low — iOS HEVC HW rejects, Edge
 // silently stalls.
 export function extractHvccSpsTierFlag(bytes: Uint8Array): number {
-    if (bytes.length < 24) return -1;
+    if (bytes.length < 24)
+        return -1;
+
     const numArrays = bytes[22];
     let pos = 23;
     for (let i = 0; i < numArrays; i++) {
-        if (pos >= bytes.length) return -1;
+        if (pos >= bytes.length)
+            return -1;
+
         const nalUnitType = bytes[pos] & 0x3F;
         pos += 1;
-        if (pos + 2 > bytes.length) return -1;
+        if (pos + 2 > bytes.length)
+            return -1;
+
         const numNalus = (bytes[pos] << 8) | bytes[pos + 1];
         pos += 2;
         for (let j = 0; j < numNalus; j++) {
-            if (pos + 2 > bytes.length) return -1;
+            if (pos + 2 > bytes.length)
+                return -1;
+
             const nalLen = (bytes[pos] << 8) | bytes[pos + 1];
             pos += 2;
-            if (pos + nalLen > bytes.length) return -1;
+            if (pos + nalLen > bytes.length)
+                return -1;
             if (nalUnitType === 33 && nalLen >= 4) {
                 // SPS layout: 2-byte NAL hdr, then RBSP. RBSP byte 1 high bit
                 // group: general_profile_space<<6 | general_tier_flag<<5 | profile_idc.
@@ -196,57 +249,73 @@ export function deriveHevcCodecString(prefix: 'hev1' | 'hvc1', bytes: Uint8Array
 // profileIdc, byte[2..5]=compatFlags, byte[6..11]=constraintFlags, byte[12]=levelIdc.
 // Min 23 bytes before nalu arrays.
 export function isHvccDescription(description: ArrayBuffer): boolean {
-    if (description.byteLength < 23) return false;
+    if (description.byteLength < 23)
+        return false;
+
     const bytes = new Uint8Array(description);
-    if (bytes[0] !== 0x01) return false;
+    if (bytes[0] !== 0x01)
+        return false;
+
     // Valid HEVC profiles: 1 Main, 2 Main10, 3 MainStillPicture, 4 RangeExt, 5 HighThroughput.
     const generalProfileIdc = bytes[1] & 0x1F;
-    if (generalProfileIdc === 0 || generalProfileIdc > 11) return false;
+    if (generalProfileIdc === 0 || generalProfileIdc > 11)
+        return false;
+
     // Negative discriminator vs avcC: avcC byte[4] has top 6 bits set
     // (0xFC|lengthSizeMinusOne) and byte[5] has top 3 bits set (0xE0|numSPS).
     // HVCC has no such constraint at those positions.
-    if ((bytes[4] & 0xFC) === 0xFC && (bytes[5] & 0xE0) === 0xE0) return false;
+    if ((bytes[4] & 0xFC) === 0xFC && (bytes[5] & 0xE0) === 0xE0)
+        return false;
+
     const generalLevelIdc = bytes[12];
-    if (generalLevelIdc === 0) return false;
+    if (generalLevelIdc === 0)
+        return false;
+
     return true;
 }
 
 export function isAvcCDescription(description: ArrayBuffer): boolean {
-    if (description.byteLength < 7) return false;
+    if (description.byteLength < 7)
+        return false;
+
     const bytes = new Uint8Array(description);
-    if (bytes[0] !== 0x01) return false;
+    if (bytes[0] !== 0x01)
+        return false;
+
     const validProfiles = [66, 77, 88, 100, 110, 122, 244];
-    if (!validProfiles.includes(bytes[1])) return false;
+    if (!validProfiles.includes(bytes[1]))
+        return false;
+
     // byte[4] = 0xFC | lengthSizeMinusOne (top 6 bits set).
-    if ((bytes[4] & 0xFC) !== 0xFC) return false;
+    if ((bytes[4] & 0xFC) !== 0xFC)
+        return false;
+
     // byte[5] = 0xE0 | numOfSequenceParameterSets (top 3 bits set).
-    if ((bytes[5] & 0xE0) !== 0xE0) return false;
+    if ((bytes[5] & 0xE0) !== 0xE0)
+        return false;
+
     return true;
 }
 
 // Maps non-HEVC codec name + optional description to a WebCodecs codec string.
 export function mapCodecToWebCodecs(codec: string, description?: ArrayBuffer): string {
     if (description && description.byteLength >= 5 && isAvcCDescription(description)) {
-        const bytes = new Uint8Array(description);
-        const profileIndication = bytes[1];
-        const profileCompatibility = bytes[2];
-        const levelIndication = bytes[3];
-        const codecString = `avc1.${profileIndication.toString(16).padStart(2, '0')}${profileCompatibility.toString(16).padStart(2, '0')}${levelIndication.toString(16).padStart(2, '0')}`;
+        const codecString = avcCodecStringFromDescription(description);
         const declaredLower = codec.toLowerCase();
-        if (declaredLower !== 'h264' && declaredLower !== 'avc1' && !declaredLower.startsWith('avc1.')) {
+        if (declaredLower !== 'h264' && declaredLower !== 'avc1' && !declaredLower.startsWith('avc1.'))
             warnLog?.log(`Codec mismatch: declared=${codec} but description is avcC, overriding to ${codecString}`);
-        }
+
         return codecString;
     }
 
-    if (description && description.byteLength >= 4 && (codec.toLowerCase() === 'h264' || codec.toLowerCase() === 'avc1')) {
-        const bytes = new Uint8Array(description);
-        const profileIndication = bytes[1];
-        const profileCompatibility = bytes[2];
-        const levelIndication = bytes[3];
-        return `avc1.${profileIndication.toString(16).padStart(2, '0')}${profileCompatibility.toString(16).padStart(2, '0')}${levelIndication.toString(16).padStart(2, '0')}`;
-    }
+    const lower = codec.toLowerCase();
+    if (description && description.byteLength >= 4 && (lower === 'h264' || lower === 'avc1'))
+        return avcCodecStringFromDescription(description);
 
+    // Decode guesses go HIGH, not portable — the opposite of the encoder, which
+    // emits Constrained Baseline only. A High decoder plays a CBP bitstream;
+    // a CBP decoder handed a High one fails or drops silently, and a bare
+    // 'h264' is exactly the case where we don't know which we're getting.
     const codecMap: Record<string, string> = {
         'h264': 'avc1.640028',
         'avc1': 'avc1.640028',
@@ -258,11 +327,11 @@ export function mapCodecToWebCodecs(codec: string, description?: ArrayBuffer): s
     };
 
     const lowerCodec = codec.toLowerCase();
-    if (codecMap[lowerCodec]) {
+    if (codecMap[lowerCodec])
         return codecMap[lowerCodec];
-    }
-    if (codec.includes('.')) {
+    if (codec.includes('.'))
         return codec;
-    }
+
+    // Same reasoning as codecMap above: guess the most capable profile.
     return 'avc1.640028';
 }
