@@ -70,6 +70,9 @@ public class VideoSizeTest
         videoConstants.ScreenCastLayerBaseBitratesKbps.Should().Equal(4_375d, 11_375d);
         videoConstants.CodecDefs.Should().Contain(new VideoCodecDef() { Kind = VideoCodecKind.H264, Efficiency = 1 });
         videoConstants.CodecDefs.Should().Contain(new VideoCodecDef() { Kind = VideoCodecKind.Hevc, Efficiency = 1.4 });
+        // VP9 sits just above HEVC; AV1 is the one with a real gap.
+        videoConstants.CodecDefs.Should().Contain(new VideoCodecDef() { Kind = VideoCodecKind.Vp9, Efficiency = 1.41 });
+        videoConstants.CodecDefs.Should().Contain(new VideoCodecDef() { Kind = VideoCodecKind.Av1, Efficiency = 1.7 });
     }
 
     [Fact]
@@ -79,6 +82,8 @@ public class VideoSizeTest
 
         topCameraLayer.GetBitrateKbps(VideoCodecKind.H264).Should().Be(4_000);
         topCameraLayer.GetBitrateKbps(VideoCodecKind.Hevc).Should().BeApproximately(4_000 / 1.4, 0.01);
+        topCameraLayer.GetBitrateKbps(VideoCodecKind.Vp9).Should().BeApproximately(4_000 / 1.41, 0.01);
+        topCameraLayer.GetBitrateKbps(VideoCodecKind.Av1).Should().BeApproximately(4_000 / 1.7, 0.01);
         topCameraLayer.GetByteRate(VideoCodecKind.Hevc).Should().Be(357_143);
     }
 
