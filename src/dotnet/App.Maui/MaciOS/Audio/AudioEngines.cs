@@ -5,7 +5,7 @@ using Foundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class AudioEngines : ProcessorBase
+public sealed class AudioEngines : ProcessorBase
 {
     // A tune is a one-off sound, so its engine only has to outlive a burst of them.
     private static readonly TimeSpan TuneIdleReleaseDelay = TimeSpan.FromSeconds(1);
@@ -15,12 +15,12 @@ public class AudioEngines : ProcessorBase
 
     private readonly Disposable<NSObject> _configurationChangeSubscription;
 
+    private AppUIHub Hub { get; }
+    private ILogger Log => field ??= Hub.LogFor(GetType());
+
     public AudioEngine Tunes { get; }
     public AudioEngine Playback { get; }
     public AudioEngine Recording { get; }
-
-    private AppUIHub Hub { get; }
-    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     public AudioEngines(AppUIHub hub)
     {
@@ -51,10 +51,10 @@ public class AudioEngines : ProcessorBase
         Recording.Pause();
     }
 
-    // Apple's contract after a media-services reset: the engines are invalid and have to be
-    // recreated, not restarted. Releasing them is what makes the next use build fresh ones.
     public void Release()
     {
+        // Apple's contract after a media-services reset: the engines are invalid and have to be
+        // recreated, not restarted. Releasing them is what makes the next use build fresh ones.
         Tunes.Release();
         Playback.Release();
         Recording.Release();
@@ -66,7 +66,7 @@ public class AudioEngines : ProcessorBase
         // revives the ones that still have a live consumer.
         if (mode >= AudioFocusMode.Tune)
             Tunes.Resume();
-        if (mode >= AudioFocusMode.Playback)
+        if (mode >= AudioFocusMode.Listening)
             Playback.Resume();
         if (mode >= AudioFocusMode.Recording)
             Recording.Resume();
@@ -78,11 +78,13 @@ public class AudioEngines : ProcessorBase
         // engine that stopped itself also needs its output graph and player nodes restored.
         if (mode >= AudioFocusMode.Tune)
             Tunes.Reconnect();
-        if (mode >= AudioFocusMode.Playback)
+        if (mode >= AudioFocusMode.Listening)
             Playback.Reconnect();
         if (mode >= AudioFocusMode.Recording)
             Recording.Reconnect();
     }
+
+    // Private methods
 
     private void OnConfigurationChange(object? sender, NSNotificationEventArgs e)
         => Log.LogInformation("Audio engine configuration change");

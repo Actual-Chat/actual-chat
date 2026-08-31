@@ -31,6 +31,8 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     private AudioEngines AudioEngines => field ??= Hub.Services.GetRequiredService<AudioEngines>();
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
+    public override bool IsSuspended => _isSuspended || IsInterrupted;
+
     public AppleAudioFocusUI(AppUIHub hub)
     {
         Hub = hub;
@@ -414,6 +416,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     {
         private readonly Dictionary<AudioFocusMode, Dictionary<AudioFocusRequester, Scope>> _byMode = new() {
             [AudioFocusMode.Tune] = new(),
+            [AudioFocusMode.Listening] = new(),
             [AudioFocusMode.Playback] = new(),
             [AudioFocusMode.Recording] = new(),
         };

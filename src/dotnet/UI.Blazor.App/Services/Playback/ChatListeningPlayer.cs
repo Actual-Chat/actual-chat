@@ -12,10 +12,9 @@ public sealed class ChatListeningPlayer : ChatPlayer
         => PlayerKind = ChatPlayerKind.Listening;
 
     public override void Pause()
-    {
-        _ = Playback.Pause(CancellationToken.None);
-        ChatAudioUI.TryReleaseAudioFocus();
-    }
+        // No focus release: IsPaused makes ShouldHoldListeningFocus skip this chat, so the burst
+        // manager hands the focus back after its linger - streams still arriving or not.
+        => _ = Playback.Pause(CancellationToken.None);
 
     public override async Task Resume()
     {
@@ -25,9 +24,9 @@ public sealed class ChatListeningPlayer : ChatPlayer
             return;
         }
 
-        if (!await ChatAudioUI.TryAcquireAudioFocusForResume(this).ConfigureAwait(false))
-            return;
-
+        // No direct focus acquire: the resumed playback flips ShouldHoldListeningFocus, and the
+        // burst manager takes the focus from there - a direct grab here leaked it when nothing
+        // was streaming, since only a completed burst cycle ever releases it.
         _ = Playback.Resume(default);
     }
 

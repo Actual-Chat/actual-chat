@@ -303,7 +303,8 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         // moves playback only, so iOS leaves a headset that arrived mid-recording unheard.
         var input = ApplyPreferredInput(portOverride is AVAudioSessionPortOverride.None);
         Log.LogInformation(
-            "ApplyOutputRoute: mode={Mode}, sessionMode={SessionMode}, {Outputs} -> {Override} -> {Result}, input={Input}",
+            "ApplyOutputRoute: mode={Mode}, sessionMode={SessionMode}, "
+            + "{Outputs} -> {Override} -> {Result}, input={Input}",
             mode,
             session.Mode,
             Describe(outputs),
@@ -382,7 +383,7 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             session.SetPreferredIOBufferDuration(Constants.Audio.OpusFrameDuration.TotalSeconds, out var error);
             error.Assert("Failed to set preferred IO buffer duration");
         }
-        else if (mode is AudioFocusMode.Playback)
+        else if (mode is AudioFocusMode.Playback or AudioFocusMode.Listening)
             session.SetCategory(AVAudioSessionCategory.Playback).Assert($"{mode}: failed to set category");
         else
             session.SetCategory(AVAudioSessionCategory.Ambient).Assert($"{mode}: failed to set category");

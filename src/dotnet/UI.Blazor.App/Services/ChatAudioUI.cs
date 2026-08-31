@@ -30,6 +30,8 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private IAuthors Authors => Hub.Authors;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private ConnectivityUI ConnectivityUI => Hub.ConnectivityUI;
+    private IncomingVoiceActivityUI IncomingVoiceActivityUI => Hub.IncomingVoiceActivityUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private IAudioInitializer AudioInitializer => Hub.AudioInitializer;
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
@@ -89,6 +91,10 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
                 Category = StateCategories.Get(type, nameof(IsPttEnabledOnDevice)),
             });
         _audioFocusRequester = new AudioFocusRequester(AudioFocusMode.Playback, OnAudioFocusLost);
+        _listeningFocusRequester = new AudioFocusRequester(AudioFocusMode.Listening, OnListeningFocusLost);
+        _isListeningPausedByFocus = stateFactory.NewMutable(
+            false,
+            StateCategories.Get(type, nameof(ShouldHoldListeningFocus)));
     }
 
     void INotifyInitialized.Initialized()
@@ -191,9 +197,52 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             .SilentAwait();
     }
 
+    [ComputeMethod]
+    public virtual async Task<bool> ShouldHoldListeningFocus(CancellationToken cancellationToken)
+    {
+        var chatIds = await GetListeningChatIds().ConfigureAwait(false);
+        // A focus-driven pause must not look like a user pause: suppressing these chats would
+        // freeze the hold/retry signal exactly while it's needed to re-acquire and resume them.
+        var isPausedByFocus = await _isListeningPausedByFocus.Use(cancellationToken).ConfigureAwait(false);
+        foreach (var chatId in chatIds) {
+            var playback = (await GetListeningPlayer(chatId, cancellationToken).ConfigureAwait(false))?.Playback;
+            if (playback is not null
+                && !isPausedByFocus
+                && await playback.IsPaused.Use(cancellationToken).ConfigureAwait(false))
+                continue; // The user paused this chat's audio, so its streams must not touch the focus
+
+            // Local playback is the authority on audibility: a wake catch-up plays past the live
+            // edge - or entirely after it - and the focus has to cover what's actually audible.
+            if (playback is not null && await playback.IsPlaying.Use(cancellationToken).ConfigureAwait(false))
+                return true;
+
+            // The live-edge hint leads the first decoded frames, pausing the music before speech starts
+            if (await HasIncomingRealtimeAudio(chatId, cancellationToken).ConfigureAwait(false))
+                return true;
+        }
+
+        return false;
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> HasIncomingRealtimeAudio(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // Guarded like LiveStreamUI's own compute methods: with the peer down the last server
+        // value is unreliable, and a flag frozen at true would hold the focus for the whole outage.
+        var isConnected = await ConnectivityUI.IsConnected.Use(cancellationToken).ConfigureAwait(false);
+        if (!isConnected)
+            return false;
+
+        // Own-author-filtered: the user's own recording must not grab the listening focus
+        return await IncomingVoiceActivityUI.HasIncomingVoice(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
     [ComputeMethod] // Synced
     public virtual Task<ImmutableHashSet<ChatId>> GetListeningChatIds()
-        => Task.FromResult(ActiveChatsUI.ActiveChats.Value.Where(c => c.IsListening).Select(c => c.ChatId).ToImmutableHashSet());
+        => Task.FromResult(ActiveChatsUI.ActiveChats.Value
+            .Where(c => c.IsListening)
+            .Select(c => c.ChatId)
+            .ToImmutableHashSet());
 
     public ValueTask SetListeningState(ChatId chatId, bool mustListen)
     {

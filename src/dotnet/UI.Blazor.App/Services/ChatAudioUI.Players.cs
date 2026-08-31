@@ -7,17 +7,24 @@ public partial class ChatAudioUI
 {
     private static TimeSpan RestorePreviousPlaybackStateDelay { get; } = TimeSpan.FromMilliseconds(250);
 
-    private volatile ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer> _players =
+    private ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer> _players =
         ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
     private readonly ConcurrentDictionary<ChatId, Moment> _listeningCatchUpAnchors = new();
     private ImmutableHashSet<ChatId> _listeningChatsBeforeReplay = ImmutableHashSet<ChatId>.Empty;
     private readonly MutableState<ReplayState?> _replayState;
     private readonly AudioFocusRequester _audioFocusRequester;
+    private readonly AudioFocusRequester _listeningFocusRequester;
     private AudioFocusScope? _audioFocusScope;
+    private AudioFocusScope? _listeningFocusScope;
     private int _audioFocusDenialCount;
+    // MutableState, not a plain flag: ShouldHoldListeningFocus reads it, and a focus-driven pause
+    // must keep that compute's hold/retry signal alive - a non-reactive read would freeze it.
+    private readonly MutableState<bool> _isListeningPausedByFocus;
 
-    // Advances on every refused acquisition - the state sync answers those by dropping the state.
-    public int AudioFocusDenialCount => Volatile.Read(ref _audioFocusDenialCount);
+    public int AudioFocusDenialCount
+        // Advances on every refused acquisition, listening bursts included: an advance inside a
+        // PTT wake window is what makes PttSessionCore fall back to a notification.
+        => Volatile.Read(ref _audioFocusDenialCount);
 
     // Compute methods
 
@@ -87,7 +94,8 @@ public partial class ChatAudioUI
         }
 
         var speed = ReplaySettings.Value.Speed;
-        DebugLog?.LogInformation("StartReplay: chatId={ChatId}, startAt={StartAt}, rewindOffset={RewindOffset}, speed={Speed}",
+        DebugLog?.LogInformation(
+            "StartReplay: chatId={ChatId}, startAt={StartAt}, rewindOffset={RewindOffset}, speed={Speed}",
             chatId, startAt, rewindOffset, speed);
 
         StopReplay();
@@ -138,7 +146,8 @@ public partial class ChatAudioUI
     public async Task<AudioFocusScope?> TryAcquireAudioFocus(string? reason = "")
     {
         if (_audioFocusScope is not null && !_audioFocusScope.IsSuspended) {
-            Log.LogInformation("Already have audio focus {Scope}. Request reason: '{Reason}'", _audioFocusScope, reason);
+            Log.LogInformation(
+                "Already have audio focus {Scope}. Request reason: '{Reason}'", _audioFocusScope, reason);
             return _audioFocusScope;
         }
 
@@ -154,6 +163,40 @@ public partial class ChatAudioUI
         _audioFocusScope = null;
     }
 
+    public async Task AcquireListeningFocus()
+    {
+        if (_listeningFocusScope is not null)
+            return; // Live, or suspended with its restore handler pending - either way, no re-request
+
+        if (AudioFocusUI.IsSuspended) {
+            // Another requester's focus is lost right now (e.g. a call over a paused replay).
+            // A renew from here would be denied, and a denied renew wipes that requester's
+            // pending restore - so hold playback instead and let the next transition retry.
+            PauseListeningPlayers();
+            return;
+        }
+
+        _listeningFocusScope = await AudioFocusUI.TryAcquire(_listeningFocusRequester).ConfigureAwait(false);
+        if (_listeningFocusScope is null) {
+            // No SetListeningState(false) here: a denial - e.g. during a real phone call - is
+            // transient, and the armed listening intent is exactly what retries on the next stream.
+            // Playback pauses too: a denied transient focus doesn't mute an AudioTrack, and chat
+            // speech must not play over whoever holds the focus.
+            Interlocked.Increment(ref _audioFocusDenialCount);
+            PauseListeningPlayers();
+            Log.LogWarning("AcquireListeningFocus: failed to gain audio focus");
+            return;
+        }
+
+        ResumeListeningPlayersPausedByFocus();
+    }
+
+    public void ReleaseListeningFocus()
+    {
+        _listeningFocusScope?.Dispose();
+        _listeningFocusScope = null;
+    }
+
     // Private player lifecycle methods
 
     private ChatPlayer GetOrCreatePlayer(ChatId chatId, ChatPlayerKind playerKind)
@@ -162,17 +205,21 @@ public partial class ChatAudioUI
         ChatPlayer newPlayer;
         lock (Lock) {
             var player = _players.GetValueOrDefault((chatId, playerKind));
-            if (player != null) {
-                DebugLog?.LogInformation("GetOrCreatePlayer: returning existing {PlayerKind} player for {ChatId}", playerKind, chatId);
+            if (player is not null) {
+                DebugLog?.LogInformation(
+                    "GetOrCreatePlayer: returning existing {PlayerKind} player for {ChatId}", playerKind, chatId);
                 return player;
             }
-            DebugLog?.LogInformation("GetOrCreatePlayer: creating new {PlayerKind} player for {ChatId}", playerKind, chatId);
+
+            DebugLog?.LogInformation(
+                "GetOrCreatePlayer: creating new {PlayerKind} player for {ChatId}", playerKind, chatId);
             newPlayer = playerKind switch {
                 ChatPlayerKind.Listening => new ChatListeningPlayer(Hub, chatId),
                 ChatPlayerKind.Replaying => new ChatReplayPlayer(Hub, chatId),
                 _ => throw new ArgumentOutOfRangeException(nameof(playerKind), playerKind, null),
             };
-            _players = _players.Add((chatId, playerKind), newPlayer);
+            // Publication for StopAllPlayers' lock-free read.
+            Volatile.Write(ref _players, _players.Add((chatId, playerKind), newPlayer));
         }
         if (playerKind is ChatPlayerKind.Replaying)
             using (Invalidation.Begin())
@@ -200,8 +247,8 @@ public partial class ChatAudioUI
             .Collect(ApiConstants.Concurrency.Unlimited);
 
     private Task StopAllPlayers()
-        // ReSharper disable once InconsistentlySynchronizedField
-        => _players
+        // Pairs with the Volatile.Write publication in GetOrCreatePlayer.
+        => Volatile.Read(ref _players)
             .Select(kv => StopPlayer(kv.Key.ChatId, kv.Key.PlayerKind))
             .Collect(ApiConstants.Concurrency.Unlimited);
 
@@ -251,6 +298,8 @@ public partial class ChatAudioUI
 
     private AudioFocusRestoreHandler? OnAudioFocusLost(bool mayRecover, bool canDuck)
     {
+        // Listening deliberately survives this: it holds no Playback focus anymore - incoming
+        // speech runs on the transient Listening scope, which recovers on its own per utterance.
         Log.LogInformation("OnAudioFocusLost: mayRecover={MayRecover}, canDuck={CanDuck}", mayRecover, canDuck);
         if (canDuck)
             return null; // Do not stop players. We don't support ducking so far, so just let it play, do nothing.
@@ -258,7 +307,6 @@ public partial class ChatAudioUI
         if (!mayRecover)
             _audioFocusScope = null;
 
-        _ = ClearListeningChats();
         var replayState = _replayState.Value;
         if (replayState is null || replayState.PausedAt.HasValue)
             return null;
@@ -273,6 +321,7 @@ public partial class ChatAudioUI
             if (chatReplayer is null)
                 return null;
         }
+
         PauseReplay(pausedAt);
         Log.LogInformation("OnAudioFocusLost: paused replayer for #{ChatId}", replayState.ChatId);
 
@@ -289,5 +338,43 @@ public partial class ChatAudioUI
                 Log.LogInformation("OnAudioFocusRestore: resumed replayer for #{ChatId}", currentState.ChatId);
             }
         };
+    }
+
+    private AudioFocusRestoreHandler? OnListeningFocusLost(bool mayRecover, bool canDuck)
+    {
+        // Listening stays armed on any loss; only playback is silenced, since a lost focus doesn't
+        // mute an AudioTrack and in-flight speech must not play over whoever took the focus.
+        Log.LogInformation("OnListeningFocusLost: mayRecover={MayRecover}, canDuck={CanDuck}", mayRecover, canDuck);
+        if (canDuck)
+            return null;
+
+        PauseListeningPlayers();
+        if (mayRecover) {
+            // The scope survives: the platform request stays registered, so the recover callback
+            // unsuspends it and this handler brings the paused players back.
+            return ResumeListeningPlayersPausedByFocus;
+        }
+
+        // A permanent loss never recovers - the scope would pin a dead platform request, so it
+        // goes now; ManageListeningFocusBursts re-acquires from scratch on the next stream.
+        ReleaseListeningFocus();
+        return null;
+    }
+
+    private void PauseListeningPlayers()
+    {
+        _isListeningPausedByFocus.Value = true;
+        foreach (var player in Volatile.Read(ref _players).Values.OfType<ChatListeningPlayer>())
+            player.Pause();
+    }
+
+    private void ResumeListeningPlayersPausedByFocus()
+    {
+        if (!_isListeningPausedByFocus.Value)
+            return;
+
+        _isListeningPausedByFocus.Value = false;
+        foreach (var player in Volatile.Read(ref _players).Values.OfType<ChatListeningPlayer>())
+            _ = player.Resume();
     }
 }

@@ -14,6 +14,7 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
     protected AppUIHub Hub { get; } = hub;
     protected ILogger Log => field ??= Hub.LogFor(GetType());
     public override AudioFocusMode ActiveMode => _lastAudioFocusHolder?.Mode ?? AudioFocusMode.Tune;
+    public override bool IsSuspended => _lastAudioFocusHolder?.IsSuspended ?? false;
 
     public override async Task<AudioFocusScope?> TryAcquire(AudioFocusRequester requester)
     {
@@ -23,8 +24,15 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
         Log.LogInformation("Trying to acquire audio focus: {Kind}", requester.Kind);
         if (_lastAudioFocusHolder is not null && !_lastAudioFocusHolder.IsSuspended) {
             if (_lastAudioFocusHolder.Scopes.TryGetValue(requester, out var scope)) {
-                Log.LogInformation("Already have audio focus");
-                return scope;
+                if (!scope.IsDisposed) {
+                    Log.LogInformation("Already have audio focus");
+                    return scope;
+                }
+
+                // Its Release is queued behind this very lock; handing it back would let that
+                // release tear down whatever the caller starts next.
+                Log.LogInformation("Dropping disposed scope {Scope} ({Mode})", scope, requester.Kind);
+                _lastAudioFocusHolder.Scopes.Remove(requester);
             }
 
             if (!FocusModeHasChanged(_lastAudioFocusHolder, requester)) {
@@ -76,7 +84,7 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
 
     // Private methods
 
-    private async Task ReleaseAudioFocus(AudioFocusRequester requester)
+    private async Task ReleaseAudioFocus(AudioFocusRequester requester, Scope scope)
     {
         using var releaser = await OperationLock.Lock(CancellationToken.None).ConfigureAwait(false);
         releaser.MarkLockedLocally();
@@ -84,8 +92,13 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
         if (_lastAudioFocusHolder is null)
             return;
 
-        if (!_lastAudioFocusHolder.Scopes.Remove(requester))
+        // Identity check, not a bare Remove: a late release for a superseded scope must not
+        // evict the live scope that replaced it under the same requester.
+        if (!_lastAudioFocusHolder.Scopes.TryGetValue(requester, out var existing)
+            || !ReferenceEquals(existing, scope))
             return;
+
+        _lastAudioFocusHolder.Scopes.Remove(requester);
 
         if (_lastAudioFocusHolder.Scopes.Count == 0) {
             _lastAudioFocusHolder.Handle.Release();
@@ -207,7 +220,17 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
 
     private sealed class Scope(MauiAudioFocusUI owner, AudioFocusRequester requester) : AudioFocusScope
     {
+        private int _isDisposed;
+
+        // Set before the Release is queued, so a TryAcquire winning the lock sees it's on its way out.
+        public bool IsDisposed => Volatile.Read(ref _isDisposed) != 0;
+
         public override void Dispose()
-            => _ = owner.ReleaseAudioFocus(requester);
+        {
+            if (Interlocked.Exchange(ref _isDisposed, 1) != 0)
+                return;
+
+            _ = owner.ReleaseAudioFocus(requester, this);
+        }
     }
 }

@@ -142,8 +142,8 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
     public void WatchAudioFocus(
         int baselineDenialCount, ChatId chatId, PttPlatform platform, Func<Task> onDenied)
         => _ = BackgroundTask.Run(async () => {
-            // A denial makes ChatAudioUI.StateSync drop the replay/listening state it was just
-            // given, and nothing throws - so the wake would end in silence instead of a fallback.
+            // A denial drops replay state and pauses listening playback, and nothing throws -
+            // so the wake would end in silence instead of a fallback.
             try {
                 for (var i = 0; i < AudioFocusChecks; i++) {
                     await Task.Delay(AudioFocusCheckPeriod, _disposeCts.Token).ConfigureAwait(false);
