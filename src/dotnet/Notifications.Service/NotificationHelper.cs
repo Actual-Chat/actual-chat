@@ -60,11 +60,12 @@ public static class NotificationHelper
         if (messages.IsEmpty)
             return notification.LeadText.IsNullOrEmpty() ? notification.Text : notification.LeadText;
 
-        // Newest first: collapsed banners show only the first line(s), and that must be the
-        // latest message, not the oldest unread one.
+        // The banner headline is the chat, so these lines are the only place a sender is named.
         var showAuthorNames = notification.ChatId.GetThreadOutermostParentOrSelf().Kind
             is ChatKind.Group or ChatKind.Place;
         var lines = new List<string>(messages.Count + 1);
+        // Newest first: collapsed banners show only the first line(s), and that must be the
+        // latest message, not the oldest unread one.
         for (var i = messages.Count - 1; i >= 0; i--) {
             var m = messages[i];
             lines.Add(showAuthorNames && !m.AuthorName.IsNullOrEmpty()
