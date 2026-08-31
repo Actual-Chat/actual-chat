@@ -1,3 +1,4 @@
+@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 @{
     var tabs = Tabs;
@@ -69,6 +70,10 @@
 @code {
     private IReadOnlyList<SettingsTabDef> _lastTabs = [];
     private bool _isRightSideVisible;
+    private ModalStepRef? _tabStepRef;
+
+    [CascadingParameter] public Modal? Modal { get; set; }
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter, EditorRequired] public IReadOnlyList<SettingsTabDef> Tabs { get; set; } = [];
     [Parameter] public string Class { get; set; } = "";
@@ -103,7 +108,11 @@
     }
 
     public void OnTabArrowClick() {
+        var stepRef = _tabStepRef;
+        _tabStepRef = null;
         _isRightSideVisible = false;
+        if (stepRef != null)
+            Modal!.StepBack();
         StateHasChanged();
     }
 
@@ -138,5 +147,33 @@
 
         SelectedTabId = tab.Id;
         _isRightSideVisible = true;
+        StepIn();
+    }
+
+    private void StepIn() {
+        // Only a narrow screen hides the tab list behind the tab content, so only there
+        // the tab is a place the back button should return from.
+        if (_tabStepRef != null || Modal is not { } modal || !ScreenSize.IsNarrow())
+            return;
+
+        var stepRef = modal.StepIn("settings-tab");
+        _tabStepRef = stepRef;
+        _ = stepRef.WhenClosed.ContinueWith(
+            task => InvokeAsync(() => OnStepClosed(stepRef, task)),
+            TaskScheduler.Default);
+    }
+
+    private void OnStepClosed(ModalStepRef stepRef, Task<bool> whenClosed) {
+        // A mismatch means OnTabArrowClick has already handled this step
+        if (_tabStepRef != stepRef)
+            return;
+
+        _tabStepRef = null;
+        // The step result is false when it's closed because the entire modal is closing.
+        if (!whenClosed.IsCompletedSuccessfully || !whenClosed.Result)
+            return;
+
+        _isRightSideVisible = false;
+        StateHasChanged();
     }
 }
