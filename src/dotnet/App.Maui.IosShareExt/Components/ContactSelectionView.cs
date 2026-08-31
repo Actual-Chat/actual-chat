@@ -83,10 +83,12 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
 
         // Place list
         var placeListView = new PlaceListView(Hub);
+        placeListView.TranslatesAutoresizingMaskIntoConstraints = false;
         AddSubview(placeListView);
 
         // Contact list
         var contactListView = new ContactListView(Hub);
+        contactListView.TranslatesAutoresizingMaskIntoConstraints = false;
         AddSubview(contactListView);
 
         // Comment field

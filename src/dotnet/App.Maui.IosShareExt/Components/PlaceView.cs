@@ -18,6 +18,7 @@ public sealed class PlaceView(Place? place, IosHub hub) : ComputedStateView<bool
 
         // Icon view
         _iconView = new ContactIconView(place?.GetIconQuery(), UIImage.GetSystemImage("message"), place?.Title ?? "", false, Hub);
+        _iconView.TranslatesAutoresizingMaskIntoConstraints = false;
 
         // Underline indicator
         _underlineView = new UIView

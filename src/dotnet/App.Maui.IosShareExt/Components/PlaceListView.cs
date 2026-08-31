@@ -60,6 +60,7 @@ public sealed class PlaceListView(IosHub hub) : ComputedStateView<PlaceListView.
                 }
 
                 var placeCellView = new PlaceView(place.Value, Hub);
+                placeCellView.TranslatesAutoresizingMaskIntoConstraints = false;
                 cell.AddSubview(placeCellView);
                 cell.BackgroundConfiguration = UIBackgroundConfiguration.ClearConfiguration;
 
