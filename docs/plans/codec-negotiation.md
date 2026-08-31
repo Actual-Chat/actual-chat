@@ -178,6 +178,43 @@ its WebView. The app already gates on `supportsWebCodecs()` in
 `video-player.ts`, so its "WebCodecs not supported" log firing on Catalyst is
 the same evidence.
 
+#### A polyfill exists, and the VP9 decision is what makes it usable
+
+[`libavjs-webcodecs-polyfill`](https://github.com/ennuicastr/libavjs-webcodecs-polyfill)
+(same author as libav.js) implements `VideoFrame`, `EncodedVideoChunk`,
+`VideoEncoder`, `VideoDecoder`, `AudioData` and the audio codecs, over libav.js.
+
+What makes it a real candidate rather than a curiosity: **its codecs are AV1,
+VP9 and VP8, and its default variant is `webm-vp9`.** It deliberately ships no
+MPEG codecs ("no plans to add any codecs by the Misanthropic Patent Extortion
+Gang"), so against an H.264 floor it would be useless. Against the VP9 floor
+decided above it covers exactly the required codec — and royalty-free, so none
+of the AVC-pool objections apply.
+
+It also provides `createImageBitmap` and `canvasDrawImage` shims, and in
+polyfill mode teaches native `drawImage` to accept a polyfilled `VideoFrame`;
+`getXY(config)` picks native-vs-polyfill per config, so it can be layered
+without an all-or-nothing switch.
+
+Gaps that are real integration work, not blockers:
+
+- **No `VideoFrame` from `HTMLVideoElement`** is documented. Our Catalyst
+  capture path would be the rVFC pump, which does exactly
+  `new VideoFrame(sourceVideo, …)`. Canvas sources *are* supported, so capture
+  has to draw the element to a canvas first — an extra copy, though the
+  downscaler already owns a canvas.
+- **No `MediaStreamTrackProcessor` / `MediaStreamTrackGenerator`** — expected,
+  they are capture/render APIs rather than codec ones. We already fall back to
+  the rVFC pump and the canvas render backend, so this costs nothing new.
+- **`VideoFrame` is incomplete** — no colour spaces, no cropping, and
+  `timestamp` is mandatory in `VideoFrameInit`. Our envelopes always carry a
+  timestamp, and the pipeline pins `displayAspect` rather than relying on
+  cropping, so this looks survivable — but it needs checking against
+  `frame-envelopes.ts` before committing.
+- **Software VP9 in wasm.** Fine for decode; encode on Catalyst would want
+  measuring before it is offered at all. Receive-only Catalyst may be the right
+  first target.
+
 ### The conclusion this forces
 
 **VP9 encodes and decodes at real-time latency on every engine we ship to** —
