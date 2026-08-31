@@ -2127,7 +2127,6 @@ export class VideoRecorder {
             const workerForPump = this.worker;
             let pumpFrameCount = 0;
             let lastRvfcTickAtMs = performance.now();
-            let lastPushedMediaTime = -1;
             let timerPump: number | null = null;
 
             // False means the worker rejected the frame, which cancels the
@@ -2141,7 +2140,6 @@ export class VideoRecorder {
                     return true;
                 }
                 pumpFrameCount++;
-                lastPushedMediaTime = mediaTime;
                 // `rpcNoWait` returns immediately after postMessage transfers
                 // the frame, so the next tick fires without waiting for the
                 // worker ack. Without this the round-trip easily exceeds the
@@ -2173,26 +2171,30 @@ export class VideoRecorder {
             // rVFC alone does not carry this element on Firefox: it fires a
             // handful of times over a minute instead of once per source frame,
             // so capture starves and the stall surfaces as an encoder fault.
-            // A silence threshold can't catch that — the gaps are irregular
-            // rather than absent — so the timer runs unconditionally next to
-            // rVFC and `lastPushedMediaTime` keeps whichever fires second from
-            // resubmitting a frame. Chromium and WebKit take the MSTP path and
-            // never reach this branch.
+            // Firefox only — every other engine reaches this fallback when the
+            // worker MSTP attempt fails, and there rVFC is per-frame, so a
+            // second pump would double-submit and keep the capture watchdog
+            // from ever seeing a frozen camera.
             const timerPumpPeriodMs = Math.max(1, Math.round(
                 1000 / (DeviceInfo.isMobile ? VIDEO.mobileFrameRate : VIDEO.frameRate)));
-            timerPump = window.setInterval(() => {
-                if (this.workerSourceCancelled || sourceVideo.readyState < 2)
-                    return;
+            if (DeviceInfo.isFirefox) {
+                timerPump = window.setInterval(() => {
+                    if (this.workerSourceCancelled || sourceVideo.readyState < 2)
+                        return;
 
-                const mediaTime = sourceVideo.currentTime;
-                if (mediaTime === lastPushedMediaTime)
-                    return;
+                    // Silence, not value equality: rVFC reports a decoded
+                    // frame's `mediaTime` while the timer only has the
+                    // element's `currentTime`, and the two never compare equal,
+                    // so the old dedupe let both pumps submit the same frame.
+                    if (performance.now() - lastRvfcTickAtMs < timerPumpPeriodMs * 2)
+                        return;
 
-                if (!pushFrame(mediaTime) && timerPump !== null) {
-                    window.clearInterval(timerPump);
-                    timerPump = null;
-                }
-            }, timerPumpPeriodMs);
+                    if (!pushFrame(sourceVideo.currentTime) && timerPump !== null) {
+                        window.clearInterval(timerPump);
+                        timerPump = null;
+                    }
+                }, timerPumpPeriodMs);
+            }
 
             // Capture watchdog: fires every 2s and reports source state only
             // while nothing is arriving from either pump. Replaces any prior

@@ -5,12 +5,8 @@ public partial class LiveVideoBackend
     public sealed class ChatState(LiveVideoBackend owner, ChatId chatId)
     {
         // The codec every client is required to decode, and so the only one the
-        // intersection may never drop. It is VP9 rather than H.264 on
-        // measurement: VP9 encodes and decodes at real-time latency on every
-        // engine the app ships to, while Firefox's H.264 encoder runs ~18
-        // frames behind. A client that cannot decode it needs a decoder, not a
-        // renegotiation that would cost every other member their camera.
-        // Mirrors FLOOR_CATEGORY in codec-support.ts.
+        // intersection may never drop. Mirrors FLOOR_CATEGORY in
+        // codec-support.ts; why it is VP9 is in docs/plans/codec-negotiation.md.
         public const string FloorCodec = "vp9";
 
         private readonly Lock _codecLock = new();

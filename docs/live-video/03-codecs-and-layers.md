@@ -17,33 +17,47 @@ category to keep startup cheap. Categories:
   consistent HW support.
 - **H.264** (`avc1.*`) — universal fallback.
 
-For each enabled category, detection walks a best-first ladder of profiles
-(`getEncoderCodecLadder`) and reports the **first entry that passes**, so we
-never advertise a profile that wasn't probed. H.264's ladder is the platform's
-preferred profile, then Main at the matching level, then Constrained Baseline;
-other categories have a single entry. Each entry is probed by
-`isCodecSupported()`, which first tries `prefer-hardware`, then
-`no-preference` (Firefox is bad about the former).
+For each enabled category, detection probes the one profile
+`getEncoderCodecLadder` returns and reports whether it passes, so we never
+advertise a profile that wasn't probed. H.264 is **Constrained Baseline only**
+(`avc1.42E01F` / `42E028` / `42E034` by resolution): Main and High carry CABAC
+and B-frames, which this project does not emit, and CBP is the only profile
+Chromium's software encoder implements, so the hardware→software fallback keeps
+the same profile. A device that rejects it falls back to another *category*.
+Each entry is probed by `isCodecSupported()`, which first tries
+`prefer-hardware`, then `no-preference` (Firefox is bad about the former).
 
-Result: `CodecInfo { name, codec, category, supported, hardwareAccelerated }`.
+Detection also measures **encoder latency** (`probeEncoderLatencyFrames`):
+frames submitted at the frame interval, counting how many stay in flight once
+the encoder is warm. Startup is excluded deliberately — Chromium's hardware
+encoders are silent for ~215 ms and then track submissions exactly, while
+Firefox's H.264 stays ~18 frames behind for the whole stream and is the case
+this disqualifies. A codec that fails carries `realtime: false` and never
+reaches candidate selection.
+
+Result: `CodecInfo { name, codec, category, supported, hardwareAccelerated,
+realtime }`.
 
 Temporal SVC is gone — `scalabilityMode` is not probed, not on `LayerConfig`,
 and appears nowhere in `src/`. It was removed in `3ae12d7f8`; only vestigial
 `TemporalLayerId` / `TemporalLayerCount` remain on the receive-side wire DTO.
 
 A profile that fails `configure()` at runtime is excluded by **codec string**
-(`excludeEncoderCodecString`), not by category: H.264 has no category below it,
-so category-level exclusion is refused for it and a failed `avc1.640028` would
-otherwise be re-picked forever.
+(`excludeEncoderCodecString`), not by category, so a level one resolution
+rejects doesn't cost the codec everywhere. Only `FLOOR_CATEGORY` (VP9) is
+protected from exclusion — H.264 lost that protection when it stopped being the
+floor.
 
-`getDefaultCodec(supported, w, h)` picks in priority order:
-**AV1 HW > HEVC HW > VP9 HW > H.264 HW (profile-tuned) > H.264 SW**.
-Firefox and mobile prefer H.264 Main over High — that policy lives solely in
-`getCodecForCategory`; on mobile it's power efficiency, on Firefox it's the
-profile that works most reliably.
+`getDefaultCodec(supported, w, h)` is only a last resort now: the sender picks
+from `listCodecCandidatesByEfficiency`, which filters to what the *audience*
+can decode, drops anything with `realtime: false`, and honours the
+"prefer encode codec" debug override. `getDefaultCodec` answers without
+reference to the audience, so it runs only when no candidate qualifies at all,
+and even then the floor is preferred over its answer.
 
 `getCodecForCategory(category, w, h)` always returns the highest level in the
-category (e.g. H.264 High 5.2) and keeps it constant within a session, so a
+category (e.g. H.264 CBP 5.2 above 1080p) and keeps it constant within a
+session, so a
 single `VideoEncoder` can absorb dim/bitrate reconfigures mid-run without a
 cold NVENC re-init. Encoders are NOT pooled across `start/stop` cycles —
 every recorder run constructs a fresh `VideoEncoder` so its first chunk is

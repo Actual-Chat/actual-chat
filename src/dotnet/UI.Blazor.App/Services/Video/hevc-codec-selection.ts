@@ -132,6 +132,11 @@ export async function selectDecoderCodec(
     dimensions?: DecoderDimensions,
     excluded?: ReadonlySet<string>,
 ): Promise<DecoderCodecSelection | null> {
+    // The no-preference pass is deliberate, and not Firefox-only: Chromium
+    // decodes VP9 in software on plenty of GPUs, and VP9 is the negotiation
+    // floor — refusing software decode there leaves a viewer with a black tile
+    // and nothing to fall back to. The cost is CPU on weak devices, which the
+    // quality controller already sheds layers for.
     for (const hardwareAcceleration of ['prefer-hardware', 'no-preference'] as const) {
         for (const candidate of candidates) {
             if (excluded?.has(candidate))
@@ -307,9 +312,13 @@ export function mapCodecToWebCodecs(codec: string, description?: ArrayBuffer): s
     if (description && description.byteLength >= 4 && (lower === 'h264' || lower === 'avc1'))
         return avcCodecStringFromDescription(description);
 
+    // Decode guesses go HIGH, not portable — the opposite of the encoder, which
+    // emits Constrained Baseline only. A High decoder plays a CBP bitstream;
+    // a CBP decoder handed a High one fails or drops silently, and a bare
+    // 'h264' is exactly the case where we don't know which we're getting.
     const codecMap: Record<string, string> = {
-        'h264': 'avc1.42E01F',
-        'avc1': 'avc1.42E01F',
+        'h264': 'avc1.640028',
+        'avc1': 'avc1.640028',
         'h265': 'hvc1.1.6.L93.90',
         'hevc': 'hvc1.1.6.L93.90',
         'vp8': 'vp8',
@@ -323,7 +332,6 @@ export function mapCodecToWebCodecs(codec: string, description?: ArrayBuffer): s
     if (codec.includes('.'))
         return codec;
 
-    // Constrained Baseline: the most portable profile, and the right guess for
-    // a stream that never said what it is.
-    return 'avc1.42E01F';
+    // Same reasoning as codecMap above: guess the most capable profile.
+    return 'avc1.640028';
 }

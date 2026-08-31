@@ -8,6 +8,7 @@ import {
     getExcludedDecoderCodecs,
     getExcludedEncoderCodecs,
     isEncoderCodecStringExcluded,
+    MAX_REALTIME_LATENCY_FRAMES,
     probeEncoderLatencyFrames,
     setForceDecodeCodec,
 } from '../../../src/dotnet/UI.Blazor.App/Services/Video/codec-support';
@@ -131,7 +132,13 @@ describe('encoder realtime measurement', () => {
                 return;
 
             const target = Math.max(0, this.submitted - FakeEncoder.steadyDepth);
-            while (this.emitted < target) {
+            // `drainPerTick` caps how much of the startup backlog comes out at
+            // once. Unlimited (the default) matches Chromium, which hands over
+            // the whole backlog in one callback burst; a real encoder may take
+            // several ticks to catch up, and those ticks must not be read as
+            // the encoder's steady-state depth.
+            let budget = FakeEncoder.drainPerTick;
+            while (this.emitted < target && budget-- > 0) {
                 this.emitted++;
                 this.output({ byteLength: 10, close: () => { /* ignore */ } } as unknown as EncodedVideoChunk);
             }
@@ -139,12 +146,14 @@ describe('encoder realtime measurement', () => {
         close(): void { this.state = 'closed'; }
         static startupFrames = 1;
         static steadyDepth = 0;
+        static drainPerTick = Number.MAX_SAFE_INTEGER;
     }
 
     beforeEach(() => {
         encoders = [];
         FakeEncoder.startupFrames = 1;
         FakeEncoder.steadyDepth = 0;
+        FakeEncoder.drainPerTick = Number.MAX_SAFE_INTEGER;
         vi.stubGlobal('VideoEncoder', Object.assign(FakeEncoder, {
             isConfigSupported: vi.fn<EncoderProbe>(),
         }));
@@ -175,6 +184,23 @@ describe('encoder realtime measurement', () => {
         FakeEncoder.steadyDepth = 0;
 
         expect(await probeEncoderLatencyFrames('av01.0.08M.08', 'av1', 'prefer-hardware')).toBe(0);
+    });
+
+    it('does not charge a codec for the tick its startup backlog drains on', async () => {
+        // The backlog comes out over several ticks rather than all at once, so
+        // depth reads high once and then settles. Reporting that transient max
+        // disqualified an encoder that keeps up perfectly afterwards.
+        FakeEncoder.startupFrames = 7;
+        FakeEncoder.steadyDepth = 0;
+        FakeEncoder.drainPerTick = 2;
+
+        // A codec string no other test probes: latencyProbeCache is module
+        // state with no invalidation, so a shared key returns a stale verdict.
+        // The depth reported inside the qualifying range is informational —
+        // what matters is that the codec still qualifies.
+        const frames = await probeEncoderLatencyFrames('av01.0.09M.08', 'av1', 'prefer-hardware');
+
+        expect(frames).toBeLessThanOrEqual(MAX_REALTIME_LATENCY_FRAMES);
     });
 
     it('reports a deep pipeline like the one that makes Firefox H.264 unusable', async () => {

@@ -263,9 +263,11 @@ it; configured below, `configure()` succeeds and `decode()` drops chunks
 silently, so no lower-profile candidate is offered.
 
 If the worker reports a hard decode error, the main thread maps
-`getCodecCategory(codecString)`, calls `excludeDecoderCodec(codecString)`
-(localStorage-backed), and the next `RegisterMember` reports the smaller
-list.
+`getCodecCategory(codecString)`, calls `excludeDecoderCodec(codecString)` (an
+in-memory set, so it lasts the page's lifetime and no longer), and the next
+`RegisterMember` reports the smaller list. `FLOOR_CATEGORY` (VP9) is never
+excluded — a client that cannot decode the floor has nothing left to fall back
+to.
 
 ## Quality feedback collected here
 

@@ -46,8 +46,11 @@ describe('getCodecCandidates: H.264', () => {
         expect(getCodecCandidates('vp09.00.31.08')).toEqual(['vp09.00.31.08']);
     });
 
-    it('maps an unnamed H.264 stream to Constrained Baseline', () => {
-        expect(getCodecCandidates('h264')[0]).toBe('avc1.42E01F');
+    it('guesses High for an unnamed H.264 stream, so a High bitstream still plays', () => {
+        // Deliberately the opposite of the encoder, which emits Constrained
+        // Baseline only: a High decoder plays CBP, a CBP decoder handed High
+        // fails or drops silently.
+        expect(getCodecCandidates('h264')[0]).toBe('avc1.640028');
     });
 });
 
