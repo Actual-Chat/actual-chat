@@ -60,6 +60,7 @@
 
     private ChatListUI ChatListUI => Hub.ChatListUI;
     private NotificationsPanelUI NotificationsPanelUI => Hub.NotificationsPanelUI;
+    private NotificationsUI NotificationsUI => Hub.NotificationsUI;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -85,7 +86,13 @@
             return true;
 
         var count = await ChatListUI.GetUnreadChatCount(null, filter, cancellationToken).ConfigureAwait(false);
-        return count > 0;
+        if (count > 0)
+            return true;
+        if (filter == ChatListFilter.UnreadMentions)
+            return false;
+
+        var reactedChatIds = await NotificationsUI.ListReactedChatIds(cancellationToken).ConfigureAwait(false);
+        return reactedChatIds.Count > 0;
     }
 
     private void OnSelectedTabIdChanged(string? tabId) {

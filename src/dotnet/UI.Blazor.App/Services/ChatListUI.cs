@@ -17,7 +17,8 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     private static readonly TimeSpan HeavyTaskCancellationDelay = TimeSpan.FromSeconds(5);
 
     private readonly MutableState<bool> _isSelectedChatUnlisted;
-    private readonly ConcurrentDictionary<Option<PlaceId>, LazySlim<Option<PlaceId>, ChatListUI, PlaceChatListSettings>> _placeChatLists = new();
+    private readonly ConcurrentDictionary<Option<PlaceId>, LazySlim<Option<PlaceId>, ChatListUI, PlaceChatListSettings>>
+        _placeChatLists = new();
 
     private ComputedState<Trimmed<int>>? _unreadChatCount;
     private ComputedState<ChatInfo?>? _notesChat;
@@ -30,6 +31,7 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     private ChatUI ChatUI => Hub.ChatUI;
     private SearchUI SearchUI => Hub.SearchUI;
     private NotificationsPanelUI NotificationsPanelUI => Hub.NotificationsPanelUI;
+    private NotificationsUI NotificationsUI => Hub.NotificationsUI;
     private LoadingUI LoadingUI => Hub.LoadingUI;
     private new ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
@@ -69,35 +71,41 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
             this);
 
     [ComputeMethod]
-    public virtual async Task<int> GetCount(PlaceId? placeId, ChatListSettings chatListSettings, CancellationToken cancellationToken)
+    public virtual async Task<int> GetCount(
+        PlaceId? placeId, ChatListSettings chatListSettings, CancellationToken cancellationToken)
     {
-        var chatById = await ListUnorderedForDisplay(placeId, chatListSettings, cancellationToken).ConfigureAwait(false);
+        var chatById = await ListUnorderedForDisplay(placeId, chatListSettings, cancellationToken)
+            .ConfigureAwait(false);
         return chatById.Count;
     }
 
     [ComputeMethod]
-    public virtual async Task<int> IndexOf(PlaceId? placeId, ChatId chatId, ChatListSettings chatListSettings, CancellationToken cancellationToken)
+    public virtual async Task<int> IndexOf(
+        PlaceId? placeId, ChatId chatId, ChatListSettings chatListSettings, CancellationToken cancellationToken)
     {
         var items = await List(placeId, chatListSettings, cancellationToken).ConfigureAwait(false);
         return items.FirstIndexOf(x => x.Id == chatId);
     }
 
     [ComputeMethod(InvalidationDelay = 0.6)]
-    public virtual async Task<Trimmed<int>> GetUnreadChatCount(PlaceId? placeId, ChatListFilter filter, CancellationToken cancellationToken = default)
+    public virtual async Task<Trimmed<int>> GetUnreadChatCount(
+        PlaceId? placeId, ChatListFilter filter, CancellationToken cancellationToken = default)
     {
         var chatById = await ListUnordered(placeId, filter, cancellationToken).ConfigureAwait(false);
         return await ComputeGatedUnreadChatCount(chatById, false, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod(InvalidationDelay = 0.6)]
-    public virtual async Task<Trimmed<int>> GetUnmutedUnreadChatCount(PlaceId? placeId, CancellationToken cancellationToken = default)
+    public virtual async Task<Trimmed<int>> GetUnmutedUnreadChatCount(
+        PlaceId? placeId, CancellationToken cancellationToken = default)
     {
         var filter = placeId is null ? ChatListFilter.None : ChatListFilter.Groups;
         return await GetUnmutedUnreadChatCount(placeId, filter, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod(InvalidationDelay = 0.6)]
-    public virtual async Task<Trimmed<int>> GetUnmutedUnreadChatCount(PlaceId? placeId, ChatListFilter filter, CancellationToken cancellationToken = default)
+    public virtual async Task<Trimmed<int>> GetUnmutedUnreadChatCount(
+        PlaceId? placeId, ChatListFilter filter, CancellationToken cancellationToken = default)
     {
         var chatById = await ListUnordered(placeId, filter, cancellationToken).ConfigureAwait(false);
         return await ComputeGatedUnreadChatCount(chatById, true, cancellationToken).ConfigureAwait(false);
@@ -215,13 +223,29 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
             return chatById;
 
         var expiring = await NotificationsPanelUI.GetExpiring(filter.Id, cancellationToken).ConfigureAwait(false);
-        if (expiring.Count == 0)
+        // The Mentions tab means own-mentions and nothing else.
+        var reactedChatIds = filter == ChatListFilter.UnreadMentions
+            ? ApiArray<ChatId>.Empty
+            : await NotificationsUI.ListReactedChatIds(cancellationToken).ConfigureAwait(false);
+        if (expiring.Count == 0 && reactedChatIds.Count == 0)
             return chatById;
 
         // The ChatInfo each one had on its way out, so this needs no lookup over every chat.
         var result = new Dictionary<ChatId, ChatInfo>(chatById);
         foreach (var (chatId, chatInfo) in expiring)
             result.TryAdd(chatId, chatInfo);
+        foreach (var chatId in reactedChatIds) {
+            if (result.ContainsKey(chatId))
+                continue;
+
+            // Only chats the filter rejected land here - the ones it accepts are already in chatById.
+            // A reaction relaxes just the ChatInfoFilter (unread) dimension: a chat the Filter (kind)
+            // dimension rejects - e.g. a group chat on the People tab - must stay out.
+            var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+            if (chatInfo is not null && !filter.Invoke(chatInfo) && (filter.Filter?.Invoke(chatInfo.Chat) ?? true))
+                result.Add(chatId, chatInfo);
+        }
+
         return result;
     }
 
@@ -269,6 +293,7 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
             var isFirstItem = i == 0 && indexTile.Start == 0;
             result.Add(new ChatListItemModel(indexTile.Start + i, chatInfo.Chat, isLastItemInBlock, isFirstItem));
         }
+
         DebugLog?.LogDebug("GetTile: <- {PlaceId}, {Indexes}", placeId, indexTile);
         return new VirtualListTile<ChatListItemModel>(longRange, result);
     }
@@ -332,6 +357,7 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
             var chatById = await ListUnorderedRaw(placeId, cancellationToken2).ConfigureAwait(false);
             result.AddRange(placeId is null ? chatById : chatById.Where(c => c.Key.Kind != ChatKind.Peer));
         }
+
         return result;
     }
 
