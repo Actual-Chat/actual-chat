@@ -16,25 +16,41 @@ public partial class ChatVideoUI
     // participant watching with their camera off is exactly who the negotiation
     // protects, and tying this to the recorder would leave them invisible while
     // the senders upgrade to a codec they cannot play.
+    // Bumped when this client's decode capability changes under it — today only
+    // the debug overrides do that, and they need the server to see the new set
+    // now rather than at the next heartbeat.
+    public void RequestMemberReregistration()
+        => _memberRegistrationEpoch.Value++;
+
+    [ComputeMethod]
+    protected virtual async Task<(ChatId? ChatId, int Epoch)> GetMemberRegistrationInput(
+        CancellationToken cancellationToken)
+    {
+        var chatId = await GetActiveVideoChatId(cancellationToken).ConfigureAwait(false);
+        var epoch = await _memberRegistrationEpoch.Use(cancellationToken).ConfigureAwait(false);
+        return (chatId, epoch);
+    }
+
     private async Task SyncMemberRegistration(CancellationToken cancellationToken)
     {
-        var cActiveChat = await Computed
-            .Capture(() => GetActiveVideoChatId(cancellationToken), cancellationToken)
+        var cInput = await Computed
+            .Capture(() => GetMemberRegistrationInput(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
 
         var cpuClock = Clocks.CpuClock;
         ChatId? registeredChatId = null;
+        var registeredEpoch = -1;
         var registeredAt = default(Moment);
         try {
             while (!cancellationToken.IsCancellationRequested) {
-                cActiveChat = await cActiveChat.Update(cancellationToken).ConfigureAwait(false);
-                var activeChatId = cActiveChat.Value;
+                cInput = await cInput.Update(cancellationToken).ConfigureAwait(false);
+                var (activeChatId, epoch) = cInput.Value;
                 if (registeredChatId is { } previous && previous != activeChatId) {
                     await UnregisterMember(previous).ConfigureAwait(false);
                     registeredChatId = null;
                 }
                 if (activeChatId is not { } chatId) {
-                    await cActiveChat.When(x => x is not null, cancellationToken).ConfigureAwait(false);
+                    await cInput.When(x => x.ChatId is not null, cancellationToken).ConfigureAwait(false);
                     continue;
                 }
 
@@ -43,6 +59,7 @@ public partial class ChatVideoUI
                 // new or the heartbeat is due — otherwise this is an RPC every
                 // few seconds for the life of the call.
                 var isDue = registeredChatId != chatId
+                    || epoch != registeredEpoch
                     || cpuClock.Now - registeredAt >= MemberRegistrationPeriod;
                 if (isDue) {
                     var codecs = await JS
@@ -55,6 +72,7 @@ public partial class ChatVideoUI
                         Log.LogInformation("SyncMemberRegistration({ChatId}): decoder codecs=[{Codecs}]",
                             chatId, string.Join(", ", codecs));
                     registeredChatId = chatId;
+                    registeredEpoch = epoch;
                     registeredAt = cpuClock.Now;
                 }
 
@@ -63,7 +81,7 @@ public partial class ChatVideoUI
                 // along the chain would otherwise never heal.
                 using var waitCts = cancellationToken.CreateLinkedTokenSource();
                 try {
-                    await cActiveChat.WhenInvalidated(waitCts.Token)
+                    await cInput.WhenInvalidated(waitCts.Token)
                         .WaitAsync(MemberRegistrationPeriod, cancellationToken)
                         .ConfigureAwait(false);
                 }

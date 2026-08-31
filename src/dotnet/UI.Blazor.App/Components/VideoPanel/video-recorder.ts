@@ -1508,6 +1508,19 @@ export class VideoRecorder {
         }
     }
 
+    // Re-runs codec selection against the CURRENT audience set after the debug
+    // overrides changed. Detection is re-probed because the overrides cleared
+    // its cache, and the restart is what makes an override take effect on a
+    // stream that is already live instead of only on the next one.
+    public async refreshCodecSelection(): Promise<void> {
+        if (!this.worker) return;
+
+        const size = this.warmupTopSize ?? { width: this.cameraWidth || 1280, height: this.cameraHeight || 720 };
+        this.supportedCodecs = await detectSupportedCodecs(size.width, size.height);
+        this.supportedEncoderCategories = this.extractEncoderCategories(this.supportedCodecs);
+        await this.updateSupportedDecoderCodecs(this.audienceCodecs ?? []);
+    }
+
     public async updateSupportedDecoderCodecs(codecs: string[]): Promise<void> {
         this.audienceCodecs = codecs;
         if (!this.worker) return;
@@ -1912,6 +1925,14 @@ export class VideoRecorder {
 
     public peekCodec(): string | null {
         return this.currentCodecString || null;
+    }
+
+    public peekKind(): number {
+        return this.registeredKind ?? -1;
+    }
+
+    public notifyDecoderCodecsChanged(): Promise<void> {
+        return this.blazorRef.invokeMethodAsync('OnDecoderCodecsChanged');
     }
 
     public dispose() {

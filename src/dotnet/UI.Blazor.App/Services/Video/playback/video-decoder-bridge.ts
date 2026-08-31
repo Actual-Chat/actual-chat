@@ -65,10 +65,15 @@ interface PendingDecode {
     rotation: RotationQuarter;
 }
 
-// HEVC (hev1/hvc1) needs a description; AVC and AV1 inline codec parameters in
-// the bytestream and can configure without one.
+// HEVC (hev1/hvc1) needs a description; everything else we send inlines its
+// codec parameters in the bytestream. Phrased as "only HEVC needs one" rather
+// than as a list of codecs that don't: VP9 was missing from that list, so every
+// VP9 keyframe was rejected here, the decoder never configured, and playback
+// wedged with a full queue — silently, because the pump blocks on backpressure
+// before it can surface the error. A new codec now defaults to working.
 function canConfigureWithoutDescription(codec: string): boolean {
-    return codec.startsWith('avc1') || codec.startsWith('av01');
+    const lowerCodec = codec.toLowerCase();
+    return !lowerCodec.startsWith('hev1') && !lowerCodec.startsWith('hvc1');
 }
 
 // Owns the WebCodecs decoder lifecycle and the push→pull bridge: holds the

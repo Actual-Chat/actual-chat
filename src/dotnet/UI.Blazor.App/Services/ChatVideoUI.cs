@@ -26,6 +26,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // Tracks which chat the user is currently watching video in (in-memory, resets on reload)
     private readonly MutableState<ChatId?> _watchingChatId;
 
+    // See ChatVideoUI.MemberRegistration.cs
+    private readonly MutableState<int> _memberRegistrationEpoch;
+
     // UI-only video panel view options; the panel's mode lives in ChatActivityUI
     private readonly MutableState<bool> _isVideoPanelEqualLayout;
     private readonly MutableState<bool?> _isVideoPanelChatVisible;
@@ -60,6 +63,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _cameraErrorMessage = StateFactory.NewMutable((string?)null);
         _screenCastErrorMessage = StateFactory.NewMutable((string?)null);
         _watchingChatId = StateFactory.NewMutable((ChatId?)null);
+        _memberRegistrationEpoch = StateFactory.NewMutable(0);
         _isVideoPanelEqualLayout = StateFactory.NewMutable(false);
         _isVideoPanelChatVisible = StateFactory.NewMutable((bool?)null);
     }

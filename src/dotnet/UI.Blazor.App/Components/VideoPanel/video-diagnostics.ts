@@ -18,6 +18,9 @@ import {
     setCaptureFpsOverride as setCaptureFpsOverrideImpl,
 } from '../../Services/Video/capture-fps-override';
 import { ServerClock } from 'clocks';
+import { getLogs } from 'logging';
+
+const { warnLog } = getLogs('VideoPipeline');
 
 export { collectPresentRate } from './present-rate-meter';
 
@@ -118,10 +121,86 @@ export function getSupportedDecoderCodecs(): Promise<string[]> {
 
 export function setVideoDebugForceDecodeCodec(codec: string | null): void {
     setForceDecodeCodecImpl(codec ? (codec as CodecCategory) : null);
+    void applyCodecOverrides(true);
 }
 
 export function setVideoDebugPreferredEncodeCodec(codec: string | null): void {
     setPreferredEncodeCodecImpl(codec ? (codec as CodecCategory) : null);
+    void applyCodecOverrides(false);
+}
+
+// Re-runs selection on every live recorder so an override takes effect on the
+// current stream, and — when what we ADVERTISE changed — asks the server to
+// re-read this client's decode set instead of waiting for the next heartbeat.
+async function applyCodecOverrides(decodeSetChanged: boolean): Promise<void> {
+    const recorders = getAllActiveRecorders();
+    for (const recorder of recorders) {
+        try {
+            if (decodeSetChanged)
+                await recorder.notifyDecoderCodecsChanged();
+            await recorder.refreshCodecSelection();
+        }
+        catch (e) {
+            warnLog?.log(`applyCodecOverrides failed: ${String(e)}`);
+        }
+    }
+}
+
+export interface VideoCodecState {
+    forceDecodeCodec: string | null;
+    preferredEncodeCodec: string | null;
+    advertisedDecoderCodecs: string[];
+    senders: { kind: number; codec: string | null; bundlesPerSec: number }[];
+    receivers: { streamId: string; codec: string | null; presentedPerSec: number }[];
+}
+
+export async function collectVideoCodecState(): Promise<VideoCodecState> {
+    return {
+        forceDecodeCodec: getForceDecodeCodecImpl(),
+        preferredEncodeCodec: getPreferredEncodeCodecImpl(),
+        advertisedDecoderCodecs: await detectSupportedDecoderCodecsImpl(),
+        senders: getAllActiveRecorders().map(r => ({
+            kind: r.peekKind(),
+            codec: r.peekCodec(),
+            bundlesPerSec: Math.round(r.peekBundlesPerSec()),
+        })),
+        receivers: [...getActivePlayers().entries()].map(([streamId, p]) => ({
+            streamId,
+            codec: p.peekCodec(),
+            presentedPerSec: Math.round(p.peekPresentedPerSec()),
+        })),
+    };
+}
+
+// Console surface: `debugUI.video.*`. Everything the diagnostics modal can do,
+// callable without clicking through it — which is how these actually get
+// exercised while debugging a live call.
+export function initVideoDebugConsole(): void {
+    const api = {
+        state: collectVideoCodecState,
+        settings: getVideoDebugSettings,
+        setForceDecodeCodec: setVideoDebugForceDecodeCodec,
+        setPreferredEncodeCodec: setVideoDebugPreferredEncodeCodec,
+        restart: () => applyCodecOverrides(true),
+    };
+    const root = globalThis as unknown as { debugUI?: Record<string, unknown> };
+    if (root.debugUI) {
+        root.debugUI.video = api;
+        return;
+    }
+
+    // DebugUI.init() assigns globalThis.debugUI from C#, which happens after
+    // whenBlazorReady resolves. Intercepting the assignment beats racing it
+    // with a timer.
+    let current: Record<string, unknown> | undefined;
+    Object.defineProperty(root, 'debugUI', {
+        configurable: true,
+        get: () => current,
+        set: (value: Record<string, unknown>) => {
+            current = value;
+            value.video = api;
+        },
+    });
 }
 
 export function setVideoDebugDownscalerMode(mode: DownscalerMode): void {
