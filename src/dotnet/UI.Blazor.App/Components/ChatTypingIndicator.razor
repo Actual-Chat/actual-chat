@@ -1,0 +1,47 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, ChatTypingIndicator.Model>
+@{
+    var m = State.Value;
+}
+@if (m.Name is { } name) {
+    <span class="c-typing-indicator">@L.Chat_IsTyping_Format(name)</span>
+} else {
+    @ChildContent
+}
+
+@code {
+    private IAuthors Authors => Hub.Authors;
+    private TypingUI TypingUI => Hub.TypingUI;
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    [Parameter] public bool IsEnabled { get; set; } = true;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options {
+                InitialValue = Model.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = ChatId;
+        if (!IsEnabled || chatId.Value.IsNullOrEmpty())
+            return Model.None;
+
+        var authorId = await TypingUI.GetTypingAuthorId(chatId, cancellationToken).ConfigureAwait(false);
+        if (authorId is not { } id)
+            return Model.None;
+
+        var author = await Authors.Get(Session, chatId, id, cancellationToken).ConfigureAwait(false);
+        var name = author?.Avatar.Name;
+        return name.IsNullOrEmpty() ? Model.None : new Model { Name = name };
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new();
+        public string? Name { get; init; }
+    }
+}

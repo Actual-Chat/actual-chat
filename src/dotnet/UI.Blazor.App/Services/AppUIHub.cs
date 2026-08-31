@@ -33,6 +33,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public ILiveAudioStreams LiveAudioStreams => field ??= Services.GetRequiredService<ILiveAudioStreams>();
     public ILiveVideoStreams LiveVideoStreams => field ??= Services.GetRequiredService<ILiveVideoStreams>();
     public ILiveSessions LiveSessions => field ??= Services.GetRequiredService<ILiveSessions>();
+    public ITypingIndicators TypingIndicators => field ??= Services.GetRequiredService<ITypingIndicators>();
     public IMedia Media => field ??= Services.GetRequiredService<IMedia>();
     public IGifs Gifs => field ??= Services.GetRequiredService<IGifs>();
     public VideoTranscoder VideoTranscoder => field ??= Services.GetRequiredService<VideoTranscoder>();
@@ -60,6 +61,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public VideoQualityUI VideoQualityUI => field ??= Services.GetRequiredService<VideoQualityUI>();
     public AudioDiagnosticsUI AudioDiagnosticsUI => field ??= Services.GetRequiredService<AudioDiagnosticsUI>();
     public LiveStreamUI LiveStreamUI => field ??= Services.GetRequiredService<LiveStreamUI>();
+    public TypingUI TypingUI => field ??= Services.GetRequiredService<TypingUI>();
     public IncomingVoiceActivityUI IncomingVoiceActivityUI => field ??= Services.GetRequiredService<IncomingVoiceActivityUI>();
     public PttReplyUI PttReplyUI => field ??= Services.GetRequiredService<PttReplyUI>();
     public GestureUI GestureUI => field ??= Services.GetRequiredService<GestureUI>();

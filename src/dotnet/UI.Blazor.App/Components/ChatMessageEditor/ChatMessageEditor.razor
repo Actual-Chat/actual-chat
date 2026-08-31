@@ -203,6 +203,10 @@
     public Task OnFilePicked(WebFileInfo[] fileInfos)
         => FileAttachments.TryAddWebFileAttachments(_attachmentListHolder.Attachments, fileInfos);
 
+    [JSInvokable]
+    public Task OnTypingChanged(bool isActive)
+        => Hub.TypingUI.SetTyping(Chat.Id, ActualChat.Live.TypingKind.Typing, isActive, CancellationToken.None);
+
     // Private methods
 
     private async Task Post(string? text = null) {

@@ -184,6 +184,7 @@
   "ChatList_ActiveChats": "Aktive Chats",
   "ChatList_ActiveChatsTooltip": "Chats, in denen Sie gerade im Anruf sind, aufnehmen oder den Push-to-Talk-Modus nutzen",
   "ChatList_Talking": "spricht",
+  "Chat_IsTyping_Format": "{0} schreibt...",
   "ChatList_Live_Format": "{0} · live",
   "ChatList_Thread_Format": "Thread '{0}'",
   "ChatList_SharedLiveLocation": "Live-Standort geteilt",
@@ -1295,6 +1296,7 @@
   "Presence_Offline": "Offline",
   "Presence_Speaking": "Spricht...",
   "Presence_SpeakingShort": "Spricht",
+  "Presence_Typing": "Schreibt...",
   "Presence_LastSeen_Prefix": "Zuletzt gesehen ",
   "Presence_LastSeen_Suffix": "",
 

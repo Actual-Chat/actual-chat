@@ -184,6 +184,7 @@
   "ChatList_ActiveChats": "Aktivní chaty",
   "ChatList_ActiveChatsTooltip": "Chaty, kde jste v hovoru, nahráváte nebo používáte režim Stiskni a mluv",
   "ChatList_Talking": "mluví",
+  "Chat_IsTyping_Format": "{0} píše...",
   "ChatList_Live_Format": "{0} · živě",
   "ChatList_Thread_Format": "Vlákno „{0}“",
   "ChatList_SharedLiveLocation": "Sdílená poloha živě",
@@ -1295,6 +1296,7 @@
   "Presence_Offline": "Offline",
   "Presence_Speaking": "Mluví...",
   "Presence_SpeakingShort": "Mluví",
+  "Presence_Typing": "Píše...",
   "Presence_LastSeen_Prefix": "Naposledy viděn ",
   "Presence_LastSeen_Suffix": "",
 

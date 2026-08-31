@@ -184,6 +184,7 @@
   "ChatList_ActiveChats": "활성 채팅",
   "ChatList_ActiveChatsTooltip": "통화 중이거나, 녹음 중이거나, 푸시 투 토크 모드인 채팅",
   "ChatList_Talking": "대화 중",
+  "Chat_IsTyping_Format": "{0}님이 입력 중...",
   "ChatList_Live_Format": "{0} · 라이브",
   "ChatList_Thread_Format": "스레드 '{0}'",
   "ChatList_SharedLiveLocation": "실시간 위치 공유됨",
@@ -1295,6 +1296,7 @@
   "Presence_Offline": "오프라인",
   "Presence_Speaking": "말하는 중...",
   "Presence_SpeakingShort": "말하는 중",
+  "Presence_Typing": "입력 중...",
   "Presence_LastSeen_Prefix": "마지막 접속: ",
   "Presence_LastSeen_Suffix": "",
 

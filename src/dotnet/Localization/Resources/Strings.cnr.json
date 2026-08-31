@@ -184,6 +184,7 @@
   "ChatList_ActiveChats": "Aktivni chatovi",
   "ChatList_ActiveChatsTooltip": "Chatovi u kojima ste u pozivu, snimate ili koristite način Pritisni i govori",
   "ChatList_Talking": "govori",
+  "Chat_IsTyping_Format": "{0} piše...",
   "ChatList_Live_Format": "{0} · uživo",
   "ChatList_Thread_Format": "Nit „{0}“",
   "ChatList_SharedLiveLocation": "Podijelio lokaciju uživo",
@@ -1295,6 +1296,7 @@
   "Presence_Offline": "Van veze",
   "Presence_Speaking": "Govori...",
   "Presence_SpeakingShort": "Govori",
+  "Presence_Typing": "Piše...",
   "Presence_LastSeen_Prefix": "Zadnji put viđen ",
   "Presence_LastSeen_Suffix": "",
 

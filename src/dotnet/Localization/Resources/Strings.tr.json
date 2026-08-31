@@ -184,6 +184,7 @@
   "ChatList_ActiveChats": "Aktif Sohbetler",
   "ChatList_ActiveChatsTooltip": "Aramada olduğunuz, kayıt yaptığınız veya Bas-Konuş modunda olduğunuz sohbetler",
   "ChatList_Talking": "konuşuyor",
+  "Chat_IsTyping_Format": "{0} yazıyor...",
   "ChatList_Live_Format": "{0} · canlı",
   "ChatList_Thread_Format": "Konu '{0}'",
   "ChatList_SharedLiveLocation": "Canlı konum paylaşıldı",
@@ -1295,6 +1296,7 @@
   "Presence_Offline": "Çevrimdışı",
   "Presence_Speaking": "Konuşuyor...",
   "Presence_SpeakingShort": "Konuşuyor",
+  "Presence_Typing": "Yazıyor...",
   "Presence_LastSeen_Prefix": "Son görülme ",
   "Presence_LastSeen_Suffix": "",
 

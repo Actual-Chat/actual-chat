@@ -6,7 +6,7 @@
         ? @<AuthorPresenceIndicator AuthorId="@AuthorId" ShowRecording="true"/>
         : (RenderFragment?)null;
     var statusContent = ShowPresenceText
-        ? @<AuthorPresenceText AuthorId="@AuthorId" ShowRecording="true" IsShortText="@IsShortPresenceText"/>
+        ? @<AuthorPresenceText AuthorId="@AuthorId" ShowRecording="true" ShowTyping="@ShowTyping" IsShortText="@IsShortPresenceText"/>
         : (RenderFragment?)null;
 }
 
@@ -29,6 +29,7 @@
     [Parameter] public EventCallback<AuthorId> Click { get; set; }
     [Parameter] public bool ShowPresence { get; set; }
     [Parameter] public bool ShowPresenceText { get; set; }
+    [Parameter] public bool ShowTyping { get; set; }
     [Parameter] public bool IsShortPresenceText { get; set; }
     [Parameter] public string? StatusText { get; set; }
     [Parameter] public bool ShowBio { get; set; }

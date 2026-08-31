@@ -184,6 +184,7 @@
   "ChatList_ActiveChats": "Cuộc trò chuyện đang hoạt động",
   "ChatList_ActiveChatsTooltip": "Các cuộc trò chuyện bạn đang trong cuộc gọi, ghi âm hoặc ở chế độ Nhấn để nói",
   "ChatList_Talking": "đang nói",
+  "Chat_IsTyping_Format": "{0} đang nhập...",
   "ChatList_Live_Format": "{0} · trực tiếp",
   "ChatList_Thread_Format": "Chủ đề '{0}'",
   "ChatList_SharedLiveLocation": "Đã chia sẻ vị trí trực tiếp",
@@ -1295,6 +1296,7 @@
   "Presence_Offline": "Ngoại tuyến",
   "Presence_Speaking": "Đang nói...",
   "Presence_SpeakingShort": "Đang nói",
+  "Presence_Typing": "Đang nhập...",
   "Presence_LastSeen_Prefix": "Lần cuối truy cập ",
   "Presence_LastSeen_Suffix": "",
 

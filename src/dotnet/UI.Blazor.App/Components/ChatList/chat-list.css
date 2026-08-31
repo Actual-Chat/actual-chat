@@ -273,6 +273,12 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
     @apply min-w-0;
     @apply truncate;
 }
+.chat-list .navbar-item-content .c-last-message .c-typing-indicator {
+    @apply min-w-8;
+    @apply truncate;
+    @apply text-primary;
+    @apply pointer-events-none;
+}
 
 .chat-list .navbar-item .btn {
     @apply w-8 h-full;

@@ -155,6 +155,13 @@ body.narrow .layout-header.collapsed:has(.chat-activity-panel:not(.listening)) .
 .chat-header-center > .chat-header-title > .c-info {
     @apply flex-none flex-x items-center gap-x-1;
     @apply max-w-full;
+    /* Pin to the caption-6 line-height so the row doesn't jump between peer (status badge) and group
+       (member count), or when the typing indicator replaces either. */
+    @apply h-4;
+}
+.chat-header-center > .chat-header-title > .c-info .c-typing-indicator {
+    @apply truncate;
+    @apply text-caption-6 text-primary;
 }
 
 .chat-header-center > .chat-header-title > .c-activities-container {

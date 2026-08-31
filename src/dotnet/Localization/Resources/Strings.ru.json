@@ -184,6 +184,7 @@
   "ChatList_ActiveChats": "Активные чаты",
   "ChatList_ActiveChatsTooltip": "Чаты, где вы сейчас в звонке, записываете или используете режим Push-to-Talk",
   "ChatList_Talking": "говорит",
+  "Chat_IsTyping_Format": "{0} печатает...",
   "ChatList_Live_Format": "{0} · в эфире",
   "ChatList_Thread_Format": "Тред «{0}»",
   "ChatList_SharedLiveLocation": "Геопозиция в реальном времени",
@@ -1295,6 +1296,7 @@
   "Presence_Offline": "Не в сети",
   "Presence_Speaking": "Говорит...",
   "Presence_SpeakingShort": "Говорит",
+  "Presence_Typing": "Печатает...",
   "Presence_LastSeen_Prefix": "Последняя активность: ",
   "Presence_LastSeen_Suffix": "",
 
