@@ -11,7 +11,8 @@
     var showQuit = HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Windows;
     // Push-to-talk is a device feature; on the web it's an admin-only preview, local hosts only.
     var isPttPreview = account.IsAdmin && HostInfo.BaseUrlKind == BaseUrlKind.Local;
-    var showPtt = m.EnableIncompleteUI && Ptt.IsSupported(HostInfo) && (HostInfo.HostKind.IsMauiApp() || isPttPreview);
+    var showPtt = Ptt.IsUIVisible(HostInfo, m.EnableIncompleteUI)
+        && (HostInfo.HostKind.IsMauiApp() || isPttPreview);
     // The tab only exists where a car connection is detectable at all, i.e. Android alone.
     var showCarAudio = Hub.Services.GetService<ICarConnection>() != null;
     var quitTitle = L.Settings_Quit_Format(CoreConstants.AppName);
@@ -110,6 +111,9 @@
 </ModalFrame>
 
 @code {
+    private static readonly string JSGetVisibleLogsText =
+        $"{BlazorUIAppModule.ImportName}.LogView.getVisibleEntriesText";
+
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -150,12 +154,10 @@
             ToastUI.Show(L.Settings_NothingToCopy, "icon-alert-circle", ToastDismissDelay.Short);
             return;
         }
+
         await Hub.ClipboardUI.WriteText(text).ConfigureAwait(true);
         ToastUI.Show(L.Settings_LogEntriesCopied, "icon-checkmark-circle", ToastDismissDelay.Short);
     }
-
-    private static readonly string JSGetVisibleLogsText =
-        $"{BlazorUIAppModule.ImportName}.LogView.getVisibleEntriesText";
 
     // Nested types
 

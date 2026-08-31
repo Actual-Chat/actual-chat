@@ -73,8 +73,8 @@
         var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
         var isPtt = pttChatIds.Contains(chatId);
         var mustStreamVoice = settings.VoiceMode.HasVoice();
-        var showPtt = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false)
-            && Ptt.IsSupported(Hub.HostInfo);
+        var isIncompleteUIEnabled = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        var showPtt = Ptt.IsUIVisible(Hub.HostInfo, isIncompleteUIEnabled);
         return new (
             mustStreamVoice,
             settings.CanChange,
@@ -84,15 +84,15 @@
             showPtt);
     }
 
+    private Task OnVoiceStreamingClick()
+        => OnMustStreamVoiceChanged(!State.Value.MustStreamVoice);
+
     private async Task OnMustStreamVoiceChanged(bool mustStreamVoice) {
         var voiceMode = mustStreamVoice
             ? VoiceMode.TextAndVoice
             : VoiceMode.JustText;
         await UserSettingsUI.SetChatVoiceMode(ChatId, voiceMode);
     }
-
-    private Task OnVoiceStreamingClick()
-        => OnMustStreamVoiceChanged(!State.Value.MustStreamVoice);
 
     private async Task OnPttClick() {
         var m = State.Value;

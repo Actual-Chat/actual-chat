@@ -14,12 +14,17 @@ public static class Ptt
         return box?.Value ?? false;
     }
 
+    public static bool IsUIVisible(HostInfo hostInfo, bool isIncompleteUIEnabled)
+        // Dev-instance apps skip the incomplete-UI gate so every tester there sees the PTT UI.
+        => IsSupported(hostInfo)
+            && (isIncompleteUIEnabled || hostInfo.BaseUrlKind == BaseUrlKind.Development);
+
     public static bool IsSupported(HostInfo hostInfo)
-        // Apple's Push to Talk framework needs com.apple.developer.push-to-talk, which
-        // Entitlements.prod.plist deliberately doesn't grant until the feature is tested - arming
-        // there would fail inside PTChannelManager, and offering an inert control is what App
-        // Store review guideline 2.3.1 is about. See App.Maui.csproj's VerifyIosProdCapabilities.
-        => hostInfo.AppKind != AppKind.Ios || !hostInfo.IsProductionInstance;
+        // The prod iOS app lacks com.apple.developer.push-to-talk (see Entitlements.prod.plist and
+        // App.Maui.csproj's VerifyIosProdCapabilities), and an inert control violates App Store 2.3.1.
+        // BaseUrlKind mirrors the IsDevMaui flavor that picks the entitlements; IsProductionInstance
+        // is true for any Release build, the dev app included, so it's the wrong key here.
+        => hostInfo.AppKind != AppKind.Ios || hostInfo.BaseUrlKind != BaseUrlKind.Production;
 
     public static bool IsStaleWake(Moment startedAt, Moment now)
         => now - startedAt > Constants.Audio.PttStaleWakeAge;

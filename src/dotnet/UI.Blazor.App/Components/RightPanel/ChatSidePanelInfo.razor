@@ -72,7 +72,7 @@
             IsOwner = isOwner,
             ShowSummarizationToggle = isOwner || isSummarized,
             IsSummarized = isSummarized,
-            ShowPttToggle = isIncompleteUIEnabled && Ptt.IsSupported(Hub.HostInfo)
+            ShowPttToggle = Ptt.IsUIVisible(Hub.HostInfo, isIncompleteUIEnabled)
                 && !chat.Id.IsThread() && (isOwner || isPttEnabled),
             IsPttEnabled = isPttEnabled,
         };
