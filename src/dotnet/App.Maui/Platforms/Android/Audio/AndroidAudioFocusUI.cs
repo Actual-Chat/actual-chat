@@ -94,6 +94,7 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
         var success = await Task.Run(() => mode switch {
                 AudioFocusMode.Recording => _focusHelper.RequestFocusForCall(useCommunicationRoute),
                 AudioFocusMode.Playback => _focusHelper.RequestFocusForPlayback(),
+                AudioFocusMode.Listening => _focusHelper.RequestFocusForListening(),
                 AudioFocusMode.Tune => _focusHelper.RequestFocusForNotification(),
                 _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unsupported audio focus mode"),
             }, CancellationToken.None)

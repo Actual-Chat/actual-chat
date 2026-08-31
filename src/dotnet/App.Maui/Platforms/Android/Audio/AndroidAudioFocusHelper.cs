@@ -61,6 +61,11 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         // Playback needs no microphone, and the communication route drops a BT peer to SCO - a virtual call.
         => RequestFocus(AudioFocus.Gain, AudioUsageKind.Media, AudioContentType.Speech);
 
+    public Task<bool> RequestFocusForListening()
+        // Transient, not Gain: this focus lives only while someone's speech is actually playing,
+        // so whatever it pauses - music, navigation - auto-resumes once the utterance ends.
+        => RequestFocus(AudioFocus.GainTransient, AudioUsageKind.Media, AudioContentType.Speech);
+
     public Task<bool> RequestFocusForNotification()
         => RequestFocus(
             AudioFocus.GainTransientMayDuck,

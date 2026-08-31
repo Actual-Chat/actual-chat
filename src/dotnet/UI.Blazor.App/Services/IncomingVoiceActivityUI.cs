@@ -81,19 +81,9 @@ public class IncomingVoiceActivityUI(AppUIHub hub)
         return snapshot;
     }
 
-    protected override Task OnRun(CancellationToken cancellationToken)
-    {
-        var retryDelays = RetryDelaySeq.Exp(0.1, 1);
-        return AsyncChain.From(TrackArmedChats)
-            .Log(LogLevel.Debug, Log)
-            .RetryForever(retryDelays, Log)
-            .RunIsolated(cancellationToken);
-    }
-
-    // Protected/internal methods
-
+    // Public so the listening-focus burst manager can share the own-author-filtered signal
     [ComputeMethod]
-    protected virtual async Task<bool> HasIncomingVoice(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<bool> HasIncomingVoice(ChatId chatId, CancellationToken cancellationToken)
     {
         var authorIds = await LiveStreamUI.GetAudioStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         if (authorIds.Count == 0)
@@ -102,6 +92,15 @@ public class IncomingVoiceActivityUI(AppUIHub hub)
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var ownAuthorId = ownAuthor?.Id ?? default;
         return authorIds.Any(id => id != ownAuthorId);
+    }
+
+    protected override Task OnRun(CancellationToken cancellationToken)
+    {
+        var retryDelays = RetryDelaySeq.Exp(0.1, 1);
+        return AsyncChain.From(TrackArmedChats)
+            .Log(LogLevel.Debug, Log)
+            .RetryForever(retryDelays, Log)
+            .RunIsolated(cancellationToken);
     }
 
     // Private methods

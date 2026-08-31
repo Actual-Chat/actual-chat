@@ -1,9 +1,12 @@
 namespace ActualChat.UI.Blazor.Services;
 
 /// <summary>
-/// Defines the type of audio activity for focus management.
+/// Defines the type of audio activity for focus management. Ordered by precedence:
+/// when several requesters are active, the highest mode wins. Listening is a transient
+/// per-utterance grab for incoming realtime speech, so other apps' audio resumes in the
+/// gaps; Playback is a user-initiated replay that holds focus for its whole duration.
 /// </summary>
-public enum AudioFocusMode { Tune, Playback, Recording }
+public enum AudioFocusMode { Tune, Listening, Playback, Recording }
 
 public delegate void AudioFocusRestoreHandler();
 
@@ -40,6 +43,10 @@ public abstract class AudioFocusScope : IDisposable
 public class AudioFocusUI : ProcessorBase
 {
     public virtual AudioFocusMode ActiveMode => AudioFocusMode.Tune;
+    public virtual bool IsSuspended
+        // True while the held focus is lost to another app and awaiting its recover callback.
+        // Requesting focus in that state is harmful: a denied renew wipes the pending restores.
+        => false;
     public virtual bool IsCommunicationFocus
         // Whether the focus we hold actually took the communication route. ActiveMode no longer
         // implies it: a recording under car projection asks for Media usage and stays in Normal.
@@ -79,7 +86,7 @@ public class AudioFocusUI : ProcessorBase
 
     // Nested types
 
-    private class FakeScope : AudioFocusScope
+    private sealed class FakeScope : AudioFocusScope
     {
         public static readonly FakeScope Instance = new();
 

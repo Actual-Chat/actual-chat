@@ -7,6 +7,9 @@ public partial class ChatAudioUI
 {
     private static readonly TimeSpan Epsilon = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan MinListeningPlayerPlayDurationToConsiderHealthy = TimeSpan.FromSeconds(10);
+    // Long enough to bridge the gap between consecutive utterances of one conversation, so music
+    // isn't bounced on every pause in speech; short enough that it comes back in a real lull.
+    private static readonly TimeSpan ListeningFocusLinger = TimeSpan.FromSeconds(4);
     private static readonly int MaxStopRecordingTryCount = 3;
     private static readonly TimeSpan DiagnosticsTimeout = TimeSpan.FromSeconds(5);
 
@@ -21,6 +24,7 @@ public partial class ChatAudioUI
             AsyncChain.From(InvalidateReplayDependencies),
             AsyncChain.From(PushRecordingState),
             AsyncChain.From(StartStopListeningPlayers),
+            AsyncChain.From(ManageListeningFocusBursts),
             AsyncChain.From(StartStopReplayingPlayers),
             AsyncChain.From(StopReplayWhenRecordingStarts),
             AsyncChain.From(StopListeningWhenIdle),
@@ -365,14 +369,9 @@ public partial class ChatAudioUI
                 }
 
                 if (!addedChatIds.IsEmpty) {
-                    var audioFocusScope = await TryAcquireAudioFocus("Listening players").ConfigureAwait(false);
-                    if (audioFocusScope is null) {
-                        Log.LogWarning("ManageListeningPlayers: failed to gain audio focus");
-                        // Can't acquire focus; stop the newly requested chats
-                        foreach (var chatId in addedChatIds)
-                            await SetListeningState(chatId, false).ConfigureAwait(false);
-                        continue;
-                    }
+                    // No focus here: listening no longer owns one while idle. ManageListeningFocusBursts
+                    // takes a transient focus per incoming stream, so other apps' audio keeps playing
+                    // in the silence between utterances.
                     if (lastChatIds.IsEmpty)
                         _ = TuneUI.Play(Tune.StartListening);
                     foreach (var chatId in addedChatIds)
@@ -381,12 +380,8 @@ public partial class ChatAudioUI
                             cancellationToken);
                 }
 
-                if (newChatIds.IsEmpty && !lastChatIds.IsEmpty) {
+                if (newChatIds.IsEmpty && !lastChatIds.IsEmpty)
                     _ = TuneUI.Play(Tune.StopListening);
-                    // Release audio focus only if replay is also not active
-                    if (_replayState.Value is null)
-                        TryReleaseAudioFocus();
-                }
 
                 lastChatIds = newChatIds;
             }
@@ -452,6 +447,40 @@ public partial class ChatAudioUI
         }
     }
 
+    private async Task ManageListeningFocusBursts(CancellationToken cancellationToken)
+    {
+        // Playback itself doesn't wait for this focus: the acquire rides on the same server-side
+        // stream flag that starts the track, so it lands around the first frames. A denial is
+        // logged and retried on the next stream - it never disarms listening.
+        await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
+        // A restart after a mid-hold crash would otherwise park in the wait below with the scope
+        // still held, keeping other apps' audio paused until the next burst cycle releases it.
+        ReleaseListeningFocus();
+        var cMustHold = await Computed
+            .Capture(() => ShouldHoldListeningFocus(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        while (true) {
+            cMustHold = await cMustHold.When(x => x, cancellationToken).ConfigureAwait(false);
+            await AcquireListeningFocus().ConfigureAwait(false);
+            while (true) {
+                cMustHold = await cMustHold.When(x => !x, cancellationToken).ConfigureAwait(false);
+                using var lingerCts = cancellationToken.CreateLinkedTokenSource();
+                lingerCts.CancelAfter(ListeningFocusLinger);
+                try {
+                    cMustHold = await cMustHold.When(x => x, lingerCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+                    break; // The linger elapsed with no new stream - time to hand the focus back
+                }
+
+                // A new stream arrived within the linger; the scope may be gone if focus was lost
+                // mid-burst, and re-acquiring is exactly how the burst model recovers from that.
+                await AcquireListeningFocus().ConfigureAwait(false);
+            }
+            ReleaseListeningFocus();
+        }
+    }
+
     private async Task StartStopReplayingPlayers(CancellationToken cancellationToken)
     {
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -476,10 +505,8 @@ public partial class ChatAudioUI
                         foreach (var chatId in toRestore)
                             await SetListeningState(chatId, true).ConfigureAwait(false);
 
-                        // Release audio focus if no listening either
-                        var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
-                        if (listeningChatIds.IsEmpty)
-                            TryReleaseAudioFocus();
+                        // Listening runs on its own transient focus now, so replay's ends with replay
+                        TryReleaseAudioFocus();
                     }
                     lastState = null;
                     continue;
