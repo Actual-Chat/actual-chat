@@ -78,7 +78,8 @@
                             <UnreadCount
                                 Value="@m.UnreadCount"
                                 NotificationMode="@m.NotificationMode"
-                                HasMentions="@m.HasUnreadOwnMention"/>
+                                HasMentions="@m.HasUnreadOwnMention"
+                                ReactionEmoji="@m.ReactionEmoji"/>
                         }
                         @if (m.IsUnreadByOthers && !showEnding) {
                             <ChatMessageSendingStatus
@@ -109,7 +110,8 @@
                     <UnreadCount
                         Value="@m.UnreadCount"
                         NotificationMode="@m.NotificationMode"
-                        HasMentions="@m.HasUnreadOwnMention"/>
+                        HasMentions="@m.HasUnreadOwnMention"
+                        ReactionEmoji="@m.ReactionEmoji"/>
                 }
                 @if (showAudioControls) {
                     <ChatAudioControls Chat="@chat" AudioState="@audioState" Class="ending-btn"/>
@@ -121,7 +123,8 @@
                 <UnreadCount
                     Value="@m.UnreadCount"
                     NotificationMode="@m.NotificationMode"
-                    HasMentions="@m.HasUnreadOwnMention"/>
+                    HasMentions="@m.HasUnreadOwnMention"
+                    ReactionEmoji="@m.ReactionEmoji"/>
                 @if (showAudioControls) {
                     <ChatAudioControls Chat="@chat" AudioState="@audioState" Class="ending-btn"/>
                 } else {
@@ -253,6 +256,7 @@
             IsSelected = chatState.IsSelected,
             UnreadCount = unreadState.Count,
             HasUnreadOwnMention = unreadState.HasOwnMention,
+            ReactionEmoji = unreadState.ReactionEmoji,
             LastTextEntry = lastEntry,
             LastTextEntryText = preview.Text,
             LastTextEntryIcons = lastTextEntryIcons,
@@ -355,6 +359,7 @@
         public ChatNotificationMode NotificationMode { get; init; }
         public Trimmed<int> UnreadCount { get; init; }
         public bool HasUnreadOwnMention { get; init; }
+        public Emoji? ReactionEmoji { get; init; }
         public bool IsSelected { get; init; }
         public bool IsLastItemInBlock { get; init; }
         public bool IsFirstItem { get; init; }

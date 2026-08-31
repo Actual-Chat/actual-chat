@@ -3,22 +3,31 @@
 @implements IDisposable
 @{
     _lastRenderTime = Clock.Now;
-    if (Value == 0 && !HasMentions)
+    if (Value == 0 && !HasMentions && ReactionEmoji is null)
         return;
 
     var text = HasMentions ? "@" : Value == 0 ? "" : Value.FormatK();
+    var emoji = HasMentions || Value != 0 ? null : ReactionEmoji;
     var isMuted = NotificationMode switch {
         ChatNotificationMode.ImportantOnly => !HasMentions,
         ChatNotificationMode.Muted => !HasMentions,
         _ => false,
-        };
+    };
     var bgColor = isMuted ? "bg-counter" : "bg-primary";
     var cursorClass = Click.HasDelegate ? "cursor-pointer" : "";
     var mentionClass = HasMentions ? "unread-mention" : "";
-    var cssClass = $"message-counter-badge {cursorClass} {mentionClass}";
+    var reactionClass = emoji is not null ? "unread-reaction" : "";
+    var cssClass = $"message-counter-badge {cursorClass} {mentionClass} {reactionClass}";
 }
 
-<Badge Class="@cssClass" Color="@bgColor" Click="@Click">@text</Badge>
+<Badge Class="@cssClass" Color="@bgColor" Click="@Click">
+    @if (emoji is not null) {
+        <EmojiIcon Emoji="@emoji" HasPreview="false"/>
+    }
+    else {
+        @text
+    }
+</Badge>
 
 @code {
     private Moment _lastRenderTime;
@@ -26,6 +35,7 @@
 
     [Parameter, EditorRequired] public Trimmed<int> Value { get; set; }
     [Parameter] public bool HasMentions { get; set; }
+    [Parameter] public Emoji? ReactionEmoji { get; set; }
     [Parameter] public ChatNotificationMode NotificationMode { get; set; }
     [Parameter] public TimeSpan UpdateDelay { get; set; } = TimeSpan.FromSeconds(0.5);
     [Parameter] public EventCallback Click { get; set; }
