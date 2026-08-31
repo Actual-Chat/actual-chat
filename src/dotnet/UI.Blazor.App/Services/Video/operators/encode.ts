@@ -405,7 +405,14 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                 }
             };
 
+            // Draining waits for in-flight bundles without submitting more,
+            // which never completes on an encoder that only emits once further
+            // frames arrive. flush() is the codec's own "give me everything
+            // you're holding", so ask for it before waiting.
             async function* drainPending(): AsyncIterable<EncodedBundle> {
+                if (pending.length > 0)
+                    await Promise.allSettled(encoders.map(enc => enc.flush()));
+
                 while (pending.length > 0) {
                     const p = pending.shift()!;
                     const outcome = await awaitPending(p);
