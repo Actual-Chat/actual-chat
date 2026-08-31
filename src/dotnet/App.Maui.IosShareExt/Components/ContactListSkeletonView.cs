@@ -27,6 +27,8 @@ public sealed class ContactListSkeletonView : UIView
         // Opaque, and the pulse runs on _rows: fading this view would fade past its own background
         BackgroundColor = AppColors.Background01;
         UserInteractionEnabled = false;
+        // RowCount rows of fixed height overflow a short list - and the comment field sits right below
+        ClipsToBounds = true;
 
         _rows = new UIView {
             TranslatesAutoresizingMaskIntoConstraints = false,
@@ -63,6 +65,22 @@ public sealed class ContactListSkeletonView : UIView
             ]);
         }
         NSLayoutConstraint.ActivateConstraints([..constraints]);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        // The pulse is attached to _rows and keeps running on a detached layer otherwise; the
+        // blocks hold managed peers of their own, and the appex process outlives a single share.
+        if (disposing) {
+            _rows.Layer.RemoveAllAnimations();
+            foreach (var block in _rows.Subviews) {
+                block.RemoveFromSuperview();
+                block.Dispose();
+            }
+            _rows.RemoveFromSuperview();
+            _rows.Dispose();
+        }
+        base.Dispose(disposing);
     }
 
     public override void MovedToWindow()

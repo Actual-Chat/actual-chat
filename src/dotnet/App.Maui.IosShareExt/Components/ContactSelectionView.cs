@@ -180,13 +180,13 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         });
     }
 
-    protected override void Dispose(bool disposing)
+    protected override void DisposeStatesCore()
     {
-        if (disposing) {
-            _keyboardShowObserver?.Dispose();
-            _keyboardHideObserver?.Dispose();
-        }
-        base.Dispose(disposing);
+        // Not Dispose: a step view leaves the tree via RemoveAndDisposeStates, which never reaches
+        // it - and a live observer would keep relayouting the orphan on every keyboard show.
+        _keyboardShowObserver.DisposeSilently();
+        _keyboardHideObserver.DisposeSilently();
+        base.DisposeStatesCore();
     }
 
     protected override void OnStateChanged(Model? model)

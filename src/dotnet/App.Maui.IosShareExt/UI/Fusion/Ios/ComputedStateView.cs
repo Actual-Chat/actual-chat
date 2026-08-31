@@ -81,7 +81,15 @@ public abstract class ComputedStateView<T>(IosHub hub) : ComputedStateView(hub),
 
     protected override void NotifyStateHasChanged()
     {
-        var model = State.Value;
+        var computed = State.Computed;
+        if (computed.Error is { } error) {
+            // State.Value would rethrow this into Fusion's event handler, where it's swallowed -
+            // and the view would sit on whatever it last rendered with nothing logged here.
+            Log.LogError(error, "Failed to compute state");
+            return;
+        }
+
+        var model = computed.Value;
         // DispatchAsync, not MainThread.BeginInvokeOnMainThread: that runs inline on the main
         // thread, and the state starts in the base ctor - a sync computed would render mid-build.
         DispatchQueue.MainQueue.DispatchAsync(() => {
