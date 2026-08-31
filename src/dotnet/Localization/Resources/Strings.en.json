@@ -232,6 +232,7 @@
   "ChatList_TabPeople": "People",
   "ChatList_TabThreads": "Threads",
   "ChatList_TabMentions": "Mentions",
+  "ChatList_TabReactions": "Reactions",
   "ChatList_SortBy": "Sort by:",
   "ChatList_SortByAnyonesActivity": "Recency of anyone's activity",
   "ChatList_SortByOwnActivity": "Recency of your own activity",

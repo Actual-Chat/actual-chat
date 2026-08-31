@@ -1,0 +1,53 @@
+@using ActualChat.Notifications
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, string>
+@{
+    var chatTitle = State.Value;
+}
+
+<div class="reaction-notification-item" @onclick="@OnClick">
+    <AuthorCircleGroup
+        Class="c-authors"
+        AuthorIds="@Notification.AuthorIds"
+        MaxCount="3"
+        Size="@SquareSize.Size8"
+        ShowRing="false"/>
+    <div class="c-body">
+        <div class="c-line">
+            @foreach (var emoji in Notification.Emojis) {
+                <EmojiIcon Emoji="@emoji" HasPreview="false"/>
+            }
+            @* Text is the composed "{emoji} to {quote}" sentence - rendering it next to the icon
+               stack would show the newest emoji twice. QuotedText is empty on notifications
+               persisted before it existed. *@
+            <span class="c-text">
+                @(Notification.QuotedText.IsNullOrEmpty() ? Notification.Text : Notification.QuotedText)
+            </span>
+        </div>
+        <div class="c-meta">
+            <span class="c-chat">@chatTitle</span>
+            <LiveTimeDeltaText Moment="@Notification.SentAt"/>
+        </div>
+    </div>
+</div>
+
+@code {
+    private IChats Chats => Hub.Chats;
+    [Parameter, EditorRequired] public ReactionNotification Notification { get; set; } = null!;
+
+    protected override ComputedState<string>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<string>.Options() {
+                InitialValue = "",
+                UpdateDelayer = FixedDelayer.Get(0.1),
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<string> ComputeState(CancellationToken cancellationToken) {
+        var chat = await Chats.Get(Session, Notification.ChatId, cancellationToken).ConfigureAwait(false);
+        return chat?.Title ?? "";
+    }
+
+    private void OnClick()
+        => _ = History.NavigateTo(Notification.GetChatLink());
+}

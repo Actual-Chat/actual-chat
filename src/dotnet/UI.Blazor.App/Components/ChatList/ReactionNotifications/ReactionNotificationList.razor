@@ -1,0 +1,38 @@
+@using ActualChat.Notifications
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, ReactionNotificationList.Model>
+@{
+    var m = State.Value;
+}
+
+<div class="reaction-notification-list">
+    @foreach (var notification in m.Notifications) {
+        <ReactionNotificationItem @key="@notification.Id.Value" Notification="@notification"/>
+    }
+</div>
+
+@code {
+    private NotificationsUI NotificationsUI => Hub.NotificationsUI;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = new(),
+                UpdateDelayer = FixedDelayer.Get(0.1),
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var notifications = await NotificationsUI
+            .ListByKind(ActualChat.NotificationKind.Reaction, cancellationToken)
+            .ConfigureAwait(false);
+
+        return new(notifications.OfType<ReactionNotification>().ToList());
+    }
+
+    // Nested types
+
+    public sealed record Model(IReadOnlyList<ReactionNotification>? Notifications = null) {
+        public IReadOnlyList<ReactionNotification> Notifications { get; init; } = Notifications ?? [];
+    }
+}

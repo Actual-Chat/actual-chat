@@ -18,11 +18,16 @@
         tabs.Add(NewTab(ChatListFilter.UnreadPeople, L.ChatList_TabPeople));
     if (m.HasMentions)
         tabs.Add(NewTab(ChatListFilter.UnreadMentions, L.ChatList_TabMentions));
+    if (m.HasReactions)
+        tabs.Add(new TabDef(ReactionsTabId, L.ChatList_TabReactions) {
+            Class = "chats-tab",
+            TitleContent = @<text><span>@L.ChatList_TabReactions</span></text>,
+        });
 }
 
 <div class="c-container">
     <div class="c-all-chats">
-        @if (!m.HasAll && !m.HasPeople && !m.HasMentions) {
+        @if (!m.HasAll && !m.HasPeople && !m.HasMentions && !m.HasReactions) {
             <div class="c-empty">
                 <i class="icon-checkmark-circle"></i>
                 <span>@L.Notifications_AllCaughtUp</span>
@@ -40,11 +45,15 @@
                 Effect="@_swapDirection.Swipe(GetTabIndex(_settings.FilterId))"
                 MustPropagateDisplay="true">
                 <ChildContent>
-                    <ChatList
-                        @key="@ChatList.GetKey(null, false, _settings)"
-                        PlaceId="@null"
-                        UsePlaceChatListSettings="@false"
-                        Settings="@_settings"/>
+                    @if (_settings.FilterId == ReactionsTabId) {
+                        <ReactionNotificationList/>
+                    } else {
+                        <ChatList
+                            @key="@ChatList.GetKey(null, false, _settings)"
+                            PlaceId="@null"
+                            UsePlaceChatListSettings="@false"
+                            Settings="@_settings"/>
+                    }
                 </ChildContent>
             </ContentSwap>
         }
@@ -52,6 +61,7 @@
 </div>
 
 @code {
+    private const string ReactionsTabId = "@reactions";
     private static readonly ChatListFilter[] Filters =
         [ChatListFilter.Unread, ChatListFilter.UnreadPeople, ChatListFilter.UnreadMentions];
 
@@ -74,7 +84,8 @@
         var hasAll = await HasTab(ChatListFilter.Unread, cancellationToken).ConfigureAwait(false);
         var hasPeople = await HasTab(ChatListFilter.UnreadPeople, cancellationToken).ConfigureAwait(false);
         var hasMentions = await HasTab(ChatListFilter.UnreadMentions, cancellationToken).ConfigureAwait(false);
-        return new(hasAll, hasPeople, hasMentions);
+        var reactedChatIds = await NotificationsUI.ListReactedChatIds(cancellationToken).ConfigureAwait(false);
+        return new(hasAll, hasPeople, hasMentions, reactedChatIds.Count > 0);
     }
 
     // Private methods
@@ -107,11 +118,17 @@
         for (var i = 0; i < Filters.Length; i++)
             if (Filters[i].Id == filterId)
                 return i;
+        if (filterId == ReactionsTabId)
+            return Filters.Length;
 
         return 0;
     }
 
     // Nested types
 
-    public sealed record Model(bool HasAll = false, bool HasPeople = false, bool HasMentions = false);
+    public sealed record Model(
+        bool HasAll = false,
+        bool HasPeople = false,
+        bool HasMentions = false,
+        bool HasReactions = false);
 }
