@@ -19,6 +19,7 @@ public partial class LiveVideoBackend
         // Codec recommendation
         private ApiArray<string> _currentSupportedDecoderCodecs = new(["av1", "hevc", "vp9", "h264"]);
         private CpuTimestamp _lastCodecDowngradeAt;
+        private bool _isForced;
 
         public LiveVideoBackend Owner { get; } = owner;
         public ChatId ChatId { get; } = chatId;
@@ -55,13 +56,19 @@ public partial class LiveVideoBackend
             var currentBest = BestCodecQuality(_currentSupportedDecoderCodecs);
             var newBest = BestCodecQuality(newCodecs);
 
-            // Delay widening, so a member leaving and rejoining doesn't restart
-            // everyone's encoder twice. An admin override skips the wait: it is
-            // an explicit instruction, not a capability that happened to change.
+            // Delay a widening that raises the best available codec, so a
+            // member flapping in and out doesn't restart everyone's encoder
+            // twice. Entering OR leaving an admin override skips the wait —
+            // both are explicit instructions, not capabilities that happened to
+            // change, and deferring the release left the call pinned for
+            // another window after the admin cleared it.
             if (!isForced
+                && !_isForced
                 && newBest > currentBest
                 && _lastCodecDowngradeAt.Elapsed < Constants.Video.CodecSwitchHysteresisWindow)
                 return;
+
+            _isForced = isForced;
 
             if (newBest < currentBest)
                 _lastCodecDowngradeAt = CpuTimestamp.Now;

@@ -149,16 +149,17 @@ export function detectSupportedCodecs(width = 1920, height = 1080): Promise<Code
     const key = `${width}x${height}`;
     let cached = encoderCodecCache.get(key);
     if (!cached) {
-        cached = detectSupportedCodecsUncached(width, height).then(codecs => {
-            // A disqualifying latency verdict is not cached. The probe itself
-            // already refuses to cache one, but the CodecInfo built around it
-            // was cached here, so a single transient failure - a GPU reset, or
-            // losing the encoder-session race against the live stream - retired
-            // a working codec until the page reloaded.
-            if (codecs.some(c => c.realtime === false))
+        cached = detectSupportedCodecsUncached(width, height).then(result => {
+            // Only a TRANSIENT failure goes uncached. A codec measured as too
+            // slow is a stable property of this browser — Firefox's H.264 is
+            // ~18 frames behind on every run — and caching it is what keeps
+            // detection off the critical path. Caching nothing whenever any
+            // codec was disqualified meant Firefox re-ran the whole latency
+            // probe before every start and every recovery.
+            if (!result.isStable)
                 encoderCodecCache.delete(key);
 
-            return codecs;
+            return result.codecs;
         }).catch((e: unknown) => {
             encoderCodecCache.delete(key);
             throw e;
@@ -191,7 +192,13 @@ export function getActiveEncoderCategoriesByPriority(): readonly CodecInfo['cate
     return REPRESENTATIVE_CODECS.map(c => c.category);
 }
 
-async function detectSupportedCodecsUncached(width: number, height: number): Promise<CodecInfo[]> {
+interface DetectionResult {
+    codecs: CodecInfo[];
+    // False when a probe failed rather than measured — see detectSupportedCodecs.
+    isStable: boolean;
+}
+
+async function detectSupportedCodecsUncached(width: number, height: number): Promise<DetectionResult> {
     let probeList = REPRESENTATIVE_CODECS;
     if (excludedEncoderCodecs.size > 0) {
         const before = probeList.length;
@@ -203,6 +210,7 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
         }
     }
     const results: CodecInfo[] = [];
+    let isStable = true;
     for (const { category } of probeList) {
         const ladder = getEncoderCodecLadder(category, width, height)
             .filter(c => !excludedEncoderCodecStrings.has(c));
@@ -225,6 +233,10 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
                 codec,
                 category,
                 chosen.hardware ? 'prefer-hardware' : 'prefer-software');
+            // The probe reports MAX only when the encoder produced nothing at
+            // all; a real measurement returns the depth it settled at.
+            if (frames >= MAX_LATENCY_PROBE_FRAMES)
+                isStable = false;
             realtime = frames <= MAX_REALTIME_LATENCY_FRAMES;
             if (!realtime) {
                 warnLog?.log(
@@ -247,7 +259,7 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
     infoLog?.log(`detectSupportedCodecsUncached: ${supported.map(c =>
         `${c.codec}(${[c.hardwareSupported ? 'hw' : '', c.softwareSupported ? 'sw' : ''].filter(Boolean).join('+')})`)
         .join(', ') || 'none'}`);
-    return results;
+    return { codecs: results, isStable };
 }
 
 async function isCodecSupported(
@@ -294,7 +306,7 @@ async function isCodecSupported(
 // deadlocking. Firefox's H.264 sits at 18; every other engine/codec measured
 // emits within 2.
 export const MAX_REALTIME_LATENCY_FRAMES = 4;
-const MAX_LATENCY_PROBE_FRAMES = 24;
+export const MAX_LATENCY_PROBE_FRAMES = 24;
 // Submissions are paced at the frame interval. Without it the whole probe runs
 // inside a few milliseconds, no encoder has emitted anything yet, and every
 // codec measures as infinitely deep — which is exactly what disqualified all
@@ -647,8 +659,14 @@ export function getFallbackCodecs(supportedCodecs: CodecInfo[], width: number, h
     const codecs: string[] = [];
     for (const rung of getEncoderLadder()) {
         const info = byCategory.get(rung.category);
-        if (info && supportsAcceleration(info, rung.accel) && !codecs.includes(info.codec))
-            codecs.push(info.codec);
+        if (!info || !supportsAcceleration(info, rung.accel))
+            continue;
+        // A profile that already failed configure() this session would send the
+        // recorder straight back into recovery.
+        if (excludedEncoderCodecStrings.has(info.codec) || codecs.includes(info.codec))
+            continue;
+
+        codecs.push(info.codec);
     }
 
     // The floor last: a device with no usable ladder rung still has to land on
@@ -775,37 +793,30 @@ const ENCODER_LADDER: readonly EncoderRung[] = [
     { category: 'h264', accel: 'prefer-software' },
 ];
 
-// Host identity comes from SharedSettings, not BrowserInfo: this module also
-// runs inside the recorder worker, which has no BrowserInfo, and SharedSettings
-// is the channel the main thread already mirrors into workers.
-export interface EncoderHostInfo {
-    hostKind?: string;
-    appKind?: string;
-}
-
 // Software AV1 is the most expensive rung on the ladder, so it is kept off
 // phones: the user agent settles it for browsers, and appKind for the MAUI app,
 // whose WebView doesn't always say "mobile". Desktop is fine either way. It
 // still ranks below every hardware encoder.
-function allowsSoftwareAv1(host: EncoderHostInfo | undefined): boolean {
+function allowsSoftwareAv1(): boolean {
     if (DeviceInfo.isMobile)
         return false;
 
-    const { appKind } = host ?? SharedSettings.current;
+    // From SharedSettings, not BrowserInfo: this module also runs inside the
+    // recorder worker, which has no BrowserInfo, and SharedSettings is the
+    // channel the main thread already mirrors into workers.
+    const { appKind } = SharedSettings.current;
     return appKind !== 'Ios' && appKind !== 'Android';
 }
 
 // Firefox drops the MPEG rungs entirely: its H.264 encoder runs ~18 frames
 // behind (the realtime probe already rejects it) and it ships no HEVC encoder,
 // so offering either only wastes a probe.
-//
-// `host` overrides the SharedSettings snapshot; production leaves it unset.
-export function getEncoderLadder(host?: EncoderHostInfo): readonly EncoderRung[] {
+export function getEncoderLadder(): readonly EncoderRung[] {
     return ENCODER_LADDER.filter(rung => {
         if (DeviceInfo.isFirefox && (rung.category === 'h264' || rung.category === 'hevc'))
             return false;
         if (rung.category === 'av1' && rung.accel === 'prefer-software')
-            return allowsSoftwareAv1(host);
+            return allowsSoftwareAv1();
 
         return true;
     });

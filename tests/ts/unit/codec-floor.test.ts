@@ -9,6 +9,7 @@ import {
     getExcludedDecoderCodecs,
     getExcludedEncoderCodecs,
     isEncoderCodecStringExcluded,
+    MAX_LATENCY_PROBE_FRAMES,
     MAX_REALTIME_LATENCY_FRAMES,
     probeEncoderLatencyFrames,
     setForceDecodeCodec,
@@ -222,6 +223,27 @@ describe('encoder realtime measurement', () => {
         FakeEncoder.steadyDepth = 17;
 
         expect(await probeEncoderLatencyFrames('avc1.4D4029', 'h264', 'no-preference')).toBe(17);
+    });
+
+    // A measured verdict is a stable property of the browser, so detection may
+    // cache it; a probe that produced nothing is a transient failure and must
+    // not be. Caching neither made Firefox - whose H.264 always measures slow -
+    // re-run the whole probe before every start and every recovery.
+    it('separates a measured disqualification from a failed probe', async () => {
+        FakeEncoder.startupFrames = 18;
+        FakeEncoder.steadyDepth = 17;
+        const measured = await probeEncoderLatencyFrames('avc1.4D4028', 'h264', 'no-preference');
+
+        expect(measured).toBeGreaterThan(MAX_REALTIME_LATENCY_FRAMES);
+        expect(measured).toBeLessThan(MAX_LATENCY_PROBE_FRAMES);
+    });
+
+    it('reports the probe cap when the encoder produced nothing at all', async () => {
+        // Never emits: startupFrames beyond the probe budget.
+        FakeEncoder.startupFrames = 1000;
+        const frames = await probeEncoderLatencyFrames('avc1.4D4027', 'h264', 'no-preference');
+
+        expect(frames).toBe(MAX_LATENCY_PROBE_FRAMES);
     });
 
     it('caches per codec and acceleration', async () => {

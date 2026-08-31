@@ -150,7 +150,8 @@ describe('encoder ladder', () => {
     });
 
     it('drops a codec measured as too slow for a call', () => {
-        // Firefox's H.264: realtime === false, so no rung of it survives.
+        // A codec measured as too slow: realtime === false, so no rung of
+        // it survives - the case Firefox's H.264 hits in practice.
         const infos = everything().map(i => i.category === 'av1' ? { ...i, realtime: false } : i);
 
         expect(pick(infos)).toEqual(['hw-vp9', 'hw-hevc', 'sw-vp9', 'hw-h264', 'sw-h264']);

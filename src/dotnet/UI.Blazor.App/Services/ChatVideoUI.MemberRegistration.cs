@@ -22,25 +22,21 @@ public partial class ChatVideoUI
 
     // Bumped when this client's decode capability changes under it — today only
     // the debug overrides do that, and they need the server to see the new set
-    // now rather than at the next heartbeat.
-    //
-    // JSInvokable and reached through this service rather than through a
-    // recorder: the client most likely to force a codec is a viewer with its
-    // camera off, and that client has no recorder to route the call through.
+    // now rather than at the next heartbeat. JSInvokable on this service rather
+    // than on a recorder: the client most likely to force a codec is a viewer
+    // with its camera off, which has no recorder to route the call through.
     [JSInvokable]
     public void RequestMemberReregistration()
         => _memberRegistrationEpoch.Value++;
 
-    private async Task PublishRegistrationHook(CancellationToken cancellationToken)
+    // Deliberately not swallowing a failure: this chain runs under RetryForever,
+    // which only re-runs on a thrown exception. Logging and continuing would
+    // leave the hook unpublished for the whole session, silently dropping every
+    // override back to the heartbeat.
+    private Task PublishRegistrationHook(CancellationToken cancellationToken)
     {
         _registrationHookRef ??= DotNetObjectReference.Create(this);
-        try {
-            await Hub.JS.InvokeVoidAsync(JSInitMethod, cancellationToken, _registrationHookRef)
-                .ConfigureAwait(false);
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogWarning(e, "PublishRegistrationHook failed");
-        }
+        return Hub.JS.InvokeVoidAsync(JSInitMethod, cancellationToken, _registrationHookRef).AsTask();
     }
 
     [ComputeMethod]
@@ -60,7 +56,11 @@ public partial class ChatVideoUI
             .Capture(() => GetMemberRegistrationInput(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
 
-        var cpuClock = Clocks.CpuClock;
+        // SystemClock, not CpuClock: the server ages members by wall clock, and a
+        // stopwatch does not advance through an OS suspend — a laptop waking
+        // after 90s would think its registration was still fresh while the
+        // server had already dropped it.
+        var clock = Clocks.SystemClock;
         ChatId? registeredChatId = null;
         var registeredEpoch = -1;
         var registeredAt = default(Moment);
@@ -83,7 +83,7 @@ public partial class ChatVideoUI
                 // few seconds for the life of the call.
                 var isDue = registeredChatId != chatId
                     || epoch != registeredEpoch
-                    || cpuClock.Now - registeredAt >= MemberRegistrationPeriod;
+                    || clock.Now - registeredAt >= MemberRegistrationPeriod;
                 if (isDue) {
                     var codecs = await JS
                         .InvokeAsync<string[]>(JSGetSupportedDecoderCodecsMethod, cancellationToken)
@@ -96,7 +96,7 @@ public partial class ChatVideoUI
                             chatId, string.Join(", ", codecs));
                     registeredChatId = chatId;
                     registeredEpoch = epoch;
-                    registeredAt = cpuClock.Now;
+                    registeredAt = clock.Now;
                 }
 
                 // Re-registers on a timer rather than only on change: the server
@@ -119,6 +119,8 @@ public partial class ChatVideoUI
             // everyone still in the call.
             if (registeredChatId is { } last)
                 await UnregisterMember(last).ConfigureAwait(false);
+            _registrationHookRef.DisposeSilently();
+            _registrationHookRef = null;
         }
     }
 

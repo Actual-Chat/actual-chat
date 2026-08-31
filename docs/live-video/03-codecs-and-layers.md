@@ -11,11 +11,27 @@ File: `src/dotnet/UI.Blazor.App/Services/Video/codec-support.ts`.
 `detectSupportedCodecs(width, height)` probes one representative encoder per
 category to keep startup cheap. Categories:
 
-- **AV1** (`av01.*`) — currently disabled (mobile parity issues).
-- **HEVC** (`hev1.*` / `hvc1.*`).
-- **VP9** (`vp09.*`) — disabled by default; H.264 is preferred over VP9 for
-  consistent HW support.
-- **H.264** (`avc1.*`) — universal fallback.
+- **AV1** (`av01.*`) — preferred where hardware exists; software AV1 is used
+  too, but not on phones.
+- **HEVC** (`hev1.*` / `hvc1.*`) — hardware only; Chromium ships no software
+  HEVC encoder, and Firefox ships none at all.
+- **VP9** (`vp09.*`) — the negotiation floor (see below).
+- **H.264** (`avc1.*`) — Constrained Baseline only, and last on the ladder.
+
+### Why VP9 is the floor
+
+The floor is the one codec the server never drops from the negotiated set, so
+every client is guaranteed something it can decode. It is VP9 rather than
+H.264 on measurement: VP9 encodes and decodes at real-time latency on
+Chromium, Firefox, desktop Safari and the iOS WebView, while Firefox's H.264
+encoder stays ~18 frames behind for the whole stream and no configuration
+fixes it. A client that cannot decode the floor needs a decoder, not a
+renegotiation that would cost every other member their camera — so the floor
+survives every exclusion path, on both the client and the server.
+
+An admin override is the one thing that replaces it: a deliberate pin is not
+padded with the floor, because the point of pinning is to exclude everything
+else.
 
 For each enabled category, detection probes the one profile
 `getEncoderCodecLadder` returns and reports whether it passes, so we never
