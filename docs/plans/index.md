@@ -13,6 +13,14 @@ candidate tasks. A plan is removed from here once its work ships.
 
 Recently added, larger efforts — in progress or next up.
 
+### Codec negotiation — per-client encode assignment
+
+[Codec negotiation](./codec-negotiation.md) — codec capability is asymmetric per
+device (Firefox decodes H.264 but its encoder is 570ms behind; Apple decodes AV1
+but cannot encode it), and `RegisterMember` reports only the decode half. Clients
+report both sets with usability flags; the server intersects decode sets and
+assigns each client an encode codec from that intersection.
+
 ### H.264 codec selection fixes
 
 [H.264 codec selection fixes](./h264-codec-selection-fixes.md) — a Firefox/Linux
