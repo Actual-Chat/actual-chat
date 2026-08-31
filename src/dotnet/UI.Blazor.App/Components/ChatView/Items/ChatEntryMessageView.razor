@@ -406,7 +406,9 @@
         var isSelected = selectedChatEntries.Contains(entry.Id);
         var isSelectionStart = isSelected && !isPreviousSelected;
         var isSelectionEnd = isSelected && !isNextSelected;
-        var hasReactions = await ReactionsUI.HasVisible(entry.Id, entry.HasReactions).ConfigureAwait(false);
+        var hasReactions = await ReactionsUI
+            .HasVisible(entry.Id, entry.HasReactions, cancellationToken)
+            .ConfigureAwait(false);
         var (isUnreadByOthers, isUnreadBlockStart) = (false, false);
         if (chat is not null && ownAuthorId is not null)
             (isUnreadByOthers, isUnreadBlockStart) =

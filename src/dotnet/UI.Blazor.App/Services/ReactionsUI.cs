@@ -31,17 +31,26 @@ public class ReactionsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeS
 
         var emojis = pending.Select(x => ((Reactions_React)x.Command).Reaction.Emoji).ToArray();
         var model = ReactionsOverlay.Fold(summaries, ownReaction, emojis, entryId);
-        return model with { PendingStage = pending[^1].Stage };
+        // A queued removal of the last reaction leaves nothing to show, and the row renders
+        // its add button even with no badges in it - an empty strip under the message
+        return model.IsEmpty ? null : model with { PendingStage = pending[^1].Stage };
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> HasVisible(ChatEntryId entryId, bool hasServerReactions)
+    public virtual async Task<bool> HasVisible(
+        ChatEntryId entryId,
+        bool hasServerReactions,
+        CancellationToken cancellationToken)
     {
-        if (hasServerReactions)
-            return true;
-
         await Triggers.OnChanged(entryId.Value).ConfigureAwait(false);
-        return GetPending(entryId).Count > 0;
+        var hasPending = GetPending(entryId).Count > 0;
+        if (!hasPending) {
+            // Nothing queued over the server state, so the server state alone decides -
+            // and asking it here would cost a ListSummaries call per message on screen
+            return hasServerReactions;
+        }
+
+        return await Get(entryId, cancellationToken).ConfigureAwait(false) is not null;
     }
 
     public void AddPendingAnimation(string entryId, string emojiId)

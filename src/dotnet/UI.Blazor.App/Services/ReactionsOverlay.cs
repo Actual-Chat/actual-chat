@@ -5,7 +5,10 @@ namespace ActualChat.UI.Blazor.App.Services;
 public sealed record ReactionsModel(
     ReactionSummary[] Summaries,
     Reaction? OwnReaction,
-    QueuedCommandStage? PendingStage = null);
+    QueuedCommandStage? PendingStage = null)
+{
+    public bool IsEmpty => Summaries.Length == 0;
+}
 
 /// <summary>
 /// Predicts what the server will store for a chat entry once its queued

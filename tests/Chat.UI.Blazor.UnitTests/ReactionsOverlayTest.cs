@@ -63,6 +63,20 @@ public sealed class ReactionsOverlayTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
+    public void RemovingTheOnlyReactionShouldLeaveNothingToShow()
+    {
+        // arrange
+        var own = NewReaction(ThumbsUp);
+        var summaries = new[] { NewSummary(ThumbsUp, 1) };
+
+        // act
+        var model = ReactionsOverlay.Fold(summaries, own, [ThumbsUp], EntryId);
+
+        // assert
+        model.IsEmpty.Should().BeTrue(because: "an empty row would still render its add button");
+    }
+
+    [Fact]
     public void EmptyPendingListShouldReturnServerStateUnchanged()
     {
         // arrange
