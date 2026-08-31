@@ -61,6 +61,13 @@ const CODEC_PROFILES = {
     ],
 };
 
+// The one codec every client is required to speak, and so the only one no
+// exclusion path may drop. It is VP9 rather than H.264 on measurement: VP9
+// encodes and decodes at real-time latency on Chromium, Firefox, desktop
+// Safari and the iOS WebView, while Firefox's H.264 encoder is ~18 frames
+// behind. See docs/plans/codec-negotiation.md.
+export const FLOOR_CATEGORY = 'vp9';
+
 // Codec support is per UA+OS for the page lifetime, so each (W,H) probes once.
 // In-flight Promise stored so concurrent callers share work.
 const encoderCodecCache = new Map<string, Promise<CodecInfo[]>>();
@@ -110,15 +117,22 @@ export function detectSupportedCodecs(width = 1920, height = 1080): Promise<Code
 // priority order. The actual encoder profile string is then derived from
 // getCodecForCategory(category, w, h). Reduces startup probes ~7× vs per-profile.
 //
-// VP9 and AV1 selection disabled — see commit 3ae12d7f8. To re-enable, uncomment
-// the entry. Detection, modal-time probe, recorder probe, default-codec
-// fallback, and audience ordering all derive from this list (directly, or
-// via `supportedCodecs`), so a single change here cascades everywhere.
+// Priority order, best-first. Detection, the modal-time probe, the recorder
+// probe, default-codec fallback and audience ordering all derive from this
+// list (directly or via `supportedCodecs`), so a change here cascades.
+//
+// HEVC first where it exists (Apple hardware, best efficiency of the
+// hardware-backed options), then VP9 — the floor, and the only entry every
+// measured engine encodes and decodes at real-time latency. H.264 sits below
+// VP9 because Firefox's H.264 encoder runs ~18 frames behind and no
+// configuration fixes it. AV1 is last: absent on every Apple device measured
+// and software-only elsewhere, so it is enabled but never preferred until its
+// sustained cost is known.
 const REPRESENTATIVE_CODECS: { category: CodecInfo['category']; name: string; codec: string }[] = [
-    // { category: 'av1',  name: 'AV1 Main L3.0',      codec: 'av01.0.05M.08' },
     { category: 'hevc', name: 'HEVC Main L3.1',     codec: 'hev1.1.6.L93.B0' },
-    // { category: 'vp9',  name: 'VP9 Profile 0 L3.1', codec: 'vp09.00.31.08' },
+    { category: 'vp9',  name: 'VP9 Profile 0 L3.1', codec: 'vp09.00.31.08' },
     { category: 'h264', name: 'H.264 Main 3.1',     codec: 'avc1.4D401F' },
+    { category: 'av1',  name: 'AV1 Main L3.0',      codec: 'av01.0.05M.08' },
 ];
 
 // Active encoder categories in priority order (best-first). Derived from
@@ -481,10 +495,15 @@ export function getDefaultCodec(supportedCodecs: CodecInfo[], width: number, hei
     );
     if (anyH264) return anyH264.codec;
 
+    // Last resort is the floor, not H.264: a device with no usable H.264 (any
+    // Firefox) must still land on something it can actually encode.
+    const floor = supportedCodecs.find(c => c.category === FLOOR_CATEGORY && c.supported);
+    if (floor) return floor.codec;
+
     const ladder = getEncoderCodecLadder('h264', width, height)
         .filter(c => !excludedEncoderCodecStrings.has(c));
 
-    return ladder.length > 0 ? ladder[0] : getCodecForCategory('h264', width, height);
+    return ladder.length > 0 ? ladder[0] : getCodecForCategory(FLOOR_CATEGORY, width, height);
 }
 
 export async function getAV1CodecSupport(): Promise<CodecInfo[]> {
@@ -532,6 +551,8 @@ const excludedEncoderCodecStrings = new Set<string>();
 // failed avc1.640028 would otherwise be re-picked forever; dropping just that
 // string still leaves Main and Constrained Baseline to try.
 export function excludeEncoderCodecString(codec: string): void {
+    if (getCodecCategory(codec) === FLOOR_CATEGORY)
+        return;
     if (excludedEncoderCodecStrings.has(codec))
         return;
 
@@ -545,7 +566,7 @@ export function isEncoderCodecStringExcluded(codec: string): boolean {
 }
 
 export function excludeEncoderCodec(category: string): void {
-    if (category === 'h264') return; // never exclude — universal fallback
+    if (category === FLOOR_CATEGORY) return; // the floor every client must speak
     if (isEncoderCodecProven(category)) {
         warnLog?.log(`excludeEncoderCodec: ignoring '${category}' — already proven this session`);
         return;
@@ -567,7 +588,7 @@ export function isEncoderCodecExcluded(category: string): boolean {
 const excludedDecoderCodecs = new Set<string>();
 
 export function excludeDecoderCodec(codec: string): void {
-    if (codec === 'h264') return; // never exclude h264 — universal fallback
+    if (codec === FLOOR_CATEGORY) return; // the floor every client must speak
     if (isDecoderCodecProven(codec)) {
         warnLog?.log(`excludeDecoderCodec: ignoring '${codec}' — already proven this session`);
         return;
@@ -588,43 +609,63 @@ export function detectSupportedDecoderCodecs(): Promise<string[]> {
     return decoderCodecCache;
 }
 
+// Representative decode strings per category, tried in order until one probes
+// supported. H.264 is probed at the FLOOR of the profile ladder, not the
+// ceiling: the question is "is there an H.264 decoder at all", and Constrained
+// Baseline at a small size is the narrowest thing that answers it.
+const DECODER_PROBES: { category: string; codecs: string[] }[] = [
+    { category: 'h264', codecs: ['avc1.42E01E', 'avc1.42E01F', 'avc1.4D401F'] },
+    { category: 'hevc', codecs: [
+        'hev1.1.6.L120.B0',
+        'hev1.1.6.L93.B0',
+        'hvc1.1.6.L120.B0',    // iOS Safari
+        'hvc1.1.6.L93.90',     // iOS Safari variant
+    ] },
+    { category: 'vp9', codecs: ['vp09.00.31.08', 'vp09.00.41.08'] },
+    { category: 'av1', codecs: ['av01.0.05M.08', 'av01.0.08M.08'] },
+];
+
 async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
-    const codecs: string[] = ['h264']; // always assumed supported
+    const codecs: string[] = [];
 
     if (readForceH264OnlyFromStorage()) {
         infoLog?.log('Debug: forceH264Only=true → decoder detection limited to H.264');
-        return codecs;
+        return ['h264'];
     }
 
-    // AV1 — TEMPORARILY DISABLED.
-    infoLog?.log('Decoder AV1: temporarily disabled');
+    for (const { category, codecs: probes } of DECODER_PROBES) {
+        if (excludedDecoderCodecs.has(category)) {
+            warnLog?.log(`Decoder ${category}: excluded at runtime`);
+            continue;
+        }
 
-    if (!excludedDecoderCodecs.has('hevc')) {
-        let hevcSupported = false;
-        for (const hevcCodec of [
-            'hev1.1.6.L120.B0',
-            'hev1.1.6.L93.B0',
-            'hvc1.1.6.L120.B0',    // iOS Safari
-            'hvc1.1.6.L93.90',     // iOS Safari variant
-        ]) {
+        let supported = false;
+        for (const codec of probes) {
             try {
-                if (await isDecoderCodecSupported(hevcCodec, 1280, 720)) {
-                    infoLog?.log(`Decoder HEVC (${hevcCodec}): supported=true`);
-                    hevcSupported = true;
+                // 320x240 deliberately: this asks whether a decoder exists at
+                // all, not whether it handles our ladder's top tier.
+                if (await isDecoderCodecSupported(codec, 320, 240)) {
+                    infoLog?.log(`Decoder ${category} (${codec}): supported=true`);
+                    supported = true;
                     break;
                 }
-                infoLog?.log(`Decoder HEVC (${hevcCodec}): supported=false`);
+                debugLog?.log(`Decoder ${category} (${codec}): supported=false`);
             } catch (e) {
-                warnLog?.log(`Decoder HEVC (${hevcCodec}): error=${e}`);
+                warnLog?.log(`Decoder ${category} (${codec}): error=${e}`);
             }
         }
-        if (hevcSupported) codecs.push('hevc');
-    } else {
-        warnLog?.log(`Decoder HEVC: excluded at runtime`);
+        if (supported) codecs.push(category);
     }
 
-    // VP9 — TEMPORARILY DISABLED.
-    infoLog?.log('Decoder VP9: temporarily disabled');
+    // The floor must be advertised even if probing said otherwise — a client
+    // that cannot decode it is a client that needs a decoder, not a reason to
+    // renegotiate the whole call. Log loudly; this should not happen.
+    if (!codecs.includes(FLOOR_CATEGORY)) {
+        warnLog?.log(
+            `Decoder ${FLOOR_CATEGORY}: probed unsupported — advertising it anyway `
+            + `(it is the negotiation floor); playback of ${FLOOR_CATEGORY} streams may fail`);
+        codecs.push(FLOOR_CATEGORY);
+    }
 
     infoLog?.log(`detectSupportedDecoderCodecsUncached: [${codecs.join(', ')}]${excludedDecoderCodecs.size > 0 ? ` (excluded: [${[...excludedDecoderCodecs].join(', ')}])` : ''}`);
     return codecs;

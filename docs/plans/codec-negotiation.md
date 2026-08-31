@@ -154,7 +154,10 @@ So the surfaces with VP9 are: Chromium, Firefox, desktop Safari, iOS WKWebView
 and AppKit macOS WKWebView. Mac Catalyst is a different problem entirely,
 below.
 
-### Mac Catalyst is not a codec problem
+### Mac Catalyst is not a codec problem — POSTPONED, out of scope
+
+**Status: deferred (Alex, 2026-08-30).** Recorded here so the finding isn't
+lost; no work planned. The rest of this plan proceeds without it.
 
 If WebCodecs is absent rather than merely limited, no codec choice helps:
 
