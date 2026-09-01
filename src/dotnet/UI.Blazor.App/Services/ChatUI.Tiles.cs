@@ -500,10 +500,18 @@ public partial class ChatUI
             }
 
             expandedConversations = defaultExpanded.SymmetricExcept(overrides);
-            // Keyed on the same test the fold uses, or the two disagree and the reader gets a block that
-            // looks expanded while it quietly stops taking new entries - which is what a frozen overlay
-            // over a still-live session did. Collapsed, the card visibly stands in for the hidden tail.
-            if (liveBlockId is { } expandedBlockId && expandedConversations.Contains(expandedBlockId))
+            // The tail is hidden exactly while the card stands in for it - i.e. while the block renders
+            // collapsed, which is the same test the fold uses. Keyed on whether the viewer had joined
+            // instead, a joined viewer could not collapse the block at all: nothing left the screen.
+            if (liveBlockId is { } blockId && overlay == null && liveConversation is { } liveConvTail)
+                hiddenLiveTailRange = expandedConversations.Contains(blockId)
+                    ? default
+                    : new Range<long>(
+                        liveBlockFoldRange.IsEmpty
+                            ? liveConvTail.Id.StartEntryLid
+                            : Math.Min(liveConvTail.EndEntryLid + 1, liveBlockFoldRange.End),
+                        long.MaxValue);
+            else if (liveBlockId is { } overlayBlockId && expandedConversations.Contains(overlayBlockId))
                 hiddenLiveTailRange = default;
         }
 
