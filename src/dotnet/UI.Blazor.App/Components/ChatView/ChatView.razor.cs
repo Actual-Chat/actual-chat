@@ -630,22 +630,24 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         // When NewMessagesLine exists, prefer scrolling to the first unread message.
         // Scan forward with GetLeafMessages() to skip replacement items (DateLine, ConversationStart)
-        // that may be inserted between NewMessagesLine and the actual unread entry.
+        // that may be inserted between NewMessagesLine and the actual unread entry - those are skip-key,
+        // and so is the line itself, so aiming at one leaves the list re-requesting a jump every render.
         var newMessagesLineIndex = items.FirstIndexOf(i => i.Kind == ChatMessageKind.NewMessagesLine);
-        if (newMessagesLineIndex >= 0) {
-            var firstUnreadKey = items
+        var firstUnreadKey = newMessagesLineIndex < 0
+            ? null
+            : items
                 .Skip(newMessagesLineIndex + 1)
                 .SelectMany(item => item.GetLeafMessages())
-                .Select(message => message.Key.Value)
-                .FirstOrDefault()
-                ?? items[newMessagesLineIndex].Key.Value;
-
+                .FirstOrDefault(message => !message.ShouldSkipKey)
+                ?.Key.Value;
+        if (firstUnreadKey != null) {
             if (scrollToKey == null && itemVisibility.IsEmpty) {
                 // Tab resume: no explicit nav, viewport empty — scroll to first unread
                 scrollToKey = firstUnreadKey;
                 scrollToKeyInTheMiddle = true;
             }
-            else if (isFirstRender && scrollToKey != null && nav is { MustHighlight: false, ShouldRestoreViewPosition: true }) {
+            else if (isFirstRender && scrollToKey != null
+                && nav is { MustHighlight: false, ShouldRestoreViewPosition: true }) {
                 // Initial open: restoring view position — redirect to first unread instead.
                 // Gated on isFirstRender to avoid hijacking summary-toggle navigation.
                 scrollToKey = firstUnreadKey;

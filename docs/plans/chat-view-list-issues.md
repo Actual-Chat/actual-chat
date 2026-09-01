@@ -3,7 +3,7 @@ title: Chat view — four reported list defects
 description: Blank transcript, a sticky edge latched to the top, live-session messages that never render, and a ~10Hz skeleton flicker.
 ---
 
-# Chat view — four reported list defects
+# Chat view — four reported list defects, and a fifth found while testing
 
 Four issues reported against the chat transcript (`InfiniteList`). Three of them
 share one data-side root — a transient `HasVeryLastItem == false` during a live
@@ -196,9 +196,60 @@ built-in two-phase alternation at the invalidation rate:
 The overlay settles this in one observation: the end bracket flips square `]` ↔
 round `)` on each flap.
 
+## E — a navigation aimed at a key the list can never reach
+
+Found by live repro rather than by reading, and reported as "the bottom sticky
+edge detached and I didn't scroll… I'm somewhat sure it happens when other items
+expand". Both halves were right.
+
+Every new non-streaming entry calls `NavigateTo(lastEntryLid)`
+(`ChatView.razor.cs:414`), so a navigation per message is by design, and
+`applyRenderIntent`'s fast path — `scrollToKey === getLastContentKey() &&
+hasVeryLastItem` — exists precisely so that resolves to an edge re-pin instead of
+a jump.
+
+`GetData` resolved the target lid with a scan that did **not** exclude
+`ShouldSkipKey` items, while every other consumer of "the last item" does:
+`VirtualListData.GetLast` (`:76-83`), JS `getLastContentKey`, and the visibility
+reporter, which never lists them. A target landing on a skip-key item is therefore
+unsatisfiable in both directions at once:
+
+- `scrollToKey !== getLastContentKey()` — the fast path is missed;
+- `!visibleKeys.has(scrollToKey)` is permanently true — `getPendingJumpKey` keeps
+  returning it.
+
+So `applyRenderIntent` ran `setPinnedEdge(null)` plus a jump on **every render**,
+with only the scroll settle re-pinning End in between. The transcript stopped
+following new messages with no user input at all.
+
+The trigger is an expanded conversation: the trailing `ConversationEnd` footer is
+emitted only inside an `ExpandedConversationMessage` (`ChatUI.Tiles.cs:1468-1481`)
+and both its variants are skip-key. Collapsed, there is no footer and everything
+matches — which is exactly why it looked tied to expansion.
+
+Captured on `the-actual-one`, six times in 23 seconds:
+
+```
+End -> null   via applyRenderIntent < applyRender < onRender
+scrollToKey:    "4948-conversation-end"
+lastContentKey: "4948"
+skIsLast: false, skVisible: false, hvl: true, dEnd: 4, anim: false, scr: false
+```
+
+**Fix.** The nav scan applies the same skip-key rule as everything else, and
+`getPendingJumpKey` refuses a skip-key target outright so no other producer can
+reopen the loop. Measured on the same chat afterwards: 30 s of continuous sampling,
+zero pin transitions, `scrollToKey == lastContentKey` in every sample, `dEnd = 0`
+throughout.
+
+This is a **second, independent cause of B's user-visible symptom** — it lives in
+`applyRenderIntent`, which neither of B's fixes touches — and it is why B read as
+intermittent: the settle re-pins afterwards, so it self-heals whenever one happens
+to run.
+
 ## Shared root
 
-Two structural defects sit under all four:
+Three structural defects sit under these:
 
 1. **An "empty but complete" data result is treated as authoritative.** Zero items
    plus `HasVeryFirstItem` plus `HasVeryLastItem` is indistinguishable from a
@@ -207,6 +258,10 @@ Two structural defects sit under all four:
 2. **The edge predicates are one-sided, and re-derived from geometry the list
    itself just produced.** `distance <= eps` where `|distance| <= eps` was meant,
    and a settle armed by the list's own programmatic scroll.
+3. **"The last item" is defined twice and the definitions disagree.** Everything
+   the list does excludes skip-key items; the navigation scan did not, which is
+   enough to make a target permanently unreachable. Any other place deriving a key
+   or index without that rule will produce the same signature.
 
 ## Fixes
 
@@ -319,3 +374,15 @@ session settles it. If fresh builds flap too, the next suspect is
 `EndEntryLid` into `hiddenTailToExclude` — the marker widens to those inputs under
 the same one-cycle contract, rather than the suppression widening past marked
 builds.
+
+### E — the navigation target obeys the same skip-key rule as everything else
+
+`GetData`'s nav scan gains `&& !x.ShouldSkipKey`, matching `VirtualListData.GetLast`
+and `getLastContentKey`. `getPendingJumpKey` additionally refuses a skip-key target,
+so a producer that hands the list an unreachable key costs nothing rather than
+churning the pin on every render.
+
+Verified on the reporting chat: six End→null cycles in 23 s before, zero pin
+transitions in 30 s of continuous sampling after, with `scrollToKey ==
+lastContentKey` in every sample.
+
