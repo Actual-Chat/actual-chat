@@ -57,6 +57,11 @@
     [Parameter, EditorRequired] public int ErrorCount { get; set; }
     [Parameter, EditorRequired] public bool MustAutoReload { get; set; }
 
+    protected override void OnAfterRender(bool firstRender) {
+        if (!MustReloadSilently)
+            Barrier.HidePanelsOnce();
+    }
+
     protected override void OnParametersSet() {
         _retryIndex = Math.Max(0, ErrorCount - SilentReloadLimit);
         _reloadAt = MustAutoReload

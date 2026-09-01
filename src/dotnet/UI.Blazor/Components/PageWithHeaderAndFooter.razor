@@ -6,32 +6,32 @@
         </ErrorBarrier>
     </RegionVisibilityProvider>
     <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Middle.IsVisible">
-        <ErrorBarrier Name="PageWithHeaderAndFooter-Content">
-        <div class="@Class">
-            <div class="layout-header">
-                @Header
-            </div>
-            <div class="layout-subheader">
-                @SubHeader
-            </div>
-            <div class="layout-body-wrapper">
-                <div class="c-container">
-                    <div class="layout-footer">
-                        @Footer
+        <ErrorBarrier Name="PageWithHeaderAndFooter-Content" MustHidePanels="@true">
+            <div class="@Class">
+                <div class="layout-header">
+                    @Header
+                </div>
+                <div class="layout-subheader">
+                    @SubHeader
+                </div>
+                <div class="layout-body-wrapper">
+                    <div class="c-container">
+                        <div class="layout-footer">
+                            @Footer
+                        </div>
+                        <div class="layout-subfooter">
+                            @SubFooter
+                        </div>
+                        <div class="layout-body @BodyClass">
+                            <ErrorBarrier Name="PageWithHeaderAndFooter-Body" MustHidePanels="@true">
+                                @Body
+                            </ErrorBarrier>
+                        </div>
+                        @* Absolutely positioned content anchored to this container rather than to the body *@
+                        @BodyOverlay
                     </div>
-                    <div class="layout-subfooter">
-                        @SubFooter
-                    </div>
-                    <div class="layout-body @BodyClass">
-                        <ErrorBarrier Name="PageWithHeaderAndFooter-Body">
-                            @Body
-                        </ErrorBarrier>
-                    </div>
-                    @* Absolutely positioned content anchored to this container rather than to the body *@
-                    @BodyOverlay
                 </div>
             </div>
-        </div>
         </ErrorBarrier>
     </RegionVisibilityProvider>
     <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Right.IsVisible">
