@@ -7,7 +7,7 @@
 import { getLogs } from 'logging';
 import { WebCodecsCompat } from './init';
 
-const { debugLog, warnLog } = getLogs('WebCodecsCompat');
+const { infoLog, warnLog } = getLogs('WebCodecsCompat');
 
 const LIBAV_CODEC = 'libvpx-vp9';
 // libav runs on a millisecond timebase; WebCodecs timestamps are microseconds.
@@ -155,7 +155,7 @@ export class Vp9Encoder {
             this._swsFrame = 0;
             this._swsIn = null;
             this._swsOut = { width: config.width, height: config.height, format: def.ctx.pix_fmt! };
-            debugLog?.log(`Vp9Encoder: configured ${config.width}x${config.height} @ ${config.bitrate ?? 0}bps`);
+            infoLog?.log(`Vp9Encoder: configured ${config.width}x${config.height} @ ${config.bitrate ?? 0}bps`);
         }).catch((error: unknown) => this.fail(error));
     }
 

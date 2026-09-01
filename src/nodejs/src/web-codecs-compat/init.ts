@@ -58,6 +58,7 @@ const READY: Promise<void> = Promise.resolve();
 
 export class WebCodecsCompat {
     private static _level: WebCodecsLevel = 'none';
+    private static _requestedLevel: WebCodecsLevel = 'none';
     private static _isReady = true;
     private static _whenReady: Promise<void> = READY;
     private static _classes: WebCodecsPolyfillClasses | null = null;
@@ -97,8 +98,8 @@ export class WebCodecsCompat {
      *  once codecs exist, so switching levels needs a reload. */
     static init(config: WebCodecsCompatConfig): Promise<void> {
         if (this._whenReady !== READY) {
-            if (config.level !== this._level)
-                warnLog?.log(`init: at '${this._level}', ignoring '${config.level}'`);
+            if (config.level !== this._requestedLevel)
+                warnLog?.log(`init: already at '${this._requestedLevel}', ignoring '${config.level}'`);
 
             return this._whenReady;
         }
@@ -106,6 +107,7 @@ export class WebCodecsCompat {
         if (config.level === 'none')
             return this._whenReady;
 
+        this._requestedLevel = config.level;
         this._isReady = false;
         this._whenReady = this.install(config).catch((error: unknown) => {
             // Staying native is worse than the polyfill but better than no media;
@@ -127,7 +129,13 @@ export class WebCodecsCompat {
         // Setting globalThis.LibAV is the whole mechanism for pointing the
         // polyfill at this build instead of the CDN one it would fetch.
         (globalThis as { LibAV?: unknown }).LibAV = { base, nothreads: true };
-        const scope = globalThis as { importScripts?: (url: string) => void };
+        const scope = globalThis as { importScripts?: (url: string) => void; document?: Document };
+        if (typeof scope.importScripts !== 'function' && !scope.document) {
+            throw new Error(
+                'libav.js needs a classic realm: its loader calls importScripts, which a '
+                + 'module worker does not have. An .mjs build of the variant is required here.');
+        }
+
         if (typeof scope.importScripts === 'function') {
             scope.importScripts(`${base}/${LIBAV_FILE}`);
             scope.importScripts(`${base}/${POLYFILL_FILE}`);
