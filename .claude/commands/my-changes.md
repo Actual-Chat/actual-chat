@@ -1,7 +1,7 @@
 ---
-allowed-tools: Bash, Read, Glob, Grep, mcp__voxt-robokitty__post_message, mcp__voxt-robokitty__list_place_chats
+allowed-tools: Bash, Read, Glob, Grep, AskUserQuestion, mcp__voxt-robokitty__post_message, mcp__voxt-robokitty__list_place_chats, mcp__voxt-robokitty__list_messages, mcp__voxt-robokitty__get_id_range
 description: Summarize the current GitHub user's commits across all branches today (or a given window), grouped by category and branch. Supports `--all` (every human author), `--post` (send to Standup chat), and a `minimal` detail level.
-argument-hint: [time window | starting from <sha> | as table | 2x | compact | minimal | --all | --post | ...]
+argument-hint: [time window | since my last report | starting from <sha> | as table | 2x | compact | minimal | --all | --post | ...]
 ---
 
 # /my-changes
@@ -27,7 +27,12 @@ a **delivery flag** — in any order.
 
 **Time window:**
 
-- (none) — today, since local midnight.
+- (none) — **don't guess: ask.** See *Step 2* — offer "since my last
+  standup report" (looked up in the **Standup** chat) plus 1 day / 1 week /
+  1 month / 3 months / custom.
+- `since my last report` / `since my last standup` / `from my last report in
+  standup` — resolve to the timestamp of the user's most recent
+  `/my-changes` report in the **Standup** chat (Step 2).
 - `last 8 hours`, `last 2 days`, `last week` — relative window.
 - `since 2026-05-01`, `since yesterday` — absolute or named date.
 - `starting from <sha>` — git revision range that **includes `<sha>` itself**
@@ -224,19 +229,71 @@ full `--author=` ident set into `git log`.
 
 ### 2. Determine the time window
 
-Parse `$ARGUMENTS`:
+Strip the format / detail / scope / delivery keywords (`as table`, `compact`,
+`minimal`, `--all`, `--post`, …) first — what's left is the window.
 
 | Input | Translate to |
 |---|---|
-| (empty) | `--since="00:00"` (today, local midnight) |
+| (empty) | **ask the user** — see *Step 2a* below |
+| `since my last report` / `since my last standup` / `from my last report in standup` | the last-report timestamp from *Step 2a*, as `--since="<ISO timestamp>"` |
 | `last <N> hours` / `last <N> days` / `last <N> weeks` | `--since="<N> <unit> ago"` |
 | `since <date>` | `--since="<date>"` |
 | `starting from <sha>` (default: inclusive) | `<sha>^..` revision range, no `--since` |
 | `starting from <sha> exclusively` / `after <sha>` | `<sha>..` revision range, no `--since` |
 | `<sha>..` or `<shaA>..<shaB>` (literal range) | use as-is, no `--since` |
 
-Strip the format keywords (`as table`, `as markdown table`, …) before parsing
-the window.
+Never silently fall back to "today since midnight" — an unspecified window
+means *ask*, not *assume*.
+
+### 2a. Unspecified window — find the last report, then ask
+
+**First, look up the last standup report** (also do this when the args say
+"since my last report" — there the lookup *is* the answer and no question is
+asked).
+
+1. Pick a Voxt MCP server: prefer `mcp__voxt-robokitty__*`; if it isn't
+   available, use `mcp__voxt-<user>__*` (e.g. `mcp__voxt-alex__*`). If no
+   Voxt MCP is wired up at all, skip straight to the question with only the
+   standard options.
+2. Resolve the **Standup** chat → `s-pmMsV1UVKG-xigkwj28ql` (same mapping
+   `/robokitty-post` uses; fall back to `list_place_chats` for place
+   `pmMsV1UVKG` matched case-insensitively on the title).
+3. Walk the chat **backwards from the tail** — `get_id_range` gives
+   `lastId`, then call `list_messages(chatId, afterId: lastId - 50,
+   limit: 50)`, then `afterId: lastId - 100`, and so on. **Keep batches
+   small (≤ 50).** These payloads are large; a 200-message pull will
+   blow the context budget. Stop after ~6 batches (≈ 300 messages) or once
+   a match is found, whichever comes first.
+4. A message is a `/my-changes` report if its text matches **any** of:
+   - a `**Window:**` footer line (`**Window:** **<N> commits** in …`),
+   - a ``**LOCs:** `+<n>`, `-<n>` `` line,
+   - a `minimal`-mode header — a first line shaped
+     ``**<Name>** — <period>, `+<n>`/`-<n>`: ``.
+
+   It is **about the target user** if the report names them (the `minimal`
+   header name, or a `## <UserName>` block heading) — or, for a single-user
+   report with no name in it, if the message `authorName` matches the target
+   user. In `--all` mode the target is the *current* user (whoever invoked
+   the command), since that's whose cadence sets the window.
+5. Take that message's `createdAt` (epoch ms → local ISO timestamp) as the
+   candidate window start. Report it to the user as e.g.
+   `since my last standup report (2026-08-29 18:42, ~2 days ago)`.
+
+**Then ask** with `AskUserQuestion` (header: `Timespan`), offering:
+
+- **Since last report** — the timestamp found above, labelled with its age
+  (e.g. `Since last report (~2d)`). List it **first and mark it
+  "(Recommended)"**. Omit this option entirely if no report was found or no
+  Voxt MCP is available.
+- **1 day**, **1 week**, **1 month**, **3 months** — `--since="1 day ago"`
+  and so on. `AskUserQuestion` allows at most 4 options, so when the
+  last-report option is present, keep `1 day` / `1 week` / `1 month` and drop
+  `3 months`; mention in that option's description that a custom window can
+  be typed via "Other".
+- The user can always type a custom window through the built-in **Other**
+  choice — parse whatever they type with the table above.
+
+Ask this **once**, before gathering any commits.
 
 ### 3. Gather commits — current repo, all branches
 
