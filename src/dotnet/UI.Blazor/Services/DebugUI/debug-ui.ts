@@ -4,11 +4,8 @@ import type { VideoFormatDto, VideoFrameDto } from 'api';
 import { DeviceOrientation, normalizeRotationQuarter, type RotationQuarter } from 'orientation';
 import { RpcStream } from 'actuallab-rpc';
 import { OnDeviceAwake } from 'on-device-awake';
-import { getWebCodecsPolyfillLevel, type WebCodecsPolyfillOverride } from 'webcodecs-polyfill';
-import {
-    getWebCodecsPolyfillOverride,
-    setWebCodecsPolyfillOverride,
-} from 'webcodecs-polyfill-settings';
+import { WebCodecsCompat, type WebCodecsLevelOverride } from 'web-codecs-compat/init';
+import { getWebCodecsLevelOverride, setWebCodecsLevelOverride } from 'web-codecs-compat/settings';
 import { SvgCache } from '../../Components/Avatar/svg-cache';
 import { VirtualListOverlay } from '../../Components/VirtualList/virtual-list-overlay';
 
@@ -109,18 +106,18 @@ export class DebugUI {
     }
 
     // Applies on reload: the polyfill cannot be swapped under a running pipeline.
-    public static overrideWebCodecsPolyfillLevel(level?: WebCodecsPolyfillOverride | null): string {
-        setWebCodecsPolyfillOverride(level ?? 'auto');
-        const stored = getWebCodecsPolyfillOverride();
-        const message = `WebCodecs polyfill override: '${stored}' `
-            + `(active until reload: '${getWebCodecsPolyfillLevel()}')`;
+    public static overrideWebCodecsPolyfillLevel(level?: WebCodecsLevelOverride | null): string {
+        setWebCodecsLevelOverride(level ?? 'auto');
+        const stored = getWebCodecsLevelOverride();
+        const message = `WebCodecs level override: '${stored}' `
+            + `(active until reload: '${WebCodecsCompat.level}')`;
         console.log(message);
 
         return message;
     }
 
-    public static getActiveWebCodecsPolyfillLevel(): string {
-        return getWebCodecsPolyfillLevel();
+    public static getActiveWebCodecsLevel(): string {
+        return WebCodecsCompat.level;
     }
 
     /** Emits `count` log entries to the LogUI ring buffer for testing the log
