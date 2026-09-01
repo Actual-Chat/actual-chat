@@ -10,10 +10,17 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
     // check-then-set on its flag - the lock keeps the flag and the hardware from disagreeing.
     // It's held across the MAUI sensor start/stop calls, which don't block on the main thread.
     // The flag is the intended state, so on iOS it's set here, not inside the dispatch below.
+    // Accelerometer.Default is one process-wide resource, but this feed is scoped: a warm start
+    // or a headless wake scope can leave two instances alive at once. Counting the holders is
+    // what stops a dying scope's Stop() from killing the registration a live scope depends on -
+    // its own flag would stay true, so nothing would ever start it again.
+    private static int _accelerometerHolderCount;
+
     private readonly Lock _lock = new();
     private bool _isAccelerometerOn;
     private bool _isProximityOn;
     private Moment _lastSampleAt;
+    private Moment _accelerometerStartedAt;
 
     private ILogger Log => field ??= hub.LogFor(GetType());
 
@@ -22,18 +29,36 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
     public override void StartAccelerometer()
     {
         lock (_lock) {
-            if (_isAccelerometerOn || !Accelerometer.Default.IsSupported)
+            if (!Accelerometer.Default.IsSupported)
                 return;
+
+            if (_isAccelerometerOn) {
+                if (!IsAccelerometerStale(
+                        _accelerometerStartedAt, _lastSampleAt, hub.Clocks.CpuClock.Now,
+                        Constants.Audio.GestureSensorStaleTimeout))
+                    return;
+
+                // Re-asserted for every holder rather than re-counted: the shared sensor is as
+                // dead for the others as it is here, and their flags say otherwise too.
+                Log.LogWarning("The accelerometer stopped delivering - re-asserting it");
+                TryStopShared();
+                TryStartShared();
+                _lastSampleAt = default;
+                _accelerometerStartedAt = hub.Clocks.CpuClock.Now;
+                return;
+            }
 
             try {
                 Accelerometer.Default.ReadingChanged += OnReadingChanged;
-                // SensorSpeed.UI ~= 60ms/sample; clears the ~166ms bound the 500ms-window
-                // detectors need for a 4-6Hz shake.
-                Accelerometer.Default.Start(SensorSpeed.UI);
+                if (Interlocked.Increment(ref _accelerometerHolderCount) == 1)
+                    TryStartShared();
                 _isAccelerometerOn = true;
+                _lastSampleAt = default;
+                _accelerometerStartedAt = hub.Clocks.CpuClock.Now;
             }
             catch (Exception e) {
                 Accelerometer.Default.ReadingChanged -= OnReadingChanged;
+                Interlocked.Decrement(ref _accelerometerHolderCount);
                 Log.LogWarning(e, "Failed to start the accelerometer");
             }
         }
@@ -48,13 +73,35 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
             _isAccelerometerOn = false;
             // Or a stale stamp would gate the first sample after the next start.
             _lastSampleAt = default;
+            _accelerometerStartedAt = default;
             Accelerometer.Default.ReadingChanged -= OnReadingChanged;
-            try {
-                Accelerometer.Default.Stop();
-            }
-            catch (Exception e) {
-                Log.LogWarning(e, "Failed to stop the accelerometer");
-            }
+            // Only the last holder stops the hardware - see _accelerometerHolderCount.
+            if (Interlocked.Decrement(ref _accelerometerHolderCount) == 0)
+                TryStopShared();
+        }
+    }
+
+    // Private methods
+
+    private void TryStartShared()
+    {
+        try {
+            // SensorSpeed.UI ~= 60ms/sample; clears the ~166ms bound the 500ms-window
+            // detectors need for a 4-6Hz shake.
+            Accelerometer.Default.Start(SensorSpeed.UI);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to start the accelerometer");
+        }
+    }
+
+    private void TryStopShared()
+    {
+        try {
+            Accelerometer.Default.Stop();
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to stop the accelerometer");
         }
     }
 

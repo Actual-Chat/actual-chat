@@ -80,6 +80,9 @@ public static partial class Constants
         // max rate raises the shared HAL rate and every connection gets the flood - 470Hz measured
         // against our 15Hz request - so the surplus is dropped at the platform edge.
         public static readonly TimeSpan GestureSampleMinPeriod = TimeSpan.FromMilliseconds(50);
+        // How long an accelerometer that should be delivering may stay silent before the feed
+        // stops trusting its own flag and re-asserts the shared registration.
+        public static readonly TimeSpan GestureSensorStaleTimeout = TimeSpan.FromSeconds(3);
         // Matches the wake push's FCM TTL; older wakes skip catch-up-from-start and go live.
         public static readonly TimeSpan PttStaleWakeAge = TimeSpan.FromSeconds(60);
         // Clock-fuzz allowance between a wake's startedAt and the target stream's BeginsAt.
