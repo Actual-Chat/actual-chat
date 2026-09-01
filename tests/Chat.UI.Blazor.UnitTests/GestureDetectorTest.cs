@@ -44,6 +44,19 @@ public class GestureDetectorTest
     }
 
     [Fact]
+    public void FlipFiresOnQuickRotation()
+    {
+        // Measured on-device 2026-09-01: a quick flip holds landscape ~135ms, and at the ~68ms
+        // sample cadence no landscape sample lands past the dwell - only the return dates it.
+        var d = new FlipToTalkDetector();
+        // act + assert
+        d.Process(Portrait(0)).Should().BeFalse();
+        d.Process(Landscape(68)).Should().BeFalse();
+        d.Process(Landscape(136)).Should().BeFalse();
+        d.Process(Portrait(203)).Should().BeTrue();
+    }
+
+    [Fact]
     public void FlipDoesNotFireOnHalfRotation()
     {
         // Portrait -> landscape held well past the dwell is only half a flip: without a return
