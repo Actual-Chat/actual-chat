@@ -10,7 +10,7 @@
     if (!s.IsAnyoneTalking)
         cls += " quiet";
 }
-<div class="@cls">
+<div class="@cls" data-vl-anchor="@Header.Conversation!.Id.Value">
     <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
     <span class="c-lc-name">@title</span>
     @if (!s.IsJoined && !s.HasOverlay) {
@@ -19,7 +19,7 @@
     @if (s.CanExpand) {
         <HeaderButton
             Class="c-lc-expand"
-            data-vl-hold="@(s.IsExpanded ? "keep-edge" : "always")"
+            data-vl-hold="always"
             data-collapse-arm="@(s.IsExpanded ? Header.Conversation!.Id.Value : null)"
             Click="@Toggle">
             <i class="@(s.IsExpanded ? "icon-collapse" : "icon-expand")"></i>

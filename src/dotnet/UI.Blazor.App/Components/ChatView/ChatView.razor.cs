@@ -530,9 +530,17 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         if (isFirstGetData)
             ChatSwitchTracer.Mark("ChatView.GetData#1: GetChatItems -> in", dataQuery);
-        var (items, hasBefore, hasAfter) = await ChatUI.GetChatItems(chatId, dataQuery, readEntryLid, cancellationToken).ConfigureAwait(false);
+        var (items, hasBefore, hasAfter, isTailCoverageStale)
+            = await ChatUI.GetChatItems(chatId, dataQuery, readEntryLid, cancellationToken).ConfigureAwait(false);
         if (isFirstGetData)
             ChatSwitchTracer.Mark("ChatView.GetData#1: GetChatItems <- out", $"{items.Count} items");
+        // A build rendered from serve-stale meta may not un-know the end - the fresh rebuild UseIfReady
+        // guarantees is what's entitled to that verdict, and it lands within a cycle. Left standing, the
+        // flip costs a 1500px end spacer that an End-pinned list follows down into the skeletons and back
+        // out on the next rebuild: the reported ~10Hz flicker.
+        if (query.IsNone && nav == null && renderedData.HasVeryLastItem && hasAfter && isTailCoverageStale)
+            hasAfter = false;
+        var isWindowUnresolved = false;
         if (items.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
@@ -543,17 +551,25 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     NavigationState = nav ?? renderedData.NavigationState,
                     ItemVisibilityState = ItemVisibility.Value,
                 };
+
+            // A chat that has entries but produced none is a hole, not a loaded window - most often the
+            // live block's hidden tail swallowing every entry in range before its card exists.
+            isWindowUnresolved = true;
+            Log.LogWarning(
+                "GetData: #{ChatId} produced no items for a non-empty chat, dataQuery = {DataQuery}",
+                chatId, dataQuery.Format());
         }
 
         UpdateNewMessagesLineDebounce(items, readEntryLid);
         DebugLog?.LogDebug(
-            "GetData: loaded {Count} items ({RowCount} rows), first={First}, last={Last}, hasBefore={HasBefore}, hasAfter={HasAfter}, navKey={NavEntryLid}, mustScroll={MustScroll}",
+            "GetData: loaded {Count} items ({RowCount} rows), first={First}, last={Last}, hasBefore={HasBefore}, hasAfter={HasAfter}, staleTail={IsTailCoverageStale}, navKey={NavEntryLid}, mustScroll={MustScroll}",
             items.Count,
             items.Sum(i => i.GetLeafMessages().Count()),
             items.Count > 0 ? items[0].Id : 0,
             items.Count > 0 ? items[^1].Id : 0,
             hasBefore,
             hasAfter,
+            isTailCoverageStale,
             nav?.EntryLid,
             mustScrollToEntry);
 
@@ -594,9 +610,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // Locating navigation entry
         string? navKey = null;
         if (nav != null) {
+            // A skip-key target can never be reached - the list skips those when it names its last item
+            // and never reports them visible - so it unpins for a jump it then re-requests every render.
             var navChatMessage = items
                 .SelectMany(item => item.GetLeafMessages())
-                .LastOrDefault(x => x.Id <= nav.EntryLid);
+                .LastOrDefault(x => x.Id <= nav.EntryLid && !x.ShouldSkipKey);
             navKey = navChatMessage?.Key.Value;
             if (navChatMessage == null)
                 Log.LogWarning("GetData: entry not found in the loaded set: #{EntryLid}", nav.EntryLid);
@@ -607,27 +625,29 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     false);
         }
         // Determine scroll target
-        string? scrollToKey = navKey != null && mustScrollToEntry ? navKey : null;
+        var scrollToKey = navKey != null && mustScrollToEntry ? navKey : null;
         var scrollToKeyInTheMiddle = nav is { ShowInTheMiddle: true };
 
         // When NewMessagesLine exists, prefer scrolling to the first unread message.
         // Scan forward with GetLeafMessages() to skip replacement items (DateLine, ConversationStart)
-        // that may be inserted between NewMessagesLine and the actual unread entry.
+        // that may be inserted between NewMessagesLine and the actual unread entry - those are skip-key,
+        // and so is the line itself, so aiming at one leaves the list re-requesting a jump every render.
         var newMessagesLineIndex = items.FirstIndexOf(i => i.Kind == ChatMessageKind.NewMessagesLine);
-        if (newMessagesLineIndex >= 0) {
-            var firstUnreadKey = items
+        var firstUnreadKey = newMessagesLineIndex < 0
+            ? null
+            : items
                 .Skip(newMessagesLineIndex + 1)
                 .SelectMany(item => item.GetLeafMessages())
-                .Select(message => message.Key.Value)
-                .FirstOrDefault()
-                ?? items[newMessagesLineIndex].Key.Value;
-
+                .FirstOrDefault(message => !message.ShouldSkipKey)
+                ?.Key.Value;
+        if (firstUnreadKey != null) {
             if (scrollToKey == null && itemVisibility.IsEmpty) {
                 // Tab resume: no explicit nav, viewport empty — scroll to first unread
                 scrollToKey = firstUnreadKey;
                 scrollToKeyInTheMiddle = true;
             }
-            else if (isFirstRender && scrollToKey != null && nav is { MustHighlight: false, ShouldRestoreViewPosition: true }) {
+            else if (isFirstRender && scrollToKey != null
+                && nav is { MustHighlight: false, ShouldRestoreViewPosition: true }) {
                 // Initial open: restoring view position — redirect to first unread instead.
                 // Gated on isFirstRender to avoid hijacking summary-toggle navigation.
                 scrollToKey = firstUnreadKey;
@@ -644,8 +664,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var result = new VirtualListData<ChatMessage>(items) {
             Index = renderedData.Index + 1,
             EstimatedCount = (int?)(chatIdRange.End - chatIdRange.Start),
-            HasVeryFirstItem = !hasBefore,
-            HasVeryLastItem = !hasAfter,
+            // An unresolved window must claim neither end, or the blank it renders becomes permanent:
+            // with both ends in, the list stops querying, both spacers collapse to zero so there are no
+            // skeletons left to retry from, and every position guard short-circuits on an empty item list.
+            HasVeryFirstItem = !hasBefore && !isWindowUnresolved,
+            HasVeryLastItem = !hasAfter && !isWindowUnresolved,
             ScrollToKey = scrollToKey,
             ScrollToKeyInTheMiddle = scrollToKeyInTheMiddle,
             NavigationState = nav ?? renderedData.NavigationState,
