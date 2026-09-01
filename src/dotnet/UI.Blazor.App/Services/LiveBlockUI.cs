@@ -189,26 +189,13 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                     : new LiveBlockOverlay(t.LiveRenderId, t.V, FoldRangeOf(t.V, foldBoundaryLid),
                         new Range<long>(t.TailStart, long.MaxValue), t.TailStart, null, false, IsDissolving: true);
 
-        if (!amInLive) {
-            // Leave (session still live): freeze what the viewer was rendering, hiding what arrives
-            // after - but only while the card covers everything up to TailStart, or frozen rows render
-            // above the hidden range and the block reads as expanded while it stops taking new entries.
-            // Un-hidden it stays open-ended too, or those rows fall outside the block and split it.
-            var foldRange = FoldRangeOf(t.V, foldBoundaryLid);
-            chatState.TailUnhidden |= foldRange.End < t.TailStart;
-            var mustHideTail = !chatState.TailUnhidden;
-            return new LiveBlockOverlay(t.LiveRenderId, t.V, foldRange,
-                mustHideTail ? new Range<long>(t.TailStart, long.MaxValue) : default,
-                mustHideTail ? t.TailStart : long.MaxValue,
-                null,
-                false);
-        }
+        if (!amInLive)
+            // Leave (session still live): freeze what the viewer was rendering; entries that arrive
+            // after the leave (past the frozen tail start) stay hidden.
+            return new LiveBlockOverlay(t.LiveRenderId, t.V, FoldRangeOf(t.V, foldBoundaryLid),
+                new Range<long>(t.TailStart, long.MaxValue), t.TailStart, null, false);
 
-        // Still joined and live: the freeze the latch describes is over, so the next leave decides
-        // afresh. Cleared here as well as on the governor's cadence, or a leave landing between two of
-        // its iterations would derive against the previous freeze's latch.
-        chatState.TailUnhidden = false;
-        return null;
+        return null; // still joined and live
     }
 
     private static Range<long> FoldRangeOf(long v, long boundaryLid)
@@ -401,7 +388,6 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             else if (raw != null && chatState.WasQuiet) {
                 chatState.WasQuiet = false;
                 chatState.WasAttending = false;
-                chatState.TailUnhidden = false;
                 chatState.Template = null;
                 chatState.RevealedBoundaryLid = long.MaxValue;
                 chatState.RevealScrolledInto = false;
@@ -414,9 +400,6 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             }
 
             chatState.WasAttending |= isJoined;
-            // Re-joining ends the freeze the latch belongs to, so the next leave decides afresh.
-            if (isJoined)
-                chatState.TailUnhidden = false;
             if (template != null)
                 chatState.Template = template;
             if (raw == null && chatState.WasAttending)
@@ -517,9 +500,6 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         public bool WasAttending;
         public bool IsClosed;
         public bool WasQuiet;
-        // One-way: the fold boundary only advances, so a freeze that started out showing its tail would
-        // otherwise re-hide rows the reader is already looking at once the boundary passed TailStart.
-        public bool TailUnhidden;
         public Moment DissolveEndsAt;
         public bool DissolveDone;
         public FrozenTemplate? Template;

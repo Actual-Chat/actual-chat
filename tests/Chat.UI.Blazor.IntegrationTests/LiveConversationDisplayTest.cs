@@ -373,6 +373,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
         await chatAudioUI.SetListeningState(chat.Id, true);
         chatUI.SelectChatOnNavigation(chat.Id);
+        await CollapseJoinedLiveBlock(chatUI, chat.Id, live.ToConversation());
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
         await ComputedTest.When(async ct => {
@@ -731,14 +732,6 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SelectChatOnNavigation(chat.Id);
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        List<long> beforeLids = null!;
-        await ComputedTest.When(async ct => {
-            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
-            var lids = LeafEntryLids(items);
-            lids.Should().Contain(v + 3);
-            lids.Should().Contain(v + 4);
-            beforeLids = lids;
-        }, TimeSpan.FromSeconds(10));
         chatUI.SetItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> {
@@ -747,6 +740,17 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             },
             false,
             false));
+        await CollapseJoinedLiveBlock(chatUI, chat.Id, live.ToConversation());
+        // Baseline taken once collapsed, so act 1 is compared against the state it actually acts on -
+        // and v+3/v+4 being here at all is the guard already holding the fold at the viewport top.
+        List<long> beforeLids = null!;
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            var lids = LeafEntryLids(items);
+            lids.Should().Contain(v + 3);
+            lids.Should().Contain(v + 4);
+            beforeLids = lids;
+        }, TimeSpan.FromSeconds(10));
 
         // act 1 - a summary pass widens the live pipeline's known coverage over v+3/v+4, but they're
         // still the topmost visible entries, so the viewport guard holds the fold there regardless
@@ -1444,6 +1448,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
         await chatAudioUI.SetRecordingChatId(chat.Id);   // Bob is a recorder => joined
         chatUI.SelectChatOnNavigation(chat.Id);
+        await CollapseJoinedLiveBlock(chatUI, chat.Id, live.ToConversation());
 
         // act - viewport top sits at the 6th entry: everything above it (incl. un-summarised rows) must fold
         var viewportTop = lids[5];
@@ -2160,6 +2165,23 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         }
 
         return sb.ToString();
+    }
+
+    // Joining now expands the live block, so a test about its collapsed form has to put it back - and
+    // only once the expand has landed, since a toggle that races it is undone by the expand it preceded.
+    private async Task CollapseJoinedLiveBlock(ChatUI chatUI, ChatId chatId, Conversation conversation)
+    {
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chatId, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await ComputedTest.When(async ct => {
+            await chatUI.GetChatItems(chatId, query, 0, ct);
+            chatUI.IsConversationExpanded(conversation).Should().BeTrue();
+        }, TimeSpan.FromSeconds(15));
+        chatUI.ToggleExpandConversation(conversation.Id);
+        await ComputedTest.When(async ct => {
+            await chatUI.GetChatItems(chatId, query, 0, ct);
+            chatUI.IsConversationExpanded(conversation).Should().BeFalse();
+        }, TimeSpan.FromSeconds(15));
     }
 
     private async Task<Chat> CreateSettledChat(string title, bool isPublic = false)

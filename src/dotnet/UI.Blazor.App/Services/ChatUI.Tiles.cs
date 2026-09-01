@@ -863,7 +863,10 @@ public partial class ChatUI
                     hiddenLiveTailRange.Start,
                     Math.Max(hiddenLiveTailRange.Start, hiddenTailConversation.EndEntryLid + 1))
                 : hiddenLiveTailRange;
-            if (!hiddenLiveTailRange.IsEmpty && !hiddenTailToExclude.IsEmpty)
+            // Dropping whole id-tiles takes the typed messages interleaved with the call down with them,
+            // and those render as usual for someone in it - they only stopped mattering for a viewer who
+            // never saw the call's entries at all. Collapsing is then a per-entry filter, nothing coarser.
+            if (!amInLiveConversation && !hiddenLiveTailRange.IsEmpty && !hiddenTailToExclude.IsEmpty)
                 excludedRanges.Add(hiddenTailToExclude);
 
             var merged = showConversations
