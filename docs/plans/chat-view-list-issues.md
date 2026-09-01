@@ -238,6 +238,51 @@ Verified against a running list, before vs. after, on the same geometry:
 | tall chain at top, `hasVeryLastItem = false` | **Start** | null |
 | tall chain, `hasVeryLastItem = true` | End | End |
 
-### C, D
+### C — a block that renders expanded hides nothing
 
-Pending.
+The invariant, as the reporter states it: a block is either **collapsed**, visibly
+so, with new messages arriving inside it; or **expanded**, and you see everything.
+There is no third variant. Two ways into the third one, both closed:
+
+- `LiveBlockUI.DeriveOverlay` hid `[TailStart, ∞)` whenever the viewer had
+  attended and `amInLive` read false, however little the card actually covered. A
+  young session floors its fold at `V` (`MinTailEntryCount` is 10), so every frozen
+  row rendered *above* the hidden range — expanded to the eye, silently truncated.
+  Hiding now requires the fold to reach `TailStart`. When it doesn't, the block
+  also stays open-ended, or rows arriving past `TailStart` fall outside it and
+  split it.
+- The expansion escape in `ChatUI.Tiles.cs` was gated on `overlay == null`, so an
+  explicitly expanded block resumed hiding its tail as soon as a frozen overlay
+  appeared. It is now keyed on `liveBlockId` against `expandedConversations` — the
+  same test the fold already uses, so the two cannot disagree.
+
+**A product decision is embedded here.** The freeze exists so a hang-up never
+flashes a collapsed frame — it deliberately chose frozen-expanded over
+collapse-at-leave. That cannot coexist with "no third variant". This takes the
+invariant: a viewer who leaves a young session keeps seeing it stream until the
+fold catches up. The alternative — make the leave *render* collapsed, so the card
+stands in and `GetSwallowedCount` grows — is the other consistent shape, and wants
+the reporter's call before it is built.
+
+### D — a stand-in rebuild may not un-know the end
+
+The end spacer is 1500px and the end anchor sits after it, so flipping
+`HasVeryLastItem` moves an End-pinned list's follow target by that much: it scrolls
+into the skeletons and back out on the next rebuild, at the view's recompute
+cadence, sustaining itself because follow echoes are dropped before the pin is
+re-derived.
+
+`ChatView.GetData` now refuses that flip when no query and no navigation asked the
+window to move *and* the window still reaches `chatIdRange.End` — that combination
+can only be a stand-in build under-reporting its own tail. The second condition is
+load-bearing: without it, entries arriving past the window would be suppressed as a
+transient and never load, trading a flicker for lost messages.
+
+The client-side alternative — clamping the follow so it cannot enter the spacer —
+was rejected: a legitimate End pin with `HasVeryLastItem` false means newer content
+is loading in, and chasing the anchor is the catch-up that makes flinging to the
+bottom work while tiles stream.
+
+**Not settled:** which engine produces the flap — stand-in/fresh rebuild pairs, or
+the visibility-anchored re-query. The fix is engine-agnostic, but the rate (~10Hz
+vs. the 250ms visibility throttle's ~4Hz ceiling) points at the former.
