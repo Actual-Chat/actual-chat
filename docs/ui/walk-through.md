@@ -147,7 +147,7 @@ already satisfied are skipped, so to see them all use a fresh account.
 | Tutorial slides (3) | `OnboardingTutorial*` | `Onboarding_*` |
 | Phone verification | [`PhoneStep.razor`](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/UI.Blazor.App/Components/Onboarding/PhoneStep.razor) | `Onboarding_*`, `Phone_*`, `Verify_*` |
 | Name + avatar | [`Onboarding/`](https://github.com/Actual-Chat/actual-chat/tree/main/src/dotnet/UI.Blazor.App/Components/Onboarding) | `Onboarding_*`, `Avatar_*`, `Form_*`, `Alias_*` |
-| Permissions | [`PermissionStepModel.cs`](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/UI.Blazor.App/Components/Onboarding/PermissionStepModel.cs) | `Permission_*`, `Onboarding_*` |
+| Permissions | [`PermissionStepModel.cs`](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/UI.Blazor.App/Components/Onboarding/PermissionStepModel.cs) &mdash; the rows come from `PermissionsUI`, same as the Settings tab | `Permission_*`, `Onboarding_*` |
 | Spoken languages | [`LanguagesStep.razor`](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/UI.Blazor.App/Components/Onboarding/LanguagesStep.razor) | `Onboarding_*`, `VoiceSettings_*` |
 | Time zone | [`TimeZoneStep.razor`](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/UI.Blazor.App/Components/Onboarding/TimeZoneStep.razor) | `TimeZone_*` |
 | Telemetry consent | [`DataCollectionStep.razor`](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/UI.Blazor.App/Components/Onboarding/DataCollectionStep.razor) | `Onboarding_Telemetry*` |
@@ -323,7 +323,7 @@ Those three keys have no call site &mdash; the place panel renders
 
 ### 7. Settings
 
-Route: `/settings?ui-language=max`. Every tab in one modal, 195 keys &mdash;
+Route: `/settings?ui-language=max`. Every tab in one modal, 201 keys &mdash;
 the single densest surface in the app.
 
 | Tab | Key groups |
@@ -333,6 +333,7 @@ the single densest surface in the app.
 | Voice &amp; transcription | `Transcription_*`, `VoiceSettings_*`, `ListeningLinger_*` |
 | Push-to-talk | `Ptt_*` (36 keys; needs `EnableIncompleteUI` + MAUI or a local admin) |
 | Application | `AppSettings_*`, `NativeApp_*`, `Download_*`, `LocationAccuracy_*` |
+| Permissions | `Permissions_*`, `Permission_*` (the native-only rows need the MAUI app) |
 | Sessions | `Sessions_*` |
 | API keys | `ApiKeys_*`, `ApiKeyCreate_*`, `ApiKeyReveal_*` |
 | Privacy | `Privacy_*`, `PeerContact_*` |
@@ -353,7 +354,7 @@ These need a trigger, and they are the ones most often missed in review.
 
 | Surface | Trigger | Key groups |
 |---|---|---|
-| Banners | permission not granted, call in progress, reconnecting | `Banner_*` (29 keys) &mdash; see [`Components/Banners/`](https://github.com/Actual-Chat/actual-chat/tree/main/src/dotnet/UI.Blazor.App/Components/Banners) |
+| Banners | call in progress, reconnecting, chat nudges | `Banner_*` (18 keys) &mdash; see [`Components/Banners/`](https://github.com/Actual-Chat/actual-chat/tree/main/src/dotnet/UI.Blazor.App/Components/Banners) |
 | Toasts | any recoverable failure | `ErrorToast_*` |
 | Confirm modal | any destructive action | `Confirm_*`, `Common_*` |
 | Reconnect overlay | `/test/reconnect-overlay`, or `debugUI.disconnectBlazorRpc()` | `Reconnect_*` |
@@ -421,8 +422,9 @@ Not walkable in a web session &mdash; needs a device or the native app:
 - `NativeApp_*` &mdash; Windows auto-start policy strings (MAUI on Windows only)
 - `Ptt_*` in full &mdash; push-to-talk is a device feature; the web shows an
   admin-only preview on local hosts
-- Live Activities / lock-screen call banners (`Banner_LockScreenCalls`,
-  `Banner_LiveActivities`)
+- The native-only rows of Settings &rarr; Permissions
+  (`Permission_LockScreenCalls`, `Permission_LiveActivities`,
+  `Permission_BackgroundActivity`, `Permission_Contacts`)
 
 ## Coverage table
 
@@ -441,7 +443,7 @@ Every key prefix, its size, and the stop that renders it.
 | `Ptt_` | 36 | 7 &mdash; settings &rarr; Push-to-talk |
 | `Chat_` | 31 | 4 &mdash; new chat; 6 &mdash; chat settings |
 | `ChatView_` | 29 | 5 &mdash; transcript and empty states |
-| `Banner_` | 29 | 8 &mdash; banners |
+| `Banner_` | 18 | 8 &mdash; banners |
 | `MessageMenu_` | 25 | 5 &mdash; message menu |
 | `Account_` | 25 | 6 &mdash; author modal |
 | `Shortcuts_` | 25 | <kbd>Ctrl</kbd>+<kbd>/</kbd> |
@@ -492,9 +494,10 @@ Every key prefix, its size, and the stop that renders it.
 | `Confirm_` | 6 | any confirm modal |
 | `Content_` | 6 | right panel &rarr; Media / Files / Links |
 | `Markup_` | 6 | mentions, code blocks, preformatted text |
-| `Permission_` | 6 | 2 &mdash; permissions step |
+| `Permission_` | 16 | 7 &mdash; permissions; 2 &mdash; permissions step |
 | `Replay_` | 6 | replay sub-header |
 | `IncomingShare_` | 6 | OS share into Voxt |
+| `Permissions_` | 5 | 7 &mdash; permissions |
 | `Avatar_` | 5 | avatar editor, own-avatar tiles |
 | `ChatHeader_` | 5 | 5 &mdash; chat header |
 | `ConversationMenu_` | 5 | 5 &mdash; conversation menu |

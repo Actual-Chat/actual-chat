@@ -21,5 +21,7 @@ public sealed partial record UserAppSettings : StoredSettings, IHasOrigin, IHasK
     [DataMember, MemoryPackOrder(9), Key(9)] public bool? IsFaceDownMicStopDisabled { get; init; }
     // Toggled from the JS console via debugUI.showVirtualListOverlay(), not from the Settings UI.
     [DataMember, MemoryPackOrder(10), Key(10)] public bool? IsVirtualListOverlayEnabled { get; init; }
-    [DataMember, MemoryPackOrder(11), Key(11)] public bool? IsPermissionWarningDismissed { get; init; }
+    // Comma-separated PermissionKind names that were missing when the permission warning was last
+    // dismissed, so a permission going missing outside that set raises the warning again.
+    [DataMember, MemoryPackOrder(11), Key(11)] public string? DismissedPermissionWarnings { get; init; }
 }

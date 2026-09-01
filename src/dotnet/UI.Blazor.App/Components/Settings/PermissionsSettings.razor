@@ -79,7 +79,7 @@ else if (m.HasMissing && !m.IsWarningDismissed) {
     }
 
     private async Task OnDismissWarningClick() {
-        await PermissionsUI.DismissWarning().ConfigureAwait(true);
+        await PermissionsUI.DismissWarning(State.Value).ConfigureAwait(true);
         ToastUI.Show(L.Permissions_WarningDismissed, "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 }
