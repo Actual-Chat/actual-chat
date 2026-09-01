@@ -267,11 +267,14 @@ export const recorderWorkerImpl: RecorderWorker = {
         const { config } = opts;
         const { deps, recorder, session } = s;
         disposeWorkerPreviewGenerator(s);
-        if (previewWritable) {
+        // A generator takes only native VideoFrames, and at `full` the downscaler
+        // builds polyfilled ones — every write fails with "Null video frame".
+        const canUseGenerator = !WebCodecsCompat.affects('video-encode');
+        if (previewWritable && canUseGenerator) {
             // Tier 2: main built the generator (Chromium) and transferred only
             // the writable.
             session.setPreviewGenerator({ writable: previewWritable });
-        } else if (opts.createPreviewInWorker) {
+        } else if (opts.createPreviewInWorker && canUseGenerator) {
             // Tier 1: main couldn't build a generator (Safari) — create it here
             // and ship the track back. Writable stays in this realm.
             installWorkerPreviewGenerator(s);
