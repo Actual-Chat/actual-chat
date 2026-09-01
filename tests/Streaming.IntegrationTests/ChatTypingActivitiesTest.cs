@@ -87,7 +87,44 @@ public class ChatTypingActivitiesTest(AppHostFixture fixture, ITestOutputHelper 
         authorIds.Should().Equal(authorId);
     }
 
+    [Fact]
+    public async Task LapsesOneAuthorWhileAnotherKeepsTyping()
+    {
+        var chatId = await CreateTestChat("LapsesOne");
+        var quitter = AuthorId.New(chatId, 1);
+        var persistent = AuthorId.New(chatId, 2);
+
+        await Backend.SetTyping(chatId, quitter, TypingActivityKind.Typing, CancellationToken.None);
+        await Backend.SetTyping(chatId, persistent, TypingActivityKind.Typing, CancellationToken.None);
+
+        using var cts = new CancellationTokenSource();
+        var keepAliveTask = KeepTyping(chatId, persistent, cts.Token);
+        try {
+            await ComputedTest.When(async ct => {
+                var current = await Backend.ListTypingAuthorIds(chatId, ct);
+                current.Should().Equal(persistent);
+            }, TimeSpan.FromSeconds(20));
+        }
+        finally {
+            await cts.CancelAsync();
+            await keepAliveTask;
+        }
+    }
+
     // Private methods
+
+    private async Task KeepTyping(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
+    {
+        try {
+            while (true) {
+                await Backend.SetTyping(chatId, authorId, TypingActivityKind.Typing, cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) {
+            // Expected: this is how the test stops the keep-alive
+        }
+    }
 
     private async Task<ChatId> CreateTestChat(string testName)
     {
