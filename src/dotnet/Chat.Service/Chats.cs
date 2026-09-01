@@ -11,9 +11,6 @@ namespace ActualChat.Chat;
 /// </summary>
 public partial class Chats(IServiceProvider services) : IChats
 {
-    public static readonly TileStack<long> ServerIdTileStack = Constants.Chat.ServerIdTileStack;
-    public static readonly TileStack<long> ViewIdTileStack = Constants.Chat.ViewIdTileStack;
-
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IAvatars Avatars { get; } = services.GetRequiredService<IAvatars>();

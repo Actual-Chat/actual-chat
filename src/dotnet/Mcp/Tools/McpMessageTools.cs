@@ -100,7 +100,7 @@ public sealed class McpMessageTools(IServiceProvider services)
         if (startLid >= rawFullRange.End)
             return new McpListMessagesResult(new McpIdRange<long>(startLid, startLid - 1), fullRange, []);
 
-        var tileLayer = Constants.Chat.ServerIdTileStack.FirstLayer;
+        var tileLayer = Constants.Chat.EntryIdTileLayer;
         var collected = new List<ChatEntry>(limit);
         var tile = tileLayer.GetTile(startLid);
         while (collected.Count < limit && tile.Start < rawFullRange.End) {

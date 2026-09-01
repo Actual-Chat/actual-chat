@@ -9,7 +9,7 @@ namespace ActualChat.Chat.IntegrationTests;
 public class ConversationTileRangeTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private static TileStack<long> IdTileStack => Constants.Chat.ServerIdTileStack;
+    private static TileLayer<long> RangeIdTileLayer => Constants.Chat.RangeIdTileLayer;
     private IConversationsBackend Conversations
         => field ??= AppHost.Services.GetRequiredService<IConversationsBackend>();
 
@@ -43,11 +43,11 @@ public class ConversationTileRangeTest(ChatCollection.AppHostFixture fixture, IT
     }
 
     [Fact]
-    public async Task AcceptsLastLayerTile()
+    public async Task AcceptsRangeIdTile()
     {
         // arrange
         var chatId = ChatId.Parse(GroupChatId.New().Value);
-        var tileRange = IdTileStack.LastLayer.GetTile(0L).Range;
+        var tileRange = RangeIdTileLayer.GetTile(0L).Range;
 
         // act
         var conversations = await Conversations.GetTile(chatId, tileRange, default);

@@ -58,7 +58,7 @@ public class McpMessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutp
         });
         result.IsError.Should().NotBe(true);
 
-        var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(posted.LocalId);
+        var idTile = Constants.Chat.EntryIdTileLayer.GetTile(posted.LocalId);
         var tile = await Tester.Chats.GetTile(Tester.Session, chatId, idTile.Range, CancellationToken.None);
         tile.Entries.Should().NotContain(e => e.LocalId == posted.LocalId && !e.IsRemoved);
     }

@@ -4,27 +4,14 @@ using ActualChat.Mathematics.Internal;
 namespace ActualChat.Mathematics;
 
 /// <summary>
-/// A single layer of uniformly-sized tiles within a <see cref="TileStack{T}"/>.
+/// A layer of uniformly-sized tiles: aligned ranges of <see cref="TileSize"/>
+/// items, all offset from <see cref="Zero"/>.
 /// </summary>
-public class TileLayer<T>
+public sealed class TileLayer<T>(T zero, T tileSize)
     where T : struct, INumber<T>
 {
-    private readonly Lazy<TileLayer<T>?> _largerLazy;
-    private readonly Lazy<TileLayer<T>?> _smallerLazy;
-
-    public int Index { get; init; }
-    public T Zero { get; init; }
-    public T TileSize { get; init; }
-    public int TileSizeMultiplier { get; init; } = 1;
-    public TileLayer<T>? Larger => _largerLazy.Value;
-    public TileLayer<T>? Smaller => _smallerLazy.Value;
-    public TileStack<T> Stack { get; init; } = default!;
-
-    public TileLayer()
-    {
-        _largerLazy = new Lazy<TileLayer<T>?>(() => Index + 1 >= Stack.Layers.Length ? null : Stack.Layers[Index + 1]);
-        _smallerLazy = new Lazy<TileLayer<T>?>(() => Index <= 0 ? null : Stack.Layers[Index - 1]);
-    }
+    public T Zero { get; } = zero;
+    public T TileSize { get; } = tileSize;
 
     public bool TryGetTile(Range<T> range, out Tile<T> tile)
     {
@@ -57,12 +44,6 @@ public class TileLayer<T>
     public bool IsTile(Range<T> range)
         => TryGetTile(range, out _);
 
-    public void AssertIsTile(Range<T> range)
-    {
-        if (!TryGetTile(range, out _))
-            throw Errors.InvalidTileBoundaries(nameof(range));
-    }
-
     public Tile<T>[] GetCoveringTiles(Range<T> range)
     {
         if (range.IsEmptyOrNegative)
@@ -70,78 +51,13 @@ public class TileLayer<T>
 
         var tiles = ArrayBuffer<Tile<T>>.Lease(true);
         try {
-            GetCoveringTiles(range, ref tiles);
-            return tiles.ToArray();
-        }
-        finally {
-            tiles.Release();
-        }
-    }
-
-    public Tile<T>[] GetOptimalCoveringTiles(Range<T> range)
-    {
-        var tiles = ArrayBuffer<Tile<T>>.Lease(true);
-        try {
-            GetOptimalCoveringTiles(range, ref tiles);
-            return tiles.ToArray();
-        }
-        finally {
-            tiles.Release();
-        }
-    }
-
-    // Private methods
-
-    private void GetCoveringTiles(Range<T> range, ref ArrayBuffer<Tile<T>> appendTo)
-    {
-        var tile = GetTile(range.Start);
-        appendTo.Add(tile);
-        while (tile.End < range.End) {
-            tile = tile.Next();
-            appendTo.Add(tile);
-        }
-    }
-
-    private void GetOptimalCoveringTiles(Range<T> range, ref ArrayBuffer<Tile<T>> appendTo)
-    {
-        if (Smaller is null) {
-            GetCoveringTiles(range, ref appendTo);
-            return;
-        }
-        if (range.IsEmptyOrNegative)
-            return;
-
-        var tiles = ArrayBuffer<Tile<T>>.Lease(true);
-        try {
-            GetCoveringTiles(range, ref tiles);
-
-            if (tiles.Count == 1) {
-                var tile = tiles[0];
-                if (tile.IsLeftSubdivisionUseful(range.Start) || tile.IsRightSubdivisionUseful(range.End))
-                    Smaller.GetOptimalCoveringTiles(range, ref appendTo);
-                else
-                    appendTo.Add(tile);
+            var tile = GetTile(range.Start);
+            tiles.Add(tile);
+            while (tile.End < range.End) {
+                tile = tile.Next();
+                tiles.Add(tile);
             }
-            else {
-                var midTiles = tiles.Span;
-                var firstTile = tiles[0];
-                var lastTile = tiles[^1];
-                if (firstTile.IsLeftSubdivisionUseful(range.Start)) {
-                    // Left side can be subdivided
-                    var leftRange = new Range<T>(range.Start, firstTile.End);
-                    Smaller.GetOptimalCoveringTiles(leftRange, ref appendTo);
-                    midTiles = midTiles[1..];
-                }
-                if (lastTile.IsRightSubdivisionUseful(range.End)) {
-                    // Right side can be subdivided
-                    midTiles = midTiles[..^1];
-                    appendTo.AddSpan(midTiles);
-                    var rightRange = new Range<T>(lastTile.Start, range.End);
-                    Smaller.GetOptimalCoveringTiles(rightRange, ref appendTo);
-                }
-                else
-                    appendTo.AddSpan(midTiles);
-            }
+            return tiles.ToArray();
         }
         finally {
             tiles.Release();

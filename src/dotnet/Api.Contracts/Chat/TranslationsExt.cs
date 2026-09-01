@@ -9,7 +9,7 @@ public static class TranslationsExt
         CancellationToken cancellationToken = default)
     {
         try {
-            var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
+            var idTile = Constants.Chat.EntryIdTileLayer.GetTile(entryId.LocalId);
             var tile = await chats.GetLanguageTile(session,
                     entryId.ChatId,
                     idTile.Range,

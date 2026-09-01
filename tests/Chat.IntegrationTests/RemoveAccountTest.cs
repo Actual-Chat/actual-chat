@@ -35,9 +35,9 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         await services.Commander().Call(removeEntriesCommand);
 
         var ids = new HashSet<long>();
-        var idTileStack = Constants.Chat.ReaderIdTileStack;
+        var idTileLayer = Constants.Chat.EntryIdTileLayer;
         var newEntryRange = new Range<long>(entries.Min(e => e.LocalId), entries.Max(e => e.LocalId) + 1);
-        var idTiles = idTileStack.GetOptimalCoveringTiles(newEntryRange);
+        var idTiles = idTileLayer.GetCoveringTiles(newEntryRange);
         foreach (var idTile in idTiles) {
             var tile = await chats.GetTile(session,
                 TestChatId,
@@ -87,8 +87,8 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         });
 
         var lastEntryLid = entries[^1].LocalId;
-        var idTileStack = Constants.Chat.ReaderIdTileStack;
-        var idTile = idTileStack.GetOptimalCoveringTiles(new Range<long>(lastEntryLid, lastEntryLid + 1))[^1];
+        var idTileLayer = Constants.Chat.EntryIdTileLayer;
+        var idTile = idTileLayer.GetTile(lastEntryLid);
         await FluentActions.Awaiting(() => chats.GetTile(session,
                 chat.Id,
                 idTile.Range,

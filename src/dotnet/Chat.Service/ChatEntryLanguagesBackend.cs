@@ -11,7 +11,7 @@ namespace ActualChat.Chat;
 public class ChatEntryLanguagesBackend(IServiceProvider services)
     : DbServiceBase<ChatDbContext>(services), IChatEntryLanguagesBackend
 {
-    private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
+    private static readonly TileLayer<long> IdTileLayer = Constants.Chat.EntryIdTileLayer;
 
     private IDbEntityResolver<string, DbChatEntryLanguage> EntityResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChatEntryLanguage>>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
@@ -25,18 +25,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
         Range<long> lidTileRange,
         CancellationToken cancellationToken)
     {
-        var idTile = IdTileStack.GetTile(lidTileRange);
-        var smallerIdTiles = idTile.Smaller();
-        if (smallerIdTiles.Length != 0) {
-            var smallerChatTiles = await smallerIdTiles
-                .Select(sidTile => GetTile(chatId,
-                    sidTile.Range,
-                    cancellationToken))
-                .Collect(cancellationToken)
-                .ConfigureAwait(false);
-            return new ChatLanguageTile(smallerChatTiles);
-        }
-
+        var idTile = IdTileLayer.GetTile(lidTileRange);
         var entries = await GetEntryIds(idTile.Range)
             .Select(id => Get(id, cancellationToken))
             .Collect(cancellationToken)

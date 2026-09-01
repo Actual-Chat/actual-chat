@@ -12,7 +12,8 @@ namespace ActualChat.Chat;
 /// </summary>
 public class ConversationsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IConversationsBackend
 {
-    private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
+    private static readonly TileLayer<long> EntryIdTileLayer = Constants.Chat.EntryIdTileLayer;
+    private static readonly TileLayer<long> RangeIdTileLayer = Constants.Chat.RangeIdTileLayer;
 
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
     private IDbEntityResolver<string, DbConversation> DbConversationResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbConversation>>();
@@ -55,7 +56,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         long idTileStart,
         CancellationToken cancellationToken)
     {
-        var idTile = IdTileStack.LastLayer.AssertIsTileStart(idTileStart);
+        var idTile = RangeIdTileLayer.AssertIsTileStart(idTileStart);
         var idTileRange = idTile.Range;
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
@@ -111,15 +112,9 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     // [Computed]
     public virtual async Task<Conversation[]> GetTile(ChatId chatId, Range<long> lidTileRange, CancellationToken cancellationToken)
     {
-        // GetCoveringTiles walks tile by tile, so an arbitrary range is an unbounded loop
-        IdTileStack.LastLayer.AssertIsTile(lidTileRange);
-        var idTiles = IdTileStack.LastLayer.GetCoveringTiles(lidTileRange);
-        var conversationTiles = await idTiles
-            .Select(idTile => GetRangeMeta(chatId, idTile.Range.Start, cancellationToken))
-            .Collect(cancellationToken)
-            .ConfigureAwait(false);
-        var conversations = await conversationTiles
-            .SelectMany(ct => ct.ConversationIds)
+        var idTile = RangeIdTileLayer.GetTile(lidTileRange);
+        var conversationTile = await GetRangeMeta(chatId, idTile.Start, cancellationToken).ConfigureAwait(false);
+        var conversations = await conversationTile.ConversationIds
             .Distinct()
             .Select(cId => Get(cId, cancellationToken))
             .Collect(cancellationToken)
@@ -158,16 +153,16 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             var invConversation = context.Operation.Items.KeylessGet<Conversation>();
             if (invConversation != null) {
                 _ = Get(invConversation.Id, default);
-                foreach (var idTile in IdTileStack.LastLayer.GetCoveringTiles(invConversation.EntryLidRange))
+                foreach (var idTile in RangeIdTileLayer.GetCoveringTiles(invConversation.EntryLidRange))
                     _ = GetRangeMeta(chatId, idTile.Range.Start, default);
                 var previousConversationId = context.Operation.Items.Get<long>(nameof(ConversationRangeMeta.PreviousConversationLidRange));
                 var nextConversationId = context.Operation.Items.Get<long>(nameof(ConversationRangeMeta.NextConversationLidRange));
                 if (previousConversationId != default) {
-                    var previousIdTile = IdTileStack.LastLayer.GetTile(previousConversationId);
+                    var previousIdTile = RangeIdTileLayer.GetTile(previousConversationId);
                     _ = GetRangeMeta(chatId, previousIdTile.Range.Start, default);
                 }
                 if (nextConversationId != default) {
-                    var nextIdTile = IdTileStack.LastLayer.GetTile(nextConversationId);
+                    var nextIdTile = RangeIdTileLayer.GetTile(nextConversationId);
                     _ = GetRangeMeta(chatId, nextIdTile.Range.Start, default);
                 }
             }
@@ -395,7 +390,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             return null!; // This handler makes changes only via nested commands
 
         var (chatId, entryLid, replyIdRange) = command;
-        var conversationTile = IdTileStack.LastLayer.GetTile(entryLid);
+        var conversationTile = RangeIdTileLayer.GetTile(entryLid);
         var conversationRangeMeta = await GetRangeMeta(chatId, conversationTile.Range.Start, cancellationToken)
             .ConfigureAwait(false);
         var existingConversations = conversationRangeMeta.ConversationIds;
@@ -441,7 +436,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     {
         Log.LogInformation("-> GetTextEntries: {Ranges}", entryLidRanges.Select(c => c.ToString()).ToCommaPhrase());
         var idTiles = entryLidRanges
-            .SelectMany(idRange => IdTileStack.GetOptimalCoveringTiles(idRange))
+            .SelectMany(idRange => EntryIdTileLayer.GetCoveringTiles(idRange))
             .ToList();
 
         var tiles = await idTiles
