@@ -202,3 +202,41 @@ public class GestureActivationPolicyTest
         GestureActivationPolicy.Route(GestureKind.None, true).Should().Be(GestureRoute.None);
     }
 }
+
+public class StartGestureReadinessTest
+{
+    [Fact]
+    public void SensedAndEnabledGestureShouldBeReady()
+        => GestureActivationPolicy.IsStartGestureReady(
+                mustSenseStartGestures: true, isFlipToTalkEnabled: true,
+                isDoubleShakeEnabled: false, isPracticeMode: false)
+            .Should().BeTrue();
+
+    [Fact]
+    public void UnsensedGestureShouldNotBeReady()
+        => GestureActivationPolicy.IsStartGestureReady(
+                mustSenseStartGestures: false, isFlipToTalkEnabled: true,
+                isDoubleShakeEnabled: true, isPracticeMode: false)
+            .Should().BeFalse("the accelerometer is stopped outside the arming window");
+
+    [Fact]
+    public void BothGestureTogglesOffShouldNotBeReady()
+        => GestureActivationPolicy.IsStartGestureReady(
+                mustSenseStartGestures: true, isFlipToTalkEnabled: false,
+                isDoubleShakeEnabled: false, isPracticeMode: false)
+            .Should().BeFalse("no start gesture exists to fire");
+
+    [Fact]
+    public void PracticeModeShouldNotBeReady()
+        => GestureActivationPolicy.IsStartGestureReady(
+                mustSenseStartGestures: true, isFlipToTalkEnabled: true,
+                isDoubleShakeEnabled: true, isPracticeMode: true)
+            .Should().BeFalse("practice mode never transmits");
+
+    [Fact]
+    public void DoubleShakeAloneShouldBeReady()
+        => GestureActivationPolicy.IsStartGestureReady(
+                mustSenseStartGestures: true, isFlipToTalkEnabled: false,
+                isDoubleShakeEnabled: true, isPracticeMode: false)
+            .Should().BeTrue();
+}

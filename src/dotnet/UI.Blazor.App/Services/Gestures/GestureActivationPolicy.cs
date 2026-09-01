@@ -53,6 +53,18 @@ public static class GestureActivationPolicy
         return HasAnswerWindow(pttChatIds, lastIncomingVoiceAt, now, recencyWindow);
     }
 
+    public static bool IsStartGestureReady(
+        bool mustSenseStartGestures,
+        bool isFlipToTalkEnabled,
+        bool isDoubleShakeEnabled,
+        bool isPracticeMode)
+        // What the notification must promise: not "a chat is armed", but "a flip or shake right
+        // now opens the mic". Sensing is only half of it - practice mode routes gestures away
+        // from transmitting, and with both toggles off there is no start gesture to fire.
+        => mustSenseStartGestures
+            && !isPracticeMode
+            && (isFlipToTalkEnabled || isDoubleShakeEnabled);
+
     public static bool ShouldSenseStopGesture(bool isFaceDownStopEnabled, bool isTransmitting, bool isPracticeMode)
     {
         // The playground must let the user rehearse the stop gesture even when the privacy

@@ -21,7 +21,9 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
     private volatile bool _isPracticeMode;
     private bool _isHeadsetButtonEnabled;
     private bool _hasAnswerWindow;
+    private bool _isStartGestureReady;
     private int _sampleCount;
+    private long _lastSampleAtTicks;
     private Moment? _lastForegroundedAt;
     private TaskCompletionSource _wakeSignal = TaskCompletionSourceExt.New();
 
@@ -42,6 +44,10 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
     public SensorSample LastSample
         => _recentSamples[(_recentSampleIndex + _recentSamples.Length - 1) % _recentSamples.Length];
     public event Action<GestureEvent>? PracticeGestureDetected;
+    // Raised when a flip/shake would start meaning something (or stop meaning it), so the
+    // notification can say whether it's listening for one instead of just "PTT is on".
+    public event Action? StartGestureReadyChanged;
+    public bool IsStartGestureReady => Volatile.Read(ref _isStartGestureReady);
 
     public bool IsPracticeMode {
         get => _isPracticeMode;
@@ -173,6 +179,24 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                     settings, pttChatIds, lastIncomingVoiceAt, now, recencyWindow, isMicOpen, isPracticeMode);
                 Volatile.Write(ref _isHeadsetButtonEnabled, buttonState.IsEnabled);
                 Volatile.Write(ref _hasAnswerWindow, buttonState.HasAnswerWindow);
+                // Availability is a device fact rather than a policy one, so it's ANDed here:
+                // a host without a working accelerometer can never fire a start gesture, and
+                // promising one in the notification is the exact lie this signal exists to stop.
+                // So is delivery: the scoped feed shares one process-wide Accelerometer.Default, so
+                // a dying scope's Stop() can kill the live scope's registration while every policy
+                // input still reads "armed" - only arriving samples prove a flip can fire.
+                var sinceLastSample = Clocks.CpuClock.Now
+                    - new Moment(Volatile.Read(ref _lastSampleAtTicks));
+                var isSensorLive = sinceLastSample <= Constants.Audio.PttIdleCheckPeriod;
+                var isStartGestureReady = Feed.IsAccelerometerAvailable
+                    && isSensorLive
+                    && GestureActivationPolicy.IsStartGestureReady(
+                        mustSenseStart, settings.IsFlipToTalkEnabled, settings.IsDoubleShakeEnabled,
+                        isPracticeMode);
+                if (Volatile.Read(ref _isStartGestureReady) != isStartGestureReady) {
+                    Volatile.Write(ref _isStartGestureReady, isStartGestureReady);
+                    StartGestureReadyChanged?.Invoke();
+                }
 
                 _recognizer.Options = new GestureOptions(
                     settings.IsFlipToTalkEnabled && mustSenseStart,
@@ -215,6 +239,12 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
         finally {
             Feed.StopAccelerometer();
             Feed.StopProximity();
+            // The sensors are down, so nothing can fire - a readiness left latched here would
+            // have the notification promising a gesture for the rest of the scope's life.
+            if (Volatile.Read(ref _isStartGestureReady)) {
+                Volatile.Write(ref _isStartGestureReady, false);
+                StartGestureReadyChanged?.Invoke();
+            }
         }
     }
 
@@ -231,6 +261,9 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
     private void OnSample(SensorSample sample)
     {
         Interlocked.Increment(ref _sampleCount);
+        // Proof the sensor is actually delivering, which is what readiness must be built on:
+        // a stopped accelerometer still leaves every policy input saying "armed".
+        Volatile.Write(ref _lastSampleAtTicks, Clocks.CpuClock.Now.EpochOffsetTicks);
         _recentSamples[_recentSampleIndex] = sample;
         _recentSampleIndex = (_recentSampleIndex + 1) % _recentSamples.Length;
         // Logged so gesture misbehavior can be traced back to a guard-state transition on-device.

@@ -17,6 +17,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
     private IAccounts Accounts => Hub.Accounts;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private IncomingVoiceActivityUI IncomingVoiceActivityUI => Hub.IncomingVoiceActivityUI;
+    private GestureUI GestureUI => Hub.GestureUI;
     private UrlMapper UrlMapper => Hub.UrlMapper;
     public bool IsDisposed => _isDisposed;
 
@@ -24,15 +25,19 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
     {
         Hub = hub;
         _isAndroidHost = hub.HostInfo.AppKind == AppKind.Android;
-        if (_isAndroidHost)
+        if (_isAndroidHost) {
             IncomingVoiceActivityUI.IncomingVoiceStamped += OnIncomingVoiceStamped;
+            GestureUI.StartGestureReadyChanged += OnStartGestureReadyChanged;
+        }
     }
 
     public void Dispose()
     {
         _isDisposed = true;
-        if (_isAndroidHost)
+        if (_isAndroidHost) {
             IncomingVoiceActivityUI.IncomingVoiceStamped -= OnIncomingVoiceStamped;
+            GestureUI.StartGestureReadyChanged -= OnStartGestureReadyChanged;
+        }
     }
 
     [ComputeMethod]
@@ -42,6 +47,9 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
         ActivityKind? kind = null;
         var extraChatCount = 0;
         var isPaused = false;
+        var pttChatIds = _isAndroidHost
+            ? await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false)
+            : [];
 
         // Priority: Recording > Replaying > Listening
         var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
@@ -63,8 +71,13 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
                 }
             }
             else {
-                var listeningChatIds = await ChatAudioUI.GetListeningChatIds().ConfigureAwait(false);
-                if (!listeningChatIds.IsEmpty) {
+                // Arming keeps a chat listening for as long as it stays armed, so such a listen is
+                // ambient state - counting it as a Listening activity outranks Armed and hides the
+                // PTT state (ready / flip-to-reply / countdown) this notification exists to report.
+                var listeningChatIds = (await ChatAudioUI.GetListeningChatIds().ConfigureAwait(false))
+                    .Where(x => !pttChatIds.Contains(x))
+                    .ToList();
+                if (listeningChatIds.Count != 0) {
                     chatId = listeningChatIds.First();
                     var player = await ChatAudioUI.GetListeningPlayer(chatId, cancellationToken).ConfigureAwait(false);
                     if (player is not null) {
@@ -81,10 +94,8 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
 
         var canPause = true;
         Moment? answerWindowEndsAt = null;
+        var isStartGestureReady = false;
         if (kind is not { } vKind) {
-            var pttChatIds = _isAndroidHost
-                ? await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false)
-                : [];
             var answerWindow = _isAndroidHost
                 ? await Hub.UserSettingsUI.UserPttSettings()
                     .Get(x => x.AnswerWindow, cancellationToken)
@@ -98,6 +109,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
             chatId = armed.ChatId;
             extraChatCount = armed.ExtraChatCount;
             answerWindowEndsAt = armed.AnswerWindowEndsAt;
+            isStartGestureReady = GestureUI.IsStartGestureReady;
             canPause = false;
         }
 
@@ -105,7 +117,8 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
         if (extraChatCount > 0)
             chatInfo = chatInfo with { ExtraChatCount = extraChatCount };
 
-        return new AudioActivity(vKind, chatInfo, isPaused, canPause, answerWindowEndsAt);
+        return new AudioActivity(
+            vKind, chatInfo, isPaused, canPause, answerWindowEndsAt, isStartGestureReady);
     }
 
     public static (ChatId ChatId, int ExtraChatCount, Moment? AnswerWindowEndsAt)? ResolveArmedChat(
@@ -126,6 +139,14 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
     }
 
     // Private methods
+
+    private void OnStartGestureReadyChanged()
+    {
+        // Same reason as the stamps below: readiness lives in GestureUI's loop, so nothing here
+        // invalidates when a flip stops (or starts) being able to open the mic.
+        using (Invalidation.Begin())
+            _ = GetActivity(default);
+    }
 
     private void OnIncomingVoiceStamped()
     {
