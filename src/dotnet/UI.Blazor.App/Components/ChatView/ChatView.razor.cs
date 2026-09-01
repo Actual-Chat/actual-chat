@@ -694,8 +694,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         // NOTE: Changing the ranges this produces? Review ChatUI.Prefetch - it guesses this query's load zone
         // in advance, and only helps while the guess still lands on the same tiles.
-        var firstLayer = ChatUI.IdTileStack.FirstLayer;
-        var secondLayer = ChatUI.IdTileStack.LastLayer;
+        var entryLayer = ChatUI.EntryIdTileLayer;
+        var viewLayer = ChatUI.ViewIdTileLayer;
         var itemVisibility = ItemVisibility.Value;
         var firstItem = oldData.FirstItem;
         var lastItem = oldData.LastItem;
@@ -712,11 +712,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _ => "has-query",
         };
         var dataQuery = (!query.IsNone, firstItem != null) switch {
-            // Align the query params with the second tile layer
+            // Align the query params with the view tile layer
 
             // No query, no data -> initial load
             (false, false) => new ChatDataQuery(
-                secondLayer.GetTile(chatLidRange.End - firstLayer.TileSize).Range,
+                viewLayer.GetTile(chatLidRange.End - entryLayer.TileSize).Range,
                 -initialLoadLimit / 2,
                 initialLoadLimit / 2),
 
@@ -754,7 +754,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             // The anchor lands at the top of the viewport unless ShowInTheMiddle, so most of the load zone
             // is needed below it - hence the 1:2 split rather than an even one.
             dataQuery = new ChatDataQuery(
-                secondLayer.GetTile(navigation.EntryLid).Range,
+                viewLayer.GetTile(navigation.EntryLid).Range,
                 -initialLoadLimit / 3,
                 initialLoadLimit * 2 / 3) {
                     Navigation = navigation,
@@ -871,7 +871,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var chatId = Chat.Id;
         var entryReader = new ChatEntryReader(Chats, Session, chatId);
         var chatLidRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var range = new Range<long>(minEntryLid, minEntryLid + (20 * ChatUI.IdTileStack.MinTileSize))
+        var range = new Range<long>(minEntryLid, minEntryLid + (20 * ChatUI.EntryIdTileLayer.TileSize))
             .IntersectWith(chatLidRange);
         return await entryReader.GetFirst(range, cancellationToken).ConfigureAwait(false);
     }

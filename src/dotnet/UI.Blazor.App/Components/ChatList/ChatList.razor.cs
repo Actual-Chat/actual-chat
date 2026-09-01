@@ -84,7 +84,7 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
         };
 
         // Fit to existing chat count
-        var indexTileLayer = ChatListUI.ChatTileStack.FirstLayer;
+        var indexTileLayer = ChatListUI.ChatTileLayer;
         range = range
             .IntersectWith(new Range<int>(0, chatCount))
             .ExpandToTiles(indexTileLayer);

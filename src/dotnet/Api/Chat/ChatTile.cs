@@ -26,22 +26,4 @@ public sealed partial class ChatTile
         BeginsAtRange = (beginsAtRange.Start, beginsAtRange.End + TimeSpan.FromTicks(1));
         Entries = entries;
     }
-
-    public ChatTile(IEnumerable<ChatTile> tiles, bool includesRemoved)
-    {
-        var entries = new List<ChatEntry>();
-        var idTile = new Range<long>(long.MaxValue, long.MinValue);
-        var beginsAtRange = new Range<Moment>(Moment.MaxValue, Moment.MinValue);
-        foreach (var tile in tiles) {
-            idTile = idTile.MinMaxWith(tile.LidTileRange);
-            beginsAtRange = beginsAtRange.MinMaxWith(tile.BeginsAtRange);
-            foreach (var entry in tile.Entries)
-                entries.Add(entry);
-        }
-
-        LidTileRange = idTile;
-        IncludesRemoved = includesRemoved;
-        BeginsAtRange = (beginsAtRange.Start, beginsAtRange.End + TimeSpan.FromTicks(1));
-        Entries = entries.ToArray();
-    }
 }

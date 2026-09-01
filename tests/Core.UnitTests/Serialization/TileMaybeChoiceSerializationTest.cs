@@ -16,7 +16,8 @@ public sealed class TileMaybeChoiceSerializationTest(ITestOutputHelper @out) : T
             .ToArray());
     private static readonly MessagePackSerializerOptions AotOptions =
         MessagePackSerializerOptions.Standard.WithResolver(AotResolver);
-    private static readonly TileStack<long> TileStack = new(0L, 16L, 16_384L, 4);
+    private static readonly TileLayer<long> TileLayer16 = new(0L, 16L);
+    private static readonly TileLayer<long> TileLayer16K = new(0L, 16_384L);
 
     [Fact]
     public void TileFormatterResolves()
@@ -36,7 +37,7 @@ public sealed class TileMaybeChoiceSerializationTest(ITestOutputHelper @out) : T
     [Fact]
     public void TileRoundTrips()
     {
-        var tile = TileStack.FirstLayer.GetTile(20L);
+        var tile = TileLayer16.GetTile(20L);
         var json = ToJson(tile);
         Out.WriteLine(json);
         json.Should().Be("[[16,32]]");
@@ -49,7 +50,7 @@ public sealed class TileMaybeChoiceSerializationTest(ITestOutputHelper @out) : T
     [Fact]
     public void TileWithNestedRangeRoundTrips()
     {
-        var tile = TileStack.LastLayer.GetTile(1_000_000L);
+        var tile = TileLayer16K.GetTile(1_000_000L);
         RoundTrip(tile).Range.Should().Be(tile.Range);
     }
 
@@ -122,7 +123,7 @@ public sealed class TileMaybeChoiceSerializationTest(ITestOutputHelper @out) : T
     {
         // The same formatters must be picked by the app's regular (dynamic-capable) chain.
         var options = MessagePackByteSerializer.DefaultOptions;
-        var tile = TileStack.FirstLayer.GetTile(20L);
+        var tile = TileLayer16.GetTile(20L);
         var bytes = MessagePackSerializer.Serialize(tile, options);
         MessagePackSerializer.Deserialize<Tile<long>>(bytes, options).Range.Should().Be(tile.Range);
 

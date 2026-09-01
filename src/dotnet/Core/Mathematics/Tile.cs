@@ -20,8 +20,6 @@ public readonly partial struct Tile<T>
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public TileLayer<T> Layer { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public TileStack<T> Stack => Layer.Stack;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public T Start => Range.Start;
@@ -71,38 +69,4 @@ public readonly partial struct Tile<T>
 
     public Tile<T> Prev(int index = 1)
         => Next(-index);
-
-    public Tile<T>? Larger()
-        => Layer.Larger?.GetTile(Start);
-
-    public Tile<T>[] Smaller()
-    {
-        var smallerLayer = Layer.Smaller;
-        if (smallerLayer is null)
-            return [];
-
-        var tiles = new Tile<T>[Layer.TileSizeMultiplier];
-        var start = Start;
-        var end = start + smallerLayer.TileSize;
-        for (var i = 0; i < Layer.TileSizeMultiplier; i++) {
-            tiles[i] = new Tile<T>((start, end), smallerLayer);
-            start = end;
-            end = end + smallerLayer.TileSize;
-        }
-        return tiles;
-    }
-
-    // Private / internal methods
-
-    internal bool IsLeftSubdivisionUseful(T start)
-    {
-        var bestAltStart = Start + Stack.MinTileSize;
-        return bestAltStart <= start;
-    }
-
-    internal bool IsRightSubdivisionUseful(T end)
-    {
-        var bestAltEnd = End - Stack.MinTileSize;
-        return end <= bestAltEnd;
-    }
 }

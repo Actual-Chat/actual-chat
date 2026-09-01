@@ -75,7 +75,7 @@ public class StreamingEntryNetworkLossTest(
     private static Task<ChatEntry> WhenStreamingEntry(IChatsBackend chatsBackend, ChatId chatId, StreamId segmentStreamId)
         => ComputedTest.When(async ct => {
             var range = await chatsBackend.GetLidRange(chatId, true, ct);
-            var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(Math.Max(range.End - 1, 0));
+            var idTile = Constants.Chat.EntryIdTileLayer.GetTile(Math.Max(range.End - 1, 0));
             var tile = await chatsBackend.GetTile(chatId, idTile.Range, false, ct);
             var entry = tile.Entries.LastOrDefault(e => e.ContentStreamId == segmentStreamId.Value && e.IsContentStreaming);
             entry.Should().NotBeNull();

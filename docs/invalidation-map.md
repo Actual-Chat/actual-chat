@@ -312,7 +312,7 @@ The single most consequential write in the system.
 
 | Invalidated | Condition | Notes |
 |---|---|---|
-| `GetTile(chatId, smallestTileRange, includeRemoved: true)` | always | only the **smallest** tile; larger tiles and the `includeRemoved:false` variant are composed from it, so they invalidate through the graph rather than directly (`InvalidateTiles`, `ChatsBackend.cs:2120`) |
+| `GetTile(chatId, entryTileRange, includeRemoved: true)` | always | tiles are 5 entries wide and there is only one tile size; the `includeRemoved:false` variant is composed from this one, so it invalidates through the graph rather than directly (`InvalidateTiles`, `ChatsBackend.cs:2141`) |
 | `GetEntryRangeMeta(chatId, entryTileStart)` | `Create`/`Remove`/thread-rebind only | |
 | `GetEntryRangeMeta` for previous/next tile | only if the neighbour lid falls outside the entry's own tile | |
 | `GetMinLid(chatId)` | `Create` **and** no previous entry | i.e. only the very first entry |
@@ -513,10 +513,10 @@ rather than consolidating.
    message. This class of bug is invisible in a static graph; it needs a read of
    the actual control flow.
 
-4. **Tile granularity.** `InvalidateTiles` invalidates only the smallest tile and
-   only the `includeRemoved: true` variant; everything larger is a pure composition
-   and invalidates through the graph. Similarly `GetEntryRangeMeta` for neighbour
-   tiles is only invalidated when the neighbour lies outside the entry's own tile.
+4. **Tile granularity.** `InvalidateTiles` invalidates only the entry tile (5 entries)
+   and only the `includeRemoved: true` variant; the `includeRemoved: false` variant is a
+   pure composition and invalidates through the graph. Similarly `GetEntryRangeMeta` for
+   neighbour tiles is only invalidated when the neighbour lies outside the entry's own tile.
 
 5. **Write-side collapse.** `SetDelayBy(…, "ReadPosChanged:{user}:{chat}")`
    (`ChatPositionsBackend.cs:86`) makes N read advances in a window produce one
@@ -538,7 +538,7 @@ rather than consolidating.
 
 ```
 ChatsBackend.OnChangeEntry(Create)
-├─ GetTile(chat, smallestTile, true)   → GetTile(…,false) → GetNews → Chats.GetNews → ChatUI.Get → ChatListUI.*
+├─ GetTile(chat, entryTile, true)      → GetTile(…,false) → GetNews → Chats.GetNews → ChatUI.Get → ChatListUI.*
 ├─ GetMaxLid(chat, true/false)         → GetLidRange → GetNews (same tail)
 │                                                    → GetChatRangeMeta, ConversationsBackend.GetRangeMeta
 ├─ GetEntryRangeMeta(chat, tile)       → GetChatRangeMeta → Chats.GetChatRangeMeta (chat view page map)
@@ -1232,7 +1232,7 @@ the client-side preprocessor strips `*.Pseudo*`, `FusionTime.*`, `LiveTime.*` an
 brace matching and resolving intra-body calls to other compute methods via the
 enclosing type's field/property type map (`IChatsBackend ChatsBackend` → `ChatsBackend`),
 with `I`-prefixed interfaces canonicalised onto their implementations. 1 135 edges
-resolved, 59 unresolved (mostly `IdTileStack`/`DbEntityResolver` false positives that
+resolved, 59 unresolved (mostly `IdTileLayer`/`DbEntityResolver` false positives that
 share a method name with a compute method). Fluent calls split across lines are
 re-joined before resolution.
 

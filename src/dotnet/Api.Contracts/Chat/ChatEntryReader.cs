@@ -5,9 +5,7 @@ public sealed class ChatEntryReader(
     Session session,
     ChatId chatId)
 {
-    public static readonly TileStack<long> IdTileStack = Constants.Chat.ReaderIdTileStack;
-    public TileLayer<long> IdTileLayer { get; } = IdTileStack.FirstLayer;
-
+    public TileLayer<long> IdTileLayer { get; } = Constants.Chat.EntryIdTileLayer;
     public IChats Chats { get; } = chats;
     public Session Session { get; init; } = session;
     public ChatId ChatId { get; init; } = chatId;

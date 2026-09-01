@@ -78,7 +78,7 @@ public static class AudioRecordingOperations
         await TestExt.When(async () => {
             var range = await chatsBackend.GetLidRange(chatId, true, cancellationToken).ConfigureAwait(false);
             range.End.Should().BeGreaterThan(minLid);
-            var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(range.End - 1);
+            var idTile = Constants.Chat.EntryIdTileLayer.GetTile(range.End - 1);
             var tile = await chatsBackend.GetTile(chatId, idTile.Range, true, cancellationToken).ConfigureAwait(false);
             var entry = tile.Entries.LastOrDefault(e => e.LocalId >= minLid && !e.IsContentStreaming);
             entry.Should().NotBeNull();

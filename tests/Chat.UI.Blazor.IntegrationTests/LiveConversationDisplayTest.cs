@@ -27,7 +27,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // arrange
         await Tester.SignInAsUniqueBob();
         var chat = await CreateSettledChat("live-block-boundary-test");
-        var tileSize = ChatUI.IdTileStack.FirstLayer.TileSize;
+        var tileSize = ChatUI.EntryIdTileLayer.TileSize;
         ChatEntry entry;
         do {
             entry = await Tester.CreateTextEntry(chat.Id, "filler");
@@ -117,7 +117,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live!.SessionStartedAt.Should().NotBeNull();
 
-        var tileSize = (int)ChatUI.IdTileStack.FirstLayer.TileSize;
+        var tileSize = (int)ChatUI.EntryIdTileLayer.TileSize;
         ChatEntry lastEntry = null!;
         for (var i = 0; i < tileSize * 3; i++)
             lastEntry = await Tester.CreateTextEntry(chat.Id, $"live-{i}");
@@ -1013,7 +1013,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
         var v = live!.EffectiveVisibleStartLid;
-        var tileSize = (int)ChatUI.IdTileStack.FirstLayer.TileSize;
+        var tileSize = (int)ChatUI.EntryIdTileLayer.TileSize;
         ChatEntry lastFolded = null!;
         for (var i = 0; i < tileSize * 3; i++)
             lastFolded = await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
@@ -1157,7 +1157,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // window loads that last tile and reaches the thread's tile only by widening
         await Tester.SignInAsUniqueBob();
         var chat = await CreateSettledChat("thread-widened-tile-test");
-        var tileSize = (int)ChatUI.IdTileStack.FirstLayer.TileSize;
+        var tileSize = (int)ChatUI.EntryIdTileLayer.TileSize;
         ChatEntry entry;
         do {
             entry = await Tester.CreateTextEntry(chat.Id, "filler");
