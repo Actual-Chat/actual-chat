@@ -1984,7 +1984,8 @@ let VideoFrame$1 = class VideoFrame {
                 metadata: JSON.parse(JSON.stringify(init === null || init === void 0 ? void 0 : init.metadata))
             });
         }
-        else if (data instanceof HTMLVideoElement) {
+        else if (typeof HTMLVideoElement !== "undefined" &&
+            data instanceof HTMLVideoElement) {
             /* Check the usability of the image argument. If this throws an
              * exception or returns bad, then throw an InvalidStateError
              * DOMException. */

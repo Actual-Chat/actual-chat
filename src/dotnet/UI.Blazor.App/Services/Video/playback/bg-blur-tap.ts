@@ -1,3 +1,4 @@
+import { WebCodecsCompat } from 'web-codecs-compat/init';
 import { tap, type PipeOperator } from 'ix-ext';
 import type { DecodedFrame } from '../frame-envelopes';
 import { BgBlurRenderer } from '../webgpu/blur';
@@ -33,8 +34,24 @@ const BG_RENDER_INTERVAL_MS = 100;
 //  • 'canvas2d'      — force Canvas2D (ctx.filter blur baked into a 64×N bitmap).
 export type BgBlurMode = 'auto' | 'webgpu' | 'webgl' | 'webgl-kawase' | 'canvas2d';
 
+/** A polyfilled VideoFrame is neither a TexImageSource nor a CanvasImageSource,
+ *  so those realms hand the renderers an ImageBitmap instead. */
+export type BgFrameSource = VideoFrame | ImageBitmap;
+
+interface PolyfillBitmapSource {
+    createImageBitmap?: (frame: VideoFrame) => Promise<ImageBitmap>;
+}
+
+export function bgFrameWidth(frame: BgFrameSource): number {
+    return (frame as VideoFrame).displayWidth || (frame as ImageBitmap).width;
+}
+
+export function bgFrameHeight(frame: BgFrameSource): number {
+    return (frame as VideoFrame).displayHeight || (frame as ImageBitmap).height;
+}
+
 interface BgRenderer {
-    render(frame: VideoFrame, strength?: number): boolean;
+    render(frame: BgFrameSource, strength?: number): boolean;
     dispose(): void;
 }
 
@@ -95,17 +112,40 @@ export class BgBlurController {
     }
 
     maybeRender(envelope: DecodedFrame): void {
-        if (!this.active) return;
+        if (!this.active)
+            return;
+
         const r = this.renderer;
-        if (!r) return;
+        if (!r)
+            return;
+
         const nowMs = performance.now();
-        if (nowMs - this.lastRenderAtMs < BG_RENDER_INTERVAL_MS) return;
+        if (nowMs - this.lastRenderAtMs < BG_RENDER_INTERVAL_MS)
+            return;
+
         this.lastRenderAtMs = nowMs;
-        try {
-            r.render(envelope.frame, BG_BLUR_STRENGTH);
-        } catch (e) {
-            warnLog?.log('BgBlurController: render failed:', e);
+        const toBitmap = WebCodecsCompat.affects('video-decode')
+            ? (WebCodecsCompat.classes as PolyfillBitmapSource | null)?.createImageBitmap
+            : undefined;
+        if (!toBitmap) {
+            try {
+                r.render(envelope.frame, BG_BLUR_STRENGTH);
+            } catch (e) {
+                warnLog?.log('BgBlurController: render failed:', e);
+            }
+
+            return;
         }
+
+        // Async, so the frame has to be read before this returns — the pipe
+        // closes it as soon as maybeRender does.
+        void toBitmap(envelope.frame).then(bitmap => {
+            try {
+                r.render(bitmap, BG_BLUR_STRENGTH);
+            } finally {
+                bitmap.close();
+            }
+        }).catch((e: unknown) => warnLog?.log('BgBlurController: render failed:', e));
     }
 
     dispose(): void {

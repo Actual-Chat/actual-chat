@@ -1,4 +1,5 @@
 import { BgBlurPerfTracker } from '../services/bg-blur-stats';
+import { bgFrameHeight, bgFrameWidth, type BgFrameSource } from './bg-blur-tap';
 import { getLogs } from 'logging';
 
 const { warnLog } = getLogs('VideoWebGPU');
@@ -43,10 +44,10 @@ export class Canvas2DBgRenderer {
     }
 
     // Same shape as BgBlurRenderer.render. `strength` is ignored.
-    render(frame: VideoFrame): boolean {
+    render(frame: BgFrameSource): boolean {
         if (this.disposed || !this.ctx) return false;
-        const fw = frame.displayWidth;
-        const fh = frame.displayHeight;
+        const fw = bgFrameWidth(frame);
+        const fh = bgFrameHeight(frame);
         if (fw <= 0 || fh <= 0) return false;
         const targetW = BG_CANVAS_WIDTH;
         const targetH = Math.max(1, Math.round(targetW * fh / fw));

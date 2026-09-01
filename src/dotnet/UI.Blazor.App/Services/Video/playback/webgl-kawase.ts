@@ -19,6 +19,7 @@
 // The mask-less downsample/upsample collapse to a uniform Kawase blur —
 // same fixed weights as the WebGPU collapse used by `getZeroMaskTexture()`.
 
+import { bgFrameHeight, bgFrameWidth, type BgFrameSource } from './bg-blur-tap';
 import { BgBlurPerfTracker } from '../services/bg-blur-stats';
 import { createFbo, createProgram, createTexture, setupFullScreenQuad } from './webgl-helpers';
 import { getLogs } from 'logging';
@@ -178,7 +179,7 @@ export class WebGlKawaseBgRenderer {
         this.gl = null;
     }
 
-    render(frame: VideoFrame, blurStrength = 20): boolean {
+    render(frame: BgFrameSource, blurStrength = 20): boolean {
         if (this.isDisposed)
             return false;
 
@@ -186,8 +187,8 @@ export class WebGlKawaseBgRenderer {
         if (!gl)
             return false;
 
-        const fw = frame.displayWidth;
-        const fh = frame.displayHeight;
+        const fw = bgFrameWidth(frame);
+        const fh = bgFrameHeight(frame);
         if (fw <= 0 || fh <= 0)
             return false;
 
