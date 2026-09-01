@@ -96,9 +96,9 @@ public partial class ChatUI
             "GetChatItems wall-clock duration, split by phase");
 
     public static readonly TileLayer<long> EntryIdTiles = Constants.Chat.EntryIdTiles;
-    public static readonly TileLayer<long> ViewIdTiles = Constants.Chat.ViewIdTiles;
     public static readonly TileLayer<long> RangeMetaEntryIdTiles = Constants.Chat.RangeMetaEntryIdTiles;
-    public static readonly int ViewTileSize = (int)ViewIdTiles.TileSize; // 20
+    // The unit every load limit below is a multiple of - roughly a mobile screenful of rows.
+    private const int LoadLimitUnit = 20;
     // Mirrors VirtualList.ExpandMultiplier = 2, so the load zone is 1 viewport + 2 x 2 viewports.
     private const double VirtualListLoadZoneSize = 5;
     // VirtualListStatistics.DefaultItemSize (48) is tuned for uniform lists; measured chat rows average
@@ -135,8 +135,8 @@ public partial class ChatUI
     private readonly ConcurrentDictionary<ChatId, (List<Range<long>> IdTiles, bool ShowConversations)>
         _lastLoadZones = new();
 
-    public int HalfLoadLimit => BrowserInfo.IsMobile ? ViewTileSize : ViewTileSize * 2; // 20 for mobile
-    public int LoadLimit => BrowserInfo.IsMobile ? ViewTileSize * 2 : ViewTileSize * 4; // 40 for mobile
+    public int HalfLoadLimit => BrowserInfo.IsMobile ? LoadLimitUnit : LoadLimitUnit * 2; // 20 for mobile
+    public int LoadLimit => BrowserInfo.IsMobile ? LoadLimitUnit * 2 : LoadLimitUnit * 4; // 40 for mobile
 
     // The VirtualList loads viewport +/- ExpandMultiplier x viewport and sizes its own requests as
     // loadZone / itemSize. The very first request is issued before the list exists, so it carries no
@@ -151,7 +151,7 @@ public partial class ChatUI
                 return LoadLimit; // Height not reported yet - keep the old behaviour
 
             var rows = (int)Math.Ceiling(VirtualListLoadZoneSize * windowHeight / AssumedItemSize);
-            return Math.Clamp(rows, ViewTileSize * 2, ViewTileSize * 8);
+            return Math.Clamp(rows, LoadLimitUnit * 2, LoadLimitUnit * 8);
         }
     }
 
@@ -228,7 +228,7 @@ public partial class ChatUI
                 : readEntryLid > 0
                     ? readEntryLid
                     : Math.Max(chatRange.Start, chatRange.End - firstTileSize);
-            var anchorTile = ViewIdTiles.GetTile(anchorLid).Range;
+            var anchorTile = EntryIdTiles.GetTile(anchorLid).Range;
             var startOffset = isNavigation ? initialLoadLimit / 3 : initialLoadLimit / 2;
             var endOffset = isNavigation ? initialLoadLimit * 2 / 3 : initialLoadLimit / 2;
             var zoneStart = anchorTile.Start - startOffset;
@@ -244,7 +244,7 @@ public partial class ChatUI
             if (loadZone.End <= loadZone.Start)
                 return;
 
-            var idTiles = ViewIdTiles
+            var idTiles = EntryIdTiles
                 .GetCoveringTiles(loadZone)
                 .Select(t => t.Range)
                 .Where(r => r.Start >= 0)
@@ -585,7 +585,7 @@ public partial class ChatUI
                     // item, and with it the End sticky edge the view was pinned to.
                     dataQuery = dataQuery with {
                         ExistingLidRange = dataQuery.ExistingLidRange
-                            .MinMaxWith(ViewIdTiles.GetTile(toggledId.StartEntryLid).Range),
+                            .MinMaxWith(EntryIdTiles.GetTile(toggledId.StartEntryLid).Range),
                         StartOffset = -HalfLoadLimit,
                         EndOffset = HalfLoadLimit,
                     };

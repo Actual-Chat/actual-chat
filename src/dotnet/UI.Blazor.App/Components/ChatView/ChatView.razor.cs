@@ -695,7 +695,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // NOTE: Changing the ranges this produces? Review ChatUI.Prefetch - it guesses this query's load zone
         // in advance, and only helps while the guess still lands on the same tiles.
         var entryTiles = ChatUI.EntryIdTiles;
-        var viewTiles = ChatUI.ViewIdTiles;
         var itemVisibility = ItemVisibility.Value;
         var firstItem = oldData.FirstItem;
         var lastItem = oldData.LastItem;
@@ -712,11 +711,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _ => "has-query",
         };
         var dataQuery = (!query.IsNone, firstItem != null) switch {
-            // Align the query params with the view tile layer
+            // Align the query params with the entry tile boundaries
 
             // No query, no data -> initial load
             (false, false) => new ChatDataQuery(
-                viewTiles.GetTile(chatLidRange.End - entryTiles.TileSize).Range,
+                entryTiles.GetTile(chatLidRange.End - entryTiles.TileSize).Range,
                 -initialLoadLimit / 2,
                 initialLoadLimit / 2),
 
@@ -754,7 +753,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             // The anchor lands at the top of the viewport unless ShowInTheMiddle, so most of the load zone
             // is needed below it - hence the 1:2 split rather than an even one.
             dataQuery = new ChatDataQuery(
-                viewTiles.GetTile(navigation.EntryLid).Range,
+                entryTiles.GetTile(navigation.EntryLid).Range,
                 -initialLoadLimit / 3,
                 initialLoadLimit * 2 / 3) {
                     Navigation = navigation,
