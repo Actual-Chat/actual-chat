@@ -388,6 +388,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         var streamingFloorLid = StreamingFloorOf(raw, rawStreamingFloorLid);
 
         var clearedReveal = false;
+        var mustExpandOnJoin = false;
         Moment? wakeAt = null;
         lock (Lock) {
             // A session everyone has left and then restarted is a new conversation as far as the viewer
@@ -414,6 +415,10 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             }
 
             chatState.WasAttending |= isJoined;
+            // Joining expands the block if it was collapsed, and that is the only automatic move it
+            // makes - nothing ever auto-collapses it again, so a reader who collapses it stays collapsed.
+            mustExpandOnJoin = isJoined && !chatState.IsJoined;
+            chatState.IsJoined = isJoined;
             // Re-joining ends the freeze the latch belongs to, so the next leave decides afresh.
             if (isJoined)
                 chatState.TailUnhidden = false;
@@ -473,6 +478,11 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         if (clearedReveal)
             using (Invalidation.Begin())
                 _ = GetBlockState(chatId, default);
+        if (mustExpandOnJoin && raw != null)
+            Hub.ChatUI.EnsureConversationExpanded(
+                ConversationId.New(chatId, raw.VisibleStartLid),
+                raw.IsExpandedByDefault);
+
         return wakeAt;
     }
 
@@ -517,6 +527,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         public bool WasAttending;
         public bool IsClosed;
         public bool WasQuiet;
+        public bool IsJoined;
         // One-way: the fold boundary only advances, so a freeze that started out showing its tail would
         // otherwise re-hide rows the reader is already looking at once the boundary passed TailStart.
         public bool TailUnhidden;
