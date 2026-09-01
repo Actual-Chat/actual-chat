@@ -46,6 +46,7 @@ import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-inf
 import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import { SharedSettings } from 'shared-settings';
 import { SharedSettingsWorkerSync } from 'shared-settings-worker';
+import { EncodeDeficitTicker } from '../../Services/Video/throughput-deficit-ticker';
 import {
     detectSupportedCodecs,
     FLOOR_CATEGORY,
@@ -2726,7 +2727,8 @@ export class VideoRecorder {
     // slow keyframe would otherwise pop the classifier; α=0.3 gives a
     // ~3-tick half-life at 1 Hz polling.
     private static readonly EncodeDeficitEmaAlpha = 0.3;
-    private encodeDeficitEma = 0;
+    private readonly encodeDeficitTicker =
+        new EncodeDeficitTicker(VideoRecorder.EncodeDeficitEmaAlpha);
     private senderDropRatioEma = 0;
     // Per-tick instantaneous rates for every cumulative counter the modal /
     // overlay surfaces. Computed at the recorder-health-monitor boundary
@@ -2751,7 +2753,7 @@ export class VideoRecorder {
         this.stopRecorderHealthMonitor();
         this.lastRecorderHealthStats = null;
         this.lastRecorderHealthWasPeerConnected = false;
-        this.encodeDeficitEma = 0;
+        this.encodeDeficitTicker.reset();
         this.senderDropRatioEma = 0;
         this.capturedPerSec = 0;
         this.bundlesPerSec = 0;
@@ -2913,16 +2915,12 @@ export class VideoRecorder {
             // emitting at the offered rate registers 0 here; deficit only grows
             // when encoder emit rate actually falls behind. QC uses this to
             // decide whether to demote a spatial layer.
+            // Startup is not a deficit — see EncodeDeficitTicker.
             if (previous) {
-                const encDelta = Math.max(0, stats.bundlesEncoded - previous.bundlesEncoded);
-                const capDelta = Math.max(0, stats.framesOffered - previous.framesOffered);
-                if (capDelta > 0) {
-                    const throughputRatio = Math.min(1, encDelta / capDelta);
-                    const deficit = 1 - throughputRatio;
-                    this.encodeDeficitEma =
-                        VideoRecorder.EncodeDeficitEmaAlpha * deficit
-                        + (1 - VideoRecorder.EncodeDeficitEmaAlpha) * this.encodeDeficitEma;
-                }
+                this.encodeDeficitTicker.tick(
+                    stats.bundlesEncoded,
+                    Math.max(0, stats.bundlesEncoded - previous.bundlesEncoded),
+                    Math.max(0, stats.framesOffered - previous.framesOffered));
             }
 
             this.lastRecorderHealthStats = {
@@ -2943,7 +2941,7 @@ export class VideoRecorder {
             }
             await this.blazorRef.invokeMethodAsync(
                 'OnRecorderStats',
-                this.encodeDeficitEma,
+                this.encodeDeficitTicker.value,
                 this.senderDropRatioEma,
                 stats.wireLastAckAgeMs,
                 isPeerConnected,

@@ -171,7 +171,7 @@ public class LiveAudioBackendRedisStateTest(AppHostFixture fixture, ITestOutputH
         var sessionId = $"session-{Guid.NewGuid():N}";
         var codecs = new ApiArray<string>(["av1", "h264"]);
 
-        await liveBackend.RegisterMember(chatId, sessionId, codecs, CancellationToken.None);
+        await liveBackend.RegisterMember(chatId, sessionId, codecs, false, CancellationToken.None);
 
         var redisEntries = await ReadRedisHash<VideoStreamMemberInfo>("live-video:members", chatId);
         redisEntries.Should().ContainKey(sessionId);
@@ -185,7 +185,7 @@ public class LiveAudioBackendRedisStateTest(AppHostFixture fixture, ITestOutputH
         var sessionId = $"session-{Guid.NewGuid():N}";
 
         await liveBackend.RegisterMember(chatId, sessionId,
-            new ApiArray<string>(["av1", "h264"]), CancellationToken.None);
+            new ApiArray<string>(["av1", "h264"]), false, CancellationToken.None);
         await liveBackend.UnregisterMember(chatId, sessionId, CancellationToken.None);
 
         var redisEntries = await ReadRedisHash<VideoStreamMemberInfo>("live-video:members", chatId);
@@ -208,7 +208,7 @@ public class LiveAudioBackendRedisStateTest(AppHostFixture fixture, ITestOutputH
         // Register a member
         var sessionId = $"session-{Guid.NewGuid():N}";
         var codecs = new ApiArray<string>(["h264"]);
-        await liveBackend.RegisterMember(chatId, sessionId, codecs, CancellationToken.None);
+        await liveBackend.RegisterMember(chatId, sessionId, codecs, false, CancellationToken.None);
 
         // Verify Redis has the data
         (await ReadRedisHash<VideoStreamInfo>("live-video:streams", chatId)).Should().NotBeEmpty();
@@ -250,7 +250,7 @@ public class LiveAudioBackendRedisStateTest(AppHostFixture fixture, ITestOutputH
         // Register a member that only supports h264
         var sessionId = $"session-{Guid.NewGuid():N}";
         await liveBackend.RegisterMember(chatId, sessionId,
-            new ApiArray<string>(["h264"]), CancellationToken.None);
+            new ApiArray<string>(["h264"]), false, CancellationToken.None);
 
         // Computed should be invalidated
         computed.IsConsistent().Should().BeFalse("registering member should invalidate codec computed");
@@ -303,7 +303,7 @@ public class LiveAudioBackendRedisStateTest(AppHostFixture fixture, ITestOutputH
         // Register a member
         var sessionId = $"session-{Guid.NewGuid():N}";
         await liveBackend.RegisterMember(chatId, sessionId,
-            new ApiArray<string>(["h264", "av1"]), CancellationToken.None);
+            new ApiArray<string>(["h264", "av1"]), false, CancellationToken.None);
 
         // Simulate shard switch: invalidate ALL compute methods
         using (Invalidation.Begin()) {
@@ -341,11 +341,11 @@ public class LiveAudioBackendRedisStateTest(AppHostFixture fixture, ITestOutputH
 
         // Member A supports everything
         await liveBackend.RegisterMember(chatId, $"session-{Guid.NewGuid():N}",
-            new ApiArray<string>(["av1", "hevc", "vp9", "h264"]), CancellationToken.None);
+            new ApiArray<string>(["av1", "hevc", "vp9", "h264"]), false, CancellationToken.None);
 
         // Member B only supports vp9 + h264
         await liveBackend.RegisterMember(chatId, $"session-{Guid.NewGuid():N}",
-            new ApiArray<string>(["vp9", "h264"]), CancellationToken.None);
+            new ApiArray<string>(["vp9", "h264"]), false, CancellationToken.None);
 
         var codecs = await liveBackend.GetSupportedCodecs(chatId, CancellationToken.None);
         codecs.Should().BeEquivalentTo(new[] { "vp9", "h264" },

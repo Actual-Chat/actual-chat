@@ -5,8 +5,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 public sealed record SenderHealthThresholds(
     // `EncodeDeficit*` thresholds match the THROUGHPUT-DEFICIT semantic of
     // `RecorderStats.EncodeDeficitEma` (range 0..1, 0 = encoder keeps up
-    // with capture, 1 = encoder emits nothing). Bad = sustained deficit
-    // (encoder produces fewer bundles than captured); Good = within a
+    // with the frames offered to it, 1 = encoder emits nothing). Bad =
+    // sustained deficit (fewer bundles than frames offered); Good = within a
     // few-% margin. Background allows a wider miss because the tab
     // itself is throttled and source rate is naturally lower.
     double EncodeDeficitBadForeground = 0.15,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ThroughputDeficitTicker } from
+import { EncodeDeficitTicker, ThroughputDeficitTicker } from
     '../../../src/dotnet/UI.Blazor.App/Services/Video/throughput-deficit-ticker';
 
 describe('ThroughputDeficitTicker', () => {
@@ -114,5 +114,76 @@ describe('decode-deficit with in-flight subtraction', () => {
         for (let i = 1; i <= 40; i++)
             lossy.push({ chunksReceived: i * 10, framesDecoded: i * 8, decoderQueueSize: 0 });
         expect(runEffective(lossy)).toBeGreaterThan(0.1);
+    });
+});
+
+describe('EncodeDeficitTicker', () => {
+    // The reported symptom: the health monitor starts when the worker is
+    // asked to start, so the opening ticks span camera attach and encoder
+    // configuration. They scored a full deficit and latched the sender-health
+    // classifier Bad (α=0.3 reaches ~0.51 in two ticks, past the 0.15
+    // threshold) before the encoder had done anything wrong.
+    it('stays at 0 while the encoder is still producing its first bundle', () => {
+        const t = new EncodeDeficitTicker(0.3);
+
+        t.tick(0, 0, 30);
+        t.tick(0, 0, 30);
+
+        expect(t.value).toBe(0);
+    });
+
+    it('does not charge the window that spans the startup gap', () => {
+        const t = new EncodeDeficitTicker(0.3);
+
+        t.tick(0, 0, 30);
+        t.tick(5, 5, 30); // first output: 5 of 30, but 25 were pre-first-chunk
+
+        expect(t.value).toBe(0);
+    });
+
+    it('measures normally once the encoder is warm', () => {
+        const t = new EncodeDeficitTicker(0.3);
+        t.tick(0, 0, 30);
+        t.tick(5, 5, 30);
+
+        t.tick(35, 30, 30);
+        expect(t.value).toBe(0);
+
+        t.tick(50, 15, 30); // half the offered frames
+        expect(t.value).toBeCloseTo(0.15, 5);
+    });
+
+    // The health monitor starts when the worker is asked to start, not when
+    // frames begin flowing, so no-input ticks come first on a slow camera
+    // attach. Spending grace on them exhausted it before the encoder was ever
+    // handed a frame, which resurrected the very bug this class exists to fix.
+    it('does not spend the grace period on ticks with no frames offered', () => {
+        const t = new EncodeDeficitTicker(0.3, 3);
+
+        for (let i = 0; i < 10; i++) t.tick(0, 0, 0);  // camera not up yet
+        t.tick(0, 0, 30);                              // frames flow, encoder still silent
+        t.tick(0, 0, 30);
+
+        expect(t.value).toBe(0);
+    });
+
+    // The grace period is bounded, or a dead encoder would read as perfect.
+    it('reports a full deficit for an encoder that never produces anything', () => {
+        const t = new EncodeDeficitTicker(0.3, 3);
+
+        for (let i = 0; i < 8; i++) t.tick(0, 0, 30);
+
+        expect(t.value).toBeGreaterThan(0.15);
+    });
+
+    it('resets its startup state', () => {
+        const t = new EncodeDeficitTicker(0.3, 3);
+        for (let i = 0; i < 8; i++) t.tick(0, 0, 30);
+        expect(t.value).toBeGreaterThan(0.15);
+
+        t.reset();
+        t.tick(0, 0, 30);
+
+        expect(t.value).toBe(0);
     });
 });
