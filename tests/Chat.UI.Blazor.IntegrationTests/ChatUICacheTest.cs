@@ -48,7 +48,7 @@ public sealed class ChatUICacheTest(ChatAppHostFixture fixture, ITestOutputHelpe
 
         // The summary flow writes the live session's conversation card shortly after the latch, and that
         // write invalidates the range meta as well - so wait it out before probing what SetRules does.
-        var tileStart = ChatUI.RangeIdTileLayer.GetTile(live.EffectiveVisibleStartLid).Start;
+        var tileStart = ChatUI.RangeIdTiles.GetTile(live.EffectiveVisibleStartLid).Start;
         var cRangeMeta = await SettledComputed.Capture(
             () => Tester.Chats.GetChatRangeMeta(Tester.Session, chat.Id, tileStart, CancellationToken.None));
         var whenInvalidated = cRangeMeta.WhenInvalidated(CancellationToken.None);
@@ -71,7 +71,7 @@ public sealed class ChatUICacheTest(ChatAppHostFixture fixture, ITestOutputHelpe
         var (chat, _) = await Tester.CreateAndGetChat(false, "chat-ui-cache-test-update");
         var streamingEntry = await Tester.CreateStreamingEntry(chat.Id, Languages.English);
         var entryLid = streamingEntry.ChatEntrySlim.Id.LocalId;
-        var tileStart = ChatUI.RangeIdTileLayer.GetTile(entryLid).Start;
+        var tileStart = ChatUI.RangeIdTiles.GetTile(entryLid).Start;
         // The backend computed, not the front GetChatRangeMeta: the latter also composes the
         // conversation range meta, which the summarizer may legitimately invalidate mid-test.
         var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();

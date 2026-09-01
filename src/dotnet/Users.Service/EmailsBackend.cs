@@ -241,9 +241,9 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
     private async Task<Language?> GetDominantLanguage(
         ChatId chatId, IReadOnlyCollection<ChatEntry> entries, CancellationToken cancellationToken)
     {
-        var idTileLayer = Constants.Chat.EntryIdTileLayer;
+        var idTiles = Constants.Chat.EntryIdTiles;
         var tileRanges = entries
-            .Select(e => idTileLayer.GetTile(e.LocalId).Range)
+            .Select(e => idTiles.GetTile(e.LocalId).Range)
             .Distinct()
             .ToList();
 

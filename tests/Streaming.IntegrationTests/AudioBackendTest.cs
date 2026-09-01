@@ -162,7 +162,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         readSize.Should().BeLessThanOrEqualTo(writtenSize);
 
         var idRange = await chats.GetLidRange(chat.Id, true, CancellationToken.None);
-        var lastIdTile = Constants.Chat.EntryIdTileLayer.GetTile(idRange.End - 1);
+        var lastIdTile = Constants.Chat.EntryIdTiles.GetTile(idRange.End - 1);
         var lastTile = await chats.GetTile(
             chat.Id,
             lastIdTile.Range,
@@ -238,7 +238,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         readSize.Should().BeLessThanOrEqualTo(writtenSize);
 
         var idRange = await chats.GetLidRange(chat.Id, true, CancellationToken.None);
-        var lastIdTile = Constants.Chat.EntryIdTileLayer.GetTile(idRange.End - 1);
+        var lastIdTile = Constants.Chat.EntryIdTiles.GetTile(idRange.End - 1);
         var lastTile = await chats.GetTile(
             chat.Id,
             lastIdTile.Range,

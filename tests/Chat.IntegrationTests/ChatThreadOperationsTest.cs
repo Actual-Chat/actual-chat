@@ -41,9 +41,9 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
 
         var range = await chats.GetIdRange(session, chat.Id, cancellationToken);
         range.IsEmpty.Should().BeFalse();
-        var idTileLayer = Constants.Chat.EntryIdTileLayer;
+        var idTiles = Constants.Chat.EntryIdTiles;
         var resultChatEntries = new List<ChatEntry>();
-        foreach (var tileRange in idTileLayer.GetCoveringTiles(range)) {
+        foreach (var tileRange in idTiles.GetCoveringTiles(range)) {
             var tile = await chats.GetTile(session, chat.Id, tileRange.Range, cancellationToken);
             resultChatEntries.AddRange(tile.Entries);
         }
@@ -98,9 +98,9 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
 
         var range = await chats.GetIdRange(session, chat2.Id, cancellationToken);
         range.IsEmpty.Should().BeFalse();
-        var idTileLayer = Constants.Chat.EntryIdTileLayer;
+        var idTiles = Constants.Chat.EntryIdTiles;
         var resultChatEntries = new List<ChatEntry>();
-        foreach (var tileRange in idTileLayer.GetCoveringTiles(range)) {
+        foreach (var tileRange in idTiles.GetCoveringTiles(range)) {
             var tile = await chats.GetTile(session, chat2.Id, tileRange.Range, cancellationToken);
             resultChatEntries.AddRange(tile.Entries);
         }

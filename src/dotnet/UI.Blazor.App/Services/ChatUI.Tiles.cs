@@ -95,10 +95,10 @@ public partial class ChatUI
         .CreateHistogram<long>("actualchat.chat_ui.get_chat_items.duration", "ms",
             "GetChatItems wall-clock duration, split by phase");
 
-    public static readonly TileLayer<long> EntryIdTileLayer = Constants.Chat.EntryIdTileLayer;
-    public static readonly TileLayer<long> ViewIdTileLayer = Constants.Chat.ViewIdTileLayer;
-    public static readonly TileLayer<long> RangeIdTileLayer = Constants.Chat.RangeIdTileLayer;
-    public static readonly int ViewTileSize = (int)ViewIdTileLayer.TileSize; // 20
+    public static readonly TileLayer<long> EntryIdTiles = Constants.Chat.EntryIdTiles;
+    public static readonly TileLayer<long> ViewIdTiles = Constants.Chat.ViewIdTiles;
+    public static readonly TileLayer<long> RangeIdTiles = Constants.Chat.RangeIdTiles;
+    public static readonly int ViewTileSize = (int)ViewIdTiles.TileSize; // 20
     // Mirrors VirtualList.ExpandMultiplier = 2, so the load zone is 1 viewport + 2 x 2 viewports.
     private const double VirtualListLoadZoneSize = 5;
     // VirtualListStatistics.DefaultItemSize (48) is tuned for uniform lists; measured chat rows average
@@ -220,7 +220,7 @@ public partial class ChatUI
             // explicit one, or the read position - and the tail branch otherwise. They centre on
             // different tiles and split the zone differently, so the wrong branch warms the wrong set.
             var initialLoadLimit = InitialLoadLimit;
-            var firstTileSize = EntryIdTileLayer.TileSize;
+            var firstTileSize = EntryIdTiles.TileSize;
             var isNavigation = entryLid > 0
                 || (readEntryLid > 0 && (!hasChatRange || readEntryLid < chatRange.End));
             var anchorLid = entryLid > 0
@@ -228,7 +228,7 @@ public partial class ChatUI
                 : readEntryLid > 0
                     ? readEntryLid
                     : Math.Max(chatRange.Start, chatRange.End - firstTileSize);
-            var anchorTile = ViewIdTileLayer.GetTile(anchorLid).Range;
+            var anchorTile = ViewIdTiles.GetTile(anchorLid).Range;
             var startOffset = isNavigation ? initialLoadLimit / 3 : initialLoadLimit / 2;
             var endOffset = isNavigation ? initialLoadLimit * 2 / 3 : initialLoadLimit / 2;
             var zoneStart = anchorTile.Start - startOffset;
@@ -244,12 +244,12 @@ public partial class ChatUI
             if (loadZone.End <= loadZone.Start)
                 return;
 
-            var idTiles = ViewIdTileLayer
+            var idTiles = ViewIdTiles
                 .GetCoveringTiles(loadZone)
                 .Select(t => t.Range)
                 .Where(r => r.Start >= 0)
                 .ToList();
-            var metaIdTiles = RangeIdTileLayer
+            var metaIdTiles = RangeIdTiles
                 .GetCoveringTiles(loadZone.Expand(LoadLimit))
                 .Where(t => t.Start >= 0)
                 .ToList();
@@ -315,7 +315,7 @@ public partial class ChatUI
         var liveConversationTask = Hub.LiveSessionUI.GetConversation(chatId, cancellationToken);
         var rawLiveTask = Hub.LiveSessionUI.GetBlockSnapshot(chatId, cancellationToken);
         var blockStateTask = Hub.LiveBlockUI.GetBlockState(chatId, cancellationToken);
-        var metaIdTiles = RangeIdTileLayer.GetCoveringTiles(dataQuery.ExistingLidRange.Expand(LoadLimit))
+        var metaIdTiles = RangeIdTiles.GetCoveringTiles(dataQuery.ExistingLidRange.Expand(LoadLimit))
             .Where(t => t.Start >= 0)
             .ToList();
         var chatRangeMetaListTask = metaIdTiles
@@ -585,7 +585,7 @@ public partial class ChatUI
                     // item, and with it the End sticky edge the view was pinned to.
                     dataQuery = dataQuery with {
                         ExistingLidRange = dataQuery.ExistingLidRange
-                            .MinMaxWith(ViewIdTileLayer.GetTile(toggledId.StartEntryLid).Range),
+                            .MinMaxWith(ViewIdTiles.GetTile(toggledId.StartEntryLid).Range),
                         StartOffset = -HalfLoadLimit,
                         EndOffset = HalfLoadLimit,
                     };
@@ -673,7 +673,7 @@ public partial class ChatUI
                     chatId,
                     chat.Rules.Author?.Id,
                     idTile,
-                    conversationView.NarrowTo(idTile.MoveStart(-EntryIdTileLayer.TileSize)),
+                    conversationView.NarrowTo(idTile.MoveStart(-EntryIdTiles.TileSize)),
                     prevMessage,
                     lastReadEntryLid,
                     isLastTile ? chatLidRange.End : null,
@@ -737,12 +737,12 @@ public partial class ChatUI
         // *are* loaded, the loop's last tile already carries this merge (see isLastTile above), so we must
         // not append a second tail tile here - doing so duplicated the trailing conversation header's @key.
         if (idTiles.Count == 0 && !hasMoreAfter) {
-            var tailRange = EntryIdTileLayer.GetTile(chatLidRange.End).Range;
+            var tailRange = EntryIdTiles.GetTile(chatLidRange.End).Range;
             var tailTile = await GetTile(
                     chatId,
                     chat.Rules.Author?.Id,
                     tailRange,
-                    conversationView.NarrowTo(tailRange.MoveStart(-EntryIdTileLayer.TileSize)),
+                    conversationView.NarrowTo(tailRange.MoveStart(-EntryIdTiles.TileSize)),
                     prevMessage,
                     shownReadyEntryLid,
                     chatLidRange.End,
@@ -792,7 +792,7 @@ public partial class ChatUI
             // prefetch next / previous tiles for next requests without awaiting
             var item = direction < 0 ? items[0] : items[^1];
             var prefetchDataQuery = new ChatDataQuery(
-                EntryIdTileLayer.GetTile(item.Id).Range,
+                EntryIdTiles.GetTile(item.Id).Range,
                 direction < 0 ? -LoadLimit : 0,
                 direction < 0 ? 0 : LoadLimit);
 
@@ -1072,7 +1072,7 @@ public partial class ChatUI
             idTiles1 = resultIdRanges
                 .SkipWhile(r => r.End <= startEntryLid)
                 .TakeWhile(r => r.Start <= endEntryLid)
-                .SelectMany(r => EntryIdTileLayer.GetCoveringTiles(r).Select(t => t.Range))
+                .SelectMany(r => EntryIdTiles.GetCoveringTiles(r).Select(t => t.Range))
                 .SkipWhile(r => r.End <= startEntryLid)
                 .TakeWhile(r => r.Start <= endEntryLid)
                 .EnsureMonotonic()
@@ -1124,14 +1124,14 @@ public partial class ChatUI
 
         var chatSendingMessages = chatSendingMessagesWrapper.Value;
         var requestedIdRange = prevMessage == null
-            ? lidRange.MoveStart(-EntryIdTileLayer
+            ? lidRange.MoveStart(-EntryIdTiles
                 .TileSize) // to request previous item of requested range to properly render block star - we will drop it off
             : lidRange;
         var idRangesToSkip = Array.Empty<Range<long>>();
         var conversations = Array.Empty<Conversation>();
         var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
         if (showConversations) {
-            var conversationIdTile = RangeIdTileLayer.GetTile(lidRange.Start);
+            var conversationIdTile = RangeIdTiles.GetTile(lidRange.Start);
             var conversationTile = await Conversations
                 .GetTile(Session, chatId, conversationIdTile.Range, cancellationToken)
                 .ConfigureAwait(false);
@@ -1176,11 +1176,11 @@ public partial class ChatUI
         // hiddenLiveTailRange deliberately stays out of idRangesToSkip: it must not drop whole tiles,
         // because what it hides is interleaved with typed messages that have to stay visible. It's
         // applied per entry below instead.
-        var entryIdTiles = EntryIdTileLayer
+        var idTiles = EntryIdTiles
             .GetCoveringTiles(requestedIdRange)
             .Where(t => !idRangesToSkip.Any(range => range.Contains(t.Range)))
             .ToList();
-        var tiles = await entryIdTiles
+        var tiles = await idTiles
             .Select(t => Chats.GetTile(Session,
                 chatId,
                 t.Range,
@@ -1715,8 +1715,8 @@ public partial class ChatUI
             // needs the preceding entry to render the block start). Prefetching only idTiles left
             // that one always uncached, costing a serial round-trip on every rebuild.
             var prefetchEntriesTask = idTiles
-                .SelectMany((r, i) => EntryIdTileLayer.GetCoveringTiles(
-                    i == 0 ? r.MoveStart(-EntryIdTileLayer.TileSize) : r))
+                .SelectMany((r, i) => EntryIdTiles.GetCoveringTiles(
+                    i == 0 ? r.MoveStart(-EntryIdTiles.TileSize) : r))
                 .Select(t => t.Range)
                 .Where(r => r.Start >= 0)
                 .EnsureMonotonic()
@@ -1724,7 +1724,7 @@ public partial class ChatUI
                 .Collect(ApiConstants.Concurrency.High, cancellationToken);
             var prefetchConversationsTask = showConversations
                 ? idTiles
-                    .Select(r => RangeIdTileLayer.GetTile(r.Start).Range)
+                    .Select(r => RangeIdTiles.GetTile(r.Start).Range)
                     .EnsureMonotonic()
                     .Select(r => Conversations.GetTile(Session, chatId, r, cancellationToken))
                     .Collect(ApiConstants.Concurrency.High, cancellationToken)

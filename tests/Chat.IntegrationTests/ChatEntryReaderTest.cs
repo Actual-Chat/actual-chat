@@ -124,7 +124,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         var acDcId = nirvanaId - 1;
 
         var reader = chats.NewEntryReader(session, TestChatId);
-        var tiles = Constants.Chat.EntryIdTileLayer.GetCoveringTiles(new Range<long>(acDcId, chuckBerryId));
+        var tiles = Constants.Chat.EntryIdTiles.GetCoveringTiles(new Range<long>(acDcId, chuckBerryId));
         var result = await reader.ReadTiles(new Range<long>(tiles[0].Start, tiles[^1].End), CancellationToken.None).ToListAsync();
         result.Count.Should().BeGreaterThan(0);
         result.SelectMany(t => t.Entries).Should().NotBeEmpty();
@@ -263,9 +263,9 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
             var resultTask = reader.Observe(idRange.End - 1, cts.Token).SuppressCancellation().ToListAsync();
             _ = BackgroundTask.Run(() => CreateChatEntries(
                     tester.AppServices.GetRequiredService<IChats>(), session, TestChatId,
-                    (int)Constants.Chat.EntryIdTileLayer.TileSize));
+                    (int)Constants.Chat.EntryIdTiles.TileSize));
             var result = await resultTask;
-            result.Count.Should().Be(1 + (int)Constants.Chat.EntryIdTileLayer.TileSize);
+            result.Count.Should().Be(1 + (int)Constants.Chat.EntryIdTiles.TileSize);
         }
     }
 
@@ -304,9 +304,9 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
             var resultTask = reader.Observe(idRange.End - 1, cts.Token).SuppressCancellation().ToListAsync();
             _ = BackgroundTask.Run(() => CreateChatEntries(
                     chats, session, TestChatId,
-                    (int)Constants.Chat.EntryIdTileLayer.TileSize));
+                    (int)Constants.Chat.EntryIdTiles.TileSize));
             var result = await resultTask;
-            result.Count.Should().Be(1 + (int)Constants.Chat.EntryIdTileLayer.TileSize);
+            result.Count.Should().Be(1 + (int)Constants.Chat.EntryIdTiles.TileSize);
         }
     }
 

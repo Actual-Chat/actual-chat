@@ -430,7 +430,7 @@ Examples:
 public class Chats(IServiceProvider services) : IChats
 {
     // 1. Static fields
-    public static readonly TileLayer<long> EntryIdTileLayer = Constants.Chat.EntryIdTileLayer;
+    public static readonly TileLayer<long> EntryIdTiles = Constants.Chat.EntryIdTiles;
     
     // 2. Dependency-injected services
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();

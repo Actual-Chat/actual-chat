@@ -19,8 +19,8 @@ namespace ActualChat.Chat;
 public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IChatsBackend
 {
     private const string CreatedChatEntryId = "CreatedChatEntryId";
-    private static readonly TileLayer<long> IdTileLayer = Constants.Chat.EntryIdTileLayer;
-    private static readonly TileLayer<long> RangeIdTileLayer = Constants.Chat.RangeIdTileLayer;
+    private static readonly TileLayer<long> EntryIdTiles = Constants.Chat.EntryIdTiles;
+    private static readonly TileLayer<long> RangeIdTiles = Constants.Chat.RangeIdTiles;
     private static readonly Dictionary<MediaId, Media.Media> EmptyMediaMap = new ();
     private static readonly ILookup<ChatEntryId, ChatEntryAttachment> EmptyAttachments
         = Array.Empty<ChatEntryAttachment>().ToLookup(ta => ta.EntryId);
@@ -218,7 +218,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return null;
 
         var idRange = await GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
-        var idTile = IdTileLayer.GetTile(idRange.End - 1);
+        var idTile = EntryIdTiles.GetTile(idRange.End - 1);
         var tile = await GetTile(chatId, idTile.Range, false, cancellationToken).ConfigureAwait(false);
         var lastEntry = tile.Entries.Length != 0 ? tile.Entries[^1] : null;
         return new ChatNews(idRange, lastEntry);
@@ -287,7 +287,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var minLid = await GetMinLid(chatId, cancellationToken).ConfigureAwait(false);
         var authors = new ApiSet<AuthorId>();
         var remainingCount = entryCount;
-        for (var idTile = IdTileLayer.GetTile(minLid); remainingCount > 0; idTile = idTile.Next()) {
+        for (var idTile = EntryIdTiles.GetTile(minLid); remainingCount > 0; idTile = idTile.Next()) {
             var tile = await GetTile(chatId, idTile.Range, true, cancellationToken).ConfigureAwait(false);
             if (tile.Entries.Length == 0)
                 break;
@@ -312,7 +312,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         bool includeRemoved,
         CancellationToken cancellationToken)
     {
-        var idTile = IdTileLayer.GetTile(lidTileRange);
+        var idTile = EntryIdTiles.GetTile(lidTileRange);
         if (!includeRemoved) {
             var fullTile = await GetTile(chatId, lidTileRange, true, cancellationToken).ConfigureAwait(false);
             return new ChatTile(lidTileRange, false, fullTile.Entries.Where(e => !e.IsRemoved).ToArray());
@@ -382,7 +382,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     // [ComputeMethod]
     public virtual async Task<ChatRangeMeta> GetChatRangeMeta(ChatId chatId, long lidTileStart, CancellationToken cancellationToken)
     {
-        var tile = RangeIdTileLayer.AssertIsTileStart(lidTileStart);
+        var tile = RangeIdTiles.AssertIsTileStart(lidTileStart);
 
         Range<long> chatLidRange;
         using (Computed.BeginIsolation())
@@ -415,8 +415,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (previousId == 0 && nextId == long.MaxValue)
                 break;
 
-            var previousTile = RangeIdTileLayer.GetTile(previousId);
-            var nextTile = RangeIdTileLayer.GetTile(nextId);
+            var previousTile = RangeIdTiles.GetTile(previousId);
+            var nextTile = RangeIdTiles.GetTile(nextId);
 
             // Starting tasks
             var prevEntryRangeMetaTask = previousId != 0
@@ -442,7 +442,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     break;
             }
             else
-                startLid = RangeIdTileLayer.GetTile(chatLidRange.Start).Start;
+                startLid = RangeIdTiles.GetTile(chatLidRange.Start).Start;
 
             // Started only once the previous side hasn't already fulfilled: a compute-method call that hits
             // cache registers its dependency synchronously, before any await, so issuing these alongside the
@@ -493,8 +493,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             mergedEntryIdRanges.EnsureMonotonic().ToArray(),
             mergedConversationIdRanges.EnsureMonotonic().ToArray(),
             minCount,
-            previousId == 0 ? null : RangeIdTileLayer.GetTile(previousId).Start,
-            nextId == long.MaxValue ? null : RangeIdTileLayer.GetTile(nextId).Start);
+            previousId == 0 ? null : RangeIdTiles.GetTile(previousId).Start,
+            nextId == long.MaxValue ? null : RangeIdTiles.GetTile(nextId).Start);
 
         int EstimateMinimumCount(ChatEntryRangeMeta entryRangeMeta1, ConversationRangeMeta conversationRangeMeta1)
         {
@@ -562,7 +562,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         long idTileStart,
         CancellationToken cancellationToken)
     {
-        var idTile = RangeIdTileLayer.AssertIsTileStart(idTileStart);
+        var idTile = RangeIdTiles.AssertIsTileStart(idTileStart);
         var idTileRange = idTile.Range;
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
@@ -1258,13 +1258,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 // A content-only Update used to invalidate it anyway, which forced every tail-following
                 // client into a ~RTT range-meta refetch per utterance finalization and per message edit.
                 if (changeKind is ChangeKind.Create or ChangeKind.Remove || invBoundToThreadHasChanged) {
-                    var entryTile = RangeIdTileLayer.GetTile(invChatEntry.LocalId);
+                    var entryTile = RangeIdTiles.GetTile(invChatEntry.LocalId);
                     if (previousEntryId != 0 && !entryTile.Range.Contains(previousEntryId)) {
-                        var previousEntryIdTile = RangeIdTileLayer.GetTile(previousEntryId);
+                        var previousEntryIdTile = RangeIdTiles.GetTile(previousEntryId);
                         _ = GetEntryRangeMeta(chatId, previousEntryIdTile.Range.Start, default);
                     }
                     if (nextEntryId != 0 && !entryTile.Range.Contains(nextEntryId)) {
-                        var nextIdTile = RangeIdTileLayer.GetTile(nextEntryId);
+                        var nextIdTile = RangeIdTiles.GetTile(nextEntryId);
                         _ = GetEntryRangeMeta(chatId, nextIdTile.Range.Start, default);
                     }
                 }
@@ -1641,7 +1641,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (invChats == null)
                 return;
 
-            var tileSize = IdTileLayer.TileSize;
+            var tileSize = EntryIdTiles.TileSize;
             foreach (var chatEntryPair in invChats) {
                 var chatId = ChatId.Parse(chatEntryPair.Key);
                 var entryId = chatEntryPair.Value;
@@ -2181,11 +2181,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     {
         // The tile with includeRemoved == false is based on the one with includeRemoved == true,
         // so invalidating just the latter is enough.
-        _ = GetTile(chatId, IdTileLayer.GetTile(entryId).Range, true, default);
+        _ = GetTile(chatId, EntryIdTiles.GetTile(entryId).Range, true, default);
 
         if (changeKind is ChangeKind.Create or ChangeKind.Remove || boundToThreadHasChanged) {
             // Invalidate GetEntryRangeMeta
-            var tile = RangeIdTileLayer.GetTile(entryId);
+            var tile = RangeIdTiles.GetTile(entryId);
             _ = GetEntryRangeMeta(chatId, tile.Start, default);
         }
     }
