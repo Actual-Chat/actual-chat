@@ -5,7 +5,6 @@ import {
     Subject,
     takeUntil,
     debounceTime,
-    throttleTime,
     tap,
     fromEvent
 } from 'rxjs';
@@ -23,14 +22,22 @@ const { debugLog, warnLog } = getLogs('MessageEditor');
 const LargeTextSuggestFileThreshold = 4_000;
 const LargeTextAutoFileThreshold = 32_000;
 const LargeTextPasteFileName = 'pasted.txt';
+// Mirror of .NET Constants.Typing.MaxTtl - the server clamps any longer TTL to it.
+const TypingMaxTtlMs = 5_000;
+// How early the typing lease is renewed, so the round trip can't open a gap in it.
+const TypingKeepAliveLeadMs = 500;
+
+// Mirror of .NET TypingActivityKind.
+enum TypingActivityKind {
+    None = 0,
+    Typing = 1,
+}
 
 export type PanelMode = 'Normal' | 'Narrow';
 
 export class ChatMessageEditor {
     private readonly isSmooth: boolean = false;
     private readonly backupRequired$ = new Subject<void>();
-    private readonly typing$ = new Subject<void>();
-    private isTyping = false;
     private readonly disposed$: Subject<void> = new Subject<void>();
     private readonly editorDiv: HTMLDivElement;
     private readonly postPanelDiv: HTMLDivElement;
@@ -46,6 +53,9 @@ export class ChatMessageEditor {
     private markupEditor: MarkupEditor;
     private attachmentListElement: HTMLDivElement | null;
     private lastWidth: number;
+    private lastTypedAt = 0;
+    private typingLeaseExpiresAt = 0;
+    private typingLeaseTimeout: number | null = null;
     private isNarrowScreen: boolean | null = null; // Intended: updateLayout needs this on the first run
     private panelModel: PanelMode | null = null; // Intended: updateLayout needs this on the first run
     private heightAtFocus: number | null = null;
@@ -97,15 +107,6 @@ export class ChatMessageEditor {
             .subscribe(this.onEditorBlur);
 
         this.backupRequired$.pipe(debounceTime(1000), tap(() => this.saveDraft())).subscribe();
-
-        // Typing indicator: re-signal "typing" at most once per 3s while editing,
-        // and clear it after 5s of no activity (send/empty/blur clear it right away).
-        this.typing$
-            .pipe(throttleTime(3000, undefined, { leading: true, trailing: false }), takeUntil(this.disposed$))
-            .subscribe(() => this.setTyping(true));
-        this.typing$
-            .pipe(debounceTime(5000), takeUntil(this.disposed$))
-            .subscribe(() => this.setTyping(false));
 
         this.postPanelHeightObserver = new ResizeObserver(this.updatePostPanelBorderRadius);
         this.postPanelHeightObserver.observe(this.postPanelDiv);
@@ -200,8 +201,7 @@ export class ChatMessageEditor {
         if (this.disposed$.closed)
             return;
 
-        this.setTyping(false);
-        this.typing$.complete();
+        this.stopTyping();
         this.backupRequired$.complete();
         this.disposed$.next();
         this.disposed$.complete();
@@ -468,24 +468,54 @@ export class ChatMessageEditor {
     private onEditorBlur = () => {
         this.heightAtFocus = null;
         this.applyPanelMode('Normal');
-        this.setTyping(false);
+        this.stopTyping();
     }
 
     private onTypingActivity(): void {
-        if (this.markupEditor?.hasContent ?? false)
-            this.typing$.next();
-        else
-            this.setTyping(false);
+        if (!(this.markupEditor?.hasContent ?? false)) {
+            this.stopTyping();
+            return;
+        }
+
+        this.lastTypedAt = Date.now();
+        // A pending renewal already covers this change - and if there is none, the lease either
+        // never existed or has just lapsed, so it has to be taken right now.
+        if (this.typingLeaseTimeout === null)
+            this.renewTypingLease();
     }
 
-    private setTyping(isActive: boolean): void {
-        // "true" is a throttled keep-alive pulse (~3s): always forward it so the server refreshes its
-        // typing-staleness window and re-adds the entry if it was dropped (e.g. a refresh on the other
-        // end raced a stale "false"). Only collapse repeated "false".
-        if (!isActive && !this.isTyping)
+    // Moves the server-side lease to lastTypedAt + TypingMaxTtlMs and re-arms itself just before it
+    // expires, so a steady typist costs one call per (TypingMaxTtlMs - TypingKeepAliveLeadMs) instead
+    // of one per keystroke. A renewal with nothing typed since the last one is skipped, which lets the
+    // lease lapse exactly TypingMaxTtlMs after the final change - no explicit "stopped" call needed.
+    private renewTypingLease = (): void => {
+        this.typingLeaseTimeout = null;
+        const expiresAt = this.lastTypedAt + TypingMaxTtlMs;
+        if (expiresAt <= this.typingLeaseExpiresAt)
             return;
-        this.isTyping = isActive;
-        void this.blazorRef.invokeMethodAsync('OnTypingChanged', isActive);
+
+        const ttlMs = expiresAt - Date.now();
+        if (ttlMs <= 0)
+            return;
+
+        this.typingLeaseExpiresAt = expiresAt;
+        this.typingLeaseTimeout = self.setTimeout(
+            this.renewTypingLease,
+            Math.max(0, ttlMs - TypingKeepAliveLeadMs));
+        void this.blazorRef.invokeMethodAsync('OnTypingChanged', TypingActivityKind.Typing, ttlMs);
+    }
+
+    private stopTyping(): void {
+        if (this.typingLeaseTimeout !== null) {
+            self.clearTimeout(this.typingLeaseTimeout);
+            this.typingLeaseTimeout = null;
+        }
+        // Nothing to stop if the lease has already lapsed on its own
+        if (this.typingLeaseExpiresAt <= Date.now())
+            return;
+
+        this.typingLeaseExpiresAt = 0;
+        void this.blazorRef.invokeMethodAsync('OnTypingChanged', TypingActivityKind.None, 0);
     }
 
     private updateKeyboardPanel = () => {
