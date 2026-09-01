@@ -533,6 +533,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var (items, hasBefore, hasAfter) = await ChatUI.GetChatItems(chatId, dataQuery, readEntryLid, cancellationToken).ConfigureAwait(false);
         if (isFirstGetData)
             ChatSwitchTracer.Mark("ChatView.GetData#1: GetChatItems <- out", $"{items.Count} items");
+        // A rebuild nobody asked to move the window can't have lost the end while the window still
+        // reaches the chat's last entry - so this is a stand-in build under-reporting its tail. Left
+        // standing it costs a 1500px end spacer, which an End-pinned list follows down into the
+        // skeletons and back out on the next rebuild: the reported ~10Hz flicker.
+        if (query.IsNone && nav == null && renderedData.HasVeryLastItem && hasAfter
+            && items.SelectMany(i => i.GetLeafMessages()).Max(m => (long?)m.Id) >= chatIdRange.End - 1)
+            hasAfter = false;
         var isWindowUnresolved = false;
         if (items.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
