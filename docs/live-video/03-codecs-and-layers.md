@@ -11,8 +11,8 @@ File: `src/dotnet/UI.Blazor.App/Services/Video/codec-support.ts`.
 `detectSupportedCodecs(width, height)` probes one representative encoder per
 category to keep startup cheap. Categories:
 
-- **AV1** (`av01.*`) — preferred where hardware exists; software AV1 is used
-  too, but not on phones.
+- **AV1** (`av01.*`) — hardware only. Preferred where that hardware exists;
+  the software encoder is not a ladder rung anywhere.
 - **HEVC** (`hev1.*` / `hvc1.*`) — hardware only; Chromium ships no software
   HEVC encoder, and Firefox ships none at all.
 - **VP9** (`vp09.*`) — the negotiation floor (see below).
@@ -69,10 +69,14 @@ floor.
 
 Selection walks an explicit ladder over (codec, acceleration) pairs, best-first:
 
-    hw-AV1 > hw-VP9 > hw-HEVC > sw-AV1 > sw-VP9 > hw-H.264 > sw-H.264
+    hw-AV1 > hw-VP9 > hw-HEVC > sw-VP9 > hw-H.264
 
-Software HEVC is absent (Chromium has none); software AV1 is withheld on phones.
-Firefox drops both MPEG rungs. `listCodecCandidatesByEfficiency` filters that
+VP9 is the only software rung, because it is also the floor every client must
+be able to decode. Software HEVC does not exist in Chromium; software AV1 and
+software H.264 were both measured and dropped — see
+[codec-performance.md](./codec-performance.md). Firefox drops both MPEG rungs.
+
+`listCodecCandidatesByEfficiency` filters that
 ladder to what the *audience* can decode, drops anything with `realtime: false`,
 and honours the "prefer encode codec" debug override. `getFallbackCodecs` runs
 only when nothing qualifies at all, returning the same ladder order without

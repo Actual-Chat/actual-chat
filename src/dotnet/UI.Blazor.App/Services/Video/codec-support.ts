@@ -1,7 +1,6 @@
 import { getLogs } from 'logging';
 import { kbpsToBitsPerSecond } from 'app-constants';
 import { DeviceInfo } from 'device-info';
-import { SharedSettings } from 'shared-settings';
 import { isDecoderCodecProven, isEncoderCodecProven } from './codec-proof';
 import { closeEncodedChunk } from './frame-envelopes';
 
@@ -775,9 +774,18 @@ export function detectSupportedDecoderCodecs(): Promise<string[]> {
 // Baseline at a small size is the narrowest thing that answers it.
 // Encoder preference, best-first, over (category, acceleration) pairs rather
 // than categories: whether a codec is worth using depends on which encoder is
-// behind it. Software HEVC is absent because Chromium has none. Software AV1
-// sits behind every hardware rung and is gated further — see below. Anything
-// not listed here is never chosen as an encoder.
+// behind it.
+//
+// Only one software rung survives, and it is VP9. Software H.264 is the slowest
+// encoder measured anywhere - 6.69ms/frame at 480p on a Galaxy SM-S948U1
+// against 1.17ms for that device's hardware path - while compressing worst of
+// the four. Software AV1 is the closer call: at matched bitrate on the one
+// device that offers both it runs ~18% slower than software VP9 (4.44ms vs
+// 3.75ms at 720p), and VP9 is the floor every client already has to decode, so
+// the extra cost buys nothing. Software HEVC does not exist in Chromium at all.
+// Numbers in docs/live-video/codec-performance.md.
+//
+// Anything not listed here is never chosen as an encoder.
 export interface EncoderRung {
     category: CodecCategory;
     accel: HardwareAcceleration;
@@ -787,39 +795,17 @@ const ENCODER_LADDER: readonly EncoderRung[] = [
     { category: 'av1',  accel: 'prefer-hardware' },
     { category: 'vp9',  accel: 'prefer-hardware' },
     { category: 'hevc', accel: 'prefer-hardware' },
-    { category: 'av1',  accel: 'prefer-software' },
     { category: 'vp9',  accel: 'prefer-software' },
     { category: 'h264', accel: 'prefer-hardware' },
-    { category: 'h264', accel: 'prefer-software' },
 ];
-
-// Software AV1 is the most expensive rung on the ladder, so it is kept off
-// phones: the user agent settles it for browsers, and appKind for the MAUI app,
-// whose WebView doesn't always say "mobile". Desktop is fine either way. It
-// still ranks below every hardware encoder.
-function allowsSoftwareAv1(): boolean {
-    if (DeviceInfo.isMobile)
-        return false;
-
-    // From SharedSettings, not BrowserInfo: this module also runs inside the
-    // recorder worker, which has no BrowserInfo, and SharedSettings is the
-    // channel the main thread already mirrors into workers.
-    const { appKind } = SharedSettings.current;
-    return appKind !== 'Ios' && appKind !== 'Android';
-}
 
 // Firefox drops the MPEG rungs entirely: its H.264 encoder runs ~18 frames
 // behind (the realtime probe already rejects it) and it ships no HEVC encoder,
 // so offering either only wastes a probe.
 export function getEncoderLadder(): readonly EncoderRung[] {
-    return ENCODER_LADDER.filter(rung => {
-        if (DeviceInfo.isFirefox && (rung.category === 'h264' || rung.category === 'hevc'))
-            return false;
-        if (rung.category === 'av1' && rung.accel === 'prefer-software')
-            return allowsSoftwareAv1();
-
-        return true;
-    });
+    return DeviceInfo.isFirefox
+        ? ENCODER_LADDER.filter(rung => rung.category !== 'h264' && rung.category !== 'hevc')
+        : ENCODER_LADDER;
 }
 
 // Which acceleration modes this codec was actually accepted with.
