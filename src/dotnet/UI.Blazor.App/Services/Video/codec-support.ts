@@ -884,6 +884,10 @@ const DECODER_PROBES: { category: string; codecs: string[] }[] = [
 ];
 
 async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
+    // At `full` the classes probed below are the polyfill's, and this is what
+    // installs them - probing first would advertise the browser's decoders on an
+    // engine whose decoders we are about to replace.
+    await WebCodecsCompat.whenReadyFor('video-decode');
     const codecs: string[] = [];
 
     const forced = getForceDecodeCodec();

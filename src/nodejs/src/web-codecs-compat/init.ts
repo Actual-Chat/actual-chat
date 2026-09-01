@@ -20,7 +20,7 @@ import { DeviceInfo } from 'device-info';
 const { debugLog, errorLog, infoLog, warnLog } = getLogs('WebCodecsCompat');
 
 const LIBAV_FILE = 'libav-6.10.9.0-vp9-opus-avf-simd.mjs';
-const POLYFILL_FILE = 'libavjs-webcodecs-polyfill.js';
+const POLYFILL_FILE = 'libavjs-webcodecs-polyfill.mjs';
 
 const POLYFILL_CLASS_NAMES = [
     'EncodedAudioChunk', 'AudioData', 'AudioDecoder', 'AudioEncoder',
@@ -157,11 +157,7 @@ export class WebCodecsCompat {
 
         // Only `full` needs the polyfill; `vp9` uses Vp9Encoder, which drives
         // libav.js directly.
-        await loadScript(`${base}/${POLYFILL_FILE}`);
-        const loaded = (globalThis as { LibAVWebCodecs?: WebCodecsPolyfillClasses }).LibAVWebCodecs;
-        if (!loaded)
-            throw new Error(`${POLYFILL_FILE} loaded but defined no LibAVWebCodecs`);
-
+        const loaded = await import(/* webpackIgnore: true */ `${base}/${POLYFILL_FILE}`) as WebCodecsPolyfillClasses;
         this._classes = loaded;
         installGlobals(loaded);
         // Ponyfill mode: the polyfill's own installer fills in MISSING classes only.
@@ -185,17 +181,3 @@ function installGlobals(loaded: WebCodecsPolyfillClasses): void {
     debugLog?.log(`installGlobals: replaced ${POLYFILL_CLASS_NAMES.join(', ')}`);
 }
 
-function loadScript(url: string): Promise<void> {
-    const doc = (globalThis as { document?: Document }).document;
-    if (!doc)
-        return Promise.reject(new Error(`Cannot load ${url}: no importScripts and no document`));
-
-    return new Promise<void>((resolve, reject) => {
-        const script = doc.createElement('script');
-        script.src = url;
-        script.async = true;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error(`Failed to load ${url}`));
-        doc.head.appendChild(script);
-    });
-}
