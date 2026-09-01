@@ -32,9 +32,15 @@ describe('video codec bitrate helpers', () => {
     it('computes layer bitrates from H.264 base bitrates and codec efficiency', () => {
         expect(getVideoCodecEfficiency('avc1.640028', video)).toBe(1);
         expect(getVideoCodecEfficiency('hev1.1.6.L120.B0', video)).toBe(2);
-        expect(getVideoLayerBitrateKbps(4_000, 'vp09.00.41.08', video)).toBeCloseTo(1_702.128, 3);
-        expect(getVideoLayerBitratesKbps([312.5, 1_250, 4_000], 'hev1.1.6.L120.B0', video))
-            .toEqual([156.25, 625, 2_000]);
-        expect(getVideoLayerByteRate(4_000, 'hev1.1.6.L120.B0', video)).toBe(250_000);
+        expect(getVideoLayerBitrateKbps(4_000, 'avc1.640028', video)).toBeCloseTo(4_000, 3);
+    });
+
+    it('caps the divisor at 1.4, so efficiency past it buys quality not a smaller stream', () => {
+        expect(getVideoLayerBitrateKbps(4_000, 'hev1.1.6.L120.B0', video)).toBeCloseTo(2_857.143, 3);
+        expect(getVideoLayerBitrateKbps(4_000, 'vp09.00.41.08', video)).toBeCloseTo(2_857.143, 3);
+        expect(getVideoLayerBitrateKbps(4_000, 'av01.0.08M.08', video)).toBeCloseTo(2_857.143, 3);
+        expect(getVideoLayerBitratesKbps([312.5, 1_250, 4_000], 'hev1.1.6.L120.B0', video)
+            .map(x => Math.round(x))).toEqual([223, 893, 2_857]);
+        expect(getVideoLayerByteRate(4_000, 'hev1.1.6.L120.B0', video)).toBe(357_143);
     });
 });

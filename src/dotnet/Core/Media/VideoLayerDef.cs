@@ -13,6 +13,9 @@ public sealed record VideoLayerDef(VideoSourceKind SourceKind, VideoSize Size, d
     ];
     public static readonly VideoLayerDef[] All = CameraLayers.Concat(ScreenCastLayers).ToArray();
     public static readonly int MaxLayerCount = Math.Max(CameraLayers.Length, ScreenCastLayers.Length);
+    // Efficiency past this point is taken as quality at the same bitrate rather than
+    // a smaller stream. Codec ranking still uses the uncapped value.
+    public const double MaxBitrateEfficiency = 1.4;
 
     public int Width => Size.LongSide();
     public int Height => Size.ShortSide();
@@ -41,7 +44,8 @@ public sealed record VideoLayerDef(VideoSourceKind SourceKind, VideoSize Size, d
 
     public static double GetBitrateKbps(double baseBitrateKbps, VideoCodecKind codecKind)
     {
-        var efficiency = Math.Max(double.Epsilon, VideoCodecDef.EfficiencyFor(codecKind));
+        var efficiency = Math.Min(MaxBitrateEfficiency, VideoCodecDef.EfficiencyFor(codecKind));
+        efficiency = Math.Max(double.Epsilon, efficiency);
         return Math.Max(double.Epsilon, baseBitrateKbps / efficiency);
     }
 

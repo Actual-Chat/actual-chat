@@ -2154,7 +2154,6 @@ export class VideoRecorder {
             const workerForPump = this.worker;
             let pumpFrameCount = 0;
             let lastRvfcTickAtMs = performance.now();
-            let lastTimerMediaTime = -1;
             let timerPump: number | null = null;
 
             // False means the worker rejected the frame, which cancels the
@@ -2212,22 +2211,16 @@ export class VideoRecorder {
                     if (this.workerSourceCancelled || sourceVideo.readyState < 2)
                         return;
 
-                    // Two guards, because the pumps report different quantities:
-                    // rVFC gives a decoded frame's `mediaTime` and the timer only
-                    // the element's `currentTime`, which never compare equal - so
-                    // silence keeps the pumps apart, while the value guard below
-                    // keeps the timer from re-submitting one picture repeatedly.
+                    // Silence, not value equality: rVFC reports a decoded frame's
+                    // `mediaTime` while the timer only has the element's
+                    // `currentTime`, and the two never compare equal.
                     if (performance.now() - lastRvfcTickAtMs < timerPumpPeriodMs * 2)
                         return;
 
-                    // `currentTime` moves only when the element decodes, well below
-                    // the timer rate; without this the far end receives bursts.
-                    const mediaTime = sourceVideo.currentTime;
-                    if (mediaTime === lastTimerMediaTime)
-                        return;
-
-                    lastTimerMediaTime = mediaTime;
-                    if (!pushFrame(mediaTime) && timerPump !== null) {
+                    // Nothing here can tell a repeat from a new picture: measured on
+                    // Firefox, `currentTime` is wall-paced and totalVideoFrames never
+                    // advances for a MediaStream.
+                    if (!pushFrame(sourceVideo.currentTime) && timerPump !== null) {
                         window.clearInterval(timerPump);
                         timerPump = null;
                     }

@@ -201,9 +201,9 @@ interface DetectionResult {
 async function detectSupportedCodecsUncached(width: number, height: number): Promise<DetectionResult> {
     const level = WebCodecsCompat.level;
     let probeList = REPRESENTATIVE_CODECS;
-    // At `full` the browser has no WebCodecs and libav.js is the only encoder
-    // there is, so VP9 is the only thing worth probing.
-    if (level === 'full')
+    // Above `none`, libav.js is the only encoder we use. Decoding is unaffected:
+    // detectSupportedDecoderCodecs still probes and advertises every category.
+    if (level !== 'none')
         probeList = probeList.filter(c => c.category === 'vp9');
     if (excludedEncoderCodecs.size > 0) {
         const before = probeList.length;
