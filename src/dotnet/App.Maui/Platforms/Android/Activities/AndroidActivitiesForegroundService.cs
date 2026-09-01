@@ -35,6 +35,7 @@ public sealed class AndroidActivitiesForegroundService : Service
         public const string IsPaused = nameof(IsPaused);
         public const string CanPause = nameof(CanPause);
         public const string AnswerWindowRemainingMs = nameof(AnswerWindowRemainingMs);
+        public const string IsStartGestureReady = nameof(IsStartGestureReady);
         public const string UploadFileCount = nameof(UploadFileCount);
         public const string UploadBytesUploaded = nameof(UploadBytesUploaded);
         public const string UploadTotalBytes = nameof(UploadTotalBytes);
@@ -193,9 +194,12 @@ public sealed class AndroidActivitiesForegroundService : Service
             return StartCommandResult.NotSticky;
         }
 
-        // Reset only on Show: a reply action arriving mid-bitmap-load must not cancel the
-        // in-flight notification update it has nothing to do with.
-        _requestId = RandomStringGenerator.Default.Next();
+        // The chat-less armed re-raise from MainActivity.OnResume starts no bitmap load of its own,
+        // so it must not reset this: doing so aborts an in-flight one, and the placeholder it
+        // leaves behind is never replaced - the backend re-posts only when its state changes.
+        var hasChat = !intent!.Extras?.GetString(IntentExtras.ChatId).IsNullOrEmpty() ?? false;
+        if (hasChat)
+            _requestId = RandomStringGenerator.Default.Next();
         // A Show revives an instance whose deferred stop never reached OnDestroy - otherwise the
         // microphone re-type would stay dead for the rest of its life.
         Volatile.Write(ref _isStopping, false);
@@ -207,7 +211,7 @@ public sealed class AndroidActivitiesForegroundService : Service
         // Android requires StartForeground() within ~5s of StartForegroundService(). Call it up-front
         // with a placeholder so a throw while building the rich notification (unexpected kind,
         // ChatId.Parse) can't leave the service without one -> ForegroundServiceDidNotStartInTimeException.
-        StartForeground1(BuildStartingNotification(kind), kind, requested);
+        StartForeground1(GetStartingNotification(kind, hasChat), kind, requested);
         if (Volatile.Read(ref _pendingStartCount) > 0)
             Interlocked.Decrement(ref _pendingStartCount);
 
@@ -250,7 +254,7 @@ public sealed class AndroidActivitiesForegroundService : Service
             _mediaSession.SetCallback(new Callback());
         }
 
-        var text = GetKindText(kind);
+        var text = GetKindText(kind, intent.Extras!.GetBoolean(IntentExtras.IsStartGestureReady));
         var title = chatTitle;
         if (extraChatCount > 0)
             title += extraChatCount == 1 ? " (+ 1 chat)" : $" (+ {extraChatCount} chats)";
@@ -278,6 +282,7 @@ public sealed class AndroidActivitiesForegroundService : Service
         _mediaSession.SetPlaybackState(playbackStateCompat);
 
         var answerWindowRemainingMs = intent.Extras!.GetLong(IntentExtras.AnswerWindowRemainingMs, 0);
+        var isStartGestureReady = intent.Extras!.GetBoolean(IntentExtras.IsStartGestureReady);
         var lastRequestId = _requestId;
         ResolveBitmapAndRun(
             chatPicUrl,
@@ -295,7 +300,7 @@ public sealed class AndroidActivitiesForegroundService : Service
                 _lastLink = link;
                 SetMetadata(title, text, bitmap);
                 var notification = BuildNotification(
-                    _mediaSession, link, kind, title, answerWindowRemainingMs);
+                    _mediaSession, link, kind, title, answerWindowRemainingMs, isStartGestureReady);
                 StartForeground1(notification, kind, requested);
             });
 
@@ -372,12 +377,17 @@ public sealed class AndroidActivitiesForegroundService : Service
         }
     }
 
-    private static string GetKindText(ActivityKind kind)
+    private static string GetKindText(ActivityKind kind, bool isStartGestureReady)
+        // "Push-to-talk is on" was true but useless: it says a chat is armed, while what the user
+        // needs to know is whether flipping the phone right now will do anything - and outside the
+        // arming window the accelerometer is stopped, so it won't.
         => kind switch {
             ActivityKind.Recording => "Recording",
             ActivityKind.Listening => "Listening",
             ActivityKind.Replaying => "Replaying",
-            ActivityKind.Armed => "Push-to-talk is on",
+            ActivityKind.Armed => isStartGestureReady
+                ? "Flip to reply"
+                : "Push-to-talk on \u00b7 tap Reply to talk",
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
 
@@ -398,8 +408,8 @@ public sealed class AndroidActivitiesForegroundService : Service
             return null;
 
         try {
-            SetMetadata(_lastTitle, GetKindText(kind), _lastAlbumArt);
-            return BuildNotification(_mediaSession, _lastLink, kind, _lastTitle, 0);
+            SetMetadata(_lastTitle, GetKindText(kind, false), _lastAlbumArt);
+            return BuildNotification(_mediaSession, _lastLink, kind, _lastTitle, 0, false);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Couldn't relabel the notification for {Kind}", kind);
@@ -491,6 +501,15 @@ public sealed class AndroidActivitiesForegroundService : Service
         }, TaskScheduler.Default);
     }
 
+    private Android.App.Notification GetStartingNotification(ActivityKind kind, bool hasChat)
+        // The bare armed re-raise (MainActivity.OnResume, re-earning the microphone type) carries no
+        // chat and returns below without building the real notification - so posting the placeholder
+        // here would replace the rendered one, and nothing would put it back: the backend re-posts
+        // only when its activity set changes, which a resume doesn't do.
+        => !hasChat && Volatile.Read(ref _lastNotification) is { } lastNotification
+            ? lastNotification
+            : BuildStartingNotification(kind);
+
     private Android.App.Notification BuildStartingNotification(ActivityKind kind)
     {
         // Carries real text because the armed start (TryStartArmed) has no chat to name yet and
@@ -499,7 +518,9 @@ public sealed class AndroidActivitiesForegroundService : Service
         var builder = new NotificationCompat.Builder(this, GetChannelId(kind))
             .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
             .SetContentTitle(kind switch {
-                ActivityKind.Armed => "Push-to-talk is on",
+                // Never the "Flip to reply" wording: this is raised before Blazor - and so before
+                // GestureUI - exists, so no gesture can possibly be sensed while it's on screen.
+                ActivityKind.Armed => GetKindText(ActivityKind.Armed, isStartGestureReady: false),
                 ActivityKind.Recording => "Recording",
                 ActivityKind.Uploading => "Uploading",
                 ActivityKind.SharingLocation => "Sharing live location",
@@ -518,7 +539,7 @@ public sealed class AndroidActivitiesForegroundService : Service
 
     private Android.App.Notification BuildNotification(
         MediaSessionCompat mediaSession, string link, ActivityKind kind,
-        string title, long answerWindowRemainingMs)
+        string title, long answerWindowRemainingMs, bool isStartGestureReady)
     {
         var viewIntent = NotificationHelper.CreateViewIntent(this, link);
         var viewPending = PendingIntent.GetActivity(this, 3, viewIntent, PendingIntentFlags.Immutable);
@@ -535,18 +556,24 @@ public sealed class AndroidActivitiesForegroundService : Service
             .SetVisibility(NotificationCompat.VisibilityPublic)!;
         AddReplyActions(builder, kind);
 
-        // The media template doesn't render the chronometer, so the answer window gets a
-        // standard-style notification; the media session itself stays alive for the headset button.
-        if (kind is ActivityKind.Armed && answerWindowRemainingMs > 0)
-            return builder
+        // Never MediaStyle while merely armed: the system files a transport-category notification
+        // into the media-player area, and an armed session reports Paused - so it collapses out of
+        // sight and the chat has no visible notification at all. The media session itself stays
+        // alive regardless, which is all the headset button needs. It also lets the answer window
+        // show a chronometer, which the media template doesn't render.
+        if (kind is ActivityKind.Armed) {
+            _ = builder
                 .SetContentTitle(title)!
-                .SetContentText("Flip to reply")!
-                .SetLargeIcon(_lastAlbumArt)!
-                .SetShowWhen(true)!
-                .SetUsesChronometer(true)!
-                .SetChronometerCountDown(true)!
-                .SetWhen(Java.Lang.JavaSystem.CurrentTimeMillis() + answerWindowRemainingMs)!
-                .Build()!;
+                .SetContentText(GetKindText(kind, isStartGestureReady))!
+                .SetLargeIcon(_lastAlbumArt);
+            if (isStartGestureReady && answerWindowRemainingMs > 0)
+                _ = builder
+                    .SetShowWhen(true)!
+                    .SetUsesChronometer(true)!
+                    .SetChronometerCountDown(true)!
+                    .SetWhen(Java.Lang.JavaSystem.CurrentTimeMillis() + answerWindowRemainingMs);
+            return builder.Build()!;
+        }
 
         var compactActions = kind is ActivityKind.Recording ? new[] { 0 } : new[] { 0, 1 };
         var mediaStyle = new AndroidX.Media.App.NotificationCompat.MediaStyle()

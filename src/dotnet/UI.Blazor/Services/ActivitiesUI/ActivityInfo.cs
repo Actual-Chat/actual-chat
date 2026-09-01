@@ -25,7 +25,8 @@ public sealed record AudioActivity(
     ActivityChatInfo Chat,
     bool IsPaused,
     bool CanPause = true,
-    Moment? AnswerWindowEndsAt = null
+    Moment? AnswerWindowEndsAt = null,
+    bool IsStartGestureReady = false
 ) : ActivityInfo(Kind);
 
 public sealed record LocationActivity(ActivityChatInfo Chat)
