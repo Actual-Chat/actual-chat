@@ -29,7 +29,7 @@
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var chatId = Chat.Id;
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
-        if (audioState.IsListening || audioState.IsRecording)
+        if (audioState.IsRecording)
             return true;
 
         var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(false);
@@ -45,6 +45,13 @@
         if (hasRemoteStreams)
             return true;
 
-        return await LocationUI.IsOwnLive(chatId, cancellationToken).ConfigureAwait(false);
+        if (await LocationUI.IsOwnLive(chatId, cancellationToken).ConfigureAwait(false))
+            return true;
+
+        // Last, because it's the only one needing the armed set: an armed chat listens at all
+        // times, so a bare listen must not open a wrapper the panel then declines to fill.
+        var pttChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        return ChatActivityVisibility.HasActivity(
+            isPttArmed: pttChatIds.Contains(chatId), isListening: audioState.IsListening);
     }
 }

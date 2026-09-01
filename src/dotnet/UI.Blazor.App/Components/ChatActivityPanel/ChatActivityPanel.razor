@@ -202,13 +202,20 @@
         public bool IsListening => AudioState.IsListening;
         public bool IsRecordingHere => AudioState.IsRecording;
         public bool IsParticipating => IsListening || IsRecordingHere || IsOwnVideoStreaming;
+        // Everything the panel can actually draw: someone's speech, a film strip, or own
+        // transmission with its hang-up button.
+        public bool HasRenderableActivity
+            => IsAnyoneTalking || HasRemoteStreams || IsRecordingHere
+                || IsWatchingHere || IsOwnVideoStreaming;
         public bool HasCallActivity
             // Armed PTT keeps IsListening on at all times, so for armed chats the panel needs real
             // call substance - a bare listen there is ambient state, not an activity to present.
-            => IsAnyoneTalking || HasRemoteStreams || IsRecordingHere
-                || IsWatchingHere || (IsPttArmed ? HasOngoingCall : IsListening);
+            => HasRenderableActivity || (IsPttArmed ? HasOngoingCall : IsListening);
         public bool CanJoinCall => HasCallActivity && !IsParticipating;
-        public bool IsVisible => HasCallActivity || IsSharingOwnLocation;
+        // HasOngoingCall is broader than what can be drawn - an open but silent mic satisfies it -
+        // so an armed chat gated on it alone shows a panel with nothing in it.
+        public bool IsVisible
+            => IsSharingOwnLocation || (IsPttArmed ? HasRenderableActivity : HasCallActivity);
         public bool CanShowAudioDiagnostics => IsAudioDiagnosticsEnabled && HasCallActivity;
     }
 }
