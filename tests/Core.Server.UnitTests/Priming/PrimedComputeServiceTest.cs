@@ -37,6 +37,41 @@ public class PrimedComputeServiceTest(ITestOutputHelper @out) : TestBase(@out)
         svc.Primer.GetReservationCount().Should().Be(0);
     }
 
+    [Fact]
+    public async Task TryLockAndPrepareSkipsSupersededComputed()
+    {
+        var services = CreateServices();
+        var svc = services.GetRequiredService<PrimedComputeService>();
+        var computed = await Computed.Capture(() => svc.Get("a", default));
+
+        using (var primer = await svc.Primer.TryLockAndPrepare("a", computed))
+            primer.Should().NotBeNull();
+
+        computed.Invalidate();
+        (await svc.Primer.TryLockAndPrepare("a", computed)).Should().BeNull();
+        svc.Primer.GetReservationCount().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task TryLockAndPrepareRechecksAfterTheLock()
+    {
+        var services = CreateServices();
+        var svc = services.GetRequiredService<PrimedComputeService>();
+        var computed = await Computed.Capture(() => svc.Get("a", default));
+
+        var blocker = await svc.Primer.LockAndPrepare("a");
+        var pendingTask = svc.Primer.TryLockAndPrepare("a", computed).AsTask();
+        await Task.Delay(50);
+        pendingTask.IsCompleted.Should().BeFalse();
+
+        // A writer supersedes the value while we're still queued for the lock
+        computed.Invalidate();
+        blocker.Dispose();
+
+        (await pendingTask.WaitAsync(TimeSpan.FromSeconds(1))).Should().BeNull();
+        svc.Primer.GetReservationCount().Should().Be(0);
+    }
+
     private IServiceProvider CreateServices()
     {
         var services = new ServiceCollection();
