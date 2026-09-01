@@ -23,7 +23,7 @@ public class GroupExpandedConversationsTest
         };
 
         // act
-        var result = ChatUI.GroupExpandedConversations(messages, null, default, null, null);
+        var result = ChatUI.GroupExpandedConversations(messages, null, default, false, null, null);
 
         // assert
         var blocks = result.OfType<ExpandedConversationMessage>().ToList();
@@ -46,7 +46,7 @@ public class GroupExpandedConversationsTest
         };
 
         // act
-        var result = ChatUI.GroupExpandedConversations(messages, null, default, null, null);
+        var result = ChatUI.GroupExpandedConversations(messages, null, default, false, null, null);
 
         // assert: a duplicate @key among siblings is what tears the Blazor render down
         var keys = result.Select(x => ((IVirtualListItem)x).Key).ToList();
@@ -66,7 +66,7 @@ public class GroupExpandedConversationsTest
         };
 
         // act
-        var result = ChatUI.GroupExpandedConversations(messages, null, default, null, null);
+        var result = ChatUI.GroupExpandedConversations(messages, null, default, false, null, null);
 
         // assert
         result.OfType<ExpandedConversationMessage>().Should().HaveCount(1);
@@ -87,7 +87,7 @@ public class GroupExpandedConversationsTest
         };
 
         // act
-        var result = ChatUI.GroupExpandedConversations(messages, null, default, null, null);
+        var result = ChatUI.GroupExpandedConversations(messages, null, default, false, null, null);
 
         // assert
         var blocks = result.OfType<ExpandedConversationMessage>().ToList();

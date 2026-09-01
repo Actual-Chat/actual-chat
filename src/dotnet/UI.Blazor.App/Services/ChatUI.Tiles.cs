@@ -798,8 +798,10 @@ public partial class ChatUI
         var liveBlockRange = liveBlockId is { } lbId
             ? new Range<long>(lbId.StartEntryLid, overlay?.BlockEndLid ?? long.MaxValue)
             : default;
+        var isLiveBlockExpanded = liveBlockId is { } expandedLiveId
+            && expandedConversations.Contains(expandedLiveId);
         var groupedTiles = GroupExpandedConversations(
-            groupedItems, liveBlockId, liveBlockRange, materializedBlockId, Log);
+            groupedItems, liveBlockId, liveBlockRange, isLiveBlockExpanded, materializedBlockId, Log);
         return new ChatItems(groupedTiles, hasMoreBefore, hasMoreAfter, lastKnownRangeMetaList != null);
 
         bool TryGetIdTilesToLoad(
@@ -1412,7 +1414,7 @@ public partial class ChatUI
     // It's internal to be accessible from tests
     internal static List<ChatMessage> GroupExpandedConversations(
         IReadOnlyList<ChatMessage> messages, ConversationId? liveBlockId, Range<long> liveBlockRange,
-        ConversationId? materializedBlockId, ILogger? log)
+        bool isLiveBlockExpanded, ConversationId? materializedBlockId, ILogger? log)
     {
         // Wrap every item of one expanded conversation into a single ExpandedConversationMessage in
         // source order - the block is the sticky containing element for the conversation header and
@@ -1449,16 +1451,21 @@ public partial class ChatUI
                         Math.Min(liveBlockRange.Start, blockConversation.EntryLidRange.Start),
                         Math.Max(liveBlockRange.End, blockConversation.EntryLidRange.End))
                     : blockConversation.EntryLidRange;
+            // A collapsed live block takes no entries at all: it stands for them, so it is one unit -
+            // the header and the card - and everything below it, transcribed or typed, is placed by the
+            // ordinary rules. Only its expanded form absorbs the rows it shows.
+            var takesEntries = !isLiveBlock || isLiveBlockExpanded;
             var belongs = blockConversation != null
                 && (conversation != null
                     ? conversation.Id == blockConversation.Id
-                    : i < lastIndexById.GetValueOrDefault(blockConversation.Id, -1)
-                        // Range.Contains excludes End, so a still-live [V, ∞) range needs the open-ended
-                        // form - a closed block carries a real BlockEndLid and uses Contains as usual.
-                        // Keeps the frozen tail past the conversation's last item inside the block.
-                        || (blockRange.End == long.MaxValue
-                            ? item.Id >= blockRange.Start
-                            : blockRange.Contains(item.Id)));
+                    : takesEntries
+                        && (i < lastIndexById.GetValueOrDefault(blockConversation.Id, -1)
+                            // Range.Contains excludes End, so a still-live [V, ∞) range needs the open-ended
+                            // form - a closed block carries a real BlockEndLid and uses Contains as usual.
+                            // Keeps the frozen tail past the conversation's last item inside the block.
+                            || (blockRange.End == long.MaxValue
+                                ? item.Id >= blockRange.Start
+                                : blockRange.Contains(item.Id))));
             if (belongs) {
                 blockItems.Add(item);
                 continue;
