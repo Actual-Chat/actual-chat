@@ -1,4 +1,5 @@
 import { getLogs } from 'logging';
+import { getVideoEncoderClass } from 'web-codecs-compat/vp9-encoder';
 import type { MonotonicTime } from 'clocks';
 import { type Disposable, ObjectDisposedError } from 'disposable';
 import { PromiseSourceWithTimeout } from 'actuallab-core';
@@ -43,7 +44,9 @@ export interface CodecToAsyncAdapterOptions {
     onResetRequested?: (reason: string) => void;
 }
 
-export type AsyncVideoEncoderOptions = CodecToAsyncAdapterOptions;
+/** `codec` picks the implementation: at compat level `vp9` a VP9 codec string
+ *  routes to libav.js instead of the browser encoder. */
+export type AsyncVideoEncoderOptions = CodecToAsyncAdapterOptions & { codec?: string };
 
 interface PendingCodecItem<TIn, TOut> {
     input: TIn;
@@ -361,7 +364,8 @@ export class AsyncVideoEncoder<
     ) {
         super('AsyncVideoEncoder', options);
         this.buildEncodedOutput = buildOutput;
-        this.encoder = new VideoEncoder({
+        const EncoderClass = getVideoEncoderClass(options.codec ?? '');
+        this.encoder = new EncoderClass({
             output: (chunk: EncodedVideoChunk, metadata: EncodedVideoChunkMetadata) =>
                 this.resolveOutput({ chunk, metadata }),
             error: (e: unknown) => onError(e),
