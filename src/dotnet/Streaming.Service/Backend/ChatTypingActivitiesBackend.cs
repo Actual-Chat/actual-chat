@@ -11,6 +11,8 @@ public partial class ChatTypingActivitiesBackend : ShardComputeService, IChatTyp
     // Typing is high-churn and short-lived: the client re-emits while typing, and a streak lapses
     // on its own shortly after the last keystroke - no explicit stop needed.
     private static readonly TimeSpan ActivityTtl = TimeSpan.FromSeconds(6);
+    // Keeps ExpireStale from waking a tick early and finding nothing to drop.
+    private static readonly TimeSpan ExpirationGrace = TimeSpan.FromMilliseconds(100);
 
     private readonly LockingComputeMethodPrimer<ChatId, ApiArray<TypingActivity>> _listRawPrimer;
 
@@ -23,18 +25,14 @@ public partial class ChatTypingActivitiesBackend : ShardComputeService, IChatTyp
         ChatId chatId,
         CancellationToken cancellationToken)
     {
-        // Captured before the awaits below - see LiveSessionsBackend.GetState.
-        var computed = Computed.GetCurrent();
         await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
 
-        var activities = await ListRaw(chatId, cancellationToken).ConfigureAwait(false);
+        // ExpireStale drops every entry as it lapses, so the freshness filter here covers just the
+        // ExpirationGrace-wide gap between an expiration and the pass that removes it.
         var now = Clocks.SystemClock.Now;
-        var fresh = activities.Where(x => x.ExpiresAt > now).ToApiArray();
-        if (fresh.Count == 0)
-            return default;
-
-        computed.InvalidateSafely(fresh.Min(x => x.ExpiresAt) - now, ActivityTtl);
-        return fresh
+        var activities = await ListRaw(chatId, cancellationToken).ConfigureAwait(false);
+        return activities
+            .Where(x => x.ExpiresAt > now)
             .OrderBy(x => x.StartedAt)
             .Select(x => x.AuthorId)
             .ToApiArray();
@@ -69,14 +67,47 @@ public partial class ChatTypingActivitiesBackend : ShardComputeService, IChatTyp
     [ComputeMethod]
     protected virtual Task<ApiArray<TypingActivity>> ListRaw(ChatId chatId, CancellationToken cancellationToken)
     {
-        // This is the storage: the value lives in this computed, and the auto-invalidation below both
-        // pins it in RAM until the last activity expires and clears it once they all have.
-        var computed = Computed.GetCurrent();
+        // This is the storage: the value lives in this computed, and the pending ExpireStale below is
+        // what keeps it in RAM until then. Nothing primed -> nobody is typing.
         if (!_listRawPrimer.TryUsePrimed(chatId, out var activities) || activities.Count == 0)
             return Task.FromResult(ApiArray<TypingActivity>.Empty);
 
-        computed.InvalidateSafely(activities.Max(x => x.ExpiresAt) - Clocks.SystemClock.Now, ActivityTtl);
+        var computed = Computed.GetCurrent<ApiArray<TypingActivity>>();
+        _ = ExpireStale(chatId, computed, activities.Min(x => x.ExpiresAt));
         return Task.FromResult(activities);
+    }
+
+    // Private methods
+
+    private async Task ExpireStale(
+        ChatId chatId,
+        Computed<ApiArray<TypingActivity>> computed,
+        Moment expiresAt)
+    {
+        // Re-primes the survivors of the earliest expiration, which recomputes ListRaw and arms the
+        // next pass. An inconsistent computed means someone else has already replaced the value.
+        var clock = Clocks.SystemClock;
+        try {
+            await clock.Delay((expiresAt + ExpirationGrace - clock.Now).Positive(), CancellationToken.None)
+                .ConfigureAwait(false);
+            if (!computed.IsConsistent())
+                return;
+
+            using var isolation = Computed.BeginIsolation();
+            using var primer = await _listRawPrimer
+                .LockAndPrepare(chatId, CancellationToken.None)
+                .ConfigureAwait(false);
+            if (!computed.IsConsistent())
+                return;
+
+            var activities = computed.Value;
+            var next = activities.Without(x => x.ExpiresAt <= clock.Now);
+            if (next.Count != activities.Count)
+                await primer.Prime(next, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "ExpireStale failed for chat #{ChatId}", chatId);
+        }
     }
 
     // Nested types
