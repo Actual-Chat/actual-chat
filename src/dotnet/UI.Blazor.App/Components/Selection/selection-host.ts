@@ -3,7 +3,7 @@
 import { Subject, takeUntil } from 'rxjs';
 import { getLogs } from 'logging';
 import { Disposable } from 'disposable';
-import { DocumentEvents, preventDefaultForEvent } from 'event-handling';
+import { DocumentEvents, stopEvent } from 'event-handling';
 import { getOrInheritData } from 'dom-helpers';
 
 const { debugLog } = getLogs('SelectionHost');
@@ -54,7 +54,10 @@ export class SelectionHost implements Disposable {
         if (transcriptionInProgress)
             return;
 
-        preventDefaultForEvent(event);
+        // In selection mode a click anywhere on a message must only toggle its
+        // selection, so we stop the event before it reaches the media viewer,
+        // audio playback or menu handlers bound in the bubbling phase.
+        stopEvent(event, false);
 
         if (this.selection.has(chatEntryId)) {
             debugLog?.log('onUnselect, chatEntryId:', chatEntryId);
