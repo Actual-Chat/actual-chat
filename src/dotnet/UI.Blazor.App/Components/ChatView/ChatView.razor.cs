@@ -530,15 +530,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         if (isFirstGetData)
             ChatSwitchTracer.Mark("ChatView.GetData#1: GetChatItems -> in", dataQuery);
-        var (items, hasBefore, hasAfter) = await ChatUI.GetChatItems(chatId, dataQuery, readEntryLid, cancellationToken).ConfigureAwait(false);
+        var (items, hasBefore, hasAfter, isTailCoverageStale)
+            = await ChatUI.GetChatItems(chatId, dataQuery, readEntryLid, cancellationToken).ConfigureAwait(false);
         if (isFirstGetData)
             ChatSwitchTracer.Mark("ChatView.GetData#1: GetChatItems <- out", $"{items.Count} items");
-        // A rebuild nobody asked to move the window can't have lost the end while the window still
-        // reaches the chat's last entry - so this is a stand-in build under-reporting its tail. Left
-        // standing it costs a 1500px end spacer, which an End-pinned list follows down into the
-        // skeletons and back out on the next rebuild: the reported ~10Hz flicker.
-        if (query.IsNone && nav == null && renderedData.HasVeryLastItem && hasAfter
-            && items.SelectMany(i => i.GetLeafMessages()).Max(m => (long?)m.Id) >= chatIdRange.End - 1)
+        // A build rendered from serve-stale meta may not un-know the end - the fresh rebuild UseIfReady
+        // guarantees is what's entitled to that verdict, and it lands within a cycle. Left standing, the
+        // flip costs a 1500px end spacer that an End-pinned list follows down into the skeletons and back
+        // out on the next rebuild: the reported ~10Hz flicker.
+        if (query.IsNone && nav == null && renderedData.HasVeryLastItem && hasAfter && isTailCoverageStale)
             hasAfter = false;
         var isWindowUnresolved = false;
         if (items.Count == 0) {
@@ -562,13 +562,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         UpdateNewMessagesLineDebounce(items, readEntryLid);
         DebugLog?.LogDebug(
-            "GetData: loaded {Count} items ({RowCount} rows), first={First}, last={Last}, hasBefore={HasBefore}, hasAfter={HasAfter}, navKey={NavEntryLid}, mustScroll={MustScroll}",
+            "GetData: loaded {Count} items ({RowCount} rows), first={First}, last={Last}, hasBefore={HasBefore}, hasAfter={HasAfter}, staleTail={IsTailCoverageStale}, navKey={NavEntryLid}, mustScroll={MustScroll}",
             items.Count,
             items.Sum(i => i.GetLeafMessages().Count()),
             items.Count > 0 ? items[0].Id : 0,
             items.Count > 0 ? items[^1].Id : 0,
             hasBefore,
             hasAfter,
+            isTailCoverageStale,
             nav?.EntryLid,
             mustScrollToEntry);
 

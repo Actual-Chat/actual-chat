@@ -5,7 +5,13 @@ using CommunityToolkit.HighPerformance;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public record ChatItems(IReadOnlyList<ChatMessage> Items, bool HasBefore, bool HasAfter)
+public record ChatItems(
+    IReadOnlyList<ChatMessage> Items,
+    bool HasBefore,
+    bool HasAfter,
+    // Set when this build's tail coverage came from serve-stale meta, so HasAfter is a verdict the
+    // fresh rebuild UseIfReady guarantees may contradict within one cycle.
+    bool IsTailCoverageStale = false)
 {
     public static readonly ChatItems Empty = new([], false, false);
 }
@@ -750,14 +756,14 @@ public partial class ChatUI
         }
 
         if (expandedConversations.Count == 0 && liveBlockId == null)
-            return new ChatItems(groupedItems, hasMoreBefore, hasMoreAfter);
+            return new ChatItems(groupedItems, hasMoreBefore, hasMoreAfter, lastKnownRangeMetaList != null);
 
         var liveBlockRange = liveBlockId is { } lbId
             ? new Range<long>(lbId.StartEntryLid, overlay?.BlockEndLid ?? long.MaxValue)
             : default;
         var groupedTiles = GroupExpandedConversations(
             groupedItems, liveBlockId, liveBlockRange, materializedBlockId, Log);
-        return new ChatItems(groupedTiles, hasMoreBefore, hasMoreAfter);
+        return new ChatItems(groupedTiles, hasMoreBefore, hasMoreAfter, lastKnownRangeMetaList != null);
 
         bool TryGetIdTilesToLoad(
             ChatDataQuery dataQuery1,

@@ -219,24 +219,37 @@ genuinely-empty chat still takes the `IsEmpty` → Welcome branch as before.
 
 ### B — the pin must not read a resting position as a reader's decision
 
-`updatePinnedEdge`, two changes:
+Two changes, covering the two triggers; neither alone covers both.
 
-- Content shorter than the viewport now pins `defaultEdge` outright, before either
-  predicate runs — a short chain touches both edges at once whatever is loaded, so
-  there is no reader decision to respect. Skipped while a screen or interactive
-  anchor is fresh, which owns the position instead.
-- `isAtStart` is gated on `hasVeryLastItem` as well: leaving the end for the top is
-  a claim about where the reader is, and a window that cannot see its last item has
-  no basis for it.
+- `isAtStart` is gated on `hasVeryLastItem` — except for a Start-default list, which
+  must reach its own edge with the far end unloaded, exactly as the chat pins End
+  with history above it unloaded. This kills the flap-driven latch.
+- `turnOffIsScrolling` skips the pin re-derivation while `stability.isAnimating`.
+  That settle is armed by *every* scroll, the list's own re-placements included
+  (`turnOffIsScrollingDebounced()` runs before the `isTrusted` and
+  programmatic-guard returns), and mid-animation the rendered edge is not where the
+  model is taking it. A scroll of the user's own is unaffected — `onScroll` derives
+  it live. This kills the zero-user-input latch.
+
+A third rule was tried and reverted: pinning `defaultEdge` outright whenever the
+chain is shorter than the viewport. It re-opened D — an End pin with the end spacer
+shown is exactly the state whose follow chases the anchor into the skeletons — and
+it made the pin unsheddable, so a pull-to-load-history on a short window was
+carried back to the bottom when the excursion ended. The failing row it was
+written for belongs to D2, which removes it at the source.
 
 Verified against a running list, before vs. after, on the same geometry:
 
 | case | before | after |
 |---|---|---|
-| short chain, `hasVeryLastItem = false` | **Start** | End |
+| short chain, `hasVeryLastItem = false` | **Start** | null |
 | short chain, `hasVeryLastItem = true` | End | End |
 | tall chain at top, `hasVeryLastItem = false` | **Start** | null |
 | tall chain, `hasVeryLastItem = true` | End | End |
+
+Round-trip regression, same list: opens End → scrolling up loads history 41→57
+items and pins Start at the very top of a now fully-loaded chat → scrolling back
+re-pins End flush.
 
 ### C — a block that renders expanded hides nothing
 
@@ -248,9 +261,11 @@ There is no third variant. Two ways into the third one, both closed:
   attended and `amInLive` read false, however little the card actually covered. A
   young session floors its fold at `V` (`MinTailEntryCount` is 10), so every frozen
   row rendered *above* the hidden range — expanded to the eye, silently truncated.
-  Hiding now requires the fold to reach `TailStart`. When it doesn't, the block
-  also stays open-ended, or rows arriving past `TailStart` fall outside it and
-  split it.
+  Hiding now requires the fold to reach `TailStart`, latched one-way: the fold
+  boundary only advances, so without the latch a freeze that started out showing
+  its tail would re-hide rows the reader is already looking at once the boundary
+  passed `TailStart`. When the tail is shown the block also stays open-ended, or
+  rows arriving past `TailStart` fall outside it and split it.
 - The expansion escape in `ChatUI.Tiles.cs` was gated on `overlay == null`, so an
   explicitly expanded block resumed hiding its tail as soon as a frozen overlay
   appeared. It is now keyed on `liveBlockId` against `expandedConversations` — the
@@ -272,17 +287,35 @@ into the skeletons and back out on the next rebuild, at the view's recompute
 cadence, sustaining itself because follow echoes are dropped before the pin is
 re-derived.
 
-`ChatView.GetData` now refuses that flip when no query and no navigation asked the
-window to move *and* the window still reaches `chatIdRange.End` — that combination
-can only be a stand-in build under-reporting its own tail. The second condition is
-load-bearing: without it, entries arriving past the window would be suppressed as a
-transient and never load, trading a flicker for lost messages.
+`ChatView.GetData` now refuses that flip on a build whose tail coverage came from
+serve-stale meta (`ChatItems.IsTailCoverageStale`, set when
+`UseRangeMetaOrLastKnown` served a stand-in). The loss bound is provable:
+suppression requires a stand-in, a stand-in requires a fresh fetch in flight, and
+`UseIfReady` guarantees that fetch's completion invalidates the computed — so a
+genuine `hasAfter` is published one cycle later, and permanent suppression is
+impossible by construction.
+
+Two weaker forms were rejected. Suppressing whenever the window merely did not move
+loses messages outright: the resume-from-background path routinely accumulates more
+than `HalfLoadLimit` entries, the clamp re-arms itself through `renderedData`, the
+client cannot query past a loaded end it believes is final, and past ~2×
+`HalfLoadLimit` the `GetIdRange` dependency stops being registered at all — a frozen
+list on a growing chat. Guarding it on the window reaching `chatIdRange.End` fails
+the other way: `hasAfter` is derived *after* the fold and hidden-tail exclusions
+(`ChatUI.Tiles.cs:817`, `:912`), so for the non-joined viewer in the reported repro
+the window's last real lid is the live card's start for the whole session and the
+guard never fires.
 
 The client-side alternative — clamping the follow so it cannot enter the spacer —
 was rejected: a legitimate End pin with `HasVeryLastItem` false means newer content
 is loading in, and chasing the anchor is the catch-up that makes flinging to the
 bottom work while tiles stream.
 
-**Not settled:** which engine produces the flap — stand-in/fresh rebuild pairs, or
-the visibility-anchored re-query. The fix is engine-agnostic, but the rate (~10Hz
-vs. the 250ms visibility throttle's ~4Hz ceiling) points at the former.
+**Not settled:** whether the under-reporting builds really are the stand-in ones.
+The rate points that way (~10Hz vs. the 250ms visibility throttle's ~4Hz ceiling),
+and the `GetData` debug log now carries `staleTail` beside `hasAfter` so one live
+session settles it. If fresh builds flap too, the next suspect is
+`UseConversationOrLastKnown` / `UseSnapshotOrLastKnown` feeding a stale
+`EndEntryLid` into `hiddenTailToExclude` — the marker widens to those inputs under
+the same one-cycle contract, rather than the suppression widening past marked
+builds.
