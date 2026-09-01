@@ -30,6 +30,8 @@ export default defineConfig({
             'async-iterables': src('async-iterables'),
             'shared-settings': src('shared-settings'),
             'shared-settings-worker': src('shared-settings-worker'),
+            'webcodecs-polyfill': src('webcodecs-polyfill'),
+            'webcodecs-polyfill-settings': src('webcodecs-polyfill-settings'),
             'orientation': src('orientation'),
             'async-processor': src('async-processor'),
             'actuallab-core': pkg('actuallab-core'),

@@ -1,6 +1,7 @@
 import { EventHandlerSet } from 'event-handling';
 import { AC, initAppConstants, type AppConstants } from 'app-constants';
 import { ServerClock } from 'clocks';
+import { applyWebCodecsPolyfill, type WebCodecsPolyfillConfig } from 'webcodecs-polyfill';
 
 export interface SharedSettingsSnapshot {
     serverClockOffsetMs: number;
@@ -21,6 +22,9 @@ export interface SharedSettingsSnapshot {
     // Device-pose angle, degrees CW from natural portrait, quantized to 10-degree steps
     // to avoid excessive worker updates.
     deviceOrientationAngle?: number;
+    // Resolved once on the main thread, because the override lives in localStorage
+    // and the asset URL needs Versioning - neither is reachable from a worker.
+    webCodecsPolyfill?: WebCodecsPolyfillConfig;
 }
 
 let current: SharedSettingsSnapshot = {
@@ -39,6 +43,10 @@ function applyToLocalRealm(settings: SharedSettingsSnapshot): void {
         appConstants ??= settings.appConstants;
         initAppConstants(appConstants);
     }
+    // Fire-and-forget: applyWebCodecsPolyfill is idempotent and consumers that
+    // need the classes await whenWebCodecsPolyfillReady().
+    if (settings.webCodecsPolyfill)
+        void applyWebCodecsPolyfill(settings.webCodecsPolyfill);
 }
 
 function tryGetCurrentAppConstants(): AppConstants | undefined {

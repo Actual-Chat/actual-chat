@@ -4,6 +4,11 @@ import type { VideoFormatDto, VideoFrameDto } from 'api';
 import { DeviceOrientation, normalizeRotationQuarter, type RotationQuarter } from 'orientation';
 import { RpcStream } from 'actuallab-rpc';
 import { OnDeviceAwake } from 'on-device-awake';
+import { getWebCodecsPolyfillLevel, type WebCodecsPolyfillOverride } from 'webcodecs-polyfill';
+import {
+    getWebCodecsPolyfillOverride,
+    setWebCodecsPolyfillOverride,
+} from 'webcodecs-polyfill-settings';
 import { SvgCache } from '../../Components/Avatar/svg-cache';
 import { VirtualListOverlay } from '../../Components/VirtualList/virtual-list-overlay';
 
@@ -47,14 +52,14 @@ interface VideoTraceKillGlobal {
 }
 
 export class DebugUI {
-    private static backendRef: DotNet.DotNetObject = null!;
+    private static _backendRef: DotNet.DotNetObject = null!;
     private static _eventSnifferInstalled = false;
     private static _audioRecorderOffsetHandler: ((offsetMs: number) => void) | null = null;
     private static _rotateTimer: number | null = null;
 
     public static init(backendRef1: DotNet.DotNetObject): void {
         infoLog?.log(`init`);
-        this.backendRef = backendRef1;
+        this._backendRef = backendRef1;
         globalThis.debugUI = this;
     }
 
@@ -63,27 +68,27 @@ export class DebugUI {
     // Enforcement lives on the server (DebugUI.StopServer); no client-side check.
     public static stopServer(): void {
         infoLog?.log(`stopServer: stopping the server...`);
-        void this.backendRef.invokeMethodAsync('StopServer');
+        void this._backendRef.invokeMethodAsync('StopServer');
     }
 
     public static async getThreadPoolSettings(): Promise<string> {
-        const settings = await this.backendRef.invokeMethodAsync('GetThreadPoolSettings');
+        const settings = await this._backendRef.invokeMethodAsync('GetThreadPoolSettings');
         console.log(settings);
         return settings as string;
     }
 
     public static async changeThreadPoolSettings(
         min: number, minIO: number, max: number, maxIO: number): Promise<string> {
-        await this.backendRef.invokeMethodAsync('ChangeThreadPoolSettings', min, minIO, max, maxIO);
+        await this._backendRef.invokeMethodAsync('ChangeThreadPoolSettings', min, minIO, max, maxIO);
         return await this.getThreadPoolSettings();
     }
 
     public static disconnectBlazorRpc(): void {
-        void this.backendRef.invokeMethodAsync('DisconnectRpc');
+        void this._backendRef.invokeMethodAsync('DisconnectRpc');
     }
 
     public static navigateTo(url: string): void {
-        void this.backendRef.invokeMethodAsync('NavigateTo', url);
+        void this._backendRef.invokeMethodAsync('NavigateTo', url);
     }
 
     /** Debug-only: force-disconnect the RPC peer for one target — see
@@ -103,23 +108,38 @@ export class DebugUI {
         OnDeviceAwake.fakeSleep(duration * 1000);
     }
 
+    // Applies on reload: the polyfill cannot be swapped under a running pipeline.
+    public static overrideWebCodecsPolyfillLevel(level?: WebCodecsPolyfillOverride | null): string {
+        setWebCodecsPolyfillOverride(level ?? 'auto');
+        const stored = getWebCodecsPolyfillOverride();
+        const message = `WebCodecs polyfill override: '${stored}' `
+            + `(active until reload: '${getWebCodecsPolyfillLevel()}')`;
+        console.log(message);
+
+        return message;
+    }
+
+    public static getActiveWebCodecsPolyfillLevel(): string {
+        return getWebCodecsPolyfillLevel();
+    }
+
     /** Emits `count` log entries to the LogUI ring buffer for testing the log
      *  viewer. Each entry is `lineCount` lines of placeholder text. */
     public static testLog(count = 1, lineCount = 1): Promise<void> {
         infoLog?.log(`testLog: count=${count}, lineCount=${lineCount}`);
-        return this.backendRef.invokeMethodAsync('TestLog', count, lineCount) as unknown as Promise<void>;
+        return this._backendRef.invokeMethodAsync('TestLog', count, lineCount) as unknown as Promise<void>;
     }
 
     public static resetOnboarding(enable: boolean): void {
-        void this.backendRef.invokeMethodAsync('ResetOnboarding', enable);
+        void this._backendRef.invokeMethodAsync('ResetOnboarding', enable);
     }
 
     public static resetBubbles(enable: boolean): void {
-        void this.backendRef.invokeMethodAsync('ResetBubbles', enable);
+        void this._backendRef.invokeMethodAsync('ResetBubbles', enable);
     }
 
     public static enableAudioSync(enable = true): void {
-        void this.backendRef.invokeMethodAsync('EnableAudioSync', enable);
+        void this._backendRef.invokeMethodAsync('EnableAudioSync', enable);
     }
 
     // Forces what every recording control reports, so the failure paths can be seen without
@@ -127,11 +147,11 @@ export class DebugUI {
     // Kinds: Off, Starting, Recording, Reconnecting, Disconnected, NoMicrophonePermission,
     // NoMicrophone, MicrophoneBusy, StartFailed.
     public static forceRecordingStatus(status = ''): void {
-        void this.backendRef.invokeMethodAsync('ForceRecordingStatus', status);
+        void this._backendRef.invokeMethodAsync('ForceRecordingStatus', status);
     }
 
     public static async getUserId(): Promise<string> {
-        const id = await this.backendRef.invokeMethodAsync<string>('GetUserId');
+        const id = await this._backendRef.invokeMethodAsync<string>('GetUserId');
         console.log(`getUserId:`, id);
         return id;
     }
@@ -141,7 +161,7 @@ export class DebugUI {
         options?: { register?: boolean; skipOnboarding?: boolean; skipBubbles?: boolean },
     ): Promise<void> {
         const o = options ?? {};
-        return this.backendRef.invokeMethodAsync(
+        return this._backendRef.invokeMethodAsync(
             'SignIn',
             phoneOrEmail,
             o.register ?? true,
@@ -151,7 +171,7 @@ export class DebugUI {
     }
 
     public static signOut(): Promise<void> {
-        return this.backendRef.invokeMethodAsync('SignOut') as unknown as Promise<void>;
+        return this._backendRef.invokeMethodAsync('SignOut') as unknown as Promise<void>;
     }
 
     /** Returns the current effective render mode. Reads the `app-server` /
@@ -165,23 +185,23 @@ export class DebugUI {
     }
 
     public static setRenderMode(mode: 'a' | 's' | 'w'): Promise<void> {
-        return this.backendRef.invokeMethodAsync('SetRenderMode', mode) as unknown as Promise<void>;
+        return this._backendRef.invokeMethodAsync('SetRenderMode', mode) as unknown as Promise<void>;
     }
 
     public static showMicTroubleshooter(guideType?: GuideType): void {
-        void this.backendRef.invokeMethodAsync('ShowMicTroubleshooter', guideType ?? null);
+        void this._backendRef.invokeMethodAsync('ShowMicTroubleshooter', guideType ?? null);
     }
 
     public static showPhotoTroubleshooter(): void {
-        void this.backendRef.invokeMethodAsync('ShowPhotoTroubleshooter');
+        void this._backendRef.invokeMethodAsync('ShowPhotoTroubleshooter');
     }
 
     public static showLocationTroubleshooter(guideType?: GuideType): void {
-        void this.backendRef.invokeMethodAsync('ShowLocationTroubleshooter', guideType ?? null);
+        void this._backendRef.invokeMethodAsync('ShowLocationTroubleshooter', guideType ?? null);
     }
 
     public static showIncomingShareModal(): void {
-        void this.backendRef.invokeMethodAsync('ShowIncomingShareModal');
+        void this._backendRef.invokeMethodAsync('ShowIncomingShareModal');
     }
 
     /** Drives the recording quality controller through a synthetic
@@ -189,14 +209,14 @@ export class DebugUI {
      *  neutral, 45% at "drop", 45% at "raise". Verify via server logs:
      *  ChangeRecordingQuality calls should walk min↔max layer count. */
     public static testVideoRecordingQualityChange(period = 30): void {
-        void this.backendRef.invokeMethodAsync('TestVideoRecordingQualityChange', period);
+        void this._backendRef.invokeMethodAsync('TestVideoRecordingQualityChange', period);
     }
 
     /** Drives the playback CapacityEstimator through the same -1 / 0 / +1
      *  sweep. Pushes ChangePlaybackQuality info-only payloads (no actual
      *  receive-quality changes); verify via server logs. */
     public static testVideoPlaybackQualityChange(period = 30): void {
-        void this.backendRef.invokeMethodAsync('TestVideoPlaybackQualityChange', period);
+        void this._backendRef.invokeMethodAsync('TestVideoPlaybackQualityChange', period);
     }
 
     // Override the device-orientation pipeline. `degrees` is CW from natural
@@ -303,7 +323,7 @@ export class DebugUI {
      *  Persisted in UserAppSettings, so it survives reloads and follows the account. */
     public static showVirtualListOverlay(enable = true): void {
         VirtualListOverlay.setEnabled(enable);
-        void this.backendRef.invokeMethodAsync('SetVirtualListOverlay', enable);
+        void this._backendRef.invokeMethodAsync('SetVirtualListOverlay', enable);
         infoLog?.log(`showVirtualListOverlay: ${enable ? 'enabled' : 'disabled'}`);
     }
 
@@ -313,11 +333,11 @@ export class DebugUI {
     }
 
     public static startFusionMonitor(): void {
-        void this.backendRef.invokeMethodAsync('StartFusionMonitor');
+        void this._backendRef.invokeMethodAsync('StartFusionMonitor');
     }
 
     public static startTaskMonitor(): void {
-        void this.backendRef.invokeMethodAsync('StartTaskMonitor');
+        void this._backendRef.invokeMethodAsync('StartTaskMonitor');
     }
 
     public static startDOMEventSniffer(): void {
