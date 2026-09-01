@@ -1,6 +1,7 @@
 import { getLogs } from 'logging';
 import { kbpsToBitsPerSecond } from 'app-constants';
 import { DeviceInfo } from 'device-info';
+import { WebCodecsCompat } from 'web-codecs-compat/init';
 import { isDecoderCodecProven, isEncoderCodecProven } from './codec-proof';
 import { closeEncodedChunk } from './frame-envelopes';
 
@@ -198,7 +199,12 @@ interface DetectionResult {
 }
 
 async function detectSupportedCodecsUncached(width: number, height: number): Promise<DetectionResult> {
+    const level = WebCodecsCompat.level;
     let probeList = REPRESENTATIVE_CODECS;
+    // At `full` the browser has no WebCodecs and libav.js is the only encoder
+    // there is, so VP9 is the only thing worth probing.
+    if (level === 'full')
+        probeList = probeList.filter(c => c.category === 'vp9');
     if (excludedEncoderCodecs.size > 0) {
         const before = probeList.length;
         probeList = probeList.filter(c => !excludedEncoderCodecs.has(c.category));
@@ -211,6 +217,14 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
     const results: CodecInfo[] = [];
     let isStable = true;
     for (const { category } of probeList) {
+        if (category === 'vp9' && level !== 'none') {
+            // libav.js replaces this encoder, so probing the browser's measures
+            // one that never runs - and on Firefox that probe is what wrongly
+            // clears its own VP9 for real-time use in the first place.
+            results.push(getLibavVp9CodecInfo(width, height));
+            continue;
+        }
+
         const ladder = getEncoderCodecLadder(category, width, height)
             .filter(c => !excludedEncoderCodecStrings.has(c));
         let chosen: { codec: string; hardware: boolean; software: boolean } | null = null;
@@ -920,4 +934,23 @@ async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
 
     infoLog?.log(`detectSupportedDecoderCodecsUncached: [${codecs.join(', ')}]${excludedDecoderCodecs.size > 0 ? ` (excluded: [${[...excludedDecoderCodecs].join(', ')}])` : ''}`);
     return codecs;
+}
+
+/**
+ * What VP9 detection reports once libav.js owns that encoder: software-only, and
+ * real-time without a probe, which is the property the swap exists to provide.
+ */
+function getLibavVp9CodecInfo(width: number, height: number): CodecInfo {
+    const codec = getCodecForCategory('vp9', width, height);
+
+    return {
+        name: getCodecProfileName(codec) ?? codec,
+        codec,
+        category: 'vp9',
+        supported: true,
+        hardwareSupported: false,
+        softwareSupported: true,
+        hardwareAccelerated: false,
+        realtime: true,
+    };
 }
