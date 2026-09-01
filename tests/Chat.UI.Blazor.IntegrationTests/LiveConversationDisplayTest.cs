@@ -2121,7 +2121,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // The overlap has to cover whole aligned id tiles: a tile is only dropped when an excluded
         // range contains all of it, so a conversation narrower than a tile never exercises the load
         // path at all.
-        var tileSize = ChatUI.IdTileStack.FirstLayer.TileSize;
+        var tileSize = ChatUI.EntryIdTiles.TileSize;
         for (var i = 0; i < 4 * tileSize; i++)
             inside.Add(await Tester.CreateTextEntry(chat.Id, $"inside-{i}"));
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {

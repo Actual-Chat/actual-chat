@@ -2164,7 +2164,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             // A removed entry must not linger in an already-persisted summary. The range isn't passed
             // along: the flow coalesces a burst of removals and re-reads the range when it finally runs.
             var lid = entry.LocalId;
-            var idTile = IdTileStack.LastLayer.GetTile(lid);
+            var idTile = RangeMetaEntryIdTiles.GetTile(lid);
             var rangeMeta = await ConversationsBackend
                 .GetRangeMeta(entry.ChatId, idTile.Range.Start, cancellationToken)
                 .ConfigureAwait(false);

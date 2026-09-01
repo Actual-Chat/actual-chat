@@ -79,7 +79,7 @@ public sealed class ChatTileNonComputedTest(ChatCollection.AppHostFixture fixtur
         var session = tester.Session;
         var chats = tester.AppServices.GetRequiredService<IChats>();
         var chatId = ChatId.Parse(GroupChatId.New().Value);
-        var tileRange = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(0L).Range;
+        var tileRange = Constants.Chat.EntryIdTiles.GetTile(0L).Range;
 
         // act
         var act = () => chats.GetTileNonComputed(session, chatId, tileRange, CancellationToken.None);
@@ -94,12 +94,12 @@ public sealed class ChatTileNonComputedTest(ChatCollection.AppHostFixture fixtur
     private async Task<Range<long>> GetTailTileRange(IChatsBackend chatsBackend)
     {
         var lidRange = await chatsBackend.GetLidRange(TestChatId, false, CancellationToken.None);
-        return Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(Math.Max(0, lidRange.End - 1)).Range;
+        return Constants.Chat.EntryIdTiles.GetTile(Math.Max(0, lidRange.End - 1)).Range;
     }
 
     private async Task<Range<long>> GetTailTileRange(IChats chats, Session session)
     {
         var lidRange = await chats.GetIdRange(session, TestChatId, CancellationToken.None);
-        return Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(Math.Max(0, lidRange.End - 1)).Range;
+        return Constants.Chat.EntryIdTiles.GetTile(Math.Max(0, lidRange.End - 1)).Range;
     }
 }
