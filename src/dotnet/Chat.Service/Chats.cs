@@ -90,12 +90,11 @@ public partial class Chats(IServiceProvider services) : IChats
         Range<long> lidTileRange,
         CancellationToken cancellationToken)
     {
-        // Isolated so an in-process caller that happens to be a compute method doesn't pick up
-        // the permission check or the tile as dependencies - over RPC there is nothing to isolate.
+        // What this method drops is the caller's dependency, not the caching - hence the isolation
+        // over Backend.GetTile rather than a call to its non-computed sibling.
         using var _ = Computed.BeginIsolation();
         await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetTileNonComputed(chatId, lidTileRange, false, cancellationToken)
-            .ConfigureAwait(false);
+        return await Backend.GetTile(chatId, lidTileRange, false, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
