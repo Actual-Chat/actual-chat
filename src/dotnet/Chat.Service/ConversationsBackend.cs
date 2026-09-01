@@ -13,7 +13,7 @@ namespace ActualChat.Chat;
 public class ConversationsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IConversationsBackend
 {
     private static readonly TileLayer<long> EntryIdTiles = Constants.Chat.EntryIdTiles;
-    private static readonly TileLayer<long> RangeIdTiles = Constants.Chat.RangeIdTiles;
+    private static readonly TileLayer<long> RangeMetaEntryIdTiles = Constants.Chat.RangeMetaEntryIdTiles;
 
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
     private IDbEntityResolver<string, DbConversation> DbConversationResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbConversation>>();
@@ -56,7 +56,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         long idTileStart,
         CancellationToken cancellationToken)
     {
-        var idTile = RangeIdTiles.AssertIsTileStart(idTileStart);
+        var idTile = RangeMetaEntryIdTiles.AssertIsTileStart(idTileStart);
         var idTileRange = idTile.Range;
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
@@ -120,7 +120,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     // [Computed]
     public virtual async Task<Conversation[]> GetTile(ChatId chatId, Range<long> lidTileRange, CancellationToken cancellationToken)
     {
-        var idTile = RangeIdTiles.GetTile(lidTileRange);
+        var idTile = RangeMetaEntryIdTiles.GetTile(lidTileRange);
         var conversationTile = await GetRangeMeta(chatId, idTile.Start, cancellationToken).ConfigureAwait(false);
         var conversations = await conversationTile.ConversationIds
             .Distinct()
@@ -161,16 +161,16 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             var invConversation = context.Operation.Items.KeylessGet<Conversation>();
             if (invConversation != null) {
                 _ = Get(invConversation.Id, default);
-                foreach (var idTile in RangeIdTiles.GetCoveringTiles(invConversation.EntryLidRange))
+                foreach (var idTile in RangeMetaEntryIdTiles.GetCoveringTiles(invConversation.EntryLidRange))
                     _ = GetRangeMeta(chatId, idTile.Range.Start, default);
                 var previousConversationId = context.Operation.Items.Get<long>(nameof(ConversationRangeMeta.PreviousConversationLidRange));
                 var nextConversationId = context.Operation.Items.Get<long>(nameof(ConversationRangeMeta.NextConversationLidRange));
                 if (previousConversationId != default) {
-                    var previousIdTile = RangeIdTiles.GetTile(previousConversationId);
+                    var previousIdTile = RangeMetaEntryIdTiles.GetTile(previousConversationId);
                     _ = GetRangeMeta(chatId, previousIdTile.Range.Start, default);
                 }
                 if (nextConversationId != default) {
-                    var nextIdTile = RangeIdTiles.GetTile(nextConversationId);
+                    var nextIdTile = RangeMetaEntryIdTiles.GetTile(nextConversationId);
                     _ = GetRangeMeta(chatId, nextIdTile.Range.Start, default);
                 }
             }
@@ -407,7 +407,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             return null!; // This handler makes changes only via nested commands
 
         var (chatId, entryLid, replyIdRange) = command;
-        var conversationTile = RangeIdTiles.GetTile(entryLid);
+        var conversationTile = RangeMetaEntryIdTiles.GetTile(entryLid);
         var conversationRangeMeta = await GetRangeMeta(chatId, conversationTile.Range.Start, cancellationToken)
             .ConfigureAwait(false);
         var existingConversations = conversationRangeMeta.ConversationIds;

@@ -15,7 +15,7 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private static readonly TimeSpan SettleDelay = TimeSpan.FromSeconds(2);
-    private static TileLayer<long> RangeIdTiles => Constants.Chat.RangeIdTiles;
+    private static TileLayer<long> RangeMetaEntryIdTiles => Constants.Chat.RangeMetaEntryIdTiles;
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
 
     protected override async Task DisposeAsync()
@@ -32,7 +32,7 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
 
         var cRangeMeta = await Computed.Capture(() => conversations.GetRangeMeta(chatId, tileStart, default));
         var cTile = await Computed.Capture(
-            () => conversations.GetTile(chatId, RangeIdTiles.GetTile(tileStart).Range, default));
+            () => conversations.GetTile(chatId, RangeMetaEntryIdTiles.GetTile(tileStart).Range, default));
         cRangeMeta.IsConsistent().Should().BeTrue();
         cTile.IsConsistent().Should().BeTrue();
         var whenRangeMetaInvalidated = cRangeMeta.WhenInvalidated();
@@ -125,6 +125,6 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
         var state = await live.GetState(chatId, default);
         state!.SessionStartedAt.Should().NotBeNull("the session must latch or these tests don't bite");
 
-        return (chatId, RangeIdTiles.GetTile(state.EffectiveVisibleStartLid).Start, live, conversations);
+        return (chatId, RangeMetaEntryIdTiles.GetTile(state.EffectiveVisibleStartLid).Start, live, conversations);
     }
 }
