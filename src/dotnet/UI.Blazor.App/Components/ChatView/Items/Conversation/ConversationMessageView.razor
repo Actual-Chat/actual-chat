@@ -51,7 +51,7 @@
                     <span class="c-lc-name">@m.Title.Text</span>
                     <HeaderButton
                         Class="c-lc-expand"
-                        data-vl-hold="@(state.IsExpanded ? "keep-edge" : "always")"
+                        data-vl-hold="always"
                         data-collapse-arm="@(state.IsExpanded ? conversation.Id.Value : null)"
                         Click="@ToggleShowMessage">
                         <i class="@(state.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
