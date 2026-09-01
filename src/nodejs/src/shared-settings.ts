@@ -21,11 +21,6 @@ export interface SharedSettingsSnapshot {
     // Device-pose angle, degrees CW from natural portrait, quantized to 10-degree steps
     // to avoid excessive worker updates.
     deviceOrientationAngle?: number;
-    // BrowserInfo.hostKind / appKind. Mirrored here because workers have no
-    // BrowserInfo: codec policy needs to know whether this is the MAUI app and
-    // on which platform, and workers are where the encoder actually runs.
-    hostKind?: string;
-    appKind?: string;
 }
 
 let current: SharedSettingsSnapshot = {
