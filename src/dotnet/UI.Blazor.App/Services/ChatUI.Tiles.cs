@@ -494,11 +494,10 @@ public partial class ChatUI
             }
 
             expandedConversations = defaultExpanded.SymmetricExcept(overrides);
-            // A not-joined viewer can expand the live block to read the whole conversation before joining;
-            // when expanded, stop hiding its tail so every entry [V, end] renders (the fold/skip logic
-            // already drops the fold range for an expanded block). Collapsed, the hidden tail stands.
-            if (liveConversation is { } liveConvExp && !amInLiveConversation && overlay == null
-                && expandedConversations.Contains(liveConvExp.Id))
+            // Keyed on the same test the fold uses, or the two disagree and the reader gets a block that
+            // looks expanded while it quietly stops taking new entries - which is what a frozen overlay
+            // over a still-live session did. Collapsed, the card visibly stands in for the hidden tail.
+            if (liveBlockId is { } expandedBlockId && expandedConversations.Contains(expandedBlockId))
                 hiddenLiveTailRange = default;
         }
 

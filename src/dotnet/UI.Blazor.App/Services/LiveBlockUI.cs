@@ -189,11 +189,19 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                     : new LiveBlockOverlay(t.LiveRenderId, t.V, FoldRangeOf(t.V, foldBoundaryLid),
                         new Range<long>(t.TailStart, long.MaxValue), t.TailStart, null, false, IsDissolving: true);
 
-        if (!amInLive)
-            // Leave (session still live): freeze what the viewer was rendering; entries that arrive
-            // after the leave (past the frozen tail start) stay hidden.
-            return new LiveBlockOverlay(t.LiveRenderId, t.V, FoldRangeOf(t.V, foldBoundaryLid),
-                new Range<long>(t.TailStart, long.MaxValue), t.TailStart, null, false);
+        if (!amInLive) {
+            // Leave (session still live): freeze what the viewer was rendering, hiding what arrives
+            // after - but only while the card covers everything up to TailStart, or frozen rows render
+            // above the hidden range and the block reads as expanded while it stops taking new entries.
+            // Un-hidden it stays open-ended too, or those rows fall outside the block and split it.
+            var foldRange = FoldRangeOf(t.V, foldBoundaryLid);
+            var isCardStandingIn = foldRange.End >= t.TailStart;
+            return new LiveBlockOverlay(t.LiveRenderId, t.V, foldRange,
+                isCardStandingIn ? new Range<long>(t.TailStart, long.MaxValue) : default,
+                isCardStandingIn ? t.TailStart : long.MaxValue,
+                null,
+                false);
+        }
 
         return null; // still joined and live
     }
