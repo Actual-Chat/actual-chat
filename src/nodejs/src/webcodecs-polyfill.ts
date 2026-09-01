@@ -41,6 +41,10 @@ export interface WebCodecsPolyfillClasses {
     load: (options: { polyfill?: boolean; libavOptions?: unknown }) => Promise<void>;
 }
 
+interface CodecClass {
+    isConfigSupported?: (config: unknown) => Promise<unknown>;
+}
+
 export const WEB_CODECS_POLYFILL_LEVELS: readonly WebCodecsPolyfillLevel[] = ['none', 'vp9', 'full'];
 
 let appliedLevel: WebCodecsPolyfillLevel = 'none';
@@ -82,6 +86,7 @@ export function applyWebCodecsPolyfill(config: WebCodecsPolyfillConfig): Promise
 
         return applying;
     }
+
     if (config.level === 'none') {
         appliedLevel = 'none';
         applying = Promise.resolve('none' as WebCodecsPolyfillLevel);
@@ -107,45 +112,81 @@ export function whenWebCodecsPolyfillReady(): Promise<WebCodecsPolyfillLevel> {
 
 // Private methods
 
-async function applyImpl(config: WebCodecsPolyfillConfig): Promise<WebCodecsPolyfillLevel> {
+// In a worker importScripts blocks, so the classes are installed before this
+// returns and no caller can observe a realm that has the level but not the
+// globals. Only wasm init is deferred, behind isConfigSupported.
+function applyImpl(config: WebCodecsPolyfillConfig): Promise<WebCodecsPolyfillLevel> {
     const startedAt = performance.now();
     const base = config.baseUrl.replace(/\/$/, '');
     // Setting globalThis.LibAV is the whole mechanism for pointing the polyfill
     // at this build instead of the CDN one it would otherwise fetch.
     (globalThis as { LibAV?: unknown }).LibAV = { base, nothreads: true };
-    await loadScript(`${base}/${LIBAV_FILE}`);
-    await loadScript(`${base}/${POLYFILL_FILE}`);
+    const scope = globalThis as { importScripts?: (url: string) => void };
+    if (typeof scope.importScripts === 'function') {
+        scope.importScripts(`${base}/${LIBAV_FILE}`);
+        scope.importScripts(`${base}/${POLYFILL_FILE}`);
 
+        return install(config, startedAt);
+    }
+
+    return loadScript(`${base}/${LIBAV_FILE}`)
+        .then(() => loadScript(`${base}/${POLYFILL_FILE}`))
+        .then(() => install(config, startedAt));
+}
+
+function install(config: WebCodecsPolyfillConfig, startedAt: number): Promise<WebCodecsPolyfillLevel> {
     const loaded = (globalThis as { LibAVWebCodecs?: WebCodecsPolyfillClasses }).LibAVWebCodecs;
     if (!loaded)
         throw new Error(`${POLYFILL_FILE} loaded but defined no LibAVWebCodecs`);
 
-    // Ponyfill mode: the polyfill's own installer only fills in MISSING classes,
-    // so it would silently do nothing on a browser that has WebCodecs.
-    await loaded.load({ polyfill: false, libavOptions: { nothreads: true } });
     classes = loaded;
-    if (config.level === 'full')
-        installGlobals(loaded);
-
     appliedLevel = config.level;
-    const elapsedMs = Math.round(performance.now() - startedAt);
-    infoLog?.log(`applyWebCodecsPolyfill: '${config.level}' ready in ${elapsedMs}ms`);
+    // Ponyfill mode: the polyfill's own installer fills in MISSING classes only.
+    const whenLoaded = loaded.load({ polyfill: false, libavOptions: { nothreads: true } });
+    if (config.level === 'full')
+        installGlobals(loaded, whenLoaded);
 
-    return config.level;
+    return whenLoaded.then(() => {
+        infoLog?.log(
+            `applyWebCodecsPolyfill: '${config.level}' ready in ${Math.round(performance.now() - startedAt)}ms`);
+
+        return config.level;
+    });
 }
 
 // Overwrites unconditionally, unlike the polyfill's own installer: the realms
 // cannot be mixed, so at `full` everything must come from the same one.
-function installGlobals(loaded: WebCodecsPolyfillClasses): void {
+function installGlobals(loaded: WebCodecsPolyfillClasses, whenLoaded: Promise<void>): void {
     const target = globalThis as unknown as Record<string, unknown>;
     const source = loaded as unknown as Record<string, unknown>;
     for (const name of POLYFILL_CLASS_NAMES) {
-        if (source[name])
-            target[name] = source[name];
-        else
+        const value = source[name];
+        if (!value) {
             warnLog?.log(`installGlobals: polyfill exports no ${name}`);
+            continue;
+        }
+
+        target[name] = withDeferredConfigSupport(value as CodecClass, whenLoaded);
     }
+
     debugLog?.log(`installGlobals: replaced ${POLYFILL_CLASS_NAMES.join(', ')}`);
+}
+
+// Classes work as soon as the script evaluates, but isConfigSupported reads
+// capability lists libav fills in later, reporting "unsupported" until then.
+function withDeferredConfigSupport(codecClass: CodecClass, whenLoaded: Promise<void>): CodecClass {
+    const original = codecClass.isConfigSupported;
+    if (typeof original !== 'function')
+        return codecClass;
+
+    const isConfigSupported = original.bind(codecClass) as (config: unknown) => Promise<unknown>;
+    codecClass.isConfigSupported = async (config: unknown): Promise<unknown> => {
+        await whenLoaded;
+
+        return isConfigSupported(config);
+    };
+
+    return codecClass;
 }
 
 function loadScript(url: string): Promise<void> {
