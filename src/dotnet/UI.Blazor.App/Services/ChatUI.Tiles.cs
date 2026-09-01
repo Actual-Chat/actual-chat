@@ -97,7 +97,7 @@ public partial class ChatUI
 
     public static readonly TileLayer<long> EntryIdTiles = Constants.Chat.EntryIdTiles;
     public static readonly TileLayer<long> ViewIdTiles = Constants.Chat.ViewIdTiles;
-    public static readonly TileLayer<long> RangeIdTiles = Constants.Chat.RangeIdTiles;
+    public static readonly TileLayer<long> RangeMetaEntryIdTiles = Constants.Chat.RangeMetaEntryIdTiles;
     public static readonly int ViewTileSize = (int)ViewIdTiles.TileSize; // 20
     // Mirrors VirtualList.ExpandMultiplier = 2, so the load zone is 1 viewport + 2 x 2 viewports.
     private const double VirtualListLoadZoneSize = 5;
@@ -247,7 +247,7 @@ public partial class ChatUI
                 .Select(t => t.Range)
                 .Where(r => r.Start >= 0)
                 .ToList();
-            var metaIdTiles = RangeIdTiles
+            var metaIdTiles = RangeMetaEntryIdTiles
                 .GetCoveringTiles(loadZone.Expand(LoadLimit))
                 .Where(t => t.Start >= 0)
                 .ToList();
@@ -310,7 +310,7 @@ public partial class ChatUI
         var liveConversationTask = Hub.LiveSessionUI.GetConversation(chatId, cancellationToken);
         var rawLiveTask = Hub.LiveSessionUI.GetBlockSnapshot(chatId, cancellationToken);
         var blockStateTask = Hub.LiveBlockUI.GetBlockState(chatId, cancellationToken);
-        var metaIdTiles = RangeIdTiles.GetCoveringTiles(dataQuery.ExistingLidRange.Expand(LoadLimit))
+        var metaIdTiles = RangeMetaEntryIdTiles.GetCoveringTiles(dataQuery.ExistingLidRange.Expand(LoadLimit))
             .Where(t => t.Start >= 0)
             .ToList();
         var chatRangeMetaListTask = metaIdTiles
@@ -1013,7 +1013,7 @@ public partial class ChatUI
         var conversations = Array.Empty<Conversation>();
         var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
         if (showConversations) {
-            var conversationIdTile = RangeIdTiles.GetTile(lidRange.Start);
+            var conversationIdTile = RangeMetaEntryIdTiles.GetTile(lidRange.Start);
             var conversationTile = await Conversations
                 .GetTile(Session, chatId, conversationIdTile.Range, cancellationToken)
                 .ConfigureAwait(false);
@@ -1576,7 +1576,7 @@ public partial class ChatUI
                 .Collect(ApiConstants.Concurrency.High, cancellationToken);
             var prefetchConversationsTask = showConversations
                 ? idTiles
-                    .Select(r => RangeIdTiles.GetTile(r.Start).Range)
+                    .Select(r => RangeMetaEntryIdTiles.GetTile(r.Start).Range)
                     .EnsureMonotonic()
                     .Select(r => Conversations.GetTile(Session, chatId, r, cancellationToken))
                     .Collect(ApiConstants.Concurrency.High, cancellationToken)

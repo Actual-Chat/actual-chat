@@ -70,7 +70,7 @@ public static partial class Constants
         public static readonly TileLayer<long> EntryIdTiles = TileLayers.Long5;
         // Range fetches: the only tile GetChatRangeMeta, GetEntryRangeMeta,
         // IConversationsBackend.GetRangeMeta and IConversationsBackend.GetTile accept
-        public static readonly TileLayer<long> RangeIdTiles = TileLayers.Long1280;
+        public static readonly TileLayer<long> RangeMetaEntryIdTiles = TileLayers.Long1280;
         // Client-side only: groups entry tiles into VirtualList tiles
         public static readonly TileLayer<long> ViewIdTiles = TileLayers.Long20;
         public static readonly TileLayer<int> ChatTiles = TileLayers.Int5;
