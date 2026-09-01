@@ -19,8 +19,8 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
     private const int MaxEntries = 1000;
     private const int ContextScanBudget = 200;
     private const int ContextScanStep = 16;
-    private static readonly TileLayer<long> EntryIdTileLayer = Constants.Chat.EntryIdTileLayer;
-    private static readonly TileLayer<long> RangeIdTileLayer = Constants.Chat.RangeIdTileLayer;
+    private static readonly TileLayer<long> EntryIdTiles = Constants.Chat.EntryIdTiles;
+    private static readonly TileLayer<long> RangeIdTiles = Constants.Chat.RangeIdTiles;
     // Resume throttle: the flow re-checks this often so entries maturing during silence (and the close/finalize
     // once nobody is talking) get handled without a new audio entry to trigger it; resummary itself is
     // additionally gated on Settings.Summarization.LiveResummarizationDelay. Keep DelayQuanta (see [Flow])
@@ -134,7 +134,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
         var contextStart = ContextStartScanner.FindContextStartLid(preceding, anchor);
 
         // Never re-claim a persisted conversation's range: clamp to just past the one preceding the scan start.
-        var idRange = RangeIdTileLayer.GetTile(contextStart).Range;
+        var idRange = RangeIdTiles.GetTile(contextStart).Range;
         var rangeMeta = await ConversationsBackend.GetRangeMeta(ChatId, idRange.Start, cancellationToken)
             .ConfigureAwait(false);
         if (rangeMeta.PreviousConversationLidRange is { } prev && prev.End > contextStart)
@@ -149,7 +149,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
     {
         ChatEntrySlim? anchor = null;
         var preceding = new List<ChatEntrySlim>();
-        var tile = EntryIdTileLayer.GetTile(anchorLid);
+        var tile = EntryIdTiles.GetTile(anchorLid);
         var hasReachedMinLid = false;
         while (!hasReachedMinLid && preceding.Count < ContextScanBudget) {
             // Entry tiles hold 5 lids, and a stretch of empty or removed entries yields nothing to

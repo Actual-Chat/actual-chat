@@ -1232,7 +1232,7 @@ the client-side preprocessor strips `*.Pseudo*`, `FusionTime.*`, `LiveTime.*` an
 brace matching and resolving intra-body calls to other compute methods via the
 enclosing type's field/property type map (`IChatsBackend ChatsBackend` → `ChatsBackend`),
 with `I`-prefixed interfaces canonicalised onto their implementations. 1 135 edges
-resolved, 59 unresolved (mostly `IdTileLayer`/`DbEntityResolver` false positives that
+resolved, 59 unresolved (mostly `EntryIdTiles`/`DbEntityResolver` false positives that
 share a method name with a compute method). Fluent calls split across lines are
 re-joined before resolution.
 

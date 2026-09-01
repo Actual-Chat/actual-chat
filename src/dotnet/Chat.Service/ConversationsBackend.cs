@@ -12,8 +12,8 @@ namespace ActualChat.Chat;
 /// </summary>
 public class ConversationsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IConversationsBackend
 {
-    private static readonly TileLayer<long> EntryIdTileLayer = Constants.Chat.EntryIdTileLayer;
-    private static readonly TileLayer<long> RangeIdTileLayer = Constants.Chat.RangeIdTileLayer;
+    private static readonly TileLayer<long> EntryIdTiles = Constants.Chat.EntryIdTiles;
+    private static readonly TileLayer<long> RangeIdTiles = Constants.Chat.RangeIdTiles;
 
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
     private IDbEntityResolver<string, DbConversation> DbConversationResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbConversation>>();
@@ -56,7 +56,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         long idTileStart,
         CancellationToken cancellationToken)
     {
-        var idTile = RangeIdTileLayer.AssertIsTileStart(idTileStart);
+        var idTile = RangeIdTiles.AssertIsTileStart(idTileStart);
         var idTileRange = idTile.Range;
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
@@ -112,7 +112,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     // [Computed]
     public virtual async Task<Conversation[]> GetTile(ChatId chatId, Range<long> lidTileRange, CancellationToken cancellationToken)
     {
-        var idTile = RangeIdTileLayer.GetTile(lidTileRange);
+        var idTile = RangeIdTiles.GetTile(lidTileRange);
         var conversationTile = await GetRangeMeta(chatId, idTile.Start, cancellationToken).ConfigureAwait(false);
         var conversations = await conversationTile.ConversationIds
             .Distinct()
@@ -153,16 +153,16 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             var invConversation = context.Operation.Items.KeylessGet<Conversation>();
             if (invConversation != null) {
                 _ = Get(invConversation.Id, default);
-                foreach (var idTile in RangeIdTileLayer.GetCoveringTiles(invConversation.EntryLidRange))
+                foreach (var idTile in RangeIdTiles.GetCoveringTiles(invConversation.EntryLidRange))
                     _ = GetRangeMeta(chatId, idTile.Range.Start, default);
                 var previousConversationId = context.Operation.Items.Get<long>(nameof(ConversationRangeMeta.PreviousConversationLidRange));
                 var nextConversationId = context.Operation.Items.Get<long>(nameof(ConversationRangeMeta.NextConversationLidRange));
                 if (previousConversationId != default) {
-                    var previousIdTile = RangeIdTileLayer.GetTile(previousConversationId);
+                    var previousIdTile = RangeIdTiles.GetTile(previousConversationId);
                     _ = GetRangeMeta(chatId, previousIdTile.Range.Start, default);
                 }
                 if (nextConversationId != default) {
-                    var nextIdTile = RangeIdTileLayer.GetTile(nextConversationId);
+                    var nextIdTile = RangeIdTiles.GetTile(nextConversationId);
                     _ = GetRangeMeta(chatId, nextIdTile.Range.Start, default);
                 }
             }
@@ -390,7 +390,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             return null!; // This handler makes changes only via nested commands
 
         var (chatId, entryLid, replyIdRange) = command;
-        var conversationTile = RangeIdTileLayer.GetTile(entryLid);
+        var conversationTile = RangeIdTiles.GetTile(entryLid);
         var conversationRangeMeta = await GetRangeMeta(chatId, conversationTile.Range.Start, cancellationToken)
             .ConfigureAwait(false);
         var existingConversations = conversationRangeMeta.ConversationIds;
@@ -436,7 +436,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     {
         Log.LogInformation("-> GetTextEntries: {Ranges}", entryLidRanges.Select(c => c.ToString()).ToCommaPhrase());
         var idTiles = entryLidRanges
-            .SelectMany(idRange => EntryIdTileLayer.GetCoveringTiles(idRange))
+            .SelectMany(idRange => EntryIdTiles.GetCoveringTiles(idRange))
             .ToList();
 
         var tiles = await idTiles

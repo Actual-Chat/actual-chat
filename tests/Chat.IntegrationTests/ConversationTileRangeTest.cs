@@ -9,7 +9,7 @@ namespace ActualChat.Chat.IntegrationTests;
 public class ConversationTileRangeTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private static TileLayer<long> RangeIdTileLayer => Constants.Chat.RangeIdTileLayer;
+    private static TileLayer<long> RangeIdTiles => Constants.Chat.RangeIdTiles;
     private IConversationsBackend Conversations
         => field ??= AppHost.Services.GetRequiredService<IConversationsBackend>();
 
@@ -47,7 +47,7 @@ public class ConversationTileRangeTest(ChatCollection.AppHostFixture fixture, IT
     {
         // arrange
         var chatId = ChatId.Parse(GroupChatId.New().Value);
-        var tileRange = RangeIdTileLayer.GetTile(0L).Range;
+        var tileRange = RangeIdTiles.GetTile(0L).Range;
 
         // act
         var conversations = await Conversations.GetTile(chatId, tileRange, default);

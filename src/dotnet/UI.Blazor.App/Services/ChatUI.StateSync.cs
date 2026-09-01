@@ -348,7 +348,7 @@ public partial class ChatUI
         if (start >= end)
             return end;
 
-        var idTiles = ViewIdTileLayer
+        var idTiles = ViewIdTiles
             .GetCoveringTiles(new Range<long>(start, end))
             .Select(t => t.Range)
             .ToList();

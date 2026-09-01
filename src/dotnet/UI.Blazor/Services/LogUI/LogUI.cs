@@ -9,7 +9,7 @@ namespace ActualChat.UI.Blazor.Services;
 public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogSink, INotifyInitialized
 {
     private static readonly string OwnLogCategory = $"{typeof(LogUI).Namespace}.{nameof(LogUI)}";
-    private static readonly TileLayer<long> IdTileLayer = Constants.TileLayers.Long5;
+    private static readonly TileLayer<long> IdTiles = Constants.TileLayers.Long5;
     private readonly Lock _lock = new();
     private readonly AsyncTaskMethodBuilder _whenReady = AsyncTaskMethodBuilderExt.New();
     private RingBuffer<LogEntry> _events = new(10_000);
@@ -81,7 +81,7 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
             if (idRange.IsEmptyOrNegative)
                 return [];
 
-            var idTiles = IdTileLayer.GetCoveringTiles(idRange).OrderBy(x => x.Start).ToList();
+            var idTiles = IdTiles.GetCoveringTiles(idRange).OrderBy(x => x.Start).ToList();
             var tiles = await idTiles.Select(x => GetTile(x, cancellationToken)).Collect(cancellationToken).ConfigureAwait(false);
             tiles = [..tiles.Where(x => !x.IsEmpty)];
             DiagLog?.LogInformation("GetTiles: idRange={IdRange}, idTiles={IdTiles}, tilesCount={TilesCount}", idRange, idTiles, tiles.Length);
@@ -154,7 +154,7 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
     {
         using (Invalidation.Begin()) {
             _ = GetIdRange(default);
-            var idTile = IdTileLayer.GetTile(id);
+            var idTile = IdTiles.GetTile(id);
             DiagLog?.LogDebug("Invalidating {Tile} for #{LogEntryId}", idTile, id);
             _ = GetTile(idTile, default);
         }

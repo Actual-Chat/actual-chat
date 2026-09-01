@@ -9,8 +9,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
-    public static readonly TileLayer<int> ChatTileLayer = Constants.Chat.ChatTileLayer;
-    public static readonly int TileSize = ChatTileLayer.TileSize;
+    public static readonly TileLayer<int> ChatTiles = Constants.Chat.ChatTiles;
+    public static readonly int TileSize = ChatTiles.TileSize;
     public static readonly int LoadLimit = TileSize * 8; // 40
     public static readonly int HalfLoadLimit = LoadLimit / 2;
     private static readonly TimeSpan MinNotificationInterval = TimeSpan.FromSeconds(5);
