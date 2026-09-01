@@ -467,6 +467,9 @@ public partial class ChatUI
                     if (conversationRange.Contains(navigateToId)) {
                         // Ensure the navigated-to conversation is effective-expanded (flip its override if not).
                         var conversationId = ConversationId.New(chatId, conversationRange.Start);
+                        // The override below is premised on this default, so latch it now: a tile landing
+                        // later with a different one would invert the very expansion this just arranged.
+                        _knownConversationDefaultExpanded.TryAdd(conversationId, false);
                         var overrides0 = ConversationExpansionOverrides.Value;
                         var isExpanded = defaultExpanded.Contains(conversationId) ^ overrides0.Contains(conversationId);
                         if (!isExpanded) {
@@ -492,15 +495,16 @@ public partial class ChatUI
                     && (!_autoExpandedLiveBlock.TryGetValue(chatId, out var autoExpandedId)
                         || autoExpandedId != joinedConversation.Id)) {
                     _autoExpandedLiveBlock[chatId] = joinedConversation.Id;
+                    _knownConversationDefaultExpanded.TryAdd(joinedConversation.Id, false);
                     var joinOverrides = ConversationExpansionOverrides.Value;
                     var isJoinedExpanded = defaultExpanded.Contains(joinedConversation.Id)
                         ^ joinOverrides.Contains(joinedConversation.Id);
                     if (!isJoinedExpanded) {
-                        var newOverrides = joinOverrides.Contains(joinedConversation.Id)
+                        // LastConversationExpansionOverrides is deliberately not updated: the diff below
+                        // is what widens the load window, and the rows this expand reveals need it.
+                        _conversationExpansionOverrides.Value = joinOverrides.Contains(joinedConversation.Id)
                             ? joinOverrides.Remove(joinedConversation.Id)
                             : joinOverrides.Add(joinedConversation.Id);
-                        _conversationExpansionOverrides.Value = newOverrides;
-                        LastConversationExpansionOverrides = newOverrides;
                     }
                 }
             }
@@ -798,10 +802,13 @@ public partial class ChatUI
         var liveBlockRange = liveBlockId is { } lbId
             ? new Range<long>(lbId.StartEntryLid, overlay?.BlockEndLid ?? long.MaxValue)
             : default;
-        var isLiveBlockExpanded = liveBlockId is { } expandedLiveId
-            && expandedConversations.Contains(expandedLiveId);
+        // Expanded is not the only form that renders rows: a leaver's frozen block shows its tail
+        // whenever the hiding was let go, and those rows belong inside the block rather than loose
+        // under its footer. Hidden tail and no expansion is the one case that absorbs nothing.
+        var isLiveBlockShowingRows = liveBlockId is { } shownLiveId
+            && (expandedConversations.Contains(shownLiveId) || hiddenLiveTailRange.IsEmpty);
         var groupedTiles = GroupExpandedConversations(
-            groupedItems, liveBlockId, liveBlockRange, isLiveBlockExpanded, materializedBlockId, Log);
+            groupedItems, liveBlockId, liveBlockRange, isLiveBlockShowingRows, materializedBlockId, Log);
         return new ChatItems(groupedTiles, hasMoreBefore, hasMoreAfter, lastKnownRangeMetaList != null);
 
         bool TryGetIdTilesToLoad(
@@ -1414,7 +1421,7 @@ public partial class ChatUI
     // It's internal to be accessible from tests
     internal static List<ChatMessage> GroupExpandedConversations(
         IReadOnlyList<ChatMessage> messages, ConversationId? liveBlockId, Range<long> liveBlockRange,
-        bool isLiveBlockExpanded, ConversationId? materializedBlockId, ILogger? log)
+        bool isLiveBlockShowingRows, ConversationId? materializedBlockId, ILogger? log)
     {
         // Wrap every item of one expanded conversation into a single ExpandedConversationMessage in
         // source order - the block is the sticky containing element for the conversation header and
@@ -1451,10 +1458,10 @@ public partial class ChatUI
                         Math.Min(liveBlockRange.Start, blockConversation.EntryLidRange.Start),
                         Math.Max(liveBlockRange.End, blockConversation.EntryLidRange.End))
                     : blockConversation.EntryLidRange;
-            // A collapsed live block takes no entries at all: it stands for them, so it is one unit -
-            // the header and the card - and everything below it, transcribed or typed, is placed by the
-            // ordinary rules. Only its expanded form absorbs the rows it shows.
-            var takesEntries = !isLiveBlock || isLiveBlockExpanded;
+            // A live block that hides its rows takes no entries at all: it stands for them, so it is one
+            // unit - the header and the card - and everything below it, transcribed or typed, is placed
+            // by the ordinary rules. A block that is showing rows absorbs them as before.
+            var takesEntries = !isLiveBlock || isLiveBlockShowingRows;
             var belongs = blockConversation != null
                 && (conversation != null
                     ? conversation.Id == blockConversation.Id

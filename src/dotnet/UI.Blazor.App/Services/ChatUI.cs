@@ -470,12 +470,24 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     public bool IsConversationExpanded(Conversation conversation)
-        => conversation.IsExpandedByDefault ^ _conversationExpansionOverrides.Value.Contains(conversation.Id);
+    {
+        // Read the latched default, never the record's: IsExpandedByDefault flips when a summary lands,
+        // and a consumer still reading the record would disagree with everything keyed off the cache for
+        // the rest of the session. Seeds it too, so whichever consumer sees the conversation first wins.
+        var isExpandedByDefault = _knownConversationDefaultExpanded.GetOrAdd(
+            conversation.Id,
+            static (_, c) => c.IsExpandedByDefault,
+            conversation);
+        return isExpandedByDefault ^ _conversationExpansionOverrides.Value.Contains(conversation.Id);
+    }
 
     internal void EnsureConversationCollapsed(ConversationId conversationId, bool isExpandedByDefault)
     {
+        // The caller's flag is the template's close-time value; the effective state is computed from the
+        // latched one, and keying the override off the wrong one leaves the block expanded.
+        var latched = _knownConversationDefaultExpanded.GetOrAdd(conversationId, isExpandedByDefault);
         var overrides = _conversationExpansionOverrides.Value;
-        _conversationExpansionOverrides.Value = isExpandedByDefault
+        _conversationExpansionOverrides.Value = latched
             ? overrides.Add(conversationId)
             : overrides.Remove(conversationId);
     }

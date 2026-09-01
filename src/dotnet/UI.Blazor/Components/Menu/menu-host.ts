@@ -359,6 +359,10 @@ export class MenuHost implements Disposable {
         const result = getOrInheritData(event.target, 'menu');
         const triggerElement = result[0];
         let menuRef = result[1];
+        // A subtree can opt out of the menu it would otherwise inherit from an ancestor - content that
+        // stands in for something else rather than being it, such as a collapsed block's tail preview.
+        if (menuRef && event.target.closest('[data-menu-none]') != null)
+            menuRef = null;
         if (triggerElement && menuRef) {
             const menuTrigger: unknown = MenuTrigger[triggerElement.dataset.menuTrigger ?? 'Secondary'];
             if (trigger !== menuTrigger) {

@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
-<div class="last-entries-preview @(Faded ? "faded" : "")">
+<div class="last-entries-preview @(Faded ? "faded" : "")" data-menu-none="@(MustSuppressMenu ? "" : null)">
     @if (IsLoading) {
         <chat-list-skeleton count="@SkeletonCount" messageCls="thread-skeleton"/>
     } else {
@@ -69,6 +69,9 @@
     [Parameter] public IReadOnlyList<PreviewEntry> Entries { get; set; } = [];
     [Parameter] public bool IsLoading { get; set; }
     [Parameter] public bool Faded { get; set; }
+    // Set where the preview stands in for messages rather than being them, so a row must not open
+    // the menu it would otherwise inherit from the card around it.
+    [Parameter] public bool MustSuppressMenu { get; set; }
     [Parameter] public int SkeletonCount { get; set; } = 2;
 
     private static (ChatEntryAttachment[] Media, ChatEntryAttachment[] Files) SplitByKind(ChatEntryAttachment[] items)

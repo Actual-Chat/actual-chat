@@ -89,7 +89,7 @@
             }
             @if (state.TailPreview is { Count: > 0 } tailPreview) {
                 <Divider/>
-                <LastEntriesPreview Entries="@tailPreview" Faded="true"/>
+                <LastEntriesPreview Entries="@tailPreview" Faded="true" MustSuppressMenu="true"/>
             }
             @if (!state.IsExpanded && state.SwallowedCount > 0) {
                 <button
@@ -230,8 +230,11 @@
         var hasFoldedEntries = isLive && !isVoiceOnly
             && rawLive is { SessionStartedAt: not null }
             && blockState.FoldBoundaryLid > rawLive.EffectiveVisibleStartLid;
-        var overrides = await ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(true);
-        var isExpanded = conversation.IsExpandedByDefault ^ overrides.Contains(conversation.Id);
+        // Awaited for the dependency; the value itself is read through IsConversationExpanded below.
+        await ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(true);
+        // Via ChatUI so this reads the same latched default the data layer does - the record's own
+        // flag flips when a summary lands, and the two would then disagree for the session.
+        var isExpanded = ChatUI.IsConversationExpanded(conversation);
         // A leaver's freeze overlay keeps the tail on screen, so previewing it there would show it twice.
         var tailPreview = isLive && !isVoiceOnly && blockState.Overlay == null && !isExpanded
             ? await GetTailPreview(chatId, rawLive?.EffectiveVisibleStartLid ?? 0, cancellationToken)
