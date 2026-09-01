@@ -533,6 +533,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var (items, hasBefore, hasAfter) = await ChatUI.GetChatItems(chatId, dataQuery, readEntryLid, cancellationToken).ConfigureAwait(false);
         if (isFirstGetData)
             ChatSwitchTracer.Mark("ChatView.GetData#1: GetChatItems <- out", $"{items.Count} items");
+        var isWindowUnresolved = false;
         if (items.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
@@ -543,6 +544,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     NavigationState = nav ?? renderedData.NavigationState,
                     ItemVisibilityState = ItemVisibility.Value,
                 };
+
+            // A chat that has entries but produced none is a hole, not a loaded window - most often the
+            // live block's hidden tail swallowing every entry in range before its card exists.
+            isWindowUnresolved = true;
+            Log.LogWarning(
+                "GetData: #{ChatId} produced no items for a non-empty chat, dataQuery = {DataQuery}",
+                chatId, dataQuery.Format());
         }
 
         UpdateNewMessagesLineDebounce(items, readEntryLid);
@@ -644,8 +652,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var result = new VirtualListData<ChatMessage>(items) {
             Index = renderedData.Index + 1,
             EstimatedCount = (int?)(chatIdRange.End - chatIdRange.Start),
-            HasVeryFirstItem = !hasBefore,
-            HasVeryLastItem = !hasAfter,
+            // An unresolved window must claim neither end, or the blank it renders becomes permanent:
+            // with both ends in, the list stops querying, both spacers collapse to zero so there are no
+            // skeletons left to retry from, and every position guard short-circuits on an empty item list.
+            HasVeryFirstItem = !hasBefore && !isWindowUnresolved,
+            HasVeryLastItem = !hasAfter && !isWindowUnresolved,
             ScrollToKey = scrollToKey,
             ScrollToKeyInTheMiddle = scrollToKeyInTheMiddle,
             NavigationState = nav ?? renderedData.NavigationState,
