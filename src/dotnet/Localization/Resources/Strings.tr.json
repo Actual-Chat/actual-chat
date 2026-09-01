@@ -645,6 +645,7 @@
   "Banner_Connecting": "Bağlanılıyor...",
   "Banner_Offline": "Çevrimdışısınız.",
   "Banner_WillReconnectIn": "Yeniden bağlanma:",
+  "Reactions_NotSent": "Henüz gönderilmedi",
   "Reconnect_Title": "Yeniden bağlanılıyor...",
   "DemandInteraction_Updating": "Güncelleniyor...",
   "DemandInteraction_Continue_Format": "{0} devam edilsin mi?",

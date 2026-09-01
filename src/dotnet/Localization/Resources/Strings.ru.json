@@ -645,6 +645,7 @@
   "Banner_Connecting": "Подключение...",
   "Banner_Offline": "Вы не в сети.",
   "Banner_WillReconnectIn": "Переподключение через",
+  "Reactions_NotSent": "Ещё не отправлено",
   "Reconnect_Title": "Переподключение...",
   "DemandInteraction_Updating": "Обновление...",
   "DemandInteraction_Continue_Format": "Продолжить — {0}?",

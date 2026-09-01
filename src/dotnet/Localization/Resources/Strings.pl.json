@@ -645,6 +645,7 @@
   "Banner_Connecting": "Łączenie...",
   "Banner_Offline": "Jesteś offline.",
   "Banner_WillReconnectIn": "Ponowne połączenie za",
+  "Reactions_NotSent": "Jeszcze nie wysłano",
   "Reconnect_Title": "Ponowne łączenie...",
   "DemandInteraction_Updating": "Aktualizowanie...",
   "DemandInteraction_Continue_Format": "Kontynuować — {0}?",

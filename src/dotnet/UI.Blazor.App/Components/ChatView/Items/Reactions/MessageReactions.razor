@@ -1,17 +1,22 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, MessageReactions.Model?>
+@inherits ComputedStateComponent<AppUIHub, ReactionsModel?>
 @{
-    var serverModel = State.Value;
-    var m = OptimisticReactions.TryGet(Entry.Id, out var pending)
-        ? ApplyOptimistic(serverModel, Entry.Id, pending.Emoji, pending.IsRemove)
-        : serverModel;
+    var m = State.Value;
     if (m is null)
         return;
 
+    var pendingClass = m.PendingStage switch {
+        QueuedCommandStage.Failed => "message-reactions-failed",
+        null => "",
+        _ => "message-reactions-pending",
+    };
+    var pendingTitle = m.PendingStage is QueuedCommandStage.Failed or QueuedCommandStage.Retrying
+        ? L.Reactions_NotSent
+        : null;
 }
 
-<ul class="message-reactions @Class">
-    @foreach (var reaction in m.Reactions) {
+<ul class="message-reactions @pendingClass @Class" title="@pendingTitle">
+    @foreach (var reaction in m.Summaries) {
         <ReactionBadge @key="@reaction.Emoji" Reaction="reaction" OwnReaction="m.OwnReaction" Entry="Entry" />
     }
 
@@ -24,99 +29,19 @@
 </ul>
 
 @code {
-    private IReactions Reactions => Hub.Reactions;
-    private OptimisticReactions OptimisticReactions => Hub.OptimisticReactions;
+    private ReactionsUI ReactionsUI => Hub.ReactionsUI;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
-    protected override void OnInitialized()
-        => OptimisticReactions.Changed += OnOptimisticChanged;
-
-    public override ValueTask DisposeAsync() {
-        OptimisticReactions.Changed -= OnOptimisticChanged;
-        return base.DisposeAsync();
-    }
-
-    private void OnOptimisticChanged(ChatEntryId entryId) {
-        if (entryId == Entry.Id)
-            this.NotifyStateHasChanged();
-    }
-
-    protected override ComputedState<Model?>.Options GetStateOptions()
+    protected override ComputedState<ReactionsModel?>.Options GetStateOptions()
         => new() {
-            InitialValue = Entry.HasReactions ? new Model([]) : null,
+            InitialValue = Entry.HasReactions ? new ReactionsModel([], null) : null,
+            UpdateDelayer = FixedDelayer.NextTick,
             Category = GetStateCategory(GetType()),
         };
 
-    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var entryId = Entry.Id;
-        var summaries = await Reactions.ListSummaries(Session, entryId, cancellationToken).ConfigureAwait(false);
-        var ownReaction = summaries.Length > 0
-            ? await Reactions.Get(Session, entryId, cancellationToken).ConfigureAwait(false)
-            : null;
-
-        // Clear optimistic state once server data reflects the expected change
-        if (OptimisticReactions.TryGet(entryId, out var pending2)) {
-            var serverReflects = pending2.IsRemove
-                ? ownReaction?.Emoji != pending2.Emoji
-                : ownReaction?.Emoji == pending2.Emoji;
-            if (serverReflects)
-                OptimisticReactions.TryRemove(entryId);
-        }
-
-        return summaries.Length == 0 ? null : new(summaries, ownReaction);
-    }
-
-    private static Model? ApplyOptimistic(Model? serverModel, ChatEntryId entryId, Emoji emoji, bool isRemove) {
-        var reactions = serverModel?.Reactions?.ToList() ?? [];
-        var ownReaction = serverModel?.OwnReaction;
-
-        if (isRemove) {
-            UpdateSummaryCount(reactions, entryId, emoji, -1);
-            if (ownReaction?.Emoji == emoji)
-                ownReaction = null;
-        } else if (ownReaction?.Emoji != emoji) {
-            if (ownReaction != null)
-                UpdateSummaryCount(reactions, entryId, ownReaction.Emoji, -1);
-            UpdateSummaryCount(reactions, entryId, emoji, +1);
-            ownReaction = new Reaction {
-                Id = Symbol.Empty,
-                AuthorId = default!,
-                EntryId = entryId,
-                Emoji = emoji,
-            };
-        }
-
-        return reactions.Count > 0 ? new Model(reactions.ToArray(), ownReaction) : null;
-    }
-
-    private static void UpdateSummaryCount(List<ReactionSummary> summaries, ChatEntryId entryId, Emoji emoji, int delta) {
-        for (int i = 0; i < summaries.Count; i++) {
-            if (summaries[i].Emoji == emoji) {
-                var newCount = summaries[i].Count + delta;
-                if (newCount <= 0)
-                    summaries.RemoveAt(i);
-                else
-                    summaries[i] = summaries[i] with { Count = newCount };
-                return;
-            }
-        }
-        if (delta > 0) {
-            summaries.Add(new ReactionSummary {
-                Id = Symbol.Empty,
-                EntryId = entryId,
-                Emoji = emoji,
-                Count = delta,
-            });
-        }
-    }
-
-    // Nested types
-
-    public sealed record Model(
-        ReactionSummary[] Reactions,
-        Reaction? OwnReaction = null
-    );
+    protected override Task<ReactionsModel?> ComputeState(CancellationToken cancellationToken)
+        => ReactionsUI.Get(Entry.Id, cancellationToken);
 }

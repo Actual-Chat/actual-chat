@@ -645,6 +645,7 @@
   "Banner_Connecting": "接続中...",
   "Banner_Offline": "オフラインです。",
   "Banner_WillReconnectIn": "再接続まで",
+  "Reactions_NotSent": "まだ送信されていません",
   "Reconnect_Title": "再接続中...",
   "DemandInteraction_Updating": "更新中...",
   "DemandInteraction_Continue_Format": "{0} を続けますか?",

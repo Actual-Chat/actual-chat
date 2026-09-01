@@ -1,0 +1,92 @@
+@using ActualChat.UI.Blazor.App.Services
+@inherits ComputedStateComponent<AppUIHub, CommandQueueTestPage.Model>
+@page "/test/command-queue"
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Command queue</MainHeader>
+
+@{
+    var m = State.Value;
+}
+@if (IsServerHost) {
+    <div class="command-queue-test-page">
+        <p class="c-hint">
+            The client command queue doesn't run on a Server host: its filter is registered only on
+            WASM and MAUI clients, because on the server a command is already where it's going.
+        </p>
+    </div>
+    return;
+}
+<div class="command-queue-test-page">
+    <p class="c-hint">Client-side queued commands and their stages. Updates live.</p>
+    <div class="c-toolbar">
+        <Button Click="@OnPauseResumeClick">@(m.IsPaused ? "Resume queue" : "Pause queue")</Button>
+        <span class="c-status @(m.IsPaused ? "paused" : "")">
+            @(m.IsPaused ? "Paused — commands pile up as they would with no connection." : "Running.")
+        </span>
+    </div>
+    @if (m.Entries.Count == 0) {
+        <span class="c-hint">Queue is empty.</span>
+    }
+    else {
+        <div class="c-table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Partition</th>
+                        <th>Command</th>
+                        <th>Stage</th>
+                        <th class="c-number">Try</th>
+                        <th class="c-time">Updated</th>
+                        <th>Error</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in m.Entries) {
+                        <tr>
+                            <td>@entry.PartitionKey</td>
+                            <td>@entry.Command.GetType().Name</td>
+                            <td>@entry.Stage</td>
+                            <td class="c-number">@entry.TryIndex</td>
+                            <td class="c-time">
+                                @Hub.DateTimeConverter.ToLocalTime(entry.UpdatedAt).ToString("HH:mm:ss", null)
+                            </td>
+                            <td class="c-error">@entry.Error?.Message</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private ClientCommandHandler Handler => Hub.ClientCommandHandler;
+    private ClientCommandHandlerTriggers Triggers => Hub.ClientCommandHandlerTriggers;
+    private bool IsServerHost => Hub.HostInfo.HostKind.IsServer();
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Empty,
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        await Triggers.OnAnyChanged().ConfigureAwait(false);
+        return new Model(Handler.GetEntries(), Handler.IsPaused);
+    }
+
+    private void OnPauseResumeClick() {
+        if (Handler.IsPaused)
+            Handler.Resume();
+        else
+            Handler.Pause();
+    }
+
+    // Nested types
+
+    public sealed record Model(IReadOnlyList<QueuedCommandEntry> Entries, bool IsPaused) {
+        public static readonly Model Empty = new([], false);
+    }
+}

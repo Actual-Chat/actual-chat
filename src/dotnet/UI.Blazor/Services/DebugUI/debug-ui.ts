@@ -82,6 +82,15 @@ export class DebugUI {
         void this.backendRef.invokeMethodAsync('DisconnectRpc');
     }
 
+    // Suspends the client command queue as a lost connection would: the in-flight attempt
+    // finishes, everything after it waits. Pass false to resume; returns the resulting state.
+    // Client-side hosts only (WASM/MAUI).
+    public static async suspendCommandQueue(suspend = true): Promise<boolean> {
+        const isSuspended = await this.backendRef.invokeMethodAsync<boolean>('SuspendCommandQueue', suspend);
+        console.log(`suspendCommandQueue: the queue is ${isSuspended ? 'suspended' : 'running'}`);
+        return isSuspended;
+    }
+
     public static navigateTo(url: string): void {
         void this.backendRef.invokeMethodAsync('NavigateTo', url);
     }

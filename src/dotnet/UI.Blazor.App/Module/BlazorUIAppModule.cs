@@ -37,8 +37,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddAlias<IUITextLocalizer, LocalizationUI>(ServiceLifetime.Scoped);
         // Replaces the base UIActionFailureTracker (registered by fusion.AddBlazor) with one that
         // localizes failure messages before publishing them.
-        services.AddScoped<UIActionFailureTracker>(c => new
-            LocalizingUIActionFailureTracker(
+        services.AddScoped<UIActionFailureTracker>(c => new LocalizingUIActionFailureTracker(
             c.GetRequiredService<UIActionFailureTracker.Options>(), c));
 
         // Singletons
@@ -58,6 +57,11 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped<SystemEntryMarkupBuilder>(c => new LocalizedSystemEntryMarkupBuilder(c));
 
         // Chat UI
+        fusion.AddClientCommandHandler();
+        // The handler is a client-side concern: on the server a command is already where it's
+        // going, and its filter would deadlock against ApiCommandDeduplicator's Uuid claim.
+        if (HostInfo.HostKind != HostKind.Server)
+            fusion.Commander.AddHandlers<ClientCommandHandler>();
         fusion.AddService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddService<ConversationUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatListUI>(ServiceLifetime.Scoped);
@@ -95,7 +99,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(c => new ActiveChatsUI(c.AppUIHub()));
         services.AddScoped(c => new IncomingShareUI(c.AppUIHub()));
         services.AddScoped(_ => new SentContentStorage());
-        services.AddScoped(_ => new OptimisticReactions());
+        fusion.AddService<ReactionsUI>(ServiceLifetime.Scoped);
 
         // Live stream UI
         fusion.AddService<LiveStreamUI>(ServiceLifetime.Scoped);
@@ -298,6 +302,14 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
                 c.GetRequiredService<VideoQualityUI>().BeginRecordingQualityTest(period);
             debugUI.TestVideoPlaybackQualityChangeHandler = period =>
                 c.GetRequiredService<VideoQualityUI>().BeginPlaybackQualityTest(period);
+            debugUI.SuspendCommandQueueHandler = suspend => {
+                var handler = c.GetRequiredService<ClientCommandHandler>();
+                if (suspend)
+                    handler.Pause();
+                else
+                    handler.Resume();
+                return handler.IsPaused;
+            };
             return debugUI;
         });
 

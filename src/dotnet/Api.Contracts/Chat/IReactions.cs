@@ -20,7 +20,12 @@ public interface IReactions : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Reactions_React : ApiCommand<Unit>
+public sealed partial record Reactions_React : ApiCommand<Unit>, IQueuedCommand
 {
     [DataMember(Order = 2), Key(2)] public required Reaction Reaction { get; init; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public string PartitionKey
+        // Coalescing is left at None: OnReact toggles, so collapsing two clicks would flip the outcome
+        => Reaction.EntryId.Value;
 }

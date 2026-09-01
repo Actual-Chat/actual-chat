@@ -189,3 +189,36 @@ edited. The reason can be as short as whose decision it was.
   — comment on a bit-twiddling expression — it names the bitstream field layout
   the shift-and-mask decodes, which the expression cannot carry — Alex
   Yakunin's decision: keep.
+
+## src/dotnet/UI.Blazor.App/Services/ReactionsUI.cs
+
+- L9 `public class ReactionsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService`
+  — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
+  members, so a sealed type fails with CS0549 (same as VirtualListTestService above)
+
+## src/dotnet/UI.Blazor.App/Components/ChatView/Items/ChatEntryMessageView.razor
+
+Pre-existing violations, surfaced by the reactions-overlay work (2026-08-27) but
+unrelated to it — Dmitrii's decision to keep the hot chat component untouched:
+
+- 16 lines over the 120-char maximum (L45, 94, 356, 367, 376, 387, 389, 396, 440,
+  446, 465, 475, 487, 519, 550, 563) — pre-existing
+- missing `.ConfigureAwait(false)` at L306, 307, 524, 544, 569 — pre-existing
+- `protected override async Task OnParametersSetAsync()` — Allman brace instead of
+  the razor K&R brace — pre-existing
+- `protected override void OnInitialized()` — block body where an expression-bodied
+  member is preferred — pre-existing
+- `ShouldRender` continuation lines indented 3 spaces instead of 4 — pre-existing
+- local-function section not introduced by an explicit `return;` marker — pre-existing
+- blank lines splitting a run of local declarations in `ComputeState` — pre-existing
+
+## src/dotnet/UI.Blazor/Services/DebugUI/debug-ui.ts
+
+Pre-existing violations, surfaced while adding `suspendCommandQueue` (2026-08-30) but
+unrelated to it — same call as for ChatEntryMessageView: leave the file alone.
+
+- 12 `/** */` doc blocks on members / a type alias instead of `//` comments
+  (L25, 98, 115, 158, 188, 196, 215, 249, 255, 288, 302, 429) — pre-existing;
+  they are the file's established style for the debug console API
+- L106-108 single-statement `else` block with braces — pre-existing
+- L488 exceeds the 120-char line limit (122 chars) — pre-existing

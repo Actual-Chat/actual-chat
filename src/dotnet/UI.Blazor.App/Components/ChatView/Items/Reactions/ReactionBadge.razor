@@ -26,7 +26,7 @@
 @code {
     private string? _animateSvgName;
 
-    private OptimisticReactions OptimisticReactions => Hub.OptimisticReactions;
+    private ReactionsUI ReactionsUI => Hub.ReactionsUI;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public Reaction? OwnReaction { get; set; }
@@ -35,7 +35,7 @@
 
     protected override void OnParametersSet() {
         var isOwn = OwnReaction?.Emoji == Reaction.Emoji;
-        _animateSvgName = isOwn && OptimisticReactions.RemovePendingAnimation(Entry.Id.Value, Reaction.Emoji.Id.Value)
+        _animateSvgName = isOwn && ReactionsUI.RemovePendingAnimation(Entry.Id.Value, Reaction.Emoji.Id.Value)
             ? Emojis.SvgNames.GetValueOrDefault(Reaction.Emoji)
             : null;
     }
@@ -44,8 +44,7 @@
         _ = Hub.TuneUI.Play(Tune.React);
         var isRemove = OwnReaction?.Emoji == emoji;
         if (!isRemove)
-            OptimisticReactions.AddPendingAnimation(Entry.Id.Value, emoji.Id.Value);
-        OptimisticReactions.Set(Entry.Id, emoji, isRemove);
+            ReactionsUI.AddPendingAnimation(Entry.Id.Value, emoji.Id.Value);
         var reaction = new Reaction {
             Id = Symbol.Empty,
             AuthorId = null!,

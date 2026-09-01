@@ -645,6 +645,7 @@
   "Banner_Connecting": "Свързване...",
   "Banner_Offline": "Вие сте офлайн.",
   "Banner_WillReconnectIn": "Ще се свърже отново след",
+  "Reactions_NotSent": "Още не е изпратено",
   "Reconnect_Title": "Повторно свързване...",
   "DemandInteraction_Updating": "Обновяване...",
   "DemandInteraction_Continue_Format": "Да продължим ли — {0}?",
