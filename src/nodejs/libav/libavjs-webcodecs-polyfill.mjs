@@ -2021,6 +2021,17 @@ let VideoFrame$1 = class VideoFrame {
             width = image.width;
             height = image.height;
         }
+        else if (image.displayWidth) {
+            /* A native VideoFrame, on an engine where this polyfill owns the
+             * VideoFrame global: it matches no instanceof above, but it is a
+             * CanvasImageSource, so drawing it works once we know its size. */
+            width = image.displayWidth;
+            height = image.displayHeight;
+        }
+        else if (image.codedWidth) {
+            width = image.codedWidth;
+            height = image.codedHeight;
+        }
         if (!width || !height)
             throw new DOMException("Could not determine dimensions", "InvalidStateError");
         if (offscreenCanvas === null) {

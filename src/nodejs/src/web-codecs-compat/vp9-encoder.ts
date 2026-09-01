@@ -131,7 +131,7 @@ export class Vp9Encoder {
     }
 
     static isConfigSupported(config: VideoEncoderConfig): Promise<VideoEncoderSupport> {
-        const supported = isVp9Codec(config.codec) && WebCodecsCompat.level === 'vp9';
+        const supported = isVp9Codec(config.codec) && WebCodecsCompat.level !== 'none';
 
         return Promise.resolve({ supported, config: { ...config } });
     }
@@ -171,12 +171,11 @@ export class Vp9Encoder {
         const format = frame.format;
         const codedWidth = frame.codedWidth;
         const codedHeight = frame.codedHeight;
-        const buffer = new Uint8Array(frame.allocationSize());
-        const whenCopied = frame.copyTo(buffer);
+        const whenCopied = readFramePlanes(frame);
         this.encodeQueueSize++;
         this._chain = this._chain.then(async () => {
             this.encodeQueueSize--;
-            const layout = await whenCopied;
+            const { data: buffer, layout } = await whenCopied;
             const libav = this._libav!;
             const pixelFormat = toLibAvFormat(libav, format);
             if (pixelFormat === null) {
@@ -388,13 +387,30 @@ function toLibAvFormat(libav: LibAv, format: VideoPixelFormat | null): number | 
 
 /**
  * The VideoEncoder implementation for `codec` in this realm: Vp9Encoder at compat
- * level `vp9` for VP9, the browser's own otherwise.
+ * level `vp9` or `full` for VP9, the browser's own otherwise.
  */
 export function getVideoEncoderClass(codec: string): typeof VideoEncoder {
-    if (WebCodecsCompat.level !== 'vp9' || !isVp9Codec(codec))
+    if (WebCodecsCompat.level === 'none' || !isVp9Codec(codec))
         return VideoEncoder;
 
     // Vp9Encoder implements what this app calls, not the full spec surface -
     // it is not an EventTarget and has no ondequeue.
     return Vp9Encoder as unknown as typeof VideoEncoder;
+}
+
+/**
+ * Planes and layout from either frame realm: at `full` the pipeline mixes native
+ * capture frames with polyfilled ones the app builds, and both reach the encoder.
+ */
+function readFramePlanes(frame: VideoFrame): Promise<{ data: Uint8Array; layout: PlaneLayout[] }> {
+    const polyfilled = frame as unknown as {
+        _libavGetData?: () => Uint8Array;
+        _libavGetLayout?: () => PlaneLayout[];
+    };
+    if (typeof polyfilled._libavGetData === 'function' && typeof polyfilled._libavGetLayout === 'function')
+        return Promise.resolve({ data: polyfilled._libavGetData(), layout: polyfilled._libavGetLayout() });
+
+    const data = new Uint8Array(frame.allocationSize());
+
+    return frame.copyTo(data).then(layout => ({ data, layout }));
 }
