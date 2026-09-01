@@ -41,8 +41,8 @@ public sealed class PermissionsUI : UIServiceBase<AppUIHub>
         // Nothing invalidates an OS-level permission read, so Use()-ing IsBackground is what re-reads
         // them on every return to the app - including the return from its own system settings page.
         await BackgroundStateTracker.IsBackground.Use(cancellationToken).ConfigureAwait(false);
-        var isWarningDismissed = await UserSettingsUI.UserAppSettings()
-            .Get(x => x.IsPermissionWarningDismissed ?? false, cancellationToken)
+        var dismissed = await UserSettingsUI.UserAppSettings()
+            .Get(x => ParseKinds(x.DismissedPermissionWarnings), cancellationToken)
             .ConfigureAwait(false);
 
         var missing = new HashSet<PermissionKind>();
@@ -51,6 +51,9 @@ public sealed class PermissionsUI : UIServiceBase<AppUIHub>
             if (!isGranted)
                 missing.Add(permission.Kind);
         }
+
+        // A dismissal covers only what was missing when it happened
+        var isWarningDismissed = missing.IsSubsetOf(dismissed);
         return new PermissionsState(missing, isWarningDismissed) { IsKnown = true };
     }
 
@@ -67,10 +70,13 @@ public sealed class PermissionsUI : UIServiceBase<AppUIHub>
         }
     }
 
-    public async Task DismissWarning(CancellationToken cancellationToken = default)
-        => await UserSettingsUI.UserAppSettings()
-            .Update(x => x with { IsPermissionWarningDismissed = true }, cancellationToken)
+    public async Task DismissWarning(PermissionsState state, CancellationToken cancellationToken = default)
+    {
+        var value = FormatKinds(state.Missing);
+        await UserSettingsUI.UserAppSettings()
+            .Update(x => x with { DismissedPermissionWarnings = value }, cancellationToken)
             .ConfigureAwait(false);
+    }
 
     public void Invalidate()
         => _version.Value++;
@@ -105,32 +111,36 @@ public sealed class PermissionsUI : UIServiceBase<AppUIHub>
             microphone,
             isInOnboarding: true));
 
-        var notificationUI = Hub.NotificationUI;
-        var notifications = Services.GetRequiredService<INotificationsPermission>();
-        permissions.Add(new PermissionDef(
-            PermissionKind.Notifications,
-            L.Permission_Notifications,
-            L.Permission_NotificationsRationale,
-            "icon-bell") {
-            Check = async ct => {
-                var isGranted = await notificationUI.PermissionState.Use(ct).ConfigureAwait(false);
-                if (isGranted == true)
-                    return true;
+        // WindowsNotificationsPermission can neither read nor request a grant - Windows toasts need
+        // none - so it reports "denied" forever. Listing it would be a row that never turns on.
+        if (!(HostInfo.HostKind.IsMauiApp() && appKind == AppKind.Windows)) {
+            var notificationUI = Hub.NotificationUI;
+            var notifications = Services.GetRequiredService<INotificationsPermission>();
+            permissions.Add(new PermissionDef(
+                PermissionKind.Notifications,
+                L.Permission_Notifications,
+                L.Permission_NotificationsRationale,
+                "icon-bell") {
+                Check = async ct => {
+                    var isGranted = await notificationUI.PermissionState.Use(ct).ConfigureAwait(false);
+                    if (isGranted == true)
+                        return true;
 
-                // PermissionState is read once at startup on MAUI, so re-reading the platform here
-                // is what picks up a grant made in the system settings after that.
-                isGranted = await notifications.IsGranted(ct).ConfigureAwait(false);
-                notificationUI.SetIsGranted(isGranted);
-                return isGranted == true;
-            },
-            Request = async (_, ct) => {
-                await notifications.Request(ct).ConfigureAwait(false);
-                return await notifications.IsGranted(ct).ConfigureAwait(false) == true;
-            },
-            // On the web the prompt must be bound to a direct user gesture in JS, which the
-            // onboarding flow can't guarantee - the Settings page binds it to the toggle instead.
-            IsInOnboarding = appKind.IsMobile(),
-        });
+                    // PermissionState is read once at startup on MAUI, so re-reading the platform here
+                    // is what picks up a grant made in the system settings after that.
+                    isGranted = await notifications.IsGranted(ct).ConfigureAwait(false);
+                    notificationUI.SetIsGranted(isGranted);
+                    return isGranted == true;
+                },
+                Request = async (_, ct) => {
+                    await notifications.Request(ct).ConfigureAwait(false);
+                    return await notifications.IsGranted(ct).ConfigureAwait(false) == true;
+                },
+                // On the web the prompt must be bound to a direct user gesture in JS, which the
+                // onboarding flow can't guarantee - the Settings page binds it to the toggle instead.
+                IsInOnboarding = appKind.IsMobile(),
+            });
+        }
 
         var camera = Services.GetRequiredService<CameraPermissionHandler>();
         permissions.Add(FromHandler(
@@ -202,6 +212,7 @@ public sealed class PermissionsUI : UIServiceBase<AppUIHub>
                 },
             });
         }
+
         return permissions;
     }
 
@@ -213,10 +224,32 @@ public sealed class PermissionsUI : UIServiceBase<AppUIHub>
         PermissionHandler handler,
         bool isInOnboarding = false)
         => new(kind, title, rationale, icon) {
-            Check = async ct => await handler.Check(ct).ConfigureAwait(false) == true,
+            Check = async ct => {
+                // Cached is the reactive half: a grant made anywhere else - the mic button, the
+                // video call, "Share live location" - lands there and invalidates this read.
+                // Check() below fills it in when it's null, which invalidates once more.
+                var isGranted = await handler.Cached.Use(ct).ConfigureAwait(false);
+                return isGranted ?? await handler.Check(ct).ConfigureAwait(false) == true;
+            },
             Request = (mustTroubleshoot, ct) => handler.CheckOrRequest(true, mustTroubleshoot, ct).AsTask(),
             IsInOnboarding = isInOnboarding,
         };
+
+    private static string FormatKinds(IReadOnlySet<PermissionKind> kinds)
+        => kinds.Order().Select(x => x.ToString()).ToDelimitedString(",");
+
+    private static IReadOnlySet<PermissionKind> ParseKinds(string? value)
+    {
+        var kinds = new HashSet<PermissionKind>();
+        if (value.IsNullOrEmpty())
+            return kinds;
+
+        // An unparseable name - a kind renamed or dropped since - simply isn't dismissed
+        foreach (var item in value.Split(','))
+            if (Enum.TryParse<PermissionKind>(item, out var kind))
+                kinds.Add(kind);
+        return kinds;
+    }
 }
 
 public sealed record PermissionDef(
@@ -240,4 +273,15 @@ public sealed record PermissionsState(IReadOnlySet<PermissionKind> Missing, bool
 
     public bool IsGranted(PermissionKind kind)
         => !Missing.Contains(kind);
+
+    public bool Equals(PermissionsState? other)
+        // Missing is a fresh set on every read, so the generated reference comparison would report
+        // every recompute as a change and re-render the avatar and the whole Settings modal with it.
+        => other is not null
+            && IsKnown == other.IsKnown
+            && IsWarningDismissed == other.IsWarningDismissed
+            && Missing.SetEquals(other.Missing);
+
+    public override int GetHashCode()
+        => HashCode.Combine(IsKnown, IsWarningDismissed, Missing.Count);
 }
