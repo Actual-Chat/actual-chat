@@ -82,7 +82,7 @@ public sealed class IosActivitiesBackend : ActivitiesBackend
         }
 
         var (title, subtitle, progress) = primary switch {
-            AudioActivity audio => (audio.Chat.Title, KindLabel(audio.Kind), -1.0),
+            AudioActivity audio => (audio.Chat.Title, KindLabel(audio), -1.0),
             LocationActivity location => (
                 "Sharing live location",
                 location.Chat.ExtraChatCount > 0 ? $"{location.Chat.ExtraChatCount + 1} chats" : location.Chat.Title,
@@ -121,12 +121,17 @@ public sealed class IosActivitiesBackend : ActivitiesBackend
         center.AddNotificationRequest(request, null);
     }
 
-    private static string KindLabel(ActivityKind kind)
-        => kind switch {
+    private static string KindLabel(AudioActivity audio)
+        // Armed says whether a flip would actually do something rather than just that a chat is
+        // armed: gestures work on iOS too, and outside the arming window the accelerometer is
+        // stopped, so "push-to-talk is on" would promise one that cannot fire.
+        => audio.Kind switch {
             ActivityKind.Recording => "Recording",
             ActivityKind.Replaying => "Replaying",
             ActivityKind.Listening => "Listening",
-            ActivityKind.Armed => "Push-to-talk is on",
+            ActivityKind.Armed => audio.IsStartGestureReady
+                ? "Flip to reply"
+                : "Push-to-talk on",
             _ => "",
         };
 

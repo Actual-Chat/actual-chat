@@ -8,7 +8,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
 {
     private static readonly TimeSpan AnswerWindowExpiryDelay = TimeSpan.FromMilliseconds(250);
 
-    private readonly bool _isAndroidHost;
+    private readonly bool _isMauiHost;
     private bool _isDisposed;
 
     private AppUIHub Hub { get; }
@@ -24,8 +24,8 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
     public AudioActivitySource(AppUIHub hub)
     {
         Hub = hub;
-        _isAndroidHost = hub.HostInfo.AppKind == AppKind.Android;
-        if (_isAndroidHost) {
+        _isMauiHost = hub.HostInfo.HostKind.IsMauiApp();
+        if (_isMauiHost) {
             IncomingVoiceActivityUI.IncomingVoiceStamped += OnIncomingVoiceStamped;
             GestureUI.StartGestureReadyChanged += OnStartGestureReadyChanged;
         }
@@ -34,7 +34,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
     public void Dispose()
     {
         _isDisposed = true;
-        if (_isAndroidHost) {
+        if (_isMauiHost) {
             IncomingVoiceActivityUI.IncomingVoiceStamped -= OnIncomingVoiceStamped;
             GestureUI.StartGestureReadyChanged -= OnStartGestureReadyChanged;
         }
@@ -47,7 +47,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
         ActivityKind? kind = null;
         var extraChatCount = 0;
         var isPaused = false;
-        var pttChatIds = _isAndroidHost
+        var pttChatIds = _isMauiHost
             ? await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false)
             : [];
 
@@ -96,7 +96,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
         Moment? answerWindowEndsAt = null;
         var isStartGestureReady = false;
         if (kind is not { } vKind) {
-            var answerWindow = _isAndroidHost
+            var answerWindow = _isMauiHost
                 ? await Hub.UserSettingsUI.UserPttSettings()
                     .Get(x => x.AnswerWindow, cancellationToken)
                     .ConfigureAwait(false)
@@ -159,11 +159,11 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
     private (ChatId ChatId, int ExtraChatCount, Moment? AnswerWindowEndsAt)? GetArmedChat(
         List<ChatId> pttChatIds, TimeSpan answerWindow)
     {
-        // Android only, and the reason is the foreground service the backend drives: Android grants
+        // MAUI hosts only. On Android it also keeps the foreground service up: Android grants
         // microphone access on the serviceType of the last startForeground call, and only if the app
-        // wasn't in the background when it ran. A service first started by a wake therefore can never
-        // record - so while any chat is armed the service stays up, started while the app is visible.
-        // It also keeps the media session (the headset button) alive across the answer window.
+        // wasn't in the background when it ran - so a service first started by a wake can never
+        // record, and while any chat is armed this keeps it (and the headset button's media session)
+        // alive. On iOS it carries the PTT state the Live Activity shows. The web has neither.
         var now = Hub.Clocks.ServerClock.Now;
         var lastIncomingVoiceAt = IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
         var armed = ResolveArmedChat(pttChatIds, lastIncomingVoiceAt, now, answerWindow);
