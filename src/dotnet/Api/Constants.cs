@@ -71,9 +71,7 @@ public static partial class Constants
         // Range fetches: the only tile GetChatRangeMeta, GetEntryRangeMeta,
         // IConversationsBackend.GetRangeMeta and IConversationsBackend.GetTile accept
         public static readonly TileLayer<long> RangeMetaEntryIdTiles = TileLayers.Long1280;
-        // Client-side only: groups entry tiles into VirtualList tiles
-        public static readonly TileLayer<long> ViewIdTiles = TileLayers.Long20;
-        public static readonly TileLayer<int> ChatTiles = TileLayers.Int5;
+        public static readonly TileLayer<int> ChatListIndexTiles = TileLayers.Int5;
         public static readonly TimeSpan MaxEntryDuration = TimeSpan.FromMinutes(3);
         public static readonly TimeSpan StreamingEntryFixupDelay = MaxEntryDuration + TimeSpan.FromSeconds(30);
         // How long after the last interaction we still count an open chat at its tail as "being read".

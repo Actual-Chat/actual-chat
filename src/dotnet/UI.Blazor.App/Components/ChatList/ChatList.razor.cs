@@ -86,13 +86,13 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
         // Fit to existing chat count
         range = range
             .IntersectWith(new Range<int>(0, chatCount))
-            .ExpandToTiles(ChatListUI.ChatTiles);
+            .ExpandToTiles(ChatListUI.IndexTiles);
         // Expand and fit again if too small
         if (range.Size() < ChatListUI.LoadLimit)
             range = range.Expand(ChatListUI.TileSize)
                 .IntersectWith(new Range<int>(0, chatCount))
-                .ExpandToTiles(ChatListUI.ChatTiles);
-        var indexTiles = ChatListUI.ChatTiles.GetCoveringTiles(range);
+                .ExpandToTiles(ChatListUI.IndexTiles);
+        var indexTiles = ChatListUI.IndexTiles.GetCoveringTiles(range);
         var resultItems = new List<ChatListItemModel>();
         foreach (var indexTile in indexTiles) {
             var tile = await ChatListUI
