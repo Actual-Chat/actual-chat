@@ -14,6 +14,7 @@
 
 .btn.btn-round.account-btn {
     @apply bg-transparent;
+    @apply no-sheen;
 }
 .btn.btn-round.account-btn,
 .btn.btn-round.account-btn > .btn-content {

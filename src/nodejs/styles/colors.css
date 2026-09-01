@@ -1336,3 +1336,24 @@
     --map-control: var(--white-80);
     --map-control-text: var(--gray-30);
 }
+
+/* Sheen — the barely-there vertical wash that keeps a flat fill from reading as one dead tone.
+   --sheen is the master intensity (0 turns the effect off everywhere), --sheen-scale a local trim
+   on top of it, and --sheen-fill says how light the fill underneath is: 0 for a dark one, which
+   takes the top gloss alone, 1 for a light one, which also gets the mirrored shade rising from the
+   bottom. Fills that follow the theme flip between the two, so they read --sheen-surface instead. */
+:root {
+    --sheen-scale: 1;
+    --sheen-fill: 0;
+}
+/* Every fill in a light theme is a light one, so all of them take both halves of the wash — and a
+   shade over a near-white fill turns grubby long before a gloss over a dark one gets noticed.
+   Hence the far lower intensity here than in the dark theme. */
+:root, .theme-light, .theme-ash {
+    --sheen: 0.2;
+    --sheen-surface: 1;
+}
+.theme-dark {
+    --sheen: 0.33;
+    --sheen-surface: 0;
+}

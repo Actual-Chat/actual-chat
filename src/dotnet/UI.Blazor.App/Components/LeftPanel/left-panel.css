@@ -29,6 +29,7 @@
 .left-panel-buttons .settings-btn > .btn.btn-square,
 .left-panel-buttons .settings-btn > .btn.btn-square:hover {
     @apply bg-transparent;
+    @apply no-sheen;
 }
 .left-panel-buttons .settings-btn > .btn.btn-square:hover:after {
     @apply hidden;

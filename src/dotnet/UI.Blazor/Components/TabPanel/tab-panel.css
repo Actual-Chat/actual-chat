@@ -64,6 +64,7 @@
 
 /* Buttons */
 .tab-panel-tabs .btn.tab-btn {
+    @apply no-sheen;
     @apply min-w-2;
     @apply rounded-none;
     @apply border-0;

@@ -194,6 +194,7 @@ body.hoverable .navbar-item.active:active {
 body.hoverable .navbar-place-buttons .navbar-button .btn:hover,
 body.hoverable .navbar-chat-buttons .navbar-button .btn:hover {
     @apply bg-transparent;
+    @apply no-sheen;
 }
 body.hoverable .navbar-place-buttons .navbar-button .btn:hover::after,
 body.hoverable .navbar-chat-buttons .navbar-button .btn:hover::after {
@@ -218,6 +219,7 @@ body.hoverable .navbar-chat-buttons .navbar-button .btn:hover:focus:active::afte
 .navbar-chat-buttons .btn.btn-square,
 .navbar-chat-buttons .btn.btn-round {
     @apply bg-transparent;
+    @apply no-sheen;
 }
 .navbar-chat-buttons .navbar-button .btn-round {
     @apply min-h-0;

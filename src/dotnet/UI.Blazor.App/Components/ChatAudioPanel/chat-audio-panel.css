@@ -351,6 +351,7 @@ body.narrow .to-thin .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-con
 }
 .to-thin .chat-audio-panel .recorder-wrapper .record-off-btn.btn {
     @apply bg-transparent;
+    @apply no-sheen;
     @apply border-none;
 }
 
