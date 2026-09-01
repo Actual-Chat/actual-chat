@@ -1,14 +1,16 @@
 ---
-title: Chat view — four reported list defects
-description: Blank transcript, a sticky edge latched to the top, live-session messages that never render, and a ~10Hz skeleton flicker.
+title: Chat view — reported list defects, and what testing turned up
+description: Blank transcript, a sticky edge latched to the top, live-session messages that never render, a ~10Hz skeleton flicker, and the live block's expand/collapse.
 ---
 
-# Chat view — four reported list defects, and a fifth found while testing
+# Chat view — reported list defects, and what testing turned up
 
-Four issues reported against the chat transcript (`InfiniteList`). Three of them
-share one data-side root — a transient `HasVeryLastItem == false` during a live
-session — amplified by three different client behaviours. The fourth is
-independent.
+Four issues reported against the chat transcript (`InfiniteList`), and four more
+found while testing the fixes for them. Three of the reported four share one
+data-side root — a transient `HasVeryLastItem == false` during a live session —
+amplified by three different client behaviours; the fourth is independent. The rest
+(E-H) came out of driving a real two-account live session with the list
+instrumented, and are mostly about the live conversation block.
 
 Source: team chat, 2026-08-31. Analysed twice, independently; where the two
 passes disagreed the disagreement is recorded below.
@@ -247,6 +249,67 @@ This is a **second, independent cause of B's user-visible symptom** — it lives
 intermittent: the settle re-pins afterwards, so it self-heals whenever one happens
 to run.
 
+## F — the live block's expansion was keyed on the wrong things
+
+Three defects in one area, found by testing the fixes above rather than reported.
+
+**Collapsing did nothing once you had joined.** Both halves that implement "collapsed"
+were keyed on whether the viewer was in the call rather than on whether the block
+renders collapsed: `hiddenLiveTailRange` (`ChatUI.Tiles.cs:400`) only hid the tail
+for a viewer who was *not* joined, and the card's tail preview was gated on
+`!isJoined` outright (`ConversationMessageView.razor:239`). Neither had a reason to
+be — and the swallowed-count gate right beside the preview already reads
+`isJoined && !isExpanded` (`:243`), so joined-and-collapsed was always meant to
+exist and to hide its entries behind the card. Its "show more" button simply had
+nothing to reveal.
+
+**Nothing expanded the block on join.** The only "ensure expanded" in the codebase
+is on the navigate-to-conversation path (`ChatUI.Tiles.cs:461`), and
+`IsExpandedByDefault` is not about joining at all —
+`LiveConversationSummaryFlow.cs:107` sets it from
+`words < Settings.Summarization.MinConversationWords`. A grown block is therefore
+collapsed by default and joining left it that way. Harmless while a joined viewer
+saw the tail unconditionally; once collapsing worked, joining an already-summarized
+conversation put the whole thing behind a card.
+
+**And the effective state inverted under everyone.** Expansion is
+`IsExpandedByDefault ^ overrides.Contains(id)`, and that default is server-derived
+and *moves*: it flips when a summary lands. A flip inverts the effective state of
+every conversation without an override — an auto-collapse nobody asked for. The
+live block's id moves too (observed `4949 → 4991 → 4992 → 5022 → 5031 → 5060`
+within one call, `LiveSessionState.cs:63-66`), so anything keyed to the id at a
+moment in time is discarded at the next latch — a reader's own collapse included.
+
+## G — collapsing a conversation moved the whole view
+
+Measured on a real collapse, three times identically: the click removes 17 items,
+the list is pinned to End, and `applyFollow` writes **+205, +94, +18** over ~380 ms
+to keep the end flush — carrying everything the reader is looking at up with it, in
+three lurches.
+
+Nothing held the position, even though the mechanism and the intent were both
+already there: `ConversationMessageHeader.razor` carries `data-vl-anchor` and
+documents that *"the list holds this element's on-screen position across the render
+the toggle triggers"*. But every toggle asked for `data-vl-hold="keep-edge"` in its
+expanded form — i.e. exactly on the collapse — and `onInteractiveEvent` returns on
+that **before it ever reads the anchor** when the list is pinned. The reasoning
+behind that early return ("a pinned list absorbs the size change through its edge
+re-pin") holds for content arriving *below* the reader; it is false for content
+vanishing *around* them, where the re-pin is precisely what moves the view.
+
+## H — a collapsed live block swallowed everything below it
+
+The live block spans `[V, ∞)`, which is right while it is expanded and wrong once it
+is collapsed: a collapsed block stands in for the rows it covers, so it must be a
+single item ending where it begins. It wasn't — the entries below it were grouped
+*inside* it and rendered as ordinary messages, with their own menus and list keys,
+next to the card that was supposed to be standing in for them.
+
+Its existence still has to shape the rest of the list, though: transcribed entries
+in its range stay filtered out (`ChatUI.Tiles.cs:1058`, per entry and only for
+`HasAudio`), while typed messages — which are never hidden, deliberately
+(`:1036`) — render as ordinary messages after it.
+
 ## Shared root
 
 Three structural defects sit under these:
@@ -386,3 +449,34 @@ Verified on the reporting chat: six End→null cycles in 23 s before, zero pin
 transitions in 30 s of continuous sampling after, with `scrollToKey ==
 lastContentKey` in every sample.
 
+### F — expansion follows the block, not the viewer's call state
+
+`hiddenLiveTailRange` and the card's tail preview both follow the block's rendered
+expansion now, so collapsing works for a viewer in the call. `IsExpandedByDefault`
+is latched write-once (`_knownConversationDefaultExpanded.TryAdd`), so a summary
+landing can no longer invert anyone's effective state. And the join is watched where
+the data is built: on the transition into the call the current block is expanded if
+collapsed — keyed on the *block id*, so a latch that mints a new collapsed block
+mid-call expands it too, and recorded only once there is a block to act on, so a
+join landing before the block exists is picked up by the first build that has one.
+Nothing collapses it again, so a reader's own collapse sticks.
+
+A one-shot join edge in `LiveBlockUI` was tried first and reverted: keyed to a
+`ConversationId` that jumps at every latch, it was dead within a minute and consumed
+its own edge even when there was no block to act on.
+
+### G — the element you clicked keeps its place
+
+All three conversation toggles ask for `data-vl-hold="always"`, so the anchor
+applies whichever way you toggle, and the live header gains the same
+`data-vl-anchor` the regular one has — needed because neither form's key survives
+the toggle, so only a stable id can hold it.
+
+### H — a collapsed live block ends where it starts
+
+`GroupExpandedConversations` takes entries into the live block only while it is
+expanded. Collapsed, the block is the header, the card and its footer, and nothing
+else; everything below is placed by the ordinary rules, with transcribed entries
+filtered and typed ones rendered as usual. The card's tail preview is restricted to
+what is actually hidden — spoken entries — so a typed message is never previewed in
+the card *and* rendered below it.

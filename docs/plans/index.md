@@ -13,13 +13,12 @@ candidate tasks. A plan is removed from here once its work ships.
 
 Recently added, larger efforts — in progress or next up.
 
-### Chat view — four reported list defects
+### Chat view — list defects and the live conversation block
 
 [Chat view list defects](./chat-view-list-issues.md) — a blank transcript, a
-sticky edge latched to the top, live-session messages that never render, and a
-~10Hz skeleton flicker. Three share one root: a transient `HasVeryLastItem ==
-false` during a live session, amplified by the pin re-derivation, the end-anchor
-follow, and the live block's frozen tail.
+sticky edge latched to the top, live-session messages that never render, a ~10Hz
+skeleton flicker, and the live block's expand/collapse. Four reported, four more
+found while testing them with a real two-account live session instrumented.
 
 ### Android ANRs — FCM cold-start stalls
 
