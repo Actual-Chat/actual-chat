@@ -18,6 +18,7 @@ public sealed class LockingComputeMethodPrimer<TKey, TValue>(
     private const int StateDisposed = 2;
 
     private readonly Func<TKey, CancellationToken, Task<TValue>> _caller = caller;
+    private readonly AsyncLockSet<TKey> _locks = locks;
     private readonly ConcurrentDictionary<TKey, Primer> _reservations
         = new(keyComparer ?? EqualityComparer<TKey>.Default);
 
@@ -35,9 +36,26 @@ public sealed class LockingComputeMethodPrimer<TKey, TValue>(
             keyComparer)
     { }
 
+    public async ValueTask<Primer?> TryLockAndPrepare(
+        TKey key,
+        Func<bool> mustProceedPredicate,
+        CancellationToken cancellationToken = default)
+    {
+        // Re-evaluated after the lock too, since a writer can land while we queue for it.
+        if (!mustProceedPredicate.Invoke())
+            return null;
+
+        var primer = await LockAndPrepare(key, cancellationToken).ConfigureAwait(false);
+        if (mustProceedPredicate.Invoke())
+            return primer;
+
+        primer.Dispose();
+        return null;
+    }
+
     public async ValueTask<Primer> LockAndPrepare(TKey key, CancellationToken cancellationToken = default)
     {
-        var releaser = await locks.Lock(key, cancellationToken).ConfigureAwait(false);
+        var releaser = await _locks.Lock(key, cancellationToken).ConfigureAwait(false);
         try {
             var reservation = new Primer(this, key, releaser);
             _reservations[key] = reservation;
@@ -47,25 +65,6 @@ public sealed class LockingComputeMethodPrimer<TKey, TValue>(
             releaser.Dispose();
             throw;
         }
-    }
-
-    public async ValueTask<Primer?> TryLockAndPrepare(
-        TKey key,
-        Func<bool> mustProceed,
-        CancellationToken cancellationToken = default)
-    {
-        // Returns null once mustProceed stops holding - typically it tracks the consistency of the
-        // computed whose value is about to be replaced. Evaluated before taking the lock, to skip
-        // queuing for it at all, and again after, since a writer can land in between.
-        if (!mustProceed.Invoke())
-            return null;
-
-        var primer = await LockAndPrepare(key, cancellationToken).ConfigureAwait(false);
-        if (mustProceed.Invoke())
-            return primer;
-
-        primer.Dispose();
-        return null;
     }
 
     public bool TryUsePrimed(TKey key, [MaybeNullWhen(false)] out TValue value)

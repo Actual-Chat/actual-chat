@@ -8,9 +8,6 @@ namespace ActualChat.Streaming;
 /// </summary>
 public partial class ChatTypingActivitiesBackend : ShardComputeService, IChatTypingActivitiesBackend
 {
-    // Typing is high-churn and short-lived: the client re-emits while typing, and a streak lapses
-    // on its own shortly after the last keystroke - no explicit stop needed.
-    private static readonly TimeSpan ActivityTtl = TimeSpan.FromSeconds(6);
     // Keeps ExpireStale from waking a tick early and finding nothing to drop.
     private static readonly TimeSpan ExpirationGrace = TimeSpan.FromMilliseconds(100);
 
@@ -42,6 +39,7 @@ public partial class ChatTypingActivitiesBackend : ShardComputeService, IChatTyp
         ChatId chatId,
         AuthorId authorId,
         TypingActivityKind kind,
+        TimeSpan ttl,
         CancellationToken cancellationToken)
     {
         using var isolation = Computed.BeginIsolation();
@@ -50,10 +48,11 @@ public partial class ChatTypingActivitiesBackend : ShardComputeService, IChatTyp
         var now = Clocks.SystemClock.Now;
         var activities = await ListRaw(chatId, cancellationToken).ConfigureAwait(false);
         var next = activities.Without(x => x.AuthorId == authorId || x.ExpiresAt <= now);
-        if (kind != TypingActivityKind.None) {
-            // Preserving StartedAt across re-emits keeps the "who started first" order stable.
+        ttl = ttl.Clamp(default, Constants.Typing.MaxTtl);
+        if (kind != TypingActivityKind.None && ttl > TimeSpan.Zero) {
+            // Preserving StartedAt across renewals keeps the "who started first" order stable.
             var startedAt = activities.FirstOrDefault(x => x.AuthorId == authorId)?.StartedAt ?? now;
-            next = next.With(new TypingActivity(authorId, startedAt, now + ActivityTtl));
+            next = next.With(new TypingActivity(authorId, startedAt, now + ttl));
         }
         else if (next.Count == activities.Count)
             return;

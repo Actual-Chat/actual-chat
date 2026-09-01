@@ -205,11 +205,8 @@
         => FileAttachments.TryAddWebFileAttachments(_attachmentListHolder.Attachments, fileInfos);
 
     [JSInvokable]
-    public Task OnTypingChanged(bool isTyping)
-        => Hub.TypingUI.SetTyping(
-            Chat.Id,
-            isTyping ? TypingActivityKind.Typing : TypingActivityKind.None,
-            CancellationToken.None);
+    public Task OnTypingChanged(TypingActivityKind kind, double ttlMs)
+        => Hub.TypingUI.SetTyping(Chat.Id, kind, TimeSpan.FromMilliseconds(ttlMs), CancellationToken.None);
 
     // Private methods
 

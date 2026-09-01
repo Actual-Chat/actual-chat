@@ -11,5 +11,10 @@ public interface IChatTypingActivitiesBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ApiArray<AuthorId>> ListTypingAuthorIds(ChatId chatId, CancellationToken cancellationToken);
 
-    Task SetTyping(ChatId chatId, AuthorId authorId, TypingActivityKind kind, CancellationToken cancellationToken);
+    Task SetTyping(
+        ChatId chatId,
+        AuthorId authorId,
+        TypingActivityKind kind,
+        TimeSpan ttl,
+        CancellationToken cancellationToken);
 }
