@@ -19,6 +19,7 @@ from current source code under `src/`.
 | 9 | [09-diagnostics.md](./09-diagnostics.md) | Meters, diagnostics modal, debug overrides, tunable constants |
 | 10 | [10-glossary.md](./10-glossary.md) | Glossary of types, files, and abbreviations |
 | 11 | [11-buffering-and-av-sync.md](./11-buffering-and-av-sync.md) | "One buffer per side" goal vs. current shape; A/V sync (wired but disabled) |
+| — | [codec-performance.md](./codec-performance.md) | Measured encode cost and codec support per device — the evidence behind the encoder ladder |
 
 ## Top-level architecture
 
