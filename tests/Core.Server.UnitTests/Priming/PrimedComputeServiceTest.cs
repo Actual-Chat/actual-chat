@@ -44,11 +44,11 @@ public class PrimedComputeServiceTest(ITestOutputHelper @out) : TestBase(@out)
         var svc = services.GetRequiredService<PrimedComputeService>();
         var computed = await Computed.Capture(() => svc.Get("a", default));
 
-        using (var primer = await svc.Primer.TryLockAndPrepare("a", computed))
+        using (var primer = await svc.Primer.TryLockAndPrepare("a", computed.IsConsistent))
             primer.Should().NotBeNull();
 
         computed.Invalidate();
-        (await svc.Primer.TryLockAndPrepare("a", computed)).Should().BeNull();
+        (await svc.Primer.TryLockAndPrepare("a", computed.IsConsistent)).Should().BeNull();
         svc.Primer.GetReservationCount().Should().Be(0);
     }
 
@@ -60,7 +60,7 @@ public class PrimedComputeServiceTest(ITestOutputHelper @out) : TestBase(@out)
         var computed = await Computed.Capture(() => svc.Get("a", default));
 
         var blocker = await svc.Primer.LockAndPrepare("a");
-        var pendingTask = svc.Primer.TryLockAndPrepare("a", computed).AsTask();
+        var pendingTask = svc.Primer.TryLockAndPrepare("a", computed.IsConsistent).AsTask();
         await Task.Delay(50);
         pendingTask.IsCompleted.Should().BeFalse();
 

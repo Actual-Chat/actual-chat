@@ -92,7 +92,7 @@ public partial class ChatTypingActivitiesBackend : ShardComputeService, IChatTyp
             await clock.Delay((expiresAt + ExpirationGrace - clock.Now).Positive(), CancellationToken.None)
                 .ConfigureAwait(false);
             using var primer = await _listRawPrimer
-                .TryLockAndPrepare(chatId, computed, CancellationToken.None)
+                .TryLockAndPrepare(chatId, computed.IsConsistent, CancellationToken.None)
                 .ConfigureAwait(false);
             if (primer is null)
                 return;

@@ -51,17 +51,17 @@ public sealed class LockingComputeMethodPrimer<TKey, TValue>(
 
     public async ValueTask<Primer?> TryLockAndPrepare(
         TKey key,
-        Computed computed,
+        Func<bool> mustProceed,
         CancellationToken cancellationToken = default)
     {
-        // Returns null once `computed` is inconsistent - its value has been superseded, so there is
-        // nothing left to re-prime. Checked before taking the lock, to skip queuing for it at all,
-        // and again after, since a writer can land in between.
-        if (!computed.IsConsistent())
+        // Returns null once mustProceed stops holding - typically it tracks the consistency of the
+        // computed whose value is about to be replaced. Evaluated before taking the lock, to skip
+        // queuing for it at all, and again after, since a writer can land in between.
+        if (!mustProceed.Invoke())
             return null;
 
         var primer = await LockAndPrepare(key, cancellationToken).ConfigureAwait(false);
-        if (computed.IsConsistent())
+        if (mustProceed.Invoke())
             return primer;
 
         primer.Dispose();
