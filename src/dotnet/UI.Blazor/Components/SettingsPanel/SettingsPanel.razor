@@ -10,7 +10,12 @@
     RenderFragment RenderTabTitle(SettingsTabDef tab) =>
         @<div class="settings-tab-item">
             <i class="@tab.IconClass text-2xl icon-title"></i>
-            <span>@tab.Title</span>
+            <span>
+                @tab.Title
+                @if (tab.TitleBadge is { } titleBadge) {
+                    <sup class="c-title-badge">@titleBadge</sup>
+                }
+            </span>
             <div class="flex-x">
                 @tab.TitleContent
             </div>

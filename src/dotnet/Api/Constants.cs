@@ -191,7 +191,6 @@ public static partial class Constants
     {
         public static readonly int MinLoadLimit = 20;
         public static readonly TimeSpan MinTouchInterval =  TimeSpan.FromSeconds(10);
-        public static readonly TimeSpan PermissionRequestDismissPeriod = TimeSpan.FromDays(7);
     }
 
     public static class Presence
@@ -418,7 +417,6 @@ public static partial class Constants
         // re-pushing - because further reactors would only move a number the row already shows.
         public const int MaxReactionAuthors = 5;
 
-        public static readonly TimeSpan PermissionRequestDismissPeriod = TimeSpan.FromDays(7);
         public static readonly TimeSpan EntryWaitTimeout = TimeSpan.FromSeconds(0.5);
         public static readonly TimeSpan ActiveDevicePeriod = TimeSpan.FromDays(30);
 

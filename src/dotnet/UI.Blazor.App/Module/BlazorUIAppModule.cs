@@ -240,6 +240,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
 
         if (HostInfo.HostKind != HostKind.MauiApp)
             services.AddScoped<ContactsPermissionHandler>(c => new WebContactsPermissionHandler(c.UIHub()));
+        services.AddScoped<PermissionsUI>(c => new PermissionsUI(c.AppUIHub()));
 
         // Users
         // IModalViews

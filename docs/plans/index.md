@@ -154,7 +154,7 @@ account.
   AEC / NS / AGC on Mac Catalyst; currently disabled (the `AVAudioEngine` VP
   downlink has no reference graph), so Mac records without echo cancellation.
 - [Notification permission](./macos-notification-permission.md) — wire the
-  `NotificationsPermissionBanner` "Configure" button on Mac Catalyst; today
+  Settings > Permissions notifications toggle on Mac Catalyst; today
   `MacNotificationsPermission` is an unwired stub.
 
 ### Build, testing, CI

@@ -294,6 +294,10 @@ body.narrow .settings-tab-header {
 .settings-tab-item span {
     @apply font-semibold md:font-medium;
 }
+/* The badge is a flex box, so vertical-align alone won't lift it - the offset does the raising. */
+.settings-tab-item .c-title-badge {
+    @apply relative -top-1 ml-0.5;
+}
 .modal-toggle {
     @apply hidden;
 }

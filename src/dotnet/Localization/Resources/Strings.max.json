@@ -56,6 +56,7 @@
   "Settings_Transcription": "Sprache & Transkription",
   "Settings_Ptt": "プッシュ・トゥ・トーク",
   "Settings_Application": "アプリケーション",
+  "Settings_Permissions": "Berechtigungen",
   "Settings_Sessions": "Phiên làm việc",
   "Settings_ApiKeys": "API Anahtarları",
   "Settings_Documents": "ドキュメント",
@@ -746,8 +747,7 @@
   "Common_Publish": "Veröffentlichen",
   "Common_Skip": "Überspringen",
 
-  // The banners that stack above a chat, and the connection-state strip. The _Prefix / Target /
-  // _Suffix trios wrap a link inside one sentence and {0} is the app name.
+  // The banners that stack above a chat, and the connection-state strip. {0} is the app name.
   // Banner_Connected through Reconnect_Title are connection states; DemandInteraction_* is the
   // modal asking for one tap, because the browser will not let a pending operation continue
   // without a user gesture.
@@ -756,18 +756,6 @@
   "Banner_NotInContacts": "Tego użytkownika nie ma jeszcze na Twojej liście kontaktów",
   "Banner_AddToContacts": "Zu Kontakten hinzufügen",
   "Banner_ChatCopiedToPlace": "Cuộc trò chuyện này đã được sao chép vào Địa điểm.",
-  "Banner_ImportContacts_Prefix": "{0} может импортировать ваши ",
-  "Banner_ImportContactsTarget": "contactos",
-  "Banner_ImportContacts_Suffix": "をインポートして、ここで見つけられるようにします",
-  "Banner_Notify_Prefix": "{0} kann Sie über neue Nachrichten ",
-  "Banner_NotifyTarget": "benachrichtigen",
-  "Banner_Notify_Suffix": " Cię o nowych wiadomościach",
-  "Banner_LockScreenCalls_Prefix": "Позволете на {0} да показва ",
-  "Banner_LockScreenCallsTarget": "las llamadas en la pantalla de bloqueo",
-  "Banner_LockScreenCalls_Suffix": "を表示できるようにします",
-  "Banner_LiveActivities_Prefix": "Lassen Sie {0} den Fortschritt von Uploads und Chats auf dem Sperrbildschirm anzeigen — aktivieren Sie dazu ",
-  "Banner_LiveActivitiesTarget": "ライブアクティビティ",
-  "Banner_LiveActivities_Suffix": "を有効にしてください",
   "Banner_PttAllow": "このチャットはプッシュ・トゥ・トークモードです。この端末で許可しますか？",
   "Banner_PttUseDevice": "このチャットではプッシュ・トゥ・トークが有効です。この端末で使いますか？",
   "Banner_Connected": "Соединение восстановлено!",
@@ -891,14 +879,31 @@
   "Onboarding_GenerateAvatar": "Сгенерировать аватар",
   "Onboarding_UploadPhoto": "Отпремите своју фотографију",
 
-  // The rationale shown above each OS permission prompt. The system dialog itself is not ours
-  // and stays in the OS language; only this explanation is translated.
+  // The rationale shown above each OS permission prompt, and - as Permissions_* - the Settings >
+  // Permissions page listing them all. The system dialog itself is not ours and stays in the OS
+  // language; only this explanation is translated. "Calls on the lock screen" and "Live Activities"
+  // are OS features rather than permissions: the app can only send the user to the system setting.
   "Permission_Microphone": "माइक्रोफ़ोन",
   "Permission_MicrophoneRationale_Format": "Голосові повідомлення з розшифруванням у реальному часі — головна сила {0}, але без доступу до мікрофона вони не працюють.",
   "Permission_Notifications": "Benachrichtigungen",
   "Permission_NotificationsRationale": "Soyez averti des nouveaux messages. Chaque discussion peut être mise en sourdine individuellement.",
   "Permission_BackgroundActivity": "Активност във фонов режим",
   "Permission_BackgroundActivityRationale_Format": "Sorgt dafür, dass Anrufe weiter klingeln, wenn Android {0} in den Ruhezustand schicken will.",
+  "Permission_Camera": "Fotocamera",
+  "Permission_CameraRationale": "Les appels vidéo et les photos prises dans une discussion nécessitent l'accès à la caméra.",
+  "Permission_Contacts": "Contactos",
+  "Permission_ContactsRationale_Format": "Dengan akses ke kontak, {0} menemukan orang-orang yang sudah Anda kenal di sini.",
+  "Permission_Location": "Местоположение",
+  "Permission_LocationRationale": "Споделянето на местоположението ви на живо или на точка в чата изисква достъп до местоположението.",
+  "Permission_LockScreenCalls": "Chiamate nella schermata di blocco",
+  "Permission_LockScreenCallsRationale_Format": "Омогућава апликацији {0} да прикаже долазни позив на закључаном екрану, да га не пропустите.",
+  "Permission_LiveActivities": "ライブアクティビティ",
+  "Permission_LiveActivitiesRationale_Format": "Омогућава апликацији {0} да приказује напредак отпремања и четова на закључаном екрану.",
+  "Permissions_Topic": "Разрешения на приложението",
+  "Permissions_Description_Format": "{0} иска разрешение само там, където дадена функция се нуждае от него — всяко от тях е по избор.",
+  "Permissions_AllGranted": "Toutes les autorisations sont accordées.",
+  "Permissions_DismissWarning": "Скриване на предупреждението за разрешения",
+  "Permissions_WarningDismissed": "Предупреждението за разрешения е скрито",
 
   // The profile card opened by tapping an author, and the owner/moderator actions on it. Owner
   // and Moderator are role names - keep them capitalized and identical to the Members_* keys.
@@ -1576,7 +1581,7 @@
   "Presence_Offline": "Sin conexión",
   "Presence_Speaking": "Sta parlando...",
   "Presence_SpeakingShort": "Sta parlando",
-  "Presence_Typing": "En train d'écrire...",
+  "Presence_Typing": "टाइप कर रहा है...",
   "Presence_LastSeen_Prefix": "Последняя активность: ",
   "Presence_LastSeen_Suffix": "",
 

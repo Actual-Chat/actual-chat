@@ -310,3 +310,14 @@ body.narrow .docs-tab .docs-content {
     padding-bottom: calc(2rem + var(--safe-area-bottom));
     height: calc(100vh - 5.5rem);
 }
+
+/* ── Permissions tab ── */
+
+/* Each row carries a full-sentence rationale under its title, so it wraps to as many lines as it
+   needs; the padding keeps consecutive multi-line rows from butting into each other. */
+.settings-tab .tile-item.permission-item {
+    @apply py-2;
+}
+.settings-tab .tile-item.permission-item .tile-item-body-caption {
+    @apply whitespace-normal;
+}

@@ -1,0 +1,8 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="warning-badge @(IsMuted ? "muted" : "") @Class" aria-hidden="true">!</div>
+
+@code {
+    [Parameter] public bool IsMuted { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+}
