@@ -31,6 +31,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<ILiveAudioStreams>();
         fusion.AddClient<ILiveVideoStreams>();
         fusion.AddClient<ILiveSessions>();
+        fusion.AddClient<IChatTypingActivities>();
 
         // Chat
         fusion.AddClient<IChats>();
