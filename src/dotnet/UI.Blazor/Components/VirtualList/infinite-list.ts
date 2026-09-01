@@ -1037,6 +1037,10 @@ export class InfiniteList extends VirtualList {
             return null;
         if (scrollToKey === this.getLastContentKey() && rs.hasVeryLastItem)
             return null;
+        // A skip-key item is never reported visible, so the "already there" test below can never pass for
+        // one: the jump would be re-requested on every render, dropping the edge each time.
+        if (this.items[this.indexByKey.get(scrollToKey)!].mustSkipKey)
+            return null;
 
         return scrollToKey !== this.handledScrollToKey || !this.visibleKeys.has(scrollToKey)
             ? scrollToKey

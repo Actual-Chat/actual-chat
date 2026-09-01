@@ -610,9 +610,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // Locating navigation entry
         string? navKey = null;
         if (nav != null) {
+            // A skip-key target can never be reached - the list skips those when it names its last item
+            // and never reports them visible - so it unpins for a jump it then re-requests every render.
             var navChatMessage = items
                 .SelectMany(item => item.GetLeafMessages())
-                .LastOrDefault(x => x.Id <= nav.EntryLid);
+                .LastOrDefault(x => x.Id <= nav.EntryLid && !x.ShouldSkipKey);
             navKey = navChatMessage?.Key.Value;
             if (navChatMessage == null)
                 Log.LogWarning("GetData: entry not found in the loaded set: #{EntryLid}", nav.EntryLid);
@@ -623,7 +625,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     false);
         }
         // Determine scroll target
-        string? scrollToKey = navKey != null && mustScrollToEntry ? navKey : null;
+        var scrollToKey = navKey != null && mustScrollToEntry ? navKey : null;
         var scrollToKeyInTheMiddle = nav is { ShowInTheMiddle: true };
 
         // When NewMessagesLine exists, prefer scrolling to the first unread message.
