@@ -66,14 +66,14 @@ export class WebCodecsCompat {
         return this._level;
     }
 
-    // True whenever awaiting `whenReady` would not actually wait, so a hot path
-    // can skip the microtask entirely.
+    /** True when awaiting {@link whenReady} would not actually wait, so a hot path
+     *  can skip the microtask entirely. */
     static get isReady(): boolean {
         return this._isReady;
     }
 
-    // Gate for anything that may touch a polyfilled class. Already resolved at
-    // level `none`, and at any level once the wasm is up.
+    /** Gate for anything that may touch a polyfilled class. Already resolved at
+     *  level `none`, and at any level once the wasm is up. */
     static get whenReady(): Promise<void> {
         return this._whenReady;
     }
@@ -82,8 +82,8 @@ export class WebCodecsCompat {
         return this._classes;
     }
 
-    // `full` only where there is no WebCodecs at all, so the fallback never
-    // displaces a working native implementation except on Firefox's VP9 encoder.
+    /** `full` only where there is no WebCodecs at all, so the fallback never displaces
+     *  a working native implementation except on Firefox's VP9 encoder. */
     static resolveLevel(override: WebCodecsLevelOverride): WebCodecsLevel {
         if (override !== 'auto')
             return override;
@@ -93,9 +93,8 @@ export class WebCodecsCompat {
         return DeviceInfo.isFirefox ? 'vp9' : 'none';
     }
 
-    // Idempotent, and one-way per realm: scripts cannot be unloaded and `full`'s
-    // global replacement cannot be undone once codecs exist, so switching levels
-    // needs a reload.
+    /** Idempotent, and one-way per realm: `full`'s global replacement cannot be undone
+     *  once codecs exist, so switching levels needs a reload. */
     static init(config: WebCodecsCompatConfig): Promise<void> {
         if (this._whenReady !== READY) {
             if (config.level !== this._level)

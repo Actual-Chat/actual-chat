@@ -105,7 +105,7 @@ export class DebugUI {
         OnDeviceAwake.fakeSleep(duration * 1000);
     }
 
-    // Applies on reload: the polyfill cannot be swapped under a running pipeline.
+    /** Applies on reload: the polyfill cannot be swapped under a running pipeline. */
     public static overrideWebCodecsPolyfillLevel(level?: WebCodecsLevelOverride | null): string {
         setWebCodecsLevelOverride(level ?? 'auto');
         const stored = getWebCodecsLevelOverride();

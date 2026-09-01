@@ -71,16 +71,29 @@ the part the signature doesn't already carry.
 
 ### Members (methods, properties, fields, events)
 
-- **Do NOT write `/// <summary>` XML docs on members.** Ever. This is stricter
-  than the default .NET guidance. `///` on members bloats IntelliSense with
-  prose that ages faster than the signature.
-- If a member genuinely needs explanation (per the philosophy above), use a
-  regular `//` comment.
-  - **C#**: put the comment at the **top of the method body** — inside the
-    braces for a block body, or between the signature and the `=>` line for
-    an expression-bodied member. Never above the declaration, and never
-    switch a member to a block body just to host a comment.
-  - **TypeScript**: put the comment **above the method declaration**.
+Documenting a member is the exception, not the default — see the philosophy
+above. If the name already explains what the method does, **omit the comment**;
+don't restate the signature in English. When a member does earn a note, the
+preferred form differs by language.
+
+**Both languages — keep it to 2 lines.** Write more only when the subtlety
+genuinely needs it. If you find yourself writing a page of docs on a single
+method, the method is wrong — rename it, split it, or rework its parameters
+until the signature carries the meaning.
+
+#### C# — prefer a regular `//` comment
+
+- **Don't add a *new* `/// <summary>` to a member.** `///` on members bloats
+  IntelliSense with prose that ages faster than the signature. Write a regular
+  `//` comment instead.
+- **An existing `///` on a member stays.** Leave it alone rather than converting
+  it to `//` — that's churn for nothing. But treat it as code: if you change what
+  the member does, **update its doc in the same edit**, and delete it outright
+  when it no longer earns its place.
+- Put a `//` comment at the **top of the method body** — inside the braces for a
+  block body, or between the signature and the `=>` line for an
+  expression-bodied member. Never above the declaration, and never switch a
+  member to a block body just to host a comment.
 - **Exception — comments about the declaration itself go above it.** When the
   comment explains the *signature* rather than the behavior — why the member is
   `internal` rather than `private`, why a parameter is nullable, why it's
@@ -93,10 +106,16 @@ the part the signature doesn't already carry.
   ```
   This exception is narrow. A comment that says anything about *what the member
   does* goes inside the body as usual, even if it also touches the signature.
-- If the name already explains what the method does, **omit the comment** —
-  don't restate the signature in English.
-- Keep comments short: a single line is almost always enough. Prefer a useful
-  one-liner over a paragraph.
+
+#### TypeScript — prefer a `/** */` docstring
+
+- TS docstrings are much lighter than C# XML docs: no `<summary>` wrapper, and
+  editors surface them on hover, where a `//` above the declaration isn't always
+  shown. So here the doc comment is the default form, not the discouraged one.
+- Put it directly above the declaration.
+- A plain `//` above the declaration is still fine for a short implementation
+  note — something aimed at whoever edits the method rather than whoever calls
+  it.
 
 ### Placement order for a type (top to bottom)
 
@@ -138,9 +157,9 @@ public Task<bool> SwitchFacing(CancellationToken cancellationToken)
 }
 ```
 
-Example — TypeScript method comment (above the declaration):
+Example — TypeScript member doc (docstring above the declaration):
 ```ts
-// Flips front/back by facingMode so the browser picks the primary lens per facing.
+/** Flips front/back by facingMode so the browser picks the primary lens per facing. */
 public async switchFacing(): Promise<boolean> {
     ...
 }

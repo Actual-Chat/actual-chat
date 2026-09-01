@@ -22,8 +22,8 @@ export function getWebCodecsLevelOverride(): WebCodecsLevelOverride {
     }
 }
 
-// Applies on the next load: the codec ladder and every worker are built from the
-// level in force when they started.
+/** Applies on the next load: the codec ladder and every worker are built from the
+ *  level in force when they started. */
 export function setWebCodecsLevelOverride(override: WebCodecsLevelOverride | null): void {
     try {
         if (override === null || override === 'auto') {
