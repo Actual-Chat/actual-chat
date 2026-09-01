@@ -49,6 +49,16 @@ public interface IChats : IComputeService
         Range<long> lidTileRange,
         CancellationToken cancellationToken);
 
+    // Non computed method: for scans that walk a chat rather than render it. A scan reads a tile
+    // per 5 entries, and as a compute method each of those becomes a cached, invalidation-tracked
+    // slot - here and on the wire. This is a plain RPC call instead; the server still serves it
+    // from the GetTile cache.
+    Task<ChatTile> GetTileNonComputed(
+        Session session,
+        ChatId chatId,
+        Range<long> lidTileRange,
+        CancellationToken cancellationToken);
+
     [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
     Task<ChatRangeMeta> GetChatRangeMeta(
         Session session,

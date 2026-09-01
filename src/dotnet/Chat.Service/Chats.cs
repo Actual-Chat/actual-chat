@@ -87,6 +87,20 @@ public partial class Chats(IServiceProvider services) : IChats
         return await Backend.GetTile(chatId, lidTileRange, false, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<ChatTile> GetTileNonComputed(
+        Session session,
+        ChatId chatId,
+        Range<long> lidTileRange,
+        CancellationToken cancellationToken)
+    {
+        // Isolated so an in-process caller that happens to be a compute method doesn't pick up
+        // the permission check or the tile as dependencies - over RPC there is nothing to isolate.
+        using var _ = Computed.BeginIsolation();
+        await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetTileNonComputed(chatId, lidTileRange, false, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     // [ComputeMethod]
     public virtual async Task<ChatContentSkeleton> GetContentPeriods(
         Session session,

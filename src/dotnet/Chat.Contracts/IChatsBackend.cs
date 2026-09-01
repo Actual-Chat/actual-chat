@@ -32,6 +32,15 @@ public interface IChatsBackend : IComputeService, IBackendService
         bool includeRemoved,
         CancellationToken cancellationToken);
 
+    // Non computed method: a scan reads a tile per 5 entries, so tracking each one is what makes
+    // a scan expensive - here and, once this is a distributed compute service, on the wire too.
+    // The implementation still routes through GetTile, so the result is cached on the serving node.
+    Task<ChatTile> GetTileNonComputed(
+        ChatId chatId,
+        Range<long> lidTileRange,
+        bool includeRemoved,
+        CancellationToken cancellationToken);
+
     [ComputeMethod]
     Task<ChatRangeMeta> GetChatRangeMeta(
         ChatId chatId,

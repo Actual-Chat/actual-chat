@@ -390,7 +390,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatRangeMeta> GetChatRangeMeta(ChatId chatId, long lidTileStart, CancellationToken cancellationToken)
+    public virtual async Task<ChatRangeMeta> GetChatRangeMeta(
+        ChatId chatId,
+        long lidTileStart,
+        CancellationToken cancellationToken)
     {
         var tile = IdTileStack.LastLayer.AssertIsTileStart(lidTileStart);
 
@@ -743,6 +746,18 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // Non-compute methods
+
+    public async Task<ChatTile> GetTileNonComputed(
+        ChatId chatId,
+        Range<long> lidTileRange,
+        bool includeRemoved,
+        CancellationToken cancellationToken)
+    {
+        // Still GetTile underneath, so the tile is read once per node and served from cache
+        // afterwards; the isolation is what keeps the caller off the dependency graph.
+        using var _ = Computed.BeginIsolation();
+        return await GetTile(chatId, lidTileRange, includeRemoved, cancellationToken).ConfigureAwait(false);
+    }
 
     // TODO: Chat and ChatFull. This method must return Chat
     // Not a [ComputeMethod]!
