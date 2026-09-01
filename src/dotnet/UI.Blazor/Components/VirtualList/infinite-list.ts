@@ -1085,18 +1085,6 @@ export class InfiniteList extends VirtualList {
             return;
         }
 
-        // Content shorter than the viewport touches both edges at once, however much of it is loaded, so
-        // there is no reader decision here to respect and the preferred edge wins - unless the reader is
-        // holding a position, which owns it instead. The predicates below can't answer this case: both
-        // are gated on a loaded flag, so a window that doesn't yet know its last item settles on Start
-        // and stops following new messages.
-        if (this.chainSize <= this.ref.clientHeight
-            && !this.hasFreshScreenAnchor()
-            && this.getFreshInteractiveAnchorKey() == null) {
-            this.setPinnedEdge(this.defaultEdge);
-            return;
-        }
-
         // A chain that fits on screen rests with its first item at the top, which leaves the end anchor
         // hanging below the fold - so the end is reached there by construction, however far the anchor
         // says it is. Without this an End-edge list would settle on Start and stop following new
@@ -1741,7 +1729,11 @@ export class InfiniteList extends VirtualList {
             return;
 
         this.stability.releaseScroll();
-        this.updatePinnedEdge();
+        // Every scroll arms this settle, the list's own re-placements included, and mid-animation the
+        // rendered edge is not where the model is taking it - so deriving there reads a pinned list as
+        // having left its edge. A scroll of the user's own has already been derived live in onScroll.
+        if (!this.stability.isAnimating)
+            this.updatePinnedEdge();
         this.updateVisibilityThrottled();
         this.updateViewportThrottled();
         this.repinIfStrandedDebounced();
