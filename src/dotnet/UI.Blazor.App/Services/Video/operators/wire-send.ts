@@ -8,6 +8,8 @@ import {
     type EncodedBundle,
     type RecorderStats,
 } from '../frame-envelopes';
+import { normalizeAv1FrameSize } from '../av1-bitstream';
+import { getCodecCategory } from '../codec-support';
 import type { LayerLadderController } from '../sender/layer-ladder-controller';
 
 const WIRE_QUEUE_DEPTH_EMA_ALPHA = 0.2;
@@ -204,6 +206,8 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             if (id + 1 > layerCount)
                                 layerCount = id + 1;
                         }
+                        const isAv1 = getCodecCategory(
+                            top.metadata.decoderConfig?.codec ?? cur[cur.length - 1].codec) === 'av1';
                         // One backing buffer for all layers' bytes: copy each chunk
                         // into its own slice. Saves N-1 ArrayBuffer allocations per
                         // bundle (the slices stay live together until serialized).
@@ -221,6 +225,10 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             const data = new Uint8Array(dataPool, dataOffset, encoded.chunk.byteLength);
                             encoded.chunk.copyTo(data);
                             dataOffset += encoded.chunk.byteLength;
+                            // Only key frames carry a sequence header; see av1-bitstream.ts
+                            // for what Chrome's hardware AV1 encoder gets wrong there.
+                            if (isAv1 && isKey)
+                                normalizeAv1FrameSize(data, encoded.encodedWidth, encoded.encodedHeight);
                             const dto: VideoStreamFrame = {
                                 offset,
                                 offsetEpoch: capturedAt.epoch,
