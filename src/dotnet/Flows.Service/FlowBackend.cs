@@ -251,7 +251,9 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                 dbFlow.Version = VersionGenerator.NextVersion(dbFlow.Version);
                 dbContext.Add(dbFlow);
 
-                // Any new flow requires a resume event
+                // Any new flow requires a resume event.
+                // NOTE(2026-08): OnResume creates a missing flow through this same path, so one
+                // created while resuming gets an extra resume - it splits a DelayQuanta=0 chain in two.
                 context.Operation.AddEvent(FlowHub.NewResumeEvent(flowId));
             }
             else { // Update
