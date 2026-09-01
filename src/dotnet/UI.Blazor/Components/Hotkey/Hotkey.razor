@@ -3,6 +3,7 @@
 <button class="hotkey" type="button" tabindex="-1"
         aria-keyshortcuts="@(IsChord ? null : Keys)" data-hotkey-chord="@(IsChord ? Keys : null)"
         aria-label="@AriaLabel"
+        data-no-inert="@IsGlobal"
         @onclick="@OnClick">
 </button>
 
@@ -10,6 +11,9 @@
     private bool IsChord => Keys.Contains(' ');
     [Parameter, EditorRequired] public string Keys { get; set; } = "";
     [Parameter] public string AriaLabel { get; set; } = "";
+    // An open modal inerts everything outside itself, and the shortcut lookup skips inert nodes -
+    // so a hotkey that must keep working on top of a modal has to opt out of that.
+    [Parameter] public bool IsGlobal { get; set; }
     [Parameter] public EventCallback OnTrigger { get; set; }
 
     private Task OnClick()

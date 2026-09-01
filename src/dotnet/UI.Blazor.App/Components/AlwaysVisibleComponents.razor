@@ -10,9 +10,9 @@
 <Hotkey Keys="ctrl+k" AriaLabel="@L.Shortcuts_JumpToChat" OnTrigger="OnQuickNav"/>
 <Hotkey Keys="ctrl+/" AriaLabel="@L.Shortcuts_KeyboardShortcuts" OnTrigger="OnShortcutsHelp"/>
 @* Intentionally absent from KeyboardShortcutsModal. *@
-<Hotkey Keys="ctrl+shift+l t" AriaLabel="@L.Shortcuts_ToggleTheme" OnTrigger="OnToggleTheme"/>
+<Hotkey Keys="ctrl+shift+l t" AriaLabel="@L.Shortcuts_ToggleTheme" OnTrigger="OnToggleTheme" IsGlobal="true"/>
 @if (HostInfo.IsDevelopmentInstance) {
-    <Hotkey Keys="ctrl+shift+l s" AriaLabel="@L.Shortcuts_ToggleSafeAreas" OnTrigger="OnToggleSafeAreas"/>
+    <Hotkey Keys="ctrl+shift+l s" AriaLabel="@L.Shortcuts_ToggleSafeAreas" OnTrigger="OnToggleSafeAreas" IsGlobal="true"/>
 }
 @if (!BrowserInfo.IsTouchCapable) {
     <TooltipHost />
