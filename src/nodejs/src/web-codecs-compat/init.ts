@@ -189,6 +189,7 @@ export class WebCodecsCompat {
         // The .mjs build self-locates its wasm glue from import.meta.url, so the
         // folder layout is the whole contract.
         const libav = await import(/* webpackIgnore: true */ `${base}/${LIBAV_FILE}`) as { default: unknown };
+        quietLibAvLogs(libav.default as LibAvFactory);
         (globalThis as { LibAV?: unknown }).LibAV = libav.default;
         this._level = config.level;
         const elapsed = (): number => Math.round(performance.now() - startedAt);
@@ -209,6 +210,34 @@ export class WebCodecsCompat {
         this._installedClasses = installGlobals(loaded);
         infoLog?.log(`init: 'full' ready in ${elapsed()}ms`);
     }
+}
+
+const AV_LOG_ERROR = 16;
+
+interface LibAvInstance {
+    AV_LOG_ERROR?: number;
+    av_log_set_level(level: number): Promise<void>;
+}
+
+interface LibAvFactory {
+    LibAV(options?: unknown): Promise<LibAvInstance>;
+}
+
+/** libav's av_log goes to console.error, so libvpx's banner and swscale's "no
+ *  accelerated conversion" arrive as errors. Patching the factory covers the
+ *  polyfill's own instances too. */
+function quietLibAvLogs(factory: LibAvFactory): void {
+    const create = factory.LibAV.bind(factory) as (options?: unknown) => Promise<LibAvInstance>;
+    factory.LibAV = async (options?: unknown): Promise<LibAvInstance> => {
+        const instance = await create(options);
+        try {
+            await instance.av_log_set_level(instance.AV_LOG_ERROR ?? AV_LOG_ERROR);
+        } catch (error) {
+            debugLog?.log('quietLibAvLogs: av_log_set_level failed:', error);
+        }
+
+        return instance;
+    };
 }
 
 // Overwrites unconditionally, unlike the polyfill's own installer: the two
