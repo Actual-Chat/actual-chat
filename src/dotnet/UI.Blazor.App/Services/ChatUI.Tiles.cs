@@ -5,7 +5,13 @@ using CommunityToolkit.HighPerformance;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public record ChatItems(IReadOnlyList<ChatMessage> Items, bool HasBefore, bool HasAfter)
+public record ChatItems(
+    IReadOnlyList<ChatMessage> Items,
+    bool HasBefore,
+    bool HasAfter,
+    // Set when this build's tail coverage came from serve-stale meta, so HasAfter is a verdict the
+    // fresh rebuild UseIfReady guarantees may contradict within one cycle.
+    bool IsTailCoverageStale = false)
 {
     public static readonly ChatItems Empty = new([], false, false);
 }
@@ -115,6 +121,7 @@ public partial class ChatUI
     // because GetChatItemsInternal (a compute method) runs re-entrantly - a plain field read-modify-write
     // would let a stale snapshot clobber accumulated entries.
     private readonly ConcurrentDictionary<ConversationId, bool> _knownConversationDefaultExpanded = new();
+    private readonly ConcurrentDictionary<ChatId, ConversationId> _autoExpandedLiveBlock = new();
 
     // Serve-stale caches for the meta phase of GetChatItemsInternal: per chat, the last fresh range-meta
     // list, conversation tiles, and load zone. A rebuild whose meta is being refetched (typically because
@@ -438,8 +445,11 @@ public partial class ChatUI
             // Fold the loaded tiles' IsExpandedByDefault into the persistent cache (loaded tiles are
             // authoritative), then resolve defaultExpanded from the cache - so a conversation whose tile
             // isn't currently loaded keeps its last-known state instead of silently collapsing.
+            // Write-once: the flag is server-derived (words < MinConversationWords) and flips to false
+            // when a summary lands, which would invert the effective state of every conversation that
+            // has no override - an auto-collapse nobody asked for.
             foreach (var c in conversationTiles.SelectMany(t => t))
-                _knownConversationDefaultExpanded[c.Id] = c.IsExpandedByDefault;
+                _knownConversationDefaultExpanded.TryAdd(c.Id, c.IsExpandedByDefault);
             defaultExpanded = _knownConversationDefaultExpanded
                 .Where(kv => kv.Value)
                 .Select(kv => kv.Key)
@@ -470,6 +480,31 @@ public partial class ChatUI
                 }
             }
 
+            // Joining expands the live block if it was collapsed, and that is the only automatic move
+            // made to it - nothing collapses it again, so a reader's own collapse sticks. Recorded per
+            // block id, not per chat: the id jumps every time the session latches a new block, and the
+            // new one starts collapsed. Recorded only once there is a block to act on, so a join that
+            // lands before the block exists is picked up by the first render that has one.
+            if (!isPrefetch) {
+                if (!amInLiveConversation)
+                    _autoExpandedLiveBlock.TryRemove(chatId, out _);
+                else if (liveConversation is { } joinedConversation
+                    && (!_autoExpandedLiveBlock.TryGetValue(chatId, out var autoExpandedId)
+                        || autoExpandedId != joinedConversation.Id)) {
+                    _autoExpandedLiveBlock[chatId] = joinedConversation.Id;
+                    var joinOverrides = ConversationExpansionOverrides.Value;
+                    var isJoinedExpanded = defaultExpanded.Contains(joinedConversation.Id)
+                        ^ joinOverrides.Contains(joinedConversation.Id);
+                    if (!isJoinedExpanded) {
+                        var newOverrides = joinOverrides.Contains(joinedConversation.Id)
+                            ? joinOverrides.Remove(joinedConversation.Id)
+                            : joinOverrides.Add(joinedConversation.Id);
+                        _conversationExpansionOverrides.Value = newOverrides;
+                        LastConversationExpansionOverrides = newOverrides;
+                    }
+                }
+            }
+
             var overrides = await ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(false);
             // A prefetch is a speculative background load nothing renders, so it must not consume the
             // one-shot "just toggled" signal - the rebuild that does render would then never widen its
@@ -494,11 +529,18 @@ public partial class ChatUI
             }
 
             expandedConversations = defaultExpanded.SymmetricExcept(overrides);
-            // A not-joined viewer can expand the live block to read the whole conversation before joining;
-            // when expanded, stop hiding its tail so every entry [V, end] renders (the fold/skip logic
-            // already drops the fold range for an expanded block). Collapsed, the hidden tail stands.
-            if (liveConversation is { } liveConvExp && !amInLiveConversation && overlay == null
-                && expandedConversations.Contains(liveConvExp.Id))
+            // The tail is hidden exactly while the card stands in for it - i.e. while the block renders
+            // collapsed, which is the same test the fold uses. Keyed on whether the viewer had joined
+            // instead, a joined viewer could not collapse the block at all: nothing left the screen.
+            if (liveBlockId is { } blockId && overlay == null && liveConversation is { } liveConvTail)
+                hiddenLiveTailRange = expandedConversations.Contains(blockId)
+                    ? default
+                    : new Range<long>(
+                        liveBlockFoldRange.IsEmpty
+                            ? liveConvTail.Id.StartEntryLid
+                            : Math.Min(liveConvTail.EndEntryLid + 1, liveBlockFoldRange.End),
+                        long.MaxValue);
+            else if (liveBlockId is { } overlayBlockId && expandedConversations.Contains(overlayBlockId))
                 hiddenLiveTailRange = default;
         }
 
@@ -751,14 +793,16 @@ public partial class ChatUI
         }
 
         if (expandedConversations.Count == 0 && liveBlockId == null)
-            return new ChatItems(groupedItems, hasMoreBefore, hasMoreAfter);
+            return new ChatItems(groupedItems, hasMoreBefore, hasMoreAfter, lastKnownRangeMetaList != null);
 
         var liveBlockRange = liveBlockId is { } lbId
             ? new Range<long>(lbId.StartEntryLid, overlay?.BlockEndLid ?? long.MaxValue)
             : default;
+        var isLiveBlockExpanded = liveBlockId is { } expandedLiveId
+            && expandedConversations.Contains(expandedLiveId);
         var groupedTiles = GroupExpandedConversations(
-            groupedItems, liveBlockId, liveBlockRange, materializedBlockId, Log);
-        return new ChatItems(groupedTiles, hasMoreBefore, hasMoreAfter);
+            groupedItems, liveBlockId, liveBlockRange, isLiveBlockExpanded, materializedBlockId, Log);
+        return new ChatItems(groupedTiles, hasMoreBefore, hasMoreAfter, lastKnownRangeMetaList != null);
 
         bool TryGetIdTilesToLoad(
             ChatDataQuery dataQuery1,
@@ -1276,10 +1320,12 @@ public partial class ChatUI
         ChatId chatId,
         int count = 2,
         long minLid = 0,
+        // Set by a caller previewing what the live block hides, which is spoken entries only.
+        bool isAudioOnly = false,
         CancellationToken cancellationToken = default)
         => await Chats.ReadReverse(Session, chatId, cancellationToken)
             .TakeWhile(x => x.LocalId >= minLid) // reverse order: stop before the conversation start (minLid = V)
-            .Where(x => !x.IsSystemEntry)
+            .Where(x => !x.IsSystemEntry && (!isAudioOnly || x.HasAudio))
             .Take(count)
             .Reverse()
             .ToListAsync(cancellationToken)
@@ -1368,7 +1414,7 @@ public partial class ChatUI
     // It's internal to be accessible from tests
     internal static List<ChatMessage> GroupExpandedConversations(
         IReadOnlyList<ChatMessage> messages, ConversationId? liveBlockId, Range<long> liveBlockRange,
-        ConversationId? materializedBlockId, ILogger? log)
+        bool isLiveBlockExpanded, ConversationId? materializedBlockId, ILogger? log)
     {
         // Wrap every item of one expanded conversation into a single ExpandedConversationMessage in
         // source order - the block is the sticky containing element for the conversation header and
@@ -1405,16 +1451,21 @@ public partial class ChatUI
                         Math.Min(liveBlockRange.Start, blockConversation.EntryLidRange.Start),
                         Math.Max(liveBlockRange.End, blockConversation.EntryLidRange.End))
                     : blockConversation.EntryLidRange;
+            // A collapsed live block takes no entries at all: it stands for them, so it is one unit -
+            // the header and the card - and everything below it, transcribed or typed, is placed by the
+            // ordinary rules. Only its expanded form absorbs the rows it shows.
+            var takesEntries = !isLiveBlock || isLiveBlockExpanded;
             var belongs = blockConversation != null
                 && (conversation != null
                     ? conversation.Id == blockConversation.Id
-                    : i < lastIndexById.GetValueOrDefault(blockConversation.Id, -1)
-                        // Range.Contains excludes End, so a still-live [V, ∞) range needs the open-ended
-                        // form - a closed block carries a real BlockEndLid and uses Contains as usual.
-                        // Keeps the frozen tail past the conversation's last item inside the block.
-                        || (blockRange.End == long.MaxValue
-                            ? item.Id >= blockRange.Start
-                            : blockRange.Contains(item.Id)));
+                    : takesEntries
+                        && (i < lastIndexById.GetValueOrDefault(blockConversation.Id, -1)
+                            // Range.Contains excludes End, so a still-live [V, ∞) range needs the open-ended
+                            // form - a closed block carries a real BlockEndLid and uses Contains as usual.
+                            // Keeps the frozen tail past the conversation's last item inside the block.
+                            || (blockRange.End == long.MaxValue
+                                ? item.Id >= blockRange.Start
+                                : blockRange.Contains(item.Id))));
             if (belongs) {
                 blockItems.Add(item);
                 continue;

@@ -51,7 +51,7 @@
                     <span class="c-lc-name">@m.Title.Text</span>
                     <HeaderButton
                         Class="c-lc-expand"
-                        data-vl-hold="@(state.IsExpanded ? "keep-edge" : "always")"
+                        data-vl-hold="always"
                         data-collapse-arm="@(state.IsExpanded ? conversation.Id.Value : null)"
                         Click="@ToggleShowMessage">
                         <i class="@(state.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
@@ -232,11 +232,8 @@
             && blockState.FoldBoundaryLid > rawLive.EffectiveVisibleStartLid;
         var overrides = await ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(true);
         var isExpanded = conversation.IsExpandedByDefault ^ overrides.Contains(conversation.Id);
-        // A joined viewer reads the live tail below the card; a never-attended one has it hidden, so the
-        // card carries the last entries itself to show the conversation is moving. A leaver is the third
-        // case: !isJoined but the freeze overlay keeps the tail on screen, so a preview would double it -
-        // gate on Overlay == null so only the genuinely-hidden case previews.
-        var tailPreview = isLive && !isJoined && !isVoiceOnly && blockState.Overlay == null && !isExpanded
+        // A leaver's freeze overlay keeps the tail on screen, so previewing it there would show it twice.
+        var tailPreview = isLive && !isVoiceOnly && blockState.Overlay == null && !isExpanded
             ? await GetTailPreview(chatId, rawLive?.EffectiveVisibleStartLid ?? 0, cancellationToken)
                 .ConfigureAwait(true)
             : null;
@@ -257,7 +254,10 @@
 
     private async Task<IReadOnlyList<PreviewEntry>> GetTailPreview(
         ChatId chatId, long minLid, CancellationToken cancellationToken) {
-        var entries = await ChatUI.GetThreadPreviewEntries(chatId, 5, minLid, cancellationToken).ConfigureAwait(true);
+        // Spoken only: the block hides nothing else, so previewing a typed message would show it twice -
+        // once faded in the card and again as itself below.
+        var entries = await ChatUI.GetThreadPreviewEntries(chatId, 5, minLid, true, cancellationToken)
+            .ConfigureAwait(true);
         var markupHub = Hub.ChatMarkupHubFactory[chatId];
         var markups = await entries
             .Select(e => markupHub.GetMarkup(e, MarkupConsumer.MessageView, cancellationToken).AsTask())

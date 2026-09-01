@@ -1037,6 +1037,10 @@ export class InfiniteList extends VirtualList {
             return null;
         if (scrollToKey === this.getLastContentKey() && rs.hasVeryLastItem)
             return null;
+        // A skip-key item is never reported visible, so the "already there" test below can never pass for
+        // one: the jump would be re-requested on every render, dropping the edge each time.
+        if (this.items[this.indexByKey.get(scrollToKey)!].mustSkipKey)
+            return null;
 
         return scrollToKey !== this.handledScrollToKey || !this.visibleKeys.has(scrollToKey)
             ? scrollToKey
@@ -1091,8 +1095,15 @@ export class InfiniteList extends VirtualList {
         // messages until the conversation outgrew the viewport.
         const isAtEnd = rs.hasVeryLastItem
             && (this.isChainWithinViewport || (this.distanceToEndEdge() ?? Infinity) <= EdgeEpsilon);
-        const isAtStart = rs.hasVeryFirstItem && this.distanceToStartEdge() <= EdgeEpsilon;
-        // Both edges reachable at once (content shorter than the viewport) means the preferred one wins.
+        // Leaving the far edge for this one is a claim about where the reader is, and a window that
+        // can't see its last item has no basis for it - while distanceToStartEdge has no lower bound, so
+        // a chain hanging below the viewport top satisfies it as readily as one flush with it. A
+        // Start-default list is exempt: it must reach its own edge with the far end still unloaded,
+        // exactly as this one pins End with history above it unloaded.
+        const isAtStart = rs.hasVeryFirstItem
+            && (this.defaultEdge === VirtualListEdge.Start || rs.hasVeryLastItem)
+            && this.distanceToStartEdge() <= EdgeEpsilon;
+        // Both edges reachable at once means the preferred one wins.
         this.setPinnedEdge(isAtEnd && (this.defaultEdge === VirtualListEdge.End || !isAtStart)
             ? VirtualListEdge.End
             : isAtStart
@@ -1722,7 +1733,11 @@ export class InfiniteList extends VirtualList {
             return;
 
         this.stability.releaseScroll();
-        this.updatePinnedEdge();
+        // Every scroll arms this settle, the list's own re-placements included, and mid-animation the
+        // rendered edge is not where the model is taking it - so deriving there reads a pinned list as
+        // having left its edge. A scroll of the user's own has already been derived live in onScroll.
+        if (!this.stability.isAnimating)
+            this.updatePinnedEdge();
         this.updateVisibilityThrottled();
         this.updateViewportThrottled();
         this.repinIfStrandedDebounced();

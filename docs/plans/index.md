@@ -13,6 +13,13 @@ candidate tasks. A plan is removed from here once its work ships.
 
 Recently added, larger efforts — in progress or next up.
 
+### Chat view — list defects and the live conversation block
+
+[Chat view list defects](./chat-view-list-issues.md) — a blank transcript, a
+sticky edge latched to the top, live-session messages that never render, a ~10Hz
+skeleton flicker, and the live block's expand/collapse. Four reported, four more
+found while testing them with a real two-account live session instrumented.
+
 ### Android ANRs — FCM cold-start stalls
 
 [Android ANRs](./android-anr-issues.md) — two thirds of Voxt's Android ANRs are

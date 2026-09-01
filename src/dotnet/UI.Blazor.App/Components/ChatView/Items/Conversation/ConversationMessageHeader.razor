@@ -19,7 +19,7 @@
             <HeaderButton
                 Class="btn-summary-toggle"
                 Tooltip="@tooltip"
-                data-vl-hold="@(IsSeparated ? "keep-edge" : "always")"
+                data-vl-hold="always"
                 data-collapse-arm="@(IsSeparated ? Conversation.Id.Value : null)"
                 Click="@OnConversationToggleClick">
                 @if (IsSeparated) {
