@@ -1,4 +1,4 @@
-.conversation-message {
+﻿.conversation-message {
     @apply flex-y items-start;
     @apply rounded-lg;
     @apply border-none;
@@ -44,9 +44,10 @@
 .virtual-list .c-virtual-container .group.has-live-block .c-live-card {
     @apply pt-0;
 }
-/* The unjoined card ends with the faded preview; drop its bottom padding so the preview sits flush
-   above the footer (mirrors the pt-0 that butts the card under the header) - no gap after the last row. */
-.virtual-list .c-virtual-container .group.has-live-block-join .c-live-card {
+/* A card that ends with the faded preview drops its bottom padding so the preview sits flush above
+   the footer (mirrors the pt-0 that butts the card under the header) - no gap after the last row.
+   Keyed on the preview itself: any collapsed block has one, attended or not. */
+.virtual-list .c-virtual-container .group.has-live-block .c-live-card:has(.last-entries-preview) {
     @apply pb-0;
 }
 /* When expanded, the split header carries the title so the card renders empty (no .c-live-card child).
@@ -390,12 +391,11 @@ body.hoverable .conversation-attachments .image-attachment:hover {
 }
 
 /* Unjoined (never-attended) live block: the same unified shell, but painted with the flat unjoined
-   gradient and no violet outline. Keyed on the header's Join button - which shows ONLY for the
-   never-attended block - so a leaver's frozen block (which shows the expand chevron, not Join) keeps
-   the joined violet tint. The extra .c-lc-join in the :has() also outranks the joined tint rule above,
-   so this wins whenever it matches. Its match set is a strict subset of the base shell rule's
-   expanded arm, so mx-1 cascades in from there - only the tint is overridden here. */
-.virtual-list .c-virtual-container .group.has-live-block-join {
+   gradient and no violet outline. Keyed on the header's own unjoined class - the Join button can't
+   carry this, since it comes back when you leave and a leaver's block keeps the joined violet tint.
+   Its match set is a strict subset of the base shell rule's expanded arm, so mx-1 cascades in from
+   there - only the tint is overridden here, and it wins by coming later. */
+.virtual-list .c-virtual-container .group.has-unjoined-live-block {
     isolation: isolate;
     @apply rounded-2xl;
     background:
@@ -422,9 +422,10 @@ body.hoverable .conversation-attachments .image-attachment:hover {
     @apply rounded-t-2xl;
     @apply bg-01;
 }
-/* Unjoined header shares the block's magenta tint instead of the joined violet, so the sticky header,
-   body, and faded preview all read as one surface. Keyed on its own Join button. */
-.virtual-list .c-virtual-container .live-conversation-header:has(.c-lc-join) {
+/* A header for a block you never attended shares the block's magenta tint instead of the joined
+   violet, so the sticky header, body, and faded preview all read as one surface. Keyed on the
+   component's own class: the Join button returns when you leave, and the tint must not. */
+.virtual-list .c-virtual-container .live-conversation-header.unjoined {
     background:
         linear-gradient(90deg, rgba(255, 202, 255, 0.3) 2%, rgba(130, 104, 255, 0.3) 100%),
         linear-gradient(var(--background-01), var(--background-01));
@@ -467,7 +468,7 @@ body.hoverable .virtual-list .c-virtual-container .live-conversation-header .c-l
 }
 /* The unjoined block is a compact preview card that the group's own rounding already closes, so its
    footer band would just add empty space below the last preview row - collapse it to nothing. */
-.virtual-list .c-virtual-container .group.has-live-block-join .live-conversation-footer {
+.virtual-list .c-virtual-container .group.has-unjoined-live-block .live-conversation-footer {
     @apply h-0;
 }
 

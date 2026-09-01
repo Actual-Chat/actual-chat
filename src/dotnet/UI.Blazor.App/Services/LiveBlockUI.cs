@@ -1,4 +1,4 @@
-using ActualChat.Live;
+﻿using ActualChat.Live;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -190,10 +190,11 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                         new Range<long>(t.TailStart, long.MaxValue), t.TailStart, null, false, IsDissolving: true);
 
         if (!amInLive)
-            // Leave (session still live): freeze what the viewer was rendering; entries that arrive
-            // after the leave (past the frozen tail start) stay hidden.
+            // Leave, session still live: the block goes on exactly as it was - same fold, same
+            // expansion, no boundary at the moment of leaving - so the only thing that marks the
+            // viewer as having been there is the overlay itself, which the tint reads.
             return new LiveBlockOverlay(t.LiveRenderId, t.V, FoldRangeOf(t.V, foldBoundaryLid),
-                new Range<long>(t.TailStart, long.MaxValue), t.TailStart, null, false);
+                default, long.MaxValue, null, false);
 
         return null; // still joined and live
     }
@@ -367,9 +368,10 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         var chatState = await GetOrCreateChatState(chatId, cancellationToken).ConfigureAwait(false);
 
         // While the viewer is attending a live session, keep a frozen template ready - the exact
-        // descriptor GetBlockState needs to freeze the block the instant they leave or it closes. The
-        // template stops refreshing once !isJoined, so its tail start captures the leave moment.
-        var template = raw is { IsLatched: true } && isJoined
+        // descriptor GetBlockState needs to freeze the block the instant it closes. Leaving doesn't
+        // stop the refresh: the block goes on exactly as it was, so the descriptor has to go on
+        // tracking it, and only the close (raw == null) freezes what it holds.
+        var template = raw is { IsLatched: true } && (isJoined || chatState.WasAttending)
             ? await BuildTemplate(chatId, raw, cancellationToken).ConfigureAwait(false)
             : null;
         var streamingFloorLid = StreamingFloorOf(raw, rawStreamingFloorLid);

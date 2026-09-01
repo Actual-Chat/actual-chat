@@ -1,4 +1,4 @@
-using ActualChat.Chat;
+﻿using ActualChat.Chat;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
 
@@ -94,6 +94,50 @@ public class GroupExpandedConversationsTest
         blocks.Count.Should().Be(2);
         blocks[0].Items.Select(x => x.Id).Should().Equal(100, 101);
         blocks[1].Items.Select(x => x.Id).Should().Equal(200, 201);
+    }
+
+    [Fact]
+    public void CollapsedLiveBlockLeavesItsTaggedEntriesOutside()
+    {
+        // arrange: an entry inside the live conversation's server-tracked range carries its tag - a
+        // thread, or a typed message the last summary already covers. A collapsed block stands for what
+        // it hides, so those have to render below the card instead of vanishing into it.
+        var live = NewConversation(startEntryLid: 100, endEntryLid: 110);
+        var messages = new ChatMessage[] {
+            new ConversationMessage(live),
+            NewMessage(105, live),
+        };
+
+        // act
+        var result = ChatUI.GroupExpandedConversations(
+            messages, live.Id, new Range<long>(100, long.MaxValue), false, null, null);
+
+        // assert
+        var blocks = result.OfType<ExpandedConversationMessage>().ToList();
+        blocks.Count.Should().Be(1);
+        blocks[0].Items.Should().NotContain(x => x.Id == 105);
+        result[^1].Id.Should().Be(105);
+    }
+
+    [Fact]
+    public void ExpandedLiveBlockKeepsItsTaggedEntriesInside()
+    {
+        // arrange: the same items, with the block showing its rows - then the tag means what it says
+        var live = NewConversation(startEntryLid: 100, endEntryLid: 110);
+        var messages = new ChatMessage[] {
+            new ConversationMessage(live),
+            NewMessage(105, live),
+        };
+
+        // act
+        var result = ChatUI.GroupExpandedConversations(
+            messages, live.Id, new Range<long>(100, long.MaxValue), true, null, null);
+
+        // assert
+        var blocks = result.OfType<ExpandedConversationMessage>().ToList();
+        blocks.Count.Should().Be(1);
+        blocks[0].Items.Select(x => x.Id).Should().Contain(105);
+        result.Count.Should().Be(1);
     }
 
     // Private methods

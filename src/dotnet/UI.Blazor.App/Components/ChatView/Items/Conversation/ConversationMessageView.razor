@@ -10,7 +10,7 @@
     var endsAt = DateTimeConverter.ToLocalTime(conversation.EndsAt);
     var openClass = _isOpen ? "open-details" : "closed-details";
     var detailsCls = _isOpen ? "show" : "";
-    var liveClass = state.IsLive ? (state.IsJoined ? "live joined" : "live") : "";
+    var liveClass = state.IsLive ? (state.IsJoined || state.HasOverlay ? "live joined" : "live") : "";
     var cls = $"conversation-message message-wrapper {openClass} {liveClass}";
     var attachments = conversation.Attachments;
     var hasLiveTitle = !m.Title.Text.IsNullOrEmpty();
@@ -235,8 +235,7 @@
         // Via ChatUI so this reads the same latched default the data layer does - the record's own
         // flag flips when a summary lands, and the two would then disagree for the session.
         var isExpanded = ChatUI.IsConversationExpanded(conversation);
-        // A leaver's freeze overlay keeps the tail on screen, so previewing it there would show it twice.
-        var tailPreview = isLive && !isVoiceOnly && blockState.Overlay == null && !isExpanded
+        var tailPreview = isLive && !isVoiceOnly && !isExpanded
             ? await GetTailPreview(chatId, rawLive?.EffectiveVisibleStartLid ?? 0, cancellationToken)
                 .ConfigureAwait(true)
             : null;
@@ -252,7 +251,8 @@
             && await LiveStreamUI.IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(true);
         return new ConversationLiveState(
             translated, isLive, isJoined, isVoiceOnly, participantsText, hasFoldedEntries,
-            isExpanded, tailPreview, hasSummary, swallowedCount, revealBatch, isAnyoneTalking);
+            isExpanded, tailPreview, hasSummary, swallowedCount, revealBatch, isAnyoneTalking,
+            blockState.Overlay != null);
     }
 
     private async Task<IReadOnlyList<PreviewEntry>> GetTailPreview(

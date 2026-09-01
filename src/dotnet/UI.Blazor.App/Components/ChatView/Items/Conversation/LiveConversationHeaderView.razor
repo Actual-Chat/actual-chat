@@ -1,4 +1,4 @@
-@namespace ActualChat.UI.Blazor.App.Components
+﻿@namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, LiveConversationHeaderState>
 
 @{
@@ -9,11 +9,16 @@
         cls += " dissolving";
     if (!s.IsAnyoneTalking)
         cls += " quiet";
+    // The tint says "you were here", so it can't be keyed on the Join button: that button comes back
+    // when you leave, and leaving must not repaint the block as one you never attended.
+    if (!s.IsJoined && !s.HasOverlay)
+        cls += " unjoined";
 }
 <div class="@cls" data-vl-anchor="@Header.Conversation!.Id.Value">
     <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
     <span class="c-lc-name">@title</span>
-    @if (!s.IsJoined && !s.HasOverlay) {
+    @* Leaving is just "stop listening", so re-joining stays one tap away. *@
+    @if (!s.IsJoined) {
         <button type="button" class="c-lc-join btn btn-sm btn-transparent" @onclick="@Join">@L.Call_Join</button>
     }
     @if (s.CanExpand) {

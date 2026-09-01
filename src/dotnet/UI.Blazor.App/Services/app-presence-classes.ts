@@ -25,7 +25,7 @@ MutationProcessor.registerPresenceClasses(
     // and `matchHasPseudoClass` 20% of attributable main-thread time - the whole cost was
     // proving absence over and over.
     { container: virtualListGroup, match: ':scope > .item.expanded > .live-conversation-header', className: 'has-live-block' },
-    { container: virtualListGroup, match: ':scope > .item.expanded > .live-conversation-header .c-lc-join', className: 'has-live-block-join' },
+    { container: virtualListGroup, match: ':scope > .item.expanded > .live-conversation-header.unjoined', className: 'has-unjoined-live-block' },
     { container: virtualListGroup, match: ':scope > .item.expanded > .live-conversation-header.dissolving', className: 'has-live-block-dissolving' },
     { container: virtualListGroup, match: ':scope > .item > .conversation-message.live.joined', className: 'has-joined-live-card' },
     { container: virtualListItem, match: ':scope > .conversation-message', className: 'has-conversation-message' },

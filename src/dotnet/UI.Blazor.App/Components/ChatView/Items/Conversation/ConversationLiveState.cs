@@ -18,4 +18,7 @@ public sealed record ConversationLiveState(
     bool HasSummary = false,
     int SwallowedCount = 0,
     int RevealBatch = 0,
-    bool IsAnyoneTalking = false);
+    bool IsAnyoneTalking = false,
+    // True once the viewer has attended this block, and it stays true after they stop listening:
+    // leaving is an audio decision, and the block keeps the colour that says they were there.
+    bool HasOverlay = false);

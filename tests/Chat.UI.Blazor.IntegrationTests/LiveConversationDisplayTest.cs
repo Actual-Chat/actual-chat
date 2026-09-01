@@ -344,9 +344,10 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     [Fact]
     public async Task NewSpokenEntriesAfterLeaveStayHiddenButTypedOnesSurface()
     {
-        // The freeze holds for what the call produces - a transcribed entry landing after hang-up can't
-        // sneak in. It must not hold for what the viewer types: the hidden tail runs to long.MaxValue, so
-        // hiding by lid alone also swallowed typed messages, and the sender never saw their own message.
+        // A collapsed block hides what the call produces - a transcribed entry landing after hang-up
+        // can't sneak in - and leaving changes none of that. It must not hide what the viewer types:
+        // the hidden tail runs to long.MaxValue, so hiding by lid alone also swallowed typed messages,
+        // and the sender never saw their own message.
 
         // arrange
         await Tester.SignInAsUniqueBob();
@@ -1600,12 +1601,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task FrozenBlockShouldHoldItsTailWhenTheStreamingFloorLapses()
+    public async Task LeaveThenStreamingFloorLapseMustNotRefoldTheBlock()
     {
-        // §7: a transcript closing under a frozen block must not re-open the fold. The floor lapsing to
-        // "no cap" used to hand the fold straight back to the monotonic boundary the viewport had reached
-        // earlier, swallowing the rows the frozen reader was still looking at. LiveFoldMath.Advance bounds
-        // every advance by the viewport top instead, so the lapse can't cross it.
+        // §7: a transcript closing under the block must not re-open the fold. The floor lapsing to
+        // "no cap" used to hand the fold straight back to the monotonic boundary the viewport had
+        // reached earlier, swallowing the rows the reader was still looking at. LiveFoldMath.Advance
+        // bounds every advance by the viewport top instead, so the lapse can't cross it. Leaving sits in
+        // the middle of the same test because it has to change nothing - the block goes on as it was.
 
         // arrange
         await Tester.SignInAsUniqueBob();
@@ -1648,37 +1650,45 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             var s = await liveBlockUI.GetBlockState(chat.Id, ct);
             s.FoldBoundaryLid.Should().Be(streamingLid, "the streaming entry is what stops the fold");
         }, TimeSpan.FromSeconds(15));
+        await CollapseJoinedLiveBlock(chatUI, chat.Id, live.ToConversation());
 
-        // act - the reader scrolls back up onto the streaming entry, then leaves: the block freezes with
-        // that row, and the ones under it, on screen
+        // act - the reader scrolls back up onto the streaming entry, and that render is the baseline
         SetViewportTop(streamingLid);
-        await chatAudioUI.SetListeningState(chat.Id, false);
-        InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
-
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        List<long> frozenLids = null!;
+        List<long> beforeLeaveLids = null!;
         await ComputedTest.When(async ct => {
             var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.Overlay.Should().NotBeNull();
-            frozenLids = LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, ct));
-            frozenLids.Should().Contain(streamingLid, "the frozen render still shows the streaming row");
+            s.FoldBoundaryLid.Should().Be(streamingLid, "the streaming entry still stops the fold");
+            beforeLeaveLids = LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, ct));
+        }, TimeSpan.FromSeconds(15));
+
+        // act - the reader leaves
+        await chatAudioUI.SetListeningState(chat.Id, false);
+        InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
+        await ComputedTest.When(async ct => {
+            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
+            s.Overlay.Should().NotBeNull("the overlay is what marks this viewer as having been there");
         }, TimeSpan.FromSeconds(10));
 
-        // act - the transcript closes under the frozen block, so its floor lapses to "no cap"
+        // assert - leaving is only "stop listening": same fold, same rows
+        LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None))
+            .Should().Equal(beforeLeaveLids, "leaving must not change what the block renders");
+
+        // act - the transcript closes under the block, so its floor lapses to "no cap"
         await Tester.FinalizeStreamingEntry(streaming, "done");
         await ComputedTest.When(async ct => {
             var streamingTail = await chatUI.GetStreamingTail(chat.Id, author.Id, ct);
             streamingTail.FloorLid.Should().Be(long.MaxValue, "the floor has to actually lapse");
         }, TimeSpan.FromSeconds(15));
 
-        // assert - the frozen render is unchanged: the lapse may only let the fold reach the viewport
-        // top, which is the streaming row itself, so nothing the reader had is swallowed
+        // assert - the lapse may only let the fold reach the viewport top, which is the streaming row
+        // itself, so nothing the reader had is swallowed
         await Task.Delay(500);
         var afterLapse = await liveBlockUI.GetBlockState(chat.Id, CancellationToken.None);
         afterLapse.FoldBoundaryLid.Should().BeLessThanOrEqualTo(streamingLid,
-            "a lapsing floor must not push the fold past the frozen reader's viewport top");
+            "a lapsing floor must not push the fold past the reader's viewport top");
         LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None))
-            .Should().Equal(frozenLids, "closing the transcript must not re-fold a frozen block");
+            .Should().Equal(beforeLeaveLids, "closing the transcript must not re-fold the block");
     }
 
     [Fact]
@@ -2069,6 +2079,87 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         Out.WriteLine($"spoken lids: {string.Join(", ", spoken.Select(e => e.Id.LocalId))}");
         Out.WriteLine($"visible lids: {string.Join(", ", finalLids)}");
         finalLids.Should().Contain(typed.Select(e => e.Id.LocalId));
+    }
+
+    [Fact]
+    public async Task ConversationOverlappingTheLiveBlockRendersAsPlainEntries()
+    {
+        // A regular conversation whose range runs into the live block's can't render as a block - both
+        // claim the same rows. It has to degrade to plain entries, and that has to hold at the load
+        // level too: excluding its range from the id tiles drops the entries it holds *and* the live
+        // block's own rows, because the overlap is exactly where the two share tiles.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var chat = await CreateSettledChat("conversation-overlap-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_440);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+
+        var before = new List<ChatEntry>();
+        for (var i = 0; i < 3; i++)
+            before.Add(await Tester.CreateTextEntry(chat.Id, $"before-{i}"));
+        // Ends exactly where the live block starts, so it must keep its card: EntryLidRange is
+        // half-open, so a touching pair intersects to nothing.
+        var neighbor = new Conversation(ConversationId.New(chat.Id, before[0].LocalId), 1) {
+            Title = "Earlier", Description = "d", Summary = "s", MessageCount = before.Count,
+            EndEntryLid = before[^1].LocalId,
+            StartsAt = before[0].BeginsAt, EndsAt = before[^1].BeginsAt,
+        };
+        await Tester.Commander.Call(new ConversationBackend_Materialize(neighbor));
+
+        var liveStart = await Tester.CreateTextEntry(chat.Id, "live-start");
+        await liveBackend.OnStreamRegistered(
+            chat.Id, author.Id, liveStart.LocalId, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var v = live!.EffectiveVisibleStartLid;
+        var inside = new List<ChatEntry>();
+        // The overlap has to cover whole aligned id tiles: a tile is only dropped when an excluded
+        // range contains all of it, so a conversation narrower than a tile never exercises the load
+        // path at all.
+        var tileSize = ChatUI.IdTileStack.FirstLayer.TileSize;
+        for (var i = 0; i < 4 * tileSize; i++)
+            inside.Add(await Tester.CreateTextEntry(chat.Id, $"inside-{i}"));
+        await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+        }, CancellationToken.None);
+        // The overlap: a persisted conversation sitting inside the live block's range - which is what id
+        // churn leaves behind when V latches inside an older record.
+        var overlapStart = inside.First(e => e.LocalId % tileSize == 0).LocalId;
+        var overlapEnd = overlapStart + (2 * tileSize) - 1;
+        var overlapping = new Conversation(ConversationId.New(chat.Id, overlapStart), 1) {
+            Title = "Overlapping", Description = "d", Summary = "s", MessageCount = (int)(2 * tileSize),
+            EndEntryLid = overlapEnd,
+            StartsAt = inside[0].BeginsAt, EndsAt = inside[^1].BeginsAt,
+        };
+        await Tester.Commander.Call(new ConversationBackend_Materialize(overlapping));
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);   // joined => the block expands and shows rows
+        chatUI.SelectChatOnNavigation(chat.Id);
+
+        // act
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            var cardIds = items.Items
+                .SelectMany(i => i.GetLeafMessages())
+                .OfType<ConversationMessage>()
+                .Select(m => m.Conversation!.Id)
+                .ToList();
+            cardIds.Should().NotContain(overlapping.Id,
+                "an overlapping conversation must not render as a block");
+            cardIds.Should().Contain(neighbor.Id,
+                "a conversation ending exactly where the live block starts doesn't overlap it");
+            LeafEntryLids(items).Should().Contain(
+                inside.Where(e => e.LocalId >= overlapStart && e.LocalId <= overlapEnd).Select(e => e.LocalId),
+                "the overlapping conversation's entries, and the live block's own rows, still render");
+        }, TimeSpan.FromSeconds(20));
     }
 
     // Private methods

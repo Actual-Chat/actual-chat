@@ -1,4 +1,4 @@
-using System.Diagnostics.Metrics;
+﻿using System.Diagnostics.Metrics;
 using ActualChat.Diagnostics;
 using ActualChat.UI.Blazor.Diagnostics;
 using CommunityToolkit.HighPerformance;
@@ -536,7 +536,9 @@ public partial class ChatUI
             // The tail is hidden exactly while the card stands in for it - i.e. while the block renders
             // collapsed, which is the same test the fold uses. Keyed on whether the viewer had joined
             // instead, a joined viewer could not collapse the block at all: nothing left the screen.
-            if (liveBlockId is { } blockId && overlay == null && liveConversation is { } liveConvTail)
+            if (liveBlockId is { } blockId && liveConversation is { } liveConvTail)
+                // Whether the viewer left or not: a live session hides by how its block renders, so
+                // leaving changes nothing here.
                 hiddenLiveTailRange = expandedConversations.Contains(blockId)
                     ? default
                     : new Range<long>(
@@ -544,7 +546,7 @@ public partial class ChatUI
                             ? liveConvTail.Id.StartEntryLid
                             : Math.Min(liveConvTail.EndEntryLid + 1, liveBlockFoldRange.End),
                         long.MaxValue);
-            else if (liveBlockId is { } overlayBlockId && expandedConversations.Contains(overlayBlockId))
+            else if (liveBlockId is { } closedBlockId && expandedConversations.Contains(closedBlockId))
                 hiddenLiveTailRange = default;
         }
 
@@ -802,9 +804,9 @@ public partial class ChatUI
         var liveBlockRange = liveBlockId is { } lbId
             ? new Range<long>(lbId.StartEntryLid, overlay?.BlockEndLid ?? long.MaxValue)
             : default;
-        // Expanded is not the only form that renders rows: a leaver's frozen block shows its tail
-        // whenever the hiding was let go, and those rows belong inside the block rather than loose
-        // under its footer. Hidden tail and no expansion is the one case that absorbs nothing.
+        // Expanded is not the only form that renders rows: a closed block that kept its card hides
+        // nothing, and those rows belong inside the block rather than loose under its footer. Only a
+        // live block that is both collapsed and hiding absorbs nothing.
         var isLiveBlockShowingRows = liveBlockId is { } shownLiveId
             && (expandedConversations.Contains(shownLiveId) || hiddenLiveTailRange.IsEmpty);
         var groupedTiles = GroupExpandedConversations(
@@ -850,23 +852,16 @@ public partial class ChatUI
                 })
                 .Where(r => !r.IsEmpty)
                 .ToList();
-            // hiddenLiveTailRange runs to long.MaxValue so the per-entry filter in GetChatItemsInternal
-            // can hide spoken entries wherever they land. Excluding that whole span here would be a
-            // different thing entirely: an id tile dropped here is never fetched, and the messages typed
-            // during the call live in those tiles - so they vanished as soon as one crossed a tile
-            // boundary. Bound it to what the call itself covers; past that only typed entries exist and
-            // they must load. The bounded range still spans the block's start lid, which is what makes an
-            // entry-less block (video-only, no summary yet) emit its card at all - liveBlockFoldRange is
-            // empty then, so the select above contributes nothing for it.
-            var hiddenTailToExclude = liveConversation is { } hiddenTailConversation
-                ? new Range<long>(
-                    hiddenLiveTailRange.Start,
-                    Math.Max(hiddenLiveTailRange.Start, hiddenTailConversation.EndEntryLid + 1))
-                : hiddenLiveTailRange;
-            // Dropping whole id-tiles takes the typed messages interleaved with the call down with them,
-            // and those render as usual for someone in it - they only stopped mattering for a viewer who
-            // never saw the call's entries at all. Collapsing is then a per-entry filter, nothing coarser.
-            if (!amInLiveConversation && !hiddenLiveTailRange.IsEmpty && !hiddenTailToExclude.IsEmpty)
+            // Only the block's own start lid, never the span it hides: an id tile dropped here is never
+            // fetched, and the messages typed during the call live in those tiles interleaved with it, so
+            // any wider range takes them down with it. Hiding spoken entries is the per-entry filter's
+            // job and costs nothing extra to load. This one lid is still what makes an entry-less block
+            // (video-only, no summary yet) emit its card at all - liveBlockFoldRange is empty then, so
+            // the select above contributes nothing for it.
+            var hiddenTailToExclude = hiddenLiveTailRange.IsEmpty
+                ? default
+                : new Range<long>(hiddenLiveTailRange.Start, hiddenLiveTailRange.Start + 1);
+            if (!hiddenTailToExclude.IsEmpty)
                 excludedRanges.Add(hiddenTailToExclude);
 
             var merged = showConversations
@@ -1029,6 +1024,19 @@ public partial class ChatUI
                 conversations = conversations
                     .Select(c => c.Id == matBlockId ? c with { Id = renderBlockId } : c)
                     .ToArray();
+            // A regular conversation overlapping the live block must not render as a block: the two
+            // claim the same rows, and the loser is sometimes the live block itself. Dropping the
+            // record leaves its entries to render as individual messages - it is also what keeps them
+            // out of idRangesToSkip below, so the entries still load.
+            if (liveBlockId is { } liveSpanId) {
+                var liveSpan = materializedBlockId == null
+                    ? new Range<long>(liveSpanId.StartEntryLid, long.MaxValue)
+                    : conversations.FirstOrDefault(c => c.Id == liveSpanId)?.EntryLidRange ?? default;
+                if (!liveSpan.IsEmpty)
+                    conversations = conversations
+                        .Where(c => c.Id == liveSpanId || c.EntryLidRange.IntersectWith(liveSpan).IsEmpty)
+                        .ToArray();
+            }
             idRangesToSkip = conversations
                 .Where(c => !expandedConversations.Contains(c.Id))
                 // The joined live block folds only its summarized range (empty pre-summary), never the whole
@@ -1066,8 +1074,11 @@ public partial class ChatUI
                     continue;
                 // A non-joined viewer never sees the call's live transcript, and the range covering it
                 // runs to long.MaxValue - so hiding by lid alone also swallowed everything typed during
-                // the call, including the viewer's own just-posted message. Only what was spoken hides.
-                if (e.HasAudio && !hiddenLiveTailRange.IsEmpty && hiddenLiveTailRange.Contains(e.Id.LocalId))
+                // the call, including the viewer's own just-posted message. Only what was spoken hides,
+                // and a thread start is never only what was spoken: it heads a discussion that has to
+                // stay reachable below the card whether it grew out of a transcript or a typed message.
+                if (e.HasAudio && !e.IsThreadStart
+                    && !hiddenLiveTailRange.IsEmpty && hiddenLiveTailRange.Contains(e.Id.LocalId))
                     continue;
 
                 var e2 = await chatSendingMessages.GetSelfOrSending(e).ConfigureAwait(false);
@@ -1438,18 +1449,32 @@ public partial class ChatUI
         var blockItems = new List<ChatMessage>();
         var emittedBlockIds = new HashSet<ConversationId>();
 
+        // A collapsed live block is one unit: it stands for the rows it hides, so an entry tagged with
+        // it - a thread, or a typed message the summary already covers - is placed by the ordinary
+        // rules and renders below the card. Only the card and its header still open the block.
+        var itemConversations = new Conversation?[messages.Count];
+        for (var i = 0; i < messages.Count; i++) {
+            var conversation = messages[i].Conversation;
+            itemConversations[i] = conversation != null
+                && conversation.Id == liveBlockId
+                && !isLiveBlockShowingRows
+                && messages[i] is not (ConversationMessage or LiveConversationHeader)
+                    ? null
+                    : conversation;
+        }
+
         // Index of each conversation's last item. A Conversation-less item before it is an interruption
         // *inside* that conversation, not its end - which is the one question the lid ranges below can't
         // answer reliably: a frozen BlockEndLid, or an entry not yet part of the conversation, falls
         // outside them, ends the block, and lets the items after it open a second one.
         var lastIndexById = new Dictionary<ConversationId, int>();
         for (var i = 0; i < messages.Count; i++)
-            if (messages[i].Conversation is { } itemConversation)
+            if (itemConversations[i] is { } itemConversation)
                 lastIndexById[itemConversation.Id] = i;
 
         for (var i = 0; i < messages.Count; i++) {
             var item = messages[i];
-            var conversation = item.Conversation;
+            var conversation = itemConversations[i];
             var isLiveBlock = liveBlockId != null && blockConversation?.Id == liveBlockId;
             // A Conversation-less item is held by its lid alone, so the live block's range must cover the
             // conversation as well: the frozen BlockEndLid stops at the summary that was live when the
