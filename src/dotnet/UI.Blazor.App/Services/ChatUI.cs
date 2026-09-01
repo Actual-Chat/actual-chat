@@ -480,14 +480,6 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             : overrides.Remove(conversationId);
     }
 
-    internal void EnsureConversationExpanded(ConversationId conversationId, bool isExpandedByDefault)
-    {
-        var overrides = _conversationExpansionOverrides.Value;
-        _conversationExpansionOverrides.Value = isExpandedByDefault
-            ? overrides.Remove(conversationId)
-            : overrides.Add(conversationId);
-    }
-
     // This method fixes provided ChatId w/ PeerChatId.FixOwnerId, which replaces
     // a guest UserId there with OwnAccount.Id.
     // It must be used mainly in Navbar, which renders independently of ChatPage content,

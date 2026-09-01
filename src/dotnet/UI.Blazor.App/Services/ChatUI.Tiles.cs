@@ -121,6 +121,7 @@ public partial class ChatUI
     // because GetChatItemsInternal (a compute method) runs re-entrantly - a plain field read-modify-write
     // would let a stale snapshot clobber accumulated entries.
     private readonly ConcurrentDictionary<ConversationId, bool> _knownConversationDefaultExpanded = new();
+    private readonly ConcurrentDictionary<ChatId, ConversationId> _autoExpandedLiveBlock = new();
 
     // Serve-stale caches for the meta phase of GetChatItemsInternal: per chat, the last fresh range-meta
     // list, conversation tiles, and load zone. A rebuild whose meta is being refetched (typically because
@@ -444,8 +445,11 @@ public partial class ChatUI
             // Fold the loaded tiles' IsExpandedByDefault into the persistent cache (loaded tiles are
             // authoritative), then resolve defaultExpanded from the cache - so a conversation whose tile
             // isn't currently loaded keeps its last-known state instead of silently collapsing.
+            // Write-once: the flag is server-derived (words < MinConversationWords) and flips to false
+            // when a summary lands, which would invert the effective state of every conversation that
+            // has no override - an auto-collapse nobody asked for.
             foreach (var c in conversationTiles.SelectMany(t => t))
-                _knownConversationDefaultExpanded[c.Id] = c.IsExpandedByDefault;
+                _knownConversationDefaultExpanded.TryAdd(c.Id, c.IsExpandedByDefault);
             defaultExpanded = _knownConversationDefaultExpanded
                 .Where(kv => kv.Value)
                 .Select(kv => kv.Key)
@@ -472,6 +476,31 @@ public partial class ChatUI
                             _conversationExpansionOverrides.Value = newOverrides;
                             LastConversationExpansionOverrides = newOverrides;
                         }
+                    }
+                }
+            }
+
+            // Joining expands the live block if it was collapsed, and that is the only automatic move
+            // made to it - nothing collapses it again, so a reader's own collapse sticks. Recorded per
+            // block id, not per chat: the id jumps every time the session latches a new block, and the
+            // new one starts collapsed. Recorded only once there is a block to act on, so a join that
+            // lands before the block exists is picked up by the first render that has one.
+            if (!isPrefetch) {
+                if (!amInLiveConversation)
+                    _autoExpandedLiveBlock.TryRemove(chatId, out _);
+                else if (liveConversation is { } joinedConversation
+                    && (!_autoExpandedLiveBlock.TryGetValue(chatId, out var autoExpandedId)
+                        || autoExpandedId != joinedConversation.Id)) {
+                    _autoExpandedLiveBlock[chatId] = joinedConversation.Id;
+                    var joinOverrides = ConversationExpansionOverrides.Value;
+                    var isJoinedExpanded = defaultExpanded.Contains(joinedConversation.Id)
+                        ^ joinOverrides.Contains(joinedConversation.Id);
+                    if (!isJoinedExpanded) {
+                        var newOverrides = joinOverrides.Contains(joinedConversation.Id)
+                            ? joinOverrides.Remove(joinedConversation.Id)
+                            : joinOverrides.Add(joinedConversation.Id);
+                        _conversationExpansionOverrides.Value = newOverrides;
+                        LastConversationExpansionOverrides = newOverrides;
                     }
                 }
             }
