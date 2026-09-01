@@ -1318,10 +1318,12 @@ public partial class ChatUI
         ChatId chatId,
         int count = 2,
         long minLid = 0,
+        // Set by a caller previewing what the live block hides, which is spoken entries only.
+        bool isAudioOnly = false,
         CancellationToken cancellationToken = default)
         => await Chats.ReadReverse(Session, chatId, cancellationToken)
             .TakeWhile(x => x.LocalId >= minLid) // reverse order: stop before the conversation start (minLid = V)
-            .Where(x => !x.IsSystemEntry)
+            .Where(x => !x.IsSystemEntry && (!isAudioOnly || x.HasAudio))
             .Take(count)
             .Reverse()
             .ToListAsync(cancellationToken)

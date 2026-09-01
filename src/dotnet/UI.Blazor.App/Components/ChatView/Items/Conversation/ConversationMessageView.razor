@@ -254,7 +254,10 @@
 
     private async Task<IReadOnlyList<PreviewEntry>> GetTailPreview(
         ChatId chatId, long minLid, CancellationToken cancellationToken) {
-        var entries = await ChatUI.GetThreadPreviewEntries(chatId, 5, minLid, cancellationToken).ConfigureAwait(true);
+        // Spoken only: the block hides nothing else, so previewing a typed message would show it twice -
+        // once faded in the card and again as itself below.
+        var entries = await ChatUI.GetThreadPreviewEntries(chatId, 5, minLid, true, cancellationToken)
+            .ConfigureAwait(true);
         var markupHub = Hub.ChatMarkupHubFactory[chatId];
         var markups = await entries
             .Select(e => markupHub.GetMarkup(e, MarkupConsumer.MessageView, cancellationToken).AsTask())
