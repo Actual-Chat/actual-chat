@@ -9,17 +9,17 @@
 //         Everything else - AV1, HEVC, H.264, decode - stays native.
 //   full  every WebCodecs class, audio included, for engines that ship none.
 //
-// Install is synchronous wherever it can be: in a worker importScripts blocks,
-// so the classes are in place before init() returns and no caller can observe
-// a realm that has the level but not the globals. Only the wasm init is
-// deferred, and that is what `whenReady` is for.
+// Loading is asynchronous everywhere: this app's workers are ES modules, which
+// have no importScripts, so libav.js arrives through a dynamic import of its
+// .mjs build. `whenReady` is the gate for that, and is what anything touching a
+// possibly-polyfilled class awaits.
 
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 
 const { debugLog, errorLog, infoLog, warnLog } = getLogs('WebCodecsCompat');
 
-const LIBAV_FILE = 'libav-6.10.9.0-vp9-opus-avf-simd.js';
+const LIBAV_FILE = 'libav-6.10.9.0-vp9-opus-avf-simd.mjs';
 const POLYFILL_FILE = 'libavjs-webcodecs-polyfill.js';
 
 const POLYFILL_CLASS_NAMES = [
@@ -29,6 +29,9 @@ const POLYFILL_CLASS_NAMES = [
 
 export type WebCodecsLevel = 'none' | 'vp9' | 'full';
 export type WebCodecsLevelOverride = 'auto' | WebCodecsLevel;
+
+/** What a caller is about to use, so the gate can stay shut for the rest. */
+export type WebCodecsComponent = 'video-encode' | 'video-decode' | 'audio-encode' | 'audio-decode';
 
 export const WEB_CODECS_LEVELS: readonly WebCodecsLevel[] = ['none', 'vp9', 'full'];
 
@@ -58,9 +61,9 @@ const READY: Promise<void> = Promise.resolve();
 
 export class WebCodecsCompat {
     private static _level: WebCodecsLevel = 'none';
-    private static _requestedLevel: WebCodecsLevel = 'none';
+    private static _config: WebCodecsCompatConfig | null = null;
     private static _isReady = true;
-    private static _whenReady: Promise<void> = READY;
+    private static _whenReady: Promise<void> | null = null;
     private static _classes: WebCodecsPolyfillClasses | null = null;
 
     static get level(): WebCodecsLevel {
@@ -76,7 +79,7 @@ export class WebCodecsCompat {
     /** Gate for anything that may touch a polyfilled class. Already resolved at
      *  level `none`, and at any level once the wasm is up. */
     static get whenReady(): Promise<void> {
-        return this._whenReady;
+        return this._whenReady ?? READY;
     }
 
     static get classes(): WebCodecsPolyfillClasses | null {
@@ -94,75 +97,78 @@ export class WebCodecsCompat {
         return DeviceInfo.isFirefox ? 'vp9' : 'none';
     }
 
-    /** Idempotent, and one-way per realm: `full`'s global replacement cannot be undone
-     *  once codecs exist, so switching levels needs a reload. */
-    static init(config: WebCodecsCompatConfig): Promise<void> {
-        if (this._whenReady !== READY) {
-            if (config.level !== this._requestedLevel)
-                warnLog?.log(`init: already at '${this._requestedLevel}', ignoring '${config.level}'`);
-
-            return this._whenReady;
+    /** Records the level for this realm. Nothing is fetched until a component that
+     *  the level actually affects asks for {@link whenReadyFor}. */
+    static init(config: WebCodecsCompatConfig): void {
+        if (this._config && config.level !== this._config.level) {
+            warnLog?.log(`init: already at '${this._config.level}', ignoring '${config.level}'`);
+            return;
         }
 
-        if (config.level === 'none')
-            return this._whenReady;
+        this._config = config;
+        this._level = config.level;
+    }
 
-        this._requestedLevel = config.level;
-        this._isReady = false;
-        this._whenReady = this.install(config).catch((error: unknown) => {
+    /** The gate, and the trigger: awaiting this is what starts the download, so a
+     *  realm that never encodes video never pays for it. */
+    static whenReadyFor(component: WebCodecsComponent): Promise<void> {
+        if (!this.affects(component))
+            return READY;
+
+        this._whenReady ??= this.load().catch((error: unknown) => {
             // Staying native is worse than the polyfill but better than no media;
-            // callers see it through `level`, which stays 'none'.
-            errorLog?.log(`init('${config.level}') failed, staying native:`, error);
+            // callers see it through `level`, which drops back to 'none'.
+            errorLog?.log(`load('${this._level}') failed, staying native:`, error);
             this._level = 'none';
         }).finally(() => {
             this._isReady = true;
         });
+        this._isReady = false;
 
         return this._whenReady;
     }
 
+    /** Whether the level in force changes anything for this component. `vp9`
+     *  replaces the video encoder only, so audio is untouched there. */
+    static affects(component: WebCodecsComponent): boolean {
+        if (this._level === 'none')
+            return false;
+
+        return this._level === 'full' || component === 'video-encode';
+    }
+
     // Private methods
 
-    private static async install(config: WebCodecsCompatConfig): Promise<void> {
+    private static async load(): Promise<void> {
+        const config = this._config!;
         const startedAt = performance.now();
         const base = config.baseUrl.replace(/\/$/, '');
-        // Setting globalThis.LibAV is the whole mechanism for pointing the
-        // polyfill at this build instead of the CDN one it would fetch.
-        (globalThis as { LibAV?: unknown }).LibAV = { base, nothreads: true };
-        const scope = globalThis as { importScripts?: (url: string) => void; document?: Document };
-        if (typeof scope.importScripts !== 'function' && !scope.document) {
-            throw new Error(
-                'libav.js needs a classic realm: its loader calls importScripts, which a '
-                + 'module worker does not have. An .mjs build of the variant is required here.');
+        // The .mjs build self-locates its wasm glue from import.meta.url, so the
+        // folder layout is the whole contract.
+        const libav = await import(/* webpackIgnore: true */ `${base}/${LIBAV_FILE}`) as { default: unknown };
+        (globalThis as { LibAV?: unknown }).LibAV = libav.default;
+        this._level = config.level;
+        const elapsed = (): number => Math.round(performance.now() - startedAt);
+        if (config.level !== 'full') {
+            infoLog?.log(`init: '${config.level}' ready in ${elapsed()}ms`);
+
+            return;
         }
 
-        if (typeof scope.importScripts === 'function') {
-            scope.importScripts(`${base}/${LIBAV_FILE}`);
-            scope.importScripts(`${base}/${POLYFILL_FILE}`);
-        }
-        else {
-            await loadScript(`${base}/${LIBAV_FILE}`);
-            await loadScript(`${base}/${POLYFILL_FILE}`);
-        }
-
+        // Only `full` needs the polyfill; `vp9` uses Vp9Encoder, which drives
+        // libav.js directly.
+        await loadScript(`${base}/${POLYFILL_FILE}`);
         const loaded = (globalThis as { LibAVWebCodecs?: WebCodecsPolyfillClasses }).LibAVWebCodecs;
         if (!loaded)
             throw new Error(`${POLYFILL_FILE} loaded but defined no LibAVWebCodecs`);
 
         this._classes = loaded;
-        this._level = config.level;
-        if (config.level === 'full')
-            installGlobals(loaded);
-
+        installGlobals(loaded);
         // Ponyfill mode: the polyfill's own installer fills in MISSING classes only.
-        // This populates the capability lists behind isConfigSupported, which
-        // report everything unsupported until it resolves.
         await loaded.load({ polyfill: false, libavOptions: { nothreads: true } });
-        infoLog?.log(`init: '${config.level}' ready in ${Math.round(performance.now() - startedAt)}ms`);
+        infoLog?.log(`init: 'full' ready in ${elapsed()}ms`);
     }
 }
-
-// Private methods
 
 // Overwrites unconditionally, unlike the polyfill's own installer: the two
 // realms cannot be mixed, so at `full` everything must come from the same one.

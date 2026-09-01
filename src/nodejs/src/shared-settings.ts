@@ -43,10 +43,9 @@ function applyToLocalRealm(settings: SharedSettingsSnapshot): void {
         appConstants ??= settings.appConstants;
         initAppConstants(appConstants);
     }
-    // Fire-and-forget: install is synchronous, and anything that may depend on it
-    // awaits WebCodecsCompat.whenReady.
+    // Records the level only; the download starts when a component asks for it.
     if (settings.webCodecs)
-        void WebCodecsCompat.init(settings.webCodecs);
+        WebCodecsCompat.init(settings.webCodecs);
 }
 
 function tryGetCurrentAppConstants(): AppConstants | undefined {

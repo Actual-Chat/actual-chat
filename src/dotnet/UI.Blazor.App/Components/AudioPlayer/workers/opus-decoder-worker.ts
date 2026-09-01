@@ -44,8 +44,9 @@ const serverImpl: OpusDecoderWorker = {
         };
         Versioning.init(artifactVersions);
 
-        // No-op unless a polyfill is in play; its wasm init is what this waits on.
-        await WebCodecsCompat.whenReady;
+        // No-op unless the level actually replaces this codec; awaiting is what
+        // starts the download.
+        await WebCodecsCompat.whenReadyFor('audio-decode');
         if (!useSystemDecoder && globalThis.AudioDecoder) {
             const configSupport = await AudioDecoder.isConfigSupported(systemCodecConfig);
             useSystemDecoder = configSupport.supported ?? false;

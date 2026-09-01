@@ -2,6 +2,7 @@
 // across stop/start; behaviour lives in those two classes.
 
 import { sharedSettingsWorker } from 'shared-settings-worker';
+import { WebCodecsCompat } from 'web-codecs-compat/init';
 import { getLogs } from 'logging';
 import { createEmptyRecorderStats, type RecorderStats } from '../frame-envelopes';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
@@ -285,6 +286,9 @@ export const recorderWorkerImpl: RecorderWorker = {
             sourceKind: config.sourceKind,
             serverClockOffsetMs: config.serverClockOffsetMs,
         });
+        // Before any encoder is constructed: at level `vp9` the class it gets
+        // depends on libav.js being loaded, and awaiting here is what loads it.
+        await WebCodecsCompat.whenReadyFor('video-encode');
         const track = deps.getTrack();
         const encoderFactory: import('./recorder').RecorderConfig['createEncoder'] = (
             layerCfg,

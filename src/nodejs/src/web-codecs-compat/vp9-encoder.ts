@@ -199,15 +199,12 @@ export class Vp9Encoder {
         }).catch((error: unknown) => this.fail(error));
     }
 
+    /** Drains submitted frames. Deliberately does NOT signal libav's end of stream:
+     *  that would retire the encoder, where WebCodecs flush() leaves it usable. */
     flush(): Promise<void> {
-        this._chain = this._chain.then(async () => {
-            if (this.state !== 'configured')
-                return;
-
-            const libav = this._libav!;
-            const packets = await libav.ff_encode_multi(this._c, this._frame, this._pkt, [], true);
-            this.emit(packets);
-        }).catch((error: unknown) => this.fail(error));
+        // With lag-in-frames=0 every frame's packet is emitted by the encode that
+        // produced it, so awaiting the queue is the whole of a flush.
+        this._chain = this._chain.catch(() => undefined);
 
         return this._chain;
     }
@@ -264,8 +261,12 @@ export class Vp9Encoder {
             libav.AVFrame_pict_type_s(this._swsFrame, keyFrame ? 1 : 0),
             libav.avcodec_send_frame(this._c, this._swsFrame),
         ]);
-        if (scaled < 0 || sent < 0)
-            throw new Error('Vp9Encoder: scale or send failed');
+        if (scaled < 0 || sent < 0) {
+            throw new Error(
+                `Vp9Encoder: scale=${scaled} send=${sent} `
+                + `in=${input.width}x${input.height}/fmt${input.format}/planes${input.layout.length} `
+                + `out=${out.width}x${out.height}/fmt${out.format} sws=${this._sws}`);
+        }
 
         const packets: LibAvPacket[] = [];
         for (;;) {
