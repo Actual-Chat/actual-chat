@@ -210,4 +210,34 @@ Two structural defects sit under all four:
 
 ## Fixes
 
-Being settled; this section is filled in as each lands.
+### A — never publish an unresolved window as a loaded one
+
+`ChatView.GetData`: a chat that has entries but produced no items now claims
+neither end, and logs a warning naming the query. The list keeps its spacers, so
+skeletons render, `buildDataQuery` keeps asking, and the retry stays armed. The
+genuinely-empty chat still takes the `IsEmpty` → Welcome branch as before.
+
+### B — the pin must not read a resting position as a reader's decision
+
+`updatePinnedEdge`, two changes:
+
+- Content shorter than the viewport now pins `defaultEdge` outright, before either
+  predicate runs — a short chain touches both edges at once whatever is loaded, so
+  there is no reader decision to respect. Skipped while a screen or interactive
+  anchor is fresh, which owns the position instead.
+- `isAtStart` is gated on `hasVeryLastItem` as well: leaving the end for the top is
+  a claim about where the reader is, and a window that cannot see its last item has
+  no basis for it.
+
+Verified against a running list, before vs. after, on the same geometry:
+
+| case | before | after |
+|---|---|---|
+| short chain, `hasVeryLastItem = false` | **Start** | End |
+| short chain, `hasVeryLastItem = true` | End | End |
+| tall chain at top, `hasVeryLastItem = false` | **Start** | null |
+| tall chain, `hasVeryLastItem = true` | End | End |
+
+### C, D
+
+Pending.

@@ -1085,14 +1085,33 @@ export class InfiniteList extends VirtualList {
             return;
         }
 
+        // Content shorter than the viewport touches both edges at once, however much of it is loaded, so
+        // there is no reader decision here to respect and the preferred edge wins - unless the reader is
+        // holding a position, which owns it instead. The predicates below can't answer this case: both
+        // are gated on a loaded flag, so a window that doesn't yet know its last item settles on Start
+        // and stops following new messages.
+        if (this.chainSize <= this.ref.clientHeight
+            && !this.hasFreshScreenAnchor()
+            && this.getFreshInteractiveAnchorKey() == null) {
+            this.setPinnedEdge(this.defaultEdge);
+            return;
+        }
+
         // A chain that fits on screen rests with its first item at the top, which leaves the end anchor
         // hanging below the fold - so the end is reached there by construction, however far the anchor
         // says it is. Without this an End-edge list would settle on Start and stop following new
         // messages until the conversation outgrew the viewport.
         const isAtEnd = rs.hasVeryLastItem
             && (this.isChainWithinViewport || (this.distanceToEndEdge() ?? Infinity) <= EdgeEpsilon);
-        const isAtStart = rs.hasVeryFirstItem && this.distanceToStartEdge() <= EdgeEpsilon;
-        // Both edges reachable at once (content shorter than the viewport) means the preferred one wins.
+        // Leaving the far edge for this one is a claim about where the reader is, and a window that
+        // can't see its last item has no basis for it - while distanceToStartEdge has no lower bound, so
+        // a chain hanging below the viewport top satisfies it as readily as one flush with it. A
+        // Start-default list is exempt: it must reach its own edge with the far end still unloaded,
+        // exactly as this one pins End with history above it unloaded.
+        const isAtStart = rs.hasVeryFirstItem
+            && (this.defaultEdge === VirtualListEdge.Start || rs.hasVeryLastItem)
+            && this.distanceToStartEdge() <= EdgeEpsilon;
+        // Both edges reachable at once means the preferred one wins.
         this.setPinnedEdge(isAtEnd && (this.defaultEdge === VirtualListEdge.End || !isAtStart)
             ? VirtualListEdge.End
             : isAtStart
