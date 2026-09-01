@@ -45,6 +45,7 @@ public static class LocalizedStringsLocalizerExt
         public string Settings_Transcription => l["Settings_Transcription"].Value;
         public string Settings_Ptt => l["Settings_Ptt"].Value;
         public string Settings_Application => l["Settings_Application"].Value;
+        public string Settings_Permissions => l["Settings_Permissions"].Value;
         public string Settings_Sessions => l["Settings_Sessions"].Value;
         public string Settings_ApiKeys => l["Settings_ApiKeys"].Value;
         public string Settings_Documents => l["Settings_Documents"].Value;
@@ -646,19 +647,6 @@ public static class LocalizedStringsLocalizerExt
         public string Banner_NotInContacts => l["Banner_NotInContacts"].Value;
         public string Banner_AddToContacts => l["Banner_AddToContacts"].Value;
         public string Banner_ChatCopiedToPlace => l["Banner_ChatCopiedToPlace"].Value;
-        public string Banner_ImportContacts_Prefix(object arg0) => l["Banner_ImportContacts_Prefix", arg0].Value;
-        public string Banner_ImportContactsTarget => l["Banner_ImportContactsTarget"].Value;
-        public string Banner_ImportContacts_Suffix => l["Banner_ImportContacts_Suffix"].Value;
-        public string Banner_Notify_Prefix(object arg0) => l["Banner_Notify_Prefix", arg0].Value;
-        public string Banner_NotifyTarget => l["Banner_NotifyTarget"].Value;
-        public string Banner_Notify_Suffix => l["Banner_Notify_Suffix"].Value;
-        public string Banner_LockScreenCalls_Prefix(object arg0)
-            => l["Banner_LockScreenCalls_Prefix", arg0].Value;
-        public string Banner_LockScreenCallsTarget => l["Banner_LockScreenCallsTarget"].Value;
-        public string Banner_LockScreenCalls_Suffix => l["Banner_LockScreenCalls_Suffix"].Value;
-        public string Banner_LiveActivities_Prefix(object arg0) => l["Banner_LiveActivities_Prefix", arg0].Value;
-        public string Banner_LiveActivitiesTarget => l["Banner_LiveActivitiesTarget"].Value;
-        public string Banner_LiveActivities_Suffix => l["Banner_LiveActivities_Suffix"].Value;
         public string Banner_PttAllow => l["Banner_PttAllow"].Value;
         public string Banner_PttUseDevice => l["Banner_PttUseDevice"].Value;
         public string Banner_Connected => l["Banner_Connected"].Value;
@@ -784,6 +772,25 @@ public static class LocalizedStringsLocalizerExt
         public string Permission_BackgroundActivity => l["Permission_BackgroundActivity"].Value;
         public string Permission_BackgroundActivityRationale_Format(object arg0)
             => l["Permission_BackgroundActivityRationale_Format", arg0].Value;
+        public string Permission_Camera => l["Permission_Camera"].Value;
+        public string Permission_CameraRationale => l["Permission_CameraRationale"].Value;
+        public string Permission_Contacts => l["Permission_Contacts"].Value;
+        public string Permission_ContactsRationale_Format(object arg0)
+            => l["Permission_ContactsRationale_Format", arg0].Value;
+        public string Permission_Location => l["Permission_Location"].Value;
+        public string Permission_LocationRationale => l["Permission_LocationRationale"].Value;
+        public string Permission_LockScreenCalls => l["Permission_LockScreenCalls"].Value;
+        public string Permission_LockScreenCallsRationale_Format(object arg0)
+            => l["Permission_LockScreenCallsRationale_Format", arg0].Value;
+        public string Permission_LiveActivities => l["Permission_LiveActivities"].Value;
+        public string Permission_LiveActivitiesRationale_Format(object arg0)
+            => l["Permission_LiveActivitiesRationale_Format", arg0].Value;
+        public string Permissions_Topic => l["Permissions_Topic"].Value;
+        public string Permissions_Description_Format(object arg0)
+            => l["Permissions_Description_Format", arg0].Value;
+        public string Permissions_AllGranted => l["Permissions_AllGranted"].Value;
+        public string Permissions_DismissWarning => l["Permissions_DismissWarning"].Value;
+        public string Permissions_WarningDismissed => l["Permissions_WarningDismissed"].Value;
 
         public string Account_UserProfile => l["Account_UserProfile"].Value;
         public string Account_YourProfile => l["Account_YourProfile"].Value;

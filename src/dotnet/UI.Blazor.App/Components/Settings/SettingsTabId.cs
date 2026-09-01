@@ -6,6 +6,7 @@ public static class SettingsTabId
     public static readonly string CarAudio = nameof(CarAudio).Decapitalize();
     public static readonly string Account = nameof(Account).Decapitalize();
     public static readonly string Notifications = nameof(Notifications).Decapitalize();
+    public static readonly string Permissions = nameof(Permissions).Decapitalize();
     public static readonly string Transcription = nameof(Transcription).Decapitalize();
     public static readonly string Ptt = nameof(Ptt).Decapitalize();
     public static readonly string UserInterface = nameof(UserInterface).Decapitalize();

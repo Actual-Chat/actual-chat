@@ -1,7 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, AccountFull>
+@inherits ComputedStateComponent<AppUIHub, AccountView.Model>
 @{
-    var account = State.Value;
+    var m = State.Value;
+    var account = m.Account;
 }
 
 <AvatarBadge
@@ -10,16 +11,32 @@
     NameClass="hidden">
     <BadgeContent>
         <AccountPresenceIndicator UserId="@account?.Id" />
+        @if (m.HasPermissionWarning) {
+            <WarningBadge Class="c-permission-warning"/>
+        }
     </BadgeContent>
 </AvatarBadge>
 
 @code {
-    protected override ComputedState<AccountFull>.Options GetStateOptions()
+    private PermissionsUI PermissionsUI => field ??= Hub.Services.GetRequiredService<PermissionsUI>();
+
+    protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = AccountUI.OwnAccount.Value,
+            InitialValue = new(AccountUI.OwnAccount.Value),
             Category = GetStateCategory(GetType()),
         };
 
-    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
-        => AccountUI.OwnAccount.Use(cancellationToken);
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        var permissions = await PermissionsUI.GetState(cancellationToken).ConfigureAwait(false);
+        return new(account) {
+            HasPermissionWarning = permissions is { HasMissing: true, IsWarningDismissed: false },
+        };
+    }
+
+    // Nested types
+
+    public sealed record Model(AccountFull Account) {
+        public bool HasPermissionWarning { get; init; }
+    }
 }

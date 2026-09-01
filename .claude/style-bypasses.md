@@ -212,3 +212,9 @@ edited. The reason can be as short as whose decision it was.
   longer than 2 lines — Alex Yakunin's decision: asked for one bullet per codec
   explaining why it sits where it does, since the array shows the order but not
   the measurements behind it.
+## src/dotnet/Api/Users/StoredSettings/UserAppSettings.cs
+
+- L24 `[DataMember, MemoryPackOrder(11), Key(11)]` on `IsPermissionWarningDismissed`
+  — MemoryPack attribute on a new member — required: the type is `[MemoryPackable]`
+  for legacy KVAS reads, and MemoryPack's generator rejects a partially annotated
+  object outright (MEMPACK025), so a new member cannot opt out of `MemoryPackOrder`

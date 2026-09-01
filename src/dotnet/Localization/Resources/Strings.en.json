@@ -56,6 +56,7 @@
   "Settings_Transcription": "Voice & Transcription",
   "Settings_Ptt": "Push-to-talk",
   "Settings_Application": "Application",
+  "Settings_Permissions": "Permissions",
   "Settings_Sessions": "Sessions",
   "Settings_ApiKeys": "API Keys",
   "Settings_Documents": "Documents",
@@ -746,8 +747,7 @@
   "Common_Publish": "Publish",
   "Common_Skip": "Skip",
 
-  // The banners that stack above a chat, and the connection-state strip. The _Prefix / Target /
-  // _Suffix trios wrap a link inside one sentence and {0} is the app name.
+  // The banners that stack above a chat, and the connection-state strip. {0} is the app name.
   // Banner_Connected through Reconnect_Title are connection states; DemandInteraction_* is the
   // modal asking for one tap, because the browser will not let a pending operation continue
   // without a user gesture.
@@ -756,18 +756,6 @@
   "Banner_NotInContacts": "This user is not in your contact list yet",
   "Banner_AddToContacts": "Add to contacts",
   "Banner_ChatCopiedToPlace": "This chat has been copied to the place.",
-  "Banner_ImportContacts_Prefix": "{0} can import your ",
-  "Banner_ImportContactsTarget": "contacts",
-  "Banner_ImportContacts_Suffix": " to find them here",
-  "Banner_Notify_Prefix": "{0} can ",
-  "Banner_NotifyTarget": "notify",
-  "Banner_Notify_Suffix": " you about new messages",
-  "Banner_LockScreenCalls_Prefix": "Let {0} show ",
-  "Banner_LockScreenCallsTarget": "calls on the lock screen",
-  "Banner_LockScreenCalls_Suffix": "",
-  "Banner_LiveActivities_Prefix": "Let {0} show upload and chat progress on the Lock Screen by enabling ",
-  "Banner_LiveActivitiesTarget": "Live Activities",
-  "Banner_LiveActivities_Suffix": "",
   "Banner_PttAllow": "This chat is in Push-to-talk mode. Allow it on this device?",
   "Banner_PttUseDevice": "Push-to-talk is on in this chat. Use it on this device?",
   "Banner_Connected": "Connected!",
@@ -891,14 +879,31 @@
   "Onboarding_GenerateAvatar": "Generate avatar",
   "Onboarding_UploadPhoto": "Upload your photo",
 
-  // The rationale shown above each OS permission prompt. The system dialog itself is not ours
-  // and stays in the OS language; only this explanation is translated.
+  // The rationale shown above each OS permission prompt, and - as Permissions_* - the Settings >
+  // Permissions page listing them all. The system dialog itself is not ours and stays in the OS
+  // language; only this explanation is translated. "Calls on the lock screen" and "Live Activities"
+  // are OS features rather than permissions: the app can only send the user to the system setting.
   "Permission_Microphone": "Microphone",
   "Permission_MicrophoneRationale_Format": "Live-transcribed voice messaging is where {0} shines, but this feature won't work without microphone access.",
   "Permission_Notifications": "Notifications",
   "Permission_NotificationsRationale": "Get notified about new messages. Any chat can be muted individually.",
   "Permission_BackgroundActivity": "Background activity",
   "Permission_BackgroundActivityRationale_Format": "Keeps calls ringing when Android tries to put {0} to sleep.",
+  "Permission_Camera": "Camera",
+  "Permission_CameraRationale": "Video calls and photos taken right in a chat need camera access.",
+  "Permission_Contacts": "Contacts",
+  "Permission_ContactsRationale_Format": "{0} can find the people you already know once it can read your contacts.",
+  "Permission_Location": "Location",
+  "Permission_LocationRationale": "Sharing your live location or a pin in a chat needs location access.",
+  "Permission_LockScreenCalls": "Calls on the lock screen",
+  "Permission_LockScreenCallsRationale_Format": "Lets {0} show an incoming call on the lock screen, so you don't miss it.",
+  "Permission_LiveActivities": "Live Activities",
+  "Permission_LiveActivitiesRationale_Format": "Lets {0} show upload and chat progress on the lock screen.",
+  "Permissions_Topic": "App permissions",
+  "Permissions_Description_Format": "{0} asks for a permission only where a feature needs it - every one of them is optional.",
+  "Permissions_AllGranted": "All permissions are granted.",
+  "Permissions_DismissWarning": "Dismiss permission warning",
+  "Permissions_WarningDismissed": "Permission warning dismissed",
 
   // The profile card opened by tapping an author, and the owner/moderator actions on it. Owner
   // and Moderator are role names - keep them capitalized and identical to the Members_* keys.

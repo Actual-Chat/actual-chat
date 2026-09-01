@@ -1,14 +1,19 @@
-# macOS (MacCatalyst): Wire up the notification-permission "Configure" button
+# macOS (MacCatalyst): Wire up the notification-permission toggle
 
 ## Goal
-Make the "Configure" button in the `NotificationsPermissionBanner` actually do
-something on the MacCatalyst app: trigger the OS permission prompt, reflect the
-real permission state, and hide the banner once granted — reusing the iOS
+Make the Notifications toggle on Settings > Permissions actually do something on
+the MacCatalyst app: trigger the OS permission prompt, reflect the real
+permission state, and read as granted once it is — reusing the iOS
 implementation instead of duplicating it.
 
+> The permission banners this plan was written against are gone: every OS
+> permission now lives on the Settings > Permissions tab, driven by
+> `PermissionsUI`. The MacCatalyst stub below is unchanged, so the plan still
+> holds — only the surface that calls into it moved.
+
 ## Problem (root cause)
-Clicking **Configure** calls `INotificationsPermission.Request()`
-(`UI.Blazor.App/Components/Banners/NotificationsPermissionBanner.razor:83`).
+Toggling Notifications calls `INotificationsPermission.Request()` through
+`PermissionsUI.Request` (`UI.Blazor.App/Services/PermissionsUI.cs`).
 On MacCatalyst this resolves to a stub:
 
 ```csharp
@@ -17,9 +22,9 @@ public Task Request(CancellationToken cancellationToken = default)
     => Task.CompletedTask;   // no-op → nothing happens
 ```
 
-`MacNotificationsPermission.IsGranted()` also hardcodes `false`, so the banner
-is *always* visible (it shows whenever `IsGranted is not true`, see
-`NotificationsPermissionBanner.razor:10`).
+`MacNotificationsPermission.IsGranted()` also hardcodes `false`, so the
+permission always reads as missing - which is what keeps the warning badge lit
+on Mac.
 
 The stub was intentional — `MauiProgram.MacCatalyst.cs:17` notes *"Push
 notifications are not wired up on MacCatalyst yet (no Firebase native
@@ -280,7 +285,7 @@ all? Options:
 - **(a)** Ship as-is — the prompt works, the banner hides once granted, delivery
   comes later. Simplest; mild risk of user confusion (granted but no pushes).
 - **(b)** Suppress the banner on `AppKind.MacOS` until push is wired up (via a
-  special-case in `NotificationsPermissionBanner.razor` `ComputeState`), and
+  special-case in `PermissionsUI`'s notifications entry), and
   defer the permission work entirely.
 
 Recommendation: **(a)** if we want the permission groundwork in now; **(b)** if

@@ -46,6 +46,13 @@
             IconClass = "icon-car",
             Content = @<CarAudioSettings/>,
         });
+    tabs.Add(new(SettingsTabId.Permissions, L.Settings_Permissions) {
+        IconClass = "icon-shield",
+        TitleBadge = m.Permissions.HasMissing
+            ? @<WarningBadge IsMuted="@m.Permissions.IsWarningDismissed"/>
+            : null,
+        Content = @<PermissionsSettings/>,
+    });
     if (showMyAccount) {
         tabs.Add(new(SettingsTabId.Sessions, L.Settings_Sessions) {
             IconClass = "icon-lock",
@@ -118,6 +125,8 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
+    private PermissionsUI PermissionsUI => field ??= Hub.Services.GetRequiredService<PermissionsUI>();
+
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
             InitialValue = new(AccountUI.OwnAccount.Value, ModalModel.TabId),
@@ -131,9 +140,11 @@
         var showLogViewer = Hub.LogUI.CanCapture
             && await Hub.LogUI.IsEnabled.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        var permissions = await PermissionsUI.GetState(cancellationToken).ConfigureAwait(false);
         return new ComputedModel(account, tabId) {
             ShowLogViewer = showLogViewer,
             EnableIncompleteUI = enableIncompleteUI,
+            Permissions = permissions,
         };
     }
 
@@ -164,6 +175,7 @@
     public sealed record ComputedModel(AccountFull AccountFull, string? TabId) {
         public bool ShowLogViewer { get; init; }
         public bool EnableIncompleteUI { get; init; }
+        public PermissionsState Permissions { get; init; } = PermissionsState.Unknown;
     }
 
     public sealed record Model(string? TabId = null) {

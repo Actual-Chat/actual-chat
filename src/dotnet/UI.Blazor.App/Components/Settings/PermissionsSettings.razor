@@ -1,0 +1,85 @@
+@inherits ComputedStateComponent<AppUIHub, PermissionsState>
+@{
+    var m = State.Value;
+    var permissions = PermissionsUI.Permissions;
+}
+
+<TileTopic Topic="@L.Permissions_Topic"/>
+<Tile>
+    @foreach (var permission in permissions) {
+        var p = permission;
+        var isGranted = m.IsGranted(p.Kind);
+        <TileItem Class="permission-item" IsHoverable="false">
+            <Icon><i class="@p.Icon text-2xl"></i></Icon>
+            <Content>@p.Title</Content>
+            <Caption>@p.Rationale</Caption>
+            <Right>
+                <Toggle
+                    IsChecked="@isGranted"
+                    IsDisabled="@(isGranted || _isRequesting)"
+                    IsCheckedChanged="@(_ => OnToggle(p))"
+                    Rendered="@(p.Kind == PermissionKind.Notifications ? OnNotificationsToggleRendered : default)"/>
+            </Right>
+        </TileItem>
+    }
+    <p class="c-description">@L.Permissions_Description_Format(CoreConstants.AppName)</p>
+</Tile>
+
+@if (m.IsKnown && !m.HasMissing) {
+    <Tile>
+        <p class="c-description">@L.Permissions_AllGranted</p>
+    </Tile>
+}
+else if (m.HasMissing && !m.IsWarningDismissed) {
+    <Tile>
+        <TileItem Click="@OnDismissWarningClick">
+            <Icon><i class="icon-alert-circle text-2xl"></i></Icon>
+            <Content>@L.Permissions_DismissWarning</Content>
+        </TileItem>
+    </Tile>
+}
+
+@code {
+    private bool _isRequesting;
+
+    private PermissionsUI PermissionsUI => field ??= Hub.Services.GetRequiredService<PermissionsUI>();
+    private NotificationUI NotificationUI => Hub.NotificationUI;
+
+    protected override ComputedState<PermissionsState>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<PermissionsState>.Options() {
+                InitialValue = PermissionsState.Unknown,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override Task<PermissionsState> ComputeState(CancellationToken cancellationToken)
+        => PermissionsUI.GetState(cancellationToken);
+
+    // Event handlers
+
+    private async Task OnToggle(PermissionDef permission) {
+        if (_isRequesting || State.Value.IsGranted(permission.Kind))
+            return;
+
+        _isRequesting = true;
+        StateHasChanged();
+        try {
+            await PermissionsUI.Request(permission, true, CancellationToken.None).ConfigureAwait(true);
+        }
+        finally {
+            _isRequesting = false;
+            StateHasChanged();
+        }
+    }
+
+    private Task OnNotificationsToggleRendered(ElementReference toggleRef) {
+        _ = NotificationUI.RegisterRequestNotificationHandler(toggleRef);
+        return Task.CompletedTask;
+    }
+
+    private async Task OnDismissWarningClick() {
+        await PermissionsUI.DismissWarning().ConfigureAwait(true);
+        ToastUI.Show(L.Permissions_WarningDismissed, "icon-checkmark-circle", ToastDismissDelay.Short);
+    }
+}

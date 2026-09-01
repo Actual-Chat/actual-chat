@@ -4,3 +4,16 @@
     @apply min-w-6 h-4.5 mx-1 px-1 py-0.5;
     @apply rounded-full text-primary-title text-caption-1;
 }
+
+/* An exclamation mark knocked out of a filled circle: red while the warning stands,
+   gray once it has been dismissed. The glyph takes the page background, not a text color. */
+.warning-badge {
+    @apply inline-flex justify-center items-center;
+    @apply w-4 h-4;
+    @apply rounded-full bg-danger;
+    @apply text-xxs font-bold leading-none;
+    color: var(--background-01);
+}
+.warning-badge.muted {
+    background-color: var(--text-03);
+}

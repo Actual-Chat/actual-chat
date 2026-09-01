@@ -11,6 +11,8 @@ public sealed record SettingsTabDef(string Id, string Title)
     public string Class { get; init; } = "";
     public string HeaderClass { get; init; } = "";
     public string ContentClass { get; init; } = "";
+    // Rendered as a superscript right after the title text, unlike TitleContent, which trails the row
+    public RenderFragment? TitleBadge { get; init; }
     public RenderFragment? TitleContent { get; init; }
     public RenderFragment? Content { get; init; }
     // An action tab - Log out, Quit - runs this instead of becoming the selection

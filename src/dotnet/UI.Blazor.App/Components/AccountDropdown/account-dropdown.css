@@ -68,3 +68,11 @@ body.hoverable .left-panel-account-menu .dropdown-menu-btn.btn-round:hover .btn-
 .footer-account-menu {
     @apply w-full;
 }
+
+/* The permission warning sits opposite the presence dot, in the avatar's top-right corner. The
+   ring in the page background keeps it legible over whatever the avatar picture puts behind it. */
+.btn-round.account-btn .avatar-circle > .c-content > .c-permission-warning {
+    @apply absolute -right-0.5 -top-0.5;
+    @apply w-3.5 h-3.5;
+    border: 2px solid var(--background-01);
+}

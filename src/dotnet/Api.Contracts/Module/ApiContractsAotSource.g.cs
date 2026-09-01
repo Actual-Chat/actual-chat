@@ -36,6 +36,7 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.Media.IUploads>();
         CodeKeeper.Keep<global::ActualChat.Notifications.INotifications>();
         CodeKeeper.Keep<global::ActualChat.Search.ISearch>();
+        CodeKeeper.Keep<global::ActualChat.Streaming.IChatTypingActivities>();
         CodeKeeper.Keep<global::ActualChat.Streaming.ILiveAudioStreams>();
         CodeKeeper.Keep<global::ActualChat.Streaming.ILiveSessions>();
         CodeKeeper.Keep<global::ActualChat.Streaming.ILiveVideoStreams>();
@@ -773,6 +774,9 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.SessionRules>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.SessionRules>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.SessionRules>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.TypingActivityKind>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.TypingActivityKind>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.TypingActivityKind>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Mathematics.LinearMap>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Mathematics.LinearMap>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Mathematics.LinearMap>>>>();
@@ -1800,6 +1804,7 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.CompatibilityLevel, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.Hosting.ThermalLevel, ActualChat.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.Live.ParticipationKind, ActualChat.Api]], MessagePack");
+        CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.Live.TypingActivityKind, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.Media.VideoSourceKind, ActualChat.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.Notifications.DeviceType, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.SessionKind, ActualChat.Core]], MessagePack");
@@ -2120,6 +2125,7 @@ internal partial class ApiContractsAotSource : IAotSource
             (typeof(global::ActualChat.Media.IUploads), AotTypeKind.Api),
             (typeof(global::ActualChat.Notifications.INotifications), AotTypeKind.Api),
             (typeof(global::ActualChat.Search.ISearch), AotTypeKind.Api),
+            (typeof(global::ActualChat.Streaming.IChatTypingActivities), AotTypeKind.Api),
             (typeof(global::ActualChat.Streaming.ILiveAudioStreams), AotTypeKind.Api),
             (typeof(global::ActualChat.Streaming.ILiveSessions), AotTypeKind.Api),
             (typeof(global::ActualChat.Streaming.ILiveVideoStreams), AotTypeKind.Api),
