@@ -10,8 +10,9 @@ import { WebCodecsCompat } from './init';
 const { infoLog, warnLog } = getLogs('WebCodecsCompat');
 
 const LIBAV_CODEC = 'libvpx-vp9';
-// libav runs on a millisecond timebase; WebCodecs timestamps are microseconds.
-const TIMEBASE_DEN = 1000;
+// Microseconds, matching WebCodecs timestamps exactly: on a millisecond timebase
+// frames less than 1ms apart collapse onto one pts, which libvpx rejects.
+const TIMEBASE_DEN = 1_000_000;
 
 // Declared here rather than taken from @libav.js/types, which pins 6.7.7
 // against our 6.10.9 build; only what this file calls is typed.
@@ -97,6 +98,13 @@ interface ScalerState {
     format: number;
 }
 
+interface FramePlanes {
+    data: Uint8Array;
+    layout: PlaneLayout[];
+    width: number;
+    height: number;
+}
+
 /** Whether this codec string is one this encoder handles at all. */
 export function isVp9Codec(codec: string): boolean {
     return codec.startsWith('vp09') || codec === 'vp9';
@@ -176,8 +184,6 @@ export class Vp9Encoder {
         const keyFrame = options.keyFrame === true;
         const timestamp = frame.timestamp;
         const format = frame.format;
-        const codedWidth = frame.codedWidth;
-        const codedHeight = frame.codedHeight;
         const whenCopied = readFramePlanes(frame);
         const generation = this._generation;
         this.encodeQueueSize++;
@@ -186,7 +192,7 @@ export class Vp9Encoder {
                 return;
 
             this.encodeQueueSize--;
-            const { data: buffer, layout } = await whenCopied;
+            const { data: buffer, layout, width, height } = await whenCopied;
             const libav = this._libav!;
             const pixelFormat = toLibAvFormat(libav, format);
             if (pixelFormat === null) {
@@ -194,10 +200,10 @@ export class Vp9Encoder {
                 return;
             }
 
-            const [pts, ptshi] = libav.f64toi64(Math.floor(timestamp / 1000));
+            const [pts, ptshi] = libav.f64toi64(Math.round(timestamp));
             const input: LibAvFrame = {
                 data: buffer, layout, format: pixelFormat, pts, ptshi,
-                width: codedWidth, height: codedHeight,
+                width, height,
                 key_frame: keyFrame ? 1 : 0,
                 pict_type: keyFrame ? 1 : 0,
             };
@@ -309,7 +315,7 @@ export class Vp9Encoder {
         for (const packet of packets) {
             const chunk = new EncodedVideoChunk({
                 type: (packet.flags ?? 0) & 1 ? 'key' : 'delta',
-                timestamp: libav.i64tof64(packet.pts ?? 0, packet.ptshi ?? 0) * 1000,
+                timestamp: libav.i64tof64(packet.pts ?? 0, packet.ptshi ?? 0),
                 data: packet.data,
             });
             this._output(chunk, this._metadata ?? undefined);
@@ -421,15 +427,27 @@ export function getVideoEncoderClass(codec: string): typeof VideoEncoder {
  * Planes and layout from either frame realm: at `full` the pipeline mixes native
  * capture frames with polyfilled ones the app builds, and both reach the encoder.
  */
-function readFramePlanes(frame: VideoFrame): Promise<{ data: Uint8Array; layout: PlaneLayout[] }> {
+function readFramePlanes(frame: VideoFrame): Promise<FramePlanes> {
     const polyfilled = frame as unknown as {
         _libavGetData?: () => Uint8Array;
         _libavGetLayout?: () => PlaneLayout[];
     };
-    if (typeof polyfilled._libavGetData === 'function' && typeof polyfilled._libavGetLayout === 'function')
-        return Promise.resolve({ data: polyfilled._libavGetData(), layout: polyfilled._libavGetLayout() });
+    if (typeof polyfilled._libavGetData === 'function' && typeof polyfilled._libavGetLayout === 'function') {
+        return Promise.resolve({
+            data: polyfilled._libavGetData(),
+            layout: polyfilled._libavGetLayout(),
+            width: frame.codedWidth,
+            height: frame.codedHeight,
+        });
+    }
 
+    // copyTo defaults to the visible rect, so the planes describe THAT. Declaring
+    // the coded size instead makes libav read stale heap past the end of every row
+    // - silently, because its copy clamps rather than throwing.
+    const rect = frame.visibleRect;
+    const width = rect?.width ?? frame.codedWidth;
+    const height = rect?.height ?? frame.codedHeight;
     const data = new Uint8Array(frame.allocationSize());
 
-    return frame.copyTo(data).then(layout => ({ data, layout }));
+    return frame.copyTo(data).then(layout => ({ data, layout, width, height }));
 }

@@ -2154,6 +2154,7 @@ export class VideoRecorder {
             const workerForPump = this.worker;
             let pumpFrameCount = 0;
             let lastRvfcTickAtMs = performance.now();
+            let lastTimerMediaTime = -1;
             let timerPump: number | null = null;
 
             // False means the worker rejected the frame, which cancels the
@@ -2185,7 +2186,9 @@ export class VideoRecorder {
             };
 
             const onFrame = (now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
-                if (this.workerSourceCancelled) return;
+                if (this.workerSourceCancelled)
+                    return;
+
                 void now;
                 lastRvfcTickAtMs = performance.now();
                 if (!pushFrame(metadata.mediaTime))
@@ -2209,14 +2212,22 @@ export class VideoRecorder {
                     if (this.workerSourceCancelled || sourceVideo.readyState < 2)
                         return;
 
-                    // Silence, not value equality: rVFC reports a decoded
-                    // frame's `mediaTime` while the timer only has the
-                    // element's `currentTime`, and the two never compare equal,
-                    // so the old dedupe let both pumps submit the same frame.
+                    // Two guards, because the pumps report different quantities:
+                    // rVFC gives a decoded frame's `mediaTime` and the timer only
+                    // the element's `currentTime`, which never compare equal - so
+                    // silence keeps the pumps apart, while the value guard below
+                    // keeps the timer from re-submitting one picture repeatedly.
                     if (performance.now() - lastRvfcTickAtMs < timerPumpPeriodMs * 2)
                         return;
 
-                    if (!pushFrame(sourceVideo.currentTime) && timerPump !== null) {
+                    // `currentTime` moves only when the element decodes, well below
+                    // the timer rate; without this the far end receives bursts.
+                    const mediaTime = sourceVideo.currentTime;
+                    if (mediaTime === lastTimerMediaTime)
+                        return;
+
+                    lastTimerMediaTime = mediaTime;
+                    if (!pushFrame(mediaTime) && timerPump !== null) {
                         window.clearInterval(timerPump);
                         timerPump = null;
                     }
@@ -2229,18 +2240,22 @@ export class VideoRecorder {
             this.workerSourceCaptureWatchdogCancel?.();
             let lastWatchdogFrameCount = -1;
             const captureWatchdog = window.setInterval(() => {
-                if (this.workerSourceCancelled) return;
+                if (this.workerSourceCancelled)
+                    return;
+
                 const stalled = pumpFrameCount === lastWatchdogFrameCount;
                 lastWatchdogFrameCount = pumpFrameCount;
-                if (!stalled) return;
+                if (!stalled)
+                    return;
+
                 const t = this.inputTrack;
                 warnLog?.log(
                     `capture watchdog: pump=#${pumpFrameCount} ` +
-                `sinceRvfcTick=${(performance.now() - lastRvfcTickAtMs).toFixed(0)}ms ` +
-                `timerPump=${timerPump !== null} ` +
-                `srcVid(rs=${sourceVideo.readyState} ct=${sourceVideo.currentTime.toFixed(2)} ` +
-                `paused=${sourceVideo.paused} ended=${sourceVideo.ended}) ` +
-                `track(rs=${t?.readyState} muted=${t?.muted} enabled=${t?.enabled})`);
+                    `sinceRvfcTick=${(performance.now() - lastRvfcTickAtMs).toFixed(0)}ms ` +
+                    `timerPump=${timerPump !== null} ` +
+                    `srcVid(rs=${sourceVideo.readyState} ct=${sourceVideo.currentTime.toFixed(2)} ` +
+                    `paused=${sourceVideo.paused} ended=${sourceVideo.ended}) ` +
+                    `track(rs=${t?.readyState} muted=${t?.muted} enabled=${t?.enabled})`);
             }, 2000);
             this.workerSourceCaptureWatchdogCancel = (): void => {
                 if (timerPump !== null) {
