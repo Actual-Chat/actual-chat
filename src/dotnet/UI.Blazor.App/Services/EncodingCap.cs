@@ -3,7 +3,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 public sealed record EncodingCapConfig(
     // Thresholds match the THROUGHPUT-DEFICIT semantic of
     // `RecorderStats.EncodeDeficitEma` (range 0..1, deficit = 1 -
-    // bundlesEncoded/framesCaptured per-second EMA). Bad = sustained
+    // bundlesEncoded/framesOffered per-second EMA). Bad = sustained
     // encoder underrun, Good = within a few-% margin of source rate.
     // Demote layers when underrun persists `BadStreak` ticks.
     double EncodeDeficitBad = 0.20,

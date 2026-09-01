@@ -193,8 +193,12 @@ clamps now rather than at the next 5 s interval.
 ### What composes the layer count
 
 1. **`EncodingCap`** — driven by `RecorderStats.EncodeDeficitEma`, the
-   *throughput deficit* `1 − bundlesEncodedPerSec / framesCapturedPerSec`
-   (`0` = the encoder keeps pace, `1` = it emits nothing). Deficit above
+   *throughput deficit* `1 − bundlesEncodedPerSec / framesOfferedPerSec`
+   (`0` = the encoder keeps pace, `1` = it emits nothing). The denominator is
+   frames *offered* to the encoder, not captured, so deliberate fps pacing does
+   not read as falling behind; and ticks before the encoder's first output are
+   exempt for a bounded grace period, since an encoder still starting up scores
+   a full `1` (see `EncodeDeficitTicker`). Deficit above
    `EncBadDeficit = 0.20` for 2 ticks demotes; below `EncOkDeficit = 0.05` for
    5 ticks promotes. In between is a **dead band**: the bad streak clears but
    the good streak only *decays by one*, so a single transient excursion can't
