@@ -85,19 +85,16 @@ public partial class ChatTypingActivitiesBackend : ShardComputeService, IChatTyp
         Moment expiresAt)
     {
         // Re-primes the survivors of the earliest expiration, which recomputes ListRaw and arms the
-        // next pass. An inconsistent computed means someone else has already replaced the value.
+        // next pass. A null primer means someone else has already replaced the value.
+        using var isolation = Computed.BeginIsolation();
         var clock = Clocks.SystemClock;
         try {
             await clock.Delay((expiresAt + ExpirationGrace - clock.Now).Positive(), CancellationToken.None)
                 .ConfigureAwait(false);
-            if (!computed.IsConsistent())
-                return;
-
-            using var isolation = Computed.BeginIsolation();
             using var primer = await _listRawPrimer
-                .LockAndPrepare(chatId, CancellationToken.None)
+                .TryLockAndPrepare(chatId, computed, CancellationToken.None)
                 .ConfigureAwait(false);
-            if (!computed.IsConsistent())
+            if (primer is null)
                 return;
 
             var activities = computed.Value;

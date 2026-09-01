@@ -49,6 +49,25 @@ public sealed class LockingComputeMethodPrimer<TKey, TValue>(
         }
     }
 
+    public async ValueTask<Primer?> TryLockAndPrepare(
+        TKey key,
+        Computed computed,
+        CancellationToken cancellationToken = default)
+    {
+        // Returns null once `computed` is inconsistent - its value has been superseded, so there is
+        // nothing left to re-prime. Checked before taking the lock, to skip queuing for it at all,
+        // and again after, since a writer can land in between.
+        if (!computed.IsConsistent())
+            return null;
+
+        var primer = await LockAndPrepare(key, cancellationToken).ConfigureAwait(false);
+        if (computed.IsConsistent())
+            return primer;
+
+        primer.Dispose();
+        return null;
+    }
+
     public bool TryUsePrimed(TKey key, [MaybeNullWhen(false)] out TValue value)
     {
         if (_reservations.TryGetValue(key, out var reservation))
@@ -61,8 +80,9 @@ public sealed class LockingComputeMethodPrimer<TKey, TValue>(
     // Nested types
 
     /// <summary>
-    /// A single stash slot reserved via <see cref="LockingComputeMethodPrimer{TKey,TValue}.LockAndPrepare"/>. Holds the per-key lock
-    /// until disposed; also holds the stashed value (if any).
+    /// A single stash slot reserved via
+    /// <see cref="LockingComputeMethodPrimer{TKey,TValue}.LockAndPrepare"/>.
+    /// Holds the per-key lock until disposed; also holds the stashed value (if any).
     /// </summary>
     public sealed class Primer : IDisposable
     {
