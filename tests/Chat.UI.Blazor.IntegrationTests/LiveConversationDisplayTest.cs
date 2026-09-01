@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
@@ -2085,9 +2085,12 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     public async Task ConversationOverlappingTheLiveBlockRendersAsPlainEntries()
     {
         // A regular conversation whose range runs into the live block's can't render as a block - both
-        // claim the same rows. It has to degrade to plain entries, and that has to hold at the load
-        // level too: excluding its range from the id tiles drops the entries it holds *and* the live
-        // block's own rows, because the overlap is exactly where the two share tiles.
+        // claim the same rows - so it degrades to plain entries. This pins the SERVER's half of that:
+        // GetRangeMeta rebuilds the ranges so an overlapping record's id never reaches the client, and
+        // ConversationRangeMeta.ConversationIds is derived from those rebuilt ranges. The client-side
+        // filter in ChatUI.Tiles.GetTile guards the straddling case instead (StartEntryLid < V <=
+        // EndEntryLid, reported by tiles ending at or before V), which needs a chat spanning more than
+        // one server id tile to reproduce - too big to build here until the tile flattening lands.
 
         // arrange
         await Tester.SignInAsUniqueBob();
@@ -2162,7 +2165,118 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         }, TimeSpan.FromSeconds(20));
     }
 
+    [Fact]
+    public async Task CollapsedBlockSurfacesThreadsWhetherSpokenOrTyped()
+    {
+        // A collapsed block hides what the call spoke, but a thread start heads a discussion rather
+        // than being just a transcript row, so it stays reachable below the card either way. Hiding on
+        // HasAudio alone dropped the transcript-born ones in GetTile, before they could become thread
+        // cards at all, so only threads started from typed messages ever surfaced.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var chat = await CreateSettledChat("collapsed-thread-surfacing-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_450);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var v = live!.EffectiveVisibleStartLid;
+        await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+        }, CancellationToken.None);
+        var spokenPlain = await CreateSpokenEntry(chat.Id, "spoken plain");
+        var spokenThreadStart = await CreateSpokenEntry(chat.Id, "spoken thread start");
+        var typedThreadStart = await Tester.CreateTextEntry(chat.Id, "typed thread start");
+        await StartThread(chat.Id, spokenThreadStart.Id, "Spoken thread");
+        await StartThread(chat.Id, typedThreadStart.Id, "Typed thread");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+
+        // act
+        await CollapseJoinedLiveBlock(chatUI, chat.Id, live.ToConversation());
+
+        // assert
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            var threadLids = items.Items
+                .SelectMany(i => i.GetLeafMessages())
+                .OfType<ThreadMessage>()
+                .Select(m => m.Id)
+                .ToList();
+            threadLids.Should().Contain(spokenThreadStart.Id.LocalId,
+                "a thread born from a transcript is still a thread");
+            threadLids.Should().Contain(typedThreadStart.Id.LocalId,
+                "a thread born from a typed message surfaces the same way");
+            LeafEntryLids(items).Should().NotContain(spokenPlain.Id.LocalId,
+                "a plain spoken row is still what the collapsed card stands for");
+            // Below the card, not inside it: the collapsed block is one unit, so a thread it happens to
+            // span is placed by the ordinary rules.
+            items.Items.OfType<ThreadMessage>().Select(m => m.Id).Should().Contain(
+                [spokenThreadStart.Id.LocalId, typedThreadStart.Id.LocalId],
+                "a collapsed block must not absorb the threads inside its range");
+        }, TimeSpan.FromSeconds(20));
+    }
+
+    [Fact]
+    public async Task ExpandedBlockKeepsItsThreadsInside()
+    {
+        // The counterpart: a block showing its rows owns the threads inside its range, as it always has.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var chat = await CreateSettledChat("expanded-thread-absorb-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_460);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var v = live!.EffectiveVisibleStartLid;
+        var threadStart = await Tester.CreateTextEntry(chat.Id, "typed thread start");
+        await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
+            Title = "Recap", Description = "d", Summary = "s",
+            EndEntryLid = threadStart.LocalId, MessageCount = 2,
+        }, CancellationToken.None);
+        await StartThread(chat.Id, threadStart.Id, "Typed thread");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);   // joined => the block expands
+        chatUI.SelectChatOnNavigation(chat.Id);
+
+        // act + assert
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            chatUI.IsConversationExpanded(live.ToConversation()).Should().BeTrue();
+            items.Items.OfType<ThreadMessage>().Should().BeEmpty(
+                "an expanded block absorbs the threads inside its range");
+            items.Items
+                .SelectMany(i => i.GetLeafMessages())
+                .OfType<ThreadMessage>()
+                .Select(m => m.Id)
+                .Should().Contain(threadStart.LocalId, "the thread is inside the block, not gone");
+        }, TimeSpan.FromSeconds(20));
+    }
+
     // Private methods
+
+    private Task StartThread(ChatId chatId, ChatEntryId entryId, string title)
+        => Tester.Commander.Call(new ChatThreads_Start {
+            Session = Tester.Session,
+            ParentChatId = chatId,
+            Title = title,
+            Description = "",
+            EntryIds = [entryId],
+        });
 
     private static string Describe(LiveBlockState? state)
     {

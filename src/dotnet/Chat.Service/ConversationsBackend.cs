@@ -1,4 +1,4 @@
-using ActualChat.Chat.Db;
+﻿using ActualChat.Chat.Db;
 using ActualChat.Chat.ML;
 using ActualChat.Db;
 using ActualChat.Streaming;
@@ -81,25 +81,33 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ConfigureAwait(false);
 
         // A latched live session owns [V, +inf) - it always runs to the chat's tail - so it replaces every
-        // solo-era conversation from V on (the UI swaps the regular block for the live one). The emitted
-        // range still needs a finite end for the range math downstream, hence the cap at the chat's end;
-        // that read is isolated because depending on the lid range would invalidate this on every message.
+        // solo-era conversation from V on (the UI swaps the regular block for the live one).
         var liveStartLid = await LiveSessionsBackend.GetVisibleStartLid(chatId, cancellationToken)
             .ConfigureAwait(false);
-        if (liveStartLid is { } liveStart && idTileRange.End > liveStart) {
-            Range<long> chatLidRange;
-            using (Computed.BeginIsolation())
-                chatLidRange = await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
-            var liveRange = new Range<long>(liveStart, Math.Max(chatLidRange.End, liveStart + 1));
-            conversationRanges = conversationRanges
-                .Where(r => r.End <= liveStart)
-                .Append(liveRange)
-                .OrderBy(r => r.Start)
-                .ToList();
+        if (liveStartLid is { } liveStart) {
+            // Unconditional, not just for tiles that reach past V: a conversation straddling V (V latched
+            // inside an older record - what id churn produces) is reported by every tile ending at or
+            // before V, and that record then claims the live block's rows. It renders a competing card,
+            // and its range excludes the id tiles holding those rows, so the live block loses them.
+            conversationRanges = conversationRanges.Where(r => r.End <= liveStart).ToList();
             if (previousConversationRange is { } prev && prev.End > liveStart)
                 previousConversationRange = null;
             if (nextConversationRange is { } next && next.End > liveStart)
                 nextConversationRange = null;
+            if (idTileRange.End > liveStart) {
+                // The emitted range still needs a finite end for the range math downstream, hence the cap
+                // at the chat's end; that read is isolated because depending on the lid range would
+                // invalidate this on every message.
+                Range<long> chatLidRange;
+                using (Computed.BeginIsolation())
+                    chatLidRange = await ChatsBackend.GetLidRange(chatId, false, cancellationToken)
+                        .ConfigureAwait(false);
+                var liveRange = new Range<long>(liveStart, Math.Max(chatLidRange.End, liveStart + 1));
+                conversationRanges = conversationRanges
+                    .Append(liveRange)
+                    .OrderBy(r => r.Start)
+                    .ToList();
+            }
         }
 
         return new ConversationRangeMeta(chatId,
