@@ -283,6 +283,7 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
 .chat-list .navbar-item .btn {
     @apply w-8 h-full;
     @apply bg-transparent;
+    @apply no-sheen;
 }
 .chat-list .navbar-item .recording-in-chat.on,
 body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on {

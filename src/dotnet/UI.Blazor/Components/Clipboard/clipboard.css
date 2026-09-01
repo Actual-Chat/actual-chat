@@ -19,6 +19,7 @@
 }
 .copy-to-clipboard .btn {
     @apply bg-transparent;
+    @apply no-sheen;
 }
 .copy-to-clipboard .btn:hover {
     @apply bg-04;

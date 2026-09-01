@@ -6,6 +6,7 @@
 .people-group .btn-square {
     @apply min-w-12;
     @apply bg-transparent;
+    @apply no-sheen;
     @apply border-b-2 border-transparent;
     @apply rounded-none;
 }
@@ -26,6 +27,7 @@ body.hoverable .people-group .btn-square:hover .btn-content {
     @apply min-w-8;
     @apply rounded-none;
     @apply bg-transparent;
+    @apply no-sheen;
     @apply border-b-2 border-transparent;
 }
 .btn-square.add-user-btn .btn-content {

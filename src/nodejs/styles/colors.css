@@ -1343,17 +1343,14 @@
    takes the top gloss alone, 1 for a light one, which also gets the mirrored shade rising from the
    bottom. Fills that follow the theme flip between the two, so they read --sheen-surface instead. */
 :root {
+    --sheen: 0.2;
     --sheen-scale: 1;
     --sheen-fill: 0;
 }
-/* Every fill in a light theme is a light one, so all of them take both halves of the wash — and a
-   shade over a near-white fill turns grubby long before a gloss over a dark one gets noticed.
-   Hence the far lower intensity here than in the dark theme. */
+/* Every fill in a light theme is a light one, so all of them take both halves of the wash. */
 :root, .theme-light, .theme-ash {
-    --sheen: 0.2;
     --sheen-surface: 1;
 }
 .theme-dark {
-    --sheen: 0.33;
     --sheen-surface: 0;
 }

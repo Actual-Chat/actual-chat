@@ -38,6 +38,7 @@ body.hoverable .chat-audio-panel .take-phone-btn.btn:hover {
 .chat-audio-panel .listen-only-btn.btn,
 body.hoverable .chat-audio-panel .listen-only-btn.btn:hover {
     @apply text-06 bg-transparent;
+    @apply no-sheen;
     isolation: isolate;
     transition-property: transform, opacity, filter;
 }
@@ -300,6 +301,7 @@ body.narrow .chat-message-editor.has-related-entry .chat-audio-panel .recorder-w
 body.narrow .text-mode .chat-audio-panel .recorder-wrapper .btn.btn-round,
 body.narrow .to-thin .chat-audio-panel .recorder-wrapper .btn.btn-round {
     @apply w-8 h-8;
+    @apply no-sheen;
     background: transparent;
 }
 body.narrow .chat-message-editor.has-related-entry .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content,

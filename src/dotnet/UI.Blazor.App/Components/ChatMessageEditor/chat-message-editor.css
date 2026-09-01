@@ -217,6 +217,7 @@ body.hoverable .btn.btn-round.btn-transparent.post-panel-btn:hover::after,
 }
 body.narrow .attach-btn.btn.btn-round {
     @apply bg-transparent;
+    @apply no-sheen;
     @apply outline-none;
 }
 body.narrow.touch-capable .attach-btn.btn.btn-round.btn-transparent:active {

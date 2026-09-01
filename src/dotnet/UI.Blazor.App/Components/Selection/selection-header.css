@@ -17,6 +17,7 @@
 }
 .selection-header .selection-header-buttons .btn.btn-round {
     @apply bg-transparent;
+    @apply no-sheen;
 }
 .selection-header .selection-header-buttons .btn.btn-round.start-thread-btn {
     @apply text-primary;

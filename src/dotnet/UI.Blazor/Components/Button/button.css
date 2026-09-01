@@ -31,7 +31,8 @@ body.device-ios * {
     @apply fill-current;
     @apply truncate;
     @apply select-none;
-    @apply sheen;
+    /* The sheen itself is opt-in, on the rules below that give the button a fill: a bare .btn has
+       none, and a wash with nothing under it just tints whatever the button sits on. */
     --sheen-fill: var(--sheen-surface);
 }
 .btn.compact {
@@ -108,16 +109,19 @@ body.device-ios * {
 .btn.btn-primary {
     @apply bg-primary;
     @apply text-primary-title;
+    @apply sheen;
     --sheen-fill: 1;
 }
 .btn.btn-danger {
     @apply bg-danger;
     @apply text-danger-title;
+    @apply sheen;
     --sheen-fill: 1;
 }
 .btn.btn-cancel {
     @apply bg-cancel;
     @apply text-cancel-title;
+    @apply sheen;
 }
 
 /* Hover, Focus, Active */
@@ -248,6 +252,7 @@ body.hoverable .btn.btn-transparent.btn-cancel:hover::after {
     @apply w-auto;
     @apply bg-cancel;
     @apply text-primary;
+    @apply sheen;
 }
 .btn.btn-modal.btn-primary {
     @apply bg-primary;
@@ -292,6 +297,7 @@ body.hoverable .btn.btn-modal:hover::after {
     @apply rounded-lg;
     @apply bg-square;
     @apply text-square-title;
+    @apply sheen;
 }
 .btn.btn-round {
     @apply flex-none;
@@ -300,6 +306,7 @@ body.hoverable .btn.btn-modal:hover::after {
     @apply rounded-full;
     @apply bg-round;
     @apply text-round-title;
+    @apply sheen;
     --sheen-scale: 0.5;
 }
 .btn.btn-round::after {
@@ -429,6 +436,7 @@ body.hoverable .btn.btn-round.unhovered:hover {
 body.hoverable .btn.btn-square.btn-square.unhovered:hover,
 body.hoverable .btn.btn-round.btn-round.unhovered:hover {
     @apply bg-transparent;
+    @apply no-sheen;
 }
 
 body.hoverable .btn.btn-square.unhovered:active,

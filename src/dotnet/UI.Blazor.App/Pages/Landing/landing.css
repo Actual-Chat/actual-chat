@@ -256,6 +256,7 @@ body.narrow .landing .landing-header .c-btn-group {
     @apply min-w-10;
     @apply border border-bg-01;
     @apply bg-transparent;
+    @apply no-sheen;
 }
 .landing .landing-header.filled .signin-button.btn {
     @apply border-text-01;
@@ -272,6 +273,7 @@ body.narrow .landing .landing-header .c-btn-group {
 .docs-header .menu-button.btn {
     @apply min-w-10;
     @apply bg-transparent;
+    @apply no-sheen;
 }
 .landing .landing-header .menu-button.btn .btn-content,
 .docs-header .menu-button.btn .btn-content {
