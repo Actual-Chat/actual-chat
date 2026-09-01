@@ -5,6 +5,7 @@
 // onAttach/onDetach/onFirstFrame hooks — this class doesn't touch CSS.
 
 import { getLogs } from 'logging';
+import { frameHeight, frameWidth, type FrameSource } from 'web-codecs-compat/init';
 import { DeviceOrientation, ScreenOrientation, normalizeRotationQuarter } from 'orientation';
 import type { Subscription } from 'rxjs';
 import { merge } from 'rxjs';
@@ -384,14 +385,17 @@ export class RecorderPreviewView {
             }, BG_DRAW_INTERVAL_MS);
         }
 
-        const blurListener: PreviewFrameListener = (frame: VideoFrame) => {
+        const blurListener: PreviewFrameListener = (frame: FrameSource) => {
             if (this._paused)
                 return;
-            this.canvasTarget.draw(frame, frame.displayWidth, frame.displayHeight);
-            this.lastFrameWidth = frame.displayWidth;
-            this.lastFrameHeight = frame.displayHeight;
+
+            const width = frameWidth(frame);
+            const height = frameHeight(frame);
+            this.canvasTarget.draw(frame, width, height);
+            this.lastFrameWidth = width;
+            this.lastFrameHeight = height;
             this.applyRotationAndFit();
-            this.drawBgFrame(frame.displayWidth, frame.displayHeight);
+            this.drawBgFrame(width, height);
             this.fireFirstFrame();
         };
         this.unsubscribeFrames = recorder.addPreviewFrameListener(blurListener);

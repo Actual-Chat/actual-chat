@@ -50,7 +50,21 @@ export interface WebCodecsPolyfillClasses {
     AudioDecoder: unknown;
     AudioData: unknown;
     EncodedAudioChunk: unknown;
+    createImageBitmap: (frame: VideoFrame) => Promise<ImageBitmap>;
     load: (options: { polyfill?: boolean; libavOptions?: unknown }) => Promise<void>;
+}
+
+/** What a sink gets handed where the frame may be polyfilled: a polyfilled
+ *  VideoFrame is neither a CanvasImageSource nor transferable, so those realms
+ *  convert to an ImageBitmap first. */
+export type FrameSource = VideoFrame | ImageBitmap;
+
+export function frameWidth(frame: FrameSource): number {
+    return (frame as VideoFrame).displayWidth || (frame as ImageBitmap).width;
+}
+
+export function frameHeight(frame: FrameSource): number {
+    return (frame as VideoFrame).displayHeight || (frame as ImageBitmap).height;
 }
 
 export function isWebCodecsLevel(value: unknown): value is WebCodecsLevel {
@@ -59,15 +73,40 @@ export function isWebCodecsLevel(value: unknown): value is WebCodecsLevel {
 
 const READY: Promise<void> = Promise.resolve();
 
+type AnyCtor = abstract new (...args: never[]) => unknown;
+
 export class WebCodecsCompat {
     private static _level: WebCodecsLevel = 'none';
     private static _config: WebCodecsCompatConfig | null = null;
     private static _isReady = true;
     private static _whenReady: Promise<void> | null = null;
     private static _classes: WebCodecsPolyfillClasses | null = null;
+    private static _installedClasses: readonly AnyCtor[] = [];
 
     static get level(): WebCodecsLevel {
         return this._level;
+    }
+
+    /** True where every frame in this realm is a polyfill object rather than a
+     *  platform one, which is what native sinks (MSTG, drawImage, transfer) refuse.
+     *  `vp9` swaps the encoder class only, so frames stay native there. */
+    static get isPolyfilledRealm(): boolean {
+        return this._level === 'full';
+    }
+
+    /** A polyfilled instance is a plain JS object, so it can be neither transferred
+     *  nor usefully cloned - and `instanceof VideoFrame` can't tell, because the
+     *  global it tests against is the polyfill class once installGlobals has run. */
+    static isPolyfilled(value: unknown): boolean {
+        if (!this._classes)
+            return false;
+
+        for (const ctor of this._installedClasses) {
+            if (value instanceof ctor)
+                return true;
+        }
+
+        return false;
     }
 
     /** True when awaiting {@link whenReady} would not actually wait, so a hot path
@@ -115,15 +154,19 @@ export class WebCodecsCompat {
         if (!this.affects(component))
             return READY;
 
-        this._whenReady ??= this.load().catch((error: unknown) => {
-            // Staying native is worse than the polyfill but better than no media;
-            // callers see it through `level`, which drops back to 'none'.
-            errorLog?.log(`load('${this._level}') failed, staying native:`, error);
-            this._level = 'none';
-        }).finally(() => {
-            this._isReady = true;
-        });
-        this._isReady = false;
+        // Only the call that starts the load re-opens the gate: a later one would
+        // reopen it forever, since the `finally` that closes it has already run.
+        if (!this._whenReady) {
+            this._isReady = false;
+            this._whenReady = this.load().catch((error: unknown) => {
+                // Staying native is worse than the polyfill but better than no media;
+                // callers see it through `level`, which drops back to 'none'.
+                errorLog?.log(`load('${this._level}') failed, staying native:`, error);
+                this._level = 'none';
+            }).finally(() => {
+                this._isReady = true;
+            });
+        }
 
         return this._whenReady;
     }
@@ -158,26 +201,34 @@ export class WebCodecsCompat {
         // Only `full` needs the polyfill; `vp9` uses Vp9Encoder, which drives
         // libav.js directly.
         const loaded = await import(/* webpackIgnore: true */ `${base}/${POLYFILL_FILE}`) as WebCodecsPolyfillClasses;
-        this._classes = loaded;
-        installGlobals(loaded);
         // Ponyfill mode: the polyfill's own installer fills in MISSING classes only.
+        // Runs before installGlobals so a wasm failure leaves the native classes in
+        // place, keeping the invariant that level 'none' means untouched globals.
         await loaded.load({ polyfill: false, libavOptions: { nothreads: true } });
+        this._classes = loaded;
+        this._installedClasses = installGlobals(loaded);
         infoLog?.log(`init: 'full' ready in ${elapsed()}ms`);
     }
 }
 
 // Overwrites unconditionally, unlike the polyfill's own installer: the two
 // realms cannot be mixed, so at `full` everything must come from the same one.
-function installGlobals(loaded: WebCodecsPolyfillClasses): void {
+function installGlobals(loaded: WebCodecsPolyfillClasses): readonly AnyCtor[] {
     const target = globalThis as unknown as Record<string, unknown>;
     const source = loaded as unknown as Record<string, unknown>;
+    const installed: AnyCtor[] = [];
     for (const name of POLYFILL_CLASS_NAMES) {
-        if (source[name])
-            target[name] = source[name];
+        const ctor = source[name];
+        if (ctor) {
+            target[name] = ctor;
+            installed.push(ctor as AnyCtor);
+        }
         else
             warnLog?.log(`installGlobals: polyfill exports no ${name}`);
     }
 
     debugLog?.log(`installGlobals: replaced ${POLYFILL_CLASS_NAMES.join(', ')}`);
+
+    return installed;
 }
 

@@ -7,11 +7,14 @@
 // track, absent uses the default.
 
 import { DeviceInfo } from 'device-info';
+import { WebCodecsCompat } from 'web-codecs-compat/init';
 
 const KEY = 'video.debug.previewCanvas';
 
+/** At `full` the worker reports ImageBitmaps rather than feeding a generator, so a
+ *  track-backed preview would sit empty over the canvas that actually gets painted. */
 export function isPreviewCanvasPreferred(): boolean {
-    return readOverride() ?? DeviceInfo.isWebKit;
+    return readOverride() ?? (DeviceInfo.isWebKit || WebCodecsCompat.isPolyfilledRealm);
 }
 
 export function setPreviewCanvasOverride(isCanvas: boolean | null): void {

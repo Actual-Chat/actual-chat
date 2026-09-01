@@ -1,4 +1,4 @@
-import { WebCodecsCompat } from 'web-codecs-compat/init';
+import { WebCodecsCompat, type FrameSource } from 'web-codecs-compat/init';
 import { tap, type PipeOperator } from 'ix-ext';
 import type { DecodedFrame } from '../frame-envelopes';
 import { BgBlurRenderer } from '../webgpu/blur';
@@ -34,24 +34,8 @@ const BG_RENDER_INTERVAL_MS = 100;
 //  • 'canvas2d'      — force Canvas2D (ctx.filter blur baked into a 64×N bitmap).
 export type BgBlurMode = 'auto' | 'webgpu' | 'webgl' | 'webgl-kawase' | 'canvas2d';
 
-/** A polyfilled VideoFrame is neither a TexImageSource nor a CanvasImageSource,
- *  so those realms hand the renderers an ImageBitmap instead. */
-export type BgFrameSource = VideoFrame | ImageBitmap;
-
-interface PolyfillBitmapSource {
-    createImageBitmap?: (frame: VideoFrame) => Promise<ImageBitmap>;
-}
-
-export function bgFrameWidth(frame: BgFrameSource): number {
-    return (frame as VideoFrame).displayWidth || (frame as ImageBitmap).width;
-}
-
-export function bgFrameHeight(frame: BgFrameSource): number {
-    return (frame as VideoFrame).displayHeight || (frame as ImageBitmap).height;
-}
-
 interface BgRenderer {
-    render(frame: BgFrameSource, strength?: number): boolean;
+    render(frame: FrameSource, strength?: number): boolean;
     dispose(): void;
 }
 
@@ -124,8 +108,8 @@ export class BgBlurController {
             return;
 
         this.lastRenderAtMs = nowMs;
-        const toBitmap = WebCodecsCompat.affects('video-decode')
-            ? (WebCodecsCompat.classes as PolyfillBitmapSource | null)?.createImageBitmap
+        const toBitmap = WebCodecsCompat.isPolyfilledRealm
+            ? WebCodecsCompat.classes?.createImageBitmap
             : undefined;
         if (!toBitmap) {
             try {
@@ -137,15 +121,28 @@ export class BgBlurController {
             return;
         }
 
-        // Async, so the frame has to be read before this returns — the pipe
-        // closes it as soon as maybeRender does.
-        void toBitmap(envelope.frame).then(bitmap => {
+        // The conversion reads the frame's planes only after several awaits, by
+        // which time the pipe has closed it — so extend the lifetime with a clone
+        // we own. The polyfill's clone shares the buffer, so this stays cheap.
+        let clone: VideoFrame;
+        try {
+            clone = envelope.frame.clone();
+        } catch (e) {
+            warnLog?.log('BgBlurController: clone failed:', e);
+
+            return;
+        }
+
+        void toBitmap(clone).then(bitmap => {
             try {
                 r.render(bitmap, BG_BLUR_STRENGTH);
             } finally {
                 bitmap.close();
             }
-        }).catch((e: unknown) => warnLog?.log('BgBlurController: render failed:', e));
+        }).catch((e: unknown) => warnLog?.log('BgBlurController: render failed:', e))
+            .finally(() => {
+                try { clone.close(); } catch { /* ignore */ }
+            });
     }
 
     dispose(): void {

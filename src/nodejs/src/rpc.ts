@@ -3,6 +3,7 @@
 import { PromiseSourceWithTimeout } from 'actuallab-core';
 import { Disposable } from 'disposable';
 import { getLogs } from 'logging';
+import { WebCodecsCompat } from 'web-codecs-compat/init';
 
 const { debugLog, warnLog, errorLog } = getLogs('Rpc');
 
@@ -119,6 +120,11 @@ export function isTransferable(x: unknown): x is Transferable {
         return true;
     if (x instanceof MessagePort)
         return true;
+    // At level `full` the WebCodecs globals below ARE the polyfill classes, so the
+    // `instanceof` tests would claim a plain JS object is transferable and make
+    // postMessage throw DataCloneError. Cheap: false unless the polyfill is loaded.
+    if (WebCodecsCompat.isPolyfilled(x))
+        return false;
     // VideoFrame can be transferred
     if (typeof VideoFrame !== 'undefined' && x instanceof VideoFrame)
         return true;

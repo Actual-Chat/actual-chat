@@ -83,6 +83,7 @@ interface LibAv {
     sws_scale_frame(sws: number, dst: number, src: number): Promise<number>;
     copyout_u8(ptr: number, len: number): Promise<Uint8Array>;
     i64tof64(lo: number, hi: number): number;
+    terminate(): void;
     f64toi64(value: number): [number, number];
 }
 
@@ -118,6 +119,9 @@ export class Vp9Encoder {
     private _swsOut: ScalerState | null = null;
     private _metadata: EncodedVideoChunkMetadata | null = null;
     private _hasExtradata = false;
+    // Bumped by configure/reset/close so work queued under an older configuration
+    // can neither emit nor decrement the queue of the current one.
+    private _generation = 0;
 
     state: CodecState = 'unconfigured';
     encodeQueueSize = 0;
@@ -143,6 +147,9 @@ export class Vp9Encoder {
         if (this._libav)
             this._chain = this._chain.then(() => this.free());
 
+        this._generation++;
+        // Frames queued under the previous configuration bail without decrementing.
+        this.encodeQueueSize = 0;
         this.state = 'configured';
         this._chain = this._chain.then(async () => {
             const def = buildEncoderDef(config);
@@ -172,8 +179,12 @@ export class Vp9Encoder {
         const codedWidth = frame.codedWidth;
         const codedHeight = frame.codedHeight;
         const whenCopied = readFramePlanes(frame);
+        const generation = this._generation;
         this.encodeQueueSize++;
         this._chain = this._chain.then(async () => {
+            if (generation !== this._generation)
+                return;
+
             this.encodeQueueSize--;
             const { data: buffer, layout } = await whenCopied;
             const libav = this._libav!;
@@ -210,6 +221,7 @@ export class Vp9Encoder {
 
     reset(): void {
         // Same contract as WebCodecs: drop queued work and return to unconfigured.
+        this._generation++;
         this.encodeQueueSize = 0;
         if (this.state !== 'closed')
             this.state = 'unconfigured';
@@ -218,6 +230,7 @@ export class Vp9Encoder {
     }
 
     close(): void {
+        this._generation++;
         this.state = 'closed';
         this.encodeQueueSize = 0;
         this._chain = this._chain.then(() => this.free()).catch(() => undefined);
@@ -317,6 +330,9 @@ export class Vp9Encoder {
         this._sws = 0;
         this._swsFrame = 0;
         await libav.ff_free_encoder(this._c, this._frame, this._pkt);
+        // Each instance owns a dedicated Worker holding a libvpx wasm heap, and a
+        // Worker is never collected — without this, every configure() leaks one.
+        libav.terminate();
     }
 
     private fail(error: unknown): void {
@@ -326,6 +342,9 @@ export class Vp9Encoder {
         this.state = 'closed';
         const message = error instanceof Error ? error.message : String(error);
         this._error(new DOMException(`Vp9Encoder: ${message}`, 'EncodingError'));
+        // The adapter skips close() once state is 'closed', so this is the last
+        // chance to give the instance back.
+        this._chain = this._chain.then(() => this.free()).catch(() => undefined);
     }
 }
 

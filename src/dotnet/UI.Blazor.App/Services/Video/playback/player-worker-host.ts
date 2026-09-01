@@ -104,6 +104,7 @@ function buildBackend(
                 track: null,
             };
         }
+
         // Tier 1: worker-side generator. Chromium exposes
         // MediaStreamTrackGenerator on the worker; Safari exposes
         // VideoTrackGenerator (different ctor, track lives on `.track`).
@@ -115,6 +116,7 @@ function buildBackend(
                 track: generator.track,
             };
         }
+
         throw new Error(
             'PlayerWorkerHost: backend=\'mstg\' requested but neither '
             + '`opts.mstgWritable` (Tier 2) nor a worker-side '
@@ -140,9 +142,8 @@ function buildBackend(
             (globalThis as { navigator?: { userAgent?: string } }).navigator?.userAgent ?? '');
         // A polyfilled frame is not a CanvasImageSource either, so it needs the
         // polyfill's own bitmap conversion rather than the global one.
-        const polyfillBitmap = WebCodecsCompat.affects('video-decode')
-            ? (WebCodecsCompat.classes as { createImageBitmap?: (f: VideoFrame) => Promise<ImageBitmap> } | null)
-                ?.createImageBitmap
+        const polyfillBitmap = WebCodecsCompat.isPolyfilledRealm
+            ? WebCodecsCompat.classes?.createImageBitmap
             : undefined;
         const convertToBitmap = polyfillBitmap
             ?? (isSafari ? (frame: VideoFrame): Promise<ImageBitmap> => createImageBitmap(frame) : undefined);

@@ -4,6 +4,7 @@
 // factories) are built inside the worker, not passed across.
 
 import type { RpcNoWait } from 'rpc';
+import type { FrameSource } from 'web-codecs-compat/init';
 import type { EncoderConfigPerLayer } from '../operators/encode';
 import type { DownscalerMode } from '../operators/downscale';
 import type { RecorderStats } from '../frame-envelopes';
@@ -143,7 +144,7 @@ export interface RecorderWorkerCallbacks {
     onStreamEnded(reason: string): void;
     onError(error: string): void;
     onTraceKillInjected(): void;
-    onPreviewFrame(frame: VideoFrame): void | Promise<void>;
+    onPreviewFrame(frame: FrameSource): void | Promise<void>;
     onPreviewFramePresentation(presentation: PreviewFramePresentation): void;
     // Worker-created preview track (Safari path). Non-null ⇒ main attaches it
     // to the preview <video srcObject>; null ⇒ worker has no generator, main

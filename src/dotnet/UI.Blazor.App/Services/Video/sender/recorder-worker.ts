@@ -2,7 +2,7 @@
 // across stop/start; behaviour lives in those two classes.
 
 import { sharedSettingsWorker } from 'shared-settings-worker';
-import { WebCodecsCompat } from 'web-codecs-compat/init';
+import { WebCodecsCompat, type FrameSource } from 'web-codecs-compat/init';
 import { getLogs } from 'logging';
 import { createEmptyRecorderStats, type RecorderStats } from '../frame-envelopes';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
@@ -73,7 +73,7 @@ export interface RecorderWorkerDeps {
     reportError?: (error: string) => void;
     reportStreamEnded?: (reason: string) => void;
     reportTraceKillInjected?: () => void;
-    reportPreviewFrame?: (frame: VideoFrame) => void | Promise<void>;
+    reportPreviewFrame?: (frame: FrameSource) => void | Promise<void>;
     reportPreviewFramePresentation?: (presentation: PreviewFramePresentation) => void;
     // Ships a worker-created preview track to main (Safari). Null ⇒ no
     // generator available, main falls back to canvas.
@@ -268,8 +268,10 @@ export const recorderWorkerImpl: RecorderWorker = {
         const { deps, recorder, session } = s;
         disposeWorkerPreviewGenerator(s);
         // A generator takes only native VideoFrames, and at `full` the downscaler
-        // builds polyfilled ones — every write fails with "Null video frame".
-        const canUseGenerator = !WebCodecsCompat.affects('video-encode');
+        // builds polyfilled ones — every write fails with "Null video frame". Only
+        // `full` swaps the frame class; `vp9` swaps the encoder and leaves frames
+        // native, so the generator stays usable there.
+        const canUseGenerator = !WebCodecsCompat.isPolyfilledRealm;
         if (previewWritable && canUseGenerator) {
             // Tier 2: main built the generator (Chromium) and transferred only
             // the writable.
@@ -280,6 +282,10 @@ export const recorderWorkerImpl: RecorderWorker = {
             installWorkerPreviewGenerator(s);
         } else {
             session.setPreviewGenerator(undefined);
+            // Main leaves the preview pending until a track (or an explicit null)
+            // arrives, so refusing the generator has to say so or it waits forever.
+            if (opts.createPreviewInWorker)
+                deps.reportPreviewTrack?.(null);
         }
         // Streaming context must land before the pipeline starts so
         // `createWireSender` finds it on the first encoded chunk.
