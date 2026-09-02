@@ -17,6 +17,26 @@ public class CallNotificationTagTests(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
+    public void AttentionPushTagIsEntryScopedNotChatScoped()
+    {
+        // arrange
+        // AttentionNotification extends ChatEntryNotification, so it tags by entry like a mention.
+        // The Android dismissal path has to map that back to a chat to clear ChatAttentionService's
+        // request, and an entry tag does not parse as a ChatId - which is the trap this pins.
+        var entryId = ChatEntryId.New(TestChatId, 7);
+        var attention = AttentionNotification.New(TestUserId, entryId);
+
+        // act
+        var tag = attention.GetPushTag();
+
+        // assert
+        tag.Should().Be(entryId.Value);
+        ChatId.TryParse(tag, out _).Should().BeFalse("an entry tag is not a chat id");
+        ChatEntryId.TryParse(tag, out var parsed).Should().BeTrue();
+        parsed.ChatId.Should().Be(TestChatId);
+    }
+
+    [Fact]
     public void DismissalSharesRingTag()
     {
         var conversationId = ConversationId.New(TestChatId, 2067);

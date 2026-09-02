@@ -167,12 +167,14 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
 
     private static void ClearAttentionRequests(IReadOnlyList<string> dismissedTags)
     {
-        // An attention banner is posted under ChatAttentionService's own tag, so cancelling the
-        // dismissed one doesn't touch it - and nothing else would, unless this device's app happens
-        // to be running with that chat open.
+        // An attention banner lives under ChatAttentionService's own tag, so cancelling the dismissed
+        // one never touches it. Attention tags by entry, so the tag is usually an entry id.
         var chatIds = dismissedTags
-            .Select(tag => ChatId.TryParse(tag, allowNull: true))
+            .Select(tag => ChatEntryId.TryParse(tag, out var entryId)
+                ? entryId.ChatId
+                : ChatId.TryParse(tag, allowNull: true))
             .SkipNullItems()
+            .Distinct()
             .ToList();
         if (chatIds.Count > 0)
             ChatAttentionService.Instance.Dismiss(chatIds);
