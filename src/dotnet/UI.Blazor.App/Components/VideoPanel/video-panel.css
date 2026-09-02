@@ -720,8 +720,12 @@ body.narrow .video-panel-content .video-track-player.item-x .video-participant-l
 body.narrow .video-panel-content .video-track-player.pip-overlay .video-participant-label {
     @apply hidden;
 }
-/* Focused video shows the participant name in the header (.c-center), hide the in-video label */
-.video-panel.expanded .video-track-player.item-focused .video-participant-label {
+/* Focused video shows the participant name in the header (.c-center), so the
+   in-video label is redundant there — but the FPS/codec readout lives inside that
+   label and the header has nowhere to show it, so hiding the label also hid the
+   readout for the one tile you most want it on. Keep the label when the debug
+   overlay is on; the duplicated name is the cheaper trade. */
+body:not(.show-fps-overlay) .video-panel.expanded .video-track-player.item-focused .video-participant-label {
     @apply hidden;
 }
 
