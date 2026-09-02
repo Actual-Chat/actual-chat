@@ -180,6 +180,12 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                         }
                     }
 
+                    // The anchor may not lag `now` without bound: an unbounded lag
+                    // writes the whole backlog with no sleep, bypassing the catch-up rate.
+                    const maxLagMs = 2 * Math.max(MIN_DURATION_MS, durationMs);
+                    if (lastWriteAt !== null && now - lastWriteAt > maxLagMs)
+                        lastWriteAt = now - maxLagMs;
+
                     const baseAt: number = lastWriteAt ?? now;
                     let nextWriteAt: number = baseAt + durationMs;
                     if (nextWriteAt - now > MAX_DURATION_MS)
