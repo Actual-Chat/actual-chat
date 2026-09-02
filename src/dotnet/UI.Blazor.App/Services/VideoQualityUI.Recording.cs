@@ -272,7 +272,7 @@ public sealed partial class VideoQualityUI
         // EncodingCap still consumes the raw encode ratio. The classifier
         // verdict is used for observability + future bg/fg threshold switch.
         _outboundEncodingCap.Tick(fusedEncodeDeficit);
-        _outboundBandwidthCap.Tick(_outboundBwEstimator);
+        _outboundBandwidthCap.Tick(_outboundBwEstimator, uplink: uplinkHealth);
         var postEncCam = _outboundEncodingCap.Layers.CameraLayers;
         var postBwCam = _outboundBandwidthCap.Layers.CameraLayers;
         if (preEncCam != postEncCam || preBwCam != postBwCam)
