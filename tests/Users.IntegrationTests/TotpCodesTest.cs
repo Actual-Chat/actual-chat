@@ -242,7 +242,7 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task SendShouldRefuseRequestWithoutProofOffProduction()
+    public async Task SendShouldAcceptRequestWithoutProofWhereCaptchaIsDisabled()
     {
         // arrange
         var tester = AppHost.NewWebClientTester(Out);
@@ -258,8 +258,8 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
         Func<Task> send = () => tester.Commander.Call(command);
 
         // assert
-        isProofRequired.Should().BeTrue();
-        await send.Should().ThrowAsync<InvalidOperationException>();
+        isProofRequired.Should().BeFalse();
+        await send.Should().NotThrowAsync();
     }
 
     [Fact]
@@ -278,11 +278,9 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
         };
 
         // act
-        var isProofRequired = CaptchaProofs.IsProofRequired;
         Func<Task> send = () => tester.Commander.Call(command);
 
         // assert
-        isProofRequired.Should().BeTrue();
         await send.Should().NotThrowAsync();
     }
 

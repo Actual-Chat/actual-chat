@@ -1,3 +1,4 @@
+using ActualChat.Users.Module;
 
 namespace ActualChat.Users;
 
@@ -12,13 +13,15 @@ public sealed class CaptchaProofValidator(IServiceProvider services)
     private const string InvalidProofMessage = "We couldn't confirm this request. Please try again.";
 
     private HostInfo HostInfo { get; } = services.HostInfo();
+    private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
     private ICaptcha Captcha => field ??= services.GetRequiredService<ICaptcha>();
     private ISessionsBackend SessionsBackend => field ??= services.GetRequiredService<ISessionsBackend>();
-    private ILogger Log { get; } = services.LogFor<CaptchaProofValidator>();
+    private ILogger Log => field ??= services.LogFor(GetType());
 
-    // TODO(AY): Require it on production too - it's off there while clients released before
-    // TOTP send commands carried a captcha proof are still in use.
-    public bool IsProofRequired => HostInfo.BaseUrlKind != BaseUrlKind.Production;
+    public bool IsProofRequired
+        // The same flag that decides whether the real captcha is served at all: a host that doesn't
+        // serve it runs the fake one, whose token is minted client-side and so proves nothing.
+        => ActualChat.Users.Captcha.IsAvailable(HostInfo, Settings.GoogleRecaptchaSiteKey);
 
     public async Task Require(
         Session session,
