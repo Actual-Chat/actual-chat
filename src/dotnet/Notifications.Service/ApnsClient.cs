@@ -21,7 +21,8 @@ public class ApnsClient(
 
     private readonly Lock _jwtLock = new();
     private (string Token, DateTimeOffset IssuedAt)? _jwt;
-    private volatile bool _isConfigWarningLogged;
+    private volatile bool _isPttConfigWarningLogged;
+    private volatile bool _isVoipConfigWarningLogged;
 
     private NotificationsSettings Settings { get; } = settings;
     private IHttpClientFactory HttpClientFactory { get; } = httpClientFactory;
@@ -45,8 +46,8 @@ public class ApnsClient(
             return;
 
         if (!IsConfigured) {
-            if (!_isConfigWarningLogged) {
-                _isConfigWarningLogged = true;
+            if (!_isPttConfigWarningLogged) {
+                _isPttConfigWarningLogged = true;
                 Log.LogWarning("ApplePush settings are not configured - iOS PTT wakes are disabled");
             }
             return;
@@ -83,8 +84,8 @@ public class ApnsClient(
             return;
 
         if (!IsConfigured) {
-            if (!_isConfigWarningLogged) {
-                _isConfigWarningLogged = true;
+            if (!_isVoipConfigWarningLogged) {
+                _isVoipConfigWarningLogged = true;
                 Log.LogWarning("ApplePush settings are not configured - iOS call rings are disabled");
             }
             return;
@@ -150,7 +151,8 @@ public class ApnsClient(
         };
         var (pushType, topicSuffix, expiration) = pushKind switch {
             PushKind.Voip => ("voip", ".voip", Constants.Call.RingTimeout),
-            _ => ("pushtotalk", ".voip-ptt", Expiration),
+            PushKind.Ptt => ("pushtotalk", ".voip-ptt", Expiration),
+            _ => throw new ArgumentOutOfRangeException(nameof(pushKind), pushKind, null),
         };
         request.Headers.TryAddWithoutValidation("authorization", $"bearer {jwt}");
         request.Headers.TryAddWithoutValidation("apns-push-type", pushType);
