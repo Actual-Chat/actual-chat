@@ -1,13 +1,18 @@
 namespace ActualChat.Chat;
 
+// The English here is a deliberate second copy of the EmptyEntry_* keys in Strings.en.json:
+// ActualChat.Api ships as a NuGet package and must word an entry without the catalog, which it
+// can't reference. EmptyEntryLocalizationTest keeps the two copies equal.
+
 /// <summary>
 /// Builds the markup shown for an entry carrying no text of its own - a shared location, or a
-/// message that is only attachments. The words come from a subclass that can read a catalog;
-/// this layer can't see one, so it owns the cases and nothing else.
+/// message that is only attachments. The wording here is English; hosts that know the reader's
+/// language override the per-case members with catalog values.
 /// </summary>
-public abstract class EmptyEntryMarkupBuilder
+public class EmptyEntryMarkupBuilder
 {
     public const string LocationPin = "📍 ";
+    public static readonly EmptyEntryMarkupBuilder Default = new();
     // isLiveLocation isn't on the entry - it lives on the SharedLocation the entry points at, so
     // only a caller that resolved one can tell a live share from a one-shot pin.
     public Markup Build(ChatEntry entry, MarkupConsumer consumer, bool isLiveLocation = false)
@@ -62,18 +67,25 @@ public abstract class EmptyEntryMarkupBuilder
 
     // Protected methods
 
-    protected abstract string SentLocation { get; }
-    protected abstract string SentLiveLocation { get; }
-    protected abstract string YourLocation { get; }
-    protected abstract string QuoteAttachment { get; }
-    protected abstract string SentImages(int count);
-    protected abstract string YourImages(int count);
-    protected abstract string SentVideos(int count);
-    protected abstract string YourVideos(int count);
-    protected abstract string SentFile(string fileName);
-    protected abstract string YourFile(string fileName);
-    protected abstract string SentFiles(int count);
-    protected abstract string YourFiles(int count);
-    protected abstract string SentAttachments(int count);
-    protected abstract string YourAttachments(int count);
+    protected virtual string SentLocation => "Sent a location";
+    protected virtual string SentLiveLocation => "Shared live location";
+    protected virtual string YourLocation => "your location";
+    protected virtual string QuoteAttachment => "Click to see the attachment";
+    protected virtual string SentImages(int count) => $"Sent {count.Format()} image{Plural(count)}";
+    protected virtual string YourImages(int count) => $"your image{Plural(count)}";
+    protected virtual string SentVideos(int count) => $"Sent {count.Format()} video{Plural(count)}";
+    protected virtual string YourVideos(int count) => $"your video{Plural(count)}";
+    protected virtual string SentFile(string fileName) => $"Sent {fileName}";
+    protected virtual string YourFile(string fileName) => $"your {fileName}";
+    protected virtual string SentFiles(int count) => $"Sent {count.Format()} file{Plural(count)}";
+    protected virtual string YourFiles(int count) => $"your file{Plural(count)}";
+    protected virtual string SentAttachments(int count) => $"Sent {count.Format()} attachment{Plural(count)}";
+    protected virtual string YourAttachments(int count) => $"your attachment{Plural(count)}";
+
+    // Private methods
+
+    private static string Plural(int count)
+        // English-only, and that's the point: every other language reaches this text through
+        // the catalog, where the forms are listed rather than derived.
+        => count == 1 ? "" : "s";
 }

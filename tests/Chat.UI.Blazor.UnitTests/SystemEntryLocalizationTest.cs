@@ -1,5 +1,7 @@
 using ActualChat.Localization;
+using ActualChat.UI.Blazor.App.Services;
 using MessagePack;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
@@ -24,6 +26,30 @@ public class SystemEntryLocalizationTest
 
         // assert
         covered.Should().BeEquivalentTo(kinds, "every SystemEntry kind must have a sample in Entries()");
+    }
+
+    [Fact]
+    public void EnglishRenderingShouldMatchTheDefaultBuilder()
+    {
+        // Server-composed text (notifications, digests) is built by SystemEntryMarkupBuilder.Default,
+        // so the English catalog must reproduce it exactly.
+
+        // arrange
+        var builder = NewBuilder(Languages.English);
+
+        // act
+        var mismatches = AllEntries()
+            .Select(e => (
+                Localized: builder.Build(e).ToReadableText(),
+                English: SystemEntryMarkupBuilder.Default.Build(e).ToReadableText()))
+            .Where(x => x.Localized != x.English)
+            .Select(x => $"'{x.Localized}' != '{x.English}'")
+            .ToList();
+
+        // assert
+        mismatches.Should().BeEmpty(
+            "the English catalog must render exactly what the default builder renders:\n{0}",
+            string.Join("\n", mismatches));
     }
 
     [Fact]
@@ -103,8 +129,10 @@ public class SystemEntryLocalizationTest
     }
 
     private static SystemEntryMarkupBuilder NewBuilder(Language language)
-        => new LocalizedSystemEntryMarkupBuilder(
-            new TestStringLocalizer(StringCatalogs.LoadStrings(language)!, language));
+        => new LocalizedSystemEntryMarkupBuilder(new ServiceCollection()
+            .AddSingleton<IStringLocalizer>(
+                new TestStringLocalizer(StringCatalogs.LoadStrings(language)!, language))
+            .BuildServiceProvider());
 
     private static IEnumerable<Language> ShippedLanguages()
         => StringCatalogs.ShippedSubtags(StringCatalogs.Kind.Strings)
