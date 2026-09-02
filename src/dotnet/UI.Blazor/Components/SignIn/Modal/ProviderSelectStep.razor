@@ -44,7 +44,7 @@
                 ValueExpression="@(() => _formModel.PhoneOrEmail)"
                 Autocomplete="tel email username"
                 ValueChanged="@((string? v) => OnPhoneOrEmailChanged(v))"
-                Placeholder="@_placeholder"
+                Placeholder="@L.SignIn_PhoneOrEmailPlaceholder_Format(_phoneExample ?? DefaultPhoneExample)"
                 disabled="@m.HasSentCodeRecently"
                 type="text"
                 inputmode="text"
@@ -87,6 +87,7 @@
 @code {
     // ReSharper disable once InconsistentNaming
     private const string SessionTemporals_SignInErrorKey = Constants.SessionTemporals.SignInErrorKey;
+    private const string DefaultPhoneExample = "+1(555)555-5555";
 
     private ValidationState _validationState = ValidationState.None;
     private StepModel _formModel = null!;
@@ -95,7 +96,7 @@
     private bool _showFieldErrors;
     private string _signInError = "";
     private CpuTimestamp _lastSignInErrorConsumedAt;
-    private volatile string _placeholder = "+1(555)555-5555 or email@gmail.com";
+    private volatile string? _phoneExample;
 
     private IPhones Phones => Hub.Phones;
     private ICaptcha Captcha => Hub.Captcha;
@@ -124,13 +125,13 @@
             .ToList();
         _formModel = new StepModel(ComponentIdGenerator).CopyToBase();
         await CaptchaUI.WhenReady.ConfigureAwait(false);
-        _ = UpdatePlaceholder();
+        _ = UpdatePhoneExample();
         return;
 
-        async Task UpdatePlaceholder() {
+        async Task UpdatePhoneExample() {
             var example = await Phones.GetExampleCountryPhone(Hub.Session, CancellationToken.None);
             if (example != null) {
-                _placeholder = $"{example.ToReadable(withSpaces: false)} or email@gmail.com";
+                _phoneExample = example.ToReadable(withSpaces: false);
                 this.NotifyStateHasChanged();
             }
         }

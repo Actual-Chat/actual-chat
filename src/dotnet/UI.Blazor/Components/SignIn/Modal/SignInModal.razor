@@ -12,7 +12,7 @@
     HasHeader="false"
     NarrowViewSettings="DialogFrameNarrowViewSettings.Default">
     <Body>
-        <SignInWizard Reason="@ModalModel.Reason" />
+        <SignInWizard Title="@ModalModel.Title" />
     </Body>
 </DialogFrame>
 
@@ -37,5 +37,5 @@
 
     // Nested types
 
-    public sealed record Model(string Reason = "");
+    public sealed record Model(string Title = "");
 }

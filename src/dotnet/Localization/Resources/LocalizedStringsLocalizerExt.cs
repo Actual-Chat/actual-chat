@@ -1322,6 +1322,10 @@ public static class LocalizedStringsLocalizerExt
         public string SignIn_WelcomeNamed_Format(object arg0, object arg1)
             => l["SignIn_WelcomeNamed_Format", arg0, arg1].Value;
         public string SignIn_SignInWith_Format(object arg0) => l["SignIn_SignInWith_Format", arg0].Value;
+        public string SignIn_SignInTo_Format(object arg0) => l["SignIn_SignInTo_Format", arg0].Value;
+        public string SignIn_ToUseChatInvite => l["SignIn_ToUseChatInvite"].Value;
+        public string SignIn_PhoneOrEmailPlaceholder_Format(object arg0)
+            => l["SignIn_PhoneOrEmailPlaceholder_Format", arg0].Value;
         public string SignIn_Or => l["SignIn_Or"].Value;
         public string SignIn_InvalidPhoneOrEmail => l["SignIn_InvalidPhoneOrEmail"].Value;
         public string SignIn_VerifyPhoneText_Format(object arg0) => l["SignIn_VerifyPhoneText_Format", arg0].Value;

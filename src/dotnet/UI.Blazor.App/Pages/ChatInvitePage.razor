@@ -32,7 +32,7 @@
         _account = await AccountUI.OwnAccount.Use();
         if (_account.IsGuest || !_account.IsActive()) {
             _signInFromHomeRequested = true;
-            _ = AccountUI.RequestSignInFromHomePage("to use this chat invite", History.LocalUrl);
+            _ = AccountUI.RequestSignInFromHomePage(L.SignIn_ToUseChatInvite, History.LocalUrl);
             return;
         }
 

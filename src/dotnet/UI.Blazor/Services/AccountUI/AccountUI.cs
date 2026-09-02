@@ -76,9 +76,9 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
         return (changedAt + maxInvalidationDelay - CpuClock.Now).Positive();
     }
 
-    public async Task<bool> RequestSignInFromHomePage(string reason, string? redirectUrl)
+    public async Task<bool> RequestSignInFromHomePage(string title, string? redirectUrl)
     {
-        var mySignInRequest = new SignInRequest(Hub, reason, redirectUrl);
+        var mySignInRequest = new SignInRequest(Hub, title, redirectUrl);
         _activeSignInRequest.Value = mySignInRequest;
         try {
             await History.NavigateTo(Links.Home, true).ConfigureAwait(false);
@@ -193,7 +193,7 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
 
     // Nested types
 
-    public sealed class SignInRequest(UIHub hub, string reason, string? redirectUrl)
+    public sealed class SignInRequest(UIHub hub, string title, string? redirectUrl)
     {
         public bool IsShown { get; private set; }
         public bool IsCompleted { get; private set; }
@@ -205,7 +205,7 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
 
             IsShown = true;
             try {
-                var modalRef = await hub.ModalUI.Show(new SignInModal.Model(reason)).ConfigureAwait(true);
+                var modalRef = await hub.ModalUI.Show(new SignInModal.Model(title)).ConfigureAwait(true);
                 await modalRef.WhenClosed.ConfigureAwait(true);
                 if (hub.AccountUI.OwnAccount.Value.IsGuestOrNull())
                     return;
