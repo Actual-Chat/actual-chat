@@ -13,6 +13,20 @@ candidate tasks. A plan is removed from here once its work ships.
 
 Recently added, larger efforts — in progress or next up.
 
+### Offline mode
+
+[Offline mode](./offline-mode.md) — keep the read-only UI working from the
+client cache no matter when the connection goes away. Fusion already serves
+cache hits at once and re-serves stale values once the peer is disconnected;
+what breaks is everything that *waits*: never-cached compute calls park with no
+timeout, the chat view awaits `no-cache` live-session reads on its first build,
+the tail prefetcher skips `GetChatRangeMeta` and authors, and the peer notices a
+dead link only after the keep-alive timeout. Three tiers: unblock the chat view
+(app only), make misses fail fast and recover (three small Fusion changes plus
+a finite query timeout and a render guard), then coverage and polish. The call
+inventory behind it is the
+[offline render path](../architecture/offline-render-path.md).
+
 ### Chat view — list defects and the live conversation block
 
 [Chat view list defects](./chat-view-list-issues.md) — a blank transcript, a
