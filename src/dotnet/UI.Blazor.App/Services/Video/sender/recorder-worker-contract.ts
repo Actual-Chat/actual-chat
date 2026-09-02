@@ -128,6 +128,9 @@ export interface RecorderWorker extends SharedSettingsWorker {
     // Demand-driven target fps for temporal pacing. <=0 drops every frame
     // (idle: stop encoding, keep camera warm). Hot-applied, no restart.
     setTargetFps(fps: number, noWait?: RpcNoWait): Promise<void>;
+    /** Device pixels the self-preview occupies, so shedding upper tiers for remote
+     *  viewers doesn't also blur the local one. 0 = no preview attached. */
+    setPreviewSize(width: number, height: number, noWait?: RpcNoWait): Promise<void>;
     getStats(): Promise<RecorderStats>;
     getPreviewTrace(): Promise<PreviewTrace>;
     stop(): Promise<void>;
