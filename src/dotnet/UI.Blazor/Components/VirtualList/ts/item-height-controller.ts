@@ -262,7 +262,18 @@ export class ItemHeightController {
             const itemRef = mutation.target as HTMLElement;
             const key = itemRef.dataset.key ?? '';
             const state = this.states.get(key);
-            if (state?.ref !== itemRef)
+            if (state == null) {
+                // An item that rendered nothing is left untracked, and nothing else observes it - so
+                // the render that finally gives it content is the only notice there is. A
+                // ComputedStateComponent renders empty until its state arrives, which for the chat
+                // welcome block is a server round trip; without this its height stays at the 0 it was
+                // measured at, and the list lays the whole chain out from that.
+                if (mutation.type === 'childList' && itemRef.firstElementChild != null
+                    && itemRef.matches('.item[data-key]'))
+                    this.track(key, itemRef);
+                continue;
+            }
+            if (state.ref !== itemRef)
                 continue;
 
             if (mutation.type === 'childList') {
@@ -707,7 +718,9 @@ function getOuterExtra(state: ItemHeightState): number {
 // if it did not have: clipped, and unreachable by a scroll-to.
 function getContentRef(key: string, itemRef: HTMLElement): HTMLElement | null {
     const children = itemRef.children;
-    if (children.length !== 1)
+    // None is an item that rendered nothing this pass - a legitimate state the caller handles, and one
+    // every conditionally rendered item passes through before its content arrives.
+    if (children.length > 1)
         errorLog?.log(`item #${key} must render exactly one element, got ${children.length}`, itemRef);
 
     return children.length > 0 ? children[0] as HTMLElement : null;
