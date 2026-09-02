@@ -27,7 +27,13 @@ export class Share {
     /** Called from Blazor  */
     public static registerHandler(): void {
         const buttons = [...document.querySelectorAll<HTMLButtonElement>('div.share-externally-button > button')];
-        buttons.forEach(btn => btn.addEventListener('click', (event) => { void Share.onClick(event); }));
+        buttons.forEach(btn => {
+            if (btn.dataset.shareHandlerRegistered)
+                return;
+
+            btn.dataset.shareHandlerRegistered = 'true';
+            btn.addEventListener('click', (event) => { void Share.onClick(event); });
+        });
     }
 
     // Private methods
