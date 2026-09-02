@@ -15,20 +15,22 @@ public class SetupSessionTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact]
-    public async Task SetupSessionBugTest1()
+    public async Task ConcurrentUpsertsShouldLeaveOneGuestAccount()
     {
+        // arrange
         var appHost = AppHost;
         var services = appHost.Services;
         var commander = services.Commander();
-
         await using var tester = appHost.NewWebClientTester(Out);
         var session = tester.Session;
 
+        // act
         var tasks = Enumerable.Range(0, 10)
             .Select(_ => commander.Call(new SessionsBackend_Upsert(session)))
             .ToArray();
         await Task.WhenAll(tasks);
 
+        // assert
         var accounts = services.GetRequiredService<IAccounts>();
         var sessionInfo = await accounts.GetSessionInfo(session, CancellationToken.None);
         sessionInfo.Should().NotBeNull();
@@ -38,15 +40,16 @@ public class SetupSessionTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task SetupSessionBugTest2()
+    public async Task ParallelUpsertsShouldGiveEverySessionItsOwnGuestAccount()
     {
+        // arrange
         var appHost = AppHost;
         var services = appHost.Services;
         var commander = services.Commander();
-
         await using var tester = appHost.NewWebClientTester(Out);
-
         var accounts = services.GetRequiredService<IAccounts>();
+
+        // act & assert
         await Parallel.ForEachAsync(Enumerable.Range(0, 10), async (_, cancellationToken) => {
             var session = Session.New();
             await commander.Call(new SessionsBackend_Upsert(session), cancellationToken);
@@ -59,7 +62,7 @@ public class SetupSessionTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task ServerConnectionCarriesTheForwardedAddress()
+    public async Task ServerConnectionShouldCarryTheForwardedAddress()
     {
         // arrange
         var helpers = AppHost.Services.GetRequiredService<RpcBackendHelpers>();
@@ -81,7 +84,7 @@ public class SetupSessionTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task RefusesSessionCreationPastBudget()
+    public async Task SessionCreationShouldBeRefusedPastBudget()
     {
         // arrange
         var policy = new CountingRateLimitPolicy(RateLimitClass.SessionCreation, 2);
@@ -118,7 +121,6 @@ public class SetupSessionTest(AppHostFixture fixture, ITestOutputHelper @out)
     private sealed class CountingRateLimitPolicy(RateLimitClass rateLimitClass, int limit) : RateLimitPolicy
     {
         private int _count;
-
         public int Count => _count;
 
         public override bool IsCharged(RateLimitClass actualClass, RateLimitIdentityKind kind)
