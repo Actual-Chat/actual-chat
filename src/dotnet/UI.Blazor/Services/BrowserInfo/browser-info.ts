@@ -24,6 +24,10 @@ export class BrowserInfo {
                 ? 'WasmApp'
                 : 'WebServer';
     public static appKind: AppKind = 'Unknown';
+    // True when the JS audio pipeline (player + recorder) is in use: every browser host, plus
+    // the MAUI AppKit backend, whose WebView injects `globalThis.__useWebAudio = true` - it is
+    // the one MAUI host without a native audio stack.
+    public static useWebAudio: boolean = BrowserInfo.hostKind !== 'MauiApp' || globalThis['__useWebAudio'] === true;
     // eslint-disable-next-line
     public static renderMode = window?.['App']?.renderMode;
     public static utcOffset: number;

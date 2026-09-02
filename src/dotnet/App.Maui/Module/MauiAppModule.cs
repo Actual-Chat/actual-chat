@@ -1,7 +1,9 @@
 #if ANDROID
 using ActualChat.App.Maui.Activities;
 #endif
+#if !MACOS
 using ActualChat.App.Maui.Audio;
+#endif
 #if ANDROID || IOS || MACCATALYST
 using ActualChat.App.Maui.Location;
 #endif
@@ -67,9 +69,19 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddSingleton<MauiTestPage.IMauiTestPageBackend>(_ => new MauiTestPageBackend());
 
         // Permissions
+#if MACOS
+        // The labs Essentials package has no Permissions implementation, so the MAUI handlers
+        // throw NotImplemented from every check on the AppKit backend - which took down the whole
+        // chat area via ContactsPermissionBanner's ErrorBarrier. The JS-backed Web handlers work
+        // in WKWebView, but BlazorUIAppModule registers them only for non-MAUI hosts - so here.
+        services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c.UIHub()));
+        services.AddScoped<CameraPermissionHandler>(c => new WebCameraPermissionHandler(c.UIHub()));
+        services.AddScoped<LocationPermissionHandler>(c => new WebLocationPermissionHandler(c.UIHub()));
+#else
         services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c.UIHub()));
         services.AddScoped<CameraPermissionHandler>(c => new MauiCameraPermissionHandler(c.UIHub()));
         services.AddScoped<LocationPermissionHandler>(c => new MauiLocationPermissionHandler(c.UIHub()));
+#endif
         services.AddScoped<IDataCollectionSettingsUI>(_ => new MauiDataCollectionSettingsUI());
         services.AddScoped<ReportUI>(c => new MauiReportUI(c.UIHub())); // Replaces base no-op ReportUI
 
@@ -77,7 +89,15 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<ConnectivityUI>(c => new MauiConnectivityUI(c.UIHub()));
 
         // Audio
+#if MACOS
+        // Native audio capture isn't ported to the AppKit backend, so recording runs the same
+        // JS pipeline the web app uses in Safari; WKWebView covers it (getUserMedia + worklets).
+        // TODO(FC): switch to MauiRecorderEngine once native capture is ported - see the
+        // migration TODO in the MACOS audio branch above.
+        services.AddScoped<IAudioRecorderEngine>(c => new WebRecorderEngine(c.AppUIHub()));
+#else
         services.AddScoped<IAudioRecorderEngine>(c => new MauiRecorderEngine(c.AppUIHub()));
+#endif
 #if WINDOWS
         services.AddScoped<AudioFocusUI>(_ => new AudioFocusUI());
         services.AddScoped<TuneUI>(c => new MauiTuneUI(c.UIHub()));
@@ -106,6 +126,23 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddSingleton<VoiceActivityDetector>(c => new TfLiteVoiceActivityDetector(c));
         services.AddSingleton<IAudioCodec, OpusAudioCodec>();
         services.AddScoped<ILocationTracker>(c => new AndroidLocationTracker(c.AppUIHub()));
+#elif MACOS
+        // Leanest possible audio stack for the AppKit experiment: playback goes through the
+        // WebView's JS audio engine (see MauiAudioPlaybackEngineFactory's fallback branch),
+        // native capture / VAD / audio session management are not ported yet.
+        // TODO(FC): migrate to native audio capture + playback, like the other MAUI platforms.
+        // The port needs: an AVAudioSession-free rewrite of MaciOS/Audio's AudioSession +
+        // AppleAudioFocusUI (the API doesn't exist on macOS - CoreAudio device notifications
+        // instead), a net-macos target for ActualLab.Opus.MaciOS (or an OpusSharp-based codec),
+        // and per-TFM bundling of the CoreML VAD model. Until then the JS pipeline below and
+        // the Web* registrations under "#if MACOS" in this file are the recording/playback path.
+        services.AddScoped<AudioFocusUI>(_ => new AudioFocusUI());
+        // MauiTuneUI plays through Plugin.Maui.Audio, which has no macos TFM, and AppleTuneUI needs
+        // the AVAudioSession-based engine + focus stack; both wait for the native audio port above.
+        services.AddScoped<TuneUI>(c => new WebTuneUI(c.UIHub()));
+        services.AddSingleton<VoiceActivityDetector>(c => new NoopVoiceActivityDetector(c));
+        services.AddSingleton<IAudioCodec, OpusAudioCodec>();
+        services.AddScoped<ILocationTracker>(c => new MauiLocationTracker(c.AppUIHub()));
 #elif IOS || MACCATALYST
         services.AddScoped<AudioFocusUI>(c => new AppleAudioFocusUI(c.AppUIHub()));
         services.AddScoped<TuneUI>(c => new AppleTuneUI(c.UIHub()));
@@ -121,15 +158,26 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<ILocationTracker>(c => new AppleLocationTracker(c.AppUIHub()));
 #endif
         services.AddScoped<SensorFeed>(c => new MauiSensorFeed(c.AppUIHub()));
+#if MACOS
+        services.AddScoped<IAudioInitializer>(c => new AudioInitializer(c.UIHub()));
+#else
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
+#endif
         services.AddScoped<IAudioPlaybackEngineFactory>(c => new MauiAudioPlaybackEngineFactory(c.AppUIHub()));
 
         // Notifications
         services.AddSingleton<MauiNotifications>(c => new MauiNotifications(c));
 
         // Contacts
+#if MACOS
+        // Same as the permission handlers above: Essentials Contacts is unimplemented on macos,
+        // so the base no-op DeviceContacts + always-granted Web contacts permission apply.
+        services.AddScoped<DeviceContacts>();
+        services.AddScoped<ContactsPermissionHandler>(c => new WebContactsPermissionHandler(c.UIHub()));
+#else
         services.AddScoped<DeviceContacts>(c => new MauiContacts(c));
         services.AddScoped<ContactsPermissionHandler>(c => new MauiContactsPermissionHandler(c.UIHub()));
+#endif
 
         // File attachments
 #if ANDROID

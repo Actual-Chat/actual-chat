@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeRole</key>
+      <string>Editor</string>
+      <key>CFBundleURLName</key>
+      <string>ai.voxt.dev</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <!-- The web-auth callback scheme; a prod-flavor build would need "voxt" here,
+             same caveat as Platforms/MacCatalyst/Info.plist -->
+        <string>voxt-dev</string>
+      </array>
+    </dict>
+  </array>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Voxt uses the microphone to record voice messages and for calls.</string>
+  <key>NSCameraUsageDescription</key>
+  <string>Voxt uses the camera for video calls and to capture photos you attach to chats.</string>
+</dict>
+</plist>

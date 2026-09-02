@@ -51,7 +51,7 @@ public static class MauiSettings
         AppKind = AppKind.Android;
 #elif WINDOWS
         AppKind = AppKind.Windows;
-#elif MACCATALYST
+#elif MACCATALYST || MACOS
         AppKind = AppKind.MacOS;
 #elif IOS
         AppKind = AppKind.Ios;
