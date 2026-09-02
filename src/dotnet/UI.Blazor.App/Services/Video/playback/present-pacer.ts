@@ -7,6 +7,7 @@ import { FrameDropStage } from '../frame-drop-trace';
 import { BufferSpanMeter, type BufferSpanMeterOptions } from './buffer-span-meter';
 
 const PRESENT_SKIP_RATIO_EMA_ALPHA = 0.1;
+const SOURCE_INTERVAL_EMA_ALPHA = 0.1;
 
 // Mobile caps catch-up at 60 — 120 fps decode/present bursts burn power for
 // an invisible latency win on a phone display.
@@ -101,6 +102,7 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
         let sink: PresentSink | null = null;
         let lastWriteAt: number | null = null;
         let prevCapturedAt: number | null = null;
+        let sourceIntervalMs: number | null = null;
         let prevCapturedEpoch: number | null = null;
         const presentSkipRatio = new RunningEMA(0, 1, PRESENT_SKIP_RATIO_EMA_ALPHA);
         const meter = new BufferSpanMeter(opts.meter);
@@ -163,6 +165,18 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                         durationMs = 0;
                     } else {
                         const natural = decoded.capturedAt.timeMs - prevCapturedAt;
+                        // A sender whose capture timestamps collapse onto ~1ms steps
+                        // makes `natural` meaningless, and flooring at MIN_DURATION_MS
+                        // would then present the whole cluster inside one vsync. Pace
+                        // off the rate the source actually sustains instead.
+                        if (natural >= MIN_DURATION_MS && natural <= MAX_DURATION_MS) {
+                            sourceIntervalMs = sourceIntervalMs === null
+                                ? natural
+                                : sourceIntervalMs + (natural - sourceIntervalMs) * SOURCE_INTERVAL_EMA_ALPHA;
+                        }
+                        const floorMs = sourceIntervalMs === null
+                            ? MIN_DURATION_MS
+                            : Math.max(MIN_DURATION_MS, sourceIntervalMs / MAX_CATCHUP_RATE);
                         // Catch up only when the backlog is at least one SOURCE frame
                         // beyond target. A sub-one-frame excess is the normal
                         // steady-state buffer; for a low-fps source (e.g. 10fps, 100ms
@@ -171,18 +185,19 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                         // every frame. Scaling the threshold to the actual frame
                         // interval keeps catch-up for genuine backlogs while letting a
                         // steady low-fps source play at 1x.
-                        const catchUpThresholdMs = Math.max(MIN_DURATION_MS, natural);
+                        const catchUpThresholdMs = Math.max(floorMs, natural);
                         if (extraMs >= catchUpThresholdMs && mayCatchUp) {
                             const catchUpRate = Math.min(MAX_CATCHUP_RATE, 1 + extraMs / CATCHUP_RATE_GAIN_MS);
-                            durationMs = Math.max(MIN_DURATION_MS, natural / catchUpRate);
+                            durationMs = Math.max(floorMs, natural / catchUpRate);
                         } else {
-                            durationMs = Math.max(MIN_DURATION_MS, Math.min(MAX_DURATION_MS, natural));
+                            durationMs = Math.max(floorMs, Math.min(MAX_DURATION_MS, natural));
                         }
                     }
 
-                    // The anchor may not lag `now` without bound: an unbounded lag
-                    // writes the whole backlog with no sleep, bypassing the catch-up rate.
-                    const maxLagMs = 2 * Math.max(MIN_DURATION_MS, durationMs);
+                    // The anchor may not lag `now` by more than one frame: any larger
+                    // lag writes that many frames with no sleep, and they land on one
+                    // vsync where the compositor shows only the last.
+                    const maxLagMs = Math.max(MIN_DURATION_MS, durationMs);
                     if (lastWriteAt !== null && now - lastWriteAt > maxLagMs)
                         lastWriteAt = now - maxLagMs;
 
