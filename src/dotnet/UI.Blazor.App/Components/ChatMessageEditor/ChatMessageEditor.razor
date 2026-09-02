@@ -342,8 +342,11 @@
 
     private async Task OnCancel(CancellationToken cancellationToken = default)
     {
+        // Disposing the snapshot without a Rollback is what discards the staged attachments
+        // and releases their uploads - same pair Post uses when there's nothing to send.
         await ChatEditorUI.HideRelatedEntry().WaitAsync(cancellationToken);
         await MarkupEditorRef.Clear(mustFocus: true);
+        await _attachmentListHolder.PopSnapshot().DisposeAsync();
     }
 
     private void OnContentStored(object? sender, EventArgs e) {
