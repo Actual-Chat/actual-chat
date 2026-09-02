@@ -160,13 +160,13 @@ language is current.
 
 `ToMarkup()` is gone from the records. `SystemEntryMarkupBuilder`
 (`Api/Chat/Markup/`) dispatches on the entry kind — the shape the markup visitors
-in that folder already use — to one `protected virtual` method per kind, each
-building its markup directly, exactly as the old `ToMarkup()` did.
-`LocalizedSystemEntryMarkupBuilder` (UI.Blazor.App) overrides those, plus
-`SomeoneName`, reading the wording from the catalog. There is deliberately **no
-shared "build an author sentence" helper**: the two kinds resemble each other only
-by coincidence today, and a kind carrying two names, a count, or no author at all
-should not be forced through one shape.
+in that folder already use — to one private method per kind, each building its
+markup directly, exactly as the old `ToMarkup()` did. The words are abstract
+members; `LocalizedSystemEntryMarkupBuilder` (`ActualChat.Localization`) supplies
+them from the catalog, and there is no English copy in C# (#4339). There is
+deliberately **no shared "build an author sentence" helper**: the two kinds
+resemble each other only by coincidence today, and a kind carrying two names, a
+count, or no author at all should not be forced through one shape.
 
 The catalog values are **suffixes only** — what follows the author name — not the
 `_Prefix`/`_Suffix` pair used elsewhere. In all 14 languages the name is the
@@ -177,8 +177,8 @@ The cost is that a translation cannot put words before the name ("Willkommen, X!
 add the prefix back for that language's sake if it ever comes up.
 
 `IChatMarkupHub` carries the builder, non-nullable: `ChatMarkupHub` resolves the
-localized one from the circuit's services, `BackendChatMarkupHub` returns
-`SystemEntryMarkupBuilder.Default`. That leaves notifications, digests and content
+localized one from the circuit's services, `BackendChatMarkupHub` returns the one
+for `Languages.Main`. That leaves notifications, digests and content
 links rendering English on purpose — that language belongs to the recipient, so it
 is §3's work, not this section's — and `TranscriptionContextSource` keeps English
 deliberately, being LLM prompt text. **The builder is a hub property rather than an
@@ -187,10 +187,8 @@ provider*: a `Services.GetService<…>()` lookup there would either trip scope
 validation or hand back a circuit-less UI service.
 
 Four `SystemEntry_*` keys × 14 languages, carrying a `//` note for translators.
-`SystemEntryLocalizationTest` pins the **English** catalog to
-`SystemEntryMarkupBuilder.Default`, since the server paths still use it; let those
-drift and notifications and the chat view would word the same event differently. It
-also enumerates `SystemEntry`'s `[Union]` subtypes, so a new kind cannot reach the
+`SystemEntryLocalizationTest` renders every kind in every shipped language and
+enumerates `SystemEntry`'s `[Union]` subtypes, so a new kind cannot reach the
 builder's `_ => Markup.EmptyText` arm unnoticed.
 
 ---
@@ -276,16 +274,17 @@ viewer's language, the fan-out takes the recipient's.
 
 - **Render sites** - `ChatMarkupHub` resolves `LocalizedEmptyEntryMarkupBuilder`
   from the circuit, so quotes, the pinned bar and chat-list previews are
-  localized. `BackendChatMarkupHub` keeps returning `Default`, which is what
-  leaves `ContentLinksBackend` (a preview cached per content id, with no reader
-  to have a language) and `TranscriptionContextSource` (LLM prompt text) in
-  English on purpose.
+  localized. `BackendChatMarkupHub` returns the one for `Languages.Main`, which
+  is what leaves `ContentLinksBackend` (a preview cached per content id, with no
+  reader to have a language) and `TranscriptionContextSource` (LLM prompt text)
+  in English on purpose.
 - **The fan-out** - `EmptyEntryNotificationContent.Render` gets a
   `LocalizedEmptyEntryMarkupBuilder` per language, so the wording comes from the
   same place rather than being restated in the notification layer.
-- `EmptyEntryLocalizationTest` pins the English catalog to `Default`, since both
-  still ship; let those drift and a quote and a link preview would word the same
-  message differently.
+- `EmptyEntryLocalizationTest` renders every case in every shipped language.
+  The English literals the base class used to carry, and the test that kept them
+  equal to the catalog, are gone (#4339): the builder in `Api` owns the cases and
+  reads every word through an abstract member.
 
 **Detection is a property of the entry, not of the parse.** The parser yields its
 empty result only for empty content, so whether an entry has text of its own is
