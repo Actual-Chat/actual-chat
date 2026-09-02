@@ -23,34 +23,9 @@ export interface PresentRateSnapshot {
     slotsPerSecByStream: Record<string, number>;
 }
 
-// rVFC fires for a subset of presented frames — measured at ~4.6 callbacks/s
-// against 20.3 frames actually presented — so counting callbacks understates the
-// rate several-fold. `presentedFrames` is the element's own count of every frame
-// it put on screen; it resets when the track is swapped (tier change).
-interface PresentSample {
-    displayAt: number;
-    presentedFrames: number;
-}
-
-/** Frames the element actually put on screen per second, spanning the samples we
- *  have. Falls back to the callback count when the counter reset mid-window. */
-function ratePerSec(samples: PresentSample[], windowSec: number): number {
-    if (samples.length < 2)
-        return samples.length / windowSec;
-
-    const first = samples[0];
-    const last = samples[samples.length - 1];
-    const spanSec = (last.displayAt - first.displayAt) / 1000;
-    const presented = last.presentedFrames - first.presentedFrames;
-    if (spanSec <= 0 || presented < 0)
-        return samples.length / windowSec;
-
-    return presented / spanSec;
-}
-
 class PresentRateMeter {
     private readonly watched = new Map<HTMLVideoElement, number>();
-    private readonly presentsByVideo = new Map<HTMLVideoElement, PresentSample[]>();
+    private readonly presentsByVideo = new Map<HTMLVideoElement, number[]>();
     private rescanTimer: ReturnType<typeof setInterval> | null = null;
     private lastCollectAt = 0;
     private unobservableCount = 0;
@@ -67,16 +42,19 @@ class PresentRateMeter {
         const slots = new Set<number>();
         const slotsPerSecByStream: Record<string, number> = {};
         let total = 0;
-        for (const [video, samples] of this.presentsByVideo) {
-            const kept = samples.filter(s => s.displayAt >= from);
+        for (const [video, times] of this.presentsByVideo) {
+            const kept = times.filter(t => t >= from);
             this.presentsByVideo.set(video, kept);
             total += kept.length;
-            for (const s of kept)
-                slots.add(Math.floor(s.displayAt / SLOT_BIN_MS));
-
+            const streamSlots = new Set<number>();
+            for (const t of kept) {
+                const slot = Math.floor(t / SLOT_BIN_MS);
+                slots.add(slot);
+                streamSlots.add(slot);
+            }
             const streamId = video.dataset.streamId;
             if (streamId)
-                slotsPerSecByStream[streamId] = ratePerSec(kept, windowSec);
+                slotsPerSecByStream[streamId] = streamSlots.size / windowSec;
         }
 
         return {
@@ -132,10 +110,7 @@ class PresentRateMeter {
             if (!this.watched.has(video))
                 return;
 
-            this.presentsByVideo.get(video)?.push({
-                displayAt: metadata.expectedDisplayTime,
-                presentedFrames: metadata.presentedFrames,
-            });
+            this.presentsByVideo.get(video)?.push(metadata.expectedDisplayTime);
             this.watched.set(video, video.requestVideoFrameCallback(onFrame));
         };
         this.watched.set(video, video.requestVideoFrameCallback(onFrame));
