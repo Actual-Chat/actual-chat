@@ -101,7 +101,7 @@ public class ChatMarkupHubExtTest
 
     [Theory]
     [InlineData(MarkupConsumer.Notification, "\U0001F4CD Sent a location")]
-    [InlineData(MarkupConsumer.ChatListItemText, "\U0001F4CD Sent a location")]
+    [InlineData(MarkupConsumer.ChatListItemText, "Sent a location")]
     [InlineData(MarkupConsumer.QuoteView, "\U0001F4CD Sent a location")]
     [InlineData(MarkupConsumer.ReactionNotification, "your location")]
     public void ShouldGetLocationMarkupInsteadOfOldClientFallbackContent(
@@ -161,7 +161,9 @@ public class ChatMarkupHubExtTest
     [Theory]
     [InlineData(MarkupConsumer.Notification, false, "\U0001F4CD Sent a location")]
     [InlineData(MarkupConsumer.Notification, true, "\U0001F4CD Shared live location")]
-    [InlineData(MarkupConsumer.ChatListItemText, true, "\U0001F4CD Shared live location")]
+    // The chat list row draws its own map-point icon, so its text carries no pin.
+    [InlineData(MarkupConsumer.ChatListItemText, true, "Shared live location")]
+    [InlineData(MarkupConsumer.QuoteView, false, "\U0001F4CD Sent a location")]
     // The reaction line names a target, so it stays "your location" either way.
     [InlineData(MarkupConsumer.ReactionNotification, true, "your location")]
     [InlineData(MarkupConsumer.ReactionNotification, false, "your location")]

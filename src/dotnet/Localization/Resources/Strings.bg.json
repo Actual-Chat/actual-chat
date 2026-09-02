@@ -187,8 +187,6 @@
   "Chat_IsTyping_Format": "{0} пише...",
   "ChatList_Live_Format": "{0} · на живо",
   "ChatList_Thread_Format": "Нишка „{0}“",
-  "ChatList_SharedLiveLocation": "Сподели местоположение на живо",
-  "ChatList_SentLocation": "Изпрати местоположение",
 
   "ChatMenu_AddMembers": "Добавете участници",
   "ChatMenu_EditContact": "Редактирайте контакта",
@@ -1085,8 +1083,8 @@
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
-  "EmptyEntry_SentLocation": "📍 Изпратено местоположение",
-  "EmptyEntry_SentLiveLocation": "📍 Споделено местоположение на живо",
+  "EmptyEntry_SentLocation": "Изпратено местоположение",
+  "EmptyEntry_SentLiveLocation": "Споделено местоположение на живо",
   "EmptyEntry_YourLocation": "вашето местоположение",
   "EmptyEntry_QuoteAttachment": "Натиснете, за да видите прикачения файл",
   "EmptyEntry_SentImages": "Изпратено е {0} изображение|Изпратени са {0} изображения",

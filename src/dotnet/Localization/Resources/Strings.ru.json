@@ -187,8 +187,6 @@
   "Chat_IsTyping_Format": "{0} печатает...",
   "ChatList_Live_Format": "{0} · в эфире",
   "ChatList_Thread_Format": "Тред «{0}»",
-  "ChatList_SharedLiveLocation": "Геопозиция в реальном времени",
-  "ChatList_SentLocation": "Геопозиция",
 
   "ChatMenu_AddMembers": "Добавить участников",
   "ChatMenu_EditContact": "Изменить контакт",
@@ -1085,8 +1083,8 @@
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
-  "EmptyEntry_SentLocation": "📍 Геопозиция",
-  "EmptyEntry_SentLiveLocation": "📍 Геопозиция в реальном времени",
+  "EmptyEntry_SentLocation": "Геопозиция",
+  "EmptyEntry_SentLiveLocation": "Геопозиция в реальном времени",
   "EmptyEntry_YourLocation": "вашу геопозицию",
   "EmptyEntry_QuoteAttachment": "Нажмите, чтобы посмотреть вложение",
   "EmptyEntry_SentImages": "Отправлено {0} изображение|Отправлено {0} изображения|Отправлено {0} изображений",

@@ -7,6 +7,7 @@ namespace ActualChat.Chat;
 /// </summary>
 public class EmptyEntryMarkupBuilder
 {
+    public const string LocationPin = "📍 ";
     public static readonly EmptyEntryMarkupBuilder Default = new();
     // isLiveLocation isn't on the entry - it lives on the SharedLocation the entry points at, so
     // only a caller that resolved one can tell a live share from a one-shot pin.
@@ -18,10 +19,17 @@ public class EmptyEntryMarkupBuilder
         // The reaction line names what was reacted to ("❤️ to your image"), so it reads as a
         // noun phrase where every other consumer reads as a sentence.
         var isReaction = consumer is MarkupConsumer.ReactionNotification;
-        if (entry.HasLocation)
-            return new PlainTextMarkup(isReaction
-                ? YourLocation
-                : isLiveLocation ? SentLiveLocation : SentLocation);
+        if (entry.HasLocation) {
+            if (isReaction)
+                return new PlainTextMarkup(YourLocation);
+
+            var locationText = isLiveLocation ? SentLiveLocation : SentLocation;
+            // The chat list row draws a map-point icon beside its preview; everywhere else the text
+            // is all there is, so the pin goes in here rather than into 21 catalogs.
+            return new PlainTextMarkup(consumer is MarkupConsumer.ChatListItemText
+                ? locationText
+                : LocationPin + locationText);
+        }
 
         var attachments = entry.Attachments;
         if (attachments.Length == 0)
@@ -55,8 +63,8 @@ public class EmptyEntryMarkupBuilder
 
     // Protected methods
 
-    protected virtual string SentLocation => "📍 Sent a location";
-    protected virtual string SentLiveLocation => "📍 Shared live location";
+    protected virtual string SentLocation => "Sent a location";
+    protected virtual string SentLiveLocation => "Shared live location";
     protected virtual string YourLocation => "your location";
     protected virtual string QuoteAttachment => "Click to see the attachment";
     protected virtual string SentImages(int count) => $"Sent {count.Format()} image{Plural(count)}";

@@ -187,8 +187,6 @@
   "Chat_IsTyping_Format": "{0} píše...",
   "ChatList_Live_Format": "{0} · živě",
   "ChatList_Thread_Format": "Vlákno „{0}“",
-  "ChatList_SharedLiveLocation": "Sdílená poloha živě",
-  "ChatList_SentLocation": "Odeslal(a) polohu",
 
   "ChatMenu_AddMembers": "Přidat členy",
   "ChatMenu_EditContact": "Upravit kontakt",
@@ -1085,8 +1083,8 @@
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
-  "EmptyEntry_SentLocation": "📍 Odeslána poloha",
-  "EmptyEntry_SentLiveLocation": "📍 Sdílená poloha živě",
+  "EmptyEntry_SentLocation": "Odeslána poloha",
+  "EmptyEntry_SentLiveLocation": "Sdílená poloha živě",
   "EmptyEntry_YourLocation": "vaši polohu",
   "EmptyEntry_QuoteAttachment": "Kliknutím zobrazíte přílohu",
   "EmptyEntry_SentImages": "Odeslán {0} obrázek|Odeslány {0} obrázky|Odesláno {0} obrázků",

@@ -187,8 +187,6 @@
   "Chat_IsTyping_Format": "{0}님이 입력 중...",
   "ChatList_Live_Format": "{0} · 라이브",
   "ChatList_Thread_Format": "스레드 '{0}'",
-  "ChatList_SharedLiveLocation": "실시간 위치 공유됨",
-  "ChatList_SentLocation": "위치 전송됨",
 
   "ChatMenu_AddMembers": "멤버 추가",
   "ChatMenu_EditContact": "연락처 편집",
@@ -1085,8 +1083,8 @@
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
-  "EmptyEntry_SentLocation": "📍 위치 전송됨",
-  "EmptyEntry_SentLiveLocation": "📍 실시간 위치 공유됨",
+  "EmptyEntry_SentLocation": "위치 전송됨",
+  "EmptyEntry_SentLiveLocation": "실시간 위치 공유됨",
   "EmptyEntry_YourLocation": "내 위치",
   "EmptyEntry_QuoteAttachment": "탭하여 첨부 파일 보기",
   "EmptyEntry_SentImages": "이미지 {0}개를 보냈습니다",

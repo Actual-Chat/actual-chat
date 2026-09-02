@@ -190,7 +190,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
         if (lastTextEntry is { HasLocation: true, LocationId: { } locationId }) {
             var isOneTime = await LocationUI.IsOneTime(chatId, locationId, cancellationToken).ConfigureAwait(false);
-            return new ChatPreview { Text = isOneTime ? L.ChatList_SentLocation : L.ChatList_SharedLiveLocation };
+            var locationMarkup = ChatMarkupHubFactory[chatId].EmptyEntryMarkupBuilder
+                .Build(lastTextEntry, MarkupConsumer.ChatListItemText, !isOneTime);
+            return new ChatPreview { Text = locationMarkup.ToReadableText(MarkupConsumer.ChatListItemText) };
         }
 
         var emoji = Emojis.TryGetByIdOrSymbol(lastTextEntry.Content.Trim());

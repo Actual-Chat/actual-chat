@@ -156,10 +156,11 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
 
         // assert
         var l = LanguageStringLocalizer.Get(Language.Parse(expected));
+        var expectedText = EmptyEntryMarkupBuilder.LocationPin + l.EmptyEntry_SentLocation;
         var notification = await Tester.WaitForChatEntryNotification(recipient.Id, entry.Id);
-        notification.LeadText.Should().Be(l.EmptyEntry_SentLocation);
+        notification.LeadText.Should().Be(expectedText);
         notification.Text.Should()
-            .Be(l.Notification_AuthorLine_Format(senderAuthor.Avatar.Name, l.EmptyEntry_SentLocation));
+            .Be(l.Notification_AuthorLine_Format(senderAuthor.Avatar.Name, expectedText));
     }
 
     [Theory]
@@ -257,9 +258,9 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
         // assert
         var english = LanguageStringLocalizer.Get(Languages.English);
         var expectations = new[] {
-            (firstRussian, Russian.EmptyEntry_SentLocation),
-            (secondRussian, Russian.EmptyEntry_SentLocation),
-            (englishReader, english.EmptyEntry_SentLocation),
+            (firstRussian, EmptyEntryMarkupBuilder.LocationPin + Russian.EmptyEntry_SentLocation),
+            (secondRussian, EmptyEntryMarkupBuilder.LocationPin + Russian.EmptyEntry_SentLocation),
+            (englishReader, EmptyEntryMarkupBuilder.LocationPin + english.EmptyEntry_SentLocation),
         };
         foreach (var (account, expectedText) in expectations) {
             var notification = await Tester.WaitForChatEntryNotification(account.Id, entry.Id);
@@ -290,10 +291,11 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
 
         // assert
         var l = LanguageStringLocalizer.Get(Language.Parse(expected));
+        var expectedText = EmptyEntryMarkupBuilder.LocationPin + l.EmptyEntry_SentLiveLocation;
         var notification = await Tester.WaitForChatEntryNotification(recipient.Id, entry.Id);
-        notification.LeadText.Should().Be(l.EmptyEntry_SentLiveLocation);
+        notification.LeadText.Should().Be(expectedText);
         notification.Text.Should()
-            .Be(l.Notification_AuthorLine_Format(senderAuthor.Avatar.Name, l.EmptyEntry_SentLiveLocation));
+            .Be(l.Notification_AuthorLine_Format(senderAuthor.Avatar.Name, expectedText));
     }
 
     [Theory]
