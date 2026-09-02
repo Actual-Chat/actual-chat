@@ -652,6 +652,11 @@ public partial class ChatUI
         var chatSendingMessagesWrapper = new IgnoreComputeArg<ChatSendingMessagesAccessor>(chatSendingMessages);
         var tiles = new List<VirtualListTile<ChatMessage>>();
         var hasVeryFirstItem = idTiles.Count > 0 && idTiles[0].Start <= chatLidRange.Start;
+        // The loaded window reaching the chat's last entry has nothing after it, whatever the range meta
+        // said: served stale, it can still name a next id tile, and an End-pinned list pays for that
+        // "more after" with a spacer of skeletons under the newest message.
+        if (idTiles.Count > 0 && idTiles[^1].End >= chatLidRange.End)
+            hasMoreAfter = false;
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
         var alreadyAddedConversationCards = new HashSet<ConversationId>();
