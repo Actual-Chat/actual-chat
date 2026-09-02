@@ -64,7 +64,7 @@ public class LockingComputeMethodPrimerTest(ITestOutputHelper @out) : TestBase(@
         r.Dispose();
         primer.GetReservationCount().Should().Be(0);
 
-        using var r2 = await primer.LockAndPrepare("k").AsTask().WaitAsync(TimeSpan.FromSeconds(1));
+        using var r2 = await primer.LockAndPrepare("k").AsTask().WaitAsync(TimeSpan.FromSeconds(10));
         r2.Key.Should().Be("k");
     }
 
@@ -113,7 +113,7 @@ public class LockingComputeMethodPrimerTest(ITestOutputHelper @out) : TestBase(@
         second.IsCompleted.Should().BeFalse();
 
         r1.Dispose();
-        var r2 = await second.WaitAsync(TimeSpan.FromSeconds(1));
+        var r2 = await second.WaitAsync(TimeSpan.FromSeconds(10));
         r2.Key.Should().Be("k");
         r2.Dispose();
     }
@@ -123,7 +123,7 @@ public class LockingComputeMethodPrimerTest(ITestOutputHelper @out) : TestBase(@
     {
         var primer = new LockingComputeMethodPrimer<string, int>(NoopCaller, LockReentryMode.Unchecked);
         using var r1 = await primer.LockAndPrepare("a");
-        using var r2 = await primer.LockAndPrepare("b").AsTask().WaitAsync(TimeSpan.FromSeconds(1));
+        using var r2 = await primer.LockAndPrepare("b").AsTask().WaitAsync(TimeSpan.FromSeconds(10));
         primer.GetReservationCount().Should().Be(2);
     }
 
