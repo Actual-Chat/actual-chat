@@ -280,23 +280,21 @@ viewer's language, the fan-out takes the recipient's.
   leaves `ContentLinksBackend` (a preview cached per content id, with no reader
   to have a language) and `TranscriptionContextSource` (LLM prompt text) in
   English on purpose.
-- **The fan-out** - `NotificationHelper.GetSubstituteTextFactory` builds a
-  `LocalizedEmptyEntryMarkupBuilder` per recipient, so the wording comes from the
+- **The fan-out** - `EmptyEntryNotificationContent.Render` gets a
+  `LocalizedEmptyEntryMarkupBuilder` per language, so the wording comes from the
   same place rather than being restated in the notification layer.
 - `EmptyEntryLocalizationTest` pins the English catalog to `Default`, since both
   still ship; let those drift and a quote and a link preview would word the same
   message differently.
 
-**Detection, not wording, was the hard half.** `HasLocation` is exact and free;
-an attachment-only entry is only known to be one after its markup is parsed, and
-the message path reaches every subscriber of the chat, so it must not parse per
-recipient. It doesn't have to: `SendChatMessageNotification` already parses once,
-for `mentionIds`. `GetMarkupWithSubstitution` now returns that single parse's
-verdict alongside the markup, `NotificationHelper.GetText` passes it on, and the
-fan-out decides once and re-words per recipient. Both kinds of empty entry go
-through the same gate now, so `HasLocation` no longer appears at a call site -
-which is also what dropped the `!entry.HasLocation` special case that kept the
-reaction path from quoting a maps-link fallback as if it were the author's words.
+**Detection is a property of the entry, not of the parse.** The parser yields its
+empty result only for empty content, so whether an entry has text of its own is
+known before any markup exists: a location, or empty content. `NotificationTextComposer`
+tests exactly that and returns either the author's words as shared content or an
+`EmptyEntryNotificationContent` that re-words per reader; `NotificationsBackend`
+never looks at the entry kind itself. That single gate is also what dropped the
+`!entry.HasLocation` special case that kept the reaction path from quoting a
+maps-link fallback as if it were the author's words.
 
 A location push also distinguishes a live share from a one-shot pin now, which the
 chat list had always done and the push never did: `NotificationsBackend` reads

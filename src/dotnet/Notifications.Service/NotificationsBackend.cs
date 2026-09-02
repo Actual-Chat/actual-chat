@@ -38,8 +38,6 @@ public class NotificationsBackend(IServiceProvider services)
     private Streaming.ILiveSessionsBackend LiveSessionsBackend { get; }
         = services.GetRequiredService<Streaming.ILiveSessionsBackend>();
     private IChatThreadsBackend ChatThreadsBackend { get; } = services.GetRequiredService<IChatThreadsBackend>();
-    private ISharedLocationsBackend SharedLocationsBackend { get; }
-        = services.GetRequiredService<ISharedLocationsBackend>();
     private UserLocalizers UserLocalizers { get; } = services.GetRequiredService<UserLocalizers>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
@@ -680,15 +678,13 @@ public class NotificationsBackend(IServiceProvider services)
         var similarityKey = entry.ChatId.Value;
         // One recipient, so the localizer is resolved here rather than inside the fan-out loop.
         var l = await UserLocalizers.Get(author.UserId, cancellationToken).ConfigureAwait(false);
-        var (text, _, isSubstituted) = await TextComposer
-            .GetText(entry, MarkupConsumer.ReactionNotification, cancellationToken)
+        var (entryContent, _) = await TextComposer
+            .Compose(entry, MarkupConsumer.ReactionNotification, cancellationToken)
             .ConfigureAwait(false);
-        var isLiveLocation = isSubstituted && await IsLiveLocation(entry, cancellationToken).ConfigureAwait(false);
-        // Substituted text is ours, not the author's, so it's re-worded for the reader and never quoted.
-        if (isSubstituted)
-            text = new EmptyEntryNotificationContent(entry, MarkupConsumer.ReactionNotification, isLiveLocation).Render(l);
-        else if (!entry.Content.IsNullOrEmpty())
-            text = $"\"{text}\"";
+        // Only the author's words are quoted; text stood in by the app is worded for the reader.
+        var text = entryContent.SharedText is { Length: > 0 } authoredText
+            ? $"\"{authoredText}\""
+            : entryContent.Render(l);
 
         var content = new SharedNotificationContent(l.Notification_Reaction_Format(reaction.Emoji, text));
         await EnqueueMessageRelatedNotifications(
@@ -854,13 +850,9 @@ public class NotificationsBackend(IServiceProvider services)
 
         var entryId = freshEntry.Id;
         var chatId = entryId.ChatId;
-        var (text, mentionIds, isSubstituted) = await TextComposer
-            .GetText(freshEntry, MarkupConsumer.Notification, cancellationToken)
+        var (content, mentionIds) = await TextComposer
+            .Compose(freshEntry, MarkupConsumer.Notification, cancellationToken)
             .ConfigureAwait(false);
-        var isLiveLocation = isSubstituted && await IsLiveLocation(freshEntry, cancellationToken).ConfigureAwait(false);
-        NotificationContent content = isSubstituted
-            ? new EmptyEntryNotificationContent(freshEntry, MarkupConsumer.Notification, isLiveLocation)
-            : new SharedNotificationContent(text);
         // The mode != Muted superset; ImportantOnly users must survive until the split below.
         var userIds = await ListSubscribedUserIds(chatId, NotificationImportance.Important, cancellationToken)
             .ConfigureAwait(false);
@@ -902,15 +894,6 @@ public class NotificationsBackend(IServiceProvider services)
 
     // Duration is immutable and set at creation, so this says "was shared live", not "is still
     // live" - the wording must not change under a reader when the share later expires.
-    private async ValueTask<bool> IsLiveLocation(ChatEntry entry, CancellationToken cancellationToken)
-    {
-        if (entry.LocationId is not { } locationId)
-            return false;
-
-        var location = await SharedLocationsBackend.Get(locationId, cancellationToken).ConfigureAwait(false);
-        return location is { Duration.Ticks: > 0 };
-    }
-
     // Resolves personal (author/user) mentions to user ids; chat/place/emoji mention kinds carry
     // no @all semantics here yet, so they're ignored.
     private async Task<HashSet<UserId>> GetMentionedUserIds(
@@ -1865,13 +1848,10 @@ public class NotificationsBackend(IServiceProvider services)
                 .GetEntry(ChatEntryId.New(related.ChatId, newStart), TimeSpan.Zero, cancellationToken)
                 .ConfigureAwait(false);
             if (entry is { IsSystemEntry: false }) {
-                var (text, _, isSubstituted) = await TextComposer
-                    .GetText(entry, MarkupConsumer.Notification, cancellationToken)
+                var (content, _) = await TextComposer
+                    .Compose(entry, MarkupConsumer.Notification, cancellationToken)
                     .ConfigureAwait(false);
-                var isLiveLocation = isSubstituted
-                    && await IsLiveLocation(entry, cancellationToken).ConfigureAwait(false);
-                if (isSubstituted)
-                    text = new EmptyEntryNotificationContent(entry, MarkupConsumer.Notification, isLiveLocation).Render(l);
+                var text = content.Render(l);
                 var author = await AuthorsBackend
                     .Get(related.ChatId, entry.AuthorId, RequestedAuthorKind.Full, cancellationToken)
                     .ConfigureAwait(false);
