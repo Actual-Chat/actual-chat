@@ -324,8 +324,6 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     [ComputeMethod(ConsolidationDelay = 0.25)]
     public virtual async Task<bool> IsReadingTail(ChatId chatId, CancellationToken cancellationToken)
     {
-        // Must stay in sync with what actually advances the read position (ChatView) - suppressing
-        // the unread badge for a chat whose read position isn't moving would hide real unread messages.
         if (!await IsSelected(chatId).ConfigureAwait(false))
             return false;
 
@@ -333,14 +331,14 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (itemVisibility.ChatId != chatId || !itemVisibility.IsPinnedToEnd)
             return false;
 
+        // Not the reading grace period the read position waits for: the chat on screen, pinned to
+        // its tail, has nothing to tell the user through a badge, and a listener who had not touched
+        // anything for three minutes used to watch it count up. What keeps hiding it honest is
+        // ChatView advancing the read position on the interaction that ends the idle stretch, so what
+        // the badge hides is read before it could show anywhere else. A hidden document still counts
+        // as not reading.
         var lastPresentAt = await UserActivityUI.LastPresentAt.Use(cancellationToken).ConfigureAwait(false);
-        var readingUntil = lastPresentAt + Constants.Chat.ReadingGracePeriod;
-        var now = Clocks.CpuClock.Now;
-        if (readingUntil <= now)
-            return false;
-
-        Computed.GetCurrent().Invalidate(readingUntil - now);
-        return true;
+        return lastPresentAt != Moment.MinValue;
     }
 
     // The non-reactive half of IsReadingTail, for the JS-driven callbacks that can't await:
