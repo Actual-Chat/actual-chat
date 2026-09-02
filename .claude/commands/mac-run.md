@@ -7,7 +7,7 @@ description: Build and start the native AppKit macOS app on this Mac. Use proact
 
 Build and launch the ActualChat (Voxt) app with the experimental AppKit backend
 (maui-labs, `net11.0-macos`) on the local Mac - the default macOS backend of `b app`.
-For the Mac Catalyst app use `/maccatalyst-run` (or `./b.cmd app run macos --catalyst`) instead.
+For the Mac Catalyst app use `/maccatalyst-run` (or `./b.cmd app run mac --catalyst`) instead.
 
 ## Prerequisites
 
@@ -16,7 +16,7 @@ For the Mac Catalyst app use `/maccatalyst-run` (or `./b.cmd app run macos --cat
 
 ## Usage
 
-Run `./b.cmd app run macos`, which executes `scripts/run-macos.sh`:
+Run `./b.cmd app run mac`, which executes `scripts/run-mac.sh`:
 1. Builds the JS bundle (`npm run build:Debug`)
 2. Builds the AppKit app (`net11.0-macos` target, enabled via a `TargetFrameworks` override)
 3. Locates the produced `.app` bundle (`Voxt (Dev).app` for dev, `Voxt.app` for prod)
@@ -25,7 +25,7 @@ Run `./b.cmd app run macos`, which executes `scripts/run-macos.sh`:
 ## Command
 
 ```bash
-./b.cmd app run macos
+./b.cmd app run mac
 ```
 
 **Note:** The app binary is run directly (not via `open`), so this command runs until the app is quit. The console output shows app logs in real-time; they also land in `~/Library/Logs/ActualChat.log`.

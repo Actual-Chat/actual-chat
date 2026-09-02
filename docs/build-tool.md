@@ -170,7 +170,7 @@ an MSIX.
 ### iOS and macOS
 
 These delegate to `scripts/run-ios.sh`, `scripts/run-ios-simulator.sh`,
-`scripts/run-macos.sh` (the default AppKit app) and `scripts/run-maccatalyst.sh`
+`scripts/run-mac.sh` (the default AppKit app) and `scripts/run-maccatalyst.sh`
 (`--catalyst`), which handle device detection, certificate install and
 the codesigning workarounds. They build, install and launch as one unit, so
 `b app install ios` is rejected rather than silently launching the app — use
@@ -218,8 +218,8 @@ default              e2e-tests           generate-version    integration-tests
 integration-tests-chat                   integration-tests-core
 integration-tests-mlsearch               integration-tests-users
 maui                 nightly-tests       npm-build           npm-install
-publish-android      publish-ios         publish-mac         publish-maccatalyst
-publish-win          restore             restore-tools       slnf
+pack-android         pack-ios            pack-mac            pack-maccatalyst
+pack-win             restore             restore-tools       slnf
 slow-tests           tests               unit-tests          watch
 ```
 
@@ -274,7 +274,7 @@ b
 │       └── --dry-run  Print the commands that would run, without running them
 ├── tree  Print the whole command tree
 │   └── -o|--options  Also show arguments and options
-└── [TARGETS]  Bullseye targets to run, e.g. build, watch, restore, publish-ios
+└── [TARGETS]  Bullseye targets to run, e.g. build, watch, restore, pack-ios
 ```
 
 Run `b tree -o` yourself for the authoritative version — it's read from the
