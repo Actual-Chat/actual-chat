@@ -150,3 +150,75 @@ describe('stampCaptureTime', () => {
         expect(out.map(e => e.index)).toEqual([0, 1, 2, 3]);
     });
 });
+
+// ---- Source-clock validation ----------------------------------------------
+
+function envelopesWithTimestamps(stats: RecorderStats, timestampsUs: number[]): CapturedFrame[] {
+    return timestampsUs.map((timestamp, i): CapturedFrame => ({
+        frame: { id: i, timestamp } as unknown as VideoFrame,
+        capturedAt: { timeMs: 0, epoch: 0 },
+        durationUs: 1_000_000 / 30,
+        index: i,
+        dropTrace: [],
+        sourceWidth: 0,
+        sourceHeight: 0,
+        forceKeyframe: false,
+        rotation: 0,
+        stats,
+    }));
+}
+
+function wallSamples(startMs: number, stepMs: number, count: number): MonotonicTime[] {
+    return Array.from({ length: count }, (_, i) => ({ timeMs: startMs + i * stepMs, epoch: 0 }));
+}
+
+describe('stampCaptureTime source-clock validation', () => {
+    it('rides the source clock while it tracks ours', async () => {
+        const stats = createEmptyRecorderStats();
+        const clock = new FakeClock(wallSamples(1000, 33, 5)) as unknown as MonotonicClock;
+        // Source advances 33ms per frame, same as wall, offset by a pipeline delay.
+        const op = stampCaptureTime({ clock });
+        const out = await drain(op(source(envelopesWithTimestamps(stats,
+            [500_000, 533_000, 566_000, 599_000, 632_000]))));
+        const deltas = out.slice(1).map((e, i) => e.capturedAt.timeMs - out[i].capturedAt.timeMs);
+        deltas.forEach(d => expect(d).toBeCloseTo(33, 1));
+    });
+
+    it('abandons a stopped clock within two frames instead of inventing 1ms steps', async () => {
+        const stats = createEmptyRecorderStats();
+        const clock = new FakeClock(wallSamples(1000, 33, 6)) as unknown as MonotonicClock;
+        // Firefox reports mediaTime as a constant 0 for a MediaStream.
+        const op = stampCaptureTime({ clock });
+        const out = await drain(op(source(envelopesWithTimestamps(stats, [0, 0, 0, 0, 0, 0]))));
+        const times = out.map(e => e.capturedAt.timeMs);
+        const tail = times.slice(3);
+        const deltas = tail.slice(1).map((t, i) => t - tail[i]);
+        // Wall-paced, not the 1ms fallback that collapses the receiver's timeline.
+        deltas.forEach(d => expect(d).toBeGreaterThan(10));
+    });
+
+    it('abandons a clock that drifts past the offset bound', async () => {
+        const stats = createEmptyRecorderStats();
+        const clock = new FakeClock(wallSamples(1000, 33, 6)) as unknown as MonotonicClock;
+        // Source runs at ~5x wall: offset passes 100ms within a few frames.
+        const op = stampCaptureTime({ clock });
+        const out = await drain(op(source(envelopesWithTimestamps(stats,
+            [0, 165_000, 330_000, 495_000, 660_000, 825_000]))));
+        const times = out.map(e => e.capturedAt.timeMs);
+        const tail = times.slice(3);
+        const deltas = tail.slice(1).map((t, i) => t - tail[i]);
+        // Once abandoned it paces off our clock, so ~33ms rather than the source's 165ms.
+        deltas.forEach(d => expect(d).toBeLessThan(100));
+    });
+
+    it('keeps the source clock across a single bad frame', async () => {
+        const stats = createEmptyRecorderStats();
+        const clock = new FakeClock(wallSamples(1000, 33, 6)) as unknown as MonotonicClock;
+        // One repeated timestamp, then the source recovers.
+        const op = stampCaptureTime({ clock });
+        const out = await drain(op(source(envelopesWithTimestamps(stats,
+            [500_000, 533_000, 533_000, 599_000, 632_000, 665_000]))));
+        const times = out.map(e => e.capturedAt.timeMs);
+        expect(times[times.length - 1] - times[times.length - 2]).toBeCloseTo(33, 1);
+    });
+});

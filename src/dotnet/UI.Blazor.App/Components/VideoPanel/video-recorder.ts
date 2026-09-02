@@ -2154,7 +2154,6 @@ export class VideoRecorder {
             const workerForPump = this.worker;
             let pumpFrameCount = 0;
             let lastRvfcTickAtMs = performance.now();
-            let timerPump: number | null = null;
 
             // False means the worker rejected the frame, which cancels the
             // source for good; a failed VideoFrame ctor is only transient.
@@ -2185,7 +2184,9 @@ export class VideoRecorder {
             };
 
             const onFrame = (now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
-                if (this.workerSourceCancelled) return;
+                if (this.workerSourceCancelled)
+                    return;
+
                 void now;
                 lastRvfcTickAtMs = performance.now();
                 if (!pushFrame(metadata.mediaTime))
@@ -2195,58 +2196,29 @@ export class VideoRecorder {
             };
             sourceVideo.requestVideoFrameCallback(onFrame);
 
-            // rVFC alone does not carry this element on Firefox: it fires a
-            // handful of times over a minute instead of once per source frame,
-            // so capture starves and the stall surfaces as an encoder fault.
-            // Firefox only — every other engine reaches this fallback when the
-            // worker MSTP attempt fails, and there rVFC is per-frame, so a
-            // second pump would double-submit and keep the capture watchdog
-            // from ever seeing a frozen camera.
-            const timerPumpPeriodMs = Math.max(1, Math.round(
-                1000 / (DeviceInfo.isMobile ? VIDEO.mobileFrameRate : VIDEO.frameRate)));
-            if (DeviceInfo.isFirefox) {
-                timerPump = window.setInterval(() => {
-                    if (this.workerSourceCancelled || sourceVideo.readyState < 2)
-                        return;
-
-                    // Silence, not value equality: rVFC reports a decoded
-                    // frame's `mediaTime` while the timer only has the
-                    // element's `currentTime`, and the two never compare equal,
-                    // so the old dedupe let both pumps submit the same frame.
-                    if (performance.now() - lastRvfcTickAtMs < timerPumpPeriodMs * 2)
-                        return;
-
-                    if (!pushFrame(sourceVideo.currentTime) && timerPump !== null) {
-                        window.clearInterval(timerPump);
-                        timerPump = null;
-                    }
-                }, timerPumpPeriodMs);
-            }
-
             // Capture watchdog: fires every 2s and reports source state only
-            // while nothing is arriving from either pump. Replaces any prior
+            // while nothing is arriving from the pump. Replaces any prior
             // watchdog so we don't stack stale ones across restarts.
             this.workerSourceCaptureWatchdogCancel?.();
             let lastWatchdogFrameCount = -1;
             const captureWatchdog = window.setInterval(() => {
-                if (this.workerSourceCancelled) return;
+                if (this.workerSourceCancelled)
+                    return;
+
                 const stalled = pumpFrameCount === lastWatchdogFrameCount;
                 lastWatchdogFrameCount = pumpFrameCount;
-                if (!stalled) return;
+                if (!stalled)
+                    return;
+
                 const t = this.inputTrack;
                 warnLog?.log(
                     `capture watchdog: pump=#${pumpFrameCount} ` +
-                `sinceRvfcTick=${(performance.now() - lastRvfcTickAtMs).toFixed(0)}ms ` +
-                `timerPump=${timerPump !== null} ` +
-                `srcVid(rs=${sourceVideo.readyState} ct=${sourceVideo.currentTime.toFixed(2)} ` +
-                `paused=${sourceVideo.paused} ended=${sourceVideo.ended}) ` +
-                `track(rs=${t?.readyState} muted=${t?.muted} enabled=${t?.enabled})`);
+                    `sinceRvfcTick=${(performance.now() - lastRvfcTickAtMs).toFixed(0)}ms ` +
+                    `srcVid(rs=${sourceVideo.readyState} ct=${sourceVideo.currentTime.toFixed(2)} ` +
+                    `paused=${sourceVideo.paused} ended=${sourceVideo.ended}) ` +
+                    `track(rs=${t?.readyState} muted=${t?.muted} enabled=${t?.enabled})`);
             }, 2000);
             this.workerSourceCaptureWatchdogCancel = (): void => {
-                if (timerPump !== null) {
-                    window.clearInterval(timerPump);
-                    timerPump = null;
-                }
                 window.clearInterval(captureWatchdog);
             };
         }
