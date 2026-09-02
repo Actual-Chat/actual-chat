@@ -145,17 +145,17 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
             let consecutiveRecoverySkips = 0;
             const maxRecoverySkips = 30;
 
-            // Pipelined submission queue. Steady-state encoding submits
-            // multiple bundles before awaiting any one's completion, so the
-            // per-encoder HW queue stays primed and a single 60+ms encode
-            // spike no longer pauses the whole pipeline. We drain back to
-            // empty before keyframe verification, hot-apply, hang recovery,
-            // and source end — those paths need a clean encoder state.
+            // Pipelined submission queue: bundles are submitted before any one is
+            // awaited, so a single slow encode no longer pauses the pipeline. Drained
+            // to empty before a keyframe RE-request, hot-apply, hang recovery and
+            // source end — the paths that need a clean encoder state.
             interface PendingBundle {
                 bundle: CapturedBundle;
                 keyFrame: boolean;
                 promises: Promise<EncodedFrame>[];
                 layerDurations: number[];
+                isSettled: boolean;
+                submittedAtMs: number;
             }
             const pending: PendingBundle[] = [];
 
@@ -208,7 +208,13 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                 // The encoder has taken ownership of the layer frames via
                 // AsyncVideoEncoder.submit (which closes them inline now);
                 // nothing on the bundle side to release here.
-                return { bundle, keyFrame, promises, layerDurations };
+                const p: PendingBundle = {
+                    bundle, keyFrame, promises, layerDurations,
+                    isSettled: false, submittedAtMs: performance.now(),
+                };
+                void Promise.allSettled(promises).then(() => { p.isSettled = true; });
+
+                return p;
             };
 
             type AwaitOutcome =
@@ -331,10 +337,9 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                 // post-reset encode unexpectedly emerges as a delta;
                 // shipping deltas with no preceding key downstream would
                 // produce undecodable output at receivers. Drop this
-                // bundle's chunks and re-request a keyframe on the next
-                // bundle pulled from source. Pipelining guarantees we
-                // drain before submitting more keyframe bundles, so the
-                // re-request will see a clean encoder state.
+                // bundle's chunks and re-request a keyframe on the next bundle
+                // pulled from source; that re-request drains first, so it sees
+                // a clean encoder state.
                 if (p.keyFrame) {
                     let allKey = true;
                     for (const r of results) {
@@ -563,10 +568,9 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         || forceKeyframeNext
                         || forceKeyframeOnFirstEncode;
                     forceKeyframeOnFirstEncode = false;
-                    // Keyframe bundles drain the pipeline first so we can
-                    // verify the encoder honored the request before pulling
-                    // more bundles from source. Delta bundles pipeline freely.
-                    if (keyFrame && pending.length > 0) {
+                    // Only a re-request needs a clean encoder. Draining for every
+                    // periodic keyframe stalls the whole pipeline once per GOP.
+                    if (forceKeyframeNext && pending.length > 0) {
                         try {
                             for await (const r of drainPending())
                                 yield r;
@@ -574,6 +578,42 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                             closeBundleLayers(bundle);
                             throw e;
                         }
+                    }
+
+                    // Release whatever has finished, in order, before deciding whether
+                    // there is room for this bundle.
+                    while (pending.length > 0 && pending[0].isSettled) {
+                        const settled = pending.shift()!;
+                        const outcome = await awaitPending(settled);
+                        if (outcome.kind === 'yield')
+                            yield outcome.bundle;
+                        else if (outcome.kind === 'throw')
+                            throw outcome.error;
+                    }
+
+                    if (pending.length >= MAX_PIPELINE) {
+                        const oldest = pending[0];
+                        const isWedged = bundleTimeoutMs > 0
+                            && performance.now() - oldest.submittedAtMs > bundleTimeoutMs;
+                        if (!isWedged) {
+                            // Bound the delay, not the throughput: an encoder that cannot
+                            // keep pace drops here rather than banking latency, and the
+                            // index gap surfaces as senderDropRatioEma.
+                            if (keyFrame)
+                                forceKeyframeNext = true;
+
+                            closeBundleLayers(bundle);
+                            continue;
+                        }
+
+                        // Past the bundle budget: await it so the hang watchdog and its
+                        // recovery path can run, which dropping would bypass forever.
+                        const p = pending.shift()!;
+                        const outcome = await awaitPending(p);
+                        if (outcome.kind === 'yield')
+                            yield outcome.bundle;
+                        else if (outcome.kind === 'throw')
+                            throw outcome.error;
                     }
 
                     pending.push(submitBundle(bundle, keyFrame));
@@ -589,16 +629,6 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     queueDepthEma.appendSample(maxQueueDepth);
                     bundle.stats.encodeQueueDepthEma = queueDepthEma.value;
 
-                    // Hold the pipeline at `MAX_PIPELINE` deep — drain the
-                    // oldest before submitting more on the next iteration.
-                    while (pending.length >= MAX_PIPELINE) {
-                        const p = pending.shift()!;
-                        const outcome = await awaitPending(p);
-                        if (outcome.kind === 'yield')
-                            yield outcome.bundle;
-                        else if (outcome.kind === 'throw')
-                            throw outcome.error;
-                    }
                 }
 
                 // Source ended — drain anything still in flight.

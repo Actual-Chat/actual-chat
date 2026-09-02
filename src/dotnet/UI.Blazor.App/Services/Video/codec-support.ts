@@ -620,14 +620,10 @@ export function getDefaultHardwareAcceleration(): HardwareAcceleration {
     return DeviceInfo.isFirefox ? 'no-preference' : 'prefer-hardware';
 }
 
-// How many bundles may sit at the encoder before the operator waits for the
-// oldest. Firefox emits its first EncodedVideoChunk only after ~18 submitted
-// frames (measured on 154, identical for no-preference and prefer-software),
-// so the usual depth of 5 deadlocks there: we stop submitting at 5 waiting for
-// an output that needs 18 submissions to appear. Everyone else returns the
-// first chunk within a frame or two.
+// Back-pressure cap, not a buffer to fill: deeper only lets a codec that cannot
+// keep pace bank that many frames of latency before anything upstream notices.
 export function getEncoderPipelineDepth(): number {
-    return DeviceInfo.isFirefox ? 24 : 5;
+    return 3;
 }
 
 export function getSoftwareH264Codec(width: number, height: number): string {
