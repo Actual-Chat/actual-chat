@@ -156,6 +156,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                 keyFrame: boolean;
                 promises: Promise<EncodedFrame>[];
                 layerDurations: number[];
+                isSettled: boolean;
             }
             const pending: PendingBundle[] = [];
 
@@ -208,7 +209,10 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                 // The encoder has taken ownership of the layer frames via
                 // AsyncVideoEncoder.submit (which closes them inline now);
                 // nothing on the bundle side to release here.
-                return { bundle, keyFrame, promises, layerDurations };
+                const p: PendingBundle = { bundle, keyFrame, promises, layerDurations, isSettled: false };
+                void Promise.allSettled(promises).then(() => { p.isSettled = true; });
+
+                return p;
             };
 
             type AwaitOutcome =
@@ -588,6 +592,20 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     }
                     queueDepthEma.appendSample(maxQueueDepth);
                     bundle.stats.encodeQueueDepthEma = queueDepthEma.value;
+
+                    // Release whatever has finished, in order. Without this the
+                    // only steady-state harvest is the cap below, so a deep
+                    // pipeline (24 on Firefox) holds ~23 encoded bundles until
+                    // the next keyframe drain dumps them at once — a ~770ms
+                    // delay, then a burst, then silence while it refills.
+                    while (pending.length > 0 && pending[0].isSettled) {
+                        const p = pending.shift()!;
+                        const outcome = await awaitPending(p);
+                        if (outcome.kind === 'yield')
+                            yield outcome.bundle;
+                        else if (outcome.kind === 'throw')
+                            throw outcome.error;
+                    }
 
                     // Hold the pipeline at `MAX_PIPELINE` deep — drain the
                     // oldest before submitting more on the next iteration.
