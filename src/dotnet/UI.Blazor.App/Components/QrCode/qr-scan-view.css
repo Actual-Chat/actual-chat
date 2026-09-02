@@ -1,0 +1,46 @@
+.qr-scan-view {
+    @apply relative;
+    @apply flex items-center justify-center;
+    @apply w-full;
+    @apply overflow-hidden;
+    @apply rounded-3xl;
+    @apply bg-black;
+    aspect-ratio: 1;
+}
+.qr-scan-view > .c-video {
+    @apply w-full h-full;
+    object-fit: cover;
+}
+/* Four corner brackets on one element: eight gradients, an arm each, placed two per corner. */
+.qr-scan-view > .c-viewfinder {
+    --c-arm: 2rem;
+    --c-thickness: 0.1875rem;
+    --c-line: linear-gradient(white, white);
+    /* A square in the middle, not a frame inset from the edges: on a full-screen pane the latter
+       would draw a viewfinder the size of the phone. */
+    @apply absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(60%, 20rem);
+    aspect-ratio: 1;
+    background-image:
+        var(--c-line), var(--c-line), var(--c-line), var(--c-line),
+        var(--c-line), var(--c-line), var(--c-line), var(--c-line);
+    background-size:
+        var(--c-arm) var(--c-thickness), var(--c-thickness) var(--c-arm),
+        var(--c-arm) var(--c-thickness), var(--c-thickness) var(--c-arm),
+        var(--c-arm) var(--c-thickness), var(--c-thickness) var(--c-arm),
+        var(--c-arm) var(--c-thickness), var(--c-thickness) var(--c-arm);
+    background-repeat: no-repeat;
+    background-position:
+        left top, left top,
+        right top, right top,
+        left bottom, left bottom,
+        right bottom, right bottom;
+}
+.qr-scan-view > .c-failure {
+    @apply flex-y items-center gap-4;
+    @apply p-6;
+    @apply text-center text-sm text-01;
+}

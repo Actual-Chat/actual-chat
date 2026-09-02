@@ -10,6 +10,8 @@ public class CameraUI : UIServiceBase<AppUIHub>, IComputeService
 {
     private static readonly string JSEnumerateDevices =
         $"{BlazorUIAppModule.ImportName}.CameraDevices.enumerateDevices";
+    private static readonly string JSHasCamera =
+        $"{BlazorUIAppModule.ImportName}.CameraDevices.hasCamera";
 
     private readonly MutableState<string?> _selectedDeviceId;
     private readonly MutableState<bool> _isMirrored;
@@ -33,6 +35,18 @@ public class CameraUI : UIServiceBase<AppUIHub>, IComputeService
 
     public void SetSelectedDevice(string? deviceId)
         => _selectedDeviceId.Value = deviceId;
+
+    public async Task<bool> HasCamera()
+    {
+        // Unlike EnumerateDevices, never raises a permission prompt - see CameraDevices.hasCamera.
+        try {
+            return await JS.InvokeAsync<bool>(JSHasCamera).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "HasCamera failed");
+            return false;
+        }
+    }
 
     public async Task<VideoDevice[]> EnumerateDevices(bool includeAll = false)
     {
@@ -97,9 +111,8 @@ public class CameraUI : UIServiceBase<AppUIHub>, IComputeService
         }
     }
 
-    // Called by JoinVideoCallModal after it persists a user's mirror choice —
-    // forces the live preview to re-resolve against the now-updated override
-    // without waiting for the next camera (re)acquisition.
     public void ReapplyMirror()
+        // Re-resolves the live preview against a just-persisted mirror override, rather than
+        // leaving it stale until the next camera acquisition.
         => OnTrackSettings(LastDeviceId, LastFacingMode);
 }
