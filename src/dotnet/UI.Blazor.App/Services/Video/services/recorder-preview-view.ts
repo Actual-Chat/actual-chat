@@ -161,7 +161,7 @@ export class RecorderPreviewView {
         const parent = this.options.videoEl.parentElement;
         const rect = (parent ?? this.options.videoEl).getBoundingClientRect();
         const dpr = globalThis.devicePixelRatio || 1;
-        this.attachedRecorder?.setPreviewSize(rect.width * dpr, rect.height * dpr);
+        this.attachedRecorder?.setPreviewSize(this, rect.width * dpr, rect.height * dpr);
     }
 
     private applyRotationAndFit(): void {
@@ -422,6 +422,7 @@ export class RecorderPreviewView {
             this.unsubscribeFrames();
             this.unsubscribeFrames = null;
         }
+        this.attachedRecorder.clearPreviewSize(this);
         this.attachedRecorder = null;
         this.attachedTrack = null;
 

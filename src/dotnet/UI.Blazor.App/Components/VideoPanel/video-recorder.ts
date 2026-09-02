@@ -566,6 +566,7 @@ export class VideoRecorder {
     private workerSourceUsesClone = false;
 
     // Listeners.
+    private previewSizesByView = new Map<object, { width: number; height: number }>();
     private previewFrameListeners = new Set<PreviewFrameListener>();
     private previewPresentationListeners = new Set<PreviewPresentationListener>();
     private stateChangeListeners = new Set<(state: VideoRecordingState) => void>();
@@ -835,10 +836,36 @@ export class VideoRecorder {
         return this.isScreenCasting;
     }
 
-    /** Device pixels the self-preview occupies. The ceiling honours it, so shedding
-     *  upper tiers for remote viewers doesn't blur the local preview. */
-    public setPreviewSize(width: number, height: number): void {
-        void this.worker?.setPreviewSize(Math.round(width), Math.round(height), rpcNoWait);
+    /** Device pixels the self-preview occupies, keyed by the view reporting it. The
+     *  ceiling honours the largest: several surfaces attach at once (the join modal
+     *  overlaps the call tile during the transition), and a small one reporting last
+     *  must not blur the big one. Pass 0 or drop the view to withdraw a size. */
+    public setPreviewSize(view: object, width: number, height: number): void {
+        const w = Math.round(width);
+        const h = Math.round(height);
+        if (w > 0 && h > 0)
+            this.previewSizesByView.set(view, { width: w, height: h });
+        else
+            this.previewSizesByView.delete(view);
+
+        this.sendPreviewSize();
+    }
+
+    public clearPreviewSize(view: object): void {
+        if (this.previewSizesByView.delete(view))
+            this.sendPreviewSize();
+    }
+
+    private sendPreviewSize(): void {
+        let width = 0;
+        let height = 0;
+        for (const size of this.previewSizesByView.values()) {
+            if (size.width * size.height > width * height) {
+                width = size.width;
+                height = size.height;
+            }
+        }
+        void this.worker?.setPreviewSize(width, height, rpcNoWait);
     }
 
     public addPreviewFrameListener(cb: PreviewFrameListener): () => void {
