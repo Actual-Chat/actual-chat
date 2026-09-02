@@ -1082,6 +1082,23 @@
   "Notification_ThreadCreated_Format": "话题“{0}”已创建",
   "Notification_AttentionRequested_Format": "{0} 请求大家注意",
   "Notification_Reaction_Format": "{0} 回应 {1}",
+  // Stands in for an entry with no text of its own - a shared location, or attachments
+  // only. Read in the chat list, in quotes and in notifications, so each value is one line.
+  // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
+  "EmptyEntry_SentLocation": "📍 发送了位置",
+  "EmptyEntry_SentLiveLocation": "📍 分享了实时位置",
+  "EmptyEntry_YourLocation": "你的位置",
+  "EmptyEntry_QuoteAttachment": "点击查看附件",
+  "EmptyEntry_SentImages": "已发送 {0} 张图片",
+  "EmptyEntry_YourImages": "你的图片",
+  "EmptyEntry_SentVideos": "已发送 {0} 个视频",
+  "EmptyEntry_YourVideos": "你的视频",
+  "EmptyEntry_SentFile_Format": "已发送 {0}",
+  "EmptyEntry_YourFile_Format": "你的文件 {0}",
+  "EmptyEntry_SentFiles": "已发送 {0} 个文件",
+  "EmptyEntry_YourFiles": "你的文件",
+  "EmptyEntry_SentAttachments": "已发送 {0} 个附件",
+  "EmptyEntry_YourAttachments": "你的附件",
   "Search_In": "位于",
   "Search_CloseSearch": "关闭搜索",
   "Search_ShowMore": "显示更多",

@@ -1082,6 +1082,23 @@
   "Notification_ThreadCreated_Format": "Le fil '{0}' a été créé",
   "Notification_AttentionRequested_Format": "{0} demande de l'attention",
   "Notification_Reaction_Format": "{0} à {1}",
+  // Stands in for an entry with no text of its own - a shared location, or attachments
+  // only. Read in the chat list, in quotes and in notifications, so each value is one line.
+  // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
+  "EmptyEntry_SentLocation": "📍 Position envoyée",
+  "EmptyEntry_SentLiveLocation": "📍 Position en direct partagée",
+  "EmptyEntry_YourLocation": "votre position",
+  "EmptyEntry_QuoteAttachment": "Cliquez pour voir la pièce jointe",
+  "EmptyEntry_SentImages": "{0} image envoyée|{0} images envoyées",
+  "EmptyEntry_YourImages": "votre image|vos images",
+  "EmptyEntry_SentVideos": "{0} vidéo envoyée|{0} vidéos envoyées",
+  "EmptyEntry_YourVideos": "votre vidéo|vos vidéos",
+  "EmptyEntry_SentFile_Format": "{0} envoyé",
+  "EmptyEntry_YourFile_Format": "votre fichier {0}",
+  "EmptyEntry_SentFiles": "{0} fichier envoyé|{0} fichiers envoyés",
+  "EmptyEntry_YourFiles": "votre fichier|vos fichiers",
+  "EmptyEntry_SentAttachments": "{0} pièce jointe envoyée|{0} pièces jointes envoyées",
+  "EmptyEntry_YourAttachments": "votre pièce jointe|vos pièces jointes",
   "Search_In": "Dans",
   "Search_CloseSearch": "Fermer la recherche",
   "Search_ShowMore": "Afficher plus",

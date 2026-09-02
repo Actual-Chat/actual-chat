@@ -13,7 +13,10 @@ public class ChatMarkupHubExtTest
     public void ShouldGetForChatListItemTextFromPlainText()
     {
         // arrange
-        using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
+        using var services = new ServiceCollection()
+            .AddTransient<IMarkupParser, MarkupParser>()
+            .AddSingleton(EmptyEntryMarkupBuilder.Default)
+            .BuildServiceProvider();
         var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
         var chatEntryId = ChatEntryId.New(chatId, 1);
@@ -30,17 +33,24 @@ public class ChatMarkupHubExtTest
         rawMarkup.Should().Be("some text");
     }
 
+    // A mixed set is named by its total, not clause by clause - see EmptyEntryMarkupBuilder.
     [Theory]
-    [InlineData(new[] { "img1.png" }, "Sent an image")]
+    [InlineData(new[] { "img1.png" }, "Sent 1 image")]
     [InlineData(new[] { "img1.png", "img2.png" }, "Sent 2 images")]
-    [InlineData(new[] { "img1.png", "text1.txt" }, "Sent an image and text1.txt")]
-    [InlineData(new[] { "img1.png", "img2.png", "text1.txt" }, "Sent 2 images and text1.txt")]
-    [InlineData(new[] { "img1.png", "text1.txt", "text2.txt" }, "Sent an image and 2 files")]
-    [InlineData(new[] { "img1.png", "img2.png", "text1.txt", "text2.txt" }, "Sent 2 images and 2 files")]
+    [InlineData(new[] { "vid1.mp4" }, "Sent 1 video")]
+    [InlineData(new[] { "text1.txt" }, "Sent text1.txt")]
+    [InlineData(new[] { "text1.txt", "text2.txt" }, "Sent 2 files")]
+    [InlineData(new[] { "img1.png", "text1.txt" }, "Sent 2 attachments")]
+    [InlineData(new[] { "img1.png", "img2.png", "text1.txt" }, "Sent 3 attachments")]
+    [InlineData(new[] { "img1.png", "text1.txt", "text2.txt" }, "Sent 3 attachments")]
+    [InlineData(new[] { "img1.png", "img2.png", "text1.txt", "text2.txt" }, "Sent 4 attachments")]
     public void ShouldGetForChatListItemTextFromAttachments(string[] attachments, string expectedMarkupText)
     {
         // arrange
-        using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
+        using var services = new ServiceCollection()
+            .AddTransient<IMarkupParser, MarkupParser>()
+            .AddSingleton(EmptyEntryMarkupBuilder.Default)
+            .BuildServiceProvider();
         var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
         var chatEntryId = ChatEntryId.New(chatId, 1);
@@ -57,17 +67,22 @@ public class ChatMarkupHubExtTest
         rawMarkup.Should().Be(expectedMarkupText);
     }
 
+    // The reaction line names the target rather than counting it: "❤️ to your images".
     [Theory]
     [InlineData(new[] { "img1.png" }, "your image")]
-    [InlineData(new[] { "img1.png", "img2.png" }, "your 2 images")]
-    [InlineData(new[] { "img1.png", "text1.txt" }, "your image and text1.txt")]
-    [InlineData(new[] { "img1.png", "img2.png", "text1.txt" }, "your 2 images and text1.txt")]
-    [InlineData(new[] { "img1.png", "text1.txt", "text2.txt" }, "your image and 2 files")]
-    [InlineData(new[] { "img1.png", "img2.png", "text1.txt", "text2.txt" }, "your 2 images and 2 files")]
+    [InlineData(new[] { "img1.png", "img2.png" }, "your images")]
+    [InlineData(new[] { "vid1.mp4" }, "your video")]
+    [InlineData(new[] { "text1.txt" }, "your text1.txt")]
+    [InlineData(new[] { "text1.txt", "text2.txt" }, "your files")]
+    [InlineData(new[] { "img1.png", "text1.txt" }, "your attachments")]
+    [InlineData(new[] { "img1.png", "img2.png", "text1.txt", "text2.txt" }, "your attachments")]
     public void ShouldGetForReactionNotificationFromAttachments(string[] attachments, string expectedMarkupText)
     {
         // arrange
-        using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
+        using var services = new ServiceCollection()
+            .AddTransient<IMarkupParser, MarkupParser>()
+            .AddSingleton(EmptyEntryMarkupBuilder.Default)
+            .BuildServiceProvider();
         var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
         var chatEntryId = ChatEntryId.New(chatId, 1);
@@ -93,14 +108,18 @@ public class ChatMarkupHubExtTest
         MarkupConsumer consumer, string expectedMarkupText)
     {
         // arrange
-        using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
+        using var services = new ServiceCollection()
+            .AddTransient<IMarkupParser, MarkupParser>()
+            .AddSingleton(EmptyEntryMarkupBuilder.Default)
+            .BuildServiceProvider();
         var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
         var chatEntryId = ChatEntryId.New(chatId, 1);
         var chatEntry = new TextEntry {
             Id = chatEntryId,
             LocationId = SharedLocationId.New(),
-            Content = "\U0001F4CD Location: https://www.openstreetmap.org/?mlat=1.5&mlon=2.5\n\nUpdate Voxt to the latest version to see it on the map.",
+            Content = "\U0001F4CD Location: https://www.openstreetmap.org/?mlat=1.5&mlon=2.5\n\n"
+                + "Update Voxt to the latest version to see it on the map.",
         };
 
         // act
@@ -120,6 +139,7 @@ public class ChatMarkupHubExtTest
             .AddTransient<IMarkupParser, MarkupParser>()
             .AddSingleton<IStringLocalizer>(localizer)
             .AddSingleton<SystemEntryMarkupBuilder>(c => new LocalizedSystemEntryMarkupBuilder(c))
+            .AddSingleton(EmptyEntryMarkupBuilder.Default)
             .BuildServiceProvider();
         var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
@@ -134,6 +154,128 @@ public class ChatMarkupHubExtTest
 
         // assert
         rawMarkup.Should().Be("Alice asked for attention.");
+    }
+
+    // A live share and a one-shot pin are the same entry - only the SharedLocation behind it
+    // differs - so the caller passes the fact in rather than the builder deriving it.
+    [Theory]
+    [InlineData(MarkupConsumer.Notification, false, "\U0001F4CD Sent a location")]
+    [InlineData(MarkupConsumer.Notification, true, "\U0001F4CD Shared live location")]
+    [InlineData(MarkupConsumer.ChatListItemText, true, "\U0001F4CD Shared live location")]
+    // The reaction line names a target, so it stays "your location" either way.
+    [InlineData(MarkupConsumer.ReactionNotification, true, "your location")]
+    [InlineData(MarkupConsumer.ReactionNotification, false, "your location")]
+    public void ShouldWordALiveLocationApartFromAPin(
+        MarkupConsumer consumer,
+        bool isLiveLocation,
+        string expectedMarkupText)
+    {
+        // arrange
+        var chatEntry = new TextEntry {
+            Id = ChatEntryId.New(GroupChatId.New(), 1),
+            LocationId = SharedLocationId.New(),
+        };
+
+        // act
+        var markup = EmptyEntryMarkupBuilder.Default.Build(chatEntry, consumer, isLiveLocation);
+
+        // assert
+        MarkupFormatter.Default.Format(markup).Should().Be(expectedMarkupText);
+    }
+
+    // IsSubstituted is what makes the notification fan-out re-word per recipient, so it must be
+    // true for exactly the entries EmptyEntryMarkupBuilder wrote text for - and MessageView, which
+    // stands nothing in, is not one of them.
+    [Theory]
+    [InlineData(MarkupConsumer.Notification, true)]
+    [InlineData(MarkupConsumer.ChatListItemText, true)]
+    [InlineData(MarkupConsumer.QuoteView, true)]
+    [InlineData(MarkupConsumer.ReactionNotification, true)]
+    [InlineData(MarkupConsumer.MessageView, false)]
+    public async Task ShouldReportSubstitutionForAttachmentOnlyEntries(MarkupConsumer consumer, bool expected)
+    {
+        // arrange
+        var markupHub = NewMarkupHub(out var chatId);
+        var chatEntry = new TextEntry {
+            Id = ChatEntryId.New(chatId, 1),
+            Attachments = [Attachment("img1.png")],
+        };
+
+        // act
+        var (_, isSubstituted) = await markupHub
+            .GetMarkupWithSubstitution(chatEntry, null, consumer, CancellationToken.None);
+
+        // assert
+        isSubstituted.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(MarkupConsumer.Notification, true)]
+    [InlineData(MarkupConsumer.ReactionNotification, true)]
+    [InlineData(MarkupConsumer.MessageView, false)]
+    public async Task ShouldReportSubstitutionForLocationEntries(MarkupConsumer consumer, bool expected)
+    {
+        // arrange
+        var markupHub = NewMarkupHub(out var chatId);
+        var chatEntry = new TextEntry {
+            Id = ChatEntryId.New(chatId, 1),
+            LocationId = SharedLocationId.New(),
+            Content = "\U0001F4CD Location: https://www.openstreetmap.org/?mlat=1.5&mlon=2.5",
+        };
+
+        // act
+        var (_, isSubstituted) = await markupHub
+            .GetMarkupWithSubstitution(chatEntry, null, consumer, CancellationToken.None);
+
+        // assert
+        isSubstituted.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task ShouldNotReportSubstitutionForAuthoredText()
+    {
+        // Message text belongs to its author, so it must reach every recipient untranslated.
+
+        // arrange
+        var markupHub = NewMarkupHub(out var chatId);
+        var chatEntry = new TextEntry {
+            Id = ChatEntryId.New(chatId, 1),
+            Content = "some text",
+            Attachments = [Attachment("img1.png")],
+        };
+
+        // act
+        var (markup, isSubstituted) = await markupHub
+            .GetMarkupWithSubstitution(chatEntry, null, MarkupConsumer.Notification, CancellationToken.None);
+
+        // assert
+        isSubstituted.Should().BeFalse();
+        MarkupFormatter.Default.Format(markup).Should().Be("some text");
+    }
+
+    [Fact]
+    public async Task ShouldNotReportSubstitutionForAnEntryWithNothingToStandIn()
+    {
+        // arrange
+        var markupHub = NewMarkupHub(out var chatId);
+        var chatEntry = new TextEntry { Id = ChatEntryId.New(chatId, 1) };
+
+        // act
+        var (_, isSubstituted) = await markupHub
+            .GetMarkupWithSubstitution(chatEntry, null, MarkupConsumer.Notification, CancellationToken.None);
+
+        // assert
+        isSubstituted.Should().BeFalse();
+    }
+
+    private static ChatMarkupHub NewMarkupHub(out ChatId chatId)
+    {
+        var services = new ServiceCollection()
+            .AddTransient<IMarkupParser, MarkupParser>()
+            .AddSingleton(EmptyEntryMarkupBuilder.Default)
+            .BuildServiceProvider();
+        chatId = GroupChatId.New();
+        return new ChatMarkupHub(services, chatId);
     }
 
     private static ChatEntryAttachment Attachment(string file)

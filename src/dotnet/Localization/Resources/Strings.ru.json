@@ -1082,6 +1082,23 @@
   "Notification_ThreadCreated_Format": "Создан тред «{0}»",
   "Notification_AttentionRequested_Format": "{0} просит внимания",
   "Notification_Reaction_Format": "{0} на {1}",
+  // Stands in for an entry with no text of its own - a shared location, or attachments
+  // only. Read in the chat list, in quotes and in notifications, so each value is one line.
+  // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
+  "EmptyEntry_SentLocation": "📍 Геопозиция",
+  "EmptyEntry_SentLiveLocation": "📍 Геопозиция в реальном времени",
+  "EmptyEntry_YourLocation": "вашу геопозицию",
+  "EmptyEntry_QuoteAttachment": "Нажмите, чтобы посмотреть вложение",
+  "EmptyEntry_SentImages": "Отправлено {0} изображение|Отправлено {0} изображения|Отправлено {0} изображений",
+  "EmptyEntry_YourImages": "ваше изображение|ваши изображения",
+  "EmptyEntry_SentVideos": "Отправлено {0} видео",
+  "EmptyEntry_YourVideos": "ваше видео|ваши видео",
+  "EmptyEntry_SentFile_Format": "Отправлен файл {0}",
+  "EmptyEntry_YourFile_Format": "ваш файл {0}",
+  "EmptyEntry_SentFiles": "Отправлен {0} файл|Отправлено {0} файла|Отправлено {0} файлов",
+  "EmptyEntry_YourFiles": "ваш файл|ваши файлы",
+  "EmptyEntry_SentAttachments": "Отправлено {0} вложение|Отправлено {0} вложения|Отправлено {0} вложений",
+  "EmptyEntry_YourAttachments": "ваше вложение|ваши вложения",
   "Search_In": "В",
   "Search_CloseSearch": "Закрыть поиск",
   "Search_ShowMore": "Показать ещё",

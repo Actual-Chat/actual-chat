@@ -265,6 +265,53 @@ Consequences worth recording:
 - `Call_Incoming` / `Call_IncomingVideo` are shared with the UI rather than
   duplicated, and the name-joining reuses `Conversation_TwoNames_Format`.
 
+**The follow-up #4125 missed: text the markup layer substitutes.** An entry with
+no text of its own never reached a catalog key - it reached
+`ChatMarkupHubExt.GetEmptyMarkupReplacement`, which composed an English sentence
+inside a `PlainTextMarkup`, and that string was user content as far as
+`EnqueueMessageRelatedNotifications` could tell. It is now
+`EmptyEntryMarkupBuilder`, carried on `IChatMarkupHub` exactly as
+`SystemEntryMarkupBuilder` is, with the same split: the render site takes the
+viewer's language, the fan-out takes the recipient's.
+
+- **Render sites** - `ChatMarkupHub` resolves `LocalizedEmptyEntryMarkupBuilder`
+  from the circuit, so quotes, the pinned bar and chat-list previews are
+  localized. `BackendChatMarkupHub` keeps returning `Default`, which is what
+  leaves `ContentLinksBackend` (a preview cached per content id, with no reader
+  to have a language) and `TranscriptionContextSource` (LLM prompt text) in
+  English on purpose.
+- **The fan-out** - `NotificationHelper.GetSubstituteTextFactory` builds a
+  `LocalizedEmptyEntryMarkupBuilder` per recipient, so the wording comes from the
+  same place rather than being restated in the notification layer.
+- `EmptyEntryLocalizationTest` pins the English catalog to `Default`, since both
+  still ship; let those drift and a quote and a link preview would word the same
+  message differently.
+
+**Detection, not wording, was the hard half.** `HasLocation` is exact and free;
+an attachment-only entry is only known to be one after its markup is parsed, and
+the message path reaches every subscriber of the chat, so it must not parse per
+recipient. It doesn't have to: `SendChatMessageNotification` already parses once,
+for `mentionIds`. `GetMarkupWithSubstitution` now returns that single parse's
+verdict alongside the markup, `NotificationHelper.GetText` passes it on, and the
+fan-out decides once and re-words per recipient. Both kinds of empty entry go
+through the same gate now, so `HasLocation` no longer appears at a call site -
+which is also what dropped the `!entry.HasLocation` special case that kept the
+reaction path from quoting a maps-link fallback as if it were the author's words.
+
+A location push also distinguishes a live share from a one-shot pin now, which the
+chat list had always done and the push never did: `NotificationsBackend` reads
+`SharedLocation.Duration` once per entry and passes the fact to `Build`, so
+`EmptyEntry_SentLiveLocation` reaches the recipient instead of a pin's wording.
+Quotes and the pinned bar still say "Sent a location" for a live share - they'd need
+the same async lookup inside the markup hub, which is more than that path should do.
+
+The English was restructured before being translated. `Sent 2 images and 2 files`
+conjoined clauses whose parts must agree in case, which no `" and "` concatenation
+survives; a mixed set is now named by its total (`Sent 4 attachments`), and a
+homogeneous one by its kind (`Sent 2 images`). The reaction line drops the count
+entirely - `your images`, not `your 2 images` - because it names a target rather
+than reporting a quantity.
+
 ### Email — no device, so language comes from the content
 
 Already implemented for the part that matters: `EmailsBackend.cs:215` uses

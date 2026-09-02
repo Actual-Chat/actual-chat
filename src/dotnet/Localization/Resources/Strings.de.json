@@ -1082,6 +1082,23 @@
   "Notification_ThreadCreated_Format": "Thread '{0}' wurde erstellt",
   "Notification_AttentionRequested_Format": "{0} bittet um Aufmerksamkeit",
   "Notification_Reaction_Format": "{0} auf {1}",
+  // Stands in for an entry with no text of its own - a shared location, or attachments
+  // only. Read in the chat list, in quotes and in notifications, so each value is one line.
+  // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
+  "EmptyEntry_SentLocation": "📍 Standort gesendet",
+  "EmptyEntry_SentLiveLocation": "📍 Live-Standort geteilt",
+  "EmptyEntry_YourLocation": "Ihren Standort",
+  "EmptyEntry_QuoteAttachment": "Klicken Sie, um den Anhang zu sehen",
+  "EmptyEntry_SentImages": "{0} Bild gesendet|{0} Bilder gesendet",
+  "EmptyEntry_YourImages": "Ihr Bild|Ihre Bilder",
+  "EmptyEntry_SentVideos": "{0} Video gesendet|{0} Videos gesendet",
+  "EmptyEntry_YourVideos": "Ihr Video|Ihre Videos",
+  "EmptyEntry_SentFile_Format": "{0} gesendet",
+  "EmptyEntry_YourFile_Format": "Ihre Datei {0}",
+  "EmptyEntry_SentFiles": "{0} Datei gesendet|{0} Dateien gesendet",
+  "EmptyEntry_YourFiles": "Ihre Datei|Ihre Dateien",
+  "EmptyEntry_SentAttachments": "{0} Anhang gesendet|{0} Anhänge gesendet",
+  "EmptyEntry_YourAttachments": "Ihren Anhang|Ihre Anhänge",
   "Search_In": "In",
   "Search_CloseSearch": "Suche schließen",
   "Search_ShowMore": "Mehr anzeigen",

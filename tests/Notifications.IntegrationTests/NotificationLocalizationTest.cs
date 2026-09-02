@@ -132,6 +132,147 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
         }, TimeSpan.FromSeconds(15));
     }
 
+    [Theory]
+    [InlineData("ru", null, "ru")]
+    [InlineData(null, "ru", "ru")]
+    [InlineData(null, null, "en")]
+    public async Task LocationTextShouldUseTheRecipientsUILanguage(
+        string? uiLanguage,
+        string? detected,
+        string expected)
+    {
+        // arrange
+        var recipient = await Tester.SignInAsUniqueAlice();
+        await SetUILanguages(uiLanguage, detected);
+        var sender = await Tester.SignInAsUniqueBob();
+        var (chatId, inviteId) = await Tester.CreateChat(false, "Localized location");
+        var senderAuthor = await Tester.GetOwnAuthor(chatId).Require();
+        await Tester.SignIn(recipient);
+        await Tester.JoinChat(chatId, inviteId);
+
+        // act
+        await Tester.SignIn(sender);
+        var entry = await Tester.CreateLocationEntry(chatId, new GeoPoint(51.5074, -0.1278));
+
+        // assert
+        var l = LanguageStringLocalizer.Get(Language.Parse(expected));
+        var notification = await Tester.WaitForChatEntryNotification(recipient.Id, entry.Id);
+        notification.LeadText.Should().Be(l.EmptyEntry_SentLocation);
+        notification.Text.Should()
+            .Be(l.Notification_AuthorLine_Format(senderAuthor.Avatar.Name, l.EmptyEntry_SentLocation));
+    }
+
+    [Theory]
+    [InlineData("ru", "ru")]
+    [InlineData(null, "en")]
+    public async Task ReactionToLocationTextShouldUseTheRecipientsUILanguage(string? uiLanguage, string expected)
+    {
+        // arrange
+        var author = await Tester.SignInAsUniqueAlice();
+        await SetUILanguages(uiLanguage, null);
+        var reactor = await Tester.SignInAsUniqueBob();
+        var (chatId, inviteId) = await Tester.CreateChat(false, "Reacted location");
+        await Tester.SignIn(author);
+        await Tester.JoinChat(chatId, inviteId);
+        var entry = await Tester.CreateLocationEntry(chatId, new GeoPoint(51.5074, -0.1278));
+
+        // act
+        await Tester.SignIn(reactor);
+        await Tester.React(entry.Id, Emojis.Love);
+
+        // assert
+        var l = LanguageStringLocalizer.Get(Language.Parse(expected));
+        var expectedText = l.Notification_Reaction_Format(Emojis.Love, l.EmptyEntry_YourLocation);
+        await TestExt.When(async () => {
+            var info = await Tester.NotificationsBackend.GetUserNotificationInfo(author.Id, CancellationToken.None);
+            var reaction = info.Items.OfType<ReactionNotification>().Should().ContainSingle().Subject;
+            reaction.Text.Should().Be(expectedText);
+        }, TimeSpan.FromSeconds(15));
+    }
+
+    [Theory]
+    [InlineData("ru", "ru")]
+    [InlineData(null, "en")]
+    public async Task LiveLocationTextShouldSayItWasSharedLive(string? uiLanguage, string expected)
+    {
+        // A live share and a one-shot pin are the same entry - only the SharedLocation's Duration
+        // separates them - so this is the case the push used to word as a pin.
+
+        // arrange
+        var recipient = await Tester.SignInAsUniqueAlice();
+        await SetUILanguages(uiLanguage, null);
+        var sender = await Tester.SignInAsUniqueBob();
+        var (chatId, inviteId) = await Tester.CreateChat(false, "Localized live location");
+        var senderAuthor = await Tester.GetOwnAuthor(chatId).Require();
+        await Tester.SignIn(recipient);
+        await Tester.JoinChat(chatId, inviteId);
+
+        // act
+        await Tester.SignIn(sender);
+        var entry = await Tester.CreateLocationEntry(chatId, new GeoPoint(51.5074, -0.1278), TimeSpan.FromHours(1));
+
+        // assert
+        var l = LanguageStringLocalizer.Get(Language.Parse(expected));
+        var notification = await Tester.WaitForChatEntryNotification(recipient.Id, entry.Id);
+        notification.LeadText.Should().Be(l.EmptyEntry_SentLiveLocation);
+        notification.Text.Should()
+            .Be(l.Notification_AuthorLine_Format(senderAuthor.Avatar.Name, l.EmptyEntry_SentLiveLocation));
+    }
+
+    [Theory]
+    [InlineData("ru", null, "ru")]
+    [InlineData(null, "ru", "ru")]
+    [InlineData(null, null, "en")]
+    public async Task AttachmentTextShouldUseTheRecipientsUILanguage(
+        string? uiLanguage,
+        string? detected,
+        string expected)
+    {
+        // arrange
+        var recipient = await Tester.SignInAsUniqueAlice();
+        await SetUILanguages(uiLanguage, detected);
+        var sender = await Tester.SignInAsUniqueBob();
+        var (chatId, inviteId) = await Tester.CreateChat(false, "Localized attachments");
+        var senderAuthor = await Tester.GetOwnAuthor(chatId).Require();
+        await Tester.SignIn(recipient);
+        await Tester.JoinChat(chatId, inviteId);
+
+        // act
+        await Tester.SignIn(sender);
+        var entry = await CreateAttachmentOnlyEntry(chatId, "one.txt", "two.txt");
+
+        // assert
+        var l = LanguageStringLocalizer.Get(Language.Parse(expected));
+        var expectedText = l.EmptyEntry_SentFiles(2, 2.Format());
+        var notification = await Tester.WaitForChatEntryNotification(recipient.Id, entry.Id);
+        notification.LeadText.Should().Be(expectedText);
+        notification.Text.Should()
+            .Be(l.Notification_AuthorLine_Format(senderAuthor.Avatar.Name, expectedText));
+    }
+
+    [Fact]
+    public async Task AuthoredTextShouldReachEveryRecipientUntranslated()
+    {
+        // The counterpart of the two tests above: only text the markup layer stood in for is the
+        // reader's to change - a message the author wrote is theirs in every language.
+
+        // arrange
+        var recipient = await Tester.SignInAsUniqueAlice();
+        await SetUILanguages("ru", null);
+        var sender = await Tester.SignInAsUniqueBob();
+        var (chatId, inviteId) = await Tester.CreateChat(false, "Untranslated text");
+        await Tester.SignIn(recipient);
+        await Tester.JoinChat(chatId, inviteId);
+
+        // act
+        await Tester.SignIn(sender);
+        var entry = await Tester.CreateTextEntry(chatId, "Hello there");
+
+        // assert
+        var notification = await Tester.WaitForChatEntryNotification(recipient.Id, entry.Id);
+        notification.LeadText.Should().Be("Hello there");
+    }
+
     // Private methods
 
     private async Task<Symbol> RegisterDevice(UserId userId)
@@ -140,6 +281,22 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
         await Commander.Call(
             new NotificationsBackend_RegisterDevice(userId, deviceId, DeviceType.WebBrowser, Symbol.Empty));
         return deviceId;
+    }
+
+    private async Task<ChatEntry> CreateAttachmentOnlyEntry(ChatId chatId, params string[] fileNames)
+    {
+        var attachments = new ChatEntryAttachment[fileNames.Length];
+        for (var i = 0; i < fileNames.Length; i++) {
+            var mediaId = await Tester.SaveTextFile(chatId, fileNames[i], $"Content of {fileNames[i]}");
+            attachments[i] = new ChatEntryAttachment { MediaId = mediaId, Index = i };
+        }
+        return await Tester.Commander.Call(new Chats_UpsertEntry {
+            Session = Tester.Session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "",
+            Attachments = attachments,
+        });
     }
 
     private async Task SetUILanguages(string? uiLanguage, string? detected)

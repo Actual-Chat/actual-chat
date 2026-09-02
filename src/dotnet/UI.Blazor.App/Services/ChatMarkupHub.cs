@@ -31,4 +31,7 @@ public class ChatMarkupHub(IServiceProvider services, ChatId chatId) : IChatMark
 
     public SystemEntryMarkupBuilder SystemEntryMarkupBuilder
         => field ??= Services.GetRequiredService<SystemEntryMarkupBuilder>();
+
+    public EmptyEntryMarkupBuilder EmptyEntryMarkupBuilder
+        => field ??= Services.GetRequiredService<EmptyEntryMarkupBuilder>();
 }

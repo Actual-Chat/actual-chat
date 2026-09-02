@@ -1082,6 +1082,23 @@
   "Notification_ThreadCreated_Format": "Створено тред «{0}»",
   "Notification_AttentionRequested_Format": "{0} просить уваги",
   "Notification_Reaction_Format": "{0} на {1}",
+  // Stands in for an entry with no text of its own - a shared location, or attachments
+  // only. Read in the chat list, in quotes and in notifications, so each value is one line.
+  // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
+  "EmptyEntry_SentLocation": "📍 Геопозиція",
+  "EmptyEntry_SentLiveLocation": "📍 Геопозиція в реальному часі",
+  "EmptyEntry_YourLocation": "вашу геопозицію",
+  "EmptyEntry_QuoteAttachment": "Натисніть, щоб переглянути вкладення",
+  "EmptyEntry_SentImages": "Надіслано {0} зображення|Надіслано {0} зображення|Надіслано {0} зображень",
+  "EmptyEntry_YourImages": "ваше зображення|ваші зображення",
+  "EmptyEntry_SentVideos": "Надіслано {0} відео",
+  "EmptyEntry_YourVideos": "ваше відео|ваші відео",
+  "EmptyEntry_SentFile_Format": "Надіслано файл {0}",
+  "EmptyEntry_YourFile_Format": "ваш файл {0}",
+  "EmptyEntry_SentFiles": "Надіслано {0} файл|Надіслано {0} файли|Надіслано {0} файлів",
+  "EmptyEntry_YourFiles": "ваш файл|ваші файли",
+  "EmptyEntry_SentAttachments": "Надіслано {0} вкладення|Надіслано {0} вкладення|Надіслано {0} вкладень",
+  "EmptyEntry_YourAttachments": "ваше вкладення|ваші вкладення",
   "Search_In": "У",
   "Search_CloseSearch": "Закрити пошук",
   "Search_ShowMore": "Показати ще",

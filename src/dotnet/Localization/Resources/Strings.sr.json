@@ -1082,6 +1082,23 @@
   "Notification_ThreadCreated_Format": "Нит „{0}“ је креирана",
   "Notification_AttentionRequested_Format": "{0} тражи пажњу",
   "Notification_Reaction_Format": "{0} на {1}",
+  // Stands in for an entry with no text of its own - a shared location, or attachments
+  // only. Read in the chat list, in quotes and in notifications, so each value is one line.
+  // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
+  "EmptyEntry_SentLocation": "📍 Послана локација",
+  "EmptyEntry_SentLiveLocation": "📍 Подељена локација уживо",
+  "EmptyEntry_YourLocation": "вашу локацију",
+  "EmptyEntry_QuoteAttachment": "Кликните да видите прилог",
+  "EmptyEntry_SentImages": "Послана {0} слика|Послане {0} слике|Послано {0} слика",
+  "EmptyEntry_YourImages": "вашу слику|ваше слике",
+  "EmptyEntry_SentVideos": "Послан {0} видео|Послана {0} видеа|Послано {0} видеа",
+  "EmptyEntry_YourVideos": "ваш видео|ваша видеа",
+  "EmptyEntry_SentFile_Format": "Послан фајл {0}",
+  "EmptyEntry_YourFile_Format": "ваш фајл {0}",
+  "EmptyEntry_SentFiles": "Послан {0} фајл|Послана {0} фајла|Послано {0} фајлова",
+  "EmptyEntry_YourFiles": "ваш фајл|ваше фајлове",
+  "EmptyEntry_SentAttachments": "Послан {0} прилог|Послана {0} прилога|Послано {0} прилога",
+  "EmptyEntry_YourAttachments": "ваш прилог|ваше прилоге",
   "Search_In": "У",
   "Search_CloseSearch": "Затворите претрагу",
   "Search_ShowMore": "Прикажите више",

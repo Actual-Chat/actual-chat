@@ -1082,6 +1082,23 @@
   "Notification_ThreadCreated_Format": "Se ha creado el hilo '{0}'",
   "Notification_AttentionRequested_Format": "{0} pide atención",
   "Notification_Reaction_Format": "{0} a {1}",
+  // Stands in for an entry with no text of its own - a shared location, or attachments
+  // only. Read in the chat list, in quotes and in notifications, so each value is one line.
+  // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
+  "EmptyEntry_SentLocation": "📍 Ubicación enviada",
+  "EmptyEntry_SentLiveLocation": "📍 Ubicación en vivo compartida",
+  "EmptyEntry_YourLocation": "tu ubicación",
+  "EmptyEntry_QuoteAttachment": "Haz clic para ver el adjunto",
+  "EmptyEntry_SentImages": "{0} imagen enviada|{0} imágenes enviadas",
+  "EmptyEntry_YourImages": "tu imagen|tus imágenes",
+  "EmptyEntry_SentVideos": "{0} vídeo enviado|{0} vídeos enviados",
+  "EmptyEntry_YourVideos": "tu vídeo|tus vídeos",
+  "EmptyEntry_SentFile_Format": "{0} enviado",
+  "EmptyEntry_YourFile_Format": "tu archivo {0}",
+  "EmptyEntry_SentFiles": "{0} archivo enviado|{0} archivos enviados",
+  "EmptyEntry_YourFiles": "tu archivo|tus archivos",
+  "EmptyEntry_SentAttachments": "{0} adjunto enviado|{0} adjuntos enviados",
+  "EmptyEntry_YourAttachments": "tu adjunto|tus adjuntos",
   "Search_In": "En",
   "Search_CloseSearch": "Cerrar la búsqueda",
   "Search_ShowMore": "Mostrar más",

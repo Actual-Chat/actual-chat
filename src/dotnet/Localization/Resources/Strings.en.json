@@ -1283,6 +1283,24 @@
   "Notification_AttentionRequested_Format": "{0} asks for attention",
   "Notification_Reaction_Format": "{0} to {1}",
 
+  // Stands in for an entry with no text of its own - a shared location, or attachments
+  // only. Read in the chat list, in quotes and in notifications, so each value is one line.
+  // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
+  "EmptyEntry_SentLocation": "📍 Sent a location",
+  "EmptyEntry_SentLiveLocation": "📍 Shared live location",
+  "EmptyEntry_YourLocation": "your location",
+  "EmptyEntry_QuoteAttachment": "Click to see the attachment",
+  "EmptyEntry_SentImages": "Sent {0} image|Sent {0} images",
+  "EmptyEntry_YourImages": "your image|your images",
+  "EmptyEntry_SentVideos": "Sent {0} video|Sent {0} videos",
+  "EmptyEntry_YourVideos": "your video|your videos",
+  "EmptyEntry_SentFile_Format": "Sent {0}",
+  "EmptyEntry_YourFile_Format": "your {0}",
+  "EmptyEntry_SentFiles": "Sent {0} file|Sent {0} files",
+  "EmptyEntry_YourFiles": "your file|your files",
+  "EmptyEntry_SentAttachments": "Sent {0} attachment|Sent {0} attachments",
+  "EmptyEntry_YourAttachments": "your attachment|your attachments",
+
   // The search result list: the "In <chat>" label on a hit, and its expand/collapse toggle.
   "Search_In": "In",
   "Search_CloseSearch": "Close search",

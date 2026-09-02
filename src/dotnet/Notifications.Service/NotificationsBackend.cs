@@ -38,6 +38,8 @@ public class NotificationsBackend(IServiceProvider services)
     private Streaming.ILiveSessionsBackend LiveSessionsBackend { get; }
         = services.GetRequiredService<Streaming.ILiveSessionsBackend>();
     private IChatThreadsBackend ChatThreadsBackend { get; } = services.GetRequiredService<IChatThreadsBackend>();
+    private ISharedLocationsBackend SharedLocationsBackend { get; }
+        = services.GetRequiredService<ISharedLocationsBackend>();
     private UserLocalizers UserLocalizers { get; } = services.GetRequiredService<UserLocalizers>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
@@ -682,17 +684,21 @@ public class NotificationsBackend(IServiceProvider services)
         if (!NotificationHelper.IsDeliverable(NotificationImportance.Ordinary, mode))
             return;
 
-        var (text, _) = await NotificationHelper
-            .GetText(entry, MarkupConsumer.ReactionNotification, ChatMarkupHubFactory, cancellationToken)
-            .ConfigureAwait(false);
-        // TODO: 2026-07, drop !entry.HasLocation when the old client fallback Content goes away.
-        // Location Content is a maps-link fallback rather than user text, so it must not be quoted.
-        if (!entry.Content.IsNullOrEmpty() && !entry.HasLocation)
-            text = $"\"{text}\"";
         var userIds = new[] { author.UserId };
         var similarityKey = entry.ChatId.Value;
         // One recipient, so the localizer is resolved here rather than inside the fan-out loop.
         var l = await UserLocalizers.Get(author.UserId, cancellationToken).ConfigureAwait(false);
+        var (text, _, isSubstituted) = await NotificationHelper
+            .GetText(entry, MarkupConsumer.ReactionNotification, ChatMarkupHubFactory, cancellationToken)
+            .ConfigureAwait(false);
+        var textFactory = NotificationHelper
+            .GetSubstituteTextFactory(entry, MarkupConsumer.ReactionNotification, isSubstituted);
+        // Substituted text is ours, not the author's, so it's re-worded for the reader and never quoted.
+        if (textFactory is not null)
+            text = textFactory.Invoke(l);
+        else if (!entry.Content.IsNullOrEmpty())
+            text = $"\"{text}\"";
+
         await EnqueueMessageRelatedNotifications(
             entry.ChatId, entry.Id, reactionAuthor, l.Notification_Reaction_Format(reaction.Emoji, text),
             NotificationKind.Reaction, similarityKey, "", userIds, (reaction.Emoji, text), cancellationToken)
@@ -856,9 +862,13 @@ public class NotificationsBackend(IServiceProvider services)
 
         var entryId = freshEntry.Id;
         var chatId = entryId.ChatId;
-        var (text, mentionIds) = await NotificationHelper
+        var (text, mentionIds, isSubstituted) = await NotificationHelper
             .GetText(freshEntry, MarkupConsumer.Notification, ChatMarkupHubFactory, cancellationToken)
             .ConfigureAwait(false);
+        var isLiveLocation = await IsLiveLocation(freshEntry, cancellationToken).ConfigureAwait(false);
+        var textFactory = NotificationHelper
+            .GetSubstituteTextFactory(freshEntry, MarkupConsumer.Notification, isSubstituted, isLiveLocation);
+        var sharedText = textFactory is null ? text : null;
         // The mode != Muted superset; ImportantOnly users must survive until the split below.
         var userIds = await ListSubscribedUserIds(chatId, NotificationImportance.Important, cancellationToken)
             .ConfigureAwait(false);
@@ -884,7 +894,7 @@ public class NotificationsBackend(IServiceProvider services)
         var mentioned = userIds.Where(mentionedUserIds.Contains).ToList();
         if (mentioned.Count > 0)
             await EnqueueMessageRelatedNotifications(
-                chatId, entryId, author, text, NotificationKind.Mention,
+                chatId, entryId, author, sharedText, textFactory, NotificationKind.Mention,
                 entryId.Value, "", mentioned, null, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -893,9 +903,20 @@ public class NotificationsBackend(IServiceProvider services)
             others, chatId, NotificationImportance.Ordinary, cancellationToken)
             .ConfigureAwait(false);
         await EnqueueMessageRelatedNotifications(
-            chatId, entryId, author, text, NotificationKind.Message,
+            chatId, entryId, author, sharedText, textFactory, NotificationKind.Message,
             chatId.Value, beepGroup, ordinaryUserIds, null, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    // Duration is immutable and set at creation, so this says "was shared live", not "is still
+    // live" - the wording must not change under a reader when the share later expires.
+    private async ValueTask<bool> IsLiveLocation(ChatEntry entry, CancellationToken cancellationToken)
+    {
+        if (entry.LocationId is not { } locationId)
+            return false;
+
+        var location = await SharedLocationsBackend.Get(locationId, cancellationToken).ConfigureAwait(false);
+        return location is { Duration.Ticks: > 0 };
     }
 
     // Resolves personal (author/user) mentions to user ids; chat/place/emoji mention kinds carry
@@ -1334,7 +1355,8 @@ public class NotificationsBackend(IServiceProvider services)
             chatId, entryId, changeAuthor, null, contentFactory, kind, similarityKey, beepGroup,
             userIds, null, cancellationToken);
 
-    // Exactly one of sharedContent / contentFactory is non-null - see the two overloads above.
+    // Exactly one of sharedContent / contentFactory is non-null: the two overloads above pick
+    // for a whole notification kind, SendChatMessageNotification picks per entry.
     private async ValueTask EnqueueMessageRelatedNotifications(
         ChatId chatId,
         ChatEntryId? entryId,
@@ -1836,9 +1858,14 @@ public class NotificationsBackend(IServiceProvider services)
                 .GetEntry(ChatEntryId.New(related.ChatId, newStart), TimeSpan.Zero, cancellationToken)
                 .ConfigureAwait(false);
             if (entry is { IsSystemEntry: false }) {
-                var (text, _) = await NotificationHelper
+                var (text, _, isSubstituted) = await NotificationHelper
                     .GetText(entry, MarkupConsumer.Notification, ChatMarkupHubFactory, cancellationToken)
                     .ConfigureAwait(false);
+                var isLiveLocation = await IsLiveLocation(entry, cancellationToken).ConfigureAwait(false);
+                var textFactory = NotificationHelper
+                    .GetSubstituteTextFactory(entry, MarkupConsumer.Notification, isSubstituted, isLiveLocation);
+                if (textFactory is not null)
+                    text = textFactory.Invoke(l);
                 var author = await AuthorsBackend
                     .Get(related.ChatId, entry.AuthorId, RequestedAuthorKind.Full, cancellationToken)
                     .ConfigureAwait(false);

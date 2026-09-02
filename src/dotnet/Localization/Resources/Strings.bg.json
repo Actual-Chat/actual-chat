@@ -1082,6 +1082,23 @@
   "Notification_ThreadCreated_Format": "Нишката „{0}“ беше създадена",
   "Notification_AttentionRequested_Format": "{0} поиска внимание",
   "Notification_Reaction_Format": "{0} на {1}",
+  // Stands in for an entry with no text of its own - a shared location, or attachments
+  // only. Read in the chat list, in quotes and in notifications, so each value is one line.
+  // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
+  "EmptyEntry_SentLocation": "📍 Изпратено местоположение",
+  "EmptyEntry_SentLiveLocation": "📍 Споделено местоположение на живо",
+  "EmptyEntry_YourLocation": "вашето местоположение",
+  "EmptyEntry_QuoteAttachment": "Натиснете, за да видите прикачения файл",
+  "EmptyEntry_SentImages": "Изпратено е {0} изображение|Изпратени са {0} изображения",
+  "EmptyEntry_YourImages": "вашето изображение|вашите изображения",
+  "EmptyEntry_SentVideos": "Изпратено е {0} видео|Изпратени са {0} видеа",
+  "EmptyEntry_YourVideos": "вашето видео|вашите видеа",
+  "EmptyEntry_SentFile_Format": "Изпратен е файлът {0}",
+  "EmptyEntry_YourFile_Format": "вашия файл {0}",
+  "EmptyEntry_SentFiles": "Изпратен е {0} файл|Изпратени са {0} файла",
+  "EmptyEntry_YourFiles": "вашия файл|вашите файлове",
+  "EmptyEntry_SentAttachments": "Изпратен е {0} прикачен файл|Изпратени са {0} прикачени файла",
+  "EmptyEntry_YourAttachments": "вашия прикачен файл|вашите прикачени файлове",
   "Search_In": "В",
   "Search_CloseSearch": "Затворете търсенето",
   "Search_ShowMore": "Покажете още",
