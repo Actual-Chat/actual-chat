@@ -172,14 +172,19 @@ Changes:
   `MayConfigure(CallKit, mode)` mirrors the `PttPlayback` rule: raising to `Recording`
   is compatible with a live call, lowering to `Playback`/`Ambient` cuts the incoming
   voice out and is refused.
-- Set `AVAudioSession.Mode` to `VoiceChat` (`VideoChat` for video) for the duration of
-  a call, via an **iOS-local in-call flag on `AudioSession`** rather than a new
-  `AudioFocusMode` member. `AudioFocusMode` is shared with Android, which has no
-  meaning for a VoIP session mode; a new member would force a change there for nothing.
-- Do not use `DefaultToSpeaker` + a forced speaker override for calls. `VoiceChat`
-  implies receiver-first routing with an explicit speaker toggle, which is the
-  phone-like behaviour; the existing speaker override exists for recording *outside*
-  a call and must stay scoped to that.
+- **Session mode needs no new plumbing.** `AudioSession.ConfigureUnsafe` already picks
+  the mode from the owner (`App → VideoChat`, otherwise `VoiceChat`), so a `CallKit`
+  owner gets `VoiceChat` for free. The only change is selecting `VideoChat` for a
+  *video* call, so the branch becomes owner- and video-aware rather than owner-only.
+  No `AudioFocusMode` member is added: that enum is shared with Android, which has no
+  meaning for a VoIP session mode.
+- **Routing is the real work, and it is not free.** `ConfigureUnsafe` sets
+  `DefaultToSpeaker` unconditionally for `Recording`, and `ApplyOutputRouteUnsafe`
+  forces an unconditional `Speaker` override for `Recording` on non-Mac. Both exist for
+  recording *outside* a call and both are wrong inside one: a phone call is
+  receiver-first with an explicit speaker toggle. Under a `CallKit` voice owner,
+  `DefaultToSpeaker` must be dropped from the category options and the speaker override
+  must not be applied. A video call keeps speaker-first.
 
 Findings #1 (double activation) and #2 (mode never set) are closed by the above.
 Finding #3 (no deactivate/route handlers) is closed in §4.2. Finding #4 (outgoing
