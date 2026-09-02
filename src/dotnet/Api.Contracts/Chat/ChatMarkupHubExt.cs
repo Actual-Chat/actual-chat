@@ -16,51 +16,29 @@ public static class ChatMarkupHubExt
         MarkupConsumer consumer,
         CancellationToken cancellationToken)
     {
-        var (markup, _) = await markupHub
-            .GetMarkupWithSubstitution(entry, translation, consumer, cancellationToken)
-            .ConfigureAwait(false);
-        return markup;
-    }
-
-    // IsSubstituted says the text came from EmptyEntryMarkupBuilder rather than from the author, so
-    // a caller composing for someone else must rebuild it in that reader's language.
-    public static async ValueTask<(Markup Markup, bool IsSubstituted)> GetMarkupWithSubstitution(
-        this IChatMarkupHub markupHub,
-        ChatEntry entry,
-        Translation? translation,
-        MarkupConsumer consumer,
-        CancellationToken cancellationToken)
-    {
+        Markup markup;
         switch (entry) {
         case SystemEntry systemEntry:
-            var systemMarkup = markupHub.SystemEntryMarkupBuilder.Build(systemEntry);
+            markup = markupHub.SystemEntryMarkupBuilder.Build(systemEntry);
             // System entries render markup w/o mention names
-            systemMarkup = await markupHub.MentionResolver
-                .Apply(systemMarkup, cancellationToken)
-                .ConfigureAwait(false);
-            return (systemMarkup, false);
+            markup = await markupHub.MentionResolver.Apply(markup, cancellationToken).ConfigureAwait(false);
+            break;
         case { HasAudio: true }:
             // HasAudio covers all audio/media entries now
-            var timeMap = entry.Audio?.TimeMap ?? default;
-            return (new PlayableTextMarkup(translation?.Content ?? entry.Content, timeMap), false);
+            markup = new PlayableTextMarkup(translation?.Content ?? entry.Content, entry.Audio?.TimeMap ?? default);
+            break;
         case { HasLocation: true }:
             // TODO: 2026-07, remove when all clients support location entries.
             // Their Content is a maps-link fallback baked in for old clients - no other consumer must show it.
-            return Substitute();
+            markup = markupHub.EmptyEntryMarkupBuilder.Build(entry, consumer);
+            break;
         default:
-            var markup = markupHub.Parser.Parse(translation?.Content ?? entry.Content);
-            if (!ReferenceEquals(markup, MarkupParser.EmptyResult))
-                return (markup, false);
-
-            return Substitute();
+            markup = markupHub.Parser.Parse(translation?.Content ?? entry.Content);
+            if (ReferenceEquals(markup, MarkupParser.EmptyResult))
+                markup = markupHub.EmptyEntryMarkupBuilder.Build(entry, consumer);
+            break;
         }
-
-        (Markup Markup, bool IsSubstituted) Substitute() {
-            // MessageView and attachment-less entries come back empty - nothing was worded, so
-            // there is nothing for a reader's language to change.
-            var substitute = markupHub.EmptyEntryMarkupBuilder.Build(entry, consumer);
-            return (substitute, !ReferenceEquals(substitute, Markup.EmptyText));
-        }
+        return markup;
     }
 
     public static Markup GetMarkup(
