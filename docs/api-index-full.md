@@ -1104,6 +1104,7 @@ Blazor components for building MJML email templates. Each MJML element has a cor
 - `ConfigOnlyAppHost` (static class) - Minimal AppHost for configuration access.
 - `LivelinessHealthCheck` - Kubernetes liveliness check.
 - `ReadinessHealthCheck` - Kubernetes readiness check.
+- `GracefulShutdown` - Hands shards over and closes inbound RPC connections on host stop.
 - `AggregateDbInitializer` - Orchestrates database initialization.
 - `AggregateModuleInitializer` - Orchestrates module initialization.
 - `DbInitializeOptions` (record) - Database initialization options.

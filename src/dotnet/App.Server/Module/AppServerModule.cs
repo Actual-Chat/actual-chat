@@ -200,6 +200,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         services.AddSingleton(c => new AppHostLifecycleMonitor(c));
         services.AddHostedService(c => c.GetRequiredService<AppHostLifecycleMonitor>());
 
+        // GracefulShutdown
+        services.AddHostedService(c => new GracefulShutdown(c));
+
         // Health-checks
         services.AddSingleton<LivelinessHealthCheck>(c => new LivelinessHealthCheck());
         services.AddSingleton<ReadinessHealthCheck>(c => new ReadinessHealthCheck(c));
