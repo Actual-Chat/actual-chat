@@ -14,6 +14,31 @@ public sealed class EmptyEntryLocalizationTest
     ];
 
     [Fact]
+    public void EnglishRenderingShouldMatchTheDefaultBuilder()
+    {
+        // Link previews and LLM prompt context still build with EmptyEntryMarkupBuilder.Default,
+        // so the English catalog must reproduce it exactly - or the same message would be worded
+        // one way in a quote and another in a preview.
+
+        // arrange
+        var builder = NewBuilder(Languages.English);
+
+        // act
+        var mismatches = Cases()
+            .Select(x => (
+                Localized: builder.Build(x.Entry, x.Consumer, x.IsLiveLocation).ToReadableText(x.Consumer),
+                English: EmptyEntryMarkupBuilder.Default.Build(x.Entry, x.Consumer, x.IsLiveLocation).ToReadableText(x.Consumer)))
+            .Where(x => x.Localized != x.English)
+            .Select(x => $"'{x.Localized}' != '{x.English}'")
+            .ToList();
+
+        // assert
+        mismatches.Should().BeEmpty(
+            "the English catalog must render exactly what the default builder renders:\n{0}",
+            string.Join("\n", mismatches));
+    }
+
+    [Fact]
     public void EveryShippedLanguageShouldRenderEveryCase()
     {
         // arrange
@@ -41,12 +66,9 @@ public sealed class EmptyEntryLocalizationTest
     {
         // The bubble renders the attachments and the map themselves - text would double them.
 
-        // arrange
-        var builder = NewBuilder(Languages.English);
-
         // act
         var texts = Cases()
-            .Select(x => builder.Build(x.Entry, MarkupConsumer.MessageView, x.IsLiveLocation))
+            .Select(x => EmptyEntryMarkupBuilder.Default.Build(x.Entry, MarkupConsumer.MessageView, x.IsLiveLocation))
             .Select(m => m.ToReadableText(MarkupConsumer.MessageView));
 
         // assert

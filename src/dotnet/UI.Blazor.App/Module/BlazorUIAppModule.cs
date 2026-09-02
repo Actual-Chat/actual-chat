@@ -55,8 +55,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(c => new AuthorUI(c.AppUIHub()));
         services.AddScoped(c => new EditMembersUI(c.AppUIHub()));
         services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
-        services.AddScoped<SystemEntryMarkupBuilder>(
-            c => new LocalizedSystemEntryMarkupBuilder(c.GetRequiredService<IStringLocalizer>()));
+        services.AddScoped<SystemEntryMarkupBuilder>(c => new LocalizedSystemEntryMarkupBuilder(c));
         services.AddScoped<EmptyEntryMarkupBuilder>(
             c => new LocalizedEmptyEntryMarkupBuilder(c.GetRequiredService<IStringLocalizer>()));
 
