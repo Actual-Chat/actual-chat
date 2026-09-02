@@ -429,10 +429,14 @@ export class ScrollController {
 
         const boundary = this.getViolatedBoundary(scrollTop);
         if (boundary === null) {
-            // Back inside under its own power; `over` has been integrated to zero and the transform
-            // with it, so there is nothing to hand back.
+            // Back inside. Under its own power `over` has been integrated to zero and the transform
+            // with it, so the write below is a no-op. Under a limit that moved past the finger - the
+            // page of history the pull itself asked for, arriving mid-pull - the transform still holds
+            // the curve's share of the pull, and dropping it is a step of that size on screen. Handed
+            // back at the position that keeps the content where it is instead: the renumbering a catch
+            // performs, so the drag carries on from there with nothing owed.
             if (this.phase === 'following')
-                this.endPhase(null);
+                this.endPhase(scrollTop - this.overscrollOffset);
 
             return;
         }

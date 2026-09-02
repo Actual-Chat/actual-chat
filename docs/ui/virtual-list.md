@@ -492,7 +492,7 @@ overscroll rows are the summary of §3.7.*
 | a scroll event past a limit, finger down | in-band → following | latch the boundary; seed `over` at the true excursion and the transform at its resisted share; each frame after: `over += Δscroll`, nudge by the resisted share | `transform` |
 | a scroll event past a limit, no finger, ordinary path | in-band → engaged | the same seed, the carry seeded from the fling's speed, then the bounce and the floor per frame | `transform` |
 | a scroll event past a limit, no finger, iOS/WebKit | in-band → engaged + momentum `arming` | seed the same band, estimate the recent native velocity, then perform the next-frame lock/FLIP handoff | `transform`, then `scrollTop` + `transform` |
-| the finger comes back inside | following → in-band | nothing: `over` and the transform are already zero | — |
+| the finger comes back inside | following → in-band | nothing under its own power: `over` and the transform are already zero. Under a limit that moved past the finger the transform still holds the curve's share, so the hand-back writes `scrollTop` by exactly that as it drops the transform — the content stays put and the drag carries on | `scrollTop` + `transform` |
 | `touchend` past the boundary, ordinary path | following → engaged | an outward release carries its speed into a bounce; each frame shows the browser's motion resisted, the carry tops it up until it turns, the floor adds only its shortfall after that; the browser's outward fling is ended by `killMomentum` | `transform` |
 | `touchend` past the boundary, iOS/WebKit | following → engaged + momentum `arming` | estimate the release speed from the recent native samples; on the next frame force the overflow lock, snap `scrollTop` to the boundary and FLIP the measured visual delta into the content transform; momentum `transform` then runs the critically damped return | `scrollTop` + `transform`, same frame; then `transform` |
 | `touchstart` during a return | engaged → following | release any takeover lock, integrate what the scroll did since the last frame, then write `scrollTop := boundary + over`, read back, and take the same delta out of the transform | `scrollTop` + `transform`, same frame |
@@ -828,7 +828,8 @@ rules:
    part only by `nudge(delta)`. During the iOS takeover the first FLIP is also a nudge, after which the
    spring owns and assigns `overscrollOffset`.
 2. **Every `scrollTop` write is named and read back.** The ordinary path writes for a catch, settle,
-   wheel/cancel/watchdog end, tiny or non-touch crossing, and the owner's `scrollTo` / clamp. The iOS
+   wheel/cancel/watchdog end, tiny or non-touch crossing, a limit that moved past a following finger,
+   and the owner's `scrollTo` / clamp. The iOS
    path additionally snaps to the boundary after forcing the overflow lock, and repeats that snap if
    native movement leaks through. Only the measured visual effect of a write is transferred into the
    transform. Anything else that wants to correct a moving view moves the scroll position or the
@@ -947,8 +948,13 @@ device pixel counts as landed. Dropping the
 transform before the write, which an earlier version did, was a step of the whole leak whenever the
 write was refused.
 
-**Ending inside the band under a finger** writes nothing and drops nothing: by the time the scroll is
-back inside, `over` has been integrated to zero and the transform with it, so letting go moves nothing.
+**Ending inside the band under a finger** writes nothing and drops nothing when the finger brought it
+back: by then `over` has been integrated to zero and the transform with it, so letting go moves nothing.
+When a limit moved past the finger instead — the page of history the pull itself asked for, arriving
+mid-pull — the transform still holds the curve's share of the pull, and dropping it was a step of that
+size on screen. The hand-back is the renumbering a catch performs: `scrollTop` is written by exactly
+that share as the transform drops, so the content stays where it is and the drag carries on. Measured
+with the soak: six such ends per run, 1-24px each, every one landing on the compensated position.
 A release from inside the band is a release, not a bounce: `engage` checks the position, and a finger
 that crossed back in and lifted — still `following`, because ending that phase waits on a scroll
 event a release does not produce — ends the excursion instead of springing at the edge it just passed.
@@ -2088,22 +2094,11 @@ can see no chats at all".
 
 ## 7. Known open issues
 
-*What is known not to be done: a load that moves the limits under a dragging finger drops the band; the
+*What is known not to be done: the
 two per-frame `scrollTop` writers are unmeasured on a device; the `auto` inset reading is verified on
 Blink only; `reanchor` holds the viewport top in both directions; a fling read through loading history
 is unmeasured; a touch that lands during the short iOS lock cannot scroll in that same gesture; and a
 long hold trips the stale-touch backstop.*
-
-- **A load that moves the limits outward under a dragging finger drops the excursion.**
-  `ScrollController.onScroll` asks `getViolatedBoundary` where the scroll is, and a limit that moved
-  past it while the finger was still pulling answers "in band" — so `endPhase(null)` runs, `over` goes
-  to zero and the band transform is discarded in one frame. Measured with the soak's 60 gestures: six
-  or seven occurrences per run, with `over` up to 180px, which is ~24px of transform vanishing in a
-  frame; the rig's `bad-ends` catches it only when the next frame happens to be outside the limits, so
-  a soak run passes or fails on timing. **It predates the translation work** — a soak against the
-  previous commit reproduces the same six occurrences and the same `bad-ends 1`. The fix is for the
-  crossing to be re-aimed rather than abandoned, the way `scrollTo`'s `reanchor` path already does it:
-  a limit that moves under an open excursion should move the latched boundary with it.
 
 - **Two things write `scrollTop` per frame, and §4.7 is about exactly that.** While an item's height
   animates, the pinned edge moves every frame, so the follow writes every frame; an expand hold does
