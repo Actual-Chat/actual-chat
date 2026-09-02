@@ -2,7 +2,7 @@
 @inherits ComponentBase<AppUIHub>
 
 <div class="c-header">
-    <ButtonRound Click="@OnClose" Class="author-modal-close-btn close-btn btn-sm">
+    <ButtonRound Click="@OnCollapse" Class="author-modal-close-btn close-btn btn-sm">
         <i class="icon-close text-2xl"></i>
     </ButtonRound>
 
@@ -17,21 +17,7 @@
     <div class="c-center">
         <AuthorCircle
             AuthorId="@Author.Id"
-            Size="SquareSize.Size16">
-            <BadgeContent>
-                @if (!Author.IsAnonymous) {
-                    <AuthorPresenceIndicator AuthorId="@Author.Id" ShowRecording="true"></AuthorPresenceIndicator>
-                }
-            </BadgeContent>
-        </AuthorCircle>
-        <div class="c-buttons">
-            <ButtonRound
-                Class="btn-sm"
-                Tooltip="@L.Call_Message"
-                TooltipPosition="FloatingPosition.Top">
-                <i class="icon-message-ellipse text-2xl"></i>
-            </ButtonRound>
-        </div>
+            Size="SquareSize.Size16" />
     </div>
 
     <div class="c-bottom">
@@ -39,39 +25,12 @@
             <span class="call-text">@L.Call_IncomingFrom</span>
             <AuthorName AuthorId="@Author.Id" Class="text-02 text-headline-7" ShowDetailsOnClick="false"/>
         </div>
-        @if (!_peerOwnName.IsNullOrEmpty()) {
-            <span class="c-public">
-                @_peerOwnName
-            </span>
-        }
-        <div class="c-public">
-            @if (!Author.Avatar.Bio.IsNullOrEmpty()) {
-                @Author.Avatar.Bio
-            }
-        </div>
     </div>
 </div>
 
 @code {
-    private string? _peerOwnName;
-
-    private IAvatars Avatars => Hub.Avatars;
-
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwn { get; set; }
-
-    protected override async Task OnParametersSetAsync() {
-        var cancellationToken = CancellationToken.None;
-        _peerOwnName = await GetPeerOwnName(cancellationToken);
-    }
-
-    private async Task<string?> GetPeerOwnName(CancellationToken cancellationToken) {
-        var avatar = await Avatars.Get(Session, Author.Avatar.Id, cancellationToken).ConfigureAwait(false);
-        var peerOwnName = avatar?.Name ?? "";
-        return Author.Avatar.Name != peerOwnName ? peerOwnName : "";
-    }
-
-    private void OnClose()
-        => Modal.Close();
+    [Parameter] public EventCallback OnCollapse { get; set; }
 }

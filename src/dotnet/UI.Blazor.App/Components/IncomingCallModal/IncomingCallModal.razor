@@ -8,9 +8,11 @@
         return;
 
     if (m.Author is not { } author || m.Call is not { } call) {
-        // The ring ended (cancel / timeout / answered elsewhere) — close ourselves.
+        // The ring ended, or it was collapsed into the island / answered elsewhere — close ourselves.
+        // This is a resolved close, so it must NOT re-collapse from Dispose.
         if (!_isAutoClosed) {
             _isAutoClosed = true;
+            _handled = true;
             Modal.Close();
         }
         return;
@@ -20,26 +22,35 @@
 <DialogFrame
     Title="@(call.HasVideo ? L.Call_IncomingVideo : L.Call_Incoming)"
     Class="author-modal modal-sm incoming-call-modal wide-dialog-buttons"
-    HasCloseButton="true">
+    HasCloseButton="false">
     <Body>
     <IncomingCallModalHeader
         Author="author"
-        IsOwn="false"/>
+        IsOwn="false"
+        OnCollapse="@OnCollapseClick"/>
     </Body>
     <Buttons>
-        <Button Class="btn-modal btn-danger" Click="@OnDeclineClick">
-            <Icon><i class="icon-close text-xl"></i></Icon>
-            <Title>@L.Common_Decline</Title>
-        </Button>
-        <Button Class="btn-modal btn-primary" Click="@OnAcceptClick">
-            <Icon><i class="icon-phone text-xl"></i></Icon>
-            <Title>@L.Common_Accept</Title>
-        </Button>
+        <ButtonRound Class="c-call-btn c-decline" Tooltip="@L.Common_Decline" Click="@OnDeclineClick">
+            <i class="icon-close text-2xl"></i>
+        </ButtonRound>
+        <ButtonRound Class="c-call-btn c-mute" Click="@OnMuteClick">
+            <i class="@(m.IsMuted ? "icon-bell" : "icon-bell-off") text-xl"></i>
+        </ButtonRound>
+        <ButtonRound Class="c-call-btn c-message" Tooltip="@L.Call_Message" Click="@OnMessageClick">
+            <i class="icon-message-ellipse text-xl"></i>
+        </ButtonRound>
+        <ButtonRound Class="c-call-btn c-accept" Tooltip="@L.Common_Accept" Click="@OnAcceptClick">
+            <i class="icon-phone-take text-2xl"></i>
+        </ButtonRound>
     </Buttons>
 </DialogFrame>
 
 @code {
     private bool _isAutoClosed;
+    // True once the close was resolved by an explicit action (accept/decline/message/collapse) or the
+    // ring ending. A close with this still false means the user dismissed the modal (tap outside / Esc),
+    // which must collapse to the island rather than orphan the ongoing ring.
+    private bool _handled;
 
     private IAuthors Authors => Hub.Authors;
     private IncomingCallUI IncomingCallUI => Hub.IncomingCallUI;
@@ -60,23 +71,60 @@
             return ComputedModel.None;
 
         var call = await IncomingCallUI.GetRingingCall(chatId, cancellationToken).ConfigureAwait(false);
+        if (call is null)
+            return ComputedModel.None;
+
+        // Collapsed into the island → close the modal; the island takes over.
+        var collapsed = await IncomingCallUI.CollapsedChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (collapsed == chatId)
+            return ComputedModel.None;
+
+        var muted = await IncomingCallUI.MutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
         return new() {
             Author = author,
             Call = call,
+            IsMuted = muted == chatId,
         };
     }
 
+    // A tap outside the modal (or Esc) closes it via ModalChrome without touching the ring, which would
+    // leave the call ringing with no UI. Disposal is the single close hook, so unless an explicit action
+    // already resolved it, treat the dismissal as "collapse to the island".
+    public override async ValueTask DisposeAsync() {
+        if (!_handled)
+            IncomingCallUI.Collapse(ChatId);
+        await base.DisposeAsync().ConfigureAwait(false);
+    }
+
     private Task OnAcceptClick() {
+        _handled = true;
         var chatId = ChatId;
         Modal.Close();
         return IncomingCallUI.Accept(chatId);
     }
 
     private Task OnDeclineClick() {
+        _handled = true;
         var chatId = ChatId;
         Modal.Close();
         return IncomingCallUI.Decline(chatId);
     }
+
+    private Task OnMessageClick() {
+        _handled = true;
+        var chatId = ChatId;
+        Modal.Close();
+        return IncomingCallUI.DeclineAndOpenChat(chatId);
+    }
+
+    // Collapse to the island: the modal auto-closes because ComputeState reads CollapsedChatId.
+    private void OnCollapseClick() {
+        _handled = true;
+        IncomingCallUI.Collapse(ChatId);
+    }
+
+    private void OnMuteClick()
+        => IncomingCallUI.ToggleMuteRing(ChatId);
 
     // Nested types
 
@@ -85,6 +133,7 @@
 
         public Author? Author { get; init; }
         public IncomingCall? Call { get; init; }
+        public bool IsMuted { get; init; }
     }
 
     public sealed record Model(AuthorId CallerId);

@@ -210,13 +210,25 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
             return;
         }
 
-        // The system notification (silent channel) is always shown; its full-screen intent surfaces
-        // the Blazor app over the lock screen / in the background. Whenever the Blazor scope is alive
-        // we also register the ring so the in-app banner + ringer run.
-        DebugLog?.LogInformation("CALL_TRACE: HandleIncomingCall push #{ChatId}, scopeAlive={ScopeAlive}",
-            chatId, TryGetScopedServices(out _));
+        var scopeAlive = TryGetScopedServices(out _);
+        var isForeground = AndroidUtils.IsAppForeground();
+        DebugLog?.LogInformation("CALL_TRACE: HandleIncomingCall push #{ChatId}, scopeAlive={ScopeAlive}, foreground={Foreground}",
+            chatId, scopeAlive, isForeground);
+        // Foreground + unlocked: the in-app banner and ringer own the ring, so the system CallStyle
+        // notification would only stack a heads-up banner over them. Show it just when the app is
+        // backgrounded, killed, or locked - where its full-screen intent is the only way to reach the user.
+        if (scopeAlive && isForeground == true) {
+            _ = DispatchToBlazor(
+                c => c.GetRequiredService<IncomingCallUI>().OnRing(chatId),
+                "IncomingCallUI.OnRing");
+            return;
+        }
+
+        // The system notification (silent channel) surfaces the Blazor app over the lock screen / in
+        // the background via its full-screen intent. Whenever the Blazor scope is alive we also register
+        // the ring so the in-app banner + ringer run.
         IncomingCallNotifications.Show(data);
-        if (TryGetScopedServices(out _))
+        if (scopeAlive)
             _ = DispatchToBlazor(
                 c => c.GetRequiredService<IncomingCallUI>().OnRing(chatId),
                 "IncomingCallUI.OnRing");
