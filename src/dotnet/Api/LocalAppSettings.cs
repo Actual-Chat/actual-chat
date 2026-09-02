@@ -25,6 +25,9 @@ public partial record LocalAppSettings : StoredSettings, IHasKvasKey<LocalAppSet
     // MemoryPackOrder(4) reserved (was IsVideoDiagnosticsEnabled) — do not reuse.
     [DataMember, MemoryPackOrder(5), Key(5)] public GeoTrackingAccuracy? LocationAccuracy { get; init; }
     // MemoryPackOrder(6) reserved (was IsAudioDiagnosticsEnabled) — do not reuse.
+    // Comma-separated PermissionKind names that were missing when the permission warning was last
+    // dismissed. Kept per-device: OS permission state is per-device, and this avoids a server round-trip.
+    [DataMember, MemoryPackOrder(7), Key(7)] public string? DismissedPermissionWarnings { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsLogViewerEnabledOrDefault => IsLogViewerEnabled ?? true;

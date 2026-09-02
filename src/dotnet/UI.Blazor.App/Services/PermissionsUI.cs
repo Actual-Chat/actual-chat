@@ -1,4 +1,5 @@
 using ActualChat.Localization;
+using ActualChat.Users;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -41,7 +42,9 @@ public sealed class PermissionsUI : UIServiceBase<AppUIHub>
         // Nothing invalidates an OS-level permission read, so Use()-ing IsBackground is what re-reads
         // them on every return to the app - including the return from its own system settings page.
         await BackgroundStateTracker.IsBackground.Use(cancellationToken).ConfigureAwait(false);
-        var dismissed = await UserSettingsUI.UserAppSettings()
+        // Stored per-device (LocalSettings), not per-account: OS permission state is itself
+        // per-device, and a local write persists instantly with no server round-trip to drop it.
+        var dismissed = await Hub.LocalSettings.LocalAppSettings()
             .Get(x => ParseKinds(x.DismissedPermissionWarnings), cancellationToken)
             .ConfigureAwait(false);
 
@@ -73,9 +76,11 @@ public sealed class PermissionsUI : UIServiceBase<AppUIHub>
     public async Task DismissWarning(PermissionsState state, CancellationToken cancellationToken = default)
     {
         var value = FormatKinds(state.Missing);
-        await UserSettingsUI.UserAppSettings()
+        await Hub.LocalSettings.LocalAppSettings()
             .Update(x => x with { DismissedPermissionWarnings = value }, cancellationToken)
             .ConfigureAwait(false);
+        // A local Kvas write doesn't invalidate GetState's read, so bump the version to re-run it.
+        Invalidate();
     }
 
     public void Invalidate()
