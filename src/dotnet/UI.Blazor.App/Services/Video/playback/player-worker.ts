@@ -1,4 +1,5 @@
 import { delayAsync } from 'actuallab-core';
+import { WebCodecsCompat } from 'web-codecs-compat/init';
 import { VIDEO } from 'app-constants';
 import { getLogs } from 'logging';
 import { createEmptyPlayerStats, type PlayerStats } from '../frame-envelopes';
@@ -146,10 +147,14 @@ export const playerWorkerImpl: PlayerWorker = {
         mstgWritable?: WritableStream<VideoFrame>,
         canvas?: OffscreenCanvas,
     ): Promise<void> {
+        // Before any decoder is built: at `full` the VideoDecoder this realm gets
+        // is the polyfill's, and awaiting here is what installs it.
+        await WebCodecsCompat.whenReadyFor('video-decode');
         if (players.has(opts.streamId)) {
             throw new Error(
                 `PlayerWorker.start: stream ${opts.streamId} already running`);
         }
+
         const s = ensureSession();
         const h = ensureHooks();
         // Trailing transferable args can't ride inside the

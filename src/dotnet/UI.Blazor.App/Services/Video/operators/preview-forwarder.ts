@@ -1,4 +1,5 @@
 import { getLogs } from 'logging';
+import { WebCodecsCompat, type FrameSource } from 'web-codecs-compat/init';
 import type { RotationQuarter } from '../orientation/quantize';
 import type { PreviewFramePresentation, PreviewTrace } from '../sender/recorder-worker-contract';
 import { HAS_VF_ROTATION_INIT, wrapWithRotation } from '../video-frame-caps';
@@ -21,7 +22,7 @@ export interface PreviewSinkOptions {
     isIos?: boolean;
     // Called per frame so the recorder can swap / detach without restarting.
     getWriter: () => WritableStreamDefaultWriter<VideoFrame> | null;
-    reportFrame?: (frame: VideoFrame) => void | Promise<void>;
+    reportFrame?: (frame: FrameSource) => void | Promise<void>;
     reportPresentation?: (presentation: PreviewFramePresentation) => void;
     // Per-stage tally; main pulls it via getPreviewTrace().
     trace?: PreviewTrace;
@@ -128,7 +129,32 @@ export function createPreviewSink(opts: PreviewSinkOptions): PreviewSink {
             if (trace)
                 trace.reported++;
 
-            const result = reportFrame(frame);
+            // A polyfilled frame is a plain JS object: it can be neither transferred
+            // nor usefully cloned across postMessage, and main draws it to a canvas
+            // anyway — so the preview crosses the worker boundary as an ImageBitmap.
+            const toBitmap = WebCodecsCompat.isPolyfilledRealm
+                ? WebCodecsCompat.classes?.createImageBitmap
+                : undefined;
+            if (toBitmap) {
+                // We own `frame`, so closing it after the conversion resolves is safe.
+                toBitmap(frame)
+                    .then(bitmap => reportFrame(bitmap))
+                    .catch((e: unknown) => reportFailure('reportFrame', e))
+                    .finally(() => closeFrame(frame));
+
+                return;
+            }
+
+            let result: void | Promise<void>;
+            try {
+                result = reportFrame(frame);
+            } catch (e) {
+                reportFailure('reportFrame', e);
+                closeFrame(frame);
+
+                return;
+            }
+
             if (result && typeof result.then === 'function') {
                 result
                     .catch((e: unknown) => reportFailure('reportFrame', e))
@@ -160,7 +186,6 @@ export function createPreviewSink(opts: PreviewSinkOptions): PreviewSink {
 
                 return;
             }
-
 
             // Writer back-pressure: drop instead of buffer. The downstream
             // <video> element drains MSTG at its render cadence; if desiredSize

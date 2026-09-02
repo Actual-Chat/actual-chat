@@ -8,6 +8,7 @@
 // verification of `chunk.type` in the encode operator, not from "fresh encoder".
 
 import { MonotonicClock } from 'clocks';
+import type { FrameSource } from 'web-codecs-compat/init';
 import { EncoderPool } from './encoder-pool';
 import type { PreviewFramePresentation, PreviewTrace } from './recorder-worker-contract';
 
@@ -17,7 +18,7 @@ export interface PreviewGeneratorLike {
 
 export interface SenderSessionOptions {
     previewGenerator?: PreviewGeneratorLike;
-    onPreviewFrame?: (frame: VideoFrame) => void | Promise<void>;
+    onPreviewFrame?: (frame: FrameSource) => void | Promise<void>;
     onPreviewFramePresentation?: (presentation: PreviewFramePresentation) => void;
     createCaptureClock?: () => MonotonicClock;
 }
@@ -37,7 +38,7 @@ export class SenderSession {
     // Survives runs so a restart's trace is comparable with the run before it.
     readonly previewTrace: PreviewTrace = createEmptyPreviewTrace();
     private previewWriter: WritableStreamDefaultWriter<VideoFrame> | null = null;
-    private onPreviewFrame: ((frame: VideoFrame) => void | Promise<void>) | null = null;
+    private onPreviewFrame: ((frame: FrameSource) => void | Promise<void>) | null = null;
     private onPreviewFramePresentation: ((presentation: PreviewFramePresentation) => void) | null = null;
 
     private disposed = false;
@@ -55,7 +56,7 @@ export class SenderSession {
 
     get isDisposed(): boolean { return this.disposed; }
     getPreviewWriter(): WritableStreamDefaultWriter<VideoFrame> | null { return this.previewWriter; }
-    reportPreviewFrame(frame: VideoFrame): void | Promise<void> {
+    reportPreviewFrame(frame: FrameSource): void | Promise<void> {
         return this.onPreviewFrame?.(frame);
     }
     reportPreviewFramePresentation(presentation: PreviewFramePresentation): void {
@@ -80,7 +81,7 @@ export class SenderSession {
     }
 
     setPreviewFrameReporter(
-        reporter: ((frame: VideoFrame) => void | Promise<void>) | undefined,
+        reporter: ((frame: FrameSource) => void | Promise<void>) | undefined,
     ): void {
         this.onPreviewFrame = reporter ?? null;
     }

@@ -13,6 +13,7 @@ import { Versioning } from 'versioning';
 import { getLogs } from 'logging';
 import { type SharedSettingsSnapshot } from 'shared-settings';
 import { sharedSettingsWorker } from 'shared-settings-worker';
+import { WebCodecsCompat } from 'web-codecs-compat/init';
 
 const { logScope, debugLog, errorLog } = getLogs('OpusDecoderWorker');
 
@@ -43,6 +44,9 @@ const serverImpl: OpusDecoderWorker = {
         };
         Versioning.init(artifactVersions);
 
+        // No-op unless the level actually replaces this codec; awaiting is what
+        // starts the download.
+        await WebCodecsCompat.whenReadyFor('audio-decode');
         if (!useSystemDecoder && globalThis.AudioDecoder) {
             const configSupport = await AudioDecoder.isConfigSupported(systemCodecConfig);
             useSystemDecoder = configSupport.supported ?? false;

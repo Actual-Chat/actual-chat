@@ -9,6 +9,7 @@
 // the WebGPU and Canvas2D paths use; renders a 64-px-wide blurred bitmap
 // that CSS object-cover scales to fill the tile.
 
+import { frameHeight, frameWidth, type FrameSource } from 'web-codecs-compat/init';
 import { BgBlurPerfTracker } from '../services/bg-blur-stats';
 import { createFbo, createProgram, createTexture, setupFullScreenQuad } from './webgl-helpers';
 import { getLogs } from 'logging';
@@ -158,7 +159,7 @@ export class WebGlBgRenderer {
         this.gl = null;
     }
 
-    render(frame: VideoFrame): boolean {
+    render(frame: FrameSource): boolean {
         if (this.isDisposed)
             return false;
 
@@ -166,8 +167,8 @@ export class WebGlBgRenderer {
         if (!gl)
             return false;
 
-        const fw = frame.displayWidth;
-        const fh = frame.displayHeight;
+        const fw = frameWidth(frame);
+        const fh = frameHeight(frame);
         if (fw <= 0 || fh <= 0)
             return false;
 

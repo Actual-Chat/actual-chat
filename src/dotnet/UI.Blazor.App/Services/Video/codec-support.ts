@@ -1,6 +1,7 @@
 import { getLogs } from 'logging';
 import { kbpsToBitsPerSecond } from 'app-constants';
 import { DeviceInfo } from 'device-info';
+import { WebCodecsCompat } from 'web-codecs-compat/init';
 import { isDecoderCodecProven, isEncoderCodecProven } from './codec-proof';
 import { closeEncodedChunk } from './frame-envelopes';
 
@@ -198,7 +199,12 @@ interface DetectionResult {
 }
 
 async function detectSupportedCodecsUncached(width: number, height: number): Promise<DetectionResult> {
+    const level = WebCodecsCompat.level;
     let probeList = REPRESENTATIVE_CODECS;
+    // Above `none`, libav.js is the only encoder we use. Decoding is unaffected:
+    // detectSupportedDecoderCodecs still probes and advertises every category.
+    if (level !== 'none')
+        probeList = probeList.filter(c => c.category === 'vp9');
     if (excludedEncoderCodecs.size > 0) {
         const before = probeList.length;
         probeList = probeList.filter(c => !excludedEncoderCodecs.has(c.category));
@@ -211,6 +217,14 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
     const results: CodecInfo[] = [];
     let isStable = true;
     for (const { category } of probeList) {
+        if (category === 'vp9' && level !== 'none') {
+            // libav.js replaces this encoder, so probing the browser's measures
+            // one that never runs - and on Firefox that probe is what wrongly
+            // clears its own VP9 for real-time use in the first place.
+            results.push(getLibavVp9CodecInfo(width, height));
+            continue;
+        }
+
         const ladder = getEncoderCodecLadder(category, width, height)
             .filter(c => !excludedEncoderCodecStrings.has(c));
         let chosen: { codec: string; hardware: boolean; software: boolean } | null = null;
@@ -870,6 +884,10 @@ const DECODER_PROBES: { category: string; codecs: string[] }[] = [
 ];
 
 async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
+    // At `full` the classes probed below are the polyfill's, and this is what
+    // installs them - probing first would advertise the browser's decoders on an
+    // engine whose decoders we are about to replace.
+    await WebCodecsCompat.whenReadyFor('video-decode');
     const codecs: string[] = [];
 
     const forced = getForceDecodeCodec();
@@ -920,4 +938,23 @@ async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
 
     infoLog?.log(`detectSupportedDecoderCodecsUncached: [${codecs.join(', ')}]${excludedDecoderCodecs.size > 0 ? ` (excluded: [${[...excludedDecoderCodecs].join(', ')}])` : ''}`);
     return codecs;
+}
+
+/**
+ * What VP9 detection reports once libav.js owns that encoder: software-only, and
+ * real-time without a probe, which is the property the swap exists to provide.
+ */
+function getLibavVp9CodecInfo(width: number, height: number): CodecInfo {
+    const codec = getCodecForCategory('vp9', width, height);
+
+    return {
+        name: getCodecProfileName(codec) ?? codec,
+        codec,
+        category: 'vp9',
+        supported: true,
+        hardwareSupported: false,
+        softwareSupported: true,
+        hardwareAccelerated: false,
+        realtime: true,
+    };
 }
