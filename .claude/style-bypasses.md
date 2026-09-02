@@ -219,3 +219,10 @@ edited. The reason can be as short as whose decision it was.
   — MemoryPack attribute on a new member — required: the type is `[MemoryPackable]`
   for legacy KVAS reads, and MemoryPack's generator rejects a partially annotated
   object outright (MEMPACK025), so a new member cannot opt out of `MemoryPackOrder`
+
+## src/dotnet/UI.Blazor.App/Components/Share/ShareQrModal.razor
+
+- L48-49 `new (ShowTabId, L.ShareQr_TabShow),`
+  — space between `new` and `(` — this is the repo's own convention, not a
+  deviation: `new (` appears throughout (AudioSource.cs:33, OggOpusWriter.cs:12,
+  ShareUIExt.cs), and neither CODING_STYLE.md nor this file mandates `new(`

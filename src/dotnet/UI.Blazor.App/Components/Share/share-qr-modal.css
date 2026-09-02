@@ -1,0 +1,119 @@
+/* Both tabs have to leave the modal exactly the same size, or switching between them resizes the
+   dialog under the user's finger. Every row is sized here rather than by its content: one width
+   for all three, one box for either pane, and a line tall enough for the longest hint. */
+.share-qr-modal {
+    /* 6rem of chrome: .dialog-body's p-6 on both sides, plus the 1rem the pane adds around the code. */
+    --c-qr-size: min(17.5rem, calc(100vw - 6rem));
+    --c-pane-size: calc(var(--c-qr-size) + 2rem);
+}
+/* No title, so the header is an empty row holding the close button - the body starts right under
+   it rather than adding a second gap of its own. */
+.share-qr-modal .dialog-body {
+    @apply flex-y items-center gap-6;
+    @apply p-6 pt-0;
+}
+.share-qr-modal .c-tabs,
+.share-qr-modal .c-hint {
+    width: var(--c-pane-size);
+}
+.share-qr-modal .c-code,
+.share-qr-modal .qr-scan-view {
+    width: var(--c-pane-size);
+    height: var(--c-pane-size);
+}
+.share-qr-modal .c-code {
+    @apply flex items-center justify-center;
+    --qr-code-size: var(--c-qr-size);
+    @apply rounded-3xl;
+    background: linear-gradient(180deg, #faedfe 0%, #d9d2fc 100%);
+}
+/* Three lines of text-sm: what the longest of these strings takes in the widest locale, which the
+   Max catalog is built to expose. Less than that and the modal grows when the hint wraps once more. */
+.share-qr-modal .c-hint {
+    @apply flex items-center justify-center;
+    @apply min-h-15;
+    @apply text-center text-sm text-03;
+}
+/* The scan pane says what went wrong here rather than in a toast, and the line goes back to the
+   hint on its own - so it has to read as a message, not as a permanent caption. */
+.share-qr-modal .c-hint.error {
+    @apply text-danger;
+}
+
+/* ── Narrow: the pane is the screen ──
+   The card layout above becomes edge-to-edge here: the gradient or the camera fills the sheet,
+   and the chrome floats over it. Positioning is against the frame rather than the body, so a
+   pane covers the safe-area strip the frame pads out for the status bar. */
+/* The frame's own 1rem above the home indicator would show as a band of modal background under a
+   full-bleed pane; the panes clear the indicator themselves. */
+body.narrow .share-qr-modal {
+    @apply relative;
+    padding-bottom: var(--safe-area-bottom);
+}
+/* Absolute, so the frame's own padding-top no longer moves it: an absolutely positioned box is
+   laid out against the padding box, and top: 0 would put the close button under the status bar.
+   The header also floats over the pane, so its empty half must not swallow what is under it -
+   only the button itself takes taps, and it is a .btn-h, not a .btn. */
+body.narrow .share-qr-modal > .modal-header {
+    @apply absolute inset-x-0 z-30;
+    top: var(--safe-area-top);
+    @apply pointer-events-none;
+}
+body.narrow .share-qr-modal > .modal-header > button {
+    @apply pointer-events-auto;
+}
+body.narrow .share-qr-modal > .dialog-body {
+    @apply flex-1 justify-center;
+    @apply p-0;
+}
+/* Below the close button's row, not level with it: the header spans the full width, so a switch
+   beside the button would sit under it and take none of the taps meant for it. 3.5rem is
+   .ordinary-header's height. */
+body.narrow .share-qr-modal .c-tabs {
+    @apply absolute z-20;
+    /* No safe-area term, unlike the header: .dialog-body is the containing block here, and it
+       already starts below the frame's padding. */
+    top: calc(3.5rem + 0.5rem);
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    max-width: calc(100% - 3rem);
+}
+/* Show pane: the gradient is the whole sheet, and the code merely sits on it. */
+body.narrow .share-qr-modal:has(.c-code) {
+    background: linear-gradient(180deg, #faedfe 0%, #d9d2fc 100%);
+}
+body.narrow .share-qr-modal .c-code {
+    background: none;
+}
+/* Scan pane: the camera is the whole sheet, so the close button has to read against it. */
+body.narrow .share-qr-modal:has(.qr-scan-view) {
+    @apply bg-black;
+}
+body.narrow .share-qr-modal .qr-scan-view {
+    @apply absolute inset-0 z-0;
+    @apply rounded-none;
+    /* The square box of the card layout, released - here the camera takes the whole sheet. */
+    aspect-ratio: auto;
+    width: auto;
+    height: auto;
+}
+body.narrow .share-qr-modal:has(.qr-scan-view) > .modal-header i {
+    @apply text-white;
+}
+/* Nothing to caption over a live camera - but a rejected code still has to say so, and over an
+   arbitrary scene it needs its own backing to stay readable. */
+body.narrow .share-qr-modal:has(.qr-scan-view) .c-hint {
+    @apply absolute inset-x-0 z-20;
+    @apply w-auto mx-6 min-h-0;
+    bottom: calc(2rem + var(--safe-area-bottom));
+}
+body.narrow .share-qr-modal:has(.qr-scan-view) .c-hint:not(.error) {
+    @apply invisible;
+}
+body.narrow .share-qr-modal:has(.qr-scan-view) .c-hint.error {
+    @apply px-4 py-2;
+    @apply rounded-2xl;
+    @apply text-white;
+    background: rgba(0, 0, 0, 0.6);
+}
