@@ -19,6 +19,7 @@ internal sealed class SafeOneOfParser<T>(Parser<char, T>[] parsers) : Parser<cha
         ref PooledList<Expected<char>> expecteds,
         [MaybeNullWhen(false)] out T result)
     {
+        ParseBudget.Spend();
         foreach (var parser in parsers) {
             if (parser.TryParse(ref state, ref expecteds, out result))
                 return true;
