@@ -2,11 +2,13 @@ namespace ActualChat.Notifications;
 
 public interface IFirebaseMessagingClient
 {
+    // Takes the whole active set, not just its count: the push carries the badge and, when it
+    // fits, the active tags a client prunes its stale banners against.
     Task SendMessage(
         Notification notification,
         IReadOnlyCollection<Symbol> deviceIds,
         bool? enableDataCollection,
-        int badgeCount,
+        UserNotificationInfo info,
         bool isSilent,
         CancellationToken cancellationToken);
 

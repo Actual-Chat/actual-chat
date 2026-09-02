@@ -367,12 +367,19 @@ public static partial class Constants
             public const string ImageUrl = "imageUrl";
             public const string Messages = "messages";
             public const string Timestamp = "timestamp";
+            // The user's whole active banner set at send time, so a client rendering this push can
+            // also close what is no longer active. Version orders the snapshots: pushes can arrive
+            // out of order, and an older one must never undo a newer one's prune.
+            public const string ActiveTags = "activeTags";
+            public const string ActiveVersion = "activeVersion";
             public const string DismissedIds = "dismissedIds";
             public const string DismissedTags = "dismissedTags";
             public const string Silent = "silent";
 
             public static readonly string[] ValidKeys = {
-                AuthorId, Body, ChatId, ChatEntryId, DismissedIds, DismissedTags, GroupTitle, LastEntryLocalId, Icon, ImageUrl, Kind, Link, Messages, NotificationId, SenderName, Silent, Tag, Title, Timestamp
+                ActiveTags, ActiveVersion, AuthorId, Body, ChatId, ChatEntryId, DismissedIds,
+                DismissedTags, GroupTitle, LastEntryLocalId, Icon, ImageUrl, Kind, Link, Messages,
+                NotificationId, SenderName, Silent, Tag, Title, Timestamp,
             };
 
             public static bool IsValidKey(string key)
@@ -438,6 +445,9 @@ public static partial class Constants
         // retrying it forever only grows the blob.
         public static readonly TimeSpan PendingDismissalTtl = TimeSpan.FromDays(1);
         public const int MaxPendingDismissals = 256;
+        // The active-tag snapshot's share of the push payload. A snapshot that doesn't fit is
+        // omitted rather than truncated: a partial one would prune banners that are still active.
+        public const int MaxActiveTagsBytes = 1024;
         // Read-position advances are frequent (~1/s while scrolling); the read-reconcile event
         // is collapsed to one per (user, chat) per this window via a delay-bucketed event uuid.
         // This bounds the background-banner dismissal lag on other devices (in-app is instant).

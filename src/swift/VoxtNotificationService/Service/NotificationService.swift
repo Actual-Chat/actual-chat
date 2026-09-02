@@ -11,6 +11,12 @@ final class NotificationService: UNNotificationServiceExtension {
     private static let chatIdKey = "chatId"
     private static let senderNameKey = "senderName"
     private static let groupTitleKey = "groupTitle"
+    private static let tagKey = "tag"
+    private static let activeTagsKey = "activeTags"
+    private static let activeVersionKey = "activeVersion"
+    // Highest active-set version this extension has pruned against. Its own container, not the
+    // app group: nothing else reads it, and the appex has no group entitlement.
+    private static let lastPrunedVersionKey = "voxt.lastPrunedActiveVersion"
     // The system allows 30s, but a banner that lands seconds late is worse than an iconless
     // one - and these are 128px avatars, so a slow fetch means the network is gone anyway.
     private static let downloadTimeout: TimeInterval = 5
@@ -37,6 +43,11 @@ final class NotificationService: UNNotificationServiceExtension {
         self.contentHandler = contentHandler
         bestAttempt = content
         lock.unlock()
+
+        // Started before the icon download and deliberately not awaited: closing stale banners is
+        // local and must not be lost to a slow network, and the new banner is shown by the system
+        // after the handler returns either way.
+        Self.pruneStaleBanners(from: content)
 
         guard let iconUrl = Self.iconUrl(of: content) else {
             deliver(content)
@@ -82,6 +93,43 @@ final class NotificationService: UNNotificationServiceExtension {
         bestAttempt = nil
         lock.unlock()
         handler?(content)
+    }
+
+    // Closes the banners the server no longer lists as active. This is the only clearing path that
+    // needs no background push, so it is the one Doze and the standby buckets cannot hold - but it
+    // only runs when a new alert arrives, so it supplements the dismissal push rather than
+    // replacing it.
+    private static func pruneStaleBanners(from content: UNMutableNotificationContent) {
+        guard let rawTags = content.userInfo[activeTagsKey] as? String,
+              let rawVersion = content.userInfo[activeVersionKey] as? String,
+              let version = Int64(rawVersion)
+        else { return }
+
+        // Pushes can arrive out of order, and an active set is a snapshot, not a delta: applying an
+        // older one would close banners a newer one had already accounted for.
+        let defaults = UserDefaults.standard
+        guard version > (defaults.object(forKey: lastPrunedVersionKey) as? Int64 ?? 0) else {
+            log.info("Skipping stale active set \(version, privacy: .public)")
+            return
+        }
+        defaults.set(version, forKey: lastPrunedVersionKey)
+
+        let activeTags = Set(rawTags.split(separator: ",").map(String.init))
+        UNUserNotificationCenter.current().getDeliveredNotifications { delivered in
+            // Only banners carrying our own tag key are the active set's to close: the tray also
+            // holds locally posted notifications, which the server has never heard of.
+            let stale = delivered
+                .filter {
+                    guard let tag = $0.request.content.userInfo[tagKey] as? String, !tag.isEmpty
+                    else { return false }
+                    return !activeTags.contains(tag)
+                }
+                .map(\.request.identifier)
+            guard !stale.isEmpty else { return }
+
+            log.info("Pruning \(stale.count, privacy: .public) stale banner(s)")
+            UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: stale)
+        }
     }
 
     private static func iconUrl(of content: UNMutableNotificationContent) -> URL? {

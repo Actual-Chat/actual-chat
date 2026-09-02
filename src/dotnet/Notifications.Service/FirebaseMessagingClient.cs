@@ -24,10 +24,11 @@ public class FirebaseMessagingClient(
         Notification notification,
         IReadOnlyCollection<Symbol> deviceIds,
         bool? enableDataCollection,
-        int badgeCount,
+        UserNotificationInfo info,
         bool isSilent,
         CancellationToken cancellationToken)
     {
+        var badgeCount = info.Items.Count;
         var notificationId = notification.Id;
         var kind = notification.Kind;
         var title = notification.Title;
@@ -91,6 +92,16 @@ public class FirebaseMessagingClient(
         };
         if (lastEntryLocalId > 0)
             data.Add(Constants.Notification.MessageDataKeys.LastEntryLocalId, lastEntryLocalId.ToString());
+        // The whole active set, so a client rendering this banner can close what is no longer
+        // active - the one clearing path that needs no background push at all, and so the only one
+        // Doze and the standby buckets can't hold. Omitted whole when it doesn't fit its share:
+        // a truncated snapshot reads as "these are all that are active" and prunes live banners.
+        var activeTags = string.Join(',', info.Items.Select(n => n.GetPushTag()).SkipNullItems().Distinct());
+        if (!activeTags.IsNullOrEmpty()
+            && Encoding.UTF8.GetByteCount(activeTags) <= Constants.Notification.MaxActiveTagsBytes) {
+            data.Add(Constants.Notification.MessageDataKeys.ActiveTags, activeTags);
+            data.Add(Constants.Notification.MessageDataKeys.ActiveVersion, info.Version.ToString());
+        }
         // Common data, so these ride inside the 4KB APNs budget - hence omitted when empty.
         if (chatNotification is not null && !chatNotification.SenderName.IsNullOrEmpty()) {
             data.Add(Constants.Notification.MessageDataKeys.SenderName, chatNotification.SenderName);

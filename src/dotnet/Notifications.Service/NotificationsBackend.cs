@@ -959,7 +959,7 @@ public class NotificationsBackend(IServiceProvider services)
             + "IsSilent={IsSilent}, DeviceIds#={DeviceIdCount}",
             entryId, userId, notification.Id, command.IsSilent, deviceIds.Count);
         await FirebaseMessagingClient
-            .SendMessage(notification, deviceIds, isAdmin, info.Items.Count, command.IsSilent, cancellationToken)
+            .SendMessage(notification, deviceIds, isAdmin, info, command.IsSilent, cancellationToken)
             .ConfigureAwait(false);
     }
 

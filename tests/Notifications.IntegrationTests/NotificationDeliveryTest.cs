@@ -321,6 +321,38 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         };
     }
 
+    [Fact]
+    public async Task RenderPushShouldCarryTheWholeActiveSet()
+    {
+        // arrange
+        var alice = await Tester.SignInAsAlice();
+        var bob = await Tester.SignInAsBob();
+        var (chat1, _) = await Tester.CreateChat(false, "Snapshot chat 1");
+        var (chat2, _) = await Tester.CreateChat(false, "Snapshot chat 2");
+        await Tester.InviteToChat(chat1, alice);
+        await Tester.InviteToChat(chat2, alice);
+        var deviceId = await RegisterDevice(alice.Id);
+        Sink.Clear();
+
+        // act
+        await Tester.SignIn(bob);
+        await Tester.CreateTextEntry(chat1, "First");
+        await Tester.CreateTextEntry(chat2, "Second");
+
+        // assert
+        // The snapshot is what lets a client close banners for chats this push isn't about, so it
+        // has to name every active tag - not just the one being rendered.
+        await TestExt.When(() => {
+            var push = Sink.Messages
+                .LastOrDefault(m => !m.IsDismissal && m.DeviceIds.Contains(deviceId)
+                    && m.ActiveTags.Count > 1);
+            push.Should().NotBeNull();
+            push!.ActiveTags.Should().BeEquivalentTo([chat1.Value, chat2.Value]);
+            push.ActiveVersion.Should().BePositive("a client orders snapshots by it");
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(30));
+    }
+
     private async Task<Symbol> RegisterDevice(UserId userId)
     {
         var deviceId = new Symbol("test-device-" + userId.Value);
