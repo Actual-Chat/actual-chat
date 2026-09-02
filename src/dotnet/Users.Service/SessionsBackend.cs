@@ -58,7 +58,7 @@ public class SessionsBackend(IServiceProvider services)
             LastSeenAt = now,
             ExpiresAt = command.ExpiresAt ?? sessionInfo.ExpiresAt,
             IPAddress = command.IPAddress ?? sessionInfo.IPAddress,
-            Description = command.Description ?? sessionInfo.Description,
+            Description = PickDescription(sessionInfo.Description, command.Description),
             AuthenticatedIdentity = command.AuthenticatedIdentity ?? sessionInfo.AuthenticatedIdentity,
             UserId = command.UserId.IsSome(out var vUserId) ? vUserId : sessionInfo.UserId,
         };
@@ -158,5 +158,20 @@ public class SessionsBackend(IServiceProvider services)
         return await dbSessions
             .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    private static string PickDescription(string oldDescription, string? newDescription)
+    {
+        // A session's app kind is fixed once known: the description is all that tells a native app's
+        // session from a browser's, and the OAuth close flow arrives with the system browser's agent.
+        if (newDescription is null)
+            return oldDescription;
+
+        if (!AppKindExt.TryParseUserAgent(oldDescription, out var oldAppKind) || oldAppKind == AppKind.Unknown)
+            return newDescription;
+
+        return AppKindExt.TryParseUserAgent(newDescription, out var newAppKind) && newAppKind == oldAppKind
+            ? newDescription
+            : oldDescription;
     }
 }

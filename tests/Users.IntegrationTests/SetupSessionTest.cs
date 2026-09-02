@@ -118,6 +118,34 @@ public class SetupSessionTest(AppHostFixture fixture, ITestOutputHelper @out)
         policy.Count.Should().Be(3);
     }
 
+    [Fact]
+    public async Task AppSessionShouldKeepItsAppKindAcrossDescriptionUpdates()
+    {
+        // arrange
+        var commander = AppHost.Services.Commander();
+        var accounts = AppHost.Services.GetRequiredService<IAccounts>();
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var session = tester.Session;
+        await commander.Call(new SessionsBackend_Upsert(session) {
+            Description = $"{AppKind.Ios.ToUserAgent("1.0")} Mozilla/5.0 (iPhone) AppleWebKit/605.1.15",
+        });
+
+        // act
+        // The native OAuth close flow describes the session with the system browser's agent.
+        await commander.Call(new SessionsBackend_Upsert(session) {
+            Description = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        });
+        var afterBrowser = await accounts.GetSessionInfo(session, CancellationToken.None);
+        await commander.Call(new SessionsBackend_Upsert(session) {
+            Description = $"{AppKind.Ios.ToUserAgent("2.0")} Mozilla/5.0 (iPhone) AppleWebKit/605.1.15",
+        });
+        var afterAppUpdate = await accounts.GetSessionInfo(session, CancellationToken.None);
+
+        // assert
+        afterBrowser!.Description.Should().StartWith(AppKind.Ios.ToUserAgent("1.0"));
+        afterAppUpdate!.Description.Should().StartWith(AppKind.Ios.ToUserAgent("2.0"));
+    }
+
     private sealed class CountingRateLimitPolicy(RateLimitClass rateLimitClass, int limit) : RateLimitPolicy
     {
         private int _count;
