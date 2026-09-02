@@ -31,4 +31,5 @@ public class BackendChatMarkupHub(IServiceProvider services, ChatId chatId) : IB
         => _editorHtmlConverter ??= MarkupEditorHtmlConverter.Instance;
 
     public SystemEntryMarkupBuilder SystemEntryMarkupBuilder => SystemEntryMarkupBuilder.Default;
+    public EmptyEntryMarkupBuilder EmptyEntryMarkupBuilder => EmptyEntryMarkupBuilder.Default;
 }

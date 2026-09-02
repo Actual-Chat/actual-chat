@@ -16,29 +16,51 @@ public static class ChatMarkupHubExt
         MarkupConsumer consumer,
         CancellationToken cancellationToken)
     {
-        Markup markup;
+        var (markup, _) = await markupHub
+            .GetMarkupWithSubstitution(entry, translation, consumer, cancellationToken)
+            .ConfigureAwait(false);
+        return markup;
+    }
+
+    // IsSubstituted says the text came from EmptyEntryMarkupBuilder rather than from the author, so
+    // a caller composing for someone else must rebuild it in that reader's language.
+    public static async ValueTask<(Markup Markup, bool IsSubstituted)> GetMarkupWithSubstitution(
+        this IChatMarkupHub markupHub,
+        ChatEntry entry,
+        Translation? translation,
+        MarkupConsumer consumer,
+        CancellationToken cancellationToken)
+    {
         switch (entry) {
         case SystemEntry systemEntry:
-            markup = markupHub.SystemEntryMarkupBuilder.Build(systemEntry);
+            var systemMarkup = markupHub.SystemEntryMarkupBuilder.Build(systemEntry);
             // System entries render markup w/o mention names
-            markup = await markupHub.MentionResolver.Apply(markup, cancellationToken).ConfigureAwait(false);
-            break;
+            systemMarkup = await markupHub.MentionResolver
+                .Apply(systemMarkup, cancellationToken)
+                .ConfigureAwait(false);
+            return (systemMarkup, false);
         case { HasAudio: true }:
             // HasAudio covers all audio/media entries now
-            markup = new PlayableTextMarkup(translation?.Content ?? entry.Content, entry.Audio?.TimeMap ?? default);
-            break;
+            var timeMap = entry.Audio?.TimeMap ?? default;
+            return (new PlayableTextMarkup(translation?.Content ?? entry.Content, timeMap), false);
         case { HasLocation: true }:
             // TODO: 2026-07, remove when all clients support location entries.
             // Their Content is a maps-link fallback baked in for old clients - no other consumer must show it.
-            markup = GetEmptyMarkupReplacement(entry, consumer);
-            break;
+            return Substitute();
         default:
-            markup = markupHub.Parser.Parse(translation?.Content ?? entry.Content);
-            if (ReferenceEquals(markup, MarkupParser.EmptyResult))
-                markup = GetEmptyMarkupReplacement(entry, consumer);
-            break;
+            var markup = markupHub.Parser.Parse(translation?.Content ?? entry.Content);
+            if (!ReferenceEquals(markup, MarkupParser.EmptyResult))
+                return (markup, false);
+
+            return Substitute();
         }
-        return markup;
+
+        (Markup Markup, bool IsSubstituted) Substitute() {
+            // MessageView and attachment-less entries come back empty - nothing was worded, so
+            // there is nothing for a reader's language to change.
+            var substitute = markupHub.EmptyEntryMarkupBuilder.Build(entry, consumer);
+            return (substitute, !ReferenceEquals(substitute, Markup.EmptyText));
+        }
     }
 
     public static Markup GetMarkup(
@@ -58,12 +80,12 @@ public static class ChatMarkupHubExt
         case { HasLocation: true }:
             // TODO: 2026-07, remove when all clients support location entries.
             // Their Content is a maps-link fallback baked in for old clients - no other consumer must show it.
-            markup = GetEmptyMarkupReplacement(entry, consumer);
+            markup = markupHub.EmptyEntryMarkupBuilder.Build(entry, consumer);
             break;
         default:
             markup = markupHub.Parser.Parse(entry.Content);
             if (ReferenceEquals(markup, MarkupParser.EmptyResult))
-                markup = GetEmptyMarkupReplacement(entry, consumer);
+                markup = markupHub.EmptyEntryMarkupBuilder.Build(entry, consumer);
             break;
         }
         return markup;
@@ -108,73 +130,4 @@ public static class ChatMarkupHubExt
         Markup markup,
         CancellationToken cancellationToken)
         => await markupHub.MentionResolver.Apply(markup, cancellationToken).ConfigureAwait(false);
-
-    // Private methods
-
-    private static Markup GetEmptyMarkupReplacement(ChatEntry entry, MarkupConsumer consumer)
-    {
-        if (consumer is MarkupConsumer.MessageView)
-            return Markup.EmptyText;
-
-        if (entry.HasLocation)
-            return new PlainTextMarkup(consumer is MarkupConsumer.ReactionNotification
-                ? "your location"
-                : "📍 Sent a location");
-
-        var attachments = entry.Attachments;
-        if (attachments.Length == 0)
-            return Markup.EmptyText;
-
-        if (consumer is MarkupConsumer.QuoteView)
-            return new PlainTextMarkup("Click to see the attachment");
-
-        var imageCount = 0;
-        var videoCount = 0;
-        ChatEntryAttachment? firstFile = null;
-        foreach (var x in attachments) // No LINQ to avoid boxing allocation
-            if (x.IsSupportedImage())
-                imageCount++;
-            else if (x.IsSupportedVideo())
-                videoCount++;
-            else if (firstFile is null)
-                firstFile = x;
-        var fileCount = attachments.Length - imageCount - videoCount;
-
-        var imageText = GetImageText();
-        var videoText = GetVideoText();
-        var fileText = GetFileText();
-
-        var text = (imageText.Length, videoText.Length, fileText.Length) switch {
-            (0, 0, _) => fileText,
-            (0, _, 0) => videoText,
-            (_, 0, 0) => imageText,
-            (_, _, 0) => string.Concat(imageText, " and ", videoText),
-            (_, 0, _) => string.Concat(imageText, " and ", fileText),
-            (0, _, _) => string.Concat(videoText, " and ", fileText),
-            _ => string.Concat(imageText, ", ", videoText, ", and ", fileText),
-        };
-        var preamble = consumer is MarkupConsumer.ReactionNotification ? "your " : "Sent ";
-        return new PlainTextMarkup(string.Concat(preamble, text));
-
-        string GetImageText()
-            => imageCount switch {
-                0 => "",
-                1 => consumer is MarkupConsumer.ReactionNotification ? "image" : "an image",
-                _ => $"{imageCount.Format()} images",
-            };
-
-        string GetVideoText()
-            => videoCount switch {
-                0 => "",
-                1 => consumer is MarkupConsumer.ReactionNotification ? "video" : "a video",
-                _ => $"{videoCount.Format()} videos",
-            };
-
-        string GetFileText()
-            => fileCount switch {
-                0 => "",
-                1 => firstFile!.Media.FileName,
-                _ => $"{fileCount.Format()} files",
-            };
-    }
 }

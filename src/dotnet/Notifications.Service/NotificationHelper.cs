@@ -38,6 +38,19 @@ public static class NotificationHelper
         // Unsized, the generator draws its 80px base, which an avatar slot on a 3x screen upscales.
         => urlMapper.IconUrl(chat.GetIconQuery(author, AvatarQuery.SupportedSizes[^1], renderAvatarTitle: true));
 
+    // isSubstituted comes from the single GetText parse per entry, so the fan-out decides once
+    // and each recipient only re-words - see docs/i18n.md, "Text a data type stands in for itself".
+    public static Func<IStringLocalizer, string>? GetSubstituteTextFactory(
+        ChatEntry entry,
+        MarkupConsumer consumer,
+        bool isSubstituted,
+        bool isLiveLocation = false)
+        => isSubstituted
+            ? l => new LocalizedEmptyEntryMarkupBuilder(l)
+                .Build(entry, consumer, isLiveLocation)
+                .ToReadableText(consumer)
+            : null;
+
     public static string GetVoiceChatStartedText(IReadOnlyList<string> authorNames, IStringLocalizer l)
     {
         var shown = authorNames.Take(Constants.Notification.MaxSummaryAuthors).ToList();
@@ -78,15 +91,17 @@ public static class NotificationHelper
         return string.Join('\n', lines);
     }
 
-    public static async ValueTask<(string Content, HashSet<MentionRef> MentionIds)> GetText(
+    public static async ValueTask<(string Content, HashSet<MentionRef> MentionIds, bool IsSubstituted)> GetText(
         ChatEntry entry,
         MarkupConsumer consumer,
         KeyedFactory<IBackendChatMarkupHub, ChatId> chatMarkupHubFactory,
         CancellationToken cancellationToken)
     {
         var chatMarkupHub = chatMarkupHubFactory[entry.ChatId];
-        var markup = await chatMarkupHub.GetMarkup(entry, consumer, cancellationToken).ConfigureAwait(false);
+        var (markup, isSubstituted) = await chatMarkupHub
+            .GetMarkupWithSubstitution(entry, null, consumer, cancellationToken)
+            .ConfigureAwait(false);
         var mentionIds = MentionExtractor.Instance.GetMentionIds(markup);
-        return (markup.ToReadableText(consumer), mentionIds);
+        return (markup.ToReadableText(consumer), mentionIds, isSubstituted);
     }
 }

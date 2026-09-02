@@ -1082,6 +1082,23 @@
   "Notification_ThreadCreated_Format": "Đã tạo chủ đề '{0}'",
   "Notification_AttentionRequested_Format": "{0} cần mọi người chú ý",
   "Notification_Reaction_Format": "{0} cho {1}",
+  // Stands in for an entry with no text of its own - a shared location, or attachments
+  // only. Read in the chat list, in quotes and in notifications, so each value is one line.
+  // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
+  "EmptyEntry_SentLocation": "📍 Đã gửi vị trí",
+  "EmptyEntry_SentLiveLocation": "📍 Đã chia sẻ vị trí trực tiếp",
+  "EmptyEntry_YourLocation": "vị trí của bạn",
+  "EmptyEntry_QuoteAttachment": "Nhấn để xem tệp đính kèm",
+  "EmptyEntry_SentImages": "Đã gửi {0} hình ảnh",
+  "EmptyEntry_YourImages": "hình ảnh của bạn",
+  "EmptyEntry_SentVideos": "Đã gửi {0} video",
+  "EmptyEntry_YourVideos": "video của bạn",
+  "EmptyEntry_SentFile_Format": "Đã gửi {0}",
+  "EmptyEntry_YourFile_Format": "tệp {0} của bạn",
+  "EmptyEntry_SentFiles": "Đã gửi {0} tệp",
+  "EmptyEntry_YourFiles": "tệp của bạn",
+  "EmptyEntry_SentAttachments": "Đã gửi {0} tệp đính kèm",
+  "EmptyEntry_YourAttachments": "tệp đính kèm của bạn",
   "Search_In": "Trong",
   "Search_CloseSearch": "Đóng tìm kiếm",
   "Search_ShowMore": "Xem thêm",

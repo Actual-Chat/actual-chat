@@ -1082,6 +1082,23 @@
   "Notification_ThreadCreated_Format": "Utas “{0}” telah dibuat",
   "Notification_AttentionRequested_Format": "{0} meminta perhatian",
   "Notification_Reaction_Format": "{0} untuk {1}",
+  // Stands in for an entry with no text of its own - a shared location, or attachments
+  // only. Read in the chat list, in quotes and in notifications, so each value is one line.
+  // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
+  "EmptyEntry_SentLocation": "📍 Mengirim lokasi",
+  "EmptyEntry_SentLiveLocation": "📍 Membagikan lokasi langsung",
+  "EmptyEntry_YourLocation": "lokasi Anda",
+  "EmptyEntry_QuoteAttachment": "Klik untuk melihat lampiran",
+  "EmptyEntry_SentImages": "Mengirim {0} gambar",
+  "EmptyEntry_YourImages": "gambar Anda",
+  "EmptyEntry_SentVideos": "Mengirim {0} video",
+  "EmptyEntry_YourVideos": "video Anda",
+  "EmptyEntry_SentFile_Format": "Mengirim {0}",
+  "EmptyEntry_YourFile_Format": "file {0} Anda",
+  "EmptyEntry_SentFiles": "Mengirim {0} file",
+  "EmptyEntry_YourFiles": "file Anda",
+  "EmptyEntry_SentAttachments": "Mengirim {0} lampiran",
+  "EmptyEntry_YourAttachments": "lampiran Anda",
   "Search_In": "Di",
   "Search_CloseSearch": "Tutup pencarian",
   "Search_ShowMore": "Tampilkan lebih banyak",

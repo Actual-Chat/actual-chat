@@ -1283,6 +1283,24 @@
   "Notification_AttentionRequested_Format": "{0} さんが注目を求めています",
   "Notification_Reaction_Format": "{1} mesajına {0}",
 
+  // Stands in for an entry with no text of its own - a shared location, or attachments
+  // only. Read in the chat list, in quotes and in notifications, so each value is one line.
+  // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
+  "EmptyEntry_SentLocation": "📍 Изпратено местоположение",
+  "EmptyEntry_SentLiveLocation": "📍 Споделено местоположение на живо",
+  "EmptyEntry_YourLocation": "вашето местоположение",
+  "EmptyEntry_QuoteAttachment": "Натиснете, за да видите прикачения файл",
+  "EmptyEntry_SentImages": "Изпратени са {0} изображения",
+  "EmptyEntry_YourImages": "вашето изображение",
+  "EmptyEntry_SentVideos": "{0} 件の動画を送信しました",
+  "EmptyEntry_YourVideos": "вашето видео",
+  "EmptyEntry_SentFile_Format": "Изпратен е файлът {0}",
+  "EmptyEntry_YourFile_Format": "vaš datoteka {0}",
+  "EmptyEntry_SentFiles": "{0} 件のファイルを送信しました",
+  "EmptyEntry_YourFiles": "vaše datotekaove",
+  "EmptyEntry_SentAttachments": "{0} 件の添付ファイルを送信しました",
+  "EmptyEntry_YourAttachments": "вашите прикачени файлове",
+
   // The search result list: the "In <chat>" label on a hit, and its expand/collapse toggle.
   "Search_In": "Şurada:",
   "Search_CloseSearch": "Затворете търсенето",

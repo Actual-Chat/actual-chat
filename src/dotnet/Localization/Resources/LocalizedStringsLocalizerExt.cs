@@ -1120,6 +1120,24 @@ public static class LocalizedStringsLocalizerExt
             => l["Notification_AttentionRequested_Format", arg0].Value;
         public string Notification_Reaction_Format(object arg0, object arg1)
             => l["Notification_Reaction_Format", arg0, arg1].Value;
+        public string EmptyEntry_SentLocation => l["EmptyEntry_SentLocation"].Value;
+        public string EmptyEntry_SentLiveLocation => l["EmptyEntry_SentLiveLocation"].Value;
+        public string EmptyEntry_YourLocation => l["EmptyEntry_YourLocation"].Value;
+        public string EmptyEntry_QuoteAttachment => l["EmptyEntry_QuoteAttachment"].Value;
+        public string EmptyEntry_SentImages(long count, object arg0)
+            => l.Plural("EmptyEntry_SentImages", count, arg0);
+        public string EmptyEntry_YourImages(long count) => l.Plural("EmptyEntry_YourImages", count);
+        public string EmptyEntry_SentVideos(long count, object arg0)
+            => l.Plural("EmptyEntry_SentVideos", count, arg0);
+        public string EmptyEntry_YourVideos(long count) => l.Plural("EmptyEntry_YourVideos", count);
+        public string EmptyEntry_SentFile_Format(object arg0) => l["EmptyEntry_SentFile_Format", arg0].Value;
+        public string EmptyEntry_YourFile_Format(object arg0) => l["EmptyEntry_YourFile_Format", arg0].Value;
+        public string EmptyEntry_SentFiles(long count, object arg0)
+            => l.Plural("EmptyEntry_SentFiles", count, arg0);
+        public string EmptyEntry_YourFiles(long count) => l.Plural("EmptyEntry_YourFiles", count);
+        public string EmptyEntry_SentAttachments(long count, object arg0)
+            => l.Plural("EmptyEntry_SentAttachments", count, arg0);
+        public string EmptyEntry_YourAttachments(long count) => l.Plural("EmptyEntry_YourAttachments", count);
         public string Search_In => l["Search_In"].Value;
         public string Search_CloseSearch => l["Search_CloseSearch"].Value;
         public string Search_ShowLess => l["Search_ShowLess"].Value;

@@ -1082,6 +1082,23 @@
   "Notification_ThreadCreated_Format": "Vlákno „{0}“ bylo vytvořeno",
   "Notification_AttentionRequested_Format": "{0} žádá o pozornost",
   "Notification_Reaction_Format": "{0} na {1}",
+  // Stands in for an entry with no text of its own - a shared location, or attachments
+  // only. Read in the chat list, in quotes and in notifications, so each value is one line.
+  // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
+  "EmptyEntry_SentLocation": "📍 Odeslána poloha",
+  "EmptyEntry_SentLiveLocation": "📍 Sdílená poloha živě",
+  "EmptyEntry_YourLocation": "vaši polohu",
+  "EmptyEntry_QuoteAttachment": "Kliknutím zobrazíte přílohu",
+  "EmptyEntry_SentImages": "Odeslán {0} obrázek|Odeslány {0} obrázky|Odesláno {0} obrázků",
+  "EmptyEntry_YourImages": "váš obrázek|vaše obrázky",
+  "EmptyEntry_SentVideos": "Odesláno {0} video|Odeslána {0} videa|Odesláno {0} videí",
+  "EmptyEntry_YourVideos": "vaše video|vaše videa",
+  "EmptyEntry_SentFile_Format": "Odeslán soubor {0}",
+  "EmptyEntry_YourFile_Format": "váš soubor {0}",
+  "EmptyEntry_SentFiles": "Odeslán {0} soubor|Odeslány {0} soubory|Odesláno {0} souborů",
+  "EmptyEntry_YourFiles": "váš soubor|vaše soubory",
+  "EmptyEntry_SentAttachments": "Odeslána {0} příloha|Odeslány {0} přílohy|Odesláno {0} příloh",
+  "EmptyEntry_YourAttachments": "vaši přílohu|vaše přílohy",
   "Search_In": "V",
   "Search_CloseSearch": "Zavřít hledání",
   "Search_ShowMore": "Zobrazit více",
