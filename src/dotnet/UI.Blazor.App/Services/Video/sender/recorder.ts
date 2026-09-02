@@ -78,6 +78,22 @@ export interface RecorderConfig {
     initialGateOpen?: boolean;
 }
 
+// Smallest size with `shape`'s aspect that still covers `box`, never larger than
+// `shape` itself. Even dimensions: odd ones make encoders pad, and the padding
+// travels as a wrong declared size.
+function scaleToAspectOf(
+    box: { width: number; height: number },
+    shape: { width: number; height: number },
+): { width: number; height: number } {
+    if (shape.width <= 0 || shape.height <= 0)
+        return shape;
+
+    const scale = Math.min(1, Math.max(box.width / shape.width, box.height / shape.height));
+    const even = (v: number): number => Math.max(2, Math.round(v * scale / 2) * 2);
+
+    return { width: even(shape.width), height: even(shape.height) };
+}
+
 export class Recorder {
     private readonly session: SenderSession;
     private abortController: AbortController | null = null;
@@ -180,7 +196,13 @@ export class Recorder {
                     const area = (s: { width: number; height: number }): number => s.width * s.height;
                     // The self-preview is not a remote viewer: shedding upper tiers for
                     // the call must not blur it, so it holds the ceiling up to its own size.
-                    const preview = this.previewSize;
+                    // Only its SCALE though - it reports a layout box, and a tile is rarely
+                    // the camera's shape. Using the box as a frame size squeezed the picture
+                    // into the tile's aspect, and since this is the ceiling every tier is
+                    // built from, the wire carried that distortion to every viewer.
+                    const preview = this.previewSize
+                        ? scaleToAspectOf(this.previewSize, normalizeSize)
+                        : null;
                     const floor = preview && area(preview) > area(activeTop) ? preview : activeTop;
                     return area(floor) < area(normalizeSize) ? floor : normalizeSize;
                 },
