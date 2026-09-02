@@ -10,7 +10,7 @@ import type { Disposable } from 'disposable';
 import { DocumentEvents } from 'event-handling';
 import { Versioning } from 'versioning';
 import { type Subscription } from 'rxjs';
-import { isPrimaryTile, updateCollapsedIslandAspect } from '../../Services/Video/services/tile-fit';
+import { chooseFit, isPrimaryTile, updateCollapsedIslandAspect } from '../../Services/Video/services/tile-fit';
 import type {
     PlayerWorker,
     LatencySample,
@@ -815,9 +815,7 @@ export class VideoPlayer {
     // waiting for a new frame.
     private lastFrameW = 0;
     private lastFrameH = 0;
-    // Loss threshold: when cover would crop >COVER_LOSS_MAX of source
-    // pixels, switch to contain and paint the blurred backdrop.
-    private static readonly COVER_LOSS_MAX = 0.20;
+
 
     // Cover crops the source to fill the tile; the cropped fraction equals
     // 1 − min(frameW·tileH, frameH·tileW) / max(...). When that's small
@@ -868,18 +866,13 @@ export class VideoPlayer {
             .catch((e: unknown) => warnLog?.log('worker setBgActive failed:', e));
     }
 
+    // Shared with the sender's self-preview: a viewer must not see one rule for a
+    // remote tile and another for their own. The local copy this replaced had
+    // drifted - no same-orientation shortcut, no square dead-band - so the two
+    // sides disagreed about contain on near-square sources.
     private computePrimaryFit(parent: Element): 'cover' | 'contain' {
         const rect = parent.getBoundingClientRect();
-        const tileW = rect.width;
-        const tileH = rect.height;
-        const fw = this.lastFrameW;
-        const fh = this.lastFrameH;
-        if (fw <= 0 || fh <= 0 || tileW <= 0 || tileH <= 0)
-            return 'cover';
-        const a = fw * tileH;
-        const b = fh * tileW;
-        const cropLoss = 1 - Math.min(a, b) / Math.max(a, b);
-        return cropLoss > VideoPlayer.COVER_LOSS_MAX ? 'contain' : 'cover';
+        return chooseFit(this.lastFrameW, this.lastFrameH, rect.width, rect.height);
     }
 
     private updateCollapsedIslandAspect(): void {

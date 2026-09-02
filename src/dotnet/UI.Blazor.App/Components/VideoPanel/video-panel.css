@@ -532,7 +532,7 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
 
 /* Blurred backdrop (§13): fills the letterbox/pillarbox bars. JS paints a
    blurred, saturated, low-res bitmap into this canvas; CSS only upscales it via
-   object-fit: cover. Hidden by default; the focused tile rule below brings it
+   object-fit: cover. Hidden by default; the primary-tile rules below bring it
    in. */
 .video-track-player canvas.remote-video-bg {
     @apply hidden;
@@ -551,11 +551,16 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     transition: opacity 150ms ease-out;
 }
 
-/* Blurred background canvas — only visible inside focused container,
-   fills the container behind the letterboxed main canvas. The canvas
-   renders at 64×N intrinsic resolution; CSS upscales it via object-cover
-   to fill the parent (parent has aspect-ratio matching the source). */
-.video-track-player.item-focused canvas.remote-video-bg {
+/* Blurred background canvas — visible on PRIMARY tiles, filling the container
+   behind the letterboxed main canvas. The canvas renders at 64×N intrinsic
+   resolution; CSS upscales it via object-cover to fill the parent (parent has
+   aspect-ratio matching the source).
+   The selector pairs mirror `isPrimaryTile` in tile-fit.ts: the focused tile,
+   plus every non-PiP tile in the equal layout, where they are all the same size.
+   Keep the two in step — JS deciding to paint a backdrop that CSS keeps hidden
+   shows as bare letterbox bars and a blur pipeline running for nothing. */
+.video-track-player.item-focused canvas.remote-video-bg,
+.video-panel.layout-equal .video-track-player:not(.pip-overlay) canvas.remote-video-bg {
     @apply absolute inset-0;
     @apply w-full h-full;
     @apply z-0;
@@ -568,7 +573,8 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     will-change: transform;
     transform: scale(1.1) rotate(var(--video-rotation, 0deg)) translateZ(0);
 }
-.video-track-player.item-focused canvas.remote-video-bg[data-rotated-video] {
+.video-track-player.item-focused canvas.remote-video-bg[data-rotated-video],
+.video-panel.layout-equal .video-track-player:not(.pip-overlay) canvas.remote-video-bg[data-rotated-video] {
     inset: auto;
     width: 100cqh;
     height: 100cqw;
@@ -576,7 +582,8 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     top: 50%;
     transform: translate(-50%, -50%) scale(1.1) rotate(var(--video-rotation, 0deg)) translateZ(0);
 }
-.video-track-player.item-focused canvas:not(.remote-video-bg) {
+.video-track-player.item-focused canvas:not(.remote-video-bg),
+.video-panel.layout-equal .video-track-player:not(.pip-overlay) canvas:not(.remote-video-bg) {
     @apply bg-transparent;
     z-index: 1;
 }
