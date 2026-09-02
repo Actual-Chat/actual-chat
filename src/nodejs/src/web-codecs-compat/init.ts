@@ -15,7 +15,6 @@
 // possibly-polyfilled class awaits.
 
 import { getLogs } from 'logging';
-import { DeviceInfo } from 'device-info';
 
 const { debugLog, errorLog, infoLog, warnLog } = getLogs('WebCodecsCompat');
 
@@ -125,15 +124,16 @@ export class WebCodecsCompat {
         return this._classes;
     }
 
-    /** `full` only where there is no WebCodecs at all, so the fallback never displaces
-     *  a working native implementation except on Firefox's VP9 encoder. */
+    /** All or nothing: `full` only where there is no WebCodecs at all, so the
+     *  fallback never displaces a working native implementation. `vp9` is reachable
+     *  by explicit override only. */
     static resolveLevel(override: WebCodecsLevelOverride): WebCodecsLevel {
         if (override !== 'auto')
             return override;
-        if (typeof (globalThis as { VideoEncoder?: unknown }).VideoEncoder === 'undefined')
-            return 'full';
 
-        return DeviceInfo.isFirefox ? 'vp9' : 'none';
+        return typeof (globalThis as { VideoEncoder?: unknown }).VideoEncoder === 'undefined'
+            ? 'full'
+            : 'none';
     }
 
     /** Records the level for this realm. Nothing is fetched until a component that
