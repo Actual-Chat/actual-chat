@@ -87,6 +87,7 @@ import {
 } from '../../Services/Video/sender/recorder-worker-contract';
 import { consumeVideoTraceKill, registerVideoTraceKillWorker } from '../../Services/Video/video-trace-kill-control';
 import { getDownscalerMode } from '../../Services/Video/downscaler-mode';
+import { FrameDropStage } from '../../Services/Video/frame-drop-trace';
 import {
     isEncoderInitFailedError,
     parseEncoderInitFailedCodec,
@@ -2870,10 +2871,14 @@ export class VideoRecorder {
             if (previous && isPeerConnected && this.lastRecorderHealthWasPeerConnected) {
                 for (const [stage, count] of stats.dropTrace) {
                     const stageNum = stage as number;
-                    // SenderFpsPacing (5) is intentional temporal downsampling,
-                    // not loss — exclude it so demand-driven fps pacing doesn't
-                    // read as an uplink drop.
-                    if (stageNum < 1 || stageNum > 30 || stageNum === 5) continue;
+                    // SenderFpsPacing (5) is intentional temporal downsampling and
+                    // SenderEncodePacing (6) is the encoder's own latency bound —
+                    // neither is loss, and this ratio reaches the UPLINK verdict.
+                    // Encode pacing tracks EncodeDeficitEma tick for tick, so
+                    // counting it here blames the wire for encoder pressure.
+                    if (stageNum < 1 || stageNum > 30
+                        || stage === FrameDropStage.SenderFpsPacing
+                        || stage === FrameDropStage.SenderEncodePacing) continue;
                     const prevCount = previous.dropTrace.get(stage) ?? 0;
                     senderDropsDelta += Math.max(0, count - prevCount);
                 }
