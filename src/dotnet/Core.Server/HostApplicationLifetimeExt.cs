@@ -12,5 +12,19 @@ public static class HostApplicationLifetimeExt
     public static CancellationTokenSource CreateStopTokenSource(
         this IHostApplicationLifetime? hostLifetime,
         CancellationToken cancellationToken = default)
-        => CancellationTokenSource.CreateLinkedTokenSource(hostLifetime?.ApplicationStopping ?? default, cancellationToken);
+        => CancellationTokenSource.CreateLinkedTokenSource(
+            hostLifetime?.ApplicationStopping ?? default,
+            cancellationToken);
+
+    public static async Task WhenStarted(
+        this IHostApplicationLifetime? hostLifetime,
+        CancellationToken cancellationToken = default)
+    {
+        if (hostLifetime is null || hostLifetime.ApplicationStarted.IsCancellationRequested)
+            return;
+
+        using var startedOrCancelledCts = cancellationToken.LinkWith(hostLifetime.ApplicationStarted);
+        await TaskExt.NeverEnding(startedOrCancelledCts.Token).SilentAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+    }
 }

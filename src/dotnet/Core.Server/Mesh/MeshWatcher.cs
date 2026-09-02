@@ -8,6 +8,7 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
     private ImmutableArray<MeshNode> _lastNodes;
     private int _listNodesFailureCount;
 
+    private MeshWatcherOptions Options { get; }
     private IMeshLocks EndpointLocks { get; }
     private IMeshLocks NodeLocks { get; }
     private MomentClock Clock => NodeLocks.Clock;
@@ -22,6 +23,7 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
         : base(services.HostLifetimeIfExist().CreateStopTokenSource())
     {
         Services = services;
+        Options = services.GetService<MeshWatcherOptions>() ?? MeshWatcherOptions.Default;
         Log = services.LogFor(GetType());
         ThisNode = services.GetRequiredService<MeshNode>();
 
@@ -204,6 +206,10 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
     {
         var endpointLockKey = ThisNode.Endpoint;
         var nodeLockKey = ThisNode.LockKey;
+        // An announced node gets shards mapped to it at once, but the host listens only after
+        // RunInitializers, so announcing earlier makes other nodes dial a closed port
+        if (Options.MustAnnounceAfterHostStart)
+            await Services.HostLifetimeIfExist().WhenStarted(cancellationToken).ConfigureAwait(false);
         Log.LogInformation("-> Announce: {MeshNode}", nodeLockKey);
 
         try {

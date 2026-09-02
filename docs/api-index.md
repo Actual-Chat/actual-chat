@@ -374,6 +374,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `HostSettings` — host configuration settings
 - `AggregateDbInitializer` — orchestrates database initialization
 - `ReadinessHealthCheck`, `LivelinessHealthCheck` — Kubernetes health checks
+- `GracefulShutdown` — hands shards over and closes inbound RPC connections on host stop
 
 
 ## Other App Hosts
