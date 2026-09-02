@@ -2189,10 +2189,7 @@ export class VideoRecorder {
 
                 void now;
                 lastRvfcTickAtMs = performance.now();
-                // Firefox reports mediaTime as a constant 0 for a MediaStream (measured:
-                // 91/91 callbacks), which stamps every frame alike; currentTime advances.
-                const stampSec = DeviceInfo.isFirefox ? sourceVideo.currentTime : metadata.mediaTime;
-                if (!pushFrame(stampSec))
+                if (!pushFrame(metadata.mediaTime))
                     return;
 
                 sourceVideo.requestVideoFrameCallback(onFrame);

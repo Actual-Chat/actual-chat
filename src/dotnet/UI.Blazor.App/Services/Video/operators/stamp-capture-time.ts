@@ -9,21 +9,16 @@ export interface StampCaptureTimeOptions {
     clock?: MonotonicClock;
 }
 
-// Beyond this the hardware timeline is not tracking ours - a paused/resumed
-// track, a clock the platform rebased, or a source whose timestamps aren't a
-// real capture clock at all. Fall back to the wall clock and re-anchor.
-const MAX_CAPTURE_DRIFT_MS = 1000;
+// How far the source timeline may drift from ours before it stops counting as a
+// capture clock. Anchored on the first frame, so a constant pipeline delay is free.
+const MAX_SOURCE_OFFSET_MS = 100;
 
-// Consecutive unusable frames tolerated before the anchor is abandoned. A blip
-// (one late or duplicated timestamp) must not cost a working source clock.
-const MAX_BAD_FRAME_RUN = 5;
+// Consecutive violations before the source clock is abandoned for the run. Two
+// tells a stopped or repeating clock from one late frame.
+const MAX_STRIKES = 2;
 
-// Forward step used to bridge a blip while staying on the source timeline.
+// Forward step enforcing the strictly-increasing invariant.
 const MIN_STEP_MS = 1;
-
-// Frames between diagnostic reports. A blip run collapses capture time onto 1ms
-// steps, which the receiver replays as paired presents, so report the reason.
-const REPORT_PERIOD = 150;
 
 /** On clock-epoch flip (sleep / NTP step) sets forceKeyframe so the receiver
  *  can rebase its decode anchors. */
@@ -35,65 +30,35 @@ export function stampCaptureTime(opts: StampCaptureTimeOptions = {}): PipeOperat
         async function* impl(): AsyncIterable<CapturedFrame> {
             // -1 sentinel: first frame always trips epochChanged.
             let lastEpoch = -1;
-            // Anchor mapping the frame's own capture clock onto ours. `clock.now()`
-            // is sampled HERE, several operators and one single-threaded worker
-            // downstream of the camera, so its deltas measure our scheduling rather
-            // than the source's cadence - and those deltas are what paces playback
-            // on the receiver. VideoFrame.timestamp is the capture clock, so take
-            // the origin from ours (the receiver compares against wall time) and
-            // every step after it from the frame.
+            // Anchor mapping the frame's own capture clock onto ours, taken from the
+            // first frame so only real drift accumulates against it.
             let originClockMs: number | null = null;
             let originTimestampUs = 0;
             let lastTimeMs = Number.NEGATIVE_INFINITY;
-            let badRun = 0;
-            let seen = 0;
-            let usableCount = 0;
-            let blipCount = 0;
-            let reanchorCount = 0;
-            let driftRejects = 0;
-            let monotonicRejects = 0;
-            let lastDriftMs = 0;
+            let strikes = 0;
+            let useWallClock = false;
             for await (const envelope of source) {
                 let mustClose = true;
                 try {
                     const wallNow = clock.now();
                     let capturedAt = wallNow;
                     const timestampUs = envelope.frame.timestamp;
-                    if (originClockMs !== null && Number.isFinite(timestampUs)) {
-                        const timeMs = originClockMs + (timestampUs - originTimestampUs) / 1000;
-                        // Two ways the source clock can be unusable: it drifts away from ours
-                        // (paused track, platform rebase, or these aren't capture timestamps at
-                        // all), or it stops advancing - a source that leaves timestamp at 0 would
-                        // otherwise collapse every frame onto one instant and take the whole
-                        // downstream timeline with it.
-                        //
-                        // A single bad frame must NOT cost us the anchor. Our timestamps are
-                        // capture time and the wall clock is stamp time, so the source timeline
-                        // runs permanently BEHIND wall by the pipeline delay: emit one wall value
-                        // and every later source value fails the monotonic test against it, which
-                        // strands us on the wall clock for the rest of the run. So a blip just
-                        // steps forward on the source timeline and keeps the anchor, and only a
-                        // sustained run of failures gives up and re-anchors.
-                        const isUsable = Math.abs(timeMs - wallNow.timeMs) <= MAX_CAPTURE_DRIFT_MS
-                            && timeMs > lastTimeMs;
-                        if (isUsable) {
-                            capturedAt = { timeMs, epoch: wallNow.epoch };
-                            badRun = 0;
-                            usableCount++;
-                        } else if (++badRun < MAX_BAD_FRAME_RUN) {
-                            capturedAt = { timeMs: lastTimeMs + MIN_STEP_MS, epoch: wallNow.epoch };
-                            blipCount++;
-                        } else {
-                            originClockMs = null;
-                            badRun = 0;
-                            reanchorCount++;
-                        }
-                        if (!isUsable) {
-                            lastDriftMs = timeMs - wallNow.timeMs;
-                            if (Math.abs(lastDriftMs) > MAX_CAPTURE_DRIFT_MS)
-                                driftRejects++;
-                            if (timeMs <= lastTimeMs)
-                                monotonicRejects++;
+                    // Trust the source clock only while it keeps tracking ours. One that
+                    // stops (Firefox reports mediaTime as a constant 0 for a MediaStream),
+                    // repeats, or drifts is abandoned for the run — at the cost of a
+                    // mis-stamped frame or two, against a whole run of invented times.
+                    if (!useWallClock && originClockMs !== null && Number.isFinite(timestampUs)) {
+                        const sourceMs = originClockMs + (timestampUs - originTimestampUs) / 1000;
+                        const offsetMs = sourceMs - wallNow.timeMs;
+                        if (Math.abs(offsetMs) <= MAX_SOURCE_OFFSET_MS && sourceMs > lastTimeMs) {
+                            capturedAt = { timeMs: sourceMs, epoch: wallNow.epoch };
+                            strikes = 0;
+                        } else if (++strikes >= MAX_STRIKES) {
+                            useWallClock = true;
+                            warnLog?.log(
+                                `stampCaptureTime: source clock abandoned after ${strikes} strikes `
+                                + `(offset=${offsetMs.toFixed(0)}ms, advanced=`
+                                + `${(sourceMs - lastTimeMs).toFixed(1)}ms) - using the monotonic clock`);
                         }
                     }
                     if (originClockMs === null) {
@@ -104,32 +69,21 @@ export function stampCaptureTime(opts: StampCaptureTimeOptions = {}): PipeOperat
                     if (epochChanged) {
                         lastEpoch = capturedAt.epoch;
                         // A sleep/NTP step moves our clock, not the camera's - re-anchor
-                        // so the two don't stay offset by the size of the jump.
+                        // so the two don't stay offset by the size of the jump, and give
+                        // the source clock a fresh hearing.
                         originClockMs = wallNow.timeMs;
                         originTimestampUs = Number.isFinite(timestampUs) ? timestampUs : 0;
                         capturedAt = wallNow;
+                        strikes = 0;
+                        useWallClock = false;
                     }
                     // The invariant everything downstream relies on: capture time is strictly
                     // increasing within an epoch (offsets are derived from it, and a backwards
-                    // step collapses them to 0). Every branch above can violate it - the source
-                    // clock can stall or repeat, and the wall clock we fall back to may sit
-                    // behind the source timeline we were stepping along. Enforce it here once
-                    // rather than trusting each branch to. An epoch flip is the deliberate
-                    // exception: the receiver rebases there.
+                    // step collapses them to 0). An epoch flip is the deliberate exception:
+                    // the receiver rebases there.
                     if (!epochChanged && capturedAt.timeMs <= lastTimeMs)
                         capturedAt = { timeMs: lastTimeMs + MIN_STEP_MS, epoch: capturedAt.epoch };
                     lastTimeMs = capturedAt.timeMs;
-                    if (++seen % REPORT_PERIOD === 0 && (blipCount > 0 || reanchorCount > 0)) {
-                        warnLog?.log(
-                            `stampCaptureTime: usable=${usableCount} blip=${blipCount} `
-                            + `reanchor=${reanchorCount} driftRejects=${driftRejects} `
-                            + `monotonicRejects=${monotonicRejects} lastDrift=${lastDriftMs.toFixed(0)}ms`);
-                        usableCount = 0;
-                        blipCount = 0;
-                        reanchorCount = 0;
-                        driftRejects = 0;
-                        monotonicRejects = 0;
-                    }
                     // Index is assigned at the source (mstpSource); preserve it
                     // so flood-gate drops show as gaps downstream.
                     const output = {
