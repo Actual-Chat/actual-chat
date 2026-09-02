@@ -568,15 +568,50 @@
     <CreatePackage>true</CreatePackage>
   </PropertyGroup>
 
-  <!-- macOS (AppKit): sign Debug builds with the stable dev identity. Ad-hoc signing gives
+  <!-- macOS (AppKit) Release: Mac App Store / TestFlight distribution, mirroring the
+       Mac Catalyst Release block - same "Mac"-type profiles and certificates work for an
+       AppKit app of the same bundle id. Unlike Catalyst, entitlements apply in Release
+       only: a Debug build stays unsandboxed so it can read the Catalyst app's keychain
+       items and keep logs in ~/Library/Logs. -->
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-macos|AnyCPU'">
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' and '$(RuntimeIdentifiers)' == ''">osx-arm64</RuntimeIdentifier>
+    <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Platforms\MacOS\Entitlements.dev.plist</CodesignEntitlements>
+    <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Platforms\MacOS\Entitlements.prod.plist</CodesignEntitlements>
+    <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">Mac App Store Dev</CodesignProvision>
+    <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">Mac App Store</CodesignProvision>
+    <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
+    <PackageSigningKey>3rd Party Mac Developer Installer: Actual Chat Inc. (M287G8G83F)</PackageSigningKey>
+    <EnableCodeSigning>true</EnableCodeSigning>
+    <EnablePackageSigning>true</EnablePackageSigning>
+    <CreatePackage>true</CreatePackage>
+  </PropertyGroup>
+
+  <!-- NBGV ships NBGV_SetVersionForMauiIOS for the ios/maccatalyst TPIs only, so without
+       this twin the AppKit package ships as 1.0 instead of the version every other app
+       carries. Same anchor and 3-part version convention as the NBGV original.
+       TODO(maui-labs): drop once NBGV covers the macos TPI. -->
+  <Target Name="NBGV_SetVersionForMacOS"
+          Condition="$(TargetFramework.Contains('-macos'))"
+          BeforeTargets="_CompileAppManifest"
+          DependsOnTargets="GetBuildVersion">
+    <PropertyGroup>
+      <ApplicationVersion>$(BuildVersionSimple)</ApplicationVersion>
+      <ApplicationDisplayVersion>$(BuildVersionSimple)</ApplicationDisplayVersion>
+    </PropertyGroup>
+  </Target>
+
+  <!-- macOS (AppKit): sign Debug builds with a stable dev identity. Ad-hoc signing gives
        every rebuild a fresh app identity, so reading the Fusion.SessionId keychain item the
        Catalyst app owns would prompt for the login keychain password on every launch; with a
        stable identity one "Always Allow" persists. No provisioning profile: a dev-signed
-       macOS app needs none without restricted entitlements. -->
+       macOS app needs none without restricted entitlements. The bare name resolves when the
+       keychain holds one Apple Development cert; scripts/run-macos.sh passes the team cert's
+       hash as CodesignKey when there are several. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Debug' and $(TargetFramework.Contains('-macos'))">
     <EnableCodeSigning>true</EnableCodeSigning>
-    <CodesignKey>Apple Development: Frol Chizhov (6824A38F9V)</CodesignKey>
+    <CodesignKey Condition="'$(CodesignKey)' == ''">Apple Development</CodesignKey>
   </PropertyGroup>
+
 
   <!-- Windows build properties -->
 
@@ -762,7 +797,8 @@
   <ItemGroup Condition="$(TargetFramework.Contains('-macos'))">
     <!-- The labs icon target feeds MauiIcon straight to sips, which can't rasterize SVG, so
          macos ships a pre-rendered PNG: appicon.svg at Apple's icon-grid margins with rounded
-         corners, rasterized via rsvg-convert (the prepare-images.cmd toolchain) -->
+         corners, rasterized via rsvg-convert (the prepare-images.cmd toolchain)
+         TODO(maui-labs): ship appicon.svg like the other platforms once the macos icon target rasterizes SVG -->
     <MauiIcon Remove="Resources\AppIcon\appicon.svg" />
     <MauiIcon Include="Resources\AppIcon\appicon_macos.png" />
     <PartialAppManifest Include="Platforms\MacOS\Info.plist" />

@@ -973,8 +973,11 @@ jobs:
 
   deploy-maccatalyst-to-appstore:
     name: Deploy maccatalyst app package to apple app store for ${{ github.ref_name }}
-    # release branch can build for both dev and prod envs while other branches can build only for dev env
-    if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' }}
+    # release branch can build for both dev and prod envs while other branches can build only for dev env.
+    # PUBLISH_MACCATALYST=false pauses the upload (the pkg is still built) while the AppKit
+    # package ships instead - App Store Connect takes ONE build per CFBundleVersion, and both
+    # Mac packages share the bundle id and version.
+    if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' && vars.PUBLISH_MACCATALYST != 'false' }}
     runs-on: macos-26
     needs:
       - build-maccatalyst-pkg
@@ -1008,6 +1011,174 @@ jobs:
         run: |
           xcrun altool --upload-app -f ${{env.PACKAGE_FILE_NAME}} -t macos --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json
         shell: bash
+
+  # Experimental AppKit (net11.0-macos) build of the same app id - see PR #4312. Opt-in via
+  # the BUILD_MACOS_APPKIT repository variable: it shares the bundle id and version with the
+  # Mac Catalyst package, and App Store Connect accepts only ONE build per CFBundleVersion -
+  # so for any given version, upload either the Catalyst pkg or this one, not both.
+  build-macos-appkit-pkg:
+    name: Build macOS AppKit app package for ${{ github.ref_name }}
+    needs:
+      - calc-pkg-params
+    if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' && vars.BUILD_MACOS_APPKIT == 'true' }}
+    runs-on: macos-26
+    env:
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+      NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
+      IS_DEV_MAUI: ${{ needs.calc-pkg-params.outputs.IS_DEV_MAUI }}
+      APP_ID: ${{ needs.calc-pkg-params.outputs.APP_ID }}
+    outputs:
+      ARTIFACT_NAME: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.appkit.pkg
+      PACKAGE_FILE_NAME: ${{steps.pkg.outputs.PACKAGE_FILE_NAME}}
+    steps:
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: 26.6
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+          lfs: true
+
+      # The same "Mac"-type distribution profiles the Catalyst package uses cover an AppKit
+      # app of the same bundle id.
+      - name: Install Mac Provisioning Profile for DEV
+        if: ${{env.IS_DEV_MAUI == 'true'}}
+        shell: bash
+        run: |-
+          PP=$RUNNER_TEMP/mac.provisionprofile
+          echo -n "${{ secrets.PROVISIONING_PROFILE_MAC_DEV_BASE64 }}" | base64 --decode -o $PP
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          uuid=$(security cms -D -i $PP | plutil -extract UUID raw -o - -)
+          mv $PP ~/Library/MobileDevice/Provisioning\ Profiles/$uuid.provisionprofile
+          ls -la ~/Library/MobileDevice/Provisioning\ Profiles
+
+      - name: Install Mac Provisioning Profile for PROD
+        if: ${{env.IS_DEV_MAUI == 'false'}}
+        shell: bash
+        run: |-
+          PP=$RUNNER_TEMP/mac.provisionprofile
+          echo -n "${{ secrets.PROVISIONING_PROFILE_MAC_PROD_BASE64 }}" | base64 --decode -o $PP
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          uuid=$(security cms -D -i $PP | plutil -extract UUID raw -o - -)
+          mv $PP ~/Library/MobileDevice/Provisioning\ Profiles/$uuid.provisionprofile
+          ls -la ~/Library/MobileDevice/Provisioning\ Profiles
+
+      - name: Install Apple distribution + installer certificates
+        env:
+          DIST_CERT_BASE64: ${{secrets.APPLE_DISTRIBUTION_CERT_BASE64}}
+          DIST_CERT_PASSWORD: ${{secrets.APPLE_DISTRIBUTION_CERT_PASSWORD}}
+          INSTALLER_CERT_BASE64: ${{secrets.MAC_INSTALLER_CERT_BASE64}}
+          INSTALLER_CERT_PASSWORD: ${{secrets.MAC_INSTALLER_CERT_PASSWORD}}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security default-keychain -s $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          echo ::Importing Apple Distribution certificate
+          DIST=$RUNNER_TEMP/dist.p12
+          echo -n "$DIST_CERT_BASE64" | base64 --decode -o $DIST
+          security import $DIST -P "$DIST_CERT_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+
+          echo ::Importing 3rd Party Mac Developer Installer certificate
+          INST=$RUNNER_TEMP/installer.p12
+          echo -n "$INSTALLER_CERT_BASE64" | base64 --decode -o $INST
+          security import $INST -P "$INSTALLER_CERT_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychains -d user -s $KEYCHAIN_PATH
+          security find-identity -p basic -v
+
+      - name: Setup dotnet
+        uses: ./.github/actions/setup-dotnet
+
+      - name: Install workloads (pinned to the .NET 11 preview 7 workload band — see #3839)
+        run: dotnet workload install maui macos --from-rollback-file ${{github.workspace}}/.github/workloads-net11-p7.json
+
+      - name: Replace git+ssh://git@ to https://
+        run: sed -i -E 's/git+ssh:\/\/git@/https:\/\//g' package-lock.json
+
+      - name: Generate version variables
+        id: nbgv
+        uses: dotnet/nbgv@master
+        with:
+          setAllVars: true
+
+      - name: Restore nuget packages
+        run: |-
+          ./run-build.cmd restore
+
+      - name: PList - set macOS URL scheme to voxt for prod
+        if: ${{ env.IS_DEV_MAUI == 'false' }}
+        uses: dppeak/update-ios-plist-action@v1.1.0
+        with:
+          info-plist-path: "src/dotnet/App.Maui/Platforms/MacOS/Info.plist"
+          key-value-json: '[{"CFBundleURLTypes": [{"CFBundleTypeRole": "Editor", "CFBundleURLName": "ai.voxt", "CFBundleURLSchemes": ["voxt"]}]}]'
+          print-file: true
+
+      # publish-mac (Release, --universal = arm64 + x64) builds, signs with the Apple
+      # Distribution cert, and — via CreatePackage + EnablePackageSigning — emits the
+      # installer-signed .pkg directly.
+      - name: Build app package
+        id: pkg
+        run: |-
+          ./run-build.cmd publish-mac --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}" --universal
+          PKG=$(ls artifacts/publish/App.Maui/release_net11.0-macos*/*.pkg | head -1)
+          echo "PACKAGE_FILE_NAME=$(basename "$PKG")" | tee -a $GITHUB_OUTPUT
+
+      - name: Upload package to artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.appkit.pkg
+          path: artifacts/publish/App.Maui/release_net11.0-macos*/*.pkg
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 10
+
+  deploy-macos-appkit-to-appstore:
+    name: Deploy macOS AppKit app package to apple app store for ${{ github.ref_name }}
+    # Same gate as the build job, plus: never enable this and the Catalyst upload for the
+    # same version — App Store Connect rejects a second build with the same CFBundleVersion.
+    if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' && vars.BUILD_MACOS_APPKIT == 'true' && vars.PUBLISH_MACOS_APPKIT == 'true' }}
+    runs-on: macos-26
+    needs:
+      - build-macos-appkit-pkg
+      - calc-pkg-params
+    environment: ${{ needs.calc-pkg-params.outputs.ENVIRONMENT }}
+    env:
+      APP_ID: ${{needs.calc-pkg-params.outputs.APP_ID}}
+      ARTIFACT_NAME: ${{needs.build-macos-appkit-pkg.outputs.ARTIFACT_NAME}}
+      PACKAGE_FILE_NAME: ${{needs.build-macos-appkit-pkg.outputs.PACKAGE_FILE_NAME}}
+      API_KEY_BASE64: ${{secrets.APPSTORE_API_KEY_BASE64}}
+      API_KEY_ID: ${{secrets.APPSTORE_API_KEY_ID}}
+      API_ISSUER_ID: ${{secrets.APPSTORE_API_ISSUER_ID}}
+    steps:
+      - name: Download package file from artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{env.ARTIFACT_NAME}}
+
+      - name: Install App Store api key
+        run: |-
+          mkdir -p ~/.appstoreconnect/private_keys/
+          echo -n "${{ env.API_KEY_BASE64 }}" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${{ env.API_KEY_ID }}.p8
+          ls -ls ~/.appstoreconnect/private_keys/
+
+      - name: Validate App
+        run: |-
+          xcrun altool --validate-app -f ${{env.PACKAGE_FILE_NAME}} -t macos --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json
+        shell: bash
+
+      - name: Upload App
+        run: |
+          xcrun altool --upload-app -f ${{env.PACKAGE_FILE_NAME}} -t macos --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json
+        shell: bash
+
 
   build-android-pkg:
     name: Build android app package for ${{ github.ref_name }}

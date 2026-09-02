@@ -17,9 +17,11 @@ public sealed class AppPackCommand(CliContext context) : PlanCommand<AppPackComm
         var isDevMaui = settings.IsDev;
         var useNativeAot = settings.UseNativeAot;
         var description = $"b {target} --configuration Release --is-dev-maui {isDevMaui.ToString().ToLower()}";
+        if (settings.IsUniversal)
+            description += " --universal";
         return new CommandPlan()
             .AddAction(description,
-                ct => Program.RunTarget(target, "Release", isDevMaui, useNativeAot, ct))
+                ct => Program.RunTarget(target, "Release", isDevMaui, useNativeAot, ct, settings.IsUniversal))
             .AddOutput(artifact);
     }
 
@@ -32,8 +34,9 @@ public sealed class AppPackCommand(CliContext context) : PlanCommand<AppPackComm
         return settings.Platform switch {
             AppPlatform.Android => ("publish-android", $"{publishDir}/release_net11.0-android/{appId}-Signed.aab"),
             AppPlatform.Ios => ("publish-ios", $"{publishDir}/release_net11.0-ios_ios-arm64/ActualChat.ipa"),
-            AppPlatform.MacOs => ("publish-maccatalyst",
+            AppPlatform.Mac when settings.UseCatalyst => ("publish-maccatalyst",
                 $"{publishDir}/release_net11.0-maccatalyst_maccatalyst-arm64/*.pkg"),
+            AppPlatform.Mac => ("publish-mac", $"{publishDir}/release_net11.0-macos*/*.pkg"),
             AppPlatform.Windows => ("publish-win", "artifacts/AppPackages/**/App.Maui_*_x64.msix"),
             _ => throw new ArgumentOutOfRangeException(nameof(settings)),
         };
@@ -44,7 +47,7 @@ public sealed class AppPackCommand(CliContext context) : PlanCommand<AppPackComm
     public sealed class Settings : PlanSettings
     {
         [CommandArgument(0, "<PLATFORM>")]
-        [Description("android | ios | windows | macos")]
+        [Description("android | ios | windows | mac (or macos)")]
         public AppPlatform Platform { get; init; }
 
         [CommandOption("--prod")]
@@ -55,13 +58,25 @@ public sealed class AppPackCommand(CliContext context) : PlanCommand<AppPackComm
         [Description("Build with Native AOT (currently wired for ios only)")]
         public bool UseNativeAot { get; init; }
 
+        [CommandOption("--catalyst")]
+        [Description("macos only: pack the Mac Catalyst app instead of the default AppKit one")]
+        public bool UseCatalyst { get; init; }
+
+        [CommandOption("--universal")]
+        [Description("macos only (AppKit): a universal arm64 + x64 pkg, as CI builds it, instead of one for the host CPU")]
+        public bool IsUniversal { get; init; }
+
         public bool IsDev => !IsProd;
 
         public override ValidationResult Validate()
         {
             if (UseNativeAot && Platform != AppPlatform.Ios)
                 return ValidationResult.Error("--aot is only wired for the ios platform.");
-            if (Platform is AppPlatform.Ios or AppPlatform.MacOs && !OperatingSystem.IsMacOS())
+            if (UseCatalyst && Platform != AppPlatform.Mac)
+                return ValidationResult.Error("--catalyst is only supported for the macos platform.");
+            if (IsUniversal && (Platform != AppPlatform.Mac || UseCatalyst))
+                return ValidationResult.Error("--universal is only wired for the macos AppKit package.");
+            if (Platform is AppPlatform.Ios or AppPlatform.Mac && !OperatingSystem.IsMacOS())
                 return ValidationResult.Error($"Packing the {Platform} app needs macOS.");
             if (Platform is AppPlatform.Windows && !OperatingSystem.IsWindows())
                 return ValidationResult.Error("Packing the Windows app needs Windows.");

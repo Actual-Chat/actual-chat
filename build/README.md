@@ -29,8 +29,8 @@ The app commands differ only in how far down the pipeline they go, and `--launch
 | `b app run` | yes | yes | yes |
 | `b app pack` | store package, no install/launch | | |
 
-iOS and Mac Catalyst delegate to `scripts/run-ios*.sh` / `scripts/run-macos.sh`,
-which build, install and launch as one unit — so `b app install ios` is rejected
+iOS and macOS delegate to `scripts/run-ios*.sh` / `scripts/run-macos*.sh`
+(AppKit by default, `--catalyst` for Mac Catalyst), which build, install and launch as one unit — so `b app install ios` is rejected
 rather than silently launching.
 
 The server commands:
@@ -113,7 +113,7 @@ the same rules.
    public sealed class Settings : PlanSettings
    {
        [CommandArgument(0, "<PLATFORM>")]
-       [Description("android | ios | windows | macos")]
+       [Description("android | ios | windows | mac (or macos)")]
        public AppPlatform Platform { get; init; }
 
        [CommandOption("-r|--release")]
