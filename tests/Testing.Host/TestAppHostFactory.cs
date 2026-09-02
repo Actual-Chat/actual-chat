@@ -103,6 +103,7 @@ public static class TestAppHostFactory
                 services.AddSingleton<ApnsTestSink>();
                 services.AddSingleton<IApnsClient>(
                     c => c.GetRequiredService<ApnsTestSink>());
+                services.AddSingleton(new MeshWatcherOptions { MustAnnounceAfterHostStart = options.MustStart });
 
                 // Overrides from options
                 options.ConfigureServices?.Invoke(ctx, services);

@@ -21,6 +21,12 @@ public sealed class ShardOwners : ProcessorBase, IHasServices
         Clock = OwnershipLocks.Clock;
     }
 
+    public Task Stop()
+    {
+        StopTokenSource.CancelAndDisposeSilently();
+        return Task.WhenAll(_owners.Values.Where(x => x.HasValue).Select(x => x.Value.Stop()));
+    }
+
     public ShardOwner this[Type backendServiceType]
         => this[BackendServiceDefs[backendServiceType].ShardScheme];
     public ShardOwner this[ShardScheme shardScheme]
