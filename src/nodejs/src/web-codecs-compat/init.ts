@@ -139,8 +139,14 @@ export class WebCodecsCompat {
     /** Records the level for this realm. Nothing is fetched until a component that
      *  the level actually affects asks for {@link whenReadyFor}. */
     static init(config: WebCodecsCompatConfig): void {
-        if (this._config && config.level !== this._config.level) {
-            warnLog?.log(`init: already at '${this._config.level}', ignoring '${config.level}'`);
+        // SharedSettings re-pushes its whole snapshot on every change, so this runs
+        // again on every server-clock tick. Re-applying is not harmless: a load that
+        // failed drops `_level` to 'none' while `_config.level` still says 'full',
+        // and re-applying would restore 'full' with no classes behind it.
+        if (this._config) {
+            if (config.level !== this._config.level)
+                warnLog?.log(`init: already at '${this._config.level}', ignoring '${config.level}'`);
+
             return;
         }
 

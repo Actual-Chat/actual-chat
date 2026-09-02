@@ -44,6 +44,20 @@ describe('WebCodecsCompat.resolveLevel', () => {
         expect(WebCodecsCompat.resolveLevel('full')).toBe('full');
         expect(WebCodecsCompat.resolveLevel('vp9')).toBe('vp9');
     });
+
+    it('ignores a repeated init, so a failed load is not re-armed', async () => {
+        const { WebCodecsCompat } = await freshCompat();
+        WebCodecsCompat.init({ level: 'full', baseUrl: '/dist/libav' });
+        expect(WebCodecsCompat.level).toBe('full');
+
+        // SharedSettings re-pushes its whole snapshot on every change, so this is
+        // what runs on every server-clock tick. Standing in for a failed load,
+        // which drops the level to 'none' while _config still says 'full'.
+        (WebCodecsCompat as unknown as { _level: string })._level = 'none';
+        WebCodecsCompat.init({ level: 'full', baseUrl: '/dist/libav' });
+
+        expect(WebCodecsCompat.level).toBe('none');
+    });
 });
 
 describe('WebCodecsCompat.affects', () => {
