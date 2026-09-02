@@ -5,6 +5,7 @@
 // player-worker-bootstrap.ts so worker logging is initialized first.
 
 import { rpcClientServer } from 'rpc';
+import { WebCodecsCompat } from 'web-codecs-compat/init';
 import { Api, streamingApi } from 'api';
 import { initAppConstants, type AppConstants } from 'app-constants';
 import { getLogs } from 'logging';
@@ -27,6 +28,13 @@ const { infoLog, warnLog } = getLogs('VideoPipeline');
 // '~' resolves to Session.Default on the server (legacy worker trick).
 const RPC_SESSION_DEFAULT = '~';
 
+// VideoPlayer matches on this to retry with the canvas backend.
+const MSTG_UNAVAILABLE_MESSAGE =
+    'PlayerWorkerHost: backend=\'mstg\' requested but neither '
+    + '`opts.mstgWritable` (Tier 2) nor a worker-side '
+    + 'MediaStreamTrackGenerator/VideoTrackGenerator (Tier 1) is '
+    + 'available. Caller should retry with backend=\'canvas\'.';
+
 let pullApiUrl: string | null = null;
 let pullApiInitialized = false;
 
@@ -35,11 +43,14 @@ let pullApiInitialized = false;
 // defensively because Api.init silently drops options when the hub
 // already exists.
 function ensurePullApi(): void {
-    if (pullApiInitialized) return;
+    if (pullApiInitialized)
+        return;
+
     if (!pullApiUrl)
         throw new Error(
             'PlayerWorkerHost: pullApiUrl is not set — '
             + 'prewarmRpc must be called before start()');
+
     Api.init('VideoPlayer', {
         url: pullApiUrl,
         modules: [streamingApi],
@@ -75,7 +86,13 @@ function createDecoder(
 function buildBackend(
     opts: PlayerWorkerOptions,
 ): { config: RenderBackendConfig; track: MediaStreamTrack | null } {
-    if (opts.backend === 'mstg') {
+    // A MediaStreamTrackGenerator takes only native VideoFrames, and a polyfilled
+    // decoder emits its own — writing those fails with "Null video frame".
+    const mustUseCanvas = WebCodecsCompat.affects('video-decode');
+    if (opts.backend === 'mstg' && mustUseCanvas && !opts.canvas)
+        throw new Error(MSTG_UNAVAILABLE_MESSAGE);
+
+    if (opts.backend === 'mstg' && !mustUseCanvas) {
         // Tier 2: main supplied a WritableStream from a main-side MSTG.
         // Main already attached the track to <video srcObject>, so we
         // skip onTrackReady. Live path on Chromium (worker globals
@@ -87,6 +104,7 @@ function buildBackend(
                 track: null,
             };
         }
+
         // Tier 1: worker-side generator. Chromium exposes
         // MediaStreamTrackGenerator on the worker; Safari exposes
         // VideoTrackGenerator (different ctor, track lives on `.track`).
@@ -98,6 +116,7 @@ function buildBackend(
                 track: generator.track,
             };
         }
+
         throw new Error(
             'PlayerWorkerHost: backend=\'mstg\' requested but neither '
             + '`opts.mstgWritable` (Tier 2) nor a worker-side '
@@ -121,9 +140,13 @@ function buildBackend(
         // to ImageBitmap first.
         const isSafari = /^((?!chrome|android).)*safari/i.test(
             (globalThis as { navigator?: { userAgent?: string } }).navigator?.userAgent ?? '');
-        const convertToBitmap = isSafari
-            ? (frame: VideoFrame): Promise<ImageBitmap> => createImageBitmap(frame)
+        // A polyfilled frame is not a CanvasImageSource either, so it needs the
+        // polyfill's own bitmap conversion rather than the global one.
+        const polyfillBitmap = WebCodecsCompat.isPolyfilledRealm
+            ? WebCodecsCompat.classes?.createImageBitmap
             : undefined;
+        const convertToBitmap = polyfillBitmap
+            ?? (isSafari ? (frame: VideoFrame): Promise<ImageBitmap> => createImageBitmap(frame) : undefined);
         return {
             config: pickRenderBackend({
                 preferMstg: false,

@@ -140,6 +140,7 @@ export type LogScope =
     | 'VideoDecoder'
     | 'VideoSegmentation'
     | 'VideoWebGPU'
+    | 'WebCodecsCompat'
     | 'BgBlur'
     | 'CameraDevices'
     | 'CameraPermission'
@@ -258,6 +259,7 @@ const defaults: Record<LogScope, LogLevel> = {
     VideoDecoder: LogLevel.Warn,
     VideoSegmentation: LogLevel.Warn,
     VideoWebGPU: LogLevel.Warn,
+    WebCodecsCompat: LogLevel.Info,
     BgBlur: LogLevel.Info,
     CameraDevices: LogLevel.Warn,
     CameraPermission: LogLevel.Warn,

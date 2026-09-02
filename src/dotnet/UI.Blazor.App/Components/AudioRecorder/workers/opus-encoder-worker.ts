@@ -25,6 +25,7 @@ import { WorkerConnectivityUI } from './worker-connectivity-ui';
 import { getLogs } from 'logging';
 import { type SharedSettingsSnapshot } from 'shared-settings';
 import { sharedSettingsWorker } from 'shared-settings-worker';
+import { WebCodecsCompat } from 'web-codecs-compat/init';
 
 const { logScope, debugLog, infoLog, warnLog, errorLog } = getLogs('OpusEncoderWorker');
 
@@ -94,6 +95,9 @@ const serverImpl: OpusEncoderWorker = {
         if (AudioStreamer.isConnected)
             void stateServer.onConnectionStateChanged(true, rpcNoWait);
 
+        // No-op unless the level actually replaces this codec; awaiting is what
+        // starts the download.
+        await WebCodecsCompat.whenReadyFor('audio-encode');
         if (!systemEncoder && globalThis.AudioEncoder) {
             const configSupport = await AudioEncoder.isConfigSupported(systemCodecConfig);
             if (configSupport.supported) {

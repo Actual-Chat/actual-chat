@@ -37,6 +37,7 @@ import { withTimeout } from 'actuallab-core';
 import { getLogs } from 'logging';
 import { Api, WorkerKind } from 'api';
 import { rpcClientServer, rpcNoWait } from 'rpc';
+import type { FrameSource } from 'web-codecs-compat/init';
 import type { Disposable } from 'disposable';
 import { Versioning } from 'versioning';
 import { DeviceInfo } from 'device-info';
@@ -292,7 +293,7 @@ interface LayerInput {
 // Preview frame listener used by the canvas fallback when generated preview
 // tracks are unavailable. Async listeners must return their Promise; the frame
 // is closed after all returned listener work settles.
-export type PreviewFrameListener = (frame: VideoFrame) => void | Promise<void>;
+export type PreviewFrameListener = (frame: FrameSource) => void | Promise<void>;
 export type PreviewPresentationListener = (presentation: PreviewFramePresentation | null) => void;
 
 export type VideoRecordingState = 'stopped' | 'warming-up' | 'starting' | 'recording' | 'error';
@@ -3036,7 +3037,7 @@ export class VideoRecorder {
         this.setPreviewFramePresentation(null);
     }
 
-    private async handlePreviewFrame(frame: VideoFrame): Promise<void> {
+    private async handlePreviewFrame(frame: FrameSource): Promise<void> {
         const pending: Promise<void>[] = [];
         try {
             for (const cb of this.previewFrameListeners) {

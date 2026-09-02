@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createPreviewSink } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/preview-forwarder';
+import type { FrameSource } from 'web-codecs-compat/init';
 
 // ---- Mocks ----------------------------------------------------------------
 
@@ -135,7 +136,7 @@ describe('createPreviewSink', () => {
     });
 
     it('reports frames to the canvas fallback when no writer is available', async () => {
-        const reported: VideoFrame[] = [];
+        const reported: FrameSource[] = [];
         const sink = createPreviewSink({
             getWriter: () => null,
             reportFrame: frame => { reported.push(frame); },

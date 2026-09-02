@@ -1,6 +1,7 @@
 import { EventHandlerSet } from 'event-handling';
 import { AC, initAppConstants, type AppConstants } from 'app-constants';
 import { ServerClock } from 'clocks';
+import { WebCodecsCompat, type WebCodecsCompatConfig } from 'web-codecs-compat/init';
 
 export interface SharedSettingsSnapshot {
     serverClockOffsetMs: number;
@@ -21,6 +22,9 @@ export interface SharedSettingsSnapshot {
     // Device-pose angle, degrees CW from natural portrait, quantized to 10-degree steps
     // to avoid excessive worker updates.
     deviceOrientationAngle?: number;
+    // Resolved once on the main thread: the override lives in localStorage and the
+    // asset URL needs the import map - neither is reachable from a worker.
+    webCodecs?: WebCodecsCompatConfig;
 }
 
 let current: SharedSettingsSnapshot = {
@@ -39,6 +43,9 @@ function applyToLocalRealm(settings: SharedSettingsSnapshot): void {
         appConstants ??= settings.appConstants;
         initAppConstants(appConstants);
     }
+    // Records the level only; the download starts when a component asks for it.
+    if (settings.webCodecs)
+        WebCodecsCompat.init(settings.webCodecs);
 }
 
 function tryGetCurrentAppConstants(): AppConstants | undefined {

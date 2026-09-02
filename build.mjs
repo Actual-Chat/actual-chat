@@ -30,6 +30,13 @@ async function copyAssets() {
     await fs.promises.copyFile(
         './node_modules/maplibre-gl/dist/maplibre-gl-csp-worker.js',
         `${outputPath}/maplibreWorker.js`);
+    // libav.js + WebCodecs polyfill: fetched at runtime by webcodecs-polyfill.ts,
+    // never bundled - the wasm is ~3.7 MB and only downloads when a polyfill
+    // level other than 'none' is in effect. See src/nodejs/libav/README.md.
+    await fs.promises.cp('./src/nodejs/libav', `${outputPath}/libav`, {
+        recursive: true,
+        filter: (src) => path.extname(src) !== '.md',
+    });
     await fs.promises.cp('./resources/sounds/converted', `${outputPath}/sounds`, {
         recursive: true,
         filter: (src) => {

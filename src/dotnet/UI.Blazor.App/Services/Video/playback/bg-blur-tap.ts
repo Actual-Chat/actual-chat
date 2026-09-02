@@ -1,3 +1,4 @@
+import { WebCodecsCompat, type FrameSource } from 'web-codecs-compat/init';
 import { tap, type PipeOperator } from 'ix-ext';
 import type { DecodedFrame } from '../frame-envelopes';
 import { BgBlurRenderer } from '../webgpu/blur';
@@ -34,7 +35,7 @@ const BG_RENDER_INTERVAL_MS = 100;
 export type BgBlurMode = 'auto' | 'webgpu' | 'webgl' | 'webgl-kawase' | 'canvas2d';
 
 interface BgRenderer {
-    render(frame: VideoFrame, strength?: number): boolean;
+    render(frame: FrameSource, strength?: number): boolean;
     dispose(): void;
 }
 
@@ -95,17 +96,53 @@ export class BgBlurController {
     }
 
     maybeRender(envelope: DecodedFrame): void {
-        if (!this.active) return;
+        if (!this.active)
+            return;
+
         const r = this.renderer;
-        if (!r) return;
+        if (!r)
+            return;
+
         const nowMs = performance.now();
-        if (nowMs - this.lastRenderAtMs < BG_RENDER_INTERVAL_MS) return;
+        if (nowMs - this.lastRenderAtMs < BG_RENDER_INTERVAL_MS)
+            return;
+
         this.lastRenderAtMs = nowMs;
-        try {
-            r.render(envelope.frame, BG_BLUR_STRENGTH);
-        } catch (e) {
-            warnLog?.log('BgBlurController: render failed:', e);
+        const toBitmap = WebCodecsCompat.isPolyfilledRealm
+            ? WebCodecsCompat.classes?.createImageBitmap
+            : undefined;
+        if (!toBitmap) {
+            try {
+                r.render(envelope.frame, BG_BLUR_STRENGTH);
+            } catch (e) {
+                warnLog?.log('BgBlurController: render failed:', e);
+            }
+
+            return;
         }
+
+        // The conversion reads the frame's planes only after several awaits, by
+        // which time the pipe has closed it — so extend the lifetime with a clone
+        // we own. The polyfill's clone shares the buffer, so this stays cheap.
+        let clone: VideoFrame;
+        try {
+            clone = envelope.frame.clone();
+        } catch (e) {
+            warnLog?.log('BgBlurController: clone failed:', e);
+
+            return;
+        }
+
+        void toBitmap(clone).then(bitmap => {
+            try {
+                r.render(bitmap, BG_BLUR_STRENGTH);
+            } finally {
+                bitmap.close();
+            }
+        }).catch((e: unknown) => warnLog?.log('BgBlurController: render failed:', e))
+            .finally(() => {
+                try { clone.close(); } catch { /* ignore */ }
+            });
     }
 
     dispose(): void {

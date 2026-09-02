@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { SenderSession } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/sender/session';
 import { MonotonicClock } from 'clocks';
+import type { FrameSource } from 'web-codecs-compat/init';
 
 // Minimal `WritableStream<VideoFrame>`-shaped fake for preview testing.
 // Tracks whether `getWriter()` was called and whether the issued writer's
@@ -109,7 +110,7 @@ describe('SenderSession', () => {
     });
 
     it('reports preview frames through the configured reporter', () => {
-        const reported: VideoFrame[] = [];
+        const reported: FrameSource[] = [];
         const session = new SenderSession({
             onPreviewFrame: frame => { reported.push(frame); },
         });
@@ -122,8 +123,8 @@ describe('SenderSession', () => {
     });
 
     it('can swap preview frame reporter', () => {
-        const first: VideoFrame[] = [];
-        const second: VideoFrame[] = [];
+        const first: FrameSource[] = [];
+        const second: FrameSource[] = [];
         const session = new SenderSession({
             onPreviewFrame: frame => { first.push(frame); },
         });

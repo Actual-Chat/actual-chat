@@ -135,14 +135,15 @@ export function configureStreaming(opts: {
 
 function createEncoder(
     _session: SenderSession,
-    _config: EncoderConfigPerLayer,
+    config: EncoderConfigPerLayer,
     _layerId: number,
 ): AsyncVideoEncoder<EncodeInput, EncodedFrame> {
     // `encodedWidth` / `encodedHeight` here are placeholders; the encode
     // operator patches them along with layerId/sourceWidth/sourceHeight using
     // the current per-layer config after each encode resolves. Anything
-    // closure-captured from the construction-time `_config` would be stale
-    // after EncoderPool reuses this encoder for a different layer.
+    // closure-captured from the construction-time `config` would be stale
+    // after EncoderPool reuses this encoder for a different layer. The codec is
+    // the exception: it is constant for a session, and a change restarts the pipeline.
     const buildOutput = (
         input: EncodeInput,
         chunk: EncodedVideoChunk,
@@ -185,7 +186,7 @@ function createEncoder(
     const enc = new AsyncVideoEncoder<EncodeInput, EncodedFrame>(
         buildOutput,
         onError,
-        { maxInflight: getEncoderPipelineDepth(), firstTimeoutMs: 0, timeoutMs: 0 },
+        { maxInflight: getEncoderPipelineDepth(), firstTimeoutMs: 0, timeoutMs: 0, codec: config.codec },
     );
     return enc;
 }
