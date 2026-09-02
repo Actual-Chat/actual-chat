@@ -3,22 +3,17 @@ using Application = Microsoft.Maui.Controls.Application;
 
 namespace ActualChat.App.Maui;
 
-public class App : Application
+public class App(IServiceProvider services) : Application
 {
     public static new App Current => (App)Application.Current!;
     public static bool MustMinimizeOnQuit { get; private set; } = true;
 
-    private IServiceProvider Services { get; }
+    private IServiceProvider Services { get; } = services;
     private ILogger Log => field ??= Services.LogFor(GetType());
-
-    public App(IServiceProvider services)
-    {
-        Services = services;
-    }
 
     protected override Window CreateWindow(IActivationState? activationState)
     {
-		var window = new Window(new MainPage());
+        var window = new Window(new MainPage());
         window.Destroying += (_, _) => FlushSentryData();
         window.Title =
             MauiSettings.UseLocalhost
@@ -36,12 +31,14 @@ public class App : Application
             Log.LogWarning("OnAppLinkRequestReceived: {Uri} -> ignore (host override mode is on)", uri);
             return;
         }
-        if (!string.Equals(uri.Host, MauiSettings.Host, StringComparison.OrdinalIgnoreCase)) {
-            Log.LogWarning("OnAppLinkRequestReceived: {Uri} -> ignore (wrong host)", uri);
+        // The Android intent filter advertises http alongside https, so the link is reduced to its
+        // local part here - BaseUri is always https and would otherwise reject an http link.
+        if (!LocalUrl.TryParseAppLink(uri.ToString(), MauiSettings.BaseUri, out var localUrl)) {
+            Log.LogWarning("OnAppLinkRequestReceived: {Uri} -> ignore (wrong origin)", uri);
             return;
         }
 
-        AppNavigationQueue.EnqueueOrNavigateToUrl(uri.ToString(), AutoNavigationReason.AppLink);
+        AppNavigationQueue.EnqueueOrNavigateToUrl(localUrl.Value, AutoNavigationReason.AppLink);
     }
 
     public new void Quit()
