@@ -16,28 +16,28 @@
     @if (account.IsGuest) {
         <Button Class="btn-transparent sign-in-btn" Click="SignIn">
             <Icon><i class="icon-log-in text-2xl"></i></Icon>
-            <Title>Sign in</Title>
+            <Title>@L.SignIn_SignIn</Title>
         </Button>
     }
     @if (ShowHome) {
         <Button Class="btn-transparent" Click="@(() => NavigateTo(Links.Home))">
-            Home
+            @L.Landing_Home
         </Button>
     }
     @if (!account.IsGuest) {
         <Button Class="btn-transparent" Click="@(() => NavigateTo(Links.Chats))">
-            Go to Chats
+            @L.Landing_GoToChats
         </Button>
     }
     <div class="h-0 w-10/12 my-2 border border-b border-separator"></div>
     <Button Class="btn-transparent" Click="@(() => NavigateTo(privacyUrl))">
-        Privacy
+        @L.Documents_PrivacyPolicy
     </Button>
     <Button Class="btn-transparent" Click="@(() => NavigateTo(termsUrl))">
-        Terms
+        @L.Documents_TermsConditions
     </Button>
     <Button Class="btn-transparent" Click="@(() => NavigateTo(cookiesUrl))">
-        Cookie Preferences
+        @L.Documents_Cookies
     </Button>
 </div>
 <div class="menu-footer">

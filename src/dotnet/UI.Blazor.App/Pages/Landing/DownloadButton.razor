@@ -1,12 +1,14 @@
+@inherits ComponentBase<AppUIHub>
+
 <button class="btn-download @Class" @onclick="@Click">
     <div class="c-content">
-        @Title
+        @(Title ?? L.Landing_GetMobileDesktopApp)
     </div>
     <i class="icon-download c-icon"></i>
 </button>
 
 @code {
-    [Parameter] public string Title { get; set; } = "Get mobile/desktop app";
+    [Parameter] public string? Title { get; set; }
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback Click { get; set; }
 }

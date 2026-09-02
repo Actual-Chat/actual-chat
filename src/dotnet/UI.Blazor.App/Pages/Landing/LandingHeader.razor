@@ -58,14 +58,13 @@
                         @if (!HostInfo.HostKind.IsMauiApp()) {
                             <Button
                                 Click="@WhyUsClick"
-                                Class="btn-text btn-transparent why-us unhovered">Why us
-                            </Button>
+                                Class="btn-text btn-transparent why-us unhovered">@L.Landing_WhyUs</Button>
                             @* <Button
                                 Click="@PricingClick"
                                 Class="btn-text btn-transparent unhovered">Why now
                             </Button> *@
                         }
-                        <a href="@privacyUri" class="btn-text btn-transparent unhovered">Privacy policy</a>
+                        <a href="@privacyUri" class="btn-text btn-transparent unhovered">@L.Documents_PrivacyPolicy</a>
                     </div>
                 </div>
             </div>
@@ -80,29 +79,28 @@
                         @if (!HostInfo.HostKind.IsMauiApp()) {
                             <Button
                                 Click="@WhyUsClick"
-                                Class="btn-text btn-transparent why-us unhovered">Why us
-                            </Button>
+                                Class="btn-text btn-transparent why-us unhovered">@L.Landing_WhyUs</Button>
                             @* <Button
                                 Click="@PricingClick"
                                 Class="btn-text btn-transparent unhovered">Why now
                             </Button> *@
                         }
-                        <a href="@privacyUri" class="btn-text btn-transparent unhovered">Privacy policy</a>
+                        <a href="@privacyUri" class="btn-text btn-transparent unhovered">@L.Documents_PrivacyPolicy</a>
                     </div>
                 </div>
             </div>
             <div class="c-btn-group">
                 @if (account.IsGuestOrNull()) {
                     <button class="signin-button-group items-center lg-icon" @onclick="@SignIn">
-                        <span class="font-medium">Sign in</span>
+                        <span class="font-medium">@L.SignIn_SignIn</span>
                         <i class="icon-monitor text-2xl font-thin"></i>
                     </button>
                     <DownloadButton
-                        Title="Get app"
+                        Title="@L.Landing_GetApp"
                         Click="DownloadClick"
                         Class="download-app lg-icon"/>
                     <button class="btn-download btn-to-main-page !hidden" @onclick="@BackToMainPageClick">
-                        Back to Main page
+                        @L.Landing_BackToMainPage
                     </button>
                 } else {
                     <div
