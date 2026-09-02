@@ -1,4 +1,4 @@
-using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.UnitTests;
 

@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace ActualChat.UI.Blazor.App.Services;
+namespace ActualChat.UI.Blazor.Services;
 
 /// <summary>
 /// Maps a call's <see cref="ConversationId"/> to the stable UUID the platform call UI
