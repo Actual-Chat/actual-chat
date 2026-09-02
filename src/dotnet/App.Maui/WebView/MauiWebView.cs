@@ -3,6 +3,9 @@ using ActualChat.UI.Blazor.Services;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebView;
 using Microsoft.AspNetCore.Components.WebView.Maui;
+#if MACOS
+using Microsoft.Maui.Platforms.MacOS.Controls;
+#endif
 
 namespace ActualChat.App.Maui;
 
@@ -23,7 +26,11 @@ public sealed partial class MauiWebView
     private readonly Lock _lock = new();
     private MauiWebViewPageContextTracker? _pageContextTracker;
     public long Id { get; }
+#if MACOS
+    public MacOSBlazorWebView BlazorWebView { get; }
+#else
     public BlazorWebView BlazorWebView { get; }
+#endif
     public object PlatformWebView { get; private set; } = null!;
     public IServiceProvider? ScopedServices { get; private set; }
     public Session? Session { get; private set; }
@@ -35,6 +42,25 @@ public sealed partial class MauiWebView
         if (Id > 1)
             AppNavigationQueue.Reset();
 
+#if MACOS
+        // The labs MacOSBlazorWebView has no Initializing / Initialized / UrlLoading events;
+        // MacOSCustomBlazorWebViewHandler covers them: the WKWebView configuration is applied in
+        // its CreatePlatformView, and navigation policy comes from this class's NavigationDelegate.
+        BlazorWebView = new MacOSBlazorWebView {
+            HostPage = "wwwroot/index.html",
+        };
+        BlazorWebView.Unloaded += OnUnloaded;
+        BlazorWebView.RootComponents.Add(
+            new BlazorRootComponent {
+                ComponentType = typeof(HeadOutlet),
+                Selector = "head::after",
+            });
+        BlazorWebView.RootComponents.Add(
+            new BlazorRootComponent {
+                ComponentType = typeof(MauiBlazorApp),
+                Selector = "#app",
+            });
+#else
         BlazorWebView = new BlazorWebView {
             HostPage = "wwwroot/index.html",
             BackgroundColor = MauiSettings.SplashBackgroundColor,
@@ -54,6 +80,7 @@ public sealed partial class MauiWebView
                 ComponentType = typeof(MauiBlazorApp),
                 Selector = "#app",
             });
+#endif
 
         lock (StaticLock)
             _current = this;
@@ -138,9 +165,11 @@ public sealed partial class MauiWebView
 
     // Private methods
 
+#if !MACOS
     private partial void OnInitializing(object? sender, BlazorWebViewInitializingEventArgs eventArgs);
     private partial void OnInitialized(object? sender, BlazorWebViewInitializedEventArgs eventArgs);
     private partial void OnLoaded(object? sender, EventArgs eventArgs);
+#endif
     private partial Task SetupCookies(Session session);
 
     public bool HasDisconnected { get; private set; }

@@ -110,6 +110,15 @@ public static class MauiDiagnostics
             .WriteTo.Sink(new AndroidFirebaseCrashlyticsSink());
 #elif IOS
         logging = logging.WriteTo.AppleLog();
+#elif MACOS
+        // The AppKit experiment has no Sentry / platform sink wired up, so a plain file is
+        // the only place its logs land.
+        AppDataLogFilePath = Path.Combine(FileSystem.AppDataDirectory, "Logs", "ActualChat.log");
+        logging = logging.WriteTo.File(AppDataLogFilePath,
+            outputTemplate: LoggingExt.OutputTemplate,
+            fileSizeLimitBytes: LoggingExt.FileSizeLimit,
+            rollOnFileSizeLimit: true,
+            retainedFileCountLimit: LoggingExt.RetainedFileCountLimit);
 #endif
         return logging;
     }

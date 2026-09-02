@@ -44,6 +44,16 @@ public static class FilePathExt
         return uniquePath;
     }
 
+    // Finder-style uniquing for user-facing saves: the path itself when free, otherwise
+    // "name (2).ext", "name (3).ext", ... - unlike ToUnique, which always adds a random suffix.
+    public static FilePath ToUniqueNumbered(this FilePath path)
+    {
+        var uniquePath = path;
+        for (var i = 2; uniquePath.FileExists; i++)
+            uniquePath = path.DirectoryPath | $"{path.FileNameWithoutExtension} ({i}){path.Extension}";
+        return uniquePath;
+    }
+
     public static FilePath EnsureExt(this FilePath path, string ext)
         => path.HasExtension(ext) ? path : path.ChangeExtension(ext);
 

@@ -3,6 +3,8 @@
   <PropertyGroup>
     <TargetFrameworks>net11.0-android;</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net11.0-ios;net11.0-maccatalyst</TargetFrameworks>
+    <!-- Experimental AppKit backend; opt-in so machines without the `macos` workload still restore -->
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx')) AND '$(EnableMacOSAppKit)' == 'true'">$(TargetFrameworks);net11.0-macos</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net11.0-windows10.0.22621.0</TargetFrameworks>
     <UseMauiEssentials>true</UseMauiEssentials>
 <!--    <UseMaui>true</UseMaui>-->
@@ -11,6 +13,7 @@
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-android'))">28.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">16.4</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-maccatalyst'))">17.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-macos'))">14.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</TargetPlatformMinVersion>
   </PropertyGroup>
@@ -44,6 +47,14 @@
     <None Include="**\**\*.iOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\iOS\**\*.cs" />
     <None Include="**\iOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+  </ItemGroup>
+
+  <!-- NOT macOS (AppKit) -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-macos')) != true">
+    <Compile Remove="**\*.MacOS.cs" />
+    <None Include="**\*.MacOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <Compile Remove="**\MacOS\**\*.cs" />
+    <None Include="**\MacOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
 
   <!-- NOT MacCatalyst -->
@@ -118,6 +129,9 @@
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
     <!-- Firebase native bindings are iOS-only; intentionally omitted on MacCatalyst -->
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-macos'))">
+    <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
     <PackageReference Include="Serilog.Sinks.Debug" />
