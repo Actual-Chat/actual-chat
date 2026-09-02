@@ -157,9 +157,18 @@ export class RecorderPreviewView {
         this.applyRotationAndFit();
     }
 
+    private reportPreviewSize(): void {
+        const parent = this.options.videoEl.parentElement;
+        const rect = (parent ?? this.options.videoEl).getBoundingClientRect();
+        const dpr = globalThis.devicePixelRatio || 1;
+        this.attachedRecorder?.setPreviewSize(rect.width * dpr, rect.height * dpr);
+    }
+
     private applyRotationAndFit(): void {
         if (this.disposed)
             return;
+
+        this.reportPreviewSize();
 
         const videoEl = this.options.videoEl;
         const parent = videoEl.parentElement;

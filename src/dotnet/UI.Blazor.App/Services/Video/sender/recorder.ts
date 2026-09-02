@@ -90,6 +90,7 @@ export class Recorder {
     // Lives for the duration of one run; null when stopped.
     private ladderController: LayerLadderController | null = null;
     private wireGateState: MutableWireGate | null = null;
+    private previewSize: { width: number; height: number } | null = null;
     private paceState: PaceState | null = null;
 
     constructor(session: SenderSession) {
@@ -176,9 +177,12 @@ export class Recorder {
                     const { configs } = ladderController.current;
                     const activeTop = configs[configs.length - 1];
                     // Compare by area: an orientation flip swaps W/H on either side.
-                    const isActiveTopSmaller =
-                        activeTop.width * activeTop.height < normalizeSize.width * normalizeSize.height;
-                    return isActiveTopSmaller ? activeTop : normalizeSize;
+                    const area = (s: { width: number; height: number }): number => s.width * s.height;
+                    // The self-preview is not a remote viewer: shedding upper tiers for
+                    // the call must not blur it, so it holds the ceiling up to its own size.
+                    const preview = this.previewSize;
+                    const floor = preview && area(preview) > area(activeTop) ? preview : activeTop;
+                    return area(floor) < area(normalizeSize) ? floor : normalizeSize;
                 },
                 isCamera: config.sourceKind === 0,
                 isFrontCamera: config.isFrontCamera,
@@ -273,6 +277,10 @@ export class Recorder {
     // re-applied on the next run via PaceState's default (no pacing).
     setTargetFps(fps: number): void {
         this.paceState?.setTargetFps(fps);
+    }
+
+    setPreviewSize(width: number, height: number): void {
+        this.previewSize = width > 0 && height > 0 ? { width, height } : null;
     }
 
     // Hot-apply: mutate the running pipeline's layer ladder without stopping
