@@ -120,6 +120,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _shownReadEntryLid.Value = readPosition.EntryLid;
             if (_viewPositionLease.Resource.Value.EntryLid is 0 && readPosition.EntryLid > 0)
                 _viewPositionLease.Resource.Value = readPosition;
+            Hub.UserActivityUI.LastPresentAt.Updated += OnPresenceUpdated;
             _whenInitializedSource.TrySetResult();
             ChatSwitchTracer.Mark("ChatView.OnInitializedAsync: WhenInitialized SET",
                 $"readEntryLid={readPosition.EntryLid}");
@@ -169,6 +170,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         _readPositionLease.DisposeSilently();
         ChatUI.ResetItemVisibility(Chat.Id);
         Nav.LocationChanged -= OnLocationChanged;
+        Hub.UserActivityUI.LastPresentAt.Updated -= OnPresenceUpdated;
         _isHoverMenuDisposed = true;
         if (_hoverMenuJsRefTask is { IsCompletedSuccessfully: true } jsRefTask)
             _ = jsRefTask.Result.DisposeSilentlyAsync("dispose");
@@ -318,7 +320,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (itemVisibility.IsEndAnchorVisible) {
             _lastEndAnchorVisibleAt = CpuTimestamp.Now;
             if (isUserPresent)
-                _ = UpdateReadPositionToTheLastId(Chat.Id);
+                _ = UpdateReadPositionToTheLastId();
         }
         else if (isUserPresent)
             UpdateReadPosition(itemVisibility.MaxEntryLid);
@@ -328,17 +330,32 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             var entryId = itemVisibility.MaxMessageLid;
             _viewPositionLease.Resource.Value = new ReadPosition(Chat.Id, entryId);
         }
-        return;
+    }
 
-        async Task UpdateReadPositionToTheLastId(ChatId chatId)
-        {
-            var chatInfo = await ChatUI.Get(chatId, DisposeToken).ConfigureAwait(true);
-            var lastId = chatInfo?.News?.TextEntryLidRange.End - 1;
-            if (lastId is not > 0)
-                return;
+    private async Task UpdateReadPositionToTheLastId()
+    {
+        var chatInfo = await ChatUI.Get(Chat.Id, DisposeToken).ConfigureAwait(true);
+        var lastId = chatInfo?.News?.TextEntryLidRange.End - 1;
+        if (lastId is not > 0)
+            return;
 
-            UpdateReadPosition(lastId.Value);
-        }
+        UpdateReadPosition(lastId.Value);
+    }
+
+    private void OnPresenceUpdated(IState state, StateEventKind eventKind)
+    {
+        // The read position waits for presence, so an idle stretch at the tail leaves it behind the
+        // messages that arrived meanwhile - which the badge no longer shows (ChatUI.IsReadingTail).
+        // The interaction that ends the stretch catches it up, before that interaction can take the
+        // user anywhere the count would surface.
+        if (eventKind != StateEventKind.Updated || !ChatUI.IsUserPresent())
+            return;
+
+        var itemVisibility = ItemVisibility.Value;
+        if (!itemVisibility.IsPinnedToEnd || itemVisibility.IsEmpty)
+            return;
+
+        _ = UpdateReadPositionToTheLastId();
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
