@@ -32,5 +32,6 @@ public class DbDevice : IHasId<string>, IHasVersion<long>, IRequirementTarget
         => new (Id, Type, CreatedAt) {
             AccessedAt = AccessedAt.ToMoment(),
             IsPttEnabled = IsPttEnabled,
+            SessionHash = SessionHash ?? "",
         };
 }
