@@ -151,15 +151,36 @@ Registrations this type requires:
 ### On-disk shape
 
 System entries are stored in the `Content` column as JSON in the frozen v2.7
-wrapper (`src/dotnet/Api/Chat/LegacySystemEntry.cs`). That wrapper is not a
-tagged union: each option is a *named property* (`MembersChanged`,
-`NotifyMembers`) and `Option` picks whichever is non-null. So the new kind adds:
+wrapper (`src/dotnet/Api/Chat/LegacySystemEntry.cs`). Despite the name and its
+own doc comment, that wrapper is **only** a database format: it appears in four
+places — its declaration, `DbChatEntry`, one data migration, and this spec — and
+never crosses the wire. `Legacy` here means "the envelope shape is frozen", not
+"deprecated"; new entry kinds still ride inside it.
+
+They have to, because the row carries no other discriminator: `IsSystemEntry` is
+a bare `bool` and `Content` is one string column. The wrapper is not a tagged
+union either — each option is a *named property* (`MembersChanged`,
+`NotifyMembers`) and `Option` picks whichever came back non-null. So
+`DbChatEntry.ToModel` decides the subtype purely from which property is set, and
+a third kind needs a third property with a payload type of its own:
 
 - `LegacyCallOption : LegacySystemEntryOption` with `CallerId`, `CallerName`,
   `Outcome`, `InviteeIds`, `HasVideo`.
-- A `Call` property on `LegacySystemEntry`, and arms in `LegacySystemEntry.From`
-  (line 34), `DbChatEntry.ToModel` (line 109) and `DbChatEntry.ToLegacySystemEntry`
-  (line 250).
+- A `Call` property on `LegacySystemEntry`, plus arms in `DbChatEntry.ToModel`
+  (line 109) and `DbChatEntry.ToLegacySystemEntry` (line 250).
+
+Two alternatives were considered and rejected. Writing the payload as its own
+JSON straight into `Content`, bypassing the envelope, leaves nothing to tell the
+two shapes apart on read short of sniffing the JSON. Pressing the existing `Kind`
+column into service as the discriminator looks tempting — it is an `int` that is
+always written as 0 — but it sits in the unique index `(ChatId, Kind, LocalId)`
+and in the lid-range and `GetMaxLid` queries, which all assume 0; a non-zero
+value on some rows would break those ranges.
+
+`LegacySystemEntry.From` (line 34) duplicates `DbChatEntry.ToLegacySystemEntry`
+and has no callers. It gets deleted rather than extended — it is in a file this
+change touches anyway, and leaving a second, diverging conversion behind is how
+the next kind ends up half-registered.
 
 Consequence worth stating plainly: a server that does not know the `Call`
 property deserializes such a row into `Option == null` and falls into
