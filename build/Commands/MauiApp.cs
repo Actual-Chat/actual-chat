@@ -143,7 +143,7 @@ internal static class MauiApp
     {
         var scriptName = settings switch {
             { Platform: AppPlatform.Mac, UseCatalyst: true } => "run-maccatalyst.sh",
-            { Platform: AppPlatform.Mac } => "run-macos.sh",
+            { Platform: AppPlatform.Mac } => "run-mac.sh",
             { UseSimulator: true } => "run-ios-simulator.sh",
             _ => "run-ios.sh",
         };

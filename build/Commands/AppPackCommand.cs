@@ -32,12 +32,12 @@ public sealed class AppPackCommand(CliContext context) : PlanCommand<AppPackComm
         const string publishDir = "artifacts/publish/App.Maui";
         var appId = settings.IsDev ? "chat.actual.dev.app" : "chat.actual.app";
         return settings.Platform switch {
-            AppPlatform.Android => ("publish-android", $"{publishDir}/release_net11.0-android/{appId}-Signed.aab"),
-            AppPlatform.Ios => ("publish-ios", $"{publishDir}/release_net11.0-ios_ios-arm64/ActualChat.ipa"),
-            AppPlatform.Mac when settings.UseCatalyst => ("publish-maccatalyst",
+            AppPlatform.Android => ("pack-android", $"{publishDir}/release_net11.0-android/{appId}-Signed.aab"),
+            AppPlatform.Ios => ("pack-ios", $"{publishDir}/release_net11.0-ios_ios-arm64/ActualChat.ipa"),
+            AppPlatform.Mac when settings.UseCatalyst => ("pack-maccatalyst",
                 $"{publishDir}/release_net11.0-maccatalyst_maccatalyst-arm64/*.pkg"),
-            AppPlatform.Mac => ("publish-mac", $"{publishDir}/release_net11.0-macos*/*.pkg"),
-            AppPlatform.Windows => ("publish-win", "artifacts/AppPackages/**/App.Maui_*_x64.msix"),
+            AppPlatform.Mac => ("pack-mac", $"{publishDir}/release_net11.0-macos*/*.pkg"),
+            AppPlatform.Windows => ("pack-win", "artifacts/AppPackages/**/App.Maui_*_x64.msix"),
             _ => throw new ArgumentOutOfRangeException(nameof(settings)),
         };
     }

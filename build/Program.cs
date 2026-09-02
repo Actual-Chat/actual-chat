@@ -39,11 +39,11 @@ internal static class Program
         public const string Tests = "tests";
         public const string Build = "build";
         public const string Maui = "maui";
-        public const string PublishIos = "publish-ios";
-        public const string PublishMacCatalyst = "publish-maccatalyst";
-        public const string PublishMac = "publish-mac";
-        public const string PublishAndroid = "publish-android";
-        public const string PublishWin = "publish-win";
+        public const string PackIos = "pack-ios";
+        public const string PackMacCatalyst = "pack-maccatalyst";
+        public const string PackMac = "pack-mac";
+        public const string PackAndroid = "pack-android";
+        public const string PackWin = "pack-win";
         public const string RestoreTools = "restore-tools";
         public const string Restore = "restore";
         public const string Default = "default";
@@ -356,7 +356,7 @@ internal static class Program
                 .ToConsole(Blue("web: "))
                 .ExecuteAsync(cancellationToken).Task);
 
-        Target(Targets.PublishWin, DependsOn(Targets.NpmBuild), async () => {
+        Target(Targets.PackWin, DependsOn(Targets.NpmBuild), async () => {
             var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
             isDevMaui ??= !isProduction;
             await AppxManifestGenerator.Generate(
@@ -398,7 +398,7 @@ internal static class Program
                 .ConfigureAwait(false);
         });
 
-        Target(Targets.PublishAndroid, DependsOn(Targets.NpmBuild), async () => {
+        Target(Targets.PackAndroid, DependsOn(Targets.NpmBuild), async () => {
             var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
             var signingKeyPass = Utils.GetEnv("ActualChat_AndroidSigningKeyPass");
             var signingStorePass = Utils.GetEnv("ActualChat_AndroidSigningStorePass");
@@ -424,7 +424,7 @@ internal static class Program
                 .ConfigureAwait(false);
         });
 
-        Target(Targets.PublishIos, DependsOn(Targets.NpmBuild), async () => {
+        Target(Targets.PackIos, DependsOn(Targets.NpmBuild), async () => {
             var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
             isDevMaui ??= !isProduction;
             await Cli
@@ -447,7 +447,7 @@ internal static class Program
                 .ConfigureAwait(false);
         });
 
-        Target(Targets.PublishMacCatalyst, DependsOn(Targets.NpmBuild), async () => {
+        Target(Targets.PackMacCatalyst, DependsOn(Targets.NpmBuild), async () => {
             var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
             isDevMaui ??= !isProduction;
             await Cli
@@ -468,7 +468,7 @@ internal static class Program
                 .ConfigureAwait(false);
         });
 
-        Target(Targets.PublishMac, DependsOn(Targets.NpmBuild), async () => {
+        Target(Targets.PackMac, DependsOn(Targets.NpmBuild), async () => {
             var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
             isDevMaui ??= !isProduction;
             var ridArgument = universal

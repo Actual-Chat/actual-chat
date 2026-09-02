@@ -6,7 +6,7 @@ namespace Build.Commands;
 
 /// <summary>
 /// The default command: runs Bullseye targets. Keeps the option surface CI and
-/// <c>run-build.cmd</c> already rely on, so <c>b publish-ios --configuration Release</c>
+/// <c>run-build.cmd</c> already rely on, so <c>b pack-ios --configuration Release</c>
 /// behaves exactly as before.
 /// </summary>
 public sealed class TargetsCommand(CliContext cliContext) : AsyncCommand<TargetsCommand.Settings>
@@ -51,7 +51,7 @@ public sealed class TargetsCommand(CliContext cliContext) : AsyncCommand<Targets
     public sealed class Settings : CommandSettings
     {
         [CommandArgument(0, "[TARGETS]")]
-        [Description("Bullseye targets to run, e.g. build, watch, restore, publish-ios")]
+        [Description("Bullseye targets to run, e.g. build, watch, restore, pack-ios")]
         public string[] Targets { get; init; } = [];
 
         [CommandOption("-c|--configuration <CONFIGURATION>")]
@@ -64,11 +64,11 @@ public sealed class TargetsCommand(CliContext cliContext) : AsyncCommand<Targets
         public bool? IsDevMaui { get; init; }
 
         [CommandOption("--use-native-aot <VALUE>")]
-        [Description("Build the MAUI app with Native AOT (currently wired for publish-ios only)")]
+        [Description("Build the MAUI app with Native AOT (currently wired for pack-ios only)")]
         public bool? UseNativeAot { get; init; }
 
         [CommandOption("--universal")]
-        [Description("publish-mac only: build a universal arm64 + x64 bundle instead of one for the host CPU")]
+        [Description("pack-mac only: build a universal arm64 + x64 bundle instead of one for the host CPU")]
         public bool IsUniversal { get; init; }
 
         [CommandOption("--dumps")]

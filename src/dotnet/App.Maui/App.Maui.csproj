@@ -605,7 +605,7 @@
        Catalyst app owns would prompt for the login keychain password on every launch; with a
        stable identity one "Always Allow" persists. No provisioning profile: a dev-signed
        macOS app needs none without restricted entitlements. The bare name resolves when the
-       keychain holds one Apple Development cert; scripts/run-macos.sh passes the team cert's
+       keychain holds one Apple Development cert; scripts/run-mac.sh passes the team cert's
        hash as CodesignKey when there are several. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Debug' and $(TargetFramework.Contains('-macos'))">
     <EnableCodeSigning>true</EnableCodeSigning>

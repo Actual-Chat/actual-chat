@@ -3,7 +3,7 @@
 This project is two things stacked on each other:
 
 - **A Bullseye target graph** (`Program.cs`) — the build/test/publish pipeline CI
-  runs: `restore`, `build`, `unit-tests`, `publish-android`, `publish-ios`, …
+  runs: `restore`, `build`, `unit-tests`, `pack-android`, `pack-ios`, …
 - **A Spectre.Console.Cli command tree** (`Commands/`) — the git-style `b`
   command line developers use day to day, plus an interactive UI.
 
@@ -29,7 +29,7 @@ The app commands differ only in how far down the pipeline they go, and `--launch
 | `b app run` | yes | yes | yes |
 | `b app pack` | store package, no install/launch | | |
 
-iOS and macOS delegate to `scripts/run-ios*.sh` / `scripts/run-macos*.sh`
+iOS and macOS delegate to `scripts/run-ios*.sh` / `scripts/run-mac*.sh`
 (AppKit by default, `--catalyst` for Mac Catalyst), which build, install and launch as one unit — so `b app install ios` is rejected
 rather than silently launching.
 
@@ -214,6 +214,6 @@ changing the CLI:
 Quick check after any change:
 
 ```bash
-./b.ps1 publish-android --configuration Release --is-dev-maui "true" --dry-run
+./b.ps1 pack-android --configuration Release --is-dev-maui "true" --dry-run
 dotnet run --project build -c Release -- generate-version --dry-run
 ```
