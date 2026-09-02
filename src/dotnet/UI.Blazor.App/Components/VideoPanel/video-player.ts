@@ -10,7 +10,7 @@ import type { Disposable } from 'disposable';
 import { DocumentEvents } from 'event-handling';
 import { Versioning } from 'versioning';
 import { type Subscription } from 'rxjs';
-import { updateCollapsedIslandAspect } from '../../Services/Video/services/tile-fit';
+import { chooseFit, isPrimaryTile, updateCollapsedIslandAspect } from '../../Services/Video/services/tile-fit';
 import type {
     PlayerWorker,
     LatencySample,
@@ -126,7 +126,7 @@ export interface RemoteStreamDiagnostics {
 interface ViewportInfo {
     cssLongSide: number;
     devicePixelRatio: number;
-    isFocused: boolean;
+    isPrimary: boolean;
     hasDimensions: boolean;
 }
 
@@ -815,9 +815,7 @@ export class VideoPlayer {
     // waiting for a new frame.
     private lastFrameW = 0;
     private lastFrameH = 0;
-    // Loss threshold: when cover would crop >COVER_LOSS_MAX of source
-    // pixels, switch to contain and paint the blurred backdrop.
-    private static readonly COVER_LOSS_MAX = 0.20;
+
 
     // Cover crops the source to fill the tile; the cropped fraction equals
     // 1 − min(frameW·tileH, frameH·tileW) / max(...). When that's small
@@ -829,16 +827,18 @@ export class VideoPlayer {
         const backend = this.renderBackend;
         const parent = this.canvas.parentElement;
         if (!parent) return;
-        const focused = parent.classList.contains('item-focused');
+        const isPrimary = isPrimaryTile(parent);
         const isMinimized = !!document.querySelector('.video-panel.collapsed');
-        if (focused)
+        // Only the truly focused tile drives the collapsed island's aspect —
+        // in the equal layout every tile is primary, and the island shows one.
+        if (parent.classList.contains('item-focused'))
             this.updateCollapsedIslandAspect();
-        if (!focused) {
+        if (!isPrimary) {
             try { backend.setFit('cover'); } catch { /* ignore */ }
             this.applyBackdrop(false);
             return;
         }
-        const fit = this.computeFocusedFit(parent);
+        const fit = this.computePrimaryFit(parent);
         if (isMinimized) {
             try { backend.setFit(fit); } catch { /* ignore */ }
             this.applyBackdrop(false);
@@ -851,10 +851,10 @@ export class VideoPlayer {
     // Dispatch a backdrop on/off decision. The bg canvas lives in the
     // worker now; backends are always told setBackdrop(null) and the
     // controller-side renderer is gated by setBgActive.
-    private applyBackdrop(focused: boolean): void {
+    private applyBackdrop(active: boolean): void {
         try { this.renderBackend.setBackdrop(null, false); } catch { /* ignore */ }
         if (this.bgBlurMode === 'off') return;
-        this.setBgActive(focused);
+        this.setBgActive(active);
     }
 
     private setBgActive(active: boolean): void {
@@ -866,18 +866,13 @@ export class VideoPlayer {
             .catch((e: unknown) => warnLog?.log('worker setBgActive failed:', e));
     }
 
-    private computeFocusedFit(parent: Element): 'cover' | 'contain' {
+    // Shared with the sender's self-preview: a viewer must not see one rule for a
+    // remote tile and another for their own. The local copy this replaced had
+    // drifted - no same-orientation shortcut, no square dead-band - so the two
+    // sides disagreed about contain on near-square sources.
+    private computePrimaryFit(parent: Element): 'cover' | 'contain' {
         const rect = parent.getBoundingClientRect();
-        const tileW = rect.width;
-        const tileH = rect.height;
-        const fw = this.lastFrameW;
-        const fh = this.lastFrameH;
-        if (fw <= 0 || fh <= 0 || tileW <= 0 || tileH <= 0)
-            return 'cover';
-        const a = fw * tileH;
-        const b = fh * tileW;
-        const cropLoss = 1 - Math.min(a, b) / Math.max(a, b);
-        return cropLoss > VideoPlayer.COVER_LOSS_MAX ? 'contain' : 'cover';
+        return chooseFit(this.lastFrameW, this.lastFrameH, rect.width, rect.height);
     }
 
     private updateCollapsedIslandAspect(): void {
@@ -1619,7 +1614,7 @@ export class VideoPlayer {
             return {
                 cssLongSide,
                 devicePixelRatio: getDevicePixelRatio(),
-                isFocused: parent?.classList.contains('item-focused') ?? false,
+                isPrimary: isPrimaryTile(parent),
                 hasDimensions: true,
             };
         }
@@ -1627,14 +1622,14 @@ export class VideoPlayer {
             return {
                 cssLongSide: 1,
                 devicePixelRatio: getDevicePixelRatio(),
-                isFocused: parent.classList.contains('item-focused'),
+                isPrimary: isPrimaryTile(parent),
                 hasDimensions: false,
             };
         if (parent?.classList.contains('pip-overlay') || parent?.classList.contains('item-x'))
             return {
                 cssLongSide: 1,
                 devicePixelRatio: getDevicePixelRatio(),
-                isFocused: false,
+                isPrimary: false,
                 hasDimensions: true,
             };
 
@@ -1706,10 +1701,11 @@ export class VideoPlayer {
 }
 
 function priorityForRenderSize(hint: ViewportInfo | null): number {
-    // The focused tile is PRIMARY; sidebar and PiP tiles are SECONDARY even if
-    // they are physically large. This keeps a screencast from competing with
-    // the same author's camera for the primary downstream budget.
-    return hint === null || hint.isFocused
+    // Primary tiles are the focused one, plus every tile in the equal layout
+    // where they are all the same size. Sidebar thumbnails and PiP tiles stay
+    // SECONDARY even when physically large, so a screencast doesn't compete
+    // with the same author's camera for the primary downstream budget.
+    return hint === null || hint.isPrimary
         ? PLAYBACK_PRIORITY_PRIMARY
         : PLAYBACK_PRIORITY_SECONDARY;
 }
