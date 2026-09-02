@@ -15,6 +15,7 @@ public enum FrameDropStage : byte
     SenderDownscale = 3,
     SenderEncode = 4,
     SenderFpsPacing = 5,
+    SenderEncodePacing = 6,
 
     ServerPushStream = 31,
     ServerMemoizer = 32,

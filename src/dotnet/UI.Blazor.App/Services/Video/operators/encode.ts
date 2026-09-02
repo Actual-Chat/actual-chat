@@ -6,6 +6,7 @@ import { RunningEMA } from 'math';
 import { AsyncVideoEncoder, isAsyncVideoEncoderResetError } from '../adapters';
 import { getEncoderPipelineDepth } from '../codec-support';
 import { isCapturedBundleKeyFrame } from '../bundle-helpers';
+import { FrameDropStage } from '../frame-drop-trace';
 import {
     closeEncodedChunk,
     type CapturedBundle,
@@ -132,6 +133,10 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
             // delta — see verification block below.
             let forceKeyframeOnFirstEncode = true;
             let forceKeyframeNext = false;
+            // Bundles dropped at the MAX_PIPELINE cap since the last submit.
+            // Stamped onto the next surviving bundle so `traceDrops` below finds
+            // the gap already accounted for and does not re-blame SenderEncode.
+            let pacingDrops = 0;
             let anyEncodedOutput = false;
             // Consecutive bundle-watchdog timeouts. Reset on any successful
             // settle. Escalates to throw at 2 — first hang triggers in-place
@@ -597,8 +602,11 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                             && performance.now() - oldest.submittedAtMs > bundleTimeoutMs;
                         if (!isWedged) {
                             // Bound the delay, not the throughput: an encoder that cannot
-                            // keep pace drops here rather than banking latency, and the
-                            // index gap surfaces as senderDropRatioEma.
+                            // keep pace drops here rather than banking latency. Tagged
+                            // SenderEncodePacing, not SenderEncode — this is the encoding
+                            // cap's signal, and reading it as wire loss knocks the
+                            // bandwidth ceiling down over an idle wire.
+                            pacingDrops++;
                             if (keyFrame)
                                 forceKeyframeNext = true;
 
@@ -616,6 +624,10 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                             throw outcome.error;
                     }
 
+                    while (pacingDrops > 0) {
+                        bundle.dropTrace.push(FrameDropStage.SenderEncodePacing);
+                        pacingDrops--;
+                    }
                     pending.push(submitBundle(bundle, keyFrame));
 
                     // Sample queue depth right after submit — under
