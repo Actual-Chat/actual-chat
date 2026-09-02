@@ -893,13 +893,11 @@ body.narrow .video-panel.expanded.layout-equal .c-grid {
     @apply rounded-lg border-0;
     @apply overflow-hidden;
 }
-/* Stable positions: ignore the focus-driven `order` (item-N) so tiles keep
-   their source order (sorted by stream start time in the markup) instead of
-   the active speaker jumping to the front. The speaker is shown by the ring
-   below, which moves between fixed cells rather than reshuffling them. */
-.video-panel.expanded.layout-equal .c-grid .video-track-player {
-    order: 0;
-}
+/* Tiles keep the same focus-driven `order` (item-N) they have in the sidebar
+   layout, so both layouts sort by most-recent speaker. The cost is that a tile
+   can move cell when the speaker order changes; the alternative was source
+   order here and speaker order there, which made the two layouts disagree about
+   which participant is which tile. */
 /* Active speaker highlight: any tile whose author is currently streaming audio
    (VAD-gated, includes the local user — see `.speaking` in the markup) gets a
    red ring. Drawn as an ::after overlay rather than `outline`/`border` because
@@ -922,6 +920,13 @@ body.narrow .video-panel.expanded.layout-equal .c-grid {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
 }
+/* 5 and 6 tiles share a 3x2 grid; the 5-tile case leaves one cell empty rather
+   than stretching a tile, so every tile keeps the same aspect. */
+.video-panel.expanded.layout-equal .c-grid.tiles-5,
+.video-panel.expanded.layout-equal .c-grid.tiles-6 {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+}
 @container vp-content (orientation: portrait) {
     .video-panel.expanded.layout-equal .c-grid.tiles-2 {
         grid-template-columns: 1fr;
@@ -929,6 +934,11 @@ body.narrow .video-panel.expanded.layout-equal .c-grid {
     }
     .video-panel.expanded.layout-equal .c-grid.tiles-3 {
         grid-template-columns: 1fr;
+        grid-template-rows: repeat(3, 1fr);
+    }
+    .video-panel.expanded.layout-equal .c-grid.tiles-5,
+    .video-panel.expanded.layout-equal .c-grid.tiles-6 {
+        grid-template-columns: repeat(2, 1fr);
         grid-template-rows: repeat(3, 1fr);
     }
 }

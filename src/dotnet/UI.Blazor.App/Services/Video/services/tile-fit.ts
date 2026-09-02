@@ -6,6 +6,24 @@ import { normalizeRotationQuarter, type RotationQuarter } from 'orientation';
 
 export type Fit = 'cover' | 'contain';
 
+/** Whether a tile is a PRIMARY one: full-size, worth the contain/backdrop
+ *  treatment and the top layer of the ladder.
+ *
+ *  `item-focused` marks the primary tile in the default sidebar layout, where
+ *  everything else is a thumbnail. The equal-tile layout re-flows those same
+ *  classes into equally sized grid cells, so there `item-x` tiles are just as
+ *  large as the focused one and every tile is primary — branching on
+ *  `item-focused` alone would crop them to cover and ask for a thumbnail's
+ *  layer while showing them full size. */
+export function isPrimaryTile(tile: Element | null): boolean {
+    if (!tile) return false;
+    if (tile.classList.contains('item-focused')) return true;
+    // PiP overlays stay secondary: the equal layout hides them outright.
+    if (tile.classList.contains('pip-overlay')) return false;
+
+    return tile.closest('.video-panel.layout-equal') !== null;
+}
+
 // Loss threshold: when frame and tile orientations DIFFER (one portrait,
 // other landscape), cover-cropping more than this fraction of the source
 // pixel area triggers a switch to contain (+ blurred backdrop). 0.20 =
