@@ -187,8 +187,6 @@
   "Chat_IsTyping_Format": "{0} đang nhập...",
   "ChatList_Live_Format": "{0} · trực tiếp",
   "ChatList_Thread_Format": "Chủ đề '{0}'",
-  "ChatList_SharedLiveLocation": "Đã chia sẻ vị trí trực tiếp",
-  "ChatList_SentLocation": "Đã gửi vị trí",
 
   "ChatMenu_AddMembers": "Thêm thành viên",
   "ChatMenu_EditContact": "Sửa liên hệ",
@@ -1085,8 +1083,8 @@
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
-  "EmptyEntry_SentLocation": "📍 Đã gửi vị trí",
-  "EmptyEntry_SentLiveLocation": "📍 Đã chia sẻ vị trí trực tiếp",
+  "EmptyEntry_SentLocation": "Đã gửi vị trí",
+  "EmptyEntry_SentLiveLocation": "Đã chia sẻ vị trí trực tiếp",
   "EmptyEntry_YourLocation": "vị trí của bạn",
   "EmptyEntry_QuoteAttachment": "Nhấn để xem tệp đính kèm",
   "EmptyEntry_SentImages": "Đã gửi {0} hình ảnh",

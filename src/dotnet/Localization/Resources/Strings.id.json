@@ -187,8 +187,6 @@
   "Chat_IsTyping_Format": "{0} sedang mengetik...",
   "ChatList_Live_Format": "{0} · langsung",
   "ChatList_Thread_Format": "Utas “{0}”",
-  "ChatList_SharedLiveLocation": "Membagikan lokasi langsung",
-  "ChatList_SentLocation": "Mengirim lokasi",
 
   "ChatMenu_AddMembers": "Tambah anggota",
   "ChatMenu_EditContact": "Edit kontak",
@@ -1085,8 +1083,8 @@
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
-  "EmptyEntry_SentLocation": "📍 Mengirim lokasi",
-  "EmptyEntry_SentLiveLocation": "📍 Membagikan lokasi langsung",
+  "EmptyEntry_SentLocation": "Mengirim lokasi",
+  "EmptyEntry_SentLiveLocation": "Membagikan lokasi langsung",
   "EmptyEntry_YourLocation": "lokasi Anda",
   "EmptyEntry_QuoteAttachment": "Klik untuk melihat lampiran",
   "EmptyEntry_SentImages": "Mengirim {0} gambar",

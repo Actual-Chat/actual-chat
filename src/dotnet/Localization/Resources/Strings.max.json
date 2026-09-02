@@ -244,8 +244,6 @@
   "Chat_IsTyping_Format": "{0} est en train d'écrire...",
   "ChatList_Live_Format": "{0} · langsung",
   "ChatList_Thread_Format": "スレッド「{0}」",
-  "ChatList_SharedLiveLocation": "Сподели местоположение на живо",
-  "ChatList_SentLocation": "Изпрати местоположение",
 
   // The context menu of a chat list item - long press on mobile, right click on desktop.
   "ChatMenu_AddMembers": "Добавить участников",
@@ -1286,8 +1284,9 @@
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
-  "EmptyEntry_SentLocation": "📍 Изпратено местоположение",
-  "EmptyEntry_SentLiveLocation": "📍 Споделено местоположение на живо",
+  // No 📍 on the location lines: EmptyEntryMarkupBuilder adds it where no icon is drawn.
+  "EmptyEntry_SentLocation": "Изпратено местоположение",
+  "EmptyEntry_SentLiveLocation": "Споделено местоположение на живо",
   "EmptyEntry_YourLocation": "вашето местоположение",
   "EmptyEntry_QuoteAttachment": "Натиснете, за да видите прикачения файл",
   "EmptyEntry_SentImages": "Изпратени са {0} изображения",

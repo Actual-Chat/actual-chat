@@ -187,8 +187,6 @@
   "Chat_IsTyping_Format": "{0} टाइप कर रहा है...",
   "ChatList_Live_Format": "{0} · लाइव",
   "ChatList_Thread_Format": "थ्रेड '{0}'",
-  "ChatList_SharedLiveLocation": "लाइव लोकेशन साझा की",
-  "ChatList_SentLocation": "लोकेशन भेजी",
 
   "ChatMenu_AddMembers": "सदस्य जोड़ें",
   "ChatMenu_EditContact": "संपर्क संपादित करें",
@@ -1085,8 +1083,8 @@
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
-  "EmptyEntry_SentLocation": "📍 लोकेशन भेजी",
-  "EmptyEntry_SentLiveLocation": "📍 लाइव लोकेशन साझा की",
+  "EmptyEntry_SentLocation": "लोकेशन भेजी",
+  "EmptyEntry_SentLiveLocation": "लाइव लोकेशन साझा की",
   "EmptyEntry_YourLocation": "आपकी लोकेशन",
   "EmptyEntry_QuoteAttachment": "अटैचमेंट देखने के लिए क्लिक करें",
   "EmptyEntry_SentImages": "{0} छवि भेजी गई|{0} छवियाँ भेजी गईं",

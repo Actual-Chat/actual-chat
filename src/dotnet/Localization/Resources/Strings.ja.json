@@ -187,8 +187,6 @@
   "Chat_IsTyping_Format": "{0}さんが入力中...",
   "ChatList_Live_Format": "{0} · ライブ",
   "ChatList_Thread_Format": "スレッド「{0}」",
-  "ChatList_SharedLiveLocation": "ライブ位置情報を共有しました",
-  "ChatList_SentLocation": "位置情報を送信しました",
 
   "ChatMenu_AddMembers": "メンバーを追加",
   "ChatMenu_EditContact": "連絡先を編集",
@@ -1085,8 +1083,8 @@
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
-  "EmptyEntry_SentLocation": "📍 位置情報を送信しました",
-  "EmptyEntry_SentLiveLocation": "📍 ライブ位置情報を共有しました",
+  "EmptyEntry_SentLocation": "位置情報を送信しました",
+  "EmptyEntry_SentLiveLocation": "ライブ位置情報を共有しました",
   "EmptyEntry_YourLocation": "位置情報",
   "EmptyEntry_QuoteAttachment": "タップして添付ファイルを表示",
   "EmptyEntry_SentImages": "{0} 件の画像を送信しました",

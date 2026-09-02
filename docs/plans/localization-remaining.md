@@ -297,11 +297,16 @@ never looks at the entry kind itself. That single gate is also what dropped the
 maps-link fallback as if it were the author's words.
 
 A location push also distinguishes a live share from a one-shot pin now, which the
-chat list had always done and the push never did: `NotificationsBackend` reads
+chat list had always done and the push never did: `NotificationTextComposer` reads
 `SharedLocation.Duration` once per entry and passes the fact to `Build`, so
-`EmptyEntry_SentLiveLocation` reaches the recipient instead of a pin's wording.
-Quotes and the pinned bar still say "Sent a location" for a live share - they'd need
-the same async lookup inside the markup hub, which is more than that path should do.
+`EmptyEntry_SentLiveLocation` reaches the recipient instead of a pin's wording. The
+chat list now goes through the same `Build` call, so its own `ChatList_SentLocation`
+and `ChatList_SharedLiveLocation` keys were deleted - in seven catalogs they had been
+translated as a gendered past tense ("Poslao lokaciju") where the `EmptyEntry_*` forms
+are neutral participles ("Poslana lokacija"), which is the wording a sender of unknown
+gender needs. Quotes and the pinned bar still say "Sent a location" for a live share -
+they'd need the same async lookup inside the markup hub, which is more than that path
+should do.
 
 The English was restructured before being translated. `Sent 2 images and 2 files`
 conjoined clauses whose parts must agree in case, which no `" and "` concatenation

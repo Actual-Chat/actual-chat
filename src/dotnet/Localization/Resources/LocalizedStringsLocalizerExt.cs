@@ -210,8 +210,6 @@ public static class LocalizedStringsLocalizerExt
         public string ChatList_Live_Format(object arg0) => l["ChatList_Live_Format", arg0].Value;
         public string Chat_IsTyping_Format(object arg0) => l["Chat_IsTyping_Format", arg0].Value;
         public string ChatList_Thread_Format(object arg0) => l["ChatList_Thread_Format", arg0].Value;
-        public string ChatList_SharedLiveLocation => l["ChatList_SharedLiveLocation"].Value;
-        public string ChatList_SentLocation => l["ChatList_SentLocation"].Value;
 
         public string ChatMenu_AddMembers => l["ChatMenu_AddMembers"].Value;
         public string ChatMenu_EditContact => l["ChatMenu_EditContact"].Value;

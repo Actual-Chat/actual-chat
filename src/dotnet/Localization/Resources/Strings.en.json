@@ -244,8 +244,6 @@
   "Chat_IsTyping_Format": "{0} is typing...",
   "ChatList_Live_Format": "{0} · live",
   "ChatList_Thread_Format": "Thread '{0}'",
-  "ChatList_SharedLiveLocation": "Shared live location",
-  "ChatList_SentLocation": "Sent a location",
 
   // The context menu of a chat list item - long press on mobile, right click on desktop.
   "ChatMenu_AddMembers": "Add members",
@@ -1286,8 +1284,9 @@
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
-  "EmptyEntry_SentLocation": "📍 Sent a location",
-  "EmptyEntry_SentLiveLocation": "📍 Shared live location",
+  // No 📍 on the location lines: EmptyEntryMarkupBuilder adds it where no icon is drawn.
+  "EmptyEntry_SentLocation": "Sent a location",
+  "EmptyEntry_SentLiveLocation": "Shared live location",
   "EmptyEntry_YourLocation": "your location",
   "EmptyEntry_QuoteAttachment": "Click to see the attachment",
   "EmptyEntry_SentImages": "Sent {0} image|Sent {0} images",

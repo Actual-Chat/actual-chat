@@ -187,8 +187,6 @@
   "Chat_IsTyping_Format": "{0} piše...",
   "ChatList_Live_Format": "{0} · uživo",
   "ChatList_Thread_Format": "Nit „{0}“",
-  "ChatList_SharedLiveLocation": "Podijelio lokaciju uživo",
-  "ChatList_SentLocation": "Poslao lokaciju",
 
   "ChatMenu_AddMembers": "Dodajte članove",
   "ChatMenu_EditContact": "Uredite kontakt",
@@ -1085,8 +1083,8 @@
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
-  "EmptyEntry_SentLocation": "📍 Poslana lokacija",
-  "EmptyEntry_SentLiveLocation": "📍 Podijeljena lokacija uživo",
+  "EmptyEntry_SentLocation": "Poslana lokacija",
+  "EmptyEntry_SentLiveLocation": "Podijeljena lokacija uživo",
   "EmptyEntry_YourLocation": "vašu lokaciju",
   "EmptyEntry_QuoteAttachment": "Kliknite da vidite prilog",
   "EmptyEntry_SentImages": "Poslana {0} slika|Poslane {0} slike|Poslano {0} slika",

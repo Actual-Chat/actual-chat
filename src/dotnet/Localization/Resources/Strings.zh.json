@@ -187,8 +187,6 @@
   "Chat_IsTyping_Format": "{0} 正在输入...",
   "ChatList_Live_Format": "{0} · 直播中",
   "ChatList_Thread_Format": "话题“{0}”",
-  "ChatList_SharedLiveLocation": "分享了实时位置",
-  "ChatList_SentLocation": "发送了位置",
 
   "ChatMenu_AddMembers": "添加成员",
   "ChatMenu_EditContact": "编辑联系人",
@@ -1085,8 +1083,8 @@
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
-  "EmptyEntry_SentLocation": "📍 发送了位置",
-  "EmptyEntry_SentLiveLocation": "📍 分享了实时位置",
+  "EmptyEntry_SentLocation": "发送了位置",
+  "EmptyEntry_SentLiveLocation": "分享了实时位置",
   "EmptyEntry_YourLocation": "你的位置",
   "EmptyEntry_QuoteAttachment": "点击查看附件",
   "EmptyEntry_SentImages": "已发送 {0} 张图片",

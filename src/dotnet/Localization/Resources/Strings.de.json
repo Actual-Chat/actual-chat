@@ -187,8 +187,6 @@
   "Chat_IsTyping_Format": "{0} schreibt...",
   "ChatList_Live_Format": "{0} · live",
   "ChatList_Thread_Format": "Thread '{0}'",
-  "ChatList_SharedLiveLocation": "Live-Standort geteilt",
-  "ChatList_SentLocation": "Standort gesendet",
 
   "ChatMenu_AddMembers": "Mitglieder hinzufügen",
   "ChatMenu_EditContact": "Kontakt bearbeiten",
@@ -1085,8 +1083,8 @@
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
-  "EmptyEntry_SentLocation": "📍 Standort gesendet",
-  "EmptyEntry_SentLiveLocation": "📍 Live-Standort geteilt",
+  "EmptyEntry_SentLocation": "Standort gesendet",
+  "EmptyEntry_SentLiveLocation": "Live-Standort geteilt",
   "EmptyEntry_YourLocation": "Ihren Standort",
   "EmptyEntry_QuoteAttachment": "Klicken Sie, um den Anhang zu sehen",
   "EmptyEntry_SentImages": "{0} Bild gesendet|{0} Bilder gesendet",
