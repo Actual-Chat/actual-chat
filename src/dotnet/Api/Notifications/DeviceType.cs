@@ -20,9 +20,9 @@ public enum DeviceType
 
 public static class DeviceTypeExt
 {
-    // Allowlist: an unlisted type must default to "not FCM", because handing a direct-push
-    // token to FCM gets the device row deleted and the user stops receiving calls.
     public static bool IsFcm(this DeviceType deviceType)
+        // Allowlist: an unlisted type must default to "not FCM", because handing a direct-push
+        // token to FCM gets the device row deleted and the user stops receiving calls.
         => deviceType is DeviceType.WebBrowser
             or DeviceType.WindowsApp
             or DeviceType.iOSApp
