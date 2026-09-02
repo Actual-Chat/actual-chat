@@ -2190,7 +2190,11 @@ export class VideoRecorder {
 
                 void now;
                 lastRvfcTickAtMs = performance.now();
-                if (!pushFrame(metadata.mediaTime))
+                // One clock for both pumps: `mediaTime` is the decoded frame's own
+                // position and `currentTime` the element's current one, so alternating
+                // between them walks the capture timeline backwards on every switch.
+                const stampSec = DeviceInfo.isFirefox ? sourceVideo.currentTime : metadata.mediaTime;
+                if (!pushFrame(stampSec))
                     return;
 
                 sourceVideo.requestVideoFrameCallback(onFrame);
