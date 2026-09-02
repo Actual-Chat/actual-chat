@@ -18,6 +18,7 @@ public sealed partial class MarkupParser : IMarkupParser
     public bool UseUnparsedTextMarkup { get; init; }
     public bool MustSimplify { get; init; } = true;
     public bool AllowIncompleteMarkup { get; init; }
+    public int? StepBudget { get; init; }
 
     public Markup Parse(string text)
     {
@@ -25,7 +26,7 @@ public sealed partial class MarkupParser : IMarkupParser
         if (MustSimplify && IsPlainText(text))
             return new ParagraphMarkup(new PlainTextMarkup(text));
 
-        var markup = ParseRaw(text, UseUnparsedTextMarkup, AllowIncompleteMarkup);
+        var markup = ParseRaw(text, UseUnparsedTextMarkup, AllowIncompleteMarkup, StepBudget);
         if (MustSimplify)
             markup = markup.Simplify();
 
@@ -35,7 +36,8 @@ public sealed partial class MarkupParser : IMarkupParser
     public static Markup ParseRaw(
         string text,
         bool useUnparsedTextMarkup = false,
-        bool allowIncompleteMarkup = false)
+        bool allowIncompleteMarkup = false,
+        int? stepBudget = null)
     {
         if (text.IsNullOrEmpty())
             return EmptyResult;
@@ -49,9 +51,43 @@ public sealed partial class MarkupParser : IMarkupParser
             (false, true) => IncompleteMarkup,
             (true, true) => IncompleteWithUnparsedMarkup,
         };
-        var result = parser.Parse(text, ParserConfiguration);
+        ParseBudget.Reset(stepBudget ?? GetDefaultStepBudget(text.Length));
+        ParseMemo.Push();
+        try {
+            var result = parser.Parse(text, ParserConfiguration);
+            return result.Success ? result.Value : EmptyResult;
+        }
+        catch (ParseBudgetExceededException) {
+            // A backtracking grammar has inputs it can't finish in any useful time, so the budget is
+            // what bounds a parse. Past it the message is text - and the same text everywhere, because
+            // the budget depends on nothing but the message.
+            var textMarkupKind = useUnparsedTextMarkup ? TextMarkupKind.Unparsed : TextMarkupKind.Plain;
+            return new ParagraphMarkup(TextMarkup.New(textMarkupKind, text, true));
+        }
+        finally {
+            ParseMemo.Pop();
+        }
+    }
 
-        return result.Success ? result.Value : EmptyResult;
+    // Measured over the benchmark corpus: prose spends under one step per character, a table or a
+    // list about two, a run of block quotes under thirty, and a two-character message a dozen.
+    // RegularMessagesShouldStayFarBelowTheStepBudget in MarkupParserTest keeps the margin honest.
+    internal const int StepBudgetBase = 2_000;
+    internal const int StepBudgetPerChar = 200;
+
+    private static int GetDefaultStepBudget(int textLength)
+        => StepBudgetBase + StepBudgetPerChar * textLength;
+
+    private static Markup ParseNested(Parser<char, Markup> parser, string text)
+    {
+        // The nested text has positions of its own, so it gets a memo scope of its own
+        ParseMemo.Push();
+        try {
+            return parser.ParseOrThrow(text, ParserConfiguration);
+        }
+        finally {
+            ParseMemo.Pop();
+        }
     }
 
     // A bound on the scan below, not a tuning knob: a failing scan stops at the first special char,
@@ -275,6 +311,15 @@ public sealed partial class MarkupParser : IMarkupParser
     private static readonly Parser<char, Markup> StraySpecialText =
         CharRun.String(IsSpecialChar, 1).ToTextMarkup(TextMarkupKind.Plain, false);
 
+    // A divider-style run of style tokens ("**********") is text. Without this every token in the run
+    // opens a span that can't close, and "***bi***" is the longest run with a meaning.
+    private const int MinStyleTokenRunLength = 4;
+    private static readonly Parser<char, Markup> StyleTokenRunText =
+        SafeTryOneOf(
+            CharRun.String(c => c == '*', MinStyleTokenRunLength),
+            CharRun.String(c => c == '|', MinStyleTokenRunLength))
+            .ToTextMarkup(TextMarkupKind.Plain, false);
+
     // Code block
     private static readonly Parser<char, string> CodeBlockWithLanguageStart =
         CodeBlockToken.Then(CharRun.String(IsIdChar).Before(EndOfLine)); // Language
@@ -487,21 +532,26 @@ public sealed partial class MarkupParser : IMarkupParser
             // this list is tried at every element, so each nesting level cost a rent/return pair.
             // The order is exactly what the nested form tried, and every alternative backtracks.
             Parser<char, Markup>[] inlineElements = [
-                boldMarkup, italicMarkup, spoilerMarkup,
+                StyleTokenRunText, boldMarkup, italicMarkup, spoilerMarkup,
                 NamedMention, UnnamedMention, preformattedText, WwwUrl, Email, Hashtag, NonWhitespaceText,
             ];
 
+            // Both text blocks are memoized by position: a stylized span recurses into TextBlock, so
+            // without the memo an unbalanced run of tokens re-parsed the same suffix once per way of
+            // pairing the tokens before it - exponential in the run's length. A memo hit costs one
+            // dictionary lookup, and the result is the same because a text block's parse depends on
+            // nothing but where it starts.
             // Text block for single-line content (list items) - no newlines allowed
-            var textBlockSingleLine =
+            var textBlockSingleLine = new MemoParser(
                 SafeTryOneOf([.. inlineElements, StraySpecialText])
                     .AtLeastOnceSingleLineMarkup()
-                    .Debug("<TextSingleLine>");
+                    .Debug("<TextSingleLine>"));
 
             // Text block (includes inline newlines for multi-line styled text in paragraphs)
-            TextBlock =
+            TextBlock = new MemoParser(
                 SafeTryOneOf([.. inlineElements, InlineNewLine])
                     .AtLeastOnceInlineMarkup()
-                    .Debug("<Text>");
+                    .Debug("<Text>"));
 
             // List block (list items use single-line text block - no newlines within items)
             var unorderedListItem =
@@ -620,7 +670,7 @@ public sealed partial class MarkupParser : IMarkupParser
         private Markup BuildBlockQuote(string firstLine, IEnumerable<string> restLines, int contentQuoteLevel)
         {
             var content = firstLine + string.Concat(restLines);
-            return new BlockQuoteMarkup(GetDocument(contentQuoteLevel).ParseOrThrow(content, ParserConfiguration));
+            return new BlockQuoteMarkup(ParseNested(GetDocument(contentQuoteLevel), content));
         }
 
         private static Markup BuildBlockSequence(
@@ -670,11 +720,11 @@ public sealed partial class MarkupParser : IMarkupParser
         {
             // Concatenate all content (restParts already include newlines)
             var content = firstLine + string.Concat(restParts);
-            return new ParagraphMarkup(inlineParser.ParseOrThrow(content, ParserConfiguration));
+            return new ParagraphMarkup(ParseNested(inlineParser, content));
         }
 
         private static Markup BuildHeader(int level, string line, Parser<char, Markup> inlineParser)
-            => new HeaderMarkup(level, inlineParser.ParseOrThrow(line, ParserConfiguration));
+            => new HeaderMarkup(level, ParseNested(inlineParser, line));
 
         private static Markup? TryBuildTable(
             string headerLine,
@@ -697,7 +747,7 @@ public sealed partial class MarkupParser : IMarkupParser
             var cells = new TableCellMarkup[columnCount];
             for (var i = 0; i < columnCount; i++) {
                 var cellText = i < cellTexts.Count ? cellTexts[i] : "";
-                cells[i] = new TableCellMarkup(inlineParser.ParseOrThrow(cellText, ParserConfiguration));
+                cells[i] = new TableCellMarkup(ParseNested(inlineParser, cellText));
             }
 
             return new TableRowMarkup(cells);
