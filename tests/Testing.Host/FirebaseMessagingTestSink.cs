@@ -10,6 +10,8 @@ public sealed record FirebaseSentMessage(
     int BadgeCount,
     bool IsSilent = false)
 {
+    public IReadOnlyList<string> ActiveTags { get; init; } = [];
+    public long ActiveVersion { get; init; }
     public bool IsDismissal => Notification == null;
 }
 
@@ -55,13 +57,17 @@ public sealed class FirebaseMessagingTestSink(ILogger<FirebaseMessagingTestSink>
         Notification notification,
         IReadOnlyCollection<Symbol> deviceIds,
         bool? enableDataCollection,
-        int badgeCount,
+        UserNotificationInfo info,
         bool isSilent,
         CancellationToken cancellationToken)
     {
+        var badgeCount = info.Items.Count;
         log.LogInformation("SendMessage: {NotificationId} -> {DeviceCount} device(s), badge={Badge}, silent={IsSilent}",
             notification.Id, deviceIds.Count, badgeCount, isSilent);
-        Add(new FirebaseSentMessage(notification, [], [..deviceIds], badgeCount, isSilent));
+        Add(new FirebaseSentMessage(notification, [], [..deviceIds], badgeCount, isSilent) {
+            ActiveTags = [..info.Items.Select(n => n.GetPushTag()).SkipNullItems().Distinct()],
+            ActiveVersion = info.Version,
+        });
         return Task.CompletedTask;
     }
 
