@@ -14,7 +14,7 @@ public static partial class StringExt
     [GeneratedRegex(@"([a-z0-9])([A-Z])")]
     private static partial Regex CamelCaseRegexFactory();
 
-    [GeneratedRegex(@"([^\r\n]*)(?:\r?\n)", RegexOptions.ExplicitCapture)]
+    [GeneratedRegex(@"(?<line>[^\r\n]*)\r?\n", RegexOptions.ExplicitCapture)]
     private static partial Regex NewLineRegexFactory();
 
     [GeneratedRegex(@"\s*(\S+)\s*$")]
@@ -196,7 +196,7 @@ public static partial class StringExt
         for (var index = 0; index < text.Length;) {
             var match = NewLineRegex.Match(text, index);
             if (match.Success)
-                yield return (match.Groups[1].Value, true);
+                yield return (match.Groups["line"].Value, true);
             else {
                 yield return (text[index..], false);
                 yield break;

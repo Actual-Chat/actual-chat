@@ -32,4 +32,14 @@ public class StringExtTest
     [InlineData("a\r\nb", "  ", "  a\r\n  b")]
     public void IndentTest(string source, string indent, string expected)
         => source.Indent(indent).Should().Be(expected);
+
+    [Fact]
+    public void ParseLinesShouldKeepEveryLine()
+    {
+        // act
+        var lines = "first\nsecond\r\n\nlast".ParseLines().ToArray();
+
+        // assert
+        lines.Should().Equal(("first", true), ("second", true), ("", true), ("last", false));
+    }
 }
