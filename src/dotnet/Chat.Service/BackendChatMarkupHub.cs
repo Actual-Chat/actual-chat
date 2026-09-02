@@ -1,15 +1,16 @@
+using ActualChat.Localization;
 
 namespace ActualChat.Chat;
 
 /// <summary>
 /// Backend implementation of markup hub for parsing and formatting chat messages.
 /// </summary>
-public class BackendChatMarkupHub(IServiceProvider services, ChatId chatId) : IBackendChatMarkupHub
+public sealed class BackendChatMarkupHub(IServiceProvider services, ChatId chatId) : IBackendChatMarkupHub
 {
     private static MarkupTrimmer? _trimmer;
+    private static IMarkupFormatter? _editorHtmlConverter;
     private BackendChatMentionResolver? _chatMentionResolver;
     private MentionResolver? _mentionResolver;
-    private static IMarkupFormatter? _editorHtmlConverter;
 
     public IServiceProvider Services { get; } = services;
     public ChatId ChatId { get; } = chatId;
@@ -30,6 +31,10 @@ public class BackendChatMarkupHub(IServiceProvider services, ChatId chatId) : IB
     public IMarkupFormatter EditorHtmlConverter
         => _editorHtmlConverter ??= MarkupEditorHtmlConverter.Instance;
 
-    public SystemEntryMarkupBuilder SystemEntryMarkupBuilder => SystemEntryMarkupBuilder.Default;
-    public EmptyEntryMarkupBuilder EmptyEntryMarkupBuilder => EmptyEntryMarkupBuilder.Default;
+    public SystemEntryMarkupBuilder SystemEntryMarkupBuilder
+        // Main rather than a reader's language: a link preview is cached per content id and an LLM
+        // prompt has no reader. Code composing text for a person gets a builder per reader instead.
+        => LocalizedSystemEntryMarkupBuilder.Get(Languages.Main);
+    public EmptyEntryMarkupBuilder EmptyEntryMarkupBuilder
+        => LocalizedEmptyEntryMarkupBuilder.Get(Languages.Main);
 }

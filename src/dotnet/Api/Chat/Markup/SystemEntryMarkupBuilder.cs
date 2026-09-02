@@ -1,14 +1,15 @@
 namespace ActualChat.Chat;
 
 /// <summary>
-/// Builds the markup shown for a <see cref="SystemEntry"/>. The wording here is English;
-/// hosts that know the UI language override the per-kind methods with catalog values.
+/// Builds the markup shown for a <see cref="SystemEntry"/>. The author name renders as its own
+/// markup node, so every word a subclass supplies is what follows it.
 /// </summary>
-public class SystemEntryMarkupBuilder
+public abstract class SystemEntryMarkupBuilder
 {
-    public static readonly SystemEntryMarkupBuilder Default = new();
-
-    protected virtual string SomeoneName => "Someone";
+    protected abstract string SomeoneName { get; }
+    protected abstract string MemberJoined { get; }
+    protected abstract string MemberLeft { get; }
+    protected abstract string AttentionRequested { get; }
 
     public Markup Build(SystemEntry entry)
         => entry switch {
@@ -18,26 +19,27 @@ public class SystemEntryMarkupBuilder
             _ => Markup.EmptyText,
         };
 
-    // Protected methods
+    // Private methods
 
-    protected virtual Markup BuildMembersChanged(MembersChangedEntry entry)
+    private Markup BuildMembersChanged(MembersChangedEntry entry)
     {
         var authorName = entry.TargetAuthorName.NullIfEmpty() ?? SomeoneName;
-        var verb = entry.HasLeft ? "left" : "joined";
+        var text = entry.HasLeft ? MemberLeft : MemberJoined;
         return entry.TargetAuthorId is null
-            ? new PlainTextMarkup($"{authorName} has {verb} the chat.")
+            ? new PlainTextMarkup(authorName + text)
             : new MarkupSeq(
                 new AuthorMention(MentionRef.NewAuthor(entry.TargetAuthorId), authorName),
-                new PlainTextMarkup($" has {verb} the chat."));
+                new PlainTextMarkup(text));
     }
 
-    protected virtual Markup BuildNotifyMembers(NotifyMembersEntry entry)
+    private Markup BuildNotifyMembers(NotifyMembersEntry entry)
     {
         var authorName = entry.TargetAuthorName.NullIfEmpty() ?? SomeoneName;
+        var text = AttentionRequested;
         return entry.TargetAuthorId is null
-            ? new PlainTextMarkup($"{authorName} asked for attention.")
+            ? new PlainTextMarkup(authorName + text)
             : new MarkupSeq(
                 new AuthorMention(MentionRef.NewAuthor(entry.TargetAuthorId), authorName),
-                new PlainTextMarkup(" asked for attention."));
+                new PlainTextMarkup(text));
     }
 }

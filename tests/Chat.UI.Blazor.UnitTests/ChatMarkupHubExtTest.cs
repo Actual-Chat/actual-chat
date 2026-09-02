@@ -1,13 +1,14 @@
 using ActualChat.Localization;
 using ActualChat.UI.Blazor.App.Services;
 using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.Extensions.Localization;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
 public class ChatMarkupHubExtTest
 {
     private static readonly FileExtensionContentTypeProvider FileExtensionContentTypeProvider = new ();
+    private static readonly EmptyEntryMarkupBuilder EnglishEmptyEntryMarkupBuilder
+        = new LocalizedEmptyEntryMarkupBuilder(new TestStringLocalizer(StringCatalogs.LoadStrings(Languages.English)!));
 
     [Fact]
     public void ShouldGetForChatListItemTextFromPlainText()
@@ -15,7 +16,7 @@ public class ChatMarkupHubExtTest
         // arrange
         using var services = new ServiceCollection()
             .AddTransient<IMarkupParser, MarkupParser>()
-            .AddSingleton(EmptyEntryMarkupBuilder.Default)
+            .AddSingleton(EnglishEmptyEntryMarkupBuilder)
             .BuildServiceProvider();
         var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
@@ -49,7 +50,7 @@ public class ChatMarkupHubExtTest
         // arrange
         using var services = new ServiceCollection()
             .AddTransient<IMarkupParser, MarkupParser>()
-            .AddSingleton(EmptyEntryMarkupBuilder.Default)
+            .AddSingleton(EnglishEmptyEntryMarkupBuilder)
             .BuildServiceProvider();
         var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
@@ -81,7 +82,7 @@ public class ChatMarkupHubExtTest
         // arrange
         using var services = new ServiceCollection()
             .AddTransient<IMarkupParser, MarkupParser>()
-            .AddSingleton(EmptyEntryMarkupBuilder.Default)
+            .AddSingleton(EnglishEmptyEntryMarkupBuilder)
             .BuildServiceProvider();
         var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
@@ -110,7 +111,7 @@ public class ChatMarkupHubExtTest
         // arrange
         using var services = new ServiceCollection()
             .AddTransient<IMarkupParser, MarkupParser>()
-            .AddSingleton(EmptyEntryMarkupBuilder.Default)
+            .AddSingleton(EnglishEmptyEntryMarkupBuilder)
             .BuildServiceProvider();
         var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
@@ -137,9 +138,8 @@ public class ChatMarkupHubExtTest
         var localizer = new TestStringLocalizer(StringCatalogs.LoadStrings(Languages.English)!);
         using var services = new ServiceCollection()
             .AddTransient<IMarkupParser, MarkupParser>()
-            .AddSingleton<IStringLocalizer>(localizer)
-            .AddSingleton<SystemEntryMarkupBuilder>(c => new LocalizedSystemEntryMarkupBuilder(c))
-            .AddSingleton(EmptyEntryMarkupBuilder.Default)
+            .AddSingleton<SystemEntryMarkupBuilder>(new LocalizedSystemEntryMarkupBuilder(localizer))
+            .AddSingleton(EnglishEmptyEntryMarkupBuilder)
             .BuildServiceProvider();
         var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
@@ -179,7 +179,7 @@ public class ChatMarkupHubExtTest
         };
 
         // act
-        var markup = EmptyEntryMarkupBuilder.Default.Build(chatEntry, consumer, isLiveLocation);
+        var markup = EnglishEmptyEntryMarkupBuilder.Build(chatEntry, consumer, isLiveLocation);
 
         // assert
         MarkupFormatter.Default.Format(markup).Should().Be(expectedMarkupText);
