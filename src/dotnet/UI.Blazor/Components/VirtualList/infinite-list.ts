@@ -82,10 +82,6 @@ const QuietStillFrames = 3;
 // it is shifted back - tens of thousands of messages, and the shift itself is free because it only
 // happens at a standstill.
 const RecentreReservePercent = 20;
-// Leaving "the whole conversation fits on screen" costs a jump of the end anchor's whole height, so a
-// chain hovering at exactly one viewport - a transcript growing and shrinking by a line - must not
-// toggle it on every measure.
-const ChainFittingExitPx = 64;
 const InteractiveAnchorTtlMs = 2000;
 // A WASM render can arrive several seconds after its click; the screen anchor has to survive until
 // that replacement DOM exists, while its shorter active hold starts only once placement begins.
@@ -256,7 +252,6 @@ export class InfiniteList extends VirtualList {
     private isAwaitingJump = false;
     private isInitiallyPlaced = false;
     private isApplyingRender = false;
-    private isChainWithinViewport = false;
     private mustRecentre = false;
     private lastWrapperSize = 0;
     private handledScrollToKey: string | null = null;
@@ -780,7 +775,6 @@ export class InfiniteList extends VirtualList {
     }
 
     private applyLayout(reason: string): void {
-        this.updateChainFitting();
         // Re-read every time rather than trusted from construction: the clamp depends on
         // devicePixelRatio, which changes when the window moves to another display or the page is
         // zoomed, and a stale value here is a chain drawn nowhere near its scroll position.
@@ -962,18 +956,26 @@ export class InfiniteList extends VirtualList {
         return this.renderState.hasVeryLastItem ? 0 : this.spacerSize;
     }
 
-    // Whether the whole conversation is loaded and short enough to show at once - both edges on screen
-    // together, so the view has one correct resting place with the first item at the top.
-    private updateChainFitting(): void {
+    // How much of the end anchor the bottom limit honours. The anchor keeps the newest message clear of
+    // the editor, but a whole conversation that fits on screen has nothing to keep clear of anything,
+    // and honouring it there pushes the first message off the top of a list that cannot scroll back. So
+    // around one viewport it is honoured only as far as it fits: below that size, as much as the slack
+    // above the chain allows; above it, growing with the overflow. The limit is continuous through the
+    // crossing, so a transcript growing and shrinking by a line there follows rather than jumps by the
+    // anchor's height - which is what the hysteresis this replaces was for, at the price of hiding up
+    // to its own width of the newest content.
+    private get honouredEndAnchorSize(): number {
         const rs = this.renderState;
-        if (!rs.hasVeryFirstItem || !rs.hasVeryLastItem || this.items.length === 0) {
-            this.isChainWithinViewport = false;
-            return;
-        }
+        if (!rs.hasVeryFirstItem || !rs.hasVeryLastItem || this.items.length === 0)
+            return this.endAnchorSize;
 
-        const limit = this.ref.clientHeight;
-        this.isChainWithinViewport =
-            this.chainSize <= (this.isChainWithinViewport ? limit + ChainFittingExitPx : limit);
+        return Math.min(this.endAnchorSize, Math.abs(this.ref.clientHeight - this.chainSize));
+    }
+
+    // What the anchor is short of at the bottom limit: the newest content is flush with the end there
+    // while the anchor's bottom hangs that far below the fold.
+    private get endAnchorSlack(): number {
+        return this.endAnchorSize - this.honouredEndAnchorSize;
     }
 
     private applyRenderIntent(rs: VirtualListRenderState): void {
@@ -1089,12 +1091,11 @@ export class InfiniteList extends VirtualList {
             return;
         }
 
-        // A chain that fits on screen rests with its first item at the top, which leaves the end anchor
-        // hanging below the fold - so the end is reached there by construction, however far the anchor
-        // says it is. Without this an End-edge list would settle on Start and stop following new
-        // messages until the conversation outgrew the viewport.
+        // Around one viewport the bottom limit leaves the anchor's slack hanging below the fold, so the
+        // end is reached with the anchor that far out. Without this an End-edge list would settle on
+        // Start and stop following new messages until the conversation outgrew the viewport.
         const isAtEnd = rs.hasVeryLastItem
-            && (this.isChainWithinViewport || (this.distanceToEndEdge() ?? Infinity) <= EdgeEpsilon);
+            && (this.distanceToEndEdge() ?? Infinity) <= this.endAnchorSlack + EdgeEpsilon;
         // Leaving the far edge for this one is a claim about where the reader is, and a window that
         // can't see its last item has no basis for it - while distanceToStartEdge has no lower bound, so
         // a chain hanging below the viewport top satisfies it as readily as one flush with it. A
@@ -1178,9 +1179,13 @@ export class InfiniteList extends VirtualList {
             }
         }
         const target = clamp(scrollOffset + delta, 0, maxScrollOffset);
-        // Same cap as computeScrollLimits: the end anchor must not push the first message off the top
-        // of a conversation that fits on screen.
-        return this.isChainWithinViewport ? Math.min(target, this.chainStart) : target;
+        // Same cap as computeScrollLimits: only the honoured part of the anchor may pull the view past
+        // the newest content. Left to the DOM measure where nothing is capped, so a model a pixel short
+        // cannot stop the re-pin from landing flush.
+        const honoured = this.honouredEndAnchorSize;
+        return edge === VirtualListEdge.End && honoured < this.endAnchorSize
+            ? Math.min(target, this.chainEnd + honoured - this.ref.clientHeight)
+            : target;
     }
 
     // A follow moves the position the user is at, so it moves the scroll position - the term the
@@ -1463,13 +1468,8 @@ export class InfiniteList extends VirtualList {
         // the scroller enforces itself can't rubber-band. Blank space below the newest item is now
         // unreachable only because this says so, the same way the top is.
         let max = rs.hasVeryLastItem
-            ? this.chainEnd + this.endAnchorSize - this.ref.clientHeight
+            ? this.chainEnd + this.honouredEndAnchorSize - this.ref.clientHeight
             : this.chainEnd + this.maxOverscroll - this.ref.clientHeight;
-        // The end anchor is blank space under the newest message, sized to keep it clear of the editor.
-        // A whole conversation that fits on screen has nothing to keep clear of anything, and honouring
-        // the anchor there scrolls the first message off the top of a list that cannot scroll back.
-        if (this.isChainWithinViewport)
-            max = Math.min(max, this.chainStart);
         if (min > max) {
             if (this.defaultEdge === VirtualListEdge.End)
                 min = max;
@@ -2084,12 +2084,11 @@ export class InfiniteList extends VirtualList {
         // Never true while the tab is in the background: the list stays flush at its edge there, and the
         // chat view reads this flag as "the user is looking at the newest message" to advance the read
         // position - so reporting it would mark messages read that nobody has seen.
-        // A conversation that fits on screen rests with its first item at the top, which leaves the end
-        // anchor's blank space hanging below the fold - the newest message is on screen all the same,
-        // and without this it would never be marked read.
+        // Around one viewport the bottom limit leaves the anchor's slack below the fold - the newest
+        // message is on screen all the same, and without this it would never be marked read.
         const isEndAnchorVisible = !document.hidden
             && this.renderState.hasVeryLastItem
-            && (this.isChainWithinViewport || (this.distanceToEndEdge() ?? Infinity) <= EdgeEpsilon);
+            && (this.distanceToEndEdge() ?? Infinity) <= this.endAnchorSlack + EdgeEpsilon;
         // A level signal for the badge gate: stays true while the list follows its end edge, even
         // when a streaming expansion momentarily pushes the anchor out before the follow catches up.
         const isPinnedToEnd = isEndAnchorVisible || this.pinnedEdge === VirtualListEdge.End;
@@ -2324,13 +2323,9 @@ export class InfiniteList extends VirtualList {
             return rect.height > 0 && rect.bottom > viewRect.top && rect.top < viewRect.bottom;
         }
 
-        // Fitting on screen means reaching neither edge, and the slack below the top is where it rests -
-        // so this asks only that the first item isn't clipped off the top.
-        if (this.isChainWithinViewport)
-            return this.distanceToStartEdge() <= RevealEpsilon;
-
+        // At the end the anchor rests its slack below the fold, so that is where "flush" is.
         return this.defaultEdge === VirtualListEdge.End
-            ? Math.abs(this.distanceToEndEdge() ?? Infinity) <= RevealEpsilon
+            ? Math.abs((this.distanceToEndEdge() ?? Infinity) - this.endAnchorSlack) <= RevealEpsilon
             : Math.abs(this.distanceToStartEdge()) <= RevealEpsilon;
     }
 

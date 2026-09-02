@@ -50,9 +50,10 @@ in a later section looks loaded — most of them are.*
   of the container, sized from the model, standing in for the unloaded range. In `InfiniteList` its
   size is a stub that means nothing exact; in `FiniteList` it covers the unloaded range precisely. It
   also holds the skeletons and is what the load-trigger observer watches.
-- **end anchor** — *`endAnchorRef`, `.c-end-anchor`.* A blank `<li>` after the last item that keeps the
-  newest message clear of the message editor overlapping the list. Nothing to do with `reanchor` or
-  with scroll anchoring, despite the name.
+- **end anchor** — *`endAnchorRef`, `.c-end-anchor`.* A blank `<li>` right after the last item, before
+  the end spacer, that keeps the newest message clear of the message editor overlapping the list. The
+  bottom limit honours as much of it as fits (`honouredEndAnchorSize`); the rest is its **slack**
+  (`endAnchorSlack`). Nothing to do with `reanchor` or with scroll anchoring, despite the name.
 
 ### The two position terms
 
@@ -168,9 +169,10 @@ in a later section looks loaded — most of them are.*
 - **reappearance** — *`recentlyRemoved`, `ReappearanceMs`.* A key that leaves a render and comes back
   inside 1.5s. It looks exactly like an insertion to the diff, because the render it is diffed against
   does not contain it, but the user was reading it a moment ago — so it does not animate.
-- **chain fitting** — *`isChainWithinViewport`, `updateChainFitting`.* "Both ends loaded, and the whole
-  conversation is shorter than the viewport." A special case with its own resting place and its own
-  hysteresis, not a coincidence the general rules happen to handle.
+- **honoured anchor** — *`honouredEndAnchorSize`, `endAnchorSlack`.* How much of the end anchor the
+  bottom limit adds: the whole of it once the content overflows the viewport by the anchor's height,
+  less around one viewport, so a conversation that fits is never scrolled past its first message
+  (§3.8). There is no "fits on screen" flag; the rule is continuous.
 - **near-skeleton** — *`isNearSkeleton`.* A spacer is on screen or within 200px of it — i.e. the user
   is looking at a hole, which relaxes the heuristics that otherwise avoid a data query.
 - **reveal** — *`reveal`, `startRevealWatch`, `c-initially-hidden`.* The wrapper stays
@@ -1211,9 +1213,9 @@ carrying an inset of `base - 66.26px` — and after it, with every inline inset 
 ### 3.8 Spacers, the end anchor, and the conversation that fits on screen
 
 *The spacers reserve scroll space, hold the skeletons, and trigger loading. The end anchor is blank
-space under the newest message that the bottom limit adds explicitly. A conversation shorter than the
-viewport is a special case: its band inverts, so it rests with its first message at the top and the
-anchor is not honoured.*
+space under the newest message that the bottom limit adds explicitly — as much of it as fits, so a
+conversation around one viewport is never scrolled past its first message for the sake of blank space
+under its last.*
 
 **The spacers** do three jobs at once, and it is worth seeing all three:
 
@@ -1245,58 +1247,70 @@ viewport above the chain that fades in after three seconds to suggest you can pu
 message. It is rendered only when the list opts in *and* the very first item is loaded, and it is
 `position: absolute`, so it contributes nothing to any measurement.
 
-**The end anchor** is a blank `<li class="c-end-anchor">` after the last item, whose job is to keep the
-newest message clear of the message editor that overlaps the bottom of the list. Its height is CSS —
+**The end anchor** is a blank `<li class="c-end-anchor">` right after the last item, whose job is to keep
+the newest message clear of the message editor that overlaps the bottom of the list. Its height is CSS —
 4px normally, 48px on a narrow screen, 80px when a listening-activity or audio-panel header is up —
 and JS *measures* it through a `ResizeObserver` rather than being told, so a layout change that alters
-it needs no code change. It sits *after* the items, so `chainEnd` does not include it and the bottom
-limit adds it explicitly:
+it needs no code change. It sits *after* the items and *before* the end spacer, so `chainEnd` does not
+include it and the bottom limit adds it explicitly — as much of it as is honoured:
 
 ```ts
-max = chainEnd + endAnchorSize - clientHeight
+max = chainEnd + honouredEndAnchorSize - clientHeight
 ```
 
 — "scroll far enough that the bottom of content-plus-anchor meets the bottom of the viewport".
 
-#### Why a conversation that fits on screen is an exception
+The order matters. The End pin aims at this element (`measureEdgeTarget`), and when the end of the data
+stops being known the end spacer grows to `spacerSize` (1500px). Placed behind the spacer, the anchor
+would take an End-pinned list a spacer's height down with it on that render — the newest messages at
+the top of the viewport and skeletons filling the rest, which is exactly what a viewer of a live
+conversation used to see. Ahead of the spacer it stays with the content, and the skeletons stay below
+the fold where scrolling past the loaded content is supposed to find them.
+
+#### Why a conversation around one viewport honours less of the anchor
 
 Take a fully loaded chat whose content is 200px, in a 578px viewport, with a 48px anchor:
 
 - `min = chainStart` — there is nothing above the first message to scroll to
 - `max = chainStart + 200 + 48 − 578 = chainStart − 330`
 
-`max` is 330px *below* `min`: an inverted band. And read literally, that position puts the chain's top
-330px above the viewport top — the only messages in the chat pushed off the top of the screen, with
-`min` forbidding any scroll back to them.
+`max` is 330px *below* `min`: an inverted band, which the End default resolves to `min = max`, so the
+conversation rests bottom-aligned with its anchor honoured and its first message well below the top.
+That is fine. Now let the content be 560px: `max = chainStart + 30`, which read literally puts the first
+message 30px above the viewport top with `min` forbidding any scroll back to it — the only messages in
+the chat pushed off the top of a list that cannot scroll back, for the sake of blank space under them.
 
 It is not hypothetical, because the list is pinned to End and `repinEdge` measures exactly this: the
-end anchor's bottom against the viewport's bottom, scrolling to make them flush. With short content,
-"flush" *is* that position.
+end anchor's bottom against the viewport's bottom, scrolling to make them flush.
 
-So both places that could take you there cap at `chainStart` — the chain's top at the viewport top:
+So the anchor is honoured only as far as it fits, and the limit is built from that part of it:
 
 ```ts
-if (this.isChainWithinViewport)            // computeScrollLimits
-    max = Math.min(max, this.chainStart);
-
-return this.isChainWithinViewport          // repinEdge.measureTarget
-    ? Math.min(target, this.chainStart) : target;
+honouredEndAnchorSize = min(endAnchorSize, |clientHeight − chainSize|)   // both ends loaded
+max = chainEnd + honouredEndAnchorSize − clientHeight
 ```
 
-A conversation that fits is therefore shown from its first message, and the anchor is not honoured at
-all — there is nothing to keep clear of the editor when the content never reaches it.
+Below one viewport that honours as much of the anchor as the slack above the chain allows, which caps
+`max` at `chainStart` — the first message at the top. Above it the honoured part grows with the
+overflow, so the limit runs continuously through the crossing: from `chainStart` at exactly one
+viewport to the full `chainEnd + endAnchorSize − clientHeight` once the content overflows by the
+anchor's height. A live transcript sitting at one viewport and growing and shrinking by a line follows
+two pixels per pixel there and never jumps by the anchor's height — and no content is ever beyond the
+reachable limit. The rule this replaced was a "fits on screen" flag with 64px of hysteresis that capped
+`max` at `chainStart` while set: it did jump at the exit, it hid up to 64px plus the anchor of the
+newest messages while the chain sat inside the band — a short chat that grew past the viewport by a
+message or two could not be scrolled to its end — and it was never re-evaluated on a viewport resize.
 
-Two conditions on it. It requires **both** ends loaded (`hasVeryFirstItem && hasVeryLastItem`) — "fits
-on screen" means nothing about a partially loaded window that happens to be short. And it has
-hysteresis: entered at `chainSize <= clientHeight`, left only above `clientHeight + ChainFittingExitPx`
-(64px), because crossing that boundary adds or removes a whole `endAnchorSize` of scroll range — a live
-transcript sitting at exactly one viewport and growing and shrinking by a line would otherwise toggle
-it on every measure and jump 48px each time.
+`measureEdgeTarget` applies the same cap to the End target, and only while something is capped, so a
+model a pixel short cannot stop the re-pin from landing flush on the DOM measure. The rule requires
+**both** ends loaded (`hasVeryFirstItem && hasVeryLastItem`) — "fits on screen" means nothing about a
+partially loaded window that happens to be short — and honours the whole anchor otherwise.
 
-The same case leaks into three other places, and all are deliberate: a chain that fits counts as being
-at the End edge for pinning, however far the anchor says it is; it counts as "the newest message is
-visible" for read tracking; and the initial reveal asks only that its first item is not clipped off the
-top. Without the first two an End-pinned list would settle on Start and stop following new messages
+What the anchor is short of at the limit is its **slack** (`endAnchorSlack`), and three places read
+the end through it, all deliberate: the list counts as at the End edge for pinning when the anchor's
+bottom is within the slack of the viewport bottom; the same test says "the newest message is visible"
+for read tracking; and the initial reveal accepts the End edge with the anchor its slack below the
+fold. Without the first two an End-pinned list would settle on Start and stop following new messages
 until the conversation outgrew the viewport.
 
 ### 3.9 Re-anchoring
