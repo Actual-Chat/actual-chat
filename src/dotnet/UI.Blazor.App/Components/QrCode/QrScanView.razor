@@ -1,0 +1,75 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Module
+@inherits ComponentBase<AppUIHub>
+@implements IAsyncDisposable
+
+<div class="qr-scan-view">
+    @if (_hasFailed) {
+        <div class="c-failure">
+            <div class="c-text">@L.Call_CameraIsUnavailable</div>
+            <Button Class="btn-modal" Click="@OnRetryClick">
+                <Title>@L.Common_Retry</Title>
+            </Button>
+        </div>
+    } else {
+        <video @ref="_videoRef" class="c-video" autoplay muted playsinline></video>
+        <div @ref="_viewfinderRef" class="c-viewfinder" aria-hidden="true"></div>
+    }
+</div>
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.QrScanView.create";
+
+    private ElementReference _videoRef;
+    private ElementReference _viewfinderRef;
+    private DotNetObjectReference<QrScanView>? _blazorRef;
+    private IJSObjectReference? _jsRef;
+    private bool _hasFailed;
+    private bool _isStarted;
+
+    private CameraPermissionHandler CameraPermission
+        => field ??= Hub.Services.GetRequiredService<CameraPermissionHandler>();
+
+    [Parameter, EditorRequired] public EventCallback<string> Scanned { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_hasFailed || _isStarted)
+            return;
+
+        _isStarted = true;
+        // getUserMedia raises the browser prompt on its own, but on MAUI the OS-level permission
+        // has to be granted before it is even asked, and that is what this handles.
+        var isGranted = await CameraPermission.CheckOrRequest().ConfigureAwait(true);
+        if (!isGranted) {
+            await OnCameraFailed().ConfigureAwait(true);
+            return;
+        }
+
+        _blazorRef = DotNetObjectReference.Create(this);
+        _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _videoRef, _viewfinderRef, _blazorRef);
+    }
+
+    public async ValueTask DisposeAsync() {
+        await _jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        _jsRef = null;
+        _blazorRef?.Dispose();
+        _blazorRef = null;
+    }
+
+    [JSInvokable]
+    public Task OnScanned(string text)
+        => Scanned.InvokeAsync(text);
+
+    [JSInvokable]
+    public async Task OnCameraFailed() {
+        _hasFailed = true;
+        await DisposeAsync().ConfigureAwait(true);
+        StateHasChanged();
+    }
+
+    private void OnRetryClick() {
+        _hasFailed = false;
+        _isStarted = false;
+        CameraPermission.ForgetCached();
+    }
+}

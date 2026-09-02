@@ -69,6 +69,7 @@ export * from './Components/AudioRecorder/audio-recorder';
 export * from './Components/AudioRecorder/web-microphone-permission-handler';
 export * from './Components/Camera/camera-devices';
 export * from './Components/Camera/web-camera-permission-handler';
+export * from './Components/QrCode/qr-scan-view';
 export * from './Components/AudioRecorder/opus-media-recorder';
 export * from './Components/AudioRecorder/opus-media-recorder-contracts';
 export * from './Components/AudioRecorder/recording-activity';

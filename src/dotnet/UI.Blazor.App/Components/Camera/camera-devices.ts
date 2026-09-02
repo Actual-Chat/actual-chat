@@ -35,6 +35,16 @@ export class CameraDevices {
         }
     }
 
+    // Not via enumerateDevices: its getUserMedia probe would raise a permission prompt.
+    static async hasCamera(): Promise<boolean> {
+        try {
+            return (await CameraDevices.enumerateVideoInputs()).length > 0;
+        } catch (error) {
+            warnLog?.log('hasCamera: enumerateDevices failed:', error);
+            return false;
+        }
+    }
+
     // Private methods
 
     private static async enumerateVideoInputs(): Promise<MediaDeviceInfo[]> {
@@ -70,12 +80,18 @@ export class CameraDevices {
             ? input.getCapabilities().facingMode
             : undefined;
         if (facing && facing.length > 0) {
-            if (facing.includes('user')) return 'user';
-            if (facing.includes('environment')) return 'environment';
+            if (facing.includes('user'))
+                return 'user';
+            if (facing.includes('environment'))
+                return 'environment';
         }
+
         const label = d.label.toLowerCase();
-        if (/facing front|\bfront\b|\buser\b|self/.test(label)) return 'user';
-        if (/facing back|\bback\b|\brear\b|environment/.test(label)) return 'environment';
+        if (/facing front|\bfront\b|\buser\b|self/.test(label))
+            return 'user';
+        if (/facing back|\bback\b|\brear\b|environment/.test(label))
+            return 'environment';
+
         return null;
     }
 
@@ -84,12 +100,16 @@ export class CameraDevices {
     // names like "iPhone Camera" where the second char is already uppercase).
     private static normalizeLabel(raw: string): string {
         let s = raw.trim();
-        if (!s) return '';
+        if (!s)
+            return '';
+
         s = s.replace(/,\s*facing\s+(front|back|user|environment)\s*$/i, '');
         s = s.replace(/\bfacing\s+(front|back|user|environment)\b/gi, '');
         s = s.replace(/^(front|back|rear)\s+camera\b/i, 'Camera');
         s = s.replace(/\s{2,}/g, ' ').trim();
-        if (!s) return '';
+        if (!s)
+            return '';
+
         const c0 = s.charAt(0);
         const c1 = s.charAt(1);
         const isUpper = (c: string) => c !== '' && c === c.toUpperCase() && c !== c.toLowerCase();
@@ -107,8 +127,11 @@ export class CameraDevices {
         const back = devices.find(d => CameraDevices.facingOf(d) === 'environment');
         if (front && back)
             return [front, back];
-        if (front || back)
-            return [front ?? back!, ...devices.filter(d => d !== (front ?? back) && CameraDevices.facingOf(d) === null).slice(0, 1)];
+        if (front || back) {
+            const known = front ?? back!;
+            const unknown = devices.filter(d => d !== known && CameraDevices.facingOf(d) === null);
+            return [known, ...unknown.slice(0, 1)];
+        }
 
         return devices.slice(0, 2);
     }

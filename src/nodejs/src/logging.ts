@@ -144,6 +144,7 @@ export type LogScope =
     | 'BgBlur'
     | 'CameraDevices'
     | 'CameraPermission'
+    | 'QrScanView'
     | 'VisualMediaViewer'
     | 'WebAuth'
     | 'WebFileProvider';
@@ -263,6 +264,7 @@ const defaults: Record<LogScope, LogLevel> = {
     BgBlur: LogLevel.Info,
     CameraDevices: LogLevel.Warn,
     CameraPermission: LogLevel.Warn,
+    QrScanView: LogLevel.Warn,
     VisualMediaViewer: LogLevel.Warn,
     WebAuth: LogLevel.Warn,
     WebFileProvider: LogLevel.Warn,
