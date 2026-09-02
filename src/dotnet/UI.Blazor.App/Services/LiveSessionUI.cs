@@ -153,6 +153,16 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         return await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false);
     }
 
+    // The non-reactive form of AmIInLiveConversation, for callbacks that can't await.
+    public bool IsInLiveConversation(ChatId chatId)
+    {
+        var activeChats = ActiveChatsUI.ActiveChats.Value;
+        if (activeChats.TryGetValue(chatId, out var activeChat) && (activeChat.IsListening || activeChat.IsRecording))
+            return true;
+
+        return ChatVideoUI.WatchingChatId == chatId;
+    }
+
     public Task SetParticipation(
         ChatId chatId,
         ParticipationKind kind,

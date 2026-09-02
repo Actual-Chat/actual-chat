@@ -316,7 +316,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
 
         ChatUI.SetItemVisibility(itemVisibility);
-        var isUserPresent = ChatUI.IsUserPresent();
+        var isUserPresent = ChatUI.IsUserPresent(Chat.Id);
         if (itemVisibility.IsEndAnchorVisible) {
             _lastEndAnchorVisibleAt = CpuTimestamp.Now;
             if (isUserPresent)
@@ -348,7 +348,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // messages that arrived meanwhile - which the badge no longer shows (ChatUI.IsReadingTail).
         // The interaction that ends the stretch catches it up, before that interaction can take the
         // user anywhere the count would surface.
-        if (eventKind != StateEventKind.Updated || !ChatUI.IsUserPresent())
+        if (eventKind != StateEventKind.Updated || !ChatUI.IsUserPresent(Chat.Id))
             return;
 
         var itemVisibility = ItemVisibility.Value;
@@ -412,7 +412,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 // count never rises for the chat being watched. The !IsEmpty guard keeps a retained
                 // pinned flag from marking anything read while no items are actually rendered.
                 var itemVisibility = ItemVisibility.Value;
-                if (itemVisibility.IsPinnedToEnd && !itemVisibility.IsEmpty && ChatUI.IsUserPresent())
+                if (itemVisibility.IsPinnedToEnd && !itemVisibility.IsEmpty && ChatUI.IsUserPresent(Chat.Id))
                     UpdateReadPosition(lastEntryLid);
                 continue;
             }
@@ -840,7 +840,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (items.Count == 0)
             return false; // Not loaded yet or wrong load range
 
-        if (!ChatUI.IsUserPresent()) {
+        if (!ChatUI.IsUserPresent(Chat.Id)) {
             DebugLog?.LogDebug("TryUpdateShownReadEntryLid: the user isn't at the screen");
             return false;
         }
