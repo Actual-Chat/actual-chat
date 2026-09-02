@@ -116,6 +116,34 @@ public sealed class NotificationDismissModeTest(AppHostFixture fixture, ITestOut
             "a kind that declares no mode must not be cleared by a read position it has no anchor for");
     }
 
+    [Fact]
+    public void KindDismissModeShouldMatchTheInstanceProperty()
+    {
+        // arrange
+        // A client holds only the push payload's kind, so NotificationExt.GetDismissMode restates
+        // per kind what the types declare per instance. The two drifting apart is what made every
+        // reaction banner vanish on Android, so it is asserted rather than assumed.
+        var entryId = ChatEntryId.New(TestChatId, 1);
+        var userId = UserId.New();
+        var conversationId = ConversationId.New(TestChatId, 1);
+        Notification[] notifications = [
+            MessageNotification.New(userId, TestChatId, 1),
+            ReplyNotification.New(userId, TestChatId, 1),
+            ThreadNotification.New(userId, TestChatId, 1),
+            MentionNotification.New(userId, entryId),
+            AttentionNotification.New(userId, entryId),
+            ReactionNotification.New(userId, entryId),
+            ConversationNotification.New(userId, conversationId, 2),
+            CallNotification.New(userId, conversationId, default, false),
+            InvitationNotification.New(userId, TestChatId),
+        ];
+
+        // act & assert
+        foreach (var notification in notifications)
+            NotificationExt.GetDismissMode(notification.Kind).Should().Be(notification.DismissMode,
+                because: $"{notification.Kind} must resolve the same either way");
+    }
+
     // Private methods
 
     private Task SetReadPosition(UserId userId, ChatId chatId, long entryLid)

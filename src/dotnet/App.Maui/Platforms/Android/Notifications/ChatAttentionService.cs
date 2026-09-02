@@ -66,6 +66,11 @@ public sealed class ChatAttentionService
     public void Clear(ChatId chatId, long chatPosition)
         => DispatchOnNonMainThread(() => ClearInternal(chatId, chatPosition));
 
+    public void Dismiss(IReadOnlyCollection<ChatId> chatIds)
+        // The server already decided these chats are handled, so the positions they were asked at
+        // no longer matter - and the alarm re-posts the banners until the requests are gone.
+        => DispatchOnNonMainThread(() => DismissInternal(chatIds));
+
     public void OnHandleIntent(Intent intent)
     {
         var action = intent.Action;
@@ -108,6 +113,23 @@ public sealed class ChatAttentionService
         }
         if (!ReferenceEquals(originalState, state))
             DoJob(state ?? State.None);
+    }
+
+    private void DismissInternal(IReadOnlyCollection<ChatId> chatIds)
+    {
+        // A whole push worth of dismissals at once: one state read and one Notify pass, instead of
+        // cancelling and re-posting every surviving banner once per dismissed chat.
+        var originalState = GetState();
+        if (originalState is null)
+            return;
+
+        var requests = originalState.Requests.Where(c => !chatIds.Contains(c.ChatId)).ToArray();
+        if (requests.Length == originalState.Requests.Length)
+            return;
+
+        var state = requests.Length > 0 ? new State(UtcNow, requests) : null;
+        SetState(state);
+        DoJob(state ?? State.None);
     }
 
     private void OnAlarmTriggered()

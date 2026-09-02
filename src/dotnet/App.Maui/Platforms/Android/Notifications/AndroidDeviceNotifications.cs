@@ -23,7 +23,10 @@ public class AndroidDeviceNotifications : IDeviceNotifications
         var shown = notificationManager?.ActiveNotifications;
         if (shown != null)
             foreach (var statusBarNotification in shown) {
-                var tag = statusBarNotification.Tag;
+                // Only banners this app posted for a push tag are the active set's to prune: the
+                // tray also holds the foreground-service, upload, attention and microphone
+                // notifications, none of which is ever an active tag.
+                var tag = NotificationHelper.GetPushBannerTag(statusBarNotification.Notification!);
                 if (tag.IsNullOrEmpty())
                     continue;
                 if (!activeTags.Contains(tag))
