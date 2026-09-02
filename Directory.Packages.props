@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>14.3.34</ActualLabFusionVersion>
+    <ActualLabFusionVersion>14.3.36</ActualLabFusionVersion>
     <!-- .NET 11 is still in preview: every Microsoft.* package below shares this build number -->
     <DotNetVersion>11.0.0-preview.7.26381.103</DotNetVersion>
     <AspNetCoreVersion>$(DotNetVersion)</AspNetCoreVersion>
