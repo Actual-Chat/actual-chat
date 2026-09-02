@@ -24,15 +24,22 @@ public readonly partial struct LocalUrl : IStringLike<LocalUrl>, IEquatable<Loca
 
     // An app link reaches us on either scheme: the Android intent filter advertises http and
     // https alike, and Android resolves a bare host tap to http. The host still has to match,
-    // so the scheme carries no authority of its own here.
+    // so the scheme carries no authority of its own here. Absolute-only: an app link always
+    // carries its origin, and a relative value would skip the host check entirely.
     public static bool TryParseAppLink(string? s, Uri origin, out LocalUrl result)
-        => TryParse(s, origin, true, out result);
+    {
+        result = default;
+        if (!IsAbsoluteUrl(s))
+            return false;
+
+        return TryParse(s, origin, true, out result);
+    }
 
     public static LocalUrl? FromAbsolute(string url, UrlMapper mapper)
     {
         // Absolute-only: callers pass unvalidated text (message markup, notification payloads),
         // where a relative url names no origin to check against and must not pass as local.
-        if (!Uri.TryCreate(url, UriKind.RelativeOrAbsolute, out var uri) || !uri.IsAbsoluteUri)
+        if (!IsAbsoluteUrl(url))
             return null;
 
         // Not a ternary: the implicit string conversion would turn a null branch into LocalUrl("/")
@@ -90,11 +97,13 @@ public readonly partial struct LocalUrl : IStringLike<LocalUrl>, IEquatable<Loca
 
     public string ToAbsolute(UrlMapper urlMapper)
         => urlMapper.ToAbsolute(this);
+
     public string ToAbsolute(NavigationManager nav)
         => nav.ToAbsoluteUri(Value).ToString();
 
     public DisplayUrl ToDisplayUrl(UrlMapper urlMapper)
         => new(this, ToAbsolute(urlMapper));
+
     public DisplayUrl ToDisplayUrl(NavigationManager nav)
         => new(this, ToAbsolute(nav));
 
@@ -125,8 +134,6 @@ public readonly partial struct LocalUrl : IStringLike<LocalUrl>, IEquatable<Loca
         if (s.IsNullOrEmpty())
             return false;
 
-        // UriKind.Absolute reads "/chat" as an implicit file path on Unix, so absoluteness
-        // is decided via RelativeOrAbsolute, which answers the same way on every platform.
         if (Uri.TryCreate(s, UriKind.RelativeOrAbsolute, out var uri) && uri.IsAbsoluteUri) {
             if (!IsSameOrigin(uri, origin, isAnyWebSchemeAllowed))
                 return false;
@@ -160,4 +167,9 @@ public readonly partial struct LocalUrl : IStringLike<LocalUrl>, IEquatable<Loca
     private static bool IsWebScheme(string scheme)
         => string.Equals(scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
             || string.Equals(scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsAbsoluteUrl(string? s)
+        // UriKind.Absolute reads "/chat" as an implicit file path on Unix, so absoluteness is
+        // decided via RelativeOrAbsolute, which answers the same way on every platform.
+        => Uri.TryCreate(s, UriKind.RelativeOrAbsolute, out var uri) && uri.IsAbsoluteUri;
 }

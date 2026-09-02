@@ -111,6 +111,9 @@ public class LocalUrlTest
     [InlineData("http://voxt.ai/", "/")]
     [InlineData("HTTP://VOXT.AI/chat/x", "/chat/x")]
     [InlineData("http://voxt.ai/chat?x=1#f", "/chat?x=1#f")]
+    // A spelled-out default port names the same origin, so it is not a different one
+    [InlineData("https://voxt.ai:443/chat/x", "/chat/x")]
+    [InlineData("http://voxt.ai:80/chat/x", "/chat/x")]
     public void TryParseAppLinkShouldAcceptEitherWebScheme(string value, string expected)
     {
         // arrange
@@ -130,6 +133,10 @@ public class LocalUrlTest
     [InlineData("ftp://voxt.ai/chat")] // Not a web scheme
     [InlineData("http://voxt.ai:8443/chat")] // An explicit port belongs to a single scheme
     [InlineData("//evil.example")]
+    // An app link always carries its origin - a relative value would skip the host check
+    [InlineData("/chat")]
+    [InlineData("chat")]
+    [InlineData("")]
     public void TryParseAppLinkShouldRejectEverythingElse(string value)
     {
         // arrange
