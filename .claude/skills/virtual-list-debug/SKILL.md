@@ -216,10 +216,9 @@ reproduce iOS choosing an unscrollable target before `touchstart`: `catch-drag` 
 controller releases its lock and preserves geometry, not that the same caught gesture can resume
 native scrolling on iOS.
 
-> **Known gap:** both `rig.mjs` and `soak.mjs` still call
-> `globalThis.debugUI?.listVirtualListViolations?.(true) ?? []`, which no longer exists. The
-> `violations` column in their output is therefore **always 0** and proves nothing. The checker they
-> enable still warns to the console — read it there until those two call sites are replaced.
+> Both scripts turn the checker on and collect its console warnings over CDP themselves
+> (`Runtime.consoleAPICalled`), so the `violations` column is the checker's real verdict for the run;
+> the traces under `tmp/traces/` carry the same list as `violations`.
 
 ### 1.5 The recorder — `tools/virtual-list-rig/recorder.js`
 
