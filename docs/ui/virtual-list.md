@@ -507,7 +507,7 @@ overscroll rows are the summary of §3.7.*
 | `repinEdge` called during an excursion | Pinned → awaiting overscroll end | deferred; past a boundary the measured position is not the visible one and the write would snap the bounce | — |
 | `scrollToKey` that is not the newest item | any → Placing | suppress new height animations, wait out the ones in flight, then place the item at `center` or `end` | `container.top` then `scrollTop` |
 | `scrollToKey` that *is* the newest item, end loaded | any → Pinned End | pin and re-pin, which in reverse is a follow of a few pixels or nothing at all — so a message you just posted still animates in | `scrollTop` |
-| the user scrolls away from the edge | Pinned → Free | `updatePinnedEdge` finds neither edge within `EdgeEpsilon` (4px); on desktop `onWheel` also clears the pin even inside the guard window | — |
+| the user scrolls away from the edge | Pinned → Free | `updatePinnedEdge` finds neither edge within `EdgeEpsilon` (4px); on desktop the scroll a wheel away from the edge produced clears the pin outright, even inside the guard window — but only that scroll: a wheel that scrolls nothing (a chat that fits on screen, a scroller nested in a message) leaves the pin alone | — |
 | a `data-vl-hold` control is clicked or tapped | Pinned → Free, interactive anchor set | the clicked item is what the next render holds; `keep-edge` controls leave a pinned list alone; expires after 2s | — |
 | a `data-vl-hold` control marked `data-anchor="below"` | Pinned → Free, key-addressed screen anchor set | the first content item below the control keeps its rendered position; placed only by the render that inserts content directly above that item, however many unrelated renders land first | — |
 | a `data-vl-hold` control inside a `data-vl-anchor` element | Pinned → Free, screen anchor set | the element's rendered screen position is recorded; unpinning is what gives the chain its top anchor (§3.2) | — |
@@ -713,8 +713,11 @@ The follow writes `scrollTop` again — and deliberately does **not** open that 
 never close. It is recognised the other way instead: `followBy` reports where the write landed, and
 the next scroll event standing on that exact value is dropped whole, while the first event anywhere
 else is the user's. So the guard proper is only open after a genuine jump — opening a chat, a
-`scrollToKey`, a re-centre — where suppressing the handler is what we want. `onWheel` remains the
-escape hatch on desktop.
+`scrollToKey`, a re-centre — where suppressing the handler is what we want. A wheel away from the edge
+remains the escape hatch on desktop: `onWheel` only notes it, and the scroll it produces inside
+`WheelAwayWindowMs` (300ms) drops the pin whatever the guard says. Noting rather than dropping is what
+keeps a wheel that scrolls nothing — a chat that fits on screen, a scroller nested in a message — from
+leaving the list unpinned with nothing to put the pin back until the next render's clamp.
 
 #### Stranded recovery
 
