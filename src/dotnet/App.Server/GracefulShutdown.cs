@@ -10,8 +10,8 @@ namespace ActualChat.App.Server;
 /// </summary>
 internal sealed class GracefulShutdown(IServiceProvider services) : IHostedLifecycleService
 {
-    private static readonly TimeSpan HandoverTimeout = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan DisconnectTimeout = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan HandoverTimeout = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan DisconnectTimeout = TimeSpan.FromSeconds(2.5);
 
     private IServiceProvider Services { get; } = services;
     private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();

@@ -210,7 +210,6 @@ public partial class AppHost
         builder.Host.ConfigureHostOptions(options => {
             options.ServicesStartConcurrently = true;
             options.ServicesStopConcurrently = true;
-            options.ShutdownTimeout = TimeSpan.FromSeconds(15);
         });
         builder.WebHost
             .UseDefaultServiceProvider((_, options) => {
