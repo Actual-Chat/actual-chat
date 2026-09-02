@@ -13,4 +13,15 @@ public enum DeviceType
     // Apple Push to Talk token (ephemeral, from PTChannelManager) - direct APNs only,
     // must never be handed to FCM.
     iOSPttApp = 4,
+    // Apple PushKit VoIP token for CallKit rings - direct APNs only, must never be
+    // handed to FCM.
+    iOSVoipApp = 5,
+}
+
+public static class DeviceTypeExt
+{
+    // The push-only types hold PushKit tokens, which FCM rejects - and a rejected token
+    // is dropped from the whole batch, so this filters rather than the call sites.
+    public static bool IsFcm(this DeviceType deviceType)
+        => deviceType is not (DeviceType.iOSPttApp or DeviceType.iOSVoipApp);
 }
