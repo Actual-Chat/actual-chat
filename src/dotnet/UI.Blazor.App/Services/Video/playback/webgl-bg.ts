@@ -14,7 +14,7 @@ import { BgBlurPerfTracker } from '../services/bg-blur-stats';
 import { createFbo, createProgram, createTexture, setupFullScreenQuad } from './webgl-helpers';
 import { getLogs } from 'logging';
 
-const { warnLog } = getLogs('VideoWebGPU');
+const { infoLog, warnLog } = getLogs('VideoWebGPU');
 
 const BG_CANVAS_WIDTH = 64;
 // Gaussian sigma (in target-pixel units). Picks the per-pass kernel
@@ -81,6 +81,18 @@ void main() {
 }
 `;
 
+// Shared by the ctor and the post-restore re-acquire: getContext must be asked
+// for the same attributes both times or the restored context differs from the
+// one the pipeline was built against.
+const GL_CONTEXT_ATTRS: WebGLContextAttributes = {
+    alpha: false,
+    antialias: false,
+    depth: false,
+    stencil: false,
+    premultipliedAlpha: false,
+    preserveDrawingBuffer: false,
+};
+
 export class WebGlBgRenderer {
     private gl: WebGL2RenderingContext | null = null;
     private readonly perf = new BgBlurPerfTracker('webgl');
@@ -88,10 +100,51 @@ export class WebGlBgRenderer {
     // Stored so dispose() can detach it before its own loseContext() — that call
     // dispatches the same event, and answering it would log an ordinary teardown
     // as a context loss.
-    private readonly onContextLost = (): void => {
+    private readonly onContextLost = (e: Event): void => {
+        // preventDefault is what makes the browser promise a restore. Without it
+        // `webglcontextrestored` never fires, and since the controller now outlives
+        // the player, one GPU reset meant no backdrop for the rest of the session.
+        e.preventDefault();
         warnLog?.log('WebGlBgRenderer: context lost');
         this.gl = null;
+        this.forgetGlResources();
     };
+
+    private readonly onContextRestored = (): void => {
+        if (this.isDisposed)
+            return;
+
+        const gl = this.canvas.getContext('webgl2', GL_CONTEXT_ATTRS);
+        if (!gl) {
+            warnLog?.log('WebGlBgRenderer: context restored but unavailable');
+            return;
+        }
+
+        try {
+            this.gl = gl;
+            this.initGl();
+            infoLog?.log('WebGlBgRenderer: context restored');
+        } catch (e) {
+            warnLog?.log('WebGlBgRenderer: re-init after restore failed:', e);
+            this.gl = null;
+            this.forgetGlResources();
+        }
+    };
+
+    // Every GL object died with the context. Drop the handles so nothing deletes
+    // or reuses them, and so initGl/alloc rebuild from scratch.
+    private forgetGlResources(): void {
+        this.copyProgram = null;
+        this.blurProgram = null;
+        this.positionBuffer = null;
+        this.sourceTexture = null;
+        this.pingTexture = null;
+        this.pongTexture = null;
+        this.pingFbo = null;
+        this.pongFbo = null;
+        this.allocW = 0;
+        this.allocH = 0;
+    }
 
     private copyProgram: WebGLProgram | null = null;
     private blurProgram: WebGLProgram | null = null;
@@ -112,14 +165,7 @@ export class WebGlBgRenderer {
     private uBlurRadius: WebGLUniformLocation | null = null;
 
     constructor(private readonly canvas: OffscreenCanvas) {
-        const gl = canvas.getContext('webgl2', {
-            alpha: false,
-            antialias: false,
-            depth: false,
-            stencil: false,
-            premultipliedAlpha: false,
-            preserveDrawingBuffer: false,
-        });
+        const gl = canvas.getContext('webgl2', GL_CONTEXT_ATTRS);
         if (!gl) {
             warnLog?.log('WebGlBgRenderer: webgl2 context unavailable');
             return;
@@ -128,6 +174,7 @@ export class WebGlBgRenderer {
         // Without this the renderer goes silently black on a lost context and the
         // logs give no way to tell that apart from an ordinary teardown.
         canvas.addEventListener('webglcontextlost', this.onContextLost);
+        canvas.addEventListener('webglcontextrestored', this.onContextRestored);
         try {
             this.gl = gl;
             this.initGl();
@@ -143,6 +190,7 @@ export class WebGlBgRenderer {
 
         this.isDisposed = true;
         this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
+        this.canvas.removeEventListener('webglcontextrestored', this.onContextRestored);
         const gl = this.gl;
         if (!gl)
             return;
