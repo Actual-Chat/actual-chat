@@ -20,8 +20,11 @@ public enum DeviceType
 
 public static class DeviceTypeExt
 {
-    // The push-only types hold PushKit tokens, which FCM rejects - and a rejected token
-    // is dropped from the whole batch, so this filters rather than the call sites.
+    // Allowlist: an unlisted type must default to "not FCM", because handing a direct-push
+    // token to FCM gets the device row deleted and the user stops receiving calls.
     public static bool IsFcm(this DeviceType deviceType)
-        => deviceType is not (DeviceType.iOSPttApp or DeviceType.iOSVoipApp);
+        => deviceType is DeviceType.WebBrowser
+            or DeviceType.WindowsApp
+            or DeviceType.iOSApp
+            or DeviceType.AndroidApp;
 }

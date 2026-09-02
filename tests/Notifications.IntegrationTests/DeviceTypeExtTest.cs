@@ -17,10 +17,23 @@ public sealed class DeviceTypeExtTest
         => deviceType.IsFcm().Should().BeFalse();
 
     [Fact]
-    public void EveryDeviceTypeIsClassified()
+    public void FcmSetIsExplicitlyListed()
     {
-        // A new device type must be a deliberate decision on both sides, not a default.
-        foreach (var deviceType in Enum.GetValues<DeviceType>())
-            deviceType.IsFcm().Should().Be(deviceType is not (DeviceType.iOSPttApp or DeviceType.iOSVoipApp));
+        var fcmTypes = new[] {
+            DeviceType.WebBrowser,
+            DeviceType.WindowsApp,
+            DeviceType.iOSApp,
+            DeviceType.AndroidApp,
+        };
+        foreach (var fcmType in fcmTypes)
+            fcmType.IsFcm().Should().BeTrue();
+    }
+
+    [Fact]
+    public void AnUnknownDeviceTypeIsNotFcm()
+    {
+        // A type added later must default to "not FCM": handing a direct-push token to
+        // FCM gets the device row deleted, so the predicate has to fail closed.
+        ((DeviceType)9999).IsFcm().Should().BeFalse();
     }
 }
