@@ -791,6 +791,12 @@ public static class LocalizedStringsLocalizerExt
         public string Permissions_AllGranted => l["Permissions_AllGranted"].Value;
         public string Permissions_DismissWarning => l["Permissions_DismissWarning"].Value;
         public string Permissions_WarningDismissed => l["Permissions_WarningDismissed"].Value;
+        public string Permissions_RevokeHint_App => l["Permissions_RevokeHint_App"].Value;
+        public string Permissions_RevokeHint_Web => l["Permissions_RevokeHint_Web"].Value;
+        public string PermissionGuide_App => l["PermissionGuide_App"].Value;
+        public string PermissionGuide_Web_Format(object arg0)
+            => l["PermissionGuide_Web_Format", arg0].Value;
+        public string PermissionGuide_WebAddressBarHint => l["PermissionGuide_WebAddressBarHint"].Value;
 
         public string Account_UserProfile => l["Account_UserProfile"].Value;
         public string Account_YourProfile => l["Account_YourProfile"].Value;
