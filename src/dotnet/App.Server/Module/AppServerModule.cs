@@ -193,7 +193,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         services.Configure<HostOptions>(o => {
             o.ShutdownTimeout = Env.IsDevelopment()
                 ? TimeSpan.FromSeconds(1)
-                : TimeSpan.FromSeconds(30);
+                : TimeSpan.FromSeconds(5); // GracefulShutdown must fit in here
         });
 
         // AppHostLifecycleMonitor

@@ -325,7 +325,7 @@ public readonly struct RpcHostBuilder
 
         // Replace RpcClientPeerReconnectDelayer: a backend peer typically fails to connect to a node
         // that's a second away from listening or from being rerouted away, so it must retry fast
-        Services.AddSingleton(c => new RpcClientPeerReconnectDelayer(c) { Delays = RetryDelaySeq.Exp(0.25, 3) });
+        Services.AddSingleton(c => new RpcClientPeerReconnectDelayer(c) { Delays = RetryDelaySeq.Exp(0.25, 1) });
     }
 
     private void AddRpcPeerFactory()
