@@ -165,8 +165,60 @@ public class FirebaseMessagingClient(
         await HandleBatchResponse(batchResponse, deviceIds, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task SendDismissal(
+    public async Task<IReadOnlyCollection<PendingDismissal>> SendDismissal(
         IReadOnlyCollection<PendingDismissal> dismissals,
+        IReadOnlyCollection<Symbol> deviceIds,
+        int badgeCount,
+        CancellationToken cancellationToken)
+    {
+        if (deviceIds.Count == 0)
+            return [];
+
+        var sent = new List<PendingDismissal>();
+        foreach (var chunk in ChunkDismissals(dismissals)) {
+            var data = new Dictionary<string, string>() {
+                {
+                    Constants.Notification.MessageDataKeys.DismissedIds,
+                    string.Join(',', chunk.Dismissals.Select(x => x.Id.Value))
+                },
+                { Constants.Notification.MessageDataKeys.DismissedTags, string.Join(',', chunk.Tags) },
+            };
+            var multicastMessage = new MulticastMessage {
+                Tokens = deviceIds.Select(id => id.Value).ToList(),
+                Data = data,
+                Android = new AndroidConfig {
+                    Data = data,
+                    // Doze holds this one, but only until the device wakes: measured at ~0.57s
+                    // after it leaves Doze, which High would buy with an FCM cold start.
+                    Priority = Priority.Normal,
+                    TimeToLive = TimeSpan.FromDays(1),
+                },
+                Apns = new ApnsConfig {
+                    Headers = new Dictionary<string, string>() {
+                        // A silent push: it only updates the badge and lets the app drop dismissed notifications.
+                        ["apns-push-type"] = "background",
+                        ["apns-priority"] = "5",
+                    },
+                    Aps = new Aps {
+                        // No Badge here: a background notification's aps may carry only
+                        // content-available, and iOS ignores a badge sent alongside it - measured,
+                        // banners cleared while the count stayed put. SendBadge carries it instead.
+                        ContentAvailable = true,
+                    },
+                },
+            };
+            var batchResponse = await FirebaseMessaging
+                .SendEachForMulticastAsync(multicastMessage, cancellationToken)
+                .ConfigureAwait(false);
+            await HandleBatchResponse(batchResponse, deviceIds, cancellationToken).ConfigureAwait(false);
+            if (IsAccepted(batchResponse))
+                sent.AddRange(chunk.Dismissals);
+        }
+
+        return sent;
+    }
+
+    public async Task SendBadge(
         IReadOnlyCollection<Symbol> deviceIds,
         int badgeCount,
         CancellationToken cancellationToken)
@@ -174,36 +226,20 @@ public class FirebaseMessagingClient(
         if (deviceIds.Count == 0)
             return;
 
-        var dismissedIds = dismissals.Select(x => x.Id.Value);
-        // Only chat/entry-derived tags are emitted: a client closes every notification sharing
-        // a tag, so the non-chat "topic" fallback must never be a dismissal tag.
-        var dismissedTags = dismissals
-            .Select(x => x.Tag)
-            .Where(tag => !tag.IsNullOrEmpty())
-            .Distinct();
-        var data = new Dictionary<string, string>() {
-            { Constants.Notification.MessageDataKeys.DismissedIds, string.Join(',', dismissedIds) },
-            { Constants.Notification.MessageDataKeys.DismissedTags, string.Join(',', dismissedTags) },
-        };
         var multicastMessage = new MulticastMessage {
             Tokens = deviceIds.Select(id => id.Value).ToList(),
-            Data = data,
-            Android = new AndroidConfig {
-                Data = data,
-                // Normal, not High: nothing here is worth waking the device out of Doze. High would
-                // cold-start a dead app on the 10s foreground-broadcast ANR budget and, being
-                // non-notifying, spend the high-priority allowance real notifications need.
-                Priority = Priority.Normal,
-                TimeToLive = TimeSpan.FromDays(1),
-            },
             Apns = new ApnsConfig {
                 Headers = new Dictionary<string, string>() {
-                    // A silent push: it only updates the badge and lets the app drop dismissed notifications.
-                    ["apns-push-type"] = "background",
+                    // "alert" is the push type for anything that triggers an alert, badge or sound,
+                    // and badge-only is one of those. It matters: "background" is the throttled
+                    // budget this exists to get out of. With no alert body and no mutable-content
+                    // iOS applies the count itself - no banner, no app wake, no service extension.
+                    ["apns-push-type"] = "alert",
                     ["apns-priority"] = "5",
+                    // A burst of reads is one badge value, not a queue of them.
+                    ["apns-collapse-id"] = "badge",
                 },
                 Aps = new Aps {
-                    ContentAvailable = true,
                     Badge = badgeCount,
                 },
             },
@@ -253,6 +289,48 @@ public class FirebaseMessagingClient(
             chatId, batchResponse.SuccessCount, deviceIds.Count);
         await HandleBatchResponse(batchResponse, deviceIds, cancellationToken).ConfigureAwait(false);
     }
+
+    // Protected/internal methods
+
+    // It's internal to be accessible from tests
+    internal static List<DismissalChunk> ChunkDismissals(IReadOnlyCollection<PendingDismissal> dismissals)
+    {
+        // Over the FCM payload limit the whole message is rejected, taking every dismissal in it
+        // down. A chunk pays for both keys it emits - one id per dismissal, one tag per distinct
+        // tag - so the two stay consistent and a rejected chunk leaves exactly its own owed.
+        var budget = MaxFcmPayloadBytes - FcmPayloadMargin
+            - Encoding.UTF8.GetByteCount(Constants.Notification.MessageDataKeys.DismissedIds)
+            - Encoding.UTF8.GetByteCount(Constants.Notification.MessageDataKeys.DismissedTags);
+        var chunks = new List<DismissalChunk>();
+        // Only chat/entry-derived tags are emitted: a client closes every notification sharing
+        // a tag, so the non-chat "topic" fallback must never be a dismissal tag. An untagged
+        // dismissal closes no banner, but its id still refreshes the badge.
+        var items = dismissals.Where(x => x.Tag.IsNullOrEmpty()).ToList();
+        var tags = new List<string>();
+        var size = items.Sum(IdSize);
+        foreach (var group in dismissals.Where(x => !x.Tag.IsNullOrEmpty()).GroupBy(x => x.Tag)) {
+            var groupSize = Encoding.UTF8.GetByteCount(group.Key) + 1 + group.Sum(IdSize);
+            if (tags.Count > 0 && size + groupSize > budget) {
+                chunks.Add(new DismissalChunk(items, tags));
+                items = [];
+                tags = [];
+                size = 0;
+            }
+            items.AddRange(group);
+            tags.Add(group.Key);
+            size += groupSize;
+        }
+        if (items.Count > 0 || tags.Count > 0)
+            chunks.Add(new DismissalChunk(items, tags));
+
+        return chunks;
+
+        static int IdSize(PendingDismissal dismissal)
+            // + the ',' separator
+            => Encoding.UTF8.GetByteCount(dismissal.Id.Value) + 1;
+    }
+
+    // Private methods
 
     private async Task HandleBatchResponse(
         BatchResponse batchResponse,
@@ -305,4 +383,17 @@ public class FirebaseMessagingClient(
                     responseGroup.Key, responseGroup.Count(), errorContent);
             }
     }
+
+    private static bool IsAccepted(BatchResponse batchResponse)
+        // An unregistered token isn't a failure worth retrying - that device is gone and gets removed.
+        => batchResponse.Responses.All(x =>
+            x.IsSuccess
+            || x.Exception.MessagingErrorCode
+                is MessagingErrorCode.Unregistered or MessagingErrorCode.SenderIdMismatch);
+
+    // Nested types
+
+    internal sealed record DismissalChunk(
+        IReadOnlyList<PendingDismissal> Dismissals,
+        IReadOnlyList<string> Tags);
 }

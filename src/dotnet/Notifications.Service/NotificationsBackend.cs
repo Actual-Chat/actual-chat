@@ -1009,13 +1009,28 @@ public class NotificationsBackend(IServiceProvider services)
             DebugLog?.LogDebug("OnConverge: sending. UserId={UserId}, Pending#={Count}, DeviceIds#={DeviceIdCount}",
                 userId, sendable.Count, deviceIds.Count);
             // No devices to send to still counts as done - otherwise a user with none accumulates
-            // entries no send could ever consume. A throwing send leaves them standing to retry.
-            if (deviceIds.Count > 0)
-                // Badge recomputed from current state at delivery (see OnPush).
+            // entries no send could ever consume. Anything else is done only once it's out: FCM
+            // reports a rejected push in the batch response rather than throwing, so clearing what
+            // was merely attempted loses the dismissal for good.
+            if (deviceIds.Count == 0)
+                doneIds.AddRange(sendable.Select(x => x.Id));
+            else {
+                // The badge goes on its own alert push to iOS, and unconditionally: the removal
+                // below rides a background push that the system may hold for a long time, and a
+                // count that lags by an hour is the part the user sees from the home screen.
+                var iosDeviceIds = devices
+                    .Where(d => d.DeviceType == DeviceType.iOSApp)
+                    .Select(d => d.DeviceId)
+                    .ToList();
                 await FirebaseMessagingClient
+                    .SendBadge(iosDeviceIds, info.Items.Count, cancellationToken)
+                    .ConfigureAwait(false);
+                // Badge recomputed from current state at delivery (see OnPush).
+                var sent = await FirebaseMessagingClient
                     .SendDismissal(sendable, deviceIds, info.Items.Count, cancellationToken)
                     .ConfigureAwait(false);
-            doneIds.AddRange(sendable.Select(x => x.Id));
+                doneIds.AddRange(sent.Select(x => x.Id));
+            }
         }
 
         if (doneIds.Count > 0)
