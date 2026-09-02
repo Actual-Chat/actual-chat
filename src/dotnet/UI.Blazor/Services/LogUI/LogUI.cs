@@ -9,7 +9,7 @@ namespace ActualChat.UI.Blazor.Services;
 public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogSink, INotifyInitialized
 {
     private static readonly string OwnLogCategory = $"{typeof(LogUI).Namespace}.{nameof(LogUI)}";
-    private static readonly TileStack<long> IdTileStack = Constants.TileStacks.Long5To80;
+    private static readonly TileLayer<long> IdTiles = Constants.TileLayers.Long5;
     private readonly Lock _lock = new();
     private readonly AsyncTaskMethodBuilder _whenReady = AsyncTaskMethodBuilderExt.New();
     private RingBuffer<LogEntry> _events = new(10_000);
@@ -81,7 +81,7 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
             if (idRange.IsEmptyOrNegative)
                 return [];
 
-            var idTiles = IdTileStack.FirstLayer.GetCoveringTiles(idRange).OrderBy(x => x.Start).ToList();
+            var idTiles = IdTiles.GetCoveringTiles(idRange).OrderBy(x => x.Start).ToList();
             var tiles = await idTiles.Select(x => GetTile(x, cancellationToken)).Collect(cancellationToken).ConfigureAwait(false);
             tiles = [..tiles.Where(x => !x.IsEmpty)];
             DiagLog?.LogInformation("GetTiles: idRange={IdRange}, idTiles={IdTiles}, tilesCount={TilesCount}", idRange, idTiles, tiles.Length);
@@ -110,28 +110,19 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
     }
 
     [ComputeMethod(AutoInvalidationDelay = 10 * 60 * 1000)]
-    protected virtual async Task<LogTile> GetTile(Tile<long> idTile, CancellationToken cancellationToken)
+    protected virtual Task<LogTile> GetTile(Tile<long> idTile, CancellationToken cancellationToken)
     {
-        var smallerIdTiles = idTile.Smaller();
-        if (smallerIdTiles.Length != 0) {
-            var smallerTiles = await smallerIdTiles
-                .Select(sidTile => GetTile(sidTile, cancellationToken))
-                .Collect(cancellationToken)
-                .ConfigureAwait(false);
-            return LogTile.From(smallerTiles);
-        }
-
         lock (_lock) {
             if (_events.Count == 0)
-                return LogTile.Empty;
+                return Task.FromResult(LogTile.Empty);
 
             var intersectingRange = idTile.Range.IntersectWith(new(_events[0].Id, _events[^1].Id + 1));
             if (intersectingRange.IsEmptyOrNegative)
-                return LogTile.Empty;
+                return Task.FromResult(LogTile.Empty);
 
             _events.GetSpans(out var first, out var second);
             var tile = new LogTile(idTile.Range, [..GetSpan(first, intersectingRange), ..GetSpan(second, intersectingRange)]);
-            return tile;
+            return Task.FromResult(tile);
         }
 
         static ReadOnlySpan<LogEntry> GetSpan(ReadOnlySpan<LogEntry> source, Range<long> intersectingRange)
@@ -145,7 +136,8 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
         }
     }
 
-    protected override Task OnRun(CancellationToken cancellationToken) {
+    protected override Task OnRun(CancellationToken cancellationToken)
+    {
         if (CanCapture) { // SECURITY: No log streaming from SSB!
             // Capture the resolved sink set while the DI scope is alive and pair Remove with Add, so
             // teardown never re-resolves TailLoggerSinkSet from an already-disposed scope (which threw
@@ -162,13 +154,9 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
     {
         using (Invalidation.Begin()) {
             _ = GetIdRange(default);
-            var smallestTile = IdTileStack.FirstLayer.GetTile(id);
-            DiagLog?.LogDebug("Invalidating {Tile} for #{LogEntryId}", smallestTile, id);
-            _ = GetTile(smallestTile, default);
-            //foreach (var tile in IdTileStack.GetAllTiles(id)) {
-            //    DiagLog?.LogDebug("Invalidating {Tile} for #{LogEntryId}", tile, id);
-            //    _ = GetTile(tile, default);
-            //}
+            var idTile = IdTiles.GetTile(id);
+            DiagLog?.LogDebug("Invalidating {Tile} for #{LogEntryId}", idTile, id);
+            _ = GetTile(idTile, default);
         }
     }
 }

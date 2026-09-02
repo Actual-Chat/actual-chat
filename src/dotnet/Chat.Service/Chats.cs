@@ -11,9 +11,6 @@ namespace ActualChat.Chat;
 /// </summary>
 public partial class Chats(IServiceProvider services) : IChats
 {
-    public static readonly TileStack<long> ServerIdTileStack = Constants.Chat.ServerIdTileStack;
-    public static readonly TileStack<long> ViewIdTileStack = Constants.Chat.ViewIdTileStack;
-
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IAvatars Avatars { get; } = services.GetRequiredService<IAvatars>();
@@ -83,6 +80,19 @@ public partial class Chats(IServiceProvider services) : IChats
         Range<long> lidTileRange,
         CancellationToken cancellationToken)
     {
+        await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetTile(chatId, lidTileRange, false, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<ChatTile> GetTileNonComputed(
+        Session session,
+        ChatId chatId,
+        Range<long> lidTileRange,
+        CancellationToken cancellationToken)
+    {
+        // What this method drops is the caller's dependency, not the caching - hence the isolation
+        // over Backend.GetTile rather than a call to its non-computed sibling.
+        using var _ = Computed.BeginIsolation();
         await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
         return await Backend.GetTile(chatId, lidTileRange, false, cancellationToken).ConfigureAwait(false);
     }

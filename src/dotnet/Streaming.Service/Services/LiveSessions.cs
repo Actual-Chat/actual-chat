@@ -8,7 +8,7 @@ namespace ActualChat.Streaming.Services;
 /// </summary>
 public class LiveSessions(IServiceProvider services) : ILiveSessions
 {
-    private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
+    private static readonly TileLayer<long> EntryIdTiles = Constants.Chat.EntryIdTiles;
 
     private IServiceProvider Services { get; } = services;
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
@@ -342,7 +342,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     {
         var lidRange = await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
         var maxEntries = AudioSettings.MaxConversationEntries;
-        var tile = IdTileStack.FirstLayer.GetTile(lidRange.End - 1);
+        var tile = EntryIdTiles.GetTile(lidRange.End - 1);
         // Bounds the tail walk: a window this dense is a conversation many times over, so stopping
         // early can only under-report a chat that already passed every threshold.
         for (var seen = 0; seen < maxEntries;) {
@@ -374,7 +374,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
             if (isWindowPassed || tile.Range.Start <= lidRange.Start)
                 break;
 
-            tile = IdTileStack.FirstLayer.GetTile(tile.Range.Start - 1);
+            tile = EntryIdTiles.GetTile(tile.Range.Start - 1);
         }
     }
 

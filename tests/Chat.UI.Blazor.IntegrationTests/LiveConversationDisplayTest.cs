@@ -27,7 +27,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // arrange
         await Tester.SignInAsUniqueBob();
         var chat = await CreateSettledChat("live-block-boundary-test");
-        var tileSize = ChatUI.IdTileStack.FirstLayer.TileSize;
+        var tileSize = ChatUI.EntryIdTiles.TileSize;
         ChatEntry entry;
         do {
             entry = await Tester.CreateTextEntry(chat.Id, "filler");
@@ -117,7 +117,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live!.SessionStartedAt.Should().NotBeNull();
 
-        var tileSize = (int)ChatUI.IdTileStack.FirstLayer.TileSize;
+        var tileSize = (int)ChatUI.EntryIdTiles.TileSize;
         ChatEntry lastEntry = null!;
         for (var i = 0; i < tileSize * 3; i++)
             lastEntry = await Tester.CreateTextEntry(chat.Id, $"live-{i}");
@@ -1013,7 +1013,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
         var v = live!.EffectiveVisibleStartLid;
-        var tileSize = (int)ChatUI.IdTileStack.FirstLayer.TileSize;
+        var tileSize = (int)ChatUI.EntryIdTiles.TileSize;
         ChatEntry lastFolded = null!;
         for (var i = 0; i < tileSize * 3; i++)
             lastFolded = await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
@@ -1157,7 +1157,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // window loads that last tile and reaches the thread's tile only by widening
         await Tester.SignInAsUniqueBob();
         var chat = await CreateSettledChat("thread-widened-tile-test");
-        var tileSize = (int)ChatUI.IdTileStack.FirstLayer.TileSize;
+        var tileSize = (int)ChatUI.EntryIdTiles.TileSize;
         ChatEntry entry;
         do {
             entry = await Tester.CreateTextEntry(chat.Id, "filler");
@@ -2121,7 +2121,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // The overlap has to cover whole aligned id tiles: a tile is only dropped when an excluded
         // range contains all of it, so a conversation narrower than a tile never exercises the load
         // path at all.
-        var tileSize = ChatUI.IdTileStack.FirstLayer.TileSize;
+        var tileSize = ChatUI.EntryIdTiles.TileSize;
         for (var i = 0; i < 4 * tileSize; i++)
             inside.Add(await Tester.CreateTextEntry(chat.Id, $"inside-{i}"));
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {

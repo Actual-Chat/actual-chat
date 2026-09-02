@@ -465,7 +465,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
         var live = await backend.GetState(chatId, default);
         live.Should().NotBeNull();
-        var tileStart = Constants.Chat.ServerIdTileStack.LastLayer.GetTile(live!.StartEntryLid).Range.Start;
+        var tileStart = Constants.Chat.RangeMetaEntryIdTiles.GetTile(live!.StartEntryLid).Range.Start;
 
         // assert — no live conversation block is injected for a solo streamer
         var metaBefore = await conversations.GetRangeMeta(chatId, tileStart, default);
@@ -479,7 +479,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         var latched = await backend.GetState(chatId, default);
         latched!.SessionStartedAt.Should().NotBeNull();
         var liveStartLid = latched.EffectiveVisibleStartLid;
-        var liveTileStart = Constants.Chat.ServerIdTileStack.LastLayer.GetTile(liveStartLid).Range.Start;
+        var liveTileStart = Constants.Chat.RangeMetaEntryIdTiles.GetTile(liveStartLid).Range.Start;
         await ComputedTest.When(async ct => {
             var metaAfter = await conversations.GetRangeMeta(chatId, liveTileStart, ct);
             metaAfter.ConversationLidRanges.Should().Contain(r => r.Contains(liveStartLid));
@@ -501,7 +501,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // act — a single streamer
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
         var live = await backend.GetState(chatId, default);
-        var tileRange = Constants.Chat.ServerIdTileStack.LastLayer.GetTile(live!.StartEntryLid).Range;
+        var tileRange = Constants.Chat.RangeMetaEntryIdTiles.GetTile(live!.StartEntryLid).Range;
 
         // assert — the synthetic live block is not injected before the latch
         var tileBefore = await conversations.GetTile(chatId, tileRange, default);
@@ -1273,7 +1273,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         (await backend.GetState(chatId, default))!.SessionStartedAt.Should().NotBeNull();
 
         // act
-        var idTileStart = Constants.Chat.ServerIdTileStack.LastLayer.GetTile(e0.LocalId).Range.Start;
+        var idTileStart = Constants.Chat.RangeMetaEntryIdTiles.GetTile(e0.LocalId).Range.Start;
         var meta = await conversationsBackend.GetRangeMeta(chatId, idTileStart, default);
 
         // assert — the pre-latch conversation's exact range survives; the live range no longer swallows it

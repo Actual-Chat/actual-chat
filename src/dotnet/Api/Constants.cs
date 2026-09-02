@@ -66,10 +66,12 @@ public static partial class Constants
         public static readonly HashSet<ChatId> SystemChatIds = [DefaultChatId, AnnouncementsChatId, FeedbackTemplateChatId];
         public static readonly HashSet<string> SystemChatIdValues = SystemChatIds.Select(x => x.Value).ToHashSet();
 
-        public static readonly TileStack<long> ServerIdTileStack = TileStacks.Long5To1K;
-        public static readonly TileStack<long> ReaderIdTileStack = TileStacks.Long5To80;
-        public static readonly TileStack<long> ViewIdTileStack = TileStacks.Long5To20;
-        public static readonly TileStack<int> ChatTileStack = TileStacks.Int5To20;
+        // Entry fetches: the only tile IChatsBackend.GetTile and IChatEntryLanguagesBackend.GetTile accept
+        public static readonly TileLayer<long> EntryIdTiles = TileLayers.Long5;
+        // Range fetches: the only tile GetChatRangeMeta, GetEntryRangeMeta,
+        // IConversationsBackend.GetRangeMeta and IConversationsBackend.GetTile accept
+        public static readonly TileLayer<long> RangeMetaEntryIdTiles = TileLayers.Long1280;
+        public static readonly TileLayer<int> ChatListIndexTiles = TileLayers.Int5;
         public static readonly TimeSpan MaxEntryDuration = TimeSpan.FromMinutes(3);
         public static readonly TimeSpan StreamingEntryFixupDelay = MaxEntryDuration + TimeSpan.FromSeconds(30);
         // How long after the last interaction we still count an open chat at its tail as "being read".

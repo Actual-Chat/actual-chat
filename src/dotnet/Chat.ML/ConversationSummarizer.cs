@@ -186,7 +186,7 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
         var minLid = localIds.Min();
         var maxLid = localIds.Max();
         var lidRange = new Range<long>(minLid, maxLid + 1);
-        var lidTiles = Constants.Chat.ServerIdTileStack.FirstLayer.GetCoveringTiles(lidRange);
+        var lidTiles = Constants.Chat.EntryIdTiles.GetCoveringTiles(lidRange);
 
         var tiles = await lidTiles
             .Select(idTile => ChatEntryLanguagesBackend.GetTile(chatId, idTile.Range, cancellationToken))

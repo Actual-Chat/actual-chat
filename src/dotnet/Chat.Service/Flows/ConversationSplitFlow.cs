@@ -12,7 +12,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
 {
     private const int BatchSize = 100;
     private static readonly TimeSpan MaxDelay = TimeSpan.FromDays(7);
-    private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
+    private static readonly TileLayer<long> RangeMetaEntryIdTiles = Constants.Chat.RangeMetaEntryIdTiles;
 
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
@@ -95,7 +95,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
             if (OverlapsLiveSession([replyRange]))
                 continue; // The live flow owns its range; don't append replies into it.
 
-            var idRange = IdTileStack.LastLayer.GetTile(entryLid).Range;
+            var idRange = RangeMetaEntryIdTiles.GetTile(entryLid).Range;
             var rangeMeta = await ConversationsBackend.GetRangeMeta(ChatId, idRange.Start, cancellationToken).ConfigureAwait(false);
             var existingConversationIds = rangeMeta.ConversationIds;
             var appendReply = new ConversationBackend_AppendReply(

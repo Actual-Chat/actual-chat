@@ -13,7 +13,7 @@ public static class ChatsBackendExt
         if (entryId is null)
             return null;
 
-        var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
+        var idTile = Constants.Chat.EntryIdTiles.GetTile(entryId.LocalId);
         var tile = await chatsBackend.GetTile(entryId.ChatId,
                 idTile.Range,
                 false,
@@ -31,7 +31,7 @@ public static class ChatsBackendExt
         if (entryId is null)
             return null;
 
-        var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
+        var idTile = Constants.Chat.EntryIdTiles.GetTile(entryId.LocalId);
         var cTile = await Computed.Capture(() => chatsBackend.GetTile(
                 entryId.ChatId,
                 idTile.Range,
@@ -62,7 +62,7 @@ public static class ChatsBackendExt
         if (entryId is null)
             return null;
 
-        var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
+        var idTile = Constants.Chat.EntryIdTiles.GetTile(entryId.LocalId);
         var tile = await chatsBackend.GetTile(entryId.ChatId,
                 idTile.Range,
                 true,
@@ -99,7 +99,7 @@ public static class ChatsBackendExt
         if (maxId < minId || chatId is null)
             return [];
 
-        var idTiles = Constants.Chat.ServerIdTileStack.FirstLayer.GetCoveringTiles(new Range<long>(minId, maxId + 1));
+        var idTiles = Constants.Chat.EntryIdTiles.GetCoveringTiles(new Range<long>(minId, maxId + 1));
         var entries = new List<ChatEntry>(localIds.Count);
         foreach (var idTile in idTiles) {
             var tile = await chatsBackend.GetTile(chatId!,
@@ -119,7 +119,7 @@ public static class ChatsBackendExt
         bool includeRemoved = false,
         CancellationToken cancellationToken = default)
     {
-        var idTiles = Constants.Chat.ViewIdTileStack.FirstLayer.GetCoveringTiles(lidRange);
+        var idTiles = Constants.Chat.EntryIdTiles.GetCoveringTiles(lidRange);
         var tiles = await idTiles.Select(t => chatsBackend.GetTile(
                 chatId,
                 t.Range,
@@ -149,9 +149,9 @@ public static class ChatsBackendExt
         // comfortably before `from`.
         var maxBeginsAtDisorder = TimeSpan.FromSeconds(15);
         var cutoff = minBeginsAt - maxBeginsAtDisorder;
-        var tileLayer = Constants.Chat.ServerIdTileStack.FirstLayer;
+        var entryIdTiles = Constants.Chat.EntryIdTiles;
         var result = new List<ChatEntry>();
-        for (var idTile = tileLayer.GetTile(idRange.End - 1); idTile.End > idRange.Start; idTile = idTile.Prev()) {
+        for (var idTile = entryIdTiles.GetTile(idRange.End - 1); idTile.End > idRange.Start; idTile = idTile.Prev()) {
             var tile = await chatsBackend
                 .GetTile(chatId, idTile.Range, true, cancellationToken)
                 .ConfigureAwait(false);
@@ -182,7 +182,7 @@ public static class ChatsBackendExt
         bool includeRemoved = false,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var idTiles = Constants.Chat.ViewIdTileStack.FirstLayer.GetCoveringTiles(lidRange);
+        var idTiles = Constants.Chat.EntryIdTiles.GetCoveringTiles(lidRange);
         foreach (var idTile in idTiles) {
             var tile = await chatsBackend.GetTile(
                 chatId,

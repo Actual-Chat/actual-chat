@@ -710,7 +710,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
 
     private async Task WhenEntryFinalized(ChatEntryId entryId, CancellationToken cancellationToken)
     {
-        var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
+        var idTile = Constants.Chat.EntryIdTiles.GetTile(entryId.LocalId);
         var cTile = await Computed
             .Capture(
                 () => ChatsBackend.GetTile(entryId.ChatId, idTile.Range, includeRemoved: false, cancellationToken),

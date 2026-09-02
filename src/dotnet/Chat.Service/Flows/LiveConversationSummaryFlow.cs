@@ -18,7 +18,9 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 {
     private const int MaxEntries = 1000;
     private const int ContextScanBudget = 200;
-    private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
+    private const int ContextScanStep = 16;
+    private static readonly TileLayer<long> EntryIdTiles = Constants.Chat.EntryIdTiles;
+    private static readonly TileLayer<long> RangeMetaEntryIdTiles = Constants.Chat.RangeMetaEntryIdTiles;
     // Resume throttle: the flow re-checks this often so entries maturing during silence (and the close/finalize
     // once nobody is talking) get handled without a new audio entry to trigger it; resummary itself is
     // additionally gated on Settings.Summarization.LiveResummarizationDelay. Keep DelayQuanta (see [Flow])
@@ -27,8 +29,10 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
-    private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
-    private IConversationSummarizer ConversationSummarizer => field ??= Services.GetRequiredService<IConversationSummarizer>();
+    private IConversationsBackend ConversationsBackend
+        => field ??= Services.GetRequiredService<IConversationsBackend>();
+    private IConversationSummarizer ConversationSummarizer
+        => field ??= Services.GetRequiredService<IConversationSummarizer>();
     private ILiveSessionsBackend LiveSessionsBackend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
 
     private ChatId ChatId => field ??= ChatId.Parse(Id.Arguments);
@@ -122,15 +126,17 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 
         var anchorLid = live.StartEntryLid;
         var minLid = (await ChatsBackend.GetLidRange(ChatId, false, cancellationToken).ConfigureAwait(false)).Start;
-        var (anchor, preceding) = await GetContextScanEntries(anchorLid, minLid, cancellationToken).ConfigureAwait(false);
+        var (anchor, preceding) = await GetContextScanEntries(anchorLid, minLid, cancellationToken)
+            .ConfigureAwait(false);
         if (anchor is null)
             return anchorLid;
 
         var contextStart = ContextStartScanner.FindContextStartLid(preceding, anchor);
 
         // Never re-claim a persisted conversation's range: clamp to just past the one preceding the scan start.
-        var idRange = IdTileStack.LastLayer.GetTile(contextStart).Range;
-        var rangeMeta = await ConversationsBackend.GetRangeMeta(ChatId, idRange.Start, cancellationToken).ConfigureAwait(false);
+        var idRange = RangeMetaEntryIdTiles.GetTile(contextStart).Range;
+        var rangeMeta = await ConversationsBackend.GetRangeMeta(ChatId, idRange.Start, cancellationToken)
+            .ConfigureAwait(false);
         if (rangeMeta.PreviousConversationLidRange is { } prev && prev.End > contextStart)
             contextStart = prev.End;
 
@@ -143,10 +149,27 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
     {
         ChatEntrySlim? anchor = null;
         var preceding = new List<ChatEntrySlim>();
-        var tile = IdTileStack.LastLayer.GetTile(anchorLid);
-        while (preceding.Count < ContextScanBudget) {
-            var chatTile = await ChatsBackend.GetTile(ChatId, tile.Range, false, cancellationToken).ConfigureAwait(false);
-            foreach (var entry in chatTile.Entries) {
+        var tile = EntryIdTiles.GetTile(anchorLid);
+        var hasReachedMinLid = false;
+        while (!hasReachedMinLid && preceding.Count < ContextScanBudget) {
+            // Entry tiles hold 5 lids, and a stretch of empty or removed entries yields nothing to
+            // stop on - so a whole step's worth is fetched at once rather than one tile per await.
+            var idTiles = new List<Tile<long>>(ContextScanStep);
+            for (var i = 0; i < ContextScanStep; i++) {
+                idTiles.Add(tile);
+                if (tile.Range.Start <= minLid) {
+                    hasReachedMinLid = true;
+                    break;
+                }
+
+                tile = tile.Prev();
+            }
+
+            var chatTiles = await idTiles
+                .Select(idTile => ChatsBackend.GetTile(ChatId, idTile.Range, false, cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+            foreach (var entry in chatTiles.SelectMany(chatTile => chatTile.Entries)) {
                 if (entry.Content.IsNullOrEmpty())
                     continue;
 
@@ -156,11 +179,8 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
                 else if (slim.LocalId < anchorLid)
                     preceding.Add(slim);
             }
-            if (tile.Range.Start <= minLid)
-                break;
-
-            tile = IdTileStack.LastLayer.GetTile(tile.Range.Start - 1);
         }
+
         preceding.Sort(ChatEntrySlim.LocalIdComparer);
         if (preceding.Count > ContextScanBudget)
             preceding = preceding.Skip(preceding.Count - ContextScanBudget).ToList();

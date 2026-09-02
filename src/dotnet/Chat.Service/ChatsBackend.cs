@@ -19,7 +19,8 @@ namespace ActualChat.Chat;
 public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IChatsBackend
 {
     private const string CreatedChatEntryId = "CreatedChatEntryId";
-    private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
+    private static readonly TileLayer<long> EntryIdTiles = Constants.Chat.EntryIdTiles;
+    private static readonly TileLayer<long> RangeMetaEntryIdTiles = Constants.Chat.RangeMetaEntryIdTiles;
     private static readonly Dictionary<MediaId, Media.Media> EmptyMediaMap = new ();
     private static readonly ILookup<ChatEntryId, ChatEntryAttachment> EmptyAttachments
         = Array.Empty<ChatEntryAttachment>().ToLookup(ta => ta.EntryId);
@@ -217,7 +218,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return null;
 
         var idRange = await GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
-        var idTile = IdTileStack.FirstLayer.GetTile(idRange.End - 1);
+        var idTile = EntryIdTiles.GetTile(idRange.End - 1);
         var tile = await GetTile(chatId, idTile.Range, false, cancellationToken).ConfigureAwait(false);
         var lastEntry = tile.Entries.Length != 0 ? tile.Entries[^1] : null;
         return new ChatNews(idRange, lastEntry);
@@ -286,7 +287,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var minLid = await GetMinLid(chatId, cancellationToken).ConfigureAwait(false);
         var authors = new ApiSet<AuthorId>();
         var remainingCount = entryCount;
-        for (var idTile = IdTileStack.FirstLayer.GetTile(minLid); remainingCount > 0; idTile = idTile.Next()) {
+        for (var idTile = EntryIdTiles.GetTile(minLid); remainingCount > 0; idTile = idTile.Next()) {
             var tile = await GetTile(chatId, idTile.Range, true, cancellationToken).ConfigureAwait(false);
             if (tile.Entries.Length == 0)
                 break;
@@ -311,24 +312,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         bool includeRemoved,
         CancellationToken cancellationToken)
     {
-        var idTile = IdTileStack.GetTile(lidTileRange);
-        var smallerIdTiles = idTile.Smaller();
-        if (smallerIdTiles.Length != 0) {
-            var smallerChatTiles = await smallerIdTiles
-                .Select(sidTile => GetTile(chatId,
-                    sidTile.Range,
-                    includeRemoved,
-                    cancellationToken))
-                .Collect(cancellationToken)
-                .ConfigureAwait(false);
-            return new ChatTile(smallerChatTiles, includeRemoved);
-        }
+        var idTile = EntryIdTiles.GetTile(lidTileRange);
         if (!includeRemoved) {
             var fullTile = await GetTile(chatId, lidTileRange, true, cancellationToken).ConfigureAwait(false);
             return new ChatTile(lidTileRange, false, fullTile.Entries.Where(e => !e.IsRemoved).ToArray());
         }
 
-        // If we're here, it's the smallest tile & includeRemoved = true
+        // If we're here, includeRemoved = true
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
@@ -390,9 +380,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatRangeMeta> GetChatRangeMeta(ChatId chatId, long lidTileStart, CancellationToken cancellationToken)
+    public virtual async Task<ChatRangeMeta> GetChatRangeMeta(
+        ChatId chatId,
+        long lidTileStart,
+        CancellationToken cancellationToken)
     {
-        var tile = IdTileStack.LastLayer.AssertIsTileStart(lidTileStart);
+        var tile = RangeMetaEntryIdTiles.AssertIsTileStart(lidTileStart);
 
         Range<long> chatLidRange;
         using (Computed.BeginIsolation())
@@ -425,8 +418,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (previousId == 0 && nextId == long.MaxValue)
                 break;
 
-            var previousTile = IdTileStack.LastLayer.GetTile(previousId);
-            var nextTile = IdTileStack.LastLayer.GetTile(nextId);
+            var previousTile = RangeMetaEntryIdTiles.GetTile(previousId);
+            var nextTile = RangeMetaEntryIdTiles.GetTile(nextId);
 
             // Starting tasks
             var prevEntryRangeMetaTask = previousId != 0
@@ -452,7 +445,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     break;
             }
             else
-                startLid = IdTileStack.LastLayer.GetTile(chatLidRange.Start).Start;
+                startLid = RangeMetaEntryIdTiles.GetTile(chatLidRange.Start).Start;
 
             // Started only once the previous side hasn't already fulfilled: a compute-method call that hits
             // cache registers its dependency synchronously, before any await, so issuing these alongside the
@@ -503,8 +496,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             mergedEntryIdRanges.EnsureMonotonic().ToArray(),
             mergedConversationIdRanges.EnsureMonotonic().ToArray(),
             minCount,
-            previousId == 0 ? null : IdTileStack.LastLayer.GetTile(previousId).Start,
-            nextId == long.MaxValue ? null : IdTileStack.LastLayer.GetTile(nextId).Start);
+            previousId == 0 ? null : RangeMetaEntryIdTiles.GetTile(previousId).Start,
+            nextId == long.MaxValue ? null : RangeMetaEntryIdTiles.GetTile(nextId).Start);
 
         int EstimateMinimumCount(ChatEntryRangeMeta entryRangeMeta1, ConversationRangeMeta conversationRangeMeta1)
         {
@@ -572,7 +565,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         long idTileStart,
         CancellationToken cancellationToken)
     {
-        var idTile = IdTileStack.LastLayer.AssertIsTileStart(idTileStart);
+        var idTile = RangeMetaEntryIdTiles.AssertIsTileStart(idTileStart);
         var idTileRange = idTile.Range;
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
@@ -743,6 +736,18 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // Non-compute methods
+
+    public async Task<ChatTile> GetTileNonComputed(
+        ChatId chatId,
+        Range<long> lidTileRange,
+        bool includeRemoved,
+        CancellationToken cancellationToken)
+    {
+        // Still GetTile underneath, so the tile is read once per node and served from cache
+        // afterwards; the isolation is what keeps the caller off the dependency graph.
+        using var _ = Computed.BeginIsolation();
+        return await GetTile(chatId, lidTileRange, includeRemoved, cancellationToken).ConfigureAwait(false);
+    }
 
     // TODO: Chat and ChatFull. This method must return Chat
     // Not a [ComputeMethod]!
@@ -1268,13 +1273,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 // A content-only Update used to invalidate it anyway, which forced every tail-following
                 // client into a ~RTT range-meta refetch per utterance finalization and per message edit.
                 if (changeKind is ChangeKind.Create or ChangeKind.Remove || invBoundToThreadHasChanged) {
-                    var entryTile = IdTileStack.LastLayer.GetTile(invChatEntry.LocalId);
+                    var entryTile = RangeMetaEntryIdTiles.GetTile(invChatEntry.LocalId);
                     if (previousEntryId != 0 && !entryTile.Range.Contains(previousEntryId)) {
-                        var previousEntryIdTile = IdTileStack.LastLayer.GetTile(previousEntryId);
+                        var previousEntryIdTile = RangeMetaEntryIdTiles.GetTile(previousEntryId);
                         _ = GetEntryRangeMeta(chatId, previousEntryIdTile.Range.Start, default);
                     }
                     if (nextEntryId != 0 && !entryTile.Range.Contains(nextEntryId)) {
-                        var nextIdTile = IdTileStack.LastLayer.GetTile(nextEntryId);
+                        var nextIdTile = RangeMetaEntryIdTiles.GetTile(nextEntryId);
                         _ = GetEntryRangeMeta(chatId, nextIdTile.Range.Start, default);
                     }
                 }
@@ -1651,7 +1656,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (invChats == null)
                 return;
 
-            var tileSize = Constants.Chat.ServerIdTileStack.MinTileSize;
+            var tileSize = EntryIdTiles.TileSize;
             foreach (var chatEntryPair in invChats) {
                 var chatId = ChatId.Parse(chatEntryPair.Key);
                 var entryId = chatEntryPair.Value;
@@ -2159,7 +2164,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             // A removed entry must not linger in an already-persisted summary. The range isn't passed
             // along: the flow coalesces a burst of removals and re-reads the range when it finally runs.
             var lid = entry.LocalId;
-            var idTile = IdTileStack.LastLayer.GetTile(lid);
+            var idTile = RangeMetaEntryIdTiles.GetTile(lid);
             var rangeMeta = await ConversationsBackend
                 .GetRangeMeta(entry.ChatId, idTile.Range.Start, cancellationToken)
                 .ConfigureAwait(false);
@@ -2189,22 +2194,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         ChangeKind changeKind,
         bool boundToThreadHasChanged)
     {
-        // Invalidate GetTile for chat tiles
-        foreach (var idTile in IdTileStack.GetAllTiles(entryId)) {
-            if (idTile.Layer.Smaller != null)
-                continue;
-
-            // Larger tiles are composed out of smaller tiles,
-            // so we have to invalidate just the smallest one.
-            // And the tile with includeRemoved == false is based on
-            // a tile with includeRemoved == true, so we have to invalidate
-            // just this tile.
-            _ = GetTile(chatId, idTile.Range, true, default);
-        }
+        // The tile with includeRemoved == false is based on the one with includeRemoved == true,
+        // so invalidating just the latter is enough.
+        _ = GetTile(chatId, EntryIdTiles.GetTile(entryId).Range, true, default);
 
         if (changeKind is ChangeKind.Create or ChangeKind.Remove || boundToThreadHasChanged) {
             // Invalidate GetEntryRangeMeta
-            var tile = IdTileStack.LastLayer.GetTile(entryId);
+            var tile = RangeMetaEntryIdTiles.GetTile(entryId);
             _ = GetEntryRangeMeta(chatId, tile.Start, default);
         }
     }

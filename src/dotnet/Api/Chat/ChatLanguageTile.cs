@@ -18,18 +18,4 @@ public sealed partial class ChatLanguageTile
         LidTileRange = lidTileRange;
         Entries = entries;
     }
-
-    public ChatLanguageTile(IEnumerable<ChatLanguageTile> tiles)
-    {
-        var entries = new List<ChatEntryLanguage>();
-        var lidTile = new Range<long>(long.MaxValue, long.MinValue);
-        foreach (var tile in tiles) {
-            lidTile = lidTile.MinMaxWith(tile.LidTileRange);
-            foreach (var entry in tile.Entries)
-                entries.Add(entry);
-        }
-
-        LidTileRange = lidTile;
-        Entries = entries.ToArray();
-    }
 }
