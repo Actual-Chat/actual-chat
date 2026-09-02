@@ -35,6 +35,8 @@ public sealed class NotificationTextComposer(IServiceProvider services)
         => entry is { IsSystemEntry: false, HasAudio: false }
             && (entry.HasLocation || entry.Content.IsNullOrEmpty());
 
+    // Not IsLive(now): Duration is immutable, so this says "was shared live" and the wording
+    // can't change under a reader when the share later expires.
     private async ValueTask<bool> IsLiveLocation(ChatEntry entry, CancellationToken cancellationToken)
     {
         if (entry.LocationId is not { } locationId)
