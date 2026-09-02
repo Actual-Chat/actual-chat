@@ -189,6 +189,14 @@
   "ChatList_Live_Format": "{0} · लाइव",
   "ChatList_Thread_Format": "थ्रेड '{0}'",
 
+  "ChatList_InviteFriends": "अपने अकाउंट का लिंक शेयर करके दोस्तों को आमंत्रित करें, या अगर वे पास हों तो उन्हें QR कोड दिखाएँ।",
+  "ShareQr_Show": "दिखाएँ",
+  "ShareQr_Hint_Format": "किसी दोस्त से कहें कि वह इस QR कोड को अपने फ़ोन के कैमरे से स्कैन करे और आपको {0} पर ढूँढ़ ले।",
+  "ShareQr_TabShow": "मेरा QR",
+  "ShareQr_TabScan": "स्कैन करें",
+  "ShareQr_ScanHint": "किसी दोस्त का प्रोफ़ाइल खोलने के लिए कैमरा उनके QR कोड पर रखें।",
+  "ShareQr_ForeignCode_Format": "यह QR कोड {0} का लिंक नहीं है।",
+
   "ChatMenu_AddMembers": "सदस्य जोड़ें",
   "ChatMenu_EditContact": "संपर्क संपादित करें",
   "ChatMenu_LeaveChat": "चैट छोड़ें",

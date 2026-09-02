@@ -189,6 +189,14 @@
   "ChatList_Live_Format": "{0} · živě",
   "ChatList_Thread_Format": "Vlákno „{0}“",
 
+  "ChatList_InviteFriends": "Pozvěte přátele sdílením odkazu na svůj účet, nebo jim ukažte QR kód, pokud jsou poblíž.",
+  "ShareQr_Show": "Zobrazit",
+  "ShareQr_Hint_Format": "Požádejte přítele, aby tento QR kód naskenoval fotoaparátem telefonu a našel vás v {0}.",
+  "ShareQr_TabShow": "Můj QR",
+  "ShareQr_TabScan": "Skenovat",
+  "ShareQr_ScanHint": "Namiřte fotoaparát na QR kód přítele a otevřete jeho profil.",
+  "ShareQr_ForeignCode_Format": "Tento QR kód není odkaz na {0}.",
+
   "ChatMenu_AddMembers": "Přidat členy",
   "ChatMenu_EditContact": "Upravit kontakt",
   "ChatMenu_LeaveChat": "Opustit chat",

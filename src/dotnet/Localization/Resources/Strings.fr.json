@@ -189,6 +189,14 @@
   "ChatList_Live_Format": "{0} · en direct",
   "ChatList_Thread_Format": "Fil '{0}'",
 
+  "ChatList_InviteFriends": "Invitez vos amis en partageant un lien vers votre compte, ou montrez-leur un code QR s'ils sont à proximité.",
+  "ShareQr_Show": "Afficher",
+  "ShareQr_Hint_Format": "Demandez à un ami de scanner ce code QR avec l'appareil photo de son téléphone pour vous trouver sur {0}.",
+  "ShareQr_TabShow": "Mon QR",
+  "ShareQr_TabScan": "Scanner",
+  "ShareQr_ScanHint": "Pointez l'appareil photo vers le code QR d'un ami pour ouvrir son profil.",
+  "ShareQr_ForeignCode_Format": "Ce code QR n'est pas un lien {0}.",
+
   "ChatMenu_AddMembers": "Ajouter des membres",
   "ChatMenu_EditContact": "Modifier le contact",
   "ChatMenu_LeaveChat": "Quitter la discussion",

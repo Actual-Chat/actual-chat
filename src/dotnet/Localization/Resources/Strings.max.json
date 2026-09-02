@@ -246,6 +246,17 @@
   "ChatList_Live_Format": "{0} · langsung",
   "ChatList_Thread_Format": "スレッド「{0}」",
 
+  // The invite-friends backdrop shown under a chat list with fewer than 3 contacts, and the QR
+  // screen it opens. "Show" is the button that opens that screen; the Tab ones name its two
+  // halves, the user's own code and the camera that reads someone else's.
+  "ChatList_InviteFriends": "Laden Sie Freunde ein, indem Sie einen Link zu Ihrem Konto teilen oder ihnen einen QR-Code zeigen, wenn sie in der Nähe sind.",
+  "ShareQr_Show": "Прикажите",
+  "ShareQr_Hint_Format": "友だちにスマートフォンのカメラでこの QR コードをスキャンしてもらうと、{0} であなたを見つけられます。",
+  "ShareQr_TabShow": "我的二维码",
+  "ShareQr_TabScan": "Сканировать",
+  "ShareQr_ScanHint": "Richten Sie die Kamera auf den QR-Code eines Freundes, um sein Profil zu öffnen.",
+  "ShareQr_ForeignCode_Format": "この QR コードは {0} のリンクではありません。",
+
   // The context menu of a chat list item - long press on mobile, right click on desktop.
   "ChatMenu_AddMembers": "Добавить участников",
   "ChatMenu_EditContact": "Редактирайте контакта",

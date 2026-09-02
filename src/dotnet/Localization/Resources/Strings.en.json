@@ -246,6 +246,17 @@
   "ChatList_Live_Format": "{0} · live",
   "ChatList_Thread_Format": "Thread '{0}'",
 
+  // The invite-friends backdrop shown under a chat list with fewer than 3 contacts, and the QR
+  // screen it opens. "Show" is the button that opens that screen; the Tab ones name its two
+  // halves, the user's own code and the camera that reads someone else's.
+  "ChatList_InviteFriends": "Invite friends by sharing a link to your account, or show them a QR code if they're nearby.",
+  "ShareQr_Show": "Show",
+  "ShareQr_Hint_Format": "Ask a friend to scan this QR code with their phone's camera to find you on {0}.",
+  "ShareQr_TabShow": "Share QR",
+  "ShareQr_TabScan": "Scan QR",
+  "ShareQr_ScanHint": "Point the camera at a friend's QR code to open their profile.",
+  "ShareQr_ForeignCode_Format": "That QR code isn't a {0} link.",
+
   // The context menu of a chat list item - long press on mobile, right click on desktop.
   "ChatMenu_AddMembers": "Add members",
   "ChatMenu_EditContact": "Edit contact",

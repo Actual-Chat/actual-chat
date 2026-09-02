@@ -189,6 +189,14 @@
   "ChatList_Live_Format": "{0} · canlı",
   "ChatList_Thread_Format": "Konu '{0}'",
 
+  "ChatList_InviteFriends": "Hesabınızın bağlantısını paylaşarak arkadaşlarınızı davet edin veya yakındalarsa onlara bir QR kodu gösterin.",
+  "ShareQr_Show": "Gösterin",
+  "ShareQr_Hint_Format": "Bir arkadaşınızdan bu QR kodu telefonunun kamerasıyla taramasını isteyin; sizi {0} üzerinde bulsun.",
+  "ShareQr_TabShow": "QR kodum",
+  "ShareQr_TabScan": "Tarayın",
+  "ShareQr_ScanHint": "Arkadaşınızın profilini açmak için kamerayı QR koduna tutun.",
+  "ShareQr_ForeignCode_Format": "Bu QR kodu bir {0} bağlantısı değil.",
+
   "ChatMenu_AddMembers": "Üye ekleyin",
   "ChatMenu_EditContact": "Kişiyi düzenleyin",
   "ChatMenu_LeaveChat": "Sohbetten ayrılın",
