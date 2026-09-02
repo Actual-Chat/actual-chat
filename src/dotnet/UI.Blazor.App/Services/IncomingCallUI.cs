@@ -313,31 +313,31 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     private void StartRinging()
     {
-        if (Bridge is { OwnsRinging: true })
-            return;
-
-        // Routes the ring melody to the platform ringer: the native bridge on Android, the looping web
-        // ringtone everywhere else. Fire-and-forget to mirror the sync Bridge calls (and keep the finally
-        // teardown sync); the JS invocation swallows its own errors.
-        if (Bridge is not null)
-            _ = StartNativeRinging(Interlocked.Increment(ref _ringGeneration));
-        else
+        if (Bridge is null) {
             _ = PlayWebRingtone(true);
+            return;
+        }
+
+        // OwnsRinging (CallKit) rings itself right away; everyone else negotiates the
+        // communication audio mode first via StartNativeRinging.
+        if (Bridge.OwnsRinging)
+            Bridge.StartRinging();
+        else
+            _ = StartNativeRinging(Interlocked.Increment(ref _ringGeneration));
     }
 
     private void StopRinging()
     {
-        if (Bridge is { OwnsRinging: true })
-            return;
-
-        if (Bridge is not null) {
-            // Bumped first: a start still waiting on the audio mode drops instead of ringing on.
-            Interlocked.Increment(ref _ringGeneration);
-            Bridge.StopRinging();
-            _ = RestoreAudioMode();
-        }
-        else
+        if (Bridge is null) {
             _ = PlayWebRingtone(false);
+            return;
+        }
+
+        // Bumped first: a start still waiting on the audio mode drops instead of ringing on.
+        Interlocked.Increment(ref _ringGeneration);
+        Bridge.StopRinging();
+        if (!Bridge.OwnsRinging)
+            _ = RestoreAudioMode();
     }
 
     private async Task StartNativeRinging(int generation)

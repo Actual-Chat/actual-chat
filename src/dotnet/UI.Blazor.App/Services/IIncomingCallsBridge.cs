@@ -7,10 +7,10 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public interface IIncomingCallsBridge
 {
-    // True when the platform's own call UI rings (CallKit): IncomingCallUI must then
-    // neither play a ringtone nor touch the communication mode, both of which would
-    // fight the framework that already owns the session.
-    bool OwnsRinging => false;
+    bool OwnsRinging
+        // True on CallKit: gates the web ringtone and the YieldCommunicationMode/RestoreAudioMode
+        // pair only — StartRinging/StopRinging are still always called.
+        => false;
     void StartRinging();
     void StopRinging();
     Task<ChatId[]> ListActiveCallChatIds(CancellationToken cancellationToken);
