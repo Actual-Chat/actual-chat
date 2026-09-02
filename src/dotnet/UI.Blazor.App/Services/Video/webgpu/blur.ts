@@ -17,6 +17,7 @@
 import { WebGPUManager } from './manager';
 import { BgBlurPerfTracker } from '../services/bg-blur-stats';
 import { getLogs } from 'logging';
+import { WebCodecsCompat, type FrameSource } from 'web-codecs-compat/init';
 
 const { infoLog, warnLog } = getLogs('VideoWebGPU');
 
@@ -1096,8 +1097,17 @@ export class BgBlurRenderer {
     // Returns true if the blur ran, false if WebGPU isn't ready yet (or
     // initialization failed permanently). Caller does NOT lose ownership of
     // `frame`.
-    render(frame: VideoFrame, blurStrength = 4): boolean {
+    render(frame: FrameSource, blurStrength = 4): boolean {
         if (this.initFailed)
+            return false;
+        // WebGPU's importExternalTexture takes a native VideoFrame and nothing else,
+        // so a polyfilled realm (which hands the tap an ImageBitmap) has no path
+        // here. The realm test comes first because at level `full` the VideoFrame
+        // global IS the polyfill class, so instanceof would wave a plain object
+        // through. The controller just leaves the backdrop unpainted, as before init.
+        if (WebCodecsCompat.isPolyfilledRealm
+            || typeof VideoFrame === 'undefined'
+            || !(frame instanceof VideoFrame))
             return false;
 
         if (!this.ctx) {
