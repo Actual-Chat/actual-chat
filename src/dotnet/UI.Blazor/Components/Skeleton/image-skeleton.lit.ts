@@ -8,10 +8,16 @@ type ImageState = 'none' | 'skeleton' | 'thumbnail' | 'original';
 
 const ImageStates: readonly string[] = ['skeleton', 'thumbnail', 'original'];
 
+const RetryCount = 10;
+const MaxRetryDelay = 30;
+
 @customElement('image-skeleton')
 export class ImageSkeleton extends LitElement {
     private _imageRef: Ref<HTMLImageElement> = createRef();
     private _imageState: ImageState = 'none';
+    private _isRetrying = false;
+    // The src whose retries were exhausted; tracked by value so a new src retries.
+    private _failedSrc: string | null = null;
 
     @property() src: string;
     @property() thumbnailSrc: string;
@@ -95,27 +101,52 @@ export class ImageSkeleton extends LitElement {
 
     // Private methods
 
-    private async reloadImage(): Promise<void> {
+    /** The `error` handler, so it must not hand a promise back to the DOM — nothing
+     *  there would catch it, and retrying IS how this component handles failure. */
+    private reloadImage(): void {
+        void this.retryImage();
+    }
+
+    private async retryImage(): Promise<void> {
+        // Giving up re-assigns a src that already failed, which fires `error` again;
+        // without this the component would retry that same src forever.
+        if (this._isRetrying || this._failedSrc === this.src)
+            return;
+
+        this._isRetrying = true;
         this._imageState = 'skeleton';
         this.applyState();
-
         const isSubDomain = this.isSubDomain(this.src);
-        for (let attempt = 0; attempt < 10; attempt++) {
-            if (attempt >= 1) {
-                const delay = Math.min(30, Math.pow(2, attempt - 1));
-                await delayAsync(delay * 1000);
-            }
-            const response = await fetch(this.src, { mode: isSubDomain ? undefined : 'cors' });
-            if (response.ok) {
-                const blob = await response.blob();
-                if (this._imageRef.value)
-                    this._imageRef.value.src = URL.createObjectURL(blob);
+        try {
+            for (let attempt = 0; attempt < RetryCount; attempt++) {
+                if (attempt >= 1) {
+                    const delay = Math.min(MaxRetryDelay, Math.pow(2, attempt - 1));
+                    await delayAsync(delay * 1000);
+                }
+                // Blocked/offline/DNS failures reject instead of returning a non-ok
+                // response, which would otherwise skip the backoff and the fallback.
+                const response = await fetch(this.src, { mode: isSubDomain ? undefined : 'cors' })
+                    .catch(() => null);
+                const blob = response?.ok ? await response.blob().catch(() => null) : null;
+                if (!blob)
+                    continue;
+
+                const image = this._imageRef.value;
+                if (image) {
+                    const url = URL.createObjectURL(blob);
+                    image.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
+                    image.src = url;
+                }
+
                 return;
             }
-        }
 
-        if (this._imageRef.value)
-            this._imageRef.value.src = this.src;
+            this._failedSrc = this.src;
+            if (this._imageRef.value)
+                this._imageRef.value.src = this.src;
+        } finally {
+            this._isRetrying = false;
+        }
     }
 
     private imageLoaded(): void {
