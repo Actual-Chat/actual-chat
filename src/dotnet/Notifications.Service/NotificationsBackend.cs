@@ -533,20 +533,13 @@ public class NotificationsBackend(IServiceProvider services)
     private async Task<HashSet<UserId>> GetActiveParticipantUserIds(
         ChatId chatId, CancellationToken cancellationToken)
     {
-        // The live-session backend tracks participants by AuthorId; notifications target users, so resolve
-        // the chat-scoped authors to their user ids here (anonymous, user-less authors simply drop out).
         var authorIds = await LiveSessionsBackend
             .ListParticipants(chatId, cancellationToken)
             .ConfigureAwait(false);
-        var userIds = new HashSet<UserId>();
-        foreach (var authorId in authorIds) {
-            var author = await AuthorsBackend
-                .Get(chatId, authorId, RequestedAuthorKind.Default, cancellationToken)
-                .ConfigureAwait(false);
-            if (author is { } a && !a.UserId.Value.IsNullOrEmpty())
-                userIds.Add(a.UserId);
-        }
-        return userIds;
+        var userIds = await AuthorsBackend
+            .ListUserIds(chatId, authorIds, RequestedAuthorKind.Default, cancellationToken)
+            .ConfigureAwait(false);
+        return [.. userIds];
     }
 
     [CommandHandler]
@@ -570,15 +563,9 @@ public class NotificationsBackend(IServiceProvider services)
         var now = Clocks.CoarseSystemClock.Now;
         // Unlike a conversation notification, the ring targets the invitees themselves - and it's
         // the one path a person waits on, so nothing here resolves one invitee at a time.
-        var inviteeAuthors = await invitees
-            .Select(inviteeAuthorId => AuthorsBackend
-                .Get(chatId, inviteeAuthorId, RequestedAuthorKind.Default, cancellationToken))
-            .Collect(cancellationToken)
+        var inviteeUserIds = await AuthorsBackend
+            .ListUserIds(chatId, invitees, RequestedAuthorKind.Default, cancellationToken)
             .ConfigureAwait(false);
-        var inviteeUserIds = new List<UserId>();
-        foreach (var invitee in inviteeAuthors)
-            if (invitee is { } a && !a.UserId.Value.IsNullOrEmpty())
-                inviteeUserIds.Add(a.UserId);
 
         var textByUserId = await ComposeContentByUserId(
                 inviteeUserIds, new IncomingCallNotificationContent(hasVideo), cancellationToken)
@@ -607,17 +594,14 @@ public class NotificationsBackend(IServiceProvider services)
 
         var (conversationId, invitees) = command;
         var chatId = conversationId.ChatId;
-        foreach (var inviteeAuthorId in invitees) {
-            var invitee = await AuthorsBackend
-                .Get(chatId, inviteeAuthorId, RequestedAuthorKind.Default, cancellationToken)
-                .ConfigureAwait(false);
-            if (invitee is not { } a || a.UserId.Value.IsNullOrEmpty())
-                continue;
-
+        var inviteeUserIds = await AuthorsBackend
+            .ListUserIds(chatId, invitees, RequestedAuthorKind.Default, cancellationToken)
+            .ConfigureAwait(false);
+        foreach (var userId in inviteeUserIds) {
             // Same id as the ring (keyed by the call's ConversationId): handling it drops the ring
             // from the active set (so it can't linger in ListActive / the in-app list) and closes
             // the device banner via the dismissal push ApplyHardUpdate emits for a removed notification.
-            var notificationId = NotificationId.New(a.UserId, NotificationKind.IncomingCall, conversationId.Value);
+            var notificationId = NotificationId.New(userId, NotificationKind.IncomingCall, conversationId.Value);
             await Queues
                 .Enqueue(new NotificationsBackend_Dismiss(notificationId), cancellationToken)
                 .ConfigureAwait(false);
@@ -933,20 +917,23 @@ public class NotificationsBackend(IServiceProvider services)
         ChatId chatId, IReadOnlyCollection<MentionRef> mentionIds, CancellationToken cancellationToken)
     {
         var userIds = new HashSet<UserId>();
+        var mentionedAuthorIds = new List<AuthorId>();
         foreach (var mention in mentionIds)
             switch (mention.Target) {
             case UserId userId:
                 userIds.Add(userId);
                 break;
-            case AuthorId authorId: {
-                var mentionedAuthor = await AuthorsBackend
-                    .Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken)
-                    .ConfigureAwait(false);
-                if (mentionedAuthor is { } a && !a.UserId.Value.IsNullOrEmpty())
-                    userIds.Add(a.UserId);
+            case AuthorId authorId:
+                mentionedAuthorIds.Add(authorId);
                 break;
             }
-            }
+        if (mentionedAuthorIds.Count == 0)
+            return userIds;
+
+        var mentionedUserIds = await AuthorsBackend
+            .ListUserIds(chatId, mentionedAuthorIds, RequestedAuthorKind.Full, cancellationToken)
+            .ConfigureAwait(false);
+        userIds.AddRange(mentionedUserIds);
         return userIds;
     }
 
