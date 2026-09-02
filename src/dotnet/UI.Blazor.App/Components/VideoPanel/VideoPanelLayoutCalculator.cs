@@ -10,7 +10,9 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
 {
     private static readonly TimeSpan FocusDebounceDelay = TimeSpan.FromSeconds(1.5);
     private const int MaxFocusHistory = 4;
-    private const int MaxDisplaySlotsWide = 4; // focused + up to 3 on sidebar
+    // Remote slots. The equal-tile layout shows all of them at the same size plus
+    // the own-camera tile, so wide tops out at a 6-tile grid.
+    private const int MaxDisplaySlotsWide = 5; // focused + up to 4 on sidebar
     private const int MaxDisplaySlotsNarrow = 3; // focused + up to 2 on sidebar
     private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
     private readonly MutableState<VideoPanelLayout> _layout;
