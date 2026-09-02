@@ -48,18 +48,18 @@ describe('encoder ladder', () => {
         codecInfo('h264', true, true),
     ];
 
-    it('ranks every hardware rung ahead of the one software rung', () => {
+    it('ranks every hardware rung ahead of the software ones', () => {
         expect(pick(everything()))
-            .toEqual(['hw-av1', 'hw-vp9', 'hw-hevc', 'sw-vp9', 'hw-h264']);
+            .toEqual(['hw-av1', 'hw-vp9', 'hw-hevc', 'sw-vp9', 'sw-av1', 'hw-h264']);
     });
 
-    // VP9 is the only codec worth encoding in software: it is the floor every
-    // client must decode anyway, software AV1 measured ~18% slower than it at
-    // 720p for no extra reach, software H.264 was the slowest encoder seen on
-    // any device, and Chromium has no software HEVC at all.
-    it('offers exactly one software rung, and it is VP9', () => {
+    // VP9 leads in software: it is the floor every client must decode anyway and
+    // is markedly faster than software AV1. AV1 follows so the preferred-codec
+    // setting can reach it; software H.264 was the slowest encoder seen on any
+    // device, and Chromium has no software HEVC at all.
+    it('offers VP9 then AV1 in software, and nothing else', () => {
         expect(getEncoderLadder().filter(r => r.accel === 'prefer-software').map(r => r.category))
-            .toEqual(['vp9']);
+            .toEqual(['vp9', 'av1']);
     });
 
     it('prefers software VP9 over hardware H.264', () => {
@@ -71,24 +71,24 @@ describe('encoder ladder', () => {
             codecInfo('h264', true, true),
         ];
 
-        expect(pick(infos)).toEqual(['hw-hevc', 'sw-vp9', 'hw-h264']);
+        expect(pick(infos)).toEqual(['hw-hevc', 'sw-vp9', 'sw-av1', 'hw-h264']);
     });
 
     it('drops every MPEG rung on Firefox', () => {
         mocks.deviceInfo.isFirefox = true;
 
-        expect(pick(everything())).toEqual(['hw-av1', 'hw-vp9', 'sw-vp9']);
+        expect(pick(everything())).toEqual(['hw-av1', 'hw-vp9', 'sw-vp9', 'sw-av1']);
     });
 
-    it('leaves Firefox on software VP9, which is all it can encode in real time', () => {
+    it('leaves Firefox on software VP9 by default, with AV1 behind it', () => {
         mocks.deviceInfo.isFirefox = true;
         const measured = [
-            codecInfo('av1', false, true),   // software AV1 is not a rung
+            codecInfo('av1', false, true),
             codecInfo('vp9', false, true),
             codecInfo('h264', false, true),  // excluded on Firefox anyway
         ];
 
-        expect(pick(measured)).toEqual(['sw-vp9']);
+        expect(pick(measured)).toEqual(['sw-vp9', 'sw-av1']);
     });
 
     it('drops a codec the audience cannot decode', () => {
@@ -109,7 +109,7 @@ describe('encoder ladder', () => {
         expect(pick(everything(), null, 'h264')[0]).toBe('hw-h264');
         // vp9 is not in the audience set, so preferring it changes nothing.
         const allowed = new Set<CodecInfo['category']>(['av1']);
-        expect(pick(everything(), allowed, 'vp9')).toEqual(['hw-av1']);
+        expect(pick(everything(), allowed, 'vp9')).toEqual(['hw-av1', 'sw-av1']);
     });
 
     it('drops a codec with no usable encoder at all', () => {
@@ -117,13 +117,13 @@ describe('encoder ladder', () => {
             .toEqual(['sw-vp9']);
     });
 
-    // Software-only AV1 or H.264 is no longer a candidate on any platform.
-    it('will not fall back to software AV1 or software H.264', () => {
+    // Software H.264 is never a candidate; software AV1 is, behind software VP9.
+    it('will not fall back to software H.264', () => {
         const softwareOnly = [
             codecInfo('av1', false, true),
             codecInfo('h264', false, true),
         ];
 
-        expect(pick(softwareOnly)).toEqual([]);
+        expect(pick(softwareOnly)).toEqual(['sw-av1']);
     });
 });

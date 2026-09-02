@@ -205,3 +205,10 @@ edited. The reason can be as short as whose decision it was.
   to that type and the 3-argument base call fails with CS1729.
   `FailingThrottledUpdateFlowTest.cs` and `ResumeLatencyFlowTest.cs` qualify it
   the same way
+
+## src/dotnet/UI.Blazor.App/Services/Video/codec-support.ts
+
+- The bulleted per-codec rationale above `ENCODER_LADDER` — member comment
+  longer than 2 lines — Alex Yakunin's decision: asked for one bullet per codec
+  explaining why it sits where it does, since the array shows the order but not
+  the measurements behind it.
