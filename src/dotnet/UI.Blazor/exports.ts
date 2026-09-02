@@ -49,6 +49,7 @@ export * from './Components/Menu/menu-host';
 export * from './Components/Modal/modal-host';
 export * from './Components/Overlays/loading-cat-svg.lit';
 export * from './Components/PicUpload/pic-upload';
+export * from './Components/QrCode/qr-code.lit';
 export * from './Components/Share/share';
 export * from './Components/SideNav/side-nav';
 export * from './Components/Skeleton';

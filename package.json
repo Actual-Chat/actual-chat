@@ -78,6 +78,7 @@
     "maplibre-gl": "^5.24.0",
     "onnxruntime-web": "^1.23.2",
     "playwright": "^1.58.2",
+    "qr-code-styling": "^1.9.2",
     "readable-stream": "^4.7.0",
     "rxjs": "^7.8.2",
     "selector-observer": "^2.1.6",

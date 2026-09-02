@@ -326,6 +326,7 @@ See also: [C# Full API Index](api-index-full.md), [Condensed API Index](api-inde
 - `ModalHost` (class) - Modal dialog host.
 - `LoadingCatSvg` (class) - Loading state SVG display.
 - `PicUpload` (class) - Picture upload handler.
+- `QrCode` (class) - QR code generator web component.
 - `Share` (class) - Share functionality.
 - `SideNav` (class) - Side navigation host.
 - `TabPanel` (class) - Tab panel container.
