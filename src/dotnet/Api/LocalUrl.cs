@@ -20,42 +20,26 @@ public readonly partial struct LocalUrl : IStringLike<LocalUrl>, IEquatable<Loca
     public static LocalUrl Parse(string? s) => new(s);
 
     public static bool TryParse(string? s, Uri origin, out LocalUrl result)
-    {
-        // Drops a matching origin, then requires the remainder to be truly local
-        if (!origin.IsAbsoluteUri)
-            throw new ArgumentOutOfRangeException(nameof(origin));
+        => TryParse(s, origin, false, out result);
 
-        result = default;
-        if (s.IsNullOrEmpty())
-            return false;
-
-        // UriKind.Absolute reads "/chat" as an implicit file path on Unix, so absoluteness
-        // is decided via RelativeOrAbsolute, which answers the same way on every platform.
-        if (Uri.TryCreate(s, UriKind.RelativeOrAbsolute, out var uri) && uri.IsAbsoluteUri) {
-            if (!string.Equals(uri.Scheme, origin.Scheme, StringComparison.OrdinalIgnoreCase)
-                || !string.Equals(uri.IdnHost, origin.IdnHost, StringComparison.OrdinalIgnoreCase)
-                || uri.Port != origin.Port)
-                return false;
-
-            s = uri.PathAndQuery + uri.Fragment;
-        }
-
-        var localUrl = new LocalUrl(s);
-        if (!localUrl.IsTrulyLocal())
-            return false;
-
-        result = localUrl;
-        return true;
-    }
+    // An app link reaches us on either scheme: the Android intent filter advertises http and
+    // https alike, and Android resolves a bare host tap to http. The host still has to match,
+    // so the scheme carries no authority of its own here.
+    public static bool TryParseAppLink(string? s, Uri origin, out LocalUrl result)
+        => TryParse(s, origin, true, out result);
 
     public static LocalUrl? FromAbsolute(string url, UrlMapper mapper)
     {
-        var origin = mapper.BaseUri.OriginalString.TrimEnd('/');
-        if (!url.StartsWith(origin))
+        // Absolute-only: callers pass unvalidated text (message markup, notification payloads),
+        // where a relative url names no origin to check against and must not pass as local.
+        if (!Uri.TryCreate(url, UriKind.RelativeOrAbsolute, out var uri) || !uri.IsAbsoluteUri)
             return null;
 
-        var relativeUrl = url[origin.Length..];
-        return relativeUrl;
+        // Not a ternary: the implicit string conversion would turn a null branch into LocalUrl("/")
+        if (!TryParse(url, mapper.BaseUri, out var result))
+            return null;
+
+        return result;
     }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
@@ -128,4 +112,52 @@ public readonly partial struct LocalUrl : IStringLike<LocalUrl>, IEquatable<Loca
 
     public static LocalUrl operator +(LocalUrl left, string right)
         => new(left.Value + right);
+
+    // Private methods
+
+    private static bool TryParse(string? s, Uri origin, bool isAnyWebSchemeAllowed, out LocalUrl result)
+    {
+        // Drops a matching origin, then requires the remainder to be truly local
+        if (!origin.IsAbsoluteUri)
+            throw new ArgumentOutOfRangeException(nameof(origin));
+
+        result = default;
+        if (s.IsNullOrEmpty())
+            return false;
+
+        // UriKind.Absolute reads "/chat" as an implicit file path on Unix, so absoluteness
+        // is decided via RelativeOrAbsolute, which answers the same way on every platform.
+        if (Uri.TryCreate(s, UriKind.RelativeOrAbsolute, out var uri) && uri.IsAbsoluteUri) {
+            if (!IsSameOrigin(uri, origin, isAnyWebSchemeAllowed))
+                return false;
+
+            s = uri.PathAndQuery + uri.Fragment;
+        }
+
+        var localUrl = new LocalUrl(s);
+        if (!localUrl.IsTrulyLocal())
+            return false;
+
+        result = localUrl;
+        return true;
+    }
+
+    private static bool IsSameOrigin(Uri uri, Uri origin, bool isAnyWebSchemeAllowed)
+    {
+        if (!string.Equals(uri.IdnHost, origin.IdnHost, StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (string.Equals(uri.Scheme, origin.Scheme, StringComparison.OrdinalIgnoreCase))
+            return uri.Port == origin.Port;
+        if (!isAnyWebSchemeAllowed)
+            return false;
+
+        // http and https carry different default ports, so a cross-scheme match holds only when
+        // neither side names one - an explicit port belongs to a single scheme.
+        return IsWebScheme(uri.Scheme) && IsWebScheme(origin.Scheme)
+            && uri.IsDefaultPort && origin.IsDefaultPort;
+    }
+
+    private static bool IsWebScheme(string scheme)
+        => string.Equals(scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
 }
