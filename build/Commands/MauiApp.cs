@@ -25,7 +25,7 @@ internal static class MauiApp
         var mustInstall = settings.ResolveMustInstall(isInstalledByDefault, isLaunchedByDefault);
         var plan = new CommandPlan();
         // The Apple scripts build the web assets and the app themselves, as one unit.
-        if (settings.Platform is AppPlatform.Ios or AppPlatform.MacOs) {
+        if (settings.Platform is AppPlatform.Ios or AppPlatform.Mac) {
             if (mustInstall && !mustLaunch)
                 throw new WithoutStackException(
                     $"{settings.Platform} can't install without launching - use 'b app run' or 'b app build'.");
@@ -67,7 +67,7 @@ internal static class MauiApp
             ProjectDir,
             "-noLogo",
             "-c", settings.ResolvedConfiguration,
-            "-f", GetTargetFramework(settings.Platform),
+            "-f", GetTargetFramework(settings),
         };
         if (!settings.IsDev)
             args.Add("-p:IsDevMaui=false");
@@ -142,7 +142,8 @@ internal static class MauiApp
     private static void AddScript(CommandPlan plan, AppSettings settings)
     {
         var scriptName = settings switch {
-            { Platform: AppPlatform.MacOs } => "run-macos.sh",
+            { Platform: AppPlatform.Mac, UseCatalyst: true } => "run-maccatalyst.sh",
+            { Platform: AppPlatform.Mac } => "run-macos.sh",
             { UseSimulator: true } => "run-ios-simulator.sh",
             _ => "run-ios.sh",
         };
@@ -171,20 +172,21 @@ internal static class MauiApp
     private static string GetAppId(AppSettings settings)
         => settings.IsDev ? "chat.actual.dev.app" : "chat.actual.app";
 
-    private static string GetTargetFramework(AppPlatform platform)
-        => platform switch {
-            AppPlatform.Android => $"{TargetFrameworkPrefix}-android",
-            AppPlatform.Ios => $"{TargetFrameworkPrefix}-ios",
-            AppPlatform.Windows => WindowsTargetFramework,
-            AppPlatform.MacOs => $"{TargetFrameworkPrefix}-maccatalyst",
-            _ => throw new ArgumentOutOfRangeException(nameof(platform)),
+    private static string GetTargetFramework(AppSettings settings)
+        => settings switch {
+            { Platform: AppPlatform.Android } => $"{TargetFrameworkPrefix}-android",
+            { Platform: AppPlatform.Ios } => $"{TargetFrameworkPrefix}-ios",
+            { Platform: AppPlatform.Windows } => WindowsTargetFramework,
+            { Platform: AppPlatform.Mac, UseCatalyst: true } => $"{TargetFrameworkPrefix}-maccatalyst",
+            { Platform: AppPlatform.Mac } => $"{TargetFrameworkPrefix}-macos",
+            _ => throw new ArgumentOutOfRangeException(nameof(settings)),
         };
 
     private static string GetOutputDir(AppSettings settings)
     {
         // The artifacts layout pivot is "<lowercase configuration>_<target framework>[_<rid>]".
         var kind = settings.MustUsePublish ? "publish" : "bin";
-        var pivot = settings.ResolvedConfiguration.ToLower() + "_" + GetTargetFramework(settings.Platform);
+        var pivot = settings.ResolvedConfiguration.ToLower() + "_" + GetTargetFramework(settings);
         if (settings is { Platform: AppPlatform.Windows, MustUsePublish: true })
             pivot += "_win-x64";
 

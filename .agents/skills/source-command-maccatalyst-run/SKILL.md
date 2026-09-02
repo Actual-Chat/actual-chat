@@ -1,15 +1,15 @@
 ---
-name: "source-command-macos-run"
+name: "source-command-maccatalyst-run"
 description: "Build and start the Mac Catalyst app on this Mac. Use proactively when user asks to test, run, or deploy macOS (Mac Catalyst) changes."
 ---
 
-# source-command-macos-run
+# source-command-maccatalyst-run
 
-Use this skill when the user asks to run the migrated source command `macos-run`.
+Use this skill when the user asks to run the migrated source command `maccatalyst-run`.
 
 ## Command Template
 
-# macOS Run
+# Mac Catalyst Run
 
 Build and launch the ActualChat (Voxt) Mac Catalyst app on the local Mac.
 
@@ -20,7 +20,7 @@ Build and launch the ActualChat (Voxt) Mac Catalyst app on the local Mac.
 
 ## Usage
 
-Run the `./scripts/run-macos.sh` script which:
+Run the `./scripts/run-maccatalyst.sh` script which:
 1. Picks the Mac Catalyst RID for the host CPU (`maccatalyst-arm64` on Apple Silicon, `maccatalyst-x64` on Intel)
 2. Builds the JS bundle (`npm run build:Debug`)
 3. Builds the Mac Catalyst app (`net11.0-maccatalyst` target)
@@ -30,7 +30,7 @@ Run the `./scripts/run-macos.sh` script which:
 ## Command
 
 ```bash
-./scripts/run-macos.sh
+./scripts/run-maccatalyst.sh
 ```
 
 **Note:** The app binary is run directly (not via `open`), so this script runs until the app is quit. The console output shows app logs in real-time.

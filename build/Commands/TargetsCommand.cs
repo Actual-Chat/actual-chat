@@ -42,7 +42,8 @@ public sealed class TargetsCommand(CliContext cliContext) : AsyncCommand<Targets
             settings.Configuration,
             settings.IsDevMaui,
             settings.UseNativeAot ?? false,
-            settings.HasDumps);
+            settings.HasDumps,
+            settings.IsUniversal);
     }
 
     // Nested types
@@ -65,6 +66,10 @@ public sealed class TargetsCommand(CliContext cliContext) : AsyncCommand<Targets
         [CommandOption("--use-native-aot <VALUE>")]
         [Description("Build the MAUI app with Native AOT (currently wired for publish-ios only)")]
         public bool? UseNativeAot { get; init; }
+
+        [CommandOption("--universal")]
+        [Description("publish-mac only: build a universal arm64 + x64 bundle instead of one for the host CPU")]
+        public bool IsUniversal { get; init; }
 
         [CommandOption("--dumps")]
         [Description("Enable test running crash dumps")]
