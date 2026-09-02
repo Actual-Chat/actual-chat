@@ -33,6 +33,9 @@ interface MockVideoEncoderInit {
 class MockVideoEncoder {
     static instances: MockVideoEncoder[] = [];
     static configureFailureForCodec: string | null = null;
+    /** Settle each submission on a microtask, i.e. an encoder that keeps pace.
+     *  The operator drops once MAX_PIPELINE submissions are outstanding. */
+    static autoEmit = false;
     state: 'unconfigured' | 'configured' | 'closed' = 'configured';
     encodeCalls: { frame: MockVideoFrame; opts: { keyFrame: boolean } }[] = [];
     configureCalls: VideoEncoderConfig[] = [];
@@ -52,6 +55,8 @@ class MockVideoEncoder {
 
     encode(frame: MockVideoFrame, opts: { keyFrame: boolean }): void {
         this.encodeCalls.push({ frame, opts });
+        if (MockVideoEncoder.autoEmit)
+            queueMicrotask(() => { if (this.encodeCalls.length > 0) this.emitNext(50); });
     }
 
     close(): void {
@@ -106,6 +111,7 @@ interface GlobalWithVideoEncoder {
 beforeEach(() => {
     MockVideoEncoder.instances = [];
     MockVideoEncoder.configureFailureForCodec = null;
+    MockVideoEncoder.autoEmit = false;
     (globalThis as unknown as GlobalWithVideoEncoder).VideoEncoder = MockVideoEncoder;
 });
 
@@ -265,6 +271,7 @@ async function waitForInstances(count: number): Promise<void> {
 
 describe('encode operator', () => {
     it('single layer: 5 bundles → 5 EncodedFrames out, in order', async () => {
+        MockVideoEncoder.autoEmit = true;
         const stats = makeStats();
         const opts: EncodeOptions = {
             controller: new LayerLadderController([cfg(640, 360)]),
@@ -280,13 +287,7 @@ describe('encode operator', () => {
 
         const results: EncodedFrame[] = [];
         for (const _b of bundles) {
-            // Kick off the next iteration; it submits to the encoder, then
-            // awaits the matching chunk. We let microtasks run, then emit.
-            const next = iter.next();
-            await waitForCalls(0, 1);
-            const mock = MockVideoEncoder.instances[0];
-            mock.emitNext(50);
-            const r = await next;
+            const r = await iter.next();
             expect(r.done).toBe(false);
             if (r.done === false) results.push(...r.value.layers);
         }
@@ -342,7 +343,40 @@ describe('encode operator', () => {
         await iter.next();
     });
 
+    // Delay is bounded, not throughput: a stalled encoder must never bank more
+    // than MAX_PIPELINE frames. The excess is dropped, and the resulting index gap
+    // is what surfaces downstream as senderDropRatioEma.
+    it('drops rather than queues once the encoder is MAX_PIPELINE deep', async () => {
+        const stats = makeStats();
+        const bundles: CapturedBundle[] = [];
+        for (let i = 1; i <= 12; i++)
+            bundles.push(makeBundle(i, stats, [{ width: 640, height: 360 }]));
+
+        const seg = encode({
+            controller: new LayerLadderController([cfg(640, 360)]),
+            createEncoder: makeFactory(),
+        })(fromArray(bundles));
+        const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
+
+        // The encoder never settles, so nothing is released and the source is
+        // consumed to exhaustion — submissions must still stop at the cap.
+        const next = iter.next();
+        await waitForCalls(0, 1);
+        const mock = MockVideoEncoder.instances[0];
+        for (let i = 0; i < 50; i++) await Promise.resolve();
+        expect(mock.encodeCalls.length).toBeLessThanOrEqual(3);
+
+        // The dropped bundles' frames are released rather than leaked.
+        const dropped = bundles.slice(mock.encodeCalls.length);
+        expect(dropped.every(b => b.layers.every(l =>
+            (l.frame as unknown as MockVideoFrame).closed))).toBe(true);
+
+        mock.emitNext(50);
+        await next;
+    });
+
     it('multi-layer (3 tiers): 5 source bundles → 5 EncodedBundles (1 per layer inside each)', async () => {
+        MockVideoEncoder.autoEmit = true;
         const stats = makeStats();
         const layers = [
             { width: 320, height: 180 },
@@ -361,10 +395,7 @@ describe('encode operator', () => {
 
         const collectedBundles: EncodedBundle[] = [];
         for (const _b of bundles) {
-            const next = iter.next();
-            await waitForInstances(3);
-            for (const m of MockVideoEncoder.instances) m.emitNext(80);
-            const r = await next;
+            const r = await iter.next();
             if (r.done === false) collectedBundles.push(r.value);
         }
         const tail = await iter.next();

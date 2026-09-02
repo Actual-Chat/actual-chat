@@ -155,6 +155,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                 promises: Promise<EncodedFrame>[];
                 layerDurations: number[];
                 isSettled: boolean;
+                submittedAtMs: number;
             }
             const pending: PendingBundle[] = [];
 
@@ -207,7 +208,10 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                 // The encoder has taken ownership of the layer frames via
                 // AsyncVideoEncoder.submit (which closes them inline now);
                 // nothing on the bundle side to release here.
-                const p: PendingBundle = { bundle, keyFrame, promises, layerDurations, isSettled: false };
+                const p: PendingBundle = {
+                    bundle, keyFrame, promises, layerDurations,
+                    isSettled: false, submittedAtMs: performance.now(),
+                };
                 void Promise.allSettled(promises).then(() => { p.isSettled = true; });
 
                 return p;
@@ -576,6 +580,42 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         }
                     }
 
+                    // Release whatever has finished, in order, before deciding whether
+                    // there is room for this bundle.
+                    while (pending.length > 0 && pending[0].isSettled) {
+                        const settled = pending.shift()!;
+                        const outcome = await awaitPending(settled);
+                        if (outcome.kind === 'yield')
+                            yield outcome.bundle;
+                        else if (outcome.kind === 'throw')
+                            throw outcome.error;
+                    }
+
+                    if (pending.length >= MAX_PIPELINE) {
+                        const oldest = pending[0];
+                        const isWedged = bundleTimeoutMs > 0
+                            && performance.now() - oldest.submittedAtMs > bundleTimeoutMs;
+                        if (!isWedged) {
+                            // Bound the delay, not the throughput: an encoder that cannot
+                            // keep pace drops here rather than banking latency, and the
+                            // index gap surfaces as senderDropRatioEma.
+                            if (keyFrame)
+                                forceKeyframeNext = true;
+
+                            closeBundleLayers(bundle);
+                            continue;
+                        }
+
+                        // Past the bundle budget: await it so the hang watchdog and its
+                        // recovery path can run, which dropping would bypass forever.
+                        const p = pending.shift()!;
+                        const outcome = await awaitPending(p);
+                        if (outcome.kind === 'yield')
+                            yield outcome.bundle;
+                        else if (outcome.kind === 'throw')
+                            throw outcome.error;
+                    }
+
                     pending.push(submitBundle(bundle, keyFrame));
 
                     // Sample queue depth right after submit — under
@@ -589,30 +629,6 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     queueDepthEma.appendSample(maxQueueDepth);
                     bundle.stats.encodeQueueDepthEma = queueDepthEma.value;
 
-                    // Release whatever has finished, in order. Without this the
-                    // only steady-state harvest is the cap below, so a deep
-                    // pipeline (24 on Firefox) holds ~23 encoded bundles until
-                    // the next keyframe drain dumps them at once — a ~770ms
-                    // delay, then a burst, then silence while it refills.
-                    while (pending.length > 0 && pending[0].isSettled) {
-                        const p = pending.shift()!;
-                        const outcome = await awaitPending(p);
-                        if (outcome.kind === 'yield')
-                            yield outcome.bundle;
-                        else if (outcome.kind === 'throw')
-                            throw outcome.error;
-                    }
-
-                    // Hold the pipeline at `MAX_PIPELINE` deep — drain the
-                    // oldest before submitting more on the next iteration.
-                    while (pending.length >= MAX_PIPELINE) {
-                        const p = pending.shift()!;
-                        const outcome = await awaitPending(p);
-                        if (outcome.kind === 'yield')
-                            yield outcome.bundle;
-                        else if (outcome.kind === 'throw')
-                            throw outcome.error;
-                    }
                 }
 
                 // Source ended — drain anything still in flight.

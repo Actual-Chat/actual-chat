@@ -623,7 +623,7 @@ export function getDefaultHardwareAcceleration(): HardwareAcceleration {
 // Back-pressure cap, not a buffer to fill: deeper only lets a codec that cannot
 // keep pace bank that many frames of latency before anything upstream notices.
 export function getEncoderPipelineDepth(): number {
-    return 5;
+    return 3;
 }
 
 export function getSoftwareH264Codec(width: number, height: number): string {
