@@ -838,6 +838,25 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
+    // Protected/internal methods
+
+    internal static IReadOnlyList<Device> SelectVoipCallDevices(IReadOnlyList<Device> devices)
+        => devices.Where(d => d.DeviceType == DeviceType.iOSVoipApp).ToList();
+
+    internal static IReadOnlyList<Device> SelectFcmCallDevices(IReadOnlyList<Device> devices)
+    {
+        // A phone that rings through CallKit must not also raise a banner, and the two are
+        // separate rows - SessionHash is what says they're one installation. An empty hash
+        // (legacy rows) matches nothing, so it can't silence an unrelated device.
+        var voipSessionHashes = devices
+            .Where(d => d.DeviceType == DeviceType.iOSVoipApp && !d.SessionHash.IsEmpty)
+            .Select(d => d.SessionHash)
+            .ToHashSet();
+        return devices
+            .Where(d => d.DeviceType.IsFcm() && !voipSessionHashes.Contains(d.SessionHash))
+            .ToList();
+    }
+
     // Private methods
 
     private async Task SendChatMessageNotification(
@@ -949,7 +968,12 @@ public class NotificationsBackend(IServiceProvider services)
         notification = items;
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
         var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
-        devices = devices.Where(d => d.DeviceType.IsFcm()).ToList();
+        if (notification is CallNotification call)
+            await SendCallRing(call, devices, cancellationToken).ConfigureAwait(false);
+
+        devices = notification is CallNotification
+            ? SelectFcmCallDevices(devices)
+            : devices.Where(d => d.DeviceType.IsFcm()).ToList();
         if (devices.Count == 0) {
             DebugLog?.LogDebug("No recipient devices found for notification #{NotificationId}",
                 notification.Id);
@@ -1243,6 +1267,25 @@ public class NotificationsBackend(IServiceProvider services)
         var kvas = ServerKvasBackend.ForUser(userId);
         return await kvas.ChatUserSettings(chatId)
             .Get(x => x.NotificationMode, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task SendCallRing(
+        CallNotification notification, IReadOnlyList<Device> devices, CancellationToken cancellationToken)
+    {
+        var voipDeviceIds = SelectVoipCallDevices(devices).Select(d => d.DeviceId).ToList();
+        if (voipDeviceIds.Count == 0)
+            return;
+
+        var conversationId = ConversationId.Parse(notification.SimilarityKey);
+        await ApnsClient
+            .SendCallRing(
+                conversationId,
+                notification.AuthorId.Require(),
+                notification.SenderName,
+                notification.HasVideo,
+                voipDeviceIds,
+                cancellationToken)
             .ConfigureAwait(false);
     }
 
