@@ -189,6 +189,14 @@
   "ChatList_Live_Format": "{0} · в эфире",
   "ChatList_Thread_Format": "Тред «{0}»",
 
+  "ChatList_InviteFriends": "Приглашайте друзей, отправив ссылку на ваш аккаунт, или покажите QR-код, если они рядом.",
+  "ShareQr_Show": "Показать",
+  "ShareQr_Hint_Format": "Попросите друга отсканировать этот QR-код камерой телефона, чтобы найти вас в {0}.",
+  "ShareQr_TabShow": "Мой QR",
+  "ShareQr_TabScan": "Сканировать",
+  "ShareQr_ScanHint": "Наведите камеру на QR-код друга, чтобы открыть его профиль.",
+  "ShareQr_ForeignCode_Format": "Этот QR-код — не ссылка на {0}.",
+
   "ChatMenu_AddMembers": "Добавить участников",
   "ChatMenu_EditContact": "Изменить контакт",
   "ChatMenu_LeaveChat": "Покинуть чат",

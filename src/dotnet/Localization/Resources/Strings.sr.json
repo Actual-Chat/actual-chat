@@ -189,6 +189,14 @@
   "ChatList_Live_Format": "{0} · уживо",
   "ChatList_Thread_Format": "Нит „{0}“",
 
+  "ChatList_InviteFriends": "Позовите пријатеље дељењем линка на свој рачун, или им покажите QR код ако су у близини.",
+  "ShareQr_Show": "Прикажите",
+  "ShareQr_Hint_Format": "Замолите пријатеља да скенира овај QR код камером телефона како би вас пронашао на {0}.",
+  "ShareQr_TabShow": "Мој QR",
+  "ShareQr_TabScan": "Скенирање",
+  "ShareQr_ScanHint": "Усмјерите камеру на пријатељев QR код да отворите његов профил.",
+  "ShareQr_ForeignCode_Format": "Овај QR код није веза на {0}.",
+
   "ChatMenu_AddMembers": "Додајте чланове",
   "ChatMenu_EditContact": "Уредите контакт",
   "ChatMenu_LeaveChat": "Напустите чет",

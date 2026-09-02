@@ -189,6 +189,14 @@
   "ChatList_Live_Format": "{0} · ao vivo",
   "ChatList_Thread_Format": "Tópico '{0}'",
 
+  "ChatList_InviteFriends": "Convide amigos compartilhando um link para a sua conta, ou mostre um código QR se eles estiverem por perto.",
+  "ShareQr_Show": "Mostrar",
+  "ShareQr_Hint_Format": "Peça a um amigo para escanear este código QR com a câmera do telefone para encontrar você no {0}.",
+  "ShareQr_TabShow": "Meu QR",
+  "ShareQr_TabScan": "Digitalizar",
+  "ShareQr_ScanHint": "Aponte a câmera para o código QR de um amigo para abrir o perfil dele.",
+  "ShareQr_ForeignCode_Format": "Esse código QR não é um link do {0}.",
+
   "ChatMenu_AddMembers": "Adicionar membros",
   "ChatMenu_EditContact": "Editar contato",
   "ChatMenu_LeaveChat": "Sair do chat",

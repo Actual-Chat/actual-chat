@@ -212,6 +212,14 @@ public static class LocalizedStringsLocalizerExt
         public string Chat_IsTyping_Format(object arg0) => l["Chat_IsTyping_Format", arg0].Value;
         public string ChatList_Thread_Format(object arg0) => l["ChatList_Thread_Format", arg0].Value;
 
+        public string ChatList_InviteFriends => l["ChatList_InviteFriends"].Value;
+        public string ShareQr_Show => l["ShareQr_Show"].Value;
+        public string ShareQr_Hint_Format(object arg0) => l["ShareQr_Hint_Format", arg0].Value;
+        public string ShareQr_TabShow => l["ShareQr_TabShow"].Value;
+        public string ShareQr_TabScan => l["ShareQr_TabScan"].Value;
+        public string ShareQr_ScanHint => l["ShareQr_ScanHint"].Value;
+        public string ShareQr_ForeignCode_Format(object arg0) => l["ShareQr_ForeignCode_Format", arg0].Value;
+
         public string ChatMenu_AddMembers => l["ChatMenu_AddMembers"].Value;
         public string ChatMenu_EditContact => l["ChatMenu_EditContact"].Value;
         public string ChatMenu_LeaveChat => l["ChatMenu_LeaveChat"].Value;

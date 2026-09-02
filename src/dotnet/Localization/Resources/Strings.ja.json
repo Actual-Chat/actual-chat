@@ -189,6 +189,14 @@
   "ChatList_Live_Format": "{0} · ライブ",
   "ChatList_Thread_Format": "スレッド「{0}」",
 
+  "ChatList_InviteFriends": "アカウントのリンクを共有して友だちを招待しましょう。近くにいる場合は QR コードを見せることもできます。",
+  "ShareQr_Show": "表示",
+  "ShareQr_Hint_Format": "友だちにスマートフォンのカメラでこの QR コードをスキャンしてもらうと、{0} であなたを見つけられます。",
+  "ShareQr_TabShow": "マイ QR",
+  "ShareQr_TabScan": "スキャン",
+  "ShareQr_ScanHint": "友だちの QR コードにカメラを向けると、そのプロフィールが開きます。",
+  "ShareQr_ForeignCode_Format": "この QR コードは {0} のリンクではありません。",
+
   "ChatMenu_AddMembers": "メンバーを追加",
   "ChatMenu_EditContact": "連絡先を編集",
   "ChatMenu_LeaveChat": "チャットを退出",

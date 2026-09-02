@@ -189,6 +189,14 @@
   "ChatList_Live_Format": "{0} · на живо",
   "ChatList_Thread_Format": "Нишка „{0}“",
 
+  "ChatList_InviteFriends": "Поканете приятели, като споделите връзка към профила си, или им покажете QR код, ако са наблизо.",
+  "ShareQr_Show": "Покажете",
+  "ShareQr_Hint_Format": "Помолете приятел да сканира този QR код с камерата на телефона си, за да ви намери в {0}.",
+  "ShareQr_TabShow": "Моят QR",
+  "ShareQr_TabScan": "Сканиране",
+  "ShareQr_ScanHint": "Насочете камерата към QR кода на приятел, за да отворите профила му.",
+  "ShareQr_ForeignCode_Format": "Този QR код не е връзка към {0}.",
+
   "ChatMenu_AddMembers": "Добавете участници",
   "ChatMenu_EditContact": "Редактирайте контакта",
   "ChatMenu_LeaveChat": "Напуснете чата",

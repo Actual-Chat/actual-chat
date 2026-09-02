@@ -189,6 +189,14 @@
   "ChatList_Live_Format": "{0} · trực tiếp",
   "ChatList_Thread_Format": "Chủ đề '{0}'",
 
+  "ChatList_InviteFriends": "Mời bạn bè bằng cách chia sẻ liên kết tới tài khoản của bạn, hoặc cho họ xem mã QR nếu họ ở gần.",
+  "ShareQr_Show": "Hiển thị",
+  "ShareQr_Hint_Format": "Hãy nhờ một người bạn quét mã QR này bằng camera điện thoại để tìm thấy bạn trên {0}.",
+  "ShareQr_TabShow": "QR của tôi",
+  "ShareQr_TabScan": "Quét",
+  "ShareQr_ScanHint": "Hướng camera vào mã QR của bạn bè để mở hồ sơ của họ.",
+  "ShareQr_ForeignCode_Format": "Mã QR này không phải là liên kết {0}.",
+
   "ChatMenu_AddMembers": "Thêm thành viên",
   "ChatMenu_EditContact": "Sửa liên hệ",
   "ChatMenu_LeaveChat": "Rời khỏi cuộc trò chuyện",

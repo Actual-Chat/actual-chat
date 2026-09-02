@@ -189,6 +189,14 @@
   "ChatList_Live_Format": "{0} · 라이브",
   "ChatList_Thread_Format": "스레드 '{0}'",
 
+  "ChatList_InviteFriends": "계정 링크를 공유해 친구를 초대하세요. 가까이 있다면 QR 코드를 보여 줄 수도 있어요.",
+  "ShareQr_Show": "표시",
+  "ShareQr_Hint_Format": "친구에게 휴대폰 카메라로 이 QR 코드를 스캔해 달라고 하면 {0}에서 나를 찾을 수 있어요.",
+  "ShareQr_TabShow": "내 QR",
+  "ShareQr_TabScan": "스캔",
+  "ShareQr_ScanHint": "친구의 QR 코드에 카메라를 비추면 프로필이 열립니다.",
+  "ShareQr_ForeignCode_Format": "이 QR 코드는 {0} 링크가 아니에요.",
+
   "ChatMenu_AddMembers": "멤버 추가",
   "ChatMenu_EditContact": "연락처 편집",
   "ChatMenu_LeaveChat": "채팅 나가기",

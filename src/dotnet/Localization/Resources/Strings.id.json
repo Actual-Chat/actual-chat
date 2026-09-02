@@ -189,6 +189,14 @@
   "ChatList_Live_Format": "{0} · langsung",
   "ChatList_Thread_Format": "Utas “{0}”",
 
+  "ChatList_InviteFriends": "Undang teman dengan membagikan tautan ke akun Anda, atau tunjukkan kode QR jika mereka ada di dekat Anda.",
+  "ShareQr_Show": "Tampilkan",
+  "ShareQr_Hint_Format": "Minta teman memindai kode QR ini dengan kamera ponselnya untuk menemukan Anda di {0}.",
+  "ShareQr_TabShow": "QR saya",
+  "ShareQr_TabScan": "Pindai",
+  "ShareQr_ScanHint": "Arahkan kamera ke kode QR teman untuk membuka profilnya.",
+  "ShareQr_ForeignCode_Format": "Kode QR itu bukan tautan {0}.",
+
   "ChatMenu_AddMembers": "Tambah anggota",
   "ChatMenu_EditContact": "Edit kontak",
   "ChatMenu_LeaveChat": "Keluar dari obrolan",
