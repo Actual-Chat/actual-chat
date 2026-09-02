@@ -782,34 +782,29 @@ export function detectSupportedDecoderCodecs(): Promise<string[]> {
     return decoderCodecCache;
 }
 
-// Representative decode strings per category, tried in order until one probes
-// supported. H.264 is probed at the FLOOR of the profile ladder, not the
-// ceiling: the question is "is there an H.264 decoder at all", and Constrained
-// Baseline at a small size is the narrowest thing that answers it.
-// Encoder preference, best-first, over (category, acceleration) pairs rather
-// than categories: whether a codec is worth using depends on which encoder is
-// behind it.
-//
-// Only one software rung survives, and it is VP9. Software H.264 is the slowest
-// encoder measured anywhere - 6.69ms/frame at 480p on a Galaxy SM-S948U1
-// against 1.17ms for that device's hardware path - while compressing worst of
-// the four. Software AV1 is the closer call: at matched bitrate on the one
-// device that offers both it runs ~18% slower than software VP9 (4.44ms vs
-// 3.75ms at 720p), and VP9 is the floor every client already has to decode, so
-// the extra cost buys nothing. Software HEVC does not exist in Chromium at all.
-// Numbers in docs/live-video/codec-performance.md.
-//
-// Anything not listed here is never chosen as an encoder.
+/** Encoder preference, best-first, over (category, acceleration) pairs: whether a
+ *  codec is worth using depends on the encoder behind it. Anything absent here is
+ *  never chosen — and cannot be reached by the preferred-codec debug setting, which
+ *  only reorders rungs that already qualified.
+ *  Measurements in docs/live-video/codec-performance.md. */
 export interface EncoderRung {
     category: CodecCategory;
     accel: HardwareAcceleration;
 }
 
+// Why each codec sits where it does in software:
+//  • VP9  — first: the floor every client already decodes, 3.75ms/frame at 720p.
+//  • AV1  — behind VP9: slower in software but compresses better, so it is not
+//           the default yet is reachable via the preferred-codec setting.
+//  • H264 — hardware only: the slowest encoder measured anywhere (6.69ms at 480p
+//           on a Galaxy SM-S948U1 vs 1.17ms hardware) and compresses worst.
+//  • HEVC — hardware only: Chromium ships no software HEVC encoder at all.
 const ENCODER_LADDER: readonly EncoderRung[] = [
     { category: 'av1',  accel: 'prefer-hardware' },
     { category: 'vp9',  accel: 'prefer-hardware' },
     { category: 'hevc', accel: 'prefer-hardware' },
     { category: 'vp9',  accel: 'prefer-software' },
+    { category: 'av1',  accel: 'prefer-software' },
     { category: 'h264', accel: 'prefer-hardware' },
 ];
 

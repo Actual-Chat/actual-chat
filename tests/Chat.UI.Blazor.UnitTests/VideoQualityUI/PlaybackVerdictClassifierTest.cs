@@ -81,9 +81,11 @@ public class VideoSizeTest
         var topCameraLayer = VideoLayerDef.CameraLayers[^1];
 
         topCameraLayer.GetBitrateKbps(VideoCodecKind.H264).Should().Be(4_000);
+        // Hevc, Vp9 and Av1 all sit at or above MaxBitrateEfficiency, so all three land on the cap.
         topCameraLayer.GetBitrateKbps(VideoCodecKind.Hevc).Should().BeApproximately(4_000 / 1.4, 0.01);
-        topCameraLayer.GetBitrateKbps(VideoCodecKind.Vp9).Should().BeApproximately(4_000 / 1.41, 0.01);
-        topCameraLayer.GetBitrateKbps(VideoCodecKind.Av1).Should().BeApproximately(4_000 / 1.7, 0.01);
+        topCameraLayer.GetBitrateKbps(VideoCodecKind.Vp9).Should().BeApproximately(4_000 / 1.4, 0.01);
+        topCameraLayer.GetBitrateKbps(VideoCodecKind.Av1).Should().BeApproximately(4_000 / 1.4, 0.01);
+        VideoCodecDef.EfficiencyFor(VideoCodecKind.Av1).Should().BeGreaterThan(VideoLayerDef.MaxBitrateEfficiency);
         topCameraLayer.GetByteRate(VideoCodecKind.Hevc).Should().Be(357_143);
     }
 

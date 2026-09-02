@@ -259,6 +259,10 @@ export function parseVideoCodecKind(codec: string): VideoCodecKind {
     return VideoCodecKind.Unknown;
 }
 
+/** Mirrors VideoLayerDef.MaxBitrateEfficiency: past this, efficiency is taken as
+ *  quality at the same bitrate. Codec ranking still uses the uncapped value. */
+const MaxBitrateEfficiency = 1.4;
+
 export function getVideoCodecEfficiency(codec: string, video: VideoCodecConstants = VIDEO): number {
     const kind = parseVideoCodecKind(codec);
     return video.codecDefs.find(x => x.kind === kind)?.efficiency
@@ -271,7 +275,10 @@ export function getVideoLayerBitrateKbps(
     codec: string,
     video: VideoCodecConstants = VIDEO,
 ): number {
-    const efficiency = getVideoCodecEfficiency(codec, video);
+    const efficiency = Math.max(
+        Number.EPSILON,
+        Math.min(MaxBitrateEfficiency, getVideoCodecEfficiency(codec, video)));
+
     return Math.max(Number.EPSILON, baseBitrateKbps / efficiency);
 }
 
