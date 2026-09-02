@@ -90,6 +90,10 @@
     @apply text-2xl;
     transform: rotate(225deg);
 }
+/* Narrow overlays the FAB with the create menu, so the spin can't be seen - keep the plus upright. */
+body.narrow .chat-list-fab.btn.btn-round.marked-message .btn-content > i {
+    transform: none;
+}
 .navbar-chats .c-active-chats:has(> .active-chats) .chat-list-fab {
     @apply bottom-full -mb-7;
 }
