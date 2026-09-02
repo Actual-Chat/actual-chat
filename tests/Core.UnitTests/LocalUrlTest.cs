@@ -104,4 +104,77 @@ public class LocalUrlTest
         // assert
         isParsed.Should().BeFalse();
     }
+
+    [Theory]
+    [InlineData("https://voxt.ai/chat/x", "/chat/x")]
+    [InlineData("http://voxt.ai/chat/x", "/chat/x")] // Android resolves a bare "voxt.ai" tap to http
+    [InlineData("http://voxt.ai/", "/")]
+    [InlineData("HTTP://VOXT.AI/chat/x", "/chat/x")]
+    [InlineData("http://voxt.ai/chat?x=1#f", "/chat?x=1#f")]
+    public void TryParseAppLinkShouldAcceptEitherWebScheme(string value, string expected)
+    {
+        // arrange
+        var origin = new Uri("https://voxt.ai");
+
+        // act
+        var isParsed = LocalUrl.TryParseAppLink(value, origin, out var result);
+
+        // assert
+        isParsed.Should().BeTrue("the intent filter advertises http and https alike");
+        result.Value.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("https://evil.example/chat")]
+    [InlineData("https://voxt.ai.evil.example/chat")] // Shares the origin's prefix
+    [InlineData("ftp://voxt.ai/chat")] // Not a web scheme
+    [InlineData("http://voxt.ai:8443/chat")] // An explicit port belongs to a single scheme
+    [InlineData("//evil.example")]
+    public void TryParseAppLinkShouldRejectEverythingElse(string value)
+    {
+        // arrange
+        var origin = new Uri("https://voxt.ai");
+
+        // act
+        var isParsed = LocalUrl.TryParseAppLink(value, origin, out _);
+
+        // assert
+        isParsed.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("https://voxt.ai/chat/x", "/chat/x")]
+    [InlineData("https://VOXT.ai/chat/x", "/chat/x")]
+    [InlineData("https://voxt.ai", "/")]
+    [InlineData("https://voxt.ai/chat?x=1#f", "/chat?x=1#f")]
+    public void FromAbsoluteShouldAcceptSameOrigin(string url, string expected)
+    {
+        // arrange
+        var mapper = new UrlMapper("https://voxt.ai/");
+
+        // act
+        var localUrl = LocalUrl.FromAbsolute(url, mapper);
+
+        // assert
+        localUrl.Should().NotBeNull();
+        localUrl!.Value.Value.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("https://voxt.ai.evil.example/chat")] // Shares the origin's prefix
+    [InlineData("https://evil.example/chat")]
+    [InlineData("http://voxt.ai/chat")] // Not an app link: only TryParseAppLink relaxes the scheme
+    [InlineData("/chat")] // Absolute-only by contract - LinkPreviewUI feeds it raw message markup
+    [InlineData("chat")]
+    public void FromAbsoluteShouldRejectAnythingButSameOrigin(string url)
+    {
+        // arrange
+        var mapper = new UrlMapper("https://voxt.ai/");
+
+        // act
+        var localUrl = LocalUrl.FromAbsolute(url, mapper);
+
+        // assert
+        localUrl.Should().BeNull();
+    }
 }
