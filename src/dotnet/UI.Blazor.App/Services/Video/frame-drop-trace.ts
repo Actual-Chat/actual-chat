@@ -26,6 +26,12 @@ export enum FrameDropStage {
     // demand-driven target fps (non-focused streams pace to ~10fps). Not a
     // failure — excluded from senderDropRatioEma.
     SenderFpsPacing = 5,
+    // Intentional latency bound: the encoder is at MAX_PIPELINE in-flight
+    // bundles, so the incoming one is dropped rather than queued behind it.
+    // Encoder pressure, not loss — it is EncodeDeficitEma by another name, and
+    // the encoding cap already owns that signal. Excluded from
+    // senderDropRatioEma so it cannot reach the uplink verdict as fake loss.
+    SenderEncodePacing = 6,
 
     ServerPushStream = 31,
     ServerMemoizer = 32,

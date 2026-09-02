@@ -17,6 +17,7 @@ import {
     createEmptyRecorderStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 import { AsyncVideoEncoder, AsyncVideoEncoderResetError } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/adapters';
+import { FrameDropStage } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-drop-trace';
 
 // ---- Mock WebCodecs surface ----------------------------------------------
 //
@@ -373,6 +374,55 @@ describe('encode operator', () => {
 
         mock.emitNext(50);
         await next;
+    });
+
+    it('tags MAX_PIPELINE drops as SenderEncodePacing, not SenderEncode', async () => {
+        const stats = makeStats();
+        const bundles: CapturedBundle[] = [];
+        for (let i = 1; i <= 6; i++)
+            bundles.push(makeBundle(i, stats, [{ width: 640, height: 360 }]));
+
+        const settle = async (turns: number) => {
+            for (let i = 0; i < turns; i++) await Promise.resolve();
+        };
+        async function* source(): AsyncIterable<CapturedBundle> {
+            for (const bundle of bundles) {
+                await settle(20);
+                // 1-3 fill the pipeline and 4-5 are dropped at the cap. Releasing
+                // one submission here makes room for 6, which is then the first
+                // survivor after the drops and so must carry their trace.
+                if (bundle.index === 6) {
+                    MockVideoEncoder.instances[0].emitNext(50);
+                    await settle(20);
+                }
+                yield bundle;
+            }
+        }
+
+        const seg = encode({
+            controller: new LayerLadderController([cfg(640, 360)]),
+            createEncoder: makeFactory(),
+        })(source());
+        const out: EncodedBundle[] = [];
+        const consumed = (async () => {
+            for await (const bundle of seg) out.push(bundle);
+        })().catch(() => { /* pipeline is torn down mid-flight below */ });
+        await settle(300);
+
+        // The trace lands on the survivor, not on the dropped bundles themselves.
+        expect(bundles[3].dropTrace).toEqual([]);
+        expect(bundles[4].dropTrace).toEqual([]);
+        expect(bundles[5].dropTrace).toEqual([
+            FrameDropStage.SenderEncodePacing,
+            FrameDropStage.SenderEncodePacing,
+        ]);
+        // A gap already covered by the trace is not re-blamed on SenderEncode.
+        expect(bundles[5].index - bundles[2].index - 1).toBe(bundles[5].dropTrace.length);
+
+        for (const m of MockVideoEncoder.instances)
+            while (m.encodeCalls.length > 0) m.emitNext(50);
+        await settle(50);
+        await consumed;
     });
 
     it('multi-layer (3 tiers): 5 source bundles → 5 EncodedBundles (1 per layer inside each)', async () => {
