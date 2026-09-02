@@ -1,4 +1,5 @@
 using ActualChat.Bandwidth;
+using ActualChat.Streaming;
 using ActualChat.Rpc;
 using ActualChat.UI.Blazor.App.Services;
 
@@ -105,5 +106,47 @@ public class BandwidthCapTest
         }
 
         cap.Layers.CameraLayers.Should().Be(2, "no headroom proof — no lift");
+    }
+
+    // An efficient codec never reaches ConfirmRatio of the ceiling, so throughput
+    // can't prove headroom. An idle wire proves it directly instead.
+    [Fact]
+    public void IdleWire_LiftsWithoutThroughputProof()
+    {
+        var (cap, est) = NewPair(new BandwidthCapConfig(BadStreak: 1, GoodStreak: 2, IdleProbeStreak: 4));
+        var conn = Conn();
+        var idle = new UplinkHealth(HealthVerdict.Good, 0, 0, 0, 0, 0);
+
+        est.Tick(conn, At(1), 900_000, 0.3);
+        cap.Tick(est, uplink: idle);
+        cap.Layers.CameraLayers.Should().Be(2);
+
+        // Tiny throughput against a 1 Mbps ceiling: the confirm gate stays shut.
+        for (var i = 0; i < 5; i++) {
+            est.Tick(conn, At(100 + i), 1_000, 1.0);
+            cap.Tick(est, uplink: idle);
+        }
+
+        cap.Layers.CameraLayers.Should().Be(3, "an idle wire is headroom evidence on its own");
+    }
+
+    [Fact]
+    public void BackPressuredWire_DoesNotLiftWithoutThroughputProof()
+    {
+        var (cap, est) = NewPair(new BandwidthCapConfig(BadStreak: 1, GoodStreak: 2, IdleProbeStreak: 4));
+        var conn = Conn();
+        // Acks late, queue backed up, wire dropping: throughput here IS capacity.
+        var congested = new UplinkHealth(HealthVerdict.Good, 1_000, 3, 0, 0, 0.2);
+
+        est.Tick(conn, At(1), 900_000, 0.3);
+        cap.Tick(est, uplink: congested);
+        cap.Layers.CameraLayers.Should().Be(2);
+
+        for (var i = 0; i < 5; i++) {
+            est.Tick(conn, At(100 + i), 1_000, 1.0);
+            cap.Tick(est, uplink: congested);
+        }
+
+        cap.Layers.CameraLayers.Should().Be(2, "a backed-up wire still needs throughput proof");
     }
 }
