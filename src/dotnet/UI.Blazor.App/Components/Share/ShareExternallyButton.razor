@@ -6,20 +6,20 @@
 
 <div class="btn-share-action share-externally-button @Class">
     @if (MauiShare != null) {
-        <Button Class="btn-modal" Click="OnMauiShareClick">
+        <Button Class="@ButtonClass" Click="OnMauiShareClick">
             <Icon><i class="icon-share-more"></i></Icon>
-            <Title>@L.Share_ShareExternally</Title>
+            <Title>@(Title ?? L.Share_ShareExternally)</Title>
         </Button>
     } else if (_canUseWebShare) {
         var textAndLink = Request.GetShareTextAndLink(UrlMapper);
         var link = Request.GetShareLink(UrlMapper);
-        <Button Class="btn-modal"
+        <Button Class="@ButtonClass"
                 data-share-title="@Request.Text"
                 data-share-text="@textAndLink"
                 data-share-link="@link"
                 >
             <Icon><i class="icon-share-more text-2xl"></i></Icon>
-            <Title>@L.Share_ShareExternally</Title>
+            <Title>@(Title ?? L.Share_ShareExternally)</Title>
         </Button>
     } else {
         var text = Request.HasLink() ? L.MessageMenu_CopyLink : L.LogView_CopyToClipboard;
@@ -37,11 +37,14 @@
 
 @code {
     private bool _canUseWebShare;
+    private bool _mustRegisterHandler;
 
     private IMauiShare? MauiShare { get; set; }
 
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string ButtonClass { get; set; } = "btn-modal";
     [Parameter] public bool HideWhenCopyLink { get; set; }
+    [Parameter] public string? Title { get; set; }
     [Parameter, EditorRequired] public ShareRequest Request { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
@@ -49,16 +52,16 @@
         if (MauiShare == null) {
             var webShareInfo = Hub.Services.GetRequiredService<WebShareInfo>();
             _canUseWebShare = await webShareInfo.CanShare();
+            _mustRegisterHandler = _canUseWebShare;
         }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (!firstRender)
+        // Not `firstRender`: CanShare is async, so the button often appears on a later render.
+        if (!_mustRegisterHandler)
             return;
 
-        if (!_canUseWebShare)
-            return;
-
+        _mustRegisterHandler = false;
         await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.Share.registerHandler");
     }
 
