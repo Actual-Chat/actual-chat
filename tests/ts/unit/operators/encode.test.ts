@@ -327,19 +327,16 @@ describe('encode operator', () => {
         mock.emitNext();
         await next1;
 
-        // Second bundle (no upstream forceKeyframe): keyFrame=false.
+        // Bundles 2 and 3 pipeline together now that a routine keyframe no longer
+        // drains; the per-bundle flags are what matters here.
         const next2 = iter.next();
-        await waitForCalls(0, 1);
-        expect(mock.encodeCalls).toHaveLength(1);
+        await waitForCalls(0, 2);
         expect(mock.encodeCalls[0].opts.keyFrame).toBe(false);
+        expect(mock.encodeCalls[1].opts.keyFrame).toBe(true);
         mock.emitNext();
         await next2;
 
-        // Third bundle (upstream forceKeyframe=true): keyFrame=true.
         const next3 = iter.next();
-        await waitForCalls(0, 1);
-        expect(mock.encodeCalls).toHaveLength(1);
-        expect(mock.encodeCalls[0].opts.keyFrame).toBe(true);
         mock.emitNext();
         await next3;
         await iter.next();

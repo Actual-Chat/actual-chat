@@ -54,9 +54,9 @@ describe('encoder ladder', () => {
     });
 
     // VP9 leads in software: it is the floor every client must decode anyway and
-    // measured ~18% faster than software AV1 at 720p. AV1 follows so the
-    // preferred-codec setting can reach it; software H.264 was the slowest
-    // encoder seen on any device, and Chromium has no software HEVC at all.
+    // is markedly faster than software AV1. AV1 follows so the preferred-codec
+    // setting can reach it; software H.264 was the slowest encoder seen on any
+    // device, and Chromium has no software HEVC at all.
     it('offers VP9 then AV1 in software, and nothing else', () => {
         expect(getEncoderLadder().filter(r => r.accel === 'prefer-software').map(r => r.category))
             .toEqual(['vp9', 'av1']);

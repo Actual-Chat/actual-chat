@@ -145,12 +145,10 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
             let consecutiveRecoverySkips = 0;
             const maxRecoverySkips = 30;
 
-            // Pipelined submission queue. Steady-state encoding submits
-            // multiple bundles before awaiting any one's completion, so the
-            // per-encoder HW queue stays primed and a single 60+ms encode
-            // spike no longer pauses the whole pipeline. We drain back to
-            // empty before keyframe verification, hot-apply, hang recovery,
-            // and source end — those paths need a clean encoder state.
+            // Pipelined submission queue: bundles are submitted before any one is
+            // awaited, so a single slow encode no longer pauses the pipeline. Drained
+            // to empty before a keyframe RE-request, hot-apply, hang recovery and
+            // source end — the paths that need a clean encoder state.
             interface PendingBundle {
                 bundle: CapturedBundle;
                 keyFrame: boolean;
@@ -335,10 +333,9 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                 // post-reset encode unexpectedly emerges as a delta;
                 // shipping deltas with no preceding key downstream would
                 // produce undecodable output at receivers. Drop this
-                // bundle's chunks and re-request a keyframe on the next
-                // bundle pulled from source. Pipelining guarantees we
-                // drain before submitting more keyframe bundles, so the
-                // re-request will see a clean encoder state.
+                // bundle's chunks and re-request a keyframe on the next bundle
+                // pulled from source; that re-request drains first, so it sees
+                // a clean encoder state.
                 if (p.keyFrame) {
                     let allKey = true;
                     for (const r of results) {
@@ -567,10 +564,9 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         || forceKeyframeNext
                         || forceKeyframeOnFirstEncode;
                     forceKeyframeOnFirstEncode = false;
-                    // Keyframe bundles drain the pipeline first so we can
-                    // verify the encoder honored the request before pulling
-                    // more bundles from source. Delta bundles pipeline freely.
-                    if (keyFrame && pending.length > 0) {
+                    // Only a re-request needs a clean encoder. Draining for every
+                    // periodic keyframe stalls the whole pipeline once per GOP.
+                    if (forceKeyframeNext && pending.length > 0) {
                         try {
                             for await (const r of drainPending())
                                 yield r;

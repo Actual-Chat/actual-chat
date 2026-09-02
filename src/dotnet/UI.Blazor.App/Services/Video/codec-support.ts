@@ -794,7 +794,7 @@ export interface EncoderRung {
 
 // Why each codec sits where it does in software:
 //  • VP9  — first: the floor every client already decodes, 3.75ms/frame at 720p.
-//  • AV1  — behind VP9: ~18% slower (4.44ms) but compresses better, so it is not
+//  • AV1  — behind VP9: slower in software but compresses better, so it is not
 //           the default yet is reachable via the preferred-codec setting.
 //  • H264 — hardware only: the slowest encoder measured anywhere (6.69ms at 480p
 //           on a Galaxy SM-S948U1 vs 1.17ms hardware) and compresses worst.
