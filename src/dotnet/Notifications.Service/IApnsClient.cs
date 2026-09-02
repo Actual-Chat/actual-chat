@@ -8,4 +8,12 @@ public interface IApnsClient
         string chatTitle,
         IReadOnlyCollection<Symbol> deviceIds,
         CancellationToken cancellationToken);
+
+    Task SendCallRing(
+        ConversationId conversationId,
+        AuthorId caller,
+        string callerName,
+        bool hasVideo,
+        IReadOnlyCollection<Symbol> deviceIds,
+        CancellationToken cancellationToken);
 }

@@ -378,6 +378,9 @@ public static partial class Constants
             public const string ImageUrl = "imageUrl";
             public const string Messages = "messages";
             public const string Timestamp = "timestamp";
+            public const string ConversationId = "conversationId";
+            public const string CallerName = "callerName";
+            public const string HasVideo = "hasVideo";
             // The user's whole active banner set at send time, so a client rendering this push can
             // also close what is no longer active. Version orders the snapshots: pushes can arrive
             // out of order, and an older one must never undo a newer one's prune.
@@ -388,9 +391,10 @@ public static partial class Constants
             public const string Silent = "silent";
 
             public static readonly string[] ValidKeys = {
-                ActiveTags, ActiveVersion, AuthorId, Body, ChatId, ChatEntryId, DismissedIds,
-                DismissedTags, GroupTitle, LastEntryLocalId, Icon, ImageUrl, Kind, Link, Messages,
-                NotificationId, SenderName, Silent, Tag, Title, Timestamp,
+                ActiveTags, ActiveVersion, AuthorId, Body, CallerName, ChatId,
+                ChatEntryId, ConversationId, DismissedIds, DismissedTags, GroupTitle, HasVideo,
+                LastEntryLocalId, Icon, ImageUrl, Kind, Link, Messages, NotificationId,
+                SenderName, Silent, Tag, Title, Timestamp,
             };
 
             public static bool IsValidKey(string key)

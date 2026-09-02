@@ -6,8 +6,8 @@ using ActualChat.Notifications.Module;
 namespace ActualChat.Notifications;
 
 /// <summary>
-/// Minimal direct-APNs sender for Push to Talk wakes (FCM cannot deliver
-/// apns-push-type=pushtotalk); ES256 token auth with a cached JWT.
+/// Minimal direct-APNs sender for Push to Talk wakes and call rings (FCM cannot deliver
+/// apns-push-type=pushtotalk or voip); ES256 token auth with a cached JWT.
 /// </summary>
 public class ApnsClient(
     NotificationsSettings settings,
@@ -63,10 +63,51 @@ public class ApnsClient(
         var httpClient = HttpClientFactory.CreateClient(HttpClientName);
         foreach (var deviceId in deviceIds)
             try {
-                await SendOne(httpClient, jwt, deviceId, payload, cancellationToken).ConfigureAwait(false);
+                await SendOne(httpClient, jwt, deviceId, payload, PushKind.Ptt, cancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (Exception e) when (e is not OperationCanceledException) {
                 Log.LogWarning(e, "APNs PTT push failed for device '{DeviceId}'", deviceId);
+            }
+    }
+
+    public async Task SendCallRing(
+        ConversationId conversationId,
+        AuthorId caller,
+        string callerName,
+        bool hasVideo,
+        IReadOnlyCollection<Symbol> deviceIds,
+        CancellationToken cancellationToken)
+    {
+        if (deviceIds.Count == 0)
+            return;
+
+        if (!IsConfigured) {
+            if (!_isConfigWarningLogged) {
+                _isConfigWarningLogged = true;
+                Log.LogWarning("ApplePush settings are not configured - iOS call rings are disabled");
+            }
+            return;
+        }
+
+        var payload = JsonSerializer.Serialize(new Dictionary<string, object> {
+            { "aps", new Dictionary<string, object>() },
+            { Constants.Notification.MessageDataKeys.Kind, NotificationKind.IncomingCall.ToString() },
+            { Constants.Notification.MessageDataKeys.ConversationId, conversationId.Value },
+            { Constants.Notification.MessageDataKeys.ChatId, conversationId.ChatId.Value },
+            { Constants.Notification.MessageDataKeys.AuthorId, caller.Value },
+            { Constants.Notification.MessageDataKeys.CallerName, callerName },
+            { Constants.Notification.MessageDataKeys.HasVideo, hasVideo },
+        });
+        var jwt = GetJwt();
+        var httpClient = HttpClientFactory.CreateClient(HttpClientName);
+        foreach (var deviceId in deviceIds)
+            try {
+                await SendOne(httpClient, jwt, deviceId, payload, PushKind.Voip, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogWarning(e, "APNs call ring failed for device '{DeviceId}'", deviceId);
             }
     }
 
@@ -95,19 +136,28 @@ public class ApnsClient(
     // Private methods
 
     private async Task SendOne(
-        HttpClient httpClient, string jwt, Symbol deviceId, string payload, CancellationToken cancellationToken)
+        HttpClient httpClient,
+        string jwt,
+        Symbol deviceId,
+        string payload,
+        PushKind pushKind,
+        CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"/3/device/{deviceId.Value}") {
             Version = HttpVersion.Version20,
             VersionPolicy = HttpVersionPolicy.RequestVersionOrHigher,
             Content = new StringContent(payload, Encoding.UTF8, "application/json"),
         };
+        var (pushType, topicSuffix, expiration) = pushKind switch {
+            PushKind.Voip => ("voip", ".voip", Constants.Call.RingTimeout),
+            _ => ("pushtotalk", ".voip-ptt", Expiration),
+        };
         request.Headers.TryAddWithoutValidation("authorization", $"bearer {jwt}");
-        request.Headers.TryAddWithoutValidation("apns-push-type", "pushtotalk");
-        request.Headers.TryAddWithoutValidation("apns-topic", $"{Settings.ApplePushBundleId}.voip-ptt");
+        request.Headers.TryAddWithoutValidation("apns-push-type", pushType);
+        request.Headers.TryAddWithoutValidation("apns-topic", $"{Settings.ApplePushBundleId}{topicSuffix}");
         request.Headers.TryAddWithoutValidation("apns-priority", "10");
         request.Headers.TryAddWithoutValidation("apns-expiration",
-            (DateTimeOffset.UtcNow + Expiration).ToUnixTimeSeconds().ToString());
+            (DateTimeOffset.UtcNow + expiration).ToUnixTimeSeconds().ToString());
 
         using var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.IsSuccessStatusCode)
@@ -115,12 +165,12 @@ public class ApnsClient(
 
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         if (IsDeadTokenResponse(response.StatusCode, body)) {
-            Log.LogInformation("APNs reports dead PTT token '{DeviceId}', removing", deviceId);
+            Log.LogInformation("APNs reports dead {PushKind} token '{DeviceId}', removing", pushKind, deviceId);
             _ = Commander.Start(new NotificationsBackend_RemoveDevices([deviceId]), true, CancellationToken.None);
             return;
         }
 
-        Log.LogError("APNs PTT push rejected: {StatusCode} {Body}", (int)response.StatusCode, body);
+        Log.LogError("APNs {PushKind} push rejected: {StatusCode} {Body}", pushKind, (int)response.StatusCode, body);
     }
 
     private string GetJwt()
@@ -140,4 +190,8 @@ public class ApnsClient(
 
     private static string Base64Url(byte[] bytes)
         => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+    // Nested types
+
+    private enum PushKind { Ptt, Voip }
 }
