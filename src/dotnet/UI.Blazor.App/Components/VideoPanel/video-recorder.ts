@@ -834,6 +834,12 @@ export class VideoRecorder {
         return this.isScreenCasting;
     }
 
+    /** Device pixels the self-preview occupies. The ceiling honours it, so shedding
+     *  upper tiers for remote viewers doesn't blur the local preview. */
+    public setPreviewSize(width: number, height: number): void {
+        void this.worker?.setPreviewSize(Math.round(width), Math.round(height), rpcNoWait);
+    }
+
     public addPreviewFrameListener(cb: PreviewFrameListener): () => void {
         this.previewFrameListeners.add(cb);
         return () => this.previewFrameListeners.delete(cb);

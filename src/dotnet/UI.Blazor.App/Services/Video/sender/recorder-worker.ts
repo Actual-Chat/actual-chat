@@ -426,6 +426,12 @@ export const recorderWorkerImpl: RecorderWorker = {
         await Promise.resolve();
     },
 
+    async setPreviewSize(width: number, height: number): Promise<void> {
+        const s = requireState();
+        s.recorder.setPreviewSize(width, height);
+        await Promise.resolve();
+    },
+
     getPreviewTrace(): Promise<import('./recorder-worker-contract').PreviewTrace> {
         const s = requireState();
         return Promise.resolve({ ...s.session.previewTrace });
