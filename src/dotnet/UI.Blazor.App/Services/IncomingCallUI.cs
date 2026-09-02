@@ -313,6 +313,9 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     private void StartRinging()
     {
+        if (Bridge is { OwnsRinging: true })
+            return;
+
         // Routes the ring melody to the platform ringer: the native bridge on Android, the looping web
         // ringtone everywhere else. Fire-and-forget to mirror the sync Bridge calls (and keep the finally
         // teardown sync); the JS invocation swallows its own errors.
@@ -324,6 +327,9 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     private void StopRinging()
     {
+        if (Bridge is { OwnsRinging: true })
+            return;
+
         if (Bridge is not null) {
             // Bumped first: a start still waiting on the audio mode drops instead of ringing on.
             Interlocked.Increment(ref _ringGeneration);
