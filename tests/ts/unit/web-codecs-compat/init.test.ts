@@ -1,14 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-const deviceInfo = vi.hoisted(() => ({ isFirefox: false }));
-vi.mock('device-info', () => ({ DeviceInfo: deviceInfo }));
-
 // The class keeps module-level state (level, loaded classes), so each test that
 // changes it re-imports the module rather than sharing one instance.
-async function freshCompat(isFirefox: boolean) {
+async function freshCompat() {
     vi.resetModules();
-    // resolveLevel reads DeviceInfo at call time, so flipping the mock is enough.
-    deviceInfo.isFirefox = isFirefox;
 
     return import('web-codecs-compat/init');
 }
@@ -31,25 +26,19 @@ describe('WebCodecsCompat.resolveLevel', () => {
 
     it('resolves auto to full where the engine has no WebCodecs at all', async () => {
         Reflect.deleteProperty(globalThis, 'VideoEncoder');
-        const { WebCodecsCompat } = await freshCompat(false);
+        const { WebCodecsCompat } = await freshCompat();
 
         expect(WebCodecsCompat.resolveLevel('auto')).toBe('full');
     });
 
-    it('resolves auto to vp9 on Firefox, whose native VP9 encoder is too slow', async () => {
-        const { WebCodecsCompat } = await freshCompat(true);
-
-        expect(WebCodecsCompat.resolveLevel('auto')).toBe('vp9');
-    });
-
-    it('resolves auto to none where WebCodecs is present and not Firefox', async () => {
-        const { WebCodecsCompat } = await freshCompat(false);
+    it('resolves auto to none wherever WebCodecs is present', async () => {
+        const { WebCodecsCompat } = await freshCompat();
 
         expect(WebCodecsCompat.resolveLevel('auto')).toBe('none');
     });
 
     it('passes an explicit override through, even against the engine default', async () => {
-        const { WebCodecsCompat } = await freshCompat(true);
+        const { WebCodecsCompat } = await freshCompat();
 
         expect(WebCodecsCompat.resolveLevel('none')).toBe('none');
         expect(WebCodecsCompat.resolveLevel('full')).toBe('full');
@@ -63,7 +52,7 @@ describe('WebCodecsCompat.affects', () => {
     });
 
     it('affects nothing at none', async () => {
-        const { WebCodecsCompat } = await freshCompat(false);
+        const { WebCodecsCompat } = await freshCompat();
         WebCodecsCompat.init({ level: 'none', baseUrl: '/dist/libav' });
 
         expect(WebCodecsCompat.affects('video-encode')).toBe(false);
@@ -73,7 +62,7 @@ describe('WebCodecsCompat.affects', () => {
     });
 
     it('affects only the video encoder at vp9 — audio and decode stay native', async () => {
-        const { WebCodecsCompat } = await freshCompat(true);
+        const { WebCodecsCompat } = await freshCompat();
         WebCodecsCompat.init({ level: 'vp9', baseUrl: '/dist/libav' });
 
         expect(WebCodecsCompat.affects('video-encode')).toBe(true);
@@ -83,7 +72,7 @@ describe('WebCodecsCompat.affects', () => {
     });
 
     it('affects every component at full', async () => {
-        const { WebCodecsCompat } = await freshCompat(false);
+        const { WebCodecsCompat } = await freshCompat();
         WebCodecsCompat.init({ level: 'full', baseUrl: '/dist/libav' });
 
         expect(WebCodecsCompat.affects('video-encode')).toBe(true);
@@ -93,11 +82,11 @@ describe('WebCodecsCompat.affects', () => {
     });
 
     it('reports a polyfilled frame realm only at full', async () => {
-        const vp9 = await freshCompat(true);
+        const vp9 = await freshCompat();
         vp9.WebCodecsCompat.init({ level: 'vp9', baseUrl: '/dist/libav' });
         expect(vp9.WebCodecsCompat.isPolyfilledRealm).toBe(false);
 
-        const full = await freshCompat(false);
+        const full = await freshCompat();
         full.WebCodecsCompat.init({ level: 'full', baseUrl: '/dist/libav' });
         expect(full.WebCodecsCompat.isPolyfilledRealm).toBe(true);
     });
@@ -109,7 +98,7 @@ describe('WebCodecsCompat gating', () => {
     });
 
     it('keeps the gate open and fetches nothing for a component the level leaves alone', async () => {
-        const { WebCodecsCompat } = await freshCompat(true);
+        const { WebCodecsCompat } = await freshCompat();
         WebCodecsCompat.init({ level: 'vp9', baseUrl: '/dist/libav' });
 
         await WebCodecsCompat.whenReadyFor('audio-decode');
@@ -120,7 +109,7 @@ describe('WebCodecsCompat gating', () => {
     });
 
     it('ignores a second init that disagrees about the level', async () => {
-        const { WebCodecsCompat } = await freshCompat(false);
+        const { WebCodecsCompat } = await freshCompat();
         WebCodecsCompat.init({ level: 'full', baseUrl: '/dist/libav' });
         WebCodecsCompat.init({ level: 'none', baseUrl: '/dist/libav' });
 
@@ -128,7 +117,7 @@ describe('WebCodecsCompat gating', () => {
     });
 
     it('reports nothing as polyfilled until the classes are installed', async () => {
-        const { WebCodecsCompat } = await freshCompat(false);
+        const { WebCodecsCompat } = await freshCompat();
         WebCodecsCompat.init({ level: 'full', baseUrl: '/dist/libav' });
 
         expect(WebCodecsCompat.isPolyfilled({})).toBe(false);
@@ -142,7 +131,7 @@ describe('frame dimension helpers', () => {
     });
 
     it('reads display dimensions from a VideoFrame', async () => {
-        const { frameWidth, frameHeight } = await freshCompat(false);
+        const { frameWidth, frameHeight } = await freshCompat();
         const frame = { displayWidth: 1280, displayHeight: 720 } as VideoFrame;
 
         expect(frameWidth(frame)).toBe(1280);
@@ -150,7 +139,7 @@ describe('frame dimension helpers', () => {
     });
 
     it('reads width/height from an ImageBitmap, which has no display dimensions', async () => {
-        const { frameWidth, frameHeight } = await freshCompat(false);
+        const { frameWidth, frameHeight } = await freshCompat();
         const bitmap = { width: 640, height: 360 } as ImageBitmap;
 
         expect(frameWidth(bitmap)).toBe(640);
@@ -164,7 +153,7 @@ describe('isWebCodecsLevel', () => {
     });
 
     it('accepts the three levels and rejects anything else', async () => {
-        const { isWebCodecsLevel } = await freshCompat(false);
+        const { isWebCodecsLevel } = await freshCompat();
 
         expect(isWebCodecsLevel('none')).toBe(true);
         expect(isWebCodecsLevel('vp9')).toBe(true);
