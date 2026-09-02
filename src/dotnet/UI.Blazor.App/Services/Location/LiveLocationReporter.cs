@@ -1,4 +1,5 @@
 using ActualChat.Kvas;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -178,7 +179,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         await Clocks.CpuClock.Delay(TroubleshooterDelay, cancellationToken).ConfigureAwait(false);
         await Dispatcher.InvokeAsync(async () => {
             var modalRef = await ModalUI
-                .Show(new LocationTroubleshooterModal.Model(), cancellationToken)
+                .Show(new PermissionGuideModal.Model(PermissionKind.Location), cancellationToken)
                 .ConfigureAwait(true);
             try {
                 await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(true);

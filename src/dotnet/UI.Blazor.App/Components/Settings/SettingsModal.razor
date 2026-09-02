@@ -25,6 +25,7 @@
         });
     tabs.Add(new(SettingsTabId.UserInterface, L.Settings_UserInterface) {
         IconClass = "icon-interface",
+        HasSeparatorBefore = showMyAccount,
         Content = @<UserInterface/>,
     });
     tabs.Add(new(SettingsTabId.Transcription, L.Settings_Transcription) {
@@ -37,42 +38,45 @@
             IconClass = "icon-push-to-talk",
             Content = @<PttSettings/>,
         });
-    tabs.Add(new(SettingsTabId.App, L.Settings_Application) {
-        IconClass = "icon-settings",
-        Content = @<AppSettings/>,
-    });
     if (showCarAudio)
         tabs.Add(new(SettingsTabId.CarAudio, "Android Auto") {
             IconClass = "icon-car",
             Content = @<CarAudioSettings/>,
         });
-    tabs.Add(new(SettingsTabId.Permissions, L.Settings_Permissions) {
-        IconClass = "icon-shield",
-        TitleBadge = m.Permissions.HasMissing
-            ? @<WarningBadge IsMuted="@m.Permissions.IsWarningDismissed"/>
-            : null,
-        Content = @<PermissionsSettings/>,
+    tabs.Add(new(SettingsTabId.App, L.Settings_Application) {
+        IconClass = "icon-settings",
+        Content = @<AppSettings/>,
     });
     if (showMyAccount) {
         tabs.Add(new(SettingsTabId.Sessions, L.Settings_Sessions) {
             IconClass = "icon-lock",
+            HasSeparatorBefore = true,
             Content = @<SessionSettings/>,
-        });
-        tabs.Add(new(SettingsTabId.ApiKeys, L.Settings_ApiKeys) {
-            IconClass = "icon-key",
-            Content = @<ApiKeySettings/>,
         });
         tabs.Add(new(SettingsTabId.Privacy, L.Settings_Privacy) {
             IconClass = "icon-lock",
             Content = @<PrivacySettings/>,
         });
     }
+    tabs.Add(new(SettingsTabId.Permissions, L.Settings_Permissions) {
+        IconClass = "icon-shield",
+        HasSeparatorBefore = !showMyAccount,
+        TitleBadge = m.Permissions.HasMissing
+            ? @<WarningBadge IsMuted="@m.Permissions.IsWarningDismissed"/>
+            : null,
+        Content = @<PermissionsSettings/>,
+    });
     tabs.Add(new(SettingsTabId.Documents, L.Settings_Documents) {
         IconClass = "icon-file-text",
         Class = "docs-tab",
         HasSeparatorBefore = true,
         Content = @<DocumentsPage/>,
     });
+    if (showMyAccount)
+        tabs.Add(new(SettingsTabId.ApiKeys, L.Settings_ApiKeys) {
+            IconClass = "icon-key",
+            Content = @<ApiKeySettings/>,
+        });
     tabs.Add(new(SettingsTabId.DevTools, L.Settings_DeveloperTools) {
         IconClass = "icon-eye",
         Content = @<DeveloperTools/>,
@@ -104,6 +108,7 @@
     if (showQuit)
         tabs.Add(new(SettingsTabId.Quit, quitTitle) {
             IconClass = "icon-close",
+            HasSeparatorBefore = !showLogout,
             Click = Hub.ReloadUI.Quit,
         });
 }

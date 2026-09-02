@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Resilience;
 
@@ -1158,11 +1159,16 @@ public partial class ChatAudioUI
                 .ConfigureAwait(true);
             Log.LogWarning("Recording issue. Diagnostics State = {State}", diagnostics);
 
-            var model = new RecordingTroubleshooterModal.Model(
-                null,
-                true,
-                diagnostics?.HasMicrophonePermission != true);
-            var modalRef = await ModalUI.Show(model, cancellationToken).ConfigureAwait(true);
+            // A definitive "permission not granted" is the one case the shared permission guide fits;
+            // anything else (granted, or diagnostics unavailable) stays on the recording-failure
+            // troubleshooter, whose reload/reconnect advice covers a device problem that isn't a permission.
+            var modalRef = diagnostics?.HasMicrophonePermission == false
+                ? await ModalUI
+                    .Show(new PermissionGuideModal.Model(PermissionKind.Microphone), cancellationToken)
+                    .ConfigureAwait(true)
+                : await ModalUI
+                    .Show(new RecordingTroubleshooterModal.Model(null, true, diagnostics?.HasMicrophonePermission != true), cancellationToken)
+                    .ConfigureAwait(true);
 
             try {
                 await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(true);

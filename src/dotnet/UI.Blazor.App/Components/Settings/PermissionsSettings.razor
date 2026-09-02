@@ -1,7 +1,11 @@
+@using ActualChat.Hosting
 @inherits ComputedStateComponent<AppUIHub, PermissionsState>
 @{
     var m = State.Value;
     var permissions = PermissionsUI.Permissions;
+    var revokeHint = HostInfo.HostKind.IsMauiApp()
+        ? L.Permissions_RevokeHint_App
+        : L.Permissions_RevokeHint_Web;
 }
 
 <TileTopic Topic="@L.Permissions_Topic"/>
@@ -23,6 +27,7 @@
         </TileItem>
     }
     <p class="c-description">@L.Permissions_Description_Format(CoreConstants.AppName)</p>
+    <p class="c-description">@revokeHint</p>
 </Tile>
 
 @if (m.IsKnown && !m.HasMissing) {
@@ -32,7 +37,7 @@
 }
 else if (m.HasMissing && !m.IsWarningDismissed) {
     <Tile>
-        <TileItem Click="@OnDismissWarningClick">
+        <TileItem Class="dismiss-warning-item" Click="@OnDismissWarningClick">
             <Icon><i class="icon-alert-circle text-2xl"></i></Icon>
             <Content>@L.Permissions_DismissWarning</Content>
         </TileItem>
@@ -65,7 +70,11 @@ else if (m.HasMissing && !m.IsWarningDismissed) {
         _isRequesting = true;
         StateHasChanged();
         try {
-            await PermissionsUI.Request(permission, true, CancellationToken.None).ConfigureAwait(true);
+            // mustTroubleshoot: false keeps each handler from opening its own guide - a blocked
+            // permission is guided by the single shared modal below, the same for all of them.
+            var isGranted = await PermissionsUI.Request(permission, false, CancellationToken.None).ConfigureAwait(true);
+            if (!isGranted)
+                await ModalUI.Show(new PermissionGuideModal.Model(permission.Kind)).ConfigureAwait(true);
         }
         finally {
             _isRequesting = false;

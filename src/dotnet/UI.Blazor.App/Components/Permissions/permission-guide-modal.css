@@ -1,0 +1,14 @@
+.permission-guide-modal .c-hero {
+    @apply flex-x justify-center items-center;
+    @apply w-16 h-16 mx-auto;
+    @apply rounded-full bg-04;
+}
+.permission-guide-modal .c-hero i {
+    @apply text-4xl text-primary;
+}
+.permission-guide-modal .c-title {
+    @apply text-center;
+}
+.permission-guide-modal .c-hint {
+    @apply text-sm text-03;
+}

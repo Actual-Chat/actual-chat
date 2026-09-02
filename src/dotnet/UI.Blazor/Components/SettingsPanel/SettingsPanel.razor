@@ -10,12 +10,10 @@
     RenderFragment RenderTabTitle(SettingsTabDef tab) =>
         @<div class="settings-tab-item">
             <i class="@tab.IconClass text-2xl icon-title"></i>
-            <span>
-                @tab.Title
-                @if (tab.TitleBadge is { } titleBadge) {
-                    <sup class="c-title-badge">@titleBadge</sup>
-                }
-            </span>
+            <span>@tab.Title</span>
+            @if (tab.TitleBadge is { } titleBadge) {
+                <span class="c-title-badge">@titleBadge</span>
+            }
             <div class="flex-x">
                 @tab.TitleContent
             </div>
@@ -31,7 +29,7 @@
             @foreach (var tab in tabs) {
                 var isActive = tab.Id == selectedTabId;
                 @if (tab.HasSeparatorBefore) {
-                    <Divider Class="m-4"/>
+                    <Divider Class="m-2"/>
                 }
                 <div @key="@tab.Id" class="c-tab-item @(isActive ? "on" : "") @tab.Class">
                     <Button

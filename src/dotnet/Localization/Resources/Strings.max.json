@@ -902,8 +902,13 @@
   "Permissions_Topic": "Разрешения на приложението",
   "Permissions_Description_Format": "{0} иска разрешение само там, където дадена функция се нуждае от него — всяко от тях е по избор.",
   "Permissions_AllGranted": "Toutes les autorisations sont accordées.",
-  "Permissions_DismissWarning": "Скриване на предупреждението за разрешения",
-  "Permissions_WarningDismissed": "Предупреждението за разрешения е скрито",
+  "Permissions_DismissWarning": "Скриване на предупрежденията",
+  "Permissions_WarningDismissed": "Предупрежденията са скрити",
+  "Permissions_RevokeHint_App": "Разрешенията могат само да се дадат тук. За да отнемете разрешение, отворете системните настройки на устройството.",
+  "Permissions_RevokeHint_Web": "Разрешенията могат само да се дадат тук. За да отнемете разрешение, отворете настройките на браузъра.",
+  "PermissionGuide_Web_Format": "Отворете в браузъра Настройки/Предпочитания → Поверителност/Разрешения → Настройки на сайтовете → {0} и изберете „Разреши“, след което презаредете страницата.",
+  "PermissionGuide_WebAddressBarHint": "Разрешенията за сайт може също да се намират вляво от адреса в адресната лента.",
+  "PermissionGuide_App": "За да включите, докоснете „Настройки“ по-долу и разрешете достъпа в настройките на устройството.",
 
   // The profile card opened by tapping an author, and the owner/moderator actions on it. Owner
   // and Moderator are role names - keep them capitalized and identical to the Members_* keys.

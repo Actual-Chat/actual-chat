@@ -902,8 +902,13 @@
   "Permissions_Topic": "App permissions",
   "Permissions_Description_Format": "{0} asks for a permission only where a feature needs it - every one of them is optional.",
   "Permissions_AllGranted": "All permissions are granted.",
-  "Permissions_DismissWarning": "Dismiss permission warning",
-  "Permissions_WarningDismissed": "Permission warning dismissed",
+  "Permissions_DismissWarning": "Dismiss warnings",
+  "Permissions_WarningDismissed": "Warnings dismissed",
+  "Permissions_RevokeHint_App": "Permissions can only be granted here. To turn one back off, open your device's system settings.",
+  "Permissions_RevokeHint_Web": "Permissions can only be granted here. To turn one back off, open your browser settings.",
+  "PermissionGuide_Web_Format": "Open your browser's Settings/Preferences → Privacy/Permissions → Site settings → {0} and choose \"Allow\", then reload the page.",
+  "PermissionGuide_WebAddressBarHint": "A site's permissions may also be found to the left of the address in the address bar.",
+  "PermissionGuide_App": "To turn it on, tap \"Settings\" below and allow it in your device settings.",
 
   // The profile card opened by tapping an author, and the owner/moderator actions on it. Owner
   // and Moderator are role names - keep them capitalized and identical to the Members_* keys.

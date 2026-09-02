@@ -1,0 +1,58 @@
+@using ActualChat.Hosting
+@using ActualChat.UI.Blazor.App.Services
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<PermissionGuideModal.Model>
+@{
+    var permission = PermissionsUI.Permissions.FirstOrDefault(x => x.Kind == ModalModel.Kind);
+    var isMaui = HostInfo.HostKind.IsMauiApp();
+    var primaryTitle = isMaui ? L.Common_Settings : L.Common_OK;
+}
+
+<DialogFrame
+    Class="permission-guide-modal guide-modal"
+    BodyClass="no-scrollbar"
+    Title="@(permission?.Title ?? "")"
+    HasCloseButton="true"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.ForSubmitButton(OnPrimaryClick, primaryTitle)">
+    <Body>
+    <FormBlock>
+        @if (permission is { } p) {
+            <div class="c-hero"><i class="@p.Icon"></i></div>
+            <div class="c-title">@p.Title</div>
+            <div class="c-intro">@p.Rationale</div>
+        }
+        @if (isMaui) {
+            <div class="c-intro">@L.PermissionGuide_App</div>
+        } else {
+            <div class="c-intro">@L.PermissionGuide_Web_Format(permission?.Title ?? "")</div>
+            <div class="c-hint">@L.PermissionGuide_WebAddressBarHint</div>
+        }
+    </FormBlock>
+    <div class="safe-area-bottom safe-area-bottom-overlay"></div>
+    </Body>
+    <Buttons>
+        @if (isMaui) {
+            <Button Class="btn-modal" Click="@(() => Modal.Close())">@L.Common_Later</Button>
+            <Button Class="btn-modal btn-primary" Click="OnPrimaryClick">@L.Common_Settings</Button>
+        } else {
+            <Button Class="btn-modal btn-primary" Click="@(() => Modal.Close())">@L.Common_OK</Button>
+        }
+    </Buttons>
+</DialogFrame>
+
+@code {
+    private PermissionsUI PermissionsUI => field ??= Hub.Services.GetRequiredService<PermissionsUI>();
+    private SystemSettingsUI SystemSettingsUI => field ??= Hub.Services.GetRequiredService<SystemSettingsUI>();
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private async Task OnPrimaryClick() {
+        if (HostInfo.HostKind.IsMauiApp())
+            await SystemSettingsUI.Open().ConfigureAwait(true);
+        Modal.Close();
+    }
+
+    public sealed record Model(PermissionKind Kind);
+}

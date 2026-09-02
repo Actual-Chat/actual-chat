@@ -69,10 +69,15 @@ body.hoverable .left-panel-account-menu .dropdown-menu-btn.btn-round:hover .btn-
     @apply w-full;
 }
 
-/* The permission warning sits opposite the presence dot, in the avatar's top-right corner. The
-   ring in the page background keeps it legible over whatever the avatar picture puts behind it. */
+/* The permission warning sits opposite the presence dot, in the avatar's top-right corner. It
+   pokes past the picture, so this one avatar opts out of the shared clip; the ring in the page
+   background keeps it legible over whatever the avatar picture puts behind it. */
+.btn-round.account-btn .avatar-circle > .c-content {
+    @apply overflow-visible;
+}
 .btn-round.account-btn .avatar-circle > .c-content > .c-permission-warning {
     @apply absolute -right-0.5 -top-0.5;
-    @apply w-3.5 h-3.5;
-    border: 2px solid var(--background-01);
+    @apply w-4 h-4;
+    @apply outline-2 outline-[var(--background-01)] -outline-offset-1;
+    outline-style: solid;
 }
