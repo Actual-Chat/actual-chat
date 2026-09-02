@@ -13,6 +13,8 @@ public sealed record FirebaseSentMessage(
     public bool IsDismissal => Notification == null;
 }
 
+public sealed record FirebaseBadgeMessage(IReadOnlyList<Symbol> DeviceIds, int BadgeCount);
+
 public sealed record FirebaseWakeMessage(
     ChatId ChatId,
     AuthorId AuthorId,
@@ -25,18 +27,28 @@ public sealed class FirebaseMessagingTestSink(ILogger<FirebaseMessagingTestSink>
 {
     private readonly ConcurrentQueue<FirebaseSentMessage> _messages = new();
     private readonly ConcurrentQueue<FirebaseWakeMessage> _wakes = new();
+    private readonly ConcurrentQueue<FirebaseBadgeMessage> _badges = new();
+    private int _rejectedDismissals;
 
     public IReadOnlyList<FirebaseSentMessage> Messages => _messages.ToArray();
     public IReadOnlyList<FirebaseWakeMessage> Wakes => _wakes.ToArray();
+    public IReadOnlyList<FirebaseBadgeMessage> Badges => _badges.ToArray();
     // Makes the next N dismissal sends throw, so a test can assert that a failed send leaves the
     // dismissal owed rather than losing it.
     public int FailDismissalCount { get; set; }
+    // Makes the next N dismissal sends accept nothing instead of throwing - how FCM reports a
+    // rejected push.
+    public int RejectDismissalCount { get; set; }
+    // Lets a test wait for the rejection instead of racing the converge the dismissal queues.
+    public int RejectedDismissals => Volatile.Read(ref _rejectedDismissals);
     public event Action<FirebaseSentMessage>? Sent;
 
     public void Clear()
     {
         _messages.Clear();
         _wakes.Clear();
+        _badges.Clear();
+        Interlocked.Exchange(ref _rejectedDismissals, 0);
     }
 
     public Task SendMessage(
@@ -53,7 +65,7 @@ public sealed class FirebaseMessagingTestSink(ILogger<FirebaseMessagingTestSink>
         return Task.CompletedTask;
     }
 
-    public Task SendDismissal(
+    public Task<IReadOnlyCollection<PendingDismissal>> SendDismissal(
         IReadOnlyCollection<PendingDismissal> dismissals,
         IReadOnlyCollection<Symbol> deviceIds,
         int badgeCount,
@@ -64,10 +76,27 @@ public sealed class FirebaseMessagingTestSink(ILogger<FirebaseMessagingTestSink>
             log.LogInformation("SendDismissal: injected failure");
             throw new InvalidOperationException("Injected dismissal failure.");
         }
+        if (RejectDismissalCount > 0) {
+            RejectDismissalCount--;
+            Interlocked.Increment(ref _rejectedDismissals);
+            log.LogInformation("SendDismissal: injected rejection");
+            return Task.FromResult<IReadOnlyCollection<PendingDismissal>>([]);
+        }
 
         log.LogInformation("SendDismissal: {Count} id(s) -> {DeviceCount} device(s), badge={Badge}",
             dismissals.Count, deviceIds.Count, badgeCount);
         Add(new FirebaseSentMessage(null, [..dismissals.Select(x => x.Id)], [..deviceIds], badgeCount));
+        return Task.FromResult<IReadOnlyCollection<PendingDismissal>>([..dismissals]);
+    }
+
+    public Task SendBadge(
+        IReadOnlyCollection<Symbol> deviceIds,
+        int badgeCount,
+        CancellationToken cancellationToken)
+    {
+        log.LogInformation("SendBadge: {DeviceCount} device(s), badge={Badge}", deviceIds.Count, badgeCount);
+        if (deviceIds.Count > 0)
+            _badges.Enqueue(new FirebaseBadgeMessage([..deviceIds], badgeCount));
         return Task.CompletedTask;
     }
 
