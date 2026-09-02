@@ -21,8 +21,15 @@ import type {
 // on every start() would defeat the pool entirely.
 let session: PlaybackSession | null = null;
 const players = new Map<string, Player>();
-// Per-stream WebGPU bg-blur controller. Created lazily by installBgCanvas
-// or by start() (whichever lands first), disposed when the player drains.
+// Per-stream WebGPU bg-blur controller. Created lazily by installBgCanvas or by
+// start() (whichever lands first), and then kept for the life of the worker.
+//
+// It deliberately outlives the player. Main transfers the OffscreenCanvas exactly
+// once — it cannot be transferred twice and the element cannot be re-offscreened —
+// so a controller disposed on drain could never be given a surface again, and a
+// single stop/start cycle (the MSTG->canvas fallback below, or a restart after a
+// quality change) killed the backdrop permanently. Rebuilding on the same canvas
+// is not an option either: the WebGL renderers call loseContext() on dispose.
 const bgBlurControllers = new Map<string, BgBlurController>();
 
 function ensureBgBlurController(streamId: string): BgBlurController {
@@ -220,13 +227,7 @@ export const playerWorkerImpl: PlayerWorker = {
                 players.delete(opts.streamId);
                 s.unregisterStream();
             }
-            if (current === player || current === undefined) {
-                const c = bgBlurControllers.get(opts.streamId);
-                if (c === bgController) {
-                    bgBlurControllers.delete(opts.streamId);
-                    c.dispose();
-                }
-            }
+            // The bg controller is NOT torn down here — see bgBlurControllers.
             locallyStopped.delete(player);
         });
     },
@@ -349,6 +350,9 @@ export async function disposePlayerWorker(): Promise<void> {
         ]);
         players.clear();
     }
+    for (const c of bgBlurControllers.values())
+        c.dispose();
+    bgBlurControllers.clear();
     if (session) {
         session.dispose();
         session = null;
