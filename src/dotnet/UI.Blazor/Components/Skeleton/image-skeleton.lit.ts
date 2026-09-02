@@ -18,6 +18,10 @@ export class ImageSkeleton extends LitElement {
     private _isRetrying = false;
     // The src whose retries were exhausted; tracked by value so a new src retries.
     private _failedSrc: string | null = null;
+    // Attempts already spent on the current src, so a decode failure after a
+    // successful fetch resumes the backoff instead of restarting it. Single-entry:
+    // cleared whenever a different src starts retrying.
+    private _attemptsBySrc = new Map<string, number>();
 
     @property() src: string;
     @property() thumbnailSrc: string;
@@ -113,12 +117,19 @@ export class ImageSkeleton extends LitElement {
         if (this._isRetrying || this._failedSrc === this.src)
             return;
 
+        // A 200 carrying bytes the decoder rejects fires `error` AFTER a successful
+        // fetch, which re-enters here. Resuming the attempt count rather than
+        // restarting it is what keeps that from becoming a delay-free fetch loop:
+        // the src is reachable, so only the backoff can slow it down.
+        let attempt = this._attemptsBySrc.get(this.src) ?? 0;
+        this._attemptsBySrc.clear();
         this._isRetrying = true;
         this._imageState = 'skeleton';
         this.applyState();
         const isSubDomain = this.isSubDomain(this.src);
         try {
-            for (let attempt = 0; attempt < RetryCount; attempt++) {
+            for (; attempt < RetryCount; attempt++) {
+                this._attemptsBySrc.set(this.src, attempt + 1);
                 if (attempt >= 1) {
                     const delay = Math.min(MaxRetryDelay, Math.pow(2, attempt - 1));
                     await delayAsync(delay * 1000);
@@ -134,7 +145,11 @@ export class ImageSkeleton extends LitElement {
                 const image = this._imageRef.value;
                 if (image) {
                     const url = URL.createObjectURL(blob);
-                    image.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
+                    // Revoke on either outcome: undecodable bytes never fire `load`,
+                    // so a load-only listener leaks the URL on every failed attempt.
+                    const revoke = (): void => URL.revokeObjectURL(url);
+                    image.addEventListener('load', revoke, { once: true });
+                    image.addEventListener('error', revoke, { once: true });
                     image.src = url;
                 }
 
@@ -142,6 +157,7 @@ export class ImageSkeleton extends LitElement {
             }
 
             this._failedSrc = this.src;
+            this._attemptsBySrc.delete(this.src);
             if (this._imageRef.value)
                 this._imageRef.value.src = this.src;
         } finally {
