@@ -790,8 +790,9 @@ export interface EncoderRung {
 
 // Why each codec sits where it does in software:
 //  • VP9  — first: the floor every client already decodes, 3.75ms/frame at 720p.
-//  • AV1  — behind VP9: slower in software but compresses better, so it is not
-//           the default yet is reachable via the preferred-codec setting.
+//  • AV1  — off: it compresses better, but 29.7ms/frame at 720p on one of the
+//           fastest machines available leaves nothing for a 33ms budget.
+//           Hardware AV1 is unaffected and stays at the top of the ladder.
 //  • H264 — hardware only: the slowest encoder measured anywhere (6.69ms at 480p
 //           on a Galaxy SM-S948U1 vs 1.17ms hardware) and compresses worst.
 //  • HEVC — hardware only: Chromium ships no software HEVC encoder at all.
@@ -800,7 +801,7 @@ const ENCODER_LADDER: readonly EncoderRung[] = [
     { category: 'vp9',  accel: 'prefer-hardware' },
     { category: 'hevc', accel: 'prefer-hardware' },
     { category: 'vp9',  accel: 'prefer-software' },
-    { category: 'av1',  accel: 'prefer-software' },
+    // { category: 'av1',  accel: 'prefer-software' },
     { category: 'h264', accel: 'prefer-hardware' },
 ];
 
