@@ -1,0 +1,90 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<ShareQrModalModel>
+@{
+    var isScanning = _selectedTabId == ScanTabId;
+    var hasScanError = !_scanError.IsNullOrEmpty();
+}
+
+<DialogFrame
+    Class="share-qr-modal"
+    HasCloseButton="true"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
+    <Body>
+        @if (_hasCamera) {
+            <SegmentedSwitch
+                Class="c-tabs"
+                Items="@Tabs"
+                SelectedId="@_selectedTabId"
+                SelectedIdChanged="@OnSelectedTabIdChanged"/>
+        }
+        @if (isScanning) {
+            <QrScanView Scanned="@OnScanned"/>
+            <div class="c-hint @(hasScanError ? "error" : "")">
+                @(hasScanError ? _scanError : L.ShareQr_ScanHint)
+            </div>
+        } else {
+            <div class="c-code">
+                <qr-code
+                    url="@UrlMapper.ToAbsolute(ModalModel.Link)"
+                    image="@ModalModel.ImageUrl"></qr-code>
+            </div>
+            <div class="c-hint">@L.ShareQr_Hint_Format(CoreConstants.AppName)</div>
+        }
+    </Body>
+</DialogFrame>
+
+@code {
+    private const string ShowTabId = "show";
+    private const string ScanTabId = "scan";
+    private static readonly TimeSpan ScanErrorDuration = TimeSpan.FromSeconds(5);
+
+    private string _selectedTabId = ShowTabId;
+    private string _scanError = "";
+    private int _scanErrorVersion;
+    private bool _hasCamera;
+
+    private IReadOnlyList<SegmentedSwitchItem> Tabs => [
+        new (ShowTabId, L.ShareQr_TabShow),
+        new (ScanTabId, L.ShareQr_TabScan),
+    ];
+
+    private CameraUI CameraUI => Hub.CameraUI;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public ShareQrModalModel ModalModel { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        _hasCamera = await CameraUI.HasCamera().ConfigureAwait(true);
+    }
+
+    private void OnSelectedTabIdChanged(string id) {
+        _selectedTabId = id;
+        _scanError = "";
+        _scanErrorVersion++;
+    }
+
+    private Task OnScanned(string text) {
+        // A code in the frame that isn't ours is scenery, not intent - so keep scanning.
+        if (!UrlMapper.IsAbsolute(text) || !LocalUrl.TryParse(text, UrlMapper.BaseUri, out var url)) {
+            // Not awaited: the scanner holds off its next frame until this call returns.
+            _ = ShowScanError(L.ShareQr_ForeignCode_Format(CoreConstants.AppName));
+            return Task.CompletedTask;
+        }
+
+        Modal.Close(true);
+        return History.NavigateTo(url);
+    }
+
+    private async Task ShowScanError(string text) {
+        _scanError = text;
+        var version = ++_scanErrorVersion;
+        StateHasChanged();
+        await Task.Delay(ScanErrorDuration).ConfigureAwait(true);
+        if (version != _scanErrorVersion)
+            return; // Another code arrived, or the user left the scan tab - it owns the line now
+
+        _scanError = "";
+        StateHasChanged();
+    }
+}

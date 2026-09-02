@@ -1,0 +1,27 @@
+@page "/test/qr-code"
+@inherits ComponentBase<UIHub>
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>QR Code Test Page</MainHeader>
+
+<div class="test-page-wrapper">
+    <div class="m-4 flex flex-col items-start gap-4">
+        <qr-code url="https://voxt.ai/u/test"></qr-code>
+        <qr-code url="https://voxt.ai/u/test" image="/dist/images/voxt-icon-color.svg"></qr-code>
+        <Button Class="btn-primary" Click="@OnShowClick">
+            <Title>Open QR modal</Title>
+        </Button>
+    </div>
+</div>
+
+@code {
+    private Task OnShowClick() {
+        var account = AccountUI.OwnAccount.Value;
+        var iconQuery = IconQuery.Create(account.Avatar.Picture,
+            AvatarKind.Beam, DefaultUserPicture.GetAvatarKey(account.Id.Value), 160);
+        return ModalUI.Show(new ShareQrModalModel(
+            "Share your contact",
+            Links.User(account.AliasInfo),
+            UrlMapper.IconUrl(iconQuery)));
+    }
+}
