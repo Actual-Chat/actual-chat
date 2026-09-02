@@ -25,8 +25,14 @@
             <Button Class="btn-decline btn-danger" Click="@OnDeclineClick">
                 <i class="icon-close text-2xl"></i>
             </Button>
+            <Button Class="btn-mute" Click="@OnMuteClick">
+                <i class="@(m.IsMuted ? "icon-bell" : "icon-bell-off") text-2xl"></i>
+            </Button>
+            <Button Class="btn-message" Click="@OnMessageClick">
+                <i class="icon-message-ellipse text-2xl"></i>
+            </Button>
             <Button Class="btn-accept btn-primary" Click="@OnAcceptClick">
-                <i class="icon-phone text-2xl"></i>
+                <i class="icon-phone-take text-2xl"></i>
             </Button>
         }
         else {
@@ -85,8 +91,9 @@
 
         var ringing = await IncomingCallUI.GetRingingCall(chatId, cancellationToken).ConfigureAwait(false);
         if (ringing is not null) {
+            var muted = await IncomingCallUI.MutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
             DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → Ringing", chatId);
-            return new() { Chat = chat, Phase = CallPhase.Ringing, HasVideo = ringing.HasVideo };
+            return new() { Chat = chat, Phase = CallPhase.Ringing, HasVideo = ringing.HasVideo, IsMuted = muted == chatId };
         }
 
         var inCall = await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
@@ -123,6 +130,16 @@
     private Task OnDeclineClick()
         => State.Value.Chat is { } chat ? IncomingCallUI.Decline(chat.Id) : Task.CompletedTask;
 
+    private void OnMuteClick() {
+        if (State.Value.Chat is { } chat)
+            IncomingCallUI.ToggleMuteRing(chat.Id);
+    }
+
+    // Over the lock screen "Message" declines the ring; opening the chat still needs a keyguard dismiss,
+    // so the chat only surfaces once the user unlocks.
+    private Task OnMessageClick()
+        => State.Value.Chat is { } chat ? IncomingCallUI.DeclineAndOpenChat(chat.Id) : Task.CompletedTask;
+
     private Task OnGoToChatClick()
         => State.Value.Chat is { } chat ? IncomingCallUI.GoToChat(chat.Id) : Task.CompletedTask;
 
@@ -142,6 +159,7 @@
         public Chat? Chat { get; init; }
         public CallPhase Phase { get; init; }
         public bool HasVideo { get; init; }
+        public bool IsMuted { get; init; }
         public Moment? JoinedAt { get; init; }
     }
 }

@@ -1,6 +1,7 @@
 using ActualChat.Localization;
 using ActualChat.Live;
 using ActualChat.Notifications;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Module;
 using ActualLab.Diagnostics;
 using ActualChat.UI.Blazor.Services;
@@ -28,10 +29,16 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     // Held true across the Accept transition (ring ended, audio not yet started) so the over-lock
     // session doesn't momentarily read as ended and tear the screen down mid-accept.
     private readonly MutableState<bool> _isAccepting;
+    // The ring collapsed into the draggable island (foreground only); its modal is closed while set.
+    private readonly MutableState<ChatId?> _collapsedChatId;
+    // The ring whose ringtone the user silenced; the ring itself keeps going.
+    private readonly MutableState<ChatId?> _mutedRingChatId;
     private bool _overLockWasActive;
     private int _ringGeneration;
 
     public IState<ChatId?> OverLockChatId => _overLockChatId;
+    public IState<ChatId?> CollapsedChatId => _collapsedChatId;
+    public IState<ChatId?> MutedRingChatId => _mutedRingChatId;
 
     private IIncomingCallsBridge? Bridge { get; }
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
@@ -52,6 +59,12 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _isAccepting = StateFactory.NewMutable(
             false,
             StateCategories.Get(GetType(), "IsAccepting"));
+        _collapsedChatId = StateFactory.NewMutable(
+            (ChatId?)null,
+            StateCategories.Get(GetType(), "CollapsedChatId"));
+        _mutedRingChatId = StateFactory.NewMutable(
+            (ChatId?)null,
+            StateCategories.Get(GetType(), "MutedRingChatId"));
     }
 
     void INotifyInitialized.Initialized()
@@ -216,6 +229,44 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
     }
 
+    // Silences / restores the ringtone without ending the ring: the call keeps ringing and the UI stays,
+    // only the sound is toggled.
+    public void ToggleMuteRing(ChatId chatId)
+    {
+        if (_mutedRingChatId.Value == chatId) {
+            _mutedRingChatId.Value = null;
+            StartRinging();
+        }
+        else {
+            _mutedRingChatId.Value = chatId;
+            StopRinging();
+        }
+    }
+
+    // Collapses the ringing modal into the draggable island and silences the ringtone. The call keeps
+    // ringing - the island's Accept/Decline still work and a tap on it re-opens the modal.
+    public void Collapse(ChatId chatId)
+    {
+        if (_mutedRingChatId.Value != chatId) {
+            _mutedRingChatId.Value = chatId;
+            StopRinging();
+        }
+        _collapsedChatId.Value = chatId;
+    }
+
+    public void Expand(ChatId chatId)
+    {
+        if (_collapsedChatId.Value == chatId)
+            _collapsedChatId.Value = null;
+    }
+
+    // "Message" action: decline the call and open the chat to type a reply instead.
+    public async Task DeclineAndOpenChat(ChatId chatId)
+    {
+        await Decline(chatId).ConfigureAwait(true);
+        await Hub.History.NavigateTo(Links.Chat(chatId)).ConfigureAwait(true);
+    }
+
     // From the over-lock in-call screen: dismiss the keyguard (PIN) and, once unlocked, close the
     // in-call screen and open the chat. On a cancelled PIN we stay on the in-call screen.
     public async Task GoToChat(ChatId chatId)
@@ -271,6 +322,8 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             AsyncChain.From(SyncActiveCallNotifications)
                 .Log(LogLevel.Debug, Log).RetryForever(retryDelays, Log).Run(cancellationToken),
             AsyncChain.From(ResetOverLockScreen)
+                .Log(LogLevel.Debug, Log).RetryForever(retryDelays, Log).Run(cancellationToken),
+            AsyncChain.From(SyncIncomingCallModal)
                 .Log(LogLevel.Debug, Log).RetryForever(retryDelays, Log).Run(cancellationToken));
     }
 
@@ -308,6 +361,52 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         finally {
             if (isRinging)
                 StopRinging();
+        }
+    }
+
+    // The ring to show as a foreground modal: null while it's shown over the lock screen (native view)
+    // or collapsed into the island. Reactive to all three, so collapse/expand re-drive the modal.
+    [ComputeMethod]
+    protected virtual async Task<IncomingCall?> GetModalCall(CancellationToken cancellationToken)
+    {
+        var call = await GetIncomingCall(cancellationToken).ConfigureAwait(false);
+        if (call is null)
+            return null;
+
+        var overLock = await _overLockChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (overLock == call.ChatId)
+            return null;
+
+        var collapsed = await _collapsedChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (collapsed == call.ChatId)
+            return null;
+
+        return call;
+    }
+
+    private async Task SyncIncomingCallModal(CancellationToken cancellationToken)
+    {
+        // The foreground incoming call surfaces as a modal (design), not the old top banner. It's skipped
+        // while the ring is over the lock screen or collapsed into the island (see GetModalCall). The modal
+        // closes itself when GetModalCall drops to null; the per-chat guard stops it re-popping.
+        var cCall = await Computed
+            .Capture(() => GetModalCall(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        ChatId? shownForChatId = null;
+        while (!cancellationToken.IsCancellationRequested) {
+            var call = cCall.Value;
+            if (call is null)
+                shownForChatId = null;
+            else if (shownForChatId != call.ChatId) {
+                shownForChatId = call.ChatId;
+                var caller = call.Caller;
+                // ModalUI.Show needs the Blazor dispatcher; this runs on a worker chain.
+                _ = Hub.Dispatcher.InvokeAsync(
+                    () => Hub.ModalUI.Show(new IncomingCallModal.Model(caller), cancellationToken));
+            }
+
+            await cCall.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+            cCall = await cCall.Update(cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -413,6 +512,10 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
             lock (_ringingLock)
                 _ringingChatIds.Value = _ringingChatIds.Value.Remove(chatId);
+            if (_collapsedChatId.Value == chatId)
+                _collapsedChatId.Value = null;
+            if (_mutedRingChatId.Value == chatId)
+                _mutedRingChatId.Value = null;
         }
     }
 
@@ -449,6 +552,10 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             if (chatIds.Contains(chatId))
                 _ringingChatIds.Value = chatIds.Remove(chatId);
         }
+        if (_collapsedChatId.Value == chatId)
+            _collapsedChatId.Value = null;
+        if (_mutedRingChatId.Value == chatId)
+            _mutedRingChatId.Value = null;
         Bridge?.DismissCallNotification(chatId);
     }
 
