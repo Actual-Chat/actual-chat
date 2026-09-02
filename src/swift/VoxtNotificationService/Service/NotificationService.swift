@@ -134,9 +134,10 @@ final class NotificationService: UNNotificationServiceExtension {
         iconData: Data
     ) -> INSendMessageIntent? {
         guard !headline.isEmpty else { return nil }
-        // The thread id is the chat tag the server groups banners under, and AppDelegate's
-        // dismissal path matches delivered notifications on it. updating(from:) rewrites the
-        // thread id from the conversation id, so these two must be the same string.
+        // The thread id is the chat tag the server groups banners under, and updating(from:)
+        // rewrites it from the conversation id, so these two must be the same string. AppDelegate
+        // dismisses by notification id rather than by this, and updating(from:) does preserve
+        // userInfo - measured on device - so that id survives to the delivered banner.
         let conversationId = content.threadIdentifier.isEmpty
             ? (content.userInfo[chatIdKey] as? String ?? "")
             : content.threadIdentifier
