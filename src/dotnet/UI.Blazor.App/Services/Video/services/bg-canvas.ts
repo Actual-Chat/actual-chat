@@ -260,6 +260,14 @@ class WebGlBgRenderTarget implements BgCanvasRenderTarget {
             return;
 
         const gl = this.gl;
+        // A lost context still accepts every call below and silently draws nothing,
+        // so BgCanvasRenderer.draw's catch would never fire and the backdrop would
+        // stay blank for good. Throwing is what hands it over to Canvas2D. Every GL
+        // object here is readonly and built in the ctor, so this target cannot
+        // rebuild itself — the swap IS the recovery.
+        if (gl.isContextLost())
+            throw new Error('WebGlBgRenderTarget: context lost');
+
         this.resize(width, height);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
