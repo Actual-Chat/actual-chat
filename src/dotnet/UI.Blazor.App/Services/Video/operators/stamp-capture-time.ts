@@ -1,6 +1,9 @@
 import { MonotonicClock } from 'clocks';
+import { getLogs } from 'logging';
 import { from, type PipeOperator } from 'ix-ext';
 import type { CapturedFrame } from '../frame-envelopes';
+
+const { warnLog } = getLogs('VideoPipeline');
 
 export interface StampCaptureTimeOptions {
     clock?: MonotonicClock;
@@ -18,8 +21,12 @@ const MAX_BAD_FRAME_RUN = 5;
 // Forward step used to bridge a blip while staying on the source timeline.
 const MIN_STEP_MS = 1;
 
-// On clock-epoch flip (sleep / NTP step) sets forceKeyframe so the receiver
-// can rebase its decode anchors.
+// Frames between diagnostic reports. A blip run collapses capture time onto 1ms
+// steps, which the receiver replays as paired presents, so report the reason.
+const REPORT_PERIOD = 150;
+
+/** On clock-epoch flip (sleep / NTP step) sets forceKeyframe so the receiver
+ *  can rebase its decode anchors. */
 export function stampCaptureTime(opts: StampCaptureTimeOptions = {}): PipeOperator<CapturedFrame, CapturedFrame> {
     const clock = opts.clock ?? new MonotonicClock({ minTickMs: 33 });
     return source => {
@@ -39,6 +46,13 @@ export function stampCaptureTime(opts: StampCaptureTimeOptions = {}): PipeOperat
             let originTimestampUs = 0;
             let lastTimeMs = Number.NEGATIVE_INFINITY;
             let badRun = 0;
+            let seen = 0;
+            let usableCount = 0;
+            let blipCount = 0;
+            let reanchorCount = 0;
+            let driftRejects = 0;
+            let monotonicRejects = 0;
+            let lastDriftMs = 0;
             for await (const envelope of source) {
                 let mustClose = true;
                 try {
@@ -65,11 +79,21 @@ export function stampCaptureTime(opts: StampCaptureTimeOptions = {}): PipeOperat
                         if (isUsable) {
                             capturedAt = { timeMs, epoch: wallNow.epoch };
                             badRun = 0;
+                            usableCount++;
                         } else if (++badRun < MAX_BAD_FRAME_RUN) {
                             capturedAt = { timeMs: lastTimeMs + MIN_STEP_MS, epoch: wallNow.epoch };
+                            blipCount++;
                         } else {
                             originClockMs = null;
                             badRun = 0;
+                            reanchorCount++;
+                        }
+                        if (!isUsable) {
+                            lastDriftMs = timeMs - wallNow.timeMs;
+                            if (Math.abs(lastDriftMs) > MAX_CAPTURE_DRIFT_MS)
+                                driftRejects++;
+                            if (timeMs <= lastTimeMs)
+                                monotonicRejects++;
                         }
                     }
                     if (originClockMs === null) {
@@ -95,6 +119,17 @@ export function stampCaptureTime(opts: StampCaptureTimeOptions = {}): PipeOperat
                     if (!epochChanged && capturedAt.timeMs <= lastTimeMs)
                         capturedAt = { timeMs: lastTimeMs + MIN_STEP_MS, epoch: capturedAt.epoch };
                     lastTimeMs = capturedAt.timeMs;
+                    if (++seen % REPORT_PERIOD === 0 && (blipCount > 0 || reanchorCount > 0)) {
+                        warnLog?.log(
+                            `stampCaptureTime: usable=${usableCount} blip=${blipCount} `
+                            + `reanchor=${reanchorCount} driftRejects=${driftRejects} `
+                            + `monotonicRejects=${monotonicRejects} lastDrift=${lastDriftMs.toFixed(0)}ms`);
+                        usableCount = 0;
+                        blipCount = 0;
+                        reanchorCount = 0;
+                        driftRejects = 0;
+                        monotonicRejects = 0;
+                    }
                     // Index is assigned at the source (mstpSource); preserve it
                     // so flood-gate drops show as gaps downstream.
                     const output = {
