@@ -1,0 +1,27 @@
+.segmented-switch {
+    @apply flex-x gap-x-2;
+    @apply p-1;
+    @apply rounded-lg;
+    @apply bg-04;
+}
+/* basis-auto, not flex-1's 0: a zero basis sizes the segments below their own labels, and the
+   longer one then wraps to two lines. */
+.segmented-switch > .btn-segment {
+    @apply flex-1 basis-auto;
+    @apply flex items-center justify-center;
+    @apply h-8;
+    @apply px-4;
+    @apply rounded-lg;
+    @apply bg-transparent;
+    @apply whitespace-nowrap;
+    @apply text-sm text-02;
+}
+.segmented-switch > .btn-segment.on {
+    @apply bg-modal;
+    @apply text-primary;
+    @apply cursor-default;
+}
+body.hoverable .segmented-switch > .btn-segment:not(.on):hover,
+.touch-capable .segmented-switch > .btn-segment:not(.on):active {
+    @apply bg-round;
+}

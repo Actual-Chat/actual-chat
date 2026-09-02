@@ -1,0 +1,20 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="segmented-switch @Class">
+    @foreach (var item in Items) {
+        <button
+            type="button"
+            class="btn-segment @(item.Id == SelectedId ? "on" : "")"
+            @onclick="@(() => OnClick(item.Id))">@item.Title</button>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<SegmentedSwitchItem> Items { get; set; } = [];
+    [Parameter] public string SelectedId { get; set; } = "";
+    [Parameter] public EventCallback<string> SelectedIdChanged { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+
+    private Task OnClick(string id)
+        => id == SelectedId ? Task.CompletedTask : SelectedIdChanged.InvokeAsync(id);
+}
