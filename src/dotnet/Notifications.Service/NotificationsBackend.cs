@@ -892,8 +892,6 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
-    // Duration is immutable and set at creation, so this says "was shared live", not "is still
-    // live" - the wording must not change under a reader when the share later expires.
     // Resolves personal (author/user) mentions to user ids; chat/place/emoji mention kinds carry
     // no @all semantics here yet, so they're ignored.
     private async Task<HashSet<UserId>> GetMentionedUserIds(
