@@ -790,19 +790,26 @@ export interface EncoderRung {
 
 // Why each codec sits where it does in software:
 //  • VP9  — first: the floor every client already decodes, 3.75ms/frame at 720p.
-//  • AV1  — off: it compresses better, but 29.7ms/frame at 720p on one of the
-//           fastest machines available leaves nothing for a 33ms budget.
-//           Hardware AV1 is unaffected and stays at the top of the ladder.
-//  • H264 — hardware only: the slowest encoder measured anywhere (6.69ms at 480p
-//           on a Galaxy SM-S948U1 vs 1.17ms hardware) and compresses worst.
+//  • H264 — behind its own hardware rung: 6.69ms/frame at 480p on a Galaxy
+//           SM-S948U1 against 1.17ms for that device's hardware path, and it
+//           compresses worst of the four.
+//  • AV1  — last of all: it compresses best, but 29.7ms/frame at 720p on one of
+//           the fastest machines available leaves nothing for a 33ms budget.
 //  • HEVC — hardware only: Chromium ships no software HEVC encoder at all.
+//
+// The two trailing software rungs sit below every alternative, so neither is
+// chosen while anything better qualifies. They are in the ladder rather than
+// removed because the preferred-codec setting only reorders rungs that already
+// qualified — a codec absent here cannot be forced at all — and because they are
+// the last resort on a device that offers nothing else.
 const ENCODER_LADDER: readonly EncoderRung[] = [
     { category: 'av1',  accel: 'prefer-hardware' },
     { category: 'vp9',  accel: 'prefer-hardware' },
     { category: 'hevc', accel: 'prefer-hardware' },
     { category: 'vp9',  accel: 'prefer-software' },
-    // { category: 'av1',  accel: 'prefer-software' },
     { category: 'h264', accel: 'prefer-hardware' },
+    { category: 'h264', accel: 'prefer-software' },
+    { category: 'av1',  accel: 'prefer-software' },
 ];
 
 // Firefox drops the MPEG rungs entirely: its H.264 encoder runs ~18 frames
