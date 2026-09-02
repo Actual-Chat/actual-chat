@@ -29,6 +29,8 @@ const UpdateViewportIntervalMs = 64;
 const UpdateVisibilityIntervalMs = 250;
 const ScrollSettleMs = 200;
 const ProgrammaticScrollGuardMs = DeviceInfo.isMobile ? 250 : 100;
+// How long a wheel away from the pinned edge waits for the scroll it produces before it is forgotten.
+const WheelAwayWindowMs = 300;
 const SmoothScrollMs = 500;
 const EdgeEpsilon = 4;
 const VisibilityEpsilon = 4;
@@ -213,6 +215,7 @@ export class InfiniteList extends VirtualList {
     private pinnedEdge: VirtualListEdge | null = null;
     private endAnchorSize = 0;
     private lastProgrammaticScrollAt = 0;
+    private wheelAwayAt = 0;
     private isWatchingStillness = false;
     private isAwaitingOverscrollEnd = false;
     private isNearSkeleton = false;
@@ -1685,14 +1688,25 @@ export class InfiniteList extends VirtualList {
         this.turnOffIsScrollingDebounced();
         if (!event.isTrusted)
             return;
+        // A wheel away from the pinned edge is the user's however its scroll lands - inside the guard
+        // window as often as not, while content is resizing and re-pinning - and it drops the pin
+        // outright, since the position it lands on may still read as the edge. But only on the scroll
+        // it produced: a wheel that scrolls nothing - a chat that fits on screen, a scroller nested in a
+        // message - has not left the edge, and a pin dropped there had nothing to put it back until the
+        // next render's clamp.
+        const isWheelAway = performance.now() - this.wheelAwayAt < WheelAwayWindowMs;
         // The scroll a re-pin or a re-centre just wrote isn't the user moving, and reading it as one
         // would drop the very pin that produced it.
-        if (performance.now() - this.lastProgrammaticScrollAt < ProgrammaticScrollGuardMs)
+        if (!isWheelAway && performance.now() - this.lastProgrammaticScrollAt < ProgrammaticScrollGuardMs)
             return;
 
+        this.wheelAwayAt = 0;
         this.interactiveAnchor = null;
         this.releaseScreenAnchor();
-        this.updatePinnedEdge();
+        if (isWheelAway)
+            this.setPinnedEdge(null);
+        else
+            this.updatePinnedEdge();
         this.updateViewportThrottled();
     };
 
@@ -1710,9 +1724,8 @@ export class InfiniteList extends VirtualList {
         this.updateVisibilityThrottled();
     };
 
-    // A wheel gesture says the user wants to leave the edge even when the scroll it produces lands
-    // inside the programmatic-scroll guard - which it routinely does while content is resizing and
-    // re-pinning. Without this the pin survives and the next re-pin drags the view back.
+    // A wheel gesture away from the pinned edge says the user wants to leave it; onScroll acts on that
+    // when the scroll it produces arrives, whether or not that scroll lands inside the guard window.
     private onWheel = (event: WheelEvent): void => {
         // Momentum scrolling on mobile also arrives as wheel events; there onScroll is enough. A
         // ctrl+wheel is a pinch-zoom, which doesn't scroll the list at all.
@@ -1723,7 +1736,7 @@ export class InfiniteList extends VirtualList {
             ? event.deltaY < 0
             : event.deltaY > 0;
         if (isAwayFromEdge)
-            this.setPinnedEdge(null);
+            this.wheelAwayAt = performance.now();
     };
 
     private readonly turnOffIsScrollingDebounced = debounce(() => this.turnOffIsScrolling(), ScrollSettleMs);
