@@ -8,6 +8,14 @@ namespace ActualChat.Localization;
 /// </summary>
 public sealed class LocalizedEmptyEntryMarkupBuilder(IStringLocalizer l) : EmptyEntryMarkupBuilder
 {
+    private static readonly ConcurrentDictionary<Language, LocalizedEmptyEntryMarkupBuilder> Cache = new();
+
+    // Keyed by language rather than by localizer: a circuit's localizer is scoped, and holding one
+    // here would pin every circuit that ever rendered. The UI builds its own through DI instead.
+    public static LocalizedEmptyEntryMarkupBuilder Get(Language language)
+        => Cache.GetOrAdd(language,
+            static x => new LocalizedEmptyEntryMarkupBuilder(LanguageStringLocalizer.Get(x)));
+
     // Protected methods
 
     protected override string SentLocation => l.EmptyEntry_SentLocation;

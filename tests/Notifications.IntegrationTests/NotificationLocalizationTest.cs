@@ -190,6 +190,83 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
         }, TimeSpan.FromSeconds(15));
     }
 
+    [Fact]
+    public async Task RingingInviteesShouldEachGetTheirOwnLanguage()
+    {
+        // The ring resolves its invitees together and composes once per language among them, so a
+        // wrong per-invitee mapping would hand one callee the other's wording.
+
+        // arrange
+        var russianCallee = await Tester.SignInAsUniqueAlice();
+        await SetUILanguages("ru", null);
+        var englishCallee = await Tester.SignInAsNew("Carol");
+        await SetUILanguages(null, null);
+        await Tester.SignInAsUniqueBob();
+        var (chatId, inviteId) = await Tester.CreateChat(false, "Localized ring, two callees");
+        var callerAuthor = await Tester.GetOwnAuthor(chatId).Require();
+        var calleeAuthorIds = new List<AuthorId>();
+        foreach (var callee in new[] { russianCallee, englishCallee }) {
+            await Tester.SignIn(callee);
+            await Tester.JoinChat(chatId, inviteId);
+            calleeAuthorIds.Add((await Tester.GetOwnAuthor(chatId).Require()).Id);
+        }
+
+        // act
+        await Commander.Call(new NotificationsBackend_NotifyCall(
+            ConversationId.New(chatId, 1), callerAuthor.Id, calleeAuthorIds.ToApiArray(), false));
+
+        // assert
+        var english = LanguageStringLocalizer.Get(Languages.English);
+        var expectations = new[] {
+            (russianCallee, Russian.Call_Incoming),
+            (englishCallee, english.Call_Incoming),
+        };
+        foreach (var (callee, expectedText) in expectations)
+            await TestExt.When(async () => {
+                var info = await Tester.NotificationsBackend
+                    .GetUserNotificationInfo(callee.Id, CancellationToken.None);
+                var ring = info.Items.OfType<CallNotification>().Should().ContainSingle().Subject;
+                ring.Text.Should().Be(expectedText);
+            }, TimeSpan.FromSeconds(15));
+    }
+
+    [Fact]
+    public async Task RecipientsSharingALanguageShouldNotGetEachOthersWording()
+    {
+        // The fan-out composes each language once and reuses it for everyone who reads it, so a
+        // wrong cache key would hand the first recipient's wording to all of them.
+
+        // arrange
+        var firstRussian = await Tester.SignInAsUniqueAlice();
+        await SetUILanguages("ru", null);
+        var secondRussian = await Tester.SignInAsNew("Carol");
+        await SetUILanguages("ru", null);
+        var englishReader = await Tester.SignInAsNew("Dave");
+        await SetUILanguages(null, null);
+        var sender = await Tester.SignInAsUniqueBob();
+        var (chatId, inviteId) = await Tester.CreateChat(false, "Mixed languages");
+        foreach (var account in new[] { firstRussian, secondRussian, englishReader }) {
+            await Tester.SignIn(account);
+            await Tester.JoinChat(chatId, inviteId);
+        }
+
+        // act
+        await Tester.SignIn(sender);
+        var entry = await Tester.CreateLocationEntry(chatId, new GeoPoint(51.5074, -0.1278));
+
+        // assert
+        var english = LanguageStringLocalizer.Get(Languages.English);
+        var expectations = new[] {
+            (firstRussian, Russian.EmptyEntry_SentLocation),
+            (secondRussian, Russian.EmptyEntry_SentLocation),
+            (englishReader, english.EmptyEntry_SentLocation),
+        };
+        foreach (var (account, expectedText) in expectations) {
+            var notification = await Tester.WaitForChatEntryNotification(account.Id, entry.Id);
+            notification.LeadText.Should().Be(expectedText);
+        }
+    }
+
     [Theory]
     [InlineData("ru", "ru")]
     [InlineData(null, "en")]

@@ -20,6 +20,7 @@ public sealed class NotificationServiceModule(IServiceProvider moduleServices)
         // Notifications
         rpcHost.AddApi<INotifications, NotificationsService>();
         rpcHost.AddBackend<INotificationsBackend, NotificationsBackend>();
+        services.AddSingleton(c => new NotificationTextComposer(c));
 
         // NOTE(AY): Notifications service uses NotificationDbContext and FirebaseMessaging,
         // so we have to register them in any case.
