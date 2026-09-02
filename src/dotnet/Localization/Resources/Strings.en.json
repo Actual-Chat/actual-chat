@@ -1487,6 +1487,31 @@
   "PicUpload_UploadImage": "Upload image",
   "PicUpload_GenerateAvatar": "Generate avatar",
 
+  // The start screen a guest sees before signing in - the whole app landing, and the first page
+  // of the web one: the headline (Landing_Title, then the Landing_TitleAccent_* trio around the
+  // handwritten word), three slogans, the description, the buttons, the header, the hamburger
+  // menu and the intro-video modal. "Social, without the media" plays on "social media" - keep
+  // the play on words where the language has one, the meaning where it does not.
+  "Landing_Title": "Where conversations",
+  "Landing_TitleAccent_Prefix": "feel",
+  "Landing_TitleAccentTarget": "human",
+  "Landing_TitleAccent_Suffix": "",
+  "Landing_SocialWithoutMedia": "Social, without the media.",
+  "Landing_YourCircle": "Your conversations. Your circle.",
+  "Landing_MadeForTalking": "Made for talking, not posting.",
+  "Landing_Description_Format": "A private space for your conversations. {0} — private chat for families, friends, and small teams. Write or talk. Read or listen. No social noise — just your circle.",
+  "Landing_SignInToWebApp": "Sign in to web app",
+  "Landing_GoToChats": "Go to Chats",
+  "Landing_GetMobileDesktopApp": "Get mobile/desktop app",
+  "Landing_GetApp": "Get app",
+  "Landing_WatchInAction_Format": "Watch {0} in action",
+  "Landing_InAction_Format": "{0} in action",
+  "Landing_LoadingIntroVideo_Format": "Loading {0} intro video...",
+  "Landing_WhyUs": "Why us",
+  "Landing_BackToMainPage": "Back to Main page",
+  "Landing_Home": "Home",
+  "Landing_Support": "Support",
+
   // The sign-in modal and its provider list.
   "SignIn_SignIn": "Sign in",
   "SignIn_SignOut": "Sign out",

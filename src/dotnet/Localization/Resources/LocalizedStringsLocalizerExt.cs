@@ -1291,6 +1291,27 @@ public static class LocalizedStringsLocalizerExt
         public string Phone_VerifyToSignIn_Format(object arg0) => l["Phone_VerifyToSignIn_Format", arg0].Value;
         public string PicUpload_UploadImage => l["PicUpload_UploadImage"].Value;
         public string PicUpload_GenerateAvatar => l["PicUpload_GenerateAvatar"].Value;
+
+        public string Landing_Title => l["Landing_Title"].Value;
+        public string Landing_TitleAccent_Prefix => l["Landing_TitleAccent_Prefix"].Value;
+        public string Landing_TitleAccentTarget => l["Landing_TitleAccentTarget"].Value;
+        public string Landing_TitleAccent_Suffix => l["Landing_TitleAccent_Suffix"].Value;
+        public string Landing_SocialWithoutMedia => l["Landing_SocialWithoutMedia"].Value;
+        public string Landing_YourCircle => l["Landing_YourCircle"].Value;
+        public string Landing_MadeForTalking => l["Landing_MadeForTalking"].Value;
+        public string Landing_Description_Format(object arg0) => l["Landing_Description_Format", arg0].Value;
+        public string Landing_SignInToWebApp => l["Landing_SignInToWebApp"].Value;
+        public string Landing_GoToChats => l["Landing_GoToChats"].Value;
+        public string Landing_GetMobileDesktopApp => l["Landing_GetMobileDesktopApp"].Value;
+        public string Landing_GetApp => l["Landing_GetApp"].Value;
+        public string Landing_WatchInAction_Format(object arg0) => l["Landing_WatchInAction_Format", arg0].Value;
+        public string Landing_InAction_Format(object arg0) => l["Landing_InAction_Format", arg0].Value;
+        public string Landing_LoadingIntroVideo_Format(object arg0) => l["Landing_LoadingIntroVideo_Format", arg0].Value;
+        public string Landing_WhyUs => l["Landing_WhyUs"].Value;
+        public string Landing_BackToMainPage => l["Landing_BackToMainPage"].Value;
+        public string Landing_Home => l["Landing_Home"].Value;
+        public string Landing_Support => l["Landing_Support"].Value;
+
         public string SignIn_SignIn => l["SignIn_SignIn"].Value;
         public string SignIn_SignOut => l["SignIn_SignOut"].Value;
         public string SignIn_EnterCode => l["SignIn_EnterCode"].Value;

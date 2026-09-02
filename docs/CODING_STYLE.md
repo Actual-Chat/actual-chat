@@ -925,7 +925,9 @@ through the two lists below; if the string is in the first one, read
 - **Developer surfaces** — test pages, admin-only pages, `EnableIncompleteUI`
   mockups, and developer invariants thrown from markup
   (`"<Tab> component must be nested into <TabPanel>"`).
-- **Landing pages and legal documents** — a separate, deliberate decision.
+- **Marketing pages and legal documents** — a separate, deliberate decision. The
+  start screen (`LandingPage1` and the header, menus and video modal around it)
+  is the app's first screen and is localized like any other.
 - **Strings no user reads** — log messages, CSS classes, element ids, JS interop
   method names, Kvas keys, state categories, HTTP headers, test data.
 

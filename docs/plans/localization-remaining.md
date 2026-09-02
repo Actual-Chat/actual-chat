@@ -401,8 +401,10 @@ independent of everything above, and doable at any time.
 
 ## 5. Landing pages and legal docs — mostly legal text
 
-`Pages/Landing/**` is completely untouched — 44 files, zero `L.` usages. The
-file count hides how lopsided it is:
+`Pages/Landing/**` is untouched except for the start screen — `LandingPage1`
+and the header, menus and video modal the app shows a guest (#4329, the
+`Landing_*` keys). The rest — 38 files, zero `L.` usages — is lopsided in a way
+the file count hides:
 
 | Part | Files | Prose | Nature |
 |---|---|---|---|

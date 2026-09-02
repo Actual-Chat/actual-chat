@@ -11,10 +11,10 @@
                 <video preload="metadata" autoplay="autoplay" hidden muted playsinline class="c-video">
                     <source src="/dist/images/webonly/landing-tutorial.webm" type="video/webm"/>
                     <source src="/dist/images/landing/landing-tutorial.mp4" type="video/mp4"/>
-                    <p>Loading @CoreConstants.AppName intro video...</p>
+                    <p>@L.Landing_LoadingIntroVideo_Format(CoreConstants.AppName)</p>
                 </video>
                 <img draggable="false" src="/dist/images/landing/landing-tutorial-plug.png"
-                     alt="Loading @CoreConstants.AppName intro video..."
+                     alt="@L.Landing_LoadingIntroVideo_Format(CoreConstants.AppName)"
                      class="c-video-plug flex">
             </div>
 
@@ -23,7 +23,7 @@
                     <button @onclick="@OnClick" class="c-btn">
                         <i class="icon-close text-2xl"></i>
                     </button>
-                    <div class="c-title">@CoreConstants.AppName in action</div>
+                    <div class="c-title">@L.Landing_InAction_Format(CoreConstants.AppName)</div>
                 </div>
                 <div class="c-body">
                     <div class="pause-btn">
