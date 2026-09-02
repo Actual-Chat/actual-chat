@@ -2032,7 +2032,136 @@ code
             .Which.Text.Should().Be(text);
     }
 
+    [Fact]
+    public void LongAsteriskRunShouldParseAsPlainText()
+    {
+        // A pasted e-mail divider; before the fix this parse never returned (exponential backtracking).
+        // arrange
+        var text = $"resubmit. {new string('*', 106)} on fund claim\nActivity/Project Name: X";
+
+        // act
+        var markup = ParseWithWatchdog(new MarkupParser(), text);
+
+        // assert
+        FormatNormalized(markup).Should().Be(text);
+        ContainsStylized(markup).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("*a ", 60)]
+    [InlineData("**a ", 40)]
+    [InlineData("a*", 60)]
+    [InlineData("||a ", 60)]
+    [InlineData("*", 200)]
+    [InlineData("**", 100)]
+    public void UnbalancedStyleTokensShouldParseInBoundedTime(string unit, int count)
+    {
+        // arrange
+        var text = string.Concat(Enumerable.Repeat(unit, count));
+
+        // act
+        var markup = ParseWithWatchdog(new MarkupParser(), text);
+
+        // assert
+        FormatNormalized(markup).Should().Be(text);
+    }
+
+    [Fact]
+    public void ExhaustedStepBudgetShouldFallBackToPlainText()
+    {
+        // arrange
+        var text = "**bold** and *italic*\nnext line";
+        var parser = new MarkupParser { StepBudget = 1 };
+
+        // act
+        var markup = parser.Parse(text);
+
+        // assert
+        ContainsStylized(new MarkupParser().Parse(text)).Should().BeTrue("the default budget must parse this");
+        ContainsStylized(markup).Should().BeFalse();
+        FormatNormalized(markup).Should().Be(text);
+        var seq = markup.Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items.Should().AllSatisfy(x => (x is PlainTextMarkup or NewLineMarkup).Should().BeTrue());
+    }
+
+    [Fact]
+    public void RegularMessagesShouldStayFarBelowTheStepBudget()
+    {
+        // arrange
+        // The margin is how many times the budget exceeds what the text spends. Unbalanced style
+        // tokens are the most expensive shape the memoized grammar has, so they get the smallest one.
+        var texts = new (string Text, int Margin)[] {
+            ("ok", 4),
+            ("Quick update: the release build is green, p95 is 89 ms (down from 143).", 4),
+            (string.Concat(Enumerable.Repeat("**bold** *it* ||sp|| `c` @u:id https://x.y/z #tag ", 50)), 4),
+            (string.Concat(Enumerable.Repeat("**a *b ||c|| d* e** ", 50)), 4),
+            ("| a | b |\n| --- | --- |\n" + string.Concat(Enumerable.Repeat("| **x** | *y* |\n", 100)), 4),
+            (string.Concat(Enumerable.Repeat("- **a** *b* `c` d\n", 100)), 4),
+            (string.Concat(Enumerable.Repeat("> **q** *w*\n", 100)), 4),
+            (string.Concat(Enumerable.Repeat("*a ", 200)), 2),
+            (string.Concat(Enumerable.Repeat("**a ", 200)), 2),
+        };
+
+        // act & assert
+        foreach (var (text, margin) in texts) {
+            var budget = MarkupParser.StepBudgetBase + MarkupParser.StepBudgetPerChar * text.Length;
+            MarkupParser.ParseRaw(text, true, false, int.MaxValue);
+            var spent = int.MaxValue - ParseBudget.Remaining;
+            WriteLine($"{spent} steps for {text.Length} chars: {text[..Math.Min(40, text.Length)]}");
+            (margin * spent).Should().BeLessThan(budget, "a message must stay far below the budget: {0}", text);
+        }
+    }
+
+    [Fact]
+    public void StylizedSpansShouldNestThreeLevelsDeep()
+    {
+        // act
+        var p = Parse<ParagraphMarkup>("**a *b ||c|| b* a**");
+
+        // assert
+        var bold = p.Content.Should().BeOfType<StylizedMarkup>().Subject;
+        bold.Style.Should().Be(TextStyle.Bold);
+        var italic = bold.Content.Should().BeOfType<MarkupSeq>()
+            .Which.Items.OfType<StylizedMarkup>().Single();
+        italic.Style.Should().Be(TextStyle.Italic);
+        var spoiler = italic.Content.Should().BeOfType<MarkupSeq>()
+            .Which.Items.OfType<StylizedMarkup>().Single();
+        spoiler.Style.Should().Be(TextStyle.Spoiler);
+    }
+
     // Helpers
+
+    private static readonly TimeSpan WatchdogTimeout = TimeSpan.FromSeconds(5);
+
+    private static Markup ParseWithWatchdog(MarkupParser parser, string text)
+    {
+        Markup? markup = null;
+        Exception? error = null;
+        var thread = new Thread(() => {
+            try {
+                markup = parser.Parse(text);
+            }
+            catch (Exception e) {
+                error = e;
+            }
+        }) { IsBackground = true };
+        thread.Start();
+        thread.Join(WatchdogTimeout).Should().BeTrue("the parse must finish within {0}", WatchdogTimeout);
+        error.Should().BeNull();
+        return markup!;
+    }
+
+    private static string FormatNormalized(Markup markup)
+        => MarkupFormatter.Default.Format(markup).Replace("\r\n", "\n");
+
+    private static bool ContainsStylized(Markup markup)
+        => markup switch {
+            StylizedMarkup => true,
+            MarkupSeq seq => seq.Items.Any(ContainsStylized),
+            ParagraphMarkup p => ContainsStylized(p.Content),
+            _ => false,
+        };
 
     private static string CellText(TableRowMarkup row, int index)
         => MarkupFormatter.Default.Format(row.Cells[index].Content);

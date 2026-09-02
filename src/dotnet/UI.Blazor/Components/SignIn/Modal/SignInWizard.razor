@@ -1,15 +1,14 @@
 @namespace ActualChat.UI.Blazor.Components
 @inherits ComponentBase<UIHub>
 @{
-    var reason = Reason.NullIfEmpty() ?? $"to {CoreConstants.AppName}";
-    var actionText = L.SignIn_SignIn;
+    var title = Title.NullIfEmpty() ?? L.SignIn_SignInTo_Format(CoreConstants.AppName);
 }
 
 <Stepper Context="stepper">
     <Header>
         @if (!stepper.CanMoveBack) {
             <div class="sign-in-modal-header-wrapper">
-                <div class="sign-in-modal-header">@actionText @reason</div>
+                <div class="sign-in-modal-header">@title</div>
             </div>
         } else {
             <HeaderButton Click="@(_ => stepper.MoveBack())">
@@ -27,5 +26,5 @@
 @code {
     private TotpSignInModel _model = new();
 
-    [Parameter] public string Reason { get; set; } = "";
+    [Parameter] public string Title { get; set; } = "";
 }

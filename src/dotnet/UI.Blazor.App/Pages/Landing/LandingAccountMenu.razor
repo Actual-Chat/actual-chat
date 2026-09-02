@@ -7,12 +7,12 @@
 <div class="landing-account-menu">
     <MenuEntry
         Icon="icon-message-ellipse"
-        Text="Go to Chats"
+        Text="@L.Landing_GoToChats"
         Click="@(_ => NavigateTo(Links.Chats))">
     </MenuEntry>
     <MenuEntry
         Icon="icon-settings"
-        Text="Settings"
+        Text="@L.Common_Settings"
         Click="@OnSettingsClick">
     </MenuEntry>
     <a class="ac-menu-item" href="mailto:@Constants.Team.SupportEmail" target="_blank">
@@ -21,20 +21,20 @@
                 <i class="icon-question-mark-circle"></i>
             </div>
             <div class="ac-menu-text">
-                Support
+                @L.Landing_Support
             </div>
         </div>
     </a>
     @if (m.IsGuest) {
         <MenuEntry
             Icon="icon-log-in"
-            Text="Sign in"
+            Text="@L.SignIn_SignIn"
             Click="@(_ => ModalUI.Show(new SignInModal.Model()))">
         </MenuEntry>
     } else {
         <MenuEntry
             Icon="icon-log-out"
-            Text="Sign out"
+            Text="@L.SignIn_SignOut"
             Click="@(_ => AccountUI.SignOut())">
         </MenuEntry>
     }

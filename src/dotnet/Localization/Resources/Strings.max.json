@@ -1306,7 +1306,7 @@
   "EmptyEntry_SentFile_Format": "Изпратен е файлът {0}",
   "EmptyEntry_YourFile_Format": "vaš datoteka {0}",
   "EmptyEntry_SentFiles": "{0} 件のファイルを送信しました",
-  "EmptyEntry_YourFiles": "vaše datotekaove",
+  "EmptyEntry_YourFiles": "вашите файлове",
   "EmptyEntry_SentAttachments": "{0} 件の添付ファイルを送信しました",
   "EmptyEntry_YourAttachments": "вашите прикачени файлове",
 
@@ -1487,6 +1487,31 @@
   "PicUpload_UploadImage": "Завантажити зображення",
   "PicUpload_GenerateAvatar": "Сгенерировать аватар",
 
+  // The start screen a guest sees before signing in - the whole app landing, and the first page
+  // of the web one: the headline (Landing_Title, then the Landing_TitleAccent_* trio around the
+  // handwritten word), three slogans, the description, the buttons, the header, the hamburger
+  // menu and the intro-video modal. "Social, without the media" plays on "social media" - keep
+  // the play on words where the language has one, the meaning where it does not.
+  "Landing_Title": "Donde las conversaciones",
+  "Landing_TitleAccent_Prefix": "залишається",
+  "Landing_TitleAccentTarget": "hơi ấm con người",
+  "Landing_TitleAccent_Suffix": "感じられる場所",
+  "Landing_SocialWithoutMedia": "ソーシャル、メディアはなし。",
+  "Landing_YourCircle": "Cuộc trò chuyện của bạn. Những người thân thiết của bạn.",
+  "Landing_MadeForTalking": "Dibuat untuk mengobrol, bukan untuk memposting.",
+  "Landing_Description_Format": "Một không gian riêng tư cho những cuộc trò chuyện của bạn. {0} — trò chuyện riêng tư cho gia đình, bạn bè và các nhóm nhỏ. Viết hoặc nói. Đọc hoặc nghe. Không có ồn ào của mạng xã hội — chỉ có những người thân thiết của bạn.",
+  "Landing_SignInToWebApp": "Se connecter à l'application web",
+  "Landing_GoToChats": "Aller aux discussions",
+  "Landing_GetMobileDesktopApp": "Завантажити застосунок для телефона або ПК",
+  "Landing_GetApp": "Изтеглете приложението",
+  "Landing_WatchInAction_Format": "{0} uygulamasını iş başında izleyin",
+  "Landing_InAction_Format": "{0} の紹介動画",
+  "Landing_LoadingIntroVideo_Format": "Chargement de la vidéo d'introduction de {0}...",
+  "Landing_WhyUs": "Vì sao chọn chúng tôi",
+  "Landing_BackToMainPage": "Обратно към началната страница",
+  "Landing_Home": "Strona główna",
+  "Landing_Support": "Поддержка",
+
   // The sign-in modal and its provider list.
   "SignIn_SignIn": "Пријавите се",
   "SignIn_SignOut": "Se déconnecter",
@@ -1497,6 +1522,9 @@
   "SignIn_Validating": "Đang xác thực...",
   "SignIn_WelcomeNamed_Format": "{1}님, {0}에 오신 것을 환영합니다!",
   "SignIn_SignInWith_Format": "Пријавите се путем {0}",
+  "SignIn_SignInTo_Format": "{0} uygulamasına giriş yapın",
+  "SignIn_ToUseChatInvite": "Пријавите се да бисте искористили ову позивницу за чет",
+  "SignIn_PhoneOrEmailPlaceholder_Format": "{0} または email@gmail.com",
   "SignIn_Or": "oppure",
   "SignIn_InvalidPhoneOrEmail": "電話番号またはメールアドレスが正しくありません。",
   "SignIn_VerifyPhoneText_Format": "Devam etmek ve arkadaşlarınızın sizi {0} uygulamasında bulabilmesi için lütfen telefon numaranızı doğrulayın.",

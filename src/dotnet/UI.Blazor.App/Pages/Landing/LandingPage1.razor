@@ -1,7 +1,8 @@
 @using ActualChat.Hosting
+@inherits ComponentBase<AppUIHub>
 @{
     var isMaui = HostInfo.HostKind.IsMauiApp();
-    var signinText = isMaui ? "Sign in" : "Sign in to web app";
+    var signinText = isMaui ? L.SignIn_SignIn : L.Landing_SignInToWebApp;
 }
 
 <div class="bg-wrapper">
@@ -16,24 +17,17 @@
     <div class="main-text">
         <div class="main-text-wrapper">
             <div class="c-title">
-                @if (ScreenSize.IsNarrow()) {
-                    <span>Where conversations</span>
-                } else {
-                    <span>Where</span>
-                    <span>conversations</span>
-                }
-                <span class="c-title-accent-line">feel <span class="page-1-handwrite">human</span></span>
+                <span>@L.Landing_Title</span>
+                <span class="c-title-accent-line">@L.Landing_TitleAccent_Prefix<span class="page-1-handwrite"
+                    >@L.Landing_TitleAccentTarget</span>@L.Landing_TitleAccent_Suffix</span>
             </div>
             <ul class="custom-list">
-                <li>Social, without the media.</li>
-                <li>Your conversations. Your circle.</li>
-                <li>Made for talking, not posting.</li>
+                <li>@L.Landing_SocialWithoutMedia</li>
+                <li>@L.Landing_YourCircle</li>
+                <li>@L.Landing_MadeForTalking</li>
             </ul>
             <p class="c-description">
-                <span>
-                    A private space for your conversations. Voxt — private chat for families, friends, and small
-                    teams.  Write or talk. Read or listen. No social noise — just your circle.
-                </span>
+                <span>@L.Landing_Description_Format(CoreConstants.AppName)</span>
             </p>
         </div>
         <div class="c-btn-group">
@@ -42,7 +36,7 @@
                     <div class="c-content">
                         <span class="gradient-span">
                             <i class="icon-message-ellipse text-2xl"></i>
-                            <span>Go to Chats</span>
+                            <span>@L.Landing_GoToChats</span>
                         </span>
                     </div>
                 </button>
@@ -57,14 +51,13 @@
             }
             @if (!isMaui) {
                 <DownloadButton
-                    Title="Get mobile/desktop app"
                     Click="@DownloadClick"
                     Class="download-app lg-icon"/>
             }
             @if (IsGuest && ScreenSize.IsNarrow()) {
                 <button class="btn-download transparent" @onclick="@ShowVideoClick">
                     <i class="icon-play-fill text-2xl"></i>
-                    <span>Watch @CoreConstants.AppName in action</span>
+                    <span>@L.Landing_WatchInAction_Format(CoreConstants.AppName)</span>
                 </button>
             }
         </div>
@@ -77,7 +70,7 @@
             </video>
             <img draggable="false"
                  src="/dist/images/landing/landing-tutorial-plug.png"
-                 alt="Loading @CoreConstants.AppName intro video..."
+                 alt="@L.Landing_LoadingIntroVideo_Format(CoreConstants.AppName)"
                  class="landing-video-plug flex">
             <div class="hover-plug">
                 <div class="play-btn">
@@ -89,10 +82,6 @@
 </div>
 
 @code {
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private HostInfo HostInfo => Hub.HostInfo;
-    private History History => Hub.History;
-
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter] public bool IsGuest { get; set; }
