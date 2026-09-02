@@ -21,6 +21,33 @@ public class VideoQualityAllocatorTest
     }
 
     [Fact]
+    public void Primaries_ShareTheBudgetInsteadOfServingTheFirstOnes()
+    {
+        // The equal-tile layout makes every visible stream primary. Greedy
+        // order-based allocation gave the whole budget to the first arrivals.
+        var reqs = new[] { "A", "B", "C", "D" }.Select(id => Req(id, [100, 300, 1000])).ToArray();
+        var result = VideoQualityAllocator.Allocate(1_200, reqs, []);
+
+        foreach (var id in new[] { "A", "B", "C", "D" })
+            result[id].LayerId.Should().Be(1, $"{id} gets 300 from its 300-byte share");
+    }
+
+    [Fact]
+    public void Primaries_SpendTheLeftoverAfterEqualShares()
+    {
+        // A's share alone can't reach its top layer, but the budget B and C
+        // leave unspent can carry it there.
+        var a = Req("A", [100, 900]);
+        var b = Req("B", [100]);
+        var c = Req("C", [100]);
+        var result = VideoQualityAllocator.Allocate(1_200, [a, b, c], []);
+
+        result["A"].LayerId.Should().Be(1, "400 share + 800 unspent by B and C covers 900");
+        result["B"].LayerId.Should().Be(0);
+        result["C"].LayerId.Should().Be(0);
+    }
+
+    [Fact]
     public void Primary_HonoursLayerCountCap()
     {
         var primary = Req("P", [100, 300, 1000], layerCountCap: 1);

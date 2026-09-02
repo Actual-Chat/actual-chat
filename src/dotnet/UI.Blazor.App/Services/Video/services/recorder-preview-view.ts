@@ -21,7 +21,7 @@ import {
     BG_CANVAS_WIDTH,
     BG_DRAW_INTERVAL_MS,
 } from './bg-canvas';
-import { applyRotationLayout, chooseFit, updateCollapsedIslandAspect } from './tile-fit';
+import { applyRotationLayout, chooseFit, isPrimaryTile, updateCollapsedIslandAspect } from './tile-fit';
 
 const { infoLog, warnLog } = getLogs('VideoRecorder');
 const BG_DRAW_GATE_TOLERANCE_MS = 20;
@@ -207,12 +207,12 @@ export class RecorderPreviewView {
             videoEl.closest<HTMLElement>('.video-panel'),
             frameW,
             frameH);
-        // Non-focused tiles (sidebar squares, PiP overlay during screencast)
-        // always use cover — the crop is invisible at that size and the
-        // letterbox bars would dominate the small square. Same rule the
+        // Secondary tiles (sidebar squares, PiP overlay during screencast) always
+        // use cover — the crop is invisible at that size and the letterbox bars
+        // would dominate the small square. In the equal-tile layout there are no
+        // secondary tiles, so every one gets the real decision. Same rule the
         // receiver follows in VideoPlayer.applyFitDecision.
-        const focused = parent.classList.contains('item-focused');
-        const fit = focused
+        const fit = isPrimaryTile(parent)
             ? chooseFit(frameW, frameH, parent.clientWidth, parent.clientHeight)
             : 'cover';
         if (fit !== this.currentFit) {
@@ -473,7 +473,7 @@ export class RecorderPreviewView {
     private drawBgFrame(width: number, height: number): void {
         if (!this.bgCanvasTarget)
             return;
-        if (!this.bgContainer?.classList.contains('item-focused'))
+        if (!isPrimaryTile(this.bgContainer))
             return;
 
         // Match the receiver: only paint the backdrop when contain is active.
@@ -497,7 +497,7 @@ export class RecorderPreviewView {
     private drawBgFrameFromVideo(videoEl: HTMLVideoElement): void {
         if (!this.bgCanvasTarget)
             return;
-        if (!this.bgContainer?.classList.contains('item-focused'))
+        if (!isPrimaryTile(this.bgContainer))
             return;
         if (this.currentFit !== 'contain')
             return;

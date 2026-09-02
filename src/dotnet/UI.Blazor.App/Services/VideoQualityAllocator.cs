@@ -13,9 +13,10 @@ public sealed record StreamAllocationRequest(
 
 /// <summary>
 /// Priority-based downstream allocator. Reserves a floor for every secondary
-/// stream first, then assigns the largest fitting spatial layer to each
-/// primary, then distributes the remainder across secondaries proportional
-/// to their <c>RenderArea</c>.
+/// stream first, splits what's left equally across the primaries and gives each
+/// the largest layer fitting its share, spends any leftover on whichever
+/// primaries can still use it, then distributes the remainder across secondaries
+/// proportional to their <c>RenderArea</c>.
 /// Output: per-stream <see cref="ReceiveQuality"/>. Streams that don't fit
 /// even at floor are omitted; the caller maps that to <see cref="ReceiveQuality.Lowest"/>.
 /// </summary>
@@ -48,12 +49,32 @@ public static class VideoQualityAllocator
 
         var primaryBudget = Math.Max(0, budgetBytesPerSec - floorBudget);
         long primariesUsed = 0;
+        // Equal shares first, so tile order doesn't decide who gets quality. The
+        // equal-tile layout makes every visible stream primary; a purely greedy
+        // pass there would hand the whole budget to whoever came first in the
+        // dictionary and leave the last tiles on the floor. With a single primary
+        // the share IS the whole budget, so the common layout is unaffected.
+        var primaryShare = primaries.Count > 0 ? primaryBudget / primaries.Count : 0;
+        var pickedRates = new Dictionary<string, long>(primaries.Count);
         foreach (var p in primaries) {
-            var (layers, rate) = PickBestFit(p, primaryBudget - primariesUsed, minimumFit: false);
+            var (layers, rate) = PickBestFit(p, primaryShare, minimumFit: false);
             if (rate < 0)
                 continue;
             result[p.StreamId] = ToReceiveQuality(layers);
+            pickedRates[p.StreamId] = rate;
             primariesUsed += rate;
+        }
+        // Then spend what the shares left over — a stream whose next layer is
+        // cheap should not be held at its share while the budget sits unused.
+        foreach (var p in primaries) {
+            var current = pickedRates.GetValueOrDefault(p.StreamId, 0L);
+            var (layers, rate) = PickBestFit(p, current + (primaryBudget - primariesUsed), minimumFit: false);
+            if (rate <= current)
+                continue;
+
+            result[p.StreamId] = ToReceiveQuality(layers);
+            pickedRates[p.StreamId] = rate;
+            primariesUsed += rate - current;
         }
 
         var remaining = Math.Max(0, budgetBytesPerSec - primariesUsed);
