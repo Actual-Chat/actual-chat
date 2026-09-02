@@ -195,7 +195,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                     : m.IsMicOpen || m.HasCamera || m.HasScreenShare || m.IsListening ? MemberGroup.Other
                     : MemberGroup.Exited,
             })
+            // Without the tie-breaks the order is byAuthor's insertion order, i.e. Redis HGETALL
+            // order - it reshuffles the list on every recompute. AuthorId breaks the JoinedAt tie
+            // stream-only members share via the startedAt fallback.
             .OrderBy(m => (int)m.Group)
+            .ThenBy(m => m.JoinedAt)
+            .ThenBy(m => m.AuthorId.Value, StringComparer.Ordinal)
             .ToList();
 
         var invites = (await SafeGetInvites(chatId).ConfigureAwait(false))
