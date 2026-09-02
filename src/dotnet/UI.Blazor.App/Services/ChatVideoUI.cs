@@ -90,6 +90,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public virtual async Task<ChatId?> GetWatchingChatId(CancellationToken cancellationToken = default)
         => await _watchingChatId.Use(cancellationToken).ConfigureAwait(false);
 
+    // The non-reactive form of GetWatchingChatId, for callbacks that can't await.
+    public ChatId? WatchingChatId => _watchingChatId.Value;
+
     [ComputeMethod]
     public virtual async Task<bool> IsWatching(ChatId chatId, CancellationToken cancellationToken = default)
         => await GetWatchingChatId(cancellationToken).ConfigureAwait(false) == chatId;

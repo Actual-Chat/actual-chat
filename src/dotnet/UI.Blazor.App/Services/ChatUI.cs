@@ -39,6 +39,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private IAccounts Accounts => Hub.Accounts;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private UserActivityUI UserActivityUI => Hub.UserActivityUI;
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private NotificationsUI NotificationsUI => Hub.NotificationsUI;
     private IAvatars Avatars => Hub.Avatars;
     private IAuthors Authors => Hub.Authors;
@@ -336,15 +337,24 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // anything for three minutes used to watch it count up. What keeps hiding it honest is
         // ChatView advancing the read position on the interaction that ends the idle stretch, so what
         // the badge hides is read before it could show anywhere else. A hidden document still counts
-        // as not reading.
+        // as not reading - unless the user is in this chat's live conversation, which goes on with the
+        // screen untouched, or off.
         var lastPresentAt = await UserActivityUI.LastPresentAt.Use(cancellationToken).ConfigureAwait(false);
-        return lastPresentAt != Moment.MinValue;
+        if (lastPresentAt != Moment.MinValue)
+            return true;
+
+        return await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // The non-reactive half of IsReadingTail, for the JS-driven callbacks that can't await:
     // the document is visible and the user interacted recently enough to still be at the screen.
     public bool IsUserPresent()
         => UserActivityUI.LastPresentAt.Value + Constants.Chat.ReadingGracePeriod > Clocks.CpuClock.Now;
+
+    // Presence for reading one chat: the input above, or being in that chat's live conversation -
+    // listening and recording are the interaction there, whatever the pointer and the screen do.
+    public bool IsUserPresent(ChatId chatId)
+        => IsUserPresent() || LiveSessionUI.IsInLiveConversation(chatId);
 
     [ComputeMethod(ConsolidationDelay = 0.3)]
     public virtual async Task<bool> IsUnreadByOthers(
