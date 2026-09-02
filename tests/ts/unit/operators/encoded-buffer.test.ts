@@ -320,6 +320,29 @@ describe('EncodedFrameBuffer skip-to-live', () => {
         expect(stats.dropTrace.get(FrameDropStage.ReceiverSkipToLive)).toBe(9);
     });
 
+    it('stamps skipped chunks onto the survivor so the buffer is not blamed for them', () => {
+        const stats = createEmptyPlayerStats();
+        const buffer = new EncodedFrameBuffer({
+            targetSpanMs: 100,
+            frameDurationMs: 33.333,
+            stats,
+            skipToLiveSpanMs: 300,
+            nowFn: () => 0,
+        });
+
+        buffer.push(mkChunk({ timeMs: 0, isKeyFrame: true, stats }));
+        for (let i = 1; i <= 8; i++)
+            buffer.push(mkChunk({ timeMs: 33 * i, isKeyFrame: false, stats }));
+        const kf2 = mkChunk({ timeMs: 297, isKeyFrame: true, stats });
+        buffer.push(kf2);
+
+        // Without this the index gap reaches traceDrops(ReceiverEncodedBuffer)
+        // uncovered, and an intentional catch-up reads as a buffer failure on a
+        // ratio that feeds the downlink verdict.
+        expect(kf2.dropTrace).toEqual(
+            Array.from({ length: 9 }, () => FrameDropStage.ReceiverSkipToLive));
+    });
+
     it('does not skip when there is no newer keyframe to land on', () => {
         const stats = createEmptyPlayerStats();
         const buffer = new EncodedFrameBuffer({

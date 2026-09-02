@@ -152,6 +152,14 @@ export class EncodedFrameBuffer {
 
         for (let i = 0; i < kfIndex; i++)
             this.disposeChunk(this.chunks[i]);
+        // Stamp the survivor before the splice: `traceDrops(ReceiverEncodedBuffer)`
+        // downstream blames any index gap it finds uncovered on the buffer, so an
+        // intentional catch-up would be counted twice - once here, and once as a
+        // buffer failure on a ratio that feeds the DOWNLINK verdict.
+        const survivor = this.chunks[kfIndex];
+        for (let i = 0; i < kfIndex; i++)
+            survivor.dropTrace.push(FrameDropStage.ReceiverSkipToLive);
+
         this.chunks.splice(0, kfIndex);
         this.nextSkipAllowedAtMs = now + SKIP_TO_LIVE_COOLDOWN_MS;
         this.countDrops(FrameDropStage.ReceiverSkipToLive, kfIndex);
