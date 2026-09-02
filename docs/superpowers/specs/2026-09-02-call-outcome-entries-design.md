@@ -84,7 +84,7 @@ public enum CallOutcome {
 [DataContract, MessagePackObject]
 public sealed partial record CallEntry : SystemEntry
 {
-    [DataMember, Key(20)] public AuthorId? CallerId { get; init; }
+    [DataMember, Key(20)] public AuthorId CallerId { get; init; } = null!;
     [DataMember, Key(21)] public string CallerName { get; init; } = "";
     [DataMember, Key(22)] public CallOutcome Outcome { get; init; }
     [DataMember, Key(23)] public ApiArray<AuthorId> InviteeIds { get; init; }
@@ -100,6 +100,28 @@ public sealed partial record CallEntry : SystemEntry
 `Canceled` follows .NET spelling (`OperationCanceledException`) and matches the
 mockup. `InviteeIds` is the group-call seat. `HasVideo` earns its place now: the
 call-back action needs to know which kind of call to place.
+
+`CallerName` is **not** the name normally displayed — it is the `AuthorMention`
+fallback. `SystemEntryMarkupBuilder.Build` is synchronous and cannot look an
+author up, yet `AuthorMention` requires a name at construction; the stored one
+fills that slot. Every consumer then runs the mention through `MentionResolver`,
+whose `Enrich` does `author?.Avatar.Name ?? am.Name`
+(`src/dotnet/UI.Blazor.App/Services/Internal/ChatMentionResolver.cs:36`), so the
+live avatar name wins whenever the author resolves. The stored value surfaces
+only when markup is rendered without the resolver — which is what
+`SystemEntryLocalizationTest` does, and it asserts the name is there — or when
+the author no longer resolves at all.
+
+This is a *different* reason from the one `MembersChangedEntry` has for its
+`TargetAuthorName`: there, an anonymous author is stored with
+`TargetAuthorId = null` (`ChatsBackend.cs:2026`), and the name is then the only
+identifying value left — which is also why that field is nullable. A caller
+always has an id, so `CallerId` is non-nullable here, and the view can compare it
+with the reader's own author without a null dance.
+
+If group calls later admit anonymous callers, `CallerId` becomes nullable and
+`CallerName` takes on the second, load-bearing role it has in
+`MembersChangedEntry`. Until then it is a fallback only.
 
 The shape mirrors `MembersChangedEntry` exactly, including the two constructors
 — the parameterless one is what `SystemEntryLocalizationTest` builds samples
@@ -204,8 +226,8 @@ session is still live — but it stops every ring before that, so it isn't.
 
 `CallerName` is resolved at emit time from the caller's author, the same way
 `ChatsBackend.cs:2027` resolves a member name, with `MentionMarkup.NotAvailableName`
-as the fallback. Storing the name (rather than resolving at render) matches what
-`MembersChangedEntry` does and keeps the entry readable after an author is gone.
+as the fallback. See the note under Data model for what it is actually for — it
+is not the name normally displayed.
 
 ## Render path
 
@@ -260,8 +282,14 @@ fails on any `[Union]` kind missing from its `Entries()` samples, requires every
 shipped language to render a full sentence containing the author name, requires
 the author mention to survive localization, and requires the English catalog to
 reproduce `SystemEntryMarkupBuilder.Default` exactly. So the samples must set
-`CallerId`/`CallerName` where the test passes an author id, and the fallback
-wording must keep the caller as a mention.
+`CallerId`/`CallerName`, and the fallback wording must keep the caller as a
+mention.
+
+One shape detail: `Entries(AuthorId?)` is called twice, once with `null`, to
+cover entries whose target author is absent. `CallEntry` has no such variant —
+`CallerId` is non-nullable — so both batches give it the same caller, and the
+`null` batch simply yields a duplicate sample. Harmless, and it keeps the
+samples honest about what the type can hold.
 
 ## Compatibility and rollout
 
