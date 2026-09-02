@@ -114,6 +114,7 @@ public static class IncomingCallNotifications
             .SetFullScreenIntent(fullScreenPendingIntent, true)!
             .SetTimeoutAfter((long)RingTimeout.TotalMilliseconds)!
             .SetStyle(callStyle)!;
+        NotificationHelper.MarkAsPushBanner(builder, tag);
         NotificationManagerCompat.From(Context)!.Notify(tag, 0, builder.Build());
     }
 

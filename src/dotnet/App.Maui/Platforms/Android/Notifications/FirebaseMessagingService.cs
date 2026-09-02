@@ -9,6 +9,8 @@ using Firebase.Analytics;
 using Firebase.Messaging;
 using DeviceType = ActualChat.Notifications.DeviceType;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
+using NotificationDismissMode = ActualChat.Notifications.NotificationDismissMode;
+using NotificationExt = ActualChat.Notifications.NotificationExt;
 
 namespace ActualChat.App.Maui;
 
@@ -88,6 +90,7 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
             var notificationManager = NotificationManagerCompat.From(this)!;
             foreach (var tag in data.DismissedTags)
                 notificationManager.Cancel(tag, 0);
+            ClearAttentionRequests(data.DismissedTags);
             ClearForegroundCallRings(data.DismissedTags);
 
             return;
@@ -111,7 +114,7 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
             return;
 
         var chatId = data.ChatId;
-        if (chatId is not null && ShouldSuppressForDevice(chatId, data.EntryLocalId))
+        if (chatId is not null && ShouldSuppressForDevice(chatId, data.EntryLocalId, data.NotificationKind))
             return;
 
         ShowChatMessageNotification(data);
@@ -119,7 +122,7 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
 
     // Private methods
 
-    private static bool ShouldSuppressForDevice(ChatId chatId, long entryLid)
+    private static bool ShouldSuppressForDevice(ChatId chatId, long entryLid, NotificationKind kind)
     {
         // Fail-open: this runs on background deliveries too, where the Blazor scope may be disposed
         // and the scoped-service calls throw - a failed check must never suppress a message or
@@ -139,7 +142,9 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
             // Skip if this device has already read past the notification's entry. Uses the cached
             // read position (non-blocking) — it's fresher than the server's debounced cursor. If
             // there's no cached value (the chat was never opened here), don't suppress.
-            if (entryLid > 0) {
+            // Only for kinds a read actually clears: a reaction anchors at the recipient's own
+            // message, so its entry is read the moment it was sent and this would drop every one.
+            if (entryLid > 0 && NotificationExt.GetDismissMode(kind) == NotificationDismissMode.OnRead) {
                 var chatUI = scopedServices.GetRequiredService<ChatUI>();
                 // GetExisting can return an instance whose first computation is still in flight;
                 // touching its output then throws "Wrong Computed.State: Computing."
@@ -158,6 +163,19 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
             Log.LogWarning(e, "ShouldSuppressForDevice failed for chat #{ChatId}; showing the notification", chatId);
             return false;
         }
+    }
+
+    private static void ClearAttentionRequests(IReadOnlyList<string> dismissedTags)
+    {
+        // An attention banner is posted under ChatAttentionService's own tag, so cancelling the
+        // dismissed one doesn't touch it - and nothing else would, unless this device's app happens
+        // to be running with that chat open.
+        var chatIds = dismissedTags
+            .Select(tag => ChatId.TryParse(tag, allowNull: true))
+            .SkipNullItems()
+            .ToList();
+        if (chatIds.Count > 0)
+            ChatAttentionService.Instance.Dismiss(chatIds);
     }
 
     private static void ClearForegroundCallRings(IReadOnlyList<string> dismissedTags)

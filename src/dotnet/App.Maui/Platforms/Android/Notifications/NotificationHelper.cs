@@ -88,8 +88,19 @@ public static class NotificationHelper
         // unmasked copy of it.
         if (largeImage != null && style is not NotificationCompat.MessagingStyle)
             builder.SetLargeIcon(largeImage);
+        MarkAsPushBanner(builder, tag);
         NotificationManagerCompat.From(context)!.Notify(tag, 0, builder.Build());
     }
+
+    public static void MarkAsPushBanner(NotificationCompat.Builder builder, string tag)
+    {
+        var extras = new Android.OS.Bundle();
+        extras.PutString(Constants.PushTagExtra, tag);
+        _ = builder.AddExtras(extras);
+    }
+
+    public static string? GetPushBannerTag(Android.App.Notification notification)
+        => notification.Extras?.GetString(Constants.PushTagExtra);
 
     public static Bitmap? GetImage(string imageUrl)
         => imageUrl.IsNullOrEmpty()
@@ -291,6 +302,10 @@ public static class NotificationHelper
 
     public static class Constants
     {
+        // Marks a banner this app posted for a server-side push tag, so the reconcilers can tell
+        // ours from the foreground-service, upload, attention and microphone notifications that
+        // share the tray and must never be pruned by an active-set diff.
+        public const string PushTagExtra = "voxt.pushTag";
         public const string DefaultChannelId = "default_channel";
         public const string AttentionChannelId = "internal_attention_channel";
         public const string ActivityUploadChannelId = "activity_upload";
