@@ -843,8 +843,14 @@ public class NotificationsBackend(IServiceProvider services)
     internal static IReadOnlyList<Device> SelectVoipCallDevices(IReadOnlyList<Device> devices)
         => devices.Where(d => d.DeviceType == DeviceType.iOSVoipApp).ToList();
 
-    internal static IReadOnlyList<Device> SelectFcmCallDevices(IReadOnlyList<Device> devices)
+    internal static IReadOnlyList<Device> SelectFcmCallDevices(IReadOnlyList<Device> devices, bool isApnsConfigured)
     {
+        // Suppressing the banner is only correct if the ring actually went out over APNs; when
+        // APNs isn't configured, every FCM-capable device must ring the banner instead, or an
+        // iPhone with only a VoIP token gets neither a CallKit ring nor a banner.
+        if (!isApnsConfigured)
+            return devices.Where(d => d.DeviceType.IsFcm()).ToList();
+
         // A phone that rings through CallKit must not also raise a banner, and the two are
         // separate rows - SessionHash is what says they're one installation. An empty hash
         // (legacy rows) matches nothing, so it can't silence an unrelated device.
@@ -972,7 +978,7 @@ public class NotificationsBackend(IServiceProvider services)
             await SendCallRing(call, devices, cancellationToken).ConfigureAwait(false);
 
         devices = notification is CallNotification
-            ? SelectFcmCallDevices(devices)
+            ? SelectFcmCallDevices(devices, ApnsClient.IsConfigured)
             : devices.Where(d => d.DeviceType.IsFcm()).ToList();
         if (devices.Count == 0) {
             DebugLog?.LogDebug("No recipient devices found for notification #{NotificationId}",

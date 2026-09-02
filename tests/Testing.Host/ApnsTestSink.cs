@@ -23,6 +23,7 @@ public sealed class ApnsTestSink(ILogger<ApnsTestSink> log) : IApnsClient
 
     public IReadOnlyList<ApnsPttWakeMessage> Wakes => _wakes.ToArray();
     public IReadOnlyList<ApnsCallRingMessage> CallRings => _callRings.ToArray();
+    public bool IsConfigured { get; set; } = true;
 
     public void Clear()
     {

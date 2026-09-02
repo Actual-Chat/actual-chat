@@ -2,6 +2,7 @@ namespace ActualChat.Notifications;
 
 public interface IApnsClient
 {
+    bool IsConfigured { get; }
     Task SendPttWake(
         ChatId chatId,
         Moment startedAt,

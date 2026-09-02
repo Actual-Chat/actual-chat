@@ -28,7 +28,7 @@ public class CallRingFanOutTest
         };
 
         // act
-        var fcm = NotificationsBackend.SelectFcmCallDevices(devices);
+        var fcm = NotificationsBackend.SelectFcmCallDevices(devices, true);
 
         // assert
         fcm.Should().BeEmpty();
@@ -46,7 +46,7 @@ public class CallRingFanOutTest
         };
 
         // act
-        var fcm = NotificationsBackend.SelectFcmCallDevices(devices);
+        var fcm = NotificationsBackend.SelectFcmCallDevices(devices, true);
 
         // assert
         fcm.Select(d => d.DeviceId.Value).Should().BeEquivalentTo("fcm-b", "android");
@@ -64,10 +64,27 @@ public class CallRingFanOutTest
         };
 
         // act
-        var fcm = NotificationsBackend.SelectFcmCallDevices(devices);
+        var fcm = NotificationsBackend.SelectFcmCallDevices(devices, true);
 
         // assert
         fcm.Select(d => d.DeviceId.Value).Should().BeEquivalentTo("fcm-1", "fcm-2");
+    }
+
+    [Fact]
+    public void NothingIsSuppressedWhenApnsIsNotConfigured()
+    {
+        // The ring can't have gone out over APNs, so the banner must not be suppressed.
+        // arrange
+        var devices = new[] {
+            NewDevice("fcm-1", DeviceType.iOSApp, "phone-a"),
+            NewDevice("voip-1", DeviceType.iOSVoipApp, "phone-a"),
+        };
+
+        // act
+        var fcm = NotificationsBackend.SelectFcmCallDevices(devices, false);
+
+        // assert
+        fcm.Select(d => d.DeviceId.Value).Should().BeEquivalentTo("fcm-1");
     }
 
     [Fact]
@@ -78,7 +95,7 @@ public class CallRingFanOutTest
 
         // act + assert
         NotificationsBackend.SelectVoipCallDevices(devices).Should().BeEmpty();
-        NotificationsBackend.SelectFcmCallDevices(devices).Should().BeEmpty();
+        NotificationsBackend.SelectFcmCallDevices(devices, true).Should().BeEmpty();
     }
 
     // Private methods
