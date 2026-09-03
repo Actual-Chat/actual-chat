@@ -1,6 +1,6 @@
 import QrScanner from 'qr-scanner';
 import { getLogs } from 'logging';
-import { CameraDevices } from '../Camera/camera-devices';
+import { CameraDevices, VideoDevice } from '../Camera/camera-devices';
 import { MediaCapture } from '../../Services/Video/services/media-capture';
 
 const { debugLog, warnLog } = getLogs('QrScanView');
@@ -74,6 +74,8 @@ export class QrScanView {
             }
 
             this.track = track;
+            const settings = track.getSettings();
+            debugLog?.log(`start: ${settings.width}x${settings.height}, ${track.label}`);
             this.video.srcObject = new MediaStream([track]);
             // .catch swallows AbortError when srcObject is cleared mid-play (rapid close).
             this.video.play().catch((e: unknown) => debugLog?.log('start: play failed:', e));
@@ -88,15 +90,37 @@ export class QrScanView {
     }
 
     private async capture(): Promise<MediaStreamTrack> {
-        // The back camera is the one pointed at someone else's screen; enumerateDevices reports
-        // which is which, and falls back to whatever the browser lists first.
-        const devices = await CameraDevices.enumerateDevices();
-        const device = devices.find(d => d.facing === 'environment') ?? devices.at(0);
+        // The back camera is the one pointed at someone else's screen - but a phone has several, and
+        // both the enumeration order and the browser's own pick for the facing can land on the
+        // telephoto, a view so tight the code has to be held at arm's length. Android numbers the
+        // main wide camera 0, so the lowest-numbered back camera wins; labels without a number (iOS,
+        // desktops) leave the choice to the browser.
+        const devices = await CameraDevices.enumerateDevices(true);
+        const main = QrScanView.pickMainBackCamera(devices);
         return MediaCapture.captureCameraStream({
-            deviceId: device?.deviceId,
+            deviceId: main?.deviceId,
+            facingMode: 'environment',
             width: CaptureWidth,
             height: CaptureHeight,
         });
+    }
+
+    private static pickMainBackCamera(devices: VideoDevice[]): VideoDevice | null {
+        let main: VideoDevice | null = null;
+        let mainNumber = Number.POSITIVE_INFINITY;
+        for (const device of devices) {
+            if (device.facing !== 'environment')
+                continue;
+
+            // "Camera 4" / "Camera2 0" as Android names them; a placeholder label is not a number
+            const number = Number(/^camera2? (\d+)$/i.exec(device.label)?.[1] ?? NaN);
+            if (Number.isNaN(number) || number >= mainNumber)
+                continue;
+
+            main = device;
+            mainNumber = number;
+        }
+        return main;
     }
 
     // A scan that outruns its interval would queue frames the user has already moved past, so the
