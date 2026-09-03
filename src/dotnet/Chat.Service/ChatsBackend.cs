@@ -939,8 +939,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 if (chatId is null) {
                     if (placeId is null) // No place is created yet, so we're creating its root chat
                         chatId = PlaceId.New().RootChatId;
-                    else if (Constants.Chat.SystemTags.Welcome == update.SystemTag)
-                        chatId = PlaceChatId.Parse(PlaceChatId.Format(placeId, Constants.Chat.SystemTags.Welcome));
+                    else if (Constants.Chat.System.Welcome == update.SystemTag)
+                        chatId = PlaceChatId.Parse(PlaceChatId.Format(placeId, Constants.Chat.System.Welcome.Tag.Value));
                     else
                         chatId = PlaceChatId.New(placeId);
                 }
@@ -957,9 +957,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
             if (update.IsSummarized.IsNone || !update.IsSummarized.Value.HasValue) {
                 var unsupportedSystemChats = new HashSet<Symbol> {
-                    Constants.Chat.SystemTags.Welcome,
-                    Constants.Chat.SystemTags.Notes,
-                    Constants.Chat.SystemTags.Bot,
+                    Constants.Chat.System.Welcome,
+                    Constants.Chat.System.Notes,
                 };
                 if (!update.SystemTag.HasValue || !unsupportedSystemChats.Contains(update.SystemTag.Value))
                     update = update with { IsSummarized = true }; // Enable summarization by default for new chats
@@ -971,7 +970,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             chat = ApplyDiff(chat, update);
             dbChat = new DbChat(chat);
             if (!dbChat.SystemTag.IsNullOrEmpty()
-                && Constants.Chat.SystemTags.Rules.MustBeUniquePerUser(dbChat.SystemTag)) {
+                && Constants.Chat.System.Rules.MustBeUniquePerUser(dbChat.SystemTag)) {
                 // Only group chats can have system tags
                 ownerId.Require("Command.OwnerId");
                 // Chats with system tags should be unique per user except Welcome chat.
@@ -1040,7 +1039,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             dbChat.RequireVersion(expectedVersion);
             if (chatId.Kind is ChatKind.Place) {
                 update.ValidateForPlaceChat();
-                if (Constants.Chat.SystemTags.Welcome == dbChat.SystemTag
+                if (Constants.Chat.System.Welcome.Tag == dbChat.SystemTag
                     && update.IsPublic == false)
                     throw StandardError.Constraint("Can't change chat type to private for 'Welcome' chat.");
             }
@@ -1056,7 +1055,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             chatId.Require();
             dbChat.Require();
 
-            if (Constants.Chat.SystemTags.Welcome == dbChat.SystemTag)
+            if (Constants.Chat.System.Welcome.Tag == dbChat.SystemTag)
                 throw StandardError.Constraint("It's prohibited to remove 'Welcome' chat.");
 
             await RemoveMedia(dbChat.MediaId, cancellationToken).ConfigureAwait(false);
@@ -1765,19 +1764,19 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await using var __ = dbContext.ConfigureAwait(false);
 
         await dbContext.Chats
-            .LockShared(userId, Constants.Chat.SystemTags.Notes, cancellationToken)
+            .LockShared(userId, Constants.Chat.System.Notes, cancellationToken)
             .ConfigureAwait(false);
 
         var hasNotesChat = await dbContext.Chats
             .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
-            .AnyAsync(x => x.a.UserId == userId.Value && x.c.SystemTag == Constants.Chat.SystemTags.Notes.Value, cancellationToken)
+            .AnyAsync(x => x.a.UserId == userId.Value && x.c.SystemTag == Constants.Chat.System.Notes.Tag.Value, cancellationToken)
             .ConfigureAwait(false);
 
         if (hasNotesChat)
             return;
 
         await dbContext.Chats
-            .Lock(userId, Constants.Chat.SystemTags.Notes, cancellationToken)
+            .Lock(userId, Constants.Chat.System.Notes, cancellationToken)
             .ConfigureAwait(false);
 
         var createNotesCommand = new ChatsBackend_Change(
@@ -1785,14 +1784,14 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             null,
             new Change<ChatDiff> {
                 Create = new ChatDiff {
-                    Title = "Notes",
+                    Title = Constants.Chat.System.Notes.DefaultTitle,
                     Kind = ChatKind.Group,
                     IsPublic = false,
                     MediaId = MediaId.Parse("system-icons:notes"),
                     IsTemplate = false,
                     AllowGuestAuthors = false,
                     AllowAnonymousAuthors = false,
-                    SystemTag = Constants.Chat.SystemTags.Notes,
+                    SystemTag = Constants.Chat.System.Notes,
                 },
             },
             userId);
@@ -2063,9 +2062,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var chatIds = await ListPlaceChatIds(placeId, cancellationToken).ConfigureAwait(false);
         foreach (var chatId in chatIds) {
             var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
-            if (chat != null && Constants.Chat.SystemTags.Welcome == chat.SystemTag) {
+            if (chat is { IsWelcome: true }) {
                 var resetChatTagCommand = new ChatsBackend_Change(chatId, null, new Change<ChatDiff> {
-                    Update = new ChatDiff { SystemTag = Symbol.Empty }
+                    Update = new ChatDiff { SystemTag = Symbol.Empty },
                 });
                 await Commander.Call(resetChatTagCommand, false, cancellationToken).ConfigureAwait(false);
             }

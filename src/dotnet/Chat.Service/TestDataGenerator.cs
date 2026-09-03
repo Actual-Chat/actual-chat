@@ -123,7 +123,8 @@ public sealed class TestDataGenerator(IServiceProvider services)
         };
         var place = await Commander.Call(createPlaceCommand, true, cancellationToken).ConfigureAwait(false);
 
-        await CreatePlaceChat(session, place, "Welcome", Constants.Chat.SystemTags.Welcome, true, cancellationToken)
+        var welcome = Constants.Chat.System.Welcome;
+        await CreatePlaceChat(session, place, welcome.DefaultTitle, welcome, true, cancellationToken)
             .ConfigureAwait(false);
         var privateChat = await CreatePlaceChat(session, place, "Backstage", Symbol.Empty, false, cancellationToken)
             .ConfigureAwait(false);

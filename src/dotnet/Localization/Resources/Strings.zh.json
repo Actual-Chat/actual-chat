@@ -378,6 +378,10 @@
   "Navbar_SignIn": "登录",
   "Navbar_TestPages": "测试页面",
 
+  "SystemChat_Notes": "笔记",
+  "SystemChat_Announcements_Format": "{0} 公告",
+  "SystemChat_Welcome": "欢迎",
+
   "LeftPanel_AddNewMembers": "添加新成员",
   "LeftPanel_JoinPlace": "加入",
   "LeftPanel_PublicChatsAndPlaces": "公开聊天与地点",

@@ -1,7 +1,6 @@
 using ActualChat.Contacts;
-using ActualChat.Hosting;
 using ActualChat.Kvas;
-using ActualChat.Logging;
+using ActualChat.Localization;
 using ActualChat.Transcription;
 
 namespace ActualChat.Chat;
@@ -24,6 +23,7 @@ public partial class Chats(IServiceProvider services) : IChats
     private IChatsBackend Backend { get; } = services.GetRequiredService<IChatsBackend>();
     private ISharedLocationsBackend SharedLocationsBackend { get; } = services.GetRequiredService<ISharedLocationsBackend>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
+    private UserLocalizers UserLocalizers { get; } = services.GetRequiredService<UserLocalizers>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
 
@@ -61,6 +61,11 @@ public partial class Chats(IServiceProvider services) : IChats
                 var place = await Places.Get(session, placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
                 if (place == null)
                     return null;
+            }
+            if (chat.SystemDefaultTitle is not null) {
+                var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+                var l = await UserLocalizers.Get(account.Id, cancellationToken).ConfigureAwait(false);
+                chat = l.LocalizeTitle(chat);
             }
         }
 

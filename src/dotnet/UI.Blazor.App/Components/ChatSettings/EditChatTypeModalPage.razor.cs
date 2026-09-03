@@ -53,7 +53,7 @@ public partial class EditChatTypeModalPage
         var chat = await Chats.Get(Session, ChatId, CancellationToken.None).Require();
         _placeId = (chat.Id as PlaceChatId)?.PlaceId;
         if (_placeId is not null) {
-            _isPlaceWelcomeChat = Constants.Chat.SystemTags.Welcome == chat.SystemTag;
+            _isPlaceWelcomeChat = chat.IsWelcome;
             _place = await Places.Get(Session, _placeId, CancellationToken.None).Require().ConfigureAwait(false);
             if (_place.IsPublic && _place.AliasId is not null)
                 _aliasLocalPrefix = $"{Links.ChatAliasPrefix}{_place.AliasId.Value}{Links.Separator}{Links.AliasPrefix}";

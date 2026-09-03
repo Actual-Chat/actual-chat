@@ -59,7 +59,7 @@ public partial class ChatsUpgradeBackend
             null,
             new () {
                 Create = new ChatDiff {
-                    Title = $"{CoreConstants.AppName} Announcements",
+                    Title = Constants.Chat.AnnouncementsChatTitle,
                     IsPublic = true,
                 },
             },

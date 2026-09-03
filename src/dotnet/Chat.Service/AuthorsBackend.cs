@@ -192,7 +192,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
                     .Select(c => new { c.Id, c.SystemTag })
                     .FirstOrDefaultAsync(cancellationToken)
                     .ConfigureAwait(false);
-                if (chat == null || chat.SystemTag == Constants.Chat.SystemTags.Notes) {
+                if (chat == null || chat.SystemTag == Constants.Chat.System.Notes.Tag) {
                     var alreadyHasAuthor = await dbContext.Authors
                         .AnyAsync(a => a.ChatId == chatId.Value && a.UserId != userId.Value, cancellationToken)
                         .ConfigureAwait(false);

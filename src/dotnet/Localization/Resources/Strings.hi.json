@@ -378,6 +378,10 @@
   "Navbar_SignIn": "साइन इन करें",
   "Navbar_TestPages": "टेस्ट पेज",
 
+  "SystemChat_Notes": "नोट्स",
+  "SystemChat_Announcements_Format": "{0} घोषणाएँ",
+  "SystemChat_Welcome": "स्वागत",
+
   "LeftPanel_AddNewMembers": "नए सदस्य जोड़ें",
   "LeftPanel_JoinPlace": "शामिल हों",
   "LeftPanel_PublicChatsAndPlaces": "सार्वजनिक चैट और प्लेस",

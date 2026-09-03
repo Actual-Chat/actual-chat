@@ -378,6 +378,10 @@
   "Navbar_SignIn": "Masuk",
   "Navbar_TestPages": "Halaman uji",
 
+  "SystemChat_Notes": "Catatan",
+  "SystemChat_Announcements_Format": "Pengumuman {0}",
+  "SystemChat_Welcome": "Selamat datang",
+
   "LeftPanel_AddNewMembers": "Tambah anggota baru",
   "LeftPanel_JoinPlace": "Gabung",
   "LeftPanel_PublicChatsAndPlaces": "Obrolan & Tempat terbuka",

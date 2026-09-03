@@ -378,6 +378,10 @@
   "Navbar_SignIn": "ログイン",
   "Navbar_TestPages": "テストページ",
 
+  "SystemChat_Notes": "メモ",
+  "SystemChat_Announcements_Format": "{0} のお知らせ",
+  "SystemChat_Welcome": "ようこそ",
+
   "LeftPanel_AddNewMembers": "メンバーを追加",
   "LeftPanel_JoinPlace": "参加",
   "LeftPanel_PublicChatsAndPlaces": "公開チャットとプレイス",
