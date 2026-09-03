@@ -55,9 +55,7 @@ public sealed class PermissionsUI : UIServiceBase<AppUIHub>
                 missing.Add(permission.Kind);
         }
 
-        // A dismissal covers only what was missing when it happened
-        var isWarningDismissed = missing.IsSubsetOf(dismissed);
-        return new PermissionsState(missing, isWarningDismissed) { IsKnown = true };
+        return new PermissionsState(missing, dismissed) { IsKnown = true };
     }
 
     public async Task<bool> Request(
@@ -73,11 +71,18 @@ public sealed class PermissionsUI : UIServiceBase<AppUIHub>
         }
     }
 
-    public async Task DismissWarning(PermissionsState state, CancellationToken cancellationToken = default)
+    public Task DismissWarning(PermissionsState state, CancellationToken cancellationToken = default)
+        => Dismiss(state.Missing, cancellationToken);
+
+    public Task Dismiss(PermissionKind kind, CancellationToken cancellationToken = default)
+        => Dismiss([kind], cancellationToken);
+
+    public async Task Dismiss(IEnumerable<PermissionKind> kinds, CancellationToken cancellationToken = default)
     {
-        var value = FormatKinds(state.Missing);
         await Hub.LocalSettings.LocalAppSettings()
-            .Update(x => x with { DismissedPermissionWarnings = value }, cancellationToken)
+            .Update(x => x with {
+                DismissedPermissionWarnings = FormatKinds(ParseKinds(x.DismissedPermissionWarnings).Concat(kinds)),
+            }, cancellationToken)
             .ConfigureAwait(false);
         // A local Kvas write doesn't invalidate GetState's read, so bump the version to re-run it.
         Invalidate();
@@ -240,8 +245,8 @@ public sealed class PermissionsUI : UIServiceBase<AppUIHub>
             IsInOnboarding = isInOnboarding,
         };
 
-    private static string FormatKinds(IReadOnlySet<PermissionKind> kinds)
-        => kinds.Order().Select(x => x.ToString()).ToDelimitedString(",");
+    private static string FormatKinds(IEnumerable<PermissionKind> kinds)
+        => kinds.Distinct().Order().Select(x => x.ToString()).ToDelimitedString(",");
 
     private static IReadOnlySet<PermissionKind> ParseKinds(string? value)
     {
@@ -268,25 +273,31 @@ public sealed record PermissionDef(
     public bool IsInOnboarding { get; init; }
 }
 
-public sealed record PermissionsState(IReadOnlySet<PermissionKind> Missing, bool IsWarningDismissed)
+public sealed record PermissionsState(IReadOnlySet<PermissionKind> Missing, IReadOnlySet<PermissionKind> Dismissed)
 {
-    public static readonly PermissionsState Unknown = new(new HashSet<PermissionKind>(), false);
+    public static readonly PermissionsState Unknown = new(
+        ImmutableHashSet<PermissionKind>.Empty,
+        ImmutableHashSet<PermissionKind>.Empty);
 
     // False until the first read completes, so nothing renders "all granted" on the way there
     public bool IsKnown { get; init; }
     public bool HasMissing => Missing.Count != 0;
+    // A dismissal covers only what was missing when it happened
+    public bool IsWarningDismissed => Missing.IsSubsetOf(Dismissed);
 
     public bool IsGranted(PermissionKind kind)
         => !Missing.Contains(kind);
+    public bool IsDismissed(PermissionKind kind)
+        => Dismissed.Contains(kind);
 
     public bool Equals(PermissionsState? other)
-        // Missing is a fresh set on every read, so the generated reference comparison would report
+        // The sets are fresh on every read, so the generated reference comparison would report
         // every recompute as a change and re-render the avatar and the whole Settings modal with it.
         => other is not null
             && IsKnown == other.IsKnown
-            && IsWarningDismissed == other.IsWarningDismissed
-            && Missing.SetEquals(other.Missing);
+            && Missing.SetEquals(other.Missing)
+            && Dismissed.SetEquals(other.Dismissed);
 
     public override int GetHashCode()
-        => HashCode.Combine(IsKnown, IsWarningDismissed, Missing.Count);
+        => HashCode.Combine(IsKnown, Missing.Count, Dismissed.Count);
 }

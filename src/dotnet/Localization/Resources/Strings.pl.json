@@ -620,6 +620,9 @@
   "Common_Publish": "Opublikuj",
   "Common_Skip": "Pomiń",
 
+  "Banner_Notify_Prefix": "{0} może ",
+  "Banner_NotifyTarget": "powiadamiać",
+  "Banner_Notify_Suffix": " Cię o nowych wiadomościach",
   "Banner_OnlyPersonInChat": "Jesteś jedyną osobą w tym czacie!",
   "Banner_AddMembers": "Dodaj uczestników",
   "Banner_NotInContacts": "Tego użytkownika nie ma jeszcze na Twojej liście kontaktów",

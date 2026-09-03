@@ -751,6 +751,9 @@
   // Banner_Connected through Reconnect_Title are connection states; DemandInteraction_* is the
   // modal asking for one tap, because the browser will not let a pending operation continue
   // without a user gesture.
+  "Banner_Notify_Prefix": "{0} kann Sie über neue Nachrichten ",
+  "Banner_NotifyTarget": "benachrichtigen",
+  "Banner_Notify_Suffix": " Cię o nowych wiadomościach",
   "Banner_OnlyPersonInChat": "Vous êtes la seule personne dans cette discussion !",
   "Banner_AddMembers": "Добавить участников",
   "Banner_NotInContacts": "Tego użytkownika nie ma jeszcze na Twojej liście kontaktów",

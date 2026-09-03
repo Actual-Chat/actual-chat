@@ -620,6 +620,9 @@
   "Common_Publish": "게시",
   "Common_Skip": "건너뛰기",
 
+  "Banner_Notify_Prefix": "{0}이(가) 새 메시지를 ",
+  "Banner_NotifyTarget": "알려",
+  "Banner_Notify_Suffix": "드릴 수 있습니다",
   "Banner_OnlyPersonInChat": "이 채팅에 있는 사람은 당신뿐입니다!",
   "Banner_AddMembers": "멤버 추가",
   "Banner_NotInContacts": "이 사용자는 아직 연락처에 없습니다",

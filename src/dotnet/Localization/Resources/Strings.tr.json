@@ -620,6 +620,9 @@
   "Common_Publish": "Yayınlayın",
   "Common_Skip": "Atlayın",
 
+  "Banner_Notify_Prefix": "{0} yeni mesajlar hakkında sizi ",
+  "Banner_NotifyTarget": "bilgilendirebilir",
+  "Banner_Notify_Suffix": "",
   "Banner_OnlyPersonInChat": "Bu sohbetteki tek kişi sizsiniz!",
   "Banner_AddMembers": "Üye ekleyin",
   "Banner_NotInContacts": "Bu kullanıcı henüz kişi listenizde değil",

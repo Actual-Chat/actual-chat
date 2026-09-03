@@ -620,6 +620,9 @@
   "Common_Publish": "Pubblica",
   "Common_Skip": "Salta",
 
+  "Banner_Notify_Prefix": "{0} può ",
+  "Banner_NotifyTarget": "avvisarti",
+  "Banner_Notify_Suffix": " dei nuovi messaggi",
   "Banner_OnlyPersonInChat": "Sei l'unica persona in questa chat!",
   "Banner_AddMembers": "Aggiungi membri",
   "Banner_NotInContacts": "Questo utente non è ancora nei tuoi contatti",

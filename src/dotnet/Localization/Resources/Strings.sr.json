@@ -620,6 +620,9 @@
   "Common_Publish": "Објавите",
   "Common_Skip": "Прескочи",
 
+  "Banner_Notify_Prefix": "{0} вас може ",
+  "Banner_NotifyTarget": "обавештавати",
+  "Banner_Notify_Suffix": " о новим порукама",
   "Banner_OnlyPersonInChat": "Ви сте једина особа у овом чету!",
   "Banner_AddMembers": "Додајте чланове",
   "Banner_NotInContacts": "Овај корисник још није на вашој листи контаката",

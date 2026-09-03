@@ -751,6 +751,9 @@
   // Banner_Connected through Reconnect_Title are connection states; DemandInteraction_* is the
   // modal asking for one tap, because the browser will not let a pending operation continue
   // without a user gesture.
+  "Banner_Notify_Prefix": "{0} can ",
+  "Banner_NotifyTarget": "notify",
+  "Banner_Notify_Suffix": " you about new messages",
   "Banner_OnlyPersonInChat": "You are the only person in this chat!",
   "Banner_AddMembers": "Add members",
   "Banner_NotInContacts": "This user is not in your contact list yet",

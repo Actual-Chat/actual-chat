@@ -620,6 +620,9 @@
   "Common_Publish": "公開",
   "Common_Skip": "スキップ",
 
+  "Banner_Notify_Prefix": "{0} は新着メッセージを",
+  "Banner_NotifyTarget": "通知",
+  "Banner_Notify_Suffix": "します",
   "Banner_OnlyPersonInChat": "このチャットにはあなたしかいません!",
   "Banner_AddMembers": "メンバーを追加",
   "Banner_NotInContacts": "このユーザーはまだ連絡先に追加されていません",

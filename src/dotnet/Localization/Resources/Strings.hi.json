@@ -620,6 +620,9 @@
   "Common_Publish": "प्रकाशित करें",
   "Common_Skip": "छोड़ें",
 
+  "Banner_Notify_Prefix": "{0} आपको नए संदेशों के बारे में ",
+  "Banner_NotifyTarget": "सूचित",
+  "Banner_Notify_Suffix": " कर सकता है",
   "Banner_OnlyPersonInChat": "इस चैट में सिर्फ़ आप ही हैं!",
   "Banner_AddMembers": "सदस्य जोड़ें",
   "Banner_NotInContacts": "यह उपयोगकर्ता अभी आपकी संपर्क सूची में नहीं है",

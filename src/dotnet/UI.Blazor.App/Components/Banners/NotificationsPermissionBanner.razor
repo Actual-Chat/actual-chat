@@ -1,0 +1,78 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, PermissionsState>
+@{
+    var m = State.Value;
+    var permission = Permission;
+    var isVisible = permission is not null
+        && m.IsKnown
+        && !m.IsGranted(permission.Kind)
+        && !m.IsDismissed(permission.Kind);
+}
+
+@if (isVisible) {
+    <Banner
+        Severity="BannerSeverity.Info"
+        ShowDismissButton="true"
+        Dismiss="@OnDismiss">
+        <Icon>
+            <i class="icon-bell"></i>
+        </Icon>
+        <Body>
+            @L.Banner_Notify_Prefix(CoreConstants.AppName)<strong
+                >@L.Banner_NotifyTarget</strong>@L.Banner_Notify_Suffix
+        </Body>
+        <Buttons>
+            <BannerButton
+                Click="@OnConfigureClick"
+                Rendered="@OnConfigureRendered">@L.Common_Configure</BannerButton>
+        </Buttons>
+    </Banner>
+}
+
+@code {
+    private bool _isRequesting;
+
+    private PermissionsUI PermissionsUI => field ??= Hub.Services.GetRequiredService<PermissionsUI>();
+    private NotificationUI NotificationUI => Hub.NotificationUI;
+    // Null on the Windows app, where toasts need no grant and the catalog has no such row
+    private PermissionDef? Permission
+        => PermissionsUI.Permissions.FirstOrDefault(x => x.Kind == PermissionKind.Notifications);
+
+    protected override ComputedState<PermissionsState>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<PermissionsState>.Options() {
+                InitialValue = PermissionsState.Unknown,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override Task<PermissionsState> ComputeState(CancellationToken cancellationToken)
+        => PermissionsUI.GetState(cancellationToken);
+
+    // Event handlers
+
+    private Task OnDismiss()
+        => PermissionsUI.Dismiss(PermissionKind.Notifications);
+
+    private async Task OnConfigureClick() {
+        if (_isRequesting || Permission is not { } permission)
+            return;
+
+        _isRequesting = true;
+        try {
+            // mustTroubleshoot: false keeps the handler from opening its own guide - a blocked
+            // permission is guided by the shared modal below, the same one Settings shows.
+            var isGranted = await PermissionsUI.Request(permission, false, CancellationToken.None).ConfigureAwait(true);
+            if (!isGranted)
+                await ModalUI.Show(new PermissionGuideModal.Model(permission.Kind)).ConfigureAwait(true);
+        }
+        finally {
+            _isRequesting = false;
+        }
+    }
+
+    private Task OnConfigureRendered(ElementReference buttonRef) {
+        _ = NotificationUI.RegisterRequestNotificationHandler(buttonRef);
+        return Task.CompletedTask;
+    }
+}

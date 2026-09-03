@@ -620,6 +620,9 @@
   "Common_Publish": "Публикувайте",
   "Common_Skip": "Пропусни",
 
+  "Banner_Notify_Prefix": "{0} може да ви ",
+  "Banner_NotifyTarget": "уведомява",
+  "Banner_Notify_Suffix": " за нови съобщения",
   "Banner_OnlyPersonInChat": "Вие сте единственият човек в този чат!",
   "Banner_AddMembers": "Добавете участници",
   "Banner_NotInContacts": "Този потребител още не е в списъка ви с контакти",

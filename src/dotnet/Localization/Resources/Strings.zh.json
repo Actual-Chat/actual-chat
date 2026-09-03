@@ -620,6 +620,9 @@
   "Common_Publish": "发布",
   "Common_Skip": "跳过",
 
+  "Banner_Notify_Prefix": "{0} 可以在有新消息时",
+  "Banner_NotifyTarget": "通知",
+  "Banner_Notify_Suffix": "你",
   "Banner_OnlyPersonInChat": "这个聊天里只有你一个人！",
   "Banner_AddMembers": "添加成员",
   "Banner_NotInContacts": "该用户还不在你的联系人列表中",

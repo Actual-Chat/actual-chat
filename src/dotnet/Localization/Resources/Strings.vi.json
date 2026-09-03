@@ -620,6 +620,9 @@
   "Common_Publish": "Đăng",
   "Common_Skip": "Bỏ qua",
 
+  "Banner_Notify_Prefix": "{0} có thể ",
+  "Banner_NotifyTarget": "thông báo",
+  "Banner_Notify_Suffix": " cho bạn về tin nhắn mới",
   "Banner_OnlyPersonInChat": "Bạn là người duy nhất trong cuộc trò chuyện này!",
   "Banner_AddMembers": "Thêm thành viên",
   "Banner_NotInContacts": "Người dùng này chưa có trong danh bạ của bạn",

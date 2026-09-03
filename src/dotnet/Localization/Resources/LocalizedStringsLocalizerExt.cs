@@ -642,6 +642,9 @@ public static class LocalizedStringsLocalizerExt
         public string Common_Publish => l["Common_Publish"].Value;
         public string Common_Skip => l["Common_Skip"].Value;
 
+        public string Banner_Notify_Prefix(object arg0) => l["Banner_Notify_Prefix", arg0].Value;
+        public string Banner_NotifyTarget => l["Banner_NotifyTarget"].Value;
+        public string Banner_Notify_Suffix => l["Banner_Notify_Suffix"].Value;
         public string Banner_OnlyPersonInChat => l["Banner_OnlyPersonInChat"].Value;
         public string Banner_AddMembers => l["Banner_AddMembers"].Value;
         public string Banner_NotInContacts => l["Banner_NotInContacts"].Value;

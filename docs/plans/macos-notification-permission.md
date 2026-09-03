@@ -6,10 +6,10 @@ the MacCatalyst app: trigger the OS permission prompt, reflect the real
 permission state, and read as granted once it is — reusing the iOS
 implementation instead of duplicating it.
 
-> The permission banners this plan was written against are gone: every OS
-> permission now lives on the Settings > Permissions tab, driven by
-> `PermissionsUI`. The MacCatalyst stub below is unchanged, so the plan still
-> holds — only the surface that calls into it moved.
+> Every OS permission now lives on the Settings > Permissions tab, driven by
+> `PermissionsUI`. Of the permission banners this plan was written against only
+> the notifications one remains, and it reads the same `PermissionsUI` state.
+> The MacCatalyst stub below is unchanged, so the plan still holds.
 
 ## Problem (root cause)
 Toggling Notifications calls `INotificationsPermission.Request()` through

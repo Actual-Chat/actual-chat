@@ -620,6 +620,9 @@
   "Common_Publish": "Publikovat",
   "Common_Skip": "Přeskočit",
 
+  "Banner_Notify_Prefix": "{0} vás může ",
+  "Banner_NotifyTarget": "upozorňovat",
+  "Banner_Notify_Suffix": " na nové zprávy",
   "Banner_OnlyPersonInChat": "V tomto chatu jste jediní!",
   "Banner_AddMembers": "Přidat členy",
   "Banner_NotInContacts": "Tento uživatel zatím není ve vašich kontaktech",

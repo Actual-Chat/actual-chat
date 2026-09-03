@@ -620,6 +620,9 @@
   "Common_Publish": "Terbitkan",
   "Common_Skip": "Lewati",
 
+  "Banner_Notify_Prefix": "{0} bisa ",
+  "Banner_NotifyTarget": "memberi tahu",
+  "Banner_Notify_Suffix": " Anda tentang pesan baru",
   "Banner_OnlyPersonInChat": "Anda satu-satunya orang di obrolan ini!",
   "Banner_AddMembers": "Tambah anggota",
   "Banner_NotInContacts": "Pengguna ini belum ada di daftar kontak Anda",

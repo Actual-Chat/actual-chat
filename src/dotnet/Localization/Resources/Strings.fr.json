@@ -620,6 +620,9 @@
   "Common_Publish": "Publier",
   "Common_Skip": "Ignorer",
 
+  "Banner_Notify_Prefix": "{0} peut vous ",
+  "Banner_NotifyTarget": "notifier",
+  "Banner_Notify_Suffix": " des nouveaux messages",
   "Banner_OnlyPersonInChat": "Vous êtes la seule personne dans cette discussion !",
   "Banner_AddMembers": "Ajouter des membres",
   "Banner_NotInContacts": "Cet utilisateur ne figure pas encore dans vos contacts",
