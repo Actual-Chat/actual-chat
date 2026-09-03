@@ -317,6 +317,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OwnAvatarList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PageHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PeerContactEditorModal>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PermissionGuideModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PermissionsStep>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PhoneStep>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PhoneVerificationModal>();
@@ -1081,6 +1082,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.OwnAvatarList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PageHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PeerContactEditorModal), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PermissionGuideModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PermissionsStep), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PhoneStep), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PhoneVerificationModal), AotTypeKind.Component),
