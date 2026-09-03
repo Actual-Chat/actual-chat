@@ -63,15 +63,15 @@ open ../../../artifacts/bin/App.Maui/debug_net11.0-maccatalyst_maccatalyst-arm64
 
 ## Local build (App Store signed `.pkg`)
 
-`publish-maccatalyst` builds, signs the `.app` with the Apple Distribution cert, and —
+`pack-maccatalyst` builds, signs the `.app` with the Apple Distribution cert, and —
 via `CreatePackage` + `EnablePackageSigning` + `PackageSigningKey` (the installer cert) —
 emits the installer-signed `.pkg` directly. No separate packaging step.
 
 ```bash
 # dev:
-./run-build.cmd publish-maccatalyst --configuration Release --is-dev-maui true
+./run-build.cmd pack-maccatalyst --configuration Release --is-dev-maui true
 # prod:
-./run-build.cmd publish-maccatalyst --configuration Release --is-dev-maui false
+./run-build.cmd pack-maccatalyst --configuration Release --is-dev-maui false
 # -> artifacts/publish/App.Maui/release_net11.0-maccatalyst_maccatalyst-arm64/ActualChat-<version>.pkg
 ```
 
@@ -87,7 +87,7 @@ xcrun altool --upload-app -f <pkg> -t macos \
 Two jobs in `.github/workflows/build-test-deploy-dev.yml` —
 `build-maccatalyst-pkg` and `deploy-maccatalyst-to-appstore` — mirror the iOS
 ones. They run whenever `MUST_BUILD_PACKAGE == true` (dev/release branch pushes,
-or a manual run with `buildAppFor`), build via the `publish-maccatalyst` target
+or a manual run with `buildAppFor`), build via the `pack-maccatalyst` target
 (which emits the installer-signed `.pkg` directly), then validate + upload with
 `altool -t macos`.
 
