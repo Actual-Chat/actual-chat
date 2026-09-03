@@ -6,7 +6,7 @@ namespace ActualChat.Serialization.Internal;
 /// Reads nil as an empty string.
 /// For a non-nullable string member added at a key that older array-form payloads hold as nil.
 /// </summary>
-public sealed class NilTolerantStringMessagePackFormatter : IMessagePackFormatter<string>
+public sealed class NonNullableMessagePackStringFormatter : IMessagePackFormatter<string>
 {
     public void Serialize(ref MessagePackWriter writer, string value, MessagePackSerializerOptions options)
         => writer.Write(value);

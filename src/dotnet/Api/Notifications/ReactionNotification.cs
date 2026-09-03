@@ -18,19 +18,18 @@ public sealed partial record ReactionNotification(NotificationId Id, long Versio
 
     // Keys 9..12 are unused by this subtype's ancestors, but the base chain declares keys up to 22,
     // so payloads written before these members existed (stored rows, older clients) hold nil in
-    // these slots rather than omitting them - hence the nil-tolerant formatters.
+    // these slots rather than omitting them. ApiArray reads nil as Empty; a string reads it as null,
+    // so QuotedText coalesces (the formatter covers nil, the setter covers an absent slot too).
     [DataMember(Order = 9), Key(9)]
-    [MessagePackFormatter(typeof(NilTolerantApiArrayMessagePackFormatter<AuthorId>))]
     public ApiArray<AuthorId> AuthorIds { get; init; }
     [DataMember(Order = 10), Key(10)]
-    [MessagePackFormatter(typeof(NilTolerantApiArrayMessagePackFormatter<Emoji>))]
     public ApiArray<Emoji> Emojis { get; init; }
     // Text is the composed "{emoji} to {quote}" sentence, so surfaces that render the emoji
     // separately need the bare quote; and Emojis accumulates in arrival order with dedup, so
     // the chronologically-newest emoji has to be tracked explicitly.
     [DataMember(Order = 11), Key(11)]
-    [MessagePackFormatter(typeof(NilTolerantStringMessagePackFormatter))]
-    public string QuotedText { get; init; } = "";
+    [MessagePackFormatter(typeof(NonNullableMessagePackStringFormatter))]
+    public string QuotedText { get; init => field = value ?? ""; } = "";
     [DataMember(Order = 12), Key(12)]
     public Emoji? LastEmoji { get; init; }
 
