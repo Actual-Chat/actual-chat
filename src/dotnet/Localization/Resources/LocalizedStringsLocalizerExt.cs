@@ -996,6 +996,18 @@ public static class LocalizedStringsLocalizerExt
         public string Location_ShareForDurationCaption => l["Location_ShareForDurationCaption"].Value;
         public string Location_ChoosePlaceOnMap => l["Location_ChoosePlaceOnMap"].Value;
         public string Location_ChoosePlaceCaption => l["Location_ChoosePlaceCaption"].Value;
+        public string Location_ShareForMinutes(long count, object arg0)
+            => l.Plural("Location_ShareForMinutes", count, arg0);
+        public string Location_ShareForHours(long count, object arg0)
+            => l.Plural("Location_ShareForHours", count, arg0);
+        public string Location_ShareUntilTurnedOff => l["Location_ShareUntilTurnedOff"].Value;
+        public string Location_AccurateTo_Format(object arg0) => l["Location_AccurateTo_Format", arg0].Value;
+        public string Location_DistanceAway_Format(object arg0) => l["Location_DistanceAway_Format", arg0].Value;
+        public string Location_CountdownHours_Format(object arg0)
+            => l["Location_CountdownHours_Format", arg0].Value;
+        public string Location_MapTypeMap => l["Location_MapTypeMap"].Value;
+        public string Location_MapTypeSatellite => l["Location_MapTypeSatellite"].Value;
+        public string Location_MapTypeHybrid => l["Location_MapTypeHybrid"].Value;
         public string Content_NoFiles => l["Content_NoFiles"].Value;
         public string Content_NoLinks => l["Content_NoLinks"].Value;
         public string Content_NoMedia => l["Content_NoMedia"].Value;
@@ -1590,6 +1602,8 @@ public static class LocalizedStringsLocalizerExt
         public string Duration_Days_Format(object arg0) => l["Duration_Days_Format", arg0].Value;
         public string Duration_Hours_Format(object arg0) => l["Duration_Hours_Format", arg0].Value;
         public string Duration_Minutes_Format(object arg0) => l["Duration_Minutes_Format", arg0].Value;
+        public string Distance_Meters_Format(object arg0) => l["Distance_Meters_Format", arg0].Value;
+        public string Distance_Kilometers_Format(object arg0) => l["Distance_Kilometers_Format", arg0].Value;
 
         public string Invite_ManageLinks => l["Invite_ManageLinks"].Value;
         public string Invite_NewPrivateLink => l["Invite_NewPrivateLink"].Value;

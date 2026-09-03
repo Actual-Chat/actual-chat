@@ -94,7 +94,7 @@ body.device-android .share-location-modal.picking .c-map-area {
 }
 .share-location-modal .c-duration-menu {
     @apply right-2 bottom-2;
-    @apply w-52;
+    @apply w-60;
 }
 .share-location-modal .c-map-type-menu {
     @apply right-2 top-[3.875rem];

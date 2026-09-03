@@ -1,4 +1,6 @@
+using ActualChat.Localization;
 using ActualChat.UI.Blazor.Services;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -405,16 +407,15 @@ public sealed record LocationCountdown(TimeSpan Remaining, TimeSpan Duration)
 
     public bool IsUnlimited => Duration == TimeSpan.MaxValue;
     public double Fraction => IsUnlimited ? 1 : Math.Clamp(Remaining / Duration, 0, 1);
-    public string Text {
-        get {
-            if (IsUnlimited)
-                return "";
+    public string GetText(IStringLocalizer l)
+    {
+        if (IsUnlimited)
+            return "";
 
-            if (Remaining.TotalHours >= 1)
-                return $"{(int)Math.Ceiling(Remaining.TotalHours)}h";
+        if (Remaining.TotalHours >= 1)
+            return l.Location_CountdownHours_Format((int)Math.Ceiling(Remaining.TotalHours));
 
-            var minutes = (int)Math.Ceiling((Remaining - RoundingTolerance).TotalMinutes);
-            return Math.Max(1, minutes).ToString();
-        }
+        var minutes = (int)Math.Ceiling((Remaining - RoundingTolerance).TotalMinutes);
+        return Math.Max(1, minutes).ToString();
     }
 }
