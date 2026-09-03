@@ -107,8 +107,8 @@ Any first word that isn't a registered command is treated as a target:
 build  clean  clean-dist  clean-tests  default  e2e-tests  generate-version
 integration-tests  integration-tests-chat  integration-tests-core
 integration-tests-mlsearch  integration-tests-users  maui  nightly-tests
-npm-build  npm-install  publish-android  publish-ios  publish-maccatalyst
-publish-win  restore  restore-tools  slnf  slow-tests  tests  unit-tests  watch
+npm-build  npm-install  pack-android  pack-ios  pack-mac  pack-maccatalyst
+pack-win  restore  restore-tools  slnf  slow-tests  tests  unit-tests  watch
 ```
 
 These take `--configuration`, `--is-dev-maui`, `--use-native-aot`, `--dumps`,

@@ -39,10 +39,11 @@ internal static class Program
         public const string Tests = "tests";
         public const string Build = "build";
         public const string Maui = "maui";
-        public const string PublishIos = "publish-ios";
-        public const string PublishMacCatalyst = "publish-maccatalyst";
-        public const string PublishAndroid = "publish-android";
-        public const string PublishWin = "publish-win";
+        public const string PackIos = "pack-ios";
+        public const string PackMacCatalyst = "pack-maccatalyst";
+        public const string PackMac = "pack-mac";
+        public const string PackAndroid = "pack-android";
+        public const string PackWin = "pack-win";
         public const string RestoreTools = "restore-tools";
         public const string Restore = "restore";
         public const string Default = "default";
@@ -53,14 +54,16 @@ internal static class Program
         string configuration,
         bool? isDevMaui,
         bool useNativeAot,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool universal = false)
         => RunTargets(
             [target],
             false, false, default, false, false, false, false, false, false, false, false, false,
             cancellationToken,
             configuration,
             isDevMaui,
-            useNativeAot);
+            useNativeAot,
+            universal: universal);
 
     internal static async Task<int> RunTargets(
         string[] arguments,
@@ -81,7 +84,8 @@ internal static class Program
         string configuration = "Debug",
         bool? isDevMaui = null,
         bool useNativeAot = false,
-        bool dumps = false
+        bool dumps = false,
+        bool universal = false
         )
     {
         Console.OutputEncoding = Encoding.UTF8;
@@ -352,7 +356,7 @@ internal static class Program
                 .ToConsole(Blue("web: "))
                 .ExecuteAsync(cancellationToken).Task);
 
-        Target(Targets.PublishWin, DependsOn(Targets.NpmBuild), async () => {
+        Target(Targets.PackWin, DependsOn(Targets.NpmBuild), async () => {
             var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
             isDevMaui ??= !isProduction;
             await AppxManifestGenerator.Generate(
@@ -394,7 +398,7 @@ internal static class Program
                 .ConfigureAwait(false);
         });
 
-        Target(Targets.PublishAndroid, DependsOn(Targets.NpmBuild), async () => {
+        Target(Targets.PackAndroid, DependsOn(Targets.NpmBuild), async () => {
             var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
             var signingKeyPass = Utils.GetEnv("ActualChat_AndroidSigningKeyPass");
             var signingStorePass = Utils.GetEnv("ActualChat_AndroidSigningStorePass");
@@ -420,7 +424,7 @@ internal static class Program
                 .ConfigureAwait(false);
         });
 
-        Target(Targets.PublishIos, DependsOn(Targets.NpmBuild), async () => {
+        Target(Targets.PackIos, DependsOn(Targets.NpmBuild), async () => {
             var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
             isDevMaui ??= !isProduction;
             await Cli
@@ -443,7 +447,7 @@ internal static class Program
                 .ConfigureAwait(false);
         });
 
-        Target(Targets.PublishMacCatalyst, DependsOn(Targets.NpmBuild), async () => {
+        Target(Targets.PackMacCatalyst, DependsOn(Targets.NpmBuild), async () => {
             var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
             isDevMaui ??= !isProduction;
             await Cli
@@ -455,6 +459,30 @@ internal static class Program
                     "-f net11.0-maccatalyst",
                     @"/p:TargetFrameworks=\""net11.0-maccatalyst;net11.0\""", // otherwise needs maui-android etc
                     "-p:RuntimeIdentifier=maccatalyst-arm64",
+                    $"-c {configuration}",
+                    $"-p:IsDevMaui={isDevMaui}")
+                .WithWorkingDirectory("src/dotnet/App.Maui")
+                .ToConsole(Green("dotnet: "))
+                .ExecuteAsync(cancellationToken)
+                .Task
+                .ConfigureAwait(false);
+        });
+
+        Target(Targets.PackMac, DependsOn(Targets.NpmBuild), async () => {
+            var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
+            isDevMaui ??= !isProduction;
+            var ridArgument = universal
+                ? @"/p:RuntimeIdentifiers=\""osx-arm64;osx-x64\"""
+                : $"-p:RuntimeIdentifier={(RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "osx-arm64" : "osx-x64")}";
+            await Cli
+                .Wrap(dotnet)
+                .WithArguments("publish",
+                    "-noLogo",
+                    "-maxCpuCount",
+                    "-nodeReuse:false",
+                    "-f net11.0-macos",
+                    @"/p:TargetFrameworks=\""net11.0-macos;net11.0\""", // otherwise needs maui-android etc
+                    ridArgument,
                     $"-c {configuration}",
                     $"-p:IsDevMaui={isDevMaui}")
                 .WithWorkingDirectory("src/dotnet/App.Maui")
