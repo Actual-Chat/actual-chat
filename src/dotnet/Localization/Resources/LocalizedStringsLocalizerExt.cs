@@ -790,7 +790,14 @@ public static class LocalizedStringsLocalizerExt
         public string Permissions_AllGranted => l["Permissions_AllGranted"].Value;
         public string Permissions_DismissWarning => l["Permissions_DismissWarning"].Value;
         public string Permissions_WarningDismissed => l["Permissions_WarningDismissed"].Value;
-        public string Permissions_RevokeHint_App => l["Permissions_RevokeHint_App"].Value;
+        public string Permissions_RevokeHint_Android_Format(object arg0)
+            => l["Permissions_RevokeHint_Android_Format", arg0].Value;
+        public string Permissions_RevokeHint_Ios_Format(object arg0)
+            => l["Permissions_RevokeHint_Ios_Format", arg0].Value;
+        public string Permissions_RevokeHint_Windows_Format(object arg0)
+            => l["Permissions_RevokeHint_Windows_Format", arg0].Value;
+        public string Permissions_RevokeHint_MacOS_Format(object arg0)
+            => l["Permissions_RevokeHint_MacOS_Format", arg0].Value;
         public string Permissions_RevokeHint_Web => l["Permissions_RevokeHint_Web"].Value;
         public string PermissionGuide_App => l["PermissionGuide_App"].Value;
         public string PermissionGuide_Web_Format(object arg0)
@@ -999,7 +1006,8 @@ public static class LocalizedStringsLocalizerExt
         public string VoiceSettings_Ptt => l["VoiceSettings_Ptt"].Value;
         public string VoiceSettings_PttNotEnabled => l["VoiceSettings_PttNotEnabled"].Value;
         public string VoiceSettings_PttOn => l["VoiceSettings_PttOn"].Value;
-        public string VoiceSettings_PttAtCapacity_Format(object arg0) => l["VoiceSettings_PttAtCapacity_Format", arg0].Value;
+        public string VoiceSettings_PttAtCapacity_Format(object arg0)
+            => l["VoiceSettings_PttAtCapacity_Format", arg0].Value;
         public string VoiceSettings_TranscriptionLanguage => l["VoiceSettings_TranscriptionLanguage"].Value;
         public string VoiceSettings_Setup => l["VoiceSettings_Setup"].Value;
         public string VoiceSettings_AddLanguage => l["VoiceSettings_AddLanguage"].Value;
@@ -1047,7 +1055,8 @@ public static class LocalizedStringsLocalizerExt
         public string Ptt_ChatsTopic => l["Ptt_ChatsTopic"].Value;
         public string Ptt_NoPttChats => l["Ptt_NoPttChats"].Value;
         public string Ptt_AvailableTopic => l["Ptt_AvailableTopic"].Value;
-        public string Ptt_AllowedCount_Format(object arg0, object arg1) => l["Ptt_AllowedCount_Format", arg0, arg1].Value;
+        public string Ptt_AllowedCount_Format(object arg0, object arg1)
+            => l["Ptt_AllowedCount_Format", arg0, arg1].Value;
         public string Ptt_NothingAllowed => l["Ptt_NothingAllowed"].Value;
         public string Ptt_AllowHint => l["Ptt_AllowHint"].Value;
         public string Ptt_AllowLimitHint => l["Ptt_AllowLimitHint"].Value;
@@ -1305,7 +1314,8 @@ public static class LocalizedStringsLocalizerExt
         public string Landing_GetApp => l["Landing_GetApp"].Value;
         public string Landing_WatchInAction_Format(object arg0) => l["Landing_WatchInAction_Format", arg0].Value;
         public string Landing_InAction_Format(object arg0) => l["Landing_InAction_Format", arg0].Value;
-        public string Landing_LoadingIntroVideo_Format(object arg0) => l["Landing_LoadingIntroVideo_Format", arg0].Value;
+        public string Landing_LoadingIntroVideo_Format(object arg0)
+            => l["Landing_LoadingIntroVideo_Format", arg0].Value;
         public string Landing_WhyUs => l["Landing_WhyUs"].Value;
         public string Landing_BackToMainPage => l["Landing_BackToMainPage"].Value;
         public string Landing_Home => l["Landing_Home"].Value;
@@ -1443,9 +1453,11 @@ public static class LocalizedStringsLocalizerExt
         public string Share_PrivateChatJoinLink => l["Share_PrivateChatJoinLink"].Value;
         public string Share_PrivatePlaceJoinLink => l["Share_PrivatePlaceJoinLink"].Value;
         public string Share_Media => l["Share_Media"].Value;
-        public string Share_TextTitled_Format(object arg0, object arg1) => l["Share_TextTitled_Format", arg0, arg1].Value;
+        public string Share_TextTitled_Format(object arg0, object arg1)
+            => l["Share_TextTitled_Format", arg0, arg1].Value;
         public string Share_TextNamed_Format(object arg0, object arg1) => l["Share_TextNamed_Format", arg0, arg1].Value;
-        public string Share_ThreadText_Format(object arg0, object arg1, object arg2) => l["Share_ThreadText_Format", arg0, arg1, arg2].Value;
+        public string Share_ThreadText_Format(object arg0, object arg1, object arg2)
+            => l["Share_ThreadText_Format", arg0, arg1, arg2].Value;
         public string Account_RegisterTitle => l["Account_RegisterTitle"].Value;
         public string Account_RegisterText_Format(object arg0) => l["Account_RegisterText_Format", arg0].Value;
         public string Account_RegisterThisAccount => l["Account_RegisterThisAccount"].Value;

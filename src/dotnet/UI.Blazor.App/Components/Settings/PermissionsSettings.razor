@@ -3,9 +3,13 @@
 @{
     var m = State.Value;
     var permissions = PermissionsUI.Permissions;
-    var revokeHint = HostInfo.HostKind.IsMauiApp()
-        ? L.Permissions_RevokeHint_App
-        : L.Permissions_RevokeHint_Web;
+    var revokeHint = HostInfo.AppKind switch {
+        AppKind.Android => L.Permissions_RevokeHint_Android_Format(CoreConstants.AppName),
+        AppKind.Ios => L.Permissions_RevokeHint_Ios_Format(CoreConstants.AppName),
+        AppKind.Windows => L.Permissions_RevokeHint_Windows_Format(CoreConstants.AppName),
+        AppKind.MacOS => L.Permissions_RevokeHint_MacOS_Format(CoreConstants.AppName),
+        _ => L.Permissions_RevokeHint_Web,
+    };
 }
 
 <p class="c-description">@L.Permissions_Description_Format(CoreConstants.AppName)</p>
@@ -26,8 +30,8 @@
             </Right>
         </TileItem>
     }
-    <p class="c-description">@revokeHint</p>
 </Tile>
+<p class="c-description">@revokeHint</p>
 
 @if (m.IsKnown && !m.HasMissing) {
     <Tile>
