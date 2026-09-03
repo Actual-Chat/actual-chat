@@ -83,8 +83,8 @@ tables below refers to them by letter.
 | Code | Mechanism | What it warms |
 |---|---|---|
 | **S** | Startup render. The shell, navbar badges, and chat list render on every launch and pull their own data; on MAUI [AppNonScopedServiceStarter.PreloadContacts](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/UI.Blazor.App/Services/AppNonScopedServiceStarter.cs) additionally preloads every contact of the selected place. The per-place unread badges call `ChatListUI.ListUnordered(placeId)` for every place, which runs `ChatUI.Get` for every chat the user has - so the whole chat-list model is warm a few seconds after launch. | `IAccounts.GetOwn`, `INotifications.ListActive`, `IContacts.ListPlaceIds/ListIds/GetForChat`, `IPlaces.Get`, `IChats.Get/GetNews`, `IMentions.GetLastOwn`, `IChatPositions.GetOwn`, `IUserSettings.Get(*)` |
-| **T** | [ChatUI.PrefetchChatTails](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/UI.Blazor.App/Services/ChatUI.StateSync.cs). Starts 20 s after launch, rescans every minute, walks chats touched in the last 365 days newest-first in batches of 10 with a 10 s pause, and for each pulls the last 100 entries via `PrefetchLoadZone` + `PrefetchChatInfo`. Progress is stored in `ChatTailPrefetchState` so a chat is refetched only when it moves. | `IChats.GetTile` (per 5-entry tile, plus one preceding tile), `IConversations.GetTile`, `IChats.Get/GetIdRange/GetRules`, `IAuthors.ListAuthorIds` |
-| **D** | Pointer-down [ChatUI.Prefetch](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/UI.Blazor.App/Services/ChatUI.Tiles.cs) (`data-prefetch` on every chat link). Mirrors exactly what the first `GetChatItems` build will ask for. Only helps when online - it is a latency trick, not an offline one - but it is the only place `IChats.GetChatRangeMeta` is ever warmed ahead of time. | everything in the first build of a chat view |
+| **T** | [ChatUI.PrefetchChatTails](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/UI.Blazor.App/Services/ChatUI.StateSync.cs). Starts 20 s after launch, rescans every minute, walks chats touched in the last 365 days newest-first in batches of 10 with a 10 s pause, and for each pulls the last 100 entries via `PrefetchLoadZone` + `PrefetchChatInfo`. Progress is stored in `ChatTailPrefetchState`, versioned so that a change to this list walks every chat again, and a chat is otherwise refetched only when it moves. | `IChats.GetTile` (per 5-entry tile, plus one preceding tile), `IChats.GetChatRangeMeta` for the meta tiles around the tail, `IConversations.GetTile`, `IChats.Get/GetIdRange/GetRules`, `IAuthors.ListAuthorIds/GetOwn`, `IAuthors.Get` for every author in the tail, `IReactions.ListSummaries/Get` for the tail's reacted entries, `IChats.ListPinnedEntries` and the pinned entries' tiles |
+| **D** | Pointer-down [ChatUI.Prefetch](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/UI.Blazor.App/Services/ChatUI.Tiles.cs) (`data-prefetch` on every chat link). Mirrors exactly what the first `GetChatItems` build will ask for. Only helps when online - it is a latency trick, not an offline one. | everything in the first build of a chat view |
 | **V** | Viewed. Warm only because the user had the thing on screen at some point in this install. | per-message, per-author, per-notification data |
 | **—** | Not prefetched by anything. | |
 
@@ -175,9 +175,9 @@ The tab and sort settings (`ChatListSettings`) are local. The "Threads" tab adds
 | `IChatPositions.GetOwn(session, chatId, Read)` | cached | `ChatUI.LeaseReadPositionState` - awaited before first render | S |
 | `IChats.GetIdRange(session, chatId)` | cached | `ChatView.GetData`, `UpdateReadState`, `ChatUI.IsEmpty` | T |
 | `IChats.GetNews(session, chatId)` | cached | `UpdateReadState`, `NavigateToUnreadOrEnd` | S |
-| `IAuthors.GetOwn(session, chatId)` | cached | `UpdateReadState`, author badges, `LiveBlockUI` | — |
+| `IAuthors.GetOwn(session, chatId)` | cached | `UpdateReadState`, author badges, `LiveBlockUI` | T |
 | `IChats.GetRules(session, chatId)` | cached | Pinned bar, hover and context menus | T |
-| `IChats.ListPinnedEntries` + `IChats.GetEntry` per pin | cached | `ChatPinnedBar` | — |
+| `IChats.ListPinnedEntries` + `IChats.GetEntry` per pin | cached | `ChatPinnedBar` | T |
 | `IUserSettings.Get(UserAppSettings)`, `IUserSettings.Get(ChatUserSettings:{chatId})` | cached | Author colours and translation state, read per message | S |
 | `INotifications.ListActive` | cached | `NavigateToUnreadOrEnd` unread count | S |
 | `IPlaces.Get`, `IPlaces.GetWelcomeChatId`, `IAliases.*` | cached | Place chats, place-root and alias routes | S / V |
@@ -192,7 +192,7 @@ whole build, and with it every scroll request until the peer reconnects.
 | Remote call | Kind | Needed by | Coverage |
 |---|---|---|---|
 | `IChats.Get`, `IChats.GetIdRange` | cached | Every build | S, T |
-| `IChats.GetChatRangeMeta(session, chatId, metaTileStart)` × meta tiles covering the load zone ± `LoadLimit` | cached | Every build. `UseRangeMetaOrLastKnown` stands in only after a first successful read. | **D only** |
+| `IChats.GetChatRangeMeta(session, chatId, metaTileStart)` × meta tiles covering the load zone ± `LoadLimit` | cached | Every build. `UseRangeMetaOrLastKnown` stands in only after a first successful read. | T (around the tail), D |
 | `IConversations.GetTile(session, chatId, metaTileRange)` × meta tiles | cached | Every build, unconditionally | T |
 | `IChats.GetTile(session, chatId, idTileRange)` × id tiles (+1 preceding) | cached | Every tile in the zone, plus a speculative second copy for the adjacent zone | T (last 100 entries only) |
 | `ILiveSessions.GetState(session, chatId)` via `LiveSessionUI.GetConversation`, `LiveSessionUI.GetBlockSnapshot` and `LiveBlockUI.GetBlockState` | **no-cache** | Every build. `UseConversationOrLastKnown` / `UseSnapshotOrLastKnown` **await the first read** - a chat opened for the first time in this process never renders offline. | n/a |
@@ -203,12 +203,12 @@ whole build, and with it every scroll request until the peer reconnects.
 | Remote call | Kind | Needed by | Coverage |
 |---|---|---|---|
 | `IChats.GetEntry(session, entryId)` → the entry's `GetTile` | cached | `ChatEntryMessageInternalView` for every message, `TranscriptUI`, `DateVisor` on every scroll | T (same tiles) |
-| `IAuthors.Get(session, chatId, authorId)` | cached | Every author badge: name and avatar per message group, per reaction avatar, per thread and conversation card | **—** |
-| `IAuthors.GetOwn(session, chatId)` | cached | Every author badge | — |
+| `IAuthors.Get(session, chatId, authorId)` | cached | Every author badge: name and avatar per message group, per reaction avatar, per thread and conversation card | T (authors of the tail) |
+| `IAuthors.GetOwn(session, chatId)` | cached | Every author badge | T |
 | `IAuthors.GetPresence(session, chatId, authorId)` | cached | Presence dot on every message-group avatar | — |
 | `ILiveSessions.GetAudioStreamingAuthorIds` | **no-cache**, not gated | `AuthorPresenceIndicator` with `ShowRecording` on every message-group avatar; the indicator keeps its initial state while it pends | n/a |
 | `IChats.GetEntry(repliedEntryId)` | cached | Reply quotes | T if the quoted entry is in the tail, — otherwise |
-| `IReactions.ListSummaries`, `IReactions.Get` | cached | Entries with reactions | — |
+| `IReactions.ListSummaries`, `IReactions.Get` | cached | Entries with reactions | T (reacted entries of the tail) |
 | `IChats.IsEntryReadByMentionedUser` per mention; `IAuthors.GetByUserId`, `IAccounts.GetOwn`, `IContacts.Get` for `@u:` mentions | cached | Mention chips | — |
 | `IChats.GetReadPositionsStat`, `IAuthors.ListAuthorIds` | cached | Read ticks on own messages | — / T |
 | `INotifications.HasNotifiedMentionedMembers` | cached | Own messages with mentions | — |
@@ -244,21 +244,18 @@ question is what they do while offline.
 ## What the routine prefetch leaves cold
 
 Reading the coverage columns together, this is what a chat that the tail prefetcher has fully
-processed still lacks when opened cold, ordered by how visibly it breaks the screen:
+processed still lacks when opened cold, ordered by how visibly it breaks the screen. The range
+meta, the tail's authors, its reactions and its pins used to head this list; the tail prefetcher
+warms them now.
 
 | Gap | Effect offline | Cost to close |
 |---|---|---|
-| `IChats.GetChatRangeMeta` for the meta tiles around the tail | **The chat view never renders** - every build awaits it | One extra call per meta tile in `PrefetchLoadZone`, using the same tile arithmetic as `GetChatItemsInternal` |
 | `ILiveSessions.GetState` first read in `LiveSessionUI` | **The chat view never renders** - not a prefetch gap, a `no-cache` await | Stand in `null` when nothing is known yet (see the plan) |
-| `IAuthors.Get` for the tail's authors | Every message group shows an empty name and avatar | One call per distinct author in the fetched tiles |
-| `IAuthors.GetOwn` | Own-message detection in badges and `UpdateReadState` | One call per chat |
-| `IReactions.ListSummaries` for entries that have reactions | Reactions render blank | One call per reacted entry in the tail |
 | Thread cards: `IChats.Get(thread)`, `GetThreadCreator`, `GetThreadStat`, the thread's own tail | Thread cards render empty | Three calls plus a tile per thread start in the tail |
-| `IChats.ListPinnedEntries` + the pinned entries' tiles | Pinned bar empty | One call plus a tile per pin |
 | `IAuthors.Get` / `IAccounts.Get` / `IUserPresences.Get` for list rows never scrolled into view | Row name or avatar missing | Already partly covered by `PreloadContacts`; cheap to extend |
 | `IChats.Get` + `IAuthors.Get` per reaction notification | Notification rows empty | Walk `INotifications.ListActive` once |
 | Reply quotes, mention chips, link previews, forwards, locations, translations older than the tail | The affected fragment stays blank | Out of proportion to their frequency; accept as component-local pending state |
 
 Everything in the "chat list" and "shell" tables is already warm after a normal launch, because
-the badges and the list render it. The gaps are concentrated in the chat view, and two of them are
-blockers rather than blemishes.
+the badges and the list render it. What remains is concentrated in the chat view, and the one
+blocker left is an await, not a cache gap.

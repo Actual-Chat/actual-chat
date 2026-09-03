@@ -11,6 +11,7 @@ public sealed partial record ChatTailPrefetchState : IHasKvasKey<ChatTailPrefetc
 {
     [DataMember, Key(0)] public Moment Boundary { get; init; }
     [DataMember, Key(1)] public ApiArray<ChatTailPrefetch> Chats { get; init; } = [];
+    [DataMember, Key(2)] public int Version { get; init; }
 }
 
 [DataContract, MessagePackObject]
