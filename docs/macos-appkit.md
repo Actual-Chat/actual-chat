@@ -99,6 +99,9 @@ flowchart LR
 - The statics patch runs twice (from `Main` and from `AddMacOSEssentials`), and each run calls
   `VersionTracking.Track()` on a fresh instance, so `IsFirstLaunchForCurrentVersion` reads
   false even on a genuine first launch. Voxt does not use `VersionTracking`.
+- Closing the window logs a burst of `InvalidOperationException: VirtualView cannot be null here`
+  from the labs `WindowHandler.OnWindowClosed`: the handler is already disconnected when
+  `WillClose` fires. First-chance only, the app still exits cleanly.
 :::
 
 ### Diagnostics

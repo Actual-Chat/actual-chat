@@ -33,8 +33,16 @@ fi
 
 # Terminate a previous instance, then launch through LaunchServices: a binary started straight
 # from a shell has its TCC decisions (contacts, microphone, ...) attributed to the terminal, not
-# to the app. -W keeps this script alive until the app quits; stdout/stderr still reach it.
+# to the app. -W keeps this script alive until the app quits; its output is streamed from a
+# temp file - LaunchServices wants a real path for --stdout, a pipe (CI, wrappers) fails with -10810.
 # pkill takes a regex, and "Voxt (Dev).app" would read as a group - so the path is escaped
 pkill -f "$(printf '%s' "$APP_PATH/Contents/MacOS/" | sed 's/[][()\\.*^$]/\\&/g')" 2>/dev/null
 echo "Launching: $APP_PATH"
-exec open -W --stdout /dev/stdout --stderr /dev/stderr "$APP_PATH"
+APP_OUT="$(mktemp -t voxt-mac)"
+open -W --stdout "$APP_OUT" --stderr "$APP_OUT" "$APP_PATH" &
+OPEN_PID=$!
+tail -f "$APP_OUT" &
+TAIL_PID=$!
+wait "$OPEN_PID"
+kill "$TAIL_PID" 2>/dev/null
+rm -f "$APP_OUT"
