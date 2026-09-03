@@ -20,7 +20,7 @@
                     @if (countdown.IsUnlimited) {
                         <i class="icon-infinity"></i>
                     } else {
-                        <span>@countdown.Text</span>
+                        <span>@countdown.GetText(L)</span>
                     }
                 </RoundProgress>
             }
@@ -46,10 +46,10 @@
             <div class="c-info">
                 <div class="c-title">@Title(m)</div>
                 <div class="c-caption">
-                    @if (m.DistanceText.IsNullOrEmpty()) {
-                        @m.Center.ToDisplayText()
+                    @if (m.Distance is { } distance) {
+                        @L.LocationMessage_DistanceFromYou_Format(L.DistanceText(distance))
                     } else {
-                        @L.LocationMessage_DistanceFromYou_Format(m.DistanceText)
+                        @m.Center.ToDisplayText()
                     }
                 </div>
             </div>
@@ -98,22 +98,22 @@
         var trackingError = isOwnLive
             ? await LocationUI.GetTrackingError(chatId, cancellationToken).ConfigureAwait(false)
             : null;
-        var distanceText = isOwn ? "" : await GetDistanceText(location.Point, cancellationToken).ConfigureAwait(false);
+        var distance = isOwn ? null : await GetDistance(location.Point, cancellationToken).ConfigureAwait(false);
         return new Model(
             location.Point,
             [marker],
             countdown,
             isOwnLive,
-            distanceText,
+            distance,
             trackingError,
             location.IsPlace);
     }
 
     // Private methods
 
-    private async Task<string> GetDistanceText(GeoPoint target, CancellationToken cancellationToken) {
+    private async Task<double?> GetDistance(GeoPoint target, CancellationToken cancellationToken) {
         var ownPoint = await LocationUI.GetCurrentLocation(cancellationToken).ConfigureAwait(false);
-        return ownPoint != null ? ownPoint.DistanceTextTo(target) : "";
+        return ownPoint?.DistanceTo(target);
     }
 
     private Task OnOpenMap()
@@ -137,7 +137,7 @@
         IReadOnlyList<MapMarker> Markers,
         LocationCountdown? Countdown,
         bool IsOwnLive,
-        string DistanceText = "",
+        double? Distance = null,
         GeoTrackingError? TrackingError = null,
         bool IsPlace = false) {
         public bool IsLive => Countdown is not null;

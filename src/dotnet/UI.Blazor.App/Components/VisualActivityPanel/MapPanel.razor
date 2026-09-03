@@ -16,8 +16,8 @@
         <HeaderButton Class="btn-video-panel c-expand" Click="@OnExpandClick">
             <i class="icon-expand text-lg"></i>
         </HeaderButton>
-        @if (!m.DistanceText.IsNullOrEmpty()) {
-            <div class="c-distance">@m.DistanceText away</div>
+        @if (m.Distance is { } distance) {
+            <div class="c-distance">@L.Location_DistanceAway_Format(L.DistanceText(distance))</div>
         }
         <HeaderButton Class="btn-video-panel c-menu-btn" Click="@OnOpenMenu">
             <i class="icon-more-vertical text-lg"></i>
@@ -27,7 +27,7 @@
                 @if (countdown.IsUnlimited) {
                     <i class="icon-infinity"></i>
                 } else {
-                    <span>@countdown.Text</span>
+                    <span>@countdown.GetText(L)</span>
                 }
             </RoundProgress>
         }
@@ -103,10 +103,10 @@
         // The "1.2 km away" chip makes sense only for a single remote sharer
         var remoteSharers = participants.Where(p => !p.IsOwn).ToList();
         var ownPoint = await LocationUI.GetOwnCurrentOrSharedLocation(chatId, cancellationToken).ConfigureAwait(false);
-        var distanceText = remoteSharers.Count == 1 && ownPoint is { } point
-            ? point.DistanceTextTo(remoteSharers[0].Location.Point)
-            : "";
-        return new Model(markers, center, countdown, ownLive is not null, distanceText, isMenuOpen);
+        var distance = remoteSharers.Count == 1 && ownPoint is { } point
+            ? point.DistanceTo(remoteSharers[0].Location.Point)
+            : (double?)null;
+        return new Model(markers, center, countdown, ownLive is not null, distance, isMenuOpen);
     }
 
     // Private methods
@@ -147,6 +147,6 @@
         GeoPoint Center,
         LocationCountdown? Countdown,
         bool IsOwnSharing,
-        string DistanceText = "",
+        double? Distance = null,
         bool IsMenuOpen = false);
 }

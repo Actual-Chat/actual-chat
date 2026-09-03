@@ -1115,6 +1115,15 @@
   "Location_ShareForDurationCaption": "Обновляется в реальном времени по мере движения",
   "Location_ChoosePlaceOnMap": "Chọn một địa điểm trên bản đồ",
   "Location_ChoosePlaceCaption": "Herhangi bir nokta - bulunduğunuz yer olmak zorunda değil",
+  "Location_ShareForMinutes": "for {0} minutes",
+  "Location_ShareForHours": "for {0} hours",
+  "Location_ShareUntilTurnedOff": "Bis zum Ausschalten",
+  "Location_AccurateTo_Format": "{0} hassasiyetinde",
+  "Location_DistanceAway_Format": "{0} удаљено",
+  "Location_CountdownHours_Format": "{0}時間",
+  "Location_MapTypeMap": "मानचित्र",
+  "Location_MapTypeSatellite": "Супутник",
+  "Location_MapTypeHybrid": "ハイブリッド",
 
   // Empty states of the right panel's Media, Files and Links tabs.
   "Content_NoFiles": "ファイルはまだありません",
@@ -1831,6 +1840,8 @@
   "Duration_Days_Format": "{0} ngày",
   "Duration_Hours_Format": "{0} godz.",
   "Duration_Minutes_Format": "{0} phút",
+  "Distance_Meters_Format": "{0} मी",
+  "Distance_Kilometers_Format": "{0} किमी",
 
   // Invite link management in chat and place settings. A join link is a URL, so "private" here
   // is the borrowed adjective, not the closed/open pair used for access modes.

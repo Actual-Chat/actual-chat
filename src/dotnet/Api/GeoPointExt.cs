@@ -15,9 +15,6 @@ public static class GeoPointExt
         public string LongitudeText()
             => point.Longitude.ToString(CoordinateFormat, null);
 
-        public string DistanceTextTo(GeoPoint other)
-            => DistanceText(point.DistanceTo(other));
-
         public double DistanceTo(GeoPoint other)
         {
             // Haversine great-circle distance in meters.
@@ -31,12 +28,4 @@ public static class GeoPointExt
             return 2 * earthRadius * Math.Asin(Math.Sqrt(h));
         }
     }
-
-    public static string DistanceText(double meters)
-        => meters switch {
-            < 1 => "1 m",
-            < 1000 => $"{meters:F0} m",
-            < 10_000 => $"{meters / 1000:F1} km",
-            _ => $"{meters / 1000:F0} km",
-        };
 }

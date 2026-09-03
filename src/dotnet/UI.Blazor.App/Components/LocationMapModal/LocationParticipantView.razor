@@ -4,7 +4,7 @@
     var location = Participant.Location;
     var menuRef = MenuRef.New<LocationParticipantMenu>(location.AuthorId.ChatId.Value, location.Id.Value).ToString();
     var distanceText = !Participant.IsOwn && OwnPoint is { } ownPoint
-        ? ownPoint.DistanceTextTo(Participant.Location.Point)
+        ? L.DistanceText(ownPoint, Participant.Location.Point)
         : "";
 }
 
