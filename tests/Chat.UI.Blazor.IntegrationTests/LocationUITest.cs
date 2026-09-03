@@ -1,3 +1,4 @@
+using ActualChat.Localization;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
@@ -38,7 +39,7 @@ public class LocationUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
             () => LocationUI.GetCountdown(chatId, locationId, cancellationToken),
             cancellationToken);
         computed.Value.Should().NotBeNull();
-        computed.Value!.Text.Should().NotBeEmpty();
+        computed.Value!.GetText(LanguageStringLocalizer.Get(Languages.English)).Should().NotBeEmpty();
         computed.IsConsistent().Should().BeTrue();
 
         // act
