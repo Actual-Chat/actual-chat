@@ -362,6 +362,22 @@ code
         m.Language.Should().Be("");
         m.Code.Should().Be("code");
 
+        m = Parse<CodeBlockMarkup>("```c#\ncode\n```");
+        m.Language.Should().Be("c#");
+        m.Code.Should().Be("code");
+
+        m = Parse<CodeBlockMarkup>("```C++\ncode\n```");
+        m.Language.Should().Be("C++");
+        m.Code.Should().Be("code");
+
+        m = Parse<CodeBlockMarkup>("```cs \u00a0\ncode\n```", false);
+        m.Language.Should().Be("cs", "trailing whitespace after the language isn't part of it");
+        m.Code.Should().Be("code");
+
+        m = Parse<CodeBlockMarkup>("```cs extra\ncode\n```", false);
+        m.Language.Should().Be("", "the fence line must hold a single word to be a language");
+        m.Code.Should().Be("cs extra\r\ncode");
+
         m = Parse<CodeBlockMarkup>(@"```cs
 ```");
         m.Language.Should().Be("cs");

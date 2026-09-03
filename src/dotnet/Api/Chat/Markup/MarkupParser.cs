@@ -124,6 +124,7 @@ public sealed partial class MarkupParser : IMarkupParser
     private static readonly Func<char, bool> IsNotEndOfLineChar = c => c is not ('\r' or '\n' or '\u2028');
     private static readonly Func<char, bool> IsIdChar =
         c => char.IsLetterOrDigit(c) || c is '_' or '-' or ':' or '.' or '%' or '~';
+    private static readonly Func<char, bool> IsCodeBlockLanguageChar = c => c != '`' && !char.IsWhiteSpace(c);
     private static readonly Func<char, bool> IsSpecialChar = c => c is '*' or '`' or '@' or '|';
     private static readonly Func<char, bool> IsNotSpecialOrWhitespaceChar =
         c => !(char.IsWhiteSpace(c) || c is '*' or '`' or '@' or '|');
@@ -322,7 +323,10 @@ public sealed partial class MarkupParser : IMarkupParser
 
     // Code block
     private static readonly Parser<char, string> CodeBlockWithLanguageStart =
-        CodeBlockToken.Then(CharRun.String(IsIdChar).Before(EndOfLine)); // Language
+        CodeBlockToken
+            .Then(CharRun.String(IsCodeBlockLanguageChar))
+            .Before(CharRun.Skip(IsWhitespaceChar))
+            .Before(EndOfLine); // Language
     private static readonly Parser<char, string> CodeBlockWithoutLanguageStart =
         CodeBlockToken.ThenReturn(""); // Language
     private static readonly Parser<char, char> CodeBlockEnd =
@@ -372,7 +376,7 @@ public sealed partial class MarkupParser : IMarkupParser
         from language in TryOneOf(CodeBlockWithLanguageStart, CodeBlockWithoutLanguageStart)
         from code in Try(CodeBlockCode).Optional()
         from end in CodeBlockEndOrEof
-        select (Markup)new CodeBlockMarkup(code.GetValueOrDefault(""), language.TrimEnd())
+        select (Markup)new CodeBlockMarkup(code.GetValueOrDefault(""), language)
         ).Debug("<Code>");
 
     // Block-level pieces that don't depend on any grammar variant, so they're built once rather
