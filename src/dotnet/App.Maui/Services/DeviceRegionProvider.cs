@@ -17,6 +17,8 @@ public static class DeviceRegionProvider
             return GetAndroidRegion();
 #elif IOS || MACCATALYST
             return GetIOSRegion();
+#elif MACOS
+            return GetMacOSRegion();
 #elif WINDOWS
             return GetWindowsRegion();
 #else
@@ -82,6 +84,15 @@ public static class DeviceRegionProvider
             return regionCode;
 
         return "US"; // Final fallback
+    }
+#endif
+
+#if MACOS
+    private static string GetMacOSRegion()
+    {
+        var locale = Foundation.NSLocale.CurrentLocale;
+        var countryCode = (locale.CountryCode ?? locale.RegionCode)?.ToUpperInvariant();
+        return countryCode is { Length: 2 } ? countryCode : "US";
     }
 #endif
 

@@ -280,7 +280,11 @@ public static partial class MauiProgram
         // Core services
         services.AddLogging(logging => logging.ClearProviders());
         services.AddSingleton(Tracer.Default);
+#if MACOS
+        services.AddSingleton<IDeviceIdProvider>(_ => new MacOSDeviceIdProvider());
+#else
         services.Add(GetDeviceIdProviderServiceDescriptor());
+#endif
         // Core MAUI services
         services.AddMauiBlazorWebView();
         AddSafeJSRuntime(services);
@@ -289,10 +293,12 @@ public static partial class MauiProgram
         ConfigureBlazorWebViewAppServices(services);
     }
 
+#if !MACOS
     private static ServiceDescriptor GetDeviceIdProviderServiceDescriptor()
         => MauiApp.CreateBuilder(false)
             .ConfigureDeviceIdProvider()
             .Services.First(c => c.ServiceType == typeof(IDeviceIdProvider));
+#endif
 
     private static void AddSafeJSRuntime(IServiceCollection services)
     {

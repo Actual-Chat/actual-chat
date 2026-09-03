@@ -194,8 +194,8 @@ public partial class MauiWebView
                 _ => false,
             };
 
-            bool IsGranted(AVAuthorizationMediaType type1)
-                => AVCaptureDevice.GetAuthorizationStatus(type1) == AVAuthorizationStatus.Authorized;
+            static bool IsGranted(AVAuthorizationMediaType mediaType)
+                => MacOSMediaCapture.IsGranted(mediaType) == true;
         }
     }
 }

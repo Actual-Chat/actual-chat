@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using ActualLab.Generators;
 using ActualChat.UI;
 using Microsoft.Maui.Storage;
 
@@ -20,6 +21,7 @@ public static class MauiPreferences
     private const string UILanguageKey = "UILanguage";
     private const string MinReportableClientVersionKey = "min_reportable_client_version";
     private const string IsPttArmedKey = "is_ptt_armed";
+    private const string InstallationIdKey = "installation_id";
 
     private static readonly Lock Lock = new();
     private static readonly ConcurrentDictionary<string, object?> Cache = new();
@@ -82,6 +84,13 @@ public static class MauiPreferences
         get => Get<string>(MinReportableClientVersionKey).NullIfEmpty();
         set => Set(MinReportableClientVersionKey, value ?? "");
     }
+
+#if MACOS
+    // MacOSDeviceIdProvider's fallback for a Mac without a hardware UUID: minted once, then
+    // persisted in the user defaults, so it lasts until those are wiped.
+    public static string InstallationId
+        => Get(InstallationIdKey, static () => RandomStringGenerator.Default.Next())!;
+#endif
 
     public static bool IsPttArmed {
         // Mirrors the app's armed-chat state so MainActivity can raise the PTT foreground
