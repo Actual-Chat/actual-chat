@@ -195,7 +195,7 @@ public partial class MauiWebView
             };
 
             static bool IsGranted(AVAuthorizationMediaType mediaType)
-                => MacOSPermissions.IsMediaCaptureGranted(mediaType) == true;
+                => MacOSMediaCapture.IsGranted(mediaType) == true;
         }
     }
 }

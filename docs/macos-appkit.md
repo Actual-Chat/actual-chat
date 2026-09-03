@@ -1,5 +1,4 @@
 # macOS AppKit backend
-
 The Mac app runs on the experimental AppKit backend from
 [dotnet/maui-labs](https://github.com/dotnet/maui-labs) (`net11.0-macos`), so Voxt is a
 native AppKit process with a WKWebView inside, not a Mac Catalyst app. Mac Catalyst is kept
@@ -80,16 +79,8 @@ flowchart LR
 | [MacOSEssentialsDefaults](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/MacOSEssentialsDefaults.cs), called from [Program.Main](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/Program.cs) before any managed code | labs exposes a public entry point, or Essentials ships a macos implementation |
 | The `AddMacOSEssentials()` call ahead of `CreateHostInfo` in [MauiProgram.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/MauiProgram.cs) | same |
 | [MacOSMainThread](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/MacOSMainThread.cs), aliased as `MainThread` in [AppServicesAccessor.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/AppServicesAccessor.cs) | Essentials' `MainThread` works on the macos TFM |
-
-Permissions and Contacts are missing from labs Essentials too, but those are implemented natively
-rather than worked around, and stay that way:
-[MacOSPermissions](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/MacOSPermissions.cs)
-makes the same `AVCaptureDevice`, `CLLocationManager` and `CNContactStore` calls Essentials makes
-on iOS, the `MacOS*PermissionHandler` classes are the AppKit twins of the `Maui*` ones, and
-[MacOSContacts](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/MacOSContacts.cs)
-enumerates `CNContactStore` into the `MauiContacts` mapping. The device id behind contact ids is
-minted once per install (`MauiPreferences.DeviceId`), because the vendor-id plugin has no macos
-build.
+| The `MacOS*PermissionHandler` classes in [Platforms/MacOS](https://github.com/Actual-Chat/actual-chat/tree/main/src/dotnet/App.Maui/Platforms/MacOS), AppKit twins of the `Maui*` ones on the same `AVCaptureDevice`, `CLLocationManager` and `CNContactStore` calls Essentials makes on iOS; [MacOSMediaCapture](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/MacOSMediaCapture.cs) holds the microphone/camera pair the WebKit media-capture delegate reads too | labs implements Permissions |
+| [MacOSContacts](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/MacOSContacts.cs) enumerates `CNContactStore` into the `MauiContacts` mapping, with a per-install device id from `MauiPreferences.DeviceId` because the vendor-id plugin has no macos build | labs implements Contacts and the plugin gains a macos build |
 
 ::: warning Known labs quirks that are not worked around
 - `FileSystem.AppDataDirectory` is `~/Library` and `CacheDirectory` is `~/Library/Caches`, with

@@ -70,6 +70,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
         // Permissions
 #if MACOS
+        // TODO(maui-labs): back to the Maui* handlers once labs Essentials implements Permissions.
         // The labs Essentials package has no Permissions implementation - the Maui* handlers
         // would throw from every check - so the AppKit ones ask TCC directly.
         services.AddScoped<MicrophonePermissionHandler>(c => new MacOSMicrophonePermissionHandler(c.UIHub()));
@@ -168,6 +169,8 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
         // Contacts
 #if MACOS
+        // TODO(maui-labs): back to MauiContacts + MauiContactsPermissionHandler once Essentials
+        // Contacts is implemented on macos.
         // Same as the permission handlers above: Essentials Contacts is unimplemented on macos
         services.AddScoped<DeviceContacts>(c => new MacOSContacts(c));
         services.AddScoped<ContactsPermissionHandler>(c => new MacOSContactsPermissionHandler(c.UIHub()));

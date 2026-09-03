@@ -7,12 +7,14 @@ using MauiContactPhone = Microsoft.Maui.ApplicationModel.Communication.ContactPh
 
 namespace ActualChat.App.Maui;
 
+// TODO(maui-labs): delete once Essentials' Contacts is implemented on the macos TFM - MauiContacts
+// then applies, with a device id from a macos build of banditoth.MAUI.DeviceId instead of MauiPreferences.
 /// <summary>
 /// <see cref="MauiContacts"/> on CNContactStore: the labs Essentials package implements neither
 /// Contacts nor a device id, so both come from here.
 /// </summary>
 [method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MacOSContacts))]
-public class MacOSContacts(IServiceProvider services) : MauiContacts(services)
+public sealed class MacOSContacts(IServiceProvider services) : MauiContacts(services)
 {
     private static readonly NSString[] FetchKeys = [
         CNContactKey.Identifier,

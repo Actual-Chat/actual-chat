@@ -6,10 +6,11 @@ using AVFoundation;
 
 namespace ActualChat.App.Maui;
 
+// TODO(maui-labs): see MacOSMediaCapture
 /// <summary>
-/// AppKit twin of <see cref="MauiMicrophonePermissionHandler"/> on <see cref="MacOSPermissions"/>.
+/// AppKit twin of <see cref="MauiMicrophonePermissionHandler"/> on <see cref="MacOSMediaCapture"/>.
 /// </summary>
-public class MacOSMicrophonePermissionHandler : MicrophonePermissionHandler
+public sealed class MacOSMicrophonePermissionHandler : MicrophonePermissionHandler
 {
     public MacOSMicrophonePermissionHandler(UIHub hub, bool mustStart = true)
         : base(hub, false)
@@ -22,13 +23,13 @@ public class MacOSMicrophonePermissionHandler : MicrophonePermissionHandler
 
     protected override Task<bool?> Get(CancellationToken cancellationToken)
     {
-        var isGranted = MacOSPermissions.IsMediaCaptureGranted(AVAuthorizationMediaType.Audio);
+        var isGranted = MacOSMediaCapture.IsGranted(AVAuthorizationMediaType.Audio);
         Log.LogInformation("Get: {IsGranted}", isGranted);
         return Task.FromResult(isGranted);
     }
 
     protected override Task<bool> Request(CancellationToken cancellationToken)
-        => MacOSPermissions.RequestMediaCapture(AVAuthorizationMediaType.Audio);
+        => MacOSMediaCapture.Request(AVAuthorizationMediaType.Audio);
 
     protected override async Task Troubleshoot(CancellationToken cancellationToken)
     {

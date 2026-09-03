@@ -5,10 +5,11 @@ using AVFoundation;
 
 namespace ActualChat.App.Maui;
 
+// TODO(maui-labs): see MacOSMediaCapture
 /// <summary>
-/// AppKit twin of <see cref="MauiCameraPermissionHandler"/> on <see cref="MacOSPermissions"/>.
+/// AppKit twin of <see cref="MauiCameraPermissionHandler"/> on <see cref="MacOSMediaCapture"/>.
 /// </summary>
-public class MacOSCameraPermissionHandler : CameraPermissionHandler
+public sealed class MacOSCameraPermissionHandler : CameraPermissionHandler
 {
     public MacOSCameraPermissionHandler(UIHub hub, bool mustStart = true)
         : base(hub, false)
@@ -20,13 +21,13 @@ public class MacOSCameraPermissionHandler : CameraPermissionHandler
 
     protected override Task<bool?> Get(CancellationToken cancellationToken)
     {
-        var isGranted = MacOSPermissions.IsMediaCaptureGranted(AVAuthorizationMediaType.Video);
+        var isGranted = MacOSMediaCapture.IsGranted(AVAuthorizationMediaType.Video);
         Log.LogInformation("Get: {IsGranted}", isGranted);
         return Task.FromResult(isGranted);
     }
 
     protected override Task<bool> Request(CancellationToken cancellationToken)
-        => MacOSPermissions.RequestMediaCapture(AVAuthorizationMediaType.Video);
+        => MacOSMediaCapture.Request(AVAuthorizationMediaType.Video);
 
     protected override Task Troubleshoot(CancellationToken cancellationToken)
         => OpenSystemSettings();
