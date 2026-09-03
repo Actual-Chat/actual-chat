@@ -110,6 +110,18 @@ public static class MauiDiagnostics
             .WriteTo.Sink(new AndroidFirebaseCrashlyticsSink());
 #elif IOS
         logging = logging.WriteTo.AppleLog();
+#elif MACOS
+        // The MaciOS AppleLog sink isn't compiled for the macos TFM and Sentry's native crash
+        // capture (Cocoa bindings) doesn't cover it either - the managed Sentry sink below still
+        // runs - so a plain file is where the AppKit app's logs land.
+        // TODO(maui-labs): add WriteTo.AppleLog (move MaciOS/Logging to MacShared) and native
+        // Sentry once the backend is officially supported.
+        AppDataLogFilePath = Path.Combine(FileSystem.AppDataDirectory, "Logs", "ActualChat.log");
+        logging = logging.WriteTo.File(AppDataLogFilePath,
+            outputTemplate: LoggingExt.OutputTemplate,
+            fileSizeLimitBytes: LoggingExt.FileSizeLimit,
+            rollOnFileSizeLimit: true,
+            retainedFileCountLimit: LoggingExt.RetainedFileCountLimit);
 #endif
         return logging;
     }

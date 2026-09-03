@@ -1138,17 +1138,17 @@ export class AudioContextSource {
 // Init
 // =====================================================
 
-export const audioContextSource = BrowserInfo.hostKind === 'MauiApp'
-    ? null! as AudioContextSource
-    : new AudioContextSource('playback');
+export const audioContextSource = BrowserInfo.useWebAudio
+    ? new AudioContextSource('playback')
+    : null! as AudioContextSource;
 globalThis.audioContextSource = audioContextSource;
 
-export const recordingAudioContextSource = BrowserInfo.hostKind === 'MauiApp'
-    ? null! as AudioContextSource
-    : new AudioContextSource('recording');
+export const recordingAudioContextSource = BrowserInfo.useWebAudio
+    ? new AudioContextSource('recording')
+    : null! as AudioContextSource;
 globalThis.recordingAudioContextSource = recordingAudioContextSource;
 
-if (BrowserInfo.hostKind !== 'MauiApp') {
+if (BrowserInfo.useWebAudio) {
     resetMediaSessionMetadata();
 
     // Register DestinationFallbackTrait for iOS Safari
