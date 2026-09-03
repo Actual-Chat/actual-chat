@@ -16,12 +16,29 @@ import kotlin from 'highlight.js/lib/languages/kotlin';
 import c from 'highlight.js/lib/languages/c';
 import cpp from 'highlight.js/lib/languages/cpp';
 import csharp from 'highlight.js/lib/languages/csharp';
+import sql from 'highlight.js/lib/languages/sql';
+import swift from 'highlight.js/lib/languages/swift';
+import dart from 'highlight.js/lib/languages/dart';
+import powershell from 'highlight.js/lib/languages/powershell';
+import shell from 'highlight.js/lib/languages/shell';
+import dockerfile from 'highlight.js/lib/languages/dockerfile';
+import ini from 'highlight.js/lib/languages/ini';
+import markdown from 'highlight.js/lib/languages/markdown';
+import diff from 'highlight.js/lib/languages/diff';
+import plaintext from 'highlight.js/lib/languages/plaintext';
 import { getLogs } from 'logging';
 import { Theme, ThemeInfo } from 'theme';
 
 const { errorLog } = getLogs('CodeBlockMarkupView');
 
-export function highlightCode(root: HTMLElement, languageName: string, code: string) {
+// Auto-detection scans only these: the rest are registered for explicit ```lang fences,
+// and letting them compete makes guesses on unlabeled snippets noticeably worse.
+const AutoDetectLanguages = [
+    'bash', 'javascript', 'typescript', 'json', 'xml', 'yaml', 'css',
+    'python', 'go', 'rust', 'java', 'kotlin', 'c', 'cpp', 'csharp',
+];
+
+export function highlightCode(root: HTMLElement, languageName: string | null, code: string) {
     const pre = root.querySelector('pre');
     if (!pre)
         return;
@@ -29,24 +46,30 @@ export function highlightCode(root: HTMLElement, languageName: string, code: str
     if (!codeElement)
         return;
 
-    let primaryLanguage = languageName;
+    const requestedLanguage = languageName ?? '';
+    let primaryLanguage = requestedLanguage;
+    let isKnownLanguage = false;
     try {
-        const language = hljs.getLanguage(languageName);
+        const language = hljs.getLanguage(requestedLanguage);
         if (language) {
-            codeElement.innerHTML = hljs.highlight(code, { language: languageName }).value;
+            codeElement.innerHTML = hljs.highlight(code, { language: requestedLanguage }).value;
+            isKnownLanguage = true;
         } else if (looksLikeTable(code)) {
             codeElement.innerHTML = highlightTableCells(code);
-            primaryLanguage = '';
         } else {
-            const result = hljs.highlightAuto(code);
+            const result = hljs.highlightAuto(code, AutoDetectLanguages);
             codeElement.innerHTML = result.value;
-            primaryLanguage = result.language ?? '';
+            if (!requestedLanguage)
+                primaryLanguage = result.language ?? '';
         }
     } catch (e) {
         errorLog?.log(`highlightCode: failed to highlight code`, e);
     }
 
-    updateLanguageLabel(root, codeElement, primaryLanguage);
+    if (requestedLanguage && !isKnownLanguage)
+        setLanguageLabel(root, requestedLanguage);
+    else
+        updateLanguageLabel(root, codeElement, primaryLanguage);
     setupWrapToggle(root);
 }
 
@@ -83,11 +106,14 @@ function highlightTableCells(code: string): string {
 }
 
 function updateLanguageLabel(root: HTMLElement, codeElement: HTMLElement, primaryLanguage: string) {
-    const label = root.querySelector('.code-block-language');
-    if (!label)
-        return;
     const langs = computeLanguageDistribution(codeElement, primaryLanguage);
-    label.textContent = formatLanguageLabel(langs);
+    setLanguageLabel(root, formatLanguageLabel(langs));
+}
+
+function setLanguageLabel(root: HTMLElement, text: string) {
+    const label = root.querySelector('.code-block-language');
+    if (label)
+        label.textContent = text;
 }
 
 function computeLanguageDistribution(codeElement: HTMLElement, primaryLanguage: string): { name: string, length: number }[] {
@@ -168,6 +194,16 @@ function init() {
     hljs.registerLanguage('c', c);
     hljs.registerLanguage('cpp', cpp);
     hljs.registerLanguage('csharp', csharp);
+    hljs.registerLanguage('sql', sql as unknown as LanguageFn);
+    hljs.registerLanguage('swift', swift);
+    hljs.registerLanguage('dart', dart as unknown as LanguageFn);
+    hljs.registerLanguage('powershell', powershell as unknown as LanguageFn);
+    hljs.registerLanguage('shell', shell);
+    hljs.registerLanguage('dockerfile', dockerfile);
+    hljs.registerLanguage('ini', ini);
+    hljs.registerLanguage('markdown', markdown);
+    hljs.registerLanguage('diff', diff);
+    hljs.registerLanguage('plaintext', plaintext as unknown as LanguageFn);
 
     if (Theme.info)
         applyTheme(Theme.info);
