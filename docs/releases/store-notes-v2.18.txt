@@ -1,0 +1,8 @@
+Invite friends with a QR code, talk in your car with Android Auto, see who's typing, and enjoy steadier video streams.
+• Share any link as a QR code, scan a friend's to add them
+• Android Auto: playback to the car, recording from the phone
+• Typing indicators in the header, chat list and members
+• Reactions tab in notifications, chat-titled banners on iOS
+• New Permissions tab and a rebuilt time zone editor
+• Video streams: better codecs, Firefox support
+• Faster startup, dozens of small fixes
