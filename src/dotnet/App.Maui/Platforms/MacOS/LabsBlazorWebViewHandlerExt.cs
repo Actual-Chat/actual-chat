@@ -3,6 +3,8 @@ using WebKit;
 
 namespace ActualChat.App.Maui;
 
+// TODO(maui-labs): delete once the labs BlazorWebViewHandler raises a BlazorWebViewInitializing-
+// style event - MacOSCustomBlazorWebViewHandler.CreatePlatformView goes with it.
 /// <summary>
 /// Reflection access to the private pieces of the maui-labs <see cref="BlazorWebViewHandler"/>
 /// that a subclassed <c>CreatePlatformView</c> has to reuse. Every lookup fails fast, so a labs

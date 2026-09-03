@@ -10,6 +10,7 @@
     <TargetFrameworks>net11.0-android;</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net11.0-ios;net11.0-maccatalyst</TargetFrameworks>
     <!-- Experimental AppKit backend (dotnet/maui-labs); opt-in so machines without the `macos` workload still restore -->
+    <!-- TODO(maui-labs): make net11.0-macos a default osx TFM, like maccatalyst, once the AppKit backend is officially supported -->
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx')) AND '$(EnableMacOSAppKit)' == 'true'">$(TargetFrameworks);net11.0-macos</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net11.0-windows10.0.22621.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
@@ -587,7 +588,8 @@
 
   <!-- NBGV ships NBGV_SetVersionForMauiIOS for the ios/maccatalyst TPIs only, so without
        this twin the AppKit package ships as 1.0 instead of the version every other app
-       carries. Same anchor and 3-part version convention as the NBGV original. -->
+       carries. Same anchor and 3-part version convention as the NBGV original.
+       TODO(maui-labs): drop once NBGV covers the macos TPI. -->
   <Target Name="NBGV_SetVersionForMacOS"
           Condition="$(TargetFramework.Contains('-macos'))"
           BeforeTargets="_CompileAppManifest"
@@ -795,7 +797,8 @@
   <ItemGroup Condition="$(TargetFramework.Contains('-macos'))">
     <!-- The labs icon target feeds MauiIcon straight to sips, which can't rasterize SVG, so
          macos ships a pre-rendered PNG: appicon.svg at Apple's icon-grid margins with rounded
-         corners, rasterized via rsvg-convert (the prepare-images.cmd toolchain) -->
+         corners, rasterized via rsvg-convert (the prepare-images.cmd toolchain)
+         TODO(maui-labs): ship appicon.svg like the other platforms once the macos icon target rasterizes SVG -->
     <MauiIcon Remove="Resources\AppIcon\appicon.svg" />
     <MauiIcon Include="Resources\AppIcon\appicon_macos.png" />
     <PartialAppManifest Include="Platforms\MacOS\Info.plist" />

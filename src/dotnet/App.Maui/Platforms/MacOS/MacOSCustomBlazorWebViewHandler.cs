@@ -34,6 +34,8 @@ public sealed class MacOSCustomBlazorWebViewHandler : BlazorWebViewHandler
 
     protected override WKWebView CreatePlatformView()
     {
+        // TODO(maui-labs): fold back into MauiWebView.MaciOS.OnInitializing once the labs handler
+        // raises BlazorWebViewInitializing with its configuration.
         // Mirrors the base implementation - which is built entirely from private members - via
         // LabsBlazorWebViewHandlerExt, and adds the content:// handler the base can't take.
         var config = new WKWebViewConfiguration();
@@ -86,6 +88,7 @@ public sealed class MacOSCustomBlazorWebViewHandler : BlazorWebViewHandler
             // The labs ContentPageHandler adds page content without invalidating layout, so a
             // WebView attached after the first layout pass keeps a zero frame forever - our
             // MainPage attaches it only once BlazorWebViewApp is ready, long past that pass.
+            // TODO(maui-labs): delete this subclass once the labs ContentPageHandler invalidates layout.
             if (Superview is { } superview)
                 superview.NeedsLayout = true;
         }

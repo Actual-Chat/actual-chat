@@ -43,6 +43,7 @@
     <PackageVersion Include="Microsoft.Maui.Essentials" Version="$(MauiVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
     <!-- Experimental macOS AppKit backend (dotnet/maui-labs); built against MAUI 10, consumed from net11.0-macos -->
+    <!-- TODO(maui-labs): drop these pins once macOS is an official MAUI target and net11.0-macos resolves the regular Microsoft.Maui.* packages -->
     <PackageVersion Include="Microsoft.Maui.Platforms.MacOS" Version="0.1.0-preview.12.26421.1" />
     <PackageVersion Include="Microsoft.Maui.Platforms.MacOS.Essentials" Version="0.1.0-preview.12.26421.1" />
     <PackageVersion Include="Microsoft.Maui.Platforms.MacOS.BlazorWebView" Version="0.1.0-preview.12.26421.1" />

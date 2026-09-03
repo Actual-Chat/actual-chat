@@ -131,6 +131,7 @@
     <!-- Firebase native bindings are iOS-only; intentionally omitted on MacCatalyst -->
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-macos'))">
+    <!-- TODO(maui-labs): see the MACOS branch of MauiDiagnostics.AddPlatformLoggerSinks -->
     <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">

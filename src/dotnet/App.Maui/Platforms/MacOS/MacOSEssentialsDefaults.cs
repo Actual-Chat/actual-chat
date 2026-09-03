@@ -2,6 +2,8 @@ using LabsEssentialsExtensions = Microsoft.Maui.Platforms.MacOS.Essentials.Essen
 
 namespace ActualChat.App.Maui;
 
+// TODO(maui-labs): delete once the labs Essentials package exposes a public way to set the
+// statics, or MAUI Essentials ships a macos implementation (then Program.Main drops the call too).
 /// <summary>
 /// Applies the labs Essentials statics patch (FileSystem, Preferences, DeviceInfo, ...) before
 /// any managed code runs: AddMacOSEssentials() does the same, but only once the MauiAppBuilder

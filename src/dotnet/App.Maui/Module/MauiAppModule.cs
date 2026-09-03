@@ -70,13 +70,11 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
         // Permissions
 #if MACOS
-        // The labs Essentials package has no Permissions implementation, so the MAUI handlers
-        // throw NotImplemented from every check on the AppKit backend - which took down the whole
-        // chat area via ContactsPermissionBanner's ErrorBarrier. The JS-backed Web handlers work
-        // in WKWebView, but BlazorUIAppModule registers them only for non-MAUI hosts - so here.
-        services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c.UIHub()));
-        services.AddScoped<CameraPermissionHandler>(c => new WebCameraPermissionHandler(c.UIHub()));
-        services.AddScoped<LocationPermissionHandler>(c => new WebLocationPermissionHandler(c.UIHub()));
+        // The labs Essentials package has no Permissions implementation - the Maui* handlers
+        // would throw from every check - so the AppKit ones ask TCC directly.
+        services.AddScoped<MicrophonePermissionHandler>(c => new MacOSMicrophonePermissionHandler(c.UIHub()));
+        services.AddScoped<CameraPermissionHandler>(c => new MacOSCameraPermissionHandler(c.UIHub()));
+        services.AddScoped<LocationPermissionHandler>(c => new MacOSLocationPermissionHandler(c.UIHub()));
 #else
         services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c.UIHub()));
         services.AddScoped<CameraPermissionHandler>(c => new MauiCameraPermissionHandler(c.UIHub()));
@@ -137,7 +135,8 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // and per-TFM bundling of the CoreML VAD model. Until then the JS pipeline below and
         // the Web* registrations under "#if MACOS" in this file are the recording/playback path.
         services.AddScoped<AudioFocusUI>(_ => new AudioFocusUI());
-        // MauiTuneUI plays through Plugin.Maui.Audio, which has no macos support
+        // MauiTuneUI plays through Plugin.Maui.Audio, which has no macos TFM, and AppleTuneUI needs
+        // the AVAudioSession-based engine + focus stack; both wait for the native audio port above.
         services.AddScoped<TuneUI>(c => new WebTuneUI(c.UIHub()));
         services.AddSingleton<VoiceActivityDetector>(c => new NoopVoiceActivityDetector(c));
         services.AddSingleton<IAudioCodec, OpusAudioCodec>();
@@ -169,10 +168,9 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
         // Contacts
 #if MACOS
-        // Same as the permission handlers above: Essentials Contacts is unimplemented on macos,
-        // so the base no-op DeviceContacts + always-granted Web contacts permission apply.
-        services.AddScoped<DeviceContacts>();
-        services.AddScoped<ContactsPermissionHandler>(c => new WebContactsPermissionHandler(c.UIHub()));
+        // Same as the permission handlers above: Essentials Contacts is unimplemented on macos
+        services.AddScoped<DeviceContacts>(c => new MacOSContacts(c));
+        services.AddScoped<ContactsPermissionHandler>(c => new MacOSContactsPermissionHandler(c.UIHub()));
 #else
         services.AddScoped<DeviceContacts>(c => new MauiContacts(c));
         services.AddScoped<ContactsPermissionHandler>(c => new MauiContactsPermissionHandler(c.UIHub()));

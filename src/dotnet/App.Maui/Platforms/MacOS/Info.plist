@@ -23,5 +23,11 @@
   <string>Voxt uses the microphone to record voice messages and for calls.</string>
   <key>NSCameraUsageDescription</key>
   <string>Voxt uses the camera for video calls and to capture photos you attach to chats.</string>
+  <key>NSContactsUsageDescription</key>
+  <string>Voxt uses your contacts to help you find friends already using Voxt.</string>
+  <key>NSLocationUsageDescription</key>
+  <string>Share your live location with people in a chat while location sharing is active.</string>
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>Share your live location with people in a chat while location sharing is active.</string>
 </dict>
 </plist>

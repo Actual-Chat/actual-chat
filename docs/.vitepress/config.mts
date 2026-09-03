@@ -166,6 +166,7 @@ export default withMermaid(defineConfig({
               { text: "Localization (i18n)", link: "/i18n" },
               { text: "iOS-specific Behavior", link: "/ios-specific" },
               { text: "Android-specific Behavior", link: "/android-specific" },
+              { text: "macOS AppKit Backend", link: "/macos-appkit" },
               { text: "Native AOT", link: "/native-aot" },
               { text: "Startup Profiling", link: "/startup-profiling" },
               { text: "App Bundles", link: "/app-bundles" },

@@ -98,6 +98,8 @@ public static partial class MauiProgram
             using (Tracer.Region($"{nameof(MauiApp)}.{nameof(MauiApp.CreateBuilder)}")) {
                 appBuilder = MauiApp.CreateBuilder();
 #if MACOS
+                // TODO(maui-labs): goes away with MacOSEssentialsDefaults once Essentials is
+                // implemented on the macos TFM.
                 // Patches the MAUI Essentials statics (DeviceInfo, Preferences, SecureStorage, ...),
                 // which otherwise resolve to their "not implemented" neutral build on the macos TFM;
                 // must precede CreateHostInfo, which reads DeviceInfo and (via MauiSettings) Preferences.
@@ -248,6 +250,7 @@ public static partial class MauiProgram
 
         builder = builder
 #if MACOS
+            // TODO(maui-labs): the regular UseMauiBlazorApp path once the backend is in MAUI proper.
             .UseMauiAppMacOS<App>()
             .AddMacOSBlazorWebView()
             .ConfigureMauiHandlers(static handlers

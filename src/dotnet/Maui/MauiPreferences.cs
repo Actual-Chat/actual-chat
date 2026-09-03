@@ -20,6 +20,7 @@ public static class MauiPreferences
     private const string UILanguageKey = "UILanguage";
     private const string MinReportableClientVersionKey = "min_reportable_client_version";
     private const string IsPttArmedKey = "is_ptt_armed";
+    private const string DeviceIdKey = "device_id";
 
     private static readonly Lock Lock = new();
     private static readonly ConcurrentDictionary<string, object?> Cache = new();
@@ -82,6 +83,13 @@ public static class MauiPreferences
         get => Get<string>(MinReportableClientVersionKey).NullIfEmpty();
         set => Set(MinReportableClientVersionKey, value ?? "");
     }
+
+#if MACOS
+    // AppKit has no vendor id (banditoth.MAUI.DeviceId's neutral build returns null there),
+    // so the device id is minted once per install.
+    public static string DeviceId
+        => Get(DeviceIdKey, static () => Guid.NewGuid().ToString("N"))!;
+#endif
 
     public static bool IsPttArmed {
         // Mirrors the app's armed-chat state so MainActivity can raise the PTT foreground

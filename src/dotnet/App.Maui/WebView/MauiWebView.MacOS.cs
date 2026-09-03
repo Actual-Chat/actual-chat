@@ -20,6 +20,7 @@ public partial class MauiWebView
         var webView = (WKWebView)platformWebView;
         WKWebView = webView;
         webView.AllowsBackForwardNavigationGestures = false;
+        // TODO(maui-labs): the delegates below stand in for the UrlLoading event - see MauiWebView.cs.
         // The labs handler wires no delegates, so both are attached here: navigation policy
         // (external links, host->local rerouting) and media capture permissions.
         webView.NavigationDelegate = NavigationDelegate.Instance;
@@ -193,8 +194,8 @@ public partial class MauiWebView
                 _ => false,
             };
 
-            bool IsGranted(AVAuthorizationMediaType type1)
-                => AVCaptureDevice.GetAuthorizationStatus(type1) == AVAuthorizationStatus.Authorized;
+            static bool IsGranted(AVAuthorizationMediaType mediaType)
+                => MacOSPermissions.IsMediaCaptureGranted(mediaType) == true;
         }
     }
 }

@@ -31,7 +31,10 @@ if [ -z "$APP_PATH" ]; then
     exit 1
 fi
 
-# Terminate a previous instance, then run the binary directly so its logs stream to this terminal.
-pkill -f "$APP_PATH/Contents/MacOS/" 2>/dev/null
+# Terminate a previous instance, then launch through LaunchServices: a binary started straight
+# from a shell has its TCC decisions (contacts, microphone, ...) attributed to the terminal, not
+# to the app. -W keeps this script alive until the app quits; stdout/stderr still reach it.
+# pkill takes a regex, and "Voxt (Dev).app" would read as a group - so the path is escaped
+pkill -f "$(printf '%s' "$APP_PATH/Contents/MacOS/" | sed 's/[][()\\.*^$]/\\&/g')" 2>/dev/null
 echo "Launching: $APP_PATH"
-exec "$APP_PATH/Contents/MacOS/ActualChat"
+exec open -W --stdout /dev/stdout --stderr /dev/stderr "$APP_PATH"

@@ -46,6 +46,7 @@ public sealed partial class MauiWebView
         // The labs MacOSBlazorWebView has no Initializing / Initialized / UrlLoading events;
         // MacOSCustomBlazorWebViewHandler covers them: the WKWebView configuration is applied in
         // its CreatePlatformView, and navigation policy comes from this class's NavigationDelegate.
+        // TODO(maui-labs): collapse into the #else branch once MacOSBlazorWebView gets those events.
         BlazorWebView = new MacOSBlazorWebView {
             HostPage = "wwwroot/index.html",
         };

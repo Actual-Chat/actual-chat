@@ -3,6 +3,7 @@ using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 #if MACOS
 // MAUI Essentials' MainThread is its "not implemented" neutral build on the macos TFM
+// TODO(maui-labs): see MacOSMainThread
 using MainThread = ActualChat.App.Maui.MacOSMainThread;
 #endif
 

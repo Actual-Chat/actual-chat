@@ -20,7 +20,7 @@ Run `./b.cmd app run mac`, which executes `scripts/run-mac.sh`:
 1. Builds the JS bundle (`npm run build:Debug`)
 2. Builds the AppKit app (`net11.0-macos` target, enabled via a `TargetFrameworks` override)
 3. Locates the produced `.app` bundle (`Voxt (Dev).app` for dev, `Voxt.app` for prod)
-4. Terminates any previous instance and launches the app binary directly so logs stream to the terminal
+4. Terminates any previous instance and launches the app via `open -W` (LaunchServices, so TCC prompts belong to the app), with stdout/stderr forwarded to the terminal
 
 ## Command
 
@@ -28,7 +28,7 @@ Run `./b.cmd app run mac`, which executes `scripts/run-mac.sh`:
 ./b.cmd app run mac
 ```
 
-**Note:** The app binary is run directly (not via `open`), so this command runs until the app is quit. The console output shows app logs in real-time; they also land in `~/Library/Logs/ActualChat.log`.
+**Note:** The app is launched with `open -W`, so this command runs until the app is quit. The console output shows app logs in real-time; they also land in `~/Library/Logs/ActualChat.log`.
 
 ## Output
 
