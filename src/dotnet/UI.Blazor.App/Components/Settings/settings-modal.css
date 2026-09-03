@@ -56,6 +56,16 @@ body.narrow .close-settings-btn {
     @apply text-caption-6 text-03;
 }
 
+/* ── Voice & Transcription tab (language shortcut in the tab title) ── */
+
+.language-shortcut {
+    @apply text-primary text-sm whitespace-nowrap;
+}
+.language-shortcut .c-more {
+    @apply text-xxs;
+    line-height: 0;
+}
+
 /* ── Push to Talk tab ── */
 
 /* The tab content's flex gap reaches its direct children only, so this wrapper has to
