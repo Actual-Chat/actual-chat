@@ -217,8 +217,13 @@ public sealed class ChatAttentionService
             .OrderBy(c => c.CreatedOnUtc)
             .Take(MaxNotificationCount)
             .ToArray();
+        // Android 16 force-silences a notification posted while another one from the same group is
+        // already showing (https://issuetracker.google.com/issues/424448500). Children carry the
+        // alert to GROUP_ALERT_SUMMARY and the summary is posted first, so there's never a second
+        // notification competing with the one meant to make noise.
+        var hasSummary = requests.Length > 1;
         for (int i = 0; i < mostImportantRequests.Length; i++) {
-            var request = requests[i];
+            var request = mostImportantRequests[i];
             var title = request.Title;
             var content = request.Body;
 
@@ -240,11 +245,13 @@ public sealed class ChatAttentionService
                 builder.AddAction(0, L.ChatAttention_Snooze, snoozePendingIntent);
 
             builder.SetOnlyAlertOnce(true);
+            if (hasSummary)
+                builder.SetGroupAlertBehavior(NotificationCompat.GroupAlertSummary);
             var notification = builder.Build()!;
             notifications.Add((i + 1, notification));
         }
 
-        if (requests.Length > 1) {
+        if (hasSummary) {
             var minStartTime = requests.Min(c => c.CreatedOnUtc).ToLocalTime();
             var summaryBuilder = CreateNotification(
                 minStartTime,
@@ -254,7 +261,7 @@ public sealed class ChatAttentionService
             summaryBuilder.SetGroupSummary(true);
             summaryBuilder.SetOnlyAlertOnce(true);
             var summaryNotification = summaryBuilder.Build()!;
-            notifications.Add((0, summaryNotification));
+            notifications.Insert(0, (0, summaryNotification));
         }
 
         foreach (var (id, notification) in notifications)
