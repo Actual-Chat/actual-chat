@@ -378,6 +378,10 @@
   "Navbar_SignIn": "로그인",
   "Navbar_TestPages": "테스트 페이지",
 
+  "SystemChat_Notes": "메모",
+  "SystemChat_Announcements_Format": "{0} 공지사항",
+  "SystemChat_Welcome": "환영합니다",
+
   "LeftPanel_AddNewMembers": "새 멤버 추가",
   "LeftPanel_JoinPlace": "참여",
   "LeftPanel_PublicChatsAndPlaces": "공개 채팅 및 플레이스",

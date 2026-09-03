@@ -158,12 +158,12 @@
                 ExpectedVersion = null,
                 Change = new() {
                     Create = new ChatDiff {
-                        Title = "Welcome",
+                        Title = Constants.Chat.System.Welcome.DefaultTitle,
                         Description = description,
                         Kind = null,
                         IsPublic = true,
                         MediaId = _form.Picture?.MediaRef?.MediaId,
-                        SystemTag = Constants.Chat.SystemTags.Welcome,
+                        SystemTag = Constants.Chat.System.Welcome,
                         PlaceId = place.Id
                     },
                 },

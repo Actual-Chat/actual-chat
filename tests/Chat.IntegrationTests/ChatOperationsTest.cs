@@ -240,7 +240,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
                 .Collect(ct))
                 .SkipNullItems()
                 .ToList();
-            chats.Any(c => c.SystemTag == Constants.Chat.SystemTags.Notes).Should().BeTrue();
+            chats.Any(c => c.IsNotes).Should().BeTrue();
         });
 
         // assert
@@ -249,7 +249,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
             await using var dbContext = await dbHub.CreateDbContext();
             var dbChat = await dbContext.Chats
                 .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
-                .Where(x => x.a.UserId == account.Id.Value && x.c.SystemTag == Constants.Chat.SystemTags.Notes.Value)
+                .Where(x => x.a.UserId == account.Id.Value && x.c.SystemTag == Constants.Chat.System.Notes.Tag.Value)
                 .Select(x => x.c)
                 .FirstOrDefaultAsync();
             dbChat.Should().NotBeNull();

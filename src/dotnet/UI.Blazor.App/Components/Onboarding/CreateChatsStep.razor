@@ -107,32 +107,30 @@
 
     protected override async Task<bool> Save() {
         if (_model.CreateFamilyChat)
-            await CreateChat(L.Onboarding_ChatFamily, Constants.Chat.SystemTags.Family);
+            await CreateChat(Constants.Chat.System.Family);
         if (_model.CreateFriendsChat)
-            await CreateChat(L.Onboarding_ChatFriends, Constants.Chat.SystemTags.Friends);
+            await CreateChat(Constants.Chat.System.Friends);
         if (_model.CreateClassmatesAlumniChat)
-            await CreateChat(
-                L.Onboarding_ChatClassmates,
-                Constants.Chat.SystemTags.ClassmatesAlumni,
-                "system-icons:alumni");
+            await CreateChat(Constants.Chat.System.ClassmatesAlumni, "system-icons:alumni");
         if (_model.CreateCoworkersChat)
-            await CreateChat(L.Onboarding_ChatCoworkers, Constants.Chat.SystemTags.Coworkers);
+            await CreateChat(Constants.Chat.System.Coworkers);
 
         return true;
     }
 
-    private async Task CreateChat(string title, Symbol systemTag, string? mediaId = null) {
+    private async Task CreateChat(Constants.Chat.SystemChat systemChat, string? mediaId = null) {
+        // Stored in English: the server names the chat in each reader's language while it keeps this title.
         var command = new Chats_Change {
             Session = Session,
             ChatId = default,
             ExpectedVersion = null,
             Change = new() {
                 Create = new ChatDiff {
-                    Title = title,
+                    Title = systemChat.DefaultTitle,
                     Kind = ChatKind.Group,
-                    MediaId = MediaId.Parse(mediaId ?? $"system-icons:{systemTag.Value}"),
+                    MediaId = MediaId.Parse(mediaId ?? $"system-icons:{systemChat.Tag.Value}"),
                     IsPublic = false,
-                    SystemTag = systemTag,
+                    SystemTag = systemChat.Tag,
                 },
             },
         };

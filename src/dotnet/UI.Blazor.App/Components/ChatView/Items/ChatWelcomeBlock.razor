@@ -86,7 +86,7 @@
         var chatId = Chat.Id;
 
         var messageType = MessageType.Default;
-        if (Chat.HasSingleAuthor && Chat.SystemTag == Constants.Chat.SystemTags.Notes)
+        if (Chat.IsNotes)
             messageType = MessageType.Notes;
         var shareModel = await ShareUI.GetModel(chatId, cancellationToken).ConfigureAwait(false);
         if (shareModel is { Kind: ShareKind.Contact })

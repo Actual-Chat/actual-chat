@@ -378,6 +378,10 @@
   "Navbar_SignIn": "Přihlásit se",
   "Navbar_TestPages": "Testovací stránky",
 
+  "SystemChat_Notes": "Poznámky",
+  "SystemChat_Announcements_Format": "Oznámení {0}",
+  "SystemChat_Welcome": "Vítejte",
+
   "LeftPanel_AddNewMembers": "Přidat nové členy",
   "LeftPanel_JoinPlace": "Připojit se",
   "LeftPanel_PublicChatsAndPlaces": "Otevřené chaty a Místa",

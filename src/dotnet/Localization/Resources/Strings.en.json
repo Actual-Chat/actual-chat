@@ -469,6 +469,13 @@
   "Navbar_SignIn": "Sign in",
   "Navbar_TestPages": "Test Pages",
 
+  // Names of the chats the app creates by itself - the personal Notes chat, the product
+  // announcements chat, a place's Welcome chat - shown wherever a chat is titled: the list, the
+  // header, notifications. {0} is the product name. The onboarding groups reuse Onboarding_Chat*.
+  "SystemChat_Notes": "Notes",
+  "SystemChat_Announcements_Format": "{0} Announcements",
+  "SystemChat_Welcome": "Welcome",
+
   // Headers and buttons in the left panel, outside the chat list itself.
   "LeftPanel_AddNewMembers": "Add new members",
   "LeftPanel_JoinPlace": "Join",

@@ -378,6 +378,10 @@
   "Navbar_SignIn": "Iniciar sesión",
   "Navbar_TestPages": "Páginas de prueba",
 
+  "SystemChat_Notes": "Notas",
+  "SystemChat_Announcements_Format": "Anuncios de {0}",
+  "SystemChat_Welcome": "Bienvenida",
+
   "LeftPanel_AddNewMembers": "Añadir miembros",
   "LeftPanel_JoinPlace": "Unirse",
   "LeftPanel_PublicChatsAndPlaces": "Chats y Lugares públicos",

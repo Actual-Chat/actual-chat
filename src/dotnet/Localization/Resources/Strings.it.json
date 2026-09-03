@@ -378,6 +378,10 @@
   "Navbar_SignIn": "Accedi",
   "Navbar_TestPages": "Pagine di test",
 
+  "SystemChat_Notes": "Note",
+  "SystemChat_Announcements_Format": "Annunci di {0}",
+  "SystemChat_Welcome": "Benvenuto",
+
   "LeftPanel_AddNewMembers": "Aggiungi membri",
   "LeftPanel_JoinPlace": "Entra",
   "LeftPanel_PublicChatsAndPlaces": "Chat e Luoghi pubblici",

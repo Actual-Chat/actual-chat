@@ -378,6 +378,10 @@
   "Navbar_SignIn": "Увійти",
   "Navbar_TestPages": "Тестові сторінки",
 
+  "SystemChat_Notes": "Нотатки",
+  "SystemChat_Announcements_Format": "Анонси {0}",
+  "SystemChat_Welcome": "Ласкаво просимо",
+
   "LeftPanel_AddNewMembers": "Додати учасників",
   "LeftPanel_JoinPlace": "Приєднатися",
   "LeftPanel_PublicChatsAndPlaces": "Відкриті чати та Місця",

@@ -61,7 +61,7 @@ public class Places(IServiceProvider services) : IPlaces
             .ConfigureAwait(false);
 
         // TODO(DF): Make it possible to change Welcome Chat
-        var welcomeChat = chats.SkipNullItems().FirstOrDefault(c => Constants.Chat.SystemTags.Welcome == c.SystemTag)
+        var welcomeChat = chats.SkipNullItems().FirstOrDefault(c => c.IsWelcome)
             ?? chats.SkipNullItems().MinBy(c => c.CreatedAt);
         return welcomeChat?.Id as PlaceChatId;
     }
