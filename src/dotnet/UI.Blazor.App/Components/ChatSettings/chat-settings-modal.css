@@ -199,10 +199,22 @@ body.hoverable .chat-settings-container .tile-item:hover {
     @apply relative;
     @apply flex-none;
     @apply w-full;
-    @apply rounded-b-xl;
+    /* Rounded top-right + bottom-left only (mirror of the left panel): top-left and bottom-right stay square. */
+    @apply rounded-tr-2xl rounded-bl-2xl;
     @apply overflow-hidden;
-    height: calc(6.5rem + var(--safe-area-top-narrow));
-    padding-top: var(--safe-area-top-narrow);
+    height: 6.5rem;
+    /* Start below the top inset (which the bg-03 band paints) rather than reserving it inside, so the
+       header image sits under the notch strip - the right-panel look. */
+    margin-top: var(--safe-area-top-narrow);
+}
+/* Keep the top inset bg-03 (the panel colour) instead of the header image bleeding into the notch. */
+body.narrow .own-avatar-edit-header::before,
+body.narrow .chat-settings-header::before {
+    @apply content-empty;
+    @apply absolute left-0 right-0 top-0 z-30;
+    @apply pointer-events-none;
+    @apply bg-03;
+    height: var(--safe-area-top-narrow);
 }
 body.narrow .own-avatar-edit-header > .c-top::after,
 body.narrow .chat-settings-header > .c-top::after {
