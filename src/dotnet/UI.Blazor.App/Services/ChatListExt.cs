@@ -42,18 +42,17 @@ public static class ChatListExt
         this IEnumerable<ChatInfo> chats,
         ChatListOrder order,
         ChatListPreOrder preOrder,
-        IReadOnlyDictionary<ChatId, Moment>? reactedAt = null)
+        IReadOnlyDictionary<ChatId, Moment>? liftedAt = null)
     {
+        // liftedAt holds the chats lifted above the rest, newest first: reacted chats in the
+        // notifications panel, pinged ones on its Mentions tab. ByLastEventTime sorts on a version,
+        // not a Moment, so the lifting time can't be folded into it.
         var preOrderedChats = preOrder switch {
-            ChatListPreOrder.ChatList => PreOrderChatListFor(chats, order),
+            ChatListPreOrder.ChatList => PreOrderChatListFor(chats, order, liftedAt),
             ChatListPreOrder.None => chats.ToFakeOrderedEnumerable(),
             ChatListPreOrder.NotesFirst => chats
                 .OrderByDescending(c => c.Chat.SystemTag == Constants.Chat.SystemTags.Notes),
-            // ByLastEventTime sorts on a version, not a Moment, so a reaction time can't be folded
-            // into it - a reacted chat is lifted above the rest instead.
-            ChatListPreOrder.ReactionsFirst => chats
-                .OrderByDescending(c => GetReactedAt(reactedAt, c.Id) is not null)
-                .ThenByDescending(c => GetReactedAt(reactedAt, c.Id) ?? Moment.EpochStart),
+            ChatListPreOrder.ReactionsFirst => LiftBy(chats, liftedAt),
             _ => throw new ArgumentOutOfRangeException(nameof(preOrder)),
         };
         return order switch {
@@ -93,23 +92,34 @@ public static class ChatListExt
         };
     }
 
+    // Private methods
+
     private static IOrderedEnumerable<ChatInfo> PreOrderChatListFor(
         this IEnumerable<ChatInfo> chats,
-        ChatListOrder order)
+        ChatListOrder order,
+        IReadOnlyDictionary<ChatId, Moment>? liftedAt)
         => order switch {
-            ChatListOrder.ByLastEventTime => PreOrderChats(chats),
-            ChatListOrder.ByOwnUpdateTime => PreOrderChats(chats),
-            ChatListOrder.ByUnreadCount => PreOrderChats(chats),
+            ChatListOrder.ByLastEventTime => PreOrderChats(chats, liftedAt),
+            ChatListOrder.ByOwnUpdateTime => PreOrderChats(chats, liftedAt),
+            ChatListOrder.ByUnreadCount => PreOrderChats(chats, liftedAt),
             ChatListOrder.ByAlphabet => chats.OrderByDescending(c => c.Contact.IsPinned),
             _ => throw new ArgumentOutOfRangeException(nameof(order)),
         };
 
     private static IOrderedEnumerable<ChatInfo> PreOrderChats(
-        IEnumerable<ChatInfo> chats)
-        => chats
-            .OrderByDescending(c => c.Contact.IsPinned)
+        IEnumerable<ChatInfo> chats,
+        IReadOnlyDictionary<ChatId, Moment>? liftedAt)
+        => LiftBy(chats, liftedAt)
+            .ThenByDescending(c => c.Contact.IsPinned)
             .ThenByDescending(c => c.HasUnreadMentions);
 
-    private static Moment? GetReactedAt(IReadOnlyDictionary<ChatId, Moment>? reactedAt, ChatId chatId)
-        => reactedAt is not null && reactedAt.TryGetValue(chatId, out var moment) ? moment : null;
+    private static IOrderedEnumerable<ChatInfo> LiftBy(
+        IEnumerable<ChatInfo> chats,
+        IReadOnlyDictionary<ChatId, Moment>? liftedAt)
+        => chats
+            .OrderByDescending(c => GetLiftedAt(liftedAt, c.Id) is not null)
+            .ThenByDescending(c => GetLiftedAt(liftedAt, c.Id) ?? Moment.EpochStart);
+
+    private static Moment? GetLiftedAt(IReadOnlyDictionary<ChatId, Moment>? liftedAt, ChatId chatId)
+        => liftedAt is not null && liftedAt.TryGetValue(chatId, out var moment) ? moment : null;
 }
