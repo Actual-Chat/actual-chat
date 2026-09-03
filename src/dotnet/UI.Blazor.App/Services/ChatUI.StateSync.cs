@@ -15,6 +15,8 @@ public partial class ChatUI
     private static readonly TimeSpan PrefetchMaxAge = TimeSpan.FromDays(365);
     private const int PrefetchBatchSize = 10;
     private const int PrefetchEntryLimit = 100;
+    // Bump whenever a prefetched chat gets a new set of calls: the chats already marked done lack them
+    private const int PrefetchVersion = 2;
 
     // All state sync logic should be here
 
@@ -249,6 +251,8 @@ public partial class ChatUI
 
         var accessor = LocalSettings.AccessorFor<ChatTailPrefetchState>();
         var stored = await accessor.Get(cancellationToken).ConfigureAwait(false);
+        if (stored.Version != PrefetchVersion)
+            stored = new ChatTailPrefetchState { Version = PrefetchVersion };
         var boundary = stored.Boundary;
         var prefetched = new Dictionary<ChatId, ChatTailPrefetch>();
         foreach (var item in stored.Chats)
@@ -318,6 +322,7 @@ public partial class ChatUI
 
             if (hasUnsavedChanges && savedAt.Elapsed >= PrefetchSavePeriod) {
                 var state = new ChatTailPrefetchState {
+                    Version = PrefetchVersion,
                     Boundary = boundary,
                     Chats = new ApiArray<ChatTailPrefetch>(prefetched.Values.ToArray()),
                 };
@@ -348,12 +353,23 @@ public partial class ChatUI
         if (start >= end)
             return end;
 
+        var chatId = chat.Id;
+        var tailRange = new Range<long>(start, end);
         var idTiles = EntryIdTiles
-            .GetCoveringTiles(new Range<long>(start, end))
+            .GetCoveringTiles(tailRange)
             .Select(t => t.Range)
             .ToList();
-        await PrefetchLoadZone(chat.Id, idTiles, chat.Chat.IsSummarized ?? false, cancellationToken)
-            .ConfigureAwait(false);
+        // Every build awaits the range meta before it can place a single tile, and nothing but the
+        // pointer-down prefetch ever warmed it - so a chat with its whole tail cached still couldn't
+        // open offline. Same for what the tail shows around its text: authors, reactions, pins.
+        var metaTask = GetMetaIdTiles(tailRange)
+            .Select(t => Chats.GetChatRangeMeta(Session, chatId, t.Start, cancellationToken))
+            .Collect(ApiConstants.Concurrency.High, cancellationToken);
+        var tilesTask = PrefetchLoadZone(chatId, idTiles, chat.Chat.IsSummarized ?? false, cancellationToken);
+        var pinnedTask = PrefetchPinnedEntries(chatId, cancellationToken);
+        await Task.WhenAll(metaTask, tilesTask, pinnedTask).ConfigureAwait(false);
+        var tiles = await tilesTask.ConfigureAwait(false);
+        await PrefetchEntryDependencies(chatId, tiles, cancellationToken).ConfigureAwait(false);
         return end;
     }
 }

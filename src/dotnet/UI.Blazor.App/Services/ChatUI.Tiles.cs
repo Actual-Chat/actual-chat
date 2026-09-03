@@ -249,10 +249,7 @@ public partial class ChatUI
                 .Select(t => t.Range)
                 .Where(r => r.Start >= 0)
                 .ToList();
-            var metaIdTiles = RangeMetaEntryIdTiles
-                .GetCoveringTiles(loadZone.Expand(LoadLimit))
-                .Where(t => t.Start >= 0)
-                .ToList();
+            var metaIdTiles = GetMetaIdTiles(loadZone);
             var metaTask = metaIdTiles
                 .Select(t => Chats.GetChatRangeMeta(Session, chatId, t.Range.Start, cancellationToken))
                 .Collect(ApiConstants.Concurrency.High, cancellationToken);
@@ -315,9 +312,7 @@ public partial class ChatUI
         var liveConversationTask = Hub.LiveSessionUI.GetConversation(chatId, cancellationToken);
         var rawLiveTask = Hub.LiveSessionUI.GetBlockSnapshot(chatId, cancellationToken);
         var blockStateTask = Hub.LiveBlockUI.GetBlockState(chatId, cancellationToken);
-        var metaIdTiles = RangeMetaEntryIdTiles.GetCoveringTiles(dataQuery.ExistingLidRange.Expand(LoadLimit))
-            .Where(t => t.Start >= 0)
-            .ToList();
+        var metaIdTiles = GetMetaIdTiles(dataQuery.ExistingLidRange);
         var chatRangeMetaListTask = metaIdTiles
             .Select(metaIdTile
                 => Chats.GetChatRangeMeta(Session, chatId, metaIdTile.Range.Start, cancellationToken))
@@ -1710,7 +1705,15 @@ public partial class ChatUI
         return (news.TextEntryLidRange, readEntryLid, chatInfo.Chat.IsSummarized ?? false);
     }
 
-    private Task PrefetchLoadZone(
+    private List<Tile<long>> GetMetaIdTiles(Range<long> lidRange)
+        // Shared by the build and both prefetches on purpose: Fusion dedupes on exact arguments, so a
+        // prefetch that derives its meta tiles even one boundary differently warms nothing - silently.
+        => RangeMetaEntryIdTiles
+            .GetCoveringTiles(lidRange.Expand(LoadLimit))
+            .Where(t => t.Start >= 0)
+            .ToList();
+
+    private Task<ChatTile[]> PrefetchLoadZone(
         ChatId chatId,
         List<Range<long>> idTiles,
         bool showConversations,
@@ -1736,6 +1739,7 @@ public partial class ChatUI
                 : Task.CompletedTask;
             var prefetchChatInfoTask = PrefetchChatInfo(chatId, cancellationToken);
             await Task.WhenAll(prefetchEntriesTask, prefetchConversationsTask, prefetchChatInfoTask).ConfigureAwait(false);
+            return await prefetchEntriesTask.ConfigureAwait(false);
         }, cancellationToken);
 
     // Serves the last fresh range-meta list while a refetch is in flight, so a rebuild triggered by a
@@ -1826,18 +1830,49 @@ public partial class ChatUI
                 var idRangeTask = Chats.GetIdRange(Session, chatId, cancellationToken);
                 var rulesTask = Chats.GetRules(Session, chatId, cancellationToken);
                 var authorsTask = Authors.ListAuthorIds(Session, chatId, cancellationToken);
+                var ownAuthorTask = Authors.GetOwn(Session, chatId, cancellationToken);
                 var isEmptyTask = IsEmpty(chatId, cancellationToken);
 
                 await Task.WhenAll(chatTask,
                         idRangeTask,
                         rulesTask,
                         authorsTask,
+                        ownAuthorTask,
                         isEmptyTask)
                     .ConfigureAwait(false);
             },
             Log,
             "Error prefetching chat tiles.",
             CancellationToken.None);
+
+    private Task PrefetchEntryDependencies(ChatId chatId, ChatTile[] tiles, CancellationToken cancellationToken)
+    {
+        // What the tail shows besides its text: the author of every message group and the reactions
+        // under the entries that carry them. Neither is a dependency of a tile, so nothing else warms them.
+        var entries = tiles.SelectMany(t => t.Entries).ToList();
+        var authorTasks = entries
+            .Select(e => e.AuthorId)
+            .Distinct()
+            .Select(authorId => Authors.Get(Session, chatId, authorId, cancellationToken))
+            .Collect(ApiConstants.Concurrency.High, cancellationToken);
+        var reactedEntries = entries.Where(e => e.HasReactions).ToList();
+        var reactionSummaryTasks = reactedEntries
+            .Select(e => Reactions.ListSummaries(Session, e.Id, cancellationToken))
+            .Collect(ApiConstants.Concurrency.High, cancellationToken);
+        var ownReactionTasks = reactedEntries
+            .Select(e => Reactions.Get(Session, e.Id, cancellationToken))
+            .Collect(ApiConstants.Concurrency.High, cancellationToken);
+        return Task.WhenAll(authorTasks, reactionSummaryTasks, ownReactionTasks);
+    }
+
+    private async Task PrefetchPinnedEntries(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var pinnedIds = await Chats.ListPinnedEntries(Session, chatId, cancellationToken).ConfigureAwait(false);
+        await pinnedIds
+            .Select(entryId => Chats.GetEntry(Session, entryId, cancellationToken).AsTask())
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
+            .ConfigureAwait(false);
+    }
 
     // What the author header signals as a kind: a streaming entry is audio that has not landed yet,
     // and the recording placeholder stands in for one while carrying neither Audio nor a
