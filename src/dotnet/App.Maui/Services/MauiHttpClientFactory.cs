@@ -1,4 +1,7 @@
 using System.Net;
+#if MACOS
+using Foundation;
+#endif
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
 
@@ -14,7 +17,7 @@ public class MauiHttpClientFactory(IServiceProvider services) : IHttpClientFacto
         = new();
 
     public static bool IsEnabled
-#if IOS || MACCATALYST
+#if IOS || MACCATALYST || MACOS
         => true;
 #else
         => false;
@@ -48,7 +51,7 @@ public class MauiHttpClientFactory(IServiceProvider services) : IHttpClientFacto
     // Private methods
 
     private HttpMessageHandler? CreatePlatformMessageHandler()
-#if IOS || MACCATALYST
+#if IOS || MACCATALYST || MACOS
         => new NSUrlSessionHandler {
             SslProtocols = System.Security.Authentication.SslProtocols.Tls12
                 | System.Security.Authentication.SslProtocols.Tls13,

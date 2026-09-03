@@ -7,7 +7,7 @@ namespace ActualChat.App.Maui.Services;
 /// </summary>
 public sealed class MauiWebAuthenticator(IServiceProvider services)
 {
-#if WINDOWS
+#if WINDOWS || MACOS
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(10);
 #endif
 
@@ -19,6 +19,8 @@ public sealed class MauiWebAuthenticator(IServiceProvider services)
         try {
 #if WINDOWS
             return await RunWindows(url, endpoint, cancellationToken).ConfigureAwait(false);
+#elif MACOS
+            return await RunMacOS(url, endpoint, cancellationToken).ConfigureAwait(false);
 #else
             var options = new WebAuthenticatorOptions {
                 Url = url.ToUri(),
@@ -47,6 +49,38 @@ public sealed class MauiWebAuthenticator(IServiceProvider services)
             return WebAuthResult.Failed;
         }
     }
+
+#if MACOS
+    // Private methods
+
+    private async Task<WebAuthResult> RunMacOS(string url, string endpoint, CancellationToken cancellationToken)
+    {
+        // Same shape as RunWindows: the default browser runs the flow, and the app learns of
+        // completion through its voxt-dev:// URL activation (CFBundleURLTypes in Info.plist).
+        // ASWebAuthenticationSession was tried first, but the default-browser handoff stalls
+        // on about:blank in Chromium-based browsers, and its ephemeral fallback window forces
+        // a separate Google login instead of reusing the browser's.
+        var callbackSource = TaskCompletionSourceExt.New<bool>();
+        void OnUrlOpened(string activatedUrl) {
+            if (activatedUrl.StartsWith(MauiSettings.AuthCallbackUrl, StringComparison.OrdinalIgnoreCase))
+                callbackSource.TrySetResult(true);
+        }
+
+        AppDelegate.UrlOpened += OnUrlOpened;
+        try {
+            if (!await MauiBrowser.Open(url).ConfigureAwait(false)) {
+                Log.LogError("Failed to launch the browser for web auth (endpoint: {Endpoint})", endpoint);
+                return WebAuthResult.Failed;
+            }
+
+            await callbackSource.Task.WaitAsync(Timeout, cancellationToken).ConfigureAwait(false);
+            return WebAuthResult.Completed;
+        }
+        finally {
+            AppDelegate.UrlOpened -= OnUrlOpened;
+        }
+    }
+#endif
 
 #if WINDOWS
     // Private methods

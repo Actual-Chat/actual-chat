@@ -44,9 +44,7 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
                 ? PhoneParser.ForOwnPhone(ownPhone)
                 : PhoneParser.ForRegion(deviceRegion);
 
-            var deviceContacts = (await Microsoft.Maui.ApplicationModel.Communication.Contacts
-                .GetAllAsync(cancellationToken)
-                .ConfigureAwait(false)).ToList();
+            var deviceContacts = await GetDeviceContacts(cancellationToken).ConfigureAwait(false);
             return deviceContacts.Select(x => ToExternalContact(account.Id, phoneParser, x)).ToArray();
         }
         catch (Exception e) {
@@ -54,6 +52,13 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
             return [];
         }
     }
+
+    // Protected methods
+
+    protected virtual async Task<IReadOnlyList<MauiContact>> GetDeviceContacts(CancellationToken cancellationToken)
+        => (await Microsoft.Maui.ApplicationModel.Communication.Contacts
+            .GetAllAsync(cancellationToken)
+            .ConfigureAwait(false)).ToList();
 
     // Private methods
 
