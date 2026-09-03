@@ -84,7 +84,6 @@ public static class MauiPreferences
         set => Set(MinReportableClientVersionKey, value ?? "");
     }
 
-    // TODO: i don't like generating new device id each time the cache is reset. When does the cache reset? let's investigate this question better.
 #if MACOS
     // TODO(maui-labs): see MacOSContacts
     // AppKit has no vendor id (banditoth.MAUI.DeviceId's neutral build returns null there),
