@@ -39,25 +39,20 @@
         }
         @* The place's own filter arrives a render after the switch, and the panel around it already
            animates that - so only a tab the user picked slides. *@
-        <div class="c-list-area">
-            <ContentSwap
-                LayerKey="@_selectedTabId"
-                Class="c-list-swap"
-                Effect="@_swapDirection.Swipe(GetTabIndex(_selectedTabId))"
-                MustPropagateDisplay="true"
-                IsEnabled="@(_tabPanel?.IsUserSelection == true)">
-                <ChildContent>
-                    @if (_mustShowThreadsList) {
-                        <ThreadList PlaceId="@PlaceId" />
-                    } else {
-                        <ChatList @key="@ChatList.GetKey(PlaceId, true, null)" PlaceId="@PlaceId" UsePlaceChatListSettings="@true"/>
-                    }
-                </ChildContent>
-            </ContentSwap>
-            @if (PlaceId is null && !_mustShowThreadsList) {
-                <InviteFriendsBanner/>
-            }
-        </div>
+        <ContentSwap
+            LayerKey="@_selectedTabId"
+            Class="c-list-swap"
+            Effect="@_swapDirection.Swipe(GetTabIndex(_selectedTabId))"
+            MustPropagateDisplay="true"
+            IsEnabled="@(_tabPanel?.IsUserSelection == true)">
+            <ChildContent>
+                @if (_mustShowThreadsList) {
+                    <ThreadList PlaceId="@PlaceId" />
+                } else {
+                    <ChatList @key="@ChatList.GetKey(PlaceId, true, null)" PlaceId="@PlaceId" UsePlaceChatListSettings="@true"/>
+                }
+            </ChildContent>
+        </ContentSwap>
     </div>
     <div class="c-active-chats">
         <ActiveChats/>

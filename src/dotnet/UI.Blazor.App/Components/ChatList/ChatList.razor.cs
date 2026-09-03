@@ -43,6 +43,10 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
         }
 
         var chatCountTask = ChatListUI.GetCount(placeId, chatListSettings, cancellationToken);
+        // The notifications panel lists chats with its own settings, and no banner
+        var mustShowInviteFriendsBannerTask = usePlaceChatListSettings
+            ? ChatListUI.MustShowInviteFriendsBanner(placeId, chatListSettings, cancellationToken)
+            : Task.FromResult(false);
         var separatorIndexesTask = ChatListUI.GetSeparatorIndexes(placeId, chatListSettings, cancellationToken);
         var chatIndex = await chatIndexTask.ConfigureAwait(false);
         var chatCount = await chatCountTask.ConfigureAwait(false);
@@ -108,11 +112,11 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
             if (restoreChatId is not null) {
                 // Landing on the chat rather than on the pixel offset it had: the list is a fresh set
                 // of elements, and the chat is what the user was actually looking at.
-                scrollToKey = resultItems.FirstOrDefault(it => it.Chat.Id == restoreChatId)?.Key;
+                scrollToKey = resultItems.FirstOrDefault(it => it.Chat?.Id == restoreChatId)?.Key;
             }
             else {
                 // scroll to the selected chat on very first render
-                var selectedItem = resultItems.FirstOrDefault(it => it.Chat.Id == chatId);
+                var selectedItem = resultItems.FirstOrDefault(it => it.Chat?.Id == chatId);
                 if (selectedItem != null) {
                     scrollToKey = selectedItem.Key;
                     mustScrollToKeyInTheMiddle = true;
@@ -126,6 +130,9 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
         // Console.WriteLine(Computed.Current.DebugDump());
         var firstItemPosition = resultItems.FirstOrDefault()?.Position ?? 0;
         var lastItemPosition = resultItems.LastOrDefault()?.Position ?? chatCount;
+        var mustShowInviteFriendsBanner = await mustShowInviteFriendsBannerTask.ConfigureAwait(false);
+        if (hasVeryLastItem && mustShowInviteFriendsBanner)
+            resultItems.Add(ChatListItemModel.NewInviteFriendsBanner(chatCount));
         var result = new VirtualListData<ChatListItemModel>(resultItems) {
             Index = renderedData.Index + 1,
             BeforeCount = firstItemPosition,
@@ -156,7 +163,7 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
 
         var topPosition = visibility.VisibleKeys.Select(int.Parse).Min();
         var topItem = Volatile.Read(ref _items).FirstOrDefault(x => x.Position == topPosition);
-        if (topItem != null)
-            Volatile.Write(ref _topVisibleChatId, topItem.Chat.Id);
+        if (topItem?.Chat is { } topChat)
+            Volatile.Write(ref _topVisibleChatId, topChat.Id);
     }
 }

@@ -13,6 +13,8 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     public static readonly int TileSize = IndexTiles.TileSize;
     public static readonly int LoadLimit = TileSize * 8; // 40
     public static readonly int HalfLoadLimit = LoadLimit / 2;
+    private const int HideInviteFriendsBannerAtContactCount = 3;
+    private const int HideInviteFriendsBannerAtChatCount = 5;
     private static readonly TimeSpan MinNotificationInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan HeavyTaskCancellationDelay = TimeSpan.FromSeconds(5);
 
@@ -69,6 +71,21 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         => _placeChatLists.GetOrAdd(placeId is not null ? Option.Some(placeId) : Option<PlaceId>.None,
             static (placeId1, self) => new PlaceChatListSettings(placeId1.ValueOrDefault, self.Hub, true),
             this);
+
+    [ComputeMethod]
+    public virtual async Task<bool> MustShowInviteFriendsBanner(
+        PlaceId? placeId, ChatListSettings chatListSettings, CancellationToken cancellationToken)
+    {
+        if (placeId is not null)
+            return false;
+
+        var contacts = await ListPeopleOnly(cancellationToken).ConfigureAwait(false);
+        if (contacts.Count >= HideInviteFriendsBannerAtContactCount)
+            return false;
+
+        var chatCount = await GetCount(placeId, chatListSettings, cancellationToken).ConfigureAwait(false);
+        return chatCount < HideInviteFriendsBannerAtChatCount;
+    }
 
     [ComputeMethod]
     public virtual async Task<int> GetCount(

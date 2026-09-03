@@ -14,11 +14,15 @@
     ItemVisibilityChanged="@OnItemVisibilityChanged"
 >
     <Item>
-        <ChatListItem
-            ListKind="@ChatListKind.All"
-            Chat="@context.Chat"
-            IsLastItemInBlock="@context.IsLastItemInBlock"
-            IsFirstItem="@context.IsFirstItem"/>
+        @if (context.Chat is { } chat) {
+            <ChatListItem
+                ListKind="@ChatListKind.All"
+                Chat="@chat"
+                IsLastItemInBlock="@context.IsLastItemInBlock"
+                IsFirstItem="@context.IsFirstItem"/>
+        } else {
+            <InviteFriendsBanner IsCompact="@(context.Position > InviteFriendsBanner.MaxFullSizeChatCount)"/>
+        }
     </Item>
     <SkeletonBatch>
         <chat-list-skeleton count="@context" />

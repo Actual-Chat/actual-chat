@@ -427,87 +427,64 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
     @apply hidden;
 }
 
-/* The ContentSwap host around the list under the filter tabs, in both navbar widgets.
-   ChatListNavbarWidget wraps its swap in .c-list-area, which also holds the invite-friends banner
-   behind it; NotificationsNavbarWidget has no banner and keeps .c-list-swap a direct child of
-   .c-all-chats — both forms need a rule, and they differ. */
-.navbar-chats .c-all-chats > .c-list-area {
-    @apply relative;
-    @apply flex-1 flex-y;
-    @apply min-h-0;
-}
-/* A swap layer paints --content-swap-bg to occlude the layer under it, and the navbar group's swap
-   sets that to the 02 surface - a near-white rectangle over the 03 one the panel actually paints,
-   and over the banner behind the list. A swipe slides its two layers side by side and never
-   overlaps them, so here they need no colour of their own. */
-.navbar-chats .c-all-chats > .c-list-swap,
-.navbar-chats .c-all-chats > .c-list-area > .c-list-swap {
+/* The ContentSwap host around the list under the filter tabs, in both navbar widgets. It takes the
+   box the list used to get as a flex item, and each layer has to stand on its own during a swap.
+   A swap layer paints --content-swap-bg to occlude the layer under it, and the navbar group's swap
+   sets that to the 02 surface - a near-white rectangle over the 03 one the panel actually paints.
+   A swipe slides its two layers side by side and never overlaps them, so here they need no colour
+   of their own. */
+.navbar-chats .c-all-chats > .c-list-swap {
     --content-swap-bg: transparent;
     @apply flex-1;
     @apply min-h-0;
 }
-/* Raised over the banner behind it. */
-.navbar-chats .c-all-chats > .c-list-area > .c-list-swap {
-    @apply relative z-10;
-}
-.navbar-chats .c-all-chats > .c-list-swap > .c-layer,
-.navbar-chats .c-all-chats > .c-list-area > .c-list-swap > .c-layer {
+.navbar-chats .c-all-chats > .c-list-swap > .c-layer {
     @apply flex-1 flex-y;
     @apply min-h-0;
 }
 
 /* ── Invite-friends banner ── */
 
-/* A backdrop for the list rather than a block in the column: it fills the list area behind the
-   list, so the list keeps the whole area to scroll in and the banner shows through wherever the
-   rows don't reach. Its z-index stays auto - no stacking context - which is what lets .c-buttons
-   below rise past the list instead of being trapped under it. */
-.invite-friends-banner {
-    @apply absolute inset-0;
-    @apply flex items-center justify-center;
-    @apply overflow-hidden;
+/* The banner is the last row of a short list. The container grows to the list's height so that
+   row can take whatever the chats leave, which is what centres the banner in a near-empty list;
+   a list taller than its box is unaffected, since the container is already as tall as its rows. */
+.chat-list.finite-list > .c-wrapper > ul.c-virtual-container {
+    @apply flex-1;
 }
-/* Past this the chats need every row they can get, and a promo that cannot show its own buttons
-   is worth nothing anyway. */
-@media (max-height: 32.5rem) {
-    .invite-friends-banner {
-        @apply hidden;
-    }
+.chat-list.finite-list > .c-wrapper > ul.c-virtual-container > .item:has(> .invite-friends-banner) {
+    @apply flex-1 flex-y;
+}
+.invite-friends-banner {
+    @apply flex-1 flex items-center justify-center;
 }
 /* The floating create button overlays the bottom-right of the list area, and on a narrow panel
    it lands exactly on the last button of this row - so keep the content clear of its band. */
-/* Fills the banner rather than sizing to its own content, so the illustration's max-height has a
-   definite height to resolve against and shrinks instead of being clipped. */
 .invite-friends-banner > .c-content {
     @apply flex-y items-center justify-center gap-4;
-    @apply w-full max-w-96 h-full;
-    @apply min-h-0;
+    @apply w-full max-w-96;
     /* No horizontal padding: the illustration is a share of the panel, and padding here would
        take that share off the panel first. The text keeps its own. */
     @apply py-4 px-0;
     padding-bottom: calc(5rem + var(--safe-area-bottom));
 }
-/* A share of the panel rather than a fixed 14rem, which is what the design draws: 224 of a
-   303-wide panel. A fixed width reads right on a desktop panel and half-size on a phone, where
-   the list is the whole screen. Height still gives way first when the column gets short - the
-   text and the buttons carry the message, the cat only decorates it. */
+/* A share of the panel rather than a fixed width: a fixed one reads right on a desktop panel and
+   half-size on a phone, where the list is the whole screen. */
 .invite-friends-banner .c-image {
-    @apply min-h-0;
-    @apply w-4/5 h-auto max-w-80;
-    max-height: 100%;
-    object-fit: contain;
+    @apply w-1/2 h-auto max-w-56;
+}
+/* Once the chats take a few rows of their own, the cat gives some of its share to them */
+.invite-friends-banner.compact .c-image {
+    @apply w-5/12 max-w-48;
 }
 .invite-friends-banner .c-text {
     @apply flex-none;
     @apply max-w-72 px-4;
     @apply text-center text-sm text-03;
 }
-/* The list covers this whole area on top of the banner, so the one part of it the user has to
-   reach has to be lifted back out from under the list - past .c-list-swap's z-10, not merely
-   positioned. */
+/* As wide as a chat row above it, per the design; the Share button takes what the squares leave */
 .invite-friends-banner .c-buttons {
-    @apply relative z-20;
     @apply flex-none flex items-center gap-2;
+    @apply w-full;
 }
 .invite-friends-banner .c-buttons i {
     @apply text-xl text-primary;
@@ -522,7 +499,11 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
     @apply w-10 h-10;
     @apply bg-cancel;
 }
+.invite-friends-banner .share-externally-button {
+    @apply flex-1;
+}
 .invite-friends-banner .share-externally-button .btn {
+    @apply flex-1;
     @apply w-auto;
     @apply px-4;
 }

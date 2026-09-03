@@ -8,7 +8,7 @@
     var link = m.ShareModel.Request.GetShareLink(UrlMapper);
 }
 
-<div class="invite-friends-banner">
+<div class="invite-friends-banner @(IsCompact ? "compact" : "")">
     <div class="c-content">
         <img draggable="false" class="c-image" src="/dist/images/invite-cat.svg" alt=""/>
         <div class="c-text">@L.ChatList_InviteFriends</div>
@@ -32,11 +32,10 @@
 </div>
 
 @code {
-    private const int HideAtContactCount = 3;
-    private const int HideAtChatCount = 5;
+    public const int MaxFullSizeChatCount = 2;
     private const int CentreImageSize = 160;
 
-    private ChatListUI ChatListUI => Hub.ChatListUI;
+    [Parameter] public bool IsCompact { get; set; }
 
     protected override ComputedState<Model?>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -48,16 +47,6 @@
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        var contacts = await ChatListUI.ListPeopleOnly(cancellationToken).ConfigureAwait(false);
-        if (contacts.Count >= HideAtContactCount)
-            return null;
-
-        // The banner sits behind the list, so rows that reach it read as a double exposure.
-        var settings = await ChatListUI.GetPlaceChatListSettings(null).Get(cancellationToken).ConfigureAwait(false);
-        var chatCount = await ChatListUI.GetCount(null, settings, cancellationToken).ConfigureAwait(false);
-        if (chatCount >= HideAtChatCount)
-            return null;
-
         var shareModel = await ShareUI.GetOwnAccountModel(cancellationToken).ConfigureAwait(false);
         return shareModel == null ? null : new Model(shareModel);
     }
