@@ -8,7 +8,7 @@
         return;
 }
 
-<div class="banner @BannerCls @WrapCls @DismissCls @Class @_animator.Class">
+<div class="banner @BannerCls @WrapCls @DismissCls @CenteredCls @Class @_animator.Class">
     <div class="c-content">
         @if (!ScreenSize.IsNarrow()) {
             @if (Icon != null) {
@@ -27,7 +27,7 @@
                     <HeaderButton
                         Class="close-banner"
                         Click="OnClose"
-                        Tooltip="@L.Common_Dismiss"
+                        Tooltip="@DismissTooltipText"
                         TooltipPosition="FloatingPosition.Top">
                         <i class="icon-close text-2xl"></i>
                     </HeaderButton>
@@ -39,7 +39,7 @@
         <HeaderButton
             Class="close-banner close-banner-abs"
             Click="OnClose"
-            Tooltip="@L.Common_Dismiss"
+            Tooltip="@DismissTooltipText"
             TooltipPosition="FloatingPosition.Top">
             <i class="icon-close text-2xl"></i>
         </HeaderButton>
@@ -58,6 +58,8 @@
     [Parameter] public RenderFragment? Icon { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }
     [Parameter] public bool ShowDismissButton { get; set; }
+    // Overrides the dismiss button's tooltip, e.g. "Cancel call" instead of the default "Dismiss"
+    [Parameter] public string? DismissTooltip { get; set; }
     // Opt-out for banners that must stay a single fixed-height line, e.g. the reconnect status strip
     [Parameter] public bool NoWrap { get; set; }
     [Parameter] public bool IsVisible { get; set; } = true;
@@ -89,4 +91,7 @@
     };
     private string WrapCls => NoWrap ? "" : "banner-wrap";
     private string DismissCls => ShowDismissButton ? "banner-dismissible" : "";
+    // A banner with no action buttons (dismiss aside) centers its icon + body instead of stretching them
+    private string CenteredCls => Buttons == null && !NoWrap ? "banner-centered" : "";
+    private string DismissTooltipText => DismissTooltip ?? L.Common_Dismiss;
 }

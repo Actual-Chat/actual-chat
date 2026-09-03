@@ -39,8 +39,11 @@
 }
 
 /* ── Modal action buttons: a centered row of round buttons — Decline · Mute · Message · Accept ── */
-.incoming-call-modal .dialog-buttons {
-    @apply flex-x items-center justify-center gap-3;
+/* The second selector outweighs `body.narrow .dialog-buttons`, which would otherwise stack these
+   into a column on mobile. */
+.incoming-call-modal .dialog-buttons,
+body.narrow .incoming-call-modal .dialog-buttons {
+    @apply flex-x items-center justify-center gap-4;
 }
 .incoming-call-modal .c-call-btn {
     @apply flex items-center justify-center;
@@ -65,25 +68,52 @@
     text-shadow: 0 1px 3px rgb(0 0 0 / 60%);
 }
 
-/* ── Collapsed incoming-call island (draggable) ── */
+/* ── Collapsed incoming-call island (draggable): avatar · caller name · Decline · Accept ── */
 .collapsed-incoming-call {
     @apply fixed left-4 top-16 z-30;
-    @apply flex-x items-center justify-between;
-    @apply h-12 px-1;
-    @apply rounded-[1.25rem];
-    /* High contrast against the theme: dark island on a light theme, light island on a dark theme.
-       --text-01 already inverts with the theme, and --background-08 is its counterpart. */
-    @apply bg-[var(--text-01)] text-[var(--background-08)];
+    @apply flex-x items-center gap-2;
+    @apply w-80 max-w-[calc(100vw-2rem)] h-auto;
+    @apply p-2;
+    @apply rounded-full;
+    /* High contrast against the theme: bg-08 (black / white) pairs with text-06 (white / black),
+       so the island reads in every theme. */
+    @apply bg-07;
+    @apply text-06;
     @apply touch-none cursor-grab select-none;
     box-shadow: 0 6px 20px rgb(0 0 0 / 35%);
 }
-.collapsed-incoming-call .c-av {
-    @apply w-10 h-10 rounded-full overflow-hidden flex-none;
+/* Mobile: stretch across the screen (minus a small inset), capped and centered. */
+body.narrow .collapsed-incoming-call {
+    @apply left-3 right-3;
+    @apply w-auto max-w-120;
+    @apply mx-auto;
 }
-.collapsed-incoming-call .c-gap {
-    @apply self-stretch w-12;
+.collapsed-incoming-call .c-av {
+    @apply flex-none;
+    @apply w-10 h-10;
+    @apply rounded-full;
+    @apply overflow-hidden;
+}
+.collapsed-incoming-call .c-name {
+    @apply flex-1;
+    @apply min-w-0;
+    @apply px-1;
+}
+.collapsed-incoming-call .c-caller-name {
+    @apply block;
+    @apply truncate;
+    /* Override .avatar-name's fixed text-text-1 with the island's contrast color (see the container). */
+    @apply text-headline-7 text-06;
 }
 .collapsed-incoming-call .c-decline,
 .collapsed-incoming-call .c-accept {
-    @apply w-8 h-8 min-w-[2rem] min-h-[2rem] flex-none ml-1.5;
+    @apply flex-none;
+    @apply w-10 h-10 min-w-10 min-h-10;
+    @apply text-white;
+}
+.collapsed-incoming-call .c-decline {
+    background: linear-gradient(180deg, var(--red-60) 0%, var(--red-50) 100%);
+}
+.collapsed-incoming-call .c-accept {
+    background: linear-gradient(180deg, var(--emerald-40) 0%, var(--emerald-30) 100%);
 }
