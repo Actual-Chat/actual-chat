@@ -46,8 +46,6 @@ public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDb
         // This initializer runs after everything else
         var chatDbInitializer = DbInitializer.GetCurrent<ChatDbInitializer>();
         await chatDbInitializer.WaitForOtherInitializers(_ => true).ConfigureAwait(false);
-
-        // await FixCorruptedReadPositions(cancellationToken).ConfigureAwait(false);
     }
 
     public override Task VerifyData(CancellationToken cancellationToken)
@@ -151,19 +149,5 @@ public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDb
         }
 
         Log.LogInformation("{Count} 'Notes' chats has been created", userIds.Count);
-    }
-
-    private async Task FixCorruptedReadPositions(CancellationToken cancellationToken)
-    {
-        try {
-            Log.LogInformation("Fixing corrupted chat read positions");
-            var command = new ChatsUpgradeBackend_FixCorruptedReadPositions();
-            await Commander.Call(command, cancellationToken).ConfigureAwait(false);
-            Log.LogInformation("Done");
-        }
-        catch (Exception e) {
-            Log.LogCritical(e, "Failed to fix corrupted chat read positions");
-            throw;
-        }
     }
 }

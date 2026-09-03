@@ -15,8 +15,6 @@ public interface IChatsUpgradeBackend : ICommandService, IBackendService
     Task<Chat> OnCreateFeedbackTemplateChat(ChatsUpgradeBackend_CreateFeedbackTemplateChat command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnUpgradeChat(ChatsUpgradeBackend_UpgradeChat command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task OnFixCorruptedReadPositions(ChatsUpgradeBackend_FixCorruptedReadPositions command, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -53,18 +51,6 @@ public sealed partial record ChatsUpgradeBackend_CreateFeedbackTemplateChat(
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ShardKey => Constants.Chat.FeedbackTemplateChatId;
-}
-
-/// <summary>
-/// Command to fix corrupted read position records.
-/// </summary>
-[DataContract, MessagePackObject]
-// ReSharper disable once InconsistentNaming
-public sealed partial record ChatsUpgradeBackend_FixCorruptedReadPositions(
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId?>
-{
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId? ShardKey => null;
 }
 
 /// <summary>

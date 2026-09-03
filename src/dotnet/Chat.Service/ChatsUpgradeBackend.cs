@@ -10,7 +10,6 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
     private ChatsBackend ChatsBackend { get; }
     private IAccountsBackend AccountsBackend { get; }
     private IAuthorsBackend AuthorsBackend { get; }
-    private IAuthorsUpgradeBackend AuthorsUpgradeBackend { get; }
     private IRolesBackend RolesBackend { get; }
     private IContactsBackend ContactsBackend { get; }
     private IBlobStorages Blobs { get; }
@@ -21,7 +20,6 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
         ChatsBackend = (ChatsBackend)services.GetRequiredService<IChatsBackend>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
-        AuthorsUpgradeBackend = services.GetRequiredService<IAuthorsUpgradeBackend>();
         RolesBackend = services.GetRequiredService<IRolesBackend>();
         ContactsBackend = services.GetRequiredService<IContactsBackend>();
         Blobs = Services.GetRequiredService<IBlobStorages>();
@@ -114,46 +112,6 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         chat = dbChat.ToModel();
         context.Operation.Items.KeylessSet(chat);
-    }
-
-    // [CommandHandler]
-    public virtual async Task OnFixCorruptedReadPositions(
-        ChatsUpgradeBackend_FixCorruptedReadPositions command,
-        CancellationToken cancellationToken)
-    {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
-        var chatPositionsBackend = Services.GetRequiredService<IChatPositionsBackend>();
-
-        var userIds = await ListAllAccountIds(cancellationToken).ConfigureAwait(false);
-        foreach (var userId in userIds) {
-            var chatIds = await AuthorsUpgradeBackend.ListChatIds(userId, cancellationToken).ConfigureAwait(false);
-            foreach (var chatId in chatIds) {
-                var position = await chatPositionsBackend
-                    .Get(userId, chatId, ChatPositionKind.Read, cancellationToken)
-                    .ConfigureAwait(false);
-                if (position.EntryLid <= 0)
-                    continue;
-
-                var idRange = await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
-                var lastEntryLid = idRange.End - 1;
-                if (lastEntryLid >= position.EntryLid)
-                    continue;
-
-                // since it was corrupted for some time and user might not know that there are some new message
-                // let's show at least 1 unread message, so user could pay attention to this chat
-                var fixedPosition = new ChatPosition(lastEntryLid - 1);
-                Log.LogInformation(
-                    "Fixing corrupted last read position for user #{UserId} at chat #{ChatId}: {CurrentPosition} -> {FixedPosition}",
-                    userId,
-                    chatId,
-                    position,
-                    fixedPosition);
-                var setCmd = new ChatPositionsBackend_Set(userId, chatId, ChatPositionKind.Read, fixedPosition, true);
-                await Commander.Call(setCmd, true, cancellationToken).ConfigureAwait(false);
-            }
-        }
     }
 
     private async Task<UserId[]> ListAllAccountIds(CancellationToken cancellationToken)
