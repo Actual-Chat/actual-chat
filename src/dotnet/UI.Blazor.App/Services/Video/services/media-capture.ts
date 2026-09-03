@@ -7,6 +7,8 @@ const { infoLog } = getLogs('VideoRecorder');
 
 export interface CameraCaptureOptions {
     deviceId?: string;
+    /** Ignored when deviceId is set; otherwise the browser picks the primary lens facing that way. */
+    facingMode?: VideoFacingModeEnum;
     width?: number;
     height?: number;
     frameRate?: number;
@@ -167,6 +169,8 @@ export class MediaCapture {
         const videoConstraints: MediaTrackConstraints = {};
         if (options.deviceId)
             videoConstraints.deviceId = { exact: options.deviceId };
+        else if (options.facingMode)
+            videoConstraints.facingMode = { ideal: options.facingMode };
         // ideal only, NO max: a hard max below a supported camera mode (Android
         // exposes discrete 15/30 fps ranges) forces the 15-fps mode; the worker's
         // temporalPace enforces the actual target fps downstream instead.
