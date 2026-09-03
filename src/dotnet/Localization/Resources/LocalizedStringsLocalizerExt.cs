@@ -404,6 +404,10 @@ public static class LocalizedStringsLocalizerExt
         public string Navbar_SignIn => l["Navbar_SignIn"].Value;
         public string Navbar_TestPages => l["Navbar_TestPages"].Value;
 
+        public string SystemChat_Notes => l["SystemChat_Notes"].Value;
+        public string SystemChat_Announcements_Format(object arg0) => l["SystemChat_Announcements_Format", arg0].Value;
+        public string SystemChat_Welcome => l["SystemChat_Welcome"].Value;
+
         public string LeftPanel_AddNewMembers => l["LeftPanel_AddNewMembers"].Value;
         public string LeftPanel_JoinPlace => l["LeftPanel_JoinPlace"].Value;
         public string LeftPanel_PublicChatsAndPlaces => l["LeftPanel_PublicChatsAndPlaces"].Value;

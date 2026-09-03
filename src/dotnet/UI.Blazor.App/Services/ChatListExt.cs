@@ -51,7 +51,7 @@ public static class ChatListExt
             ChatListPreOrder.ChatList => PreOrderChatListFor(chats, order, liftedAt),
             ChatListPreOrder.None => chats.ToFakeOrderedEnumerable(),
             ChatListPreOrder.NotesFirst => chats
-                .OrderByDescending(c => c.Chat.SystemTag == Constants.Chat.SystemTags.Notes),
+                .OrderByDescending(c => c.Chat.IsNotes),
             ChatListPreOrder.ReactionsFirst => LiftBy(chats, liftedAt),
             _ => throw new ArgumentOutOfRangeException(nameof(preOrder)),
         };
@@ -80,7 +80,7 @@ public static class ChatListExt
             ChatListPreOrder.ChatList => contacts.OrderByDescending(c => c.Contact.IsPinned),
             ChatListPreOrder.None => contacts.ToFakeOrderedEnumerable(),
             ChatListPreOrder.NotesFirst => contacts.OrderByDescending(
-                c => c.Chat.SystemTag == Constants.Chat.SystemTags.Notes),
+                c => c.Chat.IsNotes),
             _ => throw new ArgumentOutOfRangeException(nameof(preOrder)),
         };
         return order switch {

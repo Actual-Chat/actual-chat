@@ -127,7 +127,7 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
                 .ConfigureAwait(false);
             notesChat = chats
                 .SkipNullItems()
-                .FirstOrDefault(c => c.SystemTag == Constants.Chat.SystemTags.Notes);
+                .FirstOrDefault(c => c.IsNotes);
             notesChat.Should().NotBeNull();
         });
 

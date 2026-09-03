@@ -378,6 +378,10 @@
   "Navbar_SignIn": "Войти",
   "Navbar_TestPages": "Тестовые страницы",
 
+  "SystemChat_Notes": "Заметки",
+  "SystemChat_Announcements_Format": "Анонсы {0}",
+  "SystemChat_Welcome": "Добро пожаловать",
+
   "LeftPanel_AddNewMembers": "Добавить участников",
   "LeftPanel_JoinPlace": "Вступить",
   "LeftPanel_PublicChatsAndPlaces": "Открытые чаты и Места",

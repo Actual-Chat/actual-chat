@@ -62,6 +62,7 @@ public static partial class Constants
     {
         public static readonly GroupChatId DefaultChatId = GroupChatId.Parse("the-actual-one");
         public static readonly GroupChatId AnnouncementsChatId = GroupChatId.Parse("announcements");
+        public static readonly string AnnouncementsChatTitle = $"{CoreConstants.AppName} Announcements";
         public static readonly GroupChatId FeedbackTemplateChatId = GroupChatId.Parse("feedback-template");
         public static readonly HashSet<ChatId> SystemChatIds = [DefaultChatId, AnnouncementsChatId, FeedbackTemplateChatId];
         public static readonly HashSet<string> SystemChatIdValues = SystemChatIds.Select(x => x.Value).ToHashSet();
@@ -85,24 +86,35 @@ public static partial class Constants
         public const int MaxSearchFilterLength = 100;
         public const int MinChatPageMapSize = 100;
 
-        public static class SystemTags
+        // The English titles here are a deliberate second copy of the SystemChat_* and Onboarding_Chat*
+        // keys in Strings.en.json: a chat is stored with this title and shown under the catalog's while it
+        // keeps it. SystemChatTitleLocalizationTest keeps the two copies equal.
+        public static class System
         {
-            public static readonly Symbol Notes = "notes";
-            // Not used!
-            public static readonly Symbol Family = "family";
-            // Not used!
-            public static readonly Symbol Friends = "friends";
-            // Not used!
-            public static readonly Symbol ClassmatesAlumni = "classmates-alumni";
-            // Not used!
-            public static readonly Symbol Coworkers = "coworkers";
-            public static readonly Symbol Welcome = "welcome";
-            public static readonly Symbol Bot = "ml-bot";
+            public static readonly SystemChat Notes = new("notes", "Notes");
+            public static readonly SystemChat Family = new("family", "Family");
+            public static readonly SystemChat Friends = new("friends", "Friends");
+            public static readonly SystemChat ClassmatesAlumni = new("classmates-alumni", "Classmates / Alumni");
+            public static readonly SystemChat Coworkers = new("coworkers", "Coworkers");
+            public static readonly SystemChat Welcome = new("welcome", "Welcome");
+            public static readonly SystemChat[] All = [Notes, Family, Friends, ClassmatesAlumni, Coworkers, Welcome];
+
+            public static SystemChat? Get(Symbol tag)
+                => All.FirstOrDefault(systemChat => systemChat.Tag == tag);
+
             public static class Rules {
-                private static readonly Symbol[] AllowMultiplePerUser = [Bot, Welcome];
+                private static readonly Symbol[] AllowMultiplePerUser = [Welcome];
                 public static bool MustBeUniquePerUser(Symbol systemTag)
                     => AllowMultiplePerUser.All(e => e != systemTag);
             }
+        }
+
+        /// <summary>
+        /// A chat the app creates by itself: its SystemTag value and the title it is stored with.
+        /// </summary>
+        public sealed record SystemChat(Symbol Tag, string DefaultTitle)
+        {
+            public static implicit operator Symbol(SystemChat systemChat) => systemChat.Tag;
         }
     }
 

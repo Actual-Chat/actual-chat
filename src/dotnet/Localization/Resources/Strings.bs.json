@@ -378,6 +378,10 @@
   "Navbar_SignIn": "Prijavite se",
   "Navbar_TestPages": "Test stranice",
 
+  "SystemChat_Notes": "Bilješke",
+  "SystemChat_Announcements_Format": "Obavještenja {0}",
+  "SystemChat_Welcome": "Dobro došli",
+
   "LeftPanel_AddNewMembers": "Dodajte nove članove",
   "LeftPanel_JoinPlace": "Pridružite se",
   "LeftPanel_PublicChatsAndPlaces": "Otvoreni chatovi i Mjesta",

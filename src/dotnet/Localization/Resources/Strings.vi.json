@@ -378,6 +378,10 @@
   "Navbar_SignIn": "Đăng nhập",
   "Navbar_TestPages": "Trang thử nghiệm",
 
+  "SystemChat_Notes": "Ghi chú",
+  "SystemChat_Announcements_Format": "Thông báo {0}",
+  "SystemChat_Welcome": "Chào mừng",
+
   "LeftPanel_AddNewMembers": "Thêm thành viên mới",
   "LeftPanel_JoinPlace": "Tham gia",
   "LeftPanel_PublicChatsAndPlaces": "Cuộc trò chuyện và Địa điểm công khai",

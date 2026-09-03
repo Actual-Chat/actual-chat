@@ -182,7 +182,7 @@
         };
         _placeId = (chat.Id as PlaceChatId)?.PlaceId;
         if (_placeId is not null)
-            _isPlaceWelcomeChat = Constants.Chat.SystemTags.Welcome == chat.SystemTag;
+            _isPlaceWelcomeChat = chat.IsWelcome;
         Context.Items.KeylessSet(_form);
     }
 

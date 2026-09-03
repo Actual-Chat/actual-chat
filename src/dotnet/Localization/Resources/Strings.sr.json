@@ -378,6 +378,10 @@
   "Navbar_SignIn": "Пријавите се",
   "Navbar_TestPages": "Тест странице",
 
+  "SystemChat_Notes": "Белешке",
+  "SystemChat_Announcements_Format": "Обавештења {0}",
+  "SystemChat_Welcome": "Добро дошли",
+
   "LeftPanel_AddNewMembers": "Додајте нове чланове",
   "LeftPanel_JoinPlace": "Придружите се",
   "LeftPanel_PublicChatsAndPlaces": "Отворени четови и Места",

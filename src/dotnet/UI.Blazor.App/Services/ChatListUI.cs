@@ -477,7 +477,7 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     private async Task<ChatInfo?> GetNotes(CancellationToken cancellationToken = default)
     {
         var chatById = await ListUnorderedRaw(null, cancellationToken).ConfigureAwait(false);
-        return chatById.Values.FirstOrDefault(c => c.Chat.SystemTag == Constants.Chat.SystemTags.Notes);
+        return chatById.Values.FirstOrDefault(c => c.Chat.IsNotes);
     }
 
     private async Task<IReadOnlyDictionary<ChatId, ChatInfo>> AddUnlistedSelectedChat(

@@ -1,5 +1,6 @@
 using ActualChat.Chat.ML;
 using ActualChat.Contacts;
+using ActualChat.Localization;
 using ActualChat.Users.Email;
 using ActualChat.Users.Templates;
 using Mjml.Net;
@@ -231,7 +232,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             return default;
 
         return new DigestParameters.DigestChat {
-            Name = chat.Title,
+            Name = LanguageStringLocalizer.Get(userLanguage).LocalizeTitle(chat).Title,
             Link = UrlMapper.ToAbsolute(Links.Chat(chat.Id)),
             UnreadCount = unreadCount,
             BulletPoints = bulletPoints,

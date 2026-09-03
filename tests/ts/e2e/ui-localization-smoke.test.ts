@@ -38,9 +38,7 @@ const IgnoredContainers = ['.docs-content'];
 
 // Keys whose English text legitimately shows up in a localized UI, and why. A text is excused
 // only when every key that produces it is listed here.
-const KnownEnglish: Record<string, string> = {
-    Navbar_Notes: 'the built-in Notes chat is created server-side with an English title the user can rename',
-};
+const KnownEnglish: Record<string, string> = {};
 
 interface TourStep {
     name: string;

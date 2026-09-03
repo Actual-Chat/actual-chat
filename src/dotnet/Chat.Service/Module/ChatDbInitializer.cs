@@ -136,7 +136,7 @@ public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDb
             .Distinct()
             .Where(uid => !dbContext.Chats
                 .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
-                .Any(x => x.a.UserId == uid && x.c.SystemTag == Constants.Chat.SystemTags.Notes.Value))
+                .Any(x => x.a.UserId == uid && x.c.SystemTag == Constants.Chat.System.Notes.Tag.Value))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
@@ -146,9 +146,6 @@ public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDb
         Log.LogInformation("There is no 'Notes' chat for some users, creating chats for them");
 
         foreach (var userId in userIds) {
-            if (userId is null)
-                continue;
-
             var createNotesChatCommand = new ChatsBackend_CreateNotesChat(UserId.Parse(userId));
             await Commander.Run(createNotesChatCommand, true, cancellationToken).ConfigureAwait(false);
         }

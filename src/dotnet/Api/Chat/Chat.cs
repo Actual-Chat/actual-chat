@@ -50,7 +50,7 @@ public sealed partial record Chat(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatKind Kind => Id.Kind;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public bool HasSingleAuthor => SystemTag == Constants.Chat.SystemTags.Notes;
+    public bool HasSingleAuthor => this.IsNotes;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public AliasInfo<ChatId> AliasInfo => field ??= new(Id, AliasId);

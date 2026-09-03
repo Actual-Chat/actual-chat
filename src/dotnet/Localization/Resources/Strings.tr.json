@@ -378,6 +378,10 @@
   "Navbar_SignIn": "Giriş yapın",
   "Navbar_TestPages": "Test sayfaları",
 
+  "SystemChat_Notes": "Notlar",
+  "SystemChat_Announcements_Format": "{0} Duyuruları",
+  "SystemChat_Welcome": "Hoş geldiniz",
+
   "LeftPanel_AddNewMembers": "Yeni üye ekleyin",
   "LeftPanel_JoinPlace": "Katılın",
   "LeftPanel_PublicChatsAndPlaces": "Herkese açık sohbetler ve Mekânlar",

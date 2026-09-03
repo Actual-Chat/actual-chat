@@ -508,17 +508,21 @@ public class NotificationsBackend(IServiceProvider services)
             .ToList();
         // The Started banner names who opened the voice chat instead of the generic phrase, so it
         // words itself per reader; every other phase carries the text the command already chose.
+        var mustLocalizeTitle = chat.SystemDefaultTitle is not null;
+        var localizers = isStartedBanner || mustLocalizeTitle
+            ? await GetLocalizers(recipientIds, cancellationToken).ConfigureAwait(false)
+            : [];
         var textByUserId = isStartedBanner
-            ? await ComposeContentByUserId(
-                    recipientIds, new VoiceChatStartedNotificationContent(authorNames), cancellationToken)
-                .ConfigureAwait(false)
+            ? ComposeContentByUserId(localizers, new VoiceChatStartedNotificationContent(authorNames))
             : new Dictionary<UserId, string>();
+        var titleByUserId = ComposeTitleByUserId(localizers, chat);
 
         foreach (var userId in recipientIds) {
             var userText = isStartedBanner ? textByUserId[userId] : text;
+            var userTitle = titleByUserId?[userId] ?? chat.Title;
             var notification = ConversationNotification.New(userId, conversationId, endEntryLid) with {
-                Title = chat.Title,
-                SenderName = chat.Title,
+                Title = userTitle,
+                SenderName = userTitle,
                 Text = userText,
                 IconUrl = iconUrl,
                 SentAt = now,
@@ -565,14 +569,15 @@ public class NotificationsBackend(IServiceProvider services)
             .ListUserIds(chatId, invitees, RequestedAuthorKind.Default, cancellationToken)
             .ConfigureAwait(false);
 
-        var textByUserId = await ComposeContentByUserId(
-                inviteeUserIds, new IncomingCallNotificationContent(hasVideo), cancellationToken)
-            .ConfigureAwait(false);
+        var localizers = await GetLocalizers(inviteeUserIds, cancellationToken).ConfigureAwait(false);
+        var textByUserId = ComposeContentByUserId(localizers, new IncomingCallNotificationContent(hasVideo));
+        var titleByUserId = ComposeTitleByUserId(localizers, chat);
 
         foreach (var inviteeUserId in inviteeUserIds) {
+            var title = titleByUserId?[inviteeUserId] ?? chat.Title;
             var notification = CallNotification.New(inviteeUserId, conversationId, caller, hasVideo) with {
-                Title = chat.Title,
-                SenderName = chat.Title,
+                Title = title,
+                SenderName = title,
                 Text = textByUserId[inviteeUserId],
                 IconUrl = iconUrl,
                 SentAt = now,
@@ -1358,15 +1363,24 @@ public class NotificationsBackend(IServiceProvider services)
         var emojis = reaction is { } r ? ApiArray.New(r.Emoji) : default;
         var otherUserIds = userIds.Where(userId => userId != changeAuthor.UserId).ToList();
         // Composed before the loop: each localizer costs a per-user Kvas read, and awaiting them
-        // one recipient at a time made the fan-out as slow as the chat is large. Left empty when
-        // the text can't vary by reader, which never looks anything up.
+        // one recipient at a time made the fan-out as slow as the chat is large. Nothing is looked
+        // up when neither the text nor the title can vary by reader.
         var sharedText = content.SharedText;
-        var contentByUserId = sharedText is not null
-            ? new Dictionary<UserId, string>()
-            : await ComposeContentByUserId(otherUserIds, content, cancellationToken).ConfigureAwait(false);
+        var mustLocalizeTitle = chat.SystemDefaultTitle is not null;
+        var localizers = sharedText is null || mustLocalizeTitle
+            ? await GetLocalizers(otherUserIds, cancellationToken).ConfigureAwait(false)
+            : [];
+        var contentByUserId = sharedText is null
+            ? ComposeContentByUserId(localizers, content)
+            : new Dictionary<UserId, string>();
+        var groupTitleByUserId = ComposeTitleByUserId(localizers, chat);
 
         foreach (var otherUserId in otherUserIds) {
             var text = sharedText ?? contentByUserId[otherUserId];
+            var userGroupTitle = groupTitleByUserId?[otherUserId] ?? groupTitle;
+            var userTitle = groupTitleByUserId is null
+                ? title
+                : NotificationHelper.GetTitle(senderName, userGroupTitle);
 
             ChatNotification notification = kind switch {
                 NotificationKind.Message => MessageNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
@@ -1384,9 +1398,9 @@ public class NotificationsBackend(IServiceProvider services)
                 _ => throw StandardError.NotSupported<NotificationsBackend>($"Unsupported notification kind: {kind}."),
             };
             notification = notification with {
-                Title = title,
+                Title = userTitle,
                 SenderName = senderName,
-                GroupTitle = groupTitle,
+                GroupTitle = userGroupTitle,
                 Text = text,
                 IconUrl = iconUrl,
                 SentAt = now,
@@ -1409,31 +1423,46 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // Every recipient's language in one round of reads rather than one per loop iteration - the
-    // way FilterByNotificationMode reads their notification modes. The text varies by language and
-    // not by reader, so it composes once per distinct language however many recipients share it.
-    private async Task<Dictionary<UserId, string>> ComposeContentByUserId(
-        IReadOnlyList<UserId> userIds,
-        NotificationContent content,
-        CancellationToken cancellationToken)
-    {
-        var localizers = await userIds
+    // way FilterByNotificationMode reads their notification modes.
+    private async Task<(UserId UserId, IStringLocalizer Localizer)[]> GetLocalizers(
+        IReadOnlyList<UserId> userIds, CancellationToken cancellationToken)
+        => await userIds
             .Select(async userId => (
                 UserId: userId,
                 Localizer: await UserLocalizers.Get(userId, cancellationToken).ConfigureAwait(false)))
             .Collect(cancellationToken)
             .ConfigureAwait(false);
 
-        var contentByLanguage = new Dictionary<Language, string>();
-        var contentByUserId = new Dictionary<UserId, string>(localizers.Length);
+    private static Dictionary<UserId, string> ComposeContentByUserId(
+        (UserId UserId, IStringLocalizer Localizer)[] localizers, NotificationContent content)
+        => ComposeByUserId(localizers, content, static (l, x) => x.Render(l));
+
+    // A system chat - Notes, the announcements chat - is named per reader the way the text is;
+    // null for any other chat, whose title reads the same to everyone.
+    private static Dictionary<UserId, string>? ComposeTitleByUserId(
+        (UserId UserId, IStringLocalizer Localizer)[] localizers, Chat.Chat chat)
+        => chat.SystemDefaultTitle is null
+            ? null
+            : ComposeByUserId(localizers, chat, static (l, x) => l.LocalizeTitle(x).Title);
+
+    // The text varies by language and not by reader, so it composes once per distinct language
+    // however many recipients share it.
+    private static Dictionary<UserId, string> ComposeByUserId<T>(
+        (UserId UserId, IStringLocalizer Localizer)[] localizers,
+        T state,
+        Func<IStringLocalizer, T, string> compose)
+    {
+        var textByLanguage = new Dictionary<Language, string>();
+        var textByUserId = new Dictionary<UserId, string>(localizers.Length);
         // static + a tuple argument rather than a capturing lambda: l changes every iteration, so a
         // closure here would be the per-recipient allocation this method exists to avoid.
         foreach (var (userId, l) in localizers)
-            contentByUserId[userId] = contentByLanguage.GetOrAdd(
+            textByUserId[userId] = textByLanguage.GetOrAdd(
                 ((IHasUILanguage)l).UILanguage,
-                static (_, x) => x.Content.Render(x.Localizer),
-                (Content: content, Localizer: l));
+                static (_, x) => x.Compose(x.Localizer, x.State),
+                (State: state, Localizer: l, Compose: compose));
 
-        return contentByUserId;
+        return textByUserId;
     }
 
     private async Task<IReadOnlyList<Device>> ListDevices(

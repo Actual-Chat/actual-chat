@@ -89,8 +89,10 @@ tutorial-slide `alt`s (`Web/Chrome/01`, `Tutorial slide #1` — asset
 identifiers), diagnostics entries, `CaptchaView`'s fake-reCAPTCHA branch,
 `DeveloperTools`, `PlaceInfo`'s `EnableIncompleteUI` mockup text, the three
 `ChatPropertiesMenu` entries that sit inside a `@* … *@` comment block, and chat
-titles that become persisted data (`Notes`, a Place's `Welcome` chat,
-`Anonymous chat (<date>)`).
+titles that become persisted data (`Anonymous chat (<date>)`). System chat titles
+(`Notes`, `Welcome`, the announcements chat, the onboarding groups) are persisted
+in English too, but named per reader on the way out since #4328 — see
+[i18n.md → System chat titles](../i18n.md#system-chat-titles).
 
 ### The runtime check — `ui-localization-smoke.test.ts`
 
@@ -144,9 +146,11 @@ The `right-panel` step had been failing silently against a stale `.right-panel`
 selector — the component is `.chat-side-panel` — so nothing it covered was
 actually being checked. Fixed in the same pass.
 
-The Notes chat title is the one deliberate exception (`KnownEnglish` in the spec):
+The Notes chat title was the one deliberate exception (`KnownEnglish` in the spec):
 `ChatsBackend` creates that chat with the literal title "Notes" and the user can rename
-it, so it is data, not a string.
+it, so it is data, not a string. Since #4328 the stored title stays English but
+`Chats.Get` shows it under `SystemChat_Notes` until the user renames it, so the smoke
+test no longer sees "Notes" on a non-English page.
 
 ### System entries — localized at the render site
 
