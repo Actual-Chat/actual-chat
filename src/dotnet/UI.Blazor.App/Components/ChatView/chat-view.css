@@ -600,7 +600,6 @@ body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
     background-size: 300%;
     background-position-x: 100%;
     animation: shimmer 5s infinite steps(50);
-    transition: width 150ms;
 }
 .notify-mentioned-members .c-icon {
     @apply flex-none flex items-center justify-center;
@@ -608,26 +607,27 @@ body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
     @apply -ml-1;
 }
 body.hoverable .notify-mentioned-members.not-notified {
-    @apply w-7;
+    @apply flex-nowrap;
+    @apply w-fit;
     @apply cursor-pointer;
-}
-body.hoverable .notify-mentioned-members.not-notified:hover {
-    @apply w-30;
-    transition: width 150ms;
 }
 .notify-mentioned-members.has-notified {
     @apply rounded-lg;
 }
+/* The pill sizes to its label rather than to a fixed expanded width: that width fit the English
+   label but not its translations, and the overflow wrapped the label under the icon. */
 body.hoverable .notify-mentioned-members .not-mentioned {
     @apply flex items-center;
-    @apply w-0 h-0;
+    @apply max-w-0;
+    @apply overflow-hidden;
+    @apply whitespace-nowrap;
     filter: opacity(0);
-    transition: filter 0ms linear 0ms, -webkit-filter 0ms linear 0ms, width 0ms linear 0ms;
+    transition: filter 0ms linear 0ms, -webkit-filter 0ms linear 0ms, max-width 0ms linear 0ms;
 }
 body.hoverable .notify-mentioned-members:hover .not-mentioned {
-    width: auto;
+    @apply max-w-60;
     filter: opacity(1);
-    transition: filter 150ms linear 150ms, -webkit-filter 150ms linear 150ms, width 150ms linear 150ms;
+    transition: filter 150ms linear 150ms, -webkit-filter 150ms linear 150ms, max-width 150ms linear 150ms;
 }
 @keyframes shimmer {
     0%, 90% {
