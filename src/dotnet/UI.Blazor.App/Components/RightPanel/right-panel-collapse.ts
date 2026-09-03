@@ -61,6 +61,7 @@ export class RightPanelCollapse {
     private lingerTimer = 0;
     private headerClassObserver: MutationObserver | null = null;
     private chatInfoObserver: MutationObserver | null = null;
+    private chatInfoResizeObserver: ResizeObserver | null = null;
     private wasAvatarExpanded = false;
 
     // The collapse range = the header shrink (base - bar, a constant) plus the chat-info that also
@@ -121,6 +122,15 @@ export class RightPanelCollapse {
         if (topRegion) {
             this.chatInfoObserver = new MutationObserver(() => this.measureGeometry());
             this.chatInfoObserver.observe(topRegion, { childList: true, subtree: true });
+        }
+        // The card renders lazily and settles its height a frame or two after insertion (toggles, captions),
+        // which the childList observer above misses — so the range stayed short and the tabs overlapped the
+        // card until the first collapse re-measured it. A ResizeObserver catches the final height; the card
+        // has no collapse-dependent styles, so measuring it never feeds back on the var.
+        const chatInfo = rightPanel.querySelector('.c-chat-info');
+        if (chatInfo) {
+            this.chatInfoResizeObserver = new ResizeObserver(() => this.measureChatInfo());
+            this.chatInfoResizeObserver.observe(chatInfo);
         }
         this.measureGeometry();
         this.rightPanel.classList.toggle('rp-expanded', this.progress === 0);
@@ -209,6 +219,7 @@ export class RightPanelCollapse {
         clearTimeout(this.lingerTimer);
         this.headerClassObserver?.disconnect();
         this.chatInfoObserver?.disconnect();
+        this.chatInfoResizeObserver?.disconnect();
         this.rightPanel.classList.remove('snapping', 'dragging', 'collapsing', 'collapsed', 'rp-expanded');
         this.rightPanel.style.removeProperty('--rp-collapse');
         this.rightPanel.style.removeProperty('--rp-chatinfo-h');

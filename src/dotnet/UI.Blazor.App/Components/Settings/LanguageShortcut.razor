@@ -1,11 +1,12 @@
 @inherits ComputedStateComponent<AppUIHub, UserLanguageSettings>
 @{
-    var m = State.Value;
-    var text = m.ListSpoken().Select(x => x.ShortTitle.ToSentenceCase()).ToDelimitedString(", ");
+    var spoken = State.Value.ListSpoken();
+    var primary = spoken[0].ShortTitle.ToSentenceCase();
+    var extra = spoken.Count - 1;
 }
 
-<div class="text-primary text-sm whitespace-nowrap">
-    @text
+<div class="language-shortcut">
+    @primary@if (extra > 0) {<sup class="c-more">+@extra</sup>}
 </div>
 
 @code{

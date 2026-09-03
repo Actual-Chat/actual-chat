@@ -69,25 +69,24 @@
 .left-panel-content.search-open {
     @apply bg-04;
 }
-/* Wide only: there the whole top is one flat strip painted by .base-layout::before, and this just
-   reserves the room under it. In narrow the panel's own background has to reach the top of the
-   screen instead, so the spacer collapses and the header below grows by the inset. */
+/* The panel reserves and paints its top inset as a bg-04 band. In narrow it is the visible safe-area
+   strip the header's rounded corner blends into; in wide .base-layout::before paints a flat strip over it. */
 .left-panel-content > .safe-area-top {
-    height: var(--safe-area-top-wide);
+    height: var(--safe-area-top);
     @apply bg-04;
 }
-/* bg-03 comes from .left-panel-content, so padding is all it takes to carry it into the inset. */
-body.narrow .left-panel-content-header:not(.place) {
-    padding-top: var(--safe-area-top-narrow);
+/* Round the wallpaper's top-left only in narrow mode, where the bg-04 safe-area strip exists to blend into. */
+body.narrow .left-panel-content-header > .c-content {
+    @apply rounded-tl-2xl;
 }
-/* The place wallpaper IS this panel's background, so it grows into the inset rather than starting
-   below it. .c-icon is centred in .c-content, so both take the same height. */
-body.narrow .left-panel-content-header.place > .c-content {
-    min-height: calc(6.5rem + var(--safe-area-top-narrow));
-    max-height: calc(6.5rem + var(--safe-area-top-narrow));
-}
-body.narrow .left-panel-content-header.place .c-icon {
-    height: calc(6.5rem + var(--safe-area-top-narrow));
+/* Fill the concave corner sliver with bg-04 on top of the header (painting over, not behind, so a
+   transparent wallpaper doesn't reveal a box). */
+body.narrow .left-panel-content-header::before {
+    @apply content-empty;
+    @apply absolute left-0 top-0 z-10;
+    @apply w-4 h-4;
+    @apply pointer-events-none;
+    background: radial-gradient(circle at bottom right, transparent 1rem, var(--background-04) calc(1rem + 0.5px));
 }
 .left-panel-content .left-panel-content-main-wrapper {
     @apply relative;
@@ -127,7 +126,7 @@ body.narrow .left-panel-content-header.place .c-icon {
         color-mix(in srgb, var(--blue-50-50) 80%, var(--violet-50-50)),
         var(--background-03));
     @apply flex-1 flex-y;
-    @apply rounded-tl-xl;
+    @apply rounded-tl-2xl;
     @apply overflow-hidden;
     @apply bg-03;
     background-image: var(--c-search-tint);
@@ -193,7 +192,7 @@ body.narrow .left-panel-content-header.place .c-icon {
 .left-panel-content-header.place > .c-content {
     @apply flex-y;
     @apply min-h-26 max-h-26;
-    @apply rounded-br-xl md:rounded-bl-xl;
+    @apply rounded-br-2xl md:rounded-bl-2xl;
     @apply overflow-hidden;
 }
 /* The search box keeps the panel's right edge, and the title truncates against it;
@@ -318,7 +317,7 @@ body.hoverable .add-members-btn:hover {
 .left-search-panel:before {
     @apply content-empty;
     @apply absolute inset-0 z-minus;
-    @apply rounded-tl-xl;
+    @apply rounded-tl-2xl;
     @apply bg-03;
     @apply opacity-0;
     /* Fixed blue header height so it stays constant when the keyboard opens (viewport units shrink with the keyboard) */
