@@ -46,9 +46,9 @@ body.narrow .close-settings-btn {
 }
 
 /* A tab-level description sits right under the tab header, outside any tile, so it
-   keeps the tile description's type but not its label-column indent. */
+   reads as body text rather than as a tile row's fine print. */
 .settings-tab .settings-tab-content > .c-description {
-    @apply text-caption-6 text-03;
+    @apply text-text-1 text-03;
 }
 
 /* Inset by the form block it sits in, so it lines up with the input below it */
