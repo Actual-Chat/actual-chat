@@ -152,9 +152,22 @@ public static class NotificationHelper
         notificationManager.CreateNotificationChannel(channel);
     }
 
+    // Bump whenever this method's channel config (sound, vibration, importance, ...) intentionally
+    // changes - see MauiPreferences.AttentionChannelConfigVersion.
+    private const int AttentionChannelConfigVersion = 1;
+
     public static void EnsureAttentionNotificationChannelExist(Context context, string channelId)
     {
         var notificationManager = (NotificationManager)context.GetSystemService(Context.NotificationService)!;
+        // A channel's sound is fixed at creation and never updated by a later CreateNotificationChannel
+        // call - e.g. a numeric-id resource URI baked in by an older build can dangle after a rebuild
+        // renumbers raw resource ids, and MediaPlayer then fails to prepare it while vibration, not
+        // resource-backed, still fires. Deleting an out-of-date channel makes Android recreate it
+        // fresh under the same id.
+        if (MauiPreferences.AttentionChannelConfigVersion != AttentionChannelConfigVersion) {
+            notificationManager.DeleteNotificationChannel(channelId);
+            MauiPreferences.AttentionChannelConfigVersion = AttentionChannelConfigVersion;
+        }
         var channel = new NotificationChannel(channelId,
             L.NotificationChannel_Attention,
             NotificationImportance.High);
@@ -163,9 +176,15 @@ public static class NotificationHelper
             .SetContentType(AudioContentType.Music)!
             .Build();
         //var ringtoneUri = RingtoneManager.GetDefaultUri(RingtoneType.Ringtone);
-        var ringtoneUri = Android.Net.Uri.Parse($"android.resource://{context.PackageName}/"
-            // ReSharper disable once AccessToStaticMemberViaDerivedType
-            + Microsoft.Maui.Resource.Raw.attention_ringtone);
+        // Name-based (not id-based) so it keeps resolving across builds that renumber raw resource ids.
+        // The name comes from the live id rather than a hardcoded string so it can't itself drift out
+        // of sync with the resource - a rename/removal breaks the id reference below at compile time.
+        var ringtoneId = Microsoft.Maui.Resource.Raw.attention_ringtone;
+        var resources = context.Resources!;
+        var ringtoneType = resources.GetResourceTypeName(ringtoneId);
+        var ringtoneName = resources.GetResourceEntryName(ringtoneId);
+        var ringtoneUri = Android.Net.Uri.Parse(
+            $"android.resource://{context.PackageName}/{ringtoneType}/{ringtoneName}");
         channel.SetSound(ringtoneUri, attrs);
         var vibratePattern = new long[] { 0, 700, 500, 700, 500, 500 };
         channel.SetVibrationPattern(vibratePattern);
