@@ -953,7 +953,7 @@
   "Location_ChoosePlaceCaption": "어디든 가능합니다 — 현재 위치가 아니어도 됩니다",
   "Location_ShareForMinutes": "{0}분",
   "Location_ShareForHours": "{0}시간",
-  "Location_ShareUntilTurnedOff": "내가 끌 때까지",
+  "Location_ShareUntilTurnedOff": "끌 때까지",
   "Location_AccurateTo_Format": "정확도 {0}",
   "Location_DistanceAway_Format": "{0} 거리",
   "Location_CountdownHours_Format": "{0}시간",

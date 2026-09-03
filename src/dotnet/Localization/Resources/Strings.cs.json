@@ -953,7 +953,7 @@
   "Location_ChoosePlaceCaption": "Jakýkoli bod — nemusí to být tam, kde jste",
   "Location_ShareForMinutes": "{0} minuty|{0} minut|{0} minut",
   "Location_ShareForHours": "{0} hodiny|{0} hodin|{0} hodin",
-  "Location_ShareUntilTurnedOff": "Dokud to nevypnu",
+  "Location_ShareUntilTurnedOff": "Dokud nevypnu",
   "Location_AccurateTo_Format": "Přesnost: {0}",
   "Location_DistanceAway_Format": "{0} odsud",
   "Location_CountdownHours_Format": "{0}h",

@@ -953,7 +953,7 @@
   "Location_ChoosePlaceCaption": "कोई भी बिंदु — ज़रूरी नहीं कि आप वहीं हों",
   "Location_ShareForMinutes": "{0} मिनट",
   "Location_ShareForHours": "{0} घंटा|{0} घंटे",
-  "Location_ShareUntilTurnedOff": "जब तक मैं बंद न करूँ",
+  "Location_ShareUntilTurnedOff": "बंद करने तक",
   "Location_AccurateTo_Format": "{0} तक सटीक",
   "Location_DistanceAway_Format": "{0} दूर",
   "Location_CountdownHours_Format": "{0}घं",

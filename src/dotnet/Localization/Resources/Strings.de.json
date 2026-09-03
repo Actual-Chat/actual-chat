@@ -953,7 +953,7 @@
   "Location_ChoosePlaceCaption": "Ein beliebiger Punkt – nicht unbedingt Ihr Standort",
   "Location_ShareForMinutes": "{0} Minute|{0} Minuten",
   "Location_ShareForHours": "{0} Stunde|{0} Stunden",
-  "Location_ShareUntilTurnedOff": "Bis ich es ausschalte",
+  "Location_ShareUntilTurnedOff": "Bis zum Ausschalten",
   "Location_AccurateTo_Format": "Genauigkeit: {0}",
   "Location_DistanceAway_Format": "{0} entfernt",
   "Location_CountdownHours_Format": "{0}h",

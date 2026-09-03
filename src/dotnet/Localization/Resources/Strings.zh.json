@@ -953,7 +953,7 @@
   "Location_ChoosePlaceCaption": "任意地点——不一定是你所在的位置",
   "Location_ShareForMinutes": "{0} 分钟",
   "Location_ShareForHours": "{0} 小时",
-  "Location_ShareUntilTurnedOff": "直到我关闭",
+  "Location_ShareUntilTurnedOff": "直到关闭",
   "Location_AccurateTo_Format": "精确到 {0}",
   "Location_DistanceAway_Format": "距离 {0}",
   "Location_CountdownHours_Format": "{0}小时",

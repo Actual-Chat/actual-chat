@@ -953,7 +953,7 @@
   "Location_ChoosePlaceCaption": "Bất kỳ điểm nào — không nhất thiết là nơi bạn đang đứng",
   "Location_ShareForMinutes": "{0} phút",
   "Location_ShareForHours": "{0} giờ",
-  "Location_ShareUntilTurnedOff": "Cho đến khi tôi tắt",
+  "Location_ShareUntilTurnedOff": "Đến khi tắt",
   "Location_AccurateTo_Format": "Chính xác đến {0}",
   "Location_DistanceAway_Format": "Cách {0}",
   "Location_CountdownHours_Format": "{0}g",

@@ -953,7 +953,7 @@
   "Location_ChoosePlaceCaption": "Любая точка — не обязательно там, где вы находитесь",
   "Location_ShareForMinutes": "{0} минуты|{0} минут|{0} минут",
   "Location_ShareForHours": "{0} часа|{0} часов|{0} часов",
-  "Location_ShareUntilTurnedOff": "Пока я не выключу",
+  "Location_ShareUntilTurnedOff": "Пока не выключу",
   "Location_AccurateTo_Format": "Точность: {0}",
   "Location_DistanceAway_Format": "{0} от вас",
   "Location_CountdownHours_Format": "{0}ч",

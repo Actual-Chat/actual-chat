@@ -953,7 +953,7 @@
   "Location_ChoosePlaceCaption": "Herhangi bir nokta - bulunduğunuz yer olmak zorunda değil",
   "Location_ShareForMinutes": "{0} dakika",
   "Location_ShareForHours": "{0} saat",
-  "Location_ShareUntilTurnedOff": "Ben kapatana kadar",
+  "Location_ShareUntilTurnedOff": "Kapatana kadar",
   "Location_AccurateTo_Format": "{0} hassasiyetinde",
   "Location_DistanceAway_Format": "{0} uzakta",
   "Location_CountdownHours_Format": "{0}sa",

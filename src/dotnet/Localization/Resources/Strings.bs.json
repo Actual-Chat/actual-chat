@@ -953,7 +953,7 @@
   "Location_ChoosePlaceCaption": "Bilo koja tačka — ne mora biti tamo gdje ste vi",
   "Location_ShareForMinutes": "{0} minutu|{0} minute|{0} minuta",
   "Location_ShareForHours": "{0} sat|{0} sata|{0} sati",
-  "Location_ShareUntilTurnedOff": "Dok ga ne isključim",
+  "Location_ShareUntilTurnedOff": "Do isključenja",
   "Location_AccurateTo_Format": "Tačnost: {0}",
   "Location_DistanceAway_Format": "{0} udaljeno",
   "Location_CountdownHours_Format": "{0}h",

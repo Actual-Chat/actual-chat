@@ -1117,7 +1117,7 @@
   "Location_ChoosePlaceCaption": "Any point — not necessarily where you are",
   "Location_ShareForMinutes": "for {0} minute|for {0} minutes",
   "Location_ShareForHours": "for {0} hour|for {0} hours",
-  "Location_ShareUntilTurnedOff": "Until I turn it off",
+  "Location_ShareUntilTurnedOff": "Until turned off",
   "Location_AccurateTo_Format": "Accurate to {0}",
   "Location_DistanceAway_Format": "{0} away",
   "Location_CountdownHours_Format": "{0}h",

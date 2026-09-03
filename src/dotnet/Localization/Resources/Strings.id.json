@@ -953,7 +953,7 @@
   "Location_ChoosePlaceCaption": "Titik mana pun — tidak harus lokasi Anda",
   "Location_ShareForMinutes": "{0} menit",
   "Location_ShareForHours": "{0} jam",
-  "Location_ShareUntilTurnedOff": "Sampai saya matikan",
+  "Location_ShareUntilTurnedOff": "Sampai dimatikan",
   "Location_AccurateTo_Format": "Akurat hingga {0}",
   "Location_DistanceAway_Format": "{0} jauhnya",
   "Location_CountdownHours_Format": "{0}j",

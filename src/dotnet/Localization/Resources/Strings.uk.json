@@ -953,7 +953,7 @@
   "Location_ChoosePlaceCaption": "Будь-яка точка — не обов'язково там, де ви є",
   "Location_ShareForMinutes": "{0} хвилини|{0} хвилин|{0} хвилин",
   "Location_ShareForHours": "{0} години|{0} годин|{0} годин",
-  "Location_ShareUntilTurnedOff": "Поки я не вимкну",
+  "Location_ShareUntilTurnedOff": "Поки не вимкну",
   "Location_AccurateTo_Format": "Точність: {0}",
   "Location_DistanceAway_Format": "{0} від вас",
   "Location_CountdownHours_Format": "{0}г",
