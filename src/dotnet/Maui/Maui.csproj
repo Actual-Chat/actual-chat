@@ -33,6 +33,14 @@
 
   <!-- Platform-specific files to compile -->
 
+  <!-- NOT iOS, NOT Mac Catalyst and NOT macOS - code shared by every Apple TFM lives in Apple\ or *.Apple.cs -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true AND $(TargetFramework.Contains('-maccatalyst')) != true AND $(TargetFramework.Contains('-macos')) != true">
+    <Compile Remove="**\*.Apple.cs" />
+    <None Include="**\*.Apple.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <Compile Remove="**\Apple\**\*.cs" />
+    <None Include="**\Apple\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+  </ItemGroup>
+
   <!-- NOT iOS and NOT Mac Catalyst — shared iOS+MacCatalyst code lives in MaciOS\ -->
   <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true AND $(TargetFramework.Contains('-maccatalyst')) != true">
     <Compile Remove="**\**\*.MaciOS.cs" />

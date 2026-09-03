@@ -1,4 +1,3 @@
-#if IOS || MACCATALYST || MACOS
 using Foundation;
 using WebKit;
 
@@ -73,4 +72,3 @@ internal sealed class ContentSchemeHandler : NSObject, IWKUrlSchemeHandler
         }
     }
 }
-#endif

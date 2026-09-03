@@ -17,6 +17,16 @@ in the tooling, Catalyst is always named explicitly.
 | Package for TestFlight | `./b.cmd app pack mac`, `--universal` for an arm64 + x64 bundle; see [Build tool](./build-tool.md) |
 | Logs | `~/Library/Logs/ActualChat.log` |
 
+The App.Maui and Maui projects compile platform code by folder and file suffix:
+
+| Folder / suffix | Compiled for |
+|---|---|
+| `Platforms/MacOS`, `*.MacOS.cs` | AppKit only |
+| `Platforms/MacCatalyst`, `*.MacCatalyst.cs` | Mac Catalyst only |
+| `MacShared` | Mac Catalyst and AppKit |
+| `MaciOS`, `*.MaciOS.cs` | iOS and Mac Catalyst |
+| `Apple`, `*.Apple.cs` | iOS, Mac Catalyst and AppKit |
+
 The labs packages are pinned in
 [Directory.Packages.props](https://github.com/Actual-Chat/actual-chat/blob/main/Directory.Packages.props):
 `Microsoft.Maui.Platforms.MacOS`, `.Essentials` and `.BlazorWebView`. They are built against
