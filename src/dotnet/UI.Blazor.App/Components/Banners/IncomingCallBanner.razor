@@ -7,6 +7,11 @@
 }
 
 <Banner Class="incoming-call-banner" Severity="BannerSeverity.Info">
+    <Icon>
+        <div class="severity-icon">
+            <i class="icon-call-out"></i>
+        </div>
+    </Icon>
     <Body>
         <div class="c-texts" @onclick="@OnExpandClick">
             <AuthorBadge AuthorId="@call.Caller"/>

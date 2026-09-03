@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using Microsoft.JSInterop
 @using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, CollapsedIncomingCall.ComputedModel>
 @{
@@ -10,14 +9,16 @@
 
 <div class="collapsed-incoming-call" @ref="Ref">
     <div class="c-av" @onclick="@OnExpandClick">
-        <AuthorCircle AuthorId="@call.Caller" Size="SquareSize.Size8"/>
+        <AuthorCircle AuthorId="@call.Caller" Size="SquareSize.Size10"/>
     </div>
-    <div class="c-gap" @onclick="@OnExpandClick"></div>
-    <ButtonRound Class="c-decline btn-danger" Click="@OnDeclineClick">
-        <i class="icon-close text-xl"></i>
+    <div class="c-name" @onclick="@OnExpandClick">
+        <AuthorName AuthorId="@call.Caller" Class="c-caller-name" ShowDetailsOnClick="false"/>
+    </div>
+    <ButtonRound Class="c-decline" Click="@OnDeclineClick">
+        <i class="icon-close text-2xl"></i>
     </ButtonRound>
-    <ButtonRound Class="c-accept btn-primary" Click="@OnAcceptClick">
-        <i class="icon-phone-take text-xl"></i>
+    <ButtonRound Class="c-accept" Click="@OnAcceptClick">
+        <i class="icon-phone-take text-lg"></i>
     </ButtonRound>
 </div>
 

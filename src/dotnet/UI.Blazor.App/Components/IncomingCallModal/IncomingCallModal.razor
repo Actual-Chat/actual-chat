@@ -21,7 +21,7 @@
 
 <DialogFrame
     Title="@(call.HasVideo ? L.Call_IncomingVideo : L.Call_Incoming)"
-    Class="author-modal modal-sm incoming-call-modal wide-dialog-buttons"
+    Class="author-modal modal-sm incoming-call-modal"
     HasCloseButton="false">
     <Body>
     <IncomingCallModalHeader
@@ -34,13 +34,13 @@
             <i class="icon-close text-2xl"></i>
         </ButtonRound>
         <ButtonRound Class="c-call-btn c-mute" Click="@OnMuteClick">
-            <i class="@(m.IsMuted ? "icon-bell" : "icon-bell-off") text-xl"></i>
+            <i class="@(m.IsMuted ? "icon-bell" : "icon-bell-off") text-2xl"></i>
         </ButtonRound>
         <ButtonRound Class="c-call-btn c-message" Tooltip="@L.Call_Message" Click="@OnMessageClick">
-            <i class="icon-message-ellipse text-xl"></i>
+            <i class="icon-message-ellipse text-2xl"></i>
         </ButtonRound>
         <ButtonRound Class="c-call-btn c-accept" Tooltip="@L.Common_Accept" Click="@OnAcceptClick">
-            <i class="icon-phone-take text-2xl"></i>
+            <i class="icon-phone-take text-xl"></i>
         </ButtonRound>
     </Buttons>
 </DialogFrame>

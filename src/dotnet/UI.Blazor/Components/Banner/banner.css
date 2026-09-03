@@ -48,13 +48,11 @@
 .banner.banner-wrap .banner-buttons {
     @apply ml-auto;
 }
+/* A fixed top offset lands the 24px close button at the vertical center of a single-line, 56px-tall
+   banner ((56 - 24) / 2 = 16px) and leaves it near the top-right corner once the banner wraps to
+   several lines. Same on desktop and mobile. */
 .banner.banner-wrap .close-banner-abs {
-    @apply absolute top-2 right-2;
-}
-/* Desktop: the close button sits at the banner's vertical center; mobile keeps it top-right */
-body.wide .banner.banner-wrap .close-banner-abs {
-    @apply top-1/2 right-2;
-    transform: translateY(-50%);
+    @apply absolute top-3 right-2;
 }
 /* The query sees the content box, 20px narrower than the banner, so 22rem still fired up to a 380px
    viewport and cost English a row on every phone. A translation that doesn't fit wraps regardless -
@@ -90,6 +88,20 @@ body.narrow .banner.banner-wrap .banner-body {
 body.narrow .banner.banner-wrap .banner-buttons {
     @apply justify-end basis-auto;
     @apply ml-0;
+}
+/* A close-only / status banner (no action buttons) centers its icon + body as one group;
+   the dismiss button floats absolutely, so it no longer pulls the content off-center */
+.banner.banner-centered > .c-content {
+    @apply justify-center;
+}
+.banner.banner-centered .banner-body {
+    @apply flex-none min-w-0 text-center;
+}
+.banner.banner-centered.banner-dismissible > .c-content {
+    @apply px-9;
+}
+body.narrow .banner.banner-centered.banner-dismissible .banner-body {
+    @apply px-0;
 }
 /* Banner action buttons are default style, but capped at 2rem tall and half-width */
 .banner .banner-buttons .btn.btn-transparent {
