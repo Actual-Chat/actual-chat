@@ -1,4 +1,4 @@
-# macOS AppKit backend
+enumerates `CNContactStore` into the `MauiContacts` mapping | labs implements Contacts |# macOS AppKit backend
 The Mac app runs on the experimental AppKit backend from
 [dotnet/maui-labs](https://github.com/dotnet/maui-labs) (`net11.0-macos`), so Voxt is a
 native AppKit process with a WKWebView inside, not a Mac Catalyst app. Mac Catalyst is kept
@@ -130,6 +130,11 @@ markers:
   WKWebView: it navigates the main frame to the `blob:` URL and replaces the app shell.
 - **Local-file previews** (`content://files/<key>`) load as `<img>` and `<video>` sources.
   `fetch` of such a URL is blocked as cross-origin, the same as on iOS and Catalyst.
+- **The device id is a salted hash of the hardware UUID** (`IOPlatformUUID`, read through IOKit
+  in [MacOSDeviceIdProvider](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/MacOSDeviceIdProvider.cs)),
+  so external contact ids survive reinstalls and preference wipes; this stays even once the
+  vendor-id plugin gains a macos build, whose id would reset with the app. A Mac with no
+  hardware UUID falls back to a per-install id in the user defaults.
 - **Permissions are attributed to the launcher when the binary is run from a shell.** macOS
   charges TCC decisions of a process started directly from a terminal to that terminal's
   responsible app, so contacts read as denied and the microphone as whatever the terminal was
