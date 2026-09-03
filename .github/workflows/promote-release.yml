@@ -1,0 +1,250 @@
+name: Promote release
+run-name: Promote ${{ inputs.version }} to the stores
+
+# Second stage of a release. The release-branch run of build-test-deploy-dev.yml
+# only stages the prod builds (Play internal track, TestFlight, a pending
+# Microsoft Store submission). Once those builds are tested, this workflow
+# promotes them: Play production track, App Store review, Store certification.
+# Every store job runs under the prod-store environment, which only admits
+# release/* branches — dispatch this on the release branch being promoted.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Build version to promote, as in the release run's artifact names (e.g. 2.17.246)
+        required: true
+        type: string
+      android:
+        description: Google Play — promote the internal-track build to production
+        type: boolean
+        default: true
+      ios:
+        description: App Store — submit the iOS build for review
+        type: boolean
+        default: true
+      macos:
+        description: Mac App Store — submit the Mac Catalyst build for review
+        type: boolean
+        default: true
+      windows:
+        description: Microsoft Store — commit the pending submission to certification
+        type: boolean
+        default: true
+      apple-version:
+        description: App Store version string; empty = X.Y for the first release of the branch, then X.Y.1, X.Y.2, …
+        type: string
+        default: ""
+      android-rollout:
+        description: Google Play rollout percentage (100 = full release)
+        type: string
+        default: "100"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: promote-release
+  cancel-in-progress: false
+
+env:
+  APP_ID: chat.actual.app
+
+jobs:
+  params:
+    name: Resolve release parameters
+    runs-on: ubuntu-latest
+    outputs:
+      NOTES_PATH: ${{ steps.calc.outputs.NOTES_PATH }}
+      ANDROID_VERSION_CODE: ${{ steps.calc.outputs.ANDROID_VERSION_CODE }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate version and locate store notes
+        id: calc
+        run: |
+          if [[ "${{ github.ref }}" != refs/heads/release/* ]]; then
+            echo "::error::dispatch this workflow on the release/vX.Y branch; the prod-store environment admits release/* only"
+            exit 1
+          fi
+
+          version="${{ inputs.version }}"
+          if [[ ! $version =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "::error::version must be X.Y.Z (nbgv SimpleVersion), got '$version'"
+            exit 1
+          fi
+          major=${BASH_REMATCH[1]}; minor=${BASH_REMATCH[2]}; build=${BASH_REMATCH[3]}
+
+          notes="docs/releases/store-notes-v$major.$minor.txt"
+          if [[ ! -s $notes ]]; then
+            echo "::error::$notes is missing; /prepare-release writes it next to the release notes"
+            exit 1
+          fi
+          chars=$(wc -m < "$notes")
+          if (( chars > 500 )); then
+            echo "::error::$notes is $chars characters; Google Play allows 500"
+            exit 1
+          fi
+
+          # Mirrors nbgv's NBGV_SetVersionForMauiAndroid: major << 24 | minor << 16 | build
+          code=$(( major * 16777216 + minor * 65536 + build ))
+
+          echo "NOTES_PATH=$notes" | tee -a "$GITHUB_OUTPUT"
+          echo "ANDROID_VERSION_CODE=$code" | tee -a "$GITHUB_OUTPUT"
+
+          {
+            echo "## Promoting $version"
+            echo
+            echo "Android version code: \`$code\`"
+            echo
+            echo '```'
+            cat "$notes"
+            echo
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  android:
+    name: Google Play — promote to production
+    if: ${{ inputs.android }}
+    needs: params
+    runs-on: ubuntu-latest
+    environment: prod-store
+    env:
+      VERSION: ${{ inputs.version }}
+      VERSION_CODE: ${{ needs.params.outputs.ANDROID_VERSION_CODE }}
+      NOTES_PATH: ${{ needs.params.outputs.NOTES_PATH }}
+      ROLLOUT: ${{ inputs.android-rollout }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          workload_identity_provider: projects/1074465586741/locations/global/workloadIdentityPools/actual-identity-pool/providers/github-actual-chat
+          service_account: sa-deploy-bot@actual-infrastructure.iam.gserviceaccount.com
+
+      # Play refuses a re-upload of an already-used version code, so promotion
+      # references the internal-track build by version code through the edits API.
+      - name: Promote the internal-track build to the production track
+        env:
+          TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+          api="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/$APP_ID"
+          call() { curl -sS --fail-with-body -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" "$@"; }
+
+          if [[ ! $ROLLOUT =~ ^[0-9]+$ ]] || (( ROLLOUT < 1 || ROLLOUT > 100 )); then
+            echo "::error::android-rollout must be 1..100, got '$ROLLOUT'"; exit 1
+          fi
+
+          edit=$(call -X POST "$api/edits" -d '{}' | jq -r .id)
+          echo "Edit $edit opened"
+
+          internal=$(call "$api/edits/$edit/tracks/internal")
+          echo "$internal" | jq .
+          if ! echo "$internal" | jq -e --arg vc "$VERSION_CODE" '[.releases[]?.versionCodes[]?] | index($vc)' > /dev/null; then
+            echo "::error::version code $VERSION_CODE ($VERSION) is not on the internal track"
+            exit 1
+          fi
+
+          body=$(jq -n --arg vc "$VERSION_CODE" --arg name "$VERSION" --arg rollout "$ROLLOUT" --rawfile notes "$NOTES_PATH" '
+            ($rollout | tonumber) as $pct
+            | {
+                track: "production",
+                releases: [
+                  {
+                    name: $name,
+                    versionCodes: [$vc],
+                    status: (if $pct >= 100 then "completed" else "inProgress" end),
+                    releaseNotes: [{ language: "en-US", text: ($notes | rtrimstr("\n")) }]
+                  }
+                  + (if $pct >= 100 then {} else { userFraction: ($pct / 100) } end)
+                ]
+              }')
+          echo "$body" | jq .
+          call -X PUT "$api/edits/$edit/tracks/production" -d "$body" | jq .
+          call -X POST "$api/edits/$edit:commit" -d '{}' | jq .
+
+          echo "- Android: version code $VERSION_CODE ($VERSION) released to production at ${ROLLOUT}%" >> "$GITHUB_STEP_SUMMARY"
+
+  ios:
+    name: App Store — submit iOS for review
+    if: ${{ inputs.ios }}
+    needs: params
+    runs-on: macos-26
+    environment: prod-store
+    env:
+      APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+      APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+      APPSTORE_API_KEY_BASE64: ${{ secrets.APPSTORE_API_KEY_BASE64 }}
+      FASTLANE_SKIP_UPDATE_CHECK: 1
+      FASTLANE_HIDE_CHANGELOG: 1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Submit for review
+        working-directory: .github
+        run: |
+          command -v fastlane > /dev/null || sudo gem install fastlane -N
+          fastlane promote platform:ios \
+            build_version:"${{ inputs.version }}" \
+            version:"${{ inputs.apple-version }}" \
+            notes_path:"$GITHUB_WORKSPACE/${{ needs.params.outputs.NOTES_PATH }}"
+
+  macos:
+    name: Mac App Store — submit Mac Catalyst for review
+    if: ${{ inputs.macos }}
+    needs: params
+    runs-on: macos-26
+    environment: prod-store
+    env:
+      APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+      APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+      APPSTORE_API_KEY_BASE64: ${{ secrets.APPSTORE_API_KEY_BASE64 }}
+      FASTLANE_SKIP_UPDATE_CHECK: 1
+      FASTLANE_HIDE_CHANGELOG: 1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Submit for review
+        working-directory: .github
+        run: |
+          command -v fastlane > /dev/null || sudo gem install fastlane -N
+          fastlane promote platform:osx \
+            build_version:"${{ inputs.version }}" \
+            version:"${{ inputs.apple-version }}" \
+            notes_path:"$GITHUB_WORKSPACE/${{ needs.params.outputs.NOTES_PATH }}"
+
+  windows:
+    name: Microsoft Store — commit to certification
+    if: ${{ inputs.windows }}
+    needs: params
+    runs-on: ubuntu-latest
+    environment: prod-store
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The release-branch run left the package in a pending submission
+      # (mode: upload); this commits that submission with the release notes and
+      # returns once pre-processing accepted it. Certification itself takes
+      # hours; watch it in Partner Center.
+      - name: Commit the pending submission
+        uses: ActualLab/windows-store-action@main
+        with:
+          mode: commit
+          tenant-id: ${{ secrets.MSFT_TENANT_ID }}
+          client-id: ${{ secrets.MSFT_CLIENT_ID }}
+          client-secret: ${{ secrets.MSFT_CLIENT_SECRET }}
+          app-id: ${{ secrets.MSFT_PRODUCT_ID }}
+          release-notes-path: ${{ needs.params.outputs.NOTES_PATH }}
+          skip-polling: false
+          poll-until: certification

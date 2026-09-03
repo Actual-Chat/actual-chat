@@ -1,0 +1,7 @@
+Voxt now speaks your language: the whole app is localized, with eight new languages including Polish, Czech, Bulgarian and Indonesian.
+• Redesigned live conversation view
+• Chat icons and avatars in push notifications, faster cold start on Android
+• Steadier video calls: better audio/video sync, cameras no longer sideways on iOS
+• Faster chat opening and lighter battery use in the background
+• Sign-in codes via Telegram when SMS can't reach you
+• Dozens of small fixes and polish

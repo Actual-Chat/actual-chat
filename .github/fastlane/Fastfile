@@ -1,0 +1,124 @@
+# Promotes a processed TestFlight build to the App Store: picks (or creates) the
+# App Store version, attaches the build, sets What's New and submits for review.
+# Run from `.github`: fastlane promote platform:ios build_version:2.17.246 notes_path:<file> [version:2.17.1]
+#
+# `deliver` can't do this for us: it looks the build up by the App Store version
+# string, while our builds carry the full nbgv version (2.17.246) and the store
+# versions follow the 2.17 / 2.17.1 / 2.17.2 convention.
+
+APP_IDENTIFIER = "chat.actual.app"
+BUILD_WAIT = 45 * 60
+
+lane :promote do |options|
+  platform = Spaceship::ConnectAPI::Platform.map(options.fetch(:platform))
+  build_version = options.fetch(:build_version)
+  notes = File.read(options.fetch(:notes_path)).strip
+  requested_version = options[:version].to_s.strip
+  UI.user_error!("build_version must look like 2.17.246, got '#{build_version}'") unless build_version =~ /\A\d+\.\d+\.\d+\z/
+  UI.user_error!("Release notes are empty") if notes.empty?
+
+  Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(
+    key_id: ENV.fetch("APPSTORE_API_KEY_ID"),
+    issuer_id: ENV.fetch("APPSTORE_API_ISSUER_ID"),
+    key: ENV.fetch("APPSTORE_API_KEY_BASE64"),
+    is_key_content_base64: true,
+  )
+
+  app = Spaceship::ConnectAPI::App.find(APP_IDENTIFIER)
+  UI.user_error!("App #{APP_IDENTIFIER} not found in App Store Connect") unless app
+
+  build = wait_for_build(app, platform, build_version)
+  version = ensure_app_store_version(app, platform, build_version, requested_version)
+  UI.message("Using App Store version #{version.version_string} (#{version.app_version_state})")
+
+  version.update(attributes: { releaseType: Spaceship::ConnectAPI::AppStoreVersion::ReleaseType::AFTER_APPROVAL })
+  version.select_build(build_id: build.id)
+  UI.success("Attached build #{build.version} to #{version.version_string}")
+
+  version.get_app_store_version_localizations.each do |localization|
+    localization.update(attributes: { whats_new: notes })
+    UI.message("What's New set for #{localization.locale}")
+  end
+
+  build.update(attributes: { usesNonExemptEncryption: false }) if build.uses_non_exempt_encryption.nil?
+
+  submit_for_review(app, platform, version)
+  UI.success("#{platform} #{version.version_string} (build #{build.version}) submitted for review")
+
+  summary = ENV["GITHUB_STEP_SUMMARY"]
+  File.open(summary, "a") { |f| f.puts("- #{platform}: version **#{version.version_string}**, build #{build.version} submitted for review") } if summary
+end
+
+def wait_for_build(app, platform, build_version)
+  deadline = Time.now + BUILD_WAIT
+  loop do
+    build = Spaceship::ConnectAPI::Build.all(
+      app_id: app.id,
+      version: build_version,
+      build_number: build_version,
+      platform: platform,
+    ).first
+    state = build&.processing_state
+    return build if state == "VALID"
+    UI.user_error!("Build #{build_version} for #{platform} is #{state}") if build && state != "PROCESSING"
+    UI.user_error!("No processed build #{build_version} for #{platform} after #{BUILD_WAIT / 60} minutes") if Time.now > deadline
+    UI.message(build ? "Build #{build_version} is still processing, waiting..." : "Build #{build_version} not visible yet, waiting...")
+    sleep(30)
+  end
+end
+
+# The first release of a branch is published as X.Y, the next ones as X.Y.1, X.Y.2, ...
+# An editable version on the same train is reused; one from another train is renamed,
+# which is what `deliver` does too.
+def ensure_app_store_version(app, platform, build_version, requested_version)
+  train = build_version.split(".").first(2).join(".")
+  on_train = ->(v) { v == train || v.start_with?("#{train}.") }
+
+  edit = app.get_edit_app_store_version(platform: platform)
+  if edit && edit.app_version_state == Spaceship::ConnectAPI::AppStoreVersion::AppVersionState::WAITING_FOR_REVIEW
+    UI.user_error!("Version #{edit.version_string} is already waiting for review; cancel it in App Store Connect first")
+  end
+
+  version_string = requested_version
+  if version_string.empty?
+    if edit && on_train.call(edit.version_string)
+      version_string = edit.version_string
+    else
+      taken = app.get_app_store_versions(filter: { platform: platform })
+                 .map(&:version_string)
+                 .select(&on_train)
+      version_string = taken.empty? ? train : "#{train}.#{taken.map { |v| v.split(".")[2].to_i }.max + 1}"
+    end
+  end
+
+  if edit && edit.version_string != version_string
+    UI.important("Renaming editable version #{edit.version_string} to #{version_string}")
+  end
+  app.ensure_version!(version_string, platform: platform)
+  app.get_edit_app_store_version(platform: platform) || UI.user_error!("Version #{version_string} is not editable after creation")
+end
+
+def submit_for_review(app, platform, version)
+  if app.get_in_progress_review_submission(platform: platform)
+    UI.user_error!("A review submission is already in progress for #{platform}")
+  end
+
+  submission = app.get_ready_review_submission(platform: platform, includes: "items")
+  if submission.nil?
+    submission = app.create_review_submission(platform: platform)
+  elsif !submission.items.empty?
+    UI.user_error!("A review submission with items not created here already exists; cancel it in App Store Connect")
+  end
+
+  submission.add_app_store_version_to_review_items(app_store_version_id: version.id)
+
+  ready = Spaceship::ConnectAPI::AppStoreVersion::AppVersionState::READY_FOR_REVIEW
+  10.times do
+    state = Spaceship::ConnectAPI::AppStoreVersion.get(app_store_version_id: version.id).app_version_state
+    break if state == ready
+    UI.message("Waiting for the version to become #{ready} (now #{state})...")
+    sleep(15)
+  end
+
+  submission.submit_for_review
+end
