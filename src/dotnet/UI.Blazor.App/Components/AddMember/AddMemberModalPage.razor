@@ -11,7 +11,7 @@
 @if (_shareModel is not null) {
     @* TODO: need invite links for private places (for Alexey K) *@
     <FormBlock Class="share-block">
-        <ShareActions Model="@_shareModel"/>
+        <ShareActions Model="@_shareModel" ScanHandler="@OnQrScanned"/>
     </FormBlock>
 }
 
@@ -52,11 +52,13 @@
     }
 
     protected override async Task OnInitializedAsync() {
-        if (Context.Model is PlaceId placeId) {
-            var shareModel = await Hub.ShareUI.GetModel(placeId, DisposeToken);
-            if (shareModel is not null)
-                _shareModel = shareModel;
-        }
+        var shareModel = Context.Model switch {
+            PlaceId placeId => await Hub.ShareUI.GetModel(placeId, DisposeToken),
+            ChatId chatId => await Hub.ShareUI.GetModel(chatId, DisposeToken),
+            _ => null,
+        };
+        if (shareModel is not null)
+            _shareModel = shareModel;
     }
 
     public void Dispose()
@@ -75,6 +77,16 @@
 
     private void OnCancel()
         => Context.Close();
+
+    private async Task<bool> OnQrScanned(LocalUrl link) {
+        // Someone's contact code, scanned from here, means "add them" rather than "open their chat" -
+        // but ticked in the list, so the Add button still has the last word.
+        var userId = await UserLinks.GetUserId(Hub.Aliases, link, DisposeToken);
+        if (userId.IsGuestOrNull() || _memberSelector is null)
+            return false;
+
+        return await _memberSelector.Select(userId, DisposeToken);
+    }
 
     private void OnSelectionChanged()
         => CanInvite = SelectedUserIds.Count > 0;

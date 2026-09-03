@@ -64,16 +64,18 @@
         _scanErrorVersion++;
     }
 
-    private Task OnScanned(string text) {
+    private async Task OnScanned(string text) {
         // A code in the frame that isn't ours is scenery, not intent - so keep scanning.
         if (!UrlMapper.IsAbsolute(text) || !LocalUrl.TryParse(text, UrlMapper.BaseUri, out var url)) {
             // Not awaited: the scanner holds off its next frame until this call returns.
             _ = ShowScanError(L.ShareQr_ForeignCode_Format(CoreConstants.AppName));
-            return Task.CompletedTask;
+            return;
         }
 
+        var isHandled = ModalModel.ScanHandler is { } handler && await handler.Invoke(url);
         Modal.Close(true);
-        return History.NavigateTo(url);
+        if (!isHandled)
+            await History.NavigateTo(url);
     }
 
     private async Task ShowScanError(string text) {

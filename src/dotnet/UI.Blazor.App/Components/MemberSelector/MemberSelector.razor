@@ -123,6 +123,29 @@
     public void Dispose()
         => DisposeTokenSource.CancelAndDisposeSilently();
 
+    // Puts a user the list didn't offer - a scanned contact, say - at its top, ticked; false when
+    // there is no such account. A member is left as is: there is nothing to tick.
+    public async Task<bool> Select(UserId userId, CancellationToken cancellationToken) {
+        var item = AllItems.FirstOrDefault(x => x.Account.Id == userId);
+        if (item is null) {
+            var account = await Accounts.Get(Session, userId, cancellationToken);
+            if (account is null || account.IsGuestOrNull())
+                return false;
+
+            var memberUserIds = await ListSource.ListMemberUserIds(cancellationToken);
+            item = new Item { Account = account, IsMember = memberUserIds.Contains(userId) };
+            AllItems = [item, ..AllItems];
+            FilteredItems = [item, ..FilteredItems];
+        }
+        if (item.IsMember || item.IsChecked)
+            return true;
+
+        item.IsChecked = true;
+        _selectedUserIds.Set(userId, static (userId1, x) => x.Value.Add(userId1));
+        StateHasChanged();
+        return true;
+    }
+
     private void OnFilter(string filter) {
         _searchQuery = new SearchQuery(filter);
         FilteredItems = string.IsNullOrWhiteSpace(filter)

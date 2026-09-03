@@ -10,7 +10,7 @@
     [Parameter] public string? PageRoute { get; set; }
 
     protected override async Task OnParametersSetAsync() {
-        var userId = await GetUserIdFromPageRoute(PageRoute, default);
+        var userId = await UserLinks.GetUserIdByRoute(Aliases, PageRoute, default);
         if (userId.IsGuestOrNull()) {
             _ = History.NavigateTo(Links.NotFound, true);
             return;
@@ -34,18 +34,5 @@
 
         var chatId = PeerChatId.New(ownAccount.Id, account.Id);
         _ = History.NavigateTo(Links.Chat(chatId), true);
-    }
-
-    private async Task<UserId?> GetUserIdFromPageRoute(string? pageRoute, CancellationToken cancellationToken) {
-        if (pageRoute.IsNullOrEmpty())
-            return null;
-
-        if (!pageRoute.StartsWith(Links.AliasPrefix))
-            return UserId.TryParse(pageRoute);
-
-        if (!AliasId.TryParse(pageRoute.Substring(1), out var aliasId))
-            return null;
-
-        return await Aliases.GetUserIdByAlias(aliasId, cancellationToken).ConfigureAwait(false);
     }
 }

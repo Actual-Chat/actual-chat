@@ -37,6 +37,7 @@
     [Parameter, EditorRequired] public ShareModalModel Model { get; set; } = null!;
     // Takes over the share and copy text when set, e.g. with a comment the user typed
     [Parameter] public ShareRequest? Request { get; set; }
+    [Parameter] public Func<LocalUrl, Task<bool>>? ScanHandler { get; set; }
 
     protected override async Task OnInitializedAsync()
         => _canShareExternally = await ShareUI.CanShareExternally();
@@ -45,5 +46,6 @@
         => ModalUI.Show(new ShareQrModalModel(
             Model.Title,
             Model.Request.Link.GetValueOrDefault(),
-            Model.ImageUrl));
+            Model.ImageUrl,
+            ScanHandler));
 }
