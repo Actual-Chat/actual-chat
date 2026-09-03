@@ -754,7 +754,6 @@
   "Permission_LockScreenCallsRationale_Format": "Omogućava aplikaciji {0} da prikaže dolazni poziv na zaključanom ekranu, da ga ne propustite.",
   "Permission_LiveActivities": "Live Activities",
   "Permission_LiveActivitiesRationale_Format": "Omogućava aplikaciji {0} da prikazuje napredak otpremanja i chatova na zaključanom ekranu.",
-  "Permissions_Topic": "Dozvole aplikacije",
   "Permissions_Description_Format": "{0} traži dozvolu samo tamo gdje je nekoj funkciji potrebna — svaka od njih je opcionalna.",
   "Permissions_AllGranted": "Sve dozvole su odobrene.",
   "Permissions_DismissWarning": "Sakrijte upozorenja",

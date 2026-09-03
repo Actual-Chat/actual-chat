@@ -754,7 +754,6 @@
   "Permission_LockScreenCallsRationale_Format": "{0}이(가) 잠금 화면에 수신 전화를 표시해 놓치지 않게 해줘요.",
   "Permission_LiveActivities": "라이브 액티비티",
   "Permission_LiveActivitiesRationale_Format": "{0}이(가) 업로드와 채팅 진행 상황을 잠금 화면에 표시할 수 있게 해줘요.",
-  "Permissions_Topic": "앱 권한",
   "Permissions_Description_Format": "{0}은(는) 기능에 필요한 곳에서만 권한을 요청해요. 모두 선택 사항이에요.",
   "Permissions_AllGranted": "모든 권한이 허용되어 있어요.",
   "Permissions_DismissWarning": "경고 숨기기",

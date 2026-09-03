@@ -754,7 +754,6 @@
   "Permission_LockScreenCallsRationale_Format": "Umožní aplikaci {0} zobrazit příchozí hovor na zamykací obrazovce, abyste ho nezmeškali.",
   "Permission_LiveActivities": "Živé aktivity",
   "Permission_LiveActivitiesRationale_Format": "Umožní aplikaci {0} zobrazovat průběh nahrávání a chatů na zamykací obrazovce.",
-  "Permissions_Topic": "Oprávnění aplikace",
   "Permissions_Description_Format": "{0} žádá o oprávnění jen tam, kde ho nějaká funkce potřebuje — každé z nich je volitelné.",
   "Permissions_AllGranted": "Všechna oprávnění jsou udělena.",
   "Permissions_DismissWarning": "Skrýt upozornění",

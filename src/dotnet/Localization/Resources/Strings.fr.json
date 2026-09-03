@@ -754,7 +754,6 @@
   "Permission_LockScreenCallsRationale_Format": "Permet à {0} d'afficher un appel entrant sur l'écran de verrouillage pour que vous ne le manquiez pas.",
   "Permission_LiveActivities": "Activités en direct",
   "Permission_LiveActivitiesRationale_Format": "Permet à {0} d'afficher la progression des envois et des discussions sur l'écran de verrouillage.",
-  "Permissions_Topic": "Autorisations de l'application",
   "Permissions_Description_Format": "{0} ne demande une autorisation que là où une fonctionnalité en a besoin — chacune est facultative.",
   "Permissions_AllGranted": "Toutes les autorisations sont accordées.",
   "Permissions_DismissWarning": "Masquer les avertissements",

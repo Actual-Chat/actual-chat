@@ -754,7 +754,6 @@
   "Permission_LockScreenCallsRationale_Format": "Consente a {0} di mostrare una chiamata in arrivo nella schermata di blocco, così non te la perdi.",
   "Permission_LiveActivities": "Attività in tempo reale",
   "Permission_LiveActivitiesRationale_Format": "Consente a {0} di mostrare l'avanzamento di caricamenti e chat nella schermata di blocco.",
-  "Permissions_Topic": "Autorizzazioni dell'app",
   "Permissions_Description_Format": "{0} chiede un'autorizzazione solo dove serve a una funzione: sono tutte facoltative.",
   "Permissions_AllGranted": "Tutte le autorizzazioni sono concesse.",
   "Permissions_DismissWarning": "Nascondi gli avvisi",

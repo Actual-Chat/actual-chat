@@ -754,7 +754,6 @@
   "Permission_LockScreenCallsRationale_Format": "Дозволяє {0} показувати вхідний дзвінок на екрані блокування, щоб ви його не пропустили.",
   "Permission_LiveActivities": "Live Activities",
   "Permission_LiveActivitiesRationale_Format": "Дозволяє {0} показувати перебіг завантаження та активність чатів на екрані блокування.",
-  "Permissions_Topic": "Дозволи застосунку",
   "Permissions_Description_Format": "{0} запитує дозвіл лише там, де він потрібен функції, — кожен із них необов'язковий.",
   "Permissions_AllGranted": "Усі дозволи надано.",
   "Permissions_DismissWarning": "Сховати попередження",

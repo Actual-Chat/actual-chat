@@ -754,7 +754,6 @@
   "Permission_LockScreenCallsRationale_Format": "Pozwala aplikacji {0} pokazać połączenie przychodzące na ekranie blokady, aby żadne nie umknęło.",
   "Permission_LiveActivities": "Aktywności na żywo",
   "Permission_LiveActivitiesRationale_Format": "Pozwala aplikacji {0} pokazywać postęp przesyłania i czatów na ekranie blokady.",
-  "Permissions_Topic": "Uprawnienia aplikacji",
   "Permissions_Description_Format": "{0} prosi o uprawnienie tylko tam, gdzie potrzebuje go dana funkcja — każde z nich jest opcjonalne.",
   "Permissions_AllGranted": "Wszystkie uprawnienia są przyznane.",
   "Permissions_DismissWarning": "Ukryj ostrzeżenia",

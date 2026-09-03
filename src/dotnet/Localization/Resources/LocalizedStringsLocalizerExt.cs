@@ -785,7 +785,6 @@ public static class LocalizedStringsLocalizerExt
         public string Permission_LiveActivities => l["Permission_LiveActivities"].Value;
         public string Permission_LiveActivitiesRationale_Format(object arg0)
             => l["Permission_LiveActivitiesRationale_Format", arg0].Value;
-        public string Permissions_Topic => l["Permissions_Topic"].Value;
         public string Permissions_Description_Format(object arg0)
             => l["Permissions_Description_Format", arg0].Value;
         public string Permissions_AllGranted => l["Permissions_AllGranted"].Value;

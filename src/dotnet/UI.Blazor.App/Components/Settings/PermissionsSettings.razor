@@ -8,7 +8,7 @@
         : L.Permissions_RevokeHint_Web;
 }
 
-<TileTopic Topic="@L.Permissions_Topic"/>
+<p class="c-description">@L.Permissions_Description_Format(CoreConstants.AppName)</p>
 <Tile>
     @foreach (var permission in permissions) {
         var p = permission;
@@ -26,7 +26,6 @@
             </Right>
         </TileItem>
     }
-    <p class="c-description">@L.Permissions_Description_Format(CoreConstants.AppName)</p>
     <p class="c-description">@revokeHint</p>
 </Tile>
 

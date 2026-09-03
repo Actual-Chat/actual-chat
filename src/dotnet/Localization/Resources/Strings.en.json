@@ -899,7 +899,6 @@
   "Permission_LockScreenCallsRationale_Format": "Lets {0} show an incoming call on the lock screen, so you don't miss it.",
   "Permission_LiveActivities": "Live Activities",
   "Permission_LiveActivitiesRationale_Format": "Lets {0} show upload and chat progress on the lock screen.",
-  "Permissions_Topic": "App permissions",
   "Permissions_Description_Format": "{0} asks for a permission only where a feature needs it - every one of them is optional.",
   "Permissions_AllGranted": "All permissions are granted.",
   "Permissions_DismissWarning": "Dismiss warnings",

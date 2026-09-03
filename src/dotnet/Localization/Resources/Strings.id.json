@@ -754,7 +754,6 @@
   "Permission_LockScreenCallsRationale_Format": "Memungkinkan {0} menampilkan panggilan masuk di layar kunci agar Anda tidak melewatkannya.",
   "Permission_LiveActivities": "Live Activities",
   "Permission_LiveActivitiesRationale_Format": "Memungkinkan {0} menampilkan progres unggahan dan obrolan di layar kunci.",
-  "Permissions_Topic": "Izin aplikasi",
   "Permissions_Description_Format": "{0} hanya meminta izin di tempat sebuah fitur membutuhkannya — semuanya opsional.",
   "Permissions_AllGranted": "Semua izin sudah diberikan.",
   "Permissions_DismissWarning": "Sembunyikan peringatan",

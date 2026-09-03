@@ -754,7 +754,6 @@
   "Permission_LockScreenCallsRationale_Format": "Cho phép {0} hiển thị cuộc gọi đến trên màn hình khóa để bạn không bỏ lỡ.",
   "Permission_LiveActivities": "Hoạt động trực tiếp",
   "Permission_LiveActivitiesRationale_Format": "Cho phép {0} hiển thị tiến trình tải lên và trò chuyện trên màn hình khóa.",
-  "Permissions_Topic": "Quyền của ứng dụng",
   "Permissions_Description_Format": "{0} chỉ xin quyền ở nơi một tính năng cần đến — mọi quyền đều là tùy chọn.",
   "Permissions_AllGranted": "Đã cấp tất cả các quyền.",
   "Permissions_DismissWarning": "Ẩn cảnh báo",

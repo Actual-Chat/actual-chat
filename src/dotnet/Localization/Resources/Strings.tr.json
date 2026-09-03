@@ -754,7 +754,6 @@
   "Permission_LockScreenCallsRationale_Format": "{0} uygulamasının gelen aramayı kilit ekranında göstermesine izin verir, böylece kaçırmazsınız.",
   "Permission_LiveActivities": "Canlı Etkinlikler",
   "Permission_LiveActivitiesRationale_Format": "{0} uygulamasının yükleme ve sohbet ilerlemesini kilit ekranında göstermesine izin verir.",
-  "Permissions_Topic": "Uygulama izinleri",
   "Permissions_Description_Format": "{0} bir izni yalnızca bir özelliğin ihtiyaç duyduğu yerde ister; hepsi isteğe bağlıdır.",
   "Permissions_AllGranted": "Tüm izinler verildi.",
   "Permissions_DismissWarning": "Uyarıları gizle",

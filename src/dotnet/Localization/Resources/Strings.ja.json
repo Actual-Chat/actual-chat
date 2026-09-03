@@ -754,7 +754,6 @@
   "Permission_LockScreenCallsRationale_Format": "{0} がロック画面に着信を表示できるようになり、電話を逃しません。",
   "Permission_LiveActivities": "ライブアクティビティ",
   "Permission_LiveActivitiesRationale_Format": "{0} がアップロードやチャットの進行状況をロック画面に表示できるようになります。",
-  "Permissions_Topic": "アプリの権限",
   "Permissions_Description_Format": "{0} は機能に必要な場合にのみ権限を求めます。いずれも任意です。",
   "Permissions_AllGranted": "すべての権限が許可されています。",
   "Permissions_DismissWarning": "警告を非表示にする",

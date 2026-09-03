@@ -754,7 +754,6 @@
   "Permission_LockScreenCallsRationale_Format": "{0} को लॉक स्क्रीन पर आने वाली कॉल दिखाने देता है, ताकि आप उसे न चूकें।",
   "Permission_LiveActivities": "Live Activities",
   "Permission_LiveActivitiesRationale_Format": "{0} को लॉक स्क्रीन पर अपलोड और चैट की प्रगति दिखाने देता है।",
-  "Permissions_Topic": "ऐप की अनुमतियाँ",
   "Permissions_Description_Format": "{0} किसी अनुमति के लिए तभी पूछता है जब किसी सुविधा को उसकी ज़रूरत हो — हर अनुमति वैकल्पिक है।",
   "Permissions_AllGranted": "सभी अनुमतियाँ दी जा चुकी हैं।",
   "Permissions_DismissWarning": "चेतावनियाँ छिपाएँ",

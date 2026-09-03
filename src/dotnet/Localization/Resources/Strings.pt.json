@@ -754,7 +754,6 @@
   "Permission_LockScreenCallsRationale_Format": "Permite que {0} mostre uma chamada recebida na tela de bloqueio, para você não perdê-la.",
   "Permission_LiveActivities": "Atividades ao vivo",
   "Permission_LiveActivitiesRationale_Format": "Permite que {0} mostre o progresso de envios e conversas na tela de bloqueio.",
-  "Permissions_Topic": "Permissões do aplicativo",
   "Permissions_Description_Format": "{0} pede uma permissão apenas onde um recurso precisa dela — todas são opcionais.",
   "Permissions_AllGranted": "Todas as permissões estão concedidas.",
   "Permissions_DismissWarning": "Ocultar avisos",

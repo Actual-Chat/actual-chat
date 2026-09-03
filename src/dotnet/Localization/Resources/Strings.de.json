@@ -754,7 +754,6 @@
   "Permission_LockScreenCallsRationale_Format": "Lässt {0} einen eingehenden Anruf auf dem Sperrbildschirm anzeigen, damit Sie ihn nicht verpassen.",
   "Permission_LiveActivities": "Live-Aktivitäten",
   "Permission_LiveActivitiesRationale_Format": "Lässt {0} den Upload- und Chat-Fortschritt auf dem Sperrbildschirm anzeigen.",
-  "Permissions_Topic": "App-Berechtigungen",
   "Permissions_Description_Format": "{0} fragt eine Berechtigung nur dort ab, wo eine Funktion sie braucht – jede davon ist optional.",
   "Permissions_AllGranted": "Alle Berechtigungen sind erteilt.",
   "Permissions_DismissWarning": "Hinweise ausblenden",

@@ -899,15 +899,14 @@
   "Permission_LockScreenCallsRationale_Format": "Омогућава апликацији {0} да прикаже долазни позив на закључаном екрану, да га не пропустите.",
   "Permission_LiveActivities": "ライブアクティビティ",
   "Permission_LiveActivitiesRationale_Format": "Омогућава апликацији {0} да приказује напредак отпремања и четова на закључаном екрану.",
-  "Permissions_Topic": "Разрешения на приложението",
   "Permissions_Description_Format": "{0} иска разрешение само там, където дадена функция се нуждае от него — всяко от тях е по избор.",
   "Permissions_AllGranted": "Toutes les autorisations sont accordées.",
   "Permissions_DismissWarning": "Скриване на предупрежденията",
   "Permissions_WarningDismissed": "Предупрежденията са скрити",
-  "Permissions_RevokeHint_App": "Разрешенията могат само да се дадат тук. За да отнемете разрешение, отворете системните настройки на устройството.",
-  "Permissions_RevokeHint_Web": "Разрешенията могат само да се дадат тук. За да отнемете разрешение, отворете настройките на браузъра.",
+  "Permissions_RevokeHint_App": "Berechtigungen können hier nur erteilt werden. Um eine Berechtigung zu widerrufen, öffne die Systemeinstellungen deines Geräts.",
+  "Permissions_RevokeHint_Web": "Berechtigungen können hier nur erteilt werden. Um eine Berechtigung zu widerrufen, öffne die Einstellungen deines Browsers.",
   "PermissionGuide_Web_Format": "Отворете в браузъра Настройки/Предпочитания → Поверителност/Разрешения → Настройки на сайтовете → {0} и изберете „Разреши“, след което презаредете страницата.",
-  "PermissionGuide_WebAddressBarHint": "Разрешенията за сайт може също да се намират вляво от адреса в адресната лента.",
+  "PermissionGuide_WebAddressBarHint": "Die Berechtigungen einer Website können sich auch links neben der Adresse in der Adressleiste befinden.",
   "PermissionGuide_App": "За да включите, докоснете „Настройки“ по-долу и разрешете достъпа в настройките на устройството.",
 
   // The profile card opened by tapping an author, and the owner/moderator actions on it. Owner

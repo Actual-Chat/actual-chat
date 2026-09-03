@@ -754,7 +754,6 @@
   "Permission_LockScreenCallsRationale_Format": "让 {0} 在锁屏上显示来电，这样你就不会错过。",
   "Permission_LiveActivities": "实时活动",
   "Permission_LiveActivitiesRationale_Format": "让 {0} 在锁屏上显示上传和聊天进度。",
-  "Permissions_Topic": "应用权限",
   "Permissions_Description_Format": "{0} 只在某项功能需要时才申请权限，每一项都是可选的。",
   "Permissions_AllGranted": "所有权限均已授予。",
   "Permissions_DismissWarning": "隐藏提醒",
