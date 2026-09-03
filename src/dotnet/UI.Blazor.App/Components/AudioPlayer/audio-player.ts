@@ -633,5 +633,5 @@ export class AudioPlayer implements Resettable {
     }
 }
 
-if (BrowserInfo.hostKind !== 'MauiApp')
+if (BrowserInfo.useWebAudio)
     void AudioPlayer.init();

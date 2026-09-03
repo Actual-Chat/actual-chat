@@ -16,6 +16,11 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.JSInterop;
 using Microsoft.Maui.LifecycleEvents;
+#if MACOS
+using Microsoft.Maui.Platforms.MacOS.Controls;
+using Microsoft.Maui.Platforms.MacOS.Essentials;
+using Microsoft.Maui.Platforms.MacOS.Hosting;
+#endif
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 using Tracer = ActualChat.Performance.Tracer;
 #if IOS
@@ -92,6 +97,14 @@ public static partial class MauiProgram
             MauiAppBuilder? appBuilder;
             using (Tracer.Region($"{nameof(MauiApp)}.{nameof(MauiApp.CreateBuilder)}")) {
                 appBuilder = MauiApp.CreateBuilder();
+#if MACOS
+                // TODO(maui-labs): goes away with MacOSEssentialsDefaults once Essentials is
+                // implemented on the macos TFM.
+                // Patches the MAUI Essentials statics (DeviceInfo, Preferences, SecureStorage, ...),
+                // which otherwise resolve to their "not implemented" neutral build on the macos TFM;
+                // must precede CreateHostInfo, which reads DeviceInfo and (via MauiSettings) Preferences.
+                appBuilder.AddMacOSEssentials();
+#endif
                 Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
                 ConfigureMauiApp(appBuilder);
             }
@@ -236,9 +249,17 @@ public static partial class MauiProgram
         using var _ = Tracer.MethodRegion();
 
         builder = builder
+#if MACOS
+            // TODO(maui-labs): the regular UseMauiBlazorApp path once the backend is in MAUI proper.
+            .UseMauiAppMacOS<App>()
+            .AddMacOSBlazorWebView()
+            .ConfigureMauiHandlers(static handlers
+                => handlers.AddHandler<MacOSBlazorWebView>(_ => new MacOSCustomBlazorWebViewHandler()))
+#else
             .UseMauiBlazorApp<App>()
             .ConfigureMauiHandlers(static handlers
                 => handlers.AddHandler<IBlazorWebView>(_ => new CustomBlazorWebViewHandler()))
+#endif
             .ConfigureFonts(fonts => {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             })
@@ -259,7 +280,11 @@ public static partial class MauiProgram
         // Core services
         services.AddLogging(logging => logging.ClearProviders());
         services.AddSingleton(Tracer.Default);
+#if MACOS
+        services.AddSingleton<IDeviceIdProvider>(_ => new MacOSDeviceIdProvider());
+#else
         services.Add(GetDeviceIdProviderServiceDescriptor());
+#endif
         // Core MAUI services
         services.AddMauiBlazorWebView();
         AddSafeJSRuntime(services);
@@ -268,10 +293,12 @@ public static partial class MauiProgram
         ConfigureBlazorWebViewAppServices(services);
     }
 
+#if !MACOS
     private static ServiceDescriptor GetDeviceIdProviderServiceDescriptor()
         => MauiApp.CreateBuilder(false)
             .ConfigureDeviceIdProvider()
             .Services.First(c => c.ServiceType == typeof(IDeviceIdProvider));
+#endif
 
     private static void AddSafeJSRuntime(IServiceCollection services)
     {

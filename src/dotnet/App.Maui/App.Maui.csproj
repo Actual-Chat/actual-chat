@@ -9,6 +9,9 @@
     <!-- Build Android by default; add iOS / MacCatalyst only on macOS to avoid iOS build issues on Windows CI -->
     <TargetFrameworks>net11.0-android;</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net11.0-ios;net11.0-maccatalyst</TargetFrameworks>
+    <!-- Experimental AppKit backend (dotnet/maui-labs); opt-in so machines without the `macos` workload still restore -->
+    <!-- TODO(maui-labs): make net11.0-macos a default osx TFM, like maccatalyst, once the AppKit backend is officially supported -->
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx')) AND '$(EnableMacOSAppKit)' == 'true'">$(TargetFrameworks);net11.0-macos</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net11.0-windows10.0.22621.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <AssemblyName>$(BaseName)</AssemblyName>
@@ -49,6 +52,7 @@
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-android'))">28.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">16.4</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-maccatalyst'))">17.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-macos'))">14.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</TargetPlatformMinVersion>
   </PropertyGroup>
@@ -67,7 +71,7 @@
        composite in place and the build quietly ships the image you meant to replace. -->
   <PropertyGroup>
     <UsePartialR2R Condition="'$(UsePartialR2R)' == ''">true</UsePartialR2R>
-    <UsePartialR2R Condition="$(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-maccatalyst'))">false</UsePartialR2R>
+    <UsePartialR2R Condition="$(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-maccatalyst')) or $(TargetFramework.Contains('-macos'))">false</UsePartialR2R>
   </PropertyGroup>
 
   <!-- CoreCLR runtime settings — .NET 11 runs MAUI on CoreCLR on every platform,
@@ -199,6 +203,13 @@
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
     <PackageReference Include="ActualLab.Opus.MaciOS" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-macos'))">
+    <PackageReference Include="Microsoft.Maui.Platforms.MacOS" />
+    <PackageReference Include="Microsoft.Maui.Platforms.MacOS.Essentials" />
+    <PackageReference Include="Microsoft.Maui.Platforms.MacOS.BlazorWebView" />
+    <PackageReference Include="OpusSharp.Core" />
+    <PackageReference Include="OpusSharp.Natives" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
 
@@ -557,6 +568,16 @@
     <CreatePackage>true</CreatePackage>
   </PropertyGroup>
 
+  <!-- macOS (AppKit): sign Debug builds with the stable dev identity. Ad-hoc signing gives
+       every rebuild a fresh app identity, so reading the Fusion.SessionId keychain item the
+       Catalyst app owns would prompt for the login keychain password on every launch; with a
+       stable identity one "Always Allow" persists. No provisioning profile: a dev-signed
+       macOS app needs none without restricted entitlements. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug' and $(TargetFramework.Contains('-macos'))">
+    <EnableCodeSigning>true</EnableCodeSigning>
+    <CodesignKey>Apple Development: Frol Chizhov (6824A38F9V)</CodesignKey>
+  </PropertyGroup>
+
   <!-- Windows build properties -->
 
   <!-- The MSIX packaging targets default this to $(ProjectDir)AppPackages\, which is the one
@@ -686,6 +707,14 @@
     <AndroidResource Include="Platforms\Android\Resources\xml\share_targets.xml.prod" Link="Platforms\Android\Resources\xml\share_targets.xml" />
   </ItemGroup>
 
+  <!-- NOT iOS, NOT Mac Catalyst and NOT macOS - code shared by every Apple TFM lives in Apple\ or *.Apple.cs -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true AND $(TargetFramework.Contains('-maccatalyst')) != true AND $(TargetFramework.Contains('-macos')) != true">
+    <Compile Remove="**\*.Apple.cs" />
+    <None Include="**\*.Apple.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <Compile Remove="**\Apple\**\*.cs" />
+    <None Include="**\Apple\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+  </ItemGroup>
+
   <!-- NOT iOS and NOT Mac Catalyst -->
   <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true AND $(TargetFramework.Contains('-maccatalyst')) != true">
     <Compile Remove="**\**\*.MaciOS.cs" />
@@ -717,6 +746,34 @@
   </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND $(TargetFramework.Contains('-ios'))">
     <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.prod" Link="GoogleService-Info.plist" />
+  </ItemGroup>
+
+  <!-- MAUI 11 backend registration: makes Platforms\MacOS compile on the macos TFM only,
+       through the same MauiPlatformSpecificFolder contract the built-in platforms use -->
+  <ItemGroup>
+    <MauiPlatformSpecificFolder Include="Platforms\MacOS\" TargetPlatformIdentifier="macos" BackendIdentity="macos" />
+  </ItemGroup>
+
+  <!-- NOT macOS (AppKit) -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-macos')) != true">
+    <Compile Remove="**\*.MacOS.cs" />
+    <None Include="**\*.MacOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <Compile Remove="**\MacOS\**\*.cs" />
+    <None Include="**\MacOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+  </ItemGroup>
+  <!-- NOT Mac Catalyst and NOT macOS - shared Catalyst+AppKit code lives in MacShared\ -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst')) != true AND $(TargetFramework.Contains('-macos')) != true">
+    <Compile Remove="**\MacShared\**\*.cs" />
+    <None Include="**\MacShared\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+  </ItemGroup>
+  <!-- macOS (AppKit) -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-macos'))">
+    <!-- The labs icon target feeds MauiIcon straight to sips, which can't rasterize SVG, so
+         macos ships a pre-rendered PNG: appicon.svg at Apple's icon-grid margins with rounded
+         corners, rasterized via rsvg-convert (the prepare-images.cmd toolchain) -->
+    <MauiIcon Remove="Resources\AppIcon\appicon.svg" />
+    <MauiIcon Include="Resources\AppIcon\appicon_macos.png" />
+    <PartialAppManifest Include="Platforms\MacOS\Info.plist" />
   </ItemGroup>
 
   <!-- NOT MacCatalyst -->
