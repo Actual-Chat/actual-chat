@@ -36,6 +36,8 @@
     <NoWarn>$(NoWarn);CA1034;CA1822;CA1849;CA1859;CA1861;CA2007;CA2016;CA2025</NoWarn>
     <!-- MA0004: Use Task.ConfigureAwait(false) -->
     <NoWarn>$(NoWarn);MA0004</NoWarn>
+    <!-- MsgPack006: False positive on open generic [MessagePackFormatter] types, see src/dotnet/Directory.Build.props -->
+    <NoWarn>$(NoWarn);MsgPack006</NoWarn>
     <!-- RCS1090: Call 'ConfigureAwait(false)' -->
     <NoWarn>$(NoWarn);RCS1090</NoWarn>
     <!-- xUnit1041: Fixture argument does not have a fixture source -->

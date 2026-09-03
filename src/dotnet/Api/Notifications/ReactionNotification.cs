@@ -1,3 +1,5 @@
+using ActualChat.Serialization.Internal;
+
 namespace ActualChat.Notifications;
 
 [DataContract, MessagePackObject]
@@ -14,8 +16,10 @@ public sealed partial record ReactionNotification(NotificationId Id, long Versio
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public override Moment? ExpiresAt => SentAt + Constants.Notification.ReactionLifespan;
 
-    // Keys 9..12 are free within this subtype - union members serialize independently, and
-    // CallNotification / ConversationNotification already reuse the same range.
+    // Keys 9..12 are unused by this subtype's ancestors, but the base chain declares keys up to 22,
+    // so payloads written before these members existed (stored rows, older clients) hold nil in
+    // these slots rather than omitting them. ApiArray reads nil as Empty; a string reads it as null,
+    // so QuotedText coalesces (the formatter covers nil, the setter covers an absent slot too).
     [DataMember(Order = 9), Key(9)]
     public ApiArray<AuthorId> AuthorIds { get; init; }
     [DataMember(Order = 10), Key(10)]
@@ -24,7 +28,8 @@ public sealed partial record ReactionNotification(NotificationId Id, long Versio
     // separately need the bare quote; and Emojis accumulates in arrival order with dedup, so
     // the chronologically-newest emoji has to be tracked explicitly.
     [DataMember(Order = 11), Key(11)]
-    public string QuotedText { get; init; } = "";
+    [MessagePackFormatter(typeof(NonNullableMessagePackStringFormatter))]
+    public string QuotedText { get; init => field = value ?? ""; } = "";
     [DataMember(Order = 12), Key(12)]
     public Emoji? LastEmoji { get; init; }
 
