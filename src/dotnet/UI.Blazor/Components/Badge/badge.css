@@ -5,14 +5,21 @@
     @apply rounded-full text-primary-title text-caption-1;
 }
 
-/* A white exclamation mark in a filled circle: red while the warning stands,
-   gray once it has been dismissed. */
+/* An exclamation mark in a filled circle: white on red while the warning stands;
+   once dismissed it inverts to the surrounding text color, with the mark cut out
+   in the panel background. The mark is a child so the disc can take currentColor
+   from the host while the mark gets its own color. */
 .warning-badge {
     @apply inline-flex justify-center items-center;
     @apply w-4 h-4;
-    @apply rounded-full bg-danger;
+    @apply rounded-full;
+    @apply bg-danger;
     @apply text-xs font-bold leading-none text-white;
 }
 .warning-badge.muted {
-    @apply bg-[var(--text-03)];
+    @apply bg-current;
+    @apply text-inherit;
+}
+.warning-badge.muted > span {
+    @apply text-[var(--background-03)];
 }
