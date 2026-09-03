@@ -220,12 +220,12 @@ public static partial class Constants
         public static readonly TimeSpan UpdatePeriod = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan GetTimeout = TimeSpan.FromSeconds(15);
         public static readonly TimeSpan UnlimitedDuration = TimeSpan.MaxValue;
-        public static readonly IReadOnlyDictionary<TimeSpan, string> Durations = new Dictionary<TimeSpan, string> {
-            [TimeSpan.FromMinutes(15)] = "for 15 minutes",
-            [TimeSpan.FromHours(1)] = "for 1 hour",
-            [TimeSpan.FromHours(8)] = "for 8 hours",
-            [UnlimitedDuration] = "Until I turn it off",
-        };
+        public static readonly TimeSpan[] Durations = [
+            TimeSpan.FromMinutes(15),
+            TimeSpan.FromHours(1),
+            TimeSpan.FromHours(8),
+            UnlimitedDuration,
+        ];
         public const int MaxSharingAuthorsPerChat = 100;
     }
 

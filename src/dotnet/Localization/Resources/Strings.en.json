@@ -1115,6 +1115,15 @@
   "Location_ShareForDurationCaption": "Updated in real time as you move",
   "Location_ChoosePlaceOnMap": "Choose a place on the map",
   "Location_ChoosePlaceCaption": "Any point — not necessarily where you are",
+  "Location_ShareForMinutes": "for {0} minute|for {0} minutes",
+  "Location_ShareForHours": "for {0} hour|for {0} hours",
+  "Location_ShareUntilTurnedOff": "Until I turn it off",
+  "Location_AccurateTo_Format": "Accurate to {0}",
+  "Location_DistanceAway_Format": "{0} away",
+  "Location_CountdownHours_Format": "{0}h",
+  "Location_MapTypeMap": "Map",
+  "Location_MapTypeSatellite": "Satellite",
+  "Location_MapTypeHybrid": "Hybrid",
 
   // Empty states of the right panel's Media, Files and Links tabs.
   "Content_NoFiles": "No files yet",
@@ -1831,6 +1840,8 @@
   "Duration_Days_Format": "{0} d",
   "Duration_Hours_Format": "{0} h",
   "Duration_Minutes_Format": "{0} min",
+  "Distance_Meters_Format": "{0} m",
+  "Distance_Kilometers_Format": "{0} km",
 
   // Invite link management in chat and place settings. A join link is a URL, so "private" here
   // is the borrowed adjective, not the closed/open pair used for access modes.
