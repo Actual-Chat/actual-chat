@@ -429,12 +429,13 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
 
 /* The ContentSwap host around the list under the filter tabs, in both navbar widgets. It takes the
    box the list used to get as a flex item, and each layer has to stand on its own during a swap.
-   A swap layer paints --content-swap-bg to occlude the layer under it, and the navbar group's swap
-   sets that to the 02 surface - a near-white rectangle over the 03 one the panel actually paints.
-   A swipe slides its two layers side by side and never overlaps them, so here they need no colour
-   of their own. */
+   A swap layer paints --content-swap-bg to occlude the layer under it; the navbar group's swap
+   sets that to the 02 surface, a near-white rectangle over the 03 one the panel actually paints.
+   The swipe itself never overlaps its layers, but the hold before it stacks them, and with a
+   transparent layer that is both lists showing through each other. 03 is what the panel paints,
+   so an opaque layer is invisible at rest. */
 .navbar-chats .c-all-chats > .c-list-swap {
-    --content-swap-bg: transparent;
+    --content-swap-bg: var(--background-03);
     @apply flex-1;
     @apply min-h-0;
 }
