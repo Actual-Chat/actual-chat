@@ -4,9 +4,6 @@
 @implements IModalView<ShareModalModel>
 @{
     var canSend = HasSelectedItems;
-    var shareExternallyButtonClass = !canSend && !_hideShareExternallyButton ? "" : "hidden";
-    var shareButtonClass = !canSend ? "hidden" : "";
-    shareButtonClass += " btn-modal btn-primary btn-share-action";
     var cls = "share-modal fixed-height";
     if (_selectorKind == SelectorKind.Contact)
         cls += " share-modal-with-contact-selector";
@@ -51,23 +48,16 @@
             Placeholder="@L.Share_AddComment"
             PlaceholderIcon="icon-message-ellipse"
             TextChanged="OnCommentChanged" />
-        @if (ModalModel.Request.HasLink(out var link)) {
-            <input type="hidden" @ref="@_copyTextSourceRef" value="@RequestWithComment.GetShareLink(UrlMapper)" />
-            @if (!_copyTextSourceRef.Id.IsNullOrEmpty()) {
-                <ShareLinkBadge Link="@link" CopyTextSource="@_copyTextSourceRef"/>
-            }
-        }
     </Footer>
     <Buttons>
-        <ShareExternallyButton
-            Class="@shareExternallyButtonClass"
-            HideWhenCopyLink="@true"
-            Request="@RequestWithComment"
-            />
-        <Button Class="@shareButtonClass" IsDisabled="@(!canSend)" Click="OnSendClicked">
-            <Icon><i class="icon-share text-2xl"></i></Icon>
-            <Title>@L.Share_SendToSelected</Title>
-        </Button>
+        @if (canSend) {
+            <Button Class="btn-modal btn-primary btn-share-action" Click="OnSendClicked">
+                <Icon><i class="icon-share text-2xl"></i></Icon>
+                <Title>@L.Share_SendToSelected</Title>
+            </Button>
+        } else if (_mustShowActions) {
+            <ShareActions Model="@ModalModel" Request="@RequestWithComment"/>
+        }
     </Buttons>
 </DialogFrame>
 
@@ -77,10 +67,9 @@
     private MemberSelector? _memberSelectorRef;
     private SearchQuery _searchQuery;
     private string _comment = "";
-    private ElementReference _copyTextSourceRef;
     private SelectorKind _selectorKind = SelectorKind.Contact;
     private IMemberListSource? _memberListSource;
-    private bool _hideShareExternallyButton;
+    private bool _mustShowActions;
 
     private bool HasSelectedItems
         => (_contactSelectorRef?.SelectedChatIds.Value.Count
@@ -95,19 +84,12 @@
 
     protected override void OnInitialized() {
         _comment = ModalModel.Request.Text;
-        if (ModalModel.Request.HasMedia())
-            _hideShareExternallyButton = true;
+        // A private place's invite is for its members only, so it has no business outside the app
+        _mustShowActions = ModalModel.Request.HasLink()
+            && ModalModel.SelectorPrefs is not ShareWithPlaceMembersOnly;
         if (ModalModel.SelectorPrefs is ShareWithPlaceMembersOnly selector) {
             _memberListSource = new PlaceMemberListSource(Hub, selector.PlaceId, [OwnAccount.Id]);
-            _hideShareExternallyButton = true;
             _selectorKind = SelectorKind.Members;
-        }
-    }
-
-    protected override void OnAfterRender(bool firstRender) {
-        if (firstRender) {
-            // Trigger StateHasChanged to render ShareLinkBadge with CopyTextSource reference
-            StateHasChanged();
         }
     }
 

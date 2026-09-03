@@ -8,19 +8,10 @@
         ListSource="@_backend"
         Changed="OnSelectionChanged" />
 </FormBlock>
-@if (_shareRequest is not null) {
+@if (_shareModel is not null) {
     @* TODO: need invite links for private places (for Alexey K) *@
     <FormBlock Class="share-block">
-        <CopyTrigger Class="share-externally-button" CopyText="@_placeLink">
-            <Button Class="btn-modal">
-                <Icon>
-                    <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>
-                    <i class="copied-hint icon-checkmark-simple text-xl" aria-hidden="true"></i>
-                </Icon>
-                <Title>@L.Place_CopyInviteLink</Title>
-            </Button>
-        </CopyTrigger>
-        <ShareExternallyButton Request="@_shareRequest"/>
+        <ShareActions Model="@_shareModel"/>
     </FormBlock>
 }
 
@@ -28,8 +19,7 @@
     private DialogButtonInfo _submitButtonInfo = null!;
     private IMemberSelector _backend = null!;
     private MemberSelector? _memberSelector;
-    private string _placeLink = "";
-    private ShareRequest? _shareRequest;
+    private ShareModalModel? _shareModel;
 
     private CancellationTokenSource DisposeTokenSource { get; set; } = null!;
     private CancellationToken DisposeToken { get; set; }
@@ -51,8 +41,9 @@
             _backend = new NewChatMemberSelector(Hub, chatId);
         else if (Context.Model is PlaceId placeId) {
             _backend = new NewPlaceMemberSelector(Hub, placeId);
-            _shareRequest = new ShareRequest(Links.PlaceInfo(placeId));
-            _placeLink = _shareRequest.GetShareLink(UrlMapper);
+            // Stands in until the place's own model arrives: the row is there from the first frame
+            _shareModel = new ShareModalModel(
+                ShareKind.Place, L.Share_Place, "", new ShareRequest(Links.PlaceInfo(placeId)), null);
         } else
             throw StandardError.NotSupported("Not supported model type");
         Context.Title = L.AddMember_Title;
@@ -62,11 +53,9 @@
 
     protected override async Task OnInitializedAsync() {
         if (Context.Model is PlaceId placeId) {
-            var shareModal = await Hub.ShareUI.GetModel(placeId, DisposeToken);
-            if (shareModal is not null) {
-                _shareRequest = shareModal.Request;
-                _placeLink = _shareRequest.GetShareLink(UrlMapper);
-            }
+            var shareModel = await Hub.ShareUI.GetModel(placeId, DisposeToken);
+            if (shareModel is not null)
+                _shareModel = shareModel;
         }
     }
 

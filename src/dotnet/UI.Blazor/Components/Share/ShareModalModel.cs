@@ -5,7 +5,8 @@ public sealed record ShareModalModel(
     string Title,
     string TargetTitle,
     ShareRequest Request,
-    IShareModalSelector? SelectorPrefs);
+    IShareModalSelector? SelectorPrefs,
+    string? ImageUrl = null);
 
 public interface IShareModalSelector;
 
