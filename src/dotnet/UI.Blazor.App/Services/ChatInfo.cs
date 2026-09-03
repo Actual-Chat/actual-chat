@@ -42,4 +42,5 @@ public readonly record struct ChatUnreadState(
     Trimmed<int> Count,
     bool HasOwnMention,
     bool HasUnmutedUnread,
-    Emoji? ReactionEmoji = null);
+    Emoji? ReactionEmoji = null,
+    bool HasAttention = false);

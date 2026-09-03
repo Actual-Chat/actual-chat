@@ -43,14 +43,51 @@ public sealed class ChatListOrderTest
         ordered.Select(x => x.Id).Should().Equal([newer.Id, older.Id]);
     }
 
+    [Fact]
+    public void ChatListWithLiftedChatsShouldPutThemAbovePinned()
+    {
+        // arrange
+        var pinnedChat = NewChatInfo(version: 100, isPinned: true);
+        var pingedChat = NewChatInfo(version: 1);
+        var liftedAt = new Dictionary<ChatId, Moment> {
+            [pingedChat.Id] = Moment.EpochStart + TimeSpan.FromMinutes(5),
+        };
+
+        // act
+        var ordered = new[] { pinnedChat, pingedChat }
+            .OrderBy(ChatListOrder.ByLastEventTime, ChatListPreOrder.ChatList, liftedAt)
+            .ToList();
+
+        // assert
+        ordered.Select(x => x.Id).Should().Equal([pingedChat.Id, pinnedChat.Id],
+            because: "an attention ping outranks pinning on the Mentions tab");
+    }
+
+    [Fact]
+    public void ChatListWithoutLiftedChatsShouldKeepPinnedFirst()
+    {
+        // arrange
+        var pinnedChat = NewChatInfo(version: 1, isPinned: true);
+        var busyChat = NewChatInfo(version: 100);
+
+        // act
+        var ordered = new[] { busyChat, pinnedChat }
+            .OrderBy(ChatListOrder.ByLastEventTime, ChatListPreOrder.ChatList)
+            .ToList();
+
+        // assert
+        ordered.Select(x => x.Id).Should().Equal([pinnedChat.Id, busyChat.Id]);
+    }
+
     // Private methods
 
-    private static ChatInfo NewChatInfo(long version)
+    private static ChatInfo NewChatInfo(long version, bool isPinned = false)
     {
         var chatId = ChatId.Parse(GroupChatId.New().Value);
         var contactId = ContactId.NewAny(OwnerId, chatId);
         return new ChatInfo(new Contact(contactId, version) {
             Chat = new Chat(chatId),
+            IsPinned = isPinned,
         });
     }
 }

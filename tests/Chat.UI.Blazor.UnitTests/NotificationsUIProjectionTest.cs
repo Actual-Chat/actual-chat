@@ -8,6 +8,7 @@ public sealed class NotificationsUIProjectionTest
 {
     private static readonly UserId TestUserId = UserId.New();
     private static readonly ChatId ChatA = ChatId.Parse("the-actual-one");
+    private static readonly ChatId ChatB = ChatId.Parse(GroupChatId.New().Value);
 
     [Fact]
     public void ListByKindShouldFilterAndSortNewestFirst()
@@ -88,8 +89,40 @@ public sealed class NotificationsUIProjectionTest
         state.Should().Be(default(ChatReactionState));
     }
 
+    [Fact]
+    public void AttentionAtShouldTakeNewestPingForChat()
+    {
+        // arrange
+        var older = NewAttention(ChatA, 1, Moment.EpochStart + TimeSpan.FromSeconds(1));
+        var newer = NewAttention(ChatA, 2, Moment.EpochStart + TimeSpan.FromSeconds(2));
+        var otherChatPing = NewAttention(ChatB, 1, Moment.EpochStart + TimeSpan.FromSeconds(3));
+        var active = ApiArray.New<Notification>(older, otherChatPing, newer);
+
+        // act
+        var attentionAt = NotificationsUI.SelectAttentionAt(active, ChatA);
+
+        // assert
+        attentionAt.Should().Be(newer.SentAt);
+    }
+
+    [Fact]
+    public void AttentionAtShouldBeNullForChatWithoutPings()
+    {
+        // arrange
+        var active = ApiArray.New<Notification>(NewReaction(1, Moment.EpochStart + TimeSpan.FromSeconds(1)));
+
+        // act
+        var attentionAt = NotificationsUI.SelectAttentionAt(active, ChatA);
+
+        // assert
+        attentionAt.Should().BeNull();
+    }
+
     // Private methods
 
     private static ReactionNotification NewReaction(long entryLid, Moment sentAt)
         => ReactionNotification.New(TestUserId, ChatEntryId.New(ChatA, entryLid)) with { SentAt = sentAt };
+
+    private static AttentionNotification NewAttention(ChatId chatId, long entryLid, Moment sentAt)
+        => AttentionNotification.New(TestUserId, ChatEntryId.New(chatId, entryLid)) with { SentAt = sentAt };
 }

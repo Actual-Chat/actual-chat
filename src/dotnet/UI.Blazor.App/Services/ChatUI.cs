@@ -313,11 +313,13 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return default;
 
         var reactionState = await NotificationsUI.GetReactionState(chatId, cancellationToken).ConfigureAwait(false);
+        var attentionAt = await NotificationsUI.GetAttentionAt(chatId, cancellationToken).ConfigureAwait(false);
         return new ChatUnreadState(
             chatInfo.UnreadCount,
             chatInfo.HasUnreadOwnMention,
             chatInfo.UnmutedUnreadCount > 0 && chatInfo.UnreadCount > 0,
-            reactionState.Emoji);
+            reactionState.Emoji,
+            attentionAt is not null);
     }
 
     // Consolidated so streaming-expansion flaps of the end anchor (pushed out, then restored by the
