@@ -3,19 +3,21 @@
 @implements IDisposable
 @{
     _lastRenderTime = Clock.Now;
-    if (Value == 0 && !HasMentions && ReactionEmoji is null)
+    var hasMentionMark = HasMentions || HasAttention;
+    if (Value == 0 && !hasMentionMark && ReactionEmoji is null)
         return;
 
-    var text = HasMentions ? "@" : Value == 0 ? "" : Value.FormatK();
-    var emoji = HasMentions || Value != 0 ? null : ReactionEmoji;
+    var text = hasMentionMark ? "@" : Value == 0 ? "" : Value.FormatK();
+    var emoji = hasMentionMark || Value != 0 ? null : ReactionEmoji;
     var isMuted = NotificationMode switch {
-        ChatNotificationMode.ImportantOnly => !HasMentions,
-        ChatNotificationMode.Muted => !HasMentions,
+        ChatNotificationMode.ImportantOnly => !hasMentionMark,
+        ChatNotificationMode.Muted => !hasMentionMark,
         _ => false,
     };
-    var bgColor = isMuted ? "bg-counter" : "bg-primary";
+    // An attention ping is a ringer, so its "@" is red - even where the chat is muted.
+    var bgColor = HasAttention ? "bg-danger" : isMuted ? "bg-counter" : "bg-primary";
     var cursorClass = Click.HasDelegate ? "cursor-pointer" : "";
-    var mentionClass = HasMentions ? "unread-mention" : "";
+    var mentionClass = hasMentionMark ? "unread-mention" : "";
     var reactionClass = emoji is not null ? "unread-reaction" : "";
     var cssClass = $"message-counter-badge {cursorClass} {mentionClass} {reactionClass}";
 }
@@ -35,6 +37,7 @@
 
     [Parameter, EditorRequired] public Trimmed<int> Value { get; set; }
     [Parameter] public bool HasMentions { get; set; }
+    [Parameter] public bool HasAttention { get; set; }
     [Parameter] public Emoji? ReactionEmoji { get; set; }
     [Parameter] public ChatNotificationMode NotificationMode { get; set; }
     [Parameter] public TimeSpan UpdateDelay { get; set; } = TimeSpan.FromSeconds(0.5);

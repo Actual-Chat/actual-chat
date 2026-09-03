@@ -34,6 +34,7 @@
                 <UnreadCount
                     Value="@unreadState.Count"
                     HasMentions="@unreadState.HasOwnMention"
+                    HasAttention="@unreadState.HasAttention"
                     NotificationMode="@chatInfo.ChatUserSettings.NotificationMode"/>
             </BadgeContent>
         </NavbarGroupSelectionButton>
@@ -57,7 +58,8 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(ISortableListBackend.JSCreateMethod, Ref, BlazorRef, "data-chat-id");
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                ISortableListBackend.JSCreateMethod, Ref, BlazorRef, "data-chat-id");
         }
     }
 
