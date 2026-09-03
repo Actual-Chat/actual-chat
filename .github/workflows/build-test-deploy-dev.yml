@@ -1257,7 +1257,7 @@ jobs:
           compression-level: 0
           retention-days: 2
   deploy-win-to-microsoft-store:
-    name: Deploy win app package for ${{ github.ref_name }} to microsoft store
+    name: Upload win app package for ${{ github.ref_name }} to microsoft store
     if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release/')
     runs-on: windows-latest
     needs:
@@ -1276,14 +1276,18 @@ jobs:
           name: ${{env.ARTIFACT_NAME}}
           path: ./packages
 
-      - name: Deploy to Store
+      # Stages the package in a pending Partner Center submission, like the
+      # Play internal track and TestFlight for the other platforms. It goes to
+      # certification only from promote-release.yml, once the build is tested.
+      - name: Upload to a pending Store submission
         uses: ActualLab/windows-store-action@main
         with:
+          mode: upload
           tenant-id: ${{ secrets.MSFT_TENANT_ID }}
           client-id: ${{ secrets.MSFT_CLIENT_ID }}
           client-secret: ${{ secrets.MSFT_CLIENT_SECRET }}
           app-id: ${{ secrets.MSFT_PRODUCT_ID }}
           package-path: ./packages
+          delete-pending: true
           delete-packages: true
           packages-keep: 10
-          skip-polling: false

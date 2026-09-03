@@ -29,6 +29,9 @@ RoboKitty post (steps 6–8). Those are the hard-to-revert, outward-facing parts
   — same path `/my-changes --post` and `/robokitty-post` use. No new HTTP code.
 - Release-notes **style** is defined below; match prior notes' tone, don't
   reinvent a format.
+- **Store notes** (`docs/releases/store-notes-vX.Y.txt`) feed
+  `promote-release.yml` — the same file is pushed to Google Play, the App Store
+  and the Microsoft Store, so it's a plain-text distillation of the notes.
 - The **`configs`** sibling repo needs a matching `release/vX.Y` branch — CI
   loads config from it. Locate the clone first (step 3); don't skip step 3b.
 
@@ -157,15 +160,30 @@ Read the full commit log and distill it into **end-user** notes. This is the
 core judgment step — see **Release-notes style** below. Draft the file at
 `docs/releases/release-notes-vX.Y.md`.
 
-**STOP and show the drafted notes to the user for review before committing.**
-Incorporate any edits they ask for.
+### 5b. Write the store notes
+
+Distill the notes once more into `docs/releases/store-notes-vX.Y.txt`. This
+file goes **verbatim** into Google Play's "What's new", the App Store's
+"What's New" and the Microsoft Store's release notes when the release is
+promoted (`/promote-release`), so:
+
+- **500 characters max** including newlines — Play's limit, and the promote
+  workflow refuses a longer file. Check with `wc -m`.
+- Plain text: no markdown, no bold, no headings. Emoji-free except `•` bullets.
+- First line: one sentence with the release theme. Then 4–6 `•` bullets, the
+  biggest user-visible wins first, one line each.
+- Same voice as the notes, no sign-off. See `store-notes-v2.17.txt` for the
+  shape.
+
+**STOP and show both drafts (notes + store notes) to the user for review
+before committing.** Incorporate any edits they ask for.
 
 ### 6. Commit the notes on the release branch
 
 ```bash
 git switch release/vX.Y
-# write docs/releases/release-notes-vX.Y.md (mkdir -p docs/releases if needed)
-git add docs/releases/release-notes-vX.Y.md
+# write docs/releases/release-notes-vX.Y.md and store-notes-vX.Y.txt
+git add docs/releases/release-notes-vX.Y.md docs/releases/store-notes-vX.Y.txt
 git commit -m "docs: add release notes vX.Y"
 git push origin release/vX.Y
 ```
@@ -192,9 +210,13 @@ git commit --no-edit
 git push origin dev
 ```
 
-If the only thing you actually need on `dev` is the notes file and the merge is
-noisy, the equivalent clean alternative is:
-`git switch dev && git checkout release/vX.Y -- docs/releases/release-notes-vX.Y.md && git commit -m "docs: add release notes vX.Y" && git push origin dev`.
+If the only thing you actually need on `dev` is the notes files and the merge
+is noisy, the equivalent clean alternative is:
+`git switch dev && git checkout release/vX.Y -- docs/releases/release-notes-vX.Y.md docs/releases/store-notes-vX.Y.txt && git commit -m "docs: add release notes vX.Y" && git push origin dev`.
+
+`/promote-release` dispatches `promote-release.yml` on `release/vX.Y` and
+reads `docs/releases/store-notes-vX.Y.txt` from there, so step 6 is what
+makes the promotion possible; this merge just keeps `dev` complete.
 
 ### 8. Announce in the Releases chat via RoboKitty
 
@@ -241,6 +263,16 @@ above; `ActualChat_RoboKitty_Dev_API_Key` + `https://dev.voxt.ai/api/mcp` target
 the dev instance.) Only if neither the tool nor the key is available, print the
 notes for the user to paste manually.
 
+### 9. Hand off to the promotion
+
+The `release/vX.Y` push triggers the release build. Its prod deploy jobs wait
+for a Maintainers approval in the `prod` environment, then only **stage** the
+apps: Play internal track, TestFlight (iOS + Mac), a pending Microsoft Store
+submission. Nothing reaches end users yet. Tell the user:
+
+> Release build: <run url>. Approve the prod deployment, test the staged
+> builds, then run `/promote-release` to publish them.
+
 ## Release-notes style
 
 The notes are for **end users**, not engineers. Translate commits into user
@@ -271,8 +303,10 @@ worth mentioning, ask: "would a user notice or care?" If no, fold it into the
 | Push app branches | `git push origin dev && git push origin release/vX.Y` (after config branch) |
 | Commit log | `git log --format='%s' origin/release/vX.(Y-1)..release/vX.Y` |
 | Notes file | `docs/releases/release-notes-vX.Y.md` |
+| Store notes | `docs/releases/store-notes-vX.Y.txt` — plain text, ≤ 500 chars, committed with the notes |
 | Merge to dev | `git merge --no-ff release/vX.Y`, keep dev's `version.json` |
 | Announce | `mcp__voxt-robokitty__post_message` → `s-pmMsV1UVKG-dCKQXnYpX9`, code-fenced |
+| Publish to stores | not here — `/promote-release` after the builds are tested |
 
 ## Common mistakes
 
@@ -287,3 +321,6 @@ worth mentioning, ask: "would a user notice or care?" If no, fold it into the
 - **Skipping the review pause.** The notes are public; show them first.
 - **Forgetting the `configs` release branch (step 3b).** The CI release build
   loads config from `configs`' `release/vX.Y`; without it the build fails.
+- **Skipping the store notes, or writing them in markdown.** They're pasted
+  verbatim into three store listings; a missing or 500+ character file makes
+  `/promote-release` fail at its first step.
