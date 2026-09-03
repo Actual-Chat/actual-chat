@@ -1014,6 +1014,62 @@
   "ShareExt_CannotSendToContact": "Vous ne pouvez pas envoyer à ce contact",
   "ShareExt_SharingFailed": "Échec du partage",
 
+  // Native Android dialogs - AlertDialogs raised by the app shell, so they render outside the
+  // WebView. {0} is the app name. PermissionRationale_* explains a camera/location/microphone
+  // prompt before Android shows its own; NotificationsPermission_* does the same for notifications.
+  "NotificationsPermission_Title": "L'autorisation de notifications n'est pas accordée",
+  "NotificationsPermission_Message_Format": "{0} peut vous avertir des nouveaux contenus dans les discussions, des demandes d'amis et d'autres activités liées à votre compte.\n\nVoulez-vous autoriser {0} à envoyer des notifications sur cet appareil ?",
+  "PermissionRationale_Title": "Activer les autorisations de l'application",
+  "PermissionRationale_NoThanks": "Non merci",
+  "PermissionRationale_Camera_Format": "{0} peut utiliser votre caméra pour prendre et partager des photos à votre demande. Veuillez accorder l'accès à la caméra lorsqu'il vous est demandé.",
+  "PermissionRationale_Location_Format": "{0} peut partager votre position avec vos amis à votre demande. Veuillez accorder l'accès à votre position précise lorsqu'il vous est demandé.",
+  "PermissionRationale_Microphone_Format": "{0} utilise votre micro pour enregistrer et transcrire vos messages vocaux. Veuillez accorder l'accès au micro lorsqu'il vous est demandé.",
+
+  // The dialog shown instead of the app when Android System WebView is unavailable.
+  "WebViewMissing_Title": "Android System WebView est requis",
+  "WebViewMissing_Message_Format": "{0} ne peut pas démarrer, car Android System WebView est absent, désactivé ou en cours de mise à jour. Installez-le ou activez-le, puis rouvrez {0}.",
+  "WebViewMissing_GetWebView": "Obtenir WebView",
+
+  // Android notification channels - the names Android lists under the app's notification
+  // settings, one per kind of notification the app posts.
+  "NotificationChannel_Default": "Par défaut",
+  "NotificationChannel_Attention": "Attention requise",
+  "NotificationChannel_Uploads": "Envois",
+  "NotificationChannel_AudioWidget": "Widget audio",
+  "NotificationChannel_LocationSharing": "Partage de position",
+  "NotificationChannel_RecordingAlerts": "Alertes d'enregistrement",
+  "NotificationChannel_Recording": "Enregistrement",
+  "NotificationChannel_MicrophoneProblems": "Problèmes de micro",
+  "NotificationChannel_IncomingCalls": "Appels entrants",
+
+  // Notifications the app posts itself, next to the pushes the server composes. ChatAttention_*
+  // is the reminder that a chat asked for attention; MicBlocked_* is raised when Push-to-talk
+  // couldn't open the microphone; Upload_* is the progress of an upload. {0} is the app name.
+  "ChatAttention_Title": "Une discussion demande votre attention",
+  "ChatAttention_CheckChats_Format": "Veuillez consulter les discussions : {0}",
+  "ChatAttention_Snooze": "Reporter",
+  "MicBlocked_Title_Format": "{0} ne peut pas utiliser le micro",
+  "MicBlocked_PermissionDenied": "Push-to-Talk n'a pas pu enregistrer. Touchez pour autoriser l'accès au micro.",
+  "MicBlocked_Unavailable_Format": "Push-to-Talk n'a pas pu enregistrer. Touchez pour ouvrir {0} et le rétablir.",
+  "Upload_UploadingFiles": "Envoi de {0} fichier|Envoi de {0} fichiers",
+  "Upload_AndMore": "…et {0} de plus",
+
+  // The ongoing-activity notification (Android) and Live Activity (iOS): a status label per
+  // activity kind, and the action buttons under it. Activity_PttOnTapReply names the Reply
+  // button, so the two must agree.
+  "Activity_Recording": "Enregistrement",
+  "Activity_Listening": "Écoute",
+  "Activity_Replaying": "Lecture",
+  "Activity_Uploading": "Envoi en cours",
+  "Activity_SharingLocation": "Partage de la position en direct",
+  "Activity_FlipToReply": "Retournez pour répondre",
+  "Activity_PttOn": "Push-to-Talk activé",
+  "Activity_PttOnTapReply": "Push-to-Talk activé · touchez Répondre pour parler",
+  "Activity_Reply": "Répondre",
+  "Activity_StopTalking": "Arrêter de parler",
+  "Activity_Chats": "{0} discussion|{0} discussions",
+  "Activity_ExtraChats": "(+ {0} discussion)|(+ {0} discussions)",
+
   "Ptt_UseOnThisDevice": "Utiliser le Push-to-Talk sur cet appareil",
   "Ptt_UseOnThisDeviceCaption": "Si désactivé, cet appareil ne se réveillera pas, ne lira pas et ne transmettra pas la voix Push-to-Talk.",
   "Ptt_DeviceEnabledToast": "Le Push-to-Talk est maintenant actif sur cet appareil.",

@@ -1,7 +1,9 @@
+using ActualChat.Localization;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using ActivityKind = ActualChat.UI.Blazor.Services.ActivityKind;
 using Foundation;
+using Microsoft.Extensions.Localization;
 using UserNotifications;
 
 namespace ActualChat.App.Maui.Activities;
@@ -19,6 +21,7 @@ public sealed class IosActivitiesBackend : ActivitiesBackend
     private readonly ActivitiesUI _activitiesUI;
     private ActivitySet? _lastRendered;
     private bool _isLiveActivityShown;
+    private IStringLocalizer L => Hub.StringLocalizer;
 
     public IosActivitiesBackend(AppUIHub hub, IosUploadKeepAlive uploadKeepAlive) : base(hub)
     {
@@ -84,11 +87,13 @@ public sealed class IosActivitiesBackend : ActivitiesBackend
         var (title, subtitle, progress) = primary switch {
             AudioActivity audio => (audio.Chat.Title, KindLabel(audio), -1.0),
             LocationActivity location => (
-                "Sharing live location",
-                location.Chat.ExtraChatCount > 0 ? $"{location.Chat.ExtraChatCount + 1} chats" : location.Chat.Title,
+                L.Activity_SharingLocation,
+                location.Chat.ExtraChatCount > 0
+                    ? L.Activity_Chats(location.Chat.ExtraChatCount + 1, location.Chat.ExtraChatCount + 1)
+                    : location.Chat.Title,
                 -1.0),
             UploadActivity upload => (
-                upload.FileCount == 1 ? "Uploading 1 file" : $"Uploading {upload.FileCount} files",
+                L.Upload_UploadingFiles(upload.FileCount, upload.FileCount),
                 $"{FormatBytes(upload.BytesUploaded)} / {FormatBytes(upload.TotalBytes)}",
                 upload.Progress),
             _ => (primary.Kind.ToString(), "", -1.0),
@@ -97,7 +102,7 @@ public sealed class IosActivitiesBackend : ActivitiesBackend
             IosLiveActivities.StartOrUpdate((int)primary.Kind, title, subtitle, progress) == 1;
     }
 
-    private static void UpdateFallbackNotification(ActivitySet? state)
+    private void UpdateFallbackNotification(ActivitySet? state)
     {
         // Audio kinds post nothing: AVAudioSession already keeps the app alive, and a PTT
         // session is Apple's Ptt UI - a second banner for it is noise.
@@ -108,7 +113,7 @@ public sealed class IosActivitiesBackend : ActivitiesBackend
         }
 
         var content = new UNMutableNotificationContent {
-            Title = new NSString(upload.FileCount == 1 ? "Uploading 1 file" : $"Uploading {upload.FileCount} files"),
+            Title = new NSString(L.Upload_UploadingFiles(upload.FileCount, upload.FileCount)),
             Body = new NSString(
                 $"{FormatBytes(upload.BytesUploaded)} / {FormatBytes(upload.TotalBytes)}"
                 + $" ({(int)(upload.Progress * 100)}%)"),
@@ -121,17 +126,17 @@ public sealed class IosActivitiesBackend : ActivitiesBackend
         center.AddNotificationRequest(request, null);
     }
 
-    private static string KindLabel(AudioActivity audio)
+    private string KindLabel(AudioActivity audio)
         // Armed says whether a flip would actually do something rather than just that a chat is
         // armed: gestures work on iOS too, and outside the arming window the accelerometer is
         // stopped, so "push-to-talk is on" would promise one that cannot fire.
         => audio.Kind switch {
-            ActivityKind.Recording => "Recording",
-            ActivityKind.Replaying => "Replaying",
-            ActivityKind.Listening => "Listening",
+            ActivityKind.Recording => L.Activity_Recording,
+            ActivityKind.Replaying => L.Activity_Replaying,
+            ActivityKind.Listening => L.Activity_Listening,
             ActivityKind.Armed => audio.IsStartGestureReady
-                ? "Flip to reply"
-                : "Push-to-talk on",
+                ? L.Activity_FlipToReply
+                : L.Activity_PttOn,
             _ => "",
         };
 

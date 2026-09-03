@@ -1014,6 +1014,62 @@
   "ShareExt_CannotSendToContact": "Ne možete slati ovom kontaktu",
   "ShareExt_SharingFailed": "Dijeljenje nije uspjelo",
 
+  // Native Android dialogs - AlertDialogs raised by the app shell, so they render outside the
+  // WebView. {0} is the app name. PermissionRationale_* explains a camera/location/microphone
+  // prompt before Android shows its own; NotificationsPermission_* does the same for notifications.
+  "NotificationsPermission_Title": "Dozvola za obavijesti nije data",
+  "NotificationsPermission_Message_Format": "{0} vas može obavješćujeti o novom sadržaju u chatovima, zahtjevima za prijateljstvo i drugim aktivnostima vezanim za vaš račun.\n\nŽelite li dozvoliti da {0} šalje obavijesti na ovaj uređaj?",
+  "PermissionRationale_Title": "Uključite dozvole aplikacije",
+  "PermissionRationale_NoThanks": "Ne, hvala",
+  "PermissionRationale_Camera_Format": "{0} može na vaš zahtjev koristiti kameru za snimanje i dijeljenje fotografija. Molimo dozvolite pristup kameri kada budete upitani.",
+  "PermissionRationale_Location_Format": "{0} može na vaš zahtjev dijeliti vašu lokaciju s prijateljima. Molimo dozvolite pristup preciznoj lokaciji kada budete upitani.",
+  "PermissionRationale_Microphone_Format": "{0} koristi mikrofon za snimanje i transkripciju vaših glasovnih poruka. Molimo dozvolite pristup mikrofonu kada budete upitani.",
+
+  // The dialog shown instead of the app when Android System WebView is unavailable.
+  "WebViewMissing_Title": "Potreban je Android System WebView",
+  "WebViewMissing_Message_Format": "{0} se ne može pokrenuti jer Android System WebView nedostaje, onemogućen je ili se ažurira. Instalirajte ga ili omogućite, a zatim ponovo otvorite {0}.",
+  "WebViewMissing_GetWebView": "Preuzmite WebView",
+
+  // Android notification channels - the names Android lists under the app's notification
+  // settings, one per kind of notification the app posts.
+  "NotificationChannel_Default": "Zadano",
+  "NotificationChannel_Attention": "Potrebna pažnja",
+  "NotificationChannel_Uploads": "Otpremanja",
+  "NotificationChannel_AudioWidget": "Audio widget",
+  "NotificationChannel_LocationSharing": "Dijeljenje lokacije",
+  "NotificationChannel_RecordingAlerts": "Upozorenja o snimanju",
+  "NotificationChannel_Recording": "Snimanje",
+  "NotificationChannel_MicrophoneProblems": "Problemi s mikrofonom",
+  "NotificationChannel_IncomingCalls": "Dolazni pozivi",
+
+  // Notifications the app posts itself, next to the pushes the server composes. ChatAttention_*
+  // is the reminder that a chat asked for attention; MicBlocked_* is raised when Push-to-talk
+  // couldn't open the microphone; Upload_* is the progress of an upload. {0} is the app name.
+  "ChatAttention_Title": "Chat zahtijeva pažnju",
+  "ChatAttention_CheckChats_Format": "Molimo provjerite chatove: {0}",
+  "ChatAttention_Snooze": "Odgodite",
+  "MicBlocked_Title_Format": "{0} ne može koristiti mikrofon",
+  "MicBlocked_PermissionDenied": "Pritisni i govori nije moglo snimati. Dodirnite da dozvolite pristup mikrofonu.",
+  "MicBlocked_Unavailable_Format": "Pritisni i govori nije moglo snimati. Dodirnite da otvorite {0} i vratite ga.",
+  "Upload_UploadingFiles": "Prijenos {0} datoteke|Prijenos {0} datoteke|Prijenos {0} datoteka",
+  "Upload_AndMore": "…i još {0}",
+
+  // The ongoing-activity notification (Android) and Live Activity (iOS): a status label per
+  // activity kind, and the action buttons under it. Activity_PttOnTapReply names the Reply
+  // button, so the two must agree.
+  "Activity_Recording": "Snimanje",
+  "Activity_Listening": "Slušanje",
+  "Activity_Replaying": "Reprodukcija",
+  "Activity_Uploading": "Prijenos",
+  "Activity_SharingLocation": "Dijeljenje lokacije uživo",
+  "Activity_FlipToReply": "Okrenite telefon da odgovorite",
+  "Activity_PttOn": "Pritisni i govori je uključeno",
+  "Activity_PttOnTapReply": "Pritisni i govori je uključeno · dodirnite Odgovorite da govorite",
+  "Activity_Reply": "Odgovorite",
+  "Activity_StopTalking": "Prestanite govoriti",
+  "Activity_Chats": "{0} chat|{0} chata|{0} chatova",
+  "Activity_ExtraChats": "(+ {0} chat)|(+ {0} chata)|(+ {0} chatova)",
+
   "Ptt_UseOnThisDevice": "Koristite Pritisni i govori na ovom uređaju",
   "Ptt_UseOnThisDeviceCaption": "Kada je isključeno, ovaj uređaj se neće buditi, reproducirati ni slati glas putem Pritisni i govori.",
   "Ptt_DeviceEnabledToast": "Pritisni i govori je sada aktivan na ovom uređaju.",

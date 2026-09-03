@@ -1014,6 +1014,62 @@
   "ShareExt_CannotSendToContact": "この連絡先には送信できません",
   "ShareExt_SharingFailed": "共有に失敗しました",
 
+  // Native Android dialogs - AlertDialogs raised by the app shell, so they render outside the
+  // WebView. {0} is the app name. PermissionRationale_* explains a camera/location/microphone
+  // prompt before Android shows its own; NotificationsPermission_* does the same for notifications.
+  "NotificationsPermission_Title": "通知の権限が許可されていません",
+  "NotificationsPermission_Message_Format": "{0} はチャットの新着コンテンツ、友達リクエスト、その他アカウントに関する活動をお知らせできます。\n\n{0} がこのデバイスに通知を送信することを許可しますか？",
+  "PermissionRationale_Title": "アプリの権限を有効にする",
+  "PermissionRationale_NoThanks": "今はしない",
+  "PermissionRationale_Camera_Format": "{0} は、ご要望に応じて写真を撮影・共有するためにカメラを使用します。求められたらカメラへのアクセスを許可してください。",
+  "PermissionRationale_Location_Format": "{0} は、ご要望に応じて位置情報を友達と共有します。求められたら正確な位置情報へのアクセスを許可してください。",
+  "PermissionRationale_Microphone_Format": "{0} は音声メッセージの録音と文字起こしのためにマイクを使用します。求められたらマイクへのアクセスを許可してください。",
+
+  // The dialog shown instead of the app when Android System WebView is unavailable.
+  "WebViewMissing_Title": "Android System WebView が必要です",
+  "WebViewMissing_Message_Format": "Android System WebView が見つからないか、無効になっているか、更新中のため、{0} を起動できません。インストールまたは有効化してから、{0} をもう一度開いてください。",
+  "WebViewMissing_GetWebView": "WebView を入手",
+
+  // Android notification channels - the names Android lists under the app's notification
+  // settings, one per kind of notification the app posts.
+  "NotificationChannel_Default": "デフォルト",
+  "NotificationChannel_Attention": "要確認",
+  "NotificationChannel_Uploads": "アップロード",
+  "NotificationChannel_AudioWidget": "オーディオウィジェット",
+  "NotificationChannel_LocationSharing": "位置情報の共有",
+  "NotificationChannel_RecordingAlerts": "録音の通知",
+  "NotificationChannel_Recording": "録音",
+  "NotificationChannel_MicrophoneProblems": "マイクの問題",
+  "NotificationChannel_IncomingCalls": "着信",
+
+  // Notifications the app posts itself, next to the pushes the server composes. ChatAttention_*
+  // is the reminder that a chat asked for attention; MicBlocked_* is raised when Push-to-talk
+  // couldn't open the microphone; Upload_* is the progress of an upload. {0} is the app name.
+  "ChatAttention_Title": "チャットの確認が必要です",
+  "ChatAttention_CheckChats_Format": "次のチャットを確認してください: {0}",
+  "ChatAttention_Snooze": "スヌーズ",
+  "MicBlocked_Title_Format": "{0} はマイクを使用できません",
+  "MicBlocked_PermissionDenied": "プッシュ・トゥ・トークで録音できませんでした。タップしてマイクへのアクセスを許可してください。",
+  "MicBlocked_Unavailable_Format": "プッシュ・トゥ・トークで録音できませんでした。タップして {0} を開き、復旧してください。",
+  "Upload_UploadingFiles": "{0} 件のファイルをアップロード中",
+  "Upload_AndMore": "…他 {0} 件",
+
+  // The ongoing-activity notification (Android) and Live Activity (iOS): a status label per
+  // activity kind, and the action buttons under it. Activity_PttOnTapReply names the Reply
+  // button, so the two must agree.
+  "Activity_Recording": "録音中",
+  "Activity_Listening": "受信中",
+  "Activity_Replaying": "再生中",
+  "Activity_Uploading": "アップロード中",
+  "Activity_SharingLocation": "リアルタイムの位置情報を共有中",
+  "Activity_FlipToReply": "裏返して返信",
+  "Activity_PttOn": "プッシュ・トゥ・トークがオン",
+  "Activity_PttOnTapReply": "プッシュ・トゥ・トークがオン · 「返信」をタップして話す",
+  "Activity_Reply": "返信",
+  "Activity_StopTalking": "話すのをやめる",
+  "Activity_Chats": "{0} 件のチャット",
+  "Activity_ExtraChats": "(+ {0} 件のチャット)",
+
   "Ptt_UseOnThisDevice": "この端末でプッシュ・トゥ・トークを使う",
   "Ptt_UseOnThisDeviceCaption": "オフにすると、この端末はプッシュ・トゥ・トークの音声で起動・再生・送信しません。",
   "Ptt_DeviceEnabledToast": "この端末でプッシュ・トゥ・トークが有効になりました。",

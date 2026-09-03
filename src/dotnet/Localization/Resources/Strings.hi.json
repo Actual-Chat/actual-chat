@@ -1014,6 +1014,62 @@
   "ShareExt_CannotSendToContact": "आप इस संपर्क को संदेश नहीं भेज सकते",
   "ShareExt_SharingFailed": "साझा नहीं किया जा सका",
 
+  // Native Android dialogs - AlertDialogs raised by the app shell, so they render outside the
+  // WebView. {0} is the app name. PermissionRationale_* explains a camera/location/microphone
+  // prompt before Android shows its own; NotificationsPermission_* does the same for notifications.
+  "NotificationsPermission_Title": "सूचना अनुमति नहीं दी गई है",
+  "NotificationsPermission_Message_Format": "{0} आपको चैट में नई सामग्री, मित्र अनुरोधों और आपके खाते से जुड़ी अन्य गतिविधियों के बारे में सूचित कर सकता है।\n\nक्या आप {0} को इस डिवाइस पर सूचनाएँ भेजने की अनुमति देना चाहते हैं?",
+  "PermissionRationale_Title": "ऐप अनुमतियाँ चालू करें",
+  "PermissionRationale_NoThanks": "नहीं, धन्यवाद",
+  "PermissionRationale_Camera_Format": "{0} आपके अनुरोध पर फ़ोटो लेने और साझा करने के लिए आपके कैमरे का उपयोग कर सकता है। कृपया पूछे जाने पर कैमरे की अनुमति दें।",
+  "PermissionRationale_Location_Format": "{0} आपके अनुरोध पर आपकी लोकेशन आपके मित्रों के साथ साझा कर सकता है। कृपया पूछे जाने पर सटीक लोकेशन की अनुमति दें।",
+  "PermissionRationale_Microphone_Format": "{0} आपके ऑडियो संदेश रिकॉर्ड और ट्रांसक्राइब करने के लिए आपके माइक्रोफ़ोन का उपयोग करता है। कृपया पूछे जाने पर माइक्रोफ़ोन की अनुमति दें।",
+
+  // The dialog shown instead of the app when Android System WebView is unavailable.
+  "WebViewMissing_Title": "Android System WebView आवश्यक है",
+  "WebViewMissing_Message_Format": "{0} शुरू नहीं हो सकता क्योंकि Android System WebView मौजूद नहीं है, बंद है या अपडेट हो रहा है। इसे इंस्टॉल या चालू करें, फिर {0} दोबारा खोलें।",
+  "WebViewMissing_GetWebView": "WebView प्राप्त करें",
+
+  // Android notification channels - the names Android lists under the app's notification
+  // settings, one per kind of notification the app posts.
+  "NotificationChannel_Default": "डिफ़ॉल्ट",
+  "NotificationChannel_Attention": "ध्यान आवश्यक",
+  "NotificationChannel_Uploads": "अपलोड",
+  "NotificationChannel_AudioWidget": "ऑडियो विजेट",
+  "NotificationChannel_LocationSharing": "लोकेशन साझाकरण",
+  "NotificationChannel_RecordingAlerts": "रिकॉर्डिंग अलर्ट",
+  "NotificationChannel_Recording": "रिकॉर्डिंग",
+  "NotificationChannel_MicrophoneProblems": "माइक्रोफ़ोन समस्याएँ",
+  "NotificationChannel_IncomingCalls": "इनकमिंग कॉल",
+
+  // Notifications the app posts itself, next to the pushes the server composes. ChatAttention_*
+  // is the reminder that a chat asked for attention; MicBlocked_* is raised when Push-to-talk
+  // couldn't open the microphone; Upload_* is the progress of an upload. {0} is the app name.
+  "ChatAttention_Title": "चैट पर ध्यान देना आवश्यक है",
+  "ChatAttention_CheckChats_Format": "कृपया ये चैट देखें: {0}",
+  "ChatAttention_Snooze": "स्नूज़",
+  "MicBlocked_Title_Format": "{0} माइक्रोफ़ोन का उपयोग नहीं कर सकता",
+  "MicBlocked_PermissionDenied": "पुश टू टॉक रिकॉर्ड नहीं कर सका। माइक्रोफ़ोन की अनुमति देने के लिए टैप करें।",
+  "MicBlocked_Unavailable_Format": "पुश टू टॉक रिकॉर्ड नहीं कर सका। {0} खोलकर इसे बहाल करने के लिए टैप करें।",
+  "Upload_UploadingFiles": "{0} फ़ाइल अपलोड हो रही है|{0} फ़ाइलें अपलोड हो रही हैं",
+  "Upload_AndMore": "…और {0} अन्य",
+
+  // The ongoing-activity notification (Android) and Live Activity (iOS): a status label per
+  // activity kind, and the action buttons under it. Activity_PttOnTapReply names the Reply
+  // button, so the two must agree.
+  "Activity_Recording": "रिकॉर्ड हो रहा है",
+  "Activity_Listening": "सुन रहा है",
+  "Activity_Replaying": "चला रहा है",
+  "Activity_Uploading": "अपलोड हो रहा है",
+  "Activity_SharingLocation": "लाइव लोकेशन साझा हो रही है",
+  "Activity_FlipToReply": "जवाब देने के लिए फ़ोन पलटें",
+  "Activity_PttOn": "पुश टू टॉक चालू है",
+  "Activity_PttOnTapReply": "पुश टू टॉक चालू है · बोलने के लिए जवाब दें पर टैप करें",
+  "Activity_Reply": "जवाब दें",
+  "Activity_StopTalking": "बोलना बंद करें",
+  "Activity_Chats": "{0} चैट",
+  "Activity_ExtraChats": "(+ {0} चैट)",
+
   "Ptt_UseOnThisDevice": "इस डिवाइस पर पुश टू टॉक इस्तेमाल करें",
   "Ptt_UseOnThisDeviceCaption": "बंद होने पर यह डिवाइस पुश टू टॉक आवाज़ के लिए न जागेगा, न चलाएगा, न भेजेगा।",
   "Ptt_DeviceEnabledToast": "पुश टू टॉक अब इस डिवाइस पर सक्रिय है।",

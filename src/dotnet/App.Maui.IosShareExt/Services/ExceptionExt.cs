@@ -1,6 +1,6 @@
 using System.Security;
-using ActualChat.App.Maui.IosShareExt.UI;
 using ActualChat.Localization;
+using ActualChat.Maui;
 
 namespace ActualChat.App.Maui.IosShareExt.Services;
 

@@ -1,3 +1,4 @@
+using ActualChat.Localization;
 using ActualChat.UI;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
@@ -41,15 +42,10 @@ public class AndroidNotificationsPermission(AppUIHub hub) : UIServiceBase<AppUIH
                 RequestPermission();
             else
                 new AlertDialog.Builder(activity)
-                    .SetTitle("Notifications permission isn't granted")!
-                    .SetMessage(
-                        $"""
-                        {CoreConstants.AppName} can notify you about new content in chats, friend requests, and other activities related to your account.
-
-                        Do you want to allow {CoreConstants.AppName} sending notifications to this device?
-                        """)!
-                    .SetNegativeButton("Decline", (_, _) => whenCompletedSource.TrySetResult(false))!
-                    .SetPositiveButton("Allow", (_, _) => RequestPermission())!
+                    .SetTitle(L.NotificationsPermission_Title)!
+                    .SetMessage(L.NotificationsPermission_Message_Format(CoreConstants.AppName))!
+                    .SetNegativeButton(L.Common_Decline, (_, _) => whenCompletedSource.TrySetResult(false))!
+                    .SetPositiveButton(L.Common_Allow, (_, _) => RequestPermission())!
                     .Show();
             await whenCompletedSource.Task.ConfigureAwait(false);
             isGranted = await IsGranted(cancellationToken).ConfigureAwait(false);

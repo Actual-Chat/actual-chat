@@ -1,7 +1,8 @@
-using ActualLab.Diagnostics;
+using ActualChat.Localization;
 using Android.App;
 using Android.Content;
 using AndroidX.Core.App;
+using Microsoft.Extensions.Localization;
 using Application = Android.App.Application;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
@@ -19,16 +20,16 @@ public static class MicrophoneBlockedNotification
     private static ILogger? _log;
 
     private static Context Context => Application.Context;
+    private static IStringLocalizer L => AppStrings.L;
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger(typeof(MicrophoneBlockedNotification));
 
     public static void ShowPermissionDenied()
-        => Show("Voxt can't use the microphone",
-            "Push-to-talk couldn't record. Tap to allow microphone access.");
+        => Show(L.MicBlocked_Title_Format(CoreConstants.AppName), L.MicBlocked_PermissionDenied);
 
     public static void ShowUnavailable()
         // Opening the app really is the fix: only an activity can re-earn the mic grant.
-        => Show("Voxt can't use the microphone",
-            "Push-to-talk couldn't record. Tap to open Voxt and restore it.");
+        => Show(L.MicBlocked_Title_Format(CoreConstants.AppName),
+            L.MicBlocked_Unavailable_Format(CoreConstants.AppName));
 
     private static void Show(string title, string text)
     {
@@ -94,10 +95,8 @@ public static class MicrophoneBlockedNotification
     private static void EnsureChannelExists()
     {
         var notificationManager = (NotificationManager)Context.GetSystemService(Context.NotificationService)!;
-        if (notificationManager.GetNotificationChannel(ChannelId) != null)
-            return;
-
-        var channel = new NotificationChannel(ChannelId, "Microphone problems", NotificationImportance.High) {
+        var channel = new NotificationChannel(
+            ChannelId, L.NotificationChannel_MicrophoneProblems, NotificationImportance.High) {
             LockscreenVisibility = NotificationVisibility.Public,
         };
         notificationManager.CreateNotificationChannel(channel);

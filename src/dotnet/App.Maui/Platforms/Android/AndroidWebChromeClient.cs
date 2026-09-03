@@ -1,3 +1,5 @@
+using ActualChat.Localization;
+using ActualChat.Maui;
 using Android;
 using Android.App;
 using Android.Content.PM;
@@ -6,6 +8,7 @@ using Android.OS;
 using Android.Webkit;
 using AndroidX.Core.Content;
 using Java.Interop;
+using Microsoft.Extensions.Localization;
 using View = Android.Views.View;
 using WebView = Android.Webkit.WebView;
 
@@ -22,27 +25,9 @@ public class AndroidWebChromeClient : WebChromeClient
     // by the official Android developer documentation.
     // See: https://developer.android.com/training/permissions/requesting#workflow_for_requesting_permissions
     // The current implementation supports location, camera, and microphone permissions. To add your own,
-    // update the s_rationalesByPermission dictionary to include your rationale for requiring the permission.
+    // update GetRationale to include your rationale for requiring the permission.
     // If necessary, you may need to also update s_requiredPermissionsByWebkitResource to define how a specific
     // Webkit resource maps to an Android permission.
-
-    // In a real app, you would probably use more convincing rationales tailored toward what your app does.
-    private const string CameraAccessRationale
-        = $"{CoreConstants.AppName} can use your camera to take and share pictures upon your request. "
-        + "Please grant access to your camera when requested.";
-    private const string LocationAccessRationale
-        = $"{CoreConstants.AppName} can share your location with your friends upon your request. "
-        + "Please grant access to your precise location when requested.";
-    private const string MicrophoneAccessRationale
-        = $"{CoreConstants.AppName} uses your microphone to record and transcribe your audio messages. "
-        + "Please grant access to your microphone when requested.";
-
-    private static readonly Dictionary<string, string> RationalesByPermission = new() {
-        [Manifest.Permission.Camera] = CameraAccessRationale,
-        [Manifest.Permission.AccessFineLocation] = LocationAccessRationale,
-        [Manifest.Permission.RecordAudio] = MicrophoneAccessRationale,
-        // Add more rationales as you add more supported permissions.
-    };
 
     private static readonly Dictionary<string, string[]> RequiredPermissionsByWebkitResource = new() {
         [PermissionRequest.ResourceVideoCapture] = new[] { Manifest.Permission.Camera },
@@ -53,6 +38,7 @@ public class AndroidWebChromeClient : WebChromeClient
     private readonly MainActivity _activity;
     private readonly WebChromeClient _client;
     private readonly VisualMediaFileChooser _visualMediaFileChooser;
+    private static IStringLocalizer L => AppStrings.L;
     private ILogger Log { get; }
     private bool IsDisconnected { get; set; }
     private bool CanForward
@@ -293,18 +279,27 @@ public class AndroidWebChromeClient : WebChromeClient
         if (ContextCompat.CheckSelfPermission(_activity, permission) == Permission.Granted) {
             callback.Invoke(true);
         }
-        else if (_activity.ShouldShowRequestPermissionRationale(permission) && RationalesByPermission.TryGetValue(permission, out var rationale)) {
+        else if (_activity.ShouldShowRequestPermissionRationale(permission)
+            && GetRationale(permission) is { } rationale) {
             new AlertDialog.Builder(_activity)
-                .SetTitle("Enable app permissions")!
+                .SetTitle(L.PermissionRationale_Title)!
                 .SetMessage(rationale)!
-                .SetNegativeButton("No thanks", (_, _) => callback.Invoke(false))!
-                .SetPositiveButton("Continue", (_, _) => LaunchPermissionRequestActivity(permission, callback))!
+                .SetNegativeButton(L.PermissionRationale_NoThanks, (_, _) => callback.Invoke(false))!
+                .SetPositiveButton(L.Common_Continue, (_, _) => LaunchPermissionRequestActivity(permission, callback))!
                 .Show();
         }
         else {
             LaunchPermissionRequestActivity(permission, callback);
         }
     }
+
+    private static string? GetRationale(string permission)
+        => permission switch {
+            Manifest.Permission.Camera => L.PermissionRationale_Camera_Format(CoreConstants.AppName),
+            Manifest.Permission.AccessFineLocation => L.PermissionRationale_Location_Format(CoreConstants.AppName),
+            Manifest.Permission.RecordAudio => L.PermissionRationale_Microphone_Format(CoreConstants.AppName),
+            _ => null,
+        };
 
     private void LaunchPermissionRequestActivity(string permission, Action<bool> callback)
         => _activity.RequestPermission(permission, callback, true);

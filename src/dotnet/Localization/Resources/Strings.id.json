@@ -1014,6 +1014,62 @@
   "ShareExt_CannotSendToContact": "Anda tidak dapat mengirim ke kontak ini",
   "ShareExt_SharingFailed": "Gagal berbagi",
 
+  // Native Android dialogs - AlertDialogs raised by the app shell, so they render outside the
+  // WebView. {0} is the app name. PermissionRationale_* explains a camera/location/microphone
+  // prompt before Android shows its own; NotificationsPermission_* does the same for notifications.
+  "NotificationsPermission_Title": "Izin notifikasi belum diberikan",
+  "NotificationsPermission_Message_Format": "{0} dapat memberi tahu Anda tentang konten baru di obrolan, permintaan pertemanan, dan aktivitas lain yang terkait dengan akun Anda.\n\nIzinkan {0} mengirim notifikasi ke perangkat ini?",
+  "PermissionRationale_Title": "Aktifkan izin aplikasi",
+  "PermissionRationale_NoThanks": "Tidak, terima kasih",
+  "PermissionRationale_Camera_Format": "{0} dapat menggunakan kamera Anda untuk mengambil dan membagikan foto atas permintaan Anda. Harap berikan akses kamera saat diminta.",
+  "PermissionRationale_Location_Format": "{0} dapat membagikan lokasi Anda kepada teman atas permintaan Anda. Harap berikan akses lokasi akurat saat diminta.",
+  "PermissionRationale_Microphone_Format": "{0} menggunakan mikrofon Anda untuk merekam dan mentranskripsi pesan suara Anda. Harap berikan akses mikrofon saat diminta.",
+
+  // The dialog shown instead of the app when Android System WebView is unavailable.
+  "WebViewMissing_Title": "Android System WebView diperlukan",
+  "WebViewMissing_Message_Format": "{0} tidak dapat dimulai karena Android System WebView tidak ada, dinonaktifkan, atau sedang diperbarui. Instal atau aktifkan, lalu buka {0} lagi.",
+  "WebViewMissing_GetWebView": "Dapatkan WebView",
+
+  // Android notification channels - the names Android lists under the app's notification
+  // settings, one per kind of notification the app posts.
+  "NotificationChannel_Default": "Bawaan",
+  "NotificationChannel_Attention": "Perlu perhatian",
+  "NotificationChannel_Uploads": "Unggahan",
+  "NotificationChannel_AudioWidget": "Widget audio",
+  "NotificationChannel_LocationSharing": "Berbagi lokasi",
+  "NotificationChannel_RecordingAlerts": "Peringatan perekaman",
+  "NotificationChannel_Recording": "Perekaman",
+  "NotificationChannel_MicrophoneProblems": "Masalah mikrofon",
+  "NotificationChannel_IncomingCalls": "Panggilan masuk",
+
+  // Notifications the app posts itself, next to the pushes the server composes. ChatAttention_*
+  // is the reminder that a chat asked for attention; MicBlocked_* is raised when Push-to-talk
+  // couldn't open the microphone; Upload_* is the progress of an upload. {0} is the app name.
+  "ChatAttention_Title": "Obrolan perlu perhatian",
+  "ChatAttention_CheckChats_Format": "Harap periksa obrolan: {0}",
+  "ChatAttention_Snooze": "Tunda",
+  "MicBlocked_Title_Format": "{0} tidak dapat menggunakan mikrofon",
+  "MicBlocked_PermissionDenied": "Tekan untuk bicara tidak dapat merekam. Ketuk untuk mengizinkan akses mikrofon.",
+  "MicBlocked_Unavailable_Format": "Tekan untuk bicara tidak dapat merekam. Ketuk untuk membuka {0} dan memulihkannya.",
+  "Upload_UploadingFiles": "Mengunggah {0} file",
+  "Upload_AndMore": "…dan {0} lainnya",
+
+  // The ongoing-activity notification (Android) and Live Activity (iOS): a status label per
+  // activity kind, and the action buttons under it. Activity_PttOnTapReply names the Reply
+  // button, so the two must agree.
+  "Activity_Recording": "Merekam",
+  "Activity_Listening": "Mendengarkan",
+  "Activity_Replaying": "Memutar ulang",
+  "Activity_Uploading": "Mengunggah",
+  "Activity_SharingLocation": "Membagikan lokasi langsung",
+  "Activity_FlipToReply": "Balik ponsel untuk membalas",
+  "Activity_PttOn": "Tekan untuk bicara aktif",
+  "Activity_PttOnTapReply": "Tekan untuk bicara aktif · ketuk Balas untuk berbicara",
+  "Activity_Reply": "Balas",
+  "Activity_StopTalking": "Berhenti bicara",
+  "Activity_Chats": "{0} obrolan",
+  "Activity_ExtraChats": "(+ {0} obrolan)",
+
   "Ptt_UseOnThisDevice": "Gunakan Tekan untuk bicara di perangkat ini",
   "Ptt_UseOnThisDeviceCaption": "Saat mati, perangkat ini tidak akan bangun, memutar, atau mengirim suara Tekan untuk bicara.",
   "Ptt_DeviceEnabledToast": "Tekan untuk bicara kini aktif di perangkat ini.",

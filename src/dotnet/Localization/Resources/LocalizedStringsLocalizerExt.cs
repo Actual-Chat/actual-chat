@@ -1059,6 +1059,54 @@ public static class LocalizedStringsLocalizerExt
         public string ShareExt_CannotSendToContact => l["ShareExt_CannotSendToContact"].Value;
         public string ShareExt_SharingFailed => l["ShareExt_SharingFailed"].Value;
 
+        public string NotificationsPermission_Title => l["NotificationsPermission_Title"].Value;
+        public string NotificationsPermission_Message_Format(object arg0)
+            => l["NotificationsPermission_Message_Format", arg0].Value;
+        public string PermissionRationale_Title => l["PermissionRationale_Title"].Value;
+        public string PermissionRationale_NoThanks => l["PermissionRationale_NoThanks"].Value;
+        public string PermissionRationale_Camera_Format(object arg0)
+            => l["PermissionRationale_Camera_Format", arg0].Value;
+        public string PermissionRationale_Location_Format(object arg0)
+            => l["PermissionRationale_Location_Format", arg0].Value;
+        public string PermissionRationale_Microphone_Format(object arg0)
+            => l["PermissionRationale_Microphone_Format", arg0].Value;
+
+        public string WebViewMissing_Title => l["WebViewMissing_Title"].Value;
+        public string WebViewMissing_Message_Format(object arg0) => l["WebViewMissing_Message_Format", arg0].Value;
+        public string WebViewMissing_GetWebView => l["WebViewMissing_GetWebView"].Value;
+
+        public string NotificationChannel_Default => l["NotificationChannel_Default"].Value;
+        public string NotificationChannel_Attention => l["NotificationChannel_Attention"].Value;
+        public string NotificationChannel_Uploads => l["NotificationChannel_Uploads"].Value;
+        public string NotificationChannel_AudioWidget => l["NotificationChannel_AudioWidget"].Value;
+        public string NotificationChannel_LocationSharing => l["NotificationChannel_LocationSharing"].Value;
+        public string NotificationChannel_RecordingAlerts => l["NotificationChannel_RecordingAlerts"].Value;
+        public string NotificationChannel_Recording => l["NotificationChannel_Recording"].Value;
+        public string NotificationChannel_MicrophoneProblems => l["NotificationChannel_MicrophoneProblems"].Value;
+        public string NotificationChannel_IncomingCalls => l["NotificationChannel_IncomingCalls"].Value;
+
+        public string ChatAttention_Title => l["ChatAttention_Title"].Value;
+        public string ChatAttention_CheckChats_Format(object arg0) => l["ChatAttention_CheckChats_Format", arg0].Value;
+        public string ChatAttention_Snooze => l["ChatAttention_Snooze"].Value;
+        public string MicBlocked_Title_Format(object arg0) => l["MicBlocked_Title_Format", arg0].Value;
+        public string MicBlocked_PermissionDenied => l["MicBlocked_PermissionDenied"].Value;
+        public string MicBlocked_Unavailable_Format(object arg0) => l["MicBlocked_Unavailable_Format", arg0].Value;
+        public string Upload_UploadingFiles(long count, object arg0) => l.Plural("Upload_UploadingFiles", count, arg0);
+        public string Upload_AndMore(long count, object arg0) => l.Plural("Upload_AndMore", count, arg0);
+
+        public string Activity_Recording => l["Activity_Recording"].Value;
+        public string Activity_Listening => l["Activity_Listening"].Value;
+        public string Activity_Replaying => l["Activity_Replaying"].Value;
+        public string Activity_Uploading => l["Activity_Uploading"].Value;
+        public string Activity_SharingLocation => l["Activity_SharingLocation"].Value;
+        public string Activity_FlipToReply => l["Activity_FlipToReply"].Value;
+        public string Activity_PttOn => l["Activity_PttOn"].Value;
+        public string Activity_PttOnTapReply => l["Activity_PttOnTapReply"].Value;
+        public string Activity_Reply => l["Activity_Reply"].Value;
+        public string Activity_StopTalking => l["Activity_StopTalking"].Value;
+        public string Activity_Chats(long count, object arg0) => l.Plural("Activity_Chats", count, arg0);
+        public string Activity_ExtraChats(long count, object arg0) => l.Plural("Activity_ExtraChats", count, arg0);
+
         public string Ptt_UseOnThisDevice => l["Ptt_UseOnThisDevice"].Value;
         public string Ptt_UseOnThisDeviceCaption => l["Ptt_UseOnThisDeviceCaption"].Value;
         public string Ptt_DeviceEnabledToast => l["Ptt_DeviceEnabledToast"].Value;
