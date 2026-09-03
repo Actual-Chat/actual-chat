@@ -1380,6 +1380,7 @@
   "Video_Connecting": "Připojování...",
   "Call_Ended": "Hovor ukončen",
   "Call_CouldntStart": "Hovor se nepodařilo zahájit",
+  "Call_NoMicrophoneAccess": "Hovor se nepodařilo zahájit: bez přístupu k mikrofonu.",
   "Call_RecordingTurnedOffByHost": "Nahrávání vypnul hostitel",
   "Call_MakeHost": "Nastavit jako hostitele",
   "Call_Join": "Připojit se",

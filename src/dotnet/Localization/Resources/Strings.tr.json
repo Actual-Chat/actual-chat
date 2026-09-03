@@ -1380,6 +1380,7 @@
   "Video_Connecting": "Bağlanılıyor...",
   "Call_Ended": "Arama sona erdi",
   "Call_CouldntStart": "Arama başlatılamadı",
+  "Call_NoMicrophoneAccess": "Arama başlatılamadı: mikrofon erişimi yok.",
   "Call_RecordingTurnedOffByHost": "Kayıt, oturum sahibi tarafından kapatıldı",
   "Call_MakeHost": "Sunucu yapın",
   "Call_Join": "Katılın",

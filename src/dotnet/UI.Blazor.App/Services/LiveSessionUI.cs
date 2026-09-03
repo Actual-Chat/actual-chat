@@ -107,6 +107,15 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         bool hasVideo,
         CancellationToken cancellationToken)
     {
+        // Ask on the click itself: it's a real user gesture, the request can't yet race the ringback,
+        // and JoinAnsweredCall's own check re-reads the (now cached) verdict without prompting again.
+        // A call the caller can't be heard on isn't worth ringing the other side for, so a denial
+        // stops it here instead of falling back to a listen-only call as the callee side does.
+        if (!await AudioRecorder.MicrophonePermission.CheckOrRequest(cancellationToken).ConfigureAwait(false)) {
+            Hub.ToastUI.Show(L.Call_NoMicrophoneAccess, "icon-phone-hang-up", ToastDismissDelay.Short);
+            return;
+        }
+
         try {
             await LiveSessions.StartCall(Session, chatId, invitees, hasVideo, cancellationToken).ConfigureAwait(false);
         }
@@ -348,15 +357,21 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
                 var live = computed.Value;
                 if (live is { Kind: LiveSessionKind.Dialing }) {
                     isDialing = true;
-                    // The caller hears the ringback for as long as the call is dialing; every exit
-                    // below (answer, remote end, timeout, cancel) unwinds through the finally, which
-                    // stops it.
+                    // The caller hears the ringback for as long as the call is dialing; the exits that
+                    // don't stop it themselves (timeout, cancel) unwind through the finally.
                     if (!isRingbackOn) {
                         isRingbackOn = true;
                         StartRingback(cts);
                     }
                 }
                 else if (isDialing) {
+                    // Dialing is over either way, so the tone goes now rather than in the finally:
+                    // JoinAnsweredCall below awaits a mic permission prompt that can stay unanswered
+                    // for as long as the user likes, and the ringback would play through all of it.
+                    if (isRingbackOn) {
+                        isRingbackOn = false;
+                        StopRingback(cts);
+                    }
                     // A session that outlives dialing was answered; a vanished one ended without one.
                     if (live is not null)
                         await JoinAnsweredCall(chatId, cancellationToken).ConfigureAwait(false);

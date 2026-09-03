@@ -1439,6 +1439,7 @@ public static class LocalizedStringsLocalizerExt
         public string Video_TurnCameraOn => l["Video_TurnCameraOn"].Value;
         public string Call_Ended => l["Call_Ended"].Value;
         public string Call_CouldntStart => l["Call_CouldntStart"].Value;
+        public string Call_NoMicrophoneAccess => l["Call_NoMicrophoneAccess"].Value;
         public string Call_RecordingTurnedOffByHost => l["Call_RecordingTurnedOffByHost"].Value;
         public string Call_MakeHost => l["Call_MakeHost"].Value;
         public string Call_DetectingLanguage => l["Call_DetectingLanguage"].Value;

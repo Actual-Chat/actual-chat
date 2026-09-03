@@ -1656,6 +1656,7 @@
   // Call state text and the call action buttons.
   "Call_Ended": "Call ended",
   "Call_CouldntStart": "Couldn't start the call",
+  "Call_NoMicrophoneAccess": "Couldn't start the call: no microphone access.",
   "Call_RecordingTurnedOffByHost": "Recording turned off by the host",
   "Call_MakeHost": "Make host",
   // "Join" in the call sense - entering a call that is already running, not

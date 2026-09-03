@@ -1380,6 +1380,7 @@
   "Video_Connecting": "Menghubungkan...",
   "Call_Ended": "Panggilan berakhir",
   "Call_CouldntStart": "Panggilan tidak bisa dimulai",
+  "Call_NoMicrophoneAccess": "Panggilan tidak bisa dimulai: tidak ada akses mikrofon.",
   "Call_RecordingTurnedOffByHost": "Perekaman dimatikan oleh tuan rumah",
   "Call_MakeHost": "Jadikan tuan rumah",
   "Call_Join": "Gabung",

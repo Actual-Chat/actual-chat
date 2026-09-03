@@ -1380,6 +1380,7 @@
   "Video_Connecting": "Povezivanje...",
   "Call_Ended": "Poziv je završen",
   "Call_CouldntStart": "Poziv se nije mogao pokrenuti",
+  "Call_NoMicrophoneAccess": "Poziv se nije mogao pokrenuti: nema pristupa mikrofonu.",
   "Call_RecordingTurnedOffByHost": "Domaćin je isključio snimanje",
   "Call_MakeHost": "Postavite za domaćina",
   "Call_Join": "Pridružite se",

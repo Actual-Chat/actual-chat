@@ -1380,6 +1380,7 @@
   "Video_Connecting": "Łączenie...",
   "Call_Ended": "Rozmowa zakończona",
   "Call_CouldntStart": "Nie udało się rozpocząć rozmowy",
+  "Call_NoMicrophoneAccess": "Nie udało się rozpocząć rozmowy: brak dostępu do mikrofonu.",
   "Call_RecordingTurnedOffByHost": "Nagrywanie wyłączone przez prowadzącego",
   "Call_MakeHost": "Ustaw jako prowadzącego",
   "Call_Join": "Dołącz",

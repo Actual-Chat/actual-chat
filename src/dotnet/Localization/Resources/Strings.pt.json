@@ -1380,6 +1380,7 @@
   "Video_Connecting": "Conectando...",
   "Call_Ended": "Chamada encerrada",
   "Call_CouldntStart": "Não foi possível iniciar a chamada",
+  "Call_NoMicrophoneAccess": "Não foi possível iniciar a chamada: sem acesso ao microfone.",
   "Call_RecordingTurnedOffByHost": "O anfitrião desativou a gravação",
   "Call_MakeHost": "Tornar anfitrião",
   "Call_Join": "Entrar",

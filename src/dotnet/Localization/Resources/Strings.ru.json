@@ -1380,6 +1380,7 @@
   "Video_Connecting": "Подключение...",
   "Call_Ended": "Звонок завершён",
   "Call_CouldntStart": "Не удалось начать звонок",
+  "Call_NoMicrophoneAccess": "Не удалось начать звонок: нет доступа к микрофону.",
   "Call_RecordingTurnedOffByHost": "Ведущий отключил запись",
   "Call_MakeHost": "Сделать ведущим",
   "Call_Join": "Войти",

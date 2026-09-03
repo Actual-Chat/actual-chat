@@ -1380,6 +1380,7 @@
   "Video_Connecting": "Đang kết nối...",
   "Call_Ended": "Cuộc gọi đã kết thúc",
   "Call_CouldntStart": "Không thể bắt đầu cuộc gọi",
+  "Call_NoMicrophoneAccess": "Không thể bắt đầu cuộc gọi: không có quyền dùng micrô.",
   "Call_RecordingTurnedOffByHost": "Chủ phòng đã tắt ghi âm",
   "Call_MakeHost": "Đặt làm chủ trì",
   "Call_Join": "Tham gia",
