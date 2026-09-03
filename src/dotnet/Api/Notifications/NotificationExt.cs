@@ -20,9 +20,8 @@ public static class NotificationExt
         // a client. NotificationDismissModeTest asserts the two agree for every kind.
         => kind switch {
             NotificationKind.Message or NotificationKind.Reply or NotificationKind.Thread
-                or NotificationKind.Mention or NotificationKind.Attention
-                or NotificationKind.Conversation => NotificationDismissMode.OnRead,
-            NotificationKind.Reaction => NotificationDismissMode.OnView,
+                or NotificationKind.Mention or NotificationKind.Conversation => NotificationDismissMode.OnRead,
+            NotificationKind.Reaction or NotificationKind.Attention => NotificationDismissMode.OnView,
             _ => NotificationDismissMode.Explicit,
         };
 

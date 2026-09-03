@@ -59,6 +59,48 @@ public sealed class NotificationDismissModeTest(AppHostFixture fixture, ITestOut
     }
 
     [Fact]
+    public async Task AlertEveryoneShouldReachRecipientWhoHasReadTheChat()
+    {
+        // arrange
+        var alice = await Tester.SignInAsAlice();
+        await Tester.SignInAsBob();
+        var (chatId, _) = await Tester.CreateChat(false, "Alert dismiss-mode chat");
+        await Tester.InviteToChat(chatId, alice);
+        var entry = await Tester.CreateTextEntry(chatId, "Anyone around?");
+        await SetReadPosition(alice.Id, chatId, entry.LocalId);
+
+        // act
+        await Commander.Call(new Notifications_NotifyMembers { Session = Tester.Session, ChatId = chatId });
+
+        // assert
+        await TestExt.When(async () => {
+            var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
+            info.Items.Should().ContainSingle(n => n is AttentionNotification,
+                "an explicit ping is a ringer, so having read the chat beforehand must not swallow it");
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task AlertEveryoneShouldReachRecipientWhoHasNotReadTheChat()
+    {
+        // arrange
+        var alice = await Tester.SignInAsAlice();
+        await Tester.SignInAsBob();
+        var (chatId, _) = await Tester.CreateChat(false, "Alert control chat");
+        await Tester.InviteToChat(chatId, alice);
+        await Tester.CreateTextEntry(chatId, "Anyone around?");
+
+        // act
+        await Commander.Call(new Notifications_NotifyMembers { Session = Tester.Session, ChatId = chatId });
+
+        // assert
+        await TestExt.When(async () => {
+            var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
+            info.Items.Should().ContainSingle(n => n is AttentionNotification);
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public async Task ExpiredRingShouldNotBeCommitted()
     {
         // arrange
@@ -93,6 +135,7 @@ public sealed class NotificationDismissModeTest(AppHostFixture fixture, ITestOut
         Notification mention = MentionNotification.New(userId, entryId) with { SentAt = sentAt };
         Notification conversation = ConversationNotification.New(userId, conversationId, 2) with { SentAt = sentAt };
         Notification reaction = ReactionNotification.New(userId, entryId) with { SentAt = sentAt };
+        Notification attention = AttentionNotification.New(userId, entryId) with { SentAt = sentAt };
         Notification call = CallNotification.New(userId, conversationId, default, false) with { SentAt = sentAt };
         Notification invitation = InvitationNotification.New(userId, TestChatId) with { SentAt = sentAt };
 
@@ -106,6 +149,9 @@ public sealed class NotificationDismissModeTest(AppHostFixture fixture, ITestOut
         conversation.ExpiresAt.Should().BeNull();
         reaction.DismissMode.Should().Be(NotificationDismissMode.OnView);
         reaction.ExpiresAt.Should().Be(sentAt + Constants.Notification.ReactionLifespan);
+        attention.DismissMode.Should().Be(NotificationDismissMode.OnView,
+            "a ping anchors at an entry the recipient has typically read, so a read position must not drop it");
+        attention.ExpiresAt.Should().Be(sentAt + Constants.Notification.AttentionLifespan);
 
         // Anchorless kinds fall through to the Explicit default rather than declaring it.
         call.DismissMode.Should().Be(NotificationDismissMode.Explicit);

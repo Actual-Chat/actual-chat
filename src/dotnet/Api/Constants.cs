@@ -439,6 +439,10 @@ public static partial class Constants
         // A reaction clears when its entry is seen (NotificationDismissMode.OnView); this is the
         // backstop for a chat the user never reopens. Smiles aren't worth keeping around longer.
         public static readonly TimeSpan ReactionLifespan = TimeSpan.FromDays(1);
+        // An attention ping anchors at an entry the recipient has often read already (the mentioned
+        // message, or the one before "alert everyone"), so it clears on view too; this is the
+        // backstop for a chat the user never reopens.
+        public static readonly TimeSpan AttentionLifespan = TimeSpan.FromDays(1);
         // A dismissal older than the push's own TimeToLive can't be delivered any more, so
         // retrying it forever only grows the blob.
         public static readonly TimeSpan PendingDismissalTtl = TimeSpan.FromDays(1);
