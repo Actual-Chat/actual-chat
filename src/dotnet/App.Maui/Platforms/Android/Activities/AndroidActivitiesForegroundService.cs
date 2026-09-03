@@ -1,5 +1,7 @@
 using _Microsoft.Android.Resource.Designer;
 using ActualChat.App.Maui.Services;
+using ActualChat.Localization;
+using ActualChat.Maui;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Services.Gestures;
 using ActualChat.UI.Blazor.Services;
@@ -13,6 +15,7 @@ using Android.Support.V4.Media;
 using Android.Support.V4.Media.Session;
 using Android.Views;
 using AndroidX.Core.App;
+using Microsoft.Extensions.Localization;
 using ActivityKind = ActualChat.UI.Blazor.Services.ActivityKind;
 
 namespace ActualChat.App.Maui.Activities;
@@ -54,6 +57,7 @@ public sealed class AndroidActivitiesForegroundService : Service
     private const string LocationChannelId = "location_sharing";
     private const int NotificationId = 3001;
     private static ILogger Log { get; } = StaticLog.For<AndroidActivitiesForegroundService>();
+    private static IStringLocalizer L => AppStrings.L;
     private static int _pendingStartCount;
     private static bool _isStopPending;
     private static int _lastRequestedTypes;
@@ -229,7 +233,7 @@ public sealed class AndroidActivitiesForegroundService : Service
         if (kind is ActivityKind.SharingLocation)
             return ShowLocation(intent, requested);
 
-        var chatTitle = intent.Extras!.GetString(IntentExtras.ChatTitle) ?? "Unknown chat";
+        var chatTitle = intent.Extras!.GetString(IntentExtras.ChatTitle) ?? L.ChatView_UnknownChat;
         var chatSid = intent.Extras!.GetString(IntentExtras.ChatId);
         if (chatSid.IsNullOrEmpty()) {
             // The early armed start carries no chat yet - see TryStartArmed. StartForeground1 above
@@ -382,12 +386,12 @@ public sealed class AndroidActivitiesForegroundService : Service
         // needs to know is whether flipping the phone right now will do anything - and outside the
         // arming window the accelerometer is stopped, so it won't.
         => kind switch {
-            ActivityKind.Recording => "Recording",
-            ActivityKind.Listening => "Listening",
-            ActivityKind.Replaying => "Replaying",
+            ActivityKind.Recording => L.Activity_Recording,
+            ActivityKind.Listening => L.Activity_Listening,
+            ActivityKind.Replaying => L.Activity_Replaying,
             ActivityKind.Armed => isStartGestureReady
-                ? "Flip to reply"
-                : "Push-to-talk on \u00b7 tap Reply to talk",
+                ? L.Activity_FlipToReply
+                : L.Activity_PttOnTapReply,
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
 
@@ -521,10 +525,10 @@ public sealed class AndroidActivitiesForegroundService : Service
                 // Never the "Flip to reply" wording: this is raised before Blazor - and so before
                 // GestureUI - exists, so no gesture can possibly be sensed while it's on screen.
                 ActivityKind.Armed => GetKindText(ActivityKind.Armed, isStartGestureReady: false),
-                ActivityKind.Recording => "Recording",
-                ActivityKind.Uploading => "Uploading",
-                ActivityKind.SharingLocation => "Sharing live location",
-                _ => "Voxt",
+                ActivityKind.Recording => L.Activity_Recording,
+                ActivityKind.Uploading => L.Activity_Uploading,
+                ActivityKind.SharingLocation => L.Activity_SharingLocation,
+                _ => CoreConstants.AppName,
             })!
             .SetOngoing(true)!
             .SetOnlyAlertOnce(true)!
@@ -590,7 +594,7 @@ public sealed class AndroidActivitiesForegroundService : Service
         // alternative to the gesture, outside it it still resolves via the unbounded window.
         if (kind is ActivityKind.Recording) {
             _ = builder.AddAction(
-                Android.Resource.Drawable.IcMenuCloseClearCancel, "Stop talking",
+                Android.Resource.Drawable.IcMenuCloseClearCancel, L.Activity_StopTalking,
                 GetServicePendingIntent(6, ActionStopTalking));
             return;
         }
@@ -598,9 +602,9 @@ public sealed class AndroidActivitiesForegroundService : Service
             return;
 
         _ = builder
-            .AddAction(Android.Resource.Drawable.IcButtonSpeakNow, "Reply",
+            .AddAction(Android.Resource.Drawable.IcButtonSpeakNow, L.Activity_Reply,
                 GetServicePendingIntent(5, ActionReply))!
-            .AddAction(Android.Resource.Drawable.IcMenuCloseClearCancel, "Stop",
+            .AddAction(Android.Resource.Drawable.IcMenuCloseClearCancel, L.Common_Stop,
                 GetServicePendingIntent(4, ActionStop));
     }
 
@@ -624,13 +628,13 @@ public sealed class AndroidActivitiesForegroundService : Service
 
         var text = chatTitle;
         if (!text.IsNullOrEmpty() && extraChatCount > 0)
-            text += extraChatCount == 1 ? " (+ 1 chat)" : $" (+ {extraChatCount} chats)";
+            text += " " + L.Activity_ExtraChats(extraChatCount, extraChatCount);
 
         var builder = new NotificationCompat.Builder(this, LocationChannelId)
             .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
-            .SetContentTitle("Sharing live location")!
+            .SetContentTitle(L.Activity_SharingLocation)!
             .SetOngoing(true)!
-            .AddAction(Android.Resource.Drawable.IcMenuCloseClearCancel, "Stop", stopPending)!;
+            .AddAction(Android.Resource.Drawable.IcMenuCloseClearCancel, L.Common_Stop, stopPending)!;
         if (!text.IsNullOrEmpty())
             _ = builder.SetContentText(text);
         if (viewPending is not null)
@@ -653,13 +657,14 @@ public sealed class AndroidActivitiesForegroundService : Service
     {
         var manager = (NotificationManager)GetSystemService(NotificationService)!;
         manager.CreateNotificationChannel(
-            new NotificationChannel(ChannelId, "Audio Widget", NotificationImportance.Low));
+            new NotificationChannel(ChannelId, L.NotificationChannel_AudioWidget, NotificationImportance.Low));
         manager.CreateNotificationChannel(
-            new NotificationChannel(LocationChannelId, "Location sharing", NotificationImportance.Low));
+            new NotificationChannel(
+                LocationChannelId, L.NotificationChannel_LocationSharing, NotificationImportance.Low));
         // High so an open microphone surfaces over the keyguard instead of sitting in the shade,
         // silent because the PTT's own cues already say it started - this is the visual half.
         var recordingChannel = new NotificationChannel(
-            RecordingChannelId, "Recording alerts", NotificationImportance.High);
+            RecordingChannelId, L.NotificationChannel_RecordingAlerts, NotificationImportance.High);
         recordingChannel.SetSound(null, null);
         recordingChannel.EnableVibration(false);
         recordingChannel.LockscreenVisibility = NotificationVisibility.Public;
@@ -667,7 +672,7 @@ public sealed class AndroidActivitiesForegroundService : Service
         // A channel's importance is fixed when it's created - it can't be lowered later, and the
         // High one is already out there - so the no-banner case needs a channel of its own.
         var quietRecordingChannel = new NotificationChannel(
-            RecordingQuietChannelId, "Recording", NotificationImportance.Low);
+            RecordingQuietChannelId, L.NotificationChannel_Recording, NotificationImportance.Low);
         quietRecordingChannel.SetSound(null, null);
         quietRecordingChannel.EnableVibration(false);
         quietRecordingChannel.LockscreenVisibility = NotificationVisibility.Public;

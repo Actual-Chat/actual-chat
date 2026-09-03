@@ -126,6 +126,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
+    <ProjectReference Include="..\Localization\Localization.csproj" />
     <ProjectReference Include="..\UI.App\UI.App.csproj" />
     <ProjectReference Include="..\UI\UI.csproj" />
   </ItemGroup>

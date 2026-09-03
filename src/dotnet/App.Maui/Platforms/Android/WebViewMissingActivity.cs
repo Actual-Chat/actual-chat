@@ -1,3 +1,5 @@
+using ActualChat.Localization;
+using ActualChat.Maui;
 using Android.App;
 using Android.Content;
 using Android.OS;
@@ -23,18 +25,17 @@ public sealed class WebViewMissingActivity : Android.App.Activity
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
-        var appName = ApplicationInfo?.LoadLabel(PackageManager!) ?? "Voxt";
+        var appName = ApplicationInfo?.LoadLabel(PackageManager!) ?? CoreConstants.AppName;
+        var l = AppStrings.L;
         new AlertDialog.Builder(this)
-            .SetTitle("Android System WebView is required")!
-            .SetMessage(
-                $"{appName} can't start because Android System WebView is missing, disabled, or being updated. "
-                + $"Install or enable it, then open {appName} again.")!
+            .SetTitle(l.WebViewMissing_Title)!
+            .SetMessage(l.WebViewMissing_Message_Format(appName))!
             .SetCancelable(false)!
-            .SetPositiveButton("Get WebView", (_, _) => {
+            .SetPositiveButton(l.WebViewMissing_GetWebView, (_, _) => {
                 OpenWebViewInstallPage();
                 FinishAffinity();
             })!
-            .SetNegativeButton("Close", (_, _) => FinishAffinity())!
+            .SetNegativeButton(l.Common_Close, (_, _) => FinishAffinity())!
             .Show();
     }
 

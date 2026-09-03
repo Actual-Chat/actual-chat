@@ -1014,6 +1014,62 @@
   "ShareExt_CannotSendToContact": "이 연락처로는 보낼 수 없습니다",
   "ShareExt_SharingFailed": "공유 실패",
 
+  // Native Android dialogs - AlertDialogs raised by the app shell, so they render outside the
+  // WebView. {0} is the app name. PermissionRationale_* explains a camera/location/microphone
+  // prompt before Android shows its own; NotificationsPermission_* does the same for notifications.
+  "NotificationsPermission_Title": "알림 권한이 허용되지 않았어요",
+  "NotificationsPermission_Message_Format": "{0}은(는) 채팅의 새 콘텐츠, 친구 요청, 계정과 관련된 다른 활동을 알려드릴 수 있어요.\n\n{0}이(가) 이 기기로 알림을 보내도록 허용할까요?",
+  "PermissionRationale_Title": "앱 권한 켜기",
+  "PermissionRationale_NoThanks": "괜찮아요",
+  "PermissionRationale_Camera_Format": "{0}은(는) 요청하실 때 사진을 찍고 공유하기 위해 카메라를 사용할 수 있어요. 요청이 뜨면 카메라 접근을 허용해 주세요.",
+  "PermissionRationale_Location_Format": "{0}은(는) 요청하실 때 친구와 위치를 공유할 수 있어요. 요청이 뜨면 정확한 위치 접근을 허용해 주세요.",
+  "PermissionRationale_Microphone_Format": "{0}은(는) 음성 메시지를 녹음하고 받아쓰기 위해 마이크를 사용해요. 요청이 뜨면 마이크 접근을 허용해 주세요.",
+
+  // The dialog shown instead of the app when Android System WebView is unavailable.
+  "WebViewMissing_Title": "Android System WebView가 필요해요",
+  "WebViewMissing_Message_Format": "Android System WebView가 없거나, 비활성화되었거나, 업데이트 중이어서 {0}을(를) 시작할 수 없어요. 설치하거나 활성화한 다음 {0}을(를) 다시 열어 주세요.",
+  "WebViewMissing_GetWebView": "WebView 받기",
+
+  // Android notification channels - the names Android lists under the app's notification
+  // settings, one per kind of notification the app posts.
+  "NotificationChannel_Default": "기본",
+  "NotificationChannel_Attention": "확인 필요",
+  "NotificationChannel_Uploads": "업로드",
+  "NotificationChannel_AudioWidget": "오디오 위젯",
+  "NotificationChannel_LocationSharing": "위치 공유",
+  "NotificationChannel_RecordingAlerts": "녹음 알림",
+  "NotificationChannel_Recording": "녹음",
+  "NotificationChannel_MicrophoneProblems": "마이크 문제",
+  "NotificationChannel_IncomingCalls": "수신 전화",
+
+  // Notifications the app posts itself, next to the pushes the server composes. ChatAttention_*
+  // is the reminder that a chat asked for attention; MicBlocked_* is raised when Push-to-talk
+  // couldn't open the microphone; Upload_* is the progress of an upload. {0} is the app name.
+  "ChatAttention_Title": "채팅 확인이 필요해요",
+  "ChatAttention_CheckChats_Format": "다음 채팅을 확인해 주세요: {0}",
+  "ChatAttention_Snooze": "다시 알림",
+  "MicBlocked_Title_Format": "{0}이(가) 마이크를 사용할 수 없어요",
+  "MicBlocked_PermissionDenied": "푸시 투 토크가 녹음하지 못했어요. 탭해서 마이크 접근을 허용해 주세요.",
+  "MicBlocked_Unavailable_Format": "푸시 투 토크가 녹음하지 못했어요. 탭해서 {0}을(를) 열고 복구해 주세요.",
+  "Upload_UploadingFiles": "파일 {0}개 업로드 중",
+  "Upload_AndMore": "…외 {0}개",
+
+  // The ongoing-activity notification (Android) and Live Activity (iOS): a status label per
+  // activity kind, and the action buttons under it. Activity_PttOnTapReply names the Reply
+  // button, so the two must agree.
+  "Activity_Recording": "녹음 중",
+  "Activity_Listening": "듣는 중",
+  "Activity_Replaying": "재생 중",
+  "Activity_Uploading": "업로드 중",
+  "Activity_SharingLocation": "실시간 위치 공유 중",
+  "Activity_FlipToReply": "뒤집어서 답장",
+  "Activity_PttOn": "푸시 투 토크 켜짐",
+  "Activity_PttOnTapReply": "푸시 투 토크 켜짐 · 말하려면 답장을 탭하세요",
+  "Activity_Reply": "답장",
+  "Activity_StopTalking": "말하기 중지",
+  "Activity_Chats": "채팅 {0}개",
+  "Activity_ExtraChats": "(+ 채팅 {0}개)",
+
   "Ptt_UseOnThisDevice": "이 기기에서 푸시 투 토크 사용",
   "Ptt_UseOnThisDeviceCaption": "끄면 이 기기는 푸시 투 토크 음성으로 깨어나거나 재생·전송하지 않습니다.",
   "Ptt_DeviceEnabledToast": "이 기기에서 푸시 투 토크가 활성화되었습니다.",

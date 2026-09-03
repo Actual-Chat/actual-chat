@@ -1014,6 +1014,62 @@
   "ShareExt_CannotSendToContact": "Tomuto kontaktu nemůžete odesílat",
   "ShareExt_SharingFailed": "Sdílení se nezdařilo",
 
+  // Native Android dialogs - AlertDialogs raised by the app shell, so they render outside the
+  // WebView. {0} is the app name. PermissionRationale_* explains a camera/location/microphone
+  // prompt before Android shows its own; NotificationsPermission_* does the same for notifications.
+  "NotificationsPermission_Title": "Oprávnění k oznámením nebylo uděleno",
+  "NotificationsPermission_Message_Format": "{0} vás může upozorňovat na nový obsah v chatech, žádosti o přátelství a další aktivity spojené s vaším účtem.\n\nChcete povolit, aby {0} posílal oznámení na toto zařízení?",
+  "PermissionRationale_Title": "Povolte oprávnění aplikace",
+  "PermissionRationale_NoThanks": "Ne, děkuji",
+  "PermissionRationale_Camera_Format": "{0} může na vaši žádost použít fotoaparát k pořizování a sdílení fotek. Až budete vyzváni, udělte prosím přístup k fotoaparátu.",
+  "PermissionRationale_Location_Format": "{0} může na vaši žádost sdílet vaši polohu s přáteli. Až budete vyzváni, udělte prosím přístup k přesné poloze.",
+  "PermissionRationale_Microphone_Format": "{0} používá mikrofon k nahrávání a přepisu vašich hlasových zpráv. Až budete vyzváni, udělte prosím přístup k mikrofonu.",
+
+  // The dialog shown instead of the app when Android System WebView is unavailable.
+  "WebViewMissing_Title": "Je vyžadován Android System WebView",
+  "WebViewMissing_Message_Format": "{0} se nemůže spustit, protože Android System WebView chybí, je vypnutý nebo se právě aktualizuje. Nainstalujte ho nebo zapněte a poté {0} znovu otevřete.",
+  "WebViewMissing_GetWebView": "Získat WebView",
+
+  // Android notification channels - the names Android lists under the app's notification
+  // settings, one per kind of notification the app posts.
+  "NotificationChannel_Default": "Výchozí",
+  "NotificationChannel_Attention": "Vyžaduje pozornost",
+  "NotificationChannel_Uploads": "Odesílání souborů",
+  "NotificationChannel_AudioWidget": "Zvukový widget",
+  "NotificationChannel_LocationSharing": "Sdílení polohy",
+  "NotificationChannel_RecordingAlerts": "Upozornění na nahrávání",
+  "NotificationChannel_Recording": "Nahrávání",
+  "NotificationChannel_MicrophoneProblems": "Problémy s mikrofonem",
+  "NotificationChannel_IncomingCalls": "Příchozí hovory",
+
+  // Notifications the app posts itself, next to the pushes the server composes. ChatAttention_*
+  // is the reminder that a chat asked for attention; MicBlocked_* is raised when Push-to-talk
+  // couldn't open the microphone; Upload_* is the progress of an upload. {0} is the app name.
+  "ChatAttention_Title": "Chat vyžaduje pozornost",
+  "ChatAttention_CheckChats_Format": "Zkontrolujte prosím chaty: {0}",
+  "ChatAttention_Snooze": "Odložit",
+  "MicBlocked_Title_Format": "{0} nemůže použít mikrofon",
+  "MicBlocked_PermissionDenied": "Stiskni a mluv nemohlo nahrávat. Klepnutím povolte přístup k mikrofonu.",
+  "MicBlocked_Unavailable_Format": "Stiskni a mluv nemohlo nahrávat. Klepnutím otevřete {0} a obnovíte ho.",
+  "Upload_UploadingFiles": "Odesílání {0} souboru|Odesílání {0} souborů|Odesílání {0} souborů",
+  "Upload_AndMore": "…a {0} další|…a {0} další|…a {0} dalších",
+
+  // The ongoing-activity notification (Android) and Live Activity (iOS): a status label per
+  // activity kind, and the action buttons under it. Activity_PttOnTapReply names the Reply
+  // button, so the two must agree.
+  "Activity_Recording": "Nahrávání",
+  "Activity_Listening": "Poslech",
+  "Activity_Replaying": "Přehrávání",
+  "Activity_Uploading": "Odesílání",
+  "Activity_SharingLocation": "Sdílení polohy živě",
+  "Activity_FlipToReply": "Otočte telefon pro odpověď",
+  "Activity_PttOn": "Stiskni a mluv je zapnuto",
+  "Activity_PttOnTapReply": "Stiskni a mluv je zapnuto · klepněte na Odpovědět a mluvte",
+  "Activity_Reply": "Odpovědět",
+  "Activity_StopTalking": "Přestat mluvit",
+  "Activity_Chats": "{0} chat|{0} chaty|{0} chatů",
+  "Activity_ExtraChats": "(+ {0} chat)|(+ {0} chaty)|(+ {0} chatů)",
+
   "Ptt_UseOnThisDevice": "Používat Stiskni a mluv na tomto zařízení",
   "Ptt_UseOnThisDeviceCaption": "Když je vypnuto, toto zařízení se nebude budit, přehrávat ani vysílat hlas přes Stiskni a mluv.",
   "Ptt_DeviceEnabledToast": "Stiskni a mluv je teď na tomto zařízení aktivní.",

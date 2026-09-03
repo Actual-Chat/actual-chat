@@ -1014,6 +1014,62 @@
   "ShareExt_CannotSendToContact": "你无法发送给该联系人",
   "ShareExt_SharingFailed": "分享失败",
 
+  // Native Android dialogs - AlertDialogs raised by the app shell, so they render outside the
+  // WebView. {0} is the app name. PermissionRationale_* explains a camera/location/microphone
+  // prompt before Android shows its own; NotificationsPermission_* does the same for notifications.
+  "NotificationsPermission_Title": "未授予通知权限",
+  "NotificationsPermission_Message_Format": "{0} 可以在聊天有新内容、收到好友请求以及账号有其他动态时通知你。\n\n要允许 {0} 向此设备发送通知吗？",
+  "PermissionRationale_Title": "启用应用权限",
+  "PermissionRationale_NoThanks": "不用了",
+  "PermissionRationale_Camera_Format": "{0} 可以在你需要时使用相机拍摄并分享照片。请在系统询问时授予相机权限。",
+  "PermissionRationale_Location_Format": "{0} 可以在你需要时与好友分享你的位置。请在系统询问时授予精确位置权限。",
+  "PermissionRationale_Microphone_Format": "{0} 使用麦克风录制并转写你的语音消息。请在系统询问时授予麦克风权限。",
+
+  // The dialog shown instead of the app when Android System WebView is unavailable.
+  "WebViewMissing_Title": "需要 Android System WebView",
+  "WebViewMissing_Message_Format": "{0} 无法启动，因为 Android System WebView 缺失、已停用或正在更新。请安装或启用它，然后重新打开 {0}。",
+  "WebViewMissing_GetWebView": "获取 WebView",
+
+  // Android notification channels - the names Android lists under the app's notification
+  // settings, one per kind of notification the app posts.
+  "NotificationChannel_Default": "默认",
+  "NotificationChannel_Attention": "需要关注",
+  "NotificationChannel_Uploads": "上传",
+  "NotificationChannel_AudioWidget": "音频小组件",
+  "NotificationChannel_LocationSharing": "位置共享",
+  "NotificationChannel_RecordingAlerts": "录音提醒",
+  "NotificationChannel_Recording": "录音",
+  "NotificationChannel_MicrophoneProblems": "麦克风问题",
+  "NotificationChannel_IncomingCalls": "来电",
+
+  // Notifications the app posts itself, next to the pushes the server composes. ChatAttention_*
+  // is the reminder that a chat asked for attention; MicBlocked_* is raised when Push-to-talk
+  // couldn't open the microphone; Upload_* is the progress of an upload. {0} is the app name.
+  "ChatAttention_Title": "聊天需要关注",
+  "ChatAttention_CheckChats_Format": "请查看聊天：{0}",
+  "ChatAttention_Snooze": "稍后提醒",
+  "MicBlocked_Title_Format": "{0} 无法使用麦克风",
+  "MicBlocked_PermissionDenied": "按住说话无法录音。点按以允许访问麦克风。",
+  "MicBlocked_Unavailable_Format": "按住说话无法录音。点按以打开 {0} 并恢复。",
+  "Upload_UploadingFiles": "正在上传 {0} 个文件",
+  "Upload_AndMore": "…还有 {0} 个",
+
+  // The ongoing-activity notification (Android) and Live Activity (iOS): a status label per
+  // activity kind, and the action buttons under it. Activity_PttOnTapReply names the Reply
+  // button, so the two must agree.
+  "Activity_Recording": "正在录音",
+  "Activity_Listening": "正在收听",
+  "Activity_Replaying": "正在回放",
+  "Activity_Uploading": "正在上传",
+  "Activity_SharingLocation": "正在共享实时位置",
+  "Activity_FlipToReply": "翻转手机即可回复",
+  "Activity_PttOn": "按住说话已开启",
+  "Activity_PttOnTapReply": "按住说话已开启 · 点按“回复”即可说话",
+  "Activity_Reply": "回复",
+  "Activity_StopTalking": "停止说话",
+  "Activity_Chats": "{0} 个聊天",
+  "Activity_ExtraChats": "(+ {0} 个聊天)",
+
   "Ptt_UseOnThisDevice": "在此设备上使用按住说话",
   "Ptt_UseOnThisDeviceCaption": "关闭后，此设备不会因按住说话语音而唤醒、播放或发送。",
   "Ptt_DeviceEnabledToast": "按住说话已在此设备上启用。",
