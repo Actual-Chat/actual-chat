@@ -186,7 +186,7 @@ dotnet publish -f:net11.0-android -c:Release /p:IsDevMaui=true
 ### Windows Store
 
 ```bash
-./run-build.cmd publish-win --configuration Release
+./run-build.cmd pack-win --configuration Release
 ```
 
 The package will be in `artifacts/publish/App.Maui/release_net11.0-windows10.0.22621.0_win-x64/`.

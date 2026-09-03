@@ -1,15 +1,26 @@
 using System.ComponentModel;
+using System.Globalization;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
 namespace Build.Commands;
 
+[TypeConverter(typeof(AppPlatformConverter))]
 public enum AppPlatform
 {
     Android = 0,
     Ios,
     Windows,
-    MacOs,
+    Mac,
+}
+
+// "macos" is accepted as a synonym of "mac" - both mean the AppKit app.
+public sealed class AppPlatformConverter() : EnumConverter(typeof(AppPlatform))
+{
+    public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
+        => value is string s && s.Trim().Equals("macos", StringComparison.OrdinalIgnoreCase)
+            ? AppPlatform.Mac
+            : base.ConvertFrom(context, culture, value);
 }
 
 /// <summary>
@@ -20,7 +31,7 @@ public enum AppPlatform
 public sealed class AppSettings : PlanSettings
 {
     [CommandArgument(0, "<PLATFORM>")]
-    [Description("android | ios | windows | macos")]
+    [Description("android | ios | windows | mac (or macos)")]
     public AppPlatform Platform { get; init; }
 
     [CommandOption("-c|--configuration <CONFIGURATION>")]
@@ -43,6 +54,10 @@ public sealed class AppSettings : PlanSettings
     [CommandOption("--simulator")]
     [Description("iOS only: target a simulator instead of a connected device")]
     public bool UseSimulator { get; init; }
+
+    [CommandOption("--catalyst")]
+    [Description("macOS only: the Mac Catalyst app (net11.0-maccatalyst) instead of the default AppKit one (net11.0-macos)")]
+    public bool UseCatalyst { get; init; }
 
     [CommandOption("--publish")]
     [Description("Force dotnet publish (the default for Release)")]
@@ -96,11 +111,13 @@ public sealed class AppSettings : PlanSettings
             return ValidationResult.Error("--publish and --no-publish are mutually exclusive.");
         if (MustLaunch && MustNotLaunch)
             return ValidationResult.Error("--launch and --no-launch are mutually exclusive.");
-        if (MustLaunch && Platform is AppPlatform.Ios or AppPlatform.MacOs && OperatingSystem.IsWindows())
+        if (MustLaunch && Platform is AppPlatform.Ios or AppPlatform.Mac && OperatingSystem.IsWindows())
             return ValidationResult.Error($"Launching the {Platform} app needs macOS.");
         if (UseSimulator && Platform != AppPlatform.Ios)
             return ValidationResult.Error("--simulator is only supported for the ios platform.");
-        if (UseNativeAot && Platform is AppPlatform.MacOs)
+        if (UseCatalyst && Platform != AppPlatform.Mac)
+            return ValidationResult.Error("--catalyst is only supported for the macos platform.");
+        if (UseNativeAot && Platform is AppPlatform.Mac)
             return ValidationResult.Error("--aot is not wired for the macos platform.");
         if (!OrdinalIgnoreCaseEquals(ResolvedConfiguration, "Debug")
             && !OrdinalIgnoreCaseEquals(ResolvedConfiguration, "Release"))
