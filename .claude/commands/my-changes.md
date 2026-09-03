@@ -271,10 +271,11 @@ asked).
      ``**<Name>** — <period>, `+<n>`/`-<n>`: ``.
 
    It is **about the target user** if the report names them (the `minimal`
-   header name, or a `## <UserName>` block heading) — or, for a single-user
-   report with no name in it, if the message `authorName` matches the target
-   user. In `--all` mode the target is the *current* user (whoever invoked
-   the command), since that's whose cadence sets the window.
+   header name, or a `## <UserName>` block heading) — or, for an older
+   single-user report posted without a name, if the message `authorName`
+   matches the target user. In `--all` mode the target is the *current*
+   user (whoever invoked the command), since that's whose cadence sets the
+   window.
 5. Take that message's `createdAt` (epoch ms → local ISO timestamp) as the
    candidate window start. Report it to the user as e.g.
    `since my last standup report (2026-08-29 18:42, ~2 days ago)`.
@@ -402,7 +403,9 @@ line is the header; no `##` needed, no Step-8 footer.
 In `as table` mode, add a leading `Author` column.
 
 If `--post` is set, do not print the report inline — see *Posting to
-Standup (`--post`)* below.
+Standup (`--post`)* below. A posted report always starts with the author
+header (`## <UserName>` or the `minimal` header line), even in single-user
+mode.
 
 If `as table` (or `as markdown table`) was in the args, render as a
 **two-column** Markdown table. The first column stacks the bold category
@@ -539,17 +542,29 @@ path `/robokitty-post` uses.
    table baked into `/robokitty-post`. If that mapping is unavailable
    for any reason, fall back to listing `mcp__voxt-robokitty__list_place_chats`
    for place `pmMsV1UVKG` and matching the title case-insensitively.
-2. **Single-user mode:** call `mcp__voxt-robokitty__post_message(chatId,
-   text)` once with the entire report as `text`. Pass the Markdown
-   verbatim — no extra prefix, no signature, no "Daily standup for …"
-   intro.
-3. **`--all` mode:** call `post_message` **once per user block**, in the
+2. **Every posted message is one per-author block, and it names the
+   author.** The message arrives from the RoboKitty bot, so the sender
+   says nothing about whose changes these are — the block itself must.
+   Render it exactly as `--all` mode would for that author, **in
+   single-user mode too**:
+   - default / `compact` / `Nx`: first line `## <UserName>`, then the
+     report, then that author's footer (Step 8).
+   - `minimal`: the `` **<UserName>** — <period>, `+<added>`/`-<removed>`: ``
+     header line from *Detail level → minimal*.
+   - `as table`: first line `## <UserName>`, then the table (no `Author`
+     column — each message already belongs to one author).
+
+   `<UserName>` is the author's display name from Step 1, the same one
+   `--all` blocks use. Nothing else is added: no "Daily standup for …"
+   intro, no signature.
+3. **Single-user mode:** call `mcp__voxt-robokitty__post_message(chatId,
+   text)` once, with that one block as `text`.
+4. **`--all` mode:** call `post_message` **once per user block**, in the
    same order the inline render would use. Each block is a standalone
    message — don't bundle multiple users into one message.
-4. After each successful post, print a one-line confirmation to the
+5. After each successful post, print a one-line confirmation to the
    current conversation: `Posted <user> → Standup (LID: <id>).`
-   (For single-user mode, write `Posted → Standup (LID: <id>).`)
-5. On any failure, surface the MCP error verbatim and **stop** — do not
+6. On any failure, surface the MCP error verbatim and **stop** — do not
    retry, do not continue posting remaining users without telling the
    user what failed and which users were already posted.
 
