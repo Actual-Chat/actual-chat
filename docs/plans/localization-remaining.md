@@ -353,8 +353,8 @@ that loads that assembly can already read it:
 
 | Surface | Size | Process | Catalog reachable | Actual mechanism |
 |---|---|---|---|---|
-| Android dialogs | 9 strings, 3 files | main app | **yes** | plain C#; no `strings.xml` needed |
-| Local notifications / Live Activity | ~6 strings | main app | **yes** | plain C# in `App.Maui` |
+| Android dialogs | 9 strings, 3 files | main app | **yes** | **done (#4260)** — `AppStrings.L`, now in `ActualChat.Maui` |
+| Local notifications / Live Activity | ~6 strings | main app | **yes** | **done (#4260)** — `AppStrings.L`, or the hub's `L` where there is one |
 | iOS share extension (`App.Maui.IosShareExt/Components/*`) | ~18 strings | separate appex | **yes, since #4125** — it references `ActualChat.Localization` | **done (#4261)** — `AppStrings.L`, language from the App Group |
 | `Info.plist` usage descriptions | 6 iOS + 5 MacCatalyst | OS reads them, app not running | **no** | `InfoPlist.strings` per language — genuinely native |
 
@@ -389,10 +389,11 @@ answered by #4125; the language question, by #4261:
    `MauiPreferences.UILanguage`, which on iOS is the App Group container the app
    and its extensions share — the same crossing the session id already makes
    through `AppleSharedSecureStorage` (`SessionInitializer.cs:35`). The share
-   extension reads it back through `AppStrings.L` and falls back to
-   `NSLocale.PreferredLanguages` until the app has run once. The in-process sites
-   (Android dialogs, local notifications, Live Activity) can read the same
-   accessor rather than reaching for the Blazor circuit.
+   extension reads it back through `AppStrings.L` and falls back to the device's
+   language list until the app has run once. #4260 moved `AppStrings` into
+   `ActualChat.Maui` and pointed the in-process sites (Android dialogs, local
+   notifications, channel names, Live Activity) at the same accessor — or at the
+   hub's `L` where the site already has one.
 
 `Info.plist` is the one part that is settled — `InfoPlist.strings` per language,
 independent of everything above, and doable at any time.
@@ -570,9 +571,9 @@ why #3721 dropped the keys instead of relocating them. Now:
 1. §3's email track — the chrome language is settled (#4125); what is left is
    the 5 templates, using the same `LanguageStringLocalizer`.
 2. §4's `Info.plist` strings — settled and independent, doable any time.
-3. §4's in-process subset (Android dialogs, local notifications, Live Activity)
-   — the native-side accessor now exists (`MauiPreferences.UILanguage`, written on
-   every platform), so this is catalog lookups at the call sites and nothing else.
+3. ~~§4's in-process subset (Android dialogs, local notifications, Live Activity)~~
+   — done (#4260): `AppStrings` moved from the share extension to `ActualChat.Maui`
+   and every in-process site reads it (or the hub's `L`).
 4. §6's video error codes — the branch `wip/l10n-video-error-codes` is
    ready to cherry-pick; then web-auth's popup alert.
 5. §5, independently and on its own schedule — the marketing half needs SEO

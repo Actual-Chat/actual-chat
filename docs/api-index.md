@@ -390,6 +390,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 ## MAUI Shared (`ActualChat.Maui`)
 
 - `MauiModule`, `MauiSettings`, `MauiPreferences`, `MauiDiagnostics`, `MauiHostNameRemapper`, `MauiBackgroundState`
+- `AppStrings` — the `IStringLocalizer` for code with no Blazor circuit (native dialogs, local notifications, the share extension); language from `MauiPreferences.UILanguage`
 - `KvasarStoreSupport` — Kvasar store suspend handling + legacy SQLite cleanup
 - Platform-specific extensions for Android (`Android*`) and iOS (`Ios*`, `OSLog*`, `*Ext` for AVFoundation/UIKit)
 
@@ -401,7 +402,6 @@ Standalone iOS share-extension app:
 - `IosHub`, `IosShareExtensionModule`, `SessionInitializer` — DI / session
 - `ShareView`, `SignInView`, `ContactSelectionView`, `UploadProgressView`, etc. — extension UI
 - `IStatefulView<T>`, `ComputedStateView<T>` — Fusion-style stateful UIKit views
-- `AppStrings` — the extension's `IStringLocalizer`, language from the App Group
 
 
 ## MAUI Application (`ActualChat.App.Maui`)

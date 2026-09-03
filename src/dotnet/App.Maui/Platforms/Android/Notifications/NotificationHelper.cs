@@ -1,4 +1,6 @@
 using _Microsoft.Android.Resource.Designer;
+using ActualChat.Localization;
+using ActualChat.Maui;
 using ActualChat.Notifications;
 using ActualChat.UI.Blazor.Services;
 using Android.App;
@@ -7,6 +9,7 @@ using Android.Graphics;
 using Android.Media;
 using AndroidX.Core.App;
 using AndroidX.Core.Graphics.Drawable;
+using Microsoft.Extensions.Localization;
 using Application = Android.App.Application;
 using Person = AndroidX.Core.App.Person;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
@@ -24,17 +27,17 @@ public static class NotificationHelper
     private static readonly ThreadSafeLruCache<string, Bitmap?> ImagesCache = new(ImageCacheSize);
     private static ILogger? _log;
     public static string NotificationViewAction => Application.Context.PackageName + ".NotificationView";
+    private static IStringLocalizer L => AppStrings.L;
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger(typeof(NotificationHelper));
 
     public static void EnsureActivityChannelsExist(Context context)
     {
+        // Re-created on every call rather than guarded by GetNotificationChannel: the name is one of
+        // the few things Android lets an app change after creation, and it must follow the UI language.
         var manager = (NotificationManager)context.GetSystemService(Context.NotificationService)!;
-        if (manager.GetNotificationChannel(Constants.ActivityUploadChannelId) != null)
-            return;
-
         var channel = new NotificationChannel(
             Constants.ActivityUploadChannelId,
-            "Uploads",
+            L.NotificationChannel_Uploads,
             NotificationImportance.Low);
         channel.SetShowBadge(false);
         manager.CreateNotificationChannel(channel);
@@ -145,31 +148,28 @@ public static class NotificationHelper
         // you cannot change the notification behaviors—the user has complete control at that point.
         // Though you can still change a channel's name and description.
         // https://developer.android.com/develop/ui/views/notifications/channels
-        var channel = new NotificationChannel(channelId, "Default", NotificationImportance.High);
+        var channel = new NotificationChannel(channelId, L.NotificationChannel_Default, NotificationImportance.High);
         notificationManager.CreateNotificationChannel(channel);
     }
 
     public static void EnsureAttentionNotificationChannelExist(Context context, string channelId)
     {
         var notificationManager = (NotificationManager)context.GetSystemService(Context.NotificationService)!;
-        var channel = notificationManager.GetNotificationChannel(channelId);
-        if (channel == null) {
-            channel = new NotificationChannel(channelId,
-                "Attention required",
-                NotificationImportance.High);
-            var attrs = new AudioAttributes.Builder()
-                .SetUsage(AudioUsageKind.NotificationRingtone)!
-                .SetContentType(AudioContentType.Music)!
-                .Build();
-            //var ringtoneUri = RingtoneManager.GetDefaultUri(RingtoneType.Ringtone);
-            var ringtoneUri = Android.Net.Uri.Parse($"android.resource://{context.PackageName}/"
-                // ReSharper disable once AccessToStaticMemberViaDerivedType
-                + Microsoft.Maui.Resource.Raw.attention_ringtone);
-            channel.SetSound(ringtoneUri, attrs);
-            var vibratePattern = new long[] { 0, 700, 500, 700, 500, 500 };
-            channel.SetVibrationPattern(vibratePattern);
-            notificationManager.CreateNotificationChannel(channel);
-        }
+        var channel = new NotificationChannel(channelId,
+            L.NotificationChannel_Attention,
+            NotificationImportance.High);
+        var attrs = new AudioAttributes.Builder()
+            .SetUsage(AudioUsageKind.NotificationRingtone)!
+            .SetContentType(AudioContentType.Music)!
+            .Build();
+        //var ringtoneUri = RingtoneManager.GetDefaultUri(RingtoneType.Ringtone);
+        var ringtoneUri = Android.Net.Uri.Parse($"android.resource://{context.PackageName}/"
+            // ReSharper disable once AccessToStaticMemberViaDerivedType
+            + Microsoft.Maui.Resource.Raw.attention_ringtone);
+        channel.SetSound(ringtoneUri, attrs);
+        var vibratePattern = new long[] { 0, 700, 500, 700, 500, 500 };
+        channel.SetVibrationPattern(vibratePattern);
+        notificationManager.CreateNotificationChannel(channel);
     }
 
     public static Android.App.Notification BuildUploadNotification(
@@ -179,7 +179,7 @@ public static class NotificationHelper
         // Shared by the foreground service (when uploading is the primary activity) and
         // AndroidActivitiesBackend (when it isn't and needs its own notification).
         var percent = upload.TotalBytes == 0 ? 0 : (int)(100.0 * upload.BytesUploaded / upload.TotalBytes);
-        var title = upload.FileCount == 1 ? "Uploading 1 file" : $"Uploading {upload.FileCount} files";
+        var title = L.Upload_UploadingFiles(upload.FileCount, upload.FileCount);
         var summary = $"{FormatBytes(upload.BytesUploaded)} / {FormatBytes(upload.TotalBytes)} ({percent}%)";
 
         var style = new NotificationCompat.InboxStyle().SetSummaryText(summary)!;
@@ -188,8 +188,10 @@ public static class NotificationHelper
             var item = upload.Items[i];
             _ = style.AddLine($"{item.FileName} — {FormatBytes(item.BytesUploaded)} / {FormatBytes(item.TotalBytes)}");
         }
-        if (upload.Items.Count > MaxUploadLines)
-            _ = style.AddLine($"…and {upload.Items.Count - MaxUploadLines} more");
+        if (upload.Items.Count > MaxUploadLines) {
+            var moreCount = upload.Items.Count - MaxUploadLines;
+            _ = style.AddLine(L.Upload_AndMore(moreCount, moreCount));
+        }
 
         var viewIntent = CreateViewIntent(context, Links.Home);
         var viewPending = viewIntent is null
@@ -227,7 +229,7 @@ public static class NotificationHelper
             return bigText;
 
         try {
-            var self = new Person.Builder().SetName("You")!.Build();
+            var self = new Person.Builder().SetName(L.ChatView_You)!.Build();
             var style = new NotificationCompat.MessagingStyle(self);
             if (!conversationTitle.IsNullOrEmpty()) {
                 style.SetGroupConversation(true);

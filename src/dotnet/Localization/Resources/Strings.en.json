@@ -1194,6 +1194,62 @@
   "ShareExt_CannotSendToContact": "You can't send to this contact",
   "ShareExt_SharingFailed": "Sharing failed",
 
+  // Native Android dialogs - AlertDialogs raised by the app shell, so they render outside the
+  // WebView. {0} is the app name. PermissionRationale_* explains a camera/location/microphone
+  // prompt before Android shows its own; NotificationsPermission_* does the same for notifications.
+  "NotificationsPermission_Title": "Notifications permission isn't granted",
+  "NotificationsPermission_Message_Format": "{0} can notify you about new content in chats, friend requests, and other activities related to your account.\n\nDo you want to allow {0} sending notifications to this device?",
+  "PermissionRationale_Title": "Enable app permissions",
+  "PermissionRationale_NoThanks": "No thanks",
+  "PermissionRationale_Camera_Format": "{0} can use your camera to take and share pictures upon your request. Please grant access to your camera when requested.",
+  "PermissionRationale_Location_Format": "{0} can share your location with your friends upon your request. Please grant access to your precise location when requested.",
+  "PermissionRationale_Microphone_Format": "{0} uses your microphone to record and transcribe your audio messages. Please grant access to your microphone when requested.",
+
+  // The dialog shown instead of the app when Android System WebView is unavailable.
+  "WebViewMissing_Title": "Android System WebView is required",
+  "WebViewMissing_Message_Format": "{0} can't start because Android System WebView is missing, disabled, or being updated. Install or enable it, then open {0} again.",
+  "WebViewMissing_GetWebView": "Get WebView",
+
+  // Android notification channels - the names Android lists under the app's notification
+  // settings, one per kind of notification the app posts.
+  "NotificationChannel_Default": "Default",
+  "NotificationChannel_Attention": "Attention required",
+  "NotificationChannel_Uploads": "Uploads",
+  "NotificationChannel_AudioWidget": "Audio Widget",
+  "NotificationChannel_LocationSharing": "Location sharing",
+  "NotificationChannel_RecordingAlerts": "Recording alerts",
+  "NotificationChannel_Recording": "Recording",
+  "NotificationChannel_MicrophoneProblems": "Microphone problems",
+  "NotificationChannel_IncomingCalls": "Incoming calls",
+
+  // Notifications the app posts itself, next to the pushes the server composes. ChatAttention_*
+  // is the reminder that a chat asked for attention; MicBlocked_* is raised when Push-to-talk
+  // couldn't open the microphone; Upload_* is the progress of an upload. {0} is the app name.
+  "ChatAttention_Title": "Chat attention required",
+  "ChatAttention_CheckChats_Format": "Please check chats: {0}",
+  "ChatAttention_Snooze": "Snooze",
+  "MicBlocked_Title_Format": "{0} can't use the microphone",
+  "MicBlocked_PermissionDenied": "Push-to-talk couldn't record. Tap to allow microphone access.",
+  "MicBlocked_Unavailable_Format": "Push-to-talk couldn't record. Tap to open {0} and restore it.",
+  "Upload_UploadingFiles": "Uploading {0} file|Uploading {0} files",
+  "Upload_AndMore": "…and {0} more",
+
+  // The ongoing-activity notification (Android) and Live Activity (iOS): a status label per
+  // activity kind, and the action buttons under it. Activity_PttOnTapReply names the Reply
+  // button, so the two must agree.
+  "Activity_Recording": "Recording",
+  "Activity_Listening": "Listening",
+  "Activity_Replaying": "Replaying",
+  "Activity_Uploading": "Uploading",
+  "Activity_SharingLocation": "Sharing live location",
+  "Activity_FlipToReply": "Flip to reply",
+  "Activity_PttOn": "Push-to-talk on",
+  "Activity_PttOnTapReply": "Push-to-talk on · tap Reply to talk",
+  "Activity_Reply": "Reply",
+  "Activity_StopTalking": "Stop talking",
+  "Activity_Chats": "{0} chat|{0} chats",
+  "Activity_ExtraChats": "(+ {0} chat)|(+ {0} chats)",
+
   // Settings > Push-to-talk. "Push-to-talk" is a product term, translated as a familiar
   // imperative ("press and speak") - the one place docs/i18n.md keeps that form. A *Topic key
   // is a section heading on this page and a *Caption key the grey line under a toggle.

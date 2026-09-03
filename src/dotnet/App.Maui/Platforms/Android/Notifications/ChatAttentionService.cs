@@ -1,7 +1,10 @@
+using ActualChat.Localization;
+using ActualChat.Maui;
 using ActualChat.UI.Blazor.App.Services;
 using Android.App;
 using Android.Content;
 using AndroidX.Core.App;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.App.Maui;
 
@@ -26,6 +29,7 @@ public sealed class ChatAttentionService
     private static readonly TimeSpan RemindInterval = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan SnoozeInterval = TimeSpan.FromMinutes(60);
     private static Context Context => Platform.AppContext;
+    private static IStringLocalizer L => AppStrings.L;
     private static DateTime UtcNow => DateTime.UtcNow;
 
     private readonly Lock _syncObject = new();
@@ -233,7 +237,7 @@ public sealed class ChatAttentionService
             }
 
             if (addSnooze)
-                builder.AddAction(0, "Snooze", snoozePendingIntent);
+                builder.AddAction(0, L.ChatAttention_Snooze, snoozePendingIntent);
 
             builder.SetOnlyAlertOnce(true);
             var notification = builder.Build()!;
@@ -244,8 +248,8 @@ public sealed class ChatAttentionService
             var minStartTime = requests.Min(c => c.CreatedOnUtc).ToLocalTime();
             var summaryBuilder = CreateNotification(
                 minStartTime,
-                "Chat attention required",
-                "Please check chats: " + requests.Select(c => c.Title).ToCommaPhrase(),
+                L.ChatAttention_Title,
+                L.ChatAttention_CheckChats_Format(requests.Select(c => c.Title).ToCommaPhrase()),
                 null);
             summaryBuilder.SetGroupSummary(true);
             summaryBuilder.SetOnlyAlertOnce(true);

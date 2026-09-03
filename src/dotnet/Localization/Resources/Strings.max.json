@@ -1194,6 +1194,62 @@
   "ShareExt_CannotSendToContact": "Вы не можете отправлять этому контакту",
   "ShareExt_SharingFailed": "Udostępnianie nie powiodło się",
 
+  // Native Android dialogs - AlertDialogs raised by the app shell, so they render outside the
+  // WebView. {0} is the app name. PermissionRationale_* explains a camera/location/microphone
+  // prompt before Android shows its own; NotificationsPermission_* does the same for notifications.
+  "NotificationsPermission_Title": "Разрешение на уведомления не предоставлено",
+  "NotificationsPermission_Message_Format": "{0} có thể thông báo cho bạn về nội dung mới trong các cuộc trò chuyện, lời mời kết bạn và các hoạt động khác liên quan đến tài khoản của bạn.\n\nBạn có muốn cho phép {0} gửi thông báo đến thiết bị này không?",
+  "PermissionRationale_Title": "Включете разрешенията на приложението",
+  "PermissionRationale_NoThanks": "Tidak, terima kasih",
+  "PermissionRationale_Camera_Format": "{0} kann auf Ihren Wunsch Ihre Kamera verwenden, um Fotos aufzunehmen und zu teilen. Bitte gewähren Sie den Zugriff auf die Kamera, wenn Sie dazu aufgefordert werden.",
+  "PermissionRationale_Location_Format": "{0} kann auf Ihren Wunsch Ihren Standort mit Ihren Freunden teilen. Bitte gewähren Sie den Zugriff auf Ihren genauen Standort, wenn Sie dazu aufgefordert werden.",
+  "PermissionRationale_Microphone_Format": "{0} verwendet Ihr Mikrofon, um Ihre Sprachnachrichten aufzunehmen und zu transkribieren. Bitte gewähren Sie den Zugriff auf das Mikrofon, wenn Sie dazu aufgefordert werden.",
+
+  // The dialog shown instead of the app when Android System WebView is unavailable.
+  "WebViewMissing_Title": "Wymagany jest Android System WebView",
+  "WebViewMissing_Message_Format": "Android System WebView が見つからないか、無効になっているか、更新中のため、{0} を起動できません。インストールまたは有効化してから、{0} をもう一度開いてください。",
+  "WebViewMissing_GetWebView": "Преузмите WебВиеw",
+
+  // Android notification channels - the names Android lists under the app's notification
+  // settings, one per kind of notification the app posts.
+  "NotificationChannel_Default": "По подразбиране",
+  "NotificationChannel_Attention": "Aufmerksamkeit erforderlich",
+  "NotificationChannel_Uploads": "Odesílání souborů",
+  "NotificationChannel_AudioWidget": "オーディオウィジェット",
+  "NotificationChannel_LocationSharing": "Compartilhamento de localização",
+  "NotificationChannel_RecordingAlerts": "Upozornění na nahrávání",
+  "NotificationChannel_Recording": "Enregistrement",
+  "NotificationChannel_MicrophoneProblems": "Problemas com o microfone",
+  "NotificationChannel_IncomingCalls": "Połączenia przychodzące",
+
+  // Notifications the app posts itself, next to the pushes the server composes. ChatAttention_*
+  // is the reminder that a chat asked for attention; MicBlocked_* is raised when Push-to-talk
+  // couldn't open the microphone; Upload_* is the progress of an upload. {0} is the app name.
+  "ChatAttention_Title": "Une discussion demande votre attention",
+  "ChatAttention_CheckChats_Format": "Vui lòng kiểm tra các cuộc trò chuyện: {0}",
+  "ChatAttention_Snooze": "Später erinnern",
+  "MicBlocked_Title_Format": "{0} माइक्रोफ़ोन का उपयोग नहीं कर सकता",
+  "MicBlocked_PermissionDenied": "プッシュ・トゥ・トークで録音できませんでした。タップしてマイクへのアクセスを許可してください。",
+  "MicBlocked_Unavailable_Format": "プッシュ・トゥ・トークで録音できませんでした。タップして {0} を開き、復旧してください。",
+  "Upload_UploadingFiles": "{0} 件のファイルをアップロード中",
+  "Upload_AndMore": "…ve {0} tane daha",
+
+  // The ongoing-activity notification (Android) and Live Activity (iOS): a status label per
+  // activity kind, and the action buttons under it. Activity_PttOnTapReply names the Reply
+  // button, so the two must agree.
+  "Activity_Recording": "रिकॉर्ड हो रहा है",
+  "Activity_Listening": "Прослуховування",
+  "Activity_Replaying": "Воспроизведение",
+  "Activity_Uploading": "Wird hochgeladen",
+  "Activity_SharingLocation": "Condivisione della posizione in tempo reale",
+  "Activity_FlipToReply": "Обърнете телефона, за да отговорите",
+  "Activity_PttOn": "Притисни и говори је укључено",
+  "Activity_PttOnTapReply": "„Натисни и говори“ е включено · докоснете „Отговорете“, за да говорите",
+  "Activity_Reply": "Одговорите",
+  "Activity_StopTalking": "Престаните говорити",
+  "Activity_Chats": "{0} cuộc trò chuyện",
+  "Activity_ExtraChats": "(+ {0} cuộc trò chuyện)",
+
   // Settings > Push-to-talk. "Push-to-talk" is a product term, translated as a familiar
   // imperative ("press and speak") - the one place docs/i18n.md keeps that form. A *Topic key
   // is a section heading on this page and a *Caption key the grey line under a toggle.

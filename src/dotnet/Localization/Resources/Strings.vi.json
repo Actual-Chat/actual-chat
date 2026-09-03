@@ -1014,6 +1014,62 @@
   "ShareExt_CannotSendToContact": "Bạn không thể gửi đến liên hệ này",
   "ShareExt_SharingFailed": "Chia sẻ thất bại",
 
+  // Native Android dialogs - AlertDialogs raised by the app shell, so they render outside the
+  // WebView. {0} is the app name. PermissionRationale_* explains a camera/location/microphone
+  // prompt before Android shows its own; NotificationsPermission_* does the same for notifications.
+  "NotificationsPermission_Title": "Chưa được cấp quyền thông báo",
+  "NotificationsPermission_Message_Format": "{0} có thể thông báo cho bạn về nội dung mới trong các cuộc trò chuyện, lời mời kết bạn và các hoạt động khác liên quan đến tài khoản của bạn.\n\nBạn có muốn cho phép {0} gửi thông báo đến thiết bị này không?",
+  "PermissionRationale_Title": "Bật quyền cho ứng dụng",
+  "PermissionRationale_NoThanks": "Không, cảm ơn",
+  "PermissionRationale_Camera_Format": "{0} có thể dùng máy ảnh để chụp và chia sẻ ảnh khi bạn yêu cầu. Vui lòng cấp quyền truy cập máy ảnh khi được hỏi.",
+  "PermissionRationale_Location_Format": "{0} có thể chia sẻ vị trí của bạn với bạn bè khi bạn yêu cầu. Vui lòng cấp quyền truy cập vị trí chính xác khi được hỏi.",
+  "PermissionRationale_Microphone_Format": "{0} dùng micrô để ghi âm và chuyển tin nhắn thoại của bạn thành văn bản. Vui lòng cấp quyền truy cập micrô khi được hỏi.",
+
+  // The dialog shown instead of the app when Android System WebView is unavailable.
+  "WebViewMissing_Title": "Cần có Android System WebView",
+  "WebViewMissing_Message_Format": "{0} không thể khởi động vì Android System WebView bị thiếu, bị tắt hoặc đang được cập nhật. Hãy cài đặt hoặc bật nó, rồi mở lại {0}.",
+  "WebViewMissing_GetWebView": "Tải WebView",
+
+  // Android notification channels - the names Android lists under the app's notification
+  // settings, one per kind of notification the app posts.
+  "NotificationChannel_Default": "Mặc định",
+  "NotificationChannel_Attention": "Cần chú ý",
+  "NotificationChannel_Uploads": "Tải lên",
+  "NotificationChannel_AudioWidget": "Tiện ích âm thanh",
+  "NotificationChannel_LocationSharing": "Chia sẻ vị trí",
+  "NotificationChannel_RecordingAlerts": "Cảnh báo ghi âm",
+  "NotificationChannel_Recording": "Ghi âm",
+  "NotificationChannel_MicrophoneProblems": "Sự cố micrô",
+  "NotificationChannel_IncomingCalls": "Cuộc gọi đến",
+
+  // Notifications the app posts itself, next to the pushes the server composes. ChatAttention_*
+  // is the reminder that a chat asked for attention; MicBlocked_* is raised when Push-to-talk
+  // couldn't open the microphone; Upload_* is the progress of an upload. {0} is the app name.
+  "ChatAttention_Title": "Cuộc trò chuyện cần bạn chú ý",
+  "ChatAttention_CheckChats_Format": "Vui lòng kiểm tra các cuộc trò chuyện: {0}",
+  "ChatAttention_Snooze": "Báo lại sau",
+  "MicBlocked_Title_Format": "{0} không thể dùng micrô",
+  "MicBlocked_PermissionDenied": "Nhấn để nói không ghi âm được. Chạm để cho phép truy cập micrô.",
+  "MicBlocked_Unavailable_Format": "Nhấn để nói không ghi âm được. Chạm để mở {0} và khôi phục.",
+  "Upload_UploadingFiles": "Đang tải lên {0} tệp",
+  "Upload_AndMore": "…và {0} tệp khác",
+
+  // The ongoing-activity notification (Android) and Live Activity (iOS): a status label per
+  // activity kind, and the action buttons under it. Activity_PttOnTapReply names the Reply
+  // button, so the two must agree.
+  "Activity_Recording": "Đang ghi âm",
+  "Activity_Listening": "Đang nghe",
+  "Activity_Replaying": "Đang phát lại",
+  "Activity_Uploading": "Đang tải lên",
+  "Activity_SharingLocation": "Đang chia sẻ vị trí trực tiếp",
+  "Activity_FlipToReply": "Lật máy để trả lời",
+  "Activity_PttOn": "Nhấn để nói đang bật",
+  "Activity_PttOnTapReply": "Nhấn để nói đang bật · chạm Trả lời để nói",
+  "Activity_Reply": "Trả lời",
+  "Activity_StopTalking": "Ngừng nói",
+  "Activity_Chats": "{0} cuộc trò chuyện",
+  "Activity_ExtraChats": "(+ {0} cuộc trò chuyện)",
+
   "Ptt_UseOnThisDevice": "Dùng Nhấn để nói trên thiết bị này",
   "Ptt_UseOnThisDeviceCaption": "Khi tắt, thiết bị này sẽ không đánh thức, phát hay truyền giọng nói Nhấn để nói.",
   "Ptt_DeviceEnabledToast": "Nhấn để nói hiện đã hoạt động trên thiết bị này.",

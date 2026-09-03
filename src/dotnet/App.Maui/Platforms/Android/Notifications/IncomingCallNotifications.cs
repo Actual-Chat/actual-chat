@@ -1,3 +1,5 @@
+using ActualChat.Localization;
+using ActualChat.Maui;
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Diagnostics;
 using Android.App;
@@ -5,6 +7,7 @@ using Android.Content;
 using Android.Media;
 using AndroidX.Core.App;
 using AndroidX.Core.Graphics.Drawable;
+using Microsoft.Extensions.Localization;
 using Application = Android.App.Application;
 using Person = AndroidX.Core.App.Person;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
@@ -21,6 +24,7 @@ public static class IncomingCallNotifications
     private static ILogger? _log;
 
     private static Context Context => Application.Context;
+    private static IStringLocalizer L => AppStrings.L;
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger(typeof(IncomingCallNotifications));
     private static ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
@@ -89,7 +93,7 @@ public static class IncomingCallNotifications
             fullScreenIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
         var callerBuilder = new Person.Builder()
-            .SetName(title ?? "Incoming call")!
+            .SetName(title ?? L.Call_Incoming)!
             .SetImportant(true)!;
         var largeImage = imageUrl.IsNullOrEmpty() ? null : NotificationHelper.GetImage(imageUrl!);
         if (largeImage != null)
@@ -172,14 +176,11 @@ public static class IncomingCallNotifications
     private static void EnsureChannelExists()
     {
         var notificationManager = (NotificationManager)Context.GetSystemService(Context.NotificationService)!;
-        var channel = notificationManager.GetNotificationChannel(ChannelId);
-        if (channel != null)
-            return;
-
         // Silent, non-vibrating channel: the in-app ringer is the sole sound/vibration source, so
         // the channel must not ring on top of it. HIGH importance still drives the heads-up and
         // the full-screen intent that surfaces the call over the lock screen.
-        channel = new NotificationChannel(ChannelId, "Incoming calls", NotificationImportance.High);
+        var channel = new NotificationChannel(
+            ChannelId, L.NotificationChannel_IncomingCalls, NotificationImportance.High);
         channel.SetSound(null, null);
         channel.EnableVibration(false);
         notificationManager.CreateNotificationChannel(channel);

@@ -1,3 +1,4 @@
+using ActualChat.Maui;
 using ActualLab.Fusion.UI;
 using ActualLab.Internal;
 using Microsoft.Extensions.Localization;

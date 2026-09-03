@@ -1014,6 +1014,62 @@
   "ShareExt_CannotSendToContact": "Bu kişiye gönderemezsiniz",
   "ShareExt_SharingFailed": "Paylaşma başarısız",
 
+  // Native Android dialogs - AlertDialogs raised by the app shell, so they render outside the
+  // WebView. {0} is the app name. PermissionRationale_* explains a camera/location/microphone
+  // prompt before Android shows its own; NotificationsPermission_* does the same for notifications.
+  "NotificationsPermission_Title": "Bildirim izni verilmedi",
+  "NotificationsPermission_Message_Format": "{0} sohbetlerdeki yeni içerikler, arkadaşlık istekleri ve hesabınızla ilgili diğer etkinlikler hakkında sizi bilgilendirebilir.\n\n{0} uygulamasının bu cihaza bildirim göndermesine izin vermek istiyor musunuz?",
+  "PermissionRationale_Title": "Uygulama izinlerini etkinleştirin",
+  "PermissionRationale_NoThanks": "Hayır, teşekkürler",
+  "PermissionRationale_Camera_Format": "{0}, isteğiniz üzerine fotoğraf çekip paylaşmak için kameranızı kullanabilir. Lütfen istendiğinde kameraya erişim izni verin.",
+  "PermissionRationale_Location_Format": "{0}, isteğiniz üzerine konumunuzu arkadaşlarınızla paylaşabilir. Lütfen istendiğinde hassas konumunuza erişim izni verin.",
+  "PermissionRationale_Microphone_Format": "{0}, sesli mesajlarınızı kaydetmek ve yazıya dökmek için mikrofonunuzu kullanır. Lütfen istendiğinde mikrofona erişim izni verin.",
+
+  // The dialog shown instead of the app when Android System WebView is unavailable.
+  "WebViewMissing_Title": "Android System WebView gerekli",
+  "WebViewMissing_Message_Format": "Android System WebView eksik, devre dışı veya güncelleniyor olduğundan {0} başlatılamıyor. Yükleyin ya da etkinleştirin, ardından {0} uygulamasını yeniden açın.",
+  "WebViewMissing_GetWebView": "WebView'i edinin",
+
+  // Android notification channels - the names Android lists under the app's notification
+  // settings, one per kind of notification the app posts.
+  "NotificationChannel_Default": "Varsayılan",
+  "NotificationChannel_Attention": "Dikkat gerekiyor",
+  "NotificationChannel_Uploads": "Yüklemeler",
+  "NotificationChannel_AudioWidget": "Ses widget'ı",
+  "NotificationChannel_LocationSharing": "Konum paylaşımı",
+  "NotificationChannel_RecordingAlerts": "Kayıt uyarıları",
+  "NotificationChannel_Recording": "Kayıt",
+  "NotificationChannel_MicrophoneProblems": "Mikrofon sorunları",
+  "NotificationChannel_IncomingCalls": "Gelen aramalar",
+
+  // Notifications the app posts itself, next to the pushes the server composes. ChatAttention_*
+  // is the reminder that a chat asked for attention; MicBlocked_* is raised when Push-to-talk
+  // couldn't open the microphone; Upload_* is the progress of an upload. {0} is the app name.
+  "ChatAttention_Title": "Bir sohbet dikkat gerektiriyor",
+  "ChatAttention_CheckChats_Format": "Lütfen şu sohbetlere bakın: {0}",
+  "ChatAttention_Snooze": "Erteleyin",
+  "MicBlocked_Title_Format": "{0} mikrofonu kullanamıyor",
+  "MicBlocked_PermissionDenied": "Bas-konuş kayıt yapamadı. Mikrofon erişimine izin vermek için dokunun.",
+  "MicBlocked_Unavailable_Format": "Bas-konuş kayıt yapamadı. {0} uygulamasını açıp geri yüklemek için dokunun.",
+  "Upload_UploadingFiles": "{0} dosya yükleniyor",
+  "Upload_AndMore": "…ve {0} tane daha",
+
+  // The ongoing-activity notification (Android) and Live Activity (iOS): a status label per
+  // activity kind, and the action buttons under it. Activity_PttOnTapReply names the Reply
+  // button, so the two must agree.
+  "Activity_Recording": "Kaydediyor",
+  "Activity_Listening": "Dinliyor",
+  "Activity_Replaying": "Oynatıyor",
+  "Activity_Uploading": "Yükleniyor",
+  "Activity_SharingLocation": "Canlı konum paylaşılıyor",
+  "Activity_FlipToReply": "Yanıtlamak için çevirin",
+  "Activity_PttOn": "Bas-konuş açık",
+  "Activity_PttOnTapReply": "Bas-konuş açık · konuşmak için Yanıtlayın'a dokunun",
+  "Activity_Reply": "Yanıtlayın",
+  "Activity_StopTalking": "Konuşmayı bitirin",
+  "Activity_Chats": "{0} sohbet",
+  "Activity_ExtraChats": "(+ {0} sohbet)",
+
   "Ptt_UseOnThisDevice": "Bu cihazda Bas-Konuş kullan",
   "Ptt_UseOnThisDeviceCaption": "Kapalıyken bu cihaz Bas-Konuş sesiyle uyanmaz, ses çalmaz ve iletmez.",
   "Ptt_DeviceEnabledToast": "Bas-Konuş artık bu cihazda etkin.",
