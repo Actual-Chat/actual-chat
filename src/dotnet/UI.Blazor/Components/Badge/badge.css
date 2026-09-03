@@ -14,12 +14,18 @@
     @apply w-4 h-4;
     @apply rounded-full;
     @apply bg-danger;
-    @apply text-xs font-bold leading-none text-white;
+    @apply text-xs leading-none text-white;
+}
+/* Weight lives on the mark, with the badge in the selector: a host's own span rule
+   (the settings tab list has one) would otherwise take the mark's weight along. */
+.warning-badge > .c-mark {
+    @apply font-bold;
 }
 .warning-badge.muted {
     @apply bg-current;
     @apply text-inherit;
+    @apply opacity-[.33];
 }
-.warning-badge.muted > span {
+.warning-badge.muted > .c-mark {
     @apply text-[var(--background-03)];
 }
