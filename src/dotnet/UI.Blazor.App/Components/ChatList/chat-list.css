@@ -476,6 +476,11 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
 .invite-friends-banner.compact .c-image {
     @apply w-5/12 max-w-48;
 }
+/* The SVG has hard-coded white fills, unlike the themed empty-chat cat, so it glares on dark;
+   fading it toward the background lands it near that cat's ash tones. */
+.theme-dark .invite-friends-banner .c-image {
+    @apply opacity-70;
+}
 .invite-friends-banner .c-text {
     @apply flex-none;
     @apply max-w-72 px-4;
