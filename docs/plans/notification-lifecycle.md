@@ -106,7 +106,7 @@ public virtual Moment? ExpiresAt => null;
 | Message, Reply, Thread, Mention, Conversation | `OnRead` | none |
 | Reaction | `OnView` | `SentAt + 1 day` |
 | IncomingCall | `Explicit` | `SentAt + RingTimeout + 5s` |
-| Attention | `OnRead` | none |
+| Attention | `OnView` | `SentAt + 1 day` |
 
 `IsRead` is gated on `DismissMode == OnRead`. That single gate is what unbreaks
 reactions: a `ReactionNotification` anchors at the reacted-to entry — the
@@ -122,7 +122,8 @@ explicitly and fails without the gate.
 
 `OnRead` is **opt-in**, declared on exactly the three types `GetReadAnchor` can
 resolve — `ChatEntryRelatedNotification`, `ChatEntryNotification` and
-`ConversationNotification` — with `ReactionNotification` overriding to `OnView`.
+`ConversationNotification` — with `ReactionNotification` and `AttentionNotification`
+overriding to `OnView`.
 Anchorless kinds fall through to `Explicit`. That way a kind that declares
 nothing can't be filtered by a read position that doesn't apply to it: the
 failure mode is a notification that lingers (visible, and expiry-governed) rather

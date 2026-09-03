@@ -4,10 +4,11 @@ using Notification = ActualChat.Notifications.Notification;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-// Clears NotificationDismissMode.OnView notifications - reactions - once the entry they point at
-// has actually been on screen. Their anchor entry is the recipient's own message, so the Read
-// position can't answer "have you seen this": it covers that entry from the moment it was sent.
-public class SeenNotificationDismisser(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
+// Clears NotificationDismissMode.OnView notifications - reactions and attention pings - once the
+// entry they point at has actually been on screen. Their anchor entry is one the Read position
+// may already cover (the recipient's own message, a mention they saw), so it can't answer "have
+// you seen this".
+public sealed class SeenNotificationDismisser(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
 {
     private readonly HashSet<NotificationId> _dismissed = [];
 
@@ -49,8 +50,8 @@ public class SeenNotificationDismisser(AppUIHub hub) : UIWorkerBase<AppUIHub>(hu
                 return;
         }
         try {
-            await Commander.Call(new Notifications_Dismiss { Session = Session, NotificationId = notification.Id }, cancellationToken)
-                .ConfigureAwait(false);
+            var command = new Notifications_Dismiss { Session = Session, NotificationId = notification.Id };
+            await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             lock (Lock)
