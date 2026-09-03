@@ -20,6 +20,7 @@ public static class MauiPreferences
     private const string UILanguageKey = "UILanguage";
     private const string MinReportableClientVersionKey = "min_reportable_client_version";
     private const string IsPttArmedKey = "is_ptt_armed";
+    private const string AttentionChannelConfigVersionKey = "attention_channel_config_version";
 
     private static readonly Lock Lock = new();
     private static readonly ConcurrentDictionary<string, object?> Cache = new();
@@ -88,6 +89,13 @@ public static class MauiPreferences
         // service while still in the foreground - the app's own state arrives far too late.
         get => Get<bool?>(IsPttArmedKey) ?? false;
         set => Set(IsPttArmedKey, value);
+    }
+
+    // An Android NotificationChannel's sound/vibration/importance are frozen at first creation, so a
+    // mismatch here tells NotificationHelper to delete and recreate the channel under the same id.
+    public static int AttentionChannelConfigVersion {
+        get => Get<int?>(AttentionChannelConfigVersionKey) ?? 0;
+        set => Set(AttentionChannelConfigVersionKey, value);
     }
 
     public static string? GetHostIp(string hostName)
