@@ -8,7 +8,7 @@ public sealed partial record ActiveShare(
     [property: DataMember, Key(1)] SharedLocationId? LocationId,
     // Wall-clock (ServerClock) so it survives restarts
     [property: DataMember, Key(2)] Moment StartedAt,
-    // The exact Constants.Location.Durations key the user picked — the server accepts only these
+    // The exact Constants.Location.Durations value the user picked — the server accepts only these
     [property: DataMember, Key(3)] TimeSpan Duration
 )
 {

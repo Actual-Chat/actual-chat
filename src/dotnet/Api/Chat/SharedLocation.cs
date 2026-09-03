@@ -50,7 +50,7 @@ public sealed partial record SharedLocationDiff : RecordDiff
     public static readonly Requirement<SharedLocationDiff> MustHaveCorrectDuration = Requirement.New(
         (SharedLocationDiff? d) => {
             var duration = d?.LiveDuration ?? TimeSpan.Zero;
-            return duration == TimeSpan.Zero || Constants.Location.Durations.ContainsKey(duration);
+            return duration == TimeSpan.Zero || Constants.Location.Durations.Contains(duration);
         },
         new (() => StandardError.Constraint<SharedLocationDiff>("Invalid live duration")));
 

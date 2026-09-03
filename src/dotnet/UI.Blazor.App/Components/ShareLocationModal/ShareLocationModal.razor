@@ -57,7 +57,7 @@
                     <Icon><i class="icon-map-point"></i></Icon>
                     <Content>
                         <div class="c-text">@L.Location_SendThisLocation</div>
-                        <div class="c-caption">@m.PickedText</div>
+                        <div class="c-caption">@PickedText(m)</div>
                     </Content>
                 </ButtonTile>
             </div>
@@ -75,7 +75,7 @@
                     </Icon>
                     <Content>
                         <div class="c-text">@L.Location_SendCurrentLocation</div>
-                        <div class="c-caption">@m.AccuracyText</div>
+                        <div class="c-caption">@AccuracyText(m)</div>
                     </Content>
                 </ButtonTile>
                 <ButtonTile Class="c-share-live" Click="@OnShareLive">
@@ -97,10 +97,10 @@
         @if (m.IsDurationMenuOpen) {
             <div class="c-menu-backdrop" @onclick="@OnCloseDurationMenu"></div>
             <div class="c-menu c-duration-menu">
-                @foreach (var (duration, label) in Constants.Location.Durations) {
+                @foreach (var duration in Constants.Location.Durations) {
                     <button type="button" class="c-menu-item" @onclick="@(() => OnPickDuration(duration))">
                         <i class="icon-clock"></i>
-                        <span>@label</span>
+                        <span>@DurationLabel(duration)</span>
                     </button>
                 }
             </div>
@@ -115,7 +115,7 @@
                         disabled="@(!info.IsSupported)"
                         @onclick="@(() => OnPickMapType(info.Type))">
                         <i class="@info.Icon"></i>
-                        <span>@info.Label</span>
+                        <span>@info.GetLabel(L)</span>
                         @if (info.Type == m.MapType) {
                             <i class="c-check icon-checkmark-simple"></i>
                         }
@@ -276,6 +276,36 @@
         return participants.Count == 0 ? null : participants[0].Location.Point;
     }
 
+    private string DurationLabel(TimeSpan duration) {
+        if (duration == Constants.Location.UnlimitedDuration)
+            return L.Location_ShareUntilTurnedOff;
+
+        if (duration.TotalHours >= 1) {
+            var hours = (int)duration.TotalHours;
+            return L.Location_ShareForHours(hours, hours);
+        }
+
+        var minutes = (int)duration.TotalMinutes;
+        return L.Location_ShareForMinutes(minutes, minutes);
+    }
+
+    private string? AccuracyText(ComputedModel m)
+        => m.OwnMarker?.Point.Accuracy is { } accuracy and > 0
+            ? L.Location_AccurateTo_Format(L.DistanceText(accuracy))
+            : null;
+
+    private string PickedText(ComputedModel m) {
+        if (m.PickedPoint is not { } point)
+            return "";
+
+        var coordinatesText = point.ToCoordinatesText();
+        if (m.OwnMarker is not { } marker)
+            return coordinatesText;
+
+        var distanceText = L.LocationMessage_DistanceFromYou_Format(L.DistanceText(point, marker.Point));
+        return $"{coordinatesText} · {distanceText}";
+    }
+
     // Nested types
 
     public sealed record ComputedModel {
@@ -287,10 +317,6 @@
         private const double WorldZoom = 2;
 
         public required MapMarker? OwnMarker { get; init; }
-        public string? AccuracyText
-            => OwnMarker?.Point.Accuracy is { } accuracy and > 0
-                ? $"Accurate to {GeoPointExt.DistanceText(accuracy)}"
-                : null;
         public bool MustRequestPermission { get; init; }
         public bool IsLocating { get; init; }
         public MapType MapType { get; init; } = MapType.Map;
@@ -303,17 +329,6 @@
         public IReadOnlyList<MapMarker> Markers => OwnMarker is { } marker ? [marker] : [];
         public GeoPoint MapCenter => OwnMarker?.Point ?? FallbackCenter ?? WorldCenter;
         public double MapZoom => OwnMarker is null && FallbackCenter is null ? WorldZoom : 15;
-        public string PickedText {
-            get {
-                if (PickedPoint is not { } point)
-                    return "";
-
-                var coordinatesText = point.ToCoordinatesText();
-                return OwnMarker is { } marker
-                    ? $"{coordinatesText} · {point.DistanceTextTo(marker.Point)} from you"
-                    : coordinatesText;
-            }
-        }
     }
 
     public sealed class Model {
