@@ -67,16 +67,53 @@
     @apply px-4;
 }
 
-.share-modal .copy-btn,
 .share-externally-button .btn {
     @apply flex-1;
     @apply max-w-none;
 }
-.share-modal .copy-btn span,
 .share-externally-button .btn span {
     @apply text-02;
 }
-.share-modal .copy-btn i,
 .share-externally-button .btn i {
     @apply text-2xl;
+}
+
+/* ── Share actions ── */
+
+/* One row of share, copy and QR for anything with a link: the labelled one takes what the squares
+   leave. Where the platform cannot share, copy takes the labelled slot instead. */
+.share-actions {
+    @apply flex items-center gap-2;
+    @apply w-full;
+}
+.share-actions i {
+    @apply text-xl text-primary;
+}
+/* All three buttons are btn-square, so one background and one hover treatment serve them all;
+   only the labelled one needs its width and padding back. --square is a solid grey that
+   the panel behind these already uses, so they would read as flat; --cancel is translucent and
+   therefore visible against whatever is behind it, in either theme. */
+.share-actions .btn {
+    @apply flex-none;
+    @apply w-10 h-10;
+    @apply bg-cancel;
+}
+.share-actions .share-externally-button,
+.share-actions .c-copy-link {
+    @apply flex-1;
+}
+.share-actions .share-externally-button .btn,
+.share-actions .c-copy-link .btn {
+    @apply flex-1;
+    @apply w-auto;
+    @apply px-4;
+}
+.share-actions .share-externally-button .btn i {
+    @apply text-xl;
+}
+.share-actions .c-copy-link .btn-content {
+    @apply flex items-center gap-2;
+}
+.share-actions .c-copy-link span {
+    @apply text-02;
 }

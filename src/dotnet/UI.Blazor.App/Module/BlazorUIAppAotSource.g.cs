@@ -401,8 +401,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.TimeZoneEditorModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.UserInterface>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.YourAccount>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ShareActions>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ShareExternallyButton>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ShareLinkBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ShareLocationModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ShareModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ShareQrModal>();
@@ -1170,8 +1170,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.TimeZoneEditorModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.UserInterface), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.YourAccount), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ShareActions), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ShareExternallyButton), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.ShareLinkBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ShareLocationModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ShareModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ShareQrModal), AotTypeKind.Component),

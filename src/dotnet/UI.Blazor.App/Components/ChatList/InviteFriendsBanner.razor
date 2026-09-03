@@ -4,36 +4,18 @@
     var m = State.ValueOrDefault;
     if (m == null)
         return;
-
-    var link = m.ShareModel.Request.GetShareLink(UrlMapper);
 }
 
 <div class="invite-friends-banner @(IsCompact ? "compact" : "")">
     <div class="c-content">
         <img draggable="false" class="c-image" src="/dist/images/invite-cat.svg" alt=""/>
         <div class="c-text">@L.ChatList_InviteFriends</div>
-        <div class="c-buttons">
-            <ShareExternallyButton
-                HideWhenCopyLink="@true"
-                Title="@L.Common_Share"
-                ButtonClass="btn-square"
-                Request="@m.ShareModel.Request"/>
-            <CopyTrigger Tooltip="@L.Common_Copy" CopyText="@link">
-                <ButtonSquare>
-                    <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
-                    <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
-                </ButtonSquare>
-            </CopyTrigger>
-            <ButtonSquare Tooltip="@L.ShareQr_Show" Click="@(() => OnShowQrClick(m))">
-                <i class="icon-QR" aria-hidden="true"></i>
-            </ButtonSquare>
-        </div>
+        <ShareActions Model="@m.ShareModel"/>
     </div>
 </div>
 
 @code {
     public const int MaxFullSizeChatCount = 2;
-    private const int CentreImageSize = 160;
 
     [Parameter] public bool IsCompact { get; set; }
 
@@ -49,17 +31,6 @@
         await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var shareModel = await ShareUI.GetOwnAccountModel(cancellationToken).ConfigureAwait(false);
         return shareModel == null ? null : new Model(shareModel);
-    }
-
-    private Task OnShowQrClick(Model m) {
-        var account = AccountUI.OwnAccount.Value;
-        // IconUrl falls back to the generated avatar - as a PNG, so it needs no renderer here.
-        var iconQuery = IconQuery.Create(account.Avatar.Picture,
-            AvatarKind.Beam, DefaultUserPicture.GetAvatarKey(account.Id.Value), CentreImageSize);
-        return ModalUI.Show(new ShareQrModalModel(
-            m.ShareModel.Title,
-            m.ShareModel.Request.Link.GetValueOrDefault(),
-            UrlMapper.IconUrl(iconQuery)));
     }
 
     public sealed record Model(ShareModalModel ShareModel);

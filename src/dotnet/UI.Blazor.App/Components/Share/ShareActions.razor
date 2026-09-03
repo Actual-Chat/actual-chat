@@ -1,0 +1,49 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+@{
+    var request = Request ?? Model.Request;
+    var link = request.GetShareLink(UrlMapper);
+}
+
+<div class="share-actions">
+    @if (_canShareExternally) {
+        <ShareExternallyButton Title="@L.Common_Share" ButtonClass="btn-square" Request="@request"/>
+        <CopyTrigger Tooltip="@L.Share_CopyLink" CopyText="@link">
+            <ButtonSquare>
+                <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
+                <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
+            </ButtonSquare>
+        </CopyTrigger>
+    } else {
+        <CopyTrigger Class="c-copy-link" CopyText="@link">
+            <ButtonSquare>
+                <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
+                <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
+                <span class="hide-on-copied-hint">@L.Share_CopyLink</span>
+                <span class="copied-hint">@L.Share_LinkCopied</span>
+            </ButtonSquare>
+        </CopyTrigger>
+    }
+    <ButtonSquare Tooltip="@L.ShareQr_Show" Click="@OnShowQrClick">
+        <i class="icon-QR" aria-hidden="true"></i>
+    </ButtonSquare>
+</div>
+
+@code {
+    private bool _canShareExternally;
+
+    private ShareUI ShareUI => Hub.ShareUI;
+
+    [Parameter, EditorRequired] public ShareModalModel Model { get; set; } = null!;
+    // Takes over the share and copy text when set, e.g. with a comment the user typed
+    [Parameter] public ShareRequest? Request { get; set; }
+
+    protected override async Task OnInitializedAsync()
+        => _canShareExternally = await ShareUI.CanShareExternally();
+
+    private Task OnShowQrClick()
+        => ModalUI.Show(new ShareQrModalModel(
+            Model.Title,
+            Model.Request.Link.GetValueOrDefault(),
+            Model.ImageUrl));
+}

@@ -6,6 +6,8 @@ namespace ActualChat.UI.Blazor.App;
 
 public static class ShareUIExt
 {
+    private const int QrImageSize = 160;
+
     // ShareXxx
 
     public static async Task<ModalRef?> Share(
@@ -78,6 +80,7 @@ public static class ShareUIExt
             ? chat.Title
             : string.Concat(place.Title, "/", chat.Title);
         var text = l.Share_TextTitled_Format(targetTitle, CoreConstants.AppName);
+        var imageUrl = GetImageUrl(hub, chat.Picture, AvatarKind.Marble, chat.Id.Value);
         if ((place is null || place.IsPublic) && chat.IsPublic) {
             var localUrl = Links.Chat(chat.AliasInfo, place?.AliasInfo);
             return new ShareModalModel(
@@ -85,7 +88,8 @@ public static class ShareUIExt
                 l.Share_Chat,
                 targetTitle,
                 new (text, localUrl),
-                null);
+                null,
+                imageUrl);
         }
 
         var invites = services.GetRequiredService<IInvites>();
@@ -100,7 +104,8 @@ public static class ShareUIExt
             l.Share_PrivateChatJoinLink,
             targetTitle,
             new (text, Links.Invite(InviteLinkFormat.PrivateChat, invite.Id)),
-            shareModalSelectorPrefs);
+            shareModalSelectorPrefs,
+            imageUrl);
     }
 
     public static async ValueTask<ShareModalModel?> GetModel(
@@ -116,6 +121,7 @@ public static class ShareUIExt
             return null;
 
         var text = l.Share_TextTitled_Format(place.Title, CoreConstants.AppName);
+        var imageUrl = GetImageUrl(hub, place.Picture, AvatarKind.Marble, place.Id.Value);
         if (place.IsPublic) {
             var welcomeChatId = await places.GetWelcomeChatId(session, placeId, cancellationToken).ConfigureAwait(false);
             // NOTE(DF): Direct navigation to place does not work well so far. Let's share place via welcome chat link.
@@ -127,7 +133,8 @@ public static class ShareUIExt
                 l.Share_Place,
                 place.Title,
                 new (text, Links.Chat(welcomeChatId)),
-                null);
+                null,
+                imageUrl);
         }
 
         var invites = services.GetRequiredService<IInvites>();
@@ -140,7 +147,8 @@ public static class ShareUIExt
             l.Share_PrivatePlaceJoinLink,
             place.Title,
             new(text, Links.Invite(InviteLinkFormat.PrivatePlace, invite.Id)),
-            null);
+            null,
+            imageUrl);
     }
 
     public static async ValueTask<ShareModalModel?> GetModel(
@@ -171,7 +179,8 @@ public static class ShareUIExt
         return new ShareModalModel(
             ShareKind.Contact, title, name,
             new(text, Links.User(account.Id)),
-            null);
+            null,
+            GetAccountImageUrl(hub, account));
     }
 
     public static async ValueTask<ShareModalModel?> GetOwnAccountModel(
@@ -190,6 +199,20 @@ public static class ShareUIExt
         return new ShareModalModel(
             ShareKind.Contact, title, name,
             new(text, Links.User(ownAccount.AliasInfo)),
-            null);
+            null,
+            GetAccountImageUrl(shareUI.Hub, ownAccount));
     }
+
+    // Private methods
+
+    private static string GetAccountImageUrl(UIHub hub, Account account)
+        => GetImageUrl(hub, account.Avatar.Picture, AvatarKind.Beam,
+            DefaultUserPicture.GetAvatarKey(account.Id.Value));
+
+    // As a PNG, so the QR code needs no renderer for it
+    private static string GetImageUrl(UIHub hub, Picture? picture, AvatarKind avatarKind, string avatarKey)
+        => hub.UrlMapper.IconUrl(IconQuery.Create(picture, avatarKind, avatarKey, QrImageSize));
+
+    private static string GetImageUrl(UIHub hub, Media.Media? picture, AvatarKind avatarKind, string avatarKey)
+        => GetImageUrl(hub, picture.ToPicture(), avatarKind, avatarKey);
 }

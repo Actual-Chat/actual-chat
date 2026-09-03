@@ -481,32 +481,3 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
     @apply max-w-72 px-4;
     @apply text-center text-sm text-03;
 }
-/* As wide as a chat row above it, per the design; the Share button takes what the squares leave */
-.invite-friends-banner .c-buttons {
-    @apply flex-none flex items-center gap-2;
-    @apply w-full;
-}
-.invite-friends-banner .c-buttons i {
-    @apply text-xl text-primary;
-}
-/* All three buttons are btn-square, so one background and one hover treatment serve them all;
-   only the labelled Share one needs its width and padding back. --square is a solid grey that
-   the panel behind these already uses, so they would read as flat; --cancel is translucent and
-   therefore visible against whatever is behind it, in either theme. share-modal.css's unscoped
-   rules also still reach the Share button here (text-02 label, text-2xl icon, flex-1 sizing). */
-.invite-friends-banner .c-buttons .btn {
-    @apply flex-none;
-    @apply w-10 h-10;
-    @apply bg-cancel;
-}
-.invite-friends-banner .share-externally-button {
-    @apply flex-1;
-}
-.invite-friends-banner .share-externally-button .btn {
-    @apply flex-1;
-    @apply w-auto;
-    @apply px-4;
-}
-.invite-friends-banner .share-externally-button .btn i {
-    @apply text-xl;
-}
