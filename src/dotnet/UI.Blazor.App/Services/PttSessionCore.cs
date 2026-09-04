@@ -43,6 +43,12 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
 
         if (isHeadless)
             chatAudioUI.IsPttHeadless = true;
+        // Before Enable: the audio workers start on it and re-listen the armed set at once, and
+        // a player started without the anchor waits for the server clock instead of joining the
+        // trigger utterance from its start. A fresh wake joins from the start; a stale one goes
+        // straight to live listening.
+        if (!isForeground && !Ptt.IsStaleWake(startedAt, Hub.Clocks.SystemClock.Now))
+            chatAudioUI.SetListeningCatchUp(chatId, startedAt);
         chatAudioUI.Enable();
         // Fire-and-forget: ServerTimeSync's own loop only starts syncing after a 3s settling delay,
         // and everything downstream that wants server time would sit behind it.
@@ -73,10 +79,6 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
         if (!armedChatIds.Contains(chatId))
             armedChatIds = [..armedChatIds, chatId];
 
-        // A fresh wake joins the trigger utterance from its start (it's still streaming or just
-        // ended); a stale one goes straight to live listening.
-        if (!Ptt.IsStaleWake(startedAt, Hub.Clocks.SystemClock.Now))
-            chatAudioUI.SetListeningCatchUp(chatId, startedAt);
         foreach (var armedChatId in armedChatIds)
             await chatAudioUI.SetListeningState(armedChatId, true).ConfigureAwait(false);
 
