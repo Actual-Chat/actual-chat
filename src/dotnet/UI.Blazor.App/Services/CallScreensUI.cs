@@ -100,7 +100,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
             return;
 
         EndRing(chatId);
-        _ = Bridge?.OnCallHandled(false);
+        _ = Bridge?.OnCallHandled(chatId, false);
     }
 
     public void OnOverLockScreenRendered()
@@ -119,7 +119,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         var call = await CallUI.GetRingingCall(chatId, CancellationToken.None).ConfigureAwait(true);
         if (call is null) {
             EndRing(chatId);
-            _ = Bridge?.OnCallHandled(false);
+            _ = Bridge?.OnCallHandled(chatId, false);
             ShowToast(L.Call_Ended);
             return;
         }
@@ -140,7 +140,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         }
         catch (Exception e) {
             CallUI.Release(chatId);
-            _ = Bridge?.OnCallHandled(false);
+            _ = Bridge?.OnCallHandled(chatId, false);
             Log.LogWarning(e, "AcceptCall failed for chat #{ChatId}", chatId);
             ShowToast(L.Call_Ended);
             return;
@@ -162,7 +162,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         var isOverLock = _overLockRingChatId.Value == chatId;
         var isHeld = EndRing(chatId);
         if (!isOverLock || !isHeld)
-            _ = Bridge?.OnCallHandled(false);
+            _ = Bridge?.OnCallHandled(chatId, false);
         try {
             await CallUI.DeclineCall(chatId, CancellationToken.None).ConfigureAwait(false);
         }
@@ -205,7 +205,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     {
         if (_overLockRingChatId.Value == chatId) {
             // The chat is behind the keyguard; a cancelled PIN keeps the call screen up.
-            var isUnlocked = Bridge is null || await Bridge.OnCallHandled(true).ConfigureAwait(true);
+            var isUnlocked = Bridge is null || await Bridge.OnCallHandled(chatId, true).ConfigureAwait(true);
             if (!isUnlocked)
                 return;
         }
@@ -246,7 +246,9 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         // Over the lock screen the activity shown via SetShowWhenLocked counts as foreground, so the mic FGS
         // starts without unlocking; anywhere else the keyguard goes first, as the FGS can't start from the
         // background. The chat opens under the call; over the lock screen it waits for the user to unlock.
-        var canStartAudio = isOverLock || Bridge is null || await Bridge.OnCallHandled(true).ConfigureAwait(true);
+        var canStartAudio = isOverLock
+            || Bridge is null
+            || await Bridge.OnCallHandled(chatId, true).ConfigureAwait(true);
         if (!isOverLock)
             await OpenChat(chatId).ConfigureAwait(true);
         if (canStartAudio)
