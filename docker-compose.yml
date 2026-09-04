@@ -1,4 +1,12 @@
 name: actual-chat-infra
+
+# Without this, json-file logs grow unbounded: postgres once reached 34 GB.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "3"
+
 include:
   - ./services/aspire/docker-compose.yaml
   - ./services/embeddings/docker-compose.yaml
@@ -24,7 +32,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    entrypoint: ["docker-entrypoint.sh", "-c", "shared_buffers=256MB", "-c", "max_connections=1000", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "pg_stat_statements.track=all", "-c", "log_statement=all", "-c", "log_statement_sample_rate=0.1"]
+    # To log every SQL statement, append: "-c", "log_statement=all", "-c", "log_statement_sample_rate=0.1"
+    entrypoint: ["docker-entrypoint.sh", "-c", "shared_buffers=256MB", "-c", "max_connections=1000", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "pg_stat_statements.track=all"]
+    logging: *default-logging
   imageproxy:
     image: willnorris/imageproxy:latest
     platform: linux/amd64
@@ -57,6 +67,7 @@ services:
       - "local.voxt.ai:host-gateway"
       - "local.actual.chat:host-gateway"
       - "embedded.voxt.ai:host-gateway"
+    logging: *default-logging
   dns-forwarder:
     # Note: DNS_FORWARDER variable
     # In some cases this dns service is not required (macos).
