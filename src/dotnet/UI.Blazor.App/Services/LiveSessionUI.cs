@@ -383,13 +383,16 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "WatchOutgoingCall failed for chat #{ChatId}", chatId);
-            // A platform call UI told nothing about the outcome keeps its call up until the user
-            // takes it down, so a watch that died before reporting ends the call instead.
-            ReportStatus(CallStatus.NoAnswer);
         }
         finally {
             if (isRingbackOn)
                 StopRingback(cts);
+            // Token-based rather than caught-by-type: a foreign OperationCanceledException (Fusion
+            // raises those from RPC and state churn) escapes the catch above, and a platform call UI
+            // told nothing about the outcome keeps its call up until the user takes it down. Our own
+            // cancellation reports nothing - CancelCall has already said so.
+            if (!cancellationToken.IsCancellationRequested)
+                ReportStatus(CallStatus.NoAnswer);
             // Only our own registration: a restart has already replaced it by the time we unwind.
             _callWatches.TryRemove(new KeyValuePair<ChatId, CancellationTokenSource>(chatId, cts));
         }

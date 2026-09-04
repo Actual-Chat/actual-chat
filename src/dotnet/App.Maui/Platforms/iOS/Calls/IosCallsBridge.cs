@@ -77,10 +77,14 @@ public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDispo
     // ISystemCallUI
 
     public void OnOutgoingCallStarted(ChatId chatId, bool hasVideo)
-        // Fire-and-forget: placing the call must not wait on the chat lookup the name comes from.
-        => _ = BackgroundTask.Run(
-            () => StartOutgoingCall(chatId, hasVideo, _stopTokenSource.Token),
-            Log, $"Couldn't start an outgoing CallKit call for chat #{chatId}", _stopTokenSource.Token);
+    {
+        // Placed synchronously: a status reported into a call CallKit doesn't hold yet is dropped,
+        // and the chat lookup the callee's name comes from is far slower than the first invalidation.
+        IosCalls.Instance.StartOutgoingCall(chatId, hasVideo);
+        _ = BackgroundTask.Run(
+            () => SetOutgoingCallName(chatId, _stopTokenSource.Token),
+            Log, $"Couldn't resolve the callee name for chat #{chatId}", _stopTokenSource.Token);
+    }
 
     public void OnOutgoingCallStatusChanged(ChatId chatId, CallStatus status)
     {
@@ -95,10 +99,10 @@ public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDispo
 
     // Private methods
 
-    private async Task StartOutgoingCall(ChatId chatId, bool hasVideo, CancellationToken cancellationToken)
+    private async Task SetOutgoingCallName(ChatId chatId, CancellationToken cancellationToken)
     {
         var chat = await Hub.Chats.Get(Hub.Session, chatId, cancellationToken).ConfigureAwait(false);
-        IosCalls.Instance.StartOutgoingCall(chatId, chat?.Title ?? "", hasVideo);
+        IosCalls.Instance.SetOutgoingCallName(chatId, chat?.Title ?? "");
     }
 
     private void StartCallEndWatch(ChatId chatId)

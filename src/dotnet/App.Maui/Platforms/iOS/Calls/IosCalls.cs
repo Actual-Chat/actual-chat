@@ -18,6 +18,11 @@ namespace ActualChat.App.Maui;
 public class IosCalls : CXProviderDelegate
 {
     private const string FallbackCallerName = "Voxt";
+    // Nothing else takes down an outgoing call that never reached a verdict: the watch that reports
+    // one dies with its Blazor scope, EndRingingCalls skips outgoing calls, and a CallKit call left up
+    // holds the audio session away from the app until the user presses End. Anchored to the server's
+    // own no-observer ring backstop, so it can never end a call that is still legitimately ringing.
+    private static readonly TimeSpan OutgoingCallTimeout = Constants.Call.RingTtl + TimeSpan.FromSeconds(5);
 
     public static IosCalls Instance { get; } = new();
 
@@ -133,8 +138,9 @@ public class IosCalls : CXProviderDelegate
         => EndCalls(chatId, CXCallEndedReason.Failed);
 
     // Outgoing calls are keyed by a random id rather than CallId.For: the conversation this call
-    // creates doesn't exist yet, and CallKit needs the UUID now.
-    public void StartOutgoingCall(ChatId chatId, string calleeName, bool hasVideo)
+    // creates doesn't exist yet, and CallKit needs the UUID now. Synchronous, so nothing can report
+    // a status for a call this map doesn't hold yet; the callee's name follows in SetOutgoingCallName.
+    public void StartOutgoingCall(ChatId chatId, bool hasVideo)
     {
         if (TryGetCall(chatId, true, out _, out _)) {
             DebugLog?.LogInformation("StartOutgoingCall: #{ChatId} is already dialing", chatId);
@@ -147,11 +153,23 @@ public class IosCalls : CXProviderDelegate
         var handle = new CXHandle(CXHandleType.Generic, chatId.Value);
         var action = new CXStartCallAction(new NSUuid(callId.ToString()), handle) {
             Video = hasVideo,
-            ContactIdentifier = calleeName.NullIfEmpty() ?? FallbackCallerName,
+            ContactIdentifier = FallbackCallerName,
         };
         // No local-action marker: PerformStartCallAction is never the user pressing anything, so
         // there is nothing for it to dispatch back into the app.
         RequestTransaction(callId, call, action, LocalAction.None);
+        _ = BackgroundTask.Run(
+            () => EndStaleOutgoingCall(callId),
+            Log, $"Outgoing call backstop failed for chat #{chatId}");
+    }
+
+    public void SetOutgoingCallName(ChatId chatId, string calleeName)
+    {
+        if (calleeName.IsNullOrEmpty() || !TryGetCall(chatId, true, out var callId, out _))
+            return;
+
+        var update = new CXCallUpdate { LocalizedCallerName = calleeName };
+        _provider.ReportCall(new NSUuid(callId.ToString()), update);
     }
 
     // Returns whether CallKit still holds the call - i.e. whether its end has to be watched for,
@@ -173,8 +191,13 @@ public class IosCalls : CXProviderDelegate
             // Not DeclinedElsewhere: that one means this user declined on another device.
             EndCall(callId, CXCallEndedReason.RemoteEnded);
             return false;
-        default:
+        case CallStatus.NoAnswer:
             EndCall(callId, CXCallEndedReason.Unanswered);
+            return false;
+        default:
+            // Ignored rather than ended: Dialing is not an outcome, and ending a live call on one
+            // would be far worse than leaving the backstop to it.
+            Log.LogWarning("ReportOutgoingCallStatus: unexpected {Status} for chat #{ChatId}", status, chatId);
             return false;
         }
     }
@@ -304,6 +327,16 @@ public class IosCalls : CXProviderDelegate
         return isAnswered
             ? services.GetRequiredService<IncomingCallUI>().HangUp(chatId)
             : services.GetRequiredService<IncomingCallUI>().Decline(chatId);
+    }
+
+    private async Task EndStaleOutgoingCall(Guid callId)
+    {
+        await Task.Delay(OutgoingCallTimeout).ConfigureAwait(false);
+        // Keyed by the call's own id, so a later call to the same chat outlives an earlier deadline.
+        if (_calls.TryGetValue(callId, out var call) && call is { IsOutgoing: true, IsAnswered: false }) {
+            Log.LogWarning("Ending an outgoing call to #{ChatId} nothing reported on", call.ChatId);
+            EndCall(callId, CXCallEndedReason.Unanswered);
+        }
     }
 
     private void EndCalls(ChatId chatId, CXCallEndedReason reason)
