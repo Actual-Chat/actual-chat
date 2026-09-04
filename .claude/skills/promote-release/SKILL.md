@@ -91,11 +91,10 @@ Ask with `AskUserQuestion` (multiSelect), listing exactly what was staged, e.g.:
 > - macOS — TestFlight X.Y.Z (Mac Catalyst)
 > - Windows — MSIX artifact / pending Store submission X.Y.Z.0
 
-Then ask, in the same call, the App Store version to publish under: the
-convention is `X.Y` for the first release from the branch and `X.Y.1`,
-`X.Y.2`, … for follow-ups. "Auto" (empty input) lets the workflow pick the
-next free one from App Store Connect — recommend it. Offer a Play rollout
-percentage only if the user brings it up; default is a full release.
+Don't ask for an App Store version: the workflow publishes under the build
+version (`X.Y.Z`), the same string Google Play and the Microsoft Store show, so
+`apple-version` stays empty. Offer a Play rollout percentage only if the user
+brings it up; default is a full release.
 
 No platform selected → stop, nothing to do. Never infer "tested" from a green
 CI run, from the user having approved the `prod` environment, or from a prior
@@ -145,6 +144,7 @@ Microsoft Store submission (the release run's Windows upload didn't run).
 | Build version | artifact names `chat.actual.app.<X.Y.Z>.ipa` → `X.Y.Z` |
 | Store notes | `docs/releases/store-notes-vX.Y.txt` on `release/vX.Y`, ≤ 500 chars |
 | Tested? | `AskUserQuestion`, multiSelect per platform — hard stop |
+| App Store version | the build version; leave `apple-version` empty |
 | Dispatch | `gh workflow run promote-release.yml --ref release/vX.Y -f version=X.Y.Z -f android=… -f ios=… -f macos=… -f windows=…` |
 | Watch | `gh run watch <id> --exit-status` |
 
@@ -152,6 +152,10 @@ Microsoft Store submission (the release run's Windows upload didn't run).
 
 - **Passing `X.Y` as the version.** The workflow needs the three-part build
   version from the artifacts; `2.17` fails validation.
+- **Filling in `apple-version`.** It defaults to the build version on purpose —
+  the in-app update banner compares the App Store's published version string
+  with the client's own, so a train string like `2.17` breaks that comparison.
+  Set it only when the user asks for a specific store version.
 - **Dispatching on `dev`.** The `prod-store` environment rejects every ref
   but `release/*`, so the store jobs fail before doing anything.
 - **Skipping the tested-build question**, or pre-selecting platforms for the

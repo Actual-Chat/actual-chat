@@ -32,7 +32,7 @@ on:
         type: boolean
         default: true
       apple-version:
-        description: App Store version string; empty = X.Y for the first release of the branch, then X.Y.1, X.Y.2, …
+        description: App Store version string; empty = the build version, which is what it should be — override only deliberately
         type: string
         default: ""
       android-rollout:
