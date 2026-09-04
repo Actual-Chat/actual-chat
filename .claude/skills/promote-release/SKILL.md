@@ -6,7 +6,7 @@ description: |
   the user says "promote the release", "publish the apps", "release to the
   stores", "/promote-release", or after /prepare-release once the staged
   builds have been tested.
-allowed-tools: Bash, Read, Grep, Glob, AskUserQuestion
+allowed-tools: Bash, Read, Grep, Glob, AskUserQuestion, mcp__voxt-robokitty__post_message
 ---
 
 # promote-release
@@ -32,6 +32,9 @@ has no reviewer gate, so the user's answer in step 3 is the only gate.
 - **Store notes** come from `/prepare-release` step 5b. Don't rewrite them
   here; if the file is missing, follow that step's rules and commit it to
   the release branch.
+- **RoboKitty MCP** (`mcp__voxt-robokitty__post_message`) posts the outcome to
+  the Releases chat — the same path `/prepare-release` step 8 uses, including
+  its HTTP fallback when the tool isn't loaded.
 
 ## Steps
 
@@ -136,6 +139,41 @@ causes: build not on the internal track (wrong version), App Store version
 already waiting for review (cancel it in App Store Connect), no pending
 Microsoft Store submission (the release run's Windows upload didn't run).
 
+### 6. Announce in the Releases chat
+
+Post what was actually published, so the team knows which stores now carry
+the release and which are still pending. The **Releases** chat is
+`s-pmMsV1UVKG-dCKQXnYpX9` (the one `/prepare-release` posts the notes to).
+
+Post **once per promotion run**, after the run has finished (and after any
+`gh run rerun --failed` of it — one post covering the final state, not one
+per attempt). List only the platforms this run promoted, with the store's
+own next step, and name the platforms that were left out or failed so nobody
+assumes they're on the way. Shape:
+
+```
+**📦 Voxt vX.Y — build X.Y.Z sent to the stores**
+- Android: released to Google Play production (100% rollout)
+- iOS: submitted for App Store review
+- Windows: in Microsoft Store certification
+- macOS: not promoted this time (first Mac App Store release is pending)
+```
+
+One line per platform, in this order: Android, iOS, macOS, Windows. Wording
+per outcome:
+
+- Android → `released to Google Play production (<rollout>% rollout)`
+- iOS / macOS → `submitted for App Store review` (goes live on approval)
+- Windows → `in Microsoft Store certification` (goes live when it passes)
+- not selected → `not promoted this time` (+ the reason if the user gave one)
+- failed → `promotion failed — <one-line cause>`; post this too, the chat is
+  the team's record of what did and didn't go out
+
+If the RoboKitty tool isn't loaded, use the HTTP fallback from
+`/prepare-release` step 8 with this text. If neither works, print the message
+for the user to paste. Confirm with a one-liner:
+`Posted promotion of X.Y.Z → Releases (LID: <id>).`
+
 ## Quick reference
 
 | Step | Command / action |
@@ -147,6 +185,7 @@ Microsoft Store submission (the release run's Windows upload didn't run).
 | App Store version | the build version; leave `apple-version` empty |
 | Dispatch | `gh workflow run promote-release.yml --ref release/vX.Y -f version=X.Y.Z -f android=… -f ios=… -f macos=… -f windows=…` |
 | Watch | `gh run watch <id> --exit-status` |
+| Announce | `mcp__voxt-robokitty__post_message` → `s-pmMsV1UVKG-dCKQXnYpX9`, one post per promotion run, per-platform outcome |
 
 ## Common mistakes
 
@@ -162,3 +201,6 @@ Microsoft Store submission (the release run's Windows upload didn't run).
   user. The only source of truth is the user's answer in this session.
 - **Promoting Windows from a stale run.** The pending submission is the last
   uploaded package, not necessarily the one from the run you looked at.
+- **Announcing only the successes**, or announcing before a re-run settles.
+  The Releases post is the record of what reached each store; a platform that
+  failed or was skipped must be named as such, in the one post for the run.
