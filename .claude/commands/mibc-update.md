@@ -44,6 +44,11 @@ For `android` or `all`:
 For any platform:
 - `src/dotnet/App.Maui/wwwroot/dist` exists. If not, run `npm run build:Release` first —
   without it the app starts and then dies, and the profile is garbage.
+- **Nothing else is building.** A concurrent publish shares `artifacts/obj/App.Maui/` and
+  will overwrite assemblies mid-capture; check that no `dotnet`/`MSBuild` process is
+  consuming CPU before you start.
+- `tmp/mibc` holds no parts from earlier experiments — `-Accumulate` globs it recursively.
+  Move them aside first.
 
 Tell the user up front what this costs: Android is **reinstalled** with a tracing build
 (which suspends at launch until a tracer attaches), and the whole thing takes roughly 30-40
@@ -57,12 +62,28 @@ for completion rather than polling.
 ### Android — skip unless `$ARGUMENTS` is `android` or `all`
 
 ```bash
-pwsh -NoProfile -File scripts/Record-AndroidStartupProfiles.ps1 -Runs 2 -Mode Methods -Build
-pwsh -NoProfile -File scripts/New-StartupMibc.ps1 -Platform Android
+pwsh -NoProfile -File scripts/Record-AndroidStartupProfiles.ps1 -Runs 1 -Duration 00:01:00 -Mode Methods -Build
+# -Accumulate globs tmp/mibc recursively, so stage the committed profile there to merge
+# into it, and move anything unrelated out first
+mkdir -p tmp/mibc/previous && cp src/dotnet/App.Maui/_Profiling/android.mibc tmp/mibc/previous/
+pwsh -NoProfile -File scripts/New-StartupMibc.ps1 -Platform Android -Accumulate
 ```
 
-`-Build` publishes with `IsTracingEnabled=true` and installs it. Two runs is the right
-number: cold starts barely vary, and each 10 s capture is ~420 MB.
+`-Build` publishes with `IsTracingEnabled=true` and installs it.
+
+**Record at 60 s, not the script's 10 s default.** A 10 s window stops before the
+post-startup paths settle — live session governors, fold/mute enforcement, chat item
+loading — and yields roughly half the methods: 23,201 against 31,225 for the same app,
+measured 2026-09-03. One 60 s cold start is enough; if you record more than one, keep the
+largest and discard the rest. Expect ~700 MB per capture.
+
+**Merge into the existing profile, never replace it.** `android.mibc` carries hand-driven
+session coverage a cold start never reaches, so each round unions the new capture into it —
+about 90-95% of a capture is already present and the delta is the point. Replacing it
+instead cost 26k methods in one run. `-Accumulate` merges every `*.mibc` under `tmp/mibc`
+recursively, which is why the committed profile has to be staged there, and why leftovers
+from earlier experiments (Windows, iOS, `-Mode Jit` parts) have to be moved out before the
+run or they land in `android.mibc`.
 
 ### Android notification path — only when `$ARGUMENTS` is `android-notif`
 
@@ -115,8 +136,13 @@ git diff --stat src/dotnet/App.Maui/_Profiling/
 
 Sanity-check the output rather than trusting exit codes:
 
-- Method counts are in range — android ~27k, windows ~32k, merged ~37k. Far below means
-  traces were dropped.
+- Method counts went **up**, never down. The run merges into the committed profile, so up
+  is the only valid direction; a drop means it replaced instead of accumulating. Compare
+  against `HEAD`, not against numbers written here — these grow every round. As of
+  2026-09-03: android 50,976, windows 48,856, merged 62,686.
+- Overlap with the previous profile is the real check that the trace mapped correctly.
+  `new android.mibc − previous` is how many methods are new; the rest of the capture was
+  already there. 90-95% overlap is normal — far less means the references were wrong.
 - The per-assembly listing shows `Mono.Android` **and** `Microsoft.WinUI` / `WinRT.Runtime`.
   A missing half is otherwise silent: the merge succeeds with whatever parts survived. (When
   only one platform was re-recorded, the other half comes from the existing `.mibc` — so both
@@ -151,9 +177,19 @@ you are about to profile the *old* build. Verify with
 start-server` recovers it; if it keeps happening, tell the user to reseat the cable rather
 than burning runs.
 
-**"Unable to validate match between assembly ..."** means the references don't match what
-ran. `New-StartupMibc.ps1` points at the `R2R/` output, so this shouldn't appear; if it does,
-the app was rebuilt after recording — re-record.
+**"Unable to validate match between assembly ..."** is expected and is **not** a reason to
+re-record. dotnet-pgo prints it for every module even when the `R2R/` references come from
+the very publish that was installed — the validation check changed, not the build (see
+commit `e0e5783825`). Judge the run by overlap against the previous profile instead; at
+90-95% the mapping is correct. Acting on this warning alone burns a full re-record.
+
+**A second build running at the same time.** Android `dotnet publish` shares
+`artifacts/obj/App.Maui/`, so anything else building — a `b android`, another
+`/mibc-update` — overwrites assemblies mid-capture and can leave the R2R step skipped
+entirely. Before starting, check that no `dotnet`/`MSBuild` process is burning CPU. The
+signature afterwards: no `crossgen`/`ReadyToRun` lines in the publish log, and no
+`artifacts/obj/App.Maui/release_net11.0-android_android-arm64/R2R` directory. Wait for the
+other build to finish, then re-record.
 
 ## Reporting
 
