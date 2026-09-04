@@ -87,7 +87,8 @@ public static partial class MauiProgram
         AppUIOtelSetup.SetupConditionalPropagator();
 #if WINDOWS
         if (Tracer.IsEnabled) {
-            // EventSources and EventListeners do not work in Mono. So no sense to enable but platforms different from Windows
+            // EventSources and EventListeners do not work in Mono.
+            // So no sense to enable but platforms different from Windows
             // MauiBlazorOptimizer.EnableDependencyInjectionEventListener();
         }
 #endif
@@ -168,14 +169,13 @@ public static partial class MauiProgram
 #else
             Environments.Development;
 #endif
-        var hostInfo = ClientStartup.CreateHostInfo(
+        return ClientStartup.CreateHostInfo(
             configuration,
             environment,
             DeviceInfo.Current.Model,
             HostKind.MauiApp,
             MauiSettings.AppKind,
             MauiSettings.BaseUrl);
-        return hostInfo;
     }
 
     private static Task<BlazorWebViewApp> BuildBlazorViewAppInternal(MauiApp app)
@@ -223,11 +223,13 @@ public static partial class MauiProgram
     {
 #if WINDOWS
         var staticContentProviderType = Type.GetType(
-            "Microsoft.AspNetCore.Components.WebView.Maui.StaticContentProvider, Microsoft.AspNetCore.Components.WebView.Maui");
+            "Microsoft.AspNetCore.Components.WebView.Maui.StaticContentProvider, "
+            + "Microsoft.AspNetCore.Components.WebView.Maui");
         if (staticContentProviderType == null)
             throw StandardError.Constraint("Static content provider not found.");
 
-        var contentTypeProviderFieldInfo = staticContentProviderType.GetField("ContentTypeProvider", BindingFlags.Static | BindingFlags.NonPublic);
+        var contentTypeProviderFieldInfo = staticContentProviderType.GetField(
+            "ContentTypeProvider", BindingFlags.Static | BindingFlags.NonPublic);
         if (contentTypeProviderFieldInfo == null)
             throw StandardError.Constraint("Static content provider does not have a 'ContentTypeProvider' field.");
 
@@ -236,8 +238,9 @@ public static partial class MauiProgram
         if (contentTypeProvider == null)
             throw StandardError.Constraint("'ContentTypeProvider' field has null value.");
 
-        var mappingsPropertyInfo = contentTypeProviderType.GetProperty("Mappings", BindingFlags.Instance | BindingFlags.Public);
-        var mapping = (IDictionary<string,string>)mappingsPropertyInfo!.GetValue(contentTypeProvider)!;
+        var mappingsPropertyInfo = contentTypeProviderType.GetProperty(
+            "Mappings", BindingFlags.Instance | BindingFlags.Public);
+        var mapping = (IDictionary<string, string>)mappingsPropertyInfo!.GetValue(contentTypeProvider)!;
         mapping[".mjs"] = "text/javascript";
 #else
         // StaticContentProvider works fine on non-Windows platforms
@@ -328,7 +331,8 @@ public static partial class MauiProgram
             c => {
                 var safeJSRuntime = c.GetRequiredService<SafeJSRuntime>();
                 if (!safeJSRuntime.IsReady && safeJSRuntime.MarkReady())
-                    // The very first IJSRuntime service resolved first time from PageContext is cast to WrappedJSRuntime
+                    // The very first IJSRuntime service resolved first time from PageContext
+                    // is cast to WrappedJSRuntime
                     // to being attached to WebView. So we need to return the original WrappedJSRuntime instance
                     // specifically for this call, and after that we can return SafeJSRuntime.
                     // See https://github.com/dotnet/aspnetcore/blob/410efd482f494d1ab05ce25b932b5788699c2308/src/Components/WebView/WebView/src/PageContext.cs#L44
@@ -370,7 +374,8 @@ public static partial class MauiProgram
         // Replace these registrations to pass validation. It should be safe for MAUI behavior.
         // See https://github.com/dotnet/maui/blob/main/src/Core/src/Hosting/Dispatching/AppHostBuilderExtensions.cs
         services.Replace(typeof(IDispatcher), static sd => sd.ChangeLifetime(ServiceLifetime.Singleton));
-        services.ReplaceAll(typeof(IMauiInitializeScopedService), static sd => sd.ChangeLifetime(ServiceLifetime.Transient));
+        services.ReplaceAll(typeof(IMauiInitializeScopedService),
+            static sd => sd.ChangeLifetime(ServiceLifetime.Transient));
         // Enable validation on container
         // NOTE: will be improved later, see https://github.com/dotnet/maui/issues/18519
         appBuilder.ConfigureContainer(new DefaultServiceProviderFactory(new ServiceProviderOptions {
