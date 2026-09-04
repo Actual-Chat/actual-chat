@@ -40,6 +40,9 @@ public static partial class MauiProgram
         services.AddScoped<ActivitiesBackend>(c => new IosActivitiesBackend(
             c.AppUIHub(),
             c.GetRequiredService<IosUploadKeepAlive>()));
+#if IS_DEV_MAUI
+        services.AddScoped<IIncomingCallsBridge>(_ => new IosIncomingCallsBridge());
+#endif
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)

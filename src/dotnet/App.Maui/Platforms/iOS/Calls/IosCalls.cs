@@ -68,6 +68,20 @@ public class IosCalls : CXProviderDelegate
     public void EndCall(ConversationId conversationId)
         => EndCall(CallId.For(conversationId));
 
+    public void EndCall(ChatId chatId)
+    {
+        foreach (var (callId, conversationId) in _conversationIdByCallId) {
+            if (conversationId?.ChatId == chatId)
+                EndCall(callId);
+        }
+    }
+
+    public void EndActiveCalls()
+    {
+        foreach (var callId in _conversationIdByCallId.Keys)
+            EndCall(callId);
+    }
+
     public ChatId[] ListActiveCallChatIds()
         => _conversationIdByCallId.Values
             .SkipNullItems()
