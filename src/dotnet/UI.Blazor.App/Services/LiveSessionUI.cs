@@ -36,6 +36,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
+    private IncomingCallUI IncomingCallUI => Hub.IncomingCallUI;
     private Moment Now => Clocks.CpuClock.Now;
 
     void INotifyInitialized.Initialized()
@@ -435,12 +436,18 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     {
         // Placing a call is itself the intent to talk, so answering it puts the caller on the line.
         // A denied mic still joins them — listening only, same as anywhere else.
-        await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(false);
-        var hasMic = await AudioRecorder.MicrophonePermission
-            .CheckOrRequest(cancellationToken)
-            .ConfigureAwait(false);
-        if (hasMic)
-            await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(false);
+        IncomingCallUI.PrepareForegroundCall(chatId);
+        try {
+            await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(false);
+            var hasMic = await AudioRecorder.MicrophonePermission
+                .CheckOrRequest(cancellationToken)
+                .ConfigureAwait(false);
+            if (hasMic)
+                await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(false);
+        }
+        finally {
+            IncomingCallUI.ShowForegroundCall(chatId);
+        }
     }
 
     private static Task<T?> UseOrLastKnown<T>(
