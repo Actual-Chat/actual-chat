@@ -306,8 +306,10 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             }
         }
         finally {
+            // Teardown is not a ring end: this runs on scope disposal and on every fault the
+            // RetryForever chain retries, so a bridge that owns the ring keeps it.
             if (isRinging)
-                StopRinging();
+                StopRinging(mustEndOwnedRing: false);
         }
     }
 
@@ -326,7 +328,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             _ = StartNativeRinging(Interlocked.Increment(ref _ringGeneration));
     }
 
-    private void StopRinging()
+    private void StopRinging(bool mustEndOwnedRing = true)
     {
         if (Bridge is null) {
             _ = PlayWebRingtone(false);
@@ -335,7 +337,10 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
         // Bumped first: a start still waiting on the audio mode drops instead of ringing on.
         Interlocked.Increment(ref _ringGeneration);
-        Bridge.StopRinging();
+        // An owned ring (CallKit) is the call itself and can't be re-reported once ended, so only
+        // an actual ring end may take it down; everyone else must always stop their ringer.
+        if (mustEndOwnedRing || !Bridge.OwnsRinging)
+            Bridge.StopRinging();
         if (!Bridge.OwnsRinging)
             _ = RestoreAudioMode();
     }

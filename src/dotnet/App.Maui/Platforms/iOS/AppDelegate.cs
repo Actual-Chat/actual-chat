@@ -114,13 +114,14 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
     private static void EndDismissedCalls(IReadOnlyCollection<string> dismissedTags)
     {
         // An independent path to the reactive LiveSessionUI one: the server's cancel dismissal
-        // arrives even when the reactive state is slow.
+        // arrives even when the reactive state is slow. Ringing calls only - the accept the user
+        // just made is dismissed exactly the same way, and ending that one kills a live call.
         foreach (var tag in dismissedTags) {
             if (!tag.StartsWith(Constants.Notification.CallTagPrefix))
                 continue;
 
             if (ChatId.TryParse(tag[Constants.Notification.CallTagPrefix.Length..], allowNull: true) is { } chatId)
-                IosCalls.Instance.EndCall(chatId);
+                IosCalls.Instance.EndRingingCall(chatId);
         }
     }
 #endif

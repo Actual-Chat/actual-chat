@@ -52,6 +52,11 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         ArmOwnerWatchdog();
     }
 
+    public static void ResetCallRouteLatch()
+        // ReleaseOwner clears the latch only while CallKit still owns the session, so a call PTT
+        // took the session away from mid-way would leave the next one on this one's route.
+        => Volatile.Write(ref _isCallOverrideCleared, 0);
+
     public static void SetOwnerWatchdogRecovery(Action recovery)
         => Volatile.Write(ref _ownerWatchdogRecovery, recovery);
 
@@ -158,7 +163,10 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
                 // unable to activate its own session - every tune, playback and recording dies.
                 OwnerLog.LogWarning(
                     "The audio session was owned by {Owner} with no PTT callback - reverted to App", stuckOwner);
-                RunOwnerWatchdogRecovery();
+                // The recovery resets PTT framework state, which would tear down a live call: the
+                // arm race can land here for a CallKit owner, and CallKit polices its own lifecycle.
+                if (stuckOwner != AudioSessionOwner.CallKit)
+                    RunOwnerWatchdogRecovery();
                 return;
             }
         }

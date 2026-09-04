@@ -113,10 +113,22 @@ public class IosCalls : CXProviderDelegate
         RequestTransaction(callId, call, new CXEndCallAction(new NSUuid(callId.ToString())), LocalAction.End);
     }
 
-    // The ring bookkeeping says only "this ring is over", never whether it was accepted - the
-    // verdict follows in OnCallHandled. Holds EndRingingCalls off until it arrives.
+    public void EndAnsweredCall(ChatId chatId)
+    {
+        // An answer that never became a call: EndRingingCalls skips answered calls and no end
+        // watch was started, so nothing else would ever take this one down.
+        if (!TryGetCall(chatId, false, out var callId, out var call) || !call.IsAnswered)
+            return;
+
+        // A transaction rather than a report, exactly as a decline is; the marker keeps
+        // PerformEndCallAction from dispatching a hang-up back into a join that already failed.
+        RequestTransaction(callId, call, new CXEndCallAction(new NSUuid(callId.ToString())), LocalAction.End);
+    }
+
     public void MarkRingHandledLocally(ChatId chatId)
     {
+        // The ring bookkeeping says only "this ring is over", never whether it was accepted - the
+        // verdict follows in OnCallHandled. Holds EndRingingCalls off until it arrives.
         if (TryGetCall(chatId, false, out _, out var call))
             call.MarkVerdictPending();
     }
@@ -126,7 +138,17 @@ public class IosCalls : CXProviderDelegate
         // Rings only - an outgoing call has no ring to end, and the ring bookkeeping fires this
         // for every incoming call the app resolves.
         foreach (var (callId, call) in _calls) {
-            if (!call.IsOutgoing && !call.IsAnswered && !call.IsVerdictPending)
+            if (IsRinging(call))
+                EndCall(callId, CXCallEndedReason.RemoteEnded);
+        }
+    }
+
+    public void EndRingingCall(ChatId chatId)
+    {
+        // Ringing only: the server dismisses the ring for the accept too, and ending an answered
+        // call here would take the live CallKit call down seconds after the user answered.
+        foreach (var (callId, call) in _calls) {
+            if (call.ChatId == chatId && IsRinging(call))
                 EndCall(callId, CXCallEndedReason.RemoteEnded);
         }
     }
@@ -376,9 +398,11 @@ public class IosCalls : CXProviderDelegate
 
     private static void ReleaseAudioSession()
     {
-        // Only what we own: a CallKit deactivation must not take the session away from PTT.
+        // Only the ownership is conditional - a CallKit deactivation must not take the session
+        // away from PTT, but the route latch is this call's and PTT may have taken it mid-call.
         if (AudioSession.Owner == AudioSessionOwner.CallKit)
             AudioSession.ReleaseOwner(AudioSessionRelease.CallEnded);
+        AudioSession.ResetCallRouteLatch();
         AudioSession.IsCallVideo = false;
     }
 
@@ -406,6 +430,9 @@ public class IosCalls : CXProviderDelegate
         call = null;
         return Guid.TryParse(callUuid.AsString(), out var callId) && _calls.TryRemove(callId, out call);
     }
+
+    private static bool IsRinging(Call call)
+        => !call.IsOutgoing && !call.IsAnswered && !call.IsVerdictPending;
 
     // Nested types
 

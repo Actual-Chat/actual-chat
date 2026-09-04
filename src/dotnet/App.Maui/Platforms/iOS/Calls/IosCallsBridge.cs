@@ -14,6 +14,7 @@ public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDispo
     private static readonly TimeSpan JoinTimeout = TimeSpan.FromSeconds(30);
 
     private readonly CancellationTokenSource _stopTokenSource = new();
+    private readonly CancellationToken _stopToken;
     private readonly ConcurrentDictionary<ChatId, Unit> _watchedChatIds = new();
     private AppUIHub Hub { get; }
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
@@ -24,6 +25,9 @@ public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDispo
     public IosCallsBridge(AppUIHub hub)
     {
         Hub = hub;
+        // Captured once: Dispose disposes the source, and a watch started after that - the calls
+        // outlive the bridge - would throw on reading its token.
+        _stopToken = _stopTokenSource.Token;
         // The calls are static but the watch is not: a WebView reload (or a wake scope handing
         // over to the WebView one) takes the previous bridge's watch with it, and an answered
         // call is skipped by EndRingingCalls, so nothing else would ever take it down.
@@ -56,7 +60,10 @@ public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDispo
     public Task<bool> OnCallHandled(ChatId chatId, bool accepted)
     {
         if (!accepted) {
+            // Not always a decline: an accept that failed past the CallKit answer reports the same
+            // verdict, and DeclineCall deliberately leaves an already-answered call alone.
             IosCalls.Instance.DeclineCall(chatId);
+            IosCalls.Instance.EndAnsweredCall(chatId);
             return Task.FromResult(false);
         }
 
@@ -82,8 +89,8 @@ public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDispo
         // and the chat lookup the callee's name comes from is far slower than the first invalidation.
         IosCalls.Instance.StartOutgoingCall(chatId, hasVideo);
         _ = BackgroundTask.Run(
-            () => SetOutgoingCallName(chatId, _stopTokenSource.Token),
-            Log, $"Couldn't resolve the callee name for chat #{chatId}", _stopTokenSource.Token);
+            () => SetOutgoingCallName(chatId, _stopToken),
+            Log, $"Couldn't resolve the callee name for chat #{chatId}", _stopToken);
     }
 
     public void OnOutgoingCallStatusChanged(ChatId chatId, CallStatus status)
@@ -111,8 +118,8 @@ public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDispo
             return;
 
         _ = BackgroundTask.Run(
-            () => WatchCallEnd(chatId, _stopTokenSource.Token),
-            Log, $"Call-end watch failed for chat #{chatId}", _stopTokenSource.Token);
+            () => WatchCallEnd(chatId, _stopToken),
+            Log, $"Call-end watch failed for chat #{chatId}", _stopToken);
     }
 
     private async Task WatchCallEnd(ChatId chatId, CancellationToken cancellationToken)
