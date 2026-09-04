@@ -775,6 +775,9 @@
          Link with the .mlmodelc root at the bundle's Resources/ so NSBundle.GetUrlForResource
          finds it (without the Platforms\iOS\Resources\ prefix it'd otherwise inherit). -->
     <BundleResource Include="Platforms\iOS\Resources\vad_batched_fp16.mlmodelc\**" Link="vad_batched_fp16.mlmodelc\%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- Localized Info.plist usage descriptions; the Link keeps <lang>.lproj at the bundle root,
+         where the OS looks for it -->
+    <BundleResource Include="Platforms\iOS\Resources\**\InfoPlist.strings" Link="%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-ios'))">
     <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.dev" Link="GoogleService-Info.plist" />
@@ -810,6 +813,9 @@
     <MauiIcon Remove="Resources\AppIcon\appicon.svg" />
     <MauiIcon Include="Resources\AppIcon\appicon_macos.png" />
     <PartialAppManifest Include="Platforms\MacOS\Info.plist" />
+    <!-- Localized Info.plist usage descriptions; the Link keeps <lang>.lproj at the bundle root,
+         where the OS looks for it -->
+    <BundleResource Include="Platforms\iOS\Resources\**\InfoPlist.strings" Link="%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- NOT MacCatalyst -->
@@ -829,6 +835,9 @@
          Link with the .mlmodelc root at the bundle's Resources/ so NSBundle.GetUrlForResource
          finds it (without the Platforms\iOS\Resources\ prefix it'd otherwise inherit). -->
     <BundleResource Include="Platforms\iOS\Resources\vad_batched_fp16.mlmodelc\**" Link="vad_batched_fp16.mlmodelc\%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- Localized Info.plist usage descriptions; the Link keeps <lang>.lproj at the bundle root,
+         where the OS looks for it -->
+    <BundleResource Include="Platforms\iOS\Resources\**\InfoPlist.strings" Link="%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- NOT Windows -->

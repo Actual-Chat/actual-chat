@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "오디오 메시지를 녹음하려면 마이크 접근 권한이 필요합니다";
+"NSCameraUsageDescription" = "사진을 찍어 다른 사용자와 공유하려면 카메라 접근 권한이 필요합니다.";
+"NSPhotoLibraryUsageDescription" = "다른 사용자와 공유하거나 아바타를 변경할 사진을 업로드합니다.";
+"NSPhotoLibraryAddUsageDescription" = "사진 보관함의 사진과 동영상을 공유합니다.";
+"NSContactsUsageDescription" = "이 정보는 연락처에서 이미 Voxt를 사용 중인 친구를 찾는 데 사용됩니다. 연락처 접근을 허용하면 연락처 이름과 전화번호 및 이메일 주소의 해시값을 저희 서버로 전송합니다.";
+"NSLocationWhenInUseUsageDescription" = "위치 공유가 켜져 있는 동안 채팅 참여자와 실시간 위치를 공유합니다.";
+"NSLocationUsageDescription" = "위치 공유가 켜져 있는 동안 채팅 참여자와 실시간 위치를 공유합니다.";
+"NSFocusStatusUsageDescription" = "수면이나 방해금지 모드 같은 집중 모드가 켜져 있는지 Voxt가 확인할 수 있게 하여, 푸시 투 토크가 음성을 소리 내어 재생하지 않고 조용히 유지되도록 합니다.";

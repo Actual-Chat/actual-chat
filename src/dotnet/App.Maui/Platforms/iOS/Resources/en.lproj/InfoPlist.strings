@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Need access to your microphone to record audio messages";
+"NSCameraUsageDescription" = "Need access to your camera to take photos and share them with other users.";
+"NSPhotoLibraryUsageDescription" = "Upload photos to share with other users or to change your avatar.";
+"NSPhotoLibraryAddUsageDescription" = "Share photos and videos from your photo gallery.";
+"NSContactsUsageDescription" = "We collect this information to help you find friends in your contact list who are already using Voxt. If you grant access to your contact list, we will send the contact names and the hashed values of phone numbers and email addresses to our servers.";
+"NSLocationWhenInUseUsageDescription" = "Share your live location with people in a chat while location sharing is active.";
+"NSLocationUsageDescription" = "Share your live location with people in a chat while location sharing is active.";
+"NSFocusStatusUsageDescription" = "Lets Voxt see when a Focus such as Sleep or Do Not Disturb is on, so push-to-talk stays quiet instead of playing voice out loud.";

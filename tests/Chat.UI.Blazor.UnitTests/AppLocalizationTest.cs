@@ -148,7 +148,7 @@ public class AppLocalizationTest
 
         // arrange
         var enKeys = Load(Languages.English)!.Keys
-            .Where(k => !k.StartsWith(ValidationKeys.Prefix, StringComparison.Ordinal))
+            .Where(k => !k.StartsWith(ValidationKeys.Prefix))
             .ToHashSet();
 
         // act

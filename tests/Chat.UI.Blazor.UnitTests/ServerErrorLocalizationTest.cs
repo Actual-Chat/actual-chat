@@ -157,14 +157,10 @@ public class ServerErrorLocalizationTest
     // from spanning two of them, which concatenating everything into a single string allowed.
     private static IEnumerable<string> ErrorRaisingFileTexts()
     {
-        var root = new DirectoryInfo(AppContext.BaseDirectory);
-        while (root != null && !File.Exists(Path.Combine(root.FullName, "ActualChat.sln")))
-            root = root.Parent;
-        root.Should().NotBeNull("the test must run from inside the repository to scan its sources");
-
         var separator = Path.DirectorySeparatorChar;
+        var sources = Path.Combine(TestRepository.Root.FullName, "src", "dotnet");
         var paths = Directory
-            .EnumerateFiles(Path.Combine(root.FullName, "src", "dotnet"), "*.cs", SearchOption.AllDirectories)
+            .EnumerateFiles(sources, "*.cs", SearchOption.AllDirectories)
             .Where(path => !path.Contains($"{separator}obj{separator}", StringComparison.Ordinal));
         foreach (var path in paths) {
             var text = File.ReadAllText(path);

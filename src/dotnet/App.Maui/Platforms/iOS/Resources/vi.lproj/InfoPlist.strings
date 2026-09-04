@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Cần quyền truy cập micrô để ghi âm tin nhắn thoại";
+"NSCameraUsageDescription" = "Cần quyền truy cập máy ảnh để chụp ảnh và chia sẻ với người dùng khác.";
+"NSPhotoLibraryUsageDescription" = "Tải ảnh lên để chia sẻ với người dùng khác hoặc để đổi ảnh đại diện.";
+"NSPhotoLibraryAddUsageDescription" = "Chia sẻ ảnh và video từ thư viện ảnh của bạn.";
+"NSContactsUsageDescription" = "Chúng tôi thu thập thông tin này để giúp bạn tìm những người bạn trong danh bạ đã dùng Voxt. Nếu bạn cấp quyền truy cập danh bạ, chúng tôi sẽ gửi tên liên hệ cùng giá trị băm của số điện thoại và địa chỉ email đến máy chủ của chúng tôi.";
+"NSLocationWhenInUseUsageDescription" = "Chia sẻ vị trí trực tiếp của bạn với mọi người trong cuộc trò chuyện khi tính năng chia sẻ vị trí đang bật.";
+"NSLocationUsageDescription" = "Chia sẻ vị trí trực tiếp của bạn với mọi người trong cuộc trò chuyện khi tính năng chia sẻ vị trí đang bật.";
+"NSFocusStatusUsageDescription" = "Cho phép Voxt biết khi chế độ Tập trung như Ngủ hoặc Không làm phiền đang bật, để Nhấn để nói giữ im lặng thay vì phát giọng nói thành tiếng.";
