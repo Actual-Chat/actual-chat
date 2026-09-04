@@ -14,12 +14,12 @@ public sealed class AndroidIncomingCallsBridge : IIncomingCallsBridge, IDisposab
     public void StopRinging()
         => IncomingCallRinger.Stop();
 
-    public Task<bool> OnCallHandled(bool accepted)
+    public Task<bool> OnCallHandled(ChatId chatId, bool isAccepted)
     {
         var tcs = TaskCompletionSourceExt.New<bool>();
         BeginDispatchToMainThread(() => {
             try {
-                if (accepted)
+                if (isAccepted)
                     MainActivity.Current.DismissKeyguardForCall(ready => tcs.TrySetResult(ready));
                 else {
                     MainActivity.Current.DisableShowWhenLocked();
@@ -29,7 +29,7 @@ public sealed class AndroidIncomingCallsBridge : IIncomingCallsBridge, IDisposab
             catch (Exception e) {
                 Log.LogDebug(e, "OnCallHandled skipped");
                 // No activity to gate on: proceed best-effort on accept.
-                tcs.TrySetResult(accepted);
+                tcs.TrySetResult(isAccepted);
             }
         });
         return tcs.Task;
@@ -54,7 +54,8 @@ public sealed class AndroidIncomingCallsBridge : IIncomingCallsBridge, IDisposab
     public void MoveBehindLockScreen()
         => BeginDispatchToMainThread(() => {
             try {
-                DebugLog?.LogInformation("CALL_TRACE: Bridge.MoveBehindLockScreen → DisableShowWhenLocked + MoveTaskToBack");
+                DebugLog?.LogInformation(
+                    "CALL_TRACE: Bridge.MoveBehindLockScreen → DisableShowWhenLocked + MoveTaskToBack");
                 var activity = MainActivity.Current;
                 activity.DisableShowWhenLocked();
                 activity.MoveTaskToBack(true);

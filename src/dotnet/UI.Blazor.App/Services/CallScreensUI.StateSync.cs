@@ -28,6 +28,10 @@ public partial class CallScreensUI
         var call = await GetIncomingCall(cancellationToken).ConfigureAwait(false);
         if (call is null)
             return false;
+        // An owned ring (CallKit) is the system's to silence, and stopping it ends the system call:
+        // muting the in-app ring must not read as the ring being over.
+        if (Bridge is { OwnsRinging: true })
+            return true;
 
         var mutedChatId = await _mutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
         return mutedChatId != call.ChatId;
@@ -54,8 +58,10 @@ public partial class CallScreensUI
             }
         }
         finally {
+            // Teardown is not a ring end: this runs on scope disposal and on every fault the
+            // RetryForever chain retries, so a bridge that owns the ring keeps it.
             if (isRinging)
-                StopRinging();
+                StopRinging(mustEndOwnedRing: false);
         }
     }
 

@@ -14,22 +14,34 @@ public partial class CallScreensUI
     private void StartRinging()
     {
         // Fire-and-forget, so SyncRingtone's finally can stop the ring synchronously.
-        if (Bridge is not null)
-            _ = StartNativeRinging(Interlocked.Increment(ref _ringGeneration));
-        else
+        if (Bridge is null) {
             _ = InvokeWebRingtone(JSStartRingtone);
+            return;
+        }
+
+        // OwnsRinging (CallKit) rings itself right away; everyone else negotiates the
+        // communication audio mode first via StartNativeRinging.
+        if (Bridge.OwnsRinging)
+            Bridge.StartRinging();
+        else
+            _ = StartNativeRinging(Interlocked.Increment(ref _ringGeneration));
     }
 
-    private void StopRinging()
+    private void StopRinging(bool mustEndOwnedRing = true)
     {
-        if (Bridge is not null) {
-            // Bumped first: a start still waiting on the audio mode drops instead of ringing on.
-            Interlocked.Increment(ref _ringGeneration);
-            Bridge.StopRinging();
-            _ = RestoreAudioMode();
-        }
-        else
+        if (Bridge is null) {
             _ = InvokeWebRingtone(JSStopRingtone);
+            return;
+        }
+
+        // Bumped first: a start still waiting on the audio mode drops instead of ringing on.
+        Interlocked.Increment(ref _ringGeneration);
+        // An owned ring (CallKit) is the call itself and can't be re-reported once ended, so only
+        // an actual ring end may take it down; everyone else must always stop their ringer.
+        if (mustEndOwnedRing || !Bridge.OwnsRinging)
+            Bridge.StopRinging();
+        if (!Bridge.OwnsRinging)
+            _ = RestoreAudioMode();
     }
 
     private async Task StartNativeRinging(int generation)
