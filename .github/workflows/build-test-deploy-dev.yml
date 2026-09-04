@@ -26,6 +26,15 @@ on:
         required: false
         default: false
         description: Build the iOS app with Native AOT (experimental, hits upstream linker bug — dotnet/runtime#119380)
+      publishMacPackage:
+        type: choice
+        required: false
+        default: appkit
+        description: Mac package to upload to App Store Connect (both are always built; it takes one build per version)
+        options:
+          - appkit
+          - catalyst
+          - none
   create:
   push:
     branches:
@@ -80,6 +89,7 @@ jobs:
       MUST_BUILD_PACKAGE: ${{ steps.calc.outputs.MUST_BUILD_PACKAGE }}
       ENVIRONMENT: ${{ steps.calc.outputs.ENVIRONMENT }}
       IS_PROD_BRANCH: ${{ steps.calc.outputs.IS_PROD_BRANCH }}
+      PUBLISH_MAC_PACKAGE: ${{ steps.calc.outputs.PUBLISH_MAC_PACKAGE }}
     steps:
       - id: calc
         name: Calculate params for package jobs
@@ -109,10 +119,17 @@ jobs:
             environment=""
           fi
 
+          # Push-triggered runs have no inputs, so they ship the AppKit package
+          publishMacPackage="${{ github.event.inputs.publishMacPackage }}"
+          if [[ $publishMacPackage == "" ]]; then
+            publishMacPackage=appkit
+          fi
+
           echo "IS_DEV_MAUI=$isDevMaui" | tee -a $GITHUB_OUTPUT
           echo "APP_ID=$appId" | tee -a $GITHUB_OUTPUT
           echo "MUST_BUILD_PACKAGE=$mustBuildPkg" | tee -a $GITHUB_OUTPUT
           echo "ENVIRONMENT=$environment" | tee -a $GITHUB_OUTPUT
+          echo "PUBLISH_MAC_PACKAGE=$publishMacPackage" | tee -a $GITHUB_OUTPUT
           echo "IS_PROD_BRANCH=$isProdBranch" | tee -a $GITHUB_OUTPUT
 
   build:
@@ -974,10 +991,9 @@ jobs:
   deploy-maccatalyst-to-appstore:
     name: Deploy maccatalyst app package to apple app store for ${{ github.ref_name }}
     # release branch can build for both dev and prod envs while other branches can build only for dev env.
-    # PUBLISH_MACCATALYST=false pauses the upload (the pkg is still built) while the AppKit
-    # package ships instead - App Store Connect takes ONE build per CFBundleVersion, and both
-    # Mac packages share the bundle id and version.
-    if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' && vars.PUBLISH_MACCATALYST != 'false' }}
+    # The publishMacPackage input picks this or the AppKit upload, never both: App Store Connect
+    # takes ONE build per CFBundleVersion, and both Mac packages share the bundle id and version.
+    if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' && needs.calc-pkg-params.outputs.PUBLISH_MAC_PACKAGE == 'catalyst' }}
     runs-on: macos-26
     needs:
       - build-maccatalyst-pkg
@@ -1012,15 +1028,15 @@ jobs:
           xcrun altool --upload-app -f ${{env.PACKAGE_FILE_NAME}} -t macos --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json
         shell: bash
 
-  # Experimental AppKit (net11.0-macos) build of the same app id - see PR #4312. Opt-in via
-  # the BUILD_MACOS_APPKIT repository variable: it shares the bundle id and version with the
-  # Mac Catalyst package, and App Store Connect accepts only ONE build per CFBundleVersion -
-  # so for any given version, upload either the Catalyst pkg or this one, not both.
+  # Experimental AppKit (net11.0-macos) build of the same app id - see PR #4312. It's always
+  # built alongside the Mac Catalyst package; the publishMacPackage input decides which of the
+  # two is uploaded, because both share the bundle id and version, and App Store Connect
+  # accepts only ONE build per CFBundleVersion.
   build-macos-appkit-pkg:
     name: Build macOS AppKit app package for ${{ github.ref_name }}
     needs:
       - calc-pkg-params
-    if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' && vars.BUILD_MACOS_APPKIT == 'true' }}
+    if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' }}
     runs-on: macos-26
     env:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
@@ -1142,9 +1158,7 @@ jobs:
 
   deploy-macos-appkit-to-appstore:
     name: Deploy macOS AppKit app package to apple app store for ${{ github.ref_name }}
-    # Same gate as the build job, plus: never enable this and the Catalyst upload for the
-    # same version — App Store Connect rejects a second build with the same CFBundleVersion.
-    if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' && vars.BUILD_MACOS_APPKIT == 'true' && vars.PUBLISH_MACOS_APPKIT == 'true' }}
+    if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' && needs.calc-pkg-params.outputs.PUBLISH_MAC_PACKAGE == 'appkit' }}
     runs-on: macos-26
     needs:
       - build-macos-appkit-pkg
