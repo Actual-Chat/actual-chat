@@ -16,6 +16,9 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
 
         d = new Device("1", DeviceType.AndroidApp, Moment.Now);
         d.AssertPassesThroughSerializers();
+
+        d = new Device("1", DeviceType.iOSVoipApp, Moment.Now) { SessionHash = "session-hash-1" };
+        d.AssertPassesThroughSerializers();
     }
 
     [Fact]
