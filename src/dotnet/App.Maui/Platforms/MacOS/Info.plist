@@ -19,6 +19,8 @@
       </array>
     </dict>
   </array>
+  <key>ITSAppUsesNonExemptEncryption</key>
+  <false/>
   <key>NSMicrophoneUsageDescription</key>
   <string>Voxt uses the microphone to record voice messages and for calls.</string>
   <key>NSCameraUsageDescription</key>
