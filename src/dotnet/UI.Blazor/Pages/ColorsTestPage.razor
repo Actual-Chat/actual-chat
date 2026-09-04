@@ -1,0 +1,238 @@
+@page "/test/colors"
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Colors</MainHeader>
+
+<div class="test-page-wrapper">
+<details>
+    <summary class="flex-x items-center gap-4 bg-03">
+        <i class="icon-chevron-up rotate-180"></i>
+        <span>Text and bg colors</span>
+    </summary>
+    <h1>Text and background colors</h1>
+    <div class="text-bg-colors grid grid-cols-4 items-center justify-center gap-1">
+        <div class="p-2 bg-01 text-03">
+            <p>bg-01 text-03</p>
+        </div>
+        <div class="p-2 bg-02 text-02">
+            <p>bg-02 text-02</p>
+        </div>
+        <div class="p-2 bg-03 text-03">
+            <p>bg-03 text-03</p>
+        </div>
+        <div class="p-2 bg-04 text-primary">
+            <p>bg-04 text-primary</p>
+        </div>
+        <div class="p-2 bg-05 text-01">
+            <p>bg-05 text-01</p>
+        </div>
+        <div class="p-2 bg-06 text-04">
+            <p>bg-06 text-04</p>
+        </div>
+        <div class="p-2 bg-07 text-05">
+            <p>bg-07 text-05</p>
+        </div>
+        <div class="p-2 bg-08 text-06">
+            <p>bg-08 text-06</p>
+        </div>
+    </div>
+</details>
+
+<details>
+    <summary class="flex-wrap flex-x items-center gap-4 bg-03">
+        <i class="icon-chevron-up rotate-180"></i>
+        <span>Toasts and Banners</span>
+    </summary>
+
+    <div class="buttons-colors flex-y items-start justify-center gap-y-1">
+        <h1>Toast and banner colors</h1>
+        <ErrorToast Class="min-h-14">
+            Color Test Page Error Toast
+        </ErrorToast>
+
+        <Toast Text="Test Toast"></Toast>
+
+        <Banner
+            IsVisible="true"
+            ShowDismissButton="true">
+            <Body>
+            Default Banner
+            </Body>
+            <Buttons>
+                <Button Class="btn-transparent">
+                    Configure
+                </Button>
+            </Buttons>
+        </Banner>
+
+        <Banner
+            Severity="BannerSeverity.Info"
+            IsVisible="true">
+            <Body>
+            Info Banner
+            </Body>
+            <Buttons>
+                <Button Class="btn-transparent">
+                    Configure
+                </Button>
+            </Buttons>
+        </Banner>
+
+        <Banner
+            Severity="BannerSeverity.Warning"
+            IsVisible="true"
+            ShowDismissButton="true">
+            <Body>
+            Warning Banner
+            </Body>
+            <Buttons>
+                <Button Class="btn-transparent">
+                    Settings
+                </Button>
+            </Buttons>
+        </Banner>
+
+        <Banner
+            Severity="BannerSeverity.Success"
+            IsVisible="true">
+            <Body>
+            Success Banner
+            </Body>
+            <Buttons>
+                <Button Class="btn-transparent">
+                    OK
+                </Button>
+            </Buttons>
+        </Banner>
+
+        <Banner
+            Severity="BannerSeverity.Error"
+            IsVisible="true">
+            <Body>
+            Error Banner
+            </Body>
+            <Buttons>
+                <Button Class="btn-transparent">
+                    Yes
+                </Button>
+            </Buttons>
+        </Banner>
+    </div>
+</details>
+
+<details>
+    <summary class="flex-wrap flex-x items-center gap-4 bg-03">
+        <i class="icon-chevron-up rotate-180"></i>
+        <span>Animated SVG</span>
+    </summary>
+
+    <div class="flex-x items-center gap-x-8 p-8">
+        <chat-activity-svg size="6" isActive="true"/>
+        <translation-svg size="6" isActive="true"/>
+    </div>
+</details>
+
+<details>
+    <summary class="flex-wrap flex-x items-center gap-4 bg-03">
+        <i class="icon-chevron-up rotate-180"></i>
+        <span>Color optimization — old vs new</span>
+    </summary>
+    <h1>Color optimization</h1>
+    <p class="text-02 mb-3 max-w-192">
+        Each pair puts the current long form (<code>bg-[var(--…)]</code> or a hardcoded hex) next to the
+        proposed short class. The two halves touch — if you can't see a seam, the swap is pixel-equivalent
+        and safe. If a seam shows, that one must NOT be swapped.
+    </p>
+
+    <h3>Solid tokens: <code>*-[var(--token)]</code> → existing class</h3>
+    <div class="flex-y gap-y-2">
+        <div class="flex-x items-center gap-x-3">
+            <div class="w-96 text-xs font-mono">--danger &nbsp;→&nbsp; text-danger / bg-danger</div>
+            <div class="flex-x w-48 h-8 rounded overflow-hidden border border-separator">
+                <div class="flex-1 bg-[var(--danger)]"></div>
+                <div class="flex-1 bg-danger"></div>
+            </div>
+        </div>
+        <div class="flex-x items-center gap-x-3">
+            <div class="w-96 text-xs font-mono">--success &nbsp;→&nbsp; text-success / bg-success</div>
+            <div class="flex-x w-48 h-8 rounded overflow-hidden border border-separator">
+                <div class="flex-1 bg-[var(--success)]"></div>
+                <div class="flex-1 bg-success"></div>
+            </div>
+        </div>
+        <div class="flex-x items-center gap-x-3">
+            <div class="w-96 text-xs font-mono">--separator &nbsp;→&nbsp; border-separator / bg-separator</div>
+            <div class="flex-x w-48 h-8 rounded overflow-hidden border border-separator">
+                <div class="flex-1 bg-[var(--separator)]"></div>
+                <div class="flex-1 bg-separator"></div>
+            </div>
+        </div>
+        <div class="flex-x items-center gap-x-3">
+            <div class="w-96 text-xs font-mono">--hover-after-primary &nbsp;→&nbsp; bg-hover-after-primary</div>
+            <div class="flex-x w-48 h-8 rounded overflow-hidden border border-separator">
+                <div class="flex-1 bg-[var(--hover-after-primary)]"></div>
+                <div class="flex-1 bg-hover-after-primary"></div>
+            </div>
+        </div>
+        <div class="flex-x items-center gap-x-3">
+            <div class="w-96 text-xs font-mono">--background-01 &nbsp;→&nbsp; border-bg-01 / bg-01</div>
+            <div class="flex-x w-48 h-8 rounded overflow-hidden border border-separator bg-05">
+                <div class="flex-1 bg-[var(--background-01)]"></div>
+                <div class="flex-1 bg-01"></div>
+            </div>
+        </div>
+    </div>
+
+    <h3 class="mt-4">Gradients: <code>to-[var(--primary)]</code> → <code>to-primary</code></h3>
+    <p class="text-02 mb-2 max-w-192">Two full-width bars stacked; a visible horizontal seam means a mismatch.</p>
+    <div class="flex-y w-96 rounded overflow-hidden border border-separator">
+        <div class="h-8 bg-gradient-to-r from-[var(--magenta-40)] to-[var(--primary)]"></div>
+        <div class="h-8 bg-gradient-to-r from-[var(--magenta-40)] to-primary"></div>
+    </div>
+
+    <h3 class="mt-4">Hardcoded hex → existing palette var</h3>
+    <div class="flex-y gap-y-2">
+        <div class="flex-x items-center gap-x-3">
+            <div class="w-96 text-xs font-mono">#FF3880 &nbsp;→&nbsp; var(--magenta-60)</div>
+            <div class="flex-x w-48 h-8 rounded overflow-hidden border border-separator">
+                <div class="flex-1" style="background:#FF3880"></div>
+                <div class="flex-1 bg-[var(--magenta-60)]"></div>
+            </div>
+        </div>
+        <div class="flex-x items-center gap-x-3">
+            <div class="w-96 text-xs font-mono">#0C003D &nbsp;→&nbsp; var(--indigo-10)</div>
+            <div class="flex-x w-48 h-8 rounded overflow-hidden border border-separator">
+                <div class="flex-1" style="background:#0C003D"></div>
+                <div class="flex-1 bg-[var(--indigo-10)]"></div>
+            </div>
+        </div>
+        <div class="flex-x items-center gap-x-3">
+            <div class="w-96 text-xs font-mono">#0036A3 &nbsp;→&nbsp; var(--blue-30)</div>
+            <div class="flex-x w-48 h-8 rounded overflow-hidden border border-separator">
+                <div class="flex-1" style="background:#0036A3"></div>
+                <div class="flex-1 bg-[var(--blue-30)]"></div>
+            </div>
+        </div>
+    </div>
+</details>
+
+<h1>Utility colors</h1>
+<div class="separator-colors grid grid-cols-3 items-center justify-center gap-4">
+    <div class="flex items-center p-2 bg-new-separator text-danger">
+        bg-new-separator text-danger
+    </div>
+    <div class="flex items-center p-2 bg-hover text-01">
+        bg-hover text-01
+    </div>
+    <div class="flex items-center p-2 bg-selected text-01">
+        bg-selected text-01
+    </div>
+</div>
+
+<input placeholder="Placeholder"/>
+<TextBox @bind-Value="@_textBox"></TextBox>
+</div>
+
+@code {
+    private string _textBox = "Test TextBox";
+}
