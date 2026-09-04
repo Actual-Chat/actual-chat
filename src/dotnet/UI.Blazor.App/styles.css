@@ -111,6 +111,7 @@
 @import './Pages/emojis-test-page.css';
 @import './Pages/Test/date-time-test-page.css';
 @import './Pages/Test/banner-stack-test-page.css';
+@import './Pages/Test/call-test-page.css';
 
 @import './Components/AudioRecorder/Guides/guides.css';
 @import './Components/PhotoPermission/photo-troubleshooter-modal.css';

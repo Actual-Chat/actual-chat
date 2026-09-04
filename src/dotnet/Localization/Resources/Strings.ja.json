@@ -1454,6 +1454,7 @@
   "Video_Connecting": "接続中...",
   "Call_Ended": "通話が終了しました",
   "Call_CouldntStart": "通話を開始できませんでした",
+  "Call_NoMicrophoneAccess": "通話を開始できませんでした: マイクへのアクセスがありません。",
   "Call_RecordingTurnedOffByHost": "ホストが録音をオフにしました",
   "Call_MakeHost": "ホストにする",
   "Call_Join": "参加",

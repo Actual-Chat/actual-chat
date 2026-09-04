@@ -11,20 +11,14 @@
 
 <Banner
     IsVisible="@(status != CallStatus.None)"
-    Class="outgoing-call-banner">
+    Class="outgoing-call-banner"
+    ShowDismissButton="true"
+    DismissTooltip="@(status == CallStatus.Dialing ? L.Banner_CancelCall : L.Common_Close)"
+    Dismiss="@OnClose">
     <Icon><i class="@Icon(status) c-icon"></i></Icon>
     <Body>
         <div class="c-text">@Text(status)</div>
     </Body>
-    <Buttons>
-        <HeaderButton
-            Class="btn-close-call"
-            Click="@OnClose"
-            Tooltip="@(status == CallStatus.Dialing ? L.Banner_CancelCall : L.Common_Close)"
-            TooltipPosition="FloatingPosition.Top">
-            <i class="icon-close text-2xl"></i>
-        </HeaderButton>
-    </Buttons>
 </Banner>
 
 @code {

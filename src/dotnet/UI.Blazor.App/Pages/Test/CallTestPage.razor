@@ -1,0 +1,400 @@
+@page "/test/call"
+@namespace ActualChat.UI.Blazor.App.Pages
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Call UI</MainHeader>
+
+<div class="test-page-wrapper call-test-page">
+    <div class="c-intro">
+        <div>
+            Target design prototype for the call experience (from Figma). These are static mocks — the real
+            call components stay untouched for now. The feature ships behind the <code>IsIncompleteUIEnabled</code>
+            flag.
+        </div>
+        <div>
+            Model: ringing (incoming / outgoing) is a full-screen warm-gradient screen on mobile; the actual
+            conversation happens <b>inside the chat</b> — a live participants bar plus the streaming transcript
+            and a central record button. Desktop keeps the call in the 3-column chat layout.
+        </div>
+        <div>Live functional harness: <a href="/test/voice-call">/test/voice-call</a>.</div>
+    </div>
+
+    @* 1. How to call *@
+    <div class="c-section">
+        <div class="c-section-title">1. How to call</div>
+        <div class="c-section-note">
+            Phone button in the chat header starts an audio call; the video icon opens the camera preview.
+        </div>
+        <div class="c-frames">
+            <div class="dev-frame dev-phone">
+                <div class="dev-label">Android / iOS</div>
+                <div class="dev-screen">
+                    <div class="mock-chat">
+                        <div class="mock-header">
+                            <span class="c-back"><i class="icon-arrow-left"></i></span>
+                            <div class="c-avatar"></div>
+                            <div class="c-id"><div class="c-name">Romeo Yellow</div><div class="c-presence">online</div></div>
+                            <div class="c-btns">
+                                <span class="hint-btn"><i class="icon-phone-call text-xl"></i></span>
+                                <span class="hint-btn"><i class="icon-video text-xl"></i></span>
+                            </div>
+                        </div>
+                        <div class="transcript"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="dev-frame dev-desktop">
+                <div class="dev-label">Desktop / Windows</div>
+                <div class="dev-screen">
+                    <div class="mock-chat">
+                        <div class="mock-header">
+                            <div class="c-avatar"></div>
+                            <div class="c-id"><div class="c-name">Romeo Yellow</div><div class="c-presence">online</div></div>
+                            <div class="c-btns">
+                                <span class="hint-btn"><i class="icon-phone-call text-xl"></i></span>
+                                <span class="hint-btn"><i class="icon-video text-xl"></i></span>
+                            </div>
+                        </div>
+                        <div class="transcript"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* 2. Outgoing call *@
+    <div class="c-section">
+        <div class="c-section-title">2. Outgoing call</div>
+        <div class="c-section-note">
+            Full-screen ringing on mobile (Requesting → Ongoing with a timer). On desktop the call stays in the
+            chat with a compact status pill.
+        </div>
+        <div class="c-frames">
+            <div class="dev-frame dev-phone">
+                <div class="dev-label">Android / iOS <span class="c-tag">requesting</span></div>
+                <div class="dev-screen">
+                    <div class="call-fs">
+                        <div class="c-brand"><i class="icon-phone-call"></i> Voxt Outgoing Call</div>
+                        <div class="c-caller">
+                            <div class="c-avatar"></div>
+                            <div class="c-name">Romeo Yellow</div>
+                            <div class="c-status">Requesting…</div>
+                            <div class="c-timer">00:03</div>
+                        </div>
+                        <div class="c-toolbar">
+                            <span class="rbtn rbtn-neutral c-sm"><i class="icon-volume-up"></i></span>
+                            <span class="rbtn rbtn-neutral c-sm"><i class="icon-video"></i></span>
+                            <span class="rbtn rbtn-hangup"><i class="icon-phone-off"></i></span>
+                            <span class="rbtn rbtn-neutral c-sm"><i class="icon-screen-share"></i></span>
+                            <span class="rbtn rbtn-neutral c-sm"><i class="icon-collapse"></i></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="dev-frame dev-phone">
+                <div class="dev-label">Android / iOS <span class="c-tag">ongoing</span></div>
+                <div class="dev-screen">
+                    <div class="call-fs">
+                        <span class="c-close-top"><i class="icon-phone-off"></i></span>
+                        <div class="c-brand"><i class="icon-phone-call"></i> Voxt Call</div>
+                        <div class="c-caller">
+                            <div class="c-avatar"></div>
+                            <div class="c-name"><i class="icon-mic"></i>Romeo Yellow</div>
+                            <div class="c-timer">01:42</div>
+                        </div>
+                        <div class="c-toolbar">
+                            <span class="rbtn rbtn-neutral c-sm"><i class="icon-volume-up"></i></span>
+                            <span class="rbtn rbtn-neutral c-sm"><i class="icon-video"></i></span>
+                            <span class="rbtn c-sm" style="background-color:var(--call-magenta)"><i class="icon-mic"></i></span>
+                            <span class="rbtn rbtn-neutral c-sm"><i class="icon-message-ellipse"></i></span>
+                            <span class="rbtn rbtn-neutral c-sm"><i class="icon-collapse"></i></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="dev-frame dev-desktop">
+                <div class="dev-label">Desktop / Windows <span class="c-tag">in-chat</span></div>
+                <div class="dev-screen">
+                    <div class="mock-chat">
+                        <div class="mock-header">
+                            <div class="c-avatar"></div>
+                            <div class="c-id"><div class="c-name">Romeo Yellow</div><div class="c-presence">calling…</div></div>
+                            <div class="c-btns"><span class="hint-btn" style="color:var(--call-magenta)"><i class="icon-phone-off text-xl"></i></span></div>
+                        </div>
+                        <div class="call-pill"><i class="icon-phone-call"></i> Requesting… 00:03</div>
+                        <div class="transcript"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* 3. Incoming call *@
+    <div class="c-section">
+        <div class="c-section-title">3. Incoming call</div>
+        <div class="c-section-note">
+            Rendered with the REAL production classes — <code>author-modal</code>,
+            <code>incoming-call-modal</code>, <code>collapsed-incoming-call</code>,
+            <code>incoming-call-overlock</code> — so edits to <code>incoming-call-modal.css</code> /
+            <code>account-modal.css</code> show up here. Modal = foreground (X collapses to the draggable
+            island, ring muted). Over-lock = locked screen. Avatars are placeholders.
+        </div>
+        <div class="c-frames">
+            @* Modal — real classes: author-modal + incoming-call-modal *@
+            <div class="dev-frame dev-desktop">
+                <div class="dev-label">Modal <span class="c-tag">foreground</span></div>
+                <div class="dev-screen">
+                    <div class="mock-chat">
+                        <div class="mock-header">
+                            <div class="c-avatar"></div>
+                            <div class="c-id"><div class="c-name">Johnson Family</div><div class="c-presence" style="color:var(--text-03)">11 members</div></div>
+                        </div>
+                        <div class="transcript"></div>
+                        <div class="tp-stage">
+                            <div class="author-modal incoming-call-modal tp-modal-card">
+                                <div class="dialog-body">
+                                    <div class="c-header">
+                                        <button type="button" class="btn btn-round author-modal-close-btn close-btn btn-sm"><i class="icon-close text-2xl"></i></button>
+                                        <div class="c-top"><div class="avatar-circle" style="height:100%;background:linear-gradient(135deg,#f0c987,#b06a3a)"></div></div>
+                                        <div class="c-center"><div class="avatar-circle" style="width:4rem;height:4rem;border-radius:9999px;background:linear-gradient(135deg,#f0c987,#b06a3a)"></div></div>
+                                        <div class="c-bottom"><div class="c-title"><span class="call-text">Incoming call from</span> <span class="text-02 text-headline-7">Romeo Yellow</span></div></div>
+                                    </div>
+                                </div>
+                                <div class="dialog-buttons">
+                                    <button type="button" class="c-call-btn c-decline"><i class="icon-close"></i></button>
+                                    <button type="button" class="c-call-btn c-mute"><i class="icon-bell-off"></i></button>
+                                    <button type="button" class="c-call-btn c-message"><i class="icon-message-ellipse"></i></button>
+                                    <button type="button" class="c-call-btn c-accept"><i class="icon-phone-take"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Collapsed island — real class: collapsed-incoming-call *@
+            <div class="dev-frame dev-desktop">
+                <div class="dev-label">Collapsed island <span class="c-tag">draggable</span></div>
+                <div class="dev-screen">
+                    <div class="mock-chat">
+                        <div class="mock-header">
+                            <div class="c-avatar"></div>
+                            <div class="c-id"><div class="c-name">Johnson Family</div><div class="c-presence" style="color:var(--text-03)">11 members</div></div>
+                        </div>
+                        <div class="collapsed-incoming-call">
+                            <div class="c-av"><div class="avatar-circle" style="width:100%;height:100%;border-radius:9999px;background:linear-gradient(135deg,#f0c987,#b06a3a)"></div></div>
+                            <div class="c-gap"></div>
+                            <button type="button" class="btn btn-round c-decline btn-sm"><i class="icon-close text-xl"></i></button>
+                            <button type="button" class="btn btn-round c-accept btn-sm"><i class="icon-phone-take text-xl"></i></button>
+                        </div>
+                        <div class="transcript"></div>
+                    </div>
+                </div>
+            </div>
+
+            @* Over-lock — real class: incoming-call-overlock (locked screen) *@
+            <div class="dev-frame dev-phone">
+                <div class="dev-label">Over-lock <span class="c-tag">locked screen</span></div>
+                <div class="dev-screen">
+                    <div class="incoming-call-overlock">
+                        <div class="c-body">
+                            <div class="avatar-circle" style="width:5rem;height:5rem;border-radius:.75rem;background:linear-gradient(135deg,#f0c987,#b06a3a)"></div>
+                            <div class="c-title">Romeo Yellow</div>
+                            <div class="c-subtitle">is calling you…</div>
+                        </div>
+                        <div class="c-buttons">
+                            <button type="button" class="btn btn-round btn-decline btn-danger"><i class="icon-close text-2xl"></i></button>
+                            <button type="button" class="btn btn-round btn-mute"><i class="icon-bell-off text-2xl"></i></button>
+                            <button type="button" class="btn btn-round btn-message"><i class="icon-message-ellipse text-2xl"></i></button>
+                            <button type="button" class="btn btn-round btn-accept btn-primary"><i class="icon-phone-take text-2xl"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* 4. In call *@
+    <div class="c-section">
+        <div class="c-section-title">4. In call (both in conversation)</div>
+        <div class="c-section-note">
+            The call is the chat: header presence, a live participants bar with the red leave button, the streaming
+            transcript, and the central record button (magenta for voice, violet for a group / assistant call).
+        </div>
+        <div class="c-frames">
+            <div class="dev-frame dev-phone">
+                <div class="dev-label">Android / iOS <span class="c-tag">voice</span></div>
+                <div class="dev-screen">
+                    <div class="mock-chat">
+                        <div class="mock-header">
+                            <span class="c-back"><i class="icon-arrow-left"></i></span>
+                            <div class="c-avatar"></div>
+                            <div class="c-id"><div class="c-name">Romeo Yellow</div><div class="c-presence">online</div></div>
+                            <div class="c-btns"><span class="c-leave"><i class="icon-phone-off"></i></span></div>
+                        </div>
+                        <div class="summary-bar">
+                            <i class="icon-voice-to-text-message c-ico"></i>
+                            <div class="c-txt">Editor file placement and the different display options</div>
+                            <i class="icon-expand c-expand"></i>
+                        </div>
+                        <div class="transcript">
+                            <div class="msg">
+                                <div class="c-avatar"></div>
+                                <div class="c-bubble">
+                                    <div class="c-meta"><span class="c-author c-c2">Lee Chang</span><span class="c-time">14:20</span></div>
+                                    <div class="c-text"><i class="icon-voice-to-text-message icon-speaker"></i><span>I'm looking for an acoustic guitar with a rich tone.</span></div>
+                                </div>
+                            </div>
+                            <div class="msg">
+                                <div class="c-avatar"></div>
+                                <div class="c-bubble">
+                                    <div class="c-meta"><span class="c-author c-c1">Rumia | Music Store</span><span class="c-time">14:20</span></div>
+                                    <div class="c-text"><i class="icon-voice-to-text-message icon-speaker"></i><span>We have a great selection of acoustic guitars.</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="call-toolbar">
+                            <span class="c-btn"><i class="icon-video"></i></span>
+                            <span class="rec-fab c-voice"><i class="icon-mic"></i></span>
+                            <span class="c-btn"><i class="icon-settings"></i></span>
+                            <span class="c-btn"><i class="icon-volume-up"></i></span>
+                        </div>
+                        <div class="input-bar">
+                            <span><i class="icon-plus-circle"></i></span>
+                            <div class="c-field">Message…</div>
+                            <span><i class="icon-bell"></i></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dev-frame dev-phone">
+                <div class="dev-label">Android / iOS <span class="c-tag">group</span></div>
+                <div class="dev-screen">
+                    <div class="mock-chat">
+                        <div class="mock-header">
+                            <span class="c-back"><i class="icon-arrow-left"></i></span>
+                            <div class="c-avatar"></div>
+                            <div class="c-id"><div class="c-name">Chat assistant discussion</div><div class="c-presence" style="color:var(--text-03)">28 members</div></div>
+                            <div class="c-btns"><span style="color:var(--call-magenta)"><i class="icon-phone-off"></i></span></div>
+                        </div>
+                        <div class="transcript">
+                            <div class="msg">
+                                <div class="c-avatar"></div>
+                                <div class="c-bubble">
+                                    <div class="c-meta"><span class="c-author c-c2">John Black</span><span class="c-time">8:40</span></div>
+                                    <div class="c-text"><span>Did you finish the physics homework on atomic energy?</span></div>
+                                </div>
+                            </div>
+                            <div class="msg">
+                                <div class="c-avatar"></div>
+                                <div class="c-bubble">
+                                    <div class="c-meta"><span class="c-author c-c3">Emma Wotson</span><span class="c-time">8:42</span><span class="c-time">translated</span></div>
+                                    <div class="c-text"><i class="icon-voice-to-text-message icon-speaker"></i><span>The best superconductors we know require very low temperatures…</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="input-bar">
+                            <span><i class="icon-phone-off c-hangup" style="color:var(--call-magenta)"></i></span>
+                            <span class="rec-fab c-group" style="width:3rem;height:3rem"><i class="icon-mic"></i></span>
+                            <div class="c-field">Message…</div>
+                            <span class="c-lang">EN</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dev-frame dev-desktop">
+                <div class="dev-label">Desktop / Windows <span class="c-tag">3-column</span></div>
+                <div class="dev-screen">
+                    <div class="desktop-call">
+                        <div class="col-list">
+                            <div class="list-item"><span class="c-dot"></span><span class="c-nm">Housekeeping</span></div>
+                            <div class="list-item"><span class="c-dot"></span><span class="c-nm">Fun staff</span><i class="icon-phone-call"></i></div>
+                            <div class="list-item"><span class="c-dot"></span><span class="c-nm">Holidays</span></div>
+                            <div class="list-item"><span class="c-dot"></span><span class="c-nm">Dad</span></div>
+                        </div>
+                        <div class="col-main">
+                            <div class="mock-header">
+                                <div class="c-avatar"></div>
+                                <div class="c-id"><div class="c-name">Fun staff</div><div class="c-presence">ongoing call · 01:42</div></div>
+                                <div class="c-btns"><span style="color:var(--call-magenta)"><i class="icon-phone-off text-xl"></i></span></div>
+                            </div>
+                            <div class="transcript">
+                                <div class="msg">
+                                    <div class="c-avatar"></div>
+                                    <div class="c-bubble">
+                                        <div class="c-meta"><span class="c-author c-c1">Rumia | Music Store</span><span class="c-time">14:20</span></div>
+                                        <div class="c-text"><i class="icon-voice-to-text-message icon-speaker"></i><span>Of course! What type of guitar are you looking for?</span></div>
+                                    </div>
+                                </div>
+                                <div class="msg">
+                                    <div class="c-avatar"></div>
+                                    <div class="c-bubble">
+                                        <div class="c-meta"><span class="c-author c-c2">Lee Chang</span><span class="c-time">14:20</span></div>
+                                        <div class="c-text"><i class="icon-voice-to-text-message icon-speaker"></i><span>Any recommendations for a rich tone?</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="call-toolbar">
+                                <span class="c-btn c-hangup"><i class="icon-phone-off"></i></span>
+                                <span class="rec-fab c-voice"><i class="icon-mic"></i></span>
+                                <span class="c-btn"><i class="icon-video"></i></span>
+                            </div>
+                        </div>
+                        <div class="col-right">
+                            <div class="c-hd">Members</div>
+                            <div class="member"><span class="c-dot"></span><span class="c-nm">Rumia</span><i class="icon-mic"></i></div>
+                            <div class="member"><span class="c-dot"></span><span class="c-nm">Lee Chang</span><i class="icon-mic"></i></div>
+                            <div class="member"><span class="c-dot"></span><span class="c-nm">Yenifer</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* 5. Call log & mini indicator *@
+    <div class="c-section">
+        <div class="c-section-title">5. Call log &amp; active-call indicator</div>
+        <div class="c-section-note">
+            Calls leave system entries in the chat, and an active call shows a pill at the top while you browse
+            other chats.
+        </div>
+        <div class="c-frames">
+            <div class="dev-frame dev-phone">
+                <div class="dev-label">Call log <span class="c-tag">in chat</span></div>
+                <div class="dev-screen">
+                    <div class="mock-chat">
+                        <div class="mock-header">
+                            <span class="c-back"><i class="icon-arrow-left"></i></span>
+                            <div class="c-avatar"></div>
+                            <div class="c-id"><div class="c-name">Romeo Yellow</div><div class="c-presence">online</div></div>
+                        </div>
+                        <div class="call-log">
+                            <div class="row c-out"><span class="c-ico"><i class="icon-phone-call"></i></span><span class="c-lbl">Outgoing call</span><span class="c-t">01:42</span></div>
+                            <div class="row c-in"><span class="c-ico"><i class="icon-phone"></i></span><span class="c-lbl">Incoming call</span><span class="c-t">00:58</span></div>
+                            <div class="row c-out"><span class="c-ico"><i class="icon-phone-call"></i></span><span class="c-lbl">Ongoing call</span><span class="c-t">now</span></div>
+                            <div class="row c-in"><span class="c-ico"><i class="icon-phone"></i></span><span class="c-lbl">Call ended</span><span class="c-t">12:03</span></div>
+                            <div class="row c-missed"><span class="c-ico"><i class="icon-phone-missed"></i></span><span class="c-lbl">Missed call</span><span class="c-t">Mon</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="dev-frame dev-phone">
+                <div class="dev-label">Active call <span class="c-tag">other chat</span></div>
+                <div class="dev-screen">
+                    <div class="mock-chat">
+                        <div class="mock-header">
+                            <span class="c-back"><i class="icon-arrow-left"></i></span>
+                            <div class="c-avatar"></div>
+                            <div class="c-id"><div class="c-name">Johnson Family</div><div class="c-presence" style="color:var(--text-03)">11 members</div></div>
+                        </div>
+                        <div class="call-pill"><i class="icon-phone-call"></i> Ongoing call · 01:42</div>
+                        <div class="transcript"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

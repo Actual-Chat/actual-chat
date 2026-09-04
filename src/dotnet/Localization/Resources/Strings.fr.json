@@ -1454,6 +1454,7 @@
   "Video_Connecting": "Connexion...",
   "Call_Ended": "Appel terminé",
   "Call_CouldntStart": "Impossible de démarrer l'appel",
+  "Call_NoMicrophoneAccess": "Impossible de démarrer l'appel : pas d'accès au microphone.",
   "Call_RecordingTurnedOffByHost": "Enregistrement désactivé par l'hôte",
   "Call_MakeHost": "Définir comme hôte",
   "Call_Join": "Rejoindre",

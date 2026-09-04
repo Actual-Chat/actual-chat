@@ -1454,6 +1454,7 @@
   "Video_Connecting": "Свързване...",
   "Call_Ended": "Обаждането приключи",
   "Call_CouldntStart": "Обаждането не можа да започне",
+  "Call_NoMicrophoneAccess": "Обаждането не можа да започне: няма достъп до микрофона.",
   "Call_RecordingTurnedOffByHost": "Записът е изключен от водещия",
   "Call_MakeHost": "Направете водещ",
   "Call_Join": "Присъединете се",

@@ -1454,6 +1454,7 @@
   "Video_Connecting": "正在连接…",
   "Call_Ended": "通话已结束",
   "Call_CouldntStart": "无法发起通话",
+  "Call_NoMicrophoneAccess": "无法发起通话：无法访问麦克风。",
   "Call_RecordingTurnedOffByHost": "主持人已关闭录音",
   "Call_MakeHost": "设为主持人",
   "Call_Join": "加入",

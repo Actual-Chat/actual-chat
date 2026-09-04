@@ -1454,6 +1454,7 @@
   "Video_Connecting": "연결 중...",
   "Call_Ended": "통화가 종료되었습니다",
   "Call_CouldntStart": "통화를 시작하지 못했습니다",
+  "Call_NoMicrophoneAccess": "통화를 시작하지 못했습니다: 마이크 접근 권한이 없습니다.",
   "Call_RecordingTurnedOffByHost": "호스트가 녹음을 껐습니다",
   "Call_MakeHost": "호스트로 지정",
   "Call_Join": "참여",

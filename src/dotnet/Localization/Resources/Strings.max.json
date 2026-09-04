@@ -1735,6 +1735,7 @@
   // Call state text and the call action buttons.
   "Call_Ended": "통화가 종료되었습니다",
   "Call_CouldntStart": "Anruf konnte nicht gestartet werden",
+  "Call_NoMicrophoneAccess": "通話を開始できませんでした: マイクへのアクセスがありません。",
   "Call_RecordingTurnedOffByHost": "Nagrywanie wyłączone przez prowadzącego",
   "Call_MakeHost": "Ustaw jako prowadzącego",
   // "Join" in the call sense - entering a call that is already running, not

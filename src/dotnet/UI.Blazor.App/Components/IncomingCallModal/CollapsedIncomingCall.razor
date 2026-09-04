@@ -1,0 +1,86 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Module
+@inherits ComputedStateComponent<AppUIHub, CollapsedIncomingCall.ComputedModel>
+@{
+    var m = State.Value;
+    if (m.Call is not { } call)
+        return;
+}
+
+<div class="collapsed-incoming-call" @ref="Ref">
+    <div class="c-av" @onclick="@OnExpandClick">
+        <AuthorCircle AuthorId="@call.Caller" Size="SquareSize.Size10"/>
+    </div>
+    <div class="c-name" @onclick="@OnExpandClick">
+        <AuthorName AuthorId="@call.Caller" Class="c-caller-name" ShowDetailsOnClick="false"/>
+    </div>
+    <ButtonRound Class="c-decline" Click="@OnDeclineClick">
+        <i class="icon-close text-2xl"></i>
+    </ButtonRound>
+    <ButtonRound Class="c-accept" Click="@OnAcceptClick">
+        <i class="icon-phone-take text-lg"></i>
+    </ButtonRound>
+</div>
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.CollapsedIncomingCall.create";
+
+    private ElementReference Ref { get; set; }
+    private IJSObjectReference? _jsRef;
+
+    private IncomingCallUI IncomingCallUI => Hub.IncomingCallUI;
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ComputedModel>.Options() {
+                InitialValue = ComputedModel.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var chatId = await IncomingCallUI.CollapsedChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (chatId is not { } id)
+            return ComputedModel.None;
+
+        var call = await IncomingCallUI.GetRingingCall(id, cancellationToken).ConfigureAwait(false);
+        return call is null ? ComputedModel.None : new ComputedModel { Call = call };
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        // Attach / detach the drag controller as the island appears and disappears.
+        var isShowing = State.Value.Call is not null;
+        if (isShowing && _jsRef is null)
+            _jsRef = await Hub.JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref).ConfigureAwait(true);
+        else if (!isShowing && _jsRef is not null) {
+            await _jsRef.DisposeAsync().ConfigureAwait(true);
+            _jsRef = null;
+        }
+    }
+
+    public override async ValueTask DisposeAsync() {
+        if (_jsRef is not null) {
+            await _jsRef.DisposeAsync().ConfigureAwait(true);
+            _jsRef = null;
+        }
+        await base.DisposeAsync().ConfigureAwait(true);
+    }
+
+    private void OnExpandClick() {
+        if (State.Value.Call is { } call)
+            IncomingCallUI.Expand(call.ChatId);
+    }
+
+    private Task OnAcceptClick()
+        => State.Value.Call is { } call ? IncomingCallUI.Accept(call.ChatId) : Task.CompletedTask;
+
+    private Task OnDeclineClick()
+        => State.Value.Call is { } call ? IncomingCallUI.Decline(call.ChatId) : Task.CompletedTask;
+
+    // Nested types
+
+    public sealed record ComputedModel {
+        public static readonly ComputedModel None = new();
+        public IncomingCall? Call { get; init; }
+    }
+}

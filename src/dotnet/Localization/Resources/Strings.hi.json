@@ -1454,6 +1454,7 @@
   "Video_Connecting": "कनेक्ट हो रहा है...",
   "Call_Ended": "कॉल समाप्त",
   "Call_CouldntStart": "कॉल शुरू नहीं हो सकी",
+  "Call_NoMicrophoneAccess": "कॉल शुरू नहीं हो सकी: माइक्रोफ़ोन की अनुमति नहीं है।",
   "Call_RecordingTurnedOffByHost": "होस्ट ने रिकॉर्डिंग बंद कर दी",
   "Call_MakeHost": "होस्ट बनाएँ",
   "Call_Join": "शामिल हों",
