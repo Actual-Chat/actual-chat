@@ -6,7 +6,7 @@ using ActualChat.Search;
 
 namespace ActualChat.MLSearch.Flows;
 
-[Flow(DelayQuanta = 30)]
+[Flow(DelayQuanta = 30, DataVersion = 2)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial class EntryIndexingFlow : BatchedIndexingFlow<ChatEntry, ChatEntryId>
 {

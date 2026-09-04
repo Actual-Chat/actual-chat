@@ -2,6 +2,7 @@ using ActualChat.Flows;
 
 namespace ActualChat.MLSearch.Flows;
 
+[Flow(DataVersion = 2)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class EntryIndexingMasterFlow
     : IndexingMasterFlow<EntryIndexingFlow, Chat.Chat, ChatId>, IMasterFlow
