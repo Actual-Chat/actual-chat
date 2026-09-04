@@ -85,10 +85,18 @@ public partial class CallUI
                 chatId, call.Origin, call.Phase, action);
             switch (action) {
             case HoldingAction.Join:
-                if (TryCommitActive(chatId))
+                if (TryCommitActive(chatId)) {
+                    // Reported before the join: it is what flips the platform call UI to connected,
+                    // and the join can sit on a permission prompt for as long as it likes.
+                    SystemCallUI.OnOutgoingCallStatusChanged(chatId, CallerStatus.Active);
                     _ = StartAnsweredCallAudio(chatId, cancellationToken);
+                }
                 break;
             case HoldingAction.Release:
+                // A dialing call let go here was never picked up - a decline reads the same to the
+                // caller. The user's own cancel never gets here: CancelCall frees the slot first.
+                if (call is { Origin: CallOrigin.Outgoing, Phase: CallPhase.Dialing })
+                    SystemCallUI.OnOutgoingCallStatusChanged(chatId, CallerStatus.NoAnswer);
                 Release(chatId);
                 return;
             }

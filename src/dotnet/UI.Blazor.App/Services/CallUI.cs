@@ -21,6 +21,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private readonly HashSet<ChatId> _busyAckedChatIds = [];
 
     private IIncomingCallsBridge? Bridge { get; }
+    private ISystemCallUI SystemCallUI => field ??= Hub.Services.GetRequiredService<ISystemCallUI>();
     private ILiveSessions LiveSessions => Hub.LiveSessions;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
@@ -140,12 +141,16 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             Log.LogWarning(e, "StartCall failed for chat #{ChatId}", chatId);
             var message = e is InvalidOperationException ? e.Message : L.Call_CouldntStart;
             Hub.ToastUI.Show(message, "icon-phone-hang-up", ToastDismissDelay.Short);
+            return;
         }
+
+        SystemCallUI.OnOutgoingCallStarted(chatId, hasVideo);
     }
 
     public Task CancelCall(ChatId chatId, CancellationToken cancellationToken)
     {
         Release(chatId);
+        SystemCallUI.OnOutgoingCallCancelled(chatId);
         return LiveSessions.CancelCall(Session, chatId, cancellationToken);
     }
 
