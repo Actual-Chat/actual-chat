@@ -331,8 +331,13 @@ public class NotificationsBackend(IServiceProvider services)
             dbDevice.AccessedAt = Clocks.SystemClock.Now;
             if (dbDevice.Type == DeviceType.WebBrowser && deviceType != DeviceType.WebBrowser)
                 dbDevice.Type = deviceType; // Now MAUI app reports device type properly, lets update it.
-            if (dbDevice.SessionHash.IsNullOrEmpty() && !sessionHash.IsEmpty)
+            if (!sessionHash.IsEmpty && dbDevice.SessionHash != sessionHash.Value) {
+                // Refreshed on every re-registration: the hash changes on re-sign-in, and a stale
+                // one breaks the VoIP/FCM join that keeps a ringing iPhone from also buzzing.
+                // An empty incoming hash still never blanks a known one.
                 dbDevice.SessionHash = sessionHash;
+                isChanged = true;
+            }
             if (dbDevice.IsPttEnabled != isPttEnabled) {
                 // ListDevices must invalidate, or SendPttWake keeps serving the stale flag.
                 dbDevice.IsPttEnabled = isPttEnabled;
