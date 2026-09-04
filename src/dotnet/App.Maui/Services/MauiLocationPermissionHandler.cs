@@ -28,6 +28,12 @@ public class MauiLocationPermissionHandler : LocationPermissionHandler
             Log.LogWarning("Get: AppxManifest.xml not found, assuming location permission is granted (unpackaged mode)");
             return true;
         }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            // E.g. the usage description missing from Info.plist: MAUI asserts the bundle configuration
+            // before it reads the real state, and that's "undetermined" here, not a failure
+            Log.LogWarning(e, "Get: CheckStatusAsync<MauiPermissions.LocationWhenInUse>() failed");
+            return null;
+        }
         Log.LogInformation("Get: CheckStatusAsync<MauiPermissions.LocationWhenInUse>() response: {Status}", status);
         return status switch {
             PermissionStatus.Granted => true,

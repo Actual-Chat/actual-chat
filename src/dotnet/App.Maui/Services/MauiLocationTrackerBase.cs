@@ -5,13 +5,25 @@ public abstract class MauiLocationTrackerBase(AppUIHub hub) : LocationTrackerBas
 {
     protected override async Task<GeoFix?> Fetch(bool mustBeFresh, CancellationToken cancellationToken)
     {
-        if (!mustBeFresh && await Geolocation.Default.GetLastKnownLocationAsync().ConfigureAwait(false) is { } cached)
-            return cached.ToGeoFix();
+        try {
+            if (!mustBeFresh) {
+                var cached = await Geolocation.Default.GetLastKnownLocationAsync().ConfigureAwait(false);
+                if (cached is not null)
+                    return cached.ToGeoFix();
+            }
 
-        var accuracy = await GetGeolocationAccuracy(cancellationToken).ConfigureAwait(false);
-        var request = new GeolocationRequest(accuracy, Constants.Location.GetTimeout);
-        var location = await Geolocation.Default.GetLocationAsync(request, cancellationToken).ConfigureAwait(false);
-        return location?.ToGeoFix();
+            var accuracy = await GetGeolocationAccuracy(cancellationToken).ConfigureAwait(false);
+            var request = new GeolocationRequest(accuracy, Constants.Location.GetTimeout);
+            var location = await Geolocation.Default.GetLocationAsync(request, cancellationToken).ConfigureAwait(false);
+            return location?.ToGeoFix();
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            // Location services off or the permission revoked mid-session: MAUI throws here,
+            // while "no fix" is null everywhere else on this path, so it's reported the same way
+            Log.LogWarning(e, "Fetch failed");
+            SetError(ToTrackingError(e));
+            return null;
+        }
     }
 
     protected async Task<GeolocationAccuracy> GetGeolocationAccuracy(CancellationToken cancellationToken)
