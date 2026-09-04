@@ -402,7 +402,10 @@ answered by #4125; the language question, by #4261:
 `Info.plist` was the one genuinely native part, and #4259 closed it the way i18n.md
 now describes: one hand-maintained `<lang>.lproj/InfoPlist.strings` per UI language
 under `App.Maui/Platforms/iOS/Resources`, kept outside the catalog on purpose so the
-other platforms don't embed strings only Apple can show.
+other platforms don't embed strings only Apple can show. The OS picks the folder by
+the app's per-app language, so `AppleLanguages.Set` writes the in-app selection into
+that default (and clears it for auto) on every launch; the iOS Settings row is not a
+second source. It applies from the next launch.
 
 ---
 

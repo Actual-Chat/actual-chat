@@ -52,6 +52,9 @@ public class MauiBrowserInfo : BrowserInfo
         // Written on every launch, not only on a change: this is also how the iOS share extension
         // learns the language, and its App Group may still be empty from an earlier version.
         MauiPreferences.UILanguage = UILanguage;
+#if IOS || MACCATALYST || MACOS
+        AppleLanguages.Set(StoredUILanguage);
+#endif
         // We don't want to change any other properties here
 
         WhenReadySource.TrySetResult();
