@@ -41,7 +41,7 @@ public static partial class MauiProgram
             c.AppUIHub(),
             c.GetRequiredService<IosUploadKeepAlive>()));
 #if IS_DEV_MAUI
-        services.AddScoped<IIncomingCallsBridge>(_ => new IosIncomingCallsBridge());
+        services.AddScoped<IIncomingCallsBridge>(c => new IosIncomingCallsBridge(c.AppUIHub()));
 #endif
     }
 

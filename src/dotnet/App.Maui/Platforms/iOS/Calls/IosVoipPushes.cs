@@ -1,7 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Diagnostics;
-using ActualLab.Locking;
 using CoreFoundation;
 using Foundation;
 using PushKit;
@@ -16,10 +15,9 @@ namespace ActualChat.App.Maui;
 /// </summary>
 public class IosVoipPushes : PKPushRegistryDelegate
 {
-    public static readonly IosVoipPushes Instance = new();
+    public static IosVoipPushes Instance { get; } = new();
 
     private readonly PKPushRegistry _registry = new(DispatchQueue.MainQueue);
-    private readonly AsyncLock _lock = new();
     private ILogger Log => field ??= StaticLog.For<IosVoipPushes>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.IosCalls);
 
@@ -40,7 +38,6 @@ public class IosVoipPushes : PKPushRegistryDelegate
 
         Log.LogInformation("DidUpdatePushCredentials: token received, length={Length}", token.Length);
         _ = DispatchToBlazor(async c => {
-                using var _1 = await _lock.Lock(CancellationToken.None).ConfigureAwait(false);
                 // The token arrives before sign-in on a fresh install, and registering it
                 // against a guest account silently binds it to nobody.
                 var accountUI = c.GetRequiredService<AccountUI>();

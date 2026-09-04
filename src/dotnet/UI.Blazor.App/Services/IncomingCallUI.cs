@@ -98,7 +98,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return;
 
         EndRing(chatId);
-        _ = Bridge?.OnCallHandled(false);
+        _ = Bridge?.OnCallHandled(chatId, false);
     }
 
     [ComputeMethod]
@@ -150,7 +150,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         var call = await GetRingingCall(chatId, default).ConfigureAwait(true);
         EndRing(chatId);
         if (call is null) {
-            _ = Bridge?.OnCallHandled(false);
+            _ = Bridge?.OnCallHandled(chatId, false);
             Hub.ToastUI.Show(L.Call_Ended, "icon-phone", ToastDismissDelay.Short);
             return;
         }
@@ -164,7 +164,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
         catch (Exception e) {
             _isAccepting.Value = false;
-            _ = Bridge?.OnCallHandled(false);
+            _ = Bridge?.OnCallHandled(chatId, false);
             Log.LogWarning(e, "AcceptCall failed for chat #{ChatId}", chatId);
             Hub.ToastUI.Show(L.Call_Ended, "icon-phone", ToastDismissDelay.Short);
             return;
@@ -179,7 +179,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             // FGS can't start from a background state.
             var canStartAudio = isOverLockScreen
                 || Bridge is null
-                || await Bridge.OnCallHandled(true).ConfigureAwait(true);
+                || await Bridge.OnCallHandled(chatId, true).ConfigureAwait(true);
             // Over the lock screen the chat opens only on go-to-chat (after PIN); the in-call screen
             // covers everything until then. Audio doesn't need the chat route — it's state-driven.
             if (!isOverLockScreen)
@@ -207,7 +207,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (isOverLockScreen)
             Bridge?.MoveBehindLockScreen();
         else
-            _ = Bridge?.OnCallHandled(false);
+            _ = Bridge?.OnCallHandled(chatId, false);
         try {
             await LiveSessionUI.DeclineCall(chatId, default).ConfigureAwait(false);
         }
@@ -220,7 +220,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     // in-call screen and open the chat. On a cancelled PIN we stay on the in-call screen.
     public async Task GoToChat(ChatId chatId)
     {
-        var isUnlocked = Bridge is null || await Bridge.OnCallHandled(true).ConfigureAwait(true);
+        var isUnlocked = Bridge is null || await Bridge.OnCallHandled(chatId, true).ConfigureAwait(true);
         if (!isUnlocked)
             return;
 

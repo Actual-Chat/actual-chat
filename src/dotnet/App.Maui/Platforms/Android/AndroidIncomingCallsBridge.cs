@@ -14,7 +14,7 @@ public sealed class AndroidIncomingCallsBridge : IIncomingCallsBridge, IDisposab
     public void StopRinging()
         => IncomingCallRinger.Stop();
 
-    public Task<bool> OnCallHandled(bool accepted)
+    public Task<bool> OnCallHandled(ChatId chatId, bool accepted)
     {
         var tcs = TaskCompletionSourceExt.New<bool>();
         BeginDispatchToMainThread(() => {
@@ -54,7 +54,8 @@ public sealed class AndroidIncomingCallsBridge : IIncomingCallsBridge, IDisposab
     public void MoveBehindLockScreen()
         => BeginDispatchToMainThread(() => {
             try {
-                DebugLog?.LogInformation("CALL_TRACE: Bridge.MoveBehindLockScreen → DisableShowWhenLocked + MoveTaskToBack");
+                DebugLog?.LogInformation(
+                    "CALL_TRACE: Bridge.MoveBehindLockScreen → DisableShowWhenLocked + MoveTaskToBack");
                 var activity = MainActivity.Current;
                 activity.DisableShowWhenLocked();
                 activity.MoveTaskToBack(true);
