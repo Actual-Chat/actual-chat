@@ -36,6 +36,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
+    private ISystemCallUI SystemCallUI => field ??= Hub.Services.GetRequiredService<ISystemCallUI>();
     private Moment Now => Clocks.CpuClock.Now;
 
     void INotifyInitialized.Initialized()
@@ -118,6 +119,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             return;
         }
 
+        SystemCallUI.OnOutgoingCallStarted(chatId, hasVideo);
         StartCallWatch(chatId);
     }
 
@@ -130,6 +132,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     public Task CancelCall(ChatId chatId, CancellationToken cancellationToken)
     {
         StopCallWatch(chatId);
+        SystemCallUI.OnOutgoingCallCancelled(chatId);
         return LiveSessions.CancelCall(Session, chatId, cancellationToken);
     }
 
@@ -338,6 +341,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     {
         var cancellationToken = cts.Token;
         var isRingbackOn = false;
+        var isStatusReported = false;
         try {
             var watchStartedAt = Now;
             var isDialing = false;
@@ -358,12 +362,20 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
                 }
                 else if (isDialing) {
                     // A session that outlives dialing was answered; a vanished one ended without one.
-                    if (live is not null)
+                    if (live is not null) {
+                        // Reported before the join: it is what flips the platform call UI to connected,
+                        // and JoinAnsweredCall can sit on a permission prompt for as long as it likes.
+                        ReportStatus(CallStatus.Accepted);
                         await JoinAnsweredCall(chatId, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                        ReportStatus(await GetEndedCallStatus(chatId, cancellationToken).ConfigureAwait(false));
                     return;
                 }
-                else if (Now - watchStartedAt > DialingWaitTimeout)
+                else if (Now - watchStartedAt > DialingWaitTimeout) {
+                    ReportStatus(CallStatus.NoAnswer);
                     return;
+                }
 
                 await computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
                 computed = await computed.Update(cancellationToken).ConfigureAwait(false);
@@ -375,9 +387,32 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         finally {
             if (isRingbackOn)
                 StopRingback(cts);
+            // Token-based rather than caught-by-type: a foreign OperationCanceledException (Fusion
+            // raises those from RPC and state churn) escapes the catch above, and a platform call UI
+            // told nothing about the outcome keeps its call up until the user takes it down. Our own
+            // cancellation reports nothing - CancelCall has already said so.
+            if (!cancellationToken.IsCancellationRequested)
+                ReportStatus(CallStatus.NoAnswer);
             // Only our own registration: a restart has already replaced it by the time we unwind.
             _callWatches.TryRemove(new KeyValuePair<ChatId, CancellationTokenSource>(chatId, cts));
         }
+        return;
+
+        void ReportStatus(CallStatus status) {
+            if (isStatusReported)
+                return;
+
+            isStatusReported = true;
+            SystemCallUI.OnOutgoingCallStatusChanged(chatId, status);
+        }
+    }
+
+    private async Task<CallStatus> GetEndedCallStatus(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var status = await GetCallStatus(chatId, cancellationToken).ConfigureAwait(false);
+        // Anything but an explicit decline reads as "nobody picked up": the session we watched is
+        // already gone, and None is simply the status record expiring.
+        return status == CallStatus.Declined ? status : CallStatus.NoAnswer;
     }
 
     private void StartRingback(object owner)
