@@ -34,6 +34,33 @@ public static class NotificationBeepPolicy
                 : notification.BeepGroup,
         };
 
+    // Spoken messages measure the lull against the longer voice interval: at BeepResetPeriod an
+    // ordinary pause mid-monologue would re-arm the beep on the very next utterance.
+    public static TimeSpan GetLullPeriod(string? beepGroup)
+        => beepGroup.IsNullOrEmpty()
+            ? Constants.Notification.BeepResetPeriod
+            : Constants.Notification.VoiceReAlertInterval;
+
+    public static BeepMemory Remember(ChatEntryRelatedNotification removed)
+        => new(removed.Id, removed.SentAt, removed.BeepCount, removed.LastBeepAt,
+            removed.BeepGroup ?? "", removed.LastBeepGroup ?? "");
+
+    // Seeds a fresh notification with the beep state its removed predecessor left behind, under
+    // the same lull and speaker-change rules MergeWith applies to a live one.
+    public static ChatEntryRelatedNotification Inherit(ChatEntryRelatedNotification fresh, BeepMemory memory)
+    {
+        var beepGroup = fresh.BeepGroup ?? "";
+        if (fresh.SentAt - memory.SentAt >= GetLullPeriod(beepGroup))
+            return fresh;
+
+        var isSpeakerChanged = !beepGroup.IsNullOrEmpty() && beepGroup != memory.BeepGroup;
+        return fresh with {
+            BeepCount = memory.BeepCount,
+            LastBeepAt = memory.LastBeepAt,
+            LastBeepGroup = isSpeakerChanged ? "" : memory.LastBeepGroup,
+        };
+    }
+
     public static bool ShouldBeep(NotificationKind kind, int beepCount, Moment lastBeepAt, Moment now)
     {
         if (beepCount <= 0)

@@ -1781,10 +1781,13 @@ public class NotificationsBackend(IServiceProvider services)
             // ones below are removals of notifications the user never acted on - advancing for an
             // expired or muted one would mark its chat read behind their back.
             var requested = new List<Notification>();
+            // A read or a dismissal is the user seeing the banner, not the conversation ending: the
+            // next message under the same id must continue this beep state, not alert as a first one.
+            var remembered = new List<BeepMemory>();
             foreach (var existing in committed.Items) {
                 var isRequested = dismissAll || dismissedIds.Contains(existing.Id);
-                var isGone = isRequested
-                    || IsRead(existing, readPositions)
+                var isSeen = isRequested || IsRead(existing, readPositions);
+                var isGone = isSeen
                     || IsSuppressedByMode(existing, modes)
                     || IsExpired(existing, now);
                 if (isGone) {
@@ -1792,19 +1795,30 @@ public class NotificationsBackend(IServiceProvider services)
                     dismissed.Add(existing);
                     if (isRequested)
                         requested.Add(existing);
+                    if (isSeen && existing is ChatEntryRelatedNotification seen)
+                        remembered.Add(NotificationBeepPolicy.Remember(seen));
                 }
             }
+            current = current.WithBeepMemories(remembered, now);
 
             // Track which incoming notifications actually changed the items set: a no-op merge
             // (a redelivered duplicate, or a stale out-of-order event for an already-read entry)
             // must neither beep nor push. MergeWith returns the existing instance for no-op merges,
             // so reference equality detects them.
             var changedIds = new List<NotificationId>();
-            foreach (var notification in notifications) {
-                if (IsRead(notification, readPositions) || IsExpired(notification, now))
+            foreach (var incoming in notifications) {
+                if (IsRead(incoming, readPositions) || IsExpired(incoming, now))
                     continue;
 
+                var notification = incoming;
                 var before = current.Items.FirstOrDefault(n => n.Id == notification.Id);
+                if (before is null && notification is ChatEntryRelatedNotification fresh) {
+                    var memory = current.BeepMemories.FirstOrDefault(m => m.Id == fresh.Id);
+                    if (memory is not null) {
+                        notification = NotificationBeepPolicy.Inherit(fresh, memory);
+                        current = current.WithoutBeepMemory(fresh.Id);
+                    }
+                }
                 current = current.WithNotification(notification);
                 var after = current.Items.First(n => n.Id == notification.Id);
                 if (ReferenceEquals(before, after))

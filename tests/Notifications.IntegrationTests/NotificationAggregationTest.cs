@@ -586,6 +586,85 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
         NotificationBeepPolicy.ShouldBeep(nextUtterance, t0 + TimeSpan.FromMinutes(1)).Should().BeFalse();
     }
 
+    [Fact]
+    public void InheritShouldKeepTheSpeakerRunSilent()
+    {
+        // arrange
+        var t0 = Moment.Now;
+        var author = AuthorId.New(TestChatId, 1);
+        var group = "a:" + author.Value;
+        var removed = NotificationBeepPolicy.MarkBeeped(NewSpoken(100, author, "one", group) with { SentAt = t0 }, t0);
+        var memory = NotificationBeepPolicy.Remember(removed);
+        var fresh = NewSpoken(101, author, "two", group) with { SentAt = t0 + TimeSpan.FromSeconds(30) };
+
+        // act
+        var inherited = NotificationBeepPolicy.Inherit(fresh, memory);
+
+        // assert
+        inherited.BeepCount.Should().Be(1);
+        inherited.LastBeepGroup.Should().Be(group);
+        NotificationBeepPolicy.ShouldBeep(inherited, fresh.SentAt).Should().BeFalse();
+    }
+
+    [Fact]
+    public void InheritShouldReArmOnSpeakerChangeAndAfterALull()
+    {
+        // arrange
+        var t0 = Moment.Now;
+        var author1 = AuthorId.New(TestChatId, 1);
+        var author2 = AuthorId.New(TestChatId, 2);
+        var group1 = "a:" + author1.Value;
+        var removed = NotificationBeepPolicy.MarkBeeped(
+            NewSpoken(100, author1, "one", group1) with { SentAt = t0 }, t0);
+        var memory = NotificationBeepPolicy.Remember(removed);
+
+        // act & assert
+        var handover = NewSpoken(101, author2, "two", "a:" + author2.Value) with {
+            SentAt = t0 + TimeSpan.FromSeconds(30),
+        };
+        NotificationBeepPolicy.ShouldBeep(NotificationBeepPolicy.Inherit(handover, memory), handover.SentAt)
+            .Should().BeTrue("a new speaker must alert even when the previous run is remembered");
+
+        var afterLull = NewSpoken(101, author1, "two", group1) with {
+            SentAt = t0 + Constants.Notification.VoiceReAlertInterval,
+        };
+        NotificationBeepPolicy.Inherit(afterLull, memory).Should().BeSameAs(afterLull,
+            "past the lull the remembered state is irrelevant");
+
+        var typed = NewMessage(101, author1, "two") with { SentAt = t0 + TimeSpan.FromSeconds(5) };
+        var inheritedTyped = NotificationBeepPolicy.Inherit(typed, memory);
+        inheritedTyped.BeepCount.Should().Be(1);
+        NotificationBeepPolicy.ShouldBeep(inheritedTyped, typed.SentAt).Should().BeFalse(
+            "typed text continues the back-off the removed notification had reached");
+    }
+
+    [Fact]
+    public void WithBeepMemoriesShouldPruneStaleAndCapTheList()
+    {
+        // arrange
+        var t0 = Moment.Now;
+        var author = AuthorId.New(TestChatId, 1);
+        var stale = NotificationBeepPolicy.Remember(
+            NewMessage(1, author, "old") with { SentAt = t0 - Constants.Notification.VoiceReAlertInterval });
+        var info = new UserNotificationInfo(TestUserId).WithBeepMemories([stale], t0 - TimeSpan.FromMinutes(1));
+        info.BeepMemories.Should().ContainSingle();
+
+        // act
+        var many = Enumerable.Range(0, Constants.Notification.MaxBeepMemories + 5)
+            .Select(i => NotificationBeepPolicy.Remember(
+                MessageNotification.New(TestUserId, ChatId.Parse($"chatnumber{i:D2}"), i, author) with {
+                    SentAt = t0 + TimeSpan.FromSeconds(i),
+                }))
+            .ToList();
+        info = info.WithBeepMemories(many, t0);
+
+        // assert
+        info.BeepMemories.Should().HaveCount(Constants.Notification.MaxBeepMemories);
+        info.BeepMemories.Should().NotContain(m => m.Id == stale.Id, "stale memories are pruned");
+        info.BeepMemories[^1].Id.Should().Be(many[^1].Id, "the newest memories survive the cap");
+        info.WithoutBeepMemory(many[^1].Id).BeepMemories.Should().HaveCount(Constants.Notification.MaxBeepMemories - 1);
+    }
+
     private static MessageNotification NewSpoken(
         long entryLid, AuthorId authorId, string text, string beepGroup)
         => NewMessage(entryLid, authorId, text) with { BeepGroup = beepGroup };

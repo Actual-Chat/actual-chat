@@ -52,8 +52,15 @@ that, and `NotificationBeepPolicy` decides it: a spoken message alerts when its
 speaker changes and then at most once per `VoiceReAlertInterval` (10 min), so a
 monologue is one alert however long it runs; typed messages back off along
 `BeepBackoff`. The banner keeps updating silently to the newest message either
-way. Clients render every banner themselves — no `webpush.notification`, no
-`android.notification` — so `IsSilent` means the same thing on all three.
+way. A read or a dismissal removes the notification but not its beep state:
+`UserNotificationInfo.BeepMemories` keeps it until the lull would have reset it,
+and the next message under the same id inherits it (`NotificationBeepPolicy.Inherit`),
+so reading a chat on one device does not turn every following message into a
+first alert on the others. Clients render every banner themselves — no
+`webpush.notification`, no `android.notification` — so `IsSilent` means the same
+thing on all three. The web service worker applies a silent update only to a
+banner still on screen, replacing it by tag in place; an audible push closes and
+re-shows it.
 
 ## Client side
 

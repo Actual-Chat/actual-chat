@@ -141,6 +141,41 @@ public sealed class NotificationCompatibilityTest(ITestOutputHelper @out) : Test
         message.GroupTitle.Should().Be("The actual one");
     }
 
+    [Fact]
+    public void ServerShouldReadRowWithoutBeepMemories()
+    {
+        // arrange
+        var row = NewLegacyRow(NewLegacyMessage());
+
+        // act
+        var info = row.ToModel();
+
+        // assert
+        info.BeepMemories.IsEmpty.Should().BeTrue("key 7 is absent in rows written before beep memories");
+        info.WithBeepMemories([], TestSentAt).BeepMemories.IsEmpty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void RowWithBeepMemoriesShouldRoundTripAndStayReadableByPreviousRelease()
+    {
+        // arrange
+        var message = NewCurrentMessage() with { BeepCount = 2, LastBeepAt = TestSentAt, BeepGroup = "a:" + Bob.Value };
+        var memory = NotificationBeepPolicy.Remember(NotificationBeepPolicy.MarkBeeped(message, TestSentAt));
+        var info = NewInfo(message).WithBeepMemories([memory], TestSentAt);
+        var row = new DbUserNotifications();
+
+        // act
+        row.UpdateFrom(info);
+        var current = row.ToModel();
+        var legacy = PassThroughToLegacy(info);
+
+        // assert
+        var stored = current.BeepMemories.Should().ContainSingle().Subject;
+        stored.Should().Be(memory);
+        stored.LastBeepGroup.Should().Be("a:" + Bob.Value);
+        legacy.Items.Should().ContainSingle("a previous-release pod ignores the trailing key");
+    }
+
     // Private methods
 
     private static UserNotificationInfo NewInfo(Notification notification)
