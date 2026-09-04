@@ -13,17 +13,17 @@
     --gray-10: #282828;
     --gray-05: #1C1C1C;
 
-    --gray-05-05: #1C1C1C0D;
-    --gray-05-10: #1C1C1C1A;
-    --gray-10-20: #28282833;
-    --gray-20-20: #39393933;
-    --gray-40-10: #7777771A;
-    --gray-40-20: #77777733;
-    --gray-50-05: #8C8C8C0D;
-    --gray-50-10: #8C8C8C1A;
-    --gray-50-20: #8C8C8C33;
-    --gray-80-10: #D3D3D31A;
     --gray-80-20: #D3D3D333;
+    --gray-80-10: #D3D3D31A;
+    --gray-50-20: #8C8C8C33;
+    --gray-50-10: #8C8C8C1A;
+    --gray-50-05: #8C8C8C0D;
+    --gray-40-20: #77777733;
+    --gray-40-10: #7777771A;
+    --gray-20-20: #39393933;
+    --gray-10-20: #28282833;
+    --gray-05-10: #1C1C1C1A;
+    --gray-05-05: #1C1C1C0D;
 
     --ash-99: #F5F5FC;
     --ash-95: #DFDFF2;
@@ -41,11 +41,12 @@
     --ash-14: #1E1E24;
     --ash-10: #16161A;
 
-    --ash-99-04: #F5F5FC0A;
-    --ash-99-05: #F5F5FC0D;
-    --ash-99-08: #F5F5FC14;
     --ash-99-10: #F5F5FC1A;
+    --ash-99-08: #F5F5FC14;
+    --ash-99-05: #F5F5FC0D;
+    --ash-99-04: #F5F5FC0A;
     --ash-95-50: #DFDFF280;
+    --ash-50-05: #6D6D800D;
     --ash-40-50: #57576680;
 
     --blue-99: #E5F2FF;
@@ -54,21 +55,22 @@
     --blue-80: #7CBBFF;
     --blue-70: #54A6FF;
     --blue-60: #3395FF;
+    --blue-55: #2970FF;
     --blue-50: #007AFF;
     --blue-40: #0266D3;
     --blue-30: #0036A3;
     --blue-20: #023F83;
     --blue-10: #00264F;
 
+    --blue-90-10: #A4CFFF1A;
+    --blue-80-50: #7CBBFF80;
+    --blue-80-20: #7CBBFF33;
     --blue-50-50: #007AFF80;
     --blue-50-40: #007AFF66;
     --blue-50-30: #007AFF4D;
     --blue-50-20: #007AFF33;
     --blue-50-10: #007AFF1A;
     --blue-50-05: #007AFF0D;
-    --blue-80-50: #7CBBFF80;
-    --blue-80-20: #7CBBFF33;
-    --blue-90-10: #A4CFFF1A;
 
     --frost-99: #ECFCFF;
     --frost-95: #DEF9FF;
@@ -101,27 +103,28 @@
     --magenta-70: #FF649C;
     --magenta-60: #FF3880;
     --magenta-50: #FF005C;
+    --magenta-45: #C60077;
     --magenta-40: #C80E51;
     --magenta-30: #9F0B41;
     --magenta-20: #5D0626;
     --magenta-10: #350013;
 
-    --magenta-20-20: #5D06261A;
-    --magenta-30-50: #9F0B4180;
-    --magenta-40-10: #C80E511A;
-    --magenta-40-20: #C80E5133;
-    --magenta-50-05: #FF005C0D;
-    --magenta-50-10: #FF005C1A;
-    --magenta-50-20: #FF005C33;
-    --magenta-50-50: #FF005C80;
-    --magenta-60-20: #FF388033;
-    --magenta-60-10: #FF38801A;
-    --magenta-70-10: #FF649C1A;
-    --magenta-70-20: #FF649C33;
-    --magenta-80-10: #FF94BA1A;
-    --magenta-80-50: #FF94BA80;
     --magenta-90-20: #FFC9DC33;
     --magenta-90-10: #FFC9DC1A;
+    --magenta-80-50: #FF94BA80;
+    --magenta-80-10: #FF94BA1A;
+    --magenta-70-20: #FF649C33;
+    --magenta-70-10: #FF649C1A;
+    --magenta-60-20: #FF388033;
+    --magenta-60-10: #FF38801A;
+    --magenta-50-50: #FF005C80;
+    --magenta-50-20: #FF005C33;
+    --magenta-50-10: #FF005C1A;
+    --magenta-50-05: #FF005C0D;
+    --magenta-40-20: #C80E5133;
+    --magenta-40-10: #C80E511A;
+    --magenta-30-50: #9F0B4180;
+    --magenta-20-20: #5D06261A;
 
 
     --red-99: #FFFAFA;
@@ -160,12 +163,12 @@
     --indigo-20: #160070;
     --indigo-10: #0C003D;
 
-    --indigo-40-10: #2800C81A;
-    --indigo-40-02: #2800C805;
-    --indigo-60-20: #582EFF33;
-    --indigo-60-10: #582EFF1A;
     --indigo-70-20: #7957FF33;
     --indigo-70-10: #7957FF1A;
+    --indigo-60-20: #582EFF33;
+    --indigo-60-10: #582EFF1A;
+    --indigo-40-10: #2800C81A;
+    --indigo-40-02: #2800C805;
 
     --purple-99: #FDEFFF;
     --purple-95: #FBE2FF;
@@ -174,6 +177,7 @@
     --purple-70: #EB6DFF;
     --purple-60: #E43EFF;
     --purple-50: #DB00FF;
+    --purple-45: #C026D3;
     --purple-40: #AE00CA;
     --purple-30: #86009C;
     --purple-20: #5F006F;
@@ -192,19 +196,19 @@
     --violet-15: #2A004B;
     --violet-10: #1B0030;
 
+    --violet-90-60: #E7C9FF99;
+    --violet-90-20: #E7C9FF33;
+    --violet-80-40: #D39AFF66;
+    --violet-80-20: #D39AFF33;
+    --violet-80-10: #D39AFF1A;
+    --violet-70-20: #8F00FF33;
+    --violet-70-10: #8F00FF1A;
     --violet-60-20: #A635FF33;
     --violet-60-10: #A635FF1A;
+    --violet-50-70: #8F00FFB3;
+    --violet-50-50: #8F00FF80;
     --violet-50-20: #8F00FF33;
     --violet-50-10: #8F00FF1A;
-    --violet-50-50: #8F00FF80;
-    --violet-50-70: #8F00FFB3;
-    --violet-70-10: #8F00FF1A;
-    --violet-70-20: #8F00FF33;
-    --violet-80-10: #D39AFF1A;
-    --violet-80-20: #D39AFF33;
-    --violet-80-40: #D39AFF66;
-    --violet-90-20: #E7C9FF33;
-    --violet-90-60: #E7C9FF99;
 
     --navy-50: #0038FF;
     --navy-40: #3360FF;
@@ -222,12 +226,12 @@
     --green-10: #005F15;
     --green-05: #00320B;
 
-    --green-30-10: #00AC261A;
-    --green-40-10: #00D12E1A;
-    --green-40-20: #00D12E33;
-    --green-50-10: #00FF381A;
-    --green-50-20: #00FF3833;
     --green-80-20: #9CFFB233;
+    --green-50-20: #00FF3833;
+    --green-50-10: #00FF381A;
+    --green-40-20: #00D12E33;
+    --green-40-10: #00D12E1A;
+    --green-30-10: #00AC261A;
 
     --sienna-90: #FFF2D0;
     --sienna-80: #FFE6A5;
@@ -239,11 +243,11 @@
     --sienna-20: #6A4C00;
     --sienna-10: #352600;
 
-    --sienna-40-10: #DC9E001A;
-    --sienna-40-20: #DC9E0033;
-    --sienna-50-10: #FFB8001A;
-    --sienna-50-20: #FFB80033;
     --sienna-80-20: #FFE6A533;
+    --sienna-50-20: #FFB80033;
+    --sienna-50-10: #FFB8001A;
+    --sienna-40-20: #DC9E0033;
+    --sienna-40-10: #DC9E001A;
 
     --white: #FFFFFF;
     --black: #000000;
@@ -270,6 +274,12 @@
     --white-05: #FFFFFF0D;
     --white-04: #FFFFFF0A;
     --white-02: #FFFFFF05;
+
+    /* Brand gradient accents (theme-independent) */
+    --audio-accent-1: #852FB0;
+    --audio-accent-2: #FF3BB1;
+    --audio-accent-3: #7429FF;
+    --landing-bg-01: #6E368F;
 }
 
 :root, .theme-light {
