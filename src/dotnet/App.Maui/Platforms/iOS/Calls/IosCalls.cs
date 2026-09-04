@@ -53,7 +53,7 @@ public class IosCalls : CXProviderDelegate
         }
 
         var callId = CallId.For(conversationId);
-        if (!_calls.TryAdd(callId, new Call(conversationId))) {
+        if (!_calls.TryAdd(callId, new Call(conversationId, hasVideo))) {
             // CallKit rejects a second report for a UUID it already holds, and a rejected report
             // is exactly what costs the app its VoIP delivery.
             DebugLog?.LogInformation("ReportIncomingCall: {ConversationId} is already reported", conversationId);
@@ -91,6 +91,7 @@ public class IosCalls : CXProviderDelegate
         if (isAnswered)
             return true;
 
+        AudioSession.IsCallVideo = call.HasVideo;
         RequestTransaction(callId, call, new CXAnswerCallAction(new NSUuid(callId.ToString())), LocalAction.Answer);
         return true;
     }
@@ -167,6 +168,7 @@ public class IosCalls : CXProviderDelegate
 
         var isHandledLocally = call.TryTakeLocalAction(LocalAction.Answer);
         call.MarkAnswered();
+        AudioSession.IsCallVideo = call.HasVideo;
         // Only fulfilled here - the audio starts in DidActivateAudioSession, which is when
         // CallKit hands the session over. Activating it now would race the framework.
         AudioSession.SetOwner(AudioSessionOwner.CallKit);
@@ -188,13 +190,15 @@ public class IosCalls : CXProviderDelegate
             return;
         }
 
+        var isAnswered = call.IsAnswered;
+        if (isAnswered)
+            AudioSession.IsCallVideo = false;
         var isHandledLocally = call.TryTakeLocalAction(LocalAction.End);
         action.Fulfill();
         if (isHandledLocally)
             return;
 
         var chatId = call.ConversationId.ChatId;
-        var isAnswered = call.IsAnswered;
         _ = DispatchToBlazor(
             // Decline rejects a ring; a call the user already joined is a hang-up instead.
             c => isAnswered
@@ -247,9 +251,11 @@ public class IosCalls : CXProviderDelegate
 
     private void EndCall(Guid callId, CXCallEndedReason reason)
     {
-        if (!_calls.TryRemove(callId, out _))
+        if (!_calls.TryRemove(callId, out var call))
             return;
 
+        if (call.IsAnswered)
+            AudioSession.IsCallVideo = false;
         _provider.ReportCall(new NSUuid(callId.ToString()), null, reason);
     }
 
@@ -275,6 +281,7 @@ public class IosCalls : CXProviderDelegate
         // Only what we own: a CallKit deactivation must not take the session away from PTT.
         if (AudioSession.Owner == AudioSessionOwner.CallKit)
             AudioSession.ReleaseOwner(AudioSessionRelease.CallEnded);
+        AudioSession.IsCallVideo = false;
     }
 
     private bool TryGetCall(ChatId chatId, out Guid callId, [NotNullWhen(true)] out Call? call)
@@ -313,13 +320,14 @@ public class IosCalls : CXProviderDelegate
         End,
     }
 
-    private sealed class Call(ConversationId conversationId)
+    private sealed class Call(ConversationId conversationId, bool hasVideo)
     {
         private int _isAnswered;
         private int _isVerdictPending;
         private int _localAction;
 
         public ConversationId ConversationId { get; } = conversationId;
+        public bool HasVideo { get; } = hasVideo;
         public bool IsAnswered => Volatile.Read(ref _isAnswered) != 0;
         public bool IsVerdictPending => Volatile.Read(ref _isVerdictPending) != 0;
 
