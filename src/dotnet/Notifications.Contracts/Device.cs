@@ -12,4 +12,5 @@ public sealed partial record Device(
 {
     [DataMember(Order = 3), Key(3)] public Moment? AccessedAt { get; init; }
     [DataMember(Order = 4), Key(4)] public bool IsPttEnabled { get; init; }
+    [DataMember(Order = 5), Key(5)] public Symbol SessionHash { get; init; }
 }
