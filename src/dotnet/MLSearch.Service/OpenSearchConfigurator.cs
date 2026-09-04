@@ -98,13 +98,16 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
     private async Task EnsureEntryIndex(CancellationToken cancellationToken)
     {
         await EnsureIndex(OpenSearchNames.EntryIndexName, ConfigureEntryIndex, cancellationToken).ConfigureAwait(false);
-        // Hashtags were added after the index shipped, and EnsureIndex is create-only. Without this
-        // merge an already-created index would map them dynamically as text, and a tag containing
-        // '-' would be analyzed into several terms no exact-tag query can match.
+        // Hashtags and AuthorUserId were added after the index shipped, and EnsureIndex is create-only.
+        // Merging their mappings here keeps the live index searchable without a version bump / reindex:
+        // Hashtags must stay keyword (a tag with '-' would otherwise analyze into several terms), and
+        // AuthorUserId backs the "my messages" filter. Existing docs get the field only once reindexed.
         await OpenSearchClient.Indices
             .PutMappingAsync<IndexedEntry>(m => m
                     .Index(OpenSearchNames.EntryIndexName)
-                    .Properties(pp => pp.Keyword(p => p.Name(x => x.Hashtags))),
+                    .Properties(pp => pp
+                        .Keyword(p => p.Name(x => x.Hashtags))
+                        .Keyword(p => p.Name(x => x.AuthorUserId))),
                 cancellationToken)
             .Assert(Log)
             .ConfigureAwait(false);
