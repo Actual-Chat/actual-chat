@@ -294,6 +294,9 @@ and in the live WebView scope.
    live-edge trim. The anchor also lets the listening player skip the
    `ServerClock.WhenReady` wait entirely — a catch-up stream is clock-independent,
    and the anchor itself is server time, so it doubles as the player's `startAt`.
+   `ListeningStreamProcessor` sends it on the first connection only: the server
+   serves the target from t=0 to whoever asks, so a reconnect inside the stale
+   window that still carried it would replay what the listener already heard.
 6. Fires `platform.OnPlaybackStarted(hub, chatId)`.
 
 `Transmit(isHeadless, platform, cancellationToken)` refuses to open the mic when
