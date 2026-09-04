@@ -33,18 +33,22 @@ public sealed record HostInfo
     {
         _baseUrlKindLazy = LazySlim.New(this, static self => {
             var host = self.BaseUrl.EnsureSuffix("/").ToUri().Host;
-            return string.Equals(host, CoreConstants.Hosts.Prod, StringComparison.OrdinalIgnoreCase) ? BaseUrlKind.Production
-                : string.Equals(host, CoreConstants.Hosts.Dev, StringComparison.OrdinalIgnoreCase) ? BaseUrlKind.Development
-                : string.Equals(host, CoreConstants.Hosts.Local, StringComparison.OrdinalIgnoreCase) ? BaseUrlKind.Local
+            return string.Equals(host, CoreConstants.Hosts.Prod, StringComparison.OrdinalIgnoreCase)
+                    ? BaseUrlKind.Production
+                : string.Equals(host, CoreConstants.Hosts.Dev, StringComparison.OrdinalIgnoreCase)
+                    ? BaseUrlKind.Development
+                : string.Equals(host, CoreConstants.Hosts.Local, StringComparison.OrdinalIgnoreCase)
+                    ? BaseUrlKind.Local
                 // Support worktree subdomains: wt1.local.voxt.ai, cdn-wt1.local.voxt.ai, etc.
-                : host.EndsWith(CoreConstants.Hosts.LocalSuffix, StringComparison.OrdinalIgnoreCase) ? BaseUrlKind.Local
+                : host.EndsWith(CoreConstants.Hosts.LocalSuffix, StringComparison.OrdinalIgnoreCase)
+                    ? BaseUrlKind.Local
                 : BaseUrlKind.Unknown;
         });
         _isProductionInstanceLazy = LazySlim.New(this,
             static self => self.Environment.Value == Environments.Production);
-        _isStagingInstanceLazy ??= LazySlim.New(this,
+        _isStagingInstanceLazy = LazySlim.New(this,
             static self => self.Environment.Value == Environments.Staging);
-        _isDevelopmentInstanceLazy ??= LazySlim.New(this,
+        _isDevelopmentInstanceLazy = LazySlim.New(this,
             static self => self.Environment.Value == Environments.Development);
     }
 
