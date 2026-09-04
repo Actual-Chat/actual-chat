@@ -22,6 +22,7 @@ public class NotificationsBackend(IServiceProvider services)
     : ShardedDbServiceBase<NotificationDbContext>(services), INotificationsBackend
 {
     private const int WakePendingCapacity = 10_000;
+    private static readonly IReadOnlySet<Symbol> NoDeviceIds = new HashSet<Symbol>();
 
     // Per-user soft-update buffers, owned by this shard. Entries are lost on restart by design
     // (see docs/plans/notif-api.md); a committed hard update always re-reads from the DB.
@@ -843,6 +844,30 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
+    // Protected/internal methods
+
+    internal static IReadOnlyList<Device> SelectVoipCallDevices(IReadOnlyList<Device> devices)
+        => devices.Where(d => d.DeviceType == DeviceType.iOSVoipApp).ToList();
+
+    internal static IReadOnlyList<Device> SelectFcmCallDevices(
+        IReadOnlyList<Device> devices, IReadOnlySet<Symbol> ringDeviceIds)
+    {
+        // A phone that rings through CallKit must not also raise a banner, and the two are
+        // separate rows - SessionHash is what says they're one installation. An empty hash
+        // (legacy rows) matches nothing, so it can't silence an unrelated device.
+        // Only a ring APNs actually accepted suppresses: an unconfigured, failed or rejected one
+        // would otherwise leave that iPhone with neither a CallKit ring nor a banner.
+        var voipSessionHashes = devices
+            .Where(d => d.DeviceType == DeviceType.iOSVoipApp
+                && !d.SessionHash.IsEmpty
+                && ringDeviceIds.Contains(d.DeviceId))
+            .Select(d => d.SessionHash)
+            .ToHashSet();
+        return devices
+            .Where(d => d.DeviceType.IsFcm() && !voipSessionHashes.Contains(d.SessionHash))
+            .ToList();
+    }
+
     // Private methods
 
     private async Task SendChatMessageNotification(
@@ -954,7 +979,13 @@ public class NotificationsBackend(IServiceProvider services)
         notification = items;
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
         var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
-        devices = devices.Where(d => d.DeviceType.IsFcm()).ToList();
+        if (notification is CallNotification call) {
+            var ringDeviceIds = await SendCallRing(call, devices, cancellationToken).ConfigureAwait(false);
+            devices = SelectFcmCallDevices(devices, ringDeviceIds);
+        }
+        else
+            devices = devices.Where(d => d.DeviceType.IsFcm()).ToList();
+
         if (devices.Count == 0) {
             DebugLog?.LogDebug("No recipient devices found for notification #{NotificationId}",
                 notification.Id);
@@ -1249,6 +1280,33 @@ public class NotificationsBackend(IServiceProvider services)
         return await kvas.ChatUserSettings(chatId)
             .Get(x => x.NotificationMode, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    private async Task<IReadOnlySet<Symbol>> SendCallRing(
+        CallNotification notification, IReadOnlyList<Device> devices, CancellationToken cancellationToken)
+    {
+        // A ring that never went out must not cost the recipient their banner too, so anything
+        // the APNs client throws - a missing key file included - is "nothing delivered".
+        var voipDeviceIds = SelectVoipCallDevices(devices).Select(d => d.DeviceId).ToList();
+        if (voipDeviceIds.Count == 0)
+            return NoDeviceIds;
+
+        var conversationId = ConversationId.Parse(notification.SimilarityKey);
+        try {
+            return await ApnsClient
+                .SendCallRing(
+                    conversationId,
+                    notification.AuthorId.Require(),
+                    notification.SenderName,
+                    notification.HasVideo,
+                    voipDeviceIds,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogError(e, "Call ring failed for conversation '{ConversationId}'", conversationId);
+            return NoDeviceIds;
+        }
     }
 
     private async Task SendPttWake(
