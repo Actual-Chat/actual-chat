@@ -85,6 +85,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped<IAppActivityState>(c => c.GetRequiredService<ActivitiesUI>());
         services.TryAddScoped<ILiveActivitiesAvailability>(_ => new DefaultLiveActivitiesAvailability());
         services.TryAddScoped<IFullScreenCallsAvailability>(_ => new DefaultFullScreenCallsAvailability());
+        services.TryAddScoped<ISystemCallUI>(_ => new DefaultSystemCallUI());
         fusion.AddService<AudioActivitySource>(ServiceLifetime.Scoped);
         services.AddScoped<IActivitySource>(c => c.GetRequiredService<AudioActivitySource>());
         fusion.AddService<LocationActivitySource>(ServiceLifetime.Scoped);

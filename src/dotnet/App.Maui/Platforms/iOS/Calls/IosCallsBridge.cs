@@ -1,14 +1,15 @@
+using ActualChat.Live;
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Diagnostics;
 
 namespace ActualChat.App.Maui;
 
 /// <summary>
-/// Routes <see cref="IncomingCallUI"/> to CallKit. The lock-screen members are Android
-/// choreography: iOS has no keyguard to dismiss and CallKit owns the call screen, so
-/// they are deliberately inert here.
+/// Routes <see cref="IncomingCallUI"/> and outgoing <see cref="LiveSessionUI"/> calls to
+/// CallKit. The lock-screen members are Android choreography: iOS has no keyguard to dismiss
+/// and CallKit owns the call screen, so they are deliberately inert here.
 /// </summary>
-public sealed class IosIncomingCallsBridge : IIncomingCallsBridge, IDisposable
+public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDisposable
 {
     private static readonly TimeSpan JoinTimeout = TimeSpan.FromSeconds(30);
 
@@ -16,11 +17,11 @@ public sealed class IosIncomingCallsBridge : IIncomingCallsBridge, IDisposable
     private readonly ConcurrentDictionary<ChatId, Unit> _watchedChatIds = new();
     private AppUIHub Hub { get; }
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
-    private ILogger Log => field ??= StaticLog.For<IosIncomingCallsBridge>();
+    private ILogger Log => field ??= StaticLog.For<IosCallsBridge>();
 
     public bool OwnsRinging => true;
 
-    public IosIncomingCallsBridge(AppUIHub hub)
+    public IosCallsBridge(AppUIHub hub)
     {
         Hub = hub;
         // The calls are static but the watch is not: a WebView reload (or a wake scope handing
@@ -73,7 +74,32 @@ public sealed class IosIncomingCallsBridge : IIncomingCallsBridge, IDisposable
     public void MoveBehindLockScreen()
     { }
 
+    // ISystemCallUI
+
+    public void OnOutgoingCallStarted(ChatId chatId, bool hasVideo)
+        // Fire-and-forget: placing the call must not wait on the chat lookup the name comes from.
+        => _ = BackgroundTask.Run(
+            () => StartOutgoingCall(chatId, hasVideo, _stopTokenSource.Token),
+            Log, $"Couldn't start an outgoing CallKit call for chat #{chatId}", _stopTokenSource.Token);
+
+    public void OnOutgoingCallStatusChanged(ChatId chatId, CallStatus status)
+    {
+        // Answered: the same watch an incoming call gets, so leaving the conversation ends the
+        // CallKit call rather than stranding it.
+        if (IosCalls.Instance.ReportOutgoingCallStatus(chatId, status))
+            StartCallEndWatch(chatId);
+    }
+
+    public void OnOutgoingCallCancelled(ChatId chatId)
+        => IosCalls.Instance.CancelOutgoingCall(chatId);
+
     // Private methods
+
+    private async Task StartOutgoingCall(ChatId chatId, bool hasVideo, CancellationToken cancellationToken)
+    {
+        var chat = await Hub.Chats.Get(Hub.Session, chatId, cancellationToken).ConfigureAwait(false);
+        IosCalls.Instance.StartOutgoingCall(chatId, chat?.Title ?? "", hasVideo);
+    }
 
     private void StartCallEndWatch(ChatId chatId)
     {
