@@ -357,7 +357,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (await GetRingingCall(chatId, cancellationToken).ConfigureAwait(false) is not null)
             return true;
 
-        var inCall = await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+        var inCall = await IsStillInCall(chatId, cancellationToken).ConfigureAwait(false);
         CallDebugLog?.LogInformation(
             "CALL_TRACE: IsOverLockSessionActive #{ChatId} → inCall={InCall} (ring not confirmed)",
             chatId, inCall);
@@ -374,7 +374,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (await _isAcceptingForeground.Use(cancellationToken).ConfigureAwait(false))
             return true;
 
-        return await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+        return await IsStillInCall(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     protected override Task OnRun(CancellationToken cancellationToken)
@@ -394,6 +394,18 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     // Private methods
+
+    private async Task<bool> IsStillInCall(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // AmIInLiveConversation alone is local-only (am I recording/listening) - it stays true even
+        // after the peer ends the call and the server drops the session, since nothing else tells my
+        // own recorder to stop. Requiring the session to still be a Call is what detects that.
+        var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (live is not { Kind: LiveSessionKind.Call })
+            return false;
+
+        return await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+    }
 
     private async Task SyncRings(CancellationToken cancellationToken)
     {
@@ -598,12 +610,11 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         while (!cancellationToken.IsCancellationRequested) {
             if (cActive.Value)
                 Volatile.Write(ref _overLockWasActive, true);
-            else if (Volatile.Read(ref _overLockWasActive) && _overLockChatId.Value is not null) {
+            else if (Volatile.Read(ref _overLockWasActive) && _overLockChatId.Value is { } chatId) {
                 CallDebugLog?.LogInformation(
                     "CALL_TRACE: ResetOverLockScreen teardown #{ChatId} (session ended, was active)",
-                    _overLockChatId.Value);
-                ClearOverLock();
-                Bridge?.MoveBehindLockScreen();
+                    chatId);
+                await HangUp(chatId).ConfigureAwait(false);
             }
 
             await cActive.WhenInvalidated(cancellationToken).ConfigureAwait(false);
@@ -620,7 +631,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         while (!cancellationToken.IsCancellationRequested) {
             if (!cActive.Value && _foregroundCallChatId.Value is { } chatId) {
                 CallDebugLog?.LogInformation("CALL_TRACE: ResetForegroundCallScreen teardown #{ChatId}", chatId);
-                _ = Hub.Dispatcher.InvokeAsync(() => DismissForegroundCall(chatId));
+                _ = Hub.Dispatcher.InvokeAsync(() => HangUpForegroundCall(chatId));
             }
 
             await cActive.WhenInvalidated(cancellationToken).ConfigureAwait(false);
