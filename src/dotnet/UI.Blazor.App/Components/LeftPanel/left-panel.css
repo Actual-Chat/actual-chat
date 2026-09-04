@@ -77,16 +77,16 @@
 }
 /* Round the wallpaper's top-left only in narrow mode, where the bg-04 safe-area strip exists to blend into. */
 body.narrow .left-panel-content-header > .c-content {
-    @apply rounded-tl-2xl;
+    @apply rounded-tl-lg;
 }
 /* Fill the concave corner sliver with bg-04 on top of the header (painting over, not behind, so a
    transparent wallpaper doesn't reveal a box). */
 body.narrow .left-panel-content-header::before {
     @apply content-empty;
     @apply absolute left-0 top-0 z-10;
-    @apply w-4 h-4;
+    @apply w-2 h-2;
     @apply pointer-events-none;
-    background: radial-gradient(circle at bottom right, transparent 1rem, var(--background-04) calc(1rem + 0.5px));
+    background: radial-gradient(circle at bottom right, transparent 0.5rem, var(--background-04) calc(0.5rem + 0.5px));
 }
 .left-panel-content .left-panel-content-main-wrapper {
     @apply relative;
@@ -126,7 +126,7 @@ body.narrow .left-panel-content-header::before {
         color-mix(in srgb, var(--blue-50-50) 80%, var(--violet-50-50)),
         var(--background-03));
     @apply flex-1 flex-y;
-    @apply rounded-tl-2xl;
+    @apply rounded-tl-lg;
     @apply overflow-hidden;
     @apply bg-03;
     background-image: var(--c-search-tint);
@@ -192,8 +192,12 @@ body.narrow .left-panel-content-header::before {
 .left-panel-content-header.place > .c-content {
     @apply flex-y;
     @apply min-h-26 max-h-26;
-    @apply rounded-br-2xl md:rounded-bl-2xl;
     @apply overflow-hidden;
+}
+/* Desktop: both bottom corners of the wallpaper. On narrow only the top-left corner is rounded
+   (see the body.narrow .left-panel-content-header > .c-content rule above). */
+body:not(.narrow) .left-panel-content-header.place > .c-content {
+    @apply rounded-b-lg;
 }
 /* The search box keeps the panel's right edge, and the title truncates against it;
    the open search takes the whole row, which squeezes the title down to nothing. */
@@ -317,7 +321,7 @@ body.hoverable .add-members-btn:hover {
 .left-search-panel:before {
     @apply content-empty;
     @apply absolute inset-0 z-minus;
-    @apply rounded-tl-2xl;
+    @apply rounded-tl-lg;
     @apply bg-03;
     @apply opacity-0;
     /* Fixed blue header height so it stays constant when the keyboard opens (viewport units shrink with the keyboard) */
