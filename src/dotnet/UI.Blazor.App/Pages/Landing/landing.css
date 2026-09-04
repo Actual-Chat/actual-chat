@@ -1140,7 +1140,7 @@ body.narrow .side-nav-left:has(.docs-left-panel) {
 }
 .docs-left-panel {
     @apply flex-y;
-    @apply h-full md:w-96 lg:w-112 xl:w-128 2xl:w-144;
+    @apply h-full w-full;
     @apply pl-24 pr-4;
     @apply bg-03;
     @apply border-r border-separator;
