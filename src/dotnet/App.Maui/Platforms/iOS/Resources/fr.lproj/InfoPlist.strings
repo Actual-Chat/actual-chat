@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "L'accès au microphone est nécessaire pour enregistrer des messages audio";
+"NSCameraUsageDescription" = "L'accès à la caméra est nécessaire pour prendre des photos et les partager avec d'autres utilisateurs.";
+"NSPhotoLibraryUsageDescription" = "Importez des photos pour les partager avec d'autres utilisateurs ou pour changer votre avatar.";
+"NSPhotoLibraryAddUsageDescription" = "Partagez des photos et des vidéos de votre photothèque.";
+"NSContactsUsageDescription" = "Nous collectons ces informations pour vous aider à retrouver, parmi vos contacts, les amis qui utilisent déjà Voxt. Si vous autorisez l'accès à vos contacts, nous envoyons à nos serveurs les noms des contacts ainsi que les valeurs hachées des numéros de téléphone et des adresses e-mail.";
+"NSLocationWhenInUseUsageDescription" = "Partagez votre position en direct avec les membres d'une discussion tant que le partage de position est actif.";
+"NSLocationUsageDescription" = "Partagez votre position en direct avec les membres d'une discussion tant que le partage de position est actif.";
+"NSFocusStatusUsageDescription" = "Permet à Voxt de savoir quand un mode Concentration tel que Sommeil ou Ne pas déranger est activé, afin que le Push-to-Talk reste silencieux au lieu de diffuser la voix à haute voix.";

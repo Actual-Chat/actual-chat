@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "K nahrávání zvukových zpráv je potřeba přístup k mikrofonu";
+"NSCameraUsageDescription" = "K pořizování fotek a jejich sdílení s ostatními uživateli je potřeba přístup k fotoaparátu.";
+"NSPhotoLibraryUsageDescription" = "Nahrávejte fotky, které chcete sdílet s ostatními uživateli nebo použít jako svůj avatar.";
+"NSPhotoLibraryAddUsageDescription" = "Sdílejte fotky a videa ze své fotogalerie.";
+"NSContactsUsageDescription" = "Tyto údaje shromažďujeme, abychom vám pomohli najít v seznamu kontaktů přátele, kteří už Voxt používají. Pokud přístup ke kontaktům povolíte, odešleme na naše servery jména kontaktů a hashe telefonních čísel a e-mailových adres.";
+"NSLocationWhenInUseUsageDescription" = "Sdílejte svou živou polohu s lidmi v chatu, dokud je sdílení polohy aktivní.";
+"NSLocationUsageDescription" = "Sdílejte svou živou polohu s lidmi v chatu, dokud je sdílení polohy aktivní.";
+"NSFocusStatusUsageDescription" = "Umožňuje aplikaci Voxt zjistit, kdy je zapnuté Soustředění, například Spánek nebo Nerušit, aby funkce Stiskni a mluv zůstala potichu a nepřehrávala hlas nahlas.";

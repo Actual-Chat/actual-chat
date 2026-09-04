@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Potreban je pristup mikrofonu za snimanje audio poruka";
+"NSCameraUsageDescription" = "Potreban je pristup kameri da biste snimali fotografije i dijelili ih s drugim korisnicima.";
+"NSPhotoLibraryUsageDescription" = "Otpremite fotografije da biste ih podijelili s drugim korisnicima ili promijenili avatar.";
+"NSPhotoLibraryAddUsageDescription" = "Dijelite fotografije i videe iz svoje galerije fotografija.";
+"NSContactsUsageDescription" = "Ove podatke prikupljamo da biste u svojoj listi kontakata pronašli prijatelje koji već koriste Voxt. Ako dozvolite pristup kontaktima, na naše servere šaljemo imena kontakata i heširane vrijednosti brojeva telefona i email adresa.";
+"NSLocationWhenInUseUsageDescription" = "Dijelite svoju lokaciju uživo s ljudima u chatu dok je dijeljenje lokacije aktivno.";
+"NSLocationUsageDescription" = "Dijelite svoju lokaciju uživo s ljudima u chatu dok je dijeljenje lokacije aktivno.";
+"NSFocusStatusUsageDescription" = "Omogućava aplikaciji Voxt da vidi kada je uključen Fokus, kao što su Spavanje ili Ne uznemiravaj, tako da Pritisni i govori ostane bez zvuka umjesto da pušta glas naglas.";

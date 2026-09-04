@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "音声メッセージを録音するにはマイクへのアクセスが必要です";
+"NSCameraUsageDescription" = "写真を撮影して他のユーザーと共有するにはカメラへのアクセスが必要です。";
+"NSPhotoLibraryUsageDescription" = "他のユーザーと共有したり、アバターを変更したりするために写真をアップロードします。";
+"NSPhotoLibraryAddUsageDescription" = "写真ライブラリの写真や動画を共有します。";
+"NSContactsUsageDescription" = "この情報は、連絡先の中から既に Voxt を使っている友達を見つけるために収集します。連絡先へのアクセスを許可すると、連絡先の名前と、電話番号およびメールアドレスのハッシュ値を当社のサーバーに送信します。";
+"NSLocationWhenInUseUsageDescription" = "位置情報の共有がオンの間、チャットの参加者とリアルタイムの位置情報を共有します。";
+"NSLocationUsageDescription" = "位置情報の共有がオンの間、チャットの参加者とリアルタイムの位置情報を共有します。";
+"NSFocusStatusUsageDescription" = "睡眠やおやすみモードなどの集中モードがオンになっていることを Voxt が把握できるようにし、プッシュ・トゥ・トークが音声を大きな音で再生せず、静かなままになるようにします。";

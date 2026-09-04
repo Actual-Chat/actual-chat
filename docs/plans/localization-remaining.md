@@ -360,7 +360,7 @@ that loads that assembly can already read it:
 | Android dialogs | 9 strings, 3 files | main app | **yes** | **done (#4260)** — `AppStrings.L`, now in `ActualChat.Maui` |
 | Local notifications / Live Activity | ~6 strings | main app | **yes** | **done (#4260)** — `AppStrings.L`, or the hub's `L` where there is one |
 | iOS share extension (`App.Maui.IosShareExt/Components/*`) | ~18 strings | separate appex | **yes, since #4125** — it references `ActualChat.Localization` | **done (#4261)** — `AppStrings.L`, language from the App Group |
-| `Info.plist` usage descriptions | 6 iOS + 5 MacCatalyst | OS reads them, app not running | **no** | `InfoPlist.strings` per language — genuinely native |
+| `Info.plist` usage descriptions | 6 iOS + 5 MacCatalyst + 5 macOS | OS reads them, app not running | **no** | **done (#4259)** — hand-maintained `<lang>.lproj/InfoPlist.strings`, guarded by `InfoPlistLocalizationTest` |
 
 Android dialog sites: `AndroidWebChromeClient.cs:267-270`,
 `AndroidNotificationsPermission.cs:44-52`, `WebViewMissingActivity.cs:28-37`.
@@ -399,8 +399,10 @@ answered by #4125; the language question, by #4261:
    notifications, channel names, Live Activity) at the same accessor — or at the
    hub's `L` where the site already has one.
 
-`Info.plist` is the one part that is settled — `InfoPlist.strings` per language,
-independent of everything above, and doable at any time.
+`Info.plist` was the one genuinely native part, and #4259 closed it the way i18n.md
+now describes: one hand-maintained `<lang>.lproj/InfoPlist.strings` per UI language
+under `App.Maui/Platforms/iOS/Resources`, kept outside the catalog on purpose so the
+other platforms don't embed strings only Apple can show.
 
 ---
 
@@ -574,7 +576,7 @@ why #3721 dropped the keys instead of relocating them. Now:
 ## Suggested order
 1. §3's email track — the chrome language is settled (#4125); what is left is
    the 5 templates, using the same `LanguageStringLocalizer`.
-2. §4's `Info.plist` strings — settled and independent, doable any time.
+2. ~~§4's `Info.plist` strings~~ — done (#4259): per-language `InfoPlist.strings`.
 3. ~~§4's in-process subset (Android dialogs, local notifications, Live Activity)~~
    — done (#4260): `AppStrings` moved from the share extension to `ActualChat.Maui`
    and every in-process site reads it (or the hub's `L`).

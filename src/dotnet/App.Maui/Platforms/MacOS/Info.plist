@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
   <key>LSApplicationCategoryType</key>
   <string>public.app-category.social-networking</string>
   <key>CFBundleURLTypes</key>
@@ -22,11 +24,11 @@
   <key>ITSAppUsesNonExemptEncryption</key>
   <false/>
   <key>NSMicrophoneUsageDescription</key>
-  <string>Voxt uses the microphone to record voice messages and for calls.</string>
+  <string>Need access to your microphone to record audio messages</string>
   <key>NSCameraUsageDescription</key>
-  <string>Voxt uses the camera for video calls and to capture photos you attach to chats.</string>
+  <string>Need access to your camera to take photos and share them with other users.</string>
   <key>NSContactsUsageDescription</key>
-  <string>Voxt uses your contacts to help you find friends already using Voxt.</string>
+  <string>We collect this information to help you find friends in your contact list who are already using Voxt. If you grant access to your contact list, we will send the contact names and the hashed values of phone numbers and email addresses to our servers.</string>
   <key>NSLocationUsageDescription</key>
   <string>Share your live location with people in a chat while location sharing is active.</string>
   <key>NSLocationWhenInUseUsageDescription</key>

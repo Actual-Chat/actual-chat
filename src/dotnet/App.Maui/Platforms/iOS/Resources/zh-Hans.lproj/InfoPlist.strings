@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "需要麦克风权限来录制语音消息";
+"NSCameraUsageDescription" = "需要相机权限来拍摄照片并与其他用户分享。";
+"NSPhotoLibraryUsageDescription" = "上传照片，与其他用户分享或更换头像。";
+"NSPhotoLibraryAddUsageDescription" = "分享相册中的照片和视频。";
+"NSContactsUsageDescription" = "我们收集这些信息，是为了帮助你在通讯录中找到已经在使用 Voxt 的朋友。如果你允许访问通讯录，我们会将联系人姓名以及电话号码和电子邮件地址的哈希值发送到我们的服务器。";
+"NSLocationWhenInUseUsageDescription" = "在位置共享开启期间，与聊天中的成员共享你的实时位置。";
+"NSLocationUsageDescription" = "在位置共享开启期间，与聊天中的成员共享你的实时位置。";
+"NSFocusStatusUsageDescription" = "让 Voxt 了解睡眠或勿扰模式等专注模式是否已开启，这样按住说话会保持静音，而不会大声播放语音。";

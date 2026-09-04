@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Do nagrywania wiadomości audio potrzebny jest dostęp do mikrofonu";
+"NSCameraUsageDescription" = "Do robienia zdjęć i udostępniania ich innym użytkownikom potrzebny jest dostęp do aparatu.";
+"NSPhotoLibraryUsageDescription" = "Przesyłaj zdjęcia, aby udostępniać je innym użytkownikom lub zmienić swój awatar.";
+"NSPhotoLibraryAddUsageDescription" = "Udostępniaj zdjęcia i filmy ze swojej galerii.";
+"NSContactsUsageDescription" = "Zbieramy te informacje, aby pomóc Ci znaleźć na liście kontaktów znajomych, którzy już korzystają z Voxt. Jeśli zezwolisz na dostęp do kontaktów, wyślemy na nasze serwery nazwy kontaktów oraz skróty (hashe) numerów telefonów i adresów e-mail.";
+"NSLocationWhenInUseUsageDescription" = "Udostępniaj swoją lokalizację na żywo osobom na czacie, dopóki udostępnianie lokalizacji jest aktywne.";
+"NSLocationUsageDescription" = "Udostępniaj swoją lokalizację na żywo osobom na czacie, dopóki udostępnianie lokalizacji jest aktywne.";
+"NSFocusStatusUsageDescription" = "Pozwala Voxt wykrywać, kiedy włączony jest tryb Skupienia, taki jak Sen lub Nie przeszkadzać, aby funkcja Naciśnij i mów pozostała wyciszona zamiast odtwarzać głos na głos.";
