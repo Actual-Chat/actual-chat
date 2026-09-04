@@ -84,10 +84,12 @@ Task SendCallRing(
 - `apns-push-type: voip`, `apns-topic: <ApplePushBundleId>.voip`, `apns-priority: 10`.
 - `apns-expiration` = `Constants.Call.RingTimeout` (20s). A ring that outlives its own
   window must not wake a phone.
-- Payload: `ConversationId`, caller `AuthorId`, caller display name, `HasVideo`, and
-  the derived call id (§4.2). `ChatId` is carried too, redundantly — it is derivable
-  as `ConversationId.ChatId`, but the push handler runs before any Blazor scope and
-  should not have to parse to route a ring.
+- Payload: `ConversationId`, caller `AuthorId`, caller display name, `HasVideo`.
+  No call id: it is derived on the client (`CallId.For(conversationId)`, §4.2) and a
+  deterministic derivation makes carrying it pointless (the server project cannot
+  reference the client type anyway). `ChatId` is carried too, redundantly — it is
+  derivable as `ConversationId.ChatId`, but the push handler runs before any Blazor
+  scope and should not have to parse to route a ring.
 - All JWT caching, dead-token pruning (`NotificationsBackend_RemoveDevices`) and HTTP/2
   handling are inherited from `ApnsClient` unchanged.
 
