@@ -111,4 +111,46 @@ public class AudioSessionOwnershipTest
     [InlineData(AudioFocusMode.Recording)]
     public void ATransmitOwnerBlocksEveryConfiguration(AudioFocusMode mode)
         => AudioSessionOwnership.MayConfigure(AudioSessionOwner.PttTransmit, mode).Should().BeFalse();
+
+    [Fact]
+    public void TheAppMayNeverActivateUnderCallKit()
+        => AudioSessionOwnership.MayActivate(AudioSessionOwner.CallKit).Should().BeFalse();
+
+    [Fact]
+    public void CallKitAllowsRaisingToRecordingOnly()
+    {
+        // The call needs the mic, so PlayAndRecord is compatible; lowering the category
+        // is what cuts the remote voice out.
+        AudioSessionOwnership.MayConfigure(AudioSessionOwner.CallKit, AudioFocusMode.Recording)
+            .Should().BeTrue();
+        AudioSessionOwnership.MayConfigure(AudioSessionOwner.CallKit, AudioFocusMode.Playback)
+            .Should().BeFalse();
+        AudioSessionOwnership.MayConfigure(AudioSessionOwner.CallKit, AudioFocusMode.Listening)
+            .Should().BeFalse();
+        AudioSessionOwnership.MayConfigure(AudioSessionOwner.CallKit, AudioFocusMode.Tune)
+            .Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(AudioSessionOwner.CallKit)]
+    [InlineData(AudioSessionOwner.PttTransmit)]
+    [InlineData(AudioSessionOwner.PttPlayback)]
+    [InlineData(AudioSessionOwner.App)]
+    public void EndingACallAlwaysReturnsOwnershipToTheApp(AudioSessionOwner current)
+    {
+        AudioSessionOwnership.OnReleased(current, AudioSessionRelease.CallEnded, false)
+            .Should().Be(AudioSessionOwner.App);
+        AudioSessionOwnership.OnReleased(current, AudioSessionRelease.CallEnded, true)
+            .Should().Be(AudioSessionOwner.App);
+    }
+
+    [Fact]
+    public void EndingAPttTransmitNeverHandsTheSessionToCallKit()
+    {
+        // A CallKit owner is only ever set by the provider's activate callback; no PTT
+        // transition may invent one.
+        AudioSessionOwnership
+            .OnReleased(AudioSessionOwner.CallKit, AudioSessionRelease.TransmitEnded, true)
+            .Should().Be(AudioSessionOwner.CallKit);
+    }
 }
