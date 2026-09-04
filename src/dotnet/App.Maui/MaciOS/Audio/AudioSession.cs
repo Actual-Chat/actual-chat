@@ -18,6 +18,8 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
     private static readonly Lock OwnerLock = new();
     private static int _owner;
     private static long _ownerChangedAt;
+    private static int _isCallVideo;
+    private static int _isCallOverrideCleared;
     private static int _isOwnerWatchdogRunning;
     private static Action? _ownerWatchdogRecovery;
     private static long _playbackActivityAt;
@@ -28,16 +30,32 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
     public static AudioSessionOwner Owner => (AudioSessionOwner)Volatile.Read(ref _owner);
     public static bool MayActivateNow => AudioSessionOwnership.MayActivate(Owner);
 
+    public static bool IsCallVideo {
+        get => Volatile.Read(ref _isCallVideo) != 0;
+        set => Volatile.Write(ref _isCallVideo, value ? 1 : 0);
+    }
+
     public static void SetOwner(AudioSessionOwner owner)
         => PublishOwner(owner);
 
     public static void ReleaseOwner(AudioSessionRelease release, bool hasLivePlayback = false)
     {
-        lock (OwnerLock)
+        lock (OwnerLock) {
+            // The latch scopes to one CallKit call: the next one must clear the route again,
+            // since a stale Speaker override may again be sitting there from pre-call recording.
+            var wasCallKit = Owner == AudioSessionOwner.CallKit;
             PublishOwnerUnsafe(AudioSessionOwnership.OnReleased(Owner, release, hasLivePlayback));
+            if (wasCallKit)
+                Volatile.Write(ref _isCallOverrideCleared, 0);
+        }
 
         ArmOwnerWatchdog();
     }
+
+    public static void ResetCallRouteLatch()
+        // ReleaseOwner clears the latch only while CallKit still owns the session, so a call PTT
+        // took the session away from mid-way would leave the next one on this one's route.
+        => Volatile.Write(ref _isCallOverrideCleared, 0);
 
     public static void SetOwnerWatchdogRecovery(Action recovery)
         => Volatile.Write(ref _ownerWatchdogRecovery, recovery);
@@ -117,7 +135,9 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
 
     private static void ArmOwnerWatchdog()
     {
-        if (Owner == AudioSessionOwner.App)
+        // CallKit polices its own lifecycle via DidDeactivateAudioSession/DidReset, and the
+        // recovery action below resets PTT framework state - it must never run for a live call.
+        if (Owner is AudioSessionOwner.App or AudioSessionOwner.CallKit)
             return;
         if (Interlocked.CompareExchange(ref _isOwnerWatchdogRunning, 1, 0) != 0)
             return;
@@ -143,7 +163,10 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
                 // unable to activate its own session - every tune, playback and recording dies.
                 OwnerLog.LogWarning(
                     "The audio session was owned by {Owner} with no PTT callback - reverted to App", stuckOwner);
-                RunOwnerWatchdogRecovery();
+                // The recovery resets PTT framework state, which would tear down a live call: the
+                // arm race can land here for a CallKit owner, and CallKit polices its own lifecycle.
+                if (stuckOwner != AudioSessionOwner.CallKit)
+                    RunOwnerWatchdogRecovery();
                 return;
             }
         }
@@ -183,6 +206,11 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
                 return null;
 
             PublishOwnerUnsafe(AudioSessionOwner.App);
+            // A rare arm-race (a watchdog already running for a PTT owner, still polling right as
+            // that owner hands off to CallKit) can still land here for a CallKit owner - keep the
+            // latch scoped to one call on this exit path too.
+            if (owner == AudioSessionOwner.CallKit)
+                Volatile.Write(ref _isCallOverrideCleared, 0);
             return owner;
         }
     }
@@ -295,13 +323,14 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             return;
         }
 
-        if (GetPortOverride(outputs) is not { } portOverride)
+        var hasExternalDevice = outputs.Any(x => IsExternalPort(x.PortType));
+        if (GetPortOverride(hasExternalDevice, MustPreferSpeaker(Owner, IsCallVideo)) is not { } portOverride)
             return;
 
         var isOverridden = ForceOverride(session, portOverride, out var error);
-        // None means an external device won the output, and the mic has to follow it: the override
-        // moves playback only, so iOS leaves a headset that arrived mid-recording unheard.
-        var input = ApplyPreferredInput(portOverride is AVAudioSessionPortOverride.None);
+        // An external device won the output, and the mic has to follow it: the override moves
+        // playback only, so iOS leaves a headset that arrived mid-recording unheard.
+        var input = ApplyPreferredInput(hasExternalDevice);
         Log.LogInformation(
             "ApplyOutputRoute: mode={Mode}, sessionMode={SessionMode}, "
             + "{Outputs} -> {Override} -> {Result}, input={Input}",
@@ -338,17 +367,26 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
                 && session.OverrideOutputAudioPort(portOverride, out error);
         }
 
-        // Null means there's nothing to state - which covers Macs, where there's no receiver to
-        // be pushed off.
-        static AVAudioSessionPortOverride? GetPortOverride(AVAudioSessionPortDescription[] outputs) {
+        // Null means leave the route alone - Macs have no receiver to push off, and once a live
+        // CallKit voice call's stale override is cleared, CallKit and the user's toggle own it.
+        static AVAudioSessionPortOverride? GetPortOverride(bool hasExternalDevice, bool mustPreferSpeaker) {
             // An external device is the user's own choice of where to listen, so it outranks the
             // speaker default - and clearing the override is also what hands the route back to a
             // headset plugged in while the speaker was forced.
-            if (outputs.Any(x => IsExternalPort(x.PortType)))
+            if (hasExternalDevice)
                 return AVAudioSessionPortOverride.None;
 
-            // Unconditional: the session reports the speaker even while a post-VPIO source plays
-            // on the receiver, so the old "only if I see the receiver" test never once fired.
+            if (!mustPreferSpeaker) {
+                // CallKit and the user's speaker toggle own the route from here; a stale Speaker
+                // override from pre-call recording is cleared exactly once, then left untouched.
+                if (Interlocked.Exchange(ref _isCallOverrideCleared, 1) != 0)
+                    return null;
+
+                return AVAudioSessionPortOverride.None;
+            }
+
+            // Forced only when the speaker is wanted: the session reports the speaker even while
+            // a post-VPIO source plays on the receiver, so an "only if I see it" test never fires.
             return OperatingSystem.IsMacCatalyst()
                 ? null
                 : AVAudioSessionPortOverride.Speaker;
@@ -369,16 +407,22 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
     {
         Log.LogInformation("Configure: mode={Mode}", mode);
         if (mode is AudioFocusMode.Recording) {
+            var owner = Owner;
+            var isCallVideo = IsCallVideo;
             // VoiceChat carries the PTT call's AEC under a PTT owner. VideoChat, not Default, for
             // ours: SetVoiceProcessingEnabled replaces Default and drops DefaultToSpeaker with it.
-            var sessionMode = Owner == AudioSessionOwner.App
-                ? AVAudioSessionMode.VideoChat
-                : AVAudioSessionMode.VoiceChat;
-            session.SetCategory(AVAudioSessionCategory.PlayAndRecord,
-                    sessionMode,
-                    AVAudioSessionCategoryOptions.DefaultToSpeaker
-                    | AVAudioSessionCategoryOptions.AllowBluetooth
-                    | AVAudioSessionCategoryOptions.AllowBluetoothA2DP)
+            var sessionMode = owner switch {
+                AudioSessionOwner.App => AVAudioSessionMode.VideoChat,
+                AudioSessionOwner.CallKit when isCallVideo => AVAudioSessionMode.VideoChat,
+                _ => AVAudioSessionMode.VoiceChat,
+            };
+            var options = AVAudioSessionCategoryOptions.AllowBluetooth
+                | AVAudioSessionCategoryOptions.AllowBluetoothA2DP;
+            // A CallKit voice call is the one case that wants the receiver, so it drops
+            // DefaultToSpeaker too - a phone call starts at the ear, not on the speaker.
+            if (MustPreferSpeaker(owner, isCallVideo))
+                options |= AVAudioSessionCategoryOptions.DefaultToSpeaker;
+            session.SetCategory(AVAudioSessionCategory.PlayAndRecord, sessionMode, options)
                 .Assert($"{mode}: failed to set category");
             session.SetPreferredIOBufferDuration(Constants.Audio.OpusFrameDuration.TotalSeconds, out var error);
             error.Assert("Failed to set preferred IO buffer duration");
@@ -388,6 +432,9 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         else
             session.SetCategory(AVAudioSessionCategory.Ambient).Assert($"{mode}: failed to set category");
     }
+
+    private static bool MustPreferSpeaker(AudioSessionOwner owner, bool isCallVideo)
+        => owner != AudioSessionOwner.CallKit || isCallVideo;
 }
 
 /// <summary>
