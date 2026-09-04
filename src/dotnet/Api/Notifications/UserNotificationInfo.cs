@@ -24,6 +24,11 @@ public sealed partial record UserNotificationInfo(
     // table - and cleared only once the dismissal push has actually gone out.
     [DataMember(Order = 6), Key(6)]
     public ApiArray<PendingDismissal> PendingDismissals { get; init; }
+    // Beep state of coalescing notifications removed by a read or a dismissal, kept until the
+    // conversation lull would have reset it anyway. A read on one device must not turn the
+    // next message into a fresh first alert on the others.
+    [DataMember(Order = 7), Key(7)]
+    public ApiArray<BeepMemory> BeepMemories { get; init; }
 
     public UserNotificationInfo WithPendingDismissals(IEnumerable<PendingDismissal> dismissals)
     {
@@ -42,6 +47,24 @@ public sealed partial record UserNotificationInfo(
         => ids.Count == 0
             ? this
             : this with { PendingDismissals = PendingDismissals.Without(x => ids.Contains(x.Id)) };
+
+    public UserNotificationInfo WithBeepMemories(IEnumerable<BeepMemory> memories, Moment now)
+    {
+        var kept = BeepMemories.Where(m => !m.IsStale(now));
+        var byId = kept.ToDictionary(m => m.Id);
+        foreach (var memory in memories)
+            byId[memory.Id] = memory;
+        var result = byId.Values.OrderBy(m => m.SentAt).ToApiArray();
+        var extra = result.Count - Constants.Notification.MaxBeepMemories;
+        if (extra > 0)
+            result = result.Skip(extra).ToApiArray();
+        return this with { BeepMemories = result };
+    }
+
+    public UserNotificationInfo WithoutBeepMemory(NotificationId id)
+        => BeepMemories.Any(m => m.Id == id)
+            ? this with { BeepMemories = BeepMemories.Without(m => m.Id == id) }
+            : this;
 
     // Upserts notification into Items: a notification with the same Id is merged into the
     // existing one (coalescing subtypes accumulate their state), otherwise it's appended.
@@ -68,3 +91,22 @@ public sealed partial record PendingDismissal(
     [property: DataMember(Order = 0), Key(0)] NotificationId Id,
     [property: DataMember(Order = 1), Key(1)] string Tag,
     [property: DataMember(Order = 2), Key(2)] Moment QueuedAt);
+
+/// <summary>
+/// The beep state a removed <see cref="ChatEntryRelatedNotification"/> leaves behind, so its
+/// successor under the same id continues the back-off instead of alerting as a first message.
+/// </summary>
+[DataContract, MessagePackObject]
+[method: SerializationConstructor]
+public sealed partial record BeepMemory(
+    [property: DataMember(Order = 0), Key(0)] NotificationId Id,
+    [property: DataMember(Order = 1), Key(1)] Moment SentAt,
+    [property: DataMember(Order = 2), Key(2)] int BeepCount,
+    [property: DataMember(Order = 3), Key(3)] Moment LastBeepAt,
+    [property: DataMember(Order = 4), Key(4)] string BeepGroup,
+    [property: DataMember(Order = 5), Key(5)] string LastBeepGroup)
+{
+    // Past the longest lull period nothing here matters any more: the merge would reset it.
+    public bool IsStale(Moment now)
+        => now - SentAt >= Constants.Notification.VoiceReAlertInterval;
+}

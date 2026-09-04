@@ -85,10 +85,7 @@ public abstract partial record ChatEntryRelatedNotification(NotificationId Id, l
         // back-off, so this fresh message alerts immediately instead of inheriting the back-off.
         // Spoken messages measure the lull against the longer voice interval: at BeepResetPeriod
         // an ordinary pause mid-monologue would re-arm the beep on the very next utterance.
-        var lullPeriod = beepGroup.IsNullOrEmpty()
-            ? Constants.Notification.BeepResetPeriod
-            : Constants.Notification.VoiceReAlertInterval;
-        var isLull = SentAt - e.SentAt >= lullPeriod;
+        var isLull = SentAt - e.SentAt >= NotificationBeepPolicy.GetLullPeriod(beepGroup);
         return this with {
             Version = e.Version,
             CreatedAt = e.CreatedAt,

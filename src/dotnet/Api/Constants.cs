@@ -424,6 +424,8 @@ public static partial class Constants
         // at most MaxMentionReAlerts times per mention.
         public static readonly TimeSpan MentionReAlertInterval = TimeSpan.FromMinutes(10);
         public const int MaxMentionReAlerts = 2;
+        // Removed coalescing notifications whose beep state is still remembered per user.
+        public const int MaxBeepMemories = 32;
         // Messages kept verbatim in a coalesced notification (its transcript window); older ones
         // fold into the "+N earlier messages" tail.
         public const int MaxRecentMessages = 5;

@@ -196,8 +196,21 @@ onBackgroundMessage(messaging, async payload => {
         body: data.body,
         data: { url: link },
     };
+    const canListShown = typeof sw.registration.getNotifications === 'function';
+    if (silent) {
+        // A silent update only refreshes a banner that is still on screen (same tag replaces it in
+        // place): closing it first would pop a fresh toast per update, and re-showing one the user
+        // has dismissed would resurrect it.
+        if (canListShown) {
+            const shown = await sw.registration.getNotifications({ tag: tag });
+            if (shown.length === 0)
+                return;
+        }
+        await sw.registration.showNotification(data.title, options);
+        return;
+    }
     // silly hack because notifications get lost or suppressed
-    if (typeof sw.registration.getNotifications === 'function') {
+    if (canListShown) {
         const notificationsToClose = await sw.registration.getNotifications({ tag: tag });
         for (const toClose of notificationsToClose) {
             toClose.close();
