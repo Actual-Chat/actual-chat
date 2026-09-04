@@ -494,6 +494,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                 clauses.Add(isPrefix
                     ? q => q.Prefix(p => p.Field(x => x.Hashtags).Value(tag))
                     : q => q.Term(t => t.Field(x => x.Hashtags).Value(tag)));
+            if (query.OwnEntriesOnly)
+                clauses.Add(q => q.Term(t => t.Field(x => x.AuthorUserId).Value(userId.Value)));
 
             return descriptor.Must(clauses.ToArray());
         }

@@ -277,6 +277,7 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
                 PlaceId = PlaceId,
                 ChatId = LocationFilter == SearchLocationFilter.Chat ? ChatId : null,
                 Limit = DisplayLimit(key.Scope) + 1,
+                OwnEntriesOnly = TypeFilter == SearchTypeFilter.MyMessages,
             };
     }
 

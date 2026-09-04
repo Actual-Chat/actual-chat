@@ -11,4 +11,5 @@ public partial record EntrySearchQuery
     [DataMember, Key(2)] public ChatId? ChatId { get; init; }
     [DataMember, Key(3)] public int Skip { get; init; }
     [DataMember, Key(4)] public int Limit { get; init; } = Constants.Search.DefaultPageSize;
+    [DataMember, Key(5)] public bool OwnEntriesOnly { get; init; }
 }

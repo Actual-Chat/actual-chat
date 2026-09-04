@@ -4,7 +4,7 @@ namespace ActualChat.MLSearch;
 
 public static class ChatEntryExt
 {
-    public static IndexedEntry ToIndexedEntry(this ChatEntry entry, IMarkupParser markupParser)
+    public static IndexedEntry ToIndexedEntry(this ChatEntry entry, IMarkupParser markupParser, UserId? authorUserId)
     {
         var markup = markupParser.Parse(entry.Content);
         return new IndexedEntry {
@@ -12,6 +12,7 @@ public static class ChatEntryExt
             Content = entry.Content,
             Hashtags = HashtagExtractor.Instance.GetTags(markup).ToArray(),
             At = entry.GetIndexedEntryDate(),
+            AuthorUserId = authorUserId,
         };
     }
 

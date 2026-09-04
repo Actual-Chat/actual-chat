@@ -12,6 +12,7 @@ public sealed partial class EntryIndexingFlow : BatchedIndexingFlow<ChatEntry, C
 {
     private MLSearchSettings Settings => field ??= Services.GetRequiredService<MLSearchSettings>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
+    private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
     private IPlacesBackend PlacesBackend => field ??= Services.GetRequiredService<IPlacesBackend>();
     private IndexedDocuments IndexedDocuments => field ??= Services.GetRequiredService<IndexedDocuments>();
     private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
@@ -70,9 +71,17 @@ public sealed partial class EntryIndexingFlow : BatchedIndexingFlow<ChatEntry, C
     {
         await WhenReady.ConfigureAwait(false);
 
-        var updated = batch
+        var live = batch
             .Where(x => x is { IsRemoved: false, IsSystemEntry: false })
-            .Select(x => x.ToIndexedEntry(MarkupParser))
+            .ToList();
+        var authorUserIds = new Dictionary<AuthorId, UserId?>();
+        foreach (var authorId in live.Select(x => x.AuthorId).Distinct()) {
+            var author = await AuthorsBackend.Get(ChatId, authorId, RequestedAuthorKind.Full, cancellationToken)
+                .ConfigureAwait(false);
+            authorUserIds[authorId] = author?.UserId;
+        }
+        var updated = live
+            .Select(x => x.ToIndexedEntry(MarkupParser, authorUserIds.GetValueOrDefault(x.AuthorId)))
             .ToList();
         var removed = batch
             .Where(x => x is { IsRemoved: true, IsSystemEntry: false })
