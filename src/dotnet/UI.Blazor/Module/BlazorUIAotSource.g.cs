@@ -209,7 +209,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.SvgCatsTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.SystemTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.TotpTestPage>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.UIColorsTestPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.ColorsTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.UnavailablePage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.WebSplashTestPage>();
 
@@ -735,7 +735,7 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Pages.SvgCatsTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.SystemTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.TotpTestPage), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.Pages.UIColorsTestPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Pages.ColorsTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.UnavailablePage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.WebSplashTestPage), AotTypeKind.Component),
         ];
