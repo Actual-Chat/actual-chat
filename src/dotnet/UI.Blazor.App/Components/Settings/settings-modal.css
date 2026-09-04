@@ -197,16 +197,16 @@ body.narrow .close-settings-btn {
 }
 .sessions-tile-item .sign-out-btn {
     @apply flex-none;
-    @apply text-[var(--danger-light)];
+    @apply text-danger-light;
     @apply cursor-pointer;
 }
 body.hoverable .sessions-tile-item .sign-out-btn:hover,
 .touch-capable .sessions-tile-item .sign-out-btn:active {
-    @apply text-[var(--danger)];
+    @apply text-danger;
 }
 .sessions-tile-item .c-current {
     @apply flex-none;
-    @apply text-[var(--success)];
+    @apply text-success;
 }
 
 /* ── API Keys tab ── */

@@ -284,7 +284,7 @@ body.hoverable .left-panel-content-header.place .c-info > .c-left > .c-top:hover
 .left-panel-content-header.place .btn.btn-round.join-btn {
     @apply w-fit;
     @apply px-4;
-    @apply bg-[var(--round-right-panel)];
+    @apply bg-round-right-panel;
     @apply text-primary;
     @apply shadow-sm shadow-shadow-main;
 }
@@ -338,7 +338,7 @@ body.hoverable .add-members-btn:hover {
 }
 
 .left-panel-content-header.place.chat-roulette > .c-content {
-    @apply bg-[var(--indigo-70)];
+    @apply bg-pal-indigo-70;
 }
 
 .left-panel-content-header.place.chat-roulette .c-right .btn.btn-start-roulette {

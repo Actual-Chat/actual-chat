@@ -25,7 +25,7 @@
     @apply flex items-center justify-center;
     --qr-code-size: var(--c-qr-size);
     @apply rounded-3xl;
-    background: linear-gradient(180deg, #faedfe 0%, #d9d2fc 100%);
+    background: linear-gradient(180deg, var(--violet-99) 0%, var(--indigo-90) 100%);
 }
 /* Three lines of text-sm: what the longest of these strings takes in the widest locale, which the
    Max catalog is built to expose. Less than that and the modal grows when the hint wraps once more. */
@@ -81,7 +81,7 @@ body.narrow .share-qr-modal .c-tabs {
 }
 /* Show pane: the gradient is the whole sheet, and the code merely sits on it. */
 body.narrow .share-qr-modal:has(.c-code) {
-    background: linear-gradient(180deg, #faedfe 0%, #d9d2fc 100%);
+    background: linear-gradient(180deg, var(--violet-99) 0%, var(--indigo-90) 100%);
 }
 body.narrow .share-qr-modal .c-code {
     background: none;

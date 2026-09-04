@@ -434,7 +434,7 @@ body.narrow .attachment-list-btn.btn {
 }
 body.narrow .attachment-wrapper {
     @apply p-0;
-    @apply border border-[var(--black-20)];
+    @apply border border-pal-black-20;
     @apply bg-post-panel;
 }
 .narrow-panel .attachment-wrapper {
@@ -550,7 +550,7 @@ body.narrow .narrow-panel .attachment-item > img,
     @apply rounded-t-sm;
     @apply overflow-hidden;
     @apply cursor-default;
-    @apply bg-[var(--black-60)];
+    @apply bg-pal-black-60;
     @apply text-white text-xs font-medium;
 }
 .attachment-list-wrapper .attachment-filename {
@@ -563,7 +563,7 @@ body.narrow .narrow-panel .attachment-filename {
     @apply absolute bottom-1 left-1 z-20;
     @apply px-1.5 py-0.5;
     @apply rounded-md;
-    @apply bg-[var(--black-90)] text-white;
+    @apply bg-pal-black-90 text-white;
     @apply text-xs font-medium leading-none whitespace-nowrap;
     @apply pointer-events-none;
 }
@@ -582,7 +582,7 @@ body.narrow .narrow-panel .attachment-filename {
     @apply self-center text-center;
     @apply pb-0.5 pt-1;
     @apply rounded-t-sm;
-    @apply bg-[var(--black-60)];
+    @apply bg-pal-black-60;
     @apply text-danger text-xs font-medium;
     @apply pointer-events-none;
 }
@@ -614,7 +614,7 @@ body.narrow .narrow-panel .attachment-filename {
     @apply absolute bottom-1 left-1 z-20;
     @apply px-1.5 py-0.5;
     @apply rounded-md;
-    @apply bg-[var(--black-80)] text-white;
+    @apply bg-pal-black-80 text-white;
     @apply text-caption-9 whitespace-nowrap;
     @apply pointer-events-none;
 }
@@ -804,16 +804,16 @@ body.narrow .list-view-layout.has-audio-panel-header .rounded-sub-footer > .bg-l
         linear-gradient(var(--violet-50-10), var(--violet-50-10)),
         linear-gradient(var(--background-01), var(--background-01));
     -webkit-mask:
-        radial-gradient(30% 100% at 0% 100%, #000 55%, transparent 85%),
-        radial-gradient(30% 100% at 100% 100%, #000 55%, transparent 85%),
-        radial-gradient(30% 80% at 50% 100%, #000 55%, transparent 85%),
-        linear-gradient(to top, #000 35%, transparent 100%);
+        radial-gradient(30% 100% at 0% 100%, var(--black) 55%, transparent 85%),
+        radial-gradient(30% 100% at 100% 100%, var(--black) 55%, transparent 85%),
+        radial-gradient(30% 80% at 50% 100%, var(--black) 55%, transparent 85%),
+        linear-gradient(to top, var(--black) 35%, transparent 100%);
     -webkit-mask-composite: source-over;
     mask:
-        radial-gradient(30% 100% at 0% 100%, #000 55%, transparent 85%),
-        radial-gradient(30% 100% at 100% 100%, #000 55%, transparent 85%),
-        radial-gradient(30% 80% at 50% 100%, #000 55%, transparent 85%),
-        linear-gradient(to top, #000 35%, transparent 100%);
+        radial-gradient(30% 100% at 0% 100%, var(--black) 55%, transparent 85%),
+        radial-gradient(30% 100% at 100% 100%, var(--black) 55%, transparent 85%),
+        radial-gradient(30% 80% at 50% 100%, var(--black) 55%, transparent 85%),
+        linear-gradient(to top, var(--black) 35%, transparent 100%);
     mask-composite: add;
     animation: smoothSubFooter 1s steps(10) forwards;
 }
@@ -885,7 +885,7 @@ body.touch-capable .notify-call-btn:active .bell-svg.active {
 .drag-drop-overlay.active {
     @apply flex;
     @apply rounded-lg border-2 border-dashed border-primary;
-    @apply bg-[var(--black-60)];
+    @apply bg-pal-black-60;
 }
 .drag-drop-overlay-content {
     @apply flex-x items-center gap-x-2;

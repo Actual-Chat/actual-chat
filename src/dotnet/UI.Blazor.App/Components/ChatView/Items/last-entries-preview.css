@@ -20,8 +20,8 @@
 .last-entries-preview.faded:has(> .c-message-wrapper:nth-child(4)) {
     /* A content mask, not a colour overlay, so the block's own tint shows through uniformly - no fade
        colour to match, and it works over any tint in either theme. */
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 3.75rem);
-    mask-image: linear-gradient(to bottom, transparent 0, #000 3.75rem);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, var(--black) 3.75rem);
+    mask-image: linear-gradient(to bottom, transparent 0, var(--black) 3.75rem);
 }
 /* Fixed row height + a one-line clamp, so the box's height is a count of rows rather than a function of
    what anyone said. The block therefore grows by exactly one row per entry until the cap, and never

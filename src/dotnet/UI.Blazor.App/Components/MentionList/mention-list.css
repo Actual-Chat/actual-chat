@@ -58,7 +58,7 @@ body.narrow .mention-list-wrapper::after {
     @apply content-empty;
     @apply absolute bottom-0 left-12 right-12;
     @apply h-px;
-    @apply bg-[var(--white-10)];
+    @apply bg-pal-white-10;
 }
 body.narrow .mention-list.expanded {
     --mention-list-cap: min(16rem, var(--mention-list-max-h, 100vh));
@@ -128,7 +128,7 @@ body.hoverable .mention-list .mention-list-item.selected,
 }
 body.narrow .mention-list-wrapper .mention-list-chips {
     @apply right-2;
-    @apply border-[var(--black-30)];
+    @apply border-pal-black-30;
     @apply bg-post-panel;
 }
 .mention-list-wrapper .mention-list-chip,

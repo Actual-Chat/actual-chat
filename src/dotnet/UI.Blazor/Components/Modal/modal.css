@@ -6,7 +6,7 @@
     @apply h-full w-full;
     @apply overflow-hidden;
     @apply outline-0;
-    @apply bg-[var(--black-70)];
+    @apply bg-pal-black-70;
     backdrop-filter: blur(2px);
     transition: background-color 320ms cubic-bezier(0.32, 0.72, 0, 1);
 }

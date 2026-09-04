@@ -62,7 +62,6 @@
     @apply relative;
     @apply flex-none flex-y;
     @apply overflow-visible;
-    @apply bg-[var(--active-chats)];
 }
 .navbar-chats .c-active-chats > .c-delimiter {
     @apply hidden;
@@ -76,7 +75,7 @@
     @apply right-4;
     bottom: calc(1rem + var(--safe-area-bottom));
     @apply w-14 h-14;
-    @apply bg-[var(--round-right-panel)] text-primary;
+    @apply bg-round-right-panel text-primary;
     @apply border border-separator;
     @apply shadow-md shadow-shadow-main;
 }

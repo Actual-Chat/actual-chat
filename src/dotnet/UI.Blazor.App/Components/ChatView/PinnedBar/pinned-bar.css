@@ -5,7 +5,7 @@
     @apply pr-2 mb-0.5;
     @apply rounded-lg;
     @apply bg-01;
-    @apply bg-gradient-to-r from-[var(--blue-50-10)] to-[var(--background-02)];
+    @apply bg-gradient-to-r from-pal-blue-50-10 to-[var(--background-02)];
     @apply select-none;
 }
 .pinned-bar > .c-cycle {

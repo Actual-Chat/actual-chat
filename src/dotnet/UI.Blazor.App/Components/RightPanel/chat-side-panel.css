@@ -374,7 +374,7 @@ body.narrow .chat-side-panel::before {
         transform .15s ease-in .3s;
 }
 .chat-side-panel > .c-top-region > .c-header > .c-center > .c-buttons .btn.btn-round {
-    @apply bg-[var(--round-right-panel)];
+    @apply bg-round-right-panel;
     @apply text-primary;
 }
 
@@ -539,7 +539,7 @@ body.hoverable .thread-list-item:hover {
     @apply flex;
     @apply truncate;
     @apply whitespace-pre;
-    @apply text-caption-1 text-[var(--blue-30)];
+    @apply text-caption-1 text-pal-blue-30;
 }
 .thread-list-item .c-bottom .c-last-message .c-name:has(.non-shrinkable) {
     @apply flex-none;
@@ -599,8 +599,8 @@ body.hoverable .content-list-grid .image-attachment:hover image-skeleton {
 .content-list-grid .c-video .c-duration {
     @apply absolute bottom-1 left-1;
     @apply px-1.5 py-0.5;
-    @apply rounded-md border border-[var(--white-20)];
-    @apply bg-[var(--black-90)] text-white;
+    @apply rounded-md border border-pal-white-20;
+    @apply bg-pal-black-90 text-white;
     @apply text-xxs font-medium leading-none whitespace-nowrap;
 }
 .content-list-grid .c-video .c-duration:empty {
@@ -626,7 +626,7 @@ body.hoverable .content-list-rows .c-file-row:hover,
     @apply text-lg;
 }
 .content-list-rows .c-file-icon.file-default {
-    @apply bg-[var(--file-default)];
+    @apply bg-file-default;
 }
 .content-list-rows .c-file-info {
     @apply min-w-0 flex-1 flex-y gap-y-0;

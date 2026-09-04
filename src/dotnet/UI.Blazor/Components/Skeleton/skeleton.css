@@ -85,7 +85,7 @@ body.narrow .wide-left-panel-skeleton:has(.inaccessible-place-request) {
     @apply flex-y gap-y-2;
     @apply h-14;
     @apply py-2 px-2;
-    @apply border-b border-[var(--separator)];
+    @apply border-b border-separator;
 }
 .wide-left-panel-skeleton .panel-header-skeleton .c-title {
     @apply flex-1 flex items-center;
@@ -134,7 +134,7 @@ body.narrow .right-panel-skeleton {
     @apply h-26;
     @apply py-2 px-3;
     @apply rounded-b-xl;
-    @apply bg-[var(--right-panel-skeleton-header)];
+    @apply bg-right-panel-skeleton-header;
 }
 .right-panel-skeleton .panel-body-skeleton {
     @apply relative;

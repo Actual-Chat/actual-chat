@@ -32,7 +32,7 @@ body.narrow .chat-message-editor.text-mode:not(.narrow-panel) .chat-audio-panel 
 .chat-audio-panel .take-phone-btn.btn,
 body.hoverable .chat-audio-panel .take-phone-btn.btn:hover {
     @apply text-06;
-    background: linear-gradient(0deg, #7429FF 0.32%, #FF3BB1 133.76%);
+    background: linear-gradient(0deg, var(--audio-accent-3) 0.32%, var(--audio-accent-2) 133.76%);
     transition-property: transform, opacity, filter;
 }
 .chat-audio-panel .listen-only-btn.btn,
@@ -48,19 +48,19 @@ body.hoverable .chat-audio-panel .listen-only-btn.btn:hover {
     @apply pointer-events-none;
     top: -40%;
     height: 180%;
-    background: linear-gradient(180deg, #C60077 -18.32%, #2970FF 132%);
+    background: linear-gradient(180deg, var(--magenta-45) -18.32%, var(--blue-55) 132%);
     border-radius: inherit;
 }
 .chat-audio-panel .record-off-btn.btn,
 body.hoverable .chat-audio-panel .record-off-btn.btn:hover {
     @apply text-06;
-    background: linear-gradient(180deg, #2970FF 0.32%, #C60077 133.76%);
+    background: linear-gradient(180deg, var(--blue-55) 0.32%, var(--magenta-45) 133.76%);
     transition-property: transform, opacity, filter;
 }
 .chat-audio-panel .record-on-btn.btn,
 body.hoverable .chat-audio-panel .record-on-btn.btn:hover {
     @apply text-06;
-    background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
+    background: linear-gradient(180deg, var(--blue-55) -116.66%, var(--magenta-60) 66.08%);
     transition-property: filter;
 }
 .chat-audio-panel .language-button,
@@ -565,7 +565,7 @@ body.narrow .to-thin .rec-icon.text-mode-on {
 }
 
 .audio-panel-header .video-wrapper .btn.btn-round {
-    @apply bg-[var(--round-right-panel)];
+    @apply bg-round-right-panel;
 }
 
 .audio-panel-header .video-wrapper.video-on {
@@ -749,7 +749,7 @@ body.narrow .audio-panel-wrapper .recorder-wrapper {
     @apply flex-x items-center gap-x-4;
 }
 .audio-panel-header .btn-round {
-    @apply bg-[var(--round-right-panel)];
+    @apply bg-round-right-panel;
 }
 .audio-panel-header .language-wrapper {
     @apply relative;
@@ -809,7 +809,7 @@ body.narrow .chat-message-editor:not(.narrow-panel, .text-mode) .chat-audio-pane
     @apply hidden;
 }
 body.narrow .chat-audio-panel:has(.record-on) .volume-settings-btn.btn.btn-round > .btn-content i {
-    background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
+    background: linear-gradient(180deg, var(--blue-55) -116.66%, var(--magenta-60) 66.08%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -842,17 +842,17 @@ body.narrow .volume-settings-btn.text::before {
 }
 body.narrow .chat-audio-panel:has(.record-on-btn) .volume-settings-btn.text > .c-text,
 body.narrow .chat-audio-panel:has(.record-on-btn):not(.text-mode, .narrow-panel) .volume-settings-btn.text > .c-text {
-    background-image: linear-gradient(to right, #FF3880, 10%, white);
+    background-image: linear-gradient(to right, var(--magenta-60), 10%, white);
 }
 body.narrow .chat-audio-panel:has(.record-on-btn) .volume-settings-btn.text::before,
 body.narrow .chat-audio-panel:has(.record-on-btn):not(.text-mode, .narrow-panel) .volume-settings-btn.text::before {
-    background-image: linear-gradient(to right, #FF3880, 25%, var(--mobile-landscape-audio-panel-button-text));
+    background-image: linear-gradient(to right, var(--magenta-60), 25%, var(--mobile-landscape-audio-panel-button-text));
 }
 body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings-btn.text > .c-text {
-    background-image: linear-gradient(to right, #852FB0, 10%, white);
+    background-image: linear-gradient(to right, var(--audio-accent-1), 10%, white);
 }
 body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings-btn.text::before {
-    background-image: linear-gradient(to right, #852FB0, 25%, var(--mobile-landscape-audio-panel-button-text));
+    background-image: linear-gradient(to right, var(--audio-accent-1), 25%, var(--mobile-landscape-audio-panel-button-text));
 }
 
 /* === 14. Skeletons === */

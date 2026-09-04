@@ -9,7 +9,7 @@
     @apply flex-none flex items-center justify-center;
     @apply w-10 h-10;
     @apply rounded-full;
-    @apply bg-[var(--magenta-70)] text-white;
+    @apply bg-pal-magenta-70 text-white;
     @apply cursor-pointer;
 }
 body.hoverable .audio-file-attachment .c-play-btn:hover {
@@ -45,7 +45,7 @@ body.hoverable .audio-file-attachment .c-play-btn:hover {
     @apply flex-none flex items-center justify-center;
     @apply w-9 h-9;
     @apply rounded-full;
-    @apply bg-[var(--magenta-70)] text-white;
+    @apply bg-pal-magenta-70 text-white;
 }
 .audio-attachment-subheader .c-info {
     @apply flex-1 flex-y self-start justify-center;

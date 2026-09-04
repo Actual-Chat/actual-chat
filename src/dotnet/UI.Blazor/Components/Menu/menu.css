@@ -13,7 +13,7 @@
 .ac-menu-overlay {
     @apply fixed inset-0 z-menu-overlay;
     @apply overflow-hidden;
-    @apply bg-[var(--black-70)];
+    @apply bg-pal-black-70;
     backdrop-filter: blur(2px);
 }
 

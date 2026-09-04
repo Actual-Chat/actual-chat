@@ -16,7 +16,7 @@ body.narrow .chat-activity-panel .chat-audio-controls {
    without these the base .btn-h:hover rule would repaint them gray. */
 .chat-audio-controls .c-mic,
 .chat-audio-controls .c-hangup {
-    @apply text-[var(--danger-light)];
+    @apply text-danger-light;
 }
 body.hoverable .chat-audio-controls .c-mic:hover,
 body.hoverable .chat-audio-controls .c-hangup:hover,

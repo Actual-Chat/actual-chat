@@ -30,7 +30,7 @@ body.wide .video-diagnostics-modal {
 }
 .diag-tab--active {
     @apply text-01 font-semibold;
-    border-bottom-color: var(--primary, #4a90e2);
+    border-bottom-color: var(--primary);
 }
 
 .diag-history-row {

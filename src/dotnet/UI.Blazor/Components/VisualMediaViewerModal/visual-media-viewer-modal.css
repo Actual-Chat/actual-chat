@@ -112,13 +112,13 @@ swiper-container::part(button-next) {
     @apply right-0;
     @apply py-4 pl-4 pr-2;
     @apply rounded-l-2xl;
-    @apply bg-[var(--black-60)];
+    @apply bg-pal-black-60;
 }
 swiper-container::part(button-prev) {
     @apply left-0;
     @apply py-4 pl-2 pr-4;
     @apply rounded-r-2xl;
-    @apply bg-[var(--black-60)];
+    @apply bg-pal-black-60;
 }
 .media-swiper .video-wrapper {
     @apply flex items-center justify-center;
@@ -227,11 +227,11 @@ swiper-container::part(button-prev) {
     --data-media-loaded: 0px;
 }
 .video-wrapper .video-control progress[value]::-webkit-progress-bar {
-    @apply bg-[var(--gray-30)];
+    @apply bg-pal-gray-30;
     @apply rounded-full;
 }
 .video-wrapper .video-control progress[value]::-webkit-progress-value {
-    @apply bg-[var(--white)];
+    @apply bg-white;
     @apply rounded-full;
 }
 .video-wrapper .video-control .c-line-1 .c-timeline {
@@ -245,7 +245,7 @@ swiper-container::part(button-prev) {
     @apply absolute z-10 left-0;
     @apply h-full max-w-none;
     @apply rounded-full;
-    @apply bg-[var(--white-50)];
+    @apply bg-pal-white-50;
     width: var(--data-media-loaded);
 }
 .video-wrapper .video-control .c-thumb {
@@ -321,7 +321,7 @@ swiper-container.media-swiper.navigation-visible::part(button-prev) {
 }
 .reload-icon-wrapper {
     @apply absolute inset-0 z-10;
-    @apply bg-[var(--black-50)];
+    @apply bg-pal-black-50;
     backdrop-filter: blur(2px);
 }
 .reload-icon-wrapper .btn {

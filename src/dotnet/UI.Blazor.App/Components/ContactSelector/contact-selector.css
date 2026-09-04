@@ -45,7 +45,7 @@ body.hoverable .contact-selector-list-item:hover,
     @apply px-0.5;
     @apply rounded-lg border-none;
     @apply overflow-hidden;
-    @apply bg-[var(--highlighted)];
+    @apply bg-highlighted;
 }
 .contact-selector-badges > .c-contact,
 .contact-selector-badges > .c-contact * {
@@ -66,7 +66,7 @@ body.hoverable .contact-selector-list-item:hover,
     @apply w-4 h-4;
     @apply ml-1;
     @apply rounded-md;
-    @apply bg-[var(--magenta-60)];
+    @apply bg-pal-magenta-60;
     @apply text-base leading-4;
 }
 .contact-selector-badges > .c-contact > .c-name {

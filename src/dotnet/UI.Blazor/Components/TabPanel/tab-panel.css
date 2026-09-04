@@ -22,16 +22,16 @@
 /* Overflow fade: a mask rather than a gradient overlay, so it needs no background colour to blend
    with and stays right in both themes. .fade-left / .fade-right are toggled by tab-panel.ts. */
 .tab-panel-tabs .btn-group.fade-left {
-    -webkit-mask-image: linear-gradient(to right, transparent, #000 2rem);
-    mask-image: linear-gradient(to right, transparent, #000 2rem);
+    -webkit-mask-image: linear-gradient(to right, transparent, var(--black) 2rem);
+    mask-image: linear-gradient(to right, transparent, var(--black) 2rem);
 }
 .tab-panel-tabs .btn-group.fade-right {
-    -webkit-mask-image: linear-gradient(to left, transparent, #000 2rem);
-    mask-image: linear-gradient(to left, transparent, #000 2rem);
+    -webkit-mask-image: linear-gradient(to left, transparent, var(--black) 2rem);
+    mask-image: linear-gradient(to left, transparent, var(--black) 2rem);
 }
 .tab-panel-tabs .btn-group.fade-left.fade-right {
-    -webkit-mask-image: linear-gradient(to right, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
-    mask-image: linear-gradient(to right, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, var(--black) 2rem, var(--black) calc(100% - 2rem), transparent);
+    mask-image: linear-gradient(to right, transparent, var(--black) 2rem, var(--black) calc(100% - 2rem), transparent);
 }
 .tab-panel-tabs.carousel .btn-group {
     @apply gap-x-2;
