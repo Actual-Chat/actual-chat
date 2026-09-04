@@ -479,6 +479,8 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
             var frameStream = BuildFrames(cancellationToken).SuppressCancellation(cancellationToken);
             try {
+                Log.LogInformation("PushAudio: starting for chat #{ChatId}, offset={Offset:F1}s",
+                    chatId, sourceStartOffsetSeconds);
                 var rpcStream = RpcStream.New(frameStream);
                 await LiveAudioStreams.PushStream(
                     session,
@@ -490,6 +492,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                     cancellationToken).ConfigureAwait(false);
                 // Natural completion: channel writer was completed (CompleteAudioStream),
                 // reader drained, BuildFrames returned, PushAudio finished cleanly.
+                Log.LogInformation("PushAudio: completed for chat #{ChatId}, {SentFrames} frames", chatId, packetIndex);
                 return;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {

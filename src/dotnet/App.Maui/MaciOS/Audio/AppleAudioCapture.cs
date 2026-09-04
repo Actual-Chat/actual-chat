@@ -84,6 +84,8 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
                 engine.Input.SetVoiceProcessingEnabled(true);
 
             var hwFormat = engine.Input.GetOutputFormat();
+            Log.LogInformation("CaptureInternal: input format {SampleRate} Hz x {ChannelCount}, owner={Owner}",
+                hwFormat.SampleRate, hwFormat.ChannelCount, AudioSession.Owner);
             using var resampler = new Resampler(hwFormat, AudioEngine.VoiceRecordingFormat);
             if (preRoll is { } take) {
                 // Only a format match is safe: a route change between arming and draining would make

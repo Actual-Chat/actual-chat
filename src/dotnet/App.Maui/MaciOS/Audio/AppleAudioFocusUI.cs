@@ -201,7 +201,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         AudioSessionSetup setup;
         try {
             setup = await AudioSession.Reconfigure(mode).ConfigureAwait(false);
-            setup = await WaitForPttActivation(setup, mode).ConfigureAwait(false);
+            setup = await WaitForOwnerActivation(setup, mode).ConfigureAwait(false);
         }
         catch (Exception) {
             // Nothing else resumes the engines, so a session call that fails - which is what a
@@ -217,6 +217,8 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
             AudioEngines.Resume(mode);
 
         (_isSessionConfigured, _isSessionActivated) = (setup.IsConfigured, setup.IsActivated);
+        Log.LogInformation("SetMode: {Mode} -> configured={IsConfigured}, activated={IsActivated}, owner={Owner}",
+            mode, setup.IsConfigured, setup.IsActivated, AudioSession.Owner);
     }
 
     private async Task RecoverInternal(CancellationToken cancellationToken)
@@ -233,26 +235,27 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         var mode = _activeScopes.GetMode();
         Log.LogInformation("Recover: reactivating session in {Mode}", mode);
         var setup = await AudioSession.Reactivate(mode).ConfigureAwait(false);
-        setup = await WaitForPttActivation(setup, mode).ConfigureAwait(false);
+        setup = await WaitForOwnerActivation(setup, mode).ConfigureAwait(false);
         (_isSessionConfigured, _isSessionActivated) = (setup.IsConfigured, setup.IsActivated);
         AudioEngines.Resume(mode);
         InvokeRestoreUnsafe();
         _isSuspended = false;
     }
 
-    private async Task<AudioSessionSetup> WaitForPttActivation(AudioSessionSetup setup, AudioFocusMode mode)
+    private async Task<AudioSessionSetup> WaitForOwnerActivation(AudioSessionSetup setup, AudioFocusMode mode)
     {
-        if (!setup.IsPttActivationPending)
+        if (!setup.IsOwnerActivationPending)
             return setup;
 
-        var isActivated = await AudioSession.RequestPttActivation().ConfigureAwait(false);
-        Log.LogInformation("SetMode: {Mode} - the PTT framework {Result} the session",
-            mode, isActivated ? "activated" : "didn't activate");
+        var owner = AudioSession.Owner;
+        var isActivated = await AudioSession.WhenActivatedByOwner().ConfigureAwait(false);
+        Log.LogInformation("SetMode: {Mode} - the session {Result} under {Owner}",
+            mode, isActivated ? "was activated" : "wasn't activated", owner);
         // The pending path returned before the route was applied, and the framework's session
         // starts on the receiver.
         if (isActivated)
             await AudioSession.ApplyOutputRoute(mode).ConfigureAwait(false);
-        return setup with { IsActivated = isActivated, IsPttActivationPending = false };
+        return setup with { IsActivated = isActivated, IsOwnerActivationPending = false };
     }
 
     private void InvokeLostFocusUnsafe(bool mayRecover, bool canDuck)
@@ -338,7 +341,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         // to dispose and rebuild. Pause/Resume left zombies, so the "rebuild" restarted nothing.
         AudioEngines.Release();
         var setup = await AudioSession.Reconfigure(mode).ConfigureAwait(false);
-        setup = await WaitForPttActivation(setup, mode).ConfigureAwait(false);
+        setup = await WaitForOwnerActivation(setup, mode).ConfigureAwait(false);
         (_isSessionConfigured, _isSessionActivated) = (setup.IsConfigured, setup.IsActivated);
         // No Resume: Release cleared _isStarted, so it'd no-op. Recovery is the restore handlers
         // below plus the capture stall and buffer-low timeouts, which rebuild what was live.

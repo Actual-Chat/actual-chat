@@ -82,10 +82,12 @@ public sealed class AudioEngine : IDisposable
 
         // A PTT-joined app in the background may not activate its own session, and a player
         // that outruns the focus acquisition is where that refusal surfaces first. Not for the
-        // recording engine - see AudioSession.TryRequestPttActivation.
-        if (Mode is not AudioFocusMode.Recording
+        // recording engine under a PTT owner - see AudioSession.TryAwaitOwnerActivation - but under
+        // CallKit every engine waits for the framework's activation alike.
+        var mayWait = Mode is not AudioFocusMode.Recording || AudioSession.Owner == AudioSessionOwner.CallKit;
+        if (mayWait
             && AudioSession.IsActivationRefused(error)
-            && await AudioSession.RequestPttActivation().WaitAsync(cancellationToken).ConfigureAwait(false)
+            && await AudioSession.WhenActivatedByOwner().WaitAsync(cancellationToken).ConfigureAwait(false)
             && TryEnsureRunning(out error))
             return;
 

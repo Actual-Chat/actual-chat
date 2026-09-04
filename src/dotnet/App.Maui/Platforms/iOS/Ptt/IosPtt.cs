@@ -204,7 +204,7 @@ public static class IosPtt
     private static void OnTransmitBegan()
     {
         BlazorWebViewApp.EnsureStarted();
-        AudioSession.PrepareForPttSession(AudioSessionOwner.PttTransmit);
+        AudioSession.PrepareForSession(AudioSessionOwner.PttTransmit);
         Transmission transmission;
         Transmission? superseded;
         bool isSessionActive;
@@ -313,7 +313,7 @@ public static class IosPtt
         }
 
         Log.LogInformation("Asking the PTT framework to activate the audio session");
-        AudioSession.PrepareForPttSession(AudioSessionOwner.PttPlayback);
+        AudioSession.PrepareForSession(AudioSessionOwner.PttPlayback);
         // This participant is the newest one: a phantom-wake clear scheduled for an older
         // generation must not take it down mid-playback.
         Interlocked.Increment(ref _lastWakeGeneration);
@@ -684,7 +684,7 @@ public static class IosPtt
             var startedAt = new Moment(epochMs * 10_000);
             SaveLastWake(vChatId, startedAt);
             SetDescriptorTitle(chatTitle);
-            AudioSession.PrepareForPttSession(AudioSessionOwner.PttPlayback);
+            AudioSession.PrepareForSession(AudioSessionOwner.PttPlayback);
             // No activation follows a push that lands while the session is already PTT-owned, so
             // parking the wake for OnAudioSessionActivated would drop it.
             var isParked = AudioSession.Owner == AudioSessionOwner.App;

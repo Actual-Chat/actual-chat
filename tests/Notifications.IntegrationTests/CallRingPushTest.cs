@@ -15,7 +15,7 @@ public class CallRingPushTest(AppHostFixture fixture, ITestOutputHelper @out)
     private IAuthors Authors => Tester.AppServices.GetRequiredService<IAuthors>();
 
     [Fact]
-    public async Task VoipDeviceRingsAndItsOwnFcmBannerIsSuppressed()
+    public async Task VoipDeviceShouldRingAndItsOwnFcmBannerShouldBeSuppressed()
     {
         // arrange
         var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("Call ring - voip");
@@ -45,7 +45,7 @@ public class CallRingPushTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task BannerStillGoesOutWhenApnsIsNotConfigured()
+    public async Task BannerShouldStillGoOutWhenApnsIsNotConfigured()
     {
         // arrange: an unconfigured APNs client must not silence the phone it can't ring.
         var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("Call ring - no apns");
@@ -73,7 +73,7 @@ public class CallRingPushTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task BannerStillGoesOutWhenTheRingFails()
+    public async Task BannerShouldStillGoOutWhenTheRingFails()
     {
         // arrange: a ring that never left the server must not cost the phone its banner too.
         var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("Call ring - failed ring");
@@ -101,7 +101,7 @@ public class CallRingPushTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task PeerCallRingsWithTheCallerName()
+    public async Task PeerCallShouldRingWithTheCallerName()
     {
         // arrange: a peer chat has no title of its own, so a ring headlined by the chat had no name.
         var alice = await Tester.SignInAsAlice();
@@ -127,7 +127,7 @@ public class CallRingPushTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task ReRegisteringADeviceRefreshesItsSessionHash()
+    public async Task ReRegisteringADeviceShouldRefreshItsSessionHash()
     {
         // arrange
         var alice = await Tester.SignInAsAlice();
@@ -145,7 +145,72 @@ public class CallRingPushTest(AppHostFixture fixture, ITestOutputHelper @out)
         sessionHash.Should().Be("session-2", "a re-signed-in device must carry its new session hash");
     }
 
+    [Fact]
+    public async Task ReRegisteringAVoipTokenUnderAnotherAccountShouldRebindIt()
+    {
+        // arrange
+        var alice = await Tester.SignInAsAlice();
+        var bob = await Tester.SignInAsBob();
+        var deviceId = new Symbol($"call-device-rebind-{alice.Id.Value}");
+        var backend = AppHost.Services.GetRequiredService<INotificationsBackend>();
+        await Commander.Call(new NotificationsBackend_RegisterDevice(
+            bob.Id, deviceId, DeviceType.iOSApp, "session-bob"));
+
+        // act
+        await Commander.Call(new NotificationsBackend_RegisterDevice(
+            alice.Id, deviceId, DeviceType.iOSVoipApp, "session-alice"));
+
+        // assert
+        var device = await WaitForDevice(backend, alice.Id, deviceId);
+        device.Should().NotBeNull(
+            "a PushKit token belongs to the installation, so it follows the account signed in on it");
+        device!.DeviceType.Should().Be(DeviceType.iOSVoipApp,
+            "a row registered before the VoIP type existed must take it");
+        device.SessionHash.Value.Should().Be("session-alice");
+        var bobDevices = await backend.ListDevices(bob.Id, CancellationToken.None);
+        bobDevices.Should().NotContain(d => d.DeviceId == deviceId, "the previous owner must not get rings on it");
+    }
+
+    [Fact]
+    public async Task ReRegisteringAnFcmTokenUnderAnotherAccountShouldKeepTheOwner()
+    {
+        // arrange
+        var alice = await Tester.SignInAsAlice();
+        var bob = await Tester.SignInAsBob();
+        var deviceId = new Symbol($"call-device-keep-owner-{alice.Id.Value}");
+        var backend = AppHost.Services.GetRequiredService<INotificationsBackend>();
+        await Commander.Call(new NotificationsBackend_RegisterDevice(
+            bob.Id, deviceId, DeviceType.iOSApp, "session-bob"));
+        (await WaitForDevice(backend, bob.Id, deviceId)).Should().NotBeNull();
+
+        // act
+        await Commander.Call(new NotificationsBackend_RegisterDevice(
+            alice.Id, deviceId, DeviceType.iOSApp, "session-alice"));
+
+        // assert
+        await Task.Delay(NoPushDelay);
+        var bobDevices = await backend.ListDevices(bob.Id, CancellationToken.None);
+        bobDevices.Should().Contain(d => d.DeviceId == deviceId,
+            "an FCM token owned by another account is not re-bound");
+        var aliceDevices = await backend.ListDevices(alice.Id, CancellationToken.None);
+        aliceDevices.Should().NotContain(d => d.DeviceId == deviceId);
+    }
+
     // Private methods
+
+    private static async Task<Device?> WaitForDevice(INotificationsBackend backend, UserId userId, Symbol deviceId)
+    {
+        var deadline = CpuTimestamp.Now + RingTimeout;
+        while (CpuTimestamp.Now < deadline) {
+            var devices = await backend.ListDevices(userId, CancellationToken.None);
+            if (devices.FirstOrDefault(d => d.DeviceId == deviceId) is { } device)
+                return device;
+
+            await Task.Delay(TimeSpan.FromMilliseconds(100));
+        }
+
+        return null;
+    }
 
     private static async Task<string> WaitForSessionHash(
         INotificationsBackend backend, UserId userId, Symbol deviceId, string expected)
