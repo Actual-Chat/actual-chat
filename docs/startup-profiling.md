@@ -98,12 +98,21 @@ First run (2026-08-09, launch only) found **2,835 interpreted methods**, 94% of 
 instantiations and 882 instantiated purely over value types — the shapes a full-mode image
 cannot enumerate statically.
 
-### How many runs
+### How many runs, and how long
 
-**Two or three.** Cold starts barely vary: going from 3 merged traces to 7 added 210 methods
-out of 26,971. Extra runs are wasted wall-clock, and each 10 s capture is ~420 MB.
+**One 60 s run.** Cold starts barely vary — going from 3 merged traces to 7 added 210
+methods out of 26,971 — so extra runs are wasted wall-clock. If you do record more than
+one, keep the largest and drop the rest.
 
-Ten seconds is enough — the app is up in ~1 s and the `*ServiceStarter` work is done by ~6 s.
+**Sixty seconds, not ten.** Ten seconds covers the launch itself (the app is up in ~1 s and
+the `*ServiceStarter` work is done by ~6 s) but stops before the post-startup paths settle:
+live session governors, fold/mute enforcement, chat item loading. Measured on the same app
+2026-09-03, a 10 s capture yielded 23,201 methods against 31,225 at 60 s. A 60 s capture is
+~700 MB.
+
+Each round **merges into the existing profile** rather than replacing it — `android.mibc`
+also carries hand-driven session coverage a cold start never reaches. Typically 90-95% of a
+new capture is already present; the delta is what the round buys.
 
 ### Merging
 
