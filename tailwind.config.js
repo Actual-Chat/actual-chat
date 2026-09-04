@@ -10,6 +10,28 @@ function _(file) {
   return path.normalize(path.resolve(__dirname, file));
 }
 
+// Exposes the raw palette from colors.css (first :root block) as `pal-*` classes,
+// so authors write `bg-pal-blue-50` instead of `bg-[var(--blue-50)]`. Generated at
+// build time — any new palette var in colors.css gets a class automatically.
+function rawPaletteColors() {
+  const css = fs.readFileSync(_('./src/nodejs/styles/colors.css'), 'utf8');
+  const start = css.indexOf(':root');
+  let i = css.indexOf('{', start), depth = 0, end = -1;
+  for (; i < css.length; i++) {
+    const ch = css[i];
+    if (ch === '{') depth++;
+    else if (ch === '}') { depth--; if (depth === 0) { end = i; break; } }
+  }
+  const block = css.slice(start, end);
+  const families = /^(gray|ash|blue|frost|emerald|magenta|red|orange|indigo|purple|violet|navy|green|sienna|black|white)(-|$)/;
+  const out = {};
+  const re = /--([a-z0-9-]+)\s*:\s*#[0-9A-Fa-f]{3,8}\s*;/g;
+  let m;
+  while ((m = re.exec(block)))
+    if (families.test(m[1])) out['pal-' + m[1]] = `var(--${m[1]})`;
+  return out;
+}
+
 const dirs = fs.readdirSync(_('./src/dotnet/'), { withFileTypes: true })
   .filter(d => d.isDirectory() && d.name.indexOf("UI.Blazor") >= 0)
   .map(d => `${_(`./src/dotnet/${d.name}`)}${path.sep}**/*.{razor,cshtml}`)
@@ -83,6 +105,24 @@ module.exports = {
         30: '.3',
       },
       colors: {
+        // Raw palette exposed as pal-* (see rawPaletteColors)
+        ...rawPaletteColors(),
+        // File-type icon colors
+        'file-default': 'var(--file-default)',
+        'file-text': 'var(--file-text)',
+        'file-table': 'var(--file-table)',
+        'file-presentation': 'var(--file-presentation)',
+        'file-pdf': 'var(--file-pdf)',
+        'file-archive': 'var(--file-archive)',
+        'file-code': 'var(--file-code)',
+        'file-audio': 'var(--file-audio)',
+        'file-executable': 'var(--file-executable)',
+        'danger-light': 'var(--danger-light)',
+        'highlighted': 'var(--highlighted)',
+        'round-right-panel': 'var(--round-right-panel)',
+        'right-panel-skeleton-header': 'var(--right-panel-skeleton-header)',
+        'leave-btn': 'var(--leave-btn)',
+        'landing-bg-01': 'var(--landing-bg-01)',
         'primary': 'var(--primary)',
         'danger': 'var(--danger)',
         'success': 'var(--success)',
