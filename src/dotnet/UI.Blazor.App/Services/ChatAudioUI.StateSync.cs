@@ -16,8 +16,12 @@ public partial class ChatAudioUI
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        // All logic here can be delayed to let other code run
-        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(true); // Intended
+        // All logic here can be delayed to let other startup code run - unless someone already
+        // needs audio: a headless wake enables this service milliseconds after constructing it,
+        // and a full second of settling there is a second of the utterance the user doesn't hear.
+        await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(1), cancellationToken), WhenEnabled)
+            .ConfigureAwait(true); // Intended
+        cancellationToken.ThrowIfCancellationRequested();
         var baseChains = new[] {
             AsyncChain.From(InitializeListening),
             AsyncChain.From(StopListeningWhenPttDisarmed),
