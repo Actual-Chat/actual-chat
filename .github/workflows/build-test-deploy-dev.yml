@@ -1144,14 +1144,14 @@ jobs:
         id: pkg
         run: |-
           ./run-build.cmd pack-mac --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}" --universal
-          PKG=$(ls artifacts/publish/App.Maui/release_net11.0-macos*/*.pkg | head -1)
+          PKG=$(ls artifacts/publish/App.Maui/release_net11.0-macos/*.pkg | head -1)
           echo "PACKAGE_FILE_NAME=$(basename "$PKG")" | tee -a $GITHUB_OUTPUT
 
       - name: Upload package to artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.appkit.pkg
-          path: artifacts/publish/App.Maui/release_net11.0-macos*/*.pkg
+          path: artifacts/publish/App.Maui/release_net11.0-macos/*.pkg
           if-no-files-found: error
           compression-level: 0
           retention-days: 10
