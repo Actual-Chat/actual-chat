@@ -1,10 +1,9 @@
 # Promotes a processed TestFlight build to the App Store: picks (or creates) the
 # App Store version, attaches the build, sets What's New and submits for review.
-# Run from `.github`: fastlane promote platform:ios build_version:2.17.246 notes_path:<file> [version:2.17.1]
+# Run from `.github`: fastlane promote platform:ios build_version:2.17.246 notes_path:<file> [version:<override>]
 #
-# `deliver` can't do this for us: it looks the build up by the App Store version
-# string, while our builds carry the full nbgv version (2.17.246) and the store
-# versions follow the 2.17 / 2.17.1 / 2.17.2 convention.
+# `deliver` can't do this for us: it expects to upload the binary itself, while the
+# build this promotes is already on TestFlight.
 
 APP_IDENTIFIER = "chat.actual.app"
 BUILD_WAIT = 45 * 60
@@ -67,29 +66,17 @@ def wait_for_build(app, platform, build_version)
   end
 end
 
-# The first release of a branch is published as X.Y, the next ones as X.Y.1, X.Y.2, ...
-# An editable version on the same train is reused; one from another train is renamed,
-# which is what `deliver` does too.
+# The App Store version string is the nbgv build version (2.19.40), the same string
+# Google Play and the Microsoft Store show. That's what makes the public lookup API
+# comparable with a client's own version, which the in-app update banner relies on.
+# `version:` overrides it, for a deliberate exception only.
 def ensure_app_store_version(app, platform, build_version, requested_version)
-  train = build_version.split(".").first(2).join(".")
-  on_train = ->(v) { v == train || v.start_with?("#{train}.") }
-
   edit = app.get_edit_app_store_version(platform: platform)
   if edit && edit.app_version_state == Spaceship::ConnectAPI::AppStoreVersion::AppVersionState::WAITING_FOR_REVIEW
     UI.user_error!("Version #{edit.version_string} is already waiting for review; cancel it in App Store Connect first")
   end
 
-  version_string = requested_version
-  if version_string.empty?
-    if edit && on_train.call(edit.version_string)
-      version_string = edit.version_string
-    else
-      taken = app.get_app_store_versions(filter: { platform: platform })
-                 .map(&:version_string)
-                 .select(&on_train)
-      version_string = taken.empty? ? train : "#{train}.#{taken.map { |v| v.split(".")[2].to_i }.max + 1}"
-    end
-  end
+  version_string = requested_version.empty? ? build_version : requested_version
 
   if edit && edit.version_string != version_string
     UI.important("Renaming editable version #{edit.version_string} to #{version_string}")
