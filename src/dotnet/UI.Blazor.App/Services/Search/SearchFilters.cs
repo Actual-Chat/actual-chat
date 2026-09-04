@@ -13,6 +13,7 @@ public enum SearchTypeFilter
     People,
     Groups,
     Messages,
+    MyMessages,
 }
 
 public sealed record SearchResultGroupKey(ActualChat.Search.SearchScope Scope, bool IsGlobalSearchResult);

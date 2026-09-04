@@ -190,6 +190,7 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
                         .Text(p => p.Name(e => e.Content))
                         .Keyword(p => p.Name(x => x.Hashtags))
                         .Date(p => p.Name(x => x.At))
+                        .Keyword(p => p.Name(x => x.AuthorUserId))
                         .Join(j => j.Name(x => x.EntryToChat).Relations(r => r.Join<IndexedChat, IndexedEntry>())))
                 )
             .Settings(s => s

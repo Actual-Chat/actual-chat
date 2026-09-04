@@ -183,7 +183,7 @@ public partial class SearchUI
         var filteredScopes = typeFilter switch {
             SearchTypeFilter.People => scopes.Where(x => x == SearchScope.People),
             SearchTypeFilter.Groups => scopes.Where(x => x is SearchScope.Groups or SearchScope.Places),
-            SearchTypeFilter.Messages => scopes.Where(x => x == SearchScope.Messages),
+            SearchTypeFilter.Messages or SearchTypeFilter.MyMessages => scopes.Where(x => x == SearchScope.Messages),
             _ => scopes,
         };
         var subgroups = includeGlobal

@@ -452,6 +452,7 @@ public static class LocalizedStringsLocalizerExt
         public string Search_TypeGroups => l["Search_TypeGroups"].Value;
         public string Search_TypePlaces => l["Search_TypePlaces"].Value;
         public string Search_TypeMessages => l["Search_TypeMessages"].Value;
+        public string Search_TypeMyMessages => l["Search_TypeMyMessages"].Value;
         public string Search_TabTags => l["Search_TabTags"].Value;
         public string Search_RecentSearches => l["Search_RecentSearches"].Value;
         public string Search_RecentlyViewed => l["Search_RecentlyViewed"].Value;
