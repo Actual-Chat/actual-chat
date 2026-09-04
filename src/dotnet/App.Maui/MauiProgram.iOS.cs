@@ -40,6 +40,11 @@ public static partial class MauiProgram
         services.AddScoped<ActivitiesBackend>(c => new IosActivitiesBackend(
             c.AppUIHub(),
             c.GetRequiredService<IosUploadKeepAlive>()));
+#if IS_DEV_MAUI
+        services.AddScoped(c => new IosCallsBridge(c.AppUIHub()));
+        services.AddScoped<IIncomingCallsBridge>(c => c.GetRequiredService<IosCallsBridge>());
+        services.AddScoped<ISystemCallUI>(c => c.GetRequiredService<IosCallsBridge>());
+#endif
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
@@ -57,6 +62,8 @@ public static partial class MauiProgram
             // com.apple.developer.push-to-talk, and PTChannelManager.Create reports that as an
             // error every launch. Keyed on the property that picks the entitlements file.
             IosPtt.Initialize();
+            // Same dev-only gate as PTT: prod entitlements and App Review are a separate task.
+            IosVoipPushes.Instance.Initialize();
 #endif
 #endif
             return false;
