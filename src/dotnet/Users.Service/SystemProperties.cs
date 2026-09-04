@@ -17,6 +17,8 @@ public class SystemProperties(IServiceProvider services)
     private const double MaxProbeDurationMs = 600_000;
     private static readonly Version MinCompatibleVersion = new(2, 15);
     private static readonly Version MinReportableClientVersion = MinCompatibleVersion;
+    // Normalized the same way as the client version, so an X.Y match means CompatibilityLevel.Full
+    private static readonly Version ApiVersion = VersionExt.ParseBuildVersion(ApiConstants.VersionString);
     private HostInfo HostInfo => field ??= Services.HostInfo();
 
     // Not a [ComputeMethod]!
@@ -52,16 +54,10 @@ public class SystemProperties(IServiceProvider services)
     // Not a [ComputeMethod]!
     public Task<ServerApiInfo> GetServerApiInfoNC(string expectedVersion, CancellationToken cancellationToken)
     {
-        if (expectedVersion.IsNullOrEmpty())
+        if (!VersionExt.TryParseBuildVersion(expectedVersion, out var parsedExpectedVersion))
             return Task.FromResult(new ServerApiInfo(CompatibilityLevel.Unknown));
 
-        expectedVersion = expectedVersion.TrimStart('v');
-        var clientVersionParts = expectedVersion.Split(' ');
-        expectedVersion = clientVersionParts[0];
-        if (!Version.TryParse(expectedVersion, out var parsedExpectedVersion))
-            return Task.FromResult(new ServerApiInfo(CompatibilityLevel.Unknown));
-
-        var apiVersion = ApiConstants.Version;
+        var apiVersion = ApiVersion;
         var compatibilityLevel = parsedExpectedVersion < MinCompatibleVersion
             ? CompatibilityLevel.Incompatible
             : apiVersion == parsedExpectedVersion

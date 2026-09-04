@@ -1287,6 +1287,10 @@
   "Download_QrCode_Format": "QR kód — {0}",
   "Download_GetApp_Format": "Získat {0}",
   "Download_GetAppBanner_Format": "Instalovat {0}",
+
+  "AppUpdate_Banner_Format": "Aktualizovat {0}",
+  "AppUpdate_ReloadTitle_Format": "Aktualizovat {0}?",
+  "AppUpdate_ReloadText": "Stránka se znovu načte, aby se načetla nejnovější verze.",
   "Redirect_To": "Přesměrování na",
   "Unavailable_Title": "Nedostupné",
   "Unavailable_PageNotFound": "Tato stránka neexistuje.",

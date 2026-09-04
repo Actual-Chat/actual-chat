@@ -47,6 +47,7 @@ public class UIHub : CircuitHub, IDispatcherResolver
 
     // Account-related & chat-related services
     public ISystemProperties SystemProperties => field ??= Services.GetRequiredService<ISystemProperties>();
+    public IAppUpdates AppUpdates => field ??= Services.GetRequiredService<IAppUpdates>();
     public ISessionTemporals SessionTemporals => field ??= Services.GetRequiredService<ISessionTemporals>();
     public IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     public IAvatars Avatars => field ??= Services.GetRequiredService<IAvatars>();
@@ -64,6 +65,7 @@ public class UIHub : CircuitHub, IDispatcherResolver
     public LoadingUI LoadingUI => field ??= Services.GetRequiredService<LoadingUI>();
     public RenderDelayer RenderDelayer => field ??= Services.GetRequiredService<RenderDelayer>();
     public ReloadUI ReloadUI => field ??= Services.GetRequiredService<ReloadUI>();
+    public AppUpdateUI AppUpdateUI => field ??= Services.GetRequiredService<AppUpdateUI>();
     public ReconnectUI ReconnectUI => field ??= Services.GetRequiredService<ReconnectUI>();
     public AccountUI AccountUI => field ??= Services.GetRequiredService<AccountUI>();
     public AutoNavigationUI AutoNavigationUI => field ??= Services.GetRequiredService<AutoNavigationUI>();

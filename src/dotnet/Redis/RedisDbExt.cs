@@ -1,9 +1,41 @@
 using ActualLab.Redis;
+using StackExchange.Redis;
 
 namespace ActualChat.Redis;
 
 public static class RedisDbExt
 {
+    public static async Task<TValue?> Get<TValue>(
+        this RedisDb redisDb,
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        var database = await redisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var value = await database.StringGetAsync(key).ConfigureAwait(false);
+        return RedisSerializer.Default.Read<TValue>(value);
+    }
+
+    public static async Task Set<TValue>(
+        this RedisDb redisDb,
+        string key,
+        TValue value,
+        CancellationToken cancellationToken = default)
+    {
+        var database = await redisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        await database.StringSetAsync(key, RedisSerializer.Default.Write(value)).ConfigureAwait(false);
+    }
+
+    public static async Task<bool> TrySetOnce(
+        this RedisDb redisDb,
+        string key,
+        TimeSpan window,
+        CancellationToken cancellationToken = default)
+    {
+        // A fixed-window throttle: true only for the first caller within the window
+        var database = await redisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        return await database.StringSetAsync(key, "1", window, When.NotExists).ConfigureAwait(false);
+    }
+
     public static async IAsyncEnumerable<string> ScanKeys(
         this RedisDb redisDb,
         string keyPattern = "*",

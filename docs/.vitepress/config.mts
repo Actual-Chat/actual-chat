@@ -171,6 +171,7 @@ export default withMermaid(defineConfig({
               { text: "Native AOT", link: "/native-aot" },
               { text: "Startup Profiling", link: "/startup-profiling" },
               { text: "App Bundles", link: "/app-bundles" },
+              { text: "App Updates", link: "/app-updates" },
               { text: "Runtime Async", link: "/runtime-async" },
             ],
           },

@@ -80,6 +80,9 @@ features:
 - [Command idempotency](./architecture/command-idempotency.md) — how `ApiCommand`'s
   client-generated `Uuid` + an in-process server filter dedup retried commands, and how
   the version-gated deserializer keeps old clients working across a rollout.
+- [App updates](./app-updates.md) — how the "Update Voxt" banner learns that a
+  newer build is actually published in the user's store, per app kind, and what
+  that costs the release process.
 
 ## Related Projects
 

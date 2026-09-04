@@ -9,5 +9,12 @@ public sealed class MauiExternalUrlOpener : ExternalUrlOpener
     public MauiExternalUrlOpener(UIHub hub) : base(hub) { }
 
     public override Task Open(string url)
-        => MauiBrowser.Open(url);
+    {
+        // Browser.Default rejects a custom scheme on Windows and Android, and the store deep
+        // links (ms-windows-store:, macappstore:) are exactly that - Launcher handles them.
+        if (!url.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            return Launcher.Default.OpenAsync(url);
+
+        return MauiBrowser.Open(url);
+    }
 }

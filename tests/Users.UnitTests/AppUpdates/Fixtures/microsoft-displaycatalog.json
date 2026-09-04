@@ -1,0 +1,60 @@
+{
+  "Products": [
+    {
+      "ProductId": "9N6RWRD9FMS2",
+      "LastModifiedDate": "2026-08-28T21:39:37.1310088Z",
+      "DisplaySkuAvailabilities": [
+        {
+          "Sku": {
+            "SkuId": "0010",
+            "LastModifiedDate": "2026-08-28T21:39:37.1310088Z",
+            "Properties": {
+              "Packages": [
+                {
+                  "PackageFullName": "ActualChatInc.ActualChat_2.16.608.0_x64__kpmvmkx3s0ak6",
+                  "PackageId": "60e6de87-3309-59a9-327b-2f15e65247d6-X64"
+                },
+                {
+                  "PackageFullName": "ActualChatInc.ActualChat_2.17.246.0_x64__kpmvmkx3s0ak6",
+                  "PackageId": "b46e967b-fbe8-f697-0f02-222aeeac48fa-X64"
+                }
+              ]
+            }
+          },
+          "Availabilities": [
+            {
+              "Markets": [
+                "US"
+              ]
+            }
+          ]
+        },
+        {
+          "Sku": {
+            "SkuId": "0011",
+            "LastModifiedDate": "2026-08-28T21:39:37.1310088Z",
+            "Properties": {
+              "Packages": [
+                {
+                  "PackageFullName": "ActualChatInc.ActualChat_2.16.608.0_x64__kpmvmkx3s0ak6",
+                  "PackageId": "60e6de87-3309-59a9-327b-2f15e65247d6-X64"
+                },
+                {
+                  "PackageFullName": "ActualChatInc.ActualChat_2.17.246.0_x64__kpmvmkx3s0ak6",
+                  "PackageId": "b46e967b-fbe8-f697-0f02-222aeeac48fa-X64"
+                }
+              ]
+            }
+          },
+          "Availabilities": [
+            {
+              "Markets": [
+                "US"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

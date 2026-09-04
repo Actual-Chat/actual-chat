@@ -104,6 +104,20 @@ public static class Links
         public static readonly string Android = "https://play.google.com/store/apps/details?id=chat.actual.app";
         public static readonly string iOS = "https://apps.apple.com/us/app/actual-chat/id6450874551";
         public static readonly string Windows = "https://www.microsoft.com/store/apps/9N6RWRD9FMS2";
+        // The two custom-scheme links open the store app on the product page; their https
+        // counterparts would open a browser instead, which is wrong for an "update now" tap.
+        public static readonly string MacOSApp = "macappstore://apps.apple.com/app/id6450874551";
+        public static readonly string WindowsApp = "ms-windows-store://pdp/?productid=9N6RWRD9FMS2";
+
+        public static string? Store(AppKind appKind)
+            // null means "this kind has no store", i.e. the web app
+            => appKind switch {
+                AppKind.Android => Android,
+                AppKind.Ios => iOS,
+                AppKind.MacOS => MacOSApp,
+                AppKind.Windows => WindowsApp,
+                _ => null,
+            };
 
         public static class TestBuilds
         {
