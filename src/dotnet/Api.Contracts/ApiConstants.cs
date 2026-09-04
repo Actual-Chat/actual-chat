@@ -8,6 +8,8 @@ public static class ApiConstants
     public static readonly string FullVersionString = typeof(ApiConstants).Assembly.GetInformationalVersion() ?? "0.0+unknown"; // X.Y.Z+123abc
     public static readonly string DisplayVersionString = "v" + FullVersionString.Replace('+', ' ');
     public static readonly Version Version = Version.Parse(VersionString);
+    // X.Y.Z, i.e. the version the stores publish - unlike Version, which is always X.Y.0
+    public static readonly Version BuildVersion = VersionExt.ParseBuildVersion(FullVersionString);
 
     public static class Concurrency
     {

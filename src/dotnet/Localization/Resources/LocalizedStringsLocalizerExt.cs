@@ -1335,6 +1335,9 @@ public static class LocalizedStringsLocalizerExt
         public string Download_QrCode_Format(object arg0) => l["Download_QrCode_Format", arg0].Value;
         public string Download_GetApp_Format(object arg0) => l["Download_GetApp_Format", arg0].Value;
         public string Download_GetAppBanner_Format(object arg0) => l["Download_GetAppBanner_Format", arg0].Value;
+        public string AppUpdate_Banner_Format(object arg0) => l["AppUpdate_Banner_Format", arg0].Value;
+        public string AppUpdate_ReloadTitle_Format(object arg0) => l["AppUpdate_ReloadTitle_Format", arg0].Value;
+        public string AppUpdate_ReloadText => l["AppUpdate_ReloadText"].Value;
         public string Redirect_To => l["Redirect_To"].Value;
         public string Unavailable_Title => l["Unavailable_Title"].Value;
         public string Unavailable_PageNotFound => l["Unavailable_PageNotFound"].Value;

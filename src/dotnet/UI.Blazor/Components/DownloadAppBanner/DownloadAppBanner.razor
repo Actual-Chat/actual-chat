@@ -1,23 +1,29 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Hosting
 @using ActualChat.Kvas
-@inherits ComputedStateComponent<UIHub, bool>
+@using ActualChat.UI.Blazor.Services
+@inherits ComputedStateComponent<UIHub, DownloadAppBanner.BannerMode>
 @{
-    if (State.Value)
+    var mode = State.Value;
+    if (mode == BannerMode.Hidden)
         return;
+
+    var isUpdate = mode == BannerMode.Update;
 }
 
 <div class="download-app-banner">
     <div
         class="download-app-banner-button"
-        @onclick="@OnDownload">
+        @onclick="@OnClick">
         <div class="download-app-banner-filler"></div>
         <div class="download-app-banner-title">
-            @L.Download_GetAppBanner_Format(CoreConstants.AppName)
+            @(isUpdate
+                ? L.AppUpdate_Banner_Format(CoreConstants.AppName)
+                : L.Download_GetAppBanner_Format(CoreConstants.AppName))
         </div>
-        <i class="icon-download"></i>
+        <i class="@(isUpdate ? "icon-refresh" : "icon-download")"></i>
         <div class="download-app-banner-filler"></div>
-        @if (CanBeClosed) {
+        @if (CanBeClosed && !isUpdate) {
             <HeaderButton
                 Click="@OnClose"
                 PreventDefault="@true"
@@ -31,7 +37,7 @@
 
 @code {
     private StoredState<Box<bool>> _isDismissed = null!;
-
+    private AppUpdateUI AppUpdateUI => Hub.AppUpdateUI;
     [Parameter] public bool CanBeClosed { get; set; } = true;
 
     protected override void OnInitialized()
@@ -40,26 +46,45 @@
                 InitialValue = Box.New(false),
             });
 
-    private void OnDownload()
-        => ModalUI.Show(new DownloadAppModal.Model());
+    private Task OnClick() {
+        if (State.Value == BannerMode.Update)
+            return AppUpdateUI.Update();
+
+        ModalUI.Show(new DownloadAppModal.Model());
+        return Task.CompletedTask;
+    }
 
     private void OnClose()
         => _isDismissed.Value = Box.New(true);
 
-    protected override ComputedState<bool>.Options GetStateOptions()
+    protected override ComputedState<BannerMode>.Options GetStateOptions()
         => new() {
-            InitialValue = true, // We don't want to show & hide it every time
+            InitialValue = BannerMode.Hidden, // We don't want to show & hide it every time
             Category = GetStateCategory(GetType()),
         };
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<BannerMode> ComputeState(CancellationToken cancellationToken) {
+        // An update wins over everything: it shows on every host, ignores the dismissal flag,
+        // and has no close button, because a client that's behind is the problem here.
+        var update = await AppUpdateUI.GetAvailableUpdate(cancellationToken).ConfigureAwait(false);
+        if (update is not null)
+            return BannerMode.Update;
+
         if (HostInfo.HostKind == HostKind.MauiApp && (HostInfo.AppKind.IsMobile() || CanBeClosed))
-            return true; // No banner on mobile + only non-closable banner (in SettingsPanel) on Windows
+            return BannerMode.Hidden; // No banner on mobile + only non-closable banner (in SettingsPanel) on Windows
         if (!CanBeClosed)
-            return false;
+            return BannerMode.Install;
 
         await _isDismissed.WhenRead.ConfigureAwait(false);
         var box = await _isDismissed.Use(cancellationToken).ConfigureAwait(false);
-        return box.Value;
+        return box.Value ? BannerMode.Hidden : BannerMode.Install;
+    }
+
+    // Nested types
+
+    public enum BannerMode {
+        Hidden = 0,
+        Install,
+        Update,
     }
 }

@@ -4,6 +4,7 @@ using ActualChat.Db.Module;
 using ActualChat.Kvas;
 using ActualChat.Redis.Module;
 using ActualChat.Security;
+using ActualChat.Users.AppStores;
 using ActualChat.Users.Db;
 using ActualChat.Users.Email;
 using ActualChat.Users.Flows;
@@ -126,7 +127,8 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // Secure tokens
         rpcHost.AddApi<ISecureTokens, SecureTokens>();
-        services.AddSingleton<ISecureTokensBackend, SecureTokensBackend>(); // Used by HttpSessionExt, server-side logic in AppBase, etc.
+        // Used by HttpSessionExt, server-side logic in AppBase, etc.
+        services.AddSingleton<ISecureTokensBackend, SecureTokensBackend>();
 
         // The recipient's UI language, for any server-side text: notifications now, email next.
         services.AddSingleton<UserLocalizers>();
@@ -138,7 +140,8 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // Sessions
         rpcHost.AddBackend<ISessionsBackend, SessionsBackend>();
-        var usesSessionsBackendImpl = rpcHost.HostInfo.Roles.GetBackendServiceMode<ISessionsBackend>().UsesImplementation();
+        var usesSessionsBackendImpl = rpcHost.HostInfo.Roles
+            .GetBackendServiceMode<ISessionsBackend>().UsesImplementation();
         if (usesSessionsBackendImpl) {
             // The services below are used only by SessionsBackend
             services.AddSingleton(_ => new DbSessionTrimmer.Options());
@@ -153,9 +156,11 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         // Accounts
         rpcHost.AddLocalApi<IAccounts, Accounts>(); // Used by Chats, etc.
         rpcHost.AddBackend<IAccountsBackend, AccountsBackend>();
-        var usesAccountsBackendImpl = rpcHost.HostInfo.Roles.GetBackendServiceMode<IAccountsBackend>().UsesImplementation();
+        var usesAccountsBackendImpl = rpcHost.HostInfo.Roles
+            .GetBackendServiceMode<IAccountsBackend>().UsesImplementation();
         if (usesAccountsBackendImpl)
             services.AddSingleton<AccountNameValidator>(); // Used by AccountsBackend
+
         // UserPresences
         rpcHost.AddLocalApi<IUserPresences, UserPresences>(); // Used by Authors -> Chats, etc.
         rpcHost.AddBackend<IUserPresencesBackend, UserPresencesBackend>();
@@ -261,6 +266,20 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(10));
         services.AddHttpClient(nameof(SMSToVerificationCodeSender))
             .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(10));
+
+        // App updates
+        if (rpcHost.IsApiHost) {
+            services.AddHttpClient(StoreProbe.HttpClientName)
+                .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(20));
+            services.AddSingleton<AppleStoreProbe>();
+            services.AddSingleton<GoogleStoreProbe>();
+            services.AddSingleton<MicrosoftStoreProbe>();
+            services.AddSingleton<StoreProbes>();
+            services.AddSingleton<AppUpdateStore>();
+            services.AddSingleton<AppUpdateProber>()
+                .AddHostedService(c => c.GetRequiredService<AppUpdateProber>());
+            rpcHost.AddApi<IAppUpdates, AppUpdates>();
+        }
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();

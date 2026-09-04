@@ -1287,6 +1287,10 @@
   "Download_QrCode_Format": "Mã QR {0}",
   "Download_GetApp_Format": "Tải {0}",
   "Download_GetAppBanner_Format": "Cài đặt {0}",
+
+  "AppUpdate_Banner_Format": "Cập nhật {0}",
+  "AppUpdate_ReloadTitle_Format": "Cập nhật {0}?",
+  "AppUpdate_ReloadText": "Trang sẽ được tải lại để tải phiên bản mới nhất.",
   "Redirect_To": "Đang chuyển hướng đến",
   "Unavailable_Title": "Không khả dụng",
   "Unavailable_PageNotFound": "Trang này không tồn tại.",

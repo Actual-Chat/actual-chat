@@ -16,7 +16,8 @@
 .download-app-banner .download-app-banner-filler {
     @apply flex grow;
 }
-.download-app-banner .icon-download {
+.download-app-banner .icon-download,
+.download-app-banner .icon-refresh {
     @apply always-white text-title-1;
 }
 .download-app-banner .icon-close {

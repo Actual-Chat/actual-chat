@@ -1528,6 +1528,12 @@
   "Download_GetApp_Format": "Get {0}",
   "Download_GetAppBanner_Format": "Install {0}",
 
+  // The "update the app" banner, which replaces the install banner when a newer build is
+  // published in the user's store. The reload text is web-only: the page reloads in place.
+  "AppUpdate_Banner_Format": "Update {0}",
+  "AppUpdate_ReloadTitle_Format": "Update {0}?",
+  "AppUpdate_ReloadText": "The page will reload to load the latest version.",
+
   // The redirect notice and the unavailable / not-found pages. Unavailable_NotFound_Format puts
   // the name after a colon on purpose, so that no language has to inflect it.
   "Redirect_To": "Redirecting to",

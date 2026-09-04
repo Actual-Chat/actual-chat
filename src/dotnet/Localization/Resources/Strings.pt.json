@@ -1287,6 +1287,10 @@
   "Download_QrCode_Format": "Código QR do {0}",
   "Download_GetApp_Format": "Obter {0}",
   "Download_GetAppBanner_Format": "Instalar {0}",
+
+  "AppUpdate_Banner_Format": "Atualizar {0}",
+  "AppUpdate_ReloadTitle_Format": "Atualizar o {0}?",
+  "AppUpdate_ReloadText": "A página será recarregada para carregar a versão mais recente.",
   "Redirect_To": "Redirecionando para",
   "Unavailable_Title": "Indisponível",
   "Unavailable_PageNotFound": "Esta página não existe.",
