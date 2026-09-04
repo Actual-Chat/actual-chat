@@ -114,6 +114,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     public async Task Accept(ChatId chatId)
     {
         var isOverLock = _overLockRingChatId.Value == chatId;
+        Log.LogInformation("Accept: chat #{ChatId}, overLock={IsOverLock}", chatId, isOverLock);
         // Straight from the session, not the slot: Answer on an Android notification can land before the
         // search claimed the ring.
         var call = await CallUI.GetRingingCall(chatId, CancellationToken.None).ConfigureAwait(true);
@@ -249,6 +250,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         var canStartAudio = isOverLock
             || Bridge is null
             || await Bridge.OnCallHandled(chatId, true).ConfigureAwait(true);
+        Log.LogInformation("Accept: chat #{ChatId}, canStartAudio={CanStartAudio}", chatId, canStartAudio);
         if (!isOverLock)
             await OpenChat(chatId).ConfigureAwait(true);
         if (canStartAudio)

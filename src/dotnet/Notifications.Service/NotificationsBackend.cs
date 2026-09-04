@@ -297,6 +297,8 @@ public class NotificationsBackend(IServiceProvider services)
             var mustInvalidate = context.Operation.Items.KeylessGet(false);
             if (mustInvalidate && device != null)
                 _ = ListDevices(UserId.Parse(device.UserId), default);
+            if (context.Operation.Items.KeylessGet<UserId>() is { } previousUserId)
+                _ = ListDevices(previousUserId, default);
             return;
         }
 
@@ -330,8 +332,13 @@ public class NotificationsBackend(IServiceProvider services)
                 + "SessionHash={SessionHash}, AccessedAt={AccessedAt}",
                 dbDevice.UserId, dbDevice.Id, dbDevice.Type, dbDevice.SessionHash, dbDevice.AccessedAt);
             dbDevice.AccessedAt = Clocks.SystemClock.Now;
-            if (dbDevice.Type == DeviceType.WebBrowser && deviceType != DeviceType.WebBrowser)
-                dbDevice.Type = deviceType; // Now MAUI app reports device type properly, lets update it.
+            // A PushKit / PTT token is per installation and survives reinstalls, so its row follows
+            // the registration even from an older type or account. An FCM token stays put.
+            var isDirectPushToken = !deviceType.IsFcm();
+            if (dbDevice.Type != deviceType && (dbDevice.Type == DeviceType.WebBrowser || isDirectPushToken)) {
+                dbDevice.Type = deviceType;
+                isChanged = true;
+            }
             if (!sessionHash.IsEmpty && dbDevice.SessionHash != sessionHash.Value) {
                 // Refreshed on every re-registration: the hash changes on re-sign-in, and a stale
                 // one breaks the VoIP/FCM join that keeps a ringing iPhone from also buzzing.
@@ -345,12 +352,14 @@ public class NotificationsBackend(IServiceProvider services)
                 isChanged = true;
             }
             if (UserId.TryParse(dbDevice.UserId, out var existingUserId) && existingUserId != userId) {
-                if (existingUserId.IsGuest) {
+                if (existingUserId.IsGuest || isDirectPushToken) {
                     dbDevice.UserId = userId.Value;
+                    isChanged = true;
+                    if (!existingUserId.IsGuest)
+                        context.Operation.Items.KeylessSet(existingUserId);
                     DebugLog?.LogDebug(
-                        "Guest UserId for Device '{DeviceId}' has been updated: "
-                        + "'{OldUserId}'->'{NewUserId}'",
-                        existingUserId, existingUserId, userId);
+                        "UserId for Device '{DeviceId}' has been updated: '{OldUserId}'->'{NewUserId}'",
+                        deviceId, existingUserId, userId);
                 }
                 else
                     Log.LogWarning("User {UserId} is trying to register device for {ExistingUserId}. Skipped",

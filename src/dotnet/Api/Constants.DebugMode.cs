@@ -78,5 +78,6 @@ public static partial class Constants
 
         // Calls
         public const bool AndroidIncomingCalls = false;
+        public const bool IosCalls = false;
     }
 }
