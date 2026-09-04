@@ -62,16 +62,16 @@
     @apply cursor-pointer no-underline hover:underline;
 }
 .hashtag-markup .highlight {
-    @apply bg-[var(--highlighted)];
+    @apply bg-highlighted;
 }
 
 /* Spoiler (masked) text: an SVG stencil (blur → alpha threshold → re-blur, see SpoilerFilterDefs)
    turns the text into an unreadable frosted blob until tapped; auto-hides later, tap again to hide. */
 :root, .theme-light {
-    --spoiler-fill: #6f7480;
+    --spoiler-fill: var(--ash-50);
 }
 .theme-dark {
-    --spoiler-fill: #cdced3;
+    --spoiler-fill: var(--gray-80);
 }
 .spoiler-filter-defs {
     @apply absolute;
@@ -119,7 +119,7 @@
     word-break: break-word;
 }
 .plain-text-markup.highlight {
-    @apply bg-[var(--highlighted)];
+    @apply bg-highlighted;
 }
 .plain-text-markup:empty,
 .plain-text-markup:empty + br {
@@ -159,7 +159,7 @@
     @apply rounded-full;
     @apply pointer-events-none;
     @apply text-text-1 text-transparent;
-    @apply bg-[var(--blue-50-30)];
+    @apply bg-pal-blue-50-30;
     @apply opacity-0;
     outline: 0.125rem solid var(--blue-50-30);
     outline-offset: 0;
@@ -409,10 +409,10 @@ ul.list-markup li::before {
 
 /* Block quote: a colored left rule (distinct from the blue used by replies/forwards). */
 :root, .theme-light {
-    --quote-markup-border: #c026d3; /* fuchsia-600 */
+    --quote-markup-border: var(--purple-45);
 }
 .theme-dark {
-    --quote-markup-border: #e879f9; /* fuchsia-400 */
+    --quote-markup-border: var(--purple-70);
 }
 /* min-height keeps the bar visible for a quote that renders no height of its own: a lone ">"
    is a blank line, and .blank-line-markup is a margin rather than an empty line by design. */

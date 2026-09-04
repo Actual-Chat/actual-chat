@@ -236,8 +236,8 @@ body.narrow .navbar-chat-buttons .navbar-button .btn-round {
 .navbar-button .c-chat-roulette-icon {
     @apply flex-none flex items-center justify-center;
     @apply h-full w-full;
-    @apply bg-[var(--indigo-70)];
-    @apply text-[var(--sienna-70)];
+    @apply bg-pal-indigo-70;
+    @apply text-pal-sienna-70;
 }
 
 .right-line {

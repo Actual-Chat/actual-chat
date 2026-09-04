@@ -366,8 +366,8 @@ body.hoverable .btn-video-panel.btn-h:hover {
         var(--white-50) 360deg
     );
     -webkit-mask:
-        linear-gradient(#000 0 0) content-box,
-        linear-gradient(#000 0 0);
+        linear-gradient(var(--black) 0 0) content-box,
+        linear-gradient(var(--black) 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
@@ -376,12 +376,12 @@ body.hoverable .btn-video-panel.btn-h:hover {
 .btn-video-panel.btn-h.chat-btn.on,
 .btn-video-panel.btn-h.layout-toggle-btn.on,
 .btn-video-panel.btn-h.btn-pin-toggle.on {
-    @apply bg-[var(--blue-50-50)];
-    @apply text-[var(--blue-95)];
+    @apply bg-pal-blue-50-50;
+    @apply text-pal-blue-95;
 }
 .btn-video-panel.btn-h.talking {
-    @apply bg-[var(--magenta-30-50)];
-    @apply text-[var(--magenta-95)];
+    @apply bg-pal-magenta-30-50;
+    @apply text-pal-magenta-95;
 }
 .btn-video-panel.btn-h.talking::before {
     background: conic-gradient(
@@ -402,10 +402,10 @@ body.hoverable .btn-video-panel.btn-h:hover {
 }
 body.hoverable .video-panel .video-panel-toolbar > button:hover,
 .touch-capable .video-panel .video-panel-toolbar > button:active {
-    @apply text-[var(--white-50)];
+    @apply text-pal-white-50;
 }
 .video-panel .video-panel-footer > button.rec-btn {
-    background: linear-gradient(180deg, #C60077 -18.32%, #2970FF 132%);
+    background: linear-gradient(180deg, var(--magenta-45) -18.32%, var(--blue-55) 132%);
     background-size: 100% 180%;
     background-position: center center;
     background-repeat: no-repeat;
@@ -414,7 +414,7 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     animation: bgShake 3s steps(30) infinite alternate;
 }
 .video-panel .video-panel-footer > button.rec-btn.recording {
-    background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
+    background: linear-gradient(180deg, var(--blue-55) -116.66%, var(--magenta-60) 66.08%);
     background-size: auto;
     animation: record-btn-on-pulse 2s steps(10) infinite;
 }

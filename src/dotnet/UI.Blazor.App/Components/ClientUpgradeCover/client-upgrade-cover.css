@@ -2,7 +2,7 @@
     @apply flex-y items-center justify-center;
     @apply h-full;
     @apply px-4 md:px-16;
-    background: radial-gradient(71.69% 86.11% at 50% 111.44%, #FF3880 0%, #0036A3 100%);
+    background: radial-gradient(71.69% 86.11% at 50% 111.44%, var(--magenta-60) 0%, var(--blue-30) 100%);
 }
 .client-upgrade-cover > .c-header {
     @apply flex-none flex-x items-center justify-start gap-x-2;

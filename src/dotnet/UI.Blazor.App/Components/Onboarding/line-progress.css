@@ -15,7 +15,7 @@
     @apply text-06;
 }
 .line-progress-item.gray {
-    @apply bg-[var(--gray-80)];
+    @apply bg-pal-gray-80;
 }
 .line-progress-item.c-current.gray,
 .line-progress-item.c-current.white {

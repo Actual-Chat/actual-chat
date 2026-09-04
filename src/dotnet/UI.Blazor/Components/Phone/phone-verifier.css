@@ -33,7 +33,7 @@
     @apply text-caption-4;
 }
 .phone-verifier .verification-status i {
-    @apply text-[var(--orange-60)];
+    @apply text-pal-orange-60;
 }
 .phone-verifier .verification-status i.text-success {
     @apply text-[var(--success)];

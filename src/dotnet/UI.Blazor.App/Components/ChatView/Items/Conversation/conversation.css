@@ -133,7 +133,7 @@
     @apply flex-x items-center gap-x-1 whitespace-nowrap;
     @apply px-2.5 h-6 rounded-full;
     @apply border border-modal bg-modal shadow-modal-wide;
-    @apply text-caption-1 text-[var(--cr-item-badge-selected-text)];
+    @apply text-caption-1 text-cr-item-badge-selected-text;
     transform: translate(-50%, 50%);
 }
 .c-lc-showmore i {
@@ -273,7 +273,7 @@ body.hoverable .c-lc-showmore:hover {
 .conversation-message .c-summary .c-short .show-more-btn,
 .conversation-message .c-long .show-more-btn {
     @apply text-nowrap;
-    @apply text-caption-1 text-[var(--cr-item-badge-selected-text)];
+    @apply text-caption-1 text-cr-item-badge-selected-text;
 }
 body.hoverable .conversation-message .c-summary .c-short .show-more-btn:hover,
 body.hoverable .conversation-message .c-long .show-more-btn:hover {

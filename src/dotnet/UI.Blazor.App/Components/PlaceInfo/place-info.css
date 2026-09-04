@@ -32,7 +32,7 @@ body.narrow .place-info {
 .place-info > .c-top > .c-back-btn {
     @apply absolute right-4 z-10;
     top: calc(1rem + var(--safe-area-top-narrow));
-    @apply bg-[var(--round-right-panel)];
+    @apply bg-round-right-panel;
     @apply text-primary;
     @apply shadow-sm shadow-shadow-main;
 }
@@ -50,7 +50,7 @@ body.narrow .place-info {
     @apply flex-1 flex-x items-end justify-end gap-x-3;
 }
 .place-info > .c-top > .c-subheader > .c-buttons .btn.btn-round {
-    @apply bg-[var(--round-right-panel)];
+    @apply bg-round-right-panel;
     @apply text-primary;
     @apply shadow-sm shadow-shadow-main;
 }

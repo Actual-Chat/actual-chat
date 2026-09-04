@@ -12,7 +12,7 @@ body.narrow .onboarding-modal.modal-frame.phone-verification-modal {
 }
 .stepper.onboarding-stepper {
     @apply md:h-192;
-    background: linear-gradient(89deg, #FFEFFF 5.09%, #DAD2FF 94.69%);
+    background: linear-gradient(89deg, var(--purple-99) 5.09%, var(--indigo-90) 94.69%);
 }
 body.narrow .stepper.onboarding-stepper {
     @apply px-8;
@@ -59,7 +59,7 @@ body.narrow .stepper.onboarding-stepper {
     @apply flex-none self-center;
 }
 .onboarding-stepper:not(:has(.onboarding-tutorial)) .stepper-footer {
-    background: linear-gradient(89deg, #FFEFFF 5.09%, #DAD2FF 94.69%);
+    background: linear-gradient(89deg, var(--purple-99) 5.09%, var(--indigo-90) 94.69%);
 }
 .onboarding-modal .stepper-footer .btn-group {
     @apply justify-center;
@@ -170,7 +170,7 @@ body.narrow .stepper-image-filler {
     @apply p-8 pb-4;
     @apply overflow-hidden;
     @apply text-white;
-    background: radial-gradient(152.59% 69.81% at 42.78% 125.88%, #FF3880 0%, #0036A3 100%);
+    background: radial-gradient(152.59% 69.81% at 42.78% 125.88%, var(--magenta-60) 0%, var(--blue-30) 100%);
 }
 .stepper:has(.onboarding-tutorial) .stepper-header {
     @apply hidden;
@@ -213,7 +213,7 @@ body.narrow .stepper-image-filler {
     @apply relative;
     @apply flex-none flex items-center justify-center;
     @apply w-14 h-14;
-    @apply rounded-full border border-[var(--white-30)];
+    @apply rounded-full border border-pal-white-30;
 }
 
 .tutorial-btn-wrapper .tutorial-btn {
@@ -222,11 +222,11 @@ body.narrow .stepper-image-filler {
     @apply rounded-full;
     @apply overflow-hidden;
     @apply bg-white;
-    @apply text-[var(--blue-30)];
+    @apply text-pal-blue-30;
     box-shadow: 0 4px 9px 0 rgba(41, 112, 255, 0.29);
 }
 .tutorial-btn-wrapper.step-3 .tutorial-btn {
-    @apply bg-[var(--magenta-60)];
+    @apply bg-pal-magenta-60;
     @apply text-white;
 }
 .tutorial-btn-wrapper .tutorial-btn::before {
@@ -239,8 +239,8 @@ body.narrow .stepper-image-filler {
         var(--magenta-60) 0deg 120deg,
         transparent 120deg
     );
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
-    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), var(--black) calc(100% - 2px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), var(--black) calc(100% - 2px));
     transition: background 0.3s;
 }
 .tutorial-btn-wrapper.step-2 .tutorial-btn::before {
@@ -259,7 +259,7 @@ body.narrow .stepper-image-filler {
     @apply absolute z-minus;
     @apply w-8 h-8;
     @apply rounded-full;
-    @apply bg-[var(--white-05)];
+    @apply bg-pal-white-05;
 }
 .tutorial-btn-wrapper .tutorial-btn:active::after {
     animation: blink-button 500ms ease-in-out;

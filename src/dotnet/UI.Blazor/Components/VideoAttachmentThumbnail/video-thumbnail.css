@@ -20,7 +20,7 @@ body.narrow .video-thumbnail .c-overlay {
     @apply absolute bottom-1 left-1;
     @apply px-1.5 py-0.5;
     @apply rounded-md;
-    @apply bg-[var(--black-90)] text-white;
+    @apply bg-pal-black-90 text-white;
     @apply text-xs font-medium leading-none whitespace-nowrap;
 }
 body.narrow .video-thumbnail .c-duration {

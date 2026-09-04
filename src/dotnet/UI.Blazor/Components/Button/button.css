@@ -148,23 +148,23 @@ body.hoverable .btn.unhovered:hover::after {
 .btn.btn-outline,
 .btn.btn-outline.btn-primary {
     @apply border border-primary;
-    @apply bg-[var(--blue-50-05)];
+    @apply bg-pal-blue-50-05;
     @apply text-primary;
     @apply no-sheen;
 }
 .btn.btn-outline.btn-danger {
     @apply border-danger;
-    @apply bg-[var(--magenta-50-05)];
+    @apply bg-pal-magenta-50-05;
     @apply text-danger;
 }
 .btn.btn-outline.btn-danger-light {
-    @apply border-[var(--danger-light)];
-    @apply bg-[var(--magenta-50-05)];
-    @apply text-[var(--danger-light)];
+    @apply border-danger-light;
+    @apply bg-pal-magenta-50-05;
+    @apply text-danger-light;
 }
 .btn.btn-outline.btn-cancel {
     @apply border-cancel-text;
-    @apply bg-[var(--ash-50-05)];
+    @apply bg-pal-ash-50-05;
     @apply text-cancel-text;
 }
 
@@ -573,7 +573,7 @@ body.hoverable .btn-h.unhovered:hover {
 }
 
 .close-btn.btn.btn-round {
-    @apply bg-[var(--white-05)];
-    @apply text-[var(--white-90)];
+    @apply bg-pal-white-05;
+    @apply text-pal-white-90;
     @apply no-sheen;
 }

@@ -299,10 +299,10 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply pr-3;
 }
 .layout-header:has(.selection-header) {
-    @apply bg-gradient-to-r from-[var(--magenta-50-20)] to-[var(--blue-50-20)];
+    @apply bg-gradient-to-r from-pal-magenta-50-20 to-pal-blue-50-20;
 }
 .layout-header > .c-content.c-selection {
-    @apply bg-gradient-to-r from-[var(--magenta-50-10)] to-[var(--blue-50-10)];
+    @apply bg-gradient-to-r from-pal-magenta-50-10 to-pal-blue-50-10;
 }
 .layout-subheader {
     @apply sticky top-0 z-90;
@@ -542,7 +542,7 @@ body.wide .error-container {
 .fusion-close {
     @apply flex-y justify-center;
     @apply h-screen;
-    @apply bg-[var(--blue-30)];
+    @apply bg-pal-blue-30;
 }
 .fusion-close > .c-content {
     @apply flex-1 flex-y items-center justify-center gap-y-4;
@@ -686,7 +686,7 @@ body.narrow .page-with-header-and-footer:has(.side-nav-left[data-side-nav="open"
     @apply flex items-center justify-center;
     @apply h-full w-full;
     @apply overflow-hidden;
-    background: #0C003D;
+    background: var(--indigo-10);
 }
 .landing-test-page > img {
     @apply absolute z-10;

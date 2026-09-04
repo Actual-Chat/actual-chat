@@ -17,8 +17,8 @@
     @apply flex items-center justify-center;
     @apply w-screen h-screen;
     @apply transition-opacity ease-in duration-300;
+    @apply bg-pal-indigo-10;
     will-change: transform;
-    background-color: #0C003D;
 }
 .web-splash.removing {
     @apply transition-opacity ease-out duration-350 opacity-0;
@@ -58,8 +58,7 @@ body.wide .web-splash .wide-image {
 .web-splash .c-content {
     @apply relative z-10;
     @apply flex-y items-center justify-center gap-y-8;
-    min-height: 16rem;
-    min-width: 12rem;
+    @apply min-h-64 min-w-48;
 }
 .web-splash .c-content > img {
     @apply h-[var(--web-splash-logo-size)] w-[var(--web-splash-logo-size)];
@@ -69,13 +68,13 @@ body.wide .web-splash .wide-image {
     @apply flex justify-start items-center;
     @apply min-w-full max-w-full min-h-1 overflow-hidden;
     @apply rounded-full;
-    @apply bg-[var(--white-05)];
+    @apply bg-pal-white-05;
     bottom: calc(32px + var(--safe-area-bottom));
 }
 .web-splash .progress-value {
     @apply w-full h-1;
     @apply rounded-full;
-    @apply bg-[var(--white)];
+    @apply bg-white;
     box-shadow: 0 5px 5px -5px var(--white);
     animation: load 3s normal cubic-bezier(0.3, 0.9, 0.3, 0.9);
 }

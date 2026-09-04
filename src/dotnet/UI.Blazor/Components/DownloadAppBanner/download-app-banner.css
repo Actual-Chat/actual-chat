@@ -8,7 +8,7 @@
     @apply px-2;
     @apply rounded-lg;
     @apply hover:cursor-pointer;
-    background: linear-gradient(269deg, #2970FF 0.4%, #C60077 100.32%);
+    background: linear-gradient(269deg, var(--blue-55) 0.4%, var(--magenta-45) 100.32%);
 }
 .download-app-banner .download-app-banner-title {
     @apply always-white text-headline-1;

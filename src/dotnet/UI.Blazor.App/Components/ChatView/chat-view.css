@@ -554,7 +554,7 @@ body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
 .link-preview-attachment-list {
     @apply flex-x items-center gap-x-0;
     @apply w-fit;
-    @apply rounded-lg border-2 border-[var(--background-01)];
+    @apply rounded-lg border-2 border-bg-01;
     @apply overflow-hidden;
     @apply bg-01;
 }
@@ -681,7 +681,7 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply flex-none;
     @apply w-1 h-1;
     @apply rounded-full;
-    @apply bg-[var(--violet-50)];
+    @apply bg-pal-violet-50;
 }
 .c-circle#waiting-circle-1 {
     animation: wave 1.3s steps(13, start) infinite;

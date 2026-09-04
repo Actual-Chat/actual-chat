@@ -158,31 +158,31 @@ body.hoverable .file-attachment:not(.upload-file):hover,
 }
 
 .file-text {
-    @apply bg-[var(--file-text)];
+    @apply bg-file-text;
 }
 .file-table {
-    @apply bg-[var(--file-table)];
+    @apply bg-file-table;
 }
 .file-presentation {
-    @apply bg-[var(--file-presentation)];
+    @apply bg-file-presentation;
 }
 .file-pdf {
-    @apply bg-[var(--file-pdf)];
+    @apply bg-file-pdf;
 }
 .file-archive {
-    @apply bg-[var(--file-archive)];
+    @apply bg-file-archive;
 }
 .file-code {
-    @apply bg-[var(--file-code)];
+    @apply bg-file-code;
 }
 .file-audio {
-    @apply bg-[var(--file-audio)];
+    @apply bg-file-audio;
 }
 .file-executable {
-    @apply bg-[var(--file-executable)];
+    @apply bg-file-executable;
 }
 .file-default {
-    @apply bg-[var(--file-default)];
+    @apply bg-file-default;
 }
 
 .message-image-attachments.media-attachment-uploads {
@@ -226,7 +226,7 @@ body.hoverable .message-image-attachments.media-attachment-uploads .image-item:h
 .attachment-upload-ring::before {
     @apply content-empty absolute inset-0;
     @apply rounded-full;
-    @apply bg-[var(--black-80)];
+    @apply bg-pal-black-80;
 }
 .attachment-upload-ring .c-track {
     stroke: rgba(255, 255, 255, 0.25);

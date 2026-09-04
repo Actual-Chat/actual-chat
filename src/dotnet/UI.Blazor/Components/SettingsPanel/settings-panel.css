@@ -231,7 +231,7 @@ body.hoverable .tile-btn:hover,
     @apply w-auto h-12;
     @apply px-4;
     @apply rounded-lg;
-    @apply bg-[var(--hover-after-primary)];
+    @apply bg-hover-after-primary;
     @apply text-primary;
 }
 .add-avatar-btn.btn > .btn-content {

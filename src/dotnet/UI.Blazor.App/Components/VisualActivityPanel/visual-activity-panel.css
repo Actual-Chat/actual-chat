@@ -157,7 +157,7 @@ body.wide .activity-pill {
 .activity-pill .c-divider {
     @apply w-0.5 h-4;
     @apply rounded-full;
-    @apply bg-[var(--white-40)];
+    @apply bg-pal-white-40;
 }
 .activity-pill i {
     @apply text-xl;

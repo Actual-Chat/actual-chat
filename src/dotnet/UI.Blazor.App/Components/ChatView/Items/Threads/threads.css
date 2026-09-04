@@ -25,7 +25,7 @@
 }
 .thread-message .divider {
     @apply h-px w-full;
-    @apply border-[var(--ash-90)];
+    @apply border-pal-ash-90;
 }
 .thread-message .c-footer {
     @apply flex-x items-center gap-x-4;

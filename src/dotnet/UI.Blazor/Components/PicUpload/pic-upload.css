@@ -54,7 +54,7 @@ body:not(.hoverable) .pic-upload .pic-upload-picker {
     @apply w-10 h-10;
     @apply rounded-full;
     @apply overflow-hidden;
-    @apply bg-[var(--round-right-panel)];
+    @apply bg-round-right-panel;
     @apply cursor-pointer;
 }
 body.hoverable .pic-upload-btn:hover::after {

@@ -199,7 +199,7 @@ body.narrow .layout-header.collapsed:has(.chat-activity-panel:not(.listening)) .
 }
 .chat-header-control-panel .btn-start-call,
 body.hoverable .chat-header-control-panel .btn-start-call:hover {
-    @apply text-[var(--green-40)];
+    @apply text-pal-green-40;
 }
 .chat-header-control-panel .btn-start-call:disabled,
 body.hoverable .chat-header-control-panel .btn-start-call:disabled:hover {

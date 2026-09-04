@@ -83,7 +83,7 @@
     @apply py-2 px-3;
 }
 .btn.start-tour-btn {
-    @apply bg-[var(--blue-70)];
+    @apply bg-pal-blue-70;
 }
 
 .discover-left .c-wide .c-navbar {
@@ -117,7 +117,7 @@
     @apply w-9 h-9;
     @apply rounded-full;
     @apply overflow-hidden;
-    @apply bg-[var(--orange-80)];
+    @apply bg-pal-orange-80;
 }
 .discover-center .message-info {
     @apply flex-1 flex-x gap-x-2;

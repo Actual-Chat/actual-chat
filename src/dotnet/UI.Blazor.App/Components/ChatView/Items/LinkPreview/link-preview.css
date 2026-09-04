@@ -153,7 +153,7 @@ body.narrow .message-link-preview .link-buttons {
 }
 body.narrow .message-link-preview .link-more-btn {
     @apply flex;
-    @apply bg-[var(--black-20)];
+    @apply bg-pal-black-20;
     @apply text-white;
 }
 

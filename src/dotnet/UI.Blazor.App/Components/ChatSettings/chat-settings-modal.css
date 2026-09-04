@@ -255,7 +255,7 @@ body.narrow .chat-settings-header > .c-top .right-panel-close-btn {
 .own-avatar-edit-header > .c-center > .c-buttons > .btn.btn-round,
 .chat-settings-header > .c-center > .c-buttons > div,
 .chat-settings-header > .c-center > .c-buttons > .btn.btn-round {
-    @apply bg-[var(--round-right-panel)];
+    @apply bg-round-right-panel;
     @apply text-primary;
     @apply shadow;
 }

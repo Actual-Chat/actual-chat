@@ -312,11 +312,11 @@
     }
 
     .always-white {
-        @apply text-[var(--white)];
+        @apply text-white;
     }
 
     .always-black {
-        @apply text-[var(--black)];
+        @apply text-black;
     }
 
     .wrap-anywhere {

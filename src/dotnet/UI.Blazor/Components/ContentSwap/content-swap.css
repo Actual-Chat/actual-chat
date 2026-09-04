@@ -180,7 +180,7 @@
 .content-swap.c-swap-wipe > .c-layer.outgoing {
     clip-path: inset(0);
     mask-image: linear-gradient(var(--c-wipe-angle),
-        transparent 0 30%, rgba(0, 0, 0, 0.35) 42%, rgba(0, 0, 0, 0.8) 52%, #000 62%, #000 100%);
+        transparent 0 30%, rgba(0, 0, 0, 0.35) 42%, rgba(0, 0, 0, 0.8) 52%, var(--black) 62%, var(--black) 100%);
     mask-size: var(--c-wipe-size);
     mask-repeat: no-repeat;
     mask-position: var(--c-wipe-from);

@@ -52,7 +52,7 @@ body.narrow .chat-activity-panel:after {
 
 /* Not participating (narrow): gradient border via double-background trick */
 body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participating {
-    @apply border-2 border-[var(--violet-80-40)];
+    @apply border-2 border-pal-violet-80-40;
     @apply bg-transparent;
 }
 body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participating:after {
@@ -93,7 +93,7 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
     @apply w-9 h-9 -ml-4 first:ml-0;
     @apply rounded-full;
     @apply opacity-0;
-    @apply bg-[var(--indigo-70)];
+    @apply bg-pal-indigo-70;
     animation: placeholder-wave 2s infinite steps(10);
 }
 .layout-header.collapsed .placeholder-circle:not(:first-child) {
@@ -228,7 +228,7 @@ body.narrow .layout-header:has(.video-streaming) {
 }
 .chat-activity-panel > .c-buttons > .btn-stop-location-sharing,
 body.hoverable .chat-activity-panel > .c-buttons > .btn-stop-location-sharing:hover {
-    @apply text-[var(--danger-light)] text-2xl;
+    @apply text-danger-light text-2xl;
 }
 .chat-activity-panel > .c-buttons > .btn.btn-transparent:active::after {
     @apply hidden;
@@ -257,8 +257,8 @@ body.narrow .chat-activity-panel > .c-buttons > .btn.not-listening {
 .chat-activity-panel .btn.not-listening {
     @apply min-w-24;
     @apply md:px-4;
-    @apply text-[var(--violet-60)] text-caption-3;
-    @apply bg-[var(--leave-btn)];
+    @apply text-pal-violet-60 text-caption-3;
+    @apply bg-leave-btn;
 }
 /* Audio controls (mic / hang up / listen+timer) — see chat-audio-controls.css */
 body.wide .chat-activity-panel .chat-audio-controls .btn-h i {
@@ -300,7 +300,7 @@ body.narrow .chat-activity-panel.listening:after {
 .equalizer .bar {
     @apply w-0.5 h-0.5 rounded-full;
     @apply overflow-hidden;
-    @apply bg-[var(--indigo-70)];
+    @apply bg-pal-indigo-70;
     transition: height 0.3s ease, background-color 0.3s ease;
 }
 /* Every duration/steps pair below has to come out a multiple of 100ms - that is
@@ -426,7 +426,7 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
 .chat-activity-panel .c-pin-badge .c-badge-content {
     @apply flex items-center justify-center gap-x-0.5;
     @apply px-2 py-1;
-    @apply rounded-full border border-[var(--white-40)];
+    @apply rounded-full border border-pal-white-40;
     @apply text-sm font-medium whitespace-nowrap;
     @apply text-white;
     background: linear-gradient(180deg,var(--black-10) -20.83%,var(--black-20) 50%);
