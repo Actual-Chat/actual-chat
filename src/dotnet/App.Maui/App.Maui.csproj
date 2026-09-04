@@ -600,15 +600,19 @@
     </PropertyGroup>
   </Target>
 
-  <!-- macOS (AppKit): sign Debug builds with a stable dev identity. Ad-hoc signing gives
-       every rebuild a fresh app identity, so reading the Fusion.SessionId keychain item the
-       Catalyst app owns would prompt for the login keychain password on every launch; with a
-       stable identity one "Always Allow" persists. No provisioning profile: a dev-signed
-       macOS app needs none without restricted entitlements. The bare name resolves when the
-       keychain holds one Apple Development cert; scripts/run-mac.sh passes the team cert's
-       hash as CodesignKey when there are several. -->
+  <!-- macOS (AppKit): Debug builds sign like the Catalyst ones - the dev profile carries
+       keychain-access-groups, which the data protection keychain (AppleSharedSecureStorage)
+       requires; an unprovisioned or ad-hoc signed build gets errSecMissingEntitlement and
+       never persists the session. The profiles are plain macOS ones, so the Catalyst names
+       apply as-is. The bare key name resolves when the keychain holds one Apple Development
+       cert; scripts/run-mac.sh passes the team cert's hash as CodesignKey when there are
+       several. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Debug' and $(TargetFramework.Contains('-macos'))">
     <EnableCodeSigning>true</EnableCodeSigning>
+    <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Platforms\MacOS\Entitlements.dev.plist</CodesignEntitlements>
+    <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Platforms\MacOS\Entitlements.prod.plist</CodesignEntitlements>
+    <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">mac.chat.actual.dev.app</CodesignProvision>
+    <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">mac.chat.actual.app</CodesignProvision>
     <CodesignKey Condition="'$(CodesignKey)' == ''">Apple Development</CodesignKey>
   </PropertyGroup>
 

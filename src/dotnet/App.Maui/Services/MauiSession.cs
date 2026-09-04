@@ -23,7 +23,7 @@ public sealed class MauiSession(IServiceProvider services)
         => field ??= Services.GetRequiredService<KvasarRemoteComputedCache>();
 
     private static ISecureStorage Storage
-#if IOS || MACCATALYST
+#if IOS || MACCATALYST || MACOS
         => field ??= AppleSharedSecureStorage.Default;
 #else
         => field ??= SecureStorage.Default;

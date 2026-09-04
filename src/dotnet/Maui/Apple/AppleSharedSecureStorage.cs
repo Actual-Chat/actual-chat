@@ -3,6 +3,10 @@ using Security;
 
 namespace ActualChat.Maui;
 
+// UseDataProtectionKeychain matters only on macOS (AppKit): without it SecItem goes to the
+// file-based login keychain, whose per-app ACLs make macOS prompt for the keychain password
+// whenever a differently signed build (local vs. App Store) reads the item. iOS and Mac
+// Catalyst always use the data protection keychain, so the flag is a no-op there.
 public class AppleSharedSecureStorage : ISecureStorage
 {
     private const string ServiceName = "Voxt";
@@ -60,10 +64,10 @@ public class AppleSharedSecureStorage : ISecureStorage
             Account = key,
             Service = ServiceName,
             AccessGroup = AccessGroup,
+            UseDataProtectionKeychain = true,
         };
         return query;
     }
-
 
     private SecRecord BuildRecord(string key, string value)
         => new (SecKind.GenericPassword)
@@ -72,6 +76,7 @@ public class AppleSharedSecureStorage : ISecureStorage
             Label = key,
             Service = ServiceName,
             AccessGroup = AccessGroup,
+            UseDataProtectionKeychain = true,
             Accessible = SecAccessible.AfterFirstUnlock,
             ValueData = NSData.FromString(value, NSStringEncoding.UTF8),
         };
