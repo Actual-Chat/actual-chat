@@ -57,8 +57,11 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
     // Probe RTT beyond this multiple of the measured min-RTT is a timeout, not a slow link.
     private const int ProbeTimeoutRttFactor = 3;
     private const int FailureLogPeriod = 5;
+    // Client-only, so one process is one device: the last accepted sync, for the next scope.
+    private static SeedState? _lastSeed;
 
     private readonly SemaphoreSlim _syncLock = new(1, 1);
+    private readonly Lock _seedLock = new();
     private readonly RunningEma _minRttEma = new(0f, 1, 0.3);
     private CancellationTokenSource? _slewTokenSource;
     private TimeSpan _appliedOffset;
@@ -89,6 +92,7 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
 
     public async Task EnsureSynced(CancellationToken cancellationToken)
     {
+        TryApplySeed();
         // Wall-vs-monotonic divergence is a reason to re-measure, never evidence that
         // a correction is legitimate - the two clocks disagree on sleep and on a wall
         // step alike, and which one lies is platform-dependent.
@@ -105,13 +109,16 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
     // Protected/internal methods
 
     protected override Task OnRun(CancellationToken cancellationToken)
-        => AsyncChain.From(Sync)
+    {
+        TryApplySeed();
+        return AsyncChain.From(Sync)
             .RetryForever(ConvergingDelays)
             .AppendDelay(GetNextSyncDelay)
             .CycleForever()
             .Log(LogLevel.Debug, Log)
             .PrependDelay(StartupDelay)
             .RunIsolated(cancellationToken);
+    }
 
     // Private methods
 
@@ -276,6 +283,42 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
             correction.ToShortString(), burst.MinRtt.ToShortString(), _driftRate * 1e6, _epoch);
         SetNextSyncAt();
         UpdateStats(outcome, burst, correction);
+        if (!IsServer)
+            Volatile.Write(ref _lastSeed, new SeedState(
+                burst.Offset, burst.Precision, burst.MinRtt, _driftRate, _lastAcceptedAt, _lastAcceptedWallAt));
+    }
+
+    private void TryApplySeed()
+    {
+        // A scope that replaces another - a WebView reload, a headless wake handed off to the
+        // WebView scope - would otherwise spend seconds re-measuring an offset the previous scope
+        // had to target precision moments ago, and every listener start waits on that. Client
+        // hosts only: in server mode the offset is one browser's, and the process serves many.
+        // EnsureSynced's gates still judge the seed's age and any suspend since, so a stale seed
+        // costs nothing but triggers the sync it would have triggered anyway.
+        if (IsServer)
+            return;
+
+        lock (_seedLock) {
+            if (SyncCount > 0 || Volatile.Read(ref _lastSeed) is not { } seed)
+                return;
+
+            SyncCount = 1;
+            _precision = seed.Precision;
+            _lastAcceptedAt = seed.AcceptedAt;
+            _lastAcceptedWallAt = seed.AcceptedWallAt;
+            _driftRate = seed.DriftRate;
+            _minRttEma.AppendSample((float)seed.MinRtt.TotalSeconds);
+            _mode = seed.Precision <= GetEffectiveTargetPrecision()
+                ? ServerClockSyncMode.Steady
+                : ServerClockSyncMode.Converging;
+            ApplyStep(seed.Offset);
+            SetNextSyncAt();
+            Log.LogInformation(
+                "Seeded from the previous scope: offset = {Offset} ± {Precision}, age = {Age}",
+                seed.Offset.ToShortString(), seed.Precision.ToShortString(),
+                (CpuClock.Now - seed.AcceptedAt).ToShortString());
+        }
     }
 
     private void OnAttemptFailed(ServerClockSyncOutcome outcome)
@@ -524,6 +567,14 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
     // Nested types
 
     private sealed record Sample(TimeSpan Rtt, double OffsetMs);
+
+    private sealed record SeedState(
+        TimeSpan Offset,
+        TimeSpan Precision,
+        TimeSpan MinRtt,
+        double DriftRate,
+        Moment AcceptedAt,
+        Moment AcceptedWallAt);
 
     private sealed record BurstResult(
         TimeSpan Offset,
