@@ -8,19 +8,31 @@ namespace ActualChat.App.Maui;
 /// choreography: iOS has no keyguard to dismiss and CallKit owns the call screen, so
 /// they are deliberately inert here.
 /// </summary>
-public sealed class IosIncomingCallsBridge(AppUIHub hub) : IIncomingCallsBridge, IDisposable
+public sealed class IosIncomingCallsBridge : IIncomingCallsBridge, IDisposable
 {
     private static readonly TimeSpan JoinTimeout = TimeSpan.FromSeconds(30);
 
     private readonly CancellationTokenSource _stopTokenSource = new();
     private readonly ConcurrentDictionary<ChatId, Unit> _watchedChatIds = new();
-    private AppUIHub Hub { get; } = hub;
+    private AppUIHub Hub { get; }
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ILogger Log => field ??= StaticLog.For<IosIncomingCallsBridge>();
 
     public bool OwnsRinging => true;
 
+    public IosIncomingCallsBridge(AppUIHub hub)
+    {
+        Hub = hub;
+        // The calls are static but the watch is not: a WebView reload (or a wake scope handing
+        // over to the WebView one) takes the previous bridge's watch with it, and an answered
+        // call is skipped by EndRingingCalls, so nothing else would ever take it down.
+        foreach (var chatId in IosCalls.Instance.ListCallsNeedingWatch())
+            StartCallEndWatch(chatId);
+    }
+
     public void Dispose()
+        // Only the watch dies here: a scope replacement mid-call is not a hang-up, and the
+        // incoming scope's bridge re-arms from IosCalls.
         => _stopTokenSource.CancelAndDisposeSilently();
 
     public void StartRinging()
@@ -75,30 +87,76 @@ public sealed class IosIncomingCallsBridge(AppUIHub hub) : IIncomingCallsBridge,
 
     private async Task WatchCallEnd(ChatId chatId, CancellationToken cancellationToken)
     {
+        // A watch that gives up strands an answered CallKit call for good - AmIInLiveConversation
+        // sits on an RPC-backed chain that faults transiently - so every failure here is retried.
+        // The join deadline is wall-clock, so the retries can't extend it; the wait for the end is
+        // unbounded.
+        var startedAt = CpuTimestamp.Now;
+        var retryDelays = RetryDelaySeq.Exp(0.5, 10);
+        var hasJoined = false;
         try {
-            var cIsInCall = await Computed
-                .Capture(() => LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken), cancellationToken)
-                .ConfigureAwait(false);
-            try {
-                cIsInCall = await cIsInCall
-                    .When(x => x, cancellationToken)
-                    .WaitAsync(JoinTimeout, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (TimeoutException) {
-                // Answered but never joined: nothing else would ever take this call down, and the
-                // CallKit screen would sit over the app for the rest of the scope's life.
-                IosCalls.Instance.FailCall(chatId);
-                return;
-            }
+            for (var tryIndex = 0;; tryIndex++) {
+                try {
+                    hasJoined = hasJoined
+                        || await WhenJoined(chatId, JoinTimeout - startedAt.Elapsed, cancellationToken)
+                            .ConfigureAwait(false);
+                    if (!hasJoined) {
+                        // Answered but never joined: nothing else would ever take this call down,
+                        // and the CallKit screen would sit over the app until the user ends it.
+                        IosCalls.Instance.FailCall(chatId);
+                        return;
+                    }
 
-            await cIsInCall.When(x => !x, cancellationToken).ConfigureAwait(false);
-            // One watch covers every way an answered call ends: in-app hang-up, remote hang-up,
-            // and the session ending on its own.
-            IosCalls.Instance.EndCall(chatId);
+                    // Being in the conversation IS the verdict: a scope replaced inside the Accept
+                    // window leaves the ring's verdict unresolved, and nothing else delivers it.
+                    IosCalls.Instance.AnswerCall(chatId);
+                    await WhenLeft(chatId, cancellationToken).ConfigureAwait(false);
+                    // One watch covers every way an answered call ends: in-app hang-up, remote
+                    // hang-up, and the session ending on its own.
+                    IosCalls.Instance.EndCall(chatId);
+                    return;
+                }
+                catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
+                    Log.LogWarning(e, "Call-end watch for chat #{ChatId} failed, retrying", chatId);
+                    await Task.Delay(retryDelays[tryIndex], cancellationToken).ConfigureAwait(false);
+                }
+            }
         }
         finally {
             _watchedChatIds.TryRemove(chatId, out _);
         }
+    }
+
+    private async Task<bool> WhenJoined(ChatId chatId, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        if (timeout <= TimeSpan.Zero)
+            return false;
+
+        var cIsInCall = await Computed
+            .Capture(() => LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        try {
+            // The (value, error) overload: an error means "keep waiting", where the plain one
+            // would rethrow it and end the watch.
+            await cIsInCall
+                .When((x, error) => error is null && x, cancellationToken)
+                .WaitAsync(timeout, cancellationToken)
+                .ConfigureAwait(false);
+            return true;
+        }
+        catch (TimeoutException) {
+            return false;
+        }
+    }
+
+    private async Task WhenLeft(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var cIsInCall = await Computed
+            .Capture(() => LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        // Only a successful false ends the call: an error here must not be read as a hang-up.
+        await cIsInCall
+            .When((x, error) => error is null && !x, cancellationToken)
+            .ConfigureAwait(false);
     }
 }

@@ -82,14 +82,16 @@ public class IosCalls : CXProviderDelegate
     {
         if (!TryGetCall(chatId, out var callId, out var call))
             return false;
-        if (call.IsAnswered)
+
+        // Answered before the pending flag is dropped: between the two, EndRingingCalls must
+        // never see a call that is neither.
+        var isAnswered = call.IsAnswered;
+        call.MarkAnswered();
+        call.ClearVerdictPending();
+        if (isAnswered)
             return true;
 
-        // Marked before the request, or the PerformAnswerCallAction it triggers would dispatch
-        // IncomingCallUI.Accept a second time.
-        call.MarkHandledLocally();
-        call.MarkAnswered();
-        RequestTransaction(new CXAnswerCallAction(new NSUuid(callId.ToString())), "answer");
+        RequestTransaction(callId, call, new CXAnswerCallAction(new NSUuid(callId.ToString())), LocalAction.Answer);
         return true;
     }
 
@@ -99,9 +101,8 @@ public class IosCalls : CXProviderDelegate
             return;
 
         // A local decline is the user ending the call, which CallKit takes as a transaction
-        // rather than a report; the marker keeps PerformEndCallAction from re-dispatching Decline.
-        call.MarkHandledLocally();
-        RequestTransaction(new CXEndCallAction(new NSUuid(callId.ToString())), "end");
+        // rather than a report.
+        RequestTransaction(callId, call, new CXEndCallAction(new NSUuid(callId.ToString())), LocalAction.End);
     }
 
     // The ring bookkeeping says only "this ring is over", never whether it was accepted - the
@@ -130,7 +131,19 @@ public class IosCalls : CXProviderDelegate
         => EndCalls(chatId, CXCallEndedReason.Failed);
 
     public ChatId[] ListActiveCallChatIds()
+        // Rings only: SyncRings turns these into OnRing, and a call the user already answered
+        // is not a ring.
         => _calls.Values
+            .Where(x => !x.IsAnswered)
+            .Select(x => x.ConversationId.ChatId)
+            .Distinct()
+            .ToArray();
+
+    // Calls whose end nothing is watching for yet - a scope handoff mid-call leaves these behind,
+    // and neither EndRingingCalls nor CallKit itself would ever take them down.
+    public ChatId[] ListCallsNeedingWatch()
+        => _calls.Values
+            .Where(x => x.IsAnswered || x.IsVerdictPending)
             .Select(x => x.ConversationId.ChatId)
             .Distinct()
             .ToArray();
@@ -152,7 +165,7 @@ public class IosCalls : CXProviderDelegate
             return;
         }
 
-        var isHandledLocally = call.TryTakeHandledLocally();
+        var isHandledLocally = call.TryTakeLocalAction(LocalAction.Answer);
         call.MarkAnswered();
         // Only fulfilled here - the audio starts in DidActivateAudioSession, which is when
         // CallKit hands the session over. Activating it now would race the framework.
@@ -175,7 +188,7 @@ public class IosCalls : CXProviderDelegate
             return;
         }
 
-        var isHandledLocally = call.TryTakeHandledLocally();
+        var isHandledLocally = call.TryTakeLocalAction(LocalAction.End);
         action.Fulfill();
         if (isHandledLocally)
             return;
@@ -240,11 +253,22 @@ public class IosCalls : CXProviderDelegate
         _provider.ReportCall(new NSUuid(callId.ToString()), null, reason);
     }
 
-    private void RequestTransaction(CXAction action, string name)
-        => _callController.RequestTransaction(new CXTransaction(action), error => {
-            if (error.ToException() is { } exc)
-                Log.LogError(exc, "CallKit {Action} transaction failed", name);
+    private void RequestTransaction(Guid callId, Call call, CXAction action, LocalAction localAction)
+    {
+        // Armed before the request, or the Perform*Action it triggers would dispatch back into
+        // IncomingCallUI for something the app itself just did.
+        call.MarkLocalAction(localAction);
+        _callController.RequestTransaction(new CXTransaction(action), error => {
+            if (error.ToException() is not { } exc)
+                return;
+
+            // A marker left armed would make the user's next End press read as the app's own
+            // doing, and an answer or decline CallKit refused must not leave a live system call.
+            Log.LogError(exc, "CallKit {Action} transaction failed", localAction);
+            call.ClearLocalAction();
+            EndCall(callId, CXCallEndedReason.Failed);
         });
+    }
 
     private static void ReleaseAudioSession()
     {
@@ -280,11 +304,20 @@ public class IosCalls : CXProviderDelegate
 
     // Nested types
 
+    // What the app asked CallKit to do, so the Perform*Action it triggers can tell its own
+    // request apart from the user pressing the same button.
+    private enum LocalAction
+    {
+        None = 0,
+        Answer,
+        End,
+    }
+
     private sealed class Call(ConversationId conversationId)
     {
         private int _isAnswered;
         private int _isVerdictPending;
-        private int _isHandledLocally;
+        private int _localAction;
 
         public ConversationId ConversationId { get; } = conversationId;
         public bool IsAnswered => Volatile.Read(ref _isAnswered) != 0;
@@ -294,9 +327,13 @@ public class IosCalls : CXProviderDelegate
             => Volatile.Write(ref _isAnswered, 1);
         public void MarkVerdictPending()
             => Volatile.Write(ref _isVerdictPending, 1);
-        public void MarkHandledLocally()
-            => Volatile.Write(ref _isHandledLocally, 1);
-        public bool TryTakeHandledLocally()
-            => Interlocked.Exchange(ref _isHandledLocally, 0) != 0;
+        public void ClearVerdictPending()
+            => Volatile.Write(ref _isVerdictPending, 0);
+        public void MarkLocalAction(LocalAction action)
+            => Volatile.Write(ref _localAction, (int)action);
+        public void ClearLocalAction()
+            => Volatile.Write(ref _localAction, (int)LocalAction.None);
+        public bool TryTakeLocalAction(LocalAction action)
+            => Interlocked.CompareExchange(ref _localAction, (int)LocalAction.None, (int)action) == (int)action;
     }
 }
