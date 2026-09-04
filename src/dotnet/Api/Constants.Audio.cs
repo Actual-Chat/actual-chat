@@ -85,6 +85,9 @@ public static partial class Constants
         public static readonly TimeSpan GestureSensorStaleTimeout = TimeSpan.FromSeconds(3);
         // Matches the wake push's FCM TTL; older wakes skip catch-up-from-start and go live.
         public static readonly TimeSpan PttStaleWakeAge = TimeSpan.FromSeconds(60);
+        // How long a wake waits for a booting WebView's scope before it starts a headless one
+        // that would only have to be handed off to it; a WebView boot takes 2-6s on a phone.
+        public static readonly TimeSpan PttWebViewScopeWaitTimeout = TimeSpan.FromSeconds(8);
         // Clock-fuzz allowance between a wake's startedAt and the target stream's BeginsAt.
         public static readonly TimeSpan ListeningCatchUpTolerance = TimeSpan.FromSeconds(2);
         // Must outlast ServerTimeSync's first sync (3s startup delay + a few RPC round trips).

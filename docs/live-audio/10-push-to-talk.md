@@ -217,9 +217,25 @@ app-ready waits, and headless-session teardown.
   `ResolveScope` may have created a scope that nothing else would ever
   dispose.
 - **`ResolveScope()`** prefers the live WebView scope
-  (`AppServicesAccessor.TryGetScopedServices`), falls back to
-  `HeadlessBlazorScope.GetOrCreate()`, and re-checks the WebView scope once more
-  to cover losing the creation race to a just-published scope.
+  (`AppServicesAccessor.TryGetScopedServices`). When none is published but a
+  WebView is booting — an `Activity` exists on Android, a `MainPage` elsewhere, and
+  the current `MauiWebView` isn't dead — it waits up to
+  `PttWebViewScopeWaitTimeout` (8 s) for `WhenBlazorAppServicesReady` first: a
+  headless scope started in that window would only have to be handed off seconds
+  later. Otherwise it falls back to `HeadlessBlazorScope.GetOrCreate()`, and
+  re-checks the WebView scope once more to cover losing the creation race to a
+  just-published scope.
+- **`HandOffHeadless(webViewServices)`** runs from `MauiWebView.SetScopedServices`
+  the moment a WebView scope is published, on every platform. It detaches the
+  headless scope synchronously, then in the background snapshots its listening set
+  and incoming-voice stamps, stops and disposes it, waits for the WebView scope to
+  initialize, re-stamps the answer window there and re-listens the snapshot after
+  `ChatAudioUI.Enable()`. Both scopes are complete audio stacks — `ChatAudioUI`,
+  `ActiveChatsUI` and the playback engine factory are all scoped — and each one
+  re-listens every armed chat, so a headless scope left alive next to the WebView
+  scope plays the same chat twice with a constant offset. The catch-up anchor is
+  deliberately not carried over: the new player joins at the live edge, and a
+  copied anchor would replay the utterance from its start.
 - **`StopHeadless(platform)`** (user-initiated, e.g. the Android widget) detaches
   the current headless scope, stops replay, clears listening chats, then tears
   down and disposes.
@@ -233,7 +249,10 @@ app-ready waits, and headless-session teardown.
   has been idle for `TeardownIdleChecks` (2) consecutive checks — where "idle"
   means not recording, no listening chats and no `ReplayState`. Two checks are
   required because the replay-ended → listening-restored transition has a short
-  gap that must not read as "session over".
+  gap that must not read as "session over". A published WebView scope ends the
+  watch through `HandOffHeadless` instead — armed chats never leave the listening
+  set, so an idle check alone would keep a superseded scope alive for the whole
+  conversation.
 
 ### The core — `PttSessionCore` (UI.Blazor.App)
 
@@ -309,7 +328,10 @@ tolerates on the page-reload path, then runs
 `AppScopedServiceStarter.StartScopedServices`, whose failure is logged but never
 costs the wake. `TryDetachCurrent(reason)` clears `Current` synchronously so
 every reader sees the handoff immediately while the caller disposes on its own
-schedule.
+schedule. Its life ends at the first of: idle teardown, the user's stop, or a
+WebView scope being published (`PttSession.HandOffHeadless`). A hot reply
+survives that last one — the scope keeps recording until the reply closes and is
+disposed only then, while its listening moves over at once.
 
 ### Android — `PttWakeHandler`
 
