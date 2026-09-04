@@ -71,7 +71,71 @@ public class CallRingPushTest(AppHostFixture fixture, ITestOutputHelper @out)
         }
     }
 
+    [Fact]
+    public async Task BannerStillGoesOutWhenTheRingFails()
+    {
+        // arrange: a ring that never left the server must not cost the phone its banner too.
+        var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("Call ring - failed ring");
+        var sessionHash = new Symbol("call-session-ring-failure");
+        var fcmDeviceId = await RegisterDevice(alice.Id, DeviceType.iOSApp, sessionHash);
+        await RegisterDevice(alice.Id, DeviceType.iOSVoipApp, sessionHash);
+        await Tester.SignIn(alice);
+        var aliceAuthor = await Authors.EnsureJoined(Tester.Session, chatId, CancellationToken.None);
+        Sink.Clear();
+        ApnsSink.Clear();
+        ApnsSink.MustFailCallRings = true;
+        try {
+            // act
+            await Commander.Call(new NotificationsBackend_NotifyCall(
+                ConversationId.New(chatId, 1), bobAuthor.Id, [aliceAuthor.Id], false));
+
+            // assert
+            await WaitFor(
+                () => Sink.Messages.Any(m => !m.IsDismissal && m.DeviceIds.Contains(fcmDeviceId)), RingTimeout);
+            Sink.Messages.Should().Contain(m => !m.IsDismissal && m.DeviceIds.Contains(fcmDeviceId));
+        }
+        finally {
+            ApnsSink.MustFailCallRings = false;
+        }
+    }
+
+    [Fact]
+    public async Task ReRegisteringADeviceRefreshesItsSessionHash()
+    {
+        // arrange
+        var alice = await Tester.SignInAsAlice();
+        var deviceId = new Symbol($"call-device-rehash-{alice.Id.Value}");
+        var backend = AppHost.Services.GetRequiredService<INotificationsBackend>();
+
+        // act
+        await Commander.Call(new NotificationsBackend_RegisterDevice(
+            alice.Id, deviceId, DeviceType.iOSVoipApp, "session-1"));
+        await Commander.Call(new NotificationsBackend_RegisterDevice(
+            alice.Id, deviceId, DeviceType.iOSVoipApp, "session-2"));
+
+        // assert
+        var sessionHash = await WaitForSessionHash(backend, alice.Id, deviceId, "session-2");
+        sessionHash.Should().Be("session-2", "a re-signed-in device must carry its new session hash");
+    }
+
     // Private methods
+
+    private static async Task<string> WaitForSessionHash(
+        INotificationsBackend backend, UserId userId, Symbol deviceId, string expected)
+    {
+        var deadline = CpuTimestamp.Now + RingTimeout;
+        var sessionHash = "";
+        while (CpuTimestamp.Now < deadline) {
+            var devices = await backend.ListDevices(userId, CancellationToken.None);
+            sessionHash = devices.FirstOrDefault(d => d.DeviceId == deviceId)?.SessionHash.Value ?? "";
+            if (sessionHash == expected)
+                break;
+
+            await Task.Delay(TimeSpan.FromMilliseconds(100));
+        }
+
+        return sessionHash;
+    }
 
     private static async Task WaitFor(Func<bool> condition, TimeSpan timeout)
     {

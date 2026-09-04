@@ -72,7 +72,7 @@ public class ApnsClient(
             }
     }
 
-    public async Task SendCallRing(
+    public async Task<IReadOnlySet<Symbol>> SendCallRing(
         ConversationId conversationId,
         AuthorId caller,
         string callerName,
@@ -80,15 +80,16 @@ public class ApnsClient(
         IReadOnlyCollection<Symbol> deviceIds,
         CancellationToken cancellationToken)
     {
+        var sentDeviceIds = new HashSet<Symbol>();
         if (deviceIds.Count == 0)
-            return;
+            return sentDeviceIds;
 
         if (!IsConfigured) {
             if (!_isVoipConfigWarningLogged) {
                 _isVoipConfigWarningLogged = true;
                 Log.LogWarning("ApplePush settings are not configured - iOS call rings are disabled");
             }
-            return;
+            return sentDeviceIds;
         }
 
         var payload = JsonSerializer.Serialize(new Dictionary<string, object> {
@@ -104,12 +105,16 @@ public class ApnsClient(
         var httpClient = HttpClientFactory.CreateClient(HttpClientName);
         foreach (var deviceId in deviceIds)
             try {
-                await SendOne(httpClient, jwt, deviceId, payload, PushKind.Voip, cancellationToken)
+                var isSent = await SendOne(httpClient, jwt, deviceId, payload, PushKind.Voip, cancellationToken)
                     .ConfigureAwait(false);
+                if (isSent)
+                    sentDeviceIds.Add(deviceId);
             }
             catch (Exception e) when (e is not OperationCanceledException) {
                 Log.LogWarning(e, "APNs call ring failed for device '{DeviceId}'", deviceId);
             }
+
+        return sentDeviceIds;
     }
 
     public static string CreateJwt(string privateKeyPem, string keyId, string teamId, DateTimeOffset now)
@@ -136,7 +141,7 @@ public class ApnsClient(
 
     // Private methods
 
-    private async Task SendOne(
+    private async Task<bool> SendOne(
         HttpClient httpClient,
         string jwt,
         Symbol deviceId,
@@ -163,16 +168,17 @@ public class ApnsClient(
 
         using var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.IsSuccessStatusCode)
-            return;
+            return true;
 
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         if (IsDeadTokenResponse(response.StatusCode, body)) {
             Log.LogInformation("APNs reports dead {PushKind} token '{DeviceId}', removing", pushKind, deviceId);
             _ = Commander.Start(new NotificationsBackend_RemoveDevices([deviceId]), true, CancellationToken.None);
-            return;
+            return false;
         }
 
         Log.LogError("APNs {PushKind} push rejected: {StatusCode} {Body}", pushKind, (int)response.StatusCode, body);
+        return false;
     }
 
     private string GetJwt()

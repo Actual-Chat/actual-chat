@@ -28,7 +28,7 @@ public class CallRingFanOutTest
         };
 
         // act
-        var fcm = NotificationsBackend.SelectFcmCallDevices(devices, true);
+        var fcm = NotificationsBackend.SelectFcmCallDevices(devices, Delivered("voip-1"));
 
         // assert
         fcm.Should().BeEmpty();
@@ -46,7 +46,7 @@ public class CallRingFanOutTest
         };
 
         // act
-        var fcm = NotificationsBackend.SelectFcmCallDevices(devices, true);
+        var fcm = NotificationsBackend.SelectFcmCallDevices(devices, Delivered("voip-a"));
 
         // assert
         fcm.Select(d => d.DeviceId.Value).Should().BeEquivalentTo("fcm-b", "android");
@@ -64,16 +64,16 @@ public class CallRingFanOutTest
         };
 
         // act
-        var fcm = NotificationsBackend.SelectFcmCallDevices(devices, true);
+        var fcm = NotificationsBackend.SelectFcmCallDevices(devices, Delivered("voip-1"));
 
         // assert
         fcm.Select(d => d.DeviceId.Value).Should().BeEquivalentTo("fcm-1", "fcm-2");
     }
 
     [Fact]
-    public void NothingIsSuppressedWhenApnsIsNotConfigured()
+    public void NothingIsSuppressedWhenTheRingReachedNoDevice()
     {
-        // The ring can't have gone out over APNs, so the banner must not be suppressed.
+        // An unconfigured, failed or rejected ring delivers nothing, so the banner must stay.
         // arrange
         var devices = new[] {
             NewDevice("fcm-1", DeviceType.iOSApp, "phone-a"),
@@ -81,7 +81,7 @@ public class CallRingFanOutTest
         };
 
         // act
-        var fcm = NotificationsBackend.SelectFcmCallDevices(devices, false);
+        var fcm = NotificationsBackend.SelectFcmCallDevices(devices, Delivered());
 
         // assert
         fcm.Select(d => d.DeviceId.Value).Should().BeEquivalentTo("fcm-1");
@@ -95,11 +95,14 @@ public class CallRingFanOutTest
 
         // act + assert
         NotificationsBackend.SelectVoipCallDevices(devices).Should().BeEmpty();
-        NotificationsBackend.SelectFcmCallDevices(devices, true).Should().BeEmpty();
+        NotificationsBackend.SelectFcmCallDevices(devices, Delivered("ptt-1")).Should().BeEmpty();
     }
 
     // Private methods
 
     private static Device NewDevice(string deviceId, DeviceType deviceType, string sessionHash)
         => new (deviceId, deviceType, Moment.EpochStart) { SessionHash = sessionHash };
+
+    private static IReadOnlySet<Symbol> Delivered(params string[] deviceIds)
+        => deviceIds.Select(x => new Symbol(x)).ToHashSet();
 }

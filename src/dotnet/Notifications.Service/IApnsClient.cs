@@ -2,7 +2,6 @@ namespace ActualChat.Notifications;
 
 public interface IApnsClient
 {
-    bool IsConfigured { get; }
     Task SendPttWake(
         ChatId chatId,
         Moment startedAt,
@@ -10,7 +9,9 @@ public interface IApnsClient
         IReadOnlyCollection<Symbol> deviceIds,
         CancellationToken cancellationToken);
 
-    Task SendCallRing(
+    // Returns the device ids APNs accepted the ring for - the banner may only be suppressed
+    // for a device whose VoIP ring actually went out.
+    Task<IReadOnlySet<Symbol>> SendCallRing(
         ConversationId conversationId,
         AuthorId caller,
         string callerName,

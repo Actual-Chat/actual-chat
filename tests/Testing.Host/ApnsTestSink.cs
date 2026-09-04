@@ -23,7 +23,9 @@ public sealed class ApnsTestSink(ILogger<ApnsTestSink> log) : IApnsClient
 
     public IReadOnlyList<ApnsPttWakeMessage> Wakes => _wakes.ToArray();
     public IReadOnlyList<ApnsCallRingMessage> CallRings => _callRings.ToArray();
+    // Mirrors the real client: an unconfigured one sends nothing and reports nothing delivered.
     public bool IsConfigured { get; set; } = true;
+    public bool MustFailCallRings { get; set; }
 
     public void Clear()
     {
@@ -43,7 +45,7 @@ public sealed class ApnsTestSink(ILogger<ApnsTestSink> log) : IApnsClient
         return Task.CompletedTask;
     }
 
-    public Task SendCallRing(
+    public Task<IReadOnlySet<Symbol>> SendCallRing(
         ConversationId conversationId,
         AuthorId caller,
         string callerName,
@@ -51,10 +53,16 @@ public sealed class ApnsTestSink(ILogger<ApnsTestSink> log) : IApnsClient
         IReadOnlyCollection<Symbol> deviceIds,
         CancellationToken cancellationToken)
     {
+        if (MustFailCallRings)
+            throw new InvalidOperationException("APNs call ring failed");
+
         log.LogInformation("SendCallRing: conversation {ConversationId} -> {DeviceCount} device(s)",
             conversationId, deviceIds.Count);
+        if (!IsConfigured)
+            return Task.FromResult<IReadOnlySet<Symbol>>(new HashSet<Symbol>());
+
         _callRings.Enqueue(
             new ApnsCallRingMessage(conversationId, caller, callerName, hasVideo, [..deviceIds]));
-        return Task.CompletedTask;
+        return Task.FromResult<IReadOnlySet<Symbol>>(deviceIds.ToHashSet());
     }
 }
