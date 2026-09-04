@@ -19,14 +19,18 @@ public class MauiNotifications(IServiceProvider services)
     private LocalSettings LocalSettings { get; } = services.GetRequiredService<LocalSettings>();
     private ILogger Log { get; } = services.LogFor<MauiNotifications>();
 
-    public async Task RefreshNotificationToken(string token, DeviceType deviceType, CancellationToken cancellationToken = default)
+    public async Task RefreshNotificationToken(
+        string token, DeviceType deviceType, CancellationToken cancellationToken = default)
     {
         Log.LogInformation("-> RefreshNotificationToken");
         await RpcHub.WhenClientPeerConnected(cancellationToken).ConfigureAwait(false);
         Log.LogInformation("RefreshNotificationToken. Peer got connected");
         var session = await SessionResolver.GetSession(cancellationToken).ConfigureAwait(false);
         Log.LogInformation("RefreshNotificationToken. Got session");
-        var isPttEnabled = await Ptt.IsEnabledOnDevice(LocalSettings, cancellationToken).ConfigureAwait(false);
+        // Only a PTT-capable registration carries the flag: a VoIP row is a different device
+        // kind and must not be enrolled into PTT wakes by inheriting it.
+        var isPttEnabled = deviceType is DeviceType.iOSPttApp or DeviceType.AndroidApp
+            && await Ptt.IsEnabledOnDevice(LocalSettings, cancellationToken).ConfigureAwait(false);
         var command = new Notifications_RegisterDevice {
             Session = session,
             DeviceId = token,

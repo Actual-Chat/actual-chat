@@ -9,6 +9,7 @@ public enum AudioSessionOwner
     App = 0,
     PttPlayback,
     PttTransmit,
+    CallKit,
 }
 
 public enum AudioSessionRelease
@@ -16,6 +17,7 @@ public enum AudioSessionRelease
     Deactivated = 0,
     TransmitEnded,
     ChannelLeft,
+    CallEnded,
 }
 
 public static class AudioSessionOwnership
@@ -28,6 +30,7 @@ public static class AudioSessionOwnership
         => release switch {
             AudioSessionRelease.Deactivated => AudioSessionOwner.App,
             AudioSessionRelease.ChannelLeft => AudioSessionOwner.App,
+            AudioSessionRelease.CallEnded => AudioSessionOwner.App,
             // Full duplex: transmit took the session away from a playback that's still running,
             // so it has to hand it back rather than to the app.
             AudioSessionRelease.TransmitEnded when current == AudioSessionOwner.PttTransmit
@@ -45,6 +48,7 @@ public static class AudioSessionOwnership
             // for the app's own mic is compatible with that; lowering it to Playback or Ambient
             // is what cuts the incoming voice out.
             AudioSessionOwner.PttPlayback => mode is AudioFocusMode.Recording,
+            AudioSessionOwner.CallKit => mode is AudioFocusMode.Recording,
             _ => false,
         };
 }

@@ -98,7 +98,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return;
 
         EndRing(chatId);
-        _ = Bridge?.OnCallHandled(false);
+        _ = Bridge?.OnCallHandled(chatId, false);
     }
 
     [ComputeMethod]
@@ -150,7 +150,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         var call = await GetRingingCall(chatId, default).ConfigureAwait(true);
         EndRing(chatId);
         if (call is null) {
-            _ = Bridge?.OnCallHandled(false);
+            _ = Bridge?.OnCallHandled(chatId, false);
             Hub.ToastUI.Show(L.Call_Ended, "icon-phone", ToastDismissDelay.Short);
             return;
         }
@@ -164,7 +164,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
         catch (Exception e) {
             _isAccepting.Value = false;
-            _ = Bridge?.OnCallHandled(false);
+            _ = Bridge?.OnCallHandled(chatId, false);
             Log.LogWarning(e, "AcceptCall failed for chat #{ChatId}", chatId);
             Hub.ToastUI.Show(L.Call_Ended, "icon-phone", ToastDismissDelay.Short);
             return;
@@ -179,7 +179,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             // FGS can't start from a background state.
             var canStartAudio = isOverLockScreen
                 || Bridge is null
-                || await Bridge.OnCallHandled(true).ConfigureAwait(true);
+                || await Bridge.OnCallHandled(chatId, true).ConfigureAwait(true);
             // Over the lock screen the chat opens only on go-to-chat (after PIN); the in-call screen
             // covers everything until then. Audio doesn't need the chat route — it's state-driven.
             if (!isOverLockScreen)
@@ -207,7 +207,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (isOverLockScreen)
             Bridge?.MoveBehindLockScreen();
         else
-            _ = Bridge?.OnCallHandled(false);
+            _ = Bridge?.OnCallHandled(chatId, false);
         try {
             await LiveSessionUI.DeclineCall(chatId, default).ConfigureAwait(false);
         }
@@ -220,7 +220,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     // in-call screen and open the chat. On a cancelled PIN we stay on the in-call screen.
     public async Task GoToChat(ChatId chatId)
     {
-        var isUnlocked = Bridge is null || await Bridge.OnCallHandled(true).ConfigureAwait(true);
+        var isUnlocked = Bridge is null || await Bridge.OnCallHandled(chatId, true).ConfigureAwait(true);
         if (!isUnlocked)
             return;
 
@@ -306,32 +306,43 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             }
         }
         finally {
+            // Teardown is not a ring end: this runs on scope disposal and on every fault the
+            // RetryForever chain retries, so a bridge that owns the ring keeps it.
             if (isRinging)
-                StopRinging();
+                StopRinging(mustEndOwnedRing: false);
         }
     }
 
     private void StartRinging()
     {
-        // Routes the ring melody to the platform ringer: the native bridge on Android, the looping web
-        // ringtone everywhere else. Fire-and-forget to mirror the sync Bridge calls (and keep the finally
-        // teardown sync); the JS invocation swallows its own errors.
-        if (Bridge is not null)
-            _ = StartNativeRinging(Interlocked.Increment(ref _ringGeneration));
-        else
+        if (Bridge is null) {
             _ = PlayWebRingtone(true);
+            return;
+        }
+
+        // OwnsRinging (CallKit) rings itself right away; everyone else negotiates the
+        // communication audio mode first via StartNativeRinging.
+        if (Bridge.OwnsRinging)
+            Bridge.StartRinging();
+        else
+            _ = StartNativeRinging(Interlocked.Increment(ref _ringGeneration));
     }
 
-    private void StopRinging()
+    private void StopRinging(bool mustEndOwnedRing = true)
     {
-        if (Bridge is not null) {
-            // Bumped first: a start still waiting on the audio mode drops instead of ringing on.
-            Interlocked.Increment(ref _ringGeneration);
-            Bridge.StopRinging();
-            _ = RestoreAudioMode();
-        }
-        else
+        if (Bridge is null) {
             _ = PlayWebRingtone(false);
+            return;
+        }
+
+        // Bumped first: a start still waiting on the audio mode drops instead of ringing on.
+        Interlocked.Increment(ref _ringGeneration);
+        // An owned ring (CallKit) is the call itself and can't be re-reported once ended, so only
+        // an actual ring end may take it down; everyone else must always stop their ringer.
+        if (mustEndOwnedRing || !Bridge.OwnsRinging)
+            Bridge.StopRinging();
+        if (!Bridge.OwnsRinging)
+            _ = RestoreAudioMode();
     }
 
     private async Task StartNativeRinging(int generation)
