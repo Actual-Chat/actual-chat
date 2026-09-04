@@ -78,7 +78,11 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
             var dismissedIds = GetValue(userInfo, Constants.Notification.MessageDataKeys.DismissedIds);
             var dismissedTags = GetValue(userInfo, Constants.Notification.MessageDataKeys.DismissedTags);
             if (!dismissedIds.IsNullOrEmpty() || !dismissedTags.IsNullOrEmpty()) {
-                RemoveDeliveredNotifications(Split(dismissedIds), Split(dismissedTags));
+                var tags = Split(dismissedTags);
+#if IS_DEV_MAUI
+                EndDismissedCalls(tags);
+#endif
+                RemoveDeliveredNotifications(Split(dismissedIds), tags);
                 completionHandler(UIBackgroundFetchResult.NewData);
                 return;
             }
@@ -105,6 +109,22 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
     }
 
     // Private methods
+
+#if IS_DEV_MAUI
+    private static void EndDismissedCalls(IReadOnlyCollection<string> dismissedTags)
+    {
+        // An independent path to the reactive LiveSessionUI one: the server's cancel dismissal
+        // arrives even when the reactive state is slow. Ringing calls only - the accept the user
+        // just made is dismissed exactly the same way, and ending that one kills a live call.
+        foreach (var tag in dismissedTags) {
+            if (!tag.StartsWith(Constants.Notification.CallTagPrefix))
+                continue;
+
+            if (ChatId.TryParse(tag[Constants.Notification.CallTagPrefix.Length..], allowNull: true) is { } chatId)
+                IosCalls.Instance.EndRingingCall(chatId);
+        }
+    }
+#endif
 
     private static void RemoveDeliveredNotifications(
         IReadOnlyCollection<string> dismissedIds,
