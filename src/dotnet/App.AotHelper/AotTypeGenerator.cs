@@ -192,7 +192,9 @@ public static class AotTypeGenerator
             var dir = Path.GetDirectoryName(outputPath);
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
-            File.WriteAllText(outputPath, code, Encoding.UTF8);
+            // StringBuilder.AppendLine emits CRLF on Windows, but .gitattributes stores
+            // *.cs with LF - without this the file is rewritten dirty on every run.
+            File.WriteAllText(outputPath, code.ReplaceLineEndings("\n"), Encoding.UTF8);
             WriteLine($"Generated: {target.RelativePath} ({filtered.Count} types)");
         }
 

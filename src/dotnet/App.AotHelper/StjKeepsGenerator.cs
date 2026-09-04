@@ -43,7 +43,9 @@ public static class StjKeepsGenerator
         // Generate file
         var code = StjConverterDiscovery.GenerateKeepsFile(converterAqns);
         var outputPath = Path.Combine(srcDotnet, "UI.Blazor", "Module", "BlazorUIStjKeeps.g.cs");
-        File.WriteAllText(outputPath, code, Encoding.UTF8);
+        // StringBuilder.AppendLine emits CRLF on Windows, but .gitattributes stores
+        // *.cs with LF - without this the file is rewritten dirty on every run.
+        File.WriteAllText(outputPath, code.ReplaceLineEndings("\n"), Encoding.UTF8);
         WriteLine($"Generated: {outputPath}");
 
         return 0;
