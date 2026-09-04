@@ -1,0 +1,18 @@
+{
+  "resultCount": 1,
+  "results": [
+    {
+      "kind": "software",
+      "bundleId": "chat.actual.app",
+      "trackId": 6450874551,
+      "trackName": "Voxt",
+      "version": "2.17",
+      "currentVersionReleaseDate": "2026-08-31T01:20:07Z",
+      "releaseDate": "2023-10-02T07:00:00Z",
+      "minimumOsVersion": "16.4",
+      "trackViewUrl": "https://apps.apple.com/us/app/voxt/id6450874551?uo=4",
+      "sellerName": "Actual Chat Inc.",
+      "primaryGenreName": "Social Networking"
+    }
+  ]
+}

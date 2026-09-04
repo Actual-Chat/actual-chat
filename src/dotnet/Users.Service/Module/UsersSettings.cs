@@ -32,6 +32,7 @@ public sealed class UsersSettings
     public string BlockedPhonePrefixes { get; set; } = "";
     public string SkipTelegramPhonePrefixes { get; set; } = "";
     public IReadOnlyDictionary<string, int> PredefinedTotps { get; set; } = ImmutableDictionary<string, int>.Empty;
+    public AppUpdateSettings AppUpdates { get; set; } = new();
     // A kill switch: MauiAuthController.Start assumes every browser component the app can reach
     // reports Sec-Fetch-Site: none. Turn this off if some platform turns out not to.
     public bool IsMauiAuthFetchSiteCheckEnabled { get; set; } = true;
@@ -47,7 +48,6 @@ public sealed class UsersSettings
         && !SmtpFrom.IsNullOrEmpty();
     public bool IsSMSToEnabled => !SMSToApiKey.IsNullOrEmpty()
         && !SMSToFrom.IsNullOrEmpty();
-
     public bool IsTelegramGatewayEnabled => !TelegramGatewayToken.IsNullOrEmpty();
     // Unset means the message lives exactly as long as the code it carries. Telegram Gateway rejects
     // anything outside 30s..1h and refunds the fee for a message it couldn't deliver within the ttl.

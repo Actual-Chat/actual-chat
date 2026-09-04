@@ -13,6 +13,19 @@ candidate tasks. A plan is removed from here once its work ships.
 
 Recently added, larger efforts — in progress or next up.
 
+### App updates — the "Update Voxt" banner
+
+[App updates](./app-updates.md) — turn the "Install Voxt" banner into an
+"Update Voxt" one when a newer build is actually published in the user's
+store. A new `IAppUpdates.GetLatestUpdateInfo(kind)` compute service on the API
+hosts keeps one Redis record per app kind, probes the App Store lookup API, the
+Play store page and the Microsoft DisplayCatalog only while the server is ahead
+of the store, and stops for good once the build shows up. A detected release is
+announced an hour later, which covers storefront propagation and a ramping
+rollout. The web app reloads after a confirmation; the apps open the store. One
+release process decision inside: publish App Store versions under the full build
+version so the lookup API becomes exact.
+
 ### Offline mode
 
 [Offline mode](./offline-mode.md) — keep the read-only UI working from the

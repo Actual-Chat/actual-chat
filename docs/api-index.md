@@ -59,6 +59,9 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `HostKind`, `HostRole` (enum) — host type and role
 - `IModuleInitializer` — module initialization interface
 
+### Versions
+- `VersionExt` — parses nbgv / assembly / display / store version strings into a comparable 3-component `Version`
+
 ### Features
 - `Features` — aggregates client and server feature flags
 - `FeatureDef<T>` — feature flag definition
@@ -177,6 +180,8 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `IAccounts` — account management
 - `IAvatars` — avatar management
 - `IUserPresences` — presence tracking
+- `IAppUpdates` — the newest build published in a store for an app kind, held back for `AnnounceDelay` after detection; `null` means "unknown"
+- `AppUpdateInfo` (record) — that build: comparable `Version` plus the store's own `StoreVersion` and dates
 
 ### Contact Services
 - `IContacts` — contact management
@@ -287,6 +292,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `AccountUI` — account state and authentication flow
 - `ThemeUI` — theme (light/dark) management
 - `ReconnectUI` — RPC connection state monitoring
+- `AppUpdateUI` — whether this client is behind its store, and the tap that updates it
 
 ### Components
 - `VirtualList<T>` — abstract base of the two virtualized lists (data source, JS bridge, visibility)

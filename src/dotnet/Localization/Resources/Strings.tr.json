@@ -1287,6 +1287,10 @@
   "Download_QrCode_Format": "{0} QR kodu",
   "Download_GetApp_Format": "{0} edinin",
   "Download_GetAppBanner_Format": "{0}'u yükle",
+
+  "AppUpdate_Banner_Format": "{0}'u güncelleyin",
+  "AppUpdate_ReloadTitle_Format": "{0} güncellensin mi?",
+  "AppUpdate_ReloadText": "En son sürümü yüklemek için sayfa yeniden yüklenecek.",
   "Redirect_To": "Yönlendiriliyor:",
   "Unavailable_Title": "Kullanılamıyor",
   "Unavailable_PageNotFound": "Bu sayfa mevcut değil.",

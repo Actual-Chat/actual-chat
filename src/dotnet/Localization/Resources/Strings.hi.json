@@ -1287,6 +1287,10 @@
   "Download_QrCode_Format": "{0} क्यूआर कोड",
   "Download_GetApp_Format": "{0} प्राप्त करें",
   "Download_GetAppBanner_Format": "{0} इंस्टॉल करें",
+
+  "AppUpdate_Banner_Format": "{0} अपडेट करें",
+  "AppUpdate_ReloadTitle_Format": "{0} अपडेट करें?",
+  "AppUpdate_ReloadText": "नवीनतम संस्करण लोड करने के लिए पेज फिर से लोड होगा।",
   "Redirect_To": "यहाँ रीडायरेक्ट हो रहा है:",
   "Unavailable_Title": "अनुपलब्ध",
   "Unavailable_PageNotFound": "यह पेज मौजूद नहीं है।",

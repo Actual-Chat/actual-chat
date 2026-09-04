@@ -1287,6 +1287,10 @@
   "Download_QrCode_Format": "QR код — {0}",
   "Download_GetApp_Format": "Преузми {0}",
   "Download_GetAppBanner_Format": "Инсталирај {0}",
+
+  "AppUpdate_Banner_Format": "Ажурирајте {0}",
+  "AppUpdate_ReloadTitle_Format": "Ажурирати {0}?",
+  "AppUpdate_ReloadText": "Страница ће се поново учитати да би се учитала најновија верзија.",
   "Redirect_To": "Преусмјеравање на",
   "Unavailable_Title": "Недоступно",
   "Unavailable_PageNotFound": "Ова страница не постоји.",

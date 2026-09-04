@@ -1287,6 +1287,10 @@
   "Download_QrCode_Format": "QR-код {0}",
   "Download_GetApp_Format": "Встановити {0}",
   "Download_GetAppBanner_Format": "Встановити {0}",
+
+  "AppUpdate_Banner_Format": "Оновити {0}",
+  "AppUpdate_ReloadTitle_Format": "Оновити {0}?",
+  "AppUpdate_ReloadText": "Сторінку буде перезавантажено, щоб завантажити останню версію.",
   "Redirect_To": "Перенаправлення на",
   "Unavailable_Title": "Недоступно",
   "Unavailable_PageNotFound": "Такої сторінки не існує.",

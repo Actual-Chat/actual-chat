@@ -1528,6 +1528,12 @@
   "Download_GetApp_Format": "Встановити {0}",
   "Download_GetAppBanner_Format": "{0} をインストール",
 
+  // The "update the app" banner, which replaces the install banner when a newer build is
+  // published in the user's store. The reload text is web-only: the page reloads in place.
+  "AppUpdate_Banner_Format": "{0}'u güncelleyin",
+  "AppUpdate_ReloadTitle_Format": "{0}을(를) 업데이트할까요?",
+  "AppUpdate_ReloadText": "Сторінку буде перезавантажено, щоб завантажити останню версію.",
+
   // The redirect notice and the unavailable / not-found pages. Unavailable_NotFound_Format puts
   // the name after a colon on purpose, so that no language has to inflect it.
   "Redirect_To": "यहाँ रीडायरेक्ट हो रहा है:",

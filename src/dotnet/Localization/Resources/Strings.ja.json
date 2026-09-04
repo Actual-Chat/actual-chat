@@ -1287,6 +1287,10 @@
   "Download_QrCode_Format": "{0} の QR コード",
   "Download_GetApp_Format": "{0} を入手",
   "Download_GetAppBanner_Format": "{0} をインストール",
+
+  "AppUpdate_Banner_Format": "{0} を更新",
+  "AppUpdate_ReloadTitle_Format": "{0} を更新しますか？",
+  "AppUpdate_ReloadText": "最新バージョンを読み込むため、ページを再読み込みします。",
   "Redirect_To": "リダイレクト先:",
   "Unavailable_Title": "利用できません",
   "Unavailable_PageNotFound": "このページは存在しません。",

@@ -1287,6 +1287,10 @@
   "Download_QrCode_Format": "{0} QR 코드",
   "Download_GetApp_Format": "{0} 받기",
   "Download_GetAppBanner_Format": "{0} 설치",
+
+  "AppUpdate_Banner_Format": "{0} 업데이트",
+  "AppUpdate_ReloadTitle_Format": "{0}을(를) 업데이트할까요?",
+  "AppUpdate_ReloadText": "최신 버전을 불러오기 위해 페이지를 새로고침합니다.",
   "Redirect_To": "리디렉션 중:",
   "Unavailable_Title": "사용할 수 없음",
   "Unavailable_PageNotFound": "이 페이지는 존재하지 않습니다.",
