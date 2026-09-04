@@ -280,6 +280,57 @@ Do NOT write Tailwind utility classes directly in `.razor` markup. Instead, assi
 <Button Class="@(_isActive ? "btn-primary" : "btn-secondary")" />
 ```
 
+## Colors
+
+Every color must have a name in `colors.css` and a class in `tailwind.config.js`.
+No raw `X-[var(--…)]` and no hardcoded `#hex` in component CSS or `.razor`.
+
+**Semantic tokens** (adapt per theme — `--primary`, `--background-01`, `--separator`,
+`--text-03`, `--file-*`, …) each have a class: `bg-01`, `text-primary`, `text-03`,
+`border-separator`, `file-audio`, … Use it.
+
+**Raw palette** (theme-independent `--<scale>-<weight>` and alpha variants in the first
+`:root` of `colors.css`) is exposed under the `pal-` prefix, generated at build time by
+`rawPaletteColors()` in `tailwind.config.js`. Any new palette var gets a class
+automatically — never hand-add one.
+
+```css
+/* Wrong */                          /* Correct */
+@apply bg-[var(--blue-50)];          @apply bg-pal-blue-50;
+@apply text-[var(--white-20)];       @apply text-pal-white-20;
+@apply bg-[var(--background-03)];    @apply bg-03;
+background: #FF3880;                  background: var(--magenta-60);
+```
+
+The `pal-` prefix is deliberate: our palette uses weights `10–99`, but Tailwind's
+built-in numeric scales (`50–950`, e.g. `text-gray-500`) are also in use — mapping the
+palette onto bare names like `blue`/`violet` would collide with them.
+
+**Pure white / black** are the exception to the prefix: `white` and `black` are mapped
+to `var(--white)` / `var(--black)` in the config, so write `bg-white`, `text-black`,
+`border-white` — not `bg-pal-white`. (Alpha variants have no keyword form, so those stay
+on the palette: `bg-pal-white-20`, `text-pal-black-60`.)
+
+**A color that isn't in the palette** → add a token to `colors.css` first, then use it:
+- adapts per theme → define in all theme blocks (`.theme-light`, `.theme-dark`, …) as a
+  semantic token (e.g. `--danger-light`), add the class to the config;
+- a fixed brand or gradient stop → define once in the first `:root` (e.g.
+  `--audio-accent-1`, `--landing-bg-01`).
+
+Never inline the hex.
+
+**Exceptions** (not "custom colors" — leave as-is):
+- Dynamic per-element `color-mix()` vars like `--pt-playing` (vary by author color).
+- Artwork: SVG/emoji/icons/logos/avatars/app-icon and the pre-theme splash
+  (`maui-index.css`) — these are assets, not the theme system.
+- CSS keywords `white` / `black`.
+- Circular `@apply`: don't swap `@apply *-[var(--x)]` → `@apply *-<name>` when the rule's
+  own selector contains that class (`.text-success { @apply text-success }` fails). Keep
+  the arbitrary form or write raw `color: var(--…)`.
+
+There's an admin-only preview of the palette and buttons at `/test/colors` and
+`/test/buttons`.
+
 ## Scrollbars
 
 ### Hiding scrollbars: `no-scrollbar`
