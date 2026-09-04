@@ -48,6 +48,8 @@
 	<string>Upload photos to share with other users or to change your avatar.</string>
 	<key>NSContactsUsageDescription</key>
 	<string>Voxt uses your contacts to help you find friends already using Voxt.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Share your live location with people in a chat while location sharing is active.</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.social-networking</string>
 	<key>MinimumOSVersion</key>
