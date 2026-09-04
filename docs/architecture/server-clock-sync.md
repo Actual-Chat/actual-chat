@@ -458,6 +458,18 @@ Blazor circuit reconnection parks JS interop the same way RPC parks calls, so th
 server-mode branch needs its own generation guard rather than relying on
 `JSDisconnectedException` alone.
 
+**Client hosts seed a new scope from the previous one.** `ServerTimeSync` is
+scoped, and a MAUI process replaces its scope on a WebView reload and when a
+headless PTT wake is handed off to the WebView scope. Each new scope used to
+start from `SyncCount = 0`, so every listener start behind `EnsureSynced` waited
+~2 s for a fresh burst — right at the moment the user had just opened the app on
+a running conversation. The last accepted burst (offset, precision, min-RTT,
+drift rate, accept stamps) is therefore kept process-wide and applied by the next
+scope on start and on its first `EnsureSynced`, as a `Step` in a new epoch. The
+gates still judge the seed's age and any suspend since, so a stale seed only
+triggers the sync it would have triggered anyway. Server mode never seeds: the
+offset there is one browser's, and the process serves many.
+
 ## Contract changes
 
 [ISystemProperties.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Api.Contracts/Users/ISystemProperties.cs)
