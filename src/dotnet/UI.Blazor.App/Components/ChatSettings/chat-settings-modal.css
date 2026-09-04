@@ -199,13 +199,21 @@ body.hoverable .chat-settings-container .tile-item:hover {
     @apply relative;
     @apply flex-none;
     @apply w-full;
-    /* Rounded top-right + bottom-left only (mirror of the left panel): top-left and bottom-right stay square. */
-    @apply rounded-tr-2xl rounded-bl-2xl;
+    /* Wallpaper rounding differs by width: both bottom corners on desktop, only the top-right
+       corner (toward the screen edge) on narrow - see the body:not(.narrow) / body.narrow rules below. */
     @apply overflow-hidden;
     height: 6.5rem;
     /* Start below the top inset (which the bg-03 band paints) rather than reserving it inside, so the
        header image sits under the notch strip - the right-panel look. */
     margin-top: var(--safe-area-top-narrow);
+}
+body:not(.narrow) .own-avatar-edit-header > .c-top,
+body:not(.narrow) .chat-settings-header > .c-top {
+    @apply rounded-b-lg;
+}
+body.narrow .own-avatar-edit-header > .c-top,
+body.narrow .chat-settings-header > .c-top {
+    @apply rounded-tr-lg;
 }
 /* Keep the top inset bg-03 (the panel colour) instead of the header image bleeding into the notch. */
 body.narrow .own-avatar-edit-header::before,
