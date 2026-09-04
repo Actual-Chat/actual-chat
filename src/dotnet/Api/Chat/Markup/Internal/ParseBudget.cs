@@ -25,4 +25,12 @@ internal static class ParseBudget
     }
 }
 
-internal sealed class ParseBudgetExceededException : Exception;
+internal sealed class ParseBudgetExceededException : Exception
+{
+    private const string DefaultMessage = "Markup parse budget exceeded.";
+
+    public ParseBudgetExceededException() : base(DefaultMessage) { }
+    public ParseBudgetExceededException(string? message) : base(message ?? DefaultMessage) { }
+    public ParseBudgetExceededException(string? message, Exception? innerException)
+        : base(message ?? DefaultMessage, innerException) { }
+}
