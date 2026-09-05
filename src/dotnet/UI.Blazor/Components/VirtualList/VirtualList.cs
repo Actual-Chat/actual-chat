@@ -15,6 +15,7 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
 {
     // Long enough that a warm first load always uses it (1.5-8ms measured), short enough that a cold one
     // (1114ms at app start) falls back to skeletons instead of holding the whole list blank
+    // ReSharper disable once StaticMemberInGenericType
     private static readonly TimeSpan InitialDataTimeout = TimeSpan.FromSeconds(0.3);
 
     private VirtualListData<TItem>? _initialData;
@@ -85,7 +86,7 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
         ChatSwitchTracer.Mark("VirtualList.RequestData (from JS)", Identity);
         Query = query;
         while (State == null)
-            await Task.Delay(100);
+            await Task.Delay(50);
         _ = State.Recompute();
     }
 
