@@ -363,6 +363,8 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
                     if (!isRingbackOn) {
                         isRingbackOn = true;
                         StartRingback(cts);
+                        // Narrow: raise the full-screen "Dialing..." view alongside the ringback.
+                        IncomingCallUI.ShowOutgoingCall(chatId);
                     }
                 }
                 else if (isDialing) {

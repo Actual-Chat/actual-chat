@@ -1,6 +1,6 @@
 @font-face {
   font-family: "icon";
-  src: url('icon.woff2?t=1788430520172') format('woff2');
+  src: url('icon.woff2?t=1788621166171') format('woff2');
 }
 
 [class^="icon-"], [class*=" icon-"] {
@@ -255,8 +255,10 @@
 .icon-volume-off-fill::before { content: "\eaf2"; }
 .icon-volume-off::before { content: "\eaf3"; }
 .icon-volume-settings::before { content: "\eaf4"; }
-.icon-volume-up-fill::before { content: "\eaf5"; }
-.icon-volume-up::before { content: "\eaf6"; }
-.icon-wrap::before { content: "\eaf7"; }
+.icon-volume-up-2::before { content: "\eaf5"; }
+.icon-volume-up-fill::before { content: "\eaf6"; }
+.icon-volume-up::before { content: "\eaf7"; }
+.icon-voxt::before { content: "\eaf8"; }
+.icon-wrap::before { content: "\eaf9"; }
 
 

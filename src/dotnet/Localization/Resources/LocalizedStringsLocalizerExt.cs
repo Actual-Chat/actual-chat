@@ -954,6 +954,9 @@ public static class LocalizedStringsLocalizerExt
         public string Common_Yesterday => l["Common_Yesterday"].Value;
         public string Call_IncomingFrom => l["Call_IncomingFrom"].Value;
         public string Call_Message => l["Call_Message"].Value;
+        public string Call_AppIncomingTitle => l["Call_AppIncomingTitle"].Value;
+        public string Call_Mute => l["Call_Mute"].Value;
+        public string Call_IsCallingYou => l["Call_IsCallingYou"].Value;
         public string Call_SelectCamera => l["Call_SelectCamera"].Value;
         public string Call_NoCameras => l["Call_NoCameras"].Value;
         public string Call_CameraBlocked => l["Call_CameraBlocked"].Value;

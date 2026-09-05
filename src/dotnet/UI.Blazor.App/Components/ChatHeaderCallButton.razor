@@ -3,7 +3,7 @@
     if (State.IsInitial(out var m))
         return;
     // Hidden while a live conversation is active — the ChatActivityPanel owns that state.
-    if (m.IsBusy)
+    if (!m.EnableIncompleteUI || m.IsBusy)
         return;
 }
 
@@ -25,6 +25,10 @@
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        if (!enableIncompleteUI)
+            return new Model(false, false, false);
+
         var chatId = Chat.Id;
         var activity = await ChatActivityUI.GetCallActivity(chatId, cancellationToken).ConfigureAwait(false);
         // Mirror the server's peer-call gate: a peer call is allowed only while the audio-stream
@@ -36,7 +40,7 @@
         }
         // A dialing call counts as busy: the ring is already ours, and offering the button again would
         // re-notify every invitee and extend the ring window.
-        return new Model(activity.IsActive || activity.IsDialing, canCall);
+        return new Model(true, activity.IsActive || activity.IsDialing, canCall);
     }
 
     private Task OnClick()
@@ -44,5 +48,5 @@
 
     // Nested types
 
-    public sealed record Model(bool IsBusy, bool CanCall);
+    public sealed record Model(bool EnableIncompleteUI, bool IsBusy, bool CanCall);
 }
