@@ -43,8 +43,12 @@ public abstract class ComputedStateComponent<THub, TState> : ComputedStateCompon
     protected bool ShouldAutoFocusField => Hub.BrowserInfo.ShouldAutoFocusField;
 
     protected ComputedStateComponent()
+    {
         // ComputeStateOnThreadPool: prevents blocking the UI thread
-        => Options = DefaultOptions | ComputedStateComponentOptions.ComputeStateOnThreadPool;
+        Options = DefaultOptions | ComputedStateComponentOptions.ComputeStateOnThreadPool;
+        // Fusion's StatefulComponentBase turns this off, assuming these components render only on State change.
+        MustRenderAfterEvent = true;
+    }
 
     public override Task SetParametersAsync(ParameterView parameters)
     {

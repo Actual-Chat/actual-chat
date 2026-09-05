@@ -57,6 +57,11 @@
 }
 
 @code {
+    // The seek slider fires @oninput continuously while dragging. Its thumb is the native range
+    // input and everything else here is State-driven, so a render per event is pure overhead.
+    public AudioAttachmentSubHeader()
+        => MustRenderAfterEvent = false;
+
     private AudioAttachmentPlayer Player => Hub.AudioAttachmentPlayer;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }

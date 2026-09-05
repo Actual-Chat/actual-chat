@@ -42,6 +42,10 @@
 </Banner>
 
 @code {
+    // Adopts ReconnectUI's State, so it can't use our UIHub-aware bases - which set this for us.
+    public ReconnectBanner()
+        => MustRenderAfterEvent = true;
+
     private static readonly TimeSpan OfflineThreshold = TimeSpan.FromSeconds(1000);
     private bool _isVisible;
 

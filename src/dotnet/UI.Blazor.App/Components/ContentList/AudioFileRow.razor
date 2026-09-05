@@ -49,6 +49,11 @@
 </div>
 
 @code {
+    // The seek slider fires @oninput continuously while dragging. Its thumb is the native range
+    // input and everything else here is State-driven, so a render per event is pure overhead.
+    public AudioFileRow()
+        => MustRenderAfterEvent = false;
+
     private AudioAttachmentPlayer Player => Hub.AudioAttachmentPlayer;
     private IChats Chats => Hub.Chats;
 
