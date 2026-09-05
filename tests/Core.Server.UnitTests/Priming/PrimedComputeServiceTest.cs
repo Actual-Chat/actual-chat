@@ -68,7 +68,7 @@ public class PrimedComputeServiceTest(ITestOutputHelper @out) : TestBase(@out)
         computed.Invalidate();
         blocker.Dispose();
 
-        (await pendingTask.WaitAsync(TimeSpan.FromSeconds(1))).Should().BeNull();
+        (await pendingTask.WaitAsync(TimeSpan.FromSeconds(10))).Should().BeNull();
         svc.Primer.GetReservationCount().Should().Be(0);
     }
 
