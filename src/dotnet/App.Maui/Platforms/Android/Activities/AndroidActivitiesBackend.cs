@@ -191,7 +191,8 @@ public class AndroidActivitiesBackend : ActivitiesBackend
         try {
             NotificationHelper.EnsureActivityChannelsExist(context);
             var notification = NotificationHelper.BuildUploadNotification(context, upload);
-            NotificationManagerCompat.From(context)
+            NotificationManagerCompat
+                .From(context)!
                 .Notify(NotificationHelper.Constants.UploadNotificationId, notification);
         }
         catch (Exception e) {
@@ -204,7 +205,9 @@ public class AndroidActivitiesBackend : ActivitiesBackend
     private static void CancelUploadNotification()
     {
         try {
-            NotificationManagerCompat.From(Context).Cancel(NotificationHelper.Constants.UploadNotificationId);
+            NotificationManagerCompat
+                .From(Context)!
+                .Cancel(NotificationHelper.Constants.UploadNotificationId);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Couldn't cancel the upload notification");
