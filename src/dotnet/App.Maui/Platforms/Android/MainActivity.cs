@@ -55,6 +55,7 @@ public partial class MainActivity : MauiAppCompatActivity
 
     public static MainActivity Current => _current
         ?? throw StandardError.Internal($"{nameof(MainActivity)} isn't created yet.");
+    public static bool HasCurrent => _current is not null;
     // A recreated MainActivity can start before the one it replaces stops, so lifecycle callbacks
     // have to tell the live instance from the outgoing one rather than just matching the type.
     internal static bool IsCurrent(Android.App.Activity activity)

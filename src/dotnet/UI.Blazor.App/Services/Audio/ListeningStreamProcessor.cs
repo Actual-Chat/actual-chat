@@ -13,6 +13,7 @@ public sealed class ListeningStreamProcessor : WorkerBase
     private static bool DebugMode => Constants.DebugMode.LiveStreaming;
 
     private ResilientStream<MuxedAudioStreamItem>? _itemStream;
+    private bool _isCatchUpConsumed;
 
     private ILogger Log { get; }
     private ILogger? DebugLog { get; }
@@ -52,15 +53,17 @@ public sealed class ListeningStreamProcessor : WorkerBase
 
         var itemStream = new ResilientStream<MuxedAudioStreamItem> {
             Provider = async ct => {
-                // Re-evaluated per (re)connect: a reconnect after the wake window must not
-                // re-play the trigger utterance from its start.
-                var catchUpFrom = Ptt.IsStaleWake(CatchUpFrom, clocks.ServerClock.Now)
+                // The anchor is for the first connection only: the server serves the trigger
+                // utterance from t=0 to whoever asks, so a reconnect that still carried it would
+                // re-play what the listener already heard.
+                var catchUpFrom = _isCatchUpConsumed || Ptt.IsStaleWake(CatchUpFrom, clocks.ServerClock.Now)
                     ? default
                     : CatchUpFrom;
                 Log.LogInformation("-> LiveStreams.GetListeningStream({ChatId}), catchUpFrom={CatchUpFrom}",
                     ChatId, catchUpFrom);
                 var stream = await liveStreams.GetListeningStream(Session, ChatId, catchUpFrom, ct)
                     .ConfigureAwait(false);
+                _isCatchUpConsumed = true;
                 DebugLog?.LogInformation("<- LiveStreams.GetListeningStream({ChatId})", ChatId);
                 return stream;
             },
