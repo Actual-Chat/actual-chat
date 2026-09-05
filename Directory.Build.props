@@ -199,8 +199,13 @@
     <!-- VSTHRD110: Observe the awaitable result of this method call by awaiting it, assigning to a variable, or passing it to another method. -->
     <!-- VSTHRD200: Add 'Async' suffix. -->
     <NoWarn>$(NoWarn);RCS1047;VSTHRD002;VSTHRD003;VSTHRD103;VSTHRD110;VSTHRD200</NoWarn>
-    <!-- MsgPack017: default value will be reset on deserialization -->
-    <NoWarn>$(NoWarn);MsgPack017</NoWarn>
+    <!-- BL0016: JS interop call is not guarded with a try/catch block.
+         A failed JS interop call is rarely actionable: on Blazor Server the circuit must die anyway
+         (the connection is gone), and a component's JS and .NET halves are tightly coupled enough
+         that swallowing a few calls does permanent harm rather than preventing it. Guarding every
+         call would mean either a try/catch per call site or SafeInvokeXxx wrappers, for an issue
+         we have never actually hit. See https://github.com/dotnet/aspnetcore/pull/67900 -->
+    <NoWarn>$(NoWarn);BL0016</NoWarn>
     <!-- New .NET 8 warnings -->
     <!-- CA1001: Type C owns disposable field(s) F but is not disposable -->
     <!-- CA1002: Change 'List<T>' in P to use 'Collection<T>', 'ReadOnlyCollection<T>' or 'KeyedCollection<K,V>' -->
@@ -259,10 +264,13 @@
     <!-- IL2075: Call to non-public member via reflection -->
     <!-- IL2076, IL2077: The source value must declare at least the same requirements ... -->
     <!-- IL2092: Annotation mismatch on parameter -->
+    <!-- IL2104: Assembly 'A' produced trim warnings - a roll-up of the per-member warnings suppressed here -->
     <!-- IL2110: Field with 'DynamicallyAccessedMembersAttribute' accessed via reflection -->
     <!-- IL2111: Method with 'DynamicallyAccessedMembersAttribute' accessed via reflection -->
+    <!-- IL2121: Unused 'UnconditionalSuppressMessageAttribute' - mostly from generated ActualLab proxies -->
     <!-- IL3050: Using member with 'RequiresDynamicCodeAttribute' -->
-    <NoWarn>$(NoWarn);IL2026;IL2046;IL2055;IL2060;IL2067;IL2072;IL2073;IL2075;IL2076,IL2077,IL2092;IL2110;IL2111;IL3050</NoWarn>
+    <NoWarn>$(NoWarn);IL2026;IL2046;IL2055;IL2060;IL2067;IL2072;IL2073;IL2075;IL2076;IL2077</NoWarn>
+    <NoWarn>$(NoWarn);IL2092;IL2104;IL2110;IL2111;IL2121;IL3050</NoWarn>
     <!-- String comparison / culture: invariant culture is configured globally, so these are unnecessary -->
     <!-- CA1304: The behavior of 'string.ToLower()' could vary based on the current user's locale settings -->
     <!-- CA1305: The behavior of 'FormattableString' could vary based on the current user's locale settings -->
@@ -284,6 +292,8 @@
     <!-- CA2007: Consider calling ConfigureAwait on the awaited task -->
     <!-- TODO: Re-enable CA2007 when issue is fixed https://github.com/dotnet/roslyn-analyzers/issues/5712 -->
     <NoWarn>$(NoWarn);CA2007</NoWarn>
+    <!-- MsgPack017: default value will be reset on deserialization -->
+    <NoWarn>$(NoWarn);MsgPack017</NoWarn>
     <!-- Found markup element with unexpected name 'XXX'. If this is intended to be a component, add a @using directive for its namespace. -->
     <WarningsAsErrors>$(WarningsAsErrors);RZ10012</WarningsAsErrors>
   </PropertyGroup>

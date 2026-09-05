@@ -46,9 +46,6 @@
     private bool _suppressOnFailuresChanged;
 
     [Inject] private UIActionFailureTracker Failures { get; init; } = null!;
-    private ToastUI ToastUI => Hub.ToastUI;
-    private History History => Hub.History;
-    private IJSRuntime JS => Hub.JS;
 
     protected override void OnInitialized() {
         History.LocationChanged += OnLocationChanged;

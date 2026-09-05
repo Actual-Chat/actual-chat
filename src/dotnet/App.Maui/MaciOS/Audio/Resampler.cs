@@ -2,7 +2,7 @@ using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class Resampler(AVAudioFormat sourceFormat, AVAudioFormat targetFormat, ILogger<Resampler> log) : IDisposable
+public class Resampler(AVAudioFormat sourceFormat, AVAudioFormat targetFormat) : IDisposable
 {
     private readonly AVAudioConverter _converter = new(sourceFormat, targetFormat);
     private readonly AVAudioPcmBuffer _resampledBuffer = new (targetFormat, (uint)sourceFormat.SampleRate); // up to 1 second

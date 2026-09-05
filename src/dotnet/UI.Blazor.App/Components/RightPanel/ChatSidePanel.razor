@@ -53,7 +53,7 @@
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.RightPanelCollapse.create";
 
     private TabPanel? _tabPanel;
-    private ChatId _tabChatId;
+    private ChatId _tabChatId = null!;
     private bool _wasShowCallTab;
     private Chat? Chat => ChatContext?.Chat;
     private IChats Chats => Hub.Chats;

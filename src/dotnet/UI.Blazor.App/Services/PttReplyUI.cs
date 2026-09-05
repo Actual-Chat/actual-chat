@@ -12,7 +12,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public sealed class PttReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
 {
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private CancellationTokenSource? _coldStartCts;
     private PttReply? _reply;
     private bool _everVoiced;

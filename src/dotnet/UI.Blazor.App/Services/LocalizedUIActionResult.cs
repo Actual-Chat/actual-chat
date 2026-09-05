@@ -30,9 +30,3 @@ public sealed class LocalizedUIActionResult(IUIActionResult inner, string locali
 
     public object? GetUntypedValueOrErrorBox() => inner.GetUntypedValueOrErrorBox();
 }
-
-/// <summary>
-/// Wraps a failed action's exception with a localized <see cref="Exception.Message"/>,
-/// preserving the original as <see cref="Exception.InnerException"/>.
-/// </summary>
-public sealed class LocalizedError(string message, Exception innerException) : Exception(message, innerException);

@@ -97,6 +97,7 @@ public static class ComputedExt
 
     // Private methods
 
+    [UnconditionalSuppressMessage("Trimming", "IL2080", Justification = "Diagnostics-only reflection.")]
     private static PropertyInfo? GetProperty(Type type, string name)
         => PropertyCache.GetOrAdd((type, name), static state => {
             var (type1, name1) = state;
@@ -110,6 +111,7 @@ public static class ComputedExt
             return null;
         });
 
+    [UnconditionalSuppressMessage("Trimming", "IL2080", Justification = "Diagnostics-only reflection.")]
     private static FieldInfo? GetField(Type type, string name)
         => FieldCache.GetOrAdd((type, name), static state => {
             var (type1, name1) = state;

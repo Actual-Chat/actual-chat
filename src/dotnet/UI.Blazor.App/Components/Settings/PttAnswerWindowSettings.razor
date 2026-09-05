@@ -23,8 +23,8 @@
                 Value="_formModel.Seconds"
                 ValueExpression="@(() => _formModel.Seconds)"
                 ValueChanged="@((int seconds) => OnSecondsChanged(seconds))">
-                @foreach (var option in Options) {
-                    <option value="@option">@GetLabel(option)</option>
+                @foreach (var item in Items) {
+                    <option value="@item">@GetLabel(item)</option>
                 }
             </InputSelect>
         </FormSection>
@@ -32,7 +32,7 @@
 </Form>
 
 @code {
-    private static readonly int[] Options = [15, 30, 60];
+    private static readonly int[] Items = [15, 30, 60];
 
     private FormModel _formModel = null!;
 
@@ -61,12 +61,9 @@
 
     // Nested types
 
-    public sealed class FormModel {
+    public sealed class FormModel(ComponentIdGenerator componentIdGenerator) {
         public int Seconds { get; set; }
-        public string SecondsFormId { get; }
-
-        public FormModel(ComponentIdGenerator componentIdGenerator)
-            => SecondsFormId = componentIdGenerator.Next("ptt-answer-window");
+        public string SecondsFormId { get; } = componentIdGenerator.Next("ptt-answer-window");
     }
 
     public sealed record Model(int Seconds = 15) {

@@ -37,5 +37,6 @@ public class FilePreviews(IJSRuntime js, ILogger<FilePreviews> log)
         }
     }
 
+    [StructLayout(LayoutKind.Auto)]
     private readonly record struct VisualMediaInfo(int Width, int Height, long DurationMs);
 }

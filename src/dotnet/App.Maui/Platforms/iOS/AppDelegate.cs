@@ -172,7 +172,7 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
             break;
         default:
             if (userActivity.UserInfo?.ContainsKey(new NSString("link")) == true)
-                url = userActivity.UserInfo[new NSString("link")].ToString();
+                url = userActivity.UserInfo[new NSString("link")]!.ToString();
             break;
         }
 

@@ -28,7 +28,7 @@ public static class NSItemProviderExt
 
             if (item.HasItemConformingTo(UTTypes.Url.Identifier)) {
                 var url = await item.Read<NSUrl>(UTTypes.Url).ConfigureAwait(false);
-                return url.ToString();
+                return url.ToString()!;
             }
 
             throw new InvalidOperationException("Unexpected content types: "

@@ -61,11 +61,6 @@
     private ElementReference _dropZoneRef;
     private IJSObjectReference _jsRef = null!;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-    private UrlMapper UrlMapper => Hub.UrlMapper;
-    private IJSRuntime JS => Hub.JS;
-
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public Picture? Picture { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;

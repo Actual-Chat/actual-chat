@@ -1,4 +1,3 @@
-﻿@using System.ComponentModel.DataAnnotations
 @implements IModalView<DeleteAccountModal.Model>
 @inherits ComponentBase<UIHub>
 @{
@@ -44,12 +43,6 @@
     private Form _formRef = null!;
     private FormModel _form = null!;
 
-    private Session Session => Hub.Session;
-    private AccountUI AccountUI => Hub.AccountUI;
-    private UICommander UICommander => Hub.UICommander;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-    private History History => Hub.History;
-
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
@@ -82,15 +75,11 @@
         await AccountUI.SignOut();
     }
 
-    public sealed class FormModel : FormModel<FormModel> {
+    public sealed class FormModel(ComponentIdGenerator? componentIdGenerator) : FormModel<FormModel>("delete-account", componentIdGenerator) {
         [Required(ErrorMessage = "Delete confirmation is required")]
         [RegularExpression("^DELETE$", ErrorMessage = "Please enter DELETE to confirm")]
         public string Delete { get; set; } = "";
         public string DeleteFieldId { get; set; } = "";
-
-        public FormModel(ComponentIdGenerator? componentIdGenerator)
-            : base("delete-account", componentIdGenerator)
-        { }
     }
 
     public sealed record Model();

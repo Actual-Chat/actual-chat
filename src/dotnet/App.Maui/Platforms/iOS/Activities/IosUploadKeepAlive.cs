@@ -13,7 +13,7 @@ namespace ActualChat.App.Maui.Activities;
 public sealed class IosUploadKeepAlive
 {
     private readonly ILogger<IosUploadKeepAlive> _log;
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private nint _taskId = UIApplication.BackgroundTaskInvalid;
 
     public IosUploadKeepAlive(ILogger<IosUploadKeepAlive> log)

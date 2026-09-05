@@ -71,9 +71,6 @@
     private GeoTrackingAccuracy _accuracy = GeoTrackingAccuracy.Balanced;
     private FormModel _formModel = null!;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-
     protected override void OnInitialized() {
         _formModel = new(ComponentIdGenerator) {
             Accuracy = _accuracy,

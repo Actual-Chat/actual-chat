@@ -32,7 +32,6 @@
 @code {
     private bool _canShareExternally;
 
-    private ShareUI ShareUI => Hub.ShareUI;
 
     [Parameter, EditorRequired] public ShareModalModel Model { get; set; } = null!;
     // Takes over the share and copy text when set, e.g. with a comment the user typed

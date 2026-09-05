@@ -171,7 +171,7 @@
             AuthorId authorId => Links.Chat(authorId.ChatId),
             ChatId chatId => Links.Chat(chatId),
             PlaceId placeId => Links.Chat(placeId.RootChatId),
-            _ => null,
+            _ => (LocalUrl?)null,
         };
         if (url is { } localUrl)
             await Hub.History.NavigateTo(localUrl).ConfigureAwait(true);

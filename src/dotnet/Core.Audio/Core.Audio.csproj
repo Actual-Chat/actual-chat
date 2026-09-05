@@ -10,7 +10,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 
   <!-- Ensure native libraries under APM/runtimes are copied to output and included when packing/publishing -->

@@ -49,7 +49,7 @@ public class SignInView(IosHub hub) : ComputedStateView<SignInView.Model>(hub)
             TranslatesAutoresizingMaskIntoConstraints = false,
             TextAlignment = UITextAlignment.Center,
             Text = L.ShareExt_SignInPrompt_Format(CoreConstants.AppName),
-            Font = UIFont.SystemFontOfSize(20),
+            Font = UIFont.SystemFontOfSize(20)!,
             TextColor = AppColors.Text01,
         };
 
@@ -57,7 +57,7 @@ public class SignInView(IosHub hub) : ComputedStateView<SignInView.Model>(hub)
         var signInButton = UIButton.FromType(UIButtonType.System);
         signInButton.TranslatesAutoresizingMaskIntoConstraints = false;
         signInButton.SetTitle(L.SignIn_SignIn, UIControlState.Normal);
-        signInButton.TitleLabel.Font = UIFont.SystemFontOfSize(18, UIFontWeight.Semibold);
+        signInButton.TitleLabel.Font = UIFont.SystemFontOfSize(18, UIFontWeight.Semibold)!;
         signInButton.SetTitleColor(AppColors.PrimaryTitle, UIControlState.Normal);
         signInButton.BackgroundColor = AppColors.Primary;
         signInButton.Layer.CornerRadius = 12;
@@ -67,7 +67,7 @@ public class SignInView(IosHub hub) : ComputedStateView<SignInView.Model>(hub)
         var closeButton = UIButton.FromType(UIButtonType.System);
         closeButton.TranslatesAutoresizingMaskIntoConstraints = false;
         closeButton.SetTitle(L.Common_Close, UIControlState.Normal);
-        closeButton.TitleLabel.Font = UIFont.SystemFontOfSize(16);
+        closeButton.TitleLabel.Font = UIFont.SystemFontOfSize(16)!;
         closeButton.TintColor = AppColors.Primary;
         closeButton.TouchUpInside += Safe(UIKitExt.CloseApp);
 

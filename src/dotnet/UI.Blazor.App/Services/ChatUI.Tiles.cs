@@ -1,4 +1,4 @@
-﻿using System.Diagnostics.Metrics;
+using System.Diagnostics.Metrics;
 using ActualChat.Diagnostics;
 using ActualChat.UI.Blazor.Diagnostics;
 using CommunityToolkit.HighPerformance;
@@ -1987,7 +1987,7 @@ public partial class ChatUI
     [ComputeMethod(ConsolidationDelay = 0)]
     public virtual async Task<StreamingTailState> GetStreamingTail(
         ChatId chatId,
-        AuthorId ownAuthorId,
+        AuthorId? ownAuthorId,
         CancellationToken cancellationToken)
     {
         var lidRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);

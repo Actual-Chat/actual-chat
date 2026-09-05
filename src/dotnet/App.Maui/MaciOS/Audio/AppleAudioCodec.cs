@@ -36,6 +36,7 @@ public sealed class AppleAudioCodec(AppUIHub hub) : IAudioCodec
         }
     }
 
-    public IAsyncEnumerable<IMemoryOwner<float>> Decode(IAsyncEnumerable<AudioFrame> opusPackets, CancellationToken cancellationToken = default)
-        => throw new NotImplementedException();
+    public IAsyncEnumerable<IMemoryOwner<float>> Decode(
+        IAsyncEnumerable<AudioFrame> opusPackets, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("AppleAudioCodec is encode-only; decoding goes through OpusDecoder.");
 }

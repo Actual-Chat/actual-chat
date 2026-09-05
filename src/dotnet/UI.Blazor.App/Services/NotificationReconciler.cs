@@ -16,8 +16,6 @@ public sealed class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub
     private HashSet<string> _lastActiveTags = new();
     private bool _isInitialized;
 
-    private UrlMapper UrlMapper => field ??= Services.UrlMapper();
-
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         var deviceNotifications = Services.GetService<IDeviceNotifications>();

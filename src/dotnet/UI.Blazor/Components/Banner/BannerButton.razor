@@ -1,16 +1,19 @@
 @namespace ActualChat.UI.Blazor.Components
 
 @* Standard banner action button: applies the shared banner-button classes so each banner doesn't repeat them *@
-<Button Class="@($"btn-transparent unhovered btn-modal {Class}")"
-        Click="@Click"
-        Rendered="@Rendered"
-        @attributes="Attributes">
+<Button
+    Class="@($"btn-transparent unhovered btn-modal {Class}")"
+    IsDisabled="@IsDisabled"
+    Click="@Click"
+    Rendered="@Rendered"
+    @attributes="Attributes">
     @ChildContent
 </Button>
 
 @code {
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
     [Parameter] public EventCallback<ElementReference> Rendered { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? Attributes { get; set; }

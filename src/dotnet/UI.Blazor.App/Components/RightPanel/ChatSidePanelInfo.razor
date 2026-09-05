@@ -53,7 +53,7 @@
 </div>
 
 @code {
-    private Chat? Chat => ChatContext?.Chat;
+    private Chat Chat => ChatContext!.Chat;
 
     [CascadingParameter] public ChatContext? ChatContext { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }

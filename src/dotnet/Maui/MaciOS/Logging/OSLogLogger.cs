@@ -9,7 +9,7 @@ public class OSLogLogger(string name) : ILogger<object>
     private static readonly string NewLineWithMessagePadding;
     private readonly StringBuilder _logBuilder = new ();
 
-    private readonly CoreFoundation.OSLog _osLog = new (NSBundle.MainBundle.BundleIdentifier, "dev.voxt.ai"); // TODO: different for dev and prod
+    private readonly CoreFoundation.OSLog _osLog = new (NSBundle.MainBundle.BundleIdentifier!, "dev.voxt.ai"); // TODO: different for dev and prod
     private readonly string _name = name ?? throw new ArgumentNullException(nameof(name));
 
     static OSLogLogger()

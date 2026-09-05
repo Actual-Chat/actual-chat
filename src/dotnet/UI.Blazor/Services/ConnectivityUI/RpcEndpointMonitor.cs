@@ -201,7 +201,8 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
         Log.LogWarning("Selected RPC endpoint: {Endpoint}", endpoint);
         selector.Use(endpoint);
         _verifiedVersion = -1;
-        Peer?.Disconnect();
+        // ReSharper disable once MethodSupportsCancellation
+        _ = Peer?.Disconnect();
         ReconnectUI.ResetReconnectDelays();
     }
 
@@ -420,7 +421,7 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
         }
         _verifiedVersion = -1;
         _pendingReport = new RpcEndpointReport(selector.Current, RpcEndpointReason.Demoted);
-        Peer?.Disconnect();
+        _ = Peer?.Disconnect();
         ReconnectUI.ResetReconnectDelays();
     }
 

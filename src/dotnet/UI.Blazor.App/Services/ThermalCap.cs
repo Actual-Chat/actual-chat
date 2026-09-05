@@ -17,30 +17,36 @@ public sealed record ThermalCapConfig(
 /// on outbound layers/fps and an inbound budget multiplier, stepping in BEFORE
 /// the OS throttles the whole device.
 /// </summary>
-public sealed class ThermalCap
+public sealed class ThermalCap(
+    int deviceCameraCap,
+    int deviceScreencastCap,
+    ThermalCapConfig config)
 {
-    private readonly int _deviceCameraCap;
-    private readonly int _deviceScreencastCap;
-    private readonly ThermalCapConfig _config;
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private volatile ThermalLevel _effectiveLevel;
     private ThermalLevel _pendingLevel;
     private Moment? _pendingSince;
 
     public ThermalLevel Level => _effectiveLevel;
-    public int CameraLayers => _effectiveLevel switch {
-        ThermalLevel.Serious => Math.Max(1, _deviceCameraCap - 1),
-        ThermalLevel.Critical => 1,
-        _ => _deviceCameraCap,
-    };
-    public int ScreencastLayers => _effectiveLevel switch {
-        ThermalLevel.Critical => 1,
-        _ => _deviceScreencastCap,
-    };
+    public int CameraLayers {
+        get => _effectiveLevel switch {
+            ThermalLevel.Serious => Math.Max(1, field - 1),
+            ThermalLevel.Critical => 1,
+            _ => field,
+        };
+    } = deviceCameraCap;
+
+    public int ScreencastLayers {
+        get => _effectiveLevel switch {
+            ThermalLevel.Critical => 1,
+            _ => field,
+        };
+    } = deviceScreencastCap;
+
     // 0 = no ceiling (matches the recorder's setFpsCeiling contract).
     public int MaxFps => _effectiveLevel switch {
-        ThermalLevel.Serious => _config.SeriousMaxFps,
-        ThermalLevel.Critical => _config.CriticalMaxFps,
+        ThermalLevel.Serious => config.SeriousMaxFps,
+        ThermalLevel.Critical => config.CriticalMaxFps,
         _ => 0,
     };
     public double InboundBudgetMultiplier => _effectiveLevel switch {
@@ -53,13 +59,6 @@ public sealed class ThermalCap
         ThermalLevel.Critical => 1,
         _ => int.MaxValue,
     };
-
-    public ThermalCap(int deviceCameraCap, int deviceScreencastCap, ThermalCapConfig config)
-    {
-        _deviceCameraCap = deviceCameraCap;
-        _deviceScreencastCap = deviceScreencastCap;
-        _config = config;
-    }
 
     public bool Tick(Moment now, ThermalLevel level)
     {
@@ -79,7 +78,7 @@ public sealed class ThermalCap
                 _pendingSince = now;
                 return false;
             }
-            if ((now - _pendingSince.Value).TotalSeconds < _config.RecoveryDelaySeconds)
+            if ((now - _pendingSince.Value).TotalSeconds < config.RecoveryDelaySeconds)
                 return false;
 
             _effectiveLevel = level;

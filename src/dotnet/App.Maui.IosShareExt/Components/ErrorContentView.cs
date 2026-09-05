@@ -18,7 +18,7 @@ public sealed class ErrorContentView : UIView
             TranslatesAutoresizingMaskIntoConstraints = false,
             TextAlignment = UITextAlignment.Center,
             Text = message,
-            Font = UIFont.SystemFontOfSize(24),
+            Font = UIFont.SystemFontOfSize(24)!,
             TextColor = AppColors.Text01,
             Lines = 0,
         };
@@ -29,7 +29,7 @@ public sealed class ErrorContentView : UIView
         var closeButton = UIButton.FromType(UIButtonType.System);
         closeButton.TranslatesAutoresizingMaskIntoConstraints = false;
         closeButton.SetTitle(AppStrings.L.Common_Close, UIControlState.Normal);
-        closeButton.TitleLabel.Font = UIFont.SystemFontOfSize(20, UIFontWeight.Semibold);
+        closeButton.TitleLabel.Font = UIFont.SystemFontOfSize(20, UIFontWeight.Semibold)!;
         closeButton.TintColor = AppColors.Primary;
         closeButton.TouchUpInside += onClose;
 

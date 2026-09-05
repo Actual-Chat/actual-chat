@@ -80,7 +80,7 @@
     private ChatId? _previousChatId;
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.RightPanelHeader.create";
 
-    private Chat? Chat => ChatContext?.Chat;
+    private Chat Chat => ChatContext!.Chat;
     private IChats Chats => Hub.Chats;
     private IContacts Contacts => Hub.Contacts;
 

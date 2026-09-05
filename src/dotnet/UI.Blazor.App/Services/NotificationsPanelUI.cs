@@ -14,7 +14,7 @@ public class NotificationsPanelUI : UIWorkerBase<AppUIHub>, IComputeService, INo
     // Not configurable: candidates live in memory, so a longer window couldn't be honoured anyway.
     private static readonly TimeSpan Grace = TimeSpan.FromMinutes(5);
 
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private readonly Dictionary<Symbol, FilterState> _states = new();
     private readonly MutableState<int> _version;
 

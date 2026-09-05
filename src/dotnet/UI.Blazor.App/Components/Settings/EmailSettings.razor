@@ -8,7 +8,7 @@
 
     var email = _emailForm.Email ?? "";
     var isEmailEmpty = email.IsNullOrEmpty();
-    var isEmailValid = _emailFormEditContext.IsValid(() => _emailForm.Email);
+    var isEmailValid = _emailFormEditContext.IsValid(() => _emailForm.Email!);
     var isEmailVerified = !isEmailEmpty && _account.Identities.HasEmail(email);
 }
 

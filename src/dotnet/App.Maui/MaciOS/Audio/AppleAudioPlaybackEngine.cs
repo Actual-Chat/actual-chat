@@ -34,7 +34,8 @@ public sealed class AppleAudioPlaybackEngine(
     public async ValueTask DisposeAsync()
     {
         _decodeFeedCts.CancelAndDisposeSilently();
-        await _decodeFeedTask.SilentAwait();
+        if (_decodeFeedTask is { } decodeFeedTask)
+            await decodeFeedTask.SilentAwait();
         await _processFeederWorker.DisposeSilentlyAsync().ConfigureAwait(false);
         _voicePlayer.DisposeSilently();
         _decoder.DisposeSilently();

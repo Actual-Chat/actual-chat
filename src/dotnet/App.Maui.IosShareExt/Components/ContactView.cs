@@ -39,7 +39,7 @@ public sealed class ContactView(Contact contact, IosHub hub) : ComputedStateView
         _titleLabel = new UILabel
         {
             TranslatesAutoresizingMaskIntoConstraints = false,
-            Font = UIFont.SystemFontOfSize(17, UIFontWeight.Regular),
+            Font = UIFont.SystemFontOfSize(17, UIFontWeight.Regular)!,
             TextColor = AppColors.Text01,
             Text = contact.Chat.Title,
             Lines = 1,
@@ -50,7 +50,7 @@ public sealed class ContactView(Contact contact, IosHub hub) : ComputedStateView
         _subtitleLabel = new UILabel
         {
             TranslatesAutoresizingMaskIntoConstraints = false,
-            Font = UIFont.SystemFontOfSize(14, UIFontWeight.Regular),
+            Font = UIFont.SystemFontOfSize(14, UIFontWeight.Regular)!,
             TextColor = AppColors.Text03,
             Lines = 1,
             LineBreakMode = UILineBreakMode.TailTruncation,

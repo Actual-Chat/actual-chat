@@ -56,9 +56,6 @@
 @code {
     private FormModel _formModel = null!;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-
     [Parameter, EditorRequired] public AppServerInstanceSelector Selector { get; set; } = null!;
 
     protected override void OnInitialized() {
@@ -95,18 +92,16 @@
     }
 
     public sealed class FormModel {
-        private string? _host;
-
         private string FormId { get; }
         public string ProdFormId { get; }
         public string DevFormId { get; }
 
         public string? Host {
-            get => _host;
+            get;
             set {
-                if (_host == value)
+                if (field == value)
                     return;
-                _host = value;
+                field = value;
                 HostChanged?.Invoke(value);
             }
         }

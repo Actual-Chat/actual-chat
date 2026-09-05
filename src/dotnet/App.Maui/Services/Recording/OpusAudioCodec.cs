@@ -8,6 +8,7 @@ using OpusSharp.Core.Extensions;
 
 namespace ActualChat.App.Maui.Services.Recording;
 
+#pragma warning disable CS9113 // 'log' is read only under WINDOWS || ANDROID
 public sealed class OpusAudioCodec(ILogger<OpusAudioCodec> log) : IAudioCodec
 {
     public IAsyncEnumerable<IMemoryOwner<byte>> Encode(

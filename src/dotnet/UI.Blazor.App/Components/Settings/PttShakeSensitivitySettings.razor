@@ -20,8 +20,8 @@
                 Value="_formModel.Sensitivity"
                 ValueExpression="@(() => _formModel.Sensitivity)"
                 ValueChanged="@((ShakeSensitivity sensitivity) => OnSensitivityChanged(sensitivity))">
-                @foreach (var option in Options) {
-                    <option value="@option">@GetLabel(option)</option>
+                @foreach (var item in Items) {
+                    <option value="@item">@GetLabel(item)</option>
                 }
             </InputSelect>
         </FormSection>
@@ -29,7 +29,7 @@
 </Form>
 
 @code {
-    private static readonly ShakeSensitivity[] Options =
+    private static readonly ShakeSensitivity[] Items =
         [ShakeSensitivity.Low, ShakeSensitivity.Medium, ShakeSensitivity.High];
 
     private FormModel _formModel = null!;
@@ -61,12 +61,9 @@
 
     // Nested types
 
-    public sealed class FormModel {
+    public sealed class FormModel(ComponentIdGenerator componentIdGenerator) {
         public ShakeSensitivity Sensitivity { get; set; }
-        public string SensitivityFormId { get; }
-
-        public FormModel(ComponentIdGenerator componentIdGenerator)
-            => SensitivityFormId = componentIdGenerator.Next("ptt-shake-sensitivity");
+        public string SensitivityFormId { get; } = componentIdGenerator.Next("ptt-shake-sensitivity");
     }
 
     public sealed record Model(ShakeSensitivity Sensitivity = ShakeSensitivity.Medium) {

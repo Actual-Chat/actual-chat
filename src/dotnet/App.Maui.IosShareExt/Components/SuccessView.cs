@@ -47,7 +47,7 @@ public class SuccessView(IosHub hub) : ComputedStateView<SuccessView.Model>(hub)
             TranslatesAutoresizingMaskIntoConstraints = false,
             TextAlignment = UITextAlignment.Center,
             Text = L.ShareExt_Done,
-            Font = UIFont.SystemFontOfSize(24, UIFontWeight.Semibold),
+            Font = UIFont.SystemFontOfSize(24, UIFontWeight.Semibold)!,
             TextColor = AppColors.Text01,
         };
 

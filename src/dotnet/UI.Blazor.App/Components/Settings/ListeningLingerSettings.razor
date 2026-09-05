@@ -17,18 +17,18 @@
             DisplayName="@L.Transcription_KeepListening"
             @bind-Value="_formModel.SelectedId">
 
-            @foreach (var option in Options) {
-                var formId = _formModel.GetFormId(option.Id);
+            @foreach (var item in Items) {
+                var formId = _formModel.GetFormId(item.Id);
                 <TileItem
-                    Class="@GetTileItemClass(option.Id)"
-                    Click="@(_ => OnTileClick(option.Id))">
+                    Class="@GetTileItemClass(item.Id)"
+                    Click="@(_ => OnTileClick(item.Id))">
                     <Icon>
                         <FormRadio
                             Id="@formId"
-                            Value="@option.Id"/>
+                            Value="@item.Id"/>
                     </Icon>
                     <Content>
-                        <Label InputId="@formId" Text="@option.Title" IsRequired="true"></Label>
+                        <Label InputId="@formId" Text="@item.Title" IsRequired="true"></Label>
                     </Content>
                 </TileItem>
             }
@@ -38,7 +38,7 @@
 </Form>
 
 @code {
-    private Option[] Options => [
+    private Item[] Items => [
         new(nameof(ListeningLinger.None), L.ListeningLinger_Off),
         new(nameof(ListeningLinger.For5Seconds), L.ListeningLinger_5Seconds),
         new(nameof(ListeningLinger.For10Seconds), L.ListeningLinger_10Seconds),
@@ -83,12 +83,12 @@
 
     // Nested types
 
-    public sealed record Option(string Id, string Title);
+    public sealed record Item(string Id, string Title);
 
-    public sealed class FormModel {
+    public sealed class FormModel(ComponentIdGenerator componentIdGenerator) {
         private string _selectedId = nameof(ListeningLinger.None);
 
-        private string FormId { get; }
+        private string FormId { get; } = componentIdGenerator.Next("listening-linger-form");
 
         public string SelectedId {
             get => _selectedId;
@@ -102,9 +102,6 @@
         }
 
         public event Func<string, Task>? SelectedIdChanged;
-
-        public FormModel(ComponentIdGenerator componentIdGenerator)
-            => FormId = componentIdGenerator.Next("listening-linger-form");
 
         public string GetFormId(string id)
             => $"{FormId}-{id}";

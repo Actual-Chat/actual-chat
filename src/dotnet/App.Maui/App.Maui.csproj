@@ -164,7 +164,6 @@
     <PackageReference Include="Microsoft.Maui.Controls" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" />
     <!-- This seems weird, but w/o this line MSBuild concludes the version is 1.0.0! -->
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="$(MicrosoftExtensionsVersion)" />
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
     <PackageReference Include="Plugin.Maui.Audio" />
   </ItemGroup>

@@ -187,7 +187,7 @@ public class AppleVideoTranscoder(IServiceProvider services) : VideoTranscoder
                 return null;
             }
 
-            var track = tracks[0];
+            var track = tracks[0]!;
             var resolution = track.ActualResolution;
             var bitrate = track.EstimatedDataRate;
             var codec = track.VideoCodecType;

@@ -34,7 +34,7 @@ public sealed class ContactIconView(IconQuery? iconQuery, UIImage? defaultImage,
         _initialLabel = new UILabel
         {
             TranslatesAutoresizingMaskIntoConstraints = false,
-            Font = UIFont.SystemFontOfSize(Size / 2f, UIFontWeight.Medium),
+            Font = UIFont.SystemFontOfSize(Size / 2f, UIFontWeight.Medium)!,
             TextColor = AppColors.PrimaryTitle,
             TextAlignment = UITextAlignment.Center,
             Text = title.Length > 0 ? title[0].ToString().ToUpper() : string.Empty,

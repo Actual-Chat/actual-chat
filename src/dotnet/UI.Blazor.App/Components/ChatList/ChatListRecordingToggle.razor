@@ -10,7 +10,7 @@
 @if (IsRecording) {
     <HeaderButton
         Class="@cls"
-        Click="@(_ => ChatAudioUI.SetRecordingChatId(default))"
+        Click="@(async _ => await ChatAudioUI.SetRecordingChatId(default))"
         Tooltip="@L.Common_Stop"
         TooltipPosition="FloatingPosition.Top">
         <i class="icon-mic-2 text-2xl"></i>
@@ -18,7 +18,7 @@
 } else {
     <HeaderButton
         Class="@cls"
-        Click="@(_ => ChatAudioUI.SetRecordingChatId(Chat.Id))"
+        Click="@(async _ => await ChatAudioUI.SetRecordingChatId(Chat.Id))"
         Tooltip="@L.Common_Start"
         TooltipPosition="FloatingPosition.Top"
         MustKeepAwake="true">

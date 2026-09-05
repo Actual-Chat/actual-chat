@@ -34,7 +34,7 @@
 
     <Button
         Class="btn-transparent unhovered recording-in-chat on"
-        Click="@(_ => ChatAudioUI.SetRecordingChatId(default))"
+        Click="@(async _ => await ChatAudioUI.SetRecordingChatId(default))"
         Tooltip="@L.Recording_StopRecording"
         TooltipPosition="FloatingPosition.Top">
         @L.Common_Stop
