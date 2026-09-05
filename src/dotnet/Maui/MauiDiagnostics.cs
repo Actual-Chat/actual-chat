@@ -22,7 +22,9 @@ public static class MauiDiagnostics
 {
     private const string AndroidOutputTemplate = "({ThreadID}) [{SourceContext}] {Message:l}{NewLine:l}{Exception}";
 
+    private static readonly Lock SentryLock = new();
     private static SentryOptions _sentryOptions = null!;
+    private static IDisposable? _sentrySdk;
 
     public static readonly string LogTag = MauiSettings.IsDevApp ? Constants.Hosts.DevVoxt : Constants.Hosts.Voxt;
     public static FilePath AppDataLogFilePath { get; private set; }
@@ -150,21 +152,19 @@ public static class MauiDiagnostics
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void InitSentrySdk()
-        => InitSentrySdk(_sentryOptions);
+    {
+        // Reusing these options on a WebView reload nests cache transports sharing the same files.
+        lock (SentryLock)
+            _sentrySdk ??= InitSentrySdk(_sentryOptions);
+    }
 
-    private static void InitSentrySdk(SentryOptions options)
+    private static IDisposable InitSentrySdk(SentryOptions options)
     {
         // We can use MAUI's network connectivity information to inform the CachingTransport when we're offline.
         // We do it here to eliminate startup delay due to checking connectivity status in MauiNetworkStatusListener .ctor.
         options.NetworkStatusListener = new MauiNetworkStatusListener(Connectivity.Current, options);
 
-        // Initialize the Sentry SDK.
-        var disposable = SentrySdk.Init(options);
-        // TODO(DF): It seems disposer is not invoked on application closing. Look up for another solution to flush client data.
-        // var disposer = AppServices.GetRequiredService<Disposer>();
-        // // Register the return value from initializing the SDK with the disposer.
-        // // This will ensure that it gets disposed when the service provider is disposed.
-        // disposer.Register(disposable);
+        return SentrySdk.Init(options);
     }
 
     public static void CaptureAndFlush(Exception error, TimeSpan flushTimeout)
@@ -180,7 +180,8 @@ public static class MauiDiagnostics
         if (OperatingSystem.IsIOS())
             return;
 
-        TracerProvider = SentryExt.CreateSentryTraceProvider("MauiApp");
+        lock (SentryLock)
+            TracerProvider ??= SentryExt.CreateSentryTraceProvider("MauiApp");
     }
 
     public static ILoggingBuilder AddFilteringSerilog(
