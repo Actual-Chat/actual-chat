@@ -1,41 +1,195 @@
-/* ── Incoming call / in-call screen over the lock screen ── */
+/* ── Incoming call / in-call full-screen (Android over-lock or any narrow foreground) ── */
 
 .incoming-call-overlock {
-    @apply z-modal-overlay fixed top-0 left-0;
-    @apply flex-y items-center justify-between;
+    @apply z-modal-overlay fixed inset-0;
+    @apply flex-y items-center;
     @apply w-full h-full;
-    @apply p-8;
+    @apply overflow-hidden;
     @apply bg-01;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
 }
+/* Blurred caller avatar fills the screen behind everything. */
+.incoming-call-overlock .c-bg {
+    @apply absolute inset-0 z-0;
+    @apply overflow-hidden;
+}
+.incoming-call-overlock .c-bg .avatar,
+.incoming-call-overlock .c-bg img {
+    @apply w-full h-full;
+    object-fit: cover;
+}
+/* Darkening so white text/controls stay legible over any avatar: a light top wash for the
+   brand header + a smooth, stronger bottom scrim under the whole action area (buttons/hints/labels). */
+.incoming-call-overlock .c-scrim {
+    @apply absolute inset-0 z-0;
+    background:
+        linear-gradient(to bottom, rgb(0 0 0 / 42%) 0%, rgb(0 0 0 / 0%) 16%),
+        linear-gradient(to top,
+            rgb(0 0 0 / 62%) 0%,
+            rgb(0 0 0 / 55%) 10%,
+            rgb(0 0 0 / 42%) 24%,
+            rgb(0 0 0 / 26%) 40%,
+            rgb(0 0 0 / 12%) 58%,
+            rgb(0 0 0 / 0%) 76%);
+}
+.incoming-call-overlock .c-topbar,
+.incoming-call-overlock .c-body,
+.incoming-call-overlock .c-footer {
+    @apply relative z-10 w-full;
+}
+
+/* Top bar: brand for ringing, collapse + hang-up for in-call */
+.incoming-call-overlock .c-topbar {
+    @apply flex-x items-center;
+    @apply h-14 px-4 flex-none;
+}
+.incoming-call-overlock .c-brand {
+    @apply justify-center gap-2;
+    @apply text-title-1 text-white;
+}
+.incoming-call-overlock .c-call-bar {
+    @apply justify-between;
+}
+
+/* Center block: avatar, caller name, status, timer */
 .incoming-call-overlock .c-body {
-    @apply flex-y items-center gap-4;
-    @apply mt-auto;
+    @apply flex-y items-center gap-1;
+    @apply mt-auto px-8 text-center;
 }
-.incoming-call-overlock .c-title {
-    @apply text-headline-1 text-01;
+.incoming-call-overlock .c-avatar {
+    @apply mb-3;
 }
-.incoming-call-overlock .c-subtitle {
-    @apply text-title-1 text-03;
+.incoming-call-overlock .c-name {
+    @apply flex-x items-center justify-center gap-2;
+    @apply text-headline-6 text-white;
 }
-.incoming-call-overlock .c-buttons {
-    @apply flex-x items-center justify-center gap-4;
-    @apply mt-auto mb-8;
+.incoming-call-overlock .c-name-mic {
+    @apply text-lg text-white opacity-80;
 }
-.incoming-call-overlock .c-buttons .btn {
-    @apply w-12 h-12;
+.incoming-call-overlock .c-status,
+.incoming-call-overlock .c-timer {
+    @apply text-base text-white opacity-70;
+}
+
+/* Footer: button rows */
+.incoming-call-overlock .c-footer {
+    @apply flex-y items-center;
+    @apply mt-auto mb-8 px-6;
+}
+
+/* Ringing: 4 labelled round buttons (Decline · Mute · Message · Accept) */
+.incoming-call-overlock .c-ring-buttons {
+    @apply flex-x items-end justify-center gap-6;
+}
+.incoming-call-overlock .c-btn-cell {
+    @apply flex-y items-center gap-2;
+}
+/* Swipe-up hints above Decline/Accept: three chevrons pulsing upward.
+   opacity + transform:scale only (both composited); continuous, so not registered in AnimationSync.
+   The darkening behind them is the bottom scrim (.c-scrim), not a per-hint backdrop. */
+.incoming-call-overlock .c-hints {
+    @apply flex-y items-center text-white;
+    gap: 1px;
+    margin-bottom: 8px;
+    /* Swipe hints only make sense where the buttons are swiped — touch devices. */
+    display: none;
+}
+body.touch-capable .incoming-call-overlock .c-hints {
+    display: flex;
+}
+.incoming-call-overlock .c-hint-chevron {
+    width: 22px;
+    height: 9.9px;
+    opacity: 0.34;
+    animation: call-hint-sweep 1.4s ease-in-out infinite;
+    will-change: opacity, transform;
+}
+/* Stagger so the pulse sweeps upward: the bottom chevron (last child) lights first. */
+.incoming-call-overlock .c-hint-chevron:nth-child(3) { animation-delay: 0s; }
+.incoming-call-overlock .c-hint-chevron:nth-child(2) { animation-delay: 0.15s; }
+.incoming-call-overlock .c-hint-chevron:nth-child(1) { animation-delay: 0.3s; }
+@keyframes call-hint-sweep {
+    0%, 100% { opacity: 0.34; transform: scale(1); }
+    45% { opacity: 1; transform: scale(1.14); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .incoming-call-overlock .c-hint-chevron {
+        animation: none;
+        opacity: 0.6;
+    }
+}
+.incoming-call-overlock .c-btn-label {
+    @apply text-xs text-white opacity-80;
+}
+.incoming-call-overlock .c-call-btn {
+    @apply flex items-center justify-center;
+    @apply w-14 h-14 flex-none;
     @apply rounded-full;
+    @apply text-white text-2xl;
 }
-.incoming-call-overlock .c-buttons .btn-mute,
-.incoming-call-overlock .c-buttons .btn-message {
-    @apply bg-[var(--background-03)] text-01;
+/* Swipe-to-answer buttons: claim the vertical gesture so the browser doesn't hijack the drag as a
+   page scroll (which cancels the pointer and snaps the button back before the threshold). */
+.incoming-call-overlock .c-call-btn.c-decline,
+.incoming-call-overlock .c-call-btn.c-accept {
+    touch-action: none;
 }
-.incoming-call-overlock.in-call {
-    background: linear-gradient(to bottom, var(--violet-70), var(--indigo-70));
+/* Solid gradients as plain CSS: the shorthand also clears .btn-round's default fill. */
+.incoming-call-overlock .c-call-btn.c-decline {
+    background: linear-gradient(180deg, var(--magenta-60) 0%, var(--magenta-50) 100%);
 }
-/* The gradient is fixed, so the theme-aware text tokens above would vanish into it in a light theme. */
-.incoming-call-overlock.in-call .c-title,
-.incoming-call-overlock.in-call .c-subtitle {
-    @apply text-white;
+.incoming-call-overlock .c-call-btn.c-accept {
+    background: linear-gradient(180deg, var(--emerald-40) 0%, var(--emerald-30) 100%);
+}
+.incoming-call-overlock .c-call-btn.c-mute,
+.incoming-call-overlock .c-call-btn.c-message {
+    /* Same neutral glass as the video-panel controls. */
+    background: linear-gradient(180deg, var(--black-20) -20.83%, var(--black-40) 100%);
+    text-shadow: 0 1px 3px rgb(0 0 0 / 60%);
+}
+
+/* In-call: 5-control toolbar (reuses .btn-video-panel HeaderButton styling from video-panel.css) */
+.incoming-call-overlock .c-toolbar {
+    @apply flex-x items-center justify-center gap-4;
+}
+.incoming-call-overlock .c-toolbar .btn-video-panel.btn-h {
+    @apply w-12 h-12;
+}
+/* Record button — identical to the video-panel full-screen footer rec-btn. */
+.incoming-call-overlock .c-toolbar > button.rec-btn {
+    background: linear-gradient(180deg, #C60077 -18.32%, #2970FF 132%);
+    background-size: 100% 180%;
+    background-position: center center;
+    background-repeat: no-repeat;
+    animation: bgShake 3s steps(30) infinite alternate;
+}
+.incoming-call-overlock .c-toolbar > button.rec-btn.recording {
+    background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
+    background-size: auto;
+    animation: record-btn-on-pulse 2s steps(10) infinite;
+}
+.incoming-call-overlock .c-toolbar > button.rec-btn::after {
+    @apply content-empty;
+    @apply absolute inset-0;
+    @apply pointer-events-none;
+    @apply opacity-0;
+    border-radius: inherit;
+    box-shadow: 0 0 1rem 0 var(--magenta-60);
+}
+.incoming-call-overlock .c-toolbar > button.rec-btn.recording::after {
+    animation: record-btn-glow 1s steps(10) forwards;
+    animation-delay: var(--anim-phase, 0s);
+}
+.incoming-call-overlock .c-toolbar > button.rec-btn i {
+    @apply text-xl leading-5;
+}
+.incoming-call-overlock .c-toolbar > button.rec-btn i.left {
+    @apply -mr-0.5;
+}
+/* Dialing: nothing to record yet, so the button is disabled until the peer answers. */
+.incoming-call-overlock .c-toolbar > button.rec-btn:disabled {
+    @apply opacity-40;
+    animation-play-state: paused;
 }
 
 /* ── Modal action buttons: a centered row of round buttons — Decline · Mute · Message · Accept ── */

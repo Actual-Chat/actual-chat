@@ -253,6 +253,27 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         ClearAcceptingForegroundEventually();
     }
 
+    // Shows the full-screen call view for my own outgoing call while it's still dialing (narrow only),
+    // so the caller sees "Dialing..." instead of nothing. It flows straight into the in-call view once
+    // JoinAnsweredCall sets the same _foregroundCallChatId; IsForegroundCallActive keeps it up meanwhile.
+    public void ShowOutgoingCall(ChatId chatId)
+    {
+        if (Hub.BrowserInfo.ScreenSize.Value.IsNarrow())
+            _foregroundCallChatId.Value = chatId;
+    }
+
+    // Hangs up my own still-dialing outgoing call from the full-screen view.
+    public async Task CancelForegroundCall(ChatId chatId)
+    {
+        ClearForegroundCall(chatId);
+        try {
+            await LiveSessionUI.CancelCall(chatId, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "CancelCall failed for chat #{ChatId}", chatId);
+        }
+    }
+
     public async Task Decline(ChatId chatId)
     {
         var isOverLockScreen = _overLockChatId.Value == chatId;
@@ -372,6 +393,13 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return false;
 
         if (await _isAcceptingForeground.Use(cancellationToken).ConfigureAwait(false))
+            return true;
+
+        // My own outgoing call keeps the screen up while it's still dialing; once it's answered the
+        // accepting-foreground grace above and IsStillInCall below take over, and a declined/unanswered
+        // call drops out of Dialing so the screen tears down.
+        var callStatus = await LiveSessionUI.GetCallStatus(chatId, cancellationToken).ConfigureAwait(false);
+        if (callStatus == CallStatus.Dialing)
             return true;
 
         return await IsStillInCall(chatId, cancellationToken).ConfigureAwait(false);

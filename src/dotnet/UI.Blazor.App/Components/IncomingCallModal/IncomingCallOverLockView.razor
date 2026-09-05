@@ -1,4 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Live
+@using ActualChat.UI.Blazor.App.Module
 @using ActualLab.Diagnostics
 @inherits ComputedStateComponent<AppUIHub, IncomingCallOverLockView.ComputedModel>
 @{
@@ -7,49 +9,154 @@
         return;
 }
 
-<div class="incoming-call-overlock @(m.Phase == CallPhase.InCall ? "in-call" : "")">
-    <div class="c-body">
-        <ChatIcon Chat="@chat" Size="SquareSize.Size30" IsSquare="@true" HideTitle="@true"/>
-        <div class="c-title">@chat.Title</div>
-        <div class="c-subtitle">
-            @if (m is { Phase: CallPhase.InCall, JoinedAt: { } joinedAt }) {
-                <LiveDuration StartedAt="@joinedAt"/>
-            }
-            else {
-                @StatusText(m)
-            }
-        </div>
+<div class="incoming-call-overlock @(m.Phase == CallPhase.InCall ? "in-call" : "ringing")">
+    <div class="c-bg">
+        <ChatIcon Chat="@chat" Size="SquareSize.SizeFull"
+                  IsSquare="@true" IsBlurred="@true" ShowFullSizeAvatar="@true" HideTitle="@true"/>
     </div>
-    <div class="c-buttons">
+    <div class="c-scrim"></div>
+
+    @if (m.Phase == CallPhase.Ringing) {
+        <div class="c-topbar c-brand">
+            <i class="icon-voxt"></i>
+            <span>@L.Call_AppIncomingTitle</span>
+        </div>
+    }
+    else {
+        <div class="c-topbar c-call-bar">
+            <HeaderButton Class="btn-video-panel" Click="@OnGoToChatClick">
+                <i class="icon-collapse text-lg"></i>
+            </HeaderButton>
+            <HeaderButton Class="btn-video-panel talking" Click="@OnHangUpClick">
+                <i class="icon-phone-off"></i>
+            </HeaderButton>
+        </div>
+    }
+
+    <div class="c-body">
+        <div class="c-avatar">
+            <ChatIcon Chat="@chat" Size="SquareSize.Size24" HideTitle="@true"/>
+        </div>
+        <div class="c-name">
+            @if (m is { Phase: CallPhase.InCall, IsMuted: true }) {
+                <i class="icon-mic-off c-name-mic"></i>
+            }
+            <span class="c-name-text">@chat.Title</span>
+        </div>
+        <div class="c-status">@StatusText(m)</div>
+        @if (m is { Phase: CallPhase.InCall, JoinedAt: { } joinedAt }) {
+            <div class="c-timer"><LiveDuration StartedAt="@joinedAt"/></div>
+        }
+    </div>
+
+    <div class="c-footer">
         @if (m.Phase == CallPhase.Ringing) {
-            <Button Class="btn-decline btn-danger" Click="@OnDeclineClick">
-                <i class="icon-close text-2xl"></i>
-            </Button>
-            <Button Class="btn-mute" Click="@OnMuteClick">
-                <i class="@(m.IsMuted ? "icon-bell" : "icon-bell-off") text-2xl"></i>
-            </Button>
-            <Button Class="btn-message" Click="@OnMessageClick">
-                <i class="icon-message-ellipse text-2xl"></i>
-            </Button>
-            <Button Class="btn-accept btn-primary" Click="@OnAcceptClick">
-                <i class="icon-phone-take text-2xl"></i>
-            </Button>
+            <div class="c-ring-buttons" @ref="_ringButtons">
+                <div class="c-btn-cell">
+                    <div class="c-hints" aria-hidden="true">
+                        <svg class="c-hint-chevron" viewBox="0 0 24 14" fill="none" stroke="currentColor"
+                             stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 11 12 3l10 8"/>
+                        </svg>
+                        <svg class="c-hint-chevron" viewBox="0 0 24 14" fill="none" stroke="currentColor"
+                             stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 11 12 3l10 8"/>
+                        </svg>
+                        <svg class="c-hint-chevron" viewBox="0 0 24 14" fill="none" stroke="currentColor"
+                             stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 11 12 3l10 8"/>
+                        </svg>
+                    </div>
+                    <Button Class="c-call-btn c-decline" Click="@OnDeclineClick">
+                        <i class="icon-close"></i>
+                    </Button>
+                    <span class="c-btn-label">@L.Common_Decline</span>
+                </div>
+                <div class="c-btn-cell">
+                    <Button Class="c-call-btn c-mute" Click="@OnMuteClick">
+                        <i class="@(m.IsMuted ? "icon-bell" : "icon-bell-off")"></i>
+                    </Button>
+                    <span class="c-btn-label">@L.Call_Mute</span>
+                </div>
+                <div class="c-btn-cell">
+                    <Button Class="c-call-btn c-message" Click="@OnMessageClick">
+                        <i class="icon-message-ellipse"></i>
+                    </Button>
+                    <span class="c-btn-label">@L.Call_Message</span>
+                </div>
+                <div class="c-btn-cell">
+                    <div class="c-hints" aria-hidden="true">
+                        <svg class="c-hint-chevron" viewBox="0 0 24 14" fill="none" stroke="currentColor"
+                             stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 11 12 3l10 8"/>
+                        </svg>
+                        <svg class="c-hint-chevron" viewBox="0 0 24 14" fill="none" stroke="currentColor"
+                             stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 11 12 3l10 8"/>
+                        </svg>
+                        <svg class="c-hint-chevron" viewBox="0 0 24 14" fill="none" stroke="currentColor"
+                             stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 11 12 3l10 8"/>
+                        </svg>
+                    </div>
+                    <Button Class="c-call-btn c-accept" Click="@OnAcceptClick">
+                        <i class="icon-phone-take"></i>
+                    </Button>
+                    <span class="c-btn-label">@L.Common_Accept</span>
+                </div>
+            </div>
         }
         else {
-            <Button Class="btn-to-chat btn-primary" Click="@OnGoToChatClick">
-                <i class="icon-message-ellipse text-2xl"></i>
-            </Button>
-            <Button Class="btn-hangup btn-danger" Click="@OnHangUpClick">
-                <i class="icon-phone-off text-2xl"></i>
-            </Button>
+            <div class="c-toolbar">
+                @* Mobile switches the front/back camera; anywhere else (incl. a narrow desktop window)
+                   keeps screen share, which is where sharing actually makes sense. *@
+                @if (Hub.BrowserInfo.IsMobile) {
+                    <HeaderButton Class="btn-video-panel" Click="@OnSwitchCameraClick">
+                        <i class="icon-camera-switch text-lg"></i>
+                    </HeaderButton>
+                }
+                else {
+                    <HeaderButton Class="btn-video-panel" Click="@OnScreenShareClick">
+                        <i class="icon-screen-share text-lg"></i>
+                    </HeaderButton>
+                }
+                <HeaderButton Class="btn-video-panel" Click="@OnVideoClick">
+                    <i class="icon-video text-lg"></i>
+                </HeaderButton>
+                <HeaderButton
+                    Click="@(() => OnToggleRecordingClick(!m.IsRecording))"
+                    IsDisabled="@m.IsDialing"
+                    Class="@("btn-video-panel rec-btn " + (m.IsRecording ? "recording" : ""))">
+                    @if (m.IsRecording) {
+                        <active-recording-svg size="8" isRecording="true"/>
+                    } else {
+                        <i class="icon-recorder-left-half left"></i>
+                        <i class="icon-recorder-right-half right"></i>
+                    }
+                </HeaderButton>
+                <HeaderButton Class="btn-video-panel c-speaker">
+                    <i class="icon-volume-up-2 text-lg"></i>
+                </HeaderButton>
+                <HeaderButton Class="btn-video-panel" Click="@OnOptionsClick">
+                    <i class="icon-options-2 text-lg"></i>
+                </HeaderButton>
+            </div>
         }
     </div>
 </div>
 
 @code {
+    private static readonly string JSCreateSwipe = $"{BlazorUIAppModule.ImportName}.IncomingCallSwipe.create";
+
     private bool _shownOverLock;
+    private ElementReference _ringButtons;
+    private DotNetObjectReference<IncomingCallOverLockView>? _dotNetRef;
+    private IJSObjectReference? _swipeRef;
     private IncomingCallUI IncomingCallUI => Hub.IncomingCallUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private CameraUI CameraUI => Hub.CameraUI;
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
@@ -67,6 +174,37 @@
         }
         else if (!isShowing && _shownOverLock)
             _shownOverLock = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        // Attach the swipe-to-answer controller while the ringing buttons are on screen (it no-ops on
+        // non-touch, so the buttons keep their native click there), detach otherwise.
+        var isRinging = State.Value is { Chat: not null, Phase: CallPhase.Ringing };
+        if (isRinging && _swipeRef is null) {
+            _dotNetRef ??= DotNetObjectReference.Create(this);
+            _swipeRef = await Hub.JS
+                .InvokeAsync<IJSObjectReference>(JSCreateSwipe, _ringButtons, _dotNetRef)
+                .ConfigureAwait(true);
+        }
+        else if (!isRinging && _swipeRef is not null) {
+            await _swipeRef.DisposeAsync().ConfigureAwait(true);
+            _swipeRef = null;
+        }
+    }
+
+    [JSInvokable]
+    public Task SwipeAccept() => OnAcceptClick();
+
+    [JSInvokable]
+    public Task SwipeDecline() => OnDeclineClick();
+
+    public override async ValueTask DisposeAsync() {
+        if (_swipeRef is not null) {
+            await _swipeRef.DisposeAsync().ConfigureAwait(true);
+            _swipeRef = null;
+        }
+        _dotNetRef?.Dispose();
+        await base.DisposeAsync().ConfigureAwait(true);
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
@@ -103,12 +241,31 @@
             };
         }
 
+        var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
+        var isRecording = recordingChatId == id;
+
         var inCall = await LiveSessionUI.AmIInLiveConversation(id, cancellationToken).ConfigureAwait(false);
         if (inCall) {
             var joinedAt = await GetJoinedAt(id, cancellationToken).ConfigureAwait(false);
             DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → InCall, joinedAt={JoinedAt}",
                 id, joinedAt);
-            return new() { Chat = chat, Phase = CallPhase.InCall, JoinedAt = joinedAt, IsOverLock = isOverLock };
+            return new() {
+                Chat = chat, Phase = CallPhase.InCall, JoinedAt = joinedAt,
+                IsRecording = isRecording, IsOverLock = isOverLock,
+            };
+        }
+
+        // My own outgoing call, still dialing (or just answered, before my audio has started): show the
+        // same full-screen call view with a "Dialing..." status instead of nothing.
+        var callStatus = await LiveSessionUI.GetCallStatus(id, cancellationToken).ConfigureAwait(false);
+        if (callStatus is CallStatus.Dialing or CallStatus.Accepted) {
+            DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → Outgoing ({Status})",
+                id, callStatus);
+            return new() {
+                Chat = chat, Phase = CallPhase.InCall,
+                IsDialing = callStatus == CallStatus.Dialing,
+                IsRecording = isRecording, IsOverLock = isOverLock,
+            };
         }
 
         DebugLog?.LogInformation(
@@ -160,12 +317,39 @@
         if (m.Chat is not { } chat)
             return Task.CompletedTask;
 
+        if (m.IsDialing)
+            return IncomingCallUI.CancelForegroundCall(chat.Id);
+
         return m.IsOverLock ? IncomingCallUI.HangUp(chat.Id) : IncomingCallUI.HangUpForegroundCall(chat.Id);
     }
 
+    private void OnVideoClick() {
+        if (State.Value.Chat is { } chat)
+            ChatVideoUI.ToggleVideoCapture(chat.Id);
+    }
+
+    private Task OnSwitchCameraClick()
+        => CameraUI.SwitchCamera();
+
+    private void OnScreenShareClick() {
+        if (State.Value.Chat is { } chat)
+            ChatVideoUI.ToggleScreenCast(chat.Id);
+    }
+
+    private void OnToggleRecordingClick(bool enable) {
+        if (State.Value.Chat is { } chat)
+            _ = ChatAudioUI.SetRecordingChatId(enable ? chat.Id : null);
+    }
+
+    private void OnOptionsClick() {
+        if (State.Value.Chat is { } chat)
+            ChatVideoUI.ShowVoiceSettings(chat.Id);
+    }
+
     private string StatusText(ComputedModel m)
-        => m.Phase == CallPhase.InCall ? L.Call_InCall
-            : m.HasVideo ? L.Call_IncomingVideo : L.Call_Incoming;
+        => m.Phase == CallPhase.InCall
+            ? m.IsDialing ? L.Call_Dialing : L.Call_InCall
+            : L.Call_IsCallingYou;
 
     // Nested types
 
@@ -178,6 +362,9 @@
         public bool HasVideo { get; init; }
         public bool IsMuted { get; init; }
         public Moment? JoinedAt { get; init; }
+        // True for my own outgoing call that's still dialing (hang-up cancels it).
+        public bool IsDialing { get; init; }
+        public bool IsRecording { get; init; }
         // False when this is the narrow-layout foreground screen rather than the real over-lock one.
         public bool IsOverLock { get; init; }
     }
