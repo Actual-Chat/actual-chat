@@ -47,6 +47,9 @@ public static class ClientStartup
             UseAutoFrameDelayerFactory = true,
         };
         RpcCallTimeouts.Default.Command = new RpcCallTimeouts(20, null); // 20s for connecting
+        var cacheFallbackDelay = Constants.Rpc.RemoteComputedCache.CacheFallbackDelay;
+        RpcCallTimeouts.Default.Query = RpcCallTimeouts.Default.Query with { CacheFallbackDelay = cacheFallbackDelay };
+        RpcCallTimeouts.Default.Debug = RpcCallTimeouts.Default.Debug with { CacheFallbackDelay = cacheFallbackDelay };
         ComputedSynchronizer.Default = ComputedSynchronizer.Safe.Instance = new ComputedSynchronizer.Safe() {
             MaxSynchronizeDurationProvider = static _ => TimeSpan.FromSeconds(1),
         };
