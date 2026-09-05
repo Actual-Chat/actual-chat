@@ -18,7 +18,9 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
 
     private readonly Lock _lock = new();
     private bool _isAccelerometerOn;
+#pragma warning disable CS0169 // Read only under ANDROID and IOS
     private bool _isProximityOn;
+#pragma warning restore CS0169
     private Moment _lastSampleAt;
     private Moment _accelerometerStartedAt;
 
