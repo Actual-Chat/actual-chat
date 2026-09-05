@@ -72,9 +72,9 @@
 //   - Versions / VersionSet / API version negotiation — .NET exchanges version
 //     sets during handshake for backward compatibility.  TS has no versioning.
 //   - Diagnostics (CallLogger, CallLogLevel, DebugLog) — per-peer logging/tracing.
-//   - Per-call timeout monitoring (OutboundCallTracker.Maintain) — .NET checks
-//     elapsed time against per-method timeouts.  TS relies on WebSocket-level
-//     disconnect + rejectAll.
+//   Ported since: per-call timeout monitoring — see `_maintainOutboundCalls`, which
+//   applies RpcCallTimeouts the way .NET splits them between `HandleDisconnect`
+//   (ConnectTimeout, while the peer is away) and `Maintain` (RunTimeout, while connected).
 //   - Inbound call cancellation propagation — when $sys.Cancel is received, .NET
 //     cancels the inbound call's CancellationTokenSource, aborting the running
 //     service method.  TS removes the call from the inbound tracker but does not
@@ -258,6 +258,8 @@ export abstract class RpcPeer {
     /** Wall-clock time of the last inbound `$sys.KeepAlive`, or 0 if none yet
      *  for the current connection. Useful for diagnostics. */
     private _lastKeepAliveAt = 0;
+    /** When the current outage began; 0 until the peer has been connected at least once. */
+    private _disconnectedAt = 0;
     /** Outbound keep-alive send period. Initialized from `hub.limits` at
      *  construction; set directly to override on a single peer. */
     keepAlivePeriodMs: number;
@@ -281,17 +283,15 @@ export abstract class RpcPeer {
 
     /** Fail outbound calls whose per-call {@link RpcCallTimeouts} elapsed —
      *  the connect timeout while a call still awaits the wire, the run timeout
-     *  once it has been sent. Mirrors .NET `RpcOutboundCallTracker.Maintain`
-     *  (RpcCallTrackers.cs:108-207). Calls without timeouts (queries) never
-     *  time out here. */
+     *  once it has been sent, and the connect timeout again for any pending call while the
+     *  peer is away. Mirrors .NET `RpcOutboundCallTracker.HandleDisconnect` (ConnectTimeout,
+     *  per outage) plus `Maintain` (RunTimeout, per connection). Calls without timeouts
+     *  (queries) never time out here. */
     private _maintainOutboundCalls(): void {
         const now = Date.now();
-        // Run timeouts apply only while the link looks alive: .NET's Maintain
-        // loop is per-connection (RpcPeer.cs:363-367) and skips timeout checks
-        // when keep-alive is stale (RpcCallTrackers.cs:122-127) — otherwise
-        // calls sent before a disconnect/stall would be failed instead of
-        // being resent on reconnect. Connect timeouts always apply, matching
-        // .NET's ConnectTimeout on the connection wait (RpcOutboundCall.cs:103-115).
+        // Run timeouts apply only while the link looks alive: .NET's `Maintain` loop is
+        // per-connection and skips timeout checks when keep-alive is stale — otherwise calls
+        // sent before a disconnect/stall would be failed instead of being resent on reconnect.
         const canRunTimeout = this._isConnected
             && (this._lastKeepAliveAt === 0 || now - this._lastKeepAliveAt <= this.keepAliveTimeoutMs);
         for (const call of [...this.outboundCalls.values()]) {
@@ -300,7 +300,15 @@ export abstract class RpcPeer {
                 continue;
 
             let timedOut: string | undefined;
-            if (call.sentAt === 0) {
+            if (!this._isConnected) {
+                // While the peer is away, ConnectTimeout caps every pending call, sent or not:
+                // a sent call is waiting for the same reconnect an unsent one is. It runs from
+                // the later of the disconnect and the call, so a call issued mid-outage still
+                // gets its full timeout. Mirrors .NET `RpcOutboundCallTracker.HandleDisconnect`.
+                const since = Math.max(this._disconnectedAt, call.startedAt);
+                if (now - since >= timeouts.connectTimeoutMs)
+                    timedOut = `connect timeout (${timeouts.connectTimeoutMs}ms)`;
+            } else if (call.sentAt === 0) {
                 if (now - call.startedAt >= timeouts.connectTimeoutMs)
                     timedOut = `connect timeout (${timeouts.connectTimeoutMs}ms)`;
             } else if (canRunTimeout && now - call.sentAt >= timeouts.runTimeoutMs)
@@ -358,10 +366,13 @@ export abstract class RpcPeer {
         // `Connected`.
         if (value === RpcConnectionState.Connected) {
             this._isConnected = true;
+            this._disconnectedAt = 0;
             this._armKeepAliveWatchdog();
         } else if (value === RpcConnectionState.Disconnected) {
-            if (previousState === RpcConnectionState.Connected)
+            if (previousState === RpcConnectionState.Connected) {
                 this._isConnected = false;
+                this._disconnectedAt = Date.now();
+            }
             this._disarmKeepAliveWatchdog();
         }
         this.connectionStateChanged.trigger(value);
@@ -401,6 +412,8 @@ export abstract class RpcPeer {
             // misses the case where the conn closes mid-handshake (state
             // still `Connecting`) or was set up via `connectWith` (state
             // still `Disconnected`).
+            if (this._isConnected)
+                this._disconnectedAt = Date.now(); // The outage starts here, not in _setConnectionState
             this._isConnected = false;
             // Mirrors RpcPeer.cs:524-526 — log disconnect with reason if present.
             if (ev.reason)
