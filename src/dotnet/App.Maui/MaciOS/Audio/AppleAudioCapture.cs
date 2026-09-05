@@ -40,8 +40,6 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
         }
     }
 
-    public ResamplerFactory ResamplerFactory => field ??= hub.Services.GetRequiredService<ResamplerFactory>();
-
     private AudioEngines AudioEngines => field ??= hub.Services.GetRequiredService<AudioEngines>();
     private AudioFocusUI AudioFocusUI => field ??= hub.AudioFocusUI;
     private ILogger Log => field ??= hub.Services.LogFor(GetType());
@@ -86,7 +84,7 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
                 engine.Input.SetVoiceProcessingEnabled(true);
 
             var hwFormat = engine.Input.GetOutputFormat();
-            using var resampler = ResamplerFactory.Create(hwFormat, AudioEngine.VoiceRecordingFormat);
+            using var resampler = new Resampler(hwFormat, AudioEngine.VoiceRecordingFormat);
             if (preRoll is { } take) {
                 // Only a format match is safe: a route change between arming and draining would make
                 // the buffered samples the wrong rate for this resampler.
