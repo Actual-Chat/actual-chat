@@ -113,25 +113,33 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
     protected virtual Task<LogTile> GetTile(Tile<long> idTile, CancellationToken cancellationToken)
     {
         lock (_lock) {
-            if (_events.Count == 0)
-                return Task.FromResult(LogTile.Empty);
-
-            var intersectingRange = idTile.Range.IntersectWith(new(_events[0].Id, _events[^1].Id + 1));
-            if (intersectingRange.IsEmptyOrNegative)
-                return Task.FromResult(LogTile.Empty);
-
-            _events.GetSpans(out var first, out var second);
-            var tile = new LogTile(idTile.Range, [..GetSpan(first, intersectingRange), ..GetSpan(second, intersectingRange)]);
-            return Task.FromResult(tile);
+            var entries = GetEntries(_events, idTile.Range);
+            return Task.FromResult(entries.Length == 0 ? LogTile.Empty : new LogTile(idTile.Range, entries));
         }
+    }
 
-        static ReadOnlySpan<LogEntry> GetSpan(ReadOnlySpan<LogEntry> source, Range<long> intersectingRange)
+    // It's internal to be accessible from tests
+    internal static LogEntry[] GetEntries(RingBuffer<LogEntry> events, Range<long> idRange)
+    {
+        if (events.Count == 0)
+            return [];
+
+        events.GetSpans(out var first, out var second);
+        return [..GetSpan(first, idRange), ..GetSpan(second, idRange)];
+
+        static ReadOnlySpan<LogEntry> GetSpan(ReadOnlySpan<LogEntry> source, Range<long> idRange)
         {
+            // Intersected with the span's own ids rather than the buffer's: once the buffer wraps, a tile
+            // usually lies wholly in one span, so its ids may start before or after this span entirely
             if (source.IsEmpty)
                 return source;
 
-            var iStart = (int)(intersectingRange.Start - source[0].Id);
-            var iEnd = (int)(intersectingRange.End - intersectingRange.Start + iStart).Clamp(0, source.Length);
+            var range = idRange.IntersectWith(new(source[0].Id, source[^1].Id + 1));
+            if (range.IsEmptyOrNegative)
+                return ReadOnlySpan<LogEntry>.Empty;
+
+            var iStart = (int)(range.Start - source[0].Id);
+            var iEnd = (int)(range.End - source[0].Id);
             return source[iStart..iEnd];
         }
     }

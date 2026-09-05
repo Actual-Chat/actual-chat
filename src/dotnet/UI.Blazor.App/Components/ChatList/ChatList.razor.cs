@@ -30,7 +30,11 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
         if (usePlaceChatListSettings) {
             var placeChatListSettings = ChatListUI.GetPlaceChatListSettings(placeId);
             chatListSettings = await placeChatListSettings.Get(cancellationToken).ConfigureAwait(false);
-            chatId = ChatUI.SelectedChatId.Value;
+            // Only the very first build centers the list on the selected chat and scrolls to it, so it
+            // can't run on the null a not-yet-read SelectedChatId reports
+            if (!ChatUI.WhenReady.IsCompleted)
+                await ChatUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+            chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
             chatIndexTask = chatId is not null
                 ? ChatListUI.IndexOf(placeId, chatId, chatListSettings, cancellationToken)
                 : Task.FromResult(-1);

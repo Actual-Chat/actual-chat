@@ -149,11 +149,15 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
     {
         var shouldRender = !ReferenceEquals(Data, LastData) // Data changed
             || RenderIndex == 0 // OR very first sync render without data loaded
-            || (LastReportedItemVisibility.VisibleKeys.Count == 0 && !Data.HasAllItems);
-        if (JSRef != null! && !shouldRender)
-            _ = JSRef.InvokeVoidAsync("renderSkipped");
+            || (LastReportedItemVisibility.VisibleKeys.Count == 0 && !Data.HasAllItems); // OR no visible items
+        if (!shouldRender) {
+            _ = JSRef?.InvokeVoidAsync("renderSkipped");
+            return false;
+        }
 
-        return shouldRender; // OR there are no visible items
+        // The base gates on State consistency and RenderDelayer. Neither is a skip the JS side must hear
+        // about: an inconsistent State is already being recomputed, and a postponed render is resumed
+        return base.ShouldRender();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
