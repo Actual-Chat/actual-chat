@@ -2,8 +2,8 @@ namespace ActualChat.App.Maui;
 
 /// <summary>
 /// Stand-alone, file-based crash/first-chance-exception logger used for NativeAOT bring-up
-/// debugging when the regular <see cref="FirstChanceExceptionLogger"/> / MAUI logging pipeline
-/// isn't yet functional.
+/// debugging when the regular <see cref="ActualChat.UI.Blazor.App.FirstChanceExceptionLogger"/> /
+/// MAUI logging pipeline isn't yet functional.
 ///
 /// NOT called by default: call <see cref="Use"/> manually from <see cref="MauiProgram"/>'s
 /// static constructor (as the very first statement) when investigating a crash that happens
