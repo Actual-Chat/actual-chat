@@ -637,7 +637,6 @@
             _skipCloseAnimation = m.IsExpanded || m.IsCollapsed || m.IsHidden;
             ChatVideoUI.CloseVideoPanel();
         }
-        StateHasChanged();
     }
 
     private void OnEndingGraceTimeout() {
@@ -648,7 +647,6 @@
             _skipCloseAnimation = m.IsExpanded || m.IsCollapsed || m.IsHidden;
             ChatVideoUI.CloseVideoPanel();
         }
-        StateHasChanged();
     }
 
     // Nested types

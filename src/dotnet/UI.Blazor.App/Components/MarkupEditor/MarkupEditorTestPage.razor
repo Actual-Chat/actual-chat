@@ -54,7 +54,6 @@
     private async Task OnGetMarkupClick() {
         _markup = await _editorRef.GetText();
         _parsedMarkup = await _chatMarkupHub.Parse(_markup, true, default);
-        StateHasChanged();
     }
 
     private async Task OnSetMarkupClick()
@@ -64,7 +63,6 @@
         _markup = text;
         _parsedMarkup = await _chatMarkupHub.Parse(_markup, true, default);
         await _editorRef.Clear();
-        StateHasChanged();
     }
 
     private async Task OnCancel()

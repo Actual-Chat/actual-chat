@@ -132,7 +132,6 @@
             _uploadError = null;
             _uploadSuccess = false;
         }
-        StateHasChanged();
     }
 
     private async Task OnUpload() {
@@ -143,7 +142,9 @@
         _uploadError = null;
         _uploadSuccess = false;
         _uploadProgress = 0;
+#pragma warning disable BL0012 // FusionComponentBase skips the render ComponentBase does after a handler's sync prefix
         StateHasChanged();
+#pragma warning restore BL0012
 
         try {
             var source = _pendingSource;
@@ -191,7 +192,6 @@
         finally {
             _isUploading = false;
             await _picker.ClearSelection();
-            StateHasChanged();
             _ = State.Recompute();
         }
     }
@@ -209,7 +209,9 @@
 
         _isProcessing = true;
         _processError = null;
+#pragma warning disable BL0012 // FusionComponentBase skips the render ComponentBase does after a handler's sync prefix
         StateHasChanged();
+#pragma warning restore BL0012
 
         try {
             var cmd = new Uploads_StartProcessUpload {
@@ -224,7 +226,6 @@
         }
         finally {
             _isProcessing = false;
-            StateHasChanged();
             _ = State.Recompute();
         }
     }

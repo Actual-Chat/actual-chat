@@ -1,4 +1,4 @@
-﻿@namespace ActualChat.UI.Blazor.App.Components
+@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
 @inherits ComputedStateComponent<AppUIHub, ChatSettingsStartModalPage.ComputedModel>
 @{
@@ -225,7 +225,6 @@
 
     private void OnImagePicked(MediaRef mediaRef) {
         _form!.Picture = new (mediaRef);
-        StateHasChanged();
     }
 
     private void OnManageChatTypeClick()

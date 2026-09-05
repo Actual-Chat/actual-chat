@@ -365,7 +365,6 @@
         _permission = granted
             ? CameraPermissionState.Granted
             : CameraPermissionState.Denied;
-        StateHasChanged();
         // The browser silently rejected our request because the site is
         // already blocked at the browser/OS level. Surface that explicitly —
         // a dead click would leave the user thinking the button is broken.
@@ -445,7 +444,9 @@
             return;
 
         _isVideoOn = !_isVideoOn;
+#pragma warning disable BL0012 // FusionComponentBase skips the render ComponentBase does after a handler's sync prefix
         StateHasChanged();
+#pragma warning restore BL0012
         await _session.SetVideoEnabled(_isVideoOn);
     }
 
@@ -490,7 +491,6 @@
         // see CommitMirrorChoice. This lets users try the mirror state in the
         // modal without immediately flipping the on-going call view.
         _isCameraMirrored = !_isCameraMirrored;
-        StateHasChanged();
     }
 
     private async Task CommitMirrorChoice() {
@@ -540,7 +540,9 @@
 
     private async Task OnMicToggle() {
         _isMicOn = !_isMicOn;
+#pragma warning disable BL0012 // FusionComponentBase skips the render ComponentBase does after a handler's sync prefix
         StateHasChanged();
+#pragma warning restore BL0012
 
         // Join mode: preview intent only — applied on "Start video".
         if (!IsSettingsMode)

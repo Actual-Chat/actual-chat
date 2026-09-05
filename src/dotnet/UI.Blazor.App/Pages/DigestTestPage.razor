@@ -130,14 +130,12 @@
             return;
 
         _chatIdsInput = string.Join(", ", modalModel.SelectedChatIds.Select(x => x.Value));
-        StateHasChanged();
     }
 
     private async Task GeneratePreview() {
         _isGenerating = true;
         _error = null;
         _result = null;
-        StateHasChanged();
 
         try {
             var chatIds = _mode == TestMode.Custom
@@ -155,7 +153,6 @@
         }
         finally {
             _isGenerating = false;
-            StateHasChanged();
         }
     }
 

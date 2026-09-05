@@ -3,6 +3,11 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components.VideoPanel;
 
+// Every settings handler here flips local state, renders, then awaits a JS call. FusionComponentBase
+// skips the render ComponentBase does after a handler's synchronous prefix, so dropping these would
+// freeze each control until its JS round-trip returns.
+#pragma warning disable BL0012
+
 public partial class VideoDiagnosticsModal
 {
     private static readonly string JSGetSettingsMethod = $"{BlazorUIAppModule.ImportName}.getVideoDebugSettings";

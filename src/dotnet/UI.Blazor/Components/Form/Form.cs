@@ -46,7 +46,6 @@ public class Form : EditForm, IDisposable
         editContext.OnFieldChanged += EditContextFieldChangedCached;
         editContext.OnValidationStateChanged += OnEditContextValidationStateChanged;
         IsValid = editContext.Validate();
-        StateHasChanged();
     }
 
     protected override void OnAfterRender(bool firstRender)

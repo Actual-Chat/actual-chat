@@ -70,8 +70,8 @@
         try {
             if (_isVerifying)
                 return;
+
             _isVerifying = true;
-            StateHasChanged();
             ICommand<bool> cmd = Purpose switch {
                 TotpPurpose.SignInPhone => new PhoneAuth_ValidateTotp {
                     Session = Session,
@@ -131,7 +131,6 @@
 
         _totpNextSendAt = TotpUI.TotpNextSendAt.Value;
         _timerKey = new(); // To make sure the timer is renewed
-        StateHasChanged();
     }
 
     private void OnTimerTick() {

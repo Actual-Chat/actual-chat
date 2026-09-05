@@ -271,7 +271,6 @@
             _lastActionResult = $"Reactivate failed: {e.Message}";
             Log.LogWarning(e, "Reactivate audio session failed");
         }
-        StateHasChanged();
     }
 
     private async Task OnResumeContext() {
@@ -283,7 +282,6 @@
             _lastActionResult = $"Resume failed: {e.Message}";
             Log.LogWarning(e, "Resume AudioContext failed");
         }
-        StateHasChanged();
     }
 
     private static string YesNo(bool value) => value ? "yes" : "no";

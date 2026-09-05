@@ -53,6 +53,8 @@
         await Completed.InvokeAsync(true);
     }
 
+    // Exists only to give MemberSelector's Changed callback a receiver: the framework's
+    // post-event render is what refreshes this component.
     private void OnSelectionChanged()
-        => StateHasChanged();
+    { }
 }

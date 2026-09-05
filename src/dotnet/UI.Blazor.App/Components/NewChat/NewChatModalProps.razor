@@ -1,4 +1,4 @@
-﻿@using ActualChat.Media
+@using ActualChat.Media
 @using System.ComponentModel.DataAnnotations
 @inherits FusionComponentBase<AppUIHub>
 @namespace ActualChat.UI.Blazor.App.Components
@@ -165,7 +165,6 @@
 
     private void OnImagePicked(MediaRef mediaRef) {
         _form.Picture = new(mediaRef);
-        StateHasChanged();
     }
 
     private void OnPublicChatClick(bool isPublic) {
@@ -178,13 +177,11 @@
     private void OnAllowGuestAuthorsClick()
     {
         _form.AllowGuestAuthors = !_form.AllowGuestAuthors;
-        StateHasChanged();
     }
 
     private void OnAllowAnonymousAuthorsClick()
     {
         _form.AllowAnonymousAuthors = !_form.AllowAnonymousAuthors;
-        StateHasChanged();
     }
 
     private async Task OnCreate() {

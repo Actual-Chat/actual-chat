@@ -77,7 +77,6 @@
             BannerDef.Dismiss();
         else
             _isDismissed = true; // NOTE(AY) You can't change IsVisible here, coz it's a parameter of component
-        StateHasChanged();
     }
 
     private string BannerCls => Severity switch {

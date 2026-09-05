@@ -63,7 +63,6 @@
 
     private void OnFilter(string filter) {
         _searchQuery = new SearchQuery(filter);
-        StateHasChanged();
     }
 
     private Task OnCommentChanged(string text) {

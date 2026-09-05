@@ -223,7 +223,6 @@
             newValue = "";
         _form.Phone = newValue;
         _form.ParsedPhone = await Phones.ParseWithCountryFallback(Session, newValue, default);
-        StateHasChanged();
     }
 
     private Task OnDeleteAccountClick()

@@ -24,7 +24,6 @@ public partial class AudioBlobDownloadTestPage : ComponentBase
         _resolved = null;
         _downloadHref = "";
         _downloadFileName = "";
-        StateHasChanged();
         try {
             if (!TryParseInput(_form.Input, UrlMapper, out var chatId, out var lid, out var parseError)) {
                 _status = parseError;
@@ -72,7 +71,6 @@ public partial class AudioBlobDownloadTestPage : ComponentBase
         }
         finally {
             _isBusy = false;
-            StateHasChanged();
         }
     }
 

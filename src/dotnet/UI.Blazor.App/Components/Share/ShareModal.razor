@@ -1,4 +1,4 @@
-﻿@namespace ActualChat.UI.Blazor.App.Components
+@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
 @inherits ComponentBase<AppUIHub>
 @implements IModalView<ShareModalModel>
@@ -97,7 +97,6 @@
 
     private void OnFilter(string filter) {
         _searchQuery = new SearchQuery(filter);
-        StateHasChanged();
     }
 
     private async Task OnSendClicked() {
