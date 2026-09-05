@@ -46,8 +46,6 @@ public abstract class ComputedStateComponent<THub, TState> : ComputedStateCompon
     {
         // ComputeStateOnThreadPool: prevents blocking the UI thread
         Options = DefaultOptions | ComputedStateComponentOptions.ComputeStateOnThreadPool;
-        // Fusion's default since 14.4.3, but kept explicit: these components must render after every event.
-        MustRenderAfterEvent = true;
     }
 
     public override Task SetParametersAsync(ParameterView parameters)
