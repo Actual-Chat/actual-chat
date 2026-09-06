@@ -1,20 +1,24 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public class LeftPanel : IDisposable
+public sealed class LeftPanel : IDisposable
 {
+    private static readonly TimeSpan SettleDelay = TimeSpan.FromMilliseconds(333);
+
     private readonly MutableState<bool> _isVisible;
     private readonly ComputedState<bool> _canBeHidden;
-    private ILogger? _log;
+    private readonly MutableState<bool> _isSettled;
+    private int _isRendered;
 
     private UIHub Hub { get; }
     private History History => Hub.History;
     private Dispatcher Dispatcher => Hub.Dispatcher;
-    private ILogger Log => _log ??= Hub.LogFor(GetType());
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     public PanelsUI Owner { get; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<bool> IsVisible => _isVisible;
     public IState<bool> CanBeHidden => _canBeHidden;
+    public IState<bool> IsSettled => _isSettled;
     public event Action? VisibilityChanged;
 
     public LeftPanel(PanelsUI owner)
@@ -24,6 +28,7 @@ public class LeftPanel : IDisposable
 
         var stateFactory = Hub.StateFactory;
         _isVisible = stateFactory.NewMutable(true, StateCategories.Get(GetType(), nameof(IsVisible)));
+        _isSettled = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSettled)));
         _canBeHidden = stateFactory.NewComputed(
             new ComputedState<bool>.Options() {
                 UpdateDelayer = FixedDelayer.NextTick,
@@ -36,6 +41,22 @@ public class LeftPanel : IDisposable
 
     public void Dispose()
         => _canBeHidden.Dispose();
+
+    public void MarkRendered()
+    {
+        // IsSettled is what the middle panel waits for before its own first render, so the two don't
+        // compete for the same frame at startup
+        if (Interlocked.Exchange(ref _isRendered, 1) != 0)
+            return;
+
+        _ = MarkSettledAfterDelay();
+        return;
+
+        async Task MarkSettledAfterDelay() {
+            await Task.Delay(SettleDelay).ConfigureAwait(true);
+            _isSettled.Value = true;
+        }
+    }
 
     public void SetIsVisible(bool value)
         => _ = Dispatcher.InvokeSafeAsync(() => {

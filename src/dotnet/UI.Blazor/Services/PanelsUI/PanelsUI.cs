@@ -29,10 +29,10 @@ public partial class PanelsUI : UIWorkerBase<UIHub>
         this.Start();
     }
 
-    // Suppresses the auto-hide below for one upcoming navigation to `url`. The place switch needs it:
-    // it changes the URL so the selection follows the place, but the user asked for that place's chat
-    // list, and hiding the list is the one thing that would undo what they just did.
     public void KeepPanelsOn(LocalUrl url)
+        // Suppresses the auto-hide below for one upcoming navigation to `url`. The place switch needs it:
+        // it changes the URL so the selection follows the place, but the user asked for that place's chat
+        // list, and hiding the list is the one thing that would undo what they just did.
         => _keepPanelsUrl = url.Value;
 
     public void HidePanels()
@@ -53,9 +53,10 @@ public partial class PanelsUI : UIWorkerBase<UIHub>
         var url = new LocalUrl(transition.Item.Url);
         if (_keepPanelsUrl is { } keepPanelsUrl) {
             _keepPanelsUrl = null;
-            if (string.Equals(keepPanelsUrl, url.Value, StringComparison.Ordinal))
+            if (keepPanelsUrl == url.Value)
                 return;
         }
+
         if (!url.IsChatRoot()) {
             if (url.IsChat(out var chatId, out long entryLid)) {
                 var oldUrl = new LocalUrl(transition.BaseItem.Url);
@@ -69,6 +70,8 @@ public partial class PanelsUI : UIWorkerBase<UIHub>
             // We want to make sure HidePanels() creates an additional history step,
             // otherwise "Back" from chat will hide the panel AND select the prev. chat.
             await History.WhenNavigationCompleted().ConfigureAwait(false);
+            // The panels slide away from the content that replaces them, not from its skeleton
+            await Middle.WhenContentDisplayed().ConfigureAwait(false);
             HidePanels();
         }
     }

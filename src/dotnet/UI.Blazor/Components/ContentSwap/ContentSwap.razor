@@ -32,6 +32,7 @@
     private string _effectClass = "";
     private string? _holdToken;
     private string? _name;
+    private TaskCompletionSource? _whenDisplayedSource;
     private int _swapIndex;
     private ComponentAnimator? _animator;
     private ElementReference _ref;
@@ -55,6 +56,9 @@
     // the panel's content, say. Off by default: a display signal speaks for one area.
     [Parameter] public bool MustPropagateDisplay { get; set; }
     [Parameter] public bool IsEnabled { get; set; } = true;
+    // Gets the task that completes once the incoming layer is on screen. An Action rather than an
+    // EventCallback: it runs inside OnParametersSet, and a swap isn't news for the parent's rendering
+    [Parameter] public Action<Task>? SwapStarted { get; set; }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ContentSwap))]
     public ContentSwap() { }
@@ -66,6 +70,8 @@
         _blazorRef = null!;
         _animator?.Dispose();
         _animator = null;
+        _whenDisplayedSource?.TrySetResult();
+        _whenDisplayedSource = null;
         _outgoingLayer?.Context.Detach();
         _outgoingLayer = null;
         if (_hasLastKey)
@@ -96,8 +102,7 @@
             if (CanSwap() && Placeholder is not null)
                 StartSwap(NewLayer(Placeholder));
             else
-                _currentLayer.Context.SetState(ContentSwapLayerState.Displayed);
-
+                DisplayCurrentLayer();
             return;
         }
 
@@ -114,7 +119,7 @@
         else {
             outgoingLayer.Context.SetState(ContentSwapLayerState.Replaced);
             outgoingLayer.Context.Detach();
-            _currentLayer.Context.SetState(ContentSwapLayerState.Displayed);
+            DisplayCurrentLayer();
         }
     }
 
@@ -163,6 +168,10 @@
         // Blazor only writes an attribute back when its own value changed
         _swapIndex++;
         _holdToken = _swapIndex.Format();
+        // The superseded swap's incoming layer is what's on screen now, so it counts as displayed
+        _whenDisplayedSource?.TrySetResult();
+        var whenDisplayedSource = _whenDisplayedSource = TaskCompletionSourceExt.New();
+        SwapStarted?.Invoke(whenDisplayedSource.Task);
         _animator ??= new ComponentAnimator(this, Duration);
         _animator.BeginAnimation(MaxDisplayDelay);
         ChatSwitchTracer.Mark($"ContentSwap[{TraceName}].StartSwap - HOLD STARTS",
@@ -173,7 +182,7 @@
         ChatSwitchTracer.Mark($"ContentSwap[{TraceName}].Display - CONTENT SWAPPED");
         _holdToken = null;
         _outgoingLayer!.Context.SetState(ContentSwapLayerState.Replaced);
-        _currentLayer.Context.SetState(ContentSwapLayerState.Displayed);
+        DisplayCurrentLayer();
         _animator!.BeginAnimation(Duration);
     }
 
@@ -183,6 +192,12 @@
         _outgoingLayer = null;
         _currentLayer.CssClass = "";
         _effectClass = "";
+    }
+
+    private void DisplayCurrentLayer() {
+        _currentLayer.Context.SetState(ContentSwapLayerState.Displayed);
+        _whenDisplayedSource?.TrySetResult();
+        _whenDisplayedSource = null;
     }
 
     private Layer NewLayer(RenderFragment? content)

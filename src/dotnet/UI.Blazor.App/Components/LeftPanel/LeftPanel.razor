@@ -30,10 +30,18 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? WidePanelBottomContent { get; set; }
 
+    public void Dispose()
+        => PanelsUI.Left.VisibilityChanged -= _leftPanelVisibilityChanged;
+
     protected override void OnInitialized() {
         _isOpen = PanelsUI.Left.IsVisible.Value;
         _leftPanelVisibilityChanged = OnLeftPanelVisibilityChanged;
         PanelsUI.Left.VisibilityChanged += _leftPanelVisibilityChanged;
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (firstRender)
+            PanelsUI.Left.MarkRendered();
     }
 
     private void OnLeftPanelVisibilityChanged() {
@@ -44,7 +52,4 @@
         _isOpen = isOpen;
         StateHasChanged();
     }
-
-    public void Dispose()
-        => PanelsUI.Left.VisibilityChanged -= _leftPanelVisibilityChanged;
 }

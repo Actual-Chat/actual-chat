@@ -27,6 +27,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private SharedResourcePool<ChatId, MutableState<ReadPosition>>.Lease? _viewPositionLease;
     private MutableState<ChatViewItemVisibility> _itemVisibility = null!;
     private MutableState<long> _shownReadEntryLid = null!;
+    private bool _wasChatViewVisible = true;
     private MutableState<ChatViewNavigation?> _nextNavigation = null!;
     // Both are touched by GetData on the pool, by UpdateReadState's chain and by the visibility report on the
     // dispatcher: the line bookkeeping is one immutable snapshot swapped as a reference, the lid is Interlocked
@@ -457,19 +458,19 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (isFirstGetData)
             ChatSwitchTracer.Mark("ChatView.GetData#1: WhenInitialized awaited");
 
-        var isChatViewVisible = regionVisibility.IsVisible;
-        if (!isChatViewVisible.Value) {
-            ChatSwitchTracer.Mark("ChatView.GetData: SUSPENDED - region not visible", chatId);
-            // Chat is invisible now, let's suspend & await for it to become visible
+        // Data is built whether or not this region is on screen - a panel covering it is usually one
+        // that's about to slide away, and what's underneath has to be ready by then. Visibility drives
+        // the read state instead: a chat that comes back on screen starts its unread tracking over.
+        var isChatViewVisible = await regionVisibility.IsVisible.Use(cancellationToken).ConfigureAwait(false);
+        if (isChatViewVisible != _wasChatViewVisible) {
+            _wasChatViewVisible = isChatViewVisible;
             ChatUI.ResetItemVisibility(chatId);
-            using (Computed.BeginIsolation())
-                await isChatViewVisible.Computed.When(x => x, cancellationToken).ConfigureAwait(false);
-            _shownReadEntryLid.Value = ReadPosition.Value.EntryLid;
-            ResetNewMessagesLineState();
-            _itemVisibility.Value = ChatViewItemVisibility.Empty;
-            // A report from the pre-suspend rendering may have landed while we awaited visibility
-            ChatUI.ResetItemVisibility(chatId);
-            ChatSwitchTracer.Mark("ChatView.GetData: RESUMED - region visible", chatId);
+            if (isChatViewVisible) {
+                _shownReadEntryLid.Value = ReadPosition.Value.EntryLid;
+                ResetNewMessagesLineState();
+                _itemVisibility.Value = ChatViewItemVisibility.Empty;
+            }
+            ChatSwitchTracer.Mark("ChatView.GetData: region visibility changed", isChatViewVisible);
         }
 
         // Update delay: we want to collect as many dependencies as possible here,
