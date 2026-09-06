@@ -60,8 +60,9 @@ public partial class SearchUI
         }
         _isSearchModeOn.Value = !criteria.Text.IsNullOrEmpty();
         _isResultsNavigationOn.Value = false;
-        _cached = new Cached(foundItems);
-        var messageSearchMatches = _cached.FoundItems
+        var cached = new Cached(foundItems);
+        Volatile.Write(ref _cached, cached); // Publication: the compute methods read it off other threads
+        var messageSearchMatches = cached.FoundItems
             .Where(x => x.Scope is SearchScope.Messages && !x.IsGlobalSearchPlaceholder)
             .ToDictionary(x => x.EntryId!, IReadOnlySet<string> (x) => x.HighlightedWords);
         HighlightUI.Set(messageSearchMatches);
@@ -78,7 +79,7 @@ public partial class SearchUI
                 var isExpanded = criteria.ExtendedLimits.Contains(scope);
                 var canExpandOrCollapse = isExpanded || hasMore;
                 var displayCount = Math.Min(scopeResults.Count, displayLimit);
-                for (int i = 0; i < displayCount; i++) {
+                for (var i = 0; i < displayCount; i++) {
                     foundItems.Add(new (scopeResults[i],
                         scope,
                         false,

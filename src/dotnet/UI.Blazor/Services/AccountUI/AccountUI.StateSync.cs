@@ -64,13 +64,14 @@ public partial class AccountUI
 
             var info = PendingRegistrationInfo.TryParseJson(json);
             if (info is null) {
-                _pendingRegistrationToken = null;
+                Volatile.Write(ref _pendingRegistrationToken, null);
                 continue;
             }
-            if (info.Token == _pendingRegistrationToken)
+            if (info.Token == Volatile.Read(ref _pendingRegistrationToken))
                 continue; // Same prompt is already shown — don't reopen
 
-            _pendingRegistrationToken = info.Token;
+            // Publication: the modal below reads it back on the dispatcher
+            Volatile.Write(ref _pendingRegistrationToken, info.Token);
             await Hub.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
             var infoCopy = info;
             try {
@@ -205,7 +206,7 @@ public partial class AccountUI
         var modalRef = await Hub.ModalUI.Show(model).ConfigureAwait(true);
         await modalRef.WhenClosed.ConfigureAwait(true);
 
-        if (!isConfirmed && _pendingRegistrationToken == info.Token) {
+        if (!isConfirmed && Volatile.Read(ref _pendingRegistrationToken) == info.Token) {
             // User dismissed without confirming — clear the prompt and show a sign-in error.
             _ = commander.Run(new Accounts_CancelRegister {
                 Session = session,

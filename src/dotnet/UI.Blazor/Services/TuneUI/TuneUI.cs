@@ -79,7 +79,7 @@ public abstract class TuneUI : ProcessorBase
         try {
             await WhenCanVibrateKnown().ConfigureAwait(false);
             var resolvedTunes = Resolve(CanVibrate);
-            _resolvedTunes = resolvedTunes;
+            Volatile.Write(ref _resolvedTunes, resolvedTunes);
             _backendRef ??= DotNetObjectReference.Create(this);
             await Hub.JS.InvokeVoidAsync(JSInitMethod, _backendRef, resolvedTunes).ConfigureAwait(false);
         }
@@ -128,8 +128,7 @@ public abstract class TuneUI : ProcessorBase
         => Task.CompletedTask;
 
     protected TuneInfo? GetTuneInfo(Tune tune)
-        // Falls back to the unresolved table for a tune played before Initialize completed
-        => (_resolvedTunes ?? Tunes).GetValueOrDefault(tune);
+        => (Volatile.Read(ref _resolvedTunes) ?? Tunes).GetValueOrDefault(tune);
 
     // Private methods
 

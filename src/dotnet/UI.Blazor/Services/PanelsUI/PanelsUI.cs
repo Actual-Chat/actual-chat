@@ -29,12 +29,6 @@ public partial class PanelsUI : UIWorkerBase<UIHub>
         this.Start();
     }
 
-    public void KeepPanelsOn(LocalUrl url)
-        // Suppresses the auto-hide below for one upcoming navigation to `url`. The place switch needs it:
-        // it changes the URL so the selection follows the place, but the user asked for that place's chat
-        // list, and hiding the list is the one thing that would undo what they just did.
-        => _keepPanelsUrl = url.Value;
-
     public void HidePanels()
     {
         if (IsWide())
@@ -45,14 +39,18 @@ public partial class PanelsUI : UIWorkerBase<UIHub>
         Right.SetIsVisible(false);
     }
 
+    public void KeepPanelsOn(LocalUrl url)
+        // Suppresses the auto-hide below for one upcoming navigation to `url` - the place switch changes the URL,
+        // but the user asked for that place's chat list. Publication: ChatUI calls this off the dispatcher.
+        => Volatile.Write(ref _keepPanelsUrl, url.Value);
+
     public async ValueTask HandleHistoryTransition(HistoryTransition transition)
     {
         if (transition.LocationChangeKind != LocationChangeKind.NewUri || IsWide())
             return;
 
         var url = new LocalUrl(transition.Item.Url);
-        if (_keepPanelsUrl is { } keepPanelsUrl) {
-            _keepPanelsUrl = null;
+        if (Interlocked.Exchange(ref _keepPanelsUrl, null) is { } keepPanelsUrl) {
             if (keepPanelsUrl == url.Value)
                 return;
         }

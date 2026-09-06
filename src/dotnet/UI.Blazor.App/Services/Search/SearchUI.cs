@@ -10,7 +10,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized, IDisposable
 {
-    private static readonly SearchScope[] Scopes = [SearchScope.People, SearchScope.Groups, SearchScope.Places, SearchScope.Messages ];
+    private static readonly SearchScope[] Scopes =
+        [SearchScope.People, SearchScope.Groups, SearchScope.Places, SearchScope.Messages];
 
     private readonly MutableState<string> _text;
     private readonly MutableState<PlaceId?> _placeId;
@@ -21,6 +22,7 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
     private readonly MutableState<SearchLocationFilter> _locationFilter;
     private readonly MutableState<SearchTypeFilter> _typeFilter;
     private readonly ComputedState<FoundItem?> _selectedItem;
+    // Publication: built on the search debouncer's worker, read by the compute methods below
     private Cached _cached = Cached.None;
 
     public MutableState<string> Text => _text;
@@ -48,15 +50,23 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
         _placeId = stateFactory.NewMutable((PlaceId?)null, StateCategories.Get(GetType(), nameof(_placeId)));
         _isSearchModeOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchModeOn)));
         _isShowRecentOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsShowRecentOn)));
-        _isResultsNavigationOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsResultsNavigationOn)));
-        _isGlobalSearchOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsGlobalSearchOn)));
-        _locationFilter = stateFactory.NewMutable(SearchLocationFilter.Anywhere, StateCategories.Get(GetType(), nameof(LocationFilter)));
-        _typeFilter = stateFactory.NewMutable(SearchTypeFilter.Anything, StateCategories.Get(GetType(), nameof(TypeFilter)));
-        _selectedItem = stateFactory.NewComputed((FoundItem?)null, _ => Task.FromResult(_cached.Selected), StateCategories.Get(GetType(), nameof(SelectedItem)));
+        _isResultsNavigationOn = stateFactory
+            .NewMutable(false, StateCategories.Get(GetType(), nameof(IsResultsNavigationOn)));
+        _isGlobalSearchOn = stateFactory
+            .NewMutable(false, StateCategories.Get(GetType(), nameof(IsGlobalSearchOn)));
+        _locationFilter = stateFactory
+            .NewMutable(SearchLocationFilter.Anywhere, StateCategories.Get(GetType(), nameof(LocationFilter)));
+        _typeFilter = stateFactory
+            .NewMutable(SearchTypeFilter.Anything, StateCategories.Get(GetType(), nameof(TypeFilter)));
+        _selectedItem = stateFactory.NewComputed(
+            (FoundItem?)null,
+            _ => Task.FromResult(Volatile.Read(ref _cached).Selected),
+            StateCategories.Get(GetType(), nameof(SelectedItem)));
         ExtendedLimits = stateFactory
             .NewMutable(ImmutableHashSet<SearchScope>.Empty, StateCategories.Get(GetType(), nameof(ExtendedLimits)));
-        CollapsedGroups = stateFactory
-            .NewMutable(ImmutableHashSet<SearchResultGroupKey>.Empty, StateCategories.Get(GetType(), nameof(CollapsedGroups)));
+        CollapsedGroups = stateFactory.NewMutable(
+            ImmutableHashSet<SearchResultGroupKey>.Empty,
+            StateCategories.Get(GetType(), nameof(CollapsedGroups)));
         NavbarUI.SelectedGroupChanged += NavbarUIOnSelectedGroupChanged;
     }
 
@@ -68,7 +78,7 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
 
     [ComputeMethod] // Synced
     public virtual Task<IReadOnlyList<FoundItem>> GetSearchResults()
-        => Task.FromResult(_cached.FoundItems);
+        => Task.FromResult(Volatile.Read(ref _cached).FoundItems);
 
     [ComputeMethod]
     protected virtual async Task<Criteria> GetCriteria(CancellationToken cancellationToken)
@@ -165,17 +175,12 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
         CollapsedGroups.Value = ImmutableHashSet<SearchResultGroupKey>.Empty;
     }
 
-    private SearchLocationFilter GetDefaultLocationFilter()
-        => Hub.ChatUI.SelectedChatId.ValueOrDefault is PlaceChatId
-            ? SearchLocationFilter.Place
-            : SearchLocationFilter.Anywhere;
-
     public void ShowRecent(bool isOn)
         => _isShowRecentOn.Set(isOn);
 
     public Task Select(FoundItem foundItem, bool mustNavigate = false)
     {
-        if (!_cached.TrySelect(foundItem))
+        if (!Volatile.Read(ref _cached).TrySelect(foundItem))
             return Task.CompletedTask;
 
         _isResultsNavigationOn.Value = true;
@@ -185,20 +190,19 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
 
     public Task SelectPrevious()
     {
-        var selected = _cached.SelectPrevious();
+        var selected = Volatile.Read(ref _cached).SelectPrevious();
         _selectedItem.Invalidate();
         return NavigateTo(selected);
     }
 
     public Task SelectNext()
     {
-        var selected = _cached.SelectNext();
+        var selected = Volatile.Read(ref _cached).SelectNext();
         _selectedItem.Invalidate();
         return NavigateTo(selected);
     }
 
-    private Task NavigateTo(FoundItem? foundItem)
-        => foundItem is not null ? History.NavigateTo(foundItem.Link) : Task.CompletedTask;
+    // Private methods
 
     private void NavbarUIOnSelectedGroupChanged(object? sender, NavbarGroupChangedEventArgs e)
     {
@@ -213,15 +217,27 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
             : SearchLocationFilter.Place;
     }
 
+    private SearchLocationFilter GetDefaultLocationFilter()
+        => Hub.ChatUI.SelectedChatId.ValueOrDefault is PlaceChatId
+            ? SearchLocationFilter.Place
+            : SearchLocationFilter.Anywhere;
+
+    private Task NavigateTo(FoundItem? foundItem)
+        => foundItem is not null
+            ? History.NavigateTo(foundItem.Link)
+            : Task.CompletedTask;
+
     // Nested types
 
     private sealed class Cached(List<FoundItem> foundItems)
     {
-        private int _activeIndex = -1;
-        public IReadOnlyList<FoundItem> FoundItems { get; } = foundItems;
         public static readonly Cached None = new ([]);
 
-        public FoundItem? Selected => _activeIndex >= 0 ? FoundItems[_activeIndex] : null;
+        // Publication: the dispatcher moves the selection, SelectedItem's compute reads it off the pool
+        private int _activeIndex = -1;
+        public IReadOnlyList<FoundItem> FoundItems { get; } = foundItems;
+
+        public FoundItem? Selected => FoundItems.GetValueOrDefault(Volatile.Read(ref _activeIndex));
 
         public bool TrySelect(FoundItem foundItem)
         {
@@ -229,20 +245,22 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
             if (i < 0)
                 return false;
 
-            _activeIndex = i;
+            Volatile.Write(ref _activeIndex, i);
             return true;
         }
 
         public FoundItem? SelectPrevious()
         {
-            _activeIndex = foundItems.PreviousIndexOrLast(_activeIndex);
-            return foundItems.GetValueOrDefault(_activeIndex);
+            var activeIndex = foundItems.PreviousIndexOrLast(Volatile.Read(ref _activeIndex));
+            Volatile.Write(ref _activeIndex, activeIndex);
+            return foundItems.GetValueOrDefault(activeIndex);
         }
 
         public FoundItem? SelectNext()
         {
-            _activeIndex = foundItems.NextIndexOrFirst(_activeIndex);
-            return foundItems.GetValueOrDefault(_activeIndex);
+            var activeIndex = foundItems.NextIndexOrFirst(Volatile.Read(ref _activeIndex));
+            Volatile.Write(ref _activeIndex, activeIndex);
+            return foundItems.GetValueOrDefault(activeIndex);
         }
     }
 
@@ -255,7 +273,8 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
         SearchLocationFilter LocationFilter,
         SearchTypeFilter TypeFilter)
     {
-        public static readonly Criteria None = new ("", null, null, [], false, SearchLocationFilter.Anywhere, SearchTypeFilter.Anything);
+        public static readonly Criteria None = new(
+            "", null, null, [], false, SearchLocationFilter.Anywhere, SearchTypeFilter.Anything);
 
         // We request DisplayLimit + 1 so we can detect whether more results exist beyond what we render.
         public int DisplayLimit(SearchScope scope) => ExtendedLimits.Contains(scope)

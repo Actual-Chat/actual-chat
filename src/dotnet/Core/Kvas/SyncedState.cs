@@ -291,13 +291,13 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
         return hasOrigin != null && hasOrigin.Origin == OwnOrigin;
     }
 
-    public void AddRecentlyWritten(T value)
+    private void AddRecentlyWritten(T value)
     {
         CleanupRecentlyWritten();
         RecentlyWritten.Enqueue(new Expiring<T>(value, CpuClock.Now + SyncedState.MaxDiscardedWriteAge));
     }
 
-    public bool IsRecentlyWritten(T value, bool mustRemove)
+    private bool IsRecentlyWritten(T value, bool mustRemove)
     {
         var now = CpuClock.Now;
         var equalityComparer = EqualityComparer<T>.Default;
@@ -317,7 +317,7 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
         return false;
     }
 
-    public void CleanupRecentlyWritten(int removeCount = 0)
+    private void CleanupRecentlyWritten(int removeCount = 0)
     {
         var now = CpuClock.Now;
         var i = 0;
