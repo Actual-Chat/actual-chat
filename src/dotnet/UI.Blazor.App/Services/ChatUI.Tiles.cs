@@ -112,10 +112,9 @@ public partial class ChatUI
 
     private ChatEntry? _audioRecordingEntry;
 
-    private IImmutableSet<ConversationId> LastConversationExpansionOverrides { get; set; } =
-        ImmutableHashSet<ConversationId>.Empty;
-    private IImmutableSet<ConversationId> LastAutoExpandedConversations { get; set; } =
-        ImmutableHashSet<ConversationId>.Empty;
+    // Per chat, not per service: the diff below is a one-shot signal, and two open chat views (the
+    // chat page and the video panel's) would otherwise consume each other's. Written under Lock.
+    private readonly ConcurrentDictionary<ChatId, ExpansionSnapshot> _lastExpansions = new();
 
     // Remembers each conversation's IsExpandedByDefault once its tile has been seen, so a conversation
     // keeps its expanded/collapsed state when the VirtualList unloads and reloads its tile mid-session -
@@ -485,7 +484,9 @@ public partial class ChatUI
                                     ? overrides0.Remove(conversationId)
                                     : overrides0.Add(conversationId);
                                 _conversationExpansionOverrides.Value = newOverrides;
-                                LastConversationExpansionOverrides = newOverrides;
+                                _lastExpansions[chatId] = GetLastExpansions(chatId) with {
+                                    Overrides = newOverrides,
+                                };
                             }
                         }
                     }
@@ -510,7 +511,7 @@ public partial class ChatUI
                         var isJoinedExpanded = defaultExpanded.Contains(joinedConversation.Id)
                             ^ joinOverrides.Contains(joinedConversation.Id);
                         if (!isJoinedExpanded) {
-                            // LastConversationExpansionOverrides is deliberately not updated: the diff below
+                            // The chat's last-expansions snapshot is deliberately not updated: the diff below
                             // is what widens the load window, and the rows this expand reveals need it.
                             _conversationExpansionOverrides.Value = joinOverrides.Contains(joinedConversation.Id)
                                 ? joinOverrides.Remove(joinedConversation.Id)
@@ -575,12 +576,12 @@ public partial class ChatUI
                 // Two builds may overlap (a chat switch, or the pre-render call the list abandons), and the
                 // diff is a one-shot signal: an update lost here leaves an expanded conversation blank
                 lock (Lock) {
-                    changedIds = overrides.SymmetricExcept(LastConversationExpansionOverrides)
-                        .Union(autoExpanded.SymmetricExcept(LastAutoExpandedConversations))
+                    var lastExpansions = GetLastExpansions(chatId);
+                    changedIds = overrides.SymmetricExcept(lastExpansions.Overrides)
+                        .Union(autoExpanded.SymmetricExcept(lastExpansions.AutoExpanded))
                         .OrderBy(c => c.StartEntryLid)
                         .ToList();
-                    LastConversationExpansionOverrides = overrides;
-                    LastAutoExpandedConversations = autoExpanded;
+                    _lastExpansions[chatId] = new ExpansionSnapshot(overrides, autoExpanded);
                 }
                 if (changedIds.FirstOrDefault() is { } toggledId)
                     // Extend the data query to cover the toggled conversation's entries. It must extend,
@@ -2053,7 +2054,19 @@ public partial class ChatUI
             : new StreamingTailState(floorLid, isSuppressed, expiresAt);
     }
 
+    private ExpansionSnapshot GetLastExpansions(ChatId chatId)
+        => _lastExpansions.GetValueOrDefault(chatId) ?? ExpansionSnapshot.None;
+
     // Nested types
 
-    private record AudioRecordingMessageTag;
+    private sealed record AudioRecordingMessageTag;
+
+    private sealed record ExpansionSnapshot(
+        IImmutableSet<ConversationId> Overrides,
+        IImmutableSet<ConversationId> AutoExpanded)
+    {
+        public static readonly ExpansionSnapshot None = new(
+            ImmutableHashSet<ConversationId>.Empty,
+            ImmutableHashSet<ConversationId>.Empty);
+    }
 }

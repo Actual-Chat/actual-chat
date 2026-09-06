@@ -6,14 +6,17 @@ public sealed class RenderVars
 
     public RenderVar<T> Get<T>(string name, Func<T>? factory = null)
     {
-        if (_vars.TryGetValue(name, out var renderVar))
-            return (RenderVar<T>)renderVar;
+        // No double-check locking here: we expect this code to run mostly on Blazor dispatcher
+        lock (_vars) {
+            if (_vars.TryGetValue(name, out var renderVar))
+                return (RenderVar<T>)renderVar;
 
-        var value = factory is not null
-            ? factory.Invoke()
-            : default!;
-        var newRenderVar = new RenderVar<T>(name, value);
-        _vars[name] = newRenderVar;
-        return newRenderVar;
+            var value = factory is not null
+                ? factory.Invoke()
+                : default!;
+            var newRenderVar = new RenderVar<T>(name, value);
+            _vars[name] = newRenderVar;
+            return newRenderVar;
+        }
     }
 }

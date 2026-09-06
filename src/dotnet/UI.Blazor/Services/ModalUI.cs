@@ -37,6 +37,11 @@ public sealed class ModalUI(UIHub hub) : UIServiceBase<UIHub>(hub)
         CancellationToken cancellationToken)
         where TModel : class
     {
+        if (!Dispatcher.CheckAccess())
+            return await Dispatcher
+                .InvokeAsync(() => Show(componentType, model, options, cancellationToken).AsTask())
+                .ConfigureAwait(false);
+
         await WhenReady.ConfigureAwait(true);
         await Host.History.WhenNavigationCompletedOrTimeout().ConfigureAwait(true);
         var content = new RenderFragment(builder => {

@@ -12,7 +12,7 @@ namespace ActualChat.UI.Blazor.Services;
 /// mode <see cref="RpcPeerState"/> can't see. It picks one up front by measuring the
 /// candidates, and demotes one that degrades later.
 /// </summary>
-public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
+public sealed class RpcEndpointMonitor : UIWorkerBase<UIHub>
 {
     // Must exceed the ~16KB some networks let through before capping a connection,
     // otherwise a fully throttled link passes the probe.
@@ -54,6 +54,7 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
     // Enough to smooth a single unlucky sample without making the reading lag a real change.
     private const int MeanRoundTripSampleCount = 3;
     private readonly Dictionary<string, EndpointMeasurement> _measurements = new(StringComparer.OrdinalIgnoreCase);
+    private readonly MutableState<ImmutableArray<EndpointInfo>> _endpoints;
     private int _selectedVersion = -1;
     private int _verifiedVersion = -1;
     private int _measuredVersion = -1;
@@ -69,9 +70,13 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
     private ServerTimeSync? TimeSync => field ??= Services.GetService<ServerTimeSync>();
     private RpcClientPeer? Peer => Hub.RpcHub.GetClientPeer(RpcRef.Default);
     private bool IsBackgroundIdle => ActivityState.State.Value == AppActivityState.BackgroundIdle;
-    private MutableState<ImmutableArray<EndpointInfo>> MutableEndpoints
-        => field ??= StateFactory.NewMutable(GetEndpoints());
-    public IState<ImmutableArray<EndpointInfo>> Endpoints => MutableEndpoints;
+
+    public IState<ImmutableArray<EndpointInfo>> Endpoints => _endpoints;
+
+    public RpcEndpointMonitor(UIHub hub) : base(hub)
+        // Created here rather than on first use: this worker and the diagnostics page both reach for
+        // it off different threads, and a lazy would hand them two states on a race
+        => _endpoints = StateFactory.NewMutable(GetEndpoints());
 
     public async Task MeasureEndpoints(CancellationToken cancellationToken)
     {
@@ -97,7 +102,7 @@ public sealed class RpcEndpointMonitor(UIHub hub) : UIWorkerBase<UIHub>(hub)
             }
             endpoints = [..candidates.Select(x => ToEndpointInfo(x, current))];
         }
-        MutableEndpoints.Value = endpoints;
+        _endpoints.Value = endpoints;
     }
 
     // Protected/internal methods

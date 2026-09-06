@@ -70,10 +70,10 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
         var hasQuery = !query.IsNone;
         var minVisibleIndex = visibleIndices.DefaultIfEmpty(firstItem?.Position ?? 0).Min();
         var maxVisibleIndex = visibleIndices.DefaultIfEmpty(lastItem?.Position ?? 0).Max();
-        if (!isFirstRender)
-            Volatile.Write(ref _restoreChatId, null); // The list has a position of its own again
-
-        var restoreChatId = Volatile.Read(ref _restoreChatId);
+        // Only the first build restores an anchor; the visibility report is what retires it
+        var restoreChatId = isFirstRender
+            ? Volatile.Read(ref _restoreChatId)
+            : null;
         var restoreIndexTask = restoreChatId is null
             ? Task.FromResult(-1)
             : ChatListUI.IndexOf(placeId, restoreChatId, chatListSettings, cancellationToken);
@@ -168,6 +168,9 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
         if (visibility.IsEmpty)
             return;
 
+        // The list has a position of its own now, so the anchor it was restoring is spent.
+        // Retired here rather than in GetData, whose result - and side effects - a later build may discard.
+        Volatile.Write(ref _restoreChatId, null);
         var topPosition = visibility.VisibleKeys.Select(int.Parse).Min();
         var topItem = Volatile.Read(ref _items).FirstOrDefault(x => x.Position == topPosition);
         if (topItem?.Chat is { } topChat)
