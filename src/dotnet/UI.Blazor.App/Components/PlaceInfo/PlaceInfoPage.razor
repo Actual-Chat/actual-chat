@@ -33,9 +33,10 @@
     [Parameter] public string? PlaceSid { get; set; }
 
     protected override bool ShouldRender()
-        => ReferenceEquals(_rendered, null)
-            || State.HasError
-            || State.Value != _rendered;
+        => (ReferenceEquals(_rendered, null)
+                || State.HasError
+                || State.Value != _rendered)
+            && base.ShouldRender();
 
     protected override ComputedState<Model?>.Options GetStateOptions()
         => new() {

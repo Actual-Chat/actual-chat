@@ -127,9 +127,10 @@
         => SetRoute(Route);
 
     protected override bool ShouldRender()
-        => ReferenceEquals(Rendered, null)
-           || State.HasError
-           || State.Value != Rendered;
+        => (ReferenceEquals(Rendered, null)
+                || State.HasError
+                || State.Value != Rendered)
+            && base.ShouldRender();
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         ChatSwitchTracer.Mark("ChatPage.ComputeState: entered");

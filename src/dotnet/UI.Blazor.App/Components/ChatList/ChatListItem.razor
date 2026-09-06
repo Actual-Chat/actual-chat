@@ -191,11 +191,11 @@
 
     protected override bool ShouldRender() {
         if (_renderedModel == null)
-            return true;
+            return base.ShouldRender();
 
         var m = State.LastNonErrorValue;
         var isTheSame = m == _renderedModel;
-        return !isTheSame;
+        return !isTheSame && base.ShouldRender();
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()

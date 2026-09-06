@@ -319,14 +319,16 @@
     }
 
     protected override bool ShouldRender() {
-        if (_forceRender) {
-            _forceRender = false;
-            return true;
-        }
-        var shouldRender = !ReferenceEquals(_rendered, State.Value)
+        var shouldRender = _forceRender
+           || !ReferenceEquals(_rendered, State.Value)
            || !ReferenceEquals(_renderedMessage, Message)
            || !ReferenceEquals(_renderedMarkup, _markup);
-        return shouldRender;
+        if (!shouldRender || !base.ShouldRender())
+            return false;
+
+        // Consumed only by the render it produces - a postponed one must still see it on resume
+        _forceRender = false;
+        return true;
     }
 
     protected override ComputedState<Model?>.Options GetStateOptions() {

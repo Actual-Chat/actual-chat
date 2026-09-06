@@ -64,7 +64,7 @@
     }
 
     protected override bool ShouldRender()
-        => State.HasError || State.Value != _rendered;
+        => (State.HasError || State.Value != _rendered) && base.ShouldRender();
 
     // Nested types
 

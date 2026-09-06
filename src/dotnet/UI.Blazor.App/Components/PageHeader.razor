@@ -1,4 +1,4 @@
-﻿@inherits ComputedStateComponent<AppUIHub, PageHeader.Model>
+@inherits ComputedStateComponent<AppUIHub, PageHeader.Model>
 @{
     var m = State.Value;
     _rendered = m;
@@ -37,10 +37,8 @@
         return result.Equals(_rendered) ? _rendered! : result;
     }
 
-    protected override bool ShouldRender() {
-        var shouldRender = !ReferenceEquals(_rendered, State.Value);
-        return shouldRender;
-    }
+    protected override bool ShouldRender()
+        => !ReferenceEquals(_rendered, State.Value) && base.ShouldRender();
 
     // Nested types
 

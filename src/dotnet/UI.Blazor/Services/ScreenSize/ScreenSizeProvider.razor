@@ -30,7 +30,8 @@
         => BrowserInfo.ScreenSize.Use(cancellationToken);
 
     protected override bool ShouldRender()
-        => !ReferenceEquals(ChildContent, _renderedChildContent)
-           || State.HasError
-           || !Equals(State.Value, _renderedScreenSize);
+        => (!ReferenceEquals(ChildContent, _renderedChildContent)
+                || State.HasError
+                || !Equals(State.Value, _renderedScreenSize))
+            && base.ShouldRender();
 }

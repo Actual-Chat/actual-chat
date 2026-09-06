@@ -57,7 +57,7 @@
         var now = Clock.Now;
         var remainingDelay = _lastRenderTime + UpdateDelay - now;
         if (remainingDelay <= TickSource.Default.Period)
-            return true;
+            return base.ShouldRender();
 
         _cancelRenderDelayCts = new CancellationTokenSource();
         var cancelDelayToken = _cancelRenderDelayCts.Token;

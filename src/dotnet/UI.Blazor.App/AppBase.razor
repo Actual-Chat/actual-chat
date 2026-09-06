@@ -118,9 +118,13 @@
     }
 
     protected override bool ShouldRender() {
-        var shouldRender = _shouldRender;
-        _shouldRender = false; // We don't want to render again until we set it to true again
-        return shouldRender;
+        // The flag is consumed only by the render it actually produces: a postponed one is resumed
+        // through NotifyStateHasChanged, and it has to find the flag still set
+        if (!_shouldRender || !base.ShouldRender())
+            return false;
+
+        _shouldRender = false;
+        return true;
     }
 
     protected override void OnAfterRender(bool firstRender) {
