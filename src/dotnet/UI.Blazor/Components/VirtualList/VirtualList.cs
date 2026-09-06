@@ -134,7 +134,10 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
         else
             _initialData = null;
 
-        if (ReferenceEquals(State, null) && shouldSetInitialData && _initialData != null) {
+        // Always here rather than left to the base: its init flow calls StateHasChanged before it creates
+        // the State, and the await above puts that call outside any render batch, so the render runs inline
+        // and the next StateHasChanged reaches ShouldRender - which needs the State - with none
+        if (ReferenceEquals(State, null)) {
             var (state, stateOptions) = CreateState();
             SetState(state, stateOptions);
         }
