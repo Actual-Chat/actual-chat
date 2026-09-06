@@ -9,4 +9,5 @@ public enum ChatEntryFlags
     IsThreadStart = 1 << 2,
     IsThread = 1 << 3,
     HasUploadingAttachments = 1 << 4,
+    IsUnsupported = 1 << 5,
 }

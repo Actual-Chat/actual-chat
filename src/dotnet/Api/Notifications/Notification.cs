@@ -22,8 +22,13 @@ namespace ActualChat.Notifications;
 public abstract partial record Notification(
     [property: DataMember(Order = 0), Key(0)] NotificationId Id,
     [property: DataMember(Order = 1), Key(1)] long Version = 0
-    ) : IHasId<NotificationId>, IHasVersion<long>, ISanitized
+    ) : IHasId<NotificationId>, IHasVersion<long>, ISanitized, IForwardCompatibleUnion<Notification>
 {
+    static Notification? IForwardCompatibleUnion<Notification>.NewUnsupported(
+        int tag, ref MessagePackReader payload, MessagePackSerializerOptions options)
+        // A notification nobody can render isn't worth showing - the caller drops the null.
+        => null;
+
     [DataMember(Order = 2), Key(2)]
     public string Title {
         get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
