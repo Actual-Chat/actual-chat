@@ -11,6 +11,7 @@ namespace ActualChat.Chat;
 [DataContract, MessagePackObject]
 [Union(0, typeof(MembersChangedEntry))]
 [Union(1, typeof(NotifyMembersEntry))]
+[Union(2, typeof(UnsupportedSystemEntry))]
 public abstract partial record SystemEntry(ChatEntryId Id, long Version = 0)
     : ChatEntry(Id, Version), IForwardCompatibleUnion<SystemEntry>
 {

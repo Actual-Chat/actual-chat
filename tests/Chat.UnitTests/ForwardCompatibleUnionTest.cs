@@ -78,6 +78,31 @@ public class ForwardCompatibleUnionTest(ITestOutputHelper @out) : TestBase(@out)
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    public void TheSystemPlaceholderShouldSurviveBeingServed(bool isKeyed)
+    {
+        // A server rolled back past the release that wrote a row reads one of these out of the
+        // database and fans it out, so the placeholder has to be writable, not read-only.
+
+        // arrange
+        var options = Options(isKeyed);
+        var placeholder = new UnsupportedSystemEntry(ChatEntryId.New(TestChatId, 3), 9) {
+            AuthorId = AuthorId.New(TestChatId, -1),
+            Flags = ChatEntryFlags.IsUnsupported,
+        };
+
+        // act
+        var entry = RoundTrip<ChatEntry>(placeholder, options);
+
+        // assert
+        entry.Should().BeOfType<UnsupportedSystemEntry>();
+        entry.Id.Should().Be(placeholder.Id);
+        entry.Version.Should().Be(9);
+        entry.IsUnsupported.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
     public void AnUnknownEntryShouldNotBreakTheTileAroundIt(bool isKeyed)
     {
         // arrange
@@ -167,7 +192,50 @@ public class ForwardCompatibleUnionTest(ITestOutputHelper @out) : TestBase(@out)
                     + $"{ChatEntry.FirstSystemUnionTag}..{ChatEntry.LastSystemUnionTag} are the system-entry range");
     }
 
+    [Fact]
+    public void NoMemberShouldReuseAKeyTheBaseDeclares()
+    {
+        // Prefix recovery reads payload slots 0..3 as the base's own. A member that took one of
+        // those keys wouldn't throw - it would make the placeholder read that member's value as an
+        // id, and the result would look perfectly plausible.
+
+        // arrange
+        var baseKeys = DeclaredKeys(typeof(ChatEntry));
+        var baseNames = DeclaredNames(typeof(ChatEntry));
+
+        // act
+        var collisions = new List<string>();
+        foreach (var member in typeof(ChatEntry).GetCustomAttributes<UnionAttribute>().Select(x => x.SubType))
+            for (var type = member; type != null && type != typeof(ChatEntry); type = type.BaseType) {
+                collisions.AddRange(DeclaredKeys(type)
+                    .Where(baseKeys.Contains)
+                    .Select(key => $"{type.Name} reuses base key {key}"));
+                collisions.AddRange(DeclaredNames(type)
+                    .Where(baseNames.Contains)
+                    .Select(name => $"{type.Name} reuses base member name '{name}'"));
+            }
+
+        // assert
+        collisions.Should().BeEmpty(
+            "the base prefix must stay the base's:\n{0}", string.Join("\n", collisions));
+    }
+
     // Private methods
+
+    private static HashSet<int> DeclaredKeys(Type type)
+        => KeyedProperties(type)
+            .Select(x => x.GetCustomAttribute<KeyAttribute>()!.IntKey)
+            .Where(x => x.HasValue)
+            .Select(x => x!.Value)
+            .ToHashSet();
+
+    private static HashSet<string> DeclaredNames(Type type)
+        => KeyedProperties(type).Select(x => x.Name).ToHashSet();
+
+    private static IEnumerable<PropertyInfo> KeyedProperties(Type type)
+        => type
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Where(x => x.GetCustomAttribute<KeyAttribute>() is not null);
 
     private static MessagePackSerializerOptions Options(bool isKeyed)
         => isKeyed ? KeyedOptions : KeylessOptions;

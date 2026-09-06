@@ -19,6 +19,5 @@ internal partial class ApiAotSource
         CodeKeeper.Keep<ForwardCompatibleUnionFormatter<Markup>>();
         CodeKeeper.Keep<ForwardCompatibleUnionFormatter<Notifications.Notification>>();
         CodeKeeper.Keep<ForwardCompatibleUnionFormatter<Invite.Invite>>();
-        CodeKeeper.KeepSerializable<UnsupportedSystemEntry>();
     }
 }

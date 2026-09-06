@@ -17,8 +17,11 @@ public class SystemEntryLocalizationTest
         // otherwise ship unlocalized - SystemEntryMarkupBuilder renders it as empty markup.
 
         // arrange
+        // UnsupportedSystemEntry is the one kind with nothing to localize: it stands in for a kind
+        // this build doesn't have, and renders as nothing rather than as a nag to update.
         var kinds = typeof(SystemEntry).GetCustomAttributes<UnionAttribute>()
             .Select(a => a.SubType)
+            .Where(t => t != typeof(UnsupportedSystemEntry))
             .ToHashSet();
 
         // act

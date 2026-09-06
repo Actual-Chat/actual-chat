@@ -16,6 +16,8 @@ namespace ActualChat.Chat;
 [Union(0, typeof(TextEntry))]
 [Union(1, typeof(MembersChangedEntry))]
 [Union(2, typeof(NotifyMembersEntry))]
+// 100..199 is the SystemEntry range - see ChatEntry.IsSystemUnionTag
+[Union(100, typeof(UnsupportedSystemEntry))]
 public abstract partial record ChatEntry(
     [property: DataMember(Order = 0), Key(0)] ChatEntryId Id,
     [property: DataMember(Order = 1), Key(1)] long Version = 0
