@@ -134,10 +134,8 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
-        if (chatId is null || chatId.Value.IsNullOrEmpty())
+        if (chatId is not { Id.IsEmpty: false })
             return Model.None;
-
-        await ThreadPoolYield.Yield();
 
         var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
         // A closing session can linger with no one left in it - never show the Call tab for an empty call.

@@ -26,7 +26,7 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
         var usePlaceChatListSettings = UsePlaceChatListSettings;
         var settings = Settings;
         var visibility = _visibility;
-        await ThreadPoolYield.Yield();
+        await ThreadPoolExt.Yield();
 
         ChatListSettings chatListSettings;
         Task<int> chatIndexTask;

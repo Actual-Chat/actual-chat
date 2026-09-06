@@ -13,7 +13,6 @@ public partial class LogList : IVirtualListDataSource<LogEntry>
     {
         var visibility = _visibility;
         var logUI = LogUI;
-        await ThreadPoolYield.Yield();
 
         var fullIdRange = await logUI.GetIdRange(cancellationToken).ConfigureAwait(false);
         // TODO: use _visibility

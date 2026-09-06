@@ -131,7 +131,7 @@ internal static class ContentListPlumbing
         CancellationToken cancellationToken)
         where TItem : IChatContentItem
     {
-        await ThreadPoolYield.Yield();
+        await ThreadPoolExt.Yield();
 
         // Right panel keeps tabs mounted while collapsed (SideNav just CSS-hides them).
         // Defer all compute/fetch while invisible — VirtualList's ComputeState re-runs

@@ -1,6 +1,6 @@
 namespace ActualChat.Core.UnitTests.Async;
 
-public sealed class ThreadPoolYieldTest(ITestOutputHelper @out) : TestBase(@out)
+public sealed class ThreadPoolExtTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact]
     public async Task YieldShouldContinueOnThreadPoolOffTheSynchronizationContext()
@@ -29,7 +29,7 @@ public sealed class ThreadPoolYieldTest(ITestOutputHelper @out) : TestBase(@out)
         async Task Continue()
         {
             try {
-                await ThreadPoolYield.Yield();
+                await ThreadPoolExt.Yield();
                 resultSource.TrySetResult((
                     Thread.CurrentThread.IsThreadPoolThread,
                     SynchronizationContext.Current is null,
@@ -62,7 +62,7 @@ public sealed class ThreadPoolYieldTest(ITestOutputHelper @out) : TestBase(@out)
 
         async Task Continue()
         {
-            await ThreadPoolYield.Yield();
+            await ThreadPoolExt.Yield();
             // The starter needs only a few instructions after queuing; a spin is what keeps this deterministic
             var spinWait = new SpinWait();
             while (Volatile.Read(ref isStarterDone) == 0 && spinWait.Count < 1000)
@@ -76,7 +76,7 @@ public sealed class ThreadPoolYieldTest(ITestOutputHelper @out) : TestBase(@out)
     {
         // act
         var tasks = Enumerable.Range(0, 1000).Select(async i => {
-            await ThreadPoolYield.Yield();
+            await ThreadPoolExt.Yield();
             return i;
         });
         var results = await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(10));

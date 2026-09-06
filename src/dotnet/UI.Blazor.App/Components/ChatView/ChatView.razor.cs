@@ -452,7 +452,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var isFirstGetData = renderedData.IsNone && query.IsNone;
         if (isFirstGetData)
             ChatSwitchTracer.Mark("ChatView.GetData#1: entered", chatId);
-        await ThreadPoolYield.Yield();
+        await ThreadPoolExt.Yield();
 
         await WhenInitialized.ConfigureAwait(false);
         if (isFirstGetData)

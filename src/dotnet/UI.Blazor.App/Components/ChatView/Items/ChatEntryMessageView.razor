@@ -359,6 +359,7 @@
         var chatId = ChatId;
         var chatMessage = Message;
         var markupTask = _markupTask;
+
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var ownAuthor = chat?.Rules.Author;
         var ownAuthorId = chat?.Rules.Author?.Id;

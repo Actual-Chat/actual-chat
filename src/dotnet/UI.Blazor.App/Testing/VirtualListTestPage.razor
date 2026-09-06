@@ -77,7 +77,7 @@
         var defaultEdge = (VirtualListEdge)(DefaultEdge ?? 0);
         var itemOptions = new VirtualListTestItemOptions((HeightTransition ?? 1) != 0, HeightDelay);
         var service = Service;
-        await ThreadPoolYield.Yield();
+        await ThreadPoolExt.Yield();
 
         return await service
             .GetItemKeys(query, rangeSeed, contentSeed, defaultEdge, itemOptions, cancellationToken)

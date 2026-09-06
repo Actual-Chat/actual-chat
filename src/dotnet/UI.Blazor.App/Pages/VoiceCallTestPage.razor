@@ -142,7 +142,6 @@ else {
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = _chatId;
-        await ThreadPoolYield.Yield();
 
         var incoming = await FindIncomingCall(cancellationToken).ConfigureAwait(false);
         if (chatId is not { } id || id.Value.IsNullOrEmpty())

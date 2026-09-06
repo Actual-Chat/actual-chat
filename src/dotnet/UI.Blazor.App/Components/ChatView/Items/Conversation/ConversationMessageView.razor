@@ -211,9 +211,8 @@
     protected override async Task<ConversationLiveState> ComputeState(CancellationToken cancellationToken) {
         var conversation = Message.Conversation!;
         var chatId = conversation.Id.ChatId;
-        await ThreadPoolYield.Yield();
+        await ThreadPoolExt.Yield();
 
-        // None of these four depend on each other, and every one is a round trip
         var translatedTask = ConversationUI.GetTranslatedConversation(conversation, cancellationToken);
         var liveTask = LiveSessionUI.GetConversation(chatId, cancellationToken);
         var rawLiveTask = LiveSessionUI.GetState(chatId, cancellationToken);

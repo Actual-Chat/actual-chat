@@ -28,7 +28,7 @@ and from `SetParametersAsync`. So the block before their first `await` is ordina
 dispatcher code: it may read parameters and component fields with no
 synchronization at all, and that is where every such read belongs.
 
-**Leaving the dispatcher is explicit: `await ThreadPoolYield.Yield()`.** It
+**Leaving the dispatcher is explicit: `await ThreadPoolExt.Yield()`.** It
 continues on a thread-pool thread unconditionally - unlike `Task.Yield`, which posts
 back to the context it's on, and unlike `.ConfigureAwait(false)`, which only moves
 a continuation that actually had to wait: a warm cache or an already-loaded state
@@ -83,7 +83,7 @@ subscriber to the loser never hears from the winner.
   needs into locals in the block before the first `await`. That block runs on the
   dispatcher, so the reads are consistent with each other and with the render;
   after it, Blazor may reassign the parameters at any time.
-- **Then `await ThreadPoolYield.Yield()`** if anything heavier than a few
+- **Then `await ThreadPoolExt.Yield()`** if anything heavier than a few
   lookups follows - an item build, a projection, anything that completes from a
   cache. `GetData` always yields: what it does is the heavy part by definition.
 - **Then `.ConfigureAwait(false)` throughout.** Nothing after the snapshot needs
@@ -125,7 +125,7 @@ What `GetData` adds on top:
 - Every read-modify-write: one `lock`, on all paths.
 - Every mutation from a worker: marshalled to the dispatcher, or the state is
   internally synchronized.
-- `ComputeState` / `GetData`: snapshot, `ThreadPoolYield.Yield()`,
+- `ComputeState` / `GetData`: snapshot, `ThreadPoolExt.Yield()`,
   `ConfigureAwait(false)`, tasks first.
 
 ## Where the audit found the contract broken
