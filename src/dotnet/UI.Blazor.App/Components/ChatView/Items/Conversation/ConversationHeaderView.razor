@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, ConversationHeaderView.Model>
+@inherits ComputedRenderStateComponent<AppUIHub, ConversationHeaderView.Model>
 @{
     var m = State.Value;
     var conversation = Header.Conversation!;

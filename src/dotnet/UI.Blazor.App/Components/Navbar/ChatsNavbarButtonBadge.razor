@@ -1,8 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, ChatsNavbarButtonBadge.Model>
+@inherits ComputedRenderStateComponent<AppUIHub, ChatsNavbarButtonBadge.Model>
 @{
     var m = State.Value;
-    _rendered = m;
     if (m.Count <= 0)
         return;
 }
@@ -10,8 +9,6 @@
 <Badge>@m.Count</Badge>
 
 @code {
-    private Model? _rendered;
-
     private ChatListUI ChatListUI => Hub.ChatListUI;
 
     [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
@@ -29,8 +26,10 @@
         return new(count);
     }
 
-    protected override bool ShouldRender()
-        => (State.HasError || State.Value != _rendered) && base.ShouldRender();
+    protected override void OnInitialized()
+        // This renders nothing but the model, so comparing it is safe - and the counts behind it
+        // recompute on every read and every new message, far more often than they change
+        => StateEqualityComparer = EqualityComparer<Model>.Default;
 
     // Nested types
 

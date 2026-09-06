@@ -1,6 +1,8 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public abstract class AccountBadgeBase : ComputedStateComponent<UIHub, AccountBadgeBase.Model>
+// No StateEqualityComparer: the leaves render Size/Class/ShowPresence too, and a comparer that
+// only sees the model would swallow the render a parameter-only change needs.
+public abstract class AccountBadgeBase : ComputedRenderStateComponent<UIHub, AccountBadgeBase.Model>
 {
     private IAccounts Accounts => Hub.Accounts;
 

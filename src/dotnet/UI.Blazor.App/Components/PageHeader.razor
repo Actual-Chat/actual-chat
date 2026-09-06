@@ -1,7 +1,6 @@
-@inherits ComputedStateComponent<AppUIHub, PageHeader.Model>
+@inherits ComputedRenderStateComponent<AppUIHub, PageHeader.Model>
 @{
     var m = State.Value;
-    _rendered = m;
     var title = CoreConstants.AppName;
     if (m.Count > 0)
         title += " (" + m.Count + ")";
@@ -19,8 +18,6 @@
 </HeadContent>
 
 @code {
-    private Model? _rendered;
-
     private ChatListUI ChatListUI => Hub.ChatListUI;
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -33,12 +30,13 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var count = await ChatListUI.UnreadChatCount.Use(cancellationToken).ConfigureAwait(false);
-        var result = new Model(count);
-        return result.Equals(_rendered) ? _rendered! : result;
+        return new Model(count);
     }
 
-    protected override bool ShouldRender()
-        => !ReferenceEquals(_rendered, State.Value) && base.ShouldRender();
+    protected override void OnInitialized()
+        // This renders nothing but the model, so comparing it is safe - and the counts behind it
+        // recompute on every read and every new message, far more often than they change
+        => StateEqualityComparer = EqualityComparer<Model>.Default;
 
     // Nested types
 

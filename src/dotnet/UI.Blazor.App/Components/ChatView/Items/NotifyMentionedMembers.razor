@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Notifications
-@inherits ComputedStateComponent<AppUIHub, NotifyMentionedMembers.Model>
+@inherits ComputedRenderStateComponent<AppUIHub, NotifyMentionedMembers.Model>
 @{
     if (State.IsInitial(out var m)) {
         <div class="notify-mentioned-members">

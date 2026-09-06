@@ -1,8 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, ChatListTabUnreadCount.Model>
+@inherits ComputedRenderStateComponent<AppUIHub, ChatListTabUnreadCount.Model>
 @{
     var m = State.Value;
-    _rendered = m;
     if (m.Count <= 0)
         return;
     var notificationMode = m.IsMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default;
@@ -13,8 +12,6 @@
 </div>
 
 @code {
-    private Model? _rendered;
-
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
 
@@ -63,8 +60,10 @@
         _ = History.NavigateTo(Links.Chat(firstUnreadChat.Id));
     }
 
-    protected override bool ShouldRender()
-        => (State.HasError || State.Value != _rendered) && base.ShouldRender();
+    protected override void OnInitialized()
+        // This renders nothing but the model, so comparing it is safe - and the counts behind it
+        // recompute on every read and every new message, far more often than they change
+        => StateEqualityComparer = EqualityComparer<Model>.Default;
 
     // Nested types
 

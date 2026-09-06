@@ -1,6 +1,6 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
-@inherits ComputedStateComponent<UIHub, Presence>
+@inherits ComputedRenderStateComponent<UIHub, Presence>
 @{
     var presence = State.Value;
 }
@@ -12,6 +12,11 @@
 
     [Parameter, EditorRequired] public UserId? UserId { get; set; }
 
+    protected override void OnInitialized()
+        // This renders nothing but the presence itself, and presence recomputes far more often
+        // than it changes - comparing the value is what keeps those recomputes off the screen
+        => StateEqualityComparer = EqualityComparer<Presence>.Default;
+
     protected override ComputedState<Presence>.Options GetStateOptions() {
         if (UserId is null)
             return ComputedStateComponent.GetStateOptions(GetType(),
@@ -21,7 +26,9 @@
                 });
 
         var presenceComputed = Computed.GetExisting(() => UserPresences.Get(UserId, default));
-        var presence = presenceComputed?.IsConsistent() == true &&  presenceComputed.HasValue ? presenceComputed.Value : Presence.Unknown;
+        var presence = presenceComputed?.IsConsistent() == true &&  presenceComputed.HasValue
+            ? presenceComputed.Value
+            : Presence.Unknown;
         return new() {
             InitialValue = presence,
             Category = GetStateCategory(GetType()),

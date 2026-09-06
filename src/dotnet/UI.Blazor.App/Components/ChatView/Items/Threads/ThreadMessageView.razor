@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using StringBuilderExt = ActualLab.Text.StringBuilderExt
-@inherits ComputedStateComponent<AppUIHub, ThreadMessageView.Model?>
+@inherits ComputedRenderStateComponent<AppUIHub, ThreadMessageView.Model?>
 @{
     var chat = Message.Chat;
     var m = State.Value;

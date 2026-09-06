@@ -1,5 +1,5 @@
-@namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, Presence>
+﻿@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedRenderStateComponent<AppUIHub, Presence>
 @{
     var presence = State.Value;
 }
@@ -11,6 +11,11 @@
 
     [Parameter, EditorRequired] public AuthorId? AuthorId { get; set; }
     [Parameter] public bool ShowRecording { get; set; }
+
+    protected override void OnInitialized()
+        // This renders nothing but the presence itself, and presence recomputes far more often
+        // than it changes - comparing the value is what keeps those recomputes off the screen
+        => StateEqualityComparer = EqualityComparer<Presence>.Default;
 
     protected override ComputedState<Presence>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -29,7 +34,9 @@
 
         var presence = await Authors.GetPresence(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (showRecording) {
-            var isStreaming = await LiveStreamUI.IsAuthorStreamingAudio(chatId, authorId, cancellationToken).ConfigureAwait(false);
+            var isStreaming = await LiveStreamUI
+                .IsAuthorStreamingAudio(chatId, authorId, cancellationToken)
+                .ConfigureAwait(false);
             if (isStreaming)
                 presence = Presence.Recording;
         }

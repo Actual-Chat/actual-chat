@@ -2,7 +2,9 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public abstract class AttachmentItemBase : ComputedStateComponent<AppUIHub, AttachmentItemBase.Model>
+// No StateEqualityComparer: the leaves render their own parameters alongside the model, and a
+// model-only comparer would swallow the render a parameter-only change needs.
+public abstract class AttachmentItemBase : ComputedRenderStateComponent<AppUIHub, AttachmentItemBase.Model>
 {
     private AttachmentsState AttachmentsState => Hub.AttachmentsState;
 

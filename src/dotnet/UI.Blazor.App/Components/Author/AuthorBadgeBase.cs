@@ -2,7 +2,9 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public abstract class AuthorBadgeBase : ComputedStateComponent<AppUIHub, AuthorBadgeBase.Model?>
+// No StateEqualityComparer: the leaves render Size/Class/IsSquare/Click too, and a comparer that
+// only sees the model would swallow the render a parameter-only change needs.
+public abstract class AuthorBadgeBase : ComputedRenderStateComponent<AppUIHub, AuthorBadgeBase.Model?>
 {
     protected IAuthors Authors => Hub.Authors;
     protected AuthorUI AuthorUI => Hub.AuthorUI;
