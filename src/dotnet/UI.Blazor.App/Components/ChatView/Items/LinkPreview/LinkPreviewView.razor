@@ -49,9 +49,9 @@
     </CopyTrigger>
     @if (m.LocalLink is null) {
         <HeaderButton
-            Tooltip="@L.MessageMenu_Forward"
-            Click="@(() => SelectionUI.Forward(m.Entry.Id))">
-            <i class="icon-share"></i>
+            Tooltip="@L.MessageMenu_ShareLink"
+            Click="@(() => ShareUI.ShareLink(uri.ToString(), m.LocalLink?.LocalUrl, L.MessageMenu_ShareLink))">
+            <i class="icon-share-more"></i>
         </HeaderButton>
     }
 </div>
@@ -88,8 +88,8 @@
 }
 
 @code {
-    private SelectionUI SelectionUI => Hub.SelectionUI;
     private LinkPreviewUI LinkPreviewUI => Hub.LinkPreviewUI;
+    private ShareUI ShareUI => Hub.ShareUI;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public LinkPreview LinkPreview { get; set; } = null!;

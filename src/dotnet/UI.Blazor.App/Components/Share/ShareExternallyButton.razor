@@ -22,7 +22,7 @@
             <Title>@(Title ?? L.Share_ShareExternally)</Title>
         </Button>
     } else {
-        var text = Request.HasLink() ? L.MessageMenu_CopyLink : L.LogView_CopyToClipboard;
+        var text = Request.HasAnyLink() ? L.MessageMenu_CopyLink : L.LogView_CopyToClipboard;
         <CopyTrigger Class="w-full" Tooltip="@L.Common_Copy" CopyText="@Request.GetShareTextAndLink(UrlMapper)">
             <Button Class="btn-modal">
                 <Icon>

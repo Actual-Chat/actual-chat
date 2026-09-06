@@ -287,6 +287,7 @@
   "MessageMenu_OpenLink": "लिंक खोलें",
   "MessageMenu_CopyLinkUrl": "लिंक का URL कॉपी करें",
   "MessageMenu_ForwardMessage": "संदेश अग्रेषित करें",
+  "MessageMenu_ShareLink": "लिंक साझा करें",
   "MessageMenu_Preview": "पूर्वावलोकन",
   "MessageMenu_ShareFile": "फ़ाइल साझा करें",
   "MessageMenu_CopyDownloadLink": "डाउनलोड लिंक कॉपी करें",

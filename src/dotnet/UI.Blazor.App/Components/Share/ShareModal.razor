@@ -85,7 +85,7 @@
     protected override void OnInitialized() {
         _comment = ModalModel.Request.Text;
         // A private place's invite is for its members only, so it has no business outside the app
-        _mustShowActions = ModalModel.Request.HasLink()
+        _mustShowActions = ModalModel.Request.HasAnyLink()
             && ModalModel.SelectorPrefs is not ShareWithPlaceMembersOnly;
         if (ModalModel.SelectorPrefs is ShareWithPlaceMembersOnly selector) {
             _memberListSource = new PlaceMemberListSource(Hub, selector.PlaceId, [OwnAccount.Id]);

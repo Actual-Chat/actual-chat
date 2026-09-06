@@ -287,6 +287,7 @@
   "MessageMenu_OpenLink": "링크 열기",
   "MessageMenu_CopyLinkUrl": "링크 주소 복사",
   "MessageMenu_ForwardMessage": "메시지 전달",
+  "MessageMenu_ShareLink": "링크 공유",
   "MessageMenu_Preview": "미리보기",
   "MessageMenu_ShareFile": "파일 공유",
   "MessageMenu_CopyDownloadLink": "다운로드 링크 복사",

@@ -26,7 +26,7 @@
         } else {
             <div class="c-code">
                 <qr-code
-                    url="@UrlMapper.ToAbsolute(ModalModel.Link)"
+                    url="@(ModalModel.AbsoluteUrl ?? UrlMapper.ToAbsolute(ModalModel.Link))"
                     image="@ModalModel.ImageUrl"></qr-code>
             </div>
             <div class="c-hint">@L.ShareQr_Hint_Format(CoreConstants.AppName)</div>

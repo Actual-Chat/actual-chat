@@ -287,6 +287,7 @@
   "MessageMenu_OpenLink": "リンクを開く",
   "MessageMenu_CopyLinkUrl": "リンクのURLをコピー",
   "MessageMenu_ForwardMessage": "メッセージを転送",
+  "MessageMenu_ShareLink": "リンクを共有",
   "MessageMenu_Preview": "プレビュー",
   "MessageMenu_ShareFile": "ファイルを共有",
   "MessageMenu_CopyDownloadLink": "ダウンロードリンクをコピー",
