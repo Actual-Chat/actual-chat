@@ -9,7 +9,8 @@ namespace ActualChat.Users;
 /// </summary>
 public class UserSettings(IServiceProvider services) : IUserSettings
 {
-    private static readonly Dictionary<string, Type> KeyToType = new() {
+    // Internal so UserSettingsKeyToTypeTest can check it covers every UserSettingsUIExt accessor
+    internal static readonly IReadOnlyDictionary<string, Type> KeyToType = new Dictionary<string, Type> {
         [nameof(UserAppSettings)] = typeof(UserAppSettings),
         [nameof(UserEmailsSettings)] = typeof(UserEmailsSettings),
         [nameof(UserLanguageSettings)] = typeof(UserLanguageSettings),
@@ -25,6 +26,7 @@ public class UserSettings(IServiceProvider services) : IUserSettings
         [nameof(FakeDeviceContactOptions)] = typeof(FakeDeviceContactOptions),
         [nameof(UserReplaySettings)] = typeof(UserReplaySettings),
         [nameof(UserPttSettings)] = typeof(UserPttSettings),
+        [nameof(UserCarAudioSettings)] = typeof(UserCarAudioSettings),
         [nameof(RecentMentions)] = typeof(RecentMentions),
         [nameof(RecentGifs)] = typeof(RecentGifs),
     };
