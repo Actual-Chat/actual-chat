@@ -1189,6 +1189,7 @@
   "EmptyEntry_YourFiles": "seu arquivo|seus arquivos",
   "EmptyEntry_SentAttachments": "{0} anexo enviado|{0} anexos enviados",
   "EmptyEntry_YourAttachments": "seu anexo|seus anexos",
+  "EmptyEntry_Unsupported": "Atualize o aplicativo para ver esta mensagem",
   "Search_In": "Em",
   "Search_CloseSearch": "Fechar a pesquisa",
   "Search_ShowMore": "Mostrar mais",

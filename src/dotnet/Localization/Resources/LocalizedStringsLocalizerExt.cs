@@ -1233,6 +1233,7 @@ public static class LocalizedStringsLocalizerExt
         public string EmptyEntry_SentAttachments(long count, object arg0)
             => l.Plural("EmptyEntry_SentAttachments", count, arg0);
         public string EmptyEntry_YourAttachments(long count) => l.Plural("EmptyEntry_YourAttachments", count);
+        public string EmptyEntry_Unsupported => l["EmptyEntry_Unsupported"].Value;
         public string Search_In => l["Search_In"].Value;
         public string Search_CloseSearch => l["Search_CloseSearch"].Value;
         public string Search_ShowLess => l["Search_ShowLess"].Value;

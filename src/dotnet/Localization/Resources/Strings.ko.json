@@ -1189,6 +1189,7 @@
   "EmptyEntry_YourFiles": "내 파일",
   "EmptyEntry_SentAttachments": "첨부 파일 {0}개를 보냈습니다",
   "EmptyEntry_YourAttachments": "내 첨부 파일",
+  "EmptyEntry_Unsupported": "이 메시지를 보려면 앱을 업데이트하세요",
   "Search_In": "위치:",
   "Search_CloseSearch": "검색 닫기",
   "Search_ShowMore": "더 보기",

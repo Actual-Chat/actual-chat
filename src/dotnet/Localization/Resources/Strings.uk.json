@@ -1189,6 +1189,7 @@
   "EmptyEntry_YourFiles": "ваш файл|ваші файли",
   "EmptyEntry_SentAttachments": "Надіслано {0} вкладення|Надіслано {0} вкладення|Надіслано {0} вкладень",
   "EmptyEntry_YourAttachments": "ваше вкладення|ваші вкладення",
+  "EmptyEntry_Unsupported": "Оновіть застосунок, щоб побачити це повідомлення",
   "Search_In": "У",
   "Search_CloseSearch": "Закрити пошук",
   "Search_ShowMore": "Показати ще",

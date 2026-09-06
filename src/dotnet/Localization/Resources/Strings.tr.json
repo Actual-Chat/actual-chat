@@ -1189,6 +1189,7 @@
   "EmptyEntry_YourFiles": "Dosyanız",
   "EmptyEntry_SentAttachments": "{0} ek gönderildi",
   "EmptyEntry_YourAttachments": "Ekiniz",
+  "EmptyEntry_Unsupported": "Bu mesajı görmek için uygulamayı güncelleyin",
   "Search_In": "Şurada:",
   "Search_CloseSearch": "Aramayı kapatın",
   "Search_ShowMore": "Daha fazla gösterin",

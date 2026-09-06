@@ -32,6 +32,7 @@ public static partial class ApiModuleInitializer
         RegisterForwardCompatibleUnion<SystemEntry>();
         RegisterForwardCompatibleUnion<Markup>();
         RegisterForwardCompatibleUnion<Notifications.Notification>();
+        RegisterForwardCompatibleUnion<Invite.Invite>();
 
         // Custom MemoryPack formatters.
         // Only identifiers reachable from the two remaining MemoryPack read paths are registered:

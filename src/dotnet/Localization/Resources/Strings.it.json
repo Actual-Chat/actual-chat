@@ -1189,6 +1189,7 @@
   "EmptyEntry_YourFiles": "il tuo file|i tuoi file",
   "EmptyEntry_SentAttachments": "{0} allegato inviato|{0} allegati inviati",
   "EmptyEntry_YourAttachments": "il tuo allegato|i tuoi allegati",
+  "EmptyEntry_Unsupported": "Aggiorna l'app per vedere questo messaggio",
   "Search_In": "In",
   "Search_CloseSearch": "Chiudi la ricerca",
   "Search_ShowMore": "Mostra altro",

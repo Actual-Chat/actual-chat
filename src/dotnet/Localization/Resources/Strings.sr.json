@@ -1189,6 +1189,7 @@
   "EmptyEntry_YourFiles": "ваш фајл|ваше фајлове",
   "EmptyEntry_SentAttachments": "Послан {0} прилог|Послана {0} прилога|Послано {0} прилога",
   "EmptyEntry_YourAttachments": "ваш прилог|ваше прилоге",
+  "EmptyEntry_Unsupported": "Ажурирајте апликацију да видите ову поруку",
   "Search_In": "У",
   "Search_CloseSearch": "Затворите претрагу",
   "Search_ShowMore": "Прикажите више",

@@ -103,6 +103,11 @@ public abstract partial record ChatEntry(
         init => Flags = value ? Flags | ChatEntryFlags.IsThread : Flags & ~ChatEntryFlags.IsThread;
     }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public bool IsUnsupported {
+        get => Flags.HasFlag(ChatEntryFlags.IsUnsupported);
+        init => Flags = value ? Flags | ChatEntryFlags.IsUnsupported : Flags & ~ChatEntryFlags.IsUnsupported;
+    }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool HasUploadingAttachments {
         get => Flags.HasFlag(ChatEntryFlags.HasUploadingAttachments);
         init => Flags = value ? Flags | ChatEntryFlags.HasUploadingAttachments : Flags & ~ChatEntryFlags.HasUploadingAttachments;
