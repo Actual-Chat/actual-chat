@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <InternalsVisibleTo Include="$(RootNamespace).Users.UnitTests$(AssemblyPublicKey)" />
     <InternalsVisibleTo Include="$(RootNamespace).Users.IntegrationTests$(AssemblyPublicKey)" />
   </ItemGroup>
 
