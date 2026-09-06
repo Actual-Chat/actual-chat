@@ -33,11 +33,12 @@
             return Model.None;
 
         var chatId = authorId.ChatId;
+        var showRecording = ShowRecording;
+        var showTyping = ShowTyping;
 
-        // The code below doesn't use any component prop, so we can use .ConfigureAwait(false)
         var presence = await Authors.GetPresence(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         var isRecording = false;
-        if (ShowRecording) {
+        if (showRecording) {
             var isStreaming = await LiveStreamUI.IsAuthorStreamingAudio(chatId, authorId, cancellationToken).ConfigureAwait(false);
             if (isStreaming) {
                 presence = Presence.Recording;
@@ -46,7 +47,7 @@
         }
 
         // Recording (audio) takes priority over typing.
-        var isTyping = ShowTyping
+        var isTyping = showTyping
             && !isRecording
             && await TypingUI.IsTyping(chatId, authorId, cancellationToken).ConfigureAwait(false);
 

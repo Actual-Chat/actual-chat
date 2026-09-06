@@ -1,4 +1,4 @@
-﻿@namespace ActualChat.UI.Blazor.App.Components
+@namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, LiveConversationHeaderState>
 
 @{
@@ -57,33 +57,41 @@
     protected override async Task<LiveConversationHeaderState> ComputeState(CancellationToken cancellationToken) {
         var conversation = Header.Conversation!;
         var chatId = conversation.Id.ChatId;
-        var translated = await ConversationUI.GetTranslatedConversation(conversation, cancellationToken)
-            .ConfigureAwait(true);
-        var live = await LiveSessionUI.GetConversation(chatId, cancellationToken).ConfigureAwait(true);
+        await ThreadPoolYield.Yield();
+
+        // None of these four depend on each other, and every one is a round trip
+        var translatedTask = ConversationUI.GetTranslatedConversation(conversation, cancellationToken);
+        var liveTask = LiveSessionUI.GetConversation(chatId, cancellationToken);
+        var rawLiveTask = LiveSessionUI.GetState(chatId, cancellationToken);
+        var blockStateTask = LiveBlockUI.GetBlockState(chatId, cancellationToken);
+        var translated = await translatedTask.ConfigureAwait(false);
+        var live = await liveTask.ConfigureAwait(false);
+        var rawLive = await rawLiveTask.ConfigureAwait(false);
+        var blockState = await blockStateTask.ConfigureAwait(false);
         var isLive = live != null && live.Id == conversation.Id;
+        // The rest stay conditional: asking them when there is no live session would add dependencies
+        // that recompute this header for sessions it doesn't show
         var isJoined = isLive
-            && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(true);
+            && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
         var isVoiceOnly = isLive
-            && !await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(true);
+            && !await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(false);
         var participantsText = isLive
             ? await ConversationParticipantsFormatter
                 .GetText(Authors, L, Hub.Session, chatId, conversation.AuthorIds, cancellationToken)
-                .ConfigureAwait(true)
+                .ConfigureAwait(false)
             : "";
-        var rawLive = await LiveSessionUI.GetState(chatId, cancellationToken).ConfigureAwait(true);
-        var blockState = await LiveBlockUI.GetBlockState(chatId, cancellationToken).ConfigureAwait(true);
         var hasFoldedEntries = isLive && !isVoiceOnly
             && rawLive is { SessionStartedAt: not null }
             && blockState.FoldBoundaryLid > rawLive.EffectiveVisibleStartLid;
         var canExpand = isLive && !isVoiceOnly && rawLive is { SessionStartedAt: not null };
         // Awaited for the dependency; the values themselves are read through IsConversationExpanded below.
-        await ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(true);
-        await ChatUI.AutoExpandedConversations.Use(cancellationToken).ConfigureAwait(true);
+        await ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(false);
+        await ChatUI.AutoExpandedConversations.Use(cancellationToken).ConfigureAwait(false);
         // Via ChatUI so this reads the same latched default the data layer does - the record's own
         // flag flips when a summary lands, and the two would then disagree for the session.
         var isExpanded = ChatUI.IsConversationExpanded(conversation);
         var isAnyoneTalking = isLive
-            && await LiveStreamUI.IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(true);
+            && await LiveStreamUI.IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(false);
         return new LiveConversationHeaderState(
             translated.Title.Text, participantsText, hasFoldedEntries, isExpanded, isJoined,
             blockState.Overlay != null, blockState.Overlay?.IsDissolving ?? false, canExpand,

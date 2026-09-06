@@ -60,21 +60,21 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(true);
+        await ThreadPoolYield.Yield();
+
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         // IsActive() alone lets a guest through - a guest account is Active - and a signed-out
         // visitor has no notifications to show.
         if (account.IsGuest || !account.IsActive())
             return new(false);
 
-        var chatById = await ChatListUI
-            .ListUnordered(null, ChatListFilter.Unread, cancellationToken)
-            .ConfigureAwait(true);
-        var expiring = await NotificationsPanelUI
-            .GetExpiring(ChatListFilter.Unread.Id, cancellationToken)
-            .ConfigureAwait(true);
-        var reactedChatIds = await NotificationsUI
-            .ListReactedChatIds(cancellationToken)
-            .ConfigureAwait(true);
+        // Three independent lookups behind one badge row
+        var chatByIdTask = ChatListUI.ListUnordered(null, ChatListFilter.Unread, cancellationToken);
+        var expiringTask = NotificationsPanelUI.GetExpiring(ChatListFilter.Unread.Id, cancellationToken);
+        var reactedChatIdsTask = NotificationsUI.ListReactedChatIds(cancellationToken);
+        var chatById = await chatByIdTask.ConfigureAwait(false);
+        var expiring = await expiringTask.ConfigureAwait(false);
+        var reactedChatIds = await reactedChatIdsTask.ConfigureAwait(false);
         return new(true, chatById.Count > 0, expiring.Count > 0, reactedChatIds.Count > 0);
     }
 

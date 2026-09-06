@@ -61,6 +61,7 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var entry = Entry;
         var replayState = await ChatAudioUI.ReplayState.Use(cancellationToken).ConfigureAwait(false);
         if (replayState is not { ChatId: var chatId })
             return Model.NotPlaying;
@@ -79,9 +80,9 @@
         foreach (var playingTrack in playingTracks) {
             var trackInfo = playingTrack.TrackInfo;
             if (trackInfo is ChatAudioTrackInfo { AudioEntry: { } audioEntry }) {
-                if (audioEntry.ChatId != Entry.ChatId)
+                if (audioEntry.ChatId != entry.ChatId)
                     continue;
-                if (audioEntry.LocalId == Entry.LocalId) {
+                if (audioEntry.LocalId == entry.LocalId) {
                     if (isPaused || playingTrack.State.IsStarted)
                         canPlay = false;
                 }

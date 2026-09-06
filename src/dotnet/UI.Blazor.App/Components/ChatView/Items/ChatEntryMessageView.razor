@@ -358,12 +358,13 @@
         var prevEntry = previousMessage?.Entry;
         var chatId = ChatId;
         var chatMessage = Message;
+        var markupTask = _markupTask;
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var ownAuthor = chat?.Rules.Author;
         var ownAuthorId = chat?.Rules.Author?.Id;
         var isOwnMessage = ownAuthorId is not null && entry.AuthorId == ownAuthorId;
 
-        var markup = await _markupTask.ConfigureAwait(false);
+        var markup = await markupTask.ConfigureAwait(false);
         var repliedEntry = await GetRepliedEntry(cancellationToken).ConfigureAwait(false);
         var hasAnyMentions = HasAnyMentions(markup);
         var isOwnAuthorMentioned = ownAuthorId is not null && IsMentioned(markup, repliedEntry, ownAuthorId, hasAnyMentions);
@@ -421,7 +422,8 @@
 
         var (isUnreadByOthers, isUnreadBlockStart) = (false, false);
         if (chat is not null && ownAuthorId is not null)
-            (isUnreadByOthers, isUnreadBlockStart) = await IsUnreadByOthers(chat, entry, prevEntry, ownAuthorId, cancellationToken);
+            (isUnreadByOthers, isUnreadBlockStart) = await IsUnreadByOthers(chat, entry, prevEntry, ownAuthorId, cancellationToken)
+                .ConfigureAwait(false);
         var appSettings = await UserSettingsUI.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
         var colorize = appSettings.IsAuthorColorsEnabled ?? true;
         var result = new Model(chat) {

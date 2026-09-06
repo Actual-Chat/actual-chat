@@ -97,7 +97,9 @@
     protected static TimeSpan VeryFirstLoadDelay = TimeSpan.FromSeconds(1.5);
     protected static TimeSpan LoadTimeout = TimeSpan.FromSeconds(1);
     protected static TimeSpan LoadTimeoutToReloadDelay = TimeSpan.FromSeconds(2);
-    private static bool _isVeryFirstLoad = true;
+    // Static, so every circuit in the process shares it, and ComputeState reaches it off the
+    // dispatcher - the one-shot has to be atomic
+    private static int _isVeryFirstLoad = 1;
 
     private MutableState<RouteState> _routeState = null!;
     protected Model? Rendered;
@@ -158,8 +160,7 @@
             return lastState; // Synchronizing
         }
 
-        if (_isVeryFirstLoad) {
-            _isVeryFirstLoad = false;
+        if (Interlocked.Exchange(ref _isVeryFirstLoad, 0) != 0) {
             if (hostInfo.HostKind.IsApp()) {
                 Log.LogInformation("Delaying display for chat #{ChatId}", chatId);
                 var delayTask = Task.Delay(VeryFirstLoadDelay, cancellationToken);

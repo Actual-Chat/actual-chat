@@ -1,4 +1,4 @@
-﻿@namespace ActualChat.UI.Blazor.App.Components
+@namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, Presence>
 @{
     var presence = State.Value;
@@ -25,9 +25,10 @@
             return Presence.Offline;
 
         var chatId = authorId.ChatId;
+        var showRecording = ShowRecording;
 
         var presence = await Authors.GetPresence(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
-        if (ShowRecording) {
+        if (showRecording) {
             var isStreaming = await LiveStreamUI.IsAuthorStreamingAudio(chatId, authorId, cancellationToken).ConfigureAwait(false);
             if (isStreaming)
                 presence = Presence.Recording;

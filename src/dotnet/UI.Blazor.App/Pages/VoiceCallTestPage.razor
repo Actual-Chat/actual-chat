@@ -141,15 +141,21 @@ else {
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var incoming = await FindIncomingCall(cancellationToken).ConfigureAwait(true);
-        if (_chatId is not { } chatId || chatId.Value.IsNullOrEmpty())
+        var chatId = _chatId;
+        await ThreadPoolYield.Yield();
+
+        var incoming = await FindIncomingCall(cancellationToken).ConfigureAwait(false);
+        if (chatId is not { } id || id.Value.IsNullOrEmpty())
             return Model.None with { Incoming = incoming };
 
-        var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(true);
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(true);
-        var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(true);
-        var invitable = allAuthorIds.Where(id => ownAuthor is null || id != ownAuthor.Id).ToList();
-        var selected = await _selectedInvitees.Use(cancellationToken).ConfigureAwait(true);
+        var liveTask = LiveSessionUI.Get(id, cancellationToken);
+        var ownAuthorTask = Authors.GetOwn(Session, id, cancellationToken);
+        var allAuthorIdsTask = Authors.ListAuthorIds(Session, id, cancellationToken);
+        var live = await liveTask.ConfigureAwait(false);
+        var ownAuthor = await ownAuthorTask.ConfigureAwait(false);
+        var allAuthorIds = await allAuthorIdsTask.ConfigureAwait(false);
+        var invitable = allAuthorIds.Where(x => ownAuthor is null || x != ownAuthor.Id).ToList();
+        var selected = await _selectedInvitees.Use(cancellationToken).ConfigureAwait(false);
         return new Model {
             Live = live,
             OwnAuthorId = ownAuthor?.Id,

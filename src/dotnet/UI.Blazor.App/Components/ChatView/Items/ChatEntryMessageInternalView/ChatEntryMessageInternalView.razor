@@ -227,6 +227,7 @@
         var message = Message;
         var isUnreadByOthers = IsUnreadByOthers;
         var isUnreadByOthersBlockStart = IsUnreadByOthersBlockStart;
+        var textEntryId = _textEntryId;
         // When entry isSending, it's a local chat entry. It does not exist on the server side.
         if (message.Entry.IsSending)
             return new Model(
@@ -246,7 +247,7 @@
         }
 
         var streamingState = await TranscriptUI
-            .GetTranscriptState(_textEntryId, cancellationToken)
+            .GetTranscriptState(textEntryId, cancellationToken)
             .ConfigureAwait(false);
         // The transcript reader can finish before the server clears Entry.IsContentStreaming.
         // Keep its last state through that gap — it retains the streamed text, so the streaming

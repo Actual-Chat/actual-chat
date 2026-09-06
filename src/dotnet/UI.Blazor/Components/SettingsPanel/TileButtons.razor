@@ -49,12 +49,14 @@
             });
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var avatar = Avatar;
+
         var userAvatarSettings = await UserSettingsUI
             .UserAvatarSettings().Get(cancellationToken)
             .ConfigureAwait(false);
         var defaultAvatarId = userAvatarSettings.DefaultAvatarId;
         if (defaultAvatarId.IsEmpty)
             defaultAvatarId = userAvatarSettings.AvatarIds.GetOrDefault(0);
-        return Avatar?.Id == defaultAvatarId;
+        return avatar?.Id == defaultAvatarId;
     }
 }

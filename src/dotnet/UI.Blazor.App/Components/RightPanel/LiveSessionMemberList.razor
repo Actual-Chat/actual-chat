@@ -133,21 +133,29 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (ChatId is null || ChatId.Value.IsNullOrEmpty())
+        var chatId = ChatId;
+        if (chatId is null || chatId.Value.IsNullOrEmpty())
             return Model.None;
 
-        var live = await LiveSessionUI.Get(ChatId, cancellationToken).ConfigureAwait(true);
+        await ThreadPoolYield.Yield();
+
+        var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
         // A closing session can linger with no one left in it - never show the Call tab for an empty call.
         if (live is null || live.Members.Count == 0)
             return Model.None;
 
-        var ownAuthor = await Authors.GetOwn(Session, ChatId, cancellationToken).ConfigureAwait(true);
-        var rules = await Chats.GetRules(Session, ChatId, cancellationToken).ConfigureAwait(true);
-        var isPeerChat = ChatId is PeerChatId;
+        var isPeerChat = chatId is PeerChatId;
+        var ownAuthorTask = Authors.GetOwn(Session, chatId, cancellationToken);
+        var rulesTask = Chats.GetRules(Session, chatId, cancellationToken);
+        var ownerIdsTask = isPeerChat
+            ? null
+            : Roles.ListOwnerIds(Session, chatId, cancellationToken);
+        var ownAuthor = await ownAuthorTask.ConfigureAwait(false);
+        var rules = await rulesTask.ConfigureAwait(false);
         var isHost = ownAuthor is not null && live.Host == ownAuthor.Id;
-        var ownerIds = isPeerChat
+        var ownerIds = ownerIdsTask is null
             ? []
-            : await Roles.ListOwnerIds(Session, ChatId, cancellationToken).ConfigureAwait(true);
+            : await ownerIdsTask.ConfigureAwait(false);
         return new Model {
             Session = live,
             OwnAuthorId = ownAuthor?.Id,

@@ -86,6 +86,7 @@
         var markup = Markup;
         var rendered = _rendered;
         var entryId = Entry.Id;
+        var entryLocalId = Entry.LocalId;
 
         var hasSelection = await SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
         var model = await InnerComputeState(cancellationToken).ConfigureAwait(false);
@@ -114,7 +115,7 @@
             if (replayState is null || replayState.ChatId != chatId)
                 return Model.None;
 
-            var trackId = ChatAudioTrackInfo.ComposeTrackId(chatId, Entry.LocalId);
+            var trackId = ChatAudioTrackInfo.ComposeTrackId(chatId, entryLocalId);
             if (await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken1).ConfigureAwait(false) is not ChatAudioTrackInfo trackInfo)
                 return Model.None;
 
