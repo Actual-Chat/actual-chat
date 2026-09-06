@@ -33,7 +33,6 @@ export function isNoneQuery(query: VirtualListDataQuery): boolean {
 
 export const EmptyRenderState: VirtualListRenderState = {
     renderIndex: -1,
-    query: VirtualListDataQuery.None,
     keyRange: new Range<string>('', ''),
     beforeCount: null,
     afterCount: null,

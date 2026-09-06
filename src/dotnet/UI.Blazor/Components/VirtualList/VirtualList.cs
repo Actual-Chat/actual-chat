@@ -19,6 +19,7 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
     private static readonly TimeSpan InitialDataTimeout = TimeSpan.FromSeconds(0.3);
 
     private VirtualListData<TItem>? _initialData;
+    private VirtualListDataQuery _pendingQuery = VirtualListDataQuery.None;
 
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
@@ -26,10 +27,10 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
     protected IJSObjectReference JSRef { get; set; } = null!;
     protected DotNetObjectReference<IVirtualListBackend> BlazorRef { get; set; } = null!;
 
-    protected VirtualListDataQuery Query { get; set; } = VirtualListDataQuery.None;
     // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
     protected VirtualListData<TItem> Data => State?.LastNonErrorValue ?? VirtualListData<TItem>.None;
-    protected VirtualListData<TItem> LastData { get; set; } = VirtualListData<TItem>.None;
+    protected VirtualListData<TItem> RenderedData { get; set; } = VirtualListData<TItem>.None;
+
     protected VirtualListItemVisibility LastReportedItemVisibility { get; set; } = VirtualListItemVisibility.Empty;
 
     protected int RenderIndex { get; set; }
@@ -65,7 +66,7 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
         RenderIndex = 0;
-        LastData = VirtualListData<TItem>.None;
+        RenderedData = VirtualListData<TItem>.None;
         // A list that goes away has to retract what it last reported, because nothing else will: a place
         // or filter switching to an empty result destroys this component rather than rendering it with no
         // rows, so the JS side is gone before it could say so, and the consumer would go on acting on keys
@@ -84,7 +85,7 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
     public async Task RequestData(VirtualListDataQuery query)
     {
         ChatSwitchTracer.Mark("VirtualList.RequestData (from JS)", Identity);
-        Query = query;
+        Volatile.Write(ref _pendingQuery, query);
         while (State == null)
             await Task.Delay(50);
         _ = State.Recompute();
@@ -117,9 +118,8 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
         if (shouldSetInitialData) {
             ChatSwitchTracer.Mark("VirtualList: initial GetData -> in (BLOCKS FIRST RENDER)", Identity);
             try {
-                _initialData = await DataSource.GetData(VirtualListDataQuery.None,
-                        VirtualListData<TItem>.None,
-                        CancellationToken.None)
+                _initialData = await DataSource
+                    .GetData(VirtualListDataQuery.None, VirtualListData<TItem>.None, CancellationToken.None)
                     .WaitAsync(InitialDataTimeout);
                 ChatSwitchTracer.Mark("VirtualList: initial GetData <- out", Identity);
             }
@@ -147,7 +147,7 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
 
     protected override bool ShouldRender()
     {
-        var shouldRender = !ReferenceEquals(Data, LastData) // Data changed
+        var shouldRender = !ReferenceEquals(Data, RenderedData) // Data changed
             || RenderIndex == 0 // OR very first sync render without data loaded
             || (LastReportedItemVisibility.VisibleKeys.Count == 0 && !Data.HasAllItems); // OR no visible items
         if (!shouldRender) {
@@ -179,21 +179,25 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
         return new ComputedState<VirtualListData<TItem>>.Options {
             InitialValue = initialData,
             UpdateDelayer = FixedDelayer.NextTick,
-            TryComputeSynchronously = true,
+            TryComputeSynchronously = false, // Intended here, _initialData covers that better
             Category = GetStateCategory(GetType()),
         };
     }
 
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)
     {
-        var query = Query;
-        var lastData = LastData;
-        VirtualListData<TItem> data;
+        var query = Interlocked.Exchange(ref _pendingQuery, VirtualListDataQuery.None);
+        var renderedData = RenderedData;
+        var dataSource = DataSource;
         var computed = Computed.GetCurrent();
+        var isAnswered = false;
         try {
-            data = await DataSource.GetData(query, lastData, cancellationToken).ConfigureAwait(false);
+            var data = await dataSource.GetData(query, renderedData, cancellationToken).ConfigureAwait(false);
             if (ComputedImpl.GetDependencies(computed).Any(d => d.IsInvalidated()))
-                return lastData; // Current computed is already invalidated, so no reason to waste our time re-rendering right now
+                return renderedData; // Already invalidated - a render of this data would be wasted
+
+            isAnswered = true;
+            return data;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             // Identity (the chat id for the chat view) is what lets this be correlated with the
@@ -204,6 +208,10 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
                 Identity, query);
             throw;
         }
-        return data;
+        finally {
+            // A query nothing rendered stays pending for the recompute that follows - unless a newer one arrived
+            if (!isAnswered && !query.IsNone)
+                Interlocked.CompareExchange(ref _pendingQuery, query, VirtualListDataQuery.None);
+        }
     }
 }

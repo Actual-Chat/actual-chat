@@ -5,7 +5,6 @@ namespace ActualChat.UI.Blazor.Components.Internal;
 public sealed class VirtualListRenderState
 {
     public long RenderIndex { get; init; }
-    public VirtualListDataQuery Query { get; init; } = VirtualListDataQuery.None;
 
     public Range<string> KeyRange { get; init; }
     public int? BeforeCount { get; init; }

@@ -7,11 +7,15 @@ namespace ActualChat.UI.Blazor.Services;
 /// </summary>
 public class NavbarUI : UIServiceBase<UIHub>
 {
+    // Dispatcher-only, like every mutation here. The selection is published for reads from any thread:
+    // compute methods route on it (NavbarExt) while a worker may be changing it through SelectGroup
     private readonly List<Group> _groups = new ();
+    private string _selectedGroupId = "";
+    private string _selectedGroupTitle = "";
 
     public SyncedState<UserNavbarSettings> Settings { get; }
-    public string SelectedGroupId { get; private set; } = "";
-    public string SelectedGroupTitle { get; private set; } = "";
+    public string SelectedGroupId => Volatile.Read(ref _selectedGroupId);
+    public string SelectedGroupTitle => Volatile.Read(ref _selectedGroupTitle);
     public event EventHandler<NavbarGroupChangedEventArgs>? SelectedGroupChanged;
     public event EventHandler? SelectedGroupTitleUpdated;
     public Task WhenReady => Settings.WhenFirstTimeRead;
@@ -27,7 +31,8 @@ public class NavbarUI : UIServiceBase<UIHub>
         Hub.RegisterDisposable(Settings);
     }
 
-    // NOTE(AY): Any public member of this type can be used only from Blazor Dispatcher's thread
+    // NOTE(AY): Reads are safe from any thread; every mutation runs on the Blazor Dispatcher's thread.
+    // SelectGroup marshals itself there (ChatUI calls it from a worker), the rest expect to be on it already.
 
     public void InitSelectedGroup(string id)
     {
@@ -35,15 +40,20 @@ public class NavbarUI : UIServiceBase<UIHub>
         if (!SelectedGroupId.IsNullOrEmpty())
             return;
 
-        SelectedGroupId = id;
+        Volatile.Write(ref _selectedGroupId, id);
     }
 
     public void SelectGroup(string id, bool isUserAction)
     {
+        if (!Dispatcher.CheckAccess()) {
+            _ = Dispatcher.InvokeSafeAsync(() => SelectGroup(id, isUserAction), Log);
+            return;
+        }
+
         var group = _groups.FirstOrDefault(c => c.Id == id);
         Log.LogDebug("Group changed (Id='{Id}', Title='{Title}')", id, group?.Title ?? "(unknown)");
-        SelectedGroupId = id;
-        SelectedGroupTitle = group?.Title ?? string.Empty;
+        Volatile.Write(ref _selectedGroupId, id);
+        Volatile.Write(ref _selectedGroupTitle, group?.Title ?? string.Empty);
         SelectedGroupChanged?.Invoke(this, new NavbarGroupChangedEventArgs(id, isUserAction));
     }
 
@@ -89,7 +99,7 @@ public class NavbarUI : UIServiceBase<UIHub>
             return;
 
         Log.LogDebug("Group title changed (Id='{Id}', Title='{Title}')", id, title);
-        SelectedGroupTitle = title;
+        Volatile.Write(ref _selectedGroupTitle, title);
         SelectedGroupTitleUpdated?.Invoke(this, EventArgs.Empty);
     }
 

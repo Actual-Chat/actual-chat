@@ -391,6 +391,10 @@ protected override async Task OnRun(CancellationToken cancellationToken)
   a newly built object under a lock still needs `Volatile.Write`.
 - Annotate non-obvious accesses with a short comment saying what the barrier is
   for — publication, a guard flag, or a polled loop.
+- In UI code, which fields need this at all is decided by
+  [ui/threading.md](ui/threading.md): a `ComputeState` starts on the dispatcher
+  and continues on the thread pool, `[ComputeMethod]`s, workers and `GetData` run
+  there outright - a field any of them reads that the dispatcher writes is shared.
 
 ### Using Directives
 

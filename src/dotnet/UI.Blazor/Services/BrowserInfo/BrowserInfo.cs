@@ -9,6 +9,7 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
     private readonly MutableState<bool> _isVisible;
     private readonly MutableState<ThemeInfo> _themeInfo;
     private readonly MutableState<ThermalLevel> _thermalLevel;
+    private UILanguageState _uiLanguageState = new([], null, null);
 
     protected readonly AsyncTaskMethodBuilder WhenReadySource = AsyncTaskMethodBuilderExt.New();
     protected readonly AsyncTaskMethodBuilder WhenWasmReadySource = AsyncTaskMethodBuilderExt.New();
@@ -25,11 +26,15 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
     public IState<ThermalLevel> ThermalLevel => _thermalLevel;
     public TimeSpan UtcOffset { get; protected set; }
     public string TimeZone { get; protected set; } = "";
-    public string[] ClientLanguages { get; protected set; } = [];
-    public string? UILanguageOverride { get; protected set; }
-    public Language? StoredUILanguage { get; protected set; }
-    public Language UILanguage
-        => Languages.ResolveUILanguage(UILanguageOverride, StoredUILanguage, ClientLanguages);
+    public string[] ClientLanguages => Volatile.Read(ref _uiLanguageState).ClientLanguages;
+    public string? UILanguageOverride => Volatile.Read(ref _uiLanguageState).Override;
+    public Language? StoredUILanguage => Volatile.Read(ref _uiLanguageState).Stored;
+    public Language UILanguage {
+        get {
+            var state = Volatile.Read(ref _uiLanguageState);
+            return Languages.ResolveUILanguage(state.Override, state.Stored, state.ClientLanguages);
+        }
+    }
     public bool IsMobile { get; protected set; }
     public bool IsAndroid { get; protected set; }
     public bool IsIos { get; protected set; }
@@ -154,15 +159,18 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
             themeInfo.Colors);
 
     protected void UpdateUILanguageInfo(IBrowserInfoBackend.UILanguageInfo uiLanguageInfo)
-    {
-        ClientLanguages = uiLanguageInfo.ClientLanguages;
-        UILanguageOverride = uiLanguageInfo.UrlOverride;
-        StoredUILanguage = Language.TryParse(uiLanguageInfo.Selected, allowNull: true);
-    }
+        => Volatile.Write(ref _uiLanguageState, new UILanguageState(
+            uiLanguageInfo.ClientLanguages,
+            uiLanguageInfo.UrlOverride,
+            Language.TryParse(uiLanguageInfo.Selected, allowNull: true)));
 
     protected static ScreenSize? TryParseScreenSize(string? screenSize)
         => Enum.TryParse<ScreenSize>(screenSize ?? "", true, out var v) ? v : null;
 
     protected static Theme? TryParseTheme(string? theme)
         => Enum.TryParse<Theme>(theme ?? "", true, out var v) ? v : null;
+
+    // Nested types
+
+    private sealed record UILanguageState(string[] ClientLanguages, string? Override, Language? Stored);
 }

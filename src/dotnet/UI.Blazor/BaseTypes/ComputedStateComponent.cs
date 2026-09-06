@@ -42,12 +42,6 @@ public abstract class ComputedStateComponent<THub, TState> : ComputedStateCompon
     protected bool IsInteractive => Hub.IsInteractive;
     protected bool ShouldAutoFocusField => Hub.BrowserInfo.ShouldAutoFocusField;
 
-    protected ComputedStateComponent()
-    {
-        // ComputeStateOnThreadPool: prevents blocking the UI thread
-        Options = DefaultOptions | ComputedStateComponentOptions.ComputeStateOnThreadPool;
-    }
-
     public override Task SetParametersAsync(ParameterView parameters)
     {
         _hub ??= (THub)CircuitHub;

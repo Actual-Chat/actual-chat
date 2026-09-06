@@ -13,6 +13,10 @@ the three UI surfaces complex enough to need a document of their own.
 - [Component guidelines](./components.md) — file structure for `.razor` / `.css` /
   `.ts` triples, CSS naming and the `@apply` rules, `ComputedStateComponent`
   patterns, JS interop, animation performance.
+- [Threads in the UI](./threading.md) — what runs on the Blazor dispatcher and
+  what on the thread pool (every `ComputeState` does), the read-safe /
+  dispatcher-mutation contract for scoped `XxxUI` services, and the rules for
+  `ComputeState` and `IVirtualListDataSource.GetData`.
 
 ## Components
 

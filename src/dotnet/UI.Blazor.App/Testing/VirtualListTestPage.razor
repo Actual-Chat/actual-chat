@@ -15,6 +15,7 @@
 
 <div class="test-page-wrapper">
     <InfiniteList
+        @key="@ListKey"
         Style="height: 600px;"
         SpacerSize="10_000"
         SkeletonCount="2"
@@ -62,15 +63,24 @@
     [Parameter, SupplyParameterFromQuery]
     public int? HeightDelay { get; set; } = null;
 
-    public Task<VirtualListData<TestListItemRef>> GetData(
+    // GetData reads the query parameters, so a change to any of them has to re-create the list
+    private string ListKey
+        => $"{RangeSeed}|{ContentSeed}|{DefaultEdge}|{RenderDirection}|{AnimateItemHeight}|{HeightTransition}|{HeightDelay}";
+
+    public async Task<VirtualListData<TestListItemRef>> GetData(
         VirtualListDataQuery query,
         VirtualListData<TestListItemRef> renderedData,
         CancellationToken cancellationToken)
-        => Service.GetItemKeys(
-            query,
-            RangeSeed,
-            ContentSeed,
-            (VirtualListEdge)(DefaultEdge ?? 0),
-            new VirtualListTestItemOptions((HeightTransition ?? 1) != 0, HeightDelay),
-            cancellationToken);
+    {
+        var rangeSeed = RangeSeed;
+        var contentSeed = ContentSeed;
+        var defaultEdge = (VirtualListEdge)(DefaultEdge ?? 0);
+        var itemOptions = new VirtualListTestItemOptions((HeightTransition ?? 1) != 0, HeightDelay);
+        var service = Service;
+        await ThreadPoolYield.Yield();
+
+        return await service
+            .GetItemKeys(query, rangeSeed, contentSeed, defaultEdge, itemOptions, cancellationToken)
+            .ConfigureAwait(false);
+    }
 }

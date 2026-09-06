@@ -19,12 +19,11 @@
         && hasVeryFirstItem;
     var renderState = new VirtualListRenderState {
         RenderIndex = renderIndex,
-        Query = Query,
         KeyRange = data.KeyRange,
         Count = data.Count,
-        BeforeCount = Data.BeforeCount,
-        AfterCount = Data.AfterCount,
-        EstimatedCount = Data.EstimatedCount,
+        BeforeCount = data.BeforeCount,
+        AfterCount = data.AfterCount,
+        EstimatedCount = data.EstimatedCount,
         HasVeryFirstItem = data.HasVeryFirstItem,
         HasVeryLastItem = data.HasVeryLastItem,
         ScrollToKey = data.ScrollToKey,
@@ -37,8 +36,7 @@
     var endSkeletonCount = data.AfterCount.HasValue && data.AfterCount < SkeletonCount
         ? data.AfterCount.Value
         : SkeletonCount;
-    LastData = data;
-    Query = VirtualListDataQuery.None;
+    RenderedData = data;
 }
 
 <div @ref="Ref"
@@ -78,7 +76,10 @@
                land as a whole style attribute, taking the JS-set height with them. *@
             <li @key="@VirtualListSpecialKeys.Spacer"
                 class="c-spacer-start">
-                <VirtualListSkeletonView SkeletonCount="@startSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
+                <VirtualListSkeletonView
+                    SkeletonCount="@startSkeletonCount"
+                    Skeleton="@Skeleton"
+                    SkeletonBatch="@SkeletonBatch"/>
             </li>
 
             @for (var i = 0; i < items.Count; i++) {
@@ -113,7 +114,10 @@
 
             <li @key="@VirtualListSpecialKeys.EndSpacer"
                 class="c-spacer-end">
-                <VirtualListSkeletonView SkeletonCount="@endSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
+                <VirtualListSkeletonView
+                    SkeletonCount="@endSkeletonCount"
+                    Skeleton="@Skeleton"
+                    SkeletonBatch="@SkeletonBatch"/>
             </li>
 
         </ul>

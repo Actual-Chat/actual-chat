@@ -472,18 +472,21 @@ public partial class ChatUI
                         // The override below is premised on this default, so latch it now: a tile landing
                         // later with a different one would invert the very expansion this just arranged.
                         _knownConversationDefaultExpanded.TryAdd(conversationId, false);
-                        var overrides0 = ConversationExpansionOverrides.Value;
-                        var isOverridden = overrides0.Contains(conversationId);
-                        // An auto-expanded conversation already renders expanded, and stacking an override
-                        // on it would break the "auto set implies no override" invariant the toggle relies on.
-                        var isExpanded = (defaultExpanded.Contains(conversationId) ^ isOverridden)
-                            || _autoExpandedConversations.Value.Contains(conversationId);
-                        if (!isExpanded) {
-                            var newOverrides = isOverridden
-                                ? overrides0.Remove(conversationId)
-                                : overrides0.Add(conversationId);
-                            _conversationExpansionOverrides.Value = newOverrides;
-                            LastConversationExpansionOverrides = newOverrides;
+                        // The same read-modify-write as ToggleExpandConversation, so under the same lock
+                        lock (Lock) {
+                            var overrides0 = ConversationExpansionOverrides.Value;
+                            var isOverridden = overrides0.Contains(conversationId);
+                            // An auto-expanded conversation already renders expanded, and stacking an override
+                            // on it would break the "auto set implies no override" invariant the toggle relies on.
+                            var isExpanded = (defaultExpanded.Contains(conversationId) ^ isOverridden)
+                                || _autoExpandedConversations.Value.Contains(conversationId);
+                            if (!isExpanded) {
+                                var newOverrides = isOverridden
+                                    ? overrides0.Remove(conversationId)
+                                    : overrides0.Add(conversationId);
+                                _conversationExpansionOverrides.Value = newOverrides;
+                                LastConversationExpansionOverrides = newOverrides;
+                            }
                         }
                     }
                 }
@@ -502,15 +505,17 @@ public partial class ChatUI
                         || autoExpandedId != joinedConversation.Id)) {
                     _autoExpandedLiveBlock[chatId] = joinedConversation.Id;
                     _knownConversationDefaultExpanded.TryAdd(joinedConversation.Id, false);
-                    var joinOverrides = ConversationExpansionOverrides.Value;
-                    var isJoinedExpanded = defaultExpanded.Contains(joinedConversation.Id)
-                        ^ joinOverrides.Contains(joinedConversation.Id);
-                    if (!isJoinedExpanded) {
-                        // LastConversationExpansionOverrides is deliberately not updated: the diff below
-                        // is what widens the load window, and the rows this expand reveals need it.
-                        _conversationExpansionOverrides.Value = joinOverrides.Contains(joinedConversation.Id)
-                            ? joinOverrides.Remove(joinedConversation.Id)
-                            : joinOverrides.Add(joinedConversation.Id);
+                    lock (Lock) {
+                        var joinOverrides = ConversationExpansionOverrides.Value;
+                        var isJoinedExpanded = defaultExpanded.Contains(joinedConversation.Id)
+                            ^ joinOverrides.Contains(joinedConversation.Id);
+                        if (!isJoinedExpanded) {
+                            // LastConversationExpansionOverrides is deliberately not updated: the diff below
+                            // is what widens the load window, and the rows this expand reveals need it.
+                            _conversationExpansionOverrides.Value = joinOverrides.Contains(joinedConversation.Id)
+                                ? joinOverrides.Remove(joinedConversation.Id)
+                                : joinOverrides.Add(joinedConversation.Id);
+                        }
                     }
                 }
             }
@@ -566,12 +571,17 @@ public partial class ChatUI
             // The auto set is watched alongside the overrides because auto-expansion and the toggle's
             // auto-collapse branch never touch the overrides at all.
             if (!isPrefetch) {
-                var changedIds = overrides.SymmetricExcept(LastConversationExpansionOverrides)
-                    .Union(autoExpanded.SymmetricExcept(LastAutoExpandedConversations))
-                    .OrderBy(c => c.StartEntryLid)
-                    .ToList();
-                LastConversationExpansionOverrides = overrides;
-                LastAutoExpandedConversations = autoExpanded;
+                List<ConversationId> changedIds;
+                // Two builds may overlap (a chat switch, or the pre-render call the list abandons), and the
+                // diff is a one-shot signal: an update lost here leaves an expanded conversation blank
+                lock (Lock) {
+                    changedIds = overrides.SymmetricExcept(LastConversationExpansionOverrides)
+                        .Union(autoExpanded.SymmetricExcept(LastAutoExpandedConversations))
+                        .OrderBy(c => c.StartEntryLid)
+                        .ToList();
+                    LastConversationExpansionOverrides = overrides;
+                    LastAutoExpandedConversations = autoExpanded;
+                }
                 if (changedIds.FirstOrDefault() is { } toggledId)
                     // Extend the data query to cover the toggled conversation's entries. It must extend,
                     // not replace: a conversation's start sits above everything it contains, so collapsing

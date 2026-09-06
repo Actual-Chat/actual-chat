@@ -60,15 +60,20 @@
     public Task<VirtualListData<ContentListItem>> GetData(
         VirtualListDataQuery query,
         VirtualListData<ContentListItem> renderedData,
-        CancellationToken cancellationToken)
-        => ContentListPlumbing.LoadFromPeriods<FileItem>(
-            Hub, Session, ChatId, query, renderedData,
+        CancellationToken cancellationToken) {
+        // Read on the dispatcher; LoadFromPeriods leaves it right away, and the page loads run on the pool
+        var chats = Chats;
+        var session = Session;
+        var chatId = ChatId;
+        return ContentListPlumbing.LoadFromPeriods(
+            Hub, session, chatId, query, renderedData,
             rowSize: 1,
             groupBy: ContentGrouping.Month,
-            loadPage: (block, ct) => Chats.GetFilePeriod(Session, ChatId, block.PeriodKey, block.PageIndex, ct),
+            loadPage: (block, ct) => chats.GetFilePeriod(session, chatId, block.PeriodKey, block.PageIndex, ct),
             rowFactory: BuildRow,
             prefetch: null,
             cancellationToken);
+    }
 
     private static ContentListItem BuildRow(FileItem[] items, string key, string visorDate)
         => new() {

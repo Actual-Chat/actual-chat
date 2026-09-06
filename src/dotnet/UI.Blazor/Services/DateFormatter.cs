@@ -11,14 +11,17 @@ namespace ActualChat.UI.Blazor.Services;
 /// </summary>
 public sealed class DateFormatter(IServiceProvider services) : IFormatProvider
 {
-    private (Language Language, DateTimeFormatInfo Info)? _formats;
+    // Compute threads read it while the dispatcher swaps it on a language change,
+    // and only a single reference can be swapped atomically - that's why it is ref.
+    private FormatCache? _formats;
 
     private IStringLocalizer L => field ??= services.GetRequiredService<IStringLocalizer>();
     private DateTimeFormatInfo Formats {
         get {
             var language = ((IHasUILanguage)L).UILanguage;
-            if (_formats is not { } formats || formats.Language != language)
-                _formats = formats = (language, L.NewFormatInfo());
+            var formats = Volatile.Read(ref _formats);
+            if (formats is null || formats.Language != language)
+                Volatile.Write(ref _formats, formats = new FormatCache(language, L.NewFormatInfo()));
             return formats.Info;
         }
     }
@@ -69,4 +72,8 @@ public sealed class DateFormatter(IServiceProvider services) : IFormatProvider
         parts.Add(L.Duration_Minutes_Format(duration.Minutes + extraMinute));
         return parts.ToDelimitedString(" ");
     }
+
+    // Nested types
+
+    private sealed record FormatCache(Language Language, DateTimeFormatInfo Info);
 }

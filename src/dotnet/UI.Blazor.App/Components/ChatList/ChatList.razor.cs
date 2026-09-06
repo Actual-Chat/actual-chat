@@ -4,9 +4,10 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisposable
 {
-    // Shared between the UI thread, which reports item visibility and sets the parameters, and the
-    // compute path that runs GetData - hence the Volatile accesses to all four below.
+    // Dispatcher-only: written by the visibility report, read by GetData before it leaves the dispatcher
     private VirtualListItemVisibility? _visibility;
+    // Shared between the dispatcher (the visibility report, Dispose, OnParametersSet) and GetData on the
+    // pool - hence the Volatile accesses to the three below
     private IReadOnlyList<ChatListItemModel> _items = [];
     private ChatId? _topVisibleChatId;
     private ChatId? _restoreChatId;
@@ -23,6 +24,9 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
     {
         var placeId = PlaceId;
         var usePlaceChatListSettings = UsePlaceChatListSettings;
+        var settings = Settings;
+        var visibility = _visibility;
+        await ThreadPoolYield.Yield();
 
         ChatListSettings chatListSettings;
         Task<int> chatIndexTask;
@@ -40,7 +44,7 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
                 : Task.FromResult(-1);
         }
         else {
-            chatListSettings = Settings
+            chatListSettings = settings
                 ?? new ChatListSettings { Order = ChatListOrder.ByAlphabet, FilterId = ChatListFilter.Groups.Id };
             chatId = null;
             chatIndexTask = Task.FromResult(-1);
@@ -61,7 +65,6 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
 
         var firstItem = renderedData.FirstItem;
         var lastItem = renderedData.LastItem;
-        var visibility = Volatile.Read(ref _visibility);
         var visibleIndices = visibility?.VisibleKeys.Select(int.Parse).ToList() ?? [];
         var isFirstRender = (firstItem is null || visibleIndices.Count == 0) && query.IsNone;
         var hasQuery = !query.IsNone;
@@ -160,7 +163,7 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
     {
         // GetData anchors the next load window on what the user can actually see - reusing the rendered
         // range instead would grow it on every recompute.
-        Volatile.Write(ref _visibility, visibility);
+        _visibility = visibility;
         // The retraction a disposed list reports must not erase what Dispose is about to hand over.
         if (visibility.IsEmpty)
             return;

@@ -1,10 +1,9 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
+public sealed class VirtualListData<TItem>
     where TItem : class, IVirtualListItem
 {
     public static readonly VirtualListData<TItem> None = new([]);
-    private int? _count;
 
     public bool IsNone
         => ReferenceEquals(this, None);
@@ -16,9 +15,9 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
             ? new Range<string>(firstItem.Key, lastItem.Key)
             : default;
 
-    public IReadOnlyList<TItem> Items { get; } = items;
+    public IReadOnlyList<TItem> Items { get; }
     public int Index { get; init; }
-    public int Count => _count ??= Items.Sum(CalculateCount);
+    public int Count { get; }
 
     public int? BeforeCount { get; init; }
     public int? AfterCount { get; init; }
@@ -38,8 +37,19 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
     public CpuTimestamp ComputedAt { get; init; } = CpuTimestamp.Now;
 
     public bool HasAllItems => HasVeryFirstItem && HasVeryLastItem;
-    public TItem? FirstItem => field ??= GetFirst(Items);
-    public TItem? LastItem => field ??= GetLast(Items);
+    public TItem? FirstItem { get; }
+    public TItem? LastItem { get; }
+
+    // ReSharper disable once ConvertToPrimaryConstructor
+    public VirtualListData(IReadOnlyList<TItem> items)
+    {
+        // Eager rather than lazy: an instance is read by the compute thread (as the rendered data) and by
+        // the dispatcher (as the data being rendered) at once, so it must not mutate on read
+        Items = items;
+        Count = items.Sum(CalculateCount);
+        FirstItem = GetFirst(items);
+        LastItem = GetLast(items);
+    }
 
     public bool IsSimilarTo(VirtualListData<TItem> other)
         // A separator moving changes every position after it even when the loaded items are the same

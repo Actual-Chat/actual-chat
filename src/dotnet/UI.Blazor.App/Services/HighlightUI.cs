@@ -5,22 +5,20 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class HighlightUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
-    private IReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>> _wordsByChatEntryId
+    private static readonly IReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>> NoWords
         = ReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>>.Empty;
 
+    // A state rather than a field: the search worker writes it while compute methods read it on other
+    // threads, and Use() is what makes those recompute exactly when it changes - a plain field they read
+    // just before the write, but registered after its invalidation pass, would keep stale words for good
+    private readonly MutableState<IReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>>> _wordsByChatEntryId
+        = hub.StateFactory.NewMutable(NoWords);
+
     public void Set(IReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>> wordsByChatEntryId)
-    {
-        var oldWordsByChatEntryId = _wordsByChatEntryId;
-        _wordsByChatEntryId = wordsByChatEntryId;
-        using (Invalidation.Begin())
-            foreach (var entryId in oldWordsByChatEntryId.Keys.Union(wordsByChatEntryId.Keys)) {
-                _ = GetSearchQuery(entryId, default);
-                _ = GetWordSet(entryId, default);
-            }
-    }
+        => _wordsByChatEntryId.Value = wordsByChatEntryId;
 
     public void Reset()
-        => Set(ReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>>.Empty);
+        => Set(NoWords);
 
     public virtual async Task<SearchMatch> GetSearchMatch(ChatEntryId entryId, string text, CancellationToken cancellationToken)
     {
@@ -31,17 +29,16 @@ public class HighlightUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeS
     }
 
     [ComputeMethod]
-    public virtual Task<SearchQuery> GetSearchQuery(ChatEntryId chatEntryId, CancellationToken cancellationToken)
+    public virtual async Task<SearchQuery> GetSearchQuery(ChatEntryId chatEntryId, CancellationToken cancellationToken)
     {
-        var wordSet = _wordsByChatEntryId.GetValueOrDefault(chatEntryId, new ApiSet<string>());
-        var searchQuery = new SearchQuery(wordSet.ToDelimitedString(" "), matchSuffixes: true);
-        return Task.FromResult(searchQuery);
+        var wordSet = await GetWordSet(chatEntryId, cancellationToken).ConfigureAwait(false);
+        return new SearchQuery(wordSet.ToDelimitedString(" "), matchSuffixes: true);
     }
 
     [ComputeMethod]
-    public virtual Task<IReadOnlySet<string>> GetWordSet(ChatEntryId chatEntryId, CancellationToken cancellationToken)
+    public virtual async Task<IReadOnlySet<string>> GetWordSet(ChatEntryId chatEntryId, CancellationToken cancellationToken)
     {
-        var wordSet = _wordsByChatEntryId.GetValueOrDefault(chatEntryId, new ApiSet<string>());
-        return Task.FromResult(wordSet);
+        var wordsByChatEntryId = await _wordsByChatEntryId.Use(cancellationToken).ConfigureAwait(false);
+        return wordsByChatEntryId.GetValueOrDefault(chatEntryId, new ApiSet<string>());
     }
 }

@@ -599,14 +599,16 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     internal void EnsureConversationCollapsed(ConversationId conversationId, bool isExpandedByDefault)
     {
-        SuppressAutoExpansion(conversationId);
-        // The caller's flag is the template's close-time value; the effective state is computed from the
-        // latched one, and keying the override off the wrong one leaves the block expanded.
-        var latched = _knownConversationDefaultExpanded.GetOrAdd(conversationId, isExpandedByDefault);
-        var overrides = _conversationExpansionOverrides.Value;
-        _conversationExpansionOverrides.Value = latched
-            ? overrides.Add(conversationId)
-            : overrides.Remove(conversationId);
+        lock (Lock) {
+            SuppressAutoExpansion(conversationId);
+            // The caller's flag is the template's close-time value; the effective state is computed from
+            // the latched one, and keying the override off the wrong one leaves the block expanded.
+            var latched = _knownConversationDefaultExpanded.GetOrAdd(conversationId, isExpandedByDefault);
+            var overrides = _conversationExpansionOverrides.Value;
+            _conversationExpansionOverrides.Value = latched
+                ? overrides.Add(conversationId)
+                : overrides.Remove(conversationId);
+        }
     }
 
     internal bool SuppressAutoExpansion(ConversationId conversationId)
@@ -614,12 +616,14 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // Returns whether an auto-expansion was dropped - for the toggle, that removal IS the collapse.
         // Called on its own for ids whose IsExpandedByDefault isn't knowable: a frozen block's render id
         // has no conversation behind it once materialized, so normalizing its override would expand it.
-        _suppressedAutoExpansions[conversationId] = default;
-        var autoExpanded = _autoExpandedConversations.Value;
-        var isAutoExpanded = autoExpanded.Contains(conversationId);
-        if (isAutoExpanded)
-            _autoExpandedConversations.Value = autoExpanded.Remove(conversationId);
-        return isAutoExpanded;
+        lock (Lock) {
+            _suppressedAutoExpansions[conversationId] = default;
+            var autoExpanded = _autoExpandedConversations.Value;
+            var isAutoExpanded = autoExpanded.Contains(conversationId);
+            if (isAutoExpanded)
+                _autoExpandedConversations.Value = autoExpanded.Remove(conversationId);
+            return isAutoExpanded;
+        }
     }
 
     internal static List<ConversationId> GetNewAutoExpansions(

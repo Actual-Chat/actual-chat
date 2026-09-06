@@ -29,7 +29,7 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `RateLimitPolicy` / `RateLimitRule` (`ActualChat.Core.Server`) — the configured limits; charge every dimension of a call
 
 ### Collections & Caching
-- `LruCache<TKey, TValue>` — thread-safe LRU cache
+- `LruCache<TKey, TValue>` — LRU cache, **not** thread-safe (mutates on read); use `ThreadSafeLruCache` or `ConcurrentLruCache` for shared access
 - `BlockRingBuffer<T>` — ring buffer with block-level operations
 - `SharedResourcePool<TResource>` — pooled resource lease management
 

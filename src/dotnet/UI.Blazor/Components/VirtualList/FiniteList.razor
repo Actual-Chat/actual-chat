@@ -1,6 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
 @typeparam TItem
-@using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Components.Internal
 @inherits VirtualList<TItem>
 @{
@@ -10,7 +9,6 @@
     var data = Data;
     var renderState = new VirtualListRenderState {
         RenderIndex = renderIndex,
-        Query = Query,
         KeyRange = data.KeyRange,
         Count = data.Count,
         BeforeCount = data.BeforeCount,
@@ -29,8 +27,7 @@
     var endSkeletonCount = data.AfterCount is { } afterCount && afterCount < SkeletonCount
         ? afterCount
         : SkeletonCount;
-    LastData = data;
-    Query = VirtualListDataQuery.None;
+    RenderedData = data;
 }
 
 <div @ref="Ref"
@@ -59,7 +56,10 @@
 
             <li @key="@VirtualListSpecialKeys.Spacer"
                 class="c-spacer-start">
-                <VirtualListSkeletonView SkeletonCount="@startSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
+                <VirtualListSkeletonView
+                    SkeletonCount="@startSkeletonCount"
+                    Skeleton="@Skeleton"
+                    SkeletonBatch="@SkeletonBatch"/>
             </li>
 
             @for (var i = 0; i < items.Count; i++) {
@@ -91,7 +91,10 @@
 
             <li @key="@VirtualListSpecialKeys.EndSpacer"
                 class="c-spacer-end">
-                <VirtualListSkeletonView SkeletonCount="@endSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
+                <VirtualListSkeletonView
+                    SkeletonCount="@endSkeletonCount"
+                    Skeleton="@Skeleton"
+                    SkeletonBatch="@SkeletonBatch"/>
             </li>
 
         </ul>

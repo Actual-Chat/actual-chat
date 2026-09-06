@@ -176,9 +176,9 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
         Warmup(KeyValuePair.Create(default(Tune), new TuneInfo([]))); // TuneUI
         Warmup(new Dictionary<Tune, TuneInfo> { [default] = new([]) }); // TuneUI
         Warmup(default(VirtualListEdge));
+        Warmup(new VirtualListDataQuery(new Range<string>("1", "2"), new Range<double>(), new Range<int>()));
         Warmup(new VirtualListRenderState {
             RenderIndex = 1,
-            Query = new VirtualListDataQuery(new Range<string>("1", "2"), new Range<double>(), new Range<int>()),
             KeyRange = new Range<string>("1", "2"),
             BeforeCount = 1,
             AfterCount = 1,

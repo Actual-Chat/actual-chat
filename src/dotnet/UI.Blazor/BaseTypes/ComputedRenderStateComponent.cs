@@ -38,10 +38,6 @@ public abstract class ComputedRenderStateComponent<THub, TState> : ComputedRende
     protected bool IsPrerendering => Hub.IsPrerendering;
     protected bool IsInteractive => Hub.IsInteractive;
 
-    protected ComputedRenderStateComponent()
-        // ComputeStateOnThreadPool: prevents blocking the UI thread
-        => Options = DefaultOptions | ComputedStateComponentOptions.ComputeStateOnThreadPool;
-
     public override Task SetParametersAsync(ParameterView parameters)
     {
         _hub ??= (THub)CircuitHub;

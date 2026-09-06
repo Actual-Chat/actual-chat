@@ -44,7 +44,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `MaybeHasNext<TItem>` (record struct) - Represents an item with "has next" flag.
 - `TaskSerializer` - Serializes task execution to run sequentially.
 - `Throttler<T>` - Limits action execution to at most once per interval.
-- `LruCache<TKey, TValue>` - Thread-safe LRU cache implementation.
+- `LruCache<TKey, TValue>` - LRU cache implementation; not thread-safe (TryGetValue mutates the list). See `ThreadSafeLruCache` / `ConcurrentLruCache`.
 - `ThreadSafeLruCache<TKey, TValue>` - Thread-safe wrapper for LruCache.
 - `BlockRingBuffer<T>` - Ring buffer with block-level operations.
 - `SimpleConcurrentPool<T>` - Simple concurrent object pool.

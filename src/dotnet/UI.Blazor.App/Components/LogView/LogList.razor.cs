@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public partial class LogList : IVirtualListDataSource<LogEntry>
 {
-    private volatile VirtualListItemVisibility? _visibility;
+    private VirtualListItemVisibility? _visibility;
 
     public async Task<VirtualListData<LogEntry>> GetData(
         VirtualListDataQuery query,
@@ -12,9 +12,12 @@ public partial class LogList : IVirtualListDataSource<LogEntry>
         CancellationToken cancellationToken)
     {
         var visibility = _visibility;
-        var fullIdRange = await LogUI.GetIdRange(cancellationToken).ConfigureAwait(false);
+        var logUI = LogUI;
+        await ThreadPoolYield.Yield();
+
+        var fullIdRange = await logUI.GetIdRange(cancellationToken).ConfigureAwait(false);
         // TODO: use _visibility
-        var tiles = await LogUI.GetTiles(GetIdRange(), cancellationToken).ConfigureAwait(false);
+        var tiles = await logUI.GetTiles(GetIdRange(), cancellationToken).ConfigureAwait(false);
         if (tiles.Count == 0)
             return VirtualListData<LogEntry>.None;
 

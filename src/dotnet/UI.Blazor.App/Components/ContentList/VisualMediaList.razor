@@ -107,15 +107,20 @@
     public Task<VirtualListData<ContentListItem>> GetData(
         VirtualListDataQuery query,
         VirtualListData<ContentListItem> renderedData,
-        CancellationToken cancellationToken)
-        => ContentListPlumbing.LoadFromPeriods<VisualMediaItem>(
-            Hub, Session, ChatId, query, renderedData,
+        CancellationToken cancellationToken) {
+        // Read on the dispatcher; LoadFromPeriods leaves it right away, and the page loads run on the pool
+        var chats = Chats;
+        var session = Session;
+        var chatId = ChatId;
+        return ContentListPlumbing.LoadFromPeriods(
+            Hub, session, chatId, query, renderedData,
             rowSize: GridColumns,
             groupBy: ContentGrouping.Month,
-            loadPage: (block, ct) => Chats.GetVisualMediaPeriod(Session, ChatId, block.PeriodKey, block.PageIndex, ct),
+            loadPage: (block, ct) => chats.GetVisualMediaPeriod(session, chatId, block.PeriodKey, block.PageIndex, ct),
             rowFactory: BuildRow,
             prefetch: null,
             cancellationToken);
+    }
 
     private static ContentListItem BuildRow(VisualMediaItem[] items, string key, string visorDate)
         => new() {

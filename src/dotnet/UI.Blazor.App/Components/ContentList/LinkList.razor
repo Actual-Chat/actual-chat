@@ -60,14 +60,18 @@
         VirtualListDataQuery query,
         VirtualListData<ContentListItem> renderedData,
         CancellationToken cancellationToken) {
+        // Read on the dispatcher; LoadFromPeriods leaves it right away, and the page loads run on the pool
+        var chats = Chats;
+        var session = Session;
+        var chatId = ChatId;
         // Per-GetData scratch — captured by both prefetch (writes) and rowFactory (reads).
         // Holds ChatEntry-s for rich link previews; absent entries fall back to plain URL.
         var entries = new Dictionary<Symbol, ChatEntry>();
-        return ContentListPlumbing.LoadFromPeriods<LinkItem>(
-            Hub, Session, ChatId, query, renderedData,
+        return ContentListPlumbing.LoadFromPeriods(
+            Hub, session, chatId, query, renderedData,
             rowSize: 1,
             groupBy: ContentGrouping.Day,
-            loadPage: (block, ct) => Chats.GetLinkPeriod(Session, ChatId, block.PeriodKey, block.PageIndex, ct),
+            loadPage: (block, ct) => chats.GetLinkPeriod(session, chatId, block.PeriodKey, block.PageIndex, ct),
             rowFactory: (items, key, visorDate) => {
                 var link = items[0];
                 entries.TryGetValue(link.Id, out var entry);
@@ -79,16 +83,18 @@
                     VisorDate = visorDate,
                 };
             },
-            prefetch: (items, ct) => PrefetchEntries(items, entries, ct),
+            prefetch: (items, ct) => PrefetchEntries(chats, session, items, entries, ct),
             cancellationToken);
     }
 
-    private async Task PrefetchEntries(
+    private static async Task PrefetchEntries(
+        IChats chats,
+        Session session,
         IReadOnlyList<LinkItem> items,
         Dictionary<Symbol, ChatEntry> sink,
         CancellationToken cancellationToken) {
         var resolved = await items
-            .Select(item => Chats.GetEntry(Session, item.EntryId, cancellationToken).AsTask())
+            .Select(item => chats.GetEntry(session, item.EntryId, cancellationToken).AsTask())
             .Collect(cancellationToken)
             .ConfigureAwait(false);
         for (var i = 0; i < items.Count; i++)

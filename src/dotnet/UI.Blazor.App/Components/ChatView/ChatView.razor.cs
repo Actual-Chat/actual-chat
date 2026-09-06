@@ -28,9 +28,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private MutableState<ChatViewItemVisibility> _itemVisibility = null!;
     private MutableState<long> _shownReadEntryLid = null!;
     private MutableState<ChatViewNavigation?> _nextNavigation = null!;
-    private CpuTimestamp _lastEndAnchorVisibleAt;
-    private CpuTimestamp _newMessagesLineShownAt;
-    private long _debouncedReadEntryLid;
+    // Both are touched by GetData on the pool, by UpdateReadState's chain and by the visibility report on the
+    // dispatcher: the line bookkeeping is one immutable snapshot swapped as a reference, the lid is Interlocked
+    private NewMessagesLineState _newMessagesLineState = NewMessagesLineState.None;
     private long _lastKnownEntryLid = -1;
     private string _lastNavigatedUri = "";
 
@@ -63,8 +63,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             && chatId == Chat.Id;
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
     private bool IsNewMessagesLineDebounceActive
-        => _newMessagesLineShownAt != default
-            && _newMessagesLineShownAt.Elapsed < NewMessagesLineDebounceTimeout;
+        => Volatile.Read(ref _newMessagesLineState).IsDebounceActive;
 
     public IState<ReadPosition> ReadPosition {
         get {
@@ -318,7 +317,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         ChatUI.SetItemVisibility(itemVisibility);
         var isUserPresent = ChatUI.IsUserPresent(Chat.Id);
         if (itemVisibility.IsEndAnchorVisible) {
-            _lastEndAnchorVisibleAt = CpuTimestamp.Now;
+            UpdateNewMessagesLineState(s => s with { LastEndAnchorVisibleAt = CpuTimestamp.Now });
             if (isUserPresent)
                 _ = UpdateReadPositionToTheLastId();
         }
@@ -404,7 +403,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             // An observed entry carries a real server-delivered lid, so the anti-synthetic-lid clamp
             // in UpdateReadPosition may trust it - without this the eager advance below is clamped
             // back to the tail GetData knew before its update delay, i.e. silently no-ops.
-            _lastKnownEntryLid = Math.Max(_lastKnownEntryLid, entry.LocalId);
+            RaiseLastKnownEntryLid(entry.LocalId);
             if (entry.AuthorId != authorId) {
                 lastEntryLid = entry.LocalId;
                 // Pinned to the end = the entry is (about to be) on screen; advance immediately
@@ -447,21 +446,24 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         CancellationToken cancellationToken)
     {
         var chatId = Chat.Id;
+        var regionVisibility = RegionVisibility;
         var startedAt = CpuTimestamp.Now;
         var isFirstGetData = renderedData.IsNone && query.IsNone;
         if (isFirstGetData)
             ChatSwitchTracer.Mark("ChatView.GetData#1: entered", chatId);
-        await WhenInitialized;
+        await ThreadPoolYield.Yield();
+
+        await WhenInitialized.ConfigureAwait(false);
         if (isFirstGetData)
             ChatSwitchTracer.Mark("ChatView.GetData#1: WhenInitialized awaited");
 
-        var isChatViewVisible = RegionVisibility.IsVisible;
+        var isChatViewVisible = regionVisibility.IsVisible;
         if (!isChatViewVisible.Value) {
             ChatSwitchTracer.Mark("ChatView.GetData: SUSPENDED - region not visible", chatId);
             // Chat is invisible now, let's suspend & await for it to become visible
             ChatUI.ResetItemVisibility(chatId);
             using (Computed.BeginIsolation())
-                await isChatViewVisible.Computed.When(x => x, cancellationToken);
+                await isChatViewVisible.Computed.When(x => x, cancellationToken).ConfigureAwait(false);
             _shownReadEntryLid.Value = ReadPosition.Value.EntryLid;
             ResetNewMessagesLineState();
             _itemVisibility.Value = ChatViewItemVisibility.Empty;
@@ -478,7 +480,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             var isFastUpdate = startedAt - lastComputedAt <= FastUpdateRecency;
             var delay = startedAt + (isFastUpdate ? FastUpdateDelay : SlowUpdateDelay) - CpuTimestamp.Now;
             if (delay > TimeSpan.FromMilliseconds(10)) {
-                await Task.Delay(delay, cancellationToken);
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                 DebugLog?.LogDebug("GetData: delayed for {Delay}", delay);
             }
         }
@@ -495,7 +497,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var readEntryLid = GetReadEntryLid();
         var viewEntryLid = ViewPosition.Value.EntryLid;
         var hasViewEntry = viewEntryLid > 0 && viewEntryLid != long.MaxValue;
-        var nav = await _nextNavigation.Use(cancellationToken)
+        var nav = await _nextNavigation.Use(cancellationToken).ConfigureAwait(false)
             ?? (isFirstRender && hasViewEntry ? new ChatViewNavigation(viewEntryLid, false, false, true) : null);
         if (ReferenceEquals(nav, renderedData.NavigationState)) // Handles null case as well
             nav = null;
@@ -507,22 +509,22 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         using (Computed.BeginIsolation())
             cChatIdRange = await Computed.Capture(
                 () => Chats.GetIdRange(Session, chatId, cancellationToken),
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         if (isFirstGetData)
             ChatSwitchTracer.Mark("ChatView.GetData#1: GetIdRange done");
         // Rethrows via Use() to register the dependency - an isolated failure has nothing to recover on,
         // so the view would stay stale for Fusion's 30s error horizon rather than until access returns.
         if (cChatIdRange.HasError)
-            await cChatIdRange.Use(cancellationToken);
+            await cChatIdRange.Use(cancellationToken).ConfigureAwait(false);
 
         var chatIdRange = cChatIdRange.Value;
-        _lastKnownEntryLid = chatIdRange.End - 1;
+        Volatile.Write(ref _lastKnownEntryLid, chatIdRange.End - 1);
         var dataQuery = GetChatDataQuery(query,
             renderedData,
             nav,
             chatIdRange);
         if (dataQuery.ExistingLidRange.End + dataQuery.EndOffset + ChatUI.HalfLoadLimit >= chatIdRange.End)
-            await cChatIdRange.Use(cancellationToken); // Add dependency on chatIdRange
+            await cChatIdRange.Use(cancellationToken).ConfigureAwait(false); // Add dependency on chatIdRange
 
         DebugLog?.LogDebug(
             "GetData: query keyRange={KeyRange} moveRange={MoveRange} -> dataQuery={DataQuery}, nav={Nav}",
@@ -559,7 +561,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             hasAfter = false;
         var isWindowUnresolved = false;
         if (items.Count == 0) {
-            var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
+            var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken).ConfigureAwait(false);
             if (isEmpty)
                 return new VirtualListData<ChatMessage>([ChatMessage.Welcome(chatId)]) {
                     HasVeryFirstItem = true,
@@ -790,15 +792,16 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private long GetReadEntryLid()
     {
-        if (IsNewMessagesLineDebounceActive)
-            return _debouncedReadEntryLid;
+        var state = Volatile.Read(ref _newMessagesLineState);
+        if (state.IsDebounceActive)
+            return state.DebouncedReadEntryLid;
 
         // Sticky end: treat "recently at end" or "currently at end" the same way
         var isAtEnd = ItemVisibility.Value.IsEndAnchorVisible;
-        var wasRecentlyAtEnd = _lastEndAnchorVisibleAt != default
-            && _lastEndAnchorVisibleAt.Elapsed < NewMessagesLineDebounceTimeout;
+        var wasRecentlyAtEnd = state.LastEndAnchorVisibleAt != default
+            && state.LastEndAnchorVisibleAt.Elapsed < NewMessagesLineDebounceTimeout;
         if (isAtEnd || wasRecentlyAtEnd) {
-            _newMessagesLineShownAt = default;
+            UpdateNewMessagesLineState(s => s with { ShownAt = default });
             return long.MaxValue;
         }
         return ReadPosition.Value.EntryLid;
@@ -807,17 +810,39 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private void UpdateNewMessagesLineDebounce(IReadOnlyList<ChatMessage> items, long readEntryLid)
     {
         var hasNewMessagesLine = items.Any(i => i.Kind == ChatMessageKind.NewMessagesLine);
-        if (hasNewMessagesLine && _newMessagesLineShownAt == default) {
-            _newMessagesLineShownAt = CpuTimestamp.Now;
-            _debouncedReadEntryLid = readEntryLid;
-        } else if (!hasNewMessagesLine)
-            _newMessagesLineShownAt = default;
+        UpdateNewMessagesLineState(s => hasNewMessagesLine
+            ? s.ShownAt == default
+                ? s with { ShownAt = CpuTimestamp.Now, DebouncedReadEntryLid = readEntryLid }
+                : s
+            : s with { ShownAt = default });
     }
 
     private void ResetNewMessagesLineState()
+        => UpdateNewMessagesLineState(s => s with { ShownAt = default, LastEndAnchorVisibleAt = default });
+
+    private void UpdateNewMessagesLineState(Func<NewMessagesLineState, NewMessagesLineState> update)
     {
-        _newMessagesLineShownAt = default;
-        _lastEndAnchorVisibleAt = default;
+        var spinWait = new SpinWait();
+        while (true) {
+            var state = Volatile.Read(ref _newMessagesLineState);
+            var newState = update(state);
+            if (ReferenceEquals(newState, state)
+                || ReferenceEquals(Interlocked.CompareExchange(ref _newMessagesLineState, newState, state), state))
+                return;
+
+            spinWait.SpinOnce();
+        }
+    }
+
+    private void RaiseLastKnownEntryLid(long entryLid)
+    {
+        // An Interlocked max: GetData assigns the lid from the pool while UpdateReadState's chain raises it
+        while (true) {
+            var lastKnownEntryLid = Volatile.Read(ref _lastKnownEntryLid);
+            if (lastKnownEntryLid >= entryLid
+                || Interlocked.CompareExchange(ref _lastKnownEntryLid, entryLid, lastKnownEntryLid) == lastKnownEntryLid)
+                return;
+        }
     }
 
     private long UpdateReadPosition(long readEntryLid)
@@ -825,8 +850,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // Last line of defence against a synthetic lid becoming a read position: the server stores
         // read positions forward-only, so one overshoot silently swallows the unread state of every
         // real entry it covers.
-        if (_lastKnownEntryLid >= 0)
-            readEntryLid = Math.Min(readEntryLid, _lastKnownEntryLid);
+        var lastKnownEntryLid = Volatile.Read(ref _lastKnownEntryLid);
+        if (lastKnownEntryLid >= 0)
+            readEntryLid = Math.Min(readEntryLid, lastKnownEntryLid);
         var readPosition = ReadPosition;
         readEntryLid = Math.Max(readPosition.Value.EntryLid, readEntryLid);
         if (readPosition.Value.EntryLid < readEntryLid)
@@ -917,4 +943,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     // Nested types
 
     private record ChatViewMetadata(bool IsSummarized);
+
+    private sealed record NewMessagesLineState(
+        CpuTimestamp ShownAt,
+        long DebouncedReadEntryLid,
+        CpuTimestamp LastEndAnchorVisibleAt)
+    {
+        public static readonly NewMessagesLineState None = new(default, 0, default);
+
+        public bool IsDebounceActive
+            => ShownAt != default && ShownAt.Elapsed < NewMessagesLineDebounceTimeout;
+    }
 }
