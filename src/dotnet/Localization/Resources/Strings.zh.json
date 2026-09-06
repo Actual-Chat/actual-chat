@@ -287,6 +287,7 @@
   "MessageMenu_OpenLink": "打开链接",
   "MessageMenu_CopyLinkUrl": "复制链接地址",
   "MessageMenu_ForwardMessage": "转发消息",
+  "MessageMenu_ShareLink": "分享链接",
   "MessageMenu_Preview": "预览",
   "MessageMenu_ShareFile": "分享文件",
   "MessageMenu_CopyDownloadLink": "复制下载链接",

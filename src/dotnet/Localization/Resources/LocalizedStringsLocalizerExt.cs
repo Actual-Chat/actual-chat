@@ -307,6 +307,7 @@ public static class LocalizedStringsLocalizerExt
         public string MessageMenu_CancelSend => l["MessageMenu_CancelSend"].Value;
         public string MessageMenu_OpenLink => l["MessageMenu_OpenLink"].Value;
         public string MessageMenu_CopyLinkUrl => l["MessageMenu_CopyLinkUrl"].Value;
+        public string MessageMenu_ShareLink => l["MessageMenu_ShareLink"].Value;
         public string MessageMenu_ForwardMessage => l["MessageMenu_ForwardMessage"].Value;
         public string MessageMenu_Preview => l["MessageMenu_Preview"].Value;
         public string MessageMenu_ShareFile => l["MessageMenu_ShareFile"].Value;

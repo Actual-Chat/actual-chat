@@ -365,6 +365,7 @@
   "MessageMenu_OpenLink": "Open link",
   "MessageMenu_CopyLinkUrl": "Copy link URL",
   "MessageMenu_ForwardMessage": "Forward message",
+  "MessageMenu_ShareLink": "Share link",
   "MessageMenu_Preview": "Preview",
   "MessageMenu_ShareFile": "Share file",
   "MessageMenu_CopyDownloadLink": "Copy download link",

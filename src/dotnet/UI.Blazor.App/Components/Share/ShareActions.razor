@@ -46,5 +46,7 @@
             Model.Title,
             Model.Request.Link.GetValueOrDefault(),
             Model.ImageUrl,
-            ScanHandler));
+            ScanHandler) {
+            AbsoluteUrl = Model.Request.HasExternalLink() ? Model.Request.GetShareLink(UrlMapper) : null,
+        });
 }

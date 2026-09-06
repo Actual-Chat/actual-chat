@@ -287,6 +287,7 @@
   "MessageMenu_OpenLink": "Открыть ссылку",
   "MessageMenu_CopyLinkUrl": "Копировать адрес ссылки",
   "MessageMenu_ForwardMessage": "Переслать сообщение",
+  "MessageMenu_ShareLink": "Поделиться ссылкой",
   "MessageMenu_Preview": "Просмотр",
   "MessageMenu_ShareFile": "Поделиться файлом",
   "MessageMenu_CopyDownloadLink": "Копировать ссылку для скачивания",

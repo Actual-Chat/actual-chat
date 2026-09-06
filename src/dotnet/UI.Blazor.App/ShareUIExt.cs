@@ -34,6 +34,16 @@ public static class ShareUIExt
             : await shareUI.Share(shareModel).ConfigureAwait(false);
     }
 
+    // Shares a link preview's target as a new message: a LocalUrl for an in-app link,
+    // else the raw off-origin URL that has no LocalUrl form
+    public static Task<ModalRef> ShareLink(this ShareUI shareUI, string url, LocalUrl? localUrl, string title)
+    {
+        var request = localUrl is { } local
+            ? new ShareRequest(local)
+            : new ShareRequest("") { ExternalLink = url };
+        return shareUI.Share(new ShareModalModel(ShareKind.Other, title, "", request, null));
+    }
+
     public static async Task<ModalRef?> ShareOwnAccount(
         this ShareUI shareUI, CancellationToken cancellationToken = default)
     {

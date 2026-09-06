@@ -13,6 +13,11 @@
         Click="@OnCopy">
     </MenuEntry>
     <MenuEntry
+        Icon="icon-share-more"
+        Text="@L.MessageMenu_ShareLink"
+        Click="@OnShareLink">
+    </MenuEntry>
+    <MenuEntry
         Icon="icon-share"
         Text="@L.MessageMenu_ForwardMessage"
         Click="@OnForward">
@@ -26,6 +31,7 @@
 
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private ClipboardUI ClipboardUI => Hub.ClipboardUI;
+    private ShareUI ShareUI => Hub.ShareUI;
 
     protected override void OnParametersSet() {
         switch (Arguments) {
@@ -60,6 +66,12 @@
     private async Task OnCopy() {
         await WhenClosed.ConfigureAwait(true);
         await ClipboardUI.WriteText(_url).ConfigureAwait(false);
+    }
+
+    private async Task OnShareLink() {
+        await WhenClosed.ConfigureAwait(true);
+        var localUrl = _localUrl.IsNullOrEmpty() ? (LocalUrl?)null : new LocalUrl(_localUrl);
+        await ShareUI.ShareLink(_url, localUrl, L.MessageMenu_ShareLink).ConfigureAwait(false);
     }
 
     private async Task OnForward() {

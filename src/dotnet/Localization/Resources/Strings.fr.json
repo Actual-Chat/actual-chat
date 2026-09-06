@@ -287,6 +287,7 @@
   "MessageMenu_OpenLink": "Ouvrir le lien",
   "MessageMenu_CopyLinkUrl": "Copier l’URL du lien",
   "MessageMenu_ForwardMessage": "Transférer le message",
+  "MessageMenu_ShareLink": "Partager le lien",
   "MessageMenu_Preview": "Aperçu",
   "MessageMenu_ShareFile": "Partager le fichier",
   "MessageMenu_CopyDownloadLink": "Copier le lien de téléchargement",
