@@ -246,6 +246,10 @@
   "SystemEntry_MemberLeft": " keluar dari obrolan.",
   "SystemEntry_AttentionRequested": " meminta perhatian.",
   "SystemEntry_Someone": "Seseorang",
+  "SystemEntry_CallNoAnswer": " menelepon. Tidak dijawab.",
+  "SystemEntry_CallDeclined": " menelepon. Ditolak.",
+  "SystemEntry_CallCanceled": " menelepon. Dibatalkan.",
+  "SystemEntry_CallEnded": " menelepon.",
 
   "ChatFooter_ReadOnly": "Obrolan hanya bisa dibaca",
   "ChatFooter_YouBlockedUser": "Anda memblokir pengguna ini.",

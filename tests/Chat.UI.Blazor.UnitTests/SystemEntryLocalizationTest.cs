@@ -129,6 +129,16 @@ public class SystemEntryLocalizationTest
             TargetAuthorId = authorId, TargetAuthorName = AuthorName, HasLeft = true,
         };
         yield return new NotifyMembersEntry { TargetAuthorId = authorId, TargetAuthorName = AuthorName };
+        foreach (var outcome in new[] {
+                     CallOutcome.NoAnswer, CallOutcome.Declined, CallOutcome.Canceled, CallOutcome.Ended,
+                 })
+            yield return new CallEntry {
+                // CallerId is non-nullable, so unlike the entries above there is no id-less variant;
+                // the null batch simply repeats this sample.
+                CallerId = authorId ?? MentionedAuthorId,
+                CallerName = AuthorName,
+                Outcome = outcome,
+            };
     }
 
     private static SystemEntryMarkupBuilder NewBuilder(Language language)

@@ -246,6 +246,10 @@
   "SystemEntry_MemberLeft": " a quitté la discussion.",
   "SystemEntry_AttentionRequested": " demande de l'attention.",
   "SystemEntry_Someone": "Quelqu'un",
+  "SystemEntry_CallNoAnswer": " a appelé. Sans réponse.",
+  "SystemEntry_CallDeclined": " a appelé. Refusé.",
+  "SystemEntry_CallCanceled": " a appelé. Annulé.",
+  "SystemEntry_CallEnded": " a appelé.",
 
   "ChatFooter_ReadOnly": "Discussion en lecture seule",
   "ChatFooter_YouBlockedUser": "Vous avez bloqué cet utilisateur.",

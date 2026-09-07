@@ -246,6 +246,10 @@
   "SystemEntry_MemberLeft": " больше не в чате.",
   "SystemEntry_AttentionRequested": " просит внимания.",
   "SystemEntry_Someone": "Кто-то",
+  "SystemEntry_CallNoAnswer": " звонит. Нет ответа.",
+  "SystemEntry_CallDeclined": " звонит. Отклонено.",
+  "SystemEntry_CallCanceled": " звонит. Отменено.",
+  "SystemEntry_CallEnded": " звонит.",
 
   "ChatFooter_ReadOnly": "Чат доступен только для чтения",
   "ChatFooter_YouBlockedUser": "Вы заблокировали этого пользователя.",

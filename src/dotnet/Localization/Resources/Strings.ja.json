@@ -246,6 +246,10 @@
   "SystemEntry_MemberLeft": " さんがチャットから退出しました。",
   "SystemEntry_AttentionRequested": " さんが注目を求めています。",
   "SystemEntry_Someone": "誰か",
+  "SystemEntry_CallNoAnswer": " さんが発信しました。応答がありませんでした。",
+  "SystemEntry_CallDeclined": " さんが発信しました。拒否されました。",
+  "SystemEntry_CallCanceled": " さんが発信しました。キャンセルされました。",
+  "SystemEntry_CallEnded": " さんが発信しました。",
 
   "ChatFooter_ReadOnly": "チャットは読み取り専用です",
   "ChatFooter_YouBlockedUser": "このユーザーをブロックしています。",

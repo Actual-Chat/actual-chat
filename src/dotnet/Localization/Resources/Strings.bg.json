@@ -246,6 +246,10 @@
   "SystemEntry_MemberLeft": " напусна чата.",
   "SystemEntry_AttentionRequested": " поиска внимание.",
   "SystemEntry_Someone": "Някой",
+  "SystemEntry_CallNoAnswer": " се обади. Няма отговор.",
+  "SystemEntry_CallDeclined": " се обади. Отхвърлено.",
+  "SystemEntry_CallCanceled": " се обади. Отменено.",
+  "SystemEntry_CallEnded": " се обади.",
 
   "ChatFooter_ReadOnly": "Чатът е само за четене",
   "ChatFooter_YouBlockedUser": "Блокирахте този потребител.",

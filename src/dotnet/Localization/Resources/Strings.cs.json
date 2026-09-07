@@ -246,6 +246,10 @@
   "SystemEntry_MemberLeft": " opustil(a) chat.",
   "SystemEntry_AttentionRequested": " žádá o pozornost.",
   "SystemEntry_Someone": "Někdo",
+  "SystemEntry_CallNoAnswer": " zavolal(a). Bez odpovědi.",
+  "SystemEntry_CallDeclined": " zavolal(a). Odmítnuto.",
+  "SystemEntry_CallCanceled": " zavolal(a). Zrušeno.",
+  "SystemEntry_CallEnded": " zavolal(a).",
 
   "ChatFooter_ReadOnly": "Chat je jen pro čtení",
   "ChatFooter_YouBlockedUser": "Tohoto uživatele jste zablokovali.",

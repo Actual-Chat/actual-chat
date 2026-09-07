@@ -246,6 +246,10 @@
   "SystemEntry_MemberLeft": " ha salido del chat.",
   "SystemEntry_AttentionRequested": " pide atención.",
   "SystemEntry_Someone": "Alguien",
+  "SystemEntry_CallNoAnswer": " llamó. Sin respuesta.",
+  "SystemEntry_CallDeclined": " llamó. Rechazada.",
+  "SystemEntry_CallCanceled": " llamó. Cancelada.",
+  "SystemEntry_CallEnded": " llamó.",
 
   "ChatFooter_ReadOnly": "Chat de solo lectura",
   "ChatFooter_YouBlockedUser": "Has bloqueado a este usuario.",

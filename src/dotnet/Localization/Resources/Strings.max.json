@@ -316,6 +316,10 @@
   "SystemEntry_MemberLeft": " さんがチャットから退出しました。",
   "SystemEntry_AttentionRequested": " さんが注目を求めています。",
   "SystemEntry_Someone": "Seseorang",
+  "SystemEntry_CallNoAnswer": " さんが発信しました。応答がありませんでした。",
+  "SystemEntry_CallDeclined": " さんが発信しました。拒否されました。",
+  "SystemEntry_CallCanceled": " さんが発信しました。キャンセルされました。",
+  "SystemEntry_CallEnded": "님이 전화를 걸었습니다.",
 
   // The bar that replaces the message editor when you cannot post: a read-only chat, a block in
   // either direction, or a chat you have not joined yet. Most of these are fragments wrapped
@@ -365,7 +369,7 @@
   "MessageMenu_OpenLink": "Відкрити посилання",
   "MessageMenu_CopyLinkUrl": "Копіювати адресу посилання",
   "MessageMenu_ForwardMessage": "Препратете съобщението",
-  "MessageMenu_ShareLink": "Share link",
+  "MessageMenu_ShareLink": "Поділитися посиланням",
   "MessageMenu_Preview": "Pré-visualizar",
   "MessageMenu_ShareFile": "Поделиться файлом",
   "MessageMenu_CopyDownloadLink": "Копіювати посилання для завантаження",

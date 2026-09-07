@@ -246,6 +246,10 @@
   "SystemEntry_MemberLeft": " 退出了聊天。",
   "SystemEntry_AttentionRequested": " 请求大家注意。",
   "SystemEntry_Someone": "某人",
+  "SystemEntry_CallNoAnswer": " 拨打了电话。无人接听。",
+  "SystemEntry_CallDeclined": " 拨打了电话。已拒接。",
+  "SystemEntry_CallCanceled": " 拨打了电话。已取消。",
+  "SystemEntry_CallEnded": " 拨打了电话。",
 
   "ChatFooter_ReadOnly": "聊天为只读",
   "ChatFooter_YouBlockedUser": "你已屏蔽此用户。",

@@ -246,6 +246,10 @@
   "SystemEntry_MemberLeft": " је напустио чет.",
   "SystemEntry_AttentionRequested": " тражи пажњу.",
   "SystemEntry_Someone": "Неко",
+  "SystemEntry_CallNoAnswer": " је назвао. Нема одговора.",
+  "SystemEntry_CallDeclined": " је назвао. Одбијено.",
+  "SystemEntry_CallCanceled": " је назвао. Отказано.",
+  "SystemEntry_CallEnded": " је назвао.",
 
   "ChatFooter_ReadOnly": "Чет је само за читање",
   "ChatFooter_YouBlockedUser": "Блокирали сте овог корисника.",

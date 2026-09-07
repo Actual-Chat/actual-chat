@@ -246,6 +246,10 @@
   "SystemEntry_MemberLeft": " opuścił(a) czat.",
   "SystemEntry_AttentionRequested": " prosi o uwagę.",
   "SystemEntry_Someone": "Ktoś",
+  "SystemEntry_CallNoAnswer": " zadzwonił(a). Brak odpowiedzi.",
+  "SystemEntry_CallDeclined": " zadzwonił(a). Odrzucone.",
+  "SystemEntry_CallCanceled": " zadzwonił(a). Anulowane.",
+  "SystemEntry_CallEnded": " zadzwonił(a).",
 
   "ChatFooter_ReadOnly": "Czat tylko do odczytu",
   "ChatFooter_YouBlockedUser": "Zablokowano tego użytkownika.",

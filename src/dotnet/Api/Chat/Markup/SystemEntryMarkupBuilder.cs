@@ -18,6 +18,7 @@ public class SystemEntryMarkupBuilder
         => entry switch {
             MembersChangedEntry e => BuildMembersChanged(e),
             NotifyMembersEntry e => BuildNotifyMembers(e),
+            CallEntry e => BuildCall(e),
             // A system event of a kind this build has no member for renders as nothing: a system
             // event is low-value by construction, so "update your app" in its place is just a nag.
             UnsupportedSystemEntry => Markup.EmptyText,
@@ -46,5 +47,18 @@ public class SystemEntryMarkupBuilder
             : new MarkupSeq(
                 new AuthorMention(MentionRef.NewAuthor(entry.TargetAuthorId), authorName),
                 new PlainTextMarkup(" asked for attention."));
+    }
+
+    protected virtual Markup BuildCall(CallEntry entry)
+    {
+        var callerName = entry.CallerName.NullIfEmpty() ?? SomeoneName;
+        return new MarkupSeq(
+            new AuthorMention(MentionRef.NewAuthor(entry.CallerId), callerName),
+            new PlainTextMarkup(entry.Outcome switch {
+                CallOutcome.NoAnswer => " called. No answer.",
+                CallOutcome.Declined => " called. Declined.",
+                CallOutcome.Canceled => " called. Canceled.",
+                _ => " called.",
+            }));
     }
 }

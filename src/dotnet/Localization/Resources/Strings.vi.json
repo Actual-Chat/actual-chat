@@ -246,6 +246,10 @@
   "SystemEntry_MemberLeft": " đã rời khỏi cuộc trò chuyện.",
   "SystemEntry_AttentionRequested": " cần mọi người chú ý.",
   "SystemEntry_Someone": "Ai đó",
+  "SystemEntry_CallNoAnswer": " đã gọi. Không trả lời.",
+  "SystemEntry_CallDeclined": " đã gọi. Đã từ chối.",
+  "SystemEntry_CallCanceled": " đã gọi. Đã hủy.",
+  "SystemEntry_CallEnded": " đã gọi.",
 
   "ChatFooter_ReadOnly": "Cuộc trò chuyện chỉ để đọc",
   "ChatFooter_YouBlockedUser": "Bạn đã chặn người dùng này.",

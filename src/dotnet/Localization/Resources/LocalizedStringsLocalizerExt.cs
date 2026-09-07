@@ -267,6 +267,10 @@ public static class LocalizedStringsLocalizerExt
         public string SystemEntry_MemberLeft => l["SystemEntry_MemberLeft"].Value;
         public string SystemEntry_AttentionRequested => l["SystemEntry_AttentionRequested"].Value;
         public string SystemEntry_Someone => l["SystemEntry_Someone"].Value;
+        public string SystemEntry_CallNoAnswer => l["SystemEntry_CallNoAnswer"].Value;
+        public string SystemEntry_CallDeclined => l["SystemEntry_CallDeclined"].Value;
+        public string SystemEntry_CallCanceled => l["SystemEntry_CallCanceled"].Value;
+        public string SystemEntry_CallEnded => l["SystemEntry_CallEnded"].Value;
 
         public string ChatFooter_ReadOnly => l["ChatFooter_ReadOnly"].Value;
         public string ChatFooter_YouBlockedUser => l["ChatFooter_YouBlockedUser"].Value;
