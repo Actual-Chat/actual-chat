@@ -860,6 +860,17 @@ The key rules:
   properties like `ShardKey`, whose getter can throw on a deserialized instance.
 - **`[Key]` and `[Union]` ordinals are wire format.** Append; never renumber or reuse one on a
   type that has shipped.
+- **Don't reach for `[Union]` for a set that will keep growing.** An unknown enum value costs a
+  reader nothing; an unknown union tag used to be fatal, because the reader can't know the
+  payload's shape and so can't even skip it. `ForwardCompatibleUnionFormatter` makes an unknown
+  tag survivable on the roots that register for it (`UnionToleranceCoverageTest` fails a new root
+  that neither registers nor is exempt with a reason) — but survivable is not *meaningful*: a
+  placeholder is all the reader gets. Where the members are shaped alike, one type with an enum
+  discriminator and a payload keeps the surrounding fields readable, which is strictly better.
+  Reserve `[Union]` for sets whose members genuinely differ in shape.
+- **A `[Union]` member must not reuse a `[Key]` or member name the base declares.** Placeholder
+  recovery reads the base's fields out of a payload it otherwise can't parse; a collision doesn't
+  throw, it silently reads a member's value as an id.
 - **Never add MemoryPack attributes.** MemoryPack no longer writes anything — it only reads
   legacy **stored settings (KVAS)** and **flow state** blobs. A type carrying `[MemoryPackable]`
   either is one of those or is reachable from one; there is no third reason. Anything introduced

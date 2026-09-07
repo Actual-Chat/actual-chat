@@ -22,6 +22,7 @@ public sealed class LocalizedEmptyEntryMarkupBuilder(IStringLocalizer l) : Empty
     protected override string SentLiveLocation => l.EmptyEntry_SentLiveLocation;
     protected override string YourLocation => l.EmptyEntry_YourLocation;
     protected override string QuoteAttachment => l.EmptyEntry_QuoteAttachment;
+    protected override string Unsupported => l.EmptyEntry_Unsupported;
     protected override string SentImages(int count) => l.EmptyEntry_SentImages(count, count.Format());
     protected override string YourImages(int count) => l.EmptyEntry_YourImages(count);
     protected override string SentVideos(int count) => l.EmptyEntry_SentVideos(count, count.Format());

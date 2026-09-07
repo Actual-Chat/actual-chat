@@ -1399,6 +1399,7 @@
   "EmptyEntry_YourFiles": "your file|your files",
   "EmptyEntry_SentAttachments": "Sent {0} attachment|Sent {0} attachments",
   "EmptyEntry_YourAttachments": "your attachment|your attachments",
+  "EmptyEntry_Unsupported": "Update the app to see this message",
 
   // The search result list: the "In <chat>" label on a hit, and its expand/collapse toggle.
   "Search_In": "In",

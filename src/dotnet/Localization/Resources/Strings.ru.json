@@ -1190,6 +1190,7 @@
   "EmptyEntry_YourFiles": "ваш файл|ваши файлы",
   "EmptyEntry_SentAttachments": "Отправлено {0} вложение|Отправлено {0} вложения|Отправлено {0} вложений",
   "EmptyEntry_YourAttachments": "ваше вложение|ваши вложения",
+  "EmptyEntry_Unsupported": "Обновите приложение, чтобы увидеть это сообщение",
   "Search_In": "В",
   "Search_CloseSearch": "Закрыть поиск",
   "Search_ShowMore": "Показать ещё",

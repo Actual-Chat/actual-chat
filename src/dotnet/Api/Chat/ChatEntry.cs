@@ -16,6 +16,8 @@ namespace ActualChat.Chat;
 [Union(0, typeof(TextEntry))]
 [Union(1, typeof(MembersChangedEntry))]
 [Union(2, typeof(NotifyMembersEntry))]
+// 100..199 is the SystemEntry range - see ChatEntry.IsSystemUnionTag
+[Union(100, typeof(UnsupportedSystemEntry))]
 public abstract partial record ChatEntry(
     [property: DataMember(Order = 0), Key(0)] ChatEntryId Id,
     [property: DataMember(Order = 1), Key(1)] long Version = 0
@@ -101,6 +103,11 @@ public abstract partial record ChatEntry(
     public bool IsThread {
         get => Flags.HasFlag(ChatEntryFlags.IsThread);
         init => Flags = value ? Flags | ChatEntryFlags.IsThread : Flags & ~ChatEntryFlags.IsThread;
+    }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public bool IsUnsupported {
+        get => Flags.HasFlag(ChatEntryFlags.IsUnsupported);
+        init => Flags = value ? Flags | ChatEntryFlags.IsUnsupported : Flags & ~ChatEntryFlags.IsUnsupported;
     }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool HasUploadingAttachments {

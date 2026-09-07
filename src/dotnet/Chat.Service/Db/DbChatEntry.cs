@@ -116,12 +116,16 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
                     TargetAuthorId = nm.AuthorId,
                     TargetAuthorName = nm.AuthorName,
                 },
-                _ => throw StandardError.Internal($"Unknown system entry option: {legacy.Option?.GetType().Name}"),
+                // A row written by a later release - a rollback past it would otherwise take out
+                // every chat holding one. Same placeholder the wire format's unknown tags get.
+                _ => new UnsupportedSystemEntry(id, Version),
             };
         }
         else {
             baseEntry = new TextEntry(id, Version);
         }
+        if (baseEntry is UnsupportedSystemEntry)
+            flags |= ChatEntryFlags.IsUnsupported;
         return baseEntry with {
             Flags = flags,
             AuthorId = ActualChat.AuthorId.Parse(AuthorId),

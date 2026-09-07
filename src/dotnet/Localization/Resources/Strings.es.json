@@ -1190,6 +1190,7 @@
   "EmptyEntry_YourFiles": "tu archivo|tus archivos",
   "EmptyEntry_SentAttachments": "{0} adjunto enviado|{0} adjuntos enviados",
   "EmptyEntry_YourAttachments": "tu adjunto|tus adjuntos",
+  "EmptyEntry_Unsupported": "Actualiza la aplicación para ver este mensaje",
   "Search_In": "En",
   "Search_CloseSearch": "Cerrar la búsqueda",
   "Search_ShowMore": "Mostrar más",

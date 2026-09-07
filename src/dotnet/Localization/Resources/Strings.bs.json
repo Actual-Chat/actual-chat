@@ -1190,6 +1190,7 @@
   "EmptyEntry_YourFiles": "vaš fajl|vaše fajlove",
   "EmptyEntry_SentAttachments": "Poslan {0} prilog|Poslana {0} priloga|Poslano {0} priloga",
   "EmptyEntry_YourAttachments": "vaš prilog|vaše priloge",
+  "EmptyEntry_Unsupported": "Ažurirajte aplikaciju da vidite ovu poruku",
   "Search_In": "U",
   "Search_CloseSearch": "Zatvorite pretragu",
   "Search_ShowMore": "Prikažite više",

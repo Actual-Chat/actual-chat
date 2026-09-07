@@ -1203,6 +1203,10 @@ public partial class ChatUI
             foreach (var e in tile.Entries) {
                 if (idRangesToSkip.Any(range => range.Contains(e.Id.LocalId)))
                     continue;
+                // A system event this build has no member for renders as nothing at all: putting
+                // "update your app" where "X joined the chat" belongs trades a small loss for a nag.
+                if (e is { IsUnsupported: true, IsSystemEntry: true })
+                    continue;
                 // A non-joined viewer never sees the call's live transcript, and the range covering it
                 // runs to long.MaxValue - so hiding by lid alone also swallowed everything typed during
                 // the call, including the viewer's own just-posted message. Only what was spoken hides,

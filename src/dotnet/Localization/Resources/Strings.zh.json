@@ -1190,6 +1190,7 @@
   "EmptyEntry_YourFiles": "你的文件",
   "EmptyEntry_SentAttachments": "已发送 {0} 个附件",
   "EmptyEntry_YourAttachments": "你的附件",
+  "EmptyEntry_Unsupported": "更新应用以查看此消息",
   "Search_In": "位于",
   "Search_CloseSearch": "关闭搜索",
   "Search_ShowMore": "显示更多",

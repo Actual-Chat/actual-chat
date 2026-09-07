@@ -30,7 +30,7 @@ namespace ActualChat.Chat;
 [Union(20, typeof(TableMarkup))]
 [Union(21, typeof(TableRowMarkup))]
 [Union(22, typeof(TableCellMarkup))]
-public abstract class Markup : ISanitized
+public abstract class Markup : ISanitized, IForwardCompatibleUnion<Markup>
 {
     protected static ArrayPool<Markup> MarkupArrayPool = ArrayPool<Markup>.Shared;
 
@@ -44,6 +44,12 @@ public abstract class Markup : ISanitized
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     [IgnoreDataMember, IgnoreMember]
     public bool IsIncomplete { get; init; }
+
+    static Markup? IForwardCompatibleUnion<Markup>.NewUnsupported(
+        int tag, ref MessagePackReader payload, MessagePackSerializerOptions options)
+        // A node that can't be understood contributes nothing, rather than breaking the message
+        // it sits in - the surrounding markup is still perfectly readable without it.
+        => PlainTextMarkup.Empty;
 
     public static Markup Join(Markup first, Markup second)
     {
