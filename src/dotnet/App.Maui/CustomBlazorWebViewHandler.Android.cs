@@ -22,7 +22,6 @@ public partial class CustomBlazorWebViewHandler
             throw StandardError.Constraint(
                 $"The permission-managing WebChromeClient requires that the current activity is a '{nameof(MainActivity)}'.");
 
-        webView.SetLayerType(Android.Views.LayerType.Hardware, null);
         var settings = webView.Settings;
         settings.JavaScriptEnabled = true;
         settings.AllowFileAccess = false;

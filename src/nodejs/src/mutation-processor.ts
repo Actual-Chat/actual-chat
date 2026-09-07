@@ -34,7 +34,7 @@ let observedAttributes = [...baseObservedAttributes];
 // change any predicate, which is nearly all of them - this app toggles classes constantly
 // for animation and hover state, and a full rescan per toggle is what we're avoiding.
 const matchTokens = new Set<string>();
-let matchSelector = '';
+let containerSelector = '';
 let observer: MutationObserver | null = null;
 let isEnabled = true;
 
@@ -64,18 +64,13 @@ export const MutationProcessor = {
     // window with the class missing.
     registerPresenceClasses(...newRules: PresenceClassRule[]): void {
         rules.push(...newRules);
-        // The pre-filter tests added/removed nodes directly, where a leading `:scope >` would
-        // scope the selector to the node itself and so never match. Dropping it widens the
-        // check, which is the safe direction for a filter that only decides whether to work.
-        matchSelector = rules.map(r => r.match.replace(/^:scope\s*>\s*/, '')).join(',');
+        containerSelector = [...new Set(rules.map(r => r.container))].join(',');
         matchTokens.clear();
         for (const rule of rules) {
             for (const token of rule.match.match(/\.[\w-]+/g) ?? [])
                 matchTokens.add(token.slice(1));
-            // A Blazor re-render that rewrites `class` drops whatever we wrote there, and
-            // nothing else would tell us: the tokens the rule matches on didn't move. Watching
-            // our own class makes that a change we see. Our writes land after this callback
-            // and takeRecords() discards them, so this cannot feed back on itself.
+            // A renderer can overwrite our classes without changing any matched tokens.
+            // Watching our classes too lets us restore them on the next observer delivery.
             matchTokens.add(rule.className);
         }
         if (observer)
@@ -120,10 +115,19 @@ function onMutated(records: MutationRecord[]): void {
     if (!isEnabled)
         return;
 
+    const added = new Set<Element>();
+    for (const record of records)
+        for (const node of record.addedNodes)
+            if (node instanceof Element)
+                added.add(node);
+
+    const roots = coalesceRoots(added);
+    syncAddedAnimations(roots);
+
     const dirty = new Set<Element>();
+    const visited = new Set<Element>();
     for (const record of records) {
         if (record.type === 'childList') {
-            syncAddedAnimations(record.addedNodes);
             for (const node of record.addedNodes)
                 if (node instanceof Element)
                     runRenderScripts(node);
@@ -131,42 +135,30 @@ function onMutated(records: MutationRecord[]): void {
         else if (isRenderScriptAttribute(record.attributeName))
             runRenderScriptsOn(record.target as Element);
         if (affectsPresence(record))
-            collectContainers(record, dirty);
+            collectAncestorContainers(record.target, dirty, visited);
     }
-    if (dirty.size !== 0) {
+    if (containerSelector)
+        for (const root of roots) {
+            if (root.matches(containerSelector))
+                dirty.add(root);
+            for (const container of root.querySelectorAll(containerSelector))
+                dirty.add(container);
+        }
+
+    // Render-script side effects must reach the next observer delivery too.
+    // Our forced class toggles settle without producing more writes.
+    if (dirty.size !== 0)
         updateContainers(dirty);
-        // Our own class writes are mutations too; they land after this callback, so dropping
-        // the records here discards exactly them and nothing else.
-        observer?.takeRecords();
-    }
 }
 
-// Only containers on the mutated node's ancestor chain can have flipped, so a mutation
-// costs O(rules) rather than O(rules x containers) - the difference between a handful of
-// container subjects and every `.item` in the chat view.
-function collectContainers(record: MutationRecord, dirty: Set<Element>): void {
-    const target = record.target instanceof Element ? record.target : record.target.parentElement;
-    if (target !== null)
-        for (const rule of rules) {
-            const container = target.closest(rule.container);
-            if (container !== null)
-                dirty.add(container);
-        }
-    if (record.type !== 'childList')
-        return;
+function collectAncestorContainers(target: Node, dirty: Set<Element>, visited: Set<Element>): void {
+    let element = target instanceof Element ? target : target.parentElement;
+    while (element !== null && !visited.has(element)) {
+        visited.add(element);
+        if (element.matches(containerSelector))
+            dirty.add(element);
 
-    // An added subtree can bring its own containers with it, and those are not on the
-    // ancestor chain of anything.
-    for (const node of record.addedNodes) {
-        if (!(node instanceof Element))
-            continue;
-
-        for (const rule of rules) {
-            if (node.matches(rule.container))
-                dirty.add(node);
-            for (const container of node.querySelectorAll(rule.container))
-                dirty.add(container);
-        }
+        element = element.parentElement;
     }
 }
 
@@ -180,17 +172,34 @@ function updateContainers(containers: Set<Element>): void {
 // Phase-aligns whatever arrived, replacing the sweep that used to run every 200ms.
 // The animationstart listener still covers an element that gains an animation later,
 // which no mutation can be matched to.
-function syncAddedAnimations(nodes: NodeList): void {
-    for (const node of nodes) {
-        if (!(node instanceof HTMLElement) && !(node instanceof SVGElement))
-            continue;
+function syncAddedAnimations(roots: Element[]): void {
+    if (roots.length === 0)
+        return;
 
+    const elements = new Set<HTMLElement>();
+    const selector = AnimationSync.selector;
+    for (const root of roots) {
         // querySelectorAll excludes the root, so an added element that is itself
         // animated has to be handled separately.
-        if (node.matches(AnimationSync.selector))
-            AnimationSync.sync(node as HTMLElement);
-        AnimationSync.syncAll(node);
+        if (root.matches(selector))
+            elements.add(root as HTMLElement);
+        for (const element of root.querySelectorAll<HTMLElement>(selector))
+            elements.add(element);
     }
+    AnimationSync.syncMany(elements);
+}
+
+function coalesceRoots(elements: Set<Element>): Element[] {
+    const roots: Element[] = [];
+    for (const element of elements) {
+        let parent = element.parentElement;
+        while (parent !== null && !elements.has(parent))
+            parent = parent.parentElement;
+
+        if (parent === null)
+            roots.push(element);
+    }
+    return roots;
 }
 
 function toAttribute(name: string): string {
@@ -250,7 +259,7 @@ function runRenderScript(element: Element, name: string): void {
 }
 
 function affectsPresence(record: MutationRecord): boolean {
-    if (!matchSelector)
+    if (!containerSelector)
         return false;
 
     if (record.type === 'attributes') {
@@ -269,20 +278,7 @@ function affectsPresence(record: MutationRecord): boolean {
         return false;
     }
 
-    return hasMatch(record.addedNodes) || hasMatch(record.removedNodes);
-}
-
-function hasMatch(nodes: NodeList): boolean {
-    for (const node of nodes) {
-        if (!(node instanceof Element))
-            continue;
-        // Walks only the added/removed subtree, which is one component's worth of markup -
-        // far cheaper than rescanning every container.
-        if (node.matches(matchSelector) || node.querySelector(matchSelector))
-            return true;
-    }
-
-    return false;
+    return record.type === 'childList';
 }
 
 function updatePresenceClasses(): void {

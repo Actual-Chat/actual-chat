@@ -98,9 +98,11 @@ export class AnimationSync {
             return 0;
 
         const elements = root.querySelectorAll<HTMLElement>(AnimationSync.selector);
-        if (elements.length === 0)
-            return 0;
 
+        return AnimationSync.syncMany(elements);
+    }
+
+    public static syncMany(elements: Iterable<HTMLElement>): number {
         // Read every phase before writing any, so a batch cannot interleave
         // style reads and writes.
         const writes = new Array<[HTMLElement, string | null, number]>();
