@@ -27,6 +27,7 @@ const { warnLog, debugLog } = getLogs('InfiniteList');
 const InfiniteSize = 4e6;
 const UpdateViewportIntervalMs = 64;
 const UpdateVisibilityIntervalMs = 250;
+const MaxRelayoutPasses = 4;
 const ScrollSettleMs = 200;
 const ProgrammaticScrollGuardMs = DeviceInfo.isMobile ? 250 : 100;
 // How long a wheel away from the pinned edge waits for the scroll it produces before it is forgotten.
@@ -255,6 +256,8 @@ export class InfiniteList extends VirtualList {
     private isAwaitingJump = false;
     private isInitiallyPlaced = false;
     private isApplyingRender = false;
+    private isRelayoutQueued = false;
+    private isRelayoutRequested = false;
     private mustRecentre = false;
     private lastWrapperSize = 0;
     private initialScrollToKey: string | null = null;
@@ -1605,7 +1608,7 @@ export class InfiniteList extends VirtualList {
         // Mid-render the offsets belong to the previous item set, so a re-layout here would anchor
         // against a chain that no longer exists; applyRender lays out once at the end anyway.
         if (!this.isApplyingRender)
-            this.relayoutThrottled();
+            this.scheduleRelayout();
     }
 
     private onResize = (entries: ResizeObserverEntry[]): void => {
@@ -1651,13 +1654,41 @@ export class InfiniteList extends VirtualList {
             this.repinWhenStable();
         }
         if (hasItemChanges)
-            this.relayoutThrottled();
+            this.scheduleRelayout();
     };
 
-    private readonly relayoutThrottled = throttle(
-        () => this.relayout(),
-        UpdateViewportIntervalMs,
-        'default');
+    private scheduleRelayout(): void {
+        if (this.isDisposed)
+            return;
+
+        this.isRelayoutRequested = true;
+        if (this.isRelayoutQueued)
+            return;
+
+        this.isRelayoutQueued = true;
+        queueMicrotask(() => this.runScheduledRelayout());
+    }
+
+    // Microtasks queued from a microtask drain in the same checkpoint, so a relayout that provokes
+    // another would chain there without ever yielding; past the cap what is still owed goes to a task.
+    private runScheduledRelayout(): void {
+        this.isRelayoutQueued = false;
+        for (let pass = 1; this.takeRelayoutRequest(); pass++) {
+            this.relayout();
+            if (!this.isRelayoutRequested || pass < MaxRelayoutPasses)
+                continue;
+
+            warnLog?.log(`[${this.identity}] relayout: still requested after ${MaxRelayoutPasses} passes`);
+            setTimeout(() => this.scheduleRelayout(), 0);
+            return;
+        }
+    }
+
+    private takeRelayoutRequest(): boolean {
+        const isRequested = this.isRelayoutRequested;
+        this.isRelayoutRequested = false;
+        return isRequested;
+    }
 
     private relayout(): void {
         if (this.isDisposed || this.items.length === 0)

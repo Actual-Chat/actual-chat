@@ -24,6 +24,13 @@ node tools/virtual-list-rig/soak.mjs 60 9223 takeover
 node tools/virtual-list-rig/follow.mjs 9223             # the follow's write path, scroll vs transform
 ```
 
+With a chat already scrolled into history, `node tools/virtual-list-rig/height-batch.mjs 9333`
+checks that two offscreen content changes of 20 and 92 px preserve a visible item's position.
+It uses the real ResizeObserver, checks growth and shrinkage, restores the original padding, and
+fails if either the visible position or the prefix offsets deviate by more than 1 px.
+Pass a desktop debug port or an ADB-forwarded Android WebView port. Results go to
+`tmp/traces/height-batch.json`; this test leaves the viewport configuration unchanged.
+
 `follow.mjs` answers one question and is not part of the matrix: the pinned edge follows content that
 grew under it by writing `scrollTop` once per frame, and docs/ui/virtual-list.md §4.7 records that a
 per-frame write stream was visibly jittery on Android. It drives 2px of correction per frame down each
