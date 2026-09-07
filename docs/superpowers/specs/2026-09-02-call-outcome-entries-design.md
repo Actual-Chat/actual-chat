@@ -495,6 +495,21 @@ The product consequence, stated plainly: a pre-2.19 client sees **nothing** wher
 a missed-call entry is — a gap in the tile's lid range, the same shape a removed
 entry already produces — rather than a placeholder. That is the intended trade.
 
+**One path the tolerance work did not cover.** It gave `IChats.GetTile` a
+filtering twin but left `GetNews` alone, and `ChatNews.LastTextEntry` is a
+`ChatEntry?` that `ToSlim` rebuilds with `entry with { … }` — preserving the
+concrete type. So a `CallEntry` would reach a pre-2.19 client through the chat
+list and take down the whole `ChatNews` payload. The gap is not created here —
+it applies to `UnsupportedSystemEntry` as well, on a rollback — but this change
+makes it routine rather than rare, because a `CallEntry` is the last entry of a
+peer chat after every call. `GetNews` therefore gains the same twin, dropping a
+last entry the peer cannot read.
+
+Dropped rather than replaced with a stand-in: the preview line is composed on the
+client, in the viewer's language, so anything the server substituted could only
+be English. A chat whose last entry a peer cannot read reads as one with no
+preview.
+
 **Old servers.** Already handled: the unknown-option arm in `DbChatEntry.ToModel`
 yields the same placeholder instead of throwing, so a rollback past this release
 degrades rows rather than breaking chats.
