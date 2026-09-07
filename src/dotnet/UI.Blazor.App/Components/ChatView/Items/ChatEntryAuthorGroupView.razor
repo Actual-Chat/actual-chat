@@ -34,6 +34,7 @@
 
     private AppUIHub Hub => ChatContext.Hub;
     private AuthorUI AuthorUI => Hub.AuthorUI;
+    private SelectionUI SelectionUI => Hub.SelectionUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntryAuthorGroup Message { get; set; } = null!;
@@ -41,6 +42,13 @@
     protected override void OnInitialized()
         => _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
 
-    private void OnAuthorBadgeClick(AuthorId authorId)
-        => _ = AuthorUI.Show(authorId);
+    private void OnAuthorBadgeClick(AuthorId authorId) {
+        // The group avatar sits in .c-left, outside any message's data-chat-entry-id, so the JS
+        // selection host never sees it; in selection mode we just suppress the author card instead
+        // of opening it over the selection.
+        if (SelectionUI.HasSelection.Value)
+            return;
+
+        _ = AuthorUI.Show(authorId);
+    }
 }

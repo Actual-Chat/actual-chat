@@ -112,7 +112,8 @@
         <div class="c-content">
             @if (showAuthor) {
                 <div class="c-author-header">
-                    <AuthorName AuthorId="@entry.AuthorId" Class="chat-message-author-name" Colorize="@m.Colorize"/>
+                    <AuthorName AuthorId="@entry.AuthorId" Class="chat-message-author-name" Colorize="@m.Colorize"
+                                ShowDetailsOnClick="@(!m.HasSelection)"/>
                     @if (!isStateBadge) {
                         <div class="c-author-meta">
                             @if (message.Flags.HasFlag(ChatMessageFlags.Audio)) {
@@ -304,8 +305,14 @@
         }
     }
 
-    private void OnAuthorBadgeClick(AuthorId authorId)
-        => _ = AuthorUI.Show(authorId);
+    private void OnAuthorBadgeClick(AuthorId authorId) {
+        // In selection mode a click anywhere on a message only toggles its selection (the JS selection
+        // host handles the toggle here, since the avatar sits inside the message's data-chat-entry-id).
+        if (SelectionUI.HasSelection.Value)
+            return;
+
+        _ = AuthorUI.Show(authorId);
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -433,6 +440,7 @@
             IsHighlighted = isHighlighted,
             IsReplyTarget = isReplyTarget,
             IsSelected = isSelected,
+            HasSelection = selectedChatEntries.Count != 0,
             IsSelectionStart = isSelectionStart,
             IsSelectionEnd = isSelectionEnd,
             IsOwnAuthorMentioned = isOwnAuthorMentioned,
@@ -599,6 +607,7 @@
         public bool IsReplyTarget { get; init; }
         public bool IsOwnAuthorMentioned { get; init; }
         public bool IsSelected { get; init; }
+        public bool HasSelection { get; init; }
         public bool IsSelectionStart { get; init; }
         public bool IsSelectionEnd { get; init; }
         public ChatEntry? RepliedEntry { get; init; }
