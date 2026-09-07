@@ -1704,7 +1704,8 @@ export class InfiniteList extends VirtualList {
         const isWheelAway = performance.now() - this.wheelAwayAt < WheelAwayWindowMs;
         // The scroll a re-pin or a re-centre just wrote isn't the user moving, and reading it as one
         // would drop the very pin that produced it.
-        if (!isWheelAway && performance.now() - this.lastProgrammaticScrollAt < ProgrammaticScrollGuardMs)
+        if (!isWheelAway && !this.scrollController.isTouchActive
+            && performance.now() - this.lastProgrammaticScrollAt < ProgrammaticScrollGuardMs)
             return;
 
         this.wheelAwayAt = 0;
@@ -1753,10 +1754,11 @@ export class InfiniteList extends VirtualList {
             return;
 
         this.stability.releaseScroll();
-        // Every scroll arms this settle, the list's own re-placements included, and mid-animation the
-        // rendered edge is not where the model is taking it - so deriving there reads a pinned list as
-        // having left its edge. A scroll of the user's own has already been derived live in onScroll.
-        if (!this.stability.isAnimating)
+        // A settle can precede a queued follow. User scrolling already released the pin in onScroll;
+        // deriving it here would abandon the correction that is still waiting to run.
+        if (this.pinnedEdge != null)
+            this.repinEdge('scroll-settled');
+        else if (!this.stability.isAnimating)
             this.updatePinnedEdge();
         this.updateVisibilityThrottled();
         this.updateViewportThrottled();
