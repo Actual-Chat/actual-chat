@@ -103,7 +103,6 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.NoComponent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.PageNotFoundBlock>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.PageWithHeaderAndFooter>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.PanelBodyItemSkeleton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.PanelBodySkeleton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.PanelFooterSkeleton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.PanelHeaderSkeleton>();
@@ -185,6 +184,8 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Layouts.DiscoverLayout>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Layouts.ListViewLayout>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Layouts.LiterallyNoLayout>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.ButtonsTestPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.ColorsTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.ContentSwapTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.ContentSwapTestView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.DiveInModalTestPage.DiveInModal>();
@@ -209,7 +210,6 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.SvgCatsTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.SystemTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.TotpTestPage>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.ColorsTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.UnavailablePage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.WebSplashTestPage>();
 
@@ -629,7 +629,6 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.NoComponent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.PageNotFoundBlock), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.PageWithHeaderAndFooter), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.Components.PanelBodyItemSkeleton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.PanelBodySkeleton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.PanelFooterSkeleton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.PanelHeaderSkeleton), AotTypeKind.Component),
@@ -711,6 +710,8 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Layouts.DiscoverLayout), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Layouts.ListViewLayout), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Layouts.LiterallyNoLayout), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Pages.ButtonsTestPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Pages.ColorsTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.ContentSwapTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.ContentSwapTestView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.DiveInModalTestPage.DiveInModal), AotTypeKind.Component),
@@ -735,7 +736,6 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Pages.SvgCatsTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.SystemTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.TotpTestPage), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.Pages.ColorsTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.UnavailablePage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.WebSplashTestPage), AotTypeKind.Component),
         ];
