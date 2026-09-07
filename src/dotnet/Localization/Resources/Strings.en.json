@@ -1625,6 +1625,7 @@
   "SignIn_InvalidPhoneOrEmail": "Invalid phone number or email address.",
   "SignIn_VerifyPhoneText_Format": "Please verify your phone number to continue and make it discoverable to friends on {0}.",
   "SignIn_VerifyEmailText_Format": "Please verify your email address to continue and make it discoverable to friends on {0}.",
+  "SignIn_PopupBlocked": "The browser blocked the sign-in popup. Please allow popups for this site and try again.",
 
   // Asking to join a place that does not accept open joins.
   "JoinRequest_NotMember": "Not member yet",

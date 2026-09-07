@@ -1368,6 +1368,7 @@
   "SignIn_InvalidPhoneOrEmail": "Neispravan broj telefona ili e-mail adresa.",
   "SignIn_VerifyPhoneText_Format": "Potvrdite svoj broj telefona da nastavite i da vas prijatelji pronađu u {0}.",
   "SignIn_VerifyEmailText_Format": "Potvrdite svoju email adresu da nastavite i da vas prijatelji pronađu u {0}.",
+  "SignIn_PopupBlocked": "Preglednik je blokirao iskačući prozor za prijavu. Dozvolite iskačuće prozore za ovu stranicu i pokušajte ponovo.",
   "JoinRequest_NotMember": "Još niste član",
   "JoinRequest_Text": "Pošaljite zahtjev za pridruživanje — administratori će razmotriti vaše dodavanje u Mjesto",
   "JoinRequest_Send": "Pošaljite zahtjev",

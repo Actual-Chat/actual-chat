@@ -519,10 +519,10 @@ failure.
 
 Still open, and not prototyped:
 
-- **`web-auth.ts:45` raises a raw `alert()`** when the sign-in popup is blocked.
-  Unlike the video errors this has no C#-ward channel — `AccountUI.cs:144` calls
-  `signIn` one-way — so it needs either a return value carrying a code or the
-  localized text passed in. Small, but it touches sign-in.
+- ~~**`web-auth.ts:45` raises a raw `alert()`** when the sign-in popup is blocked~~
+  — done (#4263): `WebAuth.signIn` resolves to `false` on a block, and
+  `AccountUI.SignInBackend` raises the same `alert()` with the localized
+  `SignIn_PopupBlocked` text.
 - **`service-worker.ts:169,172`** falls back to an English `'Incoming call'`.
   Genuinely catalog-less: no app, no DOM. §3's web push track puts the catalog
   in the worker, which fixes this as a side effect.
@@ -584,7 +584,7 @@ why #3721 dropped the keys instead of relocating them. Now:
    — done (#4260): `AppStrings` moved from the share extension to `ActualChat.Maui`
    and every in-process site reads it (or the hub's `L`).
 4. §6's video error codes — the branch `wip/l10n-video-error-codes` is
-   ready to cherry-pick; then web-auth's popup alert.
+   ready to cherry-pick. ~~Then web-auth's popup alert~~ — done (#4263).
 5. §5, independently and on its own schedule — the marketing half needs SEO
    routing before translation pays off, and the legal half needs a liability
    decision. Neither holds up anything else.

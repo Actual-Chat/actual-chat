@@ -1368,6 +1368,7 @@
   "SignIn_InvalidPhoneOrEmail": "Ungültige Telefonnummer oder E-Mail-Adresse.",
   "SignIn_VerifyPhoneText_Format": "Bitte bestätigen Sie Ihre Telefonnummer, um fortzufahren und für Freunde auf {0} auffindbar zu sein.",
   "SignIn_VerifyEmailText_Format": "Bitte bestätigen Sie Ihre E-Mail-Adresse, um fortzufahren und für Freunde auf {0} auffindbar zu sein.",
+  "SignIn_PopupBlocked": "Der Browser hat das Anmelde-Pop-up blockiert. Bitte erlauben Sie Pop-ups für diese Website und versuchen Sie es erneut.",
   "JoinRequest_NotMember": "Noch kein Mitglied",
   "JoinRequest_Text": "Senden Sie eine Beitrittsanfrage – die Admins prüfen Ihre Aufnahme in den Place.",
   "JoinRequest_Send": "Anfrage senden",

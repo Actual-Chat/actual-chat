@@ -1368,6 +1368,7 @@
   "SignIn_InvalidPhoneOrEmail": "電話番号またはメールアドレスが正しくありません。",
   "SignIn_VerifyPhoneText_Format": "続けるには電話番号を確認してください。{0} で友だちがあなたを見つけられるようになります。",
   "SignIn_VerifyEmailText_Format": "続けるにはメールアドレスを確認してください。{0} で友だちがあなたを見つけられるようになります。",
+  "SignIn_PopupBlocked": "ブラウザがサインインのポップアップをブロックしました。このサイトのポップアップを許可して、もう一度お試しください。",
   "JoinRequest_NotMember": "まだメンバーではありません",
   "JoinRequest_Text": "参加リクエストを送ると、管理者がプレイスへの追加を検討します",
   "JoinRequest_Send": "リクエストを送信",

@@ -1368,6 +1368,7 @@
   "SignIn_InvalidPhoneOrEmail": "Số điện thoại hoặc địa chỉ email không hợp lệ.",
   "SignIn_VerifyPhoneText_Format": "Vui lòng xác minh số điện thoại của bạn để tiếp tục và để bạn bè có thể tìm thấy bạn trên {0}.",
   "SignIn_VerifyEmailText_Format": "Vui lòng xác minh địa chỉ email của bạn để tiếp tục và để bạn bè có thể tìm thấy bạn trên {0}.",
+  "SignIn_PopupBlocked": "Trình duyệt đã chặn cửa sổ bật lên đăng nhập. Hãy cho phép cửa sổ bật lên cho trang web này rồi thử lại.",
   "JoinRequest_NotMember": "Chưa là thành viên",
   "JoinRequest_Text": "Gửi yêu cầu tham gia và quản trị viên sẽ xem xét thêm bạn vào Địa điểm",
   "JoinRequest_Send": "Gửi yêu cầu",

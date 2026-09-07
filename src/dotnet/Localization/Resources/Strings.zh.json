@@ -1368,6 +1368,7 @@
   "SignIn_InvalidPhoneOrEmail": "手机号码或电子邮箱地址无效。",
   "SignIn_VerifyPhoneText_Format": "请验证你的手机号以继续，这样好友就能在 {0} 上找到你。",
   "SignIn_VerifyEmailText_Format": "请验证你的邮箱地址以继续，这样好友就能在 {0} 上找到你。",
+  "SignIn_PopupBlocked": "浏览器拦截了登录弹窗。请允许此网站的弹窗，然后重试。",
   "JoinRequest_NotMember": "尚未加入",
   "JoinRequest_Text": "发送加入请求，管理员会考虑将你加入该地点",
   "JoinRequest_Send": "发送请求",

@@ -1368,6 +1368,7 @@
   "SignIn_InvalidPhoneOrEmail": "Neplatné telefonní číslo nebo e-mailová adresa.",
   "SignIn_VerifyPhoneText_Format": "Ověřte své telefonní číslo, abyste mohli pokračovat a aby vás přátelé našli v {0}.",
   "SignIn_VerifyEmailText_Format": "Ověřte svou e-mailovou adresu, abyste mohli pokračovat a aby vás přátelé našli v {0}.",
+  "SignIn_PopupBlocked": "Prohlížeč zablokoval vyskakovací okno přihlášení. Povolte vyskakovací okna pro tento web a zkuste to znovu.",
   "JoinRequest_NotMember": "Zatím není členem",
   "JoinRequest_Text": "Pošlete žádost o připojení — správci zváží vaše přidání do Místa",
   "JoinRequest_Send": "Odeslat žádost",

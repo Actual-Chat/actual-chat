@@ -13,23 +13,24 @@ export class WebAuth {
     public static allowPopup = !(DeviceInfo.isMobile || DeviceInfo.isWebKit);
     public static mustRedirectOnPopupBlock = true;
 
-    public static signIn(schema: string): Promise<void> {
+    public static signIn(schema: string): Promise<boolean> {
         const path = schema
             ? this.signInPath + '/' + schema
             : this.signInPath;
         return this.showPopupOrRedirect(path, 'Sign-in');
     }
 
-    public static signOut(): Promise<void> {
+    public static signOut(): Promise<boolean> {
         return this.showPopupOrRedirect(this.signOutPath, 'Sign-out');
     }
 
     // Private methods
 
-    private static showPopupOrRedirect(path: string, flowName: string): Promise<void> {
+    /** Resolves to false when the browser blocked the popup and no redirect fallback was made. */
+    private static showPopupOrRedirect(path: string, flowName: string): Promise<boolean> {
         if (!this.allowPopup) {
             this.redirect(path, flowName);
-            return Promise.resolve();
+            return Promise.resolve(true);
         }
 
         const closeFlowUrl = this.closeFlowPath + '?flow=' + encode(flowName);
@@ -38,22 +39,21 @@ export class WebAuth {
         warnLog?.log(`popup: -> ${url}`);
         const popup = window.open(url, this.windowTarget, this.windowFeatures);
         if (!popup || popup.closed || typeof popup.closed == 'undefined') {
-            if (this.mustRedirectOnPopupBlock) {
-                this.redirect(path, flowName);
-            }
-            else {
-                alert('Authentication popup is blocked by the browser. Please allow popups on this website and retry.')
-            }
-            return Promise.resolve();
+            warnLog?.log('popup: blocked by the browser');
+            if (!this.mustRedirectOnPopupBlock)
+                return Promise.resolve(false);
+
+            this.redirect(path, flowName);
+            return Promise.resolve(true);
         }
 
         // Wait for the popup to close
-        return new Promise<void>((resolve) => {
+        return new Promise<boolean>((resolve) => {
             const interval = setInterval(() => {
                 if (!popup.closed)
                     return;
                 clearInterval(interval);
-                resolve();
+                resolve(true);
             }, 200);
         });
     }
