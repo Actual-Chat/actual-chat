@@ -13,8 +13,6 @@ public abstract class AttachmentItemBase : ComputedRenderStateComponent<AppUIHub
     [Parameter] public EventCallback RestartClick { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        // Parameters are set by the time the state is created, so the first render already shows
-        // the real attachment in its not-ready look instead of a placeholder
         => new() { InitialValue = new Model(Attachment, AttachmentPreview.NoPreview, AttachmentProgress.New) };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
