@@ -13,9 +13,34 @@ public abstract partial record ChatEntry : IForwardCompatibleUnion<ChatEntry>
     // then put a system entry on the message side.
     private static readonly FrozenSet<int> LegacySystemUnionTags = new[] { 1, 2 }.ToFrozenSet();
 
+    // The release each union tag first shipped in; absent = known to every peer we still talk to.
+    // A peer older than that can't read the tag, so IChats.GetLegacyTile filters such entries out.
+    private static readonly FrozenDictionary<int, Version> UnionTagSinceVersions =
+        new Dictionary<int, Version> {
+            [100] = new (2, 19), // UnsupportedSystemEntry
+        }.ToFrozenDictionary();
+
     public static bool IsSystemUnionTag(int tag)
         => LegacySystemUnionTags.Contains(tag)
             || tag is >= FirstSystemUnionTag and <= LastSystemUnionTag;
+
+    public static bool IsKnownTo(ChatEntry entry, Version apiVersion)
+        => GetUnionTag(entry) is not { } tag
+            || GetUnionTagSince(tag) is not { } since
+            || since <= apiVersion;
+
+    public static Version? GetUnionTagSince(int tag)
+        => UnionTagSinceVersions.GetValueOrDefault(tag);
+
+    public static int? GetUnionTag(ChatEntry entry)
+    {
+        var entryType = entry.GetType();
+        foreach (var union in typeof(ChatEntry).GetCustomAttributes<UnionAttribute>())
+            if (union.SubType == entryType)
+                return union.Key;
+
+        return null;
+    }
 
     static ChatEntry? IForwardCompatibleUnion<ChatEntry>.NewUnsupported(
         int tag, ref MessagePackReader payload, MessagePackSerializerOptions options)

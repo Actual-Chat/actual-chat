@@ -41,9 +41,22 @@ public interface IChats : IComputeService
         ChatId chatId,
         CancellationToken cancellationToken);
 
-    // Client-side methods always skips entries with IsRemoved flag
+    // Client-side methods always skips entries with IsRemoved flag.
+    // The LegacyName aliases here and on GetLegacyTile route v2.18- clients - the ones without
+    // ForwardCompatibleUnionFormatter, to which an unknown entry kind is fatal - to the filtering
+    // variant. See ChatEntry.IsKnownTo.
     [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
+    [LegacyName("GetTile_NewUnused", ApiConstants.LastVersionWithoutUnionTolerance)]
     Task<ChatTile> GetTile(
+        Session session,
+        ChatId chatId,
+        Range<long> lidTileRange,
+        CancellationToken cancellationToken);
+
+    [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
+    [LegacyName(nameof(GetTile), ApiConstants.LastVersionWithoutUnionTolerance)]
+    [Obsolete("2026.09: Use GetTile - this one only drops entry kinds a pre-2.19 client can't read.")]
+    Task<ChatTile> GetLegacyTile(
         Session session,
         ChatId chatId,
         Range<long> lidTileRange,
@@ -53,6 +66,8 @@ public interface IChats : IComputeService
     // per 5 entries, and as a compute method each of those becomes a cached, invalidation-tracked
     // slot - here and on the wire. This is a plain RPC call instead; the server still serves it
     // from the GetTile cache.
+    // No LegacyName pair here: no client calls this one - the scans that do run server-side,
+    // against IChatsBackend.GetTileNonComputed.
     Task<ChatTile> GetTileNonComputed(
         Session session,
         ChatId chatId,
