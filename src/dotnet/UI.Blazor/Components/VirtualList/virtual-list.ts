@@ -118,7 +118,7 @@ export abstract class VirtualList implements VirtualListOverlayTarget {
     }
 
     protected async requestData(): Promise<void> {
-        if (this.isDisposed)
+        if (this.isDisposed || !ContentSwap.isLayerActive(this.ref))
             return;
 
         const query = this.buildDataQuery();

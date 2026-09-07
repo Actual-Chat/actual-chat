@@ -57,6 +57,7 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
     // trigger StateHasChanged on parent component.
     [Parameter] public Action<VirtualListItemVisibility>? ItemVisibilityChanged { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [CascadingParameter] private ContentSwapContext? ContentSwapContext { get; set; }
 
     public override async ValueTask DisposeAsync()
     {
@@ -84,6 +85,9 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
     [JSInvokable]
     public async Task RequestData(VirtualListDataQuery query)
     {
+        if (ContentSwapContext?.IsLayerActive == false)
+            return;
+
         ChatSwitchTracer.Mark("VirtualList.RequestData (from JS)", Identity);
         Volatile.Write(ref _pendingQuery, query);
         while (State == null)
@@ -150,6 +154,9 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
 
     protected override bool ShouldRender()
     {
+        if (ContentSwapContext?.IsLayerActive == false)
+            return false;
+
         var shouldRender = !ReferenceEquals(Data, RenderedData) // Data changed
             || RenderIndex == 0 // OR very first sync render without data loaded
             || (LastReportedItemVisibility.VisibleKeys.Count == 0 && !Data.HasAllItems); // OR no visible items
@@ -189,6 +196,9 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
 
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)
     {
+        if (ContentSwapContext?.IsLayerActive == false)
+            return RenderedData;
+
         var query = Interlocked.Exchange(ref _pendingQuery, VirtualListDataQuery.None);
         var renderedData = RenderedData;
         var dataSource = DataSource;

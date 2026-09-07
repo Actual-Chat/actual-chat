@@ -23,6 +23,10 @@ const swaps = new WeakMap<Element, ContentSwap>();
 const pendingDisplays = new WeakSet<Element>();
 
 export class ContentSwap {
+    public static isLayerActive(origin: Element): boolean {
+        return origin.closest('.content-swap > .c-layer.outgoing') === null;
+    }
+
     public static create(host: HTMLElement, backendRef: DotNet.DotNetObject): ContentSwap {
         return new ContentSwap(host, backendRef);
     }
