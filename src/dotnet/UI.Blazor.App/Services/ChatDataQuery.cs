@@ -13,6 +13,11 @@ public record ChatDataQuery(Range<long> ExistingLidRange, int StartOffset, int E
     // Currently-visible entry id range. The loaded set must always cover it, so the offsets (which can
     // contract the range — and do so inaccurately next to a very large item) can never drop a visible item.
     public Range<long> VisibleLidRange { get; init; }
+    public bool Covers(long entryLid)
+        // Offsets are item counts read as lid deltas - the same approximation GetData makes when it
+        // decides whether to take a dependency on the chat's id range.
+        => entryLid >= ExistingLidRange.Start + StartOffset
+            && entryLid <= ExistingLidRange.End + EndOffset;
 
     public string Format()
 #pragma warning disable MA0076
