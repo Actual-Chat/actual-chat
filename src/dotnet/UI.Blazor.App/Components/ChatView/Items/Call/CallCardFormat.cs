@@ -11,9 +11,11 @@ public static class CallCardFormat
 {
     public static (string Icon, string Title, string? Hint, bool IsCallBack) Get(
         CallOutcome outcome, bool isCaller, IStringLocalizer l)
+        // icon-call-out is the intended glyph here (ships on fix/update-ui-287, not yet merged);
+        // icon-phone-take substitutes until that lands - its own artwork already reads as "outgoing".
         => outcome switch {
             CallOutcome.NoAnswer when isCaller =>
-                ("icon-call-out", l.Call_Entry_Outgoing, l.Call_Entry_NoAnswer, false),
+                ("icon-phone-take", l.Call_Entry_Outgoing, l.Call_Entry_NoAnswer, false),
             CallOutcome.NoAnswer =>
                 ("icon-phone-missed", l.Call_Entry_Missed, l.Call_Entry_TapToCallBack, true),
             CallOutcome.Declined =>

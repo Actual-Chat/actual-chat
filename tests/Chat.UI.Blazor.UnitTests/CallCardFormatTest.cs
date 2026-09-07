@@ -7,7 +7,7 @@ namespace ActualChat.Chat.UI.Blazor.UnitTests;
 public class CallCardFormatTest
 {
     [Theory]
-    [InlineData(CallOutcome.NoAnswer, true, "icon-call-out", false)]
+    [InlineData(CallOutcome.NoAnswer, true, "icon-phone-take", false)]
     [InlineData(CallOutcome.NoAnswer, false, "icon-phone-missed", true)]
     [InlineData(CallOutcome.Declined, true, "icon-phone-off", false)]
     [InlineData(CallOutcome.Declined, false, "icon-phone-off", false)]
