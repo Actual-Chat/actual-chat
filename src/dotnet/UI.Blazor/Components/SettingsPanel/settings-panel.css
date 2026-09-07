@@ -61,6 +61,12 @@ body.narrow .settings-panel > .c-tabs > .c-header {
     @apply rounded-lg;
     @apply cursor-pointer;
 }
+body.narrow .settings-panel > .c-tabs .c-tab-item:first-child {
+    @apply pt-2;
+}
+body.narrow .settings-panel > .c-tabs .c-tab-item:last-child {
+    @apply pb-2;
+}
 .settings-panel > .c-tabs .c-tab-item.on {
     @apply md:bg-selected;
 }
