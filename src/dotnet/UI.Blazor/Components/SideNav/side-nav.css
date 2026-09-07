@@ -42,7 +42,7 @@ body.device-ios .side-nav {
 }
 .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .side-nav.side-nav-left {
     @apply md:w-1/2 lg:w-96 xl:w-128;
-    @apply md:transition-width md:duration-250 md:ease-[cubic-bezier(0.32,0.72,0,1)] md:delay-0 lg:transition-none;
+    @apply md:transition-width md:duration-200 md:ease-[cubic-bezier(0.32,0.54,0.4,0.9)] md:delay-0 lg:transition-none;
 }
 body.narrow .side-nav.side-nav-left[data-side-nav="closed"] {
     transform: translate3d(-100%, 0, 0);
@@ -54,9 +54,9 @@ body.narrow .side-nav.side-nav-left[data-side-nav="closed"] {
 .side-nav.side-nav-right {
     @apply flex-none flex-y;
     @apply md:absolute md:w-1/2 md:left-1/2;
-    @apply md:transition-transform md:duration-250 md:ease-[cubic-bezier(0.32,0.72,0,1)];
+    @apply md:transition-transform md:duration-200 md:ease-[cubic-bezier(0.32,0.54,0.4,0.9)];
     @apply lg:relative lg:left-auto lg:w-88 xl:w-112;
-    @apply lg:transition-[margin-right] lg:duration-250 lg:ease-[cubic-bezier(0.32,0.72,0,1)];
+    @apply lg:transition-[margin-right] lg:duration-200 lg:ease-[cubic-bezier(0.32,0.54,0.4,0.9)];
 }
 .side-nav.side-nav-right[data-side-nav="open"] {
     @apply lg:w-88;
@@ -98,7 +98,7 @@ body.narrow .side-nav {
 body.narrow .side-nav.side-nav-left,
 body.narrow .side-nav.side-nav-right {
     @apply w-auto;
-    transition: transform 250ms cubic-bezier(0.32, 0.72, 0, 1);
+    transition: transform 200ms cubic-bezier(0.32, 0.54, 0.4, 0.9);
 }
 body.narrow .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .side-nav.side-nav-left {
     @apply w-auto;
@@ -116,10 +116,12 @@ body.narrow .side-nav.side-nav-right[data-side-nav="open"] {
     box-shadow: none;
 }
 
-/* SideNavPullGesture writes style.transform every frame, so a transition on transform restarts a
-   250ms interpolation per frame and the panel chases the finger instead of tracking it. endMove
-   clears isPulling before it sets the settle transform, so the release still animates. */
 body.narrow .side-nav.side-nav-left[data-pulling],
 body.narrow .side-nav.side-nav-right[data-pulling] {
+    transition: transform 50ms linear;
+}
+/* Restarting the transform transition on each gesture frame causes jitter on WebKit. */
+body.narrow.device-webkit .side-nav.side-nav-left[data-pulling],
+body.narrow.device-webkit .side-nav.side-nav-right[data-pulling] {
     transition: none;
 }
