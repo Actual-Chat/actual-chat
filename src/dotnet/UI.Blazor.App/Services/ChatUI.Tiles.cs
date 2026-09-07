@@ -1397,18 +1397,23 @@ public partial class ChatUI
                             AudioRecordingMessageTag => ChatMessageKind.AudioRecordingMessage,
                             _ => throw new ArgumentOutOfRangeException(nameof(ChatEntry.SendingTag)),
                         };
-                    var message = new ChatEntryMessage(entry) {
-                        Date = date,
-                        Flags = flags,
-                        ShouldSkipKey = isClientMsg,
-                        Kind = messageKind,
-                        PreviousMessage = prevMessage,
-                        Conversation = expandedConversation,
-                    };
-                    if (prevMessage != null)
-                        prevMessage.NextMessage = message;
-                    messages.Add(message);
-                    prevMessage = message;
+                    // The conversation card is this call's whole representation; the entry only anchors
+                    // it in the lid range, which is all a call with no transcript would otherwise have -
+                    // so it still has to run the header/footer emission around it, just not this part.
+                    if (entry is not CallEntry { Outcome: CallOutcome.Ended }) {
+                        var message = new ChatEntryMessage(entry) {
+                            Date = date,
+                            Flags = flags,
+                            ShouldSkipKey = isClientMsg,
+                            Kind = messageKind,
+                            PreviousMessage = prevMessage,
+                            Conversation = expandedConversation,
+                        };
+                        if (prevMessage != null)
+                            prevMessage.NextMessage = message;
+                        messages.Add(message);
+                        prevMessage = message;
+                    }
 
                     if (expandedConversation != null && expandedConversation.Id != liveBlockId)
                         if (entry.Id.LocalId == expandedConversation.EndEntryLid) {
@@ -1418,7 +1423,8 @@ public partial class ChatUI
                                 Date = date,
                                 PreviousMessage = prevMessage,
                             };
-                            prevMessage.NextMessage = conversationFooterMessage;
+                            if (prevMessage != null)
+                                prevMessage.NextMessage = conversationFooterMessage;
                             messages.Add(conversationFooterMessage);
                             prevMessage = conversationFooterMessage;
                         }
