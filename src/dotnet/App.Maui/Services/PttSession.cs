@@ -90,7 +90,7 @@ public static class PttSession
         }
     }
 
-    public static void HandOffHeadless(IServiceProvider webViewServices)
+    public static void HandOffHeadless()
     {
         // Synchronous detach: from here every reader routes to the WebView scope, while what the
         // headless scope was doing moves over in the background.
@@ -98,7 +98,7 @@ public static class PttSession
             return;
 
         _ = BackgroundTask.Run(
-            () => HandOff(headless, webViewServices), Log, "Headless scope handoff failed", CancellationToken.None);
+            () => HandOff(headless), Log, "Headless scope handoff failed", CancellationToken.None);
     }
 
     public static void StopHeadless(PttPlatform platform)
@@ -188,7 +188,7 @@ public static class PttSession
 #endif
     }
 
-    private static async Task HandOff(HeadlessBlazorScope headless, IServiceProvider webViewServices)
+    private static async Task HandOff(HeadlessBlazorScope headless)
     {
         // Two things the WebView scope can't work out on its own: what was being listened to
         // (its InitializeListening re-arms the armed set, but players start only after Enable,
@@ -202,11 +202,19 @@ public static class PttSession
         // players. Listening only - a hot reply keeps recording, see below.
         await headlessHub.ChatAudioUI.ClearListeningChats().ConfigureAwait(false);
 
-        var scopedServices = await AppServicesAccessor.WhenBlazorAppServicesReady()
-            .WaitAsync(StartupTimeout)
-            .ConfigureAwait(false);
-        if (ReferenceEquals(scopedServices, webViewServices))
+        // Whichever scope is live when the wait ends is the one that must take over: a WebView
+        // reload between the publish that triggered this handoff and here replaces the scope, and
+        // resuming into the one that triggered us would leave the live scope silent.
+        try {
+            var scopedServices = await AppServicesAccessor.WhenBlazorAppServicesReady()
+                .WaitAsync(StartupTimeout)
+                .ConfigureAwait(false);
             await Resume(scopedServices, listeningChatIds, lastIncomingVoiceAt).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            // Still dispose below: a kept headless scope would be the second audio stack again.
+            Log.LogError(e, "PTT: couldn't hand the listening state off to the WebView scope");
+        }
 
         if (headlessHub.ChatAudioUI.IsRecording()) {
             // An Apple PTT Talk press on a killed app boots the WebView while the reply it
@@ -257,9 +265,9 @@ public static class PttSession
             var idleChecks = 0;
             while (true) {
                 await Task.Delay(TeardownCheckPeriod).ConfigureAwait(false);
-                if (AppServicesAccessor.TryGetScopedServices(out var liveScope)) {
+                if (AppServicesAccessor.TryGetScopedServices(out _)) {
                     // Normally already done by MauiWebView.SetScopedServices; a no-op then
-                    HandOffHeadless(liveScope);
+                    HandOffHeadless();
                     return;
                 }
                 if (HeadlessBlazorScope.Current is not { } headless)

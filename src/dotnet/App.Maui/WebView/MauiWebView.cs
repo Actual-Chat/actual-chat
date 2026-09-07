@@ -119,7 +119,7 @@ public sealed partial class MauiWebView
             Session = session;
             BlazorAppServices = scopedServices;
         }
-        PttSession.HandOffHeadless(scopedServices);
+        PttSession.HandOffHeadless();
         return isSessionChanged
             ? SetupCookies(session)
             : Task.CompletedTask;

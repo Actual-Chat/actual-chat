@@ -225,12 +225,16 @@ app-ready waits, and headless-session teardown.
   later. Otherwise it falls back to `HeadlessBlazorScope.GetOrCreate()`, and
   re-checks the WebView scope once more to cover losing the creation race to a
   just-published scope.
-- **`HandOffHeadless(webViewServices)`** runs from `MauiWebView.SetScopedServices`
+- **`HandOffHeadless()`** runs from `MauiWebView.SetScopedServices`
   the moment a WebView scope is published, on every platform. It detaches the
   headless scope synchronously, then in the background snapshots its listening set
   and incoming-voice stamps, stops and disposes it, waits for the WebView scope to
   initialize, re-stamps the answer window there and re-listens the snapshot after
-  `ChatAudioUI.Enable()`. Both scopes are complete audio stacks — `ChatAudioUI`,
+  `ChatAudioUI.Enable()`. The resume targets whichever scope is live when that wait
+  ends, not the one that triggered the handoff: a WebView reload in between replaces
+  it, and resuming into the replaced scope would leave the live one silent. The
+  headless scope is disposed even when the resume fails - keeping it alive would
+  restore the very second audio stack this handoff exists to remove. Both scopes are complete audio stacks — `ChatAudioUI`,
   `ActiveChatsUI` and the playback engine factory are all scoped — and each one
   re-listens every armed chat, so a headless scope left alive next to the WebView
   scope plays the same chat twice with a constant offset. The catch-up anchor is
