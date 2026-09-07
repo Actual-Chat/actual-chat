@@ -18,6 +18,7 @@ namespace ActualChat.Chat;
 [Union(2, typeof(NotifyMembersEntry))]
 // 100..199 is the SystemEntry range - see ChatEntry.IsSystemUnionTag
 [Union(100, typeof(UnsupportedSystemEntry))]
+[Union(101, typeof(CallEntry))]
 public abstract partial record ChatEntry(
     [property: DataMember(Order = 0), Key(0)] ChatEntryId Id,
     [property: DataMember(Order = 1), Key(1)] long Version = 0
@@ -41,6 +42,7 @@ public abstract partial record ChatEntry(
         => kind switch {
             ChatEntryKind.MembersChanged => new MembersChangedEntry(id),
             ChatEntryKind.NotifyMembers => new NotifyMembersEntry(id),
+            ChatEntryKind.Call => new CallEntry(id),
             _ => new TextEntry(id),
         };
 
@@ -174,12 +176,18 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
     [DataMember] public AuthorId? TargetAuthorId { get; init; }
     [DataMember] public string? TargetAuthorName { get; init; }
     [DataMember] public bool? HasLeft { get; init; }
+    [DataMember] public AuthorId? CallerId { get; init; }
+    [DataMember] public string? CallerName { get; init; }
+    [DataMember] public CallOutcome? Outcome { get; init; }
+    [DataMember] public ApiArray<AuthorId>? InviteeIds { get; init; }
+    [DataMember] public bool? HasVideo { get; init; }
 
     public ChatEntryDiff(ChatEntry entry) : this()
     {
         Kind = entry switch {
             MembersChangedEntry => ChatEntryKind.MembersChanged,
             NotifyMembersEntry => ChatEntryKind.NotifyMembers,
+            CallEntry => ChatEntryKind.Call,
             _ => ChatEntryKind.Text,
         };
         AuthorId = entry.AuthorId;
@@ -209,6 +217,13 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
             TargetAuthorId = nm.TargetAuthorId;
             TargetAuthorName = nm.TargetAuthorName;
             break;
+        case CallEntry call:
+            CallerId = call.CallerId;
+            CallerName = call.CallerName;
+            Outcome = call.Outcome;
+            InviteeIds = call.InviteeIds;
+            HasVideo = call.HasVideo;
+            break;
         }
     }
 }
@@ -217,4 +232,5 @@ public enum ChatEntryKind {
     Text = 0,
     MembersChanged = 1,
     NotifyMembers = 2,
+    Call = 3,
 }
