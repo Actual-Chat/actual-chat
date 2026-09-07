@@ -32,4 +32,5 @@ public enum PttWakeIgnoreReason
 {
     DeviceDisabled,
     Silenced,
+    Muted,
 }

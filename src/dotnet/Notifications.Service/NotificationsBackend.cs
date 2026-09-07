@@ -1257,6 +1257,12 @@ public class NotificationsBackend(IServiceProvider services)
             return;
         }
 
+        var now = Clocks.SystemClock.Now;
+        if (await ServerKvasBackend.IsPttMuted(userId, chatId, now, cancellationToken).ConfigureAwait(false)) {
+            Log.LogInformation("PTT wake for user '{UserId}' in chat '{ChatId}': PTT muted", userId, chatId);
+            return;
+        }
+
         var mode = await GetNotificationMode(userId, chatId, cancellationToken).ConfigureAwait(false);
         if (mode == ChatNotificationMode.Muted) {
             Log.LogInformation("PTT wake for user '{UserId}' in chat '{ChatId}': muted", userId, chatId);

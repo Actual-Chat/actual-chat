@@ -14,6 +14,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized, IDebugAudio
 {
     private static bool DebugMode => Constants.DebugMode.ChatAudioUI;
+    private static readonly TimeSpan PttMuteTextUpdatePeriod = TimeSpan.FromSeconds(60);
 
     private readonly MutableState<Moment?> _stopRecordingAt;
     private readonly MutableState<Moment> _recordingIntentChangedAt;
@@ -153,11 +154,31 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         if (!await IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false))
             return [];
 
-        return await GetConsentedPttChatIds(cancellationToken).ConfigureAwait(false);
+        return await FilterConsentedPttChatIds(isMuted: false, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod(MinCacheDuration = 300)] // Synced
+    public virtual async Task<List<ChatId>> GetMutedPttChatIds(CancellationToken cancellationToken)
+    {
+        // The consented chats GetPttChatIds leaves out only because they're muted: still listed in
+        // Active Chats (with the muted badge), still inert for every other consumer.
+        if (!Ptt.IsSupported(HostInfo))
+            return [];
+        if (!await IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false))
+            return [];
+
+        return await FilterConsentedPttChatIds(isMuted: true, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod(MinCacheDuration = 300)] // Synced
     public virtual async Task<List<ChatId>> GetConsentedPttChatIds(CancellationToken cancellationToken)
+    {
+        var pttChats = await GetConsentedPttChats(cancellationToken).ConfigureAwait(false);
+        return pttChats.Select(c => c.ChatId).ToList();
+    }
+
+    [ComputeMethod(MinCacheDuration = 300)] // Synced
+    public virtual async Task<List<PttChat>> GetConsentedPttChats(CancellationToken cancellationToken)
     {
         // Armed = consent within the chat's current enable-epoch; the Chats.Get dependency
         // re-arms/disarms everything downstream when an owner flips the chat's PTT toggle.
@@ -165,13 +186,29 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         var pttChats = await UserSettingsUI.UserPttSettings()
             .Get(x => x.PttChats, cancellationToken)
             .ConfigureAwait(false);
-        var result = new List<ChatId>(pttChats.Length);
+        var result = new List<PttChat>(pttChats.Length);
         foreach (var pttChat in pttChats) {
             var chat = await Chats.Get(Session, pttChat.ChatId, cancellationToken).ConfigureAwait(false);
             if (chat != null && UserPttSettings.IsArmed(chat.PttEnabledAt, pttChat.JoinedAt))
-                result.Add(pttChat.ChatId);
+                result.Add(pttChat);
         }
         return result;
+    }
+
+    [ComputeMethod]
+    public virtual async Task<DurationCountdown?> GetPttMuteCountdown(
+        ChatId chatId, CancellationToken cancellationToken)
+    {
+        var pttChats = await GetConsentedPttChats(cancellationToken).ConfigureAwait(false);
+        var pttChat = pttChats.FirstOrDefault(c => c.ChatId == chatId);
+        var now = ServerNow;
+        if (pttChat is not { MutedAt: { } mutedAt, MutedUntil: { } mutedUntil } || !pttChat.IsMutedAt(now))
+            return null;
+
+        var remaining = mutedUntil - now;
+        var delay = TimeSpanExt.Min(PttMuteTextUpdatePeriod, remaining) + TimeSpan.FromMilliseconds(250);
+        Computed.GetCurrent().Invalidate(delay, false);
+        return new DurationCountdown(remaining, mutedUntil - mutedAt);
     }
 
     [ComputeMethod] // Synced
@@ -449,6 +486,26 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     // Private methods
+
+    private async Task<List<ChatId>> FilterConsentedPttChatIds(bool isMuted, CancellationToken cancellationToken)
+    {
+        var pttChats = await GetConsentedPttChats(cancellationToken).ConfigureAwait(false);
+        var now = ServerNow;
+        var result = new List<ChatId>(pttChats.Count);
+        Moment? nextMuteEnd = null;
+        foreach (var pttChat in pttChats) {
+            var isChatMuted = pttChat.IsMutedAt(now);
+            if (isChatMuted == isMuted)
+                result.Add(pttChat.ChatId);
+            if (isChatMuted && (nextMuteEnd is null || pttChat.MutedUntil < nextMuteEnd))
+                nextMuteEnd = pttChat.MutedUntil;
+        }
+        // A lapsing mute re-arms the chat without any settings write, so the deadline itself
+        // has to recompute the caller.
+        if (nextMuteEnd is { } muteEnd)
+            Computed.GetCurrent().Invalidate(muteEnd - now + TimeSpan.FromMilliseconds(250), false);
+        return result;
+    }
 
     private async Task RestoreKeepListeningChats(CancellationToken cancellationToken)
     {

@@ -143,6 +143,53 @@ public partial class UserPttSettingsTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
+    public void WithPttChatMutedMutesOnlyUntilTheDeadline()
+    {
+        // arrange
+        var joinedAt = Moment.EpochStart + TimeSpan.FromDays(1);
+        var mutedAt = joinedAt + TimeSpan.FromHours(1);
+        var mutedUntil = mutedAt + TimeSpan.FromMinutes(15);
+        var settings = new UserPttSettings().WithPttChat(TestChatId, joinedAt);
+
+        // act
+        var muted = settings.WithPttChatMuted(TestChatId, mutedAt, mutedUntil);
+
+        // assert
+        settings.IsMutedIn(TestChatId, mutedAt).Should().BeFalse("nothing is muted by default");
+        muted.PttChats.Should().Equal(new PttChat(TestChatId, joinedAt, mutedAt, mutedUntil));
+        muted.IsMutedIn(TestChatId, mutedAt).Should().BeTrue();
+        muted.IsMutedIn(TestChatId, mutedUntil - TimeSpan.FromSeconds(1)).Should().BeTrue();
+        muted.IsMutedIn(TestChatId, mutedUntil).Should().BeFalse("the mute lapses at the deadline");
+        muted.IsMutedIn(ChatId.Parse("someotherchat"), mutedAt).Should().BeFalse();
+    }
+
+    [Fact]
+    public void WithPttChatMutedIgnoresAChatWithoutConsent()
+    {
+        var now = Moment.EpochStart + TimeSpan.FromDays(1);
+        // act + assert
+        new UserPttSettings().WithPttChatMuted(TestChatId, now, now + TimeSpan.FromHours(1))
+            .PttChats.Should().BeEmpty("muting must never create consent");
+    }
+
+    [Fact]
+    public void UnmutingAndReArmingClearTheMute()
+    {
+        // arrange
+        var joinedAt = Moment.EpochStart + TimeSpan.FromDays(1);
+        var mutedAt = joinedAt + TimeSpan.FromHours(1);
+        var muted = new UserPttSettings()
+            .WithPttChat(TestChatId, joinedAt)
+            .WithPttChatMuted(TestChatId, mutedAt, mutedAt + TimeSpan.FromHours(8));
+
+        // act + assert
+        muted.WithPttChatUnmuted(TestChatId).PttChats.Should().ContainSingle()
+            .Which.Should().Be(new PttChat(TestChatId, joinedAt), "unmuting keeps the consent as it was");
+        muted.WithPttChat(TestChatId, mutedAt).PttChats.Should().ContainSingle()
+            .Which.Should().Be(new PttChat(TestChatId, mutedAt), "re-arming replaces the entry, mute included");
+    }
+
+    [Fact]
     public void IsArmedRequiresConsentWithinTheEnableEpoch()
     {
         var enabledAt = Moment.EpochStart + TimeSpan.FromDays(1);
@@ -158,7 +205,13 @@ public partial class UserPttSettingsTest(ITestOutputHelper @out) : TestBase(@out
     {
         var settings = new UserPttSettings {
             PttChatIds = [TestChatId],
-            PttChats = [new PttChat(TestChatId, Moment.EpochStart + TimeSpan.FromDays(1))],
+            PttChats = [
+                new PttChat(
+                    TestChatId,
+                    Moment.EpochStart + TimeSpan.FromDays(1),
+                    Moment.EpochStart + TimeSpan.FromDays(2),
+                    Moment.EpochStart + TimeSpan.FromDays(2) + TimeSpan.FromHours(8)),
+            ],
             IsFlipToTalkEnabled = false,
             ShakeSensitivity = ShakeSensitivity.High,
             AreGesturesAlwaysOn = true,

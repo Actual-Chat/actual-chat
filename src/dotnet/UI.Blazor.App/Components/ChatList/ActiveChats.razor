@@ -34,9 +34,12 @@
         DebugLog?.LogDebug("-> ComputeState: {List}", ChatListKind.Active);
         var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
         var chatIds = activeChats.Select(ac => ac.ChatId).ToList();
-        // PTT-armed chats always belong here, even before their listening player starts.
+        // PTT-armed chats always belong here, even before their listening player starts;
+        // a muted one stays too, since the badge is where the mute is counted down and lifted.
         var pttChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
         chatIds.AddRange(pttChatIds.Where(id => !chatIds.Contains(id)));
+        var mutedPttChatIds = await ChatAudioUI.GetMutedPttChatIds(cancellationToken).ConfigureAwait(false);
+        chatIds.AddRange(mutedPttChatIds.Where(id => !chatIds.Contains(id)));
         var chats = (await chatIds
                 .Select(chatId => Chats.Get(Session, chatId, cancellationToken))
                 .Collect(cancellationToken)

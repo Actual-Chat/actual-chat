@@ -1,22 +1,49 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase<AppUIHub>
+@inherits ComputedStateComponent<AppUIHub, DurationCountdown?>
+@{
+    var countdown = State.Value;
+}
 
-<HeaderButton
-    Class="@Class"
-    Click="@OnClick"
-    Tooltip="@L.ChatList_TurnOffPtt"
-    TooltipPosition="FloatingPosition.Top">
-    <i class="c-ptt-badge icon-push-to-talk text-2xl"></i>
-</HeaderButton>
+@if (countdown is null) {
+    <div
+        class="c-ptt-mute-trigger @Class"
+        data-menu="@(MenuRef.New<PttMuteMenu>(ChatId.Value).ToString())"
+        data-menu-trigger="@MenuTrigger.Primary"
+        data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+        <HeaderButton
+            Tooltip="@L.ChatList_MutePtt"
+            TooltipPosition="FloatingPosition.Top">
+            <i class="c-ptt-badge icon-push-to-talk text-2xl"></i>
+        </HeaderButton>
+    </div>
+} else {
+    <div class="c-ptt-muted @Class">
+        <RoundProgress Class="c-ptt-mute-ring" Fraction="@countdown.Fraction"/>
+        <HeaderButton
+            StopPropagation="true"
+            PreventDefault="true"
+            Click="@OnUnmute"
+            Tooltip="@L.ChatList_UnmutePtt"
+            TooltipPosition="FloatingPosition.Top">
+            <span class="timer-swap">
+                <i class="c-ptt-badge icon-push-to-talk text-2xl swap-a"></i>
+                <span class="c-timer-text swap-b">@countdown.GetShortText(L)</span>
+            </span>
+        </HeaderButton>
+    </div>
+}
 
 @code {
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
     [Parameter] public string Class { get; set; } = "";
 
-    private void OnClick() {
+    protected override Task<DurationCountdown?> ComputeState(CancellationToken cancellationToken)
+        => Hub.ChatAudioUI.GetPttMuteCountdown(ChatId, cancellationToken);
+
+    private void OnUnmute() {
         var chatId = ChatId;
         _ = Hub.UserSettingsUI.UserPttSettings().Update(
-            x => x.WithoutPttChat(chatId),
+            x => x.WithPttChatUnmuted(chatId),
             CancellationToken.None);
     }
 }

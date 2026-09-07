@@ -145,7 +145,7 @@
     public sealed record Model(
         IReadOnlyList<MapMarker> Markers,
         GeoPoint Center,
-        LocationCountdown? Countdown,
+        DurationCountdown? Countdown,
         bool IsOwnSharing,
         double? Distance = null,
         bool IsMenuOpen = false);

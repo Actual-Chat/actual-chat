@@ -10,14 +10,15 @@ fan-out and replay (doc 06), playback (doc 07). Nothing in this doc changes a
 frame's path through the system; it is about **who starts a stream, on which
 device, and when**.
 
-## States: off, armed, hot
+## States: off, armed, muted, hot
 
-A chat is in exactly one of three PTT states per user:
+A chat is in exactly one of four PTT states per user:
 
 | State | Meaning | Source of truth |
 |---|---|---|
 | **off** | Ordinary chat. No wakes, no gestures, no reply button. | `Chat.PttEnabledAt` is null, or the user's consent is missing/stale |
 | **armed** | The chat may wake this device and may be answered hands-free. | `Chat.PttEnabledAt != null` **and** `UserPttSettings.PttChats` holds an entry with `JoinedAt >= PttEnabledAt` |
+| **muted** | Armed consent kept, but inert for a period: no wakes, no auto-listening, no gestures. Lapses by itself. | The armed entry additionally has `MutedUntil` in the future (`PttChat.IsMutedAt(now)`) |
 | **hot** | The microphone is open for a PTT reply into this chat. | `PttReplyUI` holds a `PttReply` for it |
 
 Armed is thus a **two-key state**: the chat owner turns PTT on for the chat
@@ -41,6 +42,21 @@ the epoch predicate, so an owner's toggle flip propagates to every consumer
 Chats) through ordinary invalidation. Armed chats also always appear in the
 **Active Chats** list with a PTT badge, and removing one there also revokes
 consent.
+
+**Muting** is a timed pause of an armed chat that keeps the consent:
+`ChatListPttToggle`, the Active Chats badge, opens `PttMuteMenu` (15 min / 1 h /
+8 h from `Constants.Audio.PttMuteDurations`, or "turn off" = `WithoutPttChat`),
+and `WithPttChatMuted` stamps `MutedAt`/`MutedUntil` on the entry with the server
+clock. `GetPttChatIds` leaves muted chats out and self-invalidates at the
+earliest `MutedUntil`, so a lapsed mute re-arms everything downstream with no
+settings write; `GetMutedPttChatIds` is the complement, read only by Active
+Chats (the row stays listed, with a gray struck-out badge whose ring drains over
+the mute period and alternates with the remaining time) and by the wake gate.
+Tapping the muted badge unmutes (`WithPttChatUnmuted`); re-arming through
+`WithPttChat` replaces the entry and so clears a mute too. Arming paths that
+rewrite the set with `WithOnlyPttChats` must feed it `GetConsentedPttChatIds`,
+never the armed set — the armed set is missing exactly the muted chats, and
+`WithOnlyPttChats` drops whatever it doesn't get.
 
 Between armed and hot sits the **answer window** — the period after voice
 during which a gesture, a headset press or the Apple PTT Talk button may
@@ -85,6 +101,9 @@ stateDiagram-v2
     [*] --> Off
     Off --> Armed: owner enables chat PTT + author joins
     Armed --> Off: author leaves, or owner disables (epoch reset)
+    Armed --> Muted: mute for 15 min / 1 h / 8 h (Active Chats badge)
+    Muted --> Armed: MutedUntil passes, or the badge is tapped
+    Muted --> Off: author leaves, or owner disables
     Armed --> Armed: wake push → headless playback
     Armed --> Hot: RequestReply — gesture, headset, PTT Talk, on-screen toggle
     Hot --> Armed: StopReply, cold-start dead-man, RecordChat idle (HotWindow)
@@ -151,7 +170,8 @@ sequenceDiagram
 `SendPttWake` applies the per-user gates in order:
 `IsPttArmed(userId, chatId, chat.PttEnabledAt)` — the chat is fetched
 via `ChatsBackend.Get`, and consent stamped before the current epoch doesn't
-count; `ChatNotificationMode.Muted` (a muted
+count; `IsPttMuted(userId, chatId, now)` (a PTT mute whose `MutedUntil` is still
+ahead); `ChatNotificationMode.Muted` (a muted
 chat never wakes you, even armed); `ListDevices` filtered to
 `DeviceType.AndroidApp` (FCM) and `DeviceType.iOSPttApp` (APNs), both bounded by
 `Constants.Notification.ActiveDevicePeriod`; and finally the dedup —
@@ -290,6 +310,12 @@ and in the live WebView scope.
 
 `StartPlayback(chatId, startedAt, isForeground, isHeadless, platform)`:
 
+0. Answers `PttWakeIgnoreReason` instead of playing when the wake must stay
+   inert here: `DeviceDisabled` (the per-device switch is off), `Silenced` (the
+   phone is on silent/vibrate/DND — a foreground wake is exempt), or `Muted`
+   (the chat is in `GetMutedPttChatIds` — this one holds in the foreground too,
+   since it is the user's own "don't listen for me"). `PttPlatform.OnWakeIgnored`
+   then tears the headless session down quietly.
 1. Sets `ChatAudioUI.IsPttHeadless` when headless, calls
    `ChatAudioUI.Enable()`, and stamps
    `VoiceActivityUI.NoteIncomingVoice(chatId, Ptt.GetWakeAnswerStamp(startedAt, now))`
@@ -724,7 +750,7 @@ devices:
 
 | Member | Default | Meaning |
 |---|---|---|
-| `PttChats` | `[]` | Per-chat consent entries `(ChatId, JoinedAt)`; armed iff `JoinedAt >= Chat.PttEnabledAt`. `MaxChatCount = 3`, matching `ActiveChatsUI.MaxActiveChatCount`, which also bounds server wake fan-out per speaker; adding beyond the cap evicts the least-recently-joined entry |
+| `PttChats` | `[]` | Per-chat consent entries `(ChatId, JoinedAt, MutedAt?, MutedUntil?)`; armed iff `JoinedAt >= Chat.PttEnabledAt`, muted while `MutedUntil` is ahead. `MaxChatCount = 3`, matching `ActiveChatsUI.MaxActiveChatCount`, which also bounds server wake fan-out per speaker; adding beyond the cap evicts the least-recently-joined entry |
 | `PttChatIds` | `[]` | Legacy mirror of `PttChats` (ids only), kept in sync for pre-epoch readers; ids present here but not in `PttChats` surface via `AllPttChats` with `JoinedAt = default`, i.e. never armed |
 | `IsFlipToTalkEnabled` | `true` | Flip-to-talk start gesture |
 | `IsDoubleShakeEnabled` | `true` | Double-shake start gesture. The stop-side shake rides the stop toggle instead, so switching this off keeps "shake again to stop" |
@@ -737,7 +763,9 @@ devices:
 | `IsPttTransmitEnabled` | `null` → `true` | Apple PTT transmission mode (`FullDuplex` vs `ListenOnly`) |
 
 `WithPttChat(chatId, joinedAt)` / `WithoutPttChat(chatId)` are the
-consent/leave helpers. Writers never stamp `JoinedAt` from a raw client clock —
+consent/leave helpers; `WithPttChatMuted(chatId, mutedAt, mutedUntil)` /
+`WithPttChatUnmuted(chatId)` pause and resume an entry, and `IsMutedIn(chatId, now)`
+is the predicate both the server wake gate and the client read. Writers never stamp `JoinedAt` from a raw client clock —
 the owner's auto-arm uses the `PttEnabledAt` returned by `Chats_Change`, and
 join paths use `Moment.Max(ServerClock.Now, enabledAt)` — otherwise clock skew
 could land consent just before the epoch and read as stale. The two nullable
@@ -785,6 +813,7 @@ working if the flag is later turned off; only the UI for changing it goes away.
 | `ListeningCatchUpTolerance` | 2 s | Clock-fuzz allowance between a wake's `startedAt` and the target stream's `BeginsAt` |
 | `PttReplyColdStartTimeout` | 15 s | Cold-start dead-man: no voice within this and the mic closes with the "nothing heard" cue |
 | `PttAnswerWindowDefault` | 15 s | Default for `UserPttSettings.AnswerWindow` — how long after incoming voice ends a hands-free reply may start |
+| `PttMuteDurations` | 15 min, 1 h, 8 h | The mute-for-a-period options `PttMuteMenu` offers on an Active Chats badge |
 | `PttTransmitStartupTimeout` | 8 s | Whole-boot budget for an Apple PTT transmit |
 | `PttPreRollCapacity` | 8 s | Pre-roll ring size; must stay ≤ `AppleAudioCapture`'s 10 s output buffer |
 | `PttPreRollMinDuration` | 0.4 s | Below this the pre-roll isn't drained |

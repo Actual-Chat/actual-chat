@@ -66,6 +66,9 @@ public sealed partial record UserPttSettings
     public bool IsArmedIn(ChatId chatId, Moment? pttEnabledAt)
         => PttChats.Any(c => c.ChatId == chatId && IsArmed(pttEnabledAt, c.JoinedAt));
 
+    public bool IsMutedIn(ChatId chatId, Moment now)
+        => PttChats.Any(c => c.ChatId == chatId && c.IsMutedAt(now));
+
     public UserPttSettings WithPttChat(ChatId chatId, Moment joinedAt)
     {
         var pttChats = AllPttChats
@@ -80,6 +83,16 @@ public sealed partial record UserPttSettings
     public UserPttSettings WithoutPttChat(ChatId chatId)
         => WithPttChats(AllPttChats.Where(c => c.ChatId != chatId).ToArray());
 
+    public UserPttSettings WithPttChatMuted(ChatId chatId, Moment mutedAt, Moment mutedUntil)
+        => WithPttChats(AllPttChats
+            .Select(c => c.ChatId == chatId ? c with { MutedAt = mutedAt, MutedUntil = mutedUntil } : c)
+            .ToArray());
+
+    public UserPttSettings WithPttChatUnmuted(ChatId chatId)
+        => WithPttChats(AllPttChats
+            .Select(c => c.ChatId == chatId ? c with { MutedAt = null, MutedUntil = null } : c)
+            .ToArray());
+
     public UserPttSettings WithOnlyPttChats(IReadOnlySet<ChatId> chatIds)
         // Drops entries the caller no longer sees as armed, so a dead one can't consume the
         // MaxChatCount budget and make WithPttChat evict a live chat in its place.
@@ -93,12 +106,19 @@ public sealed partial record UserPttSettings
 
 /// <summary>
 /// A per-chat Push to Talk consent entry; armed only while <see cref="JoinedAt"/> is within
-/// the chat's current enable-epoch (>= <c>Chat.PttEnabledAt</c>).
+/// the chat's current enable-epoch (>= <c>Chat.PttEnabledAt</c>), and inert while muted
+/// (<see cref="MutedUntil"/> is in the future) without losing the consent.
 /// </summary>
 [DataContract, MessagePackObject]
 public sealed partial record PttChat(
     [property: DataMember, Key(0)] ChatId ChatId,
-    [property: DataMember, Key(1)] Moment JoinedAt);
+    [property: DataMember, Key(1)] Moment JoinedAt,
+    [property: DataMember, Key(2)] Moment? MutedAt = null,
+    [property: DataMember, Key(3)] Moment? MutedUntil = null)
+{
+    public bool IsMutedAt(Moment now)
+        => MutedUntil is { } mutedUntil && now < mutedUntil;
+}
 
 // Values are ordered so Medium is the zero default; the firing sets nest: Low ⊆ Medium ⊆ High.
 public enum ShakeSensitivity

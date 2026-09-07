@@ -106,7 +106,7 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     }
 
     [ComputeMethod]
-    public virtual async Task<LocationCountdown?> GetCountdown(
+    public virtual async Task<DurationCountdown?> GetCountdown(
         ChatId chatId,
         SharedLocationId locationId,
         CancellationToken cancellationToken)
@@ -118,12 +118,12 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
             return null;
 
         if (location.IsUnlimited)
-            return LocationCountdown.Unlimited;
+            return DurationCountdown.Unlimited;
 
         var remaining = location.LiveUntil - now;
         var delay = TimeSpanExt.Min(RemainingTextUpdatePeriod, remaining) + TimeSpan.FromMilliseconds(250);
         Computed.GetCurrent().Invalidate(delay, false);
-        return new LocationCountdown(remaining, location.Duration);
+        return new DurationCountdown(remaining, location.Duration);
     }
 
     [ComputeMethod(ConsolidationDelay = 0.2)]
@@ -396,26 +396,3 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
 }
 
 public sealed record LocationParticipant(SharedLocation Location, Author Author, bool IsOwn, MapMarker MapMarker);
-
-/// <summary>
-/// Remaining/total time of a live location share; <see cref="Unlimited"/> for shares with no expiration.
-/// </summary>
-public sealed record LocationCountdown(TimeSpan Remaining, TimeSpan Duration)
-{
-    public static readonly LocationCountdown Unlimited = new(TimeSpan.MaxValue, TimeSpan.MaxValue);
-    private static readonly TimeSpan RoundingTolerance = TimeSpan.FromSeconds(2);
-
-    public bool IsUnlimited => Duration == TimeSpan.MaxValue;
-    public double Fraction => IsUnlimited ? 1 : Math.Clamp(Remaining / Duration, 0, 1);
-    public string GetText(IStringLocalizer l)
-    {
-        if (IsUnlimited)
-            return "";
-
-        if (Remaining.TotalHours >= 1)
-            return l.Location_CountdownHours_Format((int)Math.Ceiling(Remaining.TotalHours));
-
-        var minutes = (int)Math.Ceiling((Remaining - RoundingTolerance).TotalMinutes);
-        return Math.Max(1, minutes).ToString();
-    }
-}

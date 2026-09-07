@@ -16,3 +16,36 @@
     stroke-width: 2;
     stroke-linecap: round;
 }
+
+/* Alternating icon/label inside a countdown control: .swap-a shows for one half of the cycle,
+   .swap-b for the other. Used by ChatAudioControls (listening ring) and ChatListPttToggle (mute ring). */
+.timer-swap {
+    @apply relative flex items-center justify-center;
+}
+.timer-swap .swap-a,
+.timer-swap .swap-b {
+    /* steps(80) keeps every tick on AnimationSync's 100ms grid (8s / 80). */
+    animation: timer-swap 8s steps(80) infinite;
+}
+.timer-swap .swap-a {
+    @apply block;
+}
+.timer-swap .swap-b {
+    @apply absolute inset-0;
+    @apply flex items-center justify-center;
+    animation-delay: -4s;
+}
+@keyframes timer-swap {
+    0%, 40% {
+        opacity: 1;
+    }
+    46%, 50% {
+        opacity: 0;
+    }
+    50.01%, 90% {
+        opacity: 0;
+    }
+    96%, 100% {
+        opacity: 1;
+    }
+}

@@ -135,7 +135,7 @@
     public sealed record Model(
         GeoPoint Center,
         IReadOnlyList<MapMarker> Markers,
-        LocationCountdown? Countdown,
+        DurationCountdown? Countdown,
         bool IsOwnLive,
         double? Distance = null,
         GeoTrackingError? TrackingError = null,

@@ -1,0 +1,53 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits Menu<AppUIHub>
+
+<div class="ptt-mute-menu">
+    <div class="c-title">
+        @L.ChatList_MutePtt
+    </div>
+    <Divider/>
+    @foreach (var duration in Constants.Audio.PttMuteDurations) {
+        <MenuEntry
+            Icon="icon-clock"
+            Text="@DurationLabel(duration)"
+            Click="@(() => OnMute(duration))">
+        </MenuEntry>
+    }
+    <MenuEntrySeparator/>
+    <MenuEntry
+        Icon="icon-close"
+        Text="@L.ChatList_TurnOffPtt"
+        Click="@OnTurnOff">
+    </MenuEntry>
+</div>
+
+@code {
+    private ChatId? _chatId;
+
+    protected override void OnParametersSet()
+        => _chatId = ChatId.TryParse(Arguments.ElementAtOrDefault(0));
+
+    private Task OnMute(TimeSpan duration) {
+        if (_chatId is not { } chatId)
+            return Task.CompletedTask;
+
+        // Server-clock stamps, like JoinedAt: the server compares them against its own clock.
+        var now = Clocks.ServerClock.Now;
+        return UICommander.RunLocal(ct
+            => UserSettingsUI.UserPttSettings()
+                .Update(x => x.WithPttChatMuted(chatId, now, now + duration), ct));
+    }
+
+    private Task OnTurnOff() {
+        if (_chatId is not { } chatId)
+            return Task.CompletedTask;
+
+        return UICommander.RunLocal(ct
+            => UserSettingsUI.UserPttSettings().Update(x => x.WithoutPttChat(chatId), ct));
+    }
+
+    private string DurationLabel(TimeSpan duration)
+        => duration.TotalHours >= 1
+            ? L.ChatList_MutePttForHours((long)duration.TotalHours, (int)duration.TotalHours)
+            : L.ChatList_MutePttForMinutes((long)duration.TotalMinutes, (int)duration.TotalMinutes);
+}

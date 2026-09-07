@@ -130,6 +130,55 @@ body.narrow .navbar-chats .chat-list.virtual-list::-webkit-scrollbar {
 .active-chats .c-ptt-badge {
     @apply text-primary;
 }
+.active-chats .c-ptt-mute-trigger {
+    @apply flex items-center justify-center;
+}
+/* Muted: the ring drains over the whole mute period around a struck-out gray glyph that
+   alternates with the remaining time, mirroring the listening countdown ring. */
+.active-chats .c-ptt-muted {
+    @apply relative;
+    @apply flex items-center justify-center;
+    @apply w-8;
+    @apply overflow-visible;
+}
+.active-chats .c-ptt-muted .c-ptt-mute-ring {
+    @apply absolute -inset-1;
+    @apply pointer-events-none;
+    @apply text-03;
+    width: calc(100% + 0.5rem);
+    height: calc(100% + 0.5rem);
+}
+.active-chats .c-ptt-muted .c-ptt-mute-ring .c-track {
+    @apply opacity-30;
+    stroke: currentColor;
+    stroke-width: 1.25;
+}
+.active-chats .c-ptt-muted .c-ptt-mute-ring .c-value {
+    transition: stroke-dashoffset 1s linear;
+}
+.active-chats .c-ptt-muted .c-ptt-badge {
+    @apply relative text-03 text-lg;
+}
+.active-chats .c-ptt-muted .c-ptt-badge::after {
+    @apply absolute top-1/2 left-1/2 rounded-full;
+    content: "";
+    width: 1.3em;
+    height: 0.1em;
+    background: currentColor;
+    transform: translate(-50%, -50%) rotate(-45deg);
+}
+.active-chats .c-ptt-muted .c-timer-text {
+    @apply text-03 text-xxs font-semibold leading-none tabular-nums;
+}
+
+/* PTT mute menu (PttMuteMenu) */
+.ptt-mute-menu > .c-title {
+    @apply p-2;
+    @apply text-02 font-semibold;
+}
+.ptt-mute-menu > .divider {
+    @apply mb-1;
+}
 
 /* Tabs */
 .navbar-chats .tab-panel-tabs .chats-tab {
