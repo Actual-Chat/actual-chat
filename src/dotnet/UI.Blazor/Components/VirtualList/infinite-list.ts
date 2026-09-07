@@ -257,6 +257,7 @@ export class InfiniteList extends VirtualList {
     private isApplyingRender = false;
     private mustRecentre = false;
     private lastWrapperSize = 0;
+    private initialScrollToKey: string | null = null;
     private handledScrollToKey: string | null = null;
     private outOfBandChecks = 0;
     private offContentChecks = 0;
@@ -983,6 +984,9 @@ export class InfiniteList extends VirtualList {
 
     private applyRenderIntent(rs: VirtualListRenderState): void {
         const scrollToKey = rs.scrollToKey;
+        if (!this.isContainerRevealed && scrollToKey != null)
+            this.initialScrollToKey = scrollToKey;
+
         if (scrollToKey != null && this.indexByKey.has(scrollToKey)) {
             this.isInitiallyPlaced = true;
             if (scrollToKey === this.getLastContentKey() && rs.hasVeryLastItem) {
@@ -1088,6 +1092,9 @@ export class InfiniteList extends VirtualList {
     // a pinned list moves the edge away by construction, so re-deriving there would drop the pin exactly
     // when it is needed.
     private updatePinnedEdge(): void {
+        if (!this.isContainerRevealed)
+            return;
+
         const rs = this.renderState;
         if (this.items.length === 0) {
             this.setPinnedEdge(null);
@@ -2326,7 +2333,7 @@ export class InfiniteList extends VirtualList {
         if (viewRect.height <= 0)
             return false;
 
-        const scrollToKey = rs.scrollToKey;
+        const scrollToKey = rs.scrollToKey ?? this.initialScrollToKey;
         if (scrollToKey != null) {
             const itemRef = this.getItemRef(scrollToKey);
             if (itemRef == null)
