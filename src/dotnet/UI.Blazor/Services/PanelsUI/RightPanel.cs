@@ -66,6 +66,7 @@ public class RightPanel
             if (_isVisible.Value == value)
                 return;
 
+            Owner.Middle.NotifyVisibilityChanging(value);
             _isVisible.Value = value;
             if (Owner.IsWide())
                 _storedState.IsVisible = value;

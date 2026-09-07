@@ -8,11 +8,13 @@ namespace ActualChat.UI.Blazor.Services;
 /// </summary>
 public partial class PanelsUI : UIWorkerBase<UIHub>
 {
+    // Must match --side-nav-transition-duration in side-nav.css
+    public static readonly TimeSpan PanelTransitionDuration = TimeSpan.FromMilliseconds(200);
     private string? _keepPanelsUrl;
 
     public IState<ScreenSize> ScreenSize { get; }
     public LeftPanel Left { get; }
-    public MiddlePanel Middle { get; }
+    public MiddlePanel Middle => field ??= Services.GetRequiredService<MiddlePanel>();
     public RightPanel Right { get; }
 
     public PanelsUI(UIHub hub) : base(hub)
@@ -25,7 +27,6 @@ public partial class PanelsUI : UIWorkerBase<UIHub>
         ScreenSize = browserInfo.ScreenSize;
         Left = new LeftPanel(this);
         Right = new RightPanel(this);
-        Middle = new MiddlePanel(this);
         this.Start();
     }
 
@@ -69,7 +70,7 @@ public partial class PanelsUI : UIWorkerBase<UIHub>
             // otherwise "Back" from chat will hide the panel AND select the prev. chat.
             await History.WhenNavigationCompleted().ConfigureAwait(false);
             // The panels slide away from the content that replaces them, not from its skeleton
-            await Middle.WhenContentDisplayed().ConfigureAwait(false);
+            await Middle.WhenContentSwapped().ConfigureAwait(false);
             HidePanels();
         }
     }

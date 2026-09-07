@@ -696,7 +696,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (itemVisibility.IsEmpty)
             return ChatViewItemVisibility.Empty;
 
-        var isMiddleVisible = await PanelsUI.Middle.IsVisible.Use(cancellationToken).ConfigureAwait(false);
+        var isMiddleVisible = await PanelsUI.Middle.IsVisible(cancellationToken).ConfigureAwait(false);
         if (!isMiddleVisible)
             return ChatViewItemVisibility.Empty;
         if (!await BrowserInfo.IsVisible.Use(cancellationToken).ConfigureAwait(false))

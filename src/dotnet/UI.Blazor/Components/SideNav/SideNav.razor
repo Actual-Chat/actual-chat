@@ -8,10 +8,14 @@
 </div>
 
 @code {
+    // Aliased because ComponentBase.PanelsUI - and this component's own namespace - shadow the type
+    private static readonly TimeSpan TransitionDuration
+        = ActualChat.UI.Blazor.Services.PanelsUI.PanelTransitionDuration;
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.SideNav.create";
 
     private string _class = "";
     private string _attribute = "";
+    private bool _wasOpen;
 
     [Parameter] public SideNavSide Side { get; set; } = SideNavSide.Left;
     [Parameter] public string Class { get; set; } = "";
@@ -37,6 +41,13 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_wasOpen != IsOpen) {
+            // The render above is what started the CSS transition; pausing before it would have
+            // postponed that render through ShouldRender, and the panel would never have moved.
+            _wasOpen = IsOpen;
+            if (!firstRender)
+                Hub.RenderDelayer.Pause(TransitionDuration);
+        }
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create(this);
             var options = new SideNavOptions {
@@ -57,5 +68,13 @@
     public async Task OnVisibilityChanged(bool isOpen) {
         if (IsOpen != isOpen)
             await VisibilityChanged.InvokeAsync(isOpen);
+    }
+
+    [JSInvokable]
+    public void OnPullSettling() {
+        // A pull's settle animation runs entirely in JS and reports its result only once it's over,
+        // so this is the only edge .NET can't see for itself.
+        Hub.PanelsUI.Middle.NotifyPullSettled();
+        Hub.RenderDelayer.Pause(TransitionDuration);
     }
 }

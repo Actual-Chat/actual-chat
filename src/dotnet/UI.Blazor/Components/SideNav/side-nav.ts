@@ -72,7 +72,7 @@ export class SideNav extends DisposableBag {
 
     constructor(
         public readonly element: HTMLDivElement,
-        private readonly blazorRef: DotNet.DotNetObject,
+        public readonly blazorRef: DotNet.DotNetObject,
         public readonly options: SideNavOptions,
     ) {
         super();
@@ -145,6 +145,8 @@ export class SideNav extends DisposableBag {
         debugLog?.log(`setVisibility:`, isOpen);
         await this.blazorRef.invokeMethodAsync('OnVisibilityChanged', isOpen);
     });
+
+    // Private methods
 
     // Call during RAF
     private updateBodyClassList(): void {
@@ -379,6 +381,9 @@ class SideNavPullGesture extends Gesture {
 
                 // "Pre-apply" visibility change
                 sideNav.setTransform(mustBeOpen ? 1 : 0);
+                // The settle animation starts here, ~200ms before Blazor hears about it below -
+                // the one call that can't be derived on the .NET side.
+                void sideNav.blazorRef.invokeMethodAsync('OnPullSettling');
 
                 const transitionEnded = new PromiseSourceWithTimeout<void>();
                 transitionEnded.setTimeout(MaxTransitionWaitDurationMs);

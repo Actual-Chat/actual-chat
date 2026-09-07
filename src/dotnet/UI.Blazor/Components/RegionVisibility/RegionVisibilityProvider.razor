@@ -10,11 +10,15 @@
 
     [Inject] public IServiceProvider Services { get; init; } = null!;
 
-    [Parameter, EditorRequired] public IState<bool> IsRegionVisible { get; set; } = null!;
+    // Exactly one of these two must be set - a region's visibility is either a state or a compute method
+    [Parameter] public IState<bool>? IsRegionVisible { get; set; }
+    [Parameter] public Func<CancellationToken, Task<bool>>? ComputeIsRegionVisible { get; set; }
     [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = null!;
 
     protected override void OnInitialized()
-        => _regionVisibility = new RegionVisibility(Services, IsRegionVisible);
+        => _regionVisibility = ComputeIsRegionVisible is { } computeIsRegionVisible
+            ? new RegionVisibility(Services, computeIsRegionVisible)
+            : new RegionVisibility(Services, IsRegionVisible.Require());
 
     public void Dispose()
         => _regionVisibility?.Dispose();

@@ -5,7 +5,7 @@
             @LeftDrawer
         </ErrorBarrier>
     </RegionVisibilityProvider>
-    <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Middle.IsVisible">
+    <RegionVisibilityProvider ComputeIsRegionVisible="@PanelsUI.Middle.IsVisible">
         <ErrorBarrier Name="PageWithHeaderAndFooter-Content" MustHidePanels="@true">
             <div class="@Class">
                 <div class="layout-header">

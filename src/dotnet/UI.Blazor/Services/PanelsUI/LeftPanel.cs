@@ -66,6 +66,7 @@ public sealed class LeftPanel : IDisposable
                 return;
 
             // Log.LogDebug("SetIsVisible: {IsVisible}", value);
+            Owner.Middle.NotifyVisibilityChanging(value);
             _isVisible.Value = value;
             History.Save<OwnHistoryState>();
             VisibilityChanged?.Invoke();

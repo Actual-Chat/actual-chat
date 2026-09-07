@@ -7,7 +7,7 @@
 @using ActualChat.UI.Blazor.Diagnostics
 @inherits ComputedStateComponent<AppUIHub, ChatPage.Model?>
 @{
-    if (!PanelsUI.Middle.CanRender.Value)
+    if (!PanelsUI.Middle.CanRenderValue)
         return;
 
     ChatSwitchTracer.Mark("ChatPage: render");
@@ -146,10 +146,11 @@
             return lastState; // Synchronizing
         }
 
-        // The render below is skipped while this is false, so it has to be what brings us back
-        var canRender = PanelsUI.Middle.CanRender;
-        if (!canRender.Value) // Once it's true, it's always true, so no need for extra dependency
-            await canRender.Use(cancellationToken).ConfigureAwait(false);
+        // The render below is skipped while this is false, so it has to be what brings us back.
+        // Once it's true it stays true, so the dependency is only worth taking while it isn't.
+        var middle = PanelsUI.Middle;
+        if (!middle.CanRenderValue)
+            await middle.CanRender(cancellationToken).ConfigureAwait(false);
         if (!ChatUI.WhenReady.IsCompleted)
             await ChatUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
         var chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
