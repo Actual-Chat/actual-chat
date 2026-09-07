@@ -32,6 +32,9 @@ public class RightPanelStoredState
                 InitialValue = Box.New(false),
                 Category = StateCategories.Get(GetType(), "IsVisibleStored"),
             });
+        // LocalSettings is wiped on a session change, the LocalStorage mirror isn't - so without
+        // this the splash skeleton would keep reserving a right panel the app no longer opens.
+        _ = WhenRead.ContinueWith(_1 => SaveIsVisibleState(IsVisible), TaskScheduler.Default);
     }
 
     private async Task SaveIsVisibleState(bool isVisible)

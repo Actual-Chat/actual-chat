@@ -125,44 +125,53 @@ body.narrow .wide-left-panel-skeleton:has(.inaccessible-place-request) {
 body.narrow .right-panel-skeleton {
     @apply hidden;
 }
-.right-panel-skeleton > .c-wrapper {
-    @apply relative;
-    @apply h-full;
+
+/* Chat Side Panel Skeleton - the heights below mirror ChatSidePanel's own header:
+   cover 6.5rem, avatar 4rem at (1rem, 4.5rem), title row at 9rem, tabs at 12.25rem. */
+chat-side-panel-skeleton {
+    @apply flex-y;
+    @apply w-full h-full;
+    @apply overflow-hidden;
 }
-.right-panel-skeleton .panel-header-skeleton {
-    @apply grid gap-y-2;
+chat-side-panel-skeleton .c-header {
+    @apply relative flex-none;
+}
+chat-side-panel-skeleton .c-cover {
     @apply h-26;
-    @apply py-2 px-3;
     @apply rounded-b-xl;
     @apply bg-right-panel-skeleton-header;
 }
-.right-panel-skeleton .panel-body-skeleton {
-    @apply relative;
+chat-side-panel-skeleton .c-avatar {
+    @apply absolute left-4 top-18;
+    @apply w-16 h-16;
 }
-.right-panel-skeleton .panel-body-skeleton .c-buttons {
-    @apply absolute -top-8;
-    @apply flex-x items-center;
-    @apply w-full;
-    @apply px-4;
+chat-side-panel-skeleton .c-bottom {
+    @apply flex-x items-center gap-x-2;
+    @apply h-17;
+    @apply pt-10 px-4;
 }
-.right-panel-skeleton .panel-body-skeleton .c-buttons > .c-right {
-    @apply flex-x gap-x-3;
+chat-side-panel-skeleton .c-badge {
+    @apply flex-none;
+    @apply w-24 h-6;
+    @apply rounded-full;
+    @apply bg-skeleton;
 }
-.right-panel-skeleton .panel-body-skeleton .c-description {
-    @apply flex-y gap-y-2;
-    @apply p-4 mt-6;
+chat-side-panel-skeleton .c-chat-info {
+    @apply flex-none;
+    @apply h-6;
 }
-.right-panel-skeleton .panel-body-skeleton .c-notification {
-    @apply flex-x items-center;
-    @apply h-12;
-    @apply px-4;
+chat-side-panel-skeleton .c-tabs {
+    @apply flex-none;
+    @apply h-10;
 }
-.right-panel-skeleton .panel-body-skeleton .c-tab {
-    @apply p-2;
+chat-side-panel-skeleton .c-divider {
+    @apply flex-none;
+    @apply h-px mx-6;
+    @apply bg-separator;
 }
-.right-panel-skeleton .panel-body-skeleton .members-container {
-    @apply flex-y gap-y-2;
-    @apply py-2 px-4;
+chat-side-panel-skeleton .c-list {
+    @apply flex-1;
+    @apply overflow-hidden;
 }
 
 /* Panel Header Skeleton */
