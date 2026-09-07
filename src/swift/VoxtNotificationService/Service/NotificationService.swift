@@ -9,8 +9,6 @@ final class NotificationService: UNNotificationServiceExtension {
     // The FCM data keys `FirebaseMessagingClient` sends alongside `aps`.
     private static let iconKey = "icon"
     private static let chatIdKey = "chatId"
-    private static let senderNameKey = "senderName"
-    private static let groupTitleKey = "groupTitle"
     private static let tagKey = "tag"
     private static let activeTagsKey = "activeTags"
     private static let activeVersionKey = "activeVersion"
@@ -149,16 +147,13 @@ final class NotificationService: UNNotificationServiceExtension {
         _ iconData: Data?,
         to content: UNMutableNotificationContent
     ) -> UNNotificationContent {
-        // The chat names the banner: the icon is its picture, and each body line carries its own
-        // author. A peer chat has no group title, so the other party stays the headline.
-        let headline = headline(of: content)
+        // The server's title is the headline every other platform leads with: the sender, and
+        // in a group chat the sender "@" the chat. The intent's sender carries it so that
+        // updating(from:) keeps it, while the picture stays the chat's, as on Android.
         guard let iconData,
-              let intent = makeIntent(headline: headline, content: content, iconData: iconData)
+              let intent = makeIntent(headline: content.title, content: content, iconData: iconData)
         else { return content }
 
-        // Titling the banner ourselves keeps it right even when the update below fails -
-        // which it does when the communication entitlement is missing.
-        content.title = headline
         let updated: UNNotificationContent
         do {
             updated = try content.updating(from: intent)
@@ -192,8 +187,9 @@ final class NotificationService: UNNotificationServiceExtension {
         guard !conversationId.isEmpty else { return nil }
 
         let image = INImage(imageData: iconData)
-        // The chat is the intent's sender. speakableGroupName stays unset on purpose: iOS renders
-        // it as a subtitle beneath the sender, the second line this banner doesn't want.
+        // The person is keyed by the chat, so Focus and Siri treat the conversation as one contact
+        // whatever the headline says. speakableGroupName stays unset on purpose: iOS renders it
+        // only for a conversation with several recipients, and then as a second header line.
         let sender = INPerson(
             personHandle: INPersonHandle(value: conversationId, type: .unknown),
             nameComponents: nil,
@@ -210,14 +206,5 @@ final class NotificationService: UNNotificationServiceExtension {
             serviceName: nil,
             sender: sender,
             attachments: nil)
-    }
-
-    // Empty for a notification composed before the server sent these keys, which leaves the
-    // banner as the server titled it rather than rewriting it into a communication one.
-    private static func headline(of content: UNMutableNotificationContent) -> String {
-        if let group = content.userInfo[groupTitleKey] as? String, !group.isEmpty {
-            return group
-        }
-        return content.userInfo[senderNameKey] as? String ?? ""
     }
 }

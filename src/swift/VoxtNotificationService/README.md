@@ -1,10 +1,11 @@
 # VoxtNotificationService — iOS chat icons in push notifications
 
 A `UNNotificationServiceExtension` (`.appex`) that rewrites every chat push into an iOS
-**communication notification**: the chat or author avatar replaces the app icon on the banner,
-and the chat's own name is the headline — the same shape Android's `MessagingStyle` renders,
-and the one Telegram and WhatsApp use. The author of each message is named by its body line,
-not by the title.
+**communication notification**: the chat or author avatar replaces the app icon on the banner.
+The headline stays the server's title — the sender, or `"<sender> @ <chat>"` in a group — the
+same one web and Mac show and the same shape Android's `MessagingStyle` renders (sender as the
+person, chat as the conversation). A coalesced banner names each line's author in the body,
+since one banner then holds several authors; a single-entry push doesn't repeat the sender.
 
 ## Why the extension has to exist
 
@@ -27,21 +28,19 @@ needs — and the whole job is ~150 lines of `URLSession` plus `Intents`. So it 
 1. Reads the `icon` data key. No icon → deliver the push untouched.
 2. Downloads it (5s timeout, 512 KB cap, HTTP cache honoured — the extension process is
    reused, so a chatty conversation's avatar is normally already cached).
-3. Reads the `groupTitle` data key, falling back to `senderName` — a peer chat carries no
-   group title. Both are empty for a notification composed before the server sent them, and
-   then the banner is delivered as the server titled it. The title is never split back apart:
-   a real name or chat title can contain `" @ "` (`Design @ Voxt` would split into sender
-   "Design", group "Voxt").
-4. Builds an `INSendMessageIntent` whose sender is the *chat* — `groupTitle` when there is
-   one, the other party otherwise — carrying the avatar as an `INImage`, donates the
+3. Builds an `INSendMessageIntent` whose sender's display name is the push's own title, keyed
+   (handle and `customIdentifier`) by the chat, carrying the avatar as an `INImage`; donates the
    interaction (so Focus can allow-list the chat), and returns `content.updating(from: intent)`.
+   The title is never split back apart: a real name or chat title can contain `" @ "`
+   (`Design @ Voxt` would split into sender "Design", group "Voxt").
 
 **Nothing sets `speakableGroupName`, deliberately.** iOS renders it as a subtitle *under* the
 sender's name, giving a two-line header (sender, then chat) — and it only renders it at all for
 a conversation iOS considers a group, which nothing but `recipients.count > 1` makes it. So
-with a sender-named title it silently vanished, which was issue #4305. Naming the banner after
-the chat drops the second line and the group-classification rule along with it: the avatar is
-the chat's picture, so the chat's name is what belongs beside it.
+with a bare sender name as the title it silently vanished, which was issue #4305. Carrying the
+whole composed title as the display name keeps the chat name on the banner without that rule.
+(#4305 first answered this by headlining the chat and naming the sender only in the body — but
+a mention or reaction has no body author line, so those banners lost their sender.)
 
 **`conversationIdentifier` must equal `content.threadIdentifier`.** `updating(from:)` rewrites
 the thread id from the conversation id, and `AppDelegate.RemoveDeliveredNotifications` matches
@@ -143,10 +142,8 @@ What to look for:
 
 | Result | Meaning |
 |---|---|
-| Circular chat avatar, chat name as the title, `Author: text` body lines | working |
-| App icon, chat name as the title | the extension ran; `updating(from:)` failed — check the entitlement on **both** the app and the appex |
-| App icon and a `"<sender> @ <chat>"` title, in **some** chats | expected, not a fault: those notifications were already in the store before the server sent `senderName`/`groupTitle`, so the extension leaves them alone. Clears as each is read or receives another message |
-| App icon and a `"<sender> @ <chat>"` title, in **every** chat | the extension didn't run at all — check `PlugIns/VoxtNotificationService.appex` exists and is signed |
+| Circular chat avatar, `"<sender> @ <chat>"` title, `Author: text` lines on a coalesced banner | working |
+| App icon and a `"<sender> @ <chat>"` title | either `updating(from:)` failed — check the entitlement on **both** the app and the appex — or the extension didn't run at all — check `PlugIns/VoxtNotificationService.appex` exists and is signed. The Console log (subsystem `ai.voxt.notification-service`) tells the two apart |
 
 The extension is a separate process, so the app's debugger session won't stop in it — attach
 to `VoxtNotificationService` explicitly, or read its `os_log` output with

@@ -179,19 +179,43 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
 
         // act
         await Tester.SignIn(reactor);
-        var reactorAuthor = await Tester.GetOwnAuthor(chatId).Require();
         await Tester.React(entry.Id, Emojis.Love);
 
         // assert
         var l = LanguageStringLocalizer.Get(Language.Parse(expected));
-        // A group chat: the banner is headlined by the chat, so the text has to name the reactor.
-        var expectedText = l.Notification_AuthorLine_Format(
-            reactorAuthor.Avatar.Name,
-            l.Notification_Reaction_Format(Emojis.Love, l.EmptyEntry_YourLocation));
+        var expectedText = l.Notification_Reaction_Format(Emojis.Love, l.EmptyEntry_YourLocation);
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(author.Id, CancellationToken.None);
             var reaction = info.Items.OfType<ReactionNotification>().Should().ContainSingle().Subject;
             reaction.Text.Should().Be(expectedText);
+        }, TimeSpan.FromSeconds(15));
+    }
+
+    [Fact]
+    public async Task MentionTextShouldBeTheMessageAlone()
+    {
+        // arrange
+        var mentioned = await Tester.SignInAsUniqueAlice();
+        var sender = await Tester.SignInAsUniqueBob();
+        var (chatId, inviteId) = await Tester.CreateChat(false, "Mentioned in a group");
+        await Tester.SignIn(mentioned);
+        await Tester.JoinChat(chatId, inviteId);
+
+        // act
+        await Tester.SignIn(sender);
+        var entry = await Tester.CreateTextEntry(chatId, $"ping @u:{mentioned.Id} !");
+
+        // assert
+        var l = LanguageStringLocalizer.Get(Language.Parse("en"));
+        var composer = AppHost.Services.GetRequiredService<NotificationTextComposer>();
+        var (content, _) = await composer.Compose(entry, MarkupConsumer.Notification, CancellationToken.None);
+        // The sender is the banner's headline on every platform, so a single-entry text must not
+        // repeat it: author lines belong only to coalesced banners, which hold several authors.
+        var expectedText = content.Render(l);
+        await TestExt.When(async () => {
+            var info = await Tester.NotificationsBackend.GetUserNotificationInfo(mentioned.Id, CancellationToken.None);
+            var mention = info.Items.OfType<MentionNotification>().Should().ContainSingle().Subject;
+            mention.Text.Should().Be(expectedText);
         }, TimeSpan.FromSeconds(15));
     }
 
