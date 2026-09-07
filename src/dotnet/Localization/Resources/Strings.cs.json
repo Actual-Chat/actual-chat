@@ -1190,6 +1190,7 @@
   "EmptyEntry_YourFiles": "váš soubor|vaše soubory",
   "EmptyEntry_SentAttachments": "Odeslána {0} příloha|Odeslány {0} přílohy|Odesláno {0} příloh",
   "EmptyEntry_YourAttachments": "vaši přílohu|vaše přílohy",
+  "EmptyEntry_Unsupported": "Aktualizujte aplikaci, abyste tuto zprávu viděli",
   "Search_In": "V",
   "Search_CloseSearch": "Zavřít hledání",
   "Search_ShowMore": "Zobrazit více",

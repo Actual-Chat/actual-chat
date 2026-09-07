@@ -1190,6 +1190,7 @@
   "EmptyEntry_YourFiles": "votre fichier|vos fichiers",
   "EmptyEntry_SentAttachments": "{0} pièce jointe envoyée|{0} pièces jointes envoyées",
   "EmptyEntry_YourAttachments": "votre pièce jointe|vos pièces jointes",
+  "EmptyEntry_Unsupported": "Mettez à jour l'application pour voir ce message",
   "Search_In": "Dans",
   "Search_CloseSearch": "Fermer la recherche",
   "Search_ShowMore": "Afficher plus",

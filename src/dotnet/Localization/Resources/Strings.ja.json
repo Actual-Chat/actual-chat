@@ -1190,6 +1190,7 @@
   "EmptyEntry_YourFiles": "ファイル",
   "EmptyEntry_SentAttachments": "{0} 件の添付ファイルを送信しました",
   "EmptyEntry_YourAttachments": "添付ファイル",
+  "EmptyEntry_Unsupported": "このメッセージを表示するにはアプリを更新してください",
   "Search_In": "場所:",
   "Search_CloseSearch": "検索を閉じる",
   "Search_ShowMore": "もっと見る",

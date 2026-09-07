@@ -526,7 +526,7 @@
   "Search_TypeGroups": "グループ",
   "Search_TypePlaces": "プレイス",
   "Search_TypeMessages": "Повідомлення",
-  "Search_TypeMyMessages": "Мої повідомлення",
+  "Search_TypeMyMessages": "Minhas mensagens",
   "Search_TabTags": "Etiquetas",
   "Search_RecentSearches": "Ostatnie wyszukiwania",
   "Search_RecentlyViewed": "Недавно просмотренные",
@@ -1399,6 +1399,7 @@
   "EmptyEntry_YourFiles": "вашите файлове",
   "EmptyEntry_SentAttachments": "{0} 件の添付ファイルを送信しました",
   "EmptyEntry_YourAttachments": "вашите прикачени файлове",
+  "EmptyEntry_Unsupported": "このメッセージを表示するにはアプリを更新してください",
 
   // The search result list: the "In <chat>" label on a hit, and its expand/collapse toggle.
   "Search_In": "Şurada:",

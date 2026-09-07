@@ -1190,6 +1190,7 @@
   "EmptyEntry_YourFiles": "आपकी फ़ाइल|आपकी फ़ाइलों",
   "EmptyEntry_SentAttachments": "{0} अटैचमेंट भेजा गया|{0} अटैचमेंट भेजे गए",
   "EmptyEntry_YourAttachments": "आपके अटैचमेंट",
+  "EmptyEntry_Unsupported": "यह संदेश देखने के लिए ऐप अपडेट करें",
   "Search_In": "इसमें:",
   "Search_CloseSearch": "खोज बंद करें",
   "Search_ShowMore": "और दिखाएँ",

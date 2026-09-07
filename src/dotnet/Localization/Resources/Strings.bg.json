@@ -1190,6 +1190,7 @@
   "EmptyEntry_YourFiles": "вашия файл|вашите файлове",
   "EmptyEntry_SentAttachments": "Изпратен е {0} прикачен файл|Изпратени са {0} прикачени файла",
   "EmptyEntry_YourAttachments": "вашия прикачен файл|вашите прикачени файлове",
+  "EmptyEntry_Unsupported": "Обновете приложението, за да видите това съобщение",
   "Search_In": "В",
   "Search_CloseSearch": "Затворете търсенето",
   "Search_ShowMore": "Покажете още",
