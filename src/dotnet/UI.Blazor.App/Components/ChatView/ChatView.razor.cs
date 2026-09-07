@@ -820,15 +820,25 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         // If we are scrolling somewhere within idRange, let's extend the range to navigation & nearby entries.
         if (navigation != null && chatLidRange.Contains(navigation.EntryLid)) {
-            caseName += "+navigation";
-            // The anchor lands at the top of the viewport unless ShowInTheMiddle, so most of the load zone
-            // is needed below it - hence the 1:2 split rather than an even one.
-            dataQuery = new ChatDataQuery(
-                entryTiles.GetTile(navigation.EntryLid).Range,
-                -initialLoadLimit / 3,
-                initialLoadLimit * 2 / 3) {
-                    Navigation = navigation,
-            };
+            // Re-aiming the range at a target the query already reaches throws away the window above the
+            // fold and loads it back on the next render, which unloads the groups up there - and a group's
+            // avatar is sticky, so it is pinned to the top line right until its group leaves the DOM.
+            // Every own new entry navigates (see the entry observer), so that is once per sent message.
+            if (dataQuery.Covers(navigation.EntryLid)) {
+                caseName += "+navigation-in-range";
+                dataQuery = dataQuery with { Navigation = navigation };
+            }
+            else {
+                caseName += "+navigation";
+                // The anchor lands at the top of the viewport unless ShowInTheMiddle, so most of the load
+                // zone is needed below it - hence the 1:2 split rather than an even one.
+                dataQuery = new ChatDataQuery(
+                    entryTiles.GetTile(navigation.EntryLid).Range,
+                    -initialLoadLimit / 3,
+                    initialLoadLimit * 2 / 3) {
+                        Navigation = navigation,
+                };
+            }
         }
 
         DebugLog?.LogDebug(
