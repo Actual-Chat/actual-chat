@@ -97,5 +97,6 @@ public sealed partial record LiveSessionState
             MessageCount = MessageCount,
             AuthorIds = AuthorIds,
             IsExpandedByDefault = IsExpandedByDefault,
+            IsCall = IsCall,
         };
 }

@@ -10,7 +10,7 @@ public static class Bots
         => authorId.LocalId < 0;
 
     public static AuthorId GetWalleId(ChatId chatId)
-        => AuthorId.New(chatId, Constants.User.Walle.AuthorLocalId);
+        => Constants.User.Walle.GetWalleAuthorId(chatId);
 
     public static AuthorFull GetWalle(ChatId chatId)
         => new (Constants.User.Walle.UserId, GetWalleId(chatId)) {
