@@ -16,7 +16,6 @@ export class SplashPageSkeleton extends LitElement {
         const isRightPanelOpen = this.isRightPanelVisible === 'true'
             && !document.body.classList.contains('narrow');
         const rightPanelDataAttr = isRightPanelOpen ? 'open' : 'closed';
-        const cls = 'right-panel-skeleton';
         return html`
             <div class="page-with-header-and-footer">
 <!--                Left Panel -->
@@ -59,47 +58,9 @@ export class SplashPageSkeleton extends LitElement {
                         <chat-view-footer-skeleton />
                     </div>
                 </div>
-<!--                Right Panel - mirrors RightPanelSkeleton.razor, the app's own placeholder -->
-                <div class="${cls} side-nav side-nav-right" data-side-nav='${rightPanelDataAttr}'>
-                    <div class="c-wrapper">
-                        <div class="panel-header-skeleton"></div>
-                        <div class="panel-body-skeleton no-scrollbar">
-                            <div class="c-buttons">
-                                <round-skeleton radius="16" rootCls="${cls}"></round-skeleton>
-                                <div class="c-right">
-                                    <round-skeleton rootCls="${cls}"></round-skeleton>
-                                    <round-skeleton rootCls="${cls}"></round-skeleton>
-                                    <round-skeleton rootCls="${cls}"></round-skeleton>
-                                </div>
-                            </div>
-                            <div class="c-description">
-                                <string-skeleton firstWidth="4" secondWidth="4" rootCls="${cls}"></string-skeleton>
-                                <string-skeleton firstWidth="10" secondWidth="10" rootCls="${cls}"></string-skeleton>
-                                <string-skeleton firstWidth="10" secondWidth="10" rootCls="${cls}"></string-skeleton>
-                                <string-skeleton firstWidth="10" secondWidth="10" rootCls="${cls}"></string-skeleton>
-                            </div>
-                            <div class="c-notification">
-                                <string-skeleton firstWidth="4" secondWidth="4" rootCls="${cls}"></string-skeleton>
-                            </div>
-                            <div class="c-tab">
-                                <tab-skeleton></tab-skeleton>
-                            </div>
-                            <div class="members-container">
-                                <div class="c-members">
-                                    <string-skeleton firstWidth="3" secondWidth="3" rootCls="${cls}"></string-skeleton>
-                                    <chat-list-skeleton count="2"></chat-list-skeleton>
-                                </div>
-                                <div class="c-members">
-                                    <string-skeleton firstWidth="3" secondWidth="3" rootCls="${cls}"></string-skeleton>
-                                    <chat-list-skeleton count="2"></chat-list-skeleton>
-                                </div>
-                                <div class="c-members">
-                                    <string-skeleton firstWidth="3" secondWidth="3" rootCls="${cls}"></string-skeleton>
-                                    <chat-list-skeleton count="2"></chat-list-skeleton>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+<!--                Right Panel -->
+                <div class="right-panel-skeleton side-nav side-nav-right" data-side-nav='${rightPanelDataAttr}'>
+                    <chat-side-panel-skeleton></chat-side-panel-skeleton>
                 </div>
             </div>
         `;

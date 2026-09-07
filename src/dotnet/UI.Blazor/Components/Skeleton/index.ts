@@ -1,4 +1,5 @@
 ﻿export * from './chat-list-skeleton.lit';
+export * from './chat-side-panel-skeleton.lit';
 export * from './chat-view-skeleton.lit';
 export * from './chat-view-footer-skeleton.lit';
 export * from './place-menu-button-skeleton.lit';
