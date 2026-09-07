@@ -13,6 +13,15 @@ body.device-ios * {
 .touch-capable .button-touch-target {
     display: block;
 }
+/* Header back button: lifts above the header center so its touch target wins the hit test, and widens
+   that target to the right so the element next to the arrow (e.g. the chat avatar) also goes back.
+   The extension only bites on touch, where .button-touch-target is shown. */
+.btn-header-back {
+    @apply z-10;
+}
+.btn-header-back .button-touch-target {
+    @apply -right-12;
+}
 
 /* Sizes */
 .btn, .btn.btn-md {

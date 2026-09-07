@@ -44,7 +44,7 @@
         </Steps>
         <Header>
             @if (stepper.CanMoveBack) {
-                <HeaderButton Click="@(_ => stepper.MoveBack())">
+                <HeaderButton Click="@(_ => stepper.MoveBack())" Class="btn-header-back">
                     <i class="icon-arrow-left text-2xl"></i>
                 </HeaderButton>
                 <div class="text-headline-7 text-02">@L.Common_Back</div>

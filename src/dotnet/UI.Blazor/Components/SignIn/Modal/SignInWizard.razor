@@ -11,7 +11,7 @@
                 <div class="sign-in-modal-header">@title</div>
             </div>
         } else {
-            <HeaderButton Click="@(_ => stepper.MoveBack())">
+            <HeaderButton Click="@(_ => stepper.MoveBack())" Class="btn-header-back">
                 <i class="icon-arrow-left text-2xl"></i>
             </HeaderButton>
             <div class="sign-in-modal-header">@L.SignIn_VerificationCode</div>
