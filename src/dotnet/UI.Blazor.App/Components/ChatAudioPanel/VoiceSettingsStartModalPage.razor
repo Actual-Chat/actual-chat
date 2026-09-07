@@ -70,7 +70,9 @@
         var settings = await UserSettingsUI.GetChatVoiceMode(chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var pttEnabledAt = chat?.PttEnabledAt;
-        var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        // Consent, not the armed set: a muted chat is still "on" here, and WithOnlyPttChats below
+        // must never see a set missing the muted ones.
+        var pttChatIds = await Hub.ChatAudioUI.GetConsentedPttChatIds(cancellationToken).ConfigureAwait(false);
         var isPtt = pttChatIds.Contains(chatId);
         var mustStreamVoice = settings.VoiceMode.HasVoice();
         var isIncompleteUIEnabled = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
@@ -109,7 +111,7 @@
         if (m.IsAtPttCapacity)
             return;
 
-        var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(CancellationToken.None).ConfigureAwait(true);
+        var pttChatIds = await Hub.ChatAudioUI.GetConsentedPttChatIds(CancellationToken.None).ConfigureAwait(true);
         // Never a raw client clock: JoinedAt must land within the current epoch (>= enabledAt).
         var joinedAt = Moment.Max(Clocks.ServerClock.Now, enabledAt);
         await UserSettingsUI.UserPttSettings().Update(

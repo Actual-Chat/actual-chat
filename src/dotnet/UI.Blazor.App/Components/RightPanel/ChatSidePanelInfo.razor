@@ -120,7 +120,9 @@
         // Flipping the toggle is itself consent: auto-arm the owner with the server-stamped epoch.
         // At capacity that consent can't be honoured, and dropping another chat to make room would
         // silently cost the owner its wake-ups - so the chat stays on and only the arming waits.
-        var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(CancellationToken.None).ConfigureAwait(true);
+        // The consented set, not the armed one: WithOnlyPttChats drops whatever it doesn't get, and
+        // the armed set leaves out muted chats (and everything, on a device with PTT off).
+        var pttChatIds = await Hub.ChatAudioUI.GetConsentedPttChatIds(CancellationToken.None).ConfigureAwait(true);
         if (pttChatIds.Count >= UserPttSettings.MaxChatCount && !pttChatIds.Contains(chat.Id)) {
             ToastUI.Show(
                 L.Ptt_ChatAtCapacity_Format(UserPttSettings.MaxChatCount),
