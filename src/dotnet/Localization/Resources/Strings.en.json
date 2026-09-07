@@ -1122,7 +1122,9 @@
   "Location_ShareUntilTurnedOff": "Until turned off",
   "Location_AccurateTo_Format": "Accurate to {0}",
   "Location_DistanceAway_Format": "{0} away",
-  "Location_CountdownHours_Format": "{0}h",
+  // Compact remaining-time label shared by timed states (a location share, a PTT mute).
+  "Countdown_Hours_Format": "{0}h",
+  "Countdown_Minutes_Format": "{0}m",
   "Location_MapTypeMap": "Map",
   "Location_MapTypeSatellite": "Satellite",
   "Location_MapTypeHybrid": "Hybrid",
@@ -1432,9 +1434,14 @@
   "ChatHeader_FollowThread": "Follow thread",
   "ChatHeader_UnfollowThread": "Unfollow thread",
 
-  // The chat list's create button, and the Push-to-talk indicator on a chat row.
+  // The chat list's create button, and the Push-to-talk badge on an Active Chats row: its
+  // mute-for-a-period menu (title, "for N minutes|hours" entries, turn off) and the muted-state tooltip.
   "ChatList_NewChatOrPlace": "New chat or place",
   "ChatList_TurnOffPtt": "Turn off Push-to-talk",
+  "ChatList_MutePtt": "Mute Push-to-talk",
+  "ChatList_MutePttForMinutes": "for {0} minute|for {0} minutes",
+  "ChatList_MutePttForHours": "for {0} hour|for {0} hours",
+  "ChatList_UnmutePtt": "Unmute Push-to-talk",
 
   // More transcript chrome: the conversation summary toggle, the jump-to buttons, and the
   // placeholders for a chat or author that could not be resolved.

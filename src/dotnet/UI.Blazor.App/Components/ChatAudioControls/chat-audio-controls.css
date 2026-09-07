@@ -58,37 +58,7 @@ body.hoverable .chat-audio-controls .c-listen:hover {
     transition: stroke-dashoffset 1s linear;
 }
 
-/* Alternating icon/countdown inside the listening button */
-.chat-audio-controls .c-timer-swap {
-    @apply relative flex items-center justify-center;
-}
-.chat-audio-controls .c-timer-swap .swap-a,
-.chat-audio-controls .c-timer-swap .swap-b {
-    /* steps(80) keeps every tick on AnimationSync's 100ms grid (8s / 80). */
-    animation: timer-swap 8s steps(80) infinite;
-}
-.chat-audio-controls .c-timer-swap .swap-a {
-    @apply block;
-}
-.chat-audio-controls .c-timer-swap .swap-b {
-    @apply absolute inset-0;
-    @apply flex items-center justify-center;
-    animation-delay: -4s;
-}
+/* The icon/countdown alternation itself is the shared .timer-swap (round-progress.css). */
 .chat-audio-controls .c-timer-text {
     @apply text-primary text-[0.7rem] font-semibold leading-none tabular-nums;
-}
-@keyframes timer-swap {
-    0%, 40% {
-        opacity: 1;
-    }
-    46%, 50% {
-        opacity: 0;
-    }
-    50.01%, 90% {
-        opacity: 0;
-    }
-    96%, 100% {
-        opacity: 1;
-    }
 }

@@ -1,11 +1,12 @@
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
 // The gates PttSessionCore.StartPlayback applies before a wake plays anything: the per-device
-// PTT switch, and the phone's own silent/vibrate/DND state.
+// PTT switch, the phone's own silent/vibrate/DND state, and the chat's PTT mute.
 
 [Collection(nameof(ChatUICollection))]
 public sealed class PttWakeGateTest(ChatAppHostFixture fixture, ITestOutputHelper @out)
@@ -59,6 +60,29 @@ public sealed class PttWakeGateTest(ChatAppHostFixture fixture, ITestOutputHelpe
 
         // assert
         reason.Should().BeNull("a foreground wake is playback the user is looking at, not an alert");
+    }
+
+    [Fact]
+    public async Task AWakeShouldBeIgnoredWhileTheChatIsMuted()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var (chatId, _) = await tester.CreateChat(true);
+        var chat = await tester.AppServices.Commander().Call(new ChatsBackend_Change(
+            chatId, null, Change.Update(new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart })));
+        var now = hub.Clocks.ServerClock.Now;
+        await hub.UserSettingsUI.UserPttSettings().Update(x => x
+            .WithPttChat(chatId, chat.PttEnabledAt!.Value)
+            .WithPttChatMuted(chatId, now, now + TimeSpan.FromHours(1)));
+        hub.ChatAudioUI.SetIsPttEnabledOnDevice(true);
+
+        // act: even a foreground wake stays inert - muted means "don't start listening for me"
+        var reason = await StartPlayback(tester, new TestPttPlatform(), chatId, isForeground: true);
+
+        // assert
+        reason.Should().Be(PttWakeIgnoreReason.Muted);
     }
 
     // Private methods

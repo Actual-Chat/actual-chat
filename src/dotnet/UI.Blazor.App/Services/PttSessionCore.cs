@@ -40,6 +40,13 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
             Log.LogInformation("PTT wake for chat #{ChatId} ignored: the phone is silenced", chatId);
             return PttWakeIgnoreReason.Silenced;
         }
+        // Unlike silence, a mute is the user's own "don't listen for me" for this chat,
+        // so it holds for a foreground wake too.
+        var mutedChatIds = await chatAudioUI.GetMutedPttChatIds(CancellationToken.None).ConfigureAwait(false);
+        if (mutedChatIds.Contains(chatId)) {
+            Log.LogInformation("PTT wake for chat #{ChatId} ignored: PTT is muted there", chatId);
+            return PttWakeIgnoreReason.Muted;
+        }
 
         if (isHeadless)
             chatAudioUI.IsPttHeadless = true;

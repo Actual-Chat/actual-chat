@@ -178,6 +178,33 @@ public class PttPushTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
+    public async Task PttMutedChatGetsNoWakeUntilTheMuteLapses()
+    {
+        // arrange
+        var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("WT ptt-muted");
+        var deviceId = await RegisterDevice(alice.Id, DeviceType.AndroidApp);
+        await ArmByPtt(alice.Id, chatId);
+        var now = AppHost.Services.Clocks().SystemClock.Now;
+        await MuteByPtt(alice.Id, chatId, now, now + TimeSpan.FromHours(1));
+        Sink.Clear();
+
+        // act
+        await Speak(chatId, bobAuthor.Id);
+
+        // assert
+        await Task.Delay(NoWakeDelay);
+        Sink.Wakes.Should().NotContain(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId));
+
+        // act: a mute whose deadline has passed is inert without any explicit unmute
+        await MuteByPtt(alice.Id, chatId, now - TimeSpan.FromHours(2), now - TimeSpan.FromHours(1));
+        await Speak(chatId, bobAuthor.Id);
+
+        // assert
+        await WaitFor(() => Sink.Wakes.Any(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId)), WakeTimeout);
+        Sink.Wakes.Should().Contain(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId));
+    }
+
+    [Fact]
     public async Task FeatureFlagOffGetsNoWake()
     {
         // arrange
@@ -406,6 +433,10 @@ public class PttPushTest(AppHostFixture fixture, ITestOutputHelper @out)
             .ForUser(userId).UserPttSettings()
             .Update(x => x.WithPttChat(chatId, enabledAt));
     }
+
+    private Task MuteByPtt(UserId userId, ChatId chatId, Moment mutedAt, Moment mutedUntil)
+        => ServerKvasBackend.ForUser(userId).UserPttSettings()
+            .Update(x => x.WithPttChatMuted(chatId, mutedAt, mutedUntil));
 
     private Task SetNotificationMode(UserId userId, ChatId chatId, ChatNotificationMode mode)
         => ServerKvasBackend.ForUser(userId).ChatUserSettings(chatId)

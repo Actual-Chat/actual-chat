@@ -38,4 +38,17 @@ public static class ServerKvasBackendExt
             .ConfigureAwait(false);
         return settings.IsArmedIn(chatId, pttEnabledAt);
     }
+
+    public static async Task<bool> IsPttMuted(
+        this IServerKvasBackend serverKvasBackend,
+        UserId userId,
+        ChatId chatId,
+        Moment now,
+        CancellationToken cancellationToken)
+    {
+        var settings = await serverKvasBackend.ForUser(userId).UserPttSettings()
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
+        return settings.IsMutedIn(chatId, now);
+    }
 }

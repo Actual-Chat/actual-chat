@@ -100,8 +100,9 @@
         @if (isActiveChatList) {
             // Active ChatList
             <div class="slot c-active">
-                @if (m.IsPttArmed && audioState is not { IsRecording: true }) {
-                    // PTT implies listening, so the badge replaces the listen toggle; click = leave PTT.
+                @if ((m.IsPttArmed || m.IsPttMuted) && audioState is not { IsRecording: true }) {
+                    // PTT implies listening, so the badge replaces the listen toggle; click = mute
+                    // for a period or leave PTT, and a muted badge counts the mute down.
                     // An ongoing recording takes over: the mic control is what stops it.
                     <ChatListPttToggle ChatId="@chat.Id" Class="ending-btn"/>
                 } else {
@@ -251,6 +252,8 @@
 
         var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
         var isPttArmed = pttChatIds.Contains(chatId);
+        var mutedPttChatIds = await Hub.ChatAudioUI.GetMutedPttChatIds(cancellationToken).ConfigureAwait(false);
+        var isPttMuted = mutedPttChatIds.Contains(chatId);
         var hasOngoingCall = isPttArmed
             && await chatActivityUI.HasOngoingCall(chatId, cancellationToken).ConfigureAwait(false);
 
@@ -272,6 +275,7 @@
             IsFirstItem = isFirstItem,
             IsUnreadByOthers = isUnreadByOthers,
             IsPttArmed = isPttArmed,
+            IsPttMuted = isPttMuted,
             HasOngoingCall = hasOngoingCall,
             LastThread = preview.Thread,
             LastThreadCreator = preview.ThreadCreator,
@@ -374,6 +378,7 @@
         public bool IsFirstItem { get; init; }
         public bool IsUnreadByOthers { get; init; }
         public bool IsPttArmed { get; init; }
+        public bool IsPttMuted { get; init; }
         public bool HasOngoingCall { get; init; }
         public Chat? LastThread { get; init; }
         public Author? LastThreadCreator { get; init; }

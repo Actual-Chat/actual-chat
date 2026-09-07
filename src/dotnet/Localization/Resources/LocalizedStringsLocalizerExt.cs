@@ -1005,8 +1005,10 @@ public static class LocalizedStringsLocalizerExt
         public string Location_ShareUntilTurnedOff => l["Location_ShareUntilTurnedOff"].Value;
         public string Location_AccurateTo_Format(object arg0) => l["Location_AccurateTo_Format", arg0].Value;
         public string Location_DistanceAway_Format(object arg0) => l["Location_DistanceAway_Format", arg0].Value;
-        public string Location_CountdownHours_Format(object arg0)
-            => l["Location_CountdownHours_Format", arg0].Value;
+        public string Countdown_Hours_Format(object arg0)
+            => l["Countdown_Hours_Format", arg0].Value;
+        public string Countdown_Minutes_Format(object arg0)
+            => l["Countdown_Minutes_Format", arg0].Value;
         public string Location_MapTypeMap => l["Location_MapTypeMap"].Value;
         public string Location_MapTypeSatellite => l["Location_MapTypeSatellite"].Value;
         public string Location_MapTypeHybrid => l["Location_MapTypeHybrid"].Value;
@@ -1256,6 +1258,12 @@ public static class LocalizedStringsLocalizerExt
         public string ChatHeader_UnfollowThread => l["ChatHeader_UnfollowThread"].Value;
         public string ChatList_NewChatOrPlace => l["ChatList_NewChatOrPlace"].Value;
         public string ChatList_TurnOffPtt => l["ChatList_TurnOffPtt"].Value;
+        public string ChatList_MutePtt => l["ChatList_MutePtt"].Value;
+        public string ChatList_MutePttForMinutes(long count, object arg0)
+            => l.Plural("ChatList_MutePttForMinutes", count, arg0);
+        public string ChatList_MutePttForHours(long count, object arg0)
+            => l.Plural("ChatList_MutePttForHours", count, arg0);
+        public string ChatList_UnmutePtt => l["ChatList_UnmutePtt"].Value;
         public string ChatView_CollapseSummary => l["ChatView_CollapseSummary"].Value;
         public string ChatView_ExpandSummary => l["ChatView_ExpandSummary"].Value;
         public string ChatView_GoToLastMessage => l["ChatView_GoToLastMessage"].Value;
