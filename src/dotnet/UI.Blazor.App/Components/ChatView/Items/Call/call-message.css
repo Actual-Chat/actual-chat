@@ -1,0 +1,28 @@
+.call-message {
+    @apply flex-y items-start;
+    @apply mx-2 my-1 p-3;
+    @apply rounded-lg;
+    @apply bg-01;
+}
+.call-message .c-cm-title {
+    @apply flex-x items-center gap-x-2;
+}
+.call-message .c-cm-title > i {
+    @apply text-xl text-danger;
+}
+.call-message .c-cm-name {
+    @apply flex-1;
+    @apply text-title-1 text-02;
+}
+.call-message .c-cm-hint {
+    @apply text-sm text-03;
+}
+.call-message .c-cm-hint.action {
+    @apply text-primary;
+}
+.call-message .c-cm-meta-row {
+    @apply flex-x items-center gap-x-2;
+}
+.call-message .c-cm-meta {
+    @apply text-sm text-03;
+}

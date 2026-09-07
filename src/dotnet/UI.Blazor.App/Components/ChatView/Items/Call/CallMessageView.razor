@@ -1,0 +1,54 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, bool>
+@{
+    var isCaller = State.Value;
+    var (icon, title, hint, isCallBack) = CallCardFormat.Get(Entry.Outcome, isCaller, L);
+    var avatarIds = new[] { Entry.CallerId }.Concat(Entry.InviteeIds).ToApiArray();
+    var startsAt = DateTimeConverter.ToLocalTime(Entry.BeginsAt).ToString("t", DateFormatter);
+}
+
+<div class="call-message">
+    <div class="c-cm-title">
+        <i class="@icon"></i>
+        <span class="c-cm-name">@title</span>
+        @if (hint is not null) {
+            @if (isCallBack) {
+                <button type="button" class="c-cm-hint action" @onclick="@OnCallBack">@hint</button>
+            } else {
+                <span class="c-cm-hint">@hint</span>
+            }
+        }
+    </div>
+    <div class="c-cm-meta-row">
+        <AuthorCircleGroup
+            Class="c-cm-authors"
+            AuthorIds="@avatarIds"
+            Size="@SquareSize.Size5"
+            MaxCount="4"
+            ShowRing="false"/>
+        <div class="c-cm-meta">@startsAt</div>
+    </div>
+</div>
+
+@code {
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private IChats Chats => Hub.Chats;
+
+    [Parameter, EditorRequired] public CallEntry Entry { get; set; } = null!;
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<bool>.Options() {
+                InitialValue = false,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var chat = await Chats.Get(Session, Entry.ChatId, cancellationToken).ConfigureAwait(false);
+        return chat?.Rules.Author?.Id == Entry.CallerId;
+    }
+
+    private Task OnCallBack()
+        => LiveSessionUI.StartCall(
+            Entry.ChatId, new[] { Entry.CallerId }.ToApiArray(), Entry.HasVideo, default);
+}

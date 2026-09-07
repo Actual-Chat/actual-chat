@@ -67,6 +67,12 @@
         throw new ArgumentOutOfRangeException();
 }
 
+@if (entry is CallEntry callEntry) {
+    <div class="@cls" data-chat-entry-id="@(entry.Id.Value)">
+        <CallMessageView Entry="@callEntry"/>
+    </div>
+    return;
+}
 @if (isSystem) {
     <div class="@cls"
          data-chat-entry-id="@(entry.Id.Value)"

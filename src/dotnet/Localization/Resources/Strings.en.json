@@ -1765,6 +1765,13 @@
   "Call_CameraStillBlockedApp": "Camera is still blocked. Please allow camera access in system settings first.",
   "Call_CameraStillBlockedWeb": "Camera is still blocked. Please allow camera access in your browser settings first.",
   "Call_StartingRecording": "Starting recording...",
+  "Call_Entry_Outgoing": "Outgoing call",
+  "Call_Entry_Missed": "Missed call",
+  "Call_Entry_Declined": "Declined call",
+  "Call_Entry_Canceled": "Canceled call",
+  "Call_Entry_Ended": "Call ended",
+  "Call_Entry_NoAnswer": "No answer",
+  "Call_Entry_TapToCallBack": "Tap to call back",
 
   // The text the share sheet hands to another app. In the _Format values the last placeholder
   // is the app name.

@@ -1765,6 +1765,13 @@
   "Call_CameraStillBlockedApp": "カメラは引き続きブロックされています。まずシステム設定でカメラへのアクセスを許可してください。",
   "Call_CameraStillBlockedWeb": "カメラは引き続きブロックされています。まずブラウザの設定でカメラへのアクセスを許可してください。",
   "Call_StartingRecording": "Démarrage de l'enregistrement...",
+  "Call_Entry_Outgoing": "Połączenie wychodzące",
+  "Call_Entry_Missed": "Nieodebrane połączenie",
+  "Call_Entry_Declined": "Отхвърлено обаждане",
+  "Call_Entry_Canceled": "キャンセルされた通話",
+  "Call_Entry_Ended": "통화가 종료되었습니다",
+  "Call_Entry_NoAnswer": "Nessuna risposta",
+  "Call_Entry_TapToCallBack": "Toque para retornar a chamada",
 
   // The text the share sheet hands to another app. In the _Format values the last placeholder
   // is the app name.

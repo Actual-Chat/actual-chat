@@ -1527,6 +1527,13 @@ public static class LocalizedStringsLocalizerExt
         public string Call_CameraStillBlockedApp => l["Call_CameraStillBlockedApp"].Value;
         public string Call_CameraStillBlockedWeb => l["Call_CameraStillBlockedWeb"].Value;
         public string Call_StartingRecording => l["Call_StartingRecording"].Value;
+        public string Call_Entry_Outgoing => l["Call_Entry_Outgoing"].Value;
+        public string Call_Entry_Missed => l["Call_Entry_Missed"].Value;
+        public string Call_Entry_Declined => l["Call_Entry_Declined"].Value;
+        public string Call_Entry_Canceled => l["Call_Entry_Canceled"].Value;
+        public string Call_Entry_Ended => l["Call_Entry_Ended"].Value;
+        public string Call_Entry_NoAnswer => l["Call_Entry_NoAnswer"].Value;
+        public string Call_Entry_TapToCallBack => l["Call_Entry_TapToCallBack"].Value;
         public string Call_Join => l["Call_Join"].Value;
         public string Call_JoinMuted => l["Call_JoinMuted"].Value;
         public string Call_ShareScreen => l["Call_ShareScreen"].Value;
