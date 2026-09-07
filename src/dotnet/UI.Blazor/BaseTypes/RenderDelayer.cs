@@ -21,14 +21,20 @@ public interface IRenderSyncTarget
 // stops acknowledging Blazor's render batches while .NET keeps producing them, and every batch
 // produced in that window is one the host can drop - which desyncs the renderer permanently. Holding
 // renders back until the app is visible keeps that window empty.
+//
+// Pause holds every render back the same way, but for a caller-provided span - long enough to cover
+// a scroll, an animation, or any other stretch where a render batch would land badly.
 public sealed class RenderDelayer : UIWorkerBase<UIHub>
 {
     public static readonly TimeSpan RenderPeriod = TimeSpan.FromMilliseconds(100);
     // A quarter period past the render tick it feeds: recomputes run while the browser paints what
     // the tick produced, and every state has settled well before the next tick reads it.
     public static readonly TimeSpan UpdatePhase = TimeSpan.FromMilliseconds(25);
+    // Pause min-max
+    public static readonly TimeSpan MinPauseDuration = TimeSpan.FromMilliseconds(10);
+    public static readonly TimeSpan MaxPauseDuration = TimeSpan.FromSeconds(1);
 
-    // Non-null exactly while the app is backgrounded: its existence is the gate, so nothing joins
+    // Non-null exactly while renders are held back: its existence is the gate, so nothing joins
     // a set already flushed. Dispatcher-only, like TryPostpone - hence no synchronization.
     private HashSet<ComponentBase>? _postponed;
     // The renders waiting for the next grid tick, or null when none are. Null is also what keeps an
@@ -37,6 +43,12 @@ public sealed class RenderDelayer : UIWorkerBase<UIHub>
     // Lets the components a flush is resuming through TryPostpone, which they re-enter via
     // NotifyStateHasChanged - without it they would rejoin _paced and never render.
     private bool _isFlushingPaced;
+    // The two independent reasons to hold renders back; _postponed exists while either one does.
+    private bool _isBackgroundPostponing;
+    private bool _isPaused;
+    // Read by the pending EndPause rather than baked into its delay, so a later Pause extends the
+    // gap simply by moving it - nothing has to be cancelled or rescheduled.
+    private CpuTimestamp _pausedUntil;
 
     public IUpdateDelayer UpdateDelayer { get; }
     public bool MustPostponeBackgroundRenders { get; }
@@ -69,6 +81,31 @@ public sealed class RenderDelayer : UIWorkerBase<UIHub>
         _paced = [renderer];
         _ = SchedulePacedFlush();
         return true;
+    }
+
+    public void Pause(TimeSpan duration)
+    {
+        // Extends an ongoing pause instead of restarting it: the furthest boundary wins, so
+        // overlapping callers can never cut each other's pause short.
+        if (!Dispatcher.CheckAccess()) {
+            _ = Dispatcher.InvokeSafeAsync(() => Pause(duration), Log);
+            return;
+        }
+
+        duration = TimeSpanExt.Min(duration, MaxPauseDuration);
+        if (duration < MinPauseDuration)
+            return;
+
+        var pausedUntil = CpuTimestamp.Now + duration;
+        if (_isPaused) {
+            _pausedUntil = new CpuTimestamp(Math.Max(_pausedUntil.Value, pausedUntil.Value));
+            return;
+        }
+
+        _pausedUntil = pausedUntil;
+        _isPaused = true;
+        _ = ScheduleEndPause(duration);
+        UpdatePostponing(LogLevel.Debug);
     }
 
     // Protected methods
@@ -128,13 +165,47 @@ public sealed class RenderDelayer : UIWorkerBase<UIHub>
         await foreach (var c in cIsBackground.Changes(cancellationToken).ConfigureAwait(false)) {
             var (isBackground, error) = c;
             var isPostponing = error == null && isBackground;
-            await Dispatcher.InvokeSafeAsync(() => SetIsPostponing(isPostponing), Log).ConfigureAwait(false);
+            await Dispatcher.InvokeSafeAsync(() => SetIsBackgroundPostponing(isPostponing), Log)
+                .ConfigureAwait(false);
         }
     }
 
-    private void SetIsPostponing(bool isPostponing)
+    private void SetIsBackgroundPostponing(bool isBackgroundPostponing)
     {
-        if (isPostponing) {
+        _isBackgroundPostponing = isBackgroundPostponing;
+        UpdatePostponing(LogLevel.Information);
+    }
+
+    private void EndPause()
+    {
+        var delay = _pausedUntil - CpuTimestamp.Now;
+        if (delay >= MinPauseDuration) {
+            // A later Pause moved the boundary while this unpause was waiting for the old one.
+            _ = ScheduleEndPause(delay);
+            return;
+        }
+
+        _isPaused = false;
+        UpdatePostponing(LogLevel.Debug);
+    }
+
+    private async Task ScheduleEndPause(TimeSpan delay)
+    {
+        try {
+            await Task.Delay(delay, StopToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e.IsCancellationOf(StopToken)) {
+            return;
+        }
+
+        await Dispatcher.InvokeSafeAsync(EndPause, Log).ConfigureAwait(false);
+    }
+
+    // Background postponing is rare and worth an Information line; pauses are frequent enough that
+    // the same line would be noise - hence the level comes from the caller.
+    private void UpdatePostponing(LogLevel resumeLogLevel)
+    {
+        if (_isBackgroundPostponing || _isPaused) {
             _postponed ??= [];
             return;
         }
@@ -148,7 +219,7 @@ public sealed class RenderDelayer : UIWorkerBase<UIHub>
         if (postponed.Count == 0)
             return;
 
-        Log.LogInformation("Resuming {Count} postponed render(s)", postponed.Count);
+        Log.Log(resumeLogLevel, "Resuming {Count} postponed render(s)", postponed.Count);
         Resume(postponed);
     }
 
