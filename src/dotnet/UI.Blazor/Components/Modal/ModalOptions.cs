@@ -2,6 +2,7 @@
 
 public sealed record ModalOptions
 {
+    public const string FullScreenOverlayClass = "modal-overlay-fullscreen";
     public static ModalOptions Implicit { get; set; } = new() {
         Class = "modal",
         OverlayClass = "modal-overlay",
@@ -13,7 +14,7 @@ public sealed record ModalOptions
         UseFocusTrap = null,
     };
     public static ModalOptions FullScreen { get; set; } = Default with {
-        OverlayClass = "modal-overlay-fullscreen",
+        OverlayClass = FullScreenOverlayClass,
     };
 
     public string Class { get; init; } = "";

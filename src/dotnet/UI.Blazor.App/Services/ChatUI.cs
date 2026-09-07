@@ -20,7 +20,8 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private readonly SharedResourcePool<ChatId, MutableState<ReadPosition>> _viewPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
     private readonly StoredState<ChatId?> _selectedChatId;
-    private readonly MutableState<ChatViewItemVisibility> _itemVisibility;
+    private readonly MutableState<ChatViewItemVisibility> _reportedItemVisibility;
+    private readonly ComputedState<ChatViewItemVisibility> _itemVisibility;
     private readonly MutableState<PlaceId?> _selectedPlaceId;
     private readonly StoredState<string> _selectedNavbarGroupId;
     private readonly StoredState<IImmutableDictionary<string, ChatId>> _selectedChatIds;
@@ -103,9 +104,16 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _autoExpandedConversations = StateFactory.NewMutable(
             (IImmutableSet<ConversationId>)ImmutableHashSet<ConversationId>.Empty,
             StateCategories.Get(type, nameof(AutoExpandedConversations)));
-        _itemVisibility = StateFactory.NewMutable(
+        _reportedItemVisibility = StateFactory.NewMutable(
             ChatViewItemVisibility.Empty,
-            StateCategories.Get(type, nameof(ItemVisibility)));
+            StateCategories.Get(type, nameof(_reportedItemVisibility)));
+        _itemVisibility = StateFactory.NewComputed(
+            new ComputedState<ChatViewItemVisibility>.Options {
+                InitialValue = ChatViewItemVisibility.Empty,
+                UpdateDelayer = FixedDelayer.NoneUnsafe,
+                Category = StateCategories.Get(type, nameof(ItemVisibility)),
+            },
+            ComputeItemVisibility);
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);
         _readPositionStates = new SharedResourcePool<ChatId, SyncedState<ReadPosition>>(CreateReadPositionState);
@@ -403,46 +411,27 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         return true;
     }
 
-    // SetXxx & Add/RemoveXxx
+    // Item visibility
 
-    public void SetItemVisibility(ChatViewItemVisibility itemVisibility)
-        => _itemVisibility.Value = itemVisibility;
+    public void ReportItemVisibility(ChatViewItemVisibility itemVisibility)
+        // What the chat view reports, not what consumers see - ItemVisibility masks this
+        => _reportedItemVisibility.Value = itemVisibility;
 
-    public void ResetItemVisibility(ChatId chatId)
+    public void ResetReportedItemVisibility(ChatId chatId)
     {
         // Chat views overlap during navigation, so a disposing view must not clear its successor's
         // visibility - only the view that published the current value may retract it.
         lock (Lock) {
-            if (_itemVisibility.Value.ChatId == chatId)
-                _itemVisibility.Value = ChatViewItemVisibility.Empty;
+            if (_reportedItemVisibility.Value.ChatId == chatId)
+                _reportedItemVisibility.Value = ChatViewItemVisibility.Empty;
         }
     }
+
+    // Chat: leave, archive, delete
 
     public void LeaveChat(Chat.Chat chat)
         => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, LeaveChatConfirmationModal.TargetKind.Chat,
             m => _ = DeleteOrLeaveChatInternal(chat, false, m)));
-
-    public void DeleteChat(Chat.Chat chat)
-        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true, LeaveChatConfirmationModal.TargetKind.Chat,
-            m => _ = DeleteOrLeaveChatInternal(chat, true, m)));
-
-    public void DeleteThread(Chat.Chat chat)
-    {
-        if (!chat.Id.IsThread())
-            throw new ArgumentOutOfRangeException(nameof(chat), "Given chat should be a thread");
-
-        _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true,
-            LeaveChatConfirmationModal.TargetKind.Thread,
-            m => _ = DeleteOrLeaveChatInternal(chat, true, m)));
-    }
-
-    public void DeletePlace(PlaceId placeId, Func<Task> onBeforeExecuteCommand)
-        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true, LeaveChatConfirmationModal.TargetKind.Place,
-            m => _ = DeleteOrLeavePlaceInternal(placeId, true, onBeforeExecuteCommand, m)));
-
-    public void LeavePlace(PlaceId placeId)
-        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, LeaveChatConfirmationModal.TargetKind.Place,
-            m => _ = DeleteOrLeavePlaceInternal(placeId, false, () => Task.CompletedTask, m)));
 
     public void ArchiveChat(Chat.Chat chat)
     {
@@ -455,6 +444,24 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         });
     }
 
+    public void DeleteChat(Chat.Chat chat)
+        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true, LeaveChatConfirmationModal.TargetKind.Chat,
+            m => _ = DeleteOrLeaveChatInternal(chat, true, m)));
+
+    // Thread: delete
+
+    public void DeleteThread(Chat.Chat chat)
+    {
+        if (!chat.Id.IsThread())
+            throw new ArgumentOutOfRangeException(nameof(chat), "Given chat should be a thread");
+
+        _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true,
+            LeaveChatConfirmationModal.TargetKind.Thread,
+            m => _ = DeleteOrLeaveChatInternal(chat, true, m)));
+    }
+
+    // Place: join, leave, delete
+
     public async Task JoinPlace(PlaceId placeId) {
         var avatars = await Avatars.ListOwnAvatarIds(Session, default).ConfigureAwait(false); // Continue on Blazor context.
         var hasMultipleAvatars = avatars.Count > 1;
@@ -466,12 +473,23 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
 
         await ModalUI.Show(new AvatarSelectModal.Model(null, false, JoinWithAvatar)).ConfigureAwait(false);
+        return;
 
         async Task JoinWithAvatar(AvatarFull avatar) {
             var command = new Places_Join { Session = Session, PlaceId = placeId, AvatarId = avatar.Id };
             await UICommander.Run(command).ConfigureAwait(false);
         }
     }
+
+    public void LeavePlace(PlaceId placeId)
+        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, LeaveChatConfirmationModal.TargetKind.Place,
+            m => _ = DeleteOrLeavePlaceInternal(placeId, false, () => Task.CompletedTask, m)));
+
+    public void DeletePlace(PlaceId placeId, Func<Task> onBeforeExecuteCommand)
+        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true, LeaveChatConfirmationModal.TargetKind.Place,
+            m => _ = DeleteOrLeavePlaceInternal(placeId, true, onBeforeExecuteCommand, m)));
+
+    // Conversations
 
     public void ToggleExpandConversation(ConversationId conversationId)
     {
@@ -513,6 +531,8 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         return (isExpandedByDefault ^ _conversationExpansionOverrides.Value.Contains(conversation.Id))
             || _autoExpandedConversations.Value.Contains(conversation.Id);
     }
+
+    // Other helpers
 
     // This method fixes provided ChatId w/ PeerChatId.FixOwnerId, which replaces
     // a guest UserId there with OwnAccount.Id.
@@ -591,6 +611,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public async ValueTask DisposeAsync()
     {
+        _itemVisibility.Dispose();
         await _readPositionStates.DisposeAsync().ConfigureAwait(false);
         await _viewPositionStates.DisposeAsync().ConfigureAwait(false);
     }
@@ -663,6 +684,28 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     // Private methods
+
+    private async Task<ChatViewItemVisibility> ComputeItemVisibility(CancellationToken cancellationToken)
+    {
+        // Masks the report rather than asking the view to stop sending one: the item observer fires
+        // only on a change, so a chat uncovered with nothing moving would never be reported again.
+        // The report is read first because there is nothing to mask until a chat view has made one,
+        // and PanelsUI must not be resolved before that - it requires BrowserInfo to be ready, while
+        // this state is reached from the very first render of ChatsNavbarButtonBadge via IsReadingTail.
+        var itemVisibility = await _reportedItemVisibility.Use(cancellationToken).ConfigureAwait(false);
+        if (itemVisibility.IsEmpty)
+            return ChatViewItemVisibility.Empty;
+
+        var isMiddleVisible = await PanelsUI.Middle.IsVisible.Use(cancellationToken).ConfigureAwait(false);
+        if (!isMiddleVisible)
+            return ChatViewItemVisibility.Empty;
+        if (!await BrowserInfo.IsVisible.Use(cancellationToken).ConfigureAwait(false))
+            return ChatViewItemVisibility.Empty;
+        if (await ModalUI.IsAnyFullScreenModalActive.Use(cancellationToken).ConfigureAwait(false))
+            return ChatViewItemVisibility.Empty;
+
+        return itemVisibility;
+    }
 
     private bool SelectChatInternal(ChatId? chatId)
     {

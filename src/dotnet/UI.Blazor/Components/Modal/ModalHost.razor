@@ -57,6 +57,7 @@
     {
         _afterRenderQueue.OnAfterRender();
         var activeList = _refs.ActiveList;
+        ModalUI.SetActiveModals(activeList);
         var topmostModalId = activeList.Count > 0 ? activeList[^1].Id.Value : "";
         if (topmostModalId == _lastInertModalId)
             return;

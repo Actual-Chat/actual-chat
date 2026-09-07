@@ -84,8 +84,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     public IState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
     public Task WhenInitialized => _whenInitializedSource.Task;
 
-    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
-    [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
+    [CascadingParameter] private ChatContext ChatContext { get; set; } = null!;
+    [CascadingParameter] private RegionVisibility RegionVisibility { get; set; } = null!;
+    [CascadingParameter] private ContentSwapContext? ContentSwapContext { get; set; }
     [Parameter] public string NavigationSlotName { get; set; } = LayoutSlots.SubFooter;
 
     public ChatView(AppUIHub hub)
@@ -121,6 +122,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (_viewPositionLease.Resource.Value.EntryLid is 0 && readPosition.EntryLid > 0)
                 _viewPositionLease.Resource.Value = readPosition;
             Hub.UserActivityUI.LastPresentAt.Updated += OnPresenceUpdated;
+            _wasChatViewVisible = RegionVisibility.IsVisible.Value;
+            RegionVisibility.IsVisible.Updated += OnRegionVisibilityUpdated;
             _whenInitializedSource.TrySetResult();
             ChatSwitchTracer.Mark("ChatView.OnInitializedAsync: WhenInitialized SET",
                 $"readEntryLid={readPosition.EntryLid}");
@@ -168,9 +171,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         _disposeTokenSource.CancelAndDisposeSilently();
         _whenInitializedSource.TrySetCanceled();
         _readPositionLease.DisposeSilently();
-        ChatUI.ResetItemVisibility(Chat.Id);
+        ChatUI.ResetReportedItemVisibility(Chat.Id);
         Nav.LocationChanged -= OnLocationChanged;
         Hub.UserActivityUI.LastPresentAt.Updated -= OnPresenceUpdated;
+        RegionVisibility.IsVisible.Updated -= OnRegionVisibilityUpdated;
         _isHoverMenuDisposed = true;
         if (_hoverMenuJsRefTask is { IsCompletedSuccessfully: true } jsRefTask)
             _ = jsRefTask.Result.DisposeSilentlyAsync("dispose");
@@ -229,13 +233,18 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         await NavigateTo(navEntry.LocalId, highlight, updateReadPosition).ConfigureAwait(false);
     }
 
-    public async Task NavigateTo(long entryLid, bool highlight, bool updateReadPosition = false, bool keepConversationsCollapsed = false)
+    public async Task NavigateTo(
+        long entryLid,
+        bool highlight,
+        bool updateReadPosition = false,
+        bool keepConversationsCollapsed = false)
     {
         await WhenInitialized;
         if (updateReadPosition)
             _shownReadEntryLid.Value = UpdateReadPosition(entryLid);
         ChatSwitchTracer.Mark("ChatView.NavigateTo: nav set", $"entryLid={entryLid}, highlight={highlight}");
-        _nextNavigation.Value = new ChatViewNavigation(entryLid, highlight, KeepConversationsCollapsed: keepConversationsCollapsed);
+        _nextNavigation.Value = new ChatViewNavigation(
+            entryLid, highlight, KeepConversationsCollapsed: keepConversationsCollapsed);
     }
 
     public override string ToString()
@@ -292,11 +301,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var identity = virtualListItemVisibility.ListIdentity;
         if (identity != Chat.Id.Value) {
             Log.LogWarning(
-                $"{nameof(OnItemVisibilityChanged)} received wrong identity {{Identity}} while expecting {{ActualIdentity}}",
+                $"{nameof(OnItemVisibilityChanged)}: wrong identity {{Identity}}, expected {{ActualIdentity}}",
                 identity,
                 Chat.Id.Value);
             return;
         }
+
+        // A replaced view must not report over what its successor published
+        if (ContentSwapContext?.IsLayerActive == false)
+            return;
 
         var lastItemVisibility = ItemVisibility.Value;
         var itemVisibility = new ChatViewItemVisibility(virtualListItemVisibility);
@@ -311,11 +324,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (itemVisibility.IsEmpty) {
             // Retracting matters as much as publishing: consumers gate on "this chat is visible at
             // its tail", and a retained last-known value keeps that true long after the view is gone.
-            ChatUI.ResetItemVisibility(Chat.Id);
+            ChatUI.ResetReportedItemVisibility(Chat.Id);
             return;
         }
 
-        ChatUI.SetItemVisibility(itemVisibility);
+        ChatUI.ReportItemVisibility(itemVisibility);
         var isUserPresent = ChatUI.IsUserPresent(Chat.Id);
         if (itemVisibility.IsEndAnchorVisible) {
             UpdateNewMessagesLineState(s => s with { LastEndAnchorVisibleAt = CpuTimestamp.Now });
@@ -324,6 +337,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
         else if (isUserPresent)
             UpdateReadPosition(itemVisibility.MaxEntryLid);
+
         if (_viewPositionLease is not null) {
             // Not gated on presence: this one restores the scroll position, so it tracks
             // the rendered viewport rather than what the user has actually read.
@@ -356,6 +370,25 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             return;
 
         _ = UpdateReadPositionToTheLastId();
+    }
+
+    private void OnRegionVisibilityUpdated(IState state, StateEventKind eventKind)
+    {
+        if (ContentSwapContext?.IsLayerActive == false)
+            return; // The visibility will be anyway reset @ Dispose
+
+        var isVisible = RegionVisibility.IsVisible.Value;
+        if (isVisible == _wasChatViewVisible)
+            return;
+
+        _wasChatViewVisible = isVisible;
+        ChatSwitchTracer.Mark("ChatView: region visibility changed", isVisible);
+        if (!isVisible)
+            return;
+
+        // Back on screen: unread tracking starts over
+        _shownReadEntryLid.Value = ReadPosition.Value.EntryLid;
+        ResetNewMessagesLineState();
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -447,7 +480,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         CancellationToken cancellationToken)
     {
         var chatId = Chat.Id;
-        var regionVisibility = RegionVisibility;
         var startedAt = CpuTimestamp.Now;
         var isFirstGetData = renderedData.IsNone && query.IsNone;
         if (isFirstGetData)
@@ -457,21 +489,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         await WhenInitialized.ConfigureAwait(false);
         if (isFirstGetData)
             ChatSwitchTracer.Mark("ChatView.GetData#1: WhenInitialized awaited");
-
-        // Data is built whether or not this region is on screen - a panel covering it is usually one
-        // that's about to slide away, and what's underneath has to be ready by then. Visibility drives
-        // the read state instead: a chat that comes back on screen starts its unread tracking over.
-        var isChatViewVisible = await regionVisibility.IsVisible.Use(cancellationToken).ConfigureAwait(false);
-        if (isChatViewVisible != _wasChatViewVisible) {
-            _wasChatViewVisible = isChatViewVisible;
-            ChatUI.ResetItemVisibility(chatId);
-            if (isChatViewVisible) {
-                _shownReadEntryLid.Value = ReadPosition.Value.EntryLid;
-                ResetNewMessagesLineState();
-                _itemVisibility.Value = ChatViewItemVisibility.Empty;
-            }
-            ChatSwitchTracer.Mark("ChatView.GetData: region visibility changed", isChatViewVisible);
-        }
 
         // Update delay: we want to collect as many dependencies as possible here,
         // but don't want to delay rapid updates.
@@ -582,7 +599,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         UpdateNewMessagesLineDebounce(items, readEntryLid);
         DebugLog?.LogDebug(
-            "GetData: loaded {Count} items ({RowCount} rows), first={First}, last={Last}, hasBefore={HasBefore}, hasAfter={HasAfter}, staleTail={IsTailCoverageStale}, navKey={NavEntryLid}, mustScroll={MustScroll}",
+            "GetData: loaded {Count} items ({RowCount} rows), first={First}, last={Last}, "
+            + "hasBefore={HasBefore}, hasAfter={HasAfter}, staleTail={IsTailCoverageStale}, "
+            + "navKey={NavEntryLid}, mustScroll={MustScroll}",
             items.Count,
             items.Sum(i => i.GetLeafMessages().Count()),
             items.Count > 0 ? items[0].Id : 0,
@@ -739,12 +758,16 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 -initialLoadLimit / 2,
                 initialLoadLimit / 2),
 
-            // No query, there is old data, and we are at the end of the list, let's stick to the visible range if possible
+            // No query, there is old data, and we are at the end of the list,
+            // let's stick to the visible range if possible
             (false, true) when oldData.HasVeryLastItem
                 => new ChatDataQuery(
                     new Range<long>(
                         Math.Max(firstItem!.Id, itemVisibility.MinMessageLid),
-                        Math.Min(lastItem!.Id, itemVisibility.IsEmpty ? long.MaxValue : itemVisibility.MaxMessageLid)).EnsureNonEmpty(),
+                        Math.Min(
+                            lastItem!.Id,
+                            itemVisibility.IsEmpty ? long.MaxValue : itemVisibility.MaxMessageLid))
+                        .EnsureNonEmpty(),
                     -ChatUI.HalfLoadLimit,
                     ChatUI.HalfLoadLimit),
 
@@ -841,7 +864,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         while (true) {
             var lastKnownEntryLid = Volatile.Read(ref _lastKnownEntryLid);
             if (lastKnownEntryLid >= entryLid
-                || Interlocked.CompareExchange(ref _lastKnownEntryLid, entryLid, lastKnownEntryLid) == lastKnownEntryLid)
+                || Interlocked.CompareExchange(ref _lastKnownEntryLid, entryLid, lastKnownEntryLid)
+                    == lastKnownEntryLid)
                 return;
         }
     }
@@ -943,7 +967,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     // Nested types
 
-    private record ChatViewMetadata(bool IsSummarized);
+    private sealed record ChatViewMetadata(bool IsSummarized);
 
     private sealed record NewMessagesLineState(
         CpuTimestamp ShownAt,

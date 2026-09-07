@@ -3,14 +3,38 @@ namespace ActualChat.UI.Blazor.Services;
 /// <summary>
 /// Manages modal dialog display and lifecycle in the UI.
 /// </summary>
-public sealed class ModalUI(UIHub hub) : UIServiceBase<UIHub>(hub)
+public sealed class ModalUI : UIServiceBase<UIHub>, IDisposable
 {
-    private TypeMapper<IModalView> ViewResolver { get; } = hub.Services.GetRequiredService<TypeMapper<IModalView>>();
+    private readonly MutableState<IReadOnlyList<ModalRef>> _activeModals;
+    private readonly ComputedState<bool> _isAnyFullScreenModalActive;
+
+    private TypeMapper<IModalView> ViewResolver { get; }
     private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
+    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
     public TaskCompletionSource<ModalHost> HostAcceptor { get; } = TaskCompletionSourceExt.New<ModalHost>();
     public Task WhenReady => HostAcceptor.Task;
     public ModalHost Host => field ??= HostAcceptor.Task.RequireResult();
+    public IState<IReadOnlyList<ModalRef>> ActiveModals => _activeModals;
+    public IState<bool> IsAnyFullScreenModalActive => _isAnyFullScreenModalActive;
+
+    public ModalUI(UIHub hub) : base(hub)
+    {
+        ViewResolver = hub.Services.GetRequiredService<TypeMapper<IModalView>>();
+        var type = GetType();
+        _activeModals = StateFactory.NewMutable(
+            (IReadOnlyList<ModalRef>)ImmutableList<ModalRef>.Empty,
+            StateCategories.Get(type, nameof(_activeModals)));
+        _isAnyFullScreenModalActive = StateFactory.NewComputed(
+            new ComputedState<bool>.Options {
+                UpdateDelayer = FixedDelayer.NoneUnsafe,
+                Category = StateCategories.Get(type, nameof(IsAnyFullScreenModalActive)),
+            },
+            ComputeIsAnyFullScreenModalActive);
+    }
+
+    public void Dispose()
+        => _isAnyFullScreenModalActive.Dispose();
 
     public Task<ModalRef> Show<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TModel>
@@ -25,6 +49,16 @@ public sealed class ModalUI(UIHub hub) : UIServiceBase<UIHub>(hub)
     {
         var componentType = GetComponentType(model);
         return Show(componentType, model, options, cancellationToken).AsTask();
+    }
+
+    // Protected/internal methods
+
+    internal void SetActiveModals(IReadOnlyList<ModalRef> activeModals)
+    {
+        // ModalHost calls this after every render of its own, most of which change nothing - and its
+        // list is immutable, so an unchanged set arrives as the very same instance
+        if (!ReferenceEquals(_activeModals.Value, activeModals))
+            _activeModals.Value = activeModals;
     }
 
     // Private methods
@@ -62,6 +96,16 @@ public sealed class ModalUI(UIHub hub) : UIServiceBase<UIHub>(hub)
             AnalyticEvents.RaiseModalStateChanged(modalName, false);
         });
         return modalRef;
+    }
+
+    private async Task<bool> ComputeIsAnyFullScreenModalActive(CancellationToken cancellationToken)
+    {
+        var activeModals = await _activeModals.Use(cancellationToken).ConfigureAwait(false);
+        if (activeModals.Count == 0)
+            return false;
+
+        var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
+        return activeModals.Any(x => x.IsFullScreen(screenSize.IsNarrow()));
     }
 
     [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]

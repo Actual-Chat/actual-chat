@@ -733,7 +733,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SelectChatOnNavigation(chat.Id);
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        chatUI.SetItemVisibility(new ChatViewItemVisibility(
+        chatUI.ReportItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> {
                 ChatMessageKey.New(ChatMessageKind.None, v + 3),
@@ -768,7 +768,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var tailEntry = await Tester.CreateTextEntry(chat.Id, "tail-3");
         for (var i = 4; i < 3 + LiveFoldMath.MinTailEntryCount; i++)
             await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
-        chatUI.SetItemVisibility(new ChatViewItemVisibility(
+        chatUI.ReportItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, tailEntry.LocalId) },
             false,
@@ -1453,7 +1453,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // act - viewport top sits at the 6th entry: everything above it (incl. un-summarised rows) must fold
         var viewportTop = lids[5];
-        chatUI.SetItemVisibility(new ChatViewItemVisibility(
+        chatUI.ReportItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, viewportTop) },
             false,
@@ -1570,7 +1570,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // act - the viewport top sits at the last entry, so the governor would otherwise fold everything above it
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
-        chatUI.SetItemVisibility(new ChatViewItemVisibility(
+        chatUI.ReportItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, idRange.End - 1) },
             false,
@@ -1636,7 +1636,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SelectChatOnNavigation(chat.Id);
 
         void SetViewportTop(long lid)
-            => chatUI.SetItemVisibility(new ChatViewItemVisibility(
+            => chatUI.ReportItemVisibility(new ChatViewItemVisibility(
                 chat.Id,
                 new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, lid) },
                 false,
@@ -1722,7 +1722,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // act - viewport top sits at the last entry, so a large range folds
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var viewportTop = idRange.End - 1;
-        chatUI.SetItemVisibility(new ChatViewItemVisibility(
+        chatUI.ReportItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, viewportTop) },
             false,
@@ -1789,7 +1789,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SelectChatOnNavigation(chat.Id);
 
         void SetViewportTop(long lid)
-            => chatUI.SetItemVisibility(new ChatViewItemVisibility(
+            => chatUI.ReportItemVisibility(new ChatViewItemVisibility(
                 chat.Id,
                 new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, lid) },
                 false,
@@ -1865,7 +1865,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // act - viewport top sits at the last entry, so a large range folds
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var viewportTop = idRange.End - 1;
-        chatUI.SetItemVisibility(new ChatViewItemVisibility(
+        chatUI.ReportItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, viewportTop) },
             false,
@@ -1952,7 +1952,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // act - viewport top sits at the 6th real entry, folding the 5 real rows above it (plus the
         // interleaved system entry, which must not count towards SwallowedCount)
         var viewportTop = lids[5];
-        chatUI.SetItemVisibility(new ChatViewItemVisibility(
+        chatUI.ReportItemVisibility(new ChatViewItemVisibility(
             chat.Id,
             new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, viewportTop) },
             false,
