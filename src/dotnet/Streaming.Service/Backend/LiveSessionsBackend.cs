@@ -1205,7 +1205,13 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 // A call that never connected has no conversation; one that did is materialized here,
                 // and unlike a transcript session it has no title to gate on - the card is the point.
                 if (state.SessionStartedAt is not null) {
-                    var materialize = new ConversationBackend_Materialize(state.ToMaterializedConversation());
+                    // StartsAt/EndsAt default to StartedAt (the ring, not the connect) and to
+                    // LastSummaryAt, which a call never writes - so both need the real talk-time span.
+                    var conversation = state.ToMaterializedConversation() with {
+                        StartsAt = state.SessionStartedAt.Value,
+                        EndsAt = Clocks.SystemClock.Now,
+                    };
+                    var materialize = new ConversationBackend_Materialize(conversation);
                     await Commander.Call(materialize, true, cancellationToken).ConfigureAwait(false);
                 }
             }
