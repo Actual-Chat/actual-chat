@@ -263,9 +263,11 @@ and in the lid-range and `GetMaxLid` queries, which all assume 0; a non-zero
 value on some rows would break those ranges.
 
 `LegacySystemEntry.From` (line 34) duplicates `DbChatEntry.ToLegacySystemEntry`
-and has no callers. It gets deleted rather than extended — it is in a file this
-change touches anyway, and leaving a second, diverging conversion behind is how
-the next kind ends up half-registered.
+and has no callers today. Two conversions that must agree, one of which nothing
+exercises, is how the next kind ends up half-registered — so they collapse into
+one: `From` gains the `CallEntry` arm and `ToLegacySystemEntry` becomes a call to
+it. The public one is also the testable one, which is what gives the round trip
+through the envelope a unit test rather than only a database test.
 
 A server that does not know the `Call` property deserializes such a row into
 `Option == null`. That used to throw and take out every chat holding one; since
