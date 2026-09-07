@@ -38,9 +38,9 @@
                     { "role", "tab" },
                     { "aria-selected", isActive.ToString() },
                 };
-                var cls = $"tab-btn unhovered {(isActive ? "on" : "")} ";
+                var cls = $"btn-tab {(isActive ? "on" : "")} ";
                 var wrapperCls = isActive ? "selected-tab" : "";
-                <div @key="@tab.Id" class="btn-group-container @wrapperCls">
+                <div @key="@tab.Id" class="btn-tab-wrapper @wrapperCls">
                     <Button
                         AdditionalAttributes="@attributes"
                         Class="@cls"

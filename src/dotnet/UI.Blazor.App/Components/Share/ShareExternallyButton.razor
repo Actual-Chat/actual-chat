@@ -7,7 +7,7 @@
 <div class="btn-share-action share-externally-button @Class">
     @if (MauiShare != null) {
         <Button Class="@ButtonClass" Click="OnMauiShareClick">
-            <Icon><i class="icon-share-more"></i></Icon>
+            <Icon><i class="icon-share-external"></i></Icon>
             <Title>@(Title ?? L.Share_ShareExternally)</Title>
         </Button>
     } else if (_canUseWebShare) {
@@ -18,7 +18,7 @@
                 data-share-text="@textAndLink"
                 data-share-link="@link"
                 >
-            <Icon><i class="icon-share-more text-2xl"></i></Icon>
+            <Icon><i class="icon-share-external text-2xl"></i></Icon>
             <Title>@(Title ?? L.Share_ShareExternally)</Title>
         </Button>
     } else {

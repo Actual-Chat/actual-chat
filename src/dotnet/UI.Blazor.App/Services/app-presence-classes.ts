@@ -59,7 +59,7 @@ MutationProcessor.registerPresenceClasses(
     { container: '.video-panel', match: '.video-panel-chat', className: 'has-video-panel-chat' },
     { container: '.video-panel', match: '.video-panel-chat:not(.chat-hidden)', className: 'has-video-panel-chat-shown' },
 
-    { container: '.tab-panel-tabs .tab-btn .btn-content', match: '.c-badge', className: 'has-badge' },
+    { container: '.tab-panel-tabs .btn-tab .btn-content', match: '.c-badge', className: 'has-badge' },
     { container: '.chat-message-markup', match: '.code-block-markup', className: 'has-code-block' },
     { container: '.chat-list .navbar-item .navbar-item-ending', match: '.chat-audio-controls', className: 'has-audio-controls' },
     { container: '.chat-list .navbar-item-content .c-last-message', match: '.c-text.two-line', className: 'has-two-line-text' },

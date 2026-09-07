@@ -6,9 +6,9 @@
 
 <TileTopic Topic="@L.ApiKeys_CreateApiKey"/>
 
-<Button Class="btn-primary btn-outline btn-w-full" Click="@OnCreateClick">
-    @L.ApiKeys_CreateApiKey
-</Button>
+<ButtonTile Class="btn-primary" Filled="true" Click="@OnCreateClick">
+    <Content>@L.ApiKeys_CreateApiKey</Content>
+</ButtonTile>
 
 @if (m.ApiKeys.Count > 0) {
     <TileTopic Topic="@L.ApiKeys_YourApiKeys"/>
@@ -47,9 +47,9 @@
 }
 
 @if (keys.Any(k => k.IsActive)) {
-    <Button Class="btn-outline btn-danger-light btn-w-full" Click="@OnDeactivateAllClick">
-        @L.ApiKeys_DeactivateAll
-    </Button>
+    <ButtonTile Class="btn-danger" Filled="true" Click="@OnDeactivateAllClick">
+        <Content>@L.ApiKeys_DeactivateAll</Content>
+    </ButtonTile>
 }
 
 @code {

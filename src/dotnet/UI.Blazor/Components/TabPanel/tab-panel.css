@@ -40,13 +40,13 @@
 /* Carousel tabs hold an avatar, not a label, and it is taller than the text-tab caps below - which
    clipped it, symmetrically enough to read as "small" rather than as broken. */
 .tab-panel-tabs.carousel,
-.tab-panel-tabs.carousel .btn-group-container {
+.tab-panel-tabs.carousel .btn-tab-wrapper {
     @apply max-h-none;
 }
-.tab-panel-tabs.carousel .tab-btn .btn-content {
+.tab-panel-tabs.carousel .btn-tab .btn-content {
     @apply p-0;
 }
-.tab-panel-tabs .btn-group-container {
+.tab-panel-tabs .btn-tab-wrapper {
     @apply relative;
     @apply flex-y;
     @apply max-h-8;
@@ -63,14 +63,15 @@
 }
 
 /* Buttons */
-.tab-panel-tabs .btn.tab-btn {
+.tab-panel-tabs .btn.btn-tab {
     @apply no-sheen;
     @apply min-w-2;
+    @apply min-h-0;
     @apply rounded-none;
     @apply border-0;
     @apply text-02 text-caption-1 tracking-wider;
 }
-.tab-panel-tabs .btn.tab-btn.on {
+.tab-panel-tabs .btn.btn-tab.on {
     @apply text-primary;
 }
 
@@ -99,36 +100,54 @@
 }
 .tab-panel-tabs .btn-group {
     @apply items-center justify-start gap-x-0;
-    @apply min-h-10;
+    @apply min-h-0;
     @apply px-4;
 }
-.tab-panel-tabs .btn-group .btn-group-container {
+.tab-panel-tabs .btn-group .btn-tab-wrapper {
     @apply self-center;
-    @apply min-h-10;
+    @apply min-h-0;
 }
 .tab-panel-tabs .btn {
     @apply min-w-0 min-h-0;
     @apply p-0;
     @apply rounded-lg;
 }
-.tab-panel-tabs .btn.tab-btn.on .btn-content {
+.tab-panel-tabs .btn.btn-tab.on .btn-content {
     @apply text-02;
 }
-body.hoverable .tab-panel-tabs .tab-btn:hover .btn-content {
-    @apply bg-round-hover text-primary;
-}
-body.hoverable .tab-panel-tabs .tab-btn.on:hover .btn-content {
-    @apply bg-transparent cursor-default;
-}
-.tab-panel-tabs .tab-btn .btn-content {
-    @apply gap-x-1;
-    @apply py-1.5 px-2;
+/* State lives on the button's ::after, like every other button - just rounded to the pill and blue-
+   tinted. Before, the tab's ::after was an un-rounded rectangle, so :active read as a grey box while
+   :hover (then painted on .btn-content) stayed an oval. Tint = bg-btn-tint-*, same family as the
+   tinted round/outline buttons. */
+.tab-panel-tabs .btn-tab::after {
     @apply rounded-xl;
 }
-.tab-panel-tabs .tab-btn .btn-content.has-badge {
+body.hoverable .tab-panel-tabs .btn-tab:hover:not(:active)::after {
+    @apply bg-btn-tint-hover;
+}
+.tab-panel-tabs .btn-tab:active::after {
+    @apply bg-btn-tint-active;
+}
+body.hoverable .tab-panel-tabs .btn-tab:hover {
+    @apply text-primary;
+}
+/* Selected tab: the bottom hill already marks it, so no wash and no hover affordance. */
+body.hoverable .tab-panel-tabs .btn-tab.on:hover:not(:active)::after,
+.tab-panel-tabs .btn-tab.on:active::after {
+    @apply bg-transparent;
+}
+body.hoverable .tab-panel-tabs .btn-tab.on:hover {
+    @apply cursor-default;
+}
+.tab-panel-tabs .btn-tab .btn-content {
+    @apply gap-x-1;
+    @apply py-1 px-2;
+    @apply rounded-xl;
+}
+.tab-panel-tabs .btn-tab .btn-content.has-badge {
     @apply pr-1.5;
 }
-.tab-panel-tabs .tab-btn .btn-content .message-counter-badge {
+.tab-panel-tabs .btn-tab .btn-content .message-counter-badge {
     @apply ml-1;
 }
 

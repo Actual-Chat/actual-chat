@@ -371,7 +371,7 @@ body.hoverable .navbar-item:hover .navbar-item-ending .slot.c-hoverable {
 }
 
 /* Tabs */
-.navbar-chats .tab-panel .tab-panel-tabs .btn-group .btn-group-container .c-bottom-hill {
+.navbar-chats .tab-panel .tab-panel-tabs .btn-group .btn-tab-wrapper .c-bottom-hill {
     @apply min-h-1 -mt-1;
 }
 .navbar-chats .tab-panel .tab-panel-tabs .message-counter-badge {
