@@ -634,11 +634,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             conversationId = state?.RingConversationId;
             abandoned = await IsCallAbandoned(chatId).ConfigureAwait(false);
             if (state is not null) {
-                // CallStatus.Declined is recorded only once the call is abandoned - a decline while another
-                // invitee still rings isn't the call's final story yet. The outcome, however, is recorded on
-                // every decline regardless: first-writer-wins already covers a later accept or cancel.
+                // Recorded before the close below drops the session that carries the caller's identity.
+                // Gated on abandoned: a decline while another invitee still rings isn't the call's final story.
                 if (abandoned)
                     await SetCallState(chatId, NewCallState(state, CallStatus.Declined)).ConfigureAwait(false);
+                // Unlike CallStatus, the outcome is recorded on every decline: first-writer-wins already
+                // covers a later accept or cancel rewriting the story.
                 await SetOutcome(chatId, state, CallOutcome.Declined).ConfigureAwait(false);
             }
             InvalidateState(chatId);
