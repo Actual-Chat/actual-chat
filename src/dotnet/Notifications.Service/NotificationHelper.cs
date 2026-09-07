@@ -34,6 +34,11 @@ public static class NotificationHelper
     public static string GetTitle(string senderName, string groupTitle)
         => groupTitle.IsNullOrEmpty() ? senderName : $"{senderName} @ {groupTitle}";
 
+    // The iOS extension headlines a group banner with the chat, so the text is the only place a
+    // sender gets named there; a peer chat's headline is the other party already.
+    public static bool MustNameAuthorInText(ChatId chatId)
+        => chatId.GetThreadOutermostParentOrSelf().Kind is ChatKind.Group or ChatKind.Place;
+
     public static string GetIconUrl(Chat.Chat chat, AuthorFull author, UrlMapper urlMapper)
         // Unsized, the generator draws its 80px base, which an avatar slot on a 3x screen upscales.
         => urlMapper.IconUrl(chat.GetIconQuery(author, AvatarQuery.SupportedSizes[^1], renderAvatarTitle: true));
@@ -60,9 +65,7 @@ public static class NotificationHelper
         if (messages.IsEmpty)
             return notification.LeadText.IsNullOrEmpty() ? notification.Text : notification.LeadText;
 
-        // The banner headline is the chat, so these lines are the only place a sender is named.
-        var showAuthorNames = notification.ChatId.GetThreadOutermostParentOrSelf().Kind
-            is ChatKind.Group or ChatKind.Place;
+        var showAuthorNames = MustNameAuthorInText(notification.ChatId);
         var lines = new List<string>(messages.Count + 1);
         // Newest first: collapsed banners show only the first line(s), and that must be the
         // latest message, not the oldest unread one.

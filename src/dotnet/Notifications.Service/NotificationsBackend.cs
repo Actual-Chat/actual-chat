@@ -691,7 +691,10 @@ public class NotificationsBackend(IServiceProvider services)
             ? $"\"{authoredText}\""
             : entryContent.Render(l);
 
-        var content = new SharedNotificationContent(l.Notification_Reaction_Format(reaction.Emoji, text));
+        var reactionText = l.Notification_Reaction_Format(reaction.Emoji, text);
+        var content = new SharedNotificationContent(NotificationHelper.MustNameAuthorInText(entry.ChatId)
+            ? l.Notification_AuthorLine_Format(reactionAuthor.Avatar.Name, reactionText)
+            : reactionText);
         await EnqueueMessageRelatedNotifications(
             entry.ChatId, entry.Id, reactionAuthor, content,
             NotificationKind.Reaction, similarityKey, "", userIds, (reaction.Emoji, text), cancellationToken)
