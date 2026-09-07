@@ -50,6 +50,32 @@ public class UnionToleranceCoverageTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
+    public void EveryTolerantRootShouldKnowItsOwnTags()
+    {
+        // The known-tag set comes from [Union] attributes read at runtime, and a formatter that
+        // can't read them falls back to intolerance rather than treating every tag as unknown.
+        // Under JIT this can only pass - it's the AOT build where the attributes are at risk, and
+        // this states the invariant that build has to hold up.
+
+        // arrange
+        ApiModuleInitializerLoad();
+
+        // act
+        var intolerant = AppMessagePackResolverSettings.Formatters
+            .Where(kv => kv.Value.IsGenericType
+                && kv.Value.GetGenericTypeDefinition() == typeof(ForwardCompatibleUnionFormatter<>))
+            .Where(kv => !IsTolerant(kv.Value))
+            .Select(kv => kv.Key.GetName())
+            .ToList();
+
+        // assert
+        intolerant.Should().BeEmpty(
+            "a registered root with no readable [Union] attributes silently loses its "
+            + "tolerance:\n{0}",
+            string.Join("\n", intolerant));
+    }
+
+    [Fact]
     public void ExemptRootsShouldStillBeUnionRoots()
     {
         // act
@@ -71,6 +97,10 @@ public class UnionToleranceCoverageTest(ITestOutputHelper @out) : TestBase(@out)
     private static IEnumerable<Assembly> ApiAssemblies()
         => AppDomain.CurrentDomain.GetAssemblies()
             .Where(a => a.GetName().Name?.StartsWith("ActualChat.") == true);
+
+    private static bool IsTolerant(Type formatter)
+        => (bool)formatter.GetProperty(nameof(ForwardCompatibleUnionFormatter<ChatEntry>.IsTolerant))!
+            .GetValue(null)!;
 
     private static bool IsRegisteredAsTolerant(Type root)
         => AppMessagePackResolverSettings.Formatters.TryGetValue(root, out var formatter)

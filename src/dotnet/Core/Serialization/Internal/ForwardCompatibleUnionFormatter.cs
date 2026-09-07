@@ -21,6 +21,23 @@ public sealed class ForwardCompatibleUnionFormatter<TBase> : IMessagePackFormatt
         .ToFrozenSet();
     private static readonly ConcurrentDictionary<IFormatterResolver, IMessagePackFormatter<TBase?>> InnerFormatters = new();
 
+    // False when [Union] attributes aren't readable at runtime, which is possible under Native
+    // AOT: the source-generated union formatter bakes the tags into code and never reads the
+    // attributes, so the trimmer is free to drop them and leave this the only reader. Losing them
+    // has to degrade to today's behaviour rather than to the opposite of it - an empty set would
+    // make *every* tag unknown, turning every message in every chat into a placeholder. Silently,
+    // and on mobile only.
+    public static bool IsTolerant => KnownTags.Count != 0;
+
+    static ForwardCompatibleUnionFormatter()
+    {
+        if (!IsTolerant)
+            StaticLog.For<ForwardCompatibleUnionFormatter<TBase>>().LogError(
+                "No [Union] attributes on {Type} at runtime - tolerance is off for it. "
+                + "An unknown member will fail to deserialize, as it did before this formatter.",
+                typeof(TBase).GetName());
+    }
+
     public void Serialize(ref MessagePackWriter writer, TBase? value, MessagePackSerializerOptions options)
         => GetInnerFormatter(options).Serialize(ref writer, value, options);
 
@@ -43,6 +60,8 @@ public sealed class ForwardCompatibleUnionFormatter<TBase> : IMessagePackFormatt
     private static bool TryReadUnknownTag(ref MessagePackReader peek, out int tag)
     {
         tag = 0;
+        if (!IsTolerant)
+            return false;
         if (peek.NextMessagePackType != MessagePackType.Array)
             return false; // Nil, or not an envelope at all - the inner formatter decides what that means
         if (peek.ReadArrayHeader() != 2)
