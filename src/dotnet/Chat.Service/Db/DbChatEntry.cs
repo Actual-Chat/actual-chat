@@ -116,6 +116,13 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
                     TargetAuthorId = nm.AuthorId,
                     TargetAuthorName = nm.AuthorName,
                 },
+                LegacyCallOption c => new CallEntry(id, Version) {
+                    CallerId = c.CallerId,
+                    CallerName = c.CallerName,
+                    Outcome = c.Outcome,
+                    InviteeIds = c.InviteeIds.ToApiArray(),
+                    HasVideo = c.HasVideo,
+                },
                 // A row written by a later release - a rollback past it would otherwise take out
                 // every chat holding one. Same placeholder the wire format's unknown tags get.
                 _ => new UnsupportedSystemEntry(id, Version),
@@ -251,15 +258,9 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         LocationId = model.LocationId?.Value;
     }
 
-    private static LegacySystemEntry ToLegacySystemEntry(SystemEntry sys) => sys switch {
-        MembersChangedEntry mc => new LegacySystemEntry {
-            Option = new LegacyMembersChangedOption(mc.TargetAuthorId, mc.TargetAuthorName, mc.HasLeft),
-        },
-        NotifyMembersEntry nm => new LegacySystemEntry {
-            Option = new LegacyNotifyMembersOption(nm.TargetAuthorId, nm.TargetAuthorName),
-        },
-        _ => throw StandardError.Internal($"Unknown system entry: {sys.GetType().Name}"),
-    };
+    private static LegacySystemEntry ToLegacySystemEntry(SystemEntry sys)
+        => LegacySystemEntry.From(sys)
+            ?? throw StandardError.Internal($"Unknown system entry: {sys.GetType().Name}");
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatEntry>
     {

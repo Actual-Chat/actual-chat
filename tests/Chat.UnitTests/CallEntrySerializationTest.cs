@@ -54,4 +54,33 @@ public class CallEntrySerializationTest
         // assert
         ChatEntry.GetUnionTagSince(tag).Should().Be(new Version(2, 19));
     }
+
+    [Fact]
+    public void CallEntryShouldRoundTripThroughTheLegacyEnvelope()
+    {
+        // The Content column stores system entries in the frozen v2.7 wrapper shape; a new kind
+        // needs its own named property there, because the row carries no other discriminator.
+
+        // arrange
+        var chatId = ChatId.Parse("052w3sgrad");
+        var caller = AuthorId.New(chatId, 1);
+        var entry = new CallEntry(ChatEntryId.New(chatId, 7)) {
+            CallerId = caller,
+            CallerName = "John",
+            Outcome = CallOutcome.Ended,
+            InviteeIds = new[] { AuthorId.New(chatId, 2) }.ToApiArray(),
+            HasVideo = true,
+        };
+
+        // act
+        var json = Serializers.SystemJson.Write(LegacySystemEntry.From(entry)!);
+        var back = Serializers.SystemJson.Read<LegacySystemEntry>(json);
+
+        // assert
+        var option = back.Option.Should().BeOfType<LegacyCallOption>().Subject;
+        option.CallerId.Should().Be(caller);
+        option.CallerName.Should().Be("John");
+        option.Outcome.Should().Be(CallOutcome.Ended);
+        option.HasVideo.Should().BeTrue();
+    }
 }
