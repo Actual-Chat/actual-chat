@@ -4,9 +4,11 @@ public static class ReplyTargetResolver
 {
     public static readonly TimeSpan UnboundedRecencyWindow = TimeSpan.MaxValue;
 
+    // lastVoiceAt is the merged snapshot: a chat you spoke in last is as good an answer to
+    // "which conversation is this" as one somebody else spoke in last.
     public static ChatId? Resolve(
         IReadOnlyList<ChatId> armedChatIds,
-        IReadOnlyDictionary<ChatId, Moment> lastIncomingVoiceAt,
+        IReadOnlyDictionary<ChatId, Moment> lastVoiceAt,
         ChatId? focusedChatId,
         Moment now,
         TimeSpan recencyWindow,
@@ -19,7 +21,7 @@ public static class ReplyTargetResolver
         // Moment.EpochStart precedes every real stamp; now - TimeSpan.MaxValue would overflow.
         var bestAt = recencyWindow == UnboundedRecencyWindow ? Moment.EpochStart : now - recencyWindow;
         foreach (var chatId in armedChatIds) {
-            if (lastIncomingVoiceAt.TryGetValue(chatId, out var at) && at > bestAt) {
+            if (lastVoiceAt.TryGetValue(chatId, out var at) && at > bestAt) {
                 bestAt = at;
                 best = chatId;
             }

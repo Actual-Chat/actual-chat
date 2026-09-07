@@ -72,10 +72,11 @@ public sealed class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper 
         await TestExt.When(() => {
             GestureUI.RecognizerOptions.IsFlipToTalkEnabled.Should().BeFalse();
             GestureUI.RecognizerOptions.IsDoubleShakeEnabled.Should().BeFalse();
-            GestureUI.RecognizerOptions.IsFaceDownEnabled.Should().BeFalse();
+            GestureUI.RecognizerOptions.IsStopGestureEnabled.Should().BeFalse();
         }, WaitTimeout.Debuggable());
         await Task.Delay(SettleDelay.Debuggable());
-        GestureUI.RecognizerOptions.Should().Be(new GestureOptions(false, false, false, ShakeSensitivity.Medium));
+        GestureUI.RecognizerOptions.Should()
+            .Be(new GestureOptions(false, false, false, false, ShakeSensitivity.Medium));
     }
 
     [Fact]
@@ -108,7 +109,8 @@ public sealed class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper 
 
         // assert
         await Task.Delay(SettleDelay.Debuggable());
-        GestureUI.RecognizerOptions.Should().Be(new GestureOptions(false, false, false, ShakeSensitivity.Medium));
+        GestureUI.RecognizerOptions.Should()
+            .Be(new GestureOptions(false, false, false, false, ShakeSensitivity.Medium));
 
         // act
         Hub.ChatAudioUI.SetIsPttEnabledOnDevice(true);
@@ -151,7 +153,8 @@ public sealed class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper 
 
         // assert
         await Task.Delay(SettleDelay.Debuggable());
-        gestureUI.RecognizerOptions.Should().Be(new GestureOptions(false, false, false, ShakeSensitivity.Medium));
+        gestureUI.RecognizerOptions.Should()
+            .Be(new GestureOptions(false, false, false, false, ShakeSensitivity.Medium));
         gestureUI.SampleCount.Should().Be(0);
     }
 

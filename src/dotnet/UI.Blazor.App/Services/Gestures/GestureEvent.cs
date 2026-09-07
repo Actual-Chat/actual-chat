@@ -9,4 +9,5 @@ public enum GestureKind
     FlipToTalk,
     DoubleShake,
     FaceDown,
+    Pocket,
 }

@@ -3,27 +3,40 @@ using ActualLab.Interception;
 namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
-/// Tracks, per armed chat, when INCOMING voice (from authors other than yourself) last started
-/// and ended, so the PTT answer window runs from the end of the utterance and the reply
-/// resolver can pick the chat that most recently spoke.
+/// Tracks, per armed chat, when voice last started and ended - incoming (from authors other
+/// than yourself) and your own, in separate maps. The PTT answer window runs from the end of
+/// either; the reply resolver reads the incoming one alone, since it answers "who was talking".
 /// </summary>
-public class IncomingVoiceActivityUI(AppUIHub hub)
+public class VoiceActivityUI(AppUIHub hub)
     : UIWorkerBase<AppUIHub>(hub), IComputeService, INotifyInitialized
 {
     private readonly ConcurrentDictionary<ChatId, Moment> _lastIncomingAt = new();
     private readonly ConcurrentDictionary<ChatId, bool> _liveIncoming = new();
+    private readonly ConcurrentDictionary<ChatId, Moment> _lastOwnAt = new();
+    private readonly ConcurrentDictionary<ChatId, bool> _liveOwn = new();
+    private readonly ConcurrentDictionary<ChatId, bool> _unheardOwn = new();
 
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private IAuthors Authors => Hub.Authors;
 
-    public event Action? IncomingVoiceStamped;
+    public event Action? VoiceStamped;
 
     void INotifyInitialized.Initialized()
         => this.Start();
 
     public IReadOnlyDictionary<ChatId, Moment> SnapshotLastIncomingVoiceAt()
         => BuildSnapshot(_lastIncomingAt, [.._liveIncoming.Keys], Clocks.ServerClock.Now);
+
+    public IReadOnlyDictionary<ChatId, Moment> SnapshotLastVoiceAt()
+    {
+        // Both sides of the conversation arm the reply triggers: a window dated from the other
+        // party's utterance alone would be half-consumed by your own reply to it.
+        var now = Clocks.ServerClock.Now;
+        return MergeSnapshots(
+            BuildSnapshot(_lastIncomingAt, [.._liveIncoming.Keys], now),
+            BuildSnapshot(_lastOwnAt, [.._liveOwn.Keys], now));
+    }
 
     public void NoteIncomingVoice(ChatId chatId, Moment at)
     {
@@ -48,7 +61,7 @@ public class IncomingVoiceActivityUI(AppUIHub hub)
                 return stampedAt;
             });
         if (hasAdvanced)
-            IncomingVoiceStamped?.Invoke();
+            VoiceStamped?.Invoke();
     }
 
     public void ClearIncomingVoice(ChatId chatId)
@@ -59,14 +72,32 @@ public class IncomingVoiceActivityUI(AppUIHub hub)
         // reopens the window the user just dismissed.
         var wasLive = _liveIncoming.TryRemove(chatId, out _);
         if (_lastIncomingAt.TryRemove(chatId, out _) || wasLive)
-            IncomingVoiceStamped?.Invoke();
+            VoiceStamped?.Invoke();
     }
+
+    public void SuppressOwnVoiceWindow(ChatId chatId)
+        // Call before closing the recording, not after: the falling edge this suppresses is
+        // raised by that very close, so setting the flag afterwards would lose the race.
+        => _unheardOwn[chatId] = true;
 
     public static bool ShouldStamp(bool prevHadOthers, bool nowHasOthers)
         => !prevHadOthers && nowHasOthers;
 
     public static bool ShouldStampEnd(bool prevHadOthers, bool nowHasOthers)
         => prevHadOthers && !nowHasOthers;
+
+    public static Dictionary<ChatId, Moment> MergeSnapshots(
+        Dictionary<ChatId, Moment> incoming,
+        IReadOnlyDictionary<ChatId, Moment> own)
+    {
+        // Latest wins per chat: the window must run from whichever side spoke last, so an old
+        // stamp from one side can never shorten a fresh one from the other.
+        foreach (var (chatId, at) in own)
+            if (!incoming.TryGetValue(chatId, out var incomingAt) || at > incomingAt)
+                incoming[chatId] = at;
+
+        return incoming;
+    }
 
     public static Dictionary<ChatId, Moment> BuildSnapshot(
         IReadOnlyDictionary<ChatId, Moment> lastIncomingAt,
@@ -96,11 +127,17 @@ public class IncomingVoiceActivityUI(AppUIHub hub)
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
+        var baseChains = new[] {
+            AsyncChain.From(TrackArmedChats),
+            AsyncChain.From(TrackOwnVoice),
+        };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
-        return AsyncChain.From(TrackArmedChats)
-            .Log(LogLevel.Debug, Log)
-            .RetryForever(retryDelays, Log)
-            .RunIsolated(cancellationToken);
+        return (
+            from chain in baseChains
+            select chain
+                .Log(LogLevel.Debug, Log)
+                .RetryForever(retryDelays, Log)
+            ).RunIsolated(cancellationToken);
     }
 
     // Private methods
@@ -159,5 +196,47 @@ public class IncomingVoiceActivityUI(AppUIHub hub)
             }
             prevHadOthers = nowHasOthers;
         }
+    }
+
+    private async Task TrackOwnVoice(CancellationToken cancellationToken)
+    {
+        // The recording chat id, not the PTT reply: closing by the record button or by the
+        // notification action must re-arm the triggers exactly like a gesture does, and every
+        // one of those paths ends here.
+        var cRecordingChatId = await Computed
+            .Capture(ChatAudioUI.GetRecordingChatId, cancellationToken)
+            .ConfigureAwait(false);
+        // Seeded from the live set so a chain restarted mid-recording (retry after a transient
+        // fault) still sees the falling edge; a leaked live entry would report a forever-fresh
+        // stamp and hold the answer window open for the rest of the scope's life.
+        var prevChatId = _liveOwn.Keys.FirstOrDefault();
+        await foreach (var change in cRecordingChatId.Changes(cancellationToken).ConfigureAwait(false)) {
+            var chatId = change.Value;
+            if (prevChatId == chatId)
+                continue;
+
+            if (prevChatId is { } prevValue)
+                EndOwnVoice(prevValue);
+            if (chatId is { } value) {
+                _liveOwn[value] = true;
+                _unheardOwn.TryRemove(value, out _);
+            }
+            prevChatId = chatId;
+        }
+    }
+
+    private void EndOwnVoice(ChatId chatId)
+    {
+        var wasLive = _liveOwn.TryRemove(chatId, out _);
+        // A reply that heard nothing must not re-arm the very triggers that opened it, or one
+        // false gesture keeps its own window alive for another round.
+        if (_unheardOwn.TryRemove(chatId, out _)) {
+            if (_lastOwnAt.TryRemove(chatId, out _) || wasLive)
+                VoiceStamped?.Invoke();
+            return;
+        }
+
+        _lastOwnAt[chatId] = Clocks.ServerClock.Now;
+        VoiceStamped?.Invoke();
     }
 }

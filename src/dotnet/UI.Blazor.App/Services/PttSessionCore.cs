@@ -58,7 +58,7 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
                 Log, "Couldn't sync the server clock on wake", CancellationToken.None);
         // The utterance may be over by the time we boot, so HasIncomingVoice would never see an edge
         // for it and the answer window would never open.
-        Hub.IncomingVoiceActivityUI.NoteIncomingVoice(
+        Hub.VoiceActivityUI.NoteIncomingVoice(
             chatId, Ptt.GetWakeAnswerStamp(startedAt, Hub.Clocks.ServerClock.Now));
 
         if (isForeground) {
@@ -106,7 +106,7 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
             // The live signal can't have fired for an utterance that ended before this process
             // booted, so the persisted wake is the only thing that opens an answer window for it.
             if (platform.LastWake is { } lastWake)
-                Hub.IncomingVoiceActivityUI.NoteIncomingVoice(lastWake.ChatId, lastWake.At);
+                Hub.VoiceActivityUI.NoteIncomingVoice(lastWake.ChatId, lastWake.At);
 
             // Null unless this very call opened the mic - see PttReplyUI.RequestReply.
             reply = await Hub.PttReplyUI

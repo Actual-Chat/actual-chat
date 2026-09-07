@@ -5,7 +5,7 @@ public static class HeadsetButtonPolicy
     public static HeadsetButtonState GetState(
         UserPttSettings settings,
         IReadOnlyList<ChatId> pttChatIds,
-        IReadOnlyDictionary<ChatId, Moment> lastIncomingVoiceAt,
+        IReadOnlyDictionary<ChatId, Moment> lastVoiceAt,
         Moment now,
         TimeSpan recencyWindow,
         bool isReplyHot,
@@ -14,7 +14,7 @@ public static class HeadsetButtonPolicy
         // HasAnswerWindow, not ShouldSenseStartGestures: the latter also reports a window for
         // AreGesturesAlwaysOn and practice mode, which would arm the button with nobody talking.
         var hasAnswerWindow = GestureActivationPolicy.HasAnswerWindow(
-            pttChatIds, lastIncomingVoiceAt, now, recencyWindow);
+            pttChatIds, lastVoiceAt, now, recencyWindow);
         return new(settings.IsHeadsetButtonEnabled ?? true, hasAnswerWindow, isReplyHot, isPracticeMode);
     }
 

@@ -9,7 +9,6 @@ public class GestureActivationPolicyTest
     private static readonly ChatId ChatA = ChatId.Parse("aaaaaaaaaaaaaaaaaaaa");
     private static readonly ChatId ChatB = ChatId.Parse("bbbbbbbbbbbbbbbbbbbb");
     private static readonly IReadOnlyDictionary<ChatId, Moment> NoVoice = new Dictionary<ChatId, Moment>();
-    private static readonly TimeSpan OldSinceForegrounded = TimeSpan.FromSeconds(400);
 
     [Fact]
     public void PracticeModeSensesTheStopGestureRegardlessOfTheToggle()
@@ -34,9 +33,7 @@ public class GestureActivationPolicyTest
     {
         var last = new Dictionary<ChatId, Moment> { [ChatA] = T0 - TimeSpan.FromSeconds(20) };
         GestureActivationPolicy
-            .ShouldSenseStartGestures(
-                false, false, OldSinceForegrounded,
-                [ChatA], last, T0, Window)
+            .ShouldSenseStartGestures(false, false, [ChatA], last, T0, Window)
             .Should().BeTrue();
     }
 
@@ -45,9 +42,7 @@ public class GestureActivationPolicyTest
     {
         var last = new Dictionary<ChatId, Moment> { [ChatA] = T0 - TimeSpan.FromSeconds(400) };
         GestureActivationPolicy
-            .ShouldSenseStartGestures(
-                false, false, OldSinceForegrounded,
-                [ChatA], last, T0, Window)
+            .ShouldSenseStartGestures(false, false, [ChatA], last, T0, Window)
             .Should().BeFalse();
     }
 
@@ -56,70 +51,34 @@ public class GestureActivationPolicyTest
     {
         var last = new Dictionary<ChatId, Moment> { [ChatB] = T0 - TimeSpan.FromSeconds(5) };
         GestureActivationPolicy
-            .ShouldSenseStartGestures(
-                false, false, OldSinceForegrounded,
-                [ChatA], last, T0, Window)
+            .ShouldSenseStartGestures(false, false, [ChatA], last, T0, Window)
             .Should().BeFalse();
     }
 
     [Fact]
     public void AlwaysOnSensesWithoutVoice()
         => GestureActivationPolicy
-            .ShouldSenseStartGestures(
-                true, false, OldSinceForegrounded,
-                [ChatA], NoVoice, T0, Window)
+            .ShouldSenseStartGestures(true, false, [ChatA], NoVoice, T0, Window)
             .Should().BeTrue();
 
     [Fact]
     public void AlwaysOnStillNeedsAtLeastOnePttChat()
-        // A fresh foreground stamp on purpose: no armed chats disarms every path, always-on
-        // and after-open alike.
         => GestureActivationPolicy
-            .ShouldSenseStartGestures(true, false, TimeSpan.Zero, [], NoVoice, T0, Window)
+            .ShouldSenseStartGestures(true, false, [], NoVoice, T0, Window)
             .Should().BeFalse();
 
     [Fact]
     public void PracticeModeSensesWithNoPttChatsAtAll()
         => GestureActivationPolicy
-            .ShouldSenseStartGestures(
-                false, true, OldSinceForegrounded,
-                [], NoVoice, T0, Window)
+            .ShouldSenseStartGestures(false, true, [], NoVoice, T0, Window)
             .Should().BeTrue();
 
     [Fact]
-    public void SensesAfterAppOpen()
-    {
-        // The "open the app and shake" scenario: no incoming voice, not always-on - the
-        // foreground stamp alone arms the gestures for the recency window.
-        GestureActivationPolicy
-            .ShouldSenseStartGestures(
-                false, false, TimeSpan.FromSeconds(20),
-                [ChatA], NoVoice, T0, Window)
-            .Should().BeTrue();
-    }
-
-    [Fact]
-    public void AfterOpenWindowExpires()
+    public void OpeningTheAppShouldNotArmStartGestures()
+        // Voice is the only thing that arms them: an armed chat plus an open app used to be
+        // enough, which left a jostle-sized surface live for the whole answer window.
         => GestureActivationPolicy
-            .ShouldSenseStartGestures(
-                false, false, TimeSpan.FromSeconds(151),
-                [ChatA], NoVoice, T0, Window)
-            .Should().BeFalse();
-
-    [Fact]
-    public void AfterOpenStillNeedsAtLeastOnePttChat()
-        => GestureActivationPolicy
-            .ShouldSenseStartGestures(
-                false, false, TimeSpan.Zero,
-                [], NoVoice, T0, Window)
-            .Should().BeFalse();
-
-    [Fact]
-    public void NeverForegroundedNeverArmsAfterOpen()
-        // TimeSpan.MaxValue is what GestureUI passes for a headless scope that never saw
-        // the foreground - PTT wake must not inherit the after-open window.
-        => GestureActivationPolicy
-            .ShouldSenseStartGestures(false, false, TimeSpan.MaxValue, [ChatA], NoVoice, T0, Window)
+            .ShouldSenseStartGestures(false, false, [ChatA], NoVoice, T0, Window)
             .Should().BeFalse();
 
     [Fact]
@@ -159,7 +118,7 @@ public class GestureActivationPolicyTest
     [Fact]
     public void ClearingTheStampClosesTheAnswerWindow()
     {
-        // What ActivitiesBackend's Stop action does through IncomingVoiceActivityUI.ClearIncomingVoice:
+        // What ActivitiesBackend's Stop action does through VoiceActivityUI.ClearIncomingVoice:
         // without this the widget recomputes the identical state and the notification comes back.
 
         // arrange
@@ -179,15 +138,33 @@ public class GestureActivationPolicyTest
     [InlineData(GestureKind.FlipToTalk, GestureRoute.StartReply)]
     [InlineData(GestureKind.DoubleShake, GestureRoute.StartReply)]
     [InlineData(GestureKind.FaceDown, GestureRoute.StopReply)]
+    [InlineData(GestureKind.Pocket, GestureRoute.StopReply)]
     [InlineData(GestureKind.None, GestureRoute.None)]
     public void RoutesGesturesOutsidePracticeMode(GestureKind kind, GestureRoute expected)
-        => GestureActivationPolicy.Route(kind, false).Should().Be(expected);
+        => GestureActivationPolicy.Route(kind, false, isMicOpen: false).Should().Be(expected);
+
+    [Fact]
+    public void ShakeWhileTheMicIsOpenShouldStop()
+        // Nothing else can be meant by shaking a phone whose mic is already open - and it's the
+        // one stop gesture that needs neither a surface nor a pocket.
+        => GestureActivationPolicy
+            .Route(GestureKind.DoubleShake, false, isMicOpen: true)
+            .Should().Be(GestureRoute.StopReply);
+
+    [Fact]
+    public void FlipWhileTheMicIsOpenShouldStillRouteToStart()
+        // Which RequestReply then no-ops on the already-hot mic: only the shake is deliberate
+        // enough to be reused as a stop.
+        => GestureActivationPolicy
+            .Route(GestureKind.FlipToTalk, false, isMicOpen: true)
+            .Should().Be(GestureRoute.StartReply);
 
     [Fact]
     public void PracticeModeNeverTransmits()
     {
-        foreach (var kind in Enum.GetValues<GestureKind>()) {
-            var route = GestureActivationPolicy.Route(kind, true);
+        foreach (var kind in Enum.GetValues<GestureKind>())
+        foreach (var isTransmitting in new[] { false, true }) {
+            var route = GestureActivationPolicy.Route(kind, true, isTransmitting);
             route.Should().NotBe(GestureRoute.StartReply, $"{kind} must not open the mic in practice mode");
             route.Should().NotBe(GestureRoute.StopReply, $"{kind} must not touch the mic in practice mode");
         }
@@ -196,10 +173,47 @@ public class GestureActivationPolicyTest
     [Fact]
     public void PracticeModeRoutesRealGesturesToThePanel()
     {
-        GestureActivationPolicy.Route(GestureKind.FlipToTalk, true).Should().Be(GestureRoute.Practice);
-        GestureActivationPolicy.Route(GestureKind.DoubleShake, true).Should().Be(GestureRoute.Practice);
-        GestureActivationPolicy.Route(GestureKind.FaceDown, true).Should().Be(GestureRoute.Practice);
-        GestureActivationPolicy.Route(GestureKind.None, true).Should().Be(GestureRoute.None);
+        GestureActivationPolicy.Route(GestureKind.FlipToTalk, true, false).Should().Be(GestureRoute.Practice);
+        GestureActivationPolicy.Route(GestureKind.DoubleShake, true, false).Should().Be(GestureRoute.Practice);
+        GestureActivationPolicy.Route(GestureKind.FaceDown, true, false).Should().Be(GestureRoute.Practice);
+        GestureActivationPolicy.Route(GestureKind.Pocket, true, false).Should().Be(GestureRoute.Practice);
+        GestureActivationPolicy.Route(GestureKind.None, true, false).Should().Be(GestureRoute.None);
+    }
+
+    [Fact]
+    public void ShakeShouldBeSensedWithAnOpenMicAndShakeToTalkOff()
+        // The stop side rides the stop toggle: turning off a way to open the mic must never take
+        // away a way to close it.
+        => GestureActivationPolicy
+            .ShouldSenseShake(
+                isDoubleShakeEnabled: false, mustSenseStart: false,
+                mustSenseStop: true, isMicOpen: true)
+            .Should().BeTrue();
+
+    [Fact]
+    public void ShakeShouldNotBeSensedForAVideoOnlyStream()
+        // mustSenseStop also covers an outgoing camera or screencast, where a sensed shake would
+        // route to StartReply and open the very mic it isn't there to close.
+        => GestureActivationPolicy
+            .ShouldSenseShake(
+                isDoubleShakeEnabled: false, mustSenseStart: false,
+                mustSenseStop: true, isMicOpen: false)
+            .Should().BeFalse();
+
+    [Fact]
+    public void ShakeShouldNotBeSensedWhenNeitherSideWantsIt()
+    {
+        // act + assert
+        GestureActivationPolicy
+            .ShouldSenseShake(
+                isDoubleShakeEnabled: true, mustSenseStart: false,
+                mustSenseStop: false, isMicOpen: false)
+            .Should().BeFalse("nothing is armed and no mic is open");
+        GestureActivationPolicy
+            .ShouldSenseShake(
+                isDoubleShakeEnabled: false, mustSenseStart: true,
+                mustSenseStop: false, isMicOpen: false)
+            .Should().BeFalse("shake-to-talk is off");
     }
 }
 

@@ -15,7 +15,10 @@ public class ReplyTargetResolverTest
     {
         var a = Chat("aaaaaaaaaaaaaaaaaaaa"); var b = Chat("bbbbbbbbbbbbbbbbbbbb");
         var armed = new[] { a, b };
-        var last = new Dictionary<ChatId, Moment> { [a] = T0 - TimeSpan.FromSeconds(90), [b] = T0 - TimeSpan.FromSeconds(20) };
+        var last = new Dictionary<ChatId, Moment> {
+            [a] = T0 - TimeSpan.FromSeconds(90),
+            [b] = T0 - TimeSpan.FromSeconds(20),
+        };
         ReplyTargetResolver.Resolve(armed, last, focusedChatId: null, T0, Window, Window).Should().Be(b);
     }
 
@@ -41,7 +44,8 @@ public class ReplyTargetResolverTest
     public void SoleArmedFallback()
     {
         var a = Chat("aaaaaaaaaaaaaaaaaaaa");
-        ReplyTargetResolver.Resolve(new[] { a }, new Dictionary<ChatId, Moment>(), focusedChatId: null, T0, Window, Window)
+        ReplyTargetResolver.Resolve(
+            new[] { a }, new Dictionary<ChatId, Moment>(), focusedChatId: null, T0, Window, Window)
             .Should().Be(a);
     }
 
@@ -49,7 +53,8 @@ public class ReplyTargetResolverTest
     public void AmbiguousColdStart_ReturnsNull()
     {
         var a = Chat("aaaaaaaaaaaaaaaaaaaa"); var b = Chat("bbbbbbbbbbbbbbbbbbbb");
-        ReplyTargetResolver.Resolve(new[] { a, b }, new Dictionary<ChatId, Moment>(), focusedChatId: null, T0, Window, Window)
+        ReplyTargetResolver.Resolve(
+            new[] { a, b }, new Dictionary<ChatId, Moment>(), focusedChatId: null, T0, Window, Window)
             .Should().BeNull();
     }
 
@@ -162,5 +167,26 @@ public class ReplyTargetResolverTest
         // assert
         underShortWindow.Should().Be(ChatB, "a stamp beyond the user's window loses to the focused chat");
         underLongWindow.Should().Be(ChatA, "a stamp within the user's window is the first choice");
+    }
+
+    [Fact]
+    public void OwnVoiceShouldWinOverAStaleIncomingStampInAnotherChat()
+    {
+        // Continuing your own conversation with no focused chat - a headless reply, where the
+        // stale stamp in A used to be the only candidate and the follow-up went to the wrong chat.
+
+        // arrange: the merged snapshot, so B's entry is your own utterance 5s ago
+        var stamps = new Dictionary<ChatId, Moment> {
+            [ChatA] = T0 - TimeSpan.FromSeconds(600),
+            [ChatB] = T0 - TimeSpan.FromSeconds(5),
+        };
+
+        // act
+        var target = ReplyTargetResolver.Resolve(
+            [ChatA, ChatB], stamps, null, T0,
+            ReplyTargetResolver.UnboundedRecencyWindow, TimeSpan.FromSeconds(60));
+
+        // assert
+        target.Should().Be(ChatB, "the conversation you last spoke in is the one you're continuing");
     }
 }

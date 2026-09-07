@@ -17,7 +17,7 @@ public class ActivitiesBackend : IDisposable
 
     protected AppUIHub Hub { get; }
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
-    private IncomingVoiceActivityUI IncomingVoiceActivityUI => Hub.IncomingVoiceActivityUI;
+    private VoiceActivityUI VoiceActivityUI => Hub.VoiceActivityUI;
     private ActivitiesUI ActivitiesUI => field ??= Hub.Services.GetRequiredService<ActivitiesUI>();
     private LiveLocationReporter LiveLocationReporter
         => field ??= Hub.Services.GetRequiredService<LiveLocationReporter>();
@@ -145,7 +145,7 @@ public class ActivitiesBackend : IDisposable
     {
         switch (actionName) {
         case ActionNames.Stop:
-            IncomingVoiceActivityUI.ClearIncomingVoice(chatId);
+            VoiceActivityUI.ClearIncomingVoice(chatId);
             _ = ChatAudioUI.SetListeningState(chatId, false);
             break;
         case ActionNames.Pause:

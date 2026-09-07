@@ -22,7 +22,7 @@ public class PttServiceResolutionTest(ChatAppHostFixture fixture, ITestOutputHel
 
         // act + assert
         hub.PttReplyUI.Should().NotBeNull();
-        hub.IncomingVoiceActivityUI.Should().NotBeNull();
+        hub.VoiceActivityUI.Should().NotBeNull();
         hub.GestureUI.Should().NotBeNull();
         services.GetRequiredService<PttSessionCore>().Should().NotBeNull();
     }

@@ -42,9 +42,9 @@ Chats) through ordinary invalidation. Armed chats also always appear in the
 **Active Chats** list with a PTT badge, and removing one there also revokes
 consent.
 
-Between armed and hot sits the **answer window** — the period after incoming
-voice during which a gesture, a headset press or the Apple PTT Talk button may
-open the mic without any further confirmation. `IncomingVoiceActivityUI` stamps
+Between armed and hot sits the **answer window** — the period after voice
+during which a gesture, a headset press or the Apple PTT Talk button may
+open the mic without any further confirmation. `VoiceActivityUI` stamps
 `_lastIncomingAt[chatId]` on both edges of `HasIncomingVoice` (voice from an
 author other than your own — `ShouldStamp` / `ShouldStampEnd`), tracks chats
 with live incoming voice so their snapshot stamp reads as `now`
@@ -54,6 +54,31 @@ over. The net effect: the window covers the whole utterance and runs from its
 END for `UserPttSettings.AnswerWindow` (15/30/60 s, default 15 s).
 `GestureActivationPolicy.HasAnswerWindow` / `GetAnswerWindowChat` ask whether
 any armed chat has a stamp newer than `now - answerWindow`.
+
+**Your own voice opens a window too.** `TrackOwnVoice` watches the edges of
+`ChatAudioUI.GetRecordingChatId` — the single point every closing path passes
+through, gesture, record button and notification action alike — into a parallel
+`_lastOwnAt` / `_liveOwn` pair. Without it the window stays dated from the other
+party's utterance, so a 30 s reply of yours consumes most of a 15 s window and
+your follow-up can't be gestured. `SnapshotLastVoiceAt` merges the two maps
+(`MergeSnapshots`, latest per chat) and is what every *arming* decision reads:
+the gesture policy, the headset button and the notification countdown, plus
+`ReplyTargetResolver`, where "the chat you last spoke in" is as good an answer to
+"which conversation is this" as "the chat somebody last spoke in".
+`SnapshotLastIncomingVoiceAt` remains for `PttSession.HandOff`, which replays
+stamps through `NoteIncomingVoice` and must not inject your own as incoming.
+One exception: a reply that never heard voice must not re-arm the triggers that
+opened it, or a single false gesture keeps its own window alive for another
+round. `PttReplyUI.CloseReply` calls `SuppressOwnVoiceWindow(chatId)` **before**
+`SetRecordingChatId(null)` — the falling edge it suppresses is raised by that
+very close, so setting the flag afterwards would lose the race.
+
+**Opening the app arms nothing.** Only voice does (`AreGesturesAlwaysOn` and
+practice mode aside). An after-open window existed and was removed: a gesture
+surface that is live whenever the app is open is one an ordinary jostle can
+fire, and the notification's *Reply* action already starts a conversation from
+cold — `AddReplyActions` posts it in every non-recording state and it resolves
+with an unbounded window.
 
 ```mermaid
 stateDiagram-v2
@@ -267,7 +292,7 @@ and in the live WebView scope.
 
 1. Sets `ChatAudioUI.IsPttHeadless` when headless, calls
    `ChatAudioUI.Enable()`, and stamps
-   `IncomingVoiceActivityUI.NoteIncomingVoice(chatId, Ptt.GetWakeAnswerStamp(startedAt, now))`
+   `VoiceActivityUI.NoteIncomingVoice(chatId, Ptt.GetWakeAnswerStamp(startedAt, now))`
    — without this an utterance that ended during the boot would never open an
    answer window. A fresh wake stamps its handling time (a boot delay must not
    eat a short answer window); a stale one keeps `startedAt`, so it can't arm
@@ -473,10 +498,10 @@ permanently.
 
 ### `ReplyTargetResolver`
 
-Given the armed chats, the `IncomingVoiceActivityUI` snapshot, the focused chat,
+Given the armed chats, the merged `VoiceActivityUI` snapshot, the focused chat,
 a resolution window and the ordinary (user's `AnswerWindow`) window:
 
-1. Pick the armed chat with the newest incoming-voice stamp inside the window.
+1. Pick the armed chat with the newest voice stamp inside the window.
 2. If that best stamp is older than the ordinary window, treat it as
    stale and prefer the focused chat when it is armed — otherwise an unbounded
    window would let a days-old stamp outrank the chat you are looking at.
@@ -493,25 +518,64 @@ and the resolver special-cases it to `Moment.EpochStart` rather than computing
 | Trigger | Path |
 |---|---|
 | Flip-to-talk, double-shake | `GestureUI.OnSample` → `GestureRecognizer` → `GestureActivationPolicy.Route` → `PttMicCapability.HoldWhile(RequestReply)` |
-| Face-down | same, routed to `StopReply` |
+| Put the phone away (face-down, pocket) | same, routed to `StopReply` |
+| Double-shake with the mic open | same, routed to `StopReply` |
+| Android screen locked | `AndroidActivitiesForegroundService.ScreenOffReceiver` → `PttReplyUI.StopReply` |
 | Android headset button | `AndroidActivitiesForegroundService` media session → `HeadsetButtonPolicy.Decide` |
 | Apple PTT Talk button | `IosPtt.OnTransmitBegan` → `PttSession.HandleTransmit` |
 
 **Gestures.** `GestureUI` is a `UIWorkerBase` that owns the sensor subscription
 lifecycle: `SensorFeed` (no-op base class — there are no sensors on the web),
 `GestureRecognizer` over `FlipToTalkDetector`, `ShakeDetector` and
-`FaceDownDetector`, with the stop gesture evaluated first (on a live mic,
-closing always beats opening). Its `TrackActivation` loop recomputes
+`FaceDownDetector`, with the stop gestures evaluated first and never suppressed
+(on a live mic, closing always beats opening). Its `TrackActivation` loop recomputes
 `GestureOptions` from `UserPttSettings` and
-`GestureActivationPolicy.ShouldSenseStartGestures(areGesturesAlwaysOn, isPracticeMode, pttChatIds, lastIncomingVoiceAt, now, recencyWindow)`,
-so **start** sensing is normally scoped to the answer window; `AreGesturesAlwaysOn`
+`GestureActivationPolicy.ShouldSenseStartGestures(areGesturesAlwaysOn, isPracticeMode, pttChatIds, lastVoiceAt, now, recencyWindow)`,
+so **start** sensing is scoped to the answer window; `AreGesturesAlwaysOn`
 and practice mode are the two documented exceptions. The loop's floor is
 `PttGestureCheckMinPeriod` (0.25 s) — its inputs invalidate far more
 often than the check period and it runs on battery-sensitive devices — and it
-wakes early on `IncomingVoiceActivityUI.IncomingVoiceStamped`, the
+wakes early on `VoiceActivityUI.VoiceStamped`, the
 `PttChatIds` / recording-chat / app-settings invalidations, or after
 `PttIdleCheckPeriod`. `IsPracticeMode = false` disarms synchronously
 rather than waiting for the next tick.
+
+**Stop gestures.** There are two the user is taught — *put the phone away* and
+*shake again* — over three detections, and the surface is deliberately wider than
+the start one: a stop that fires by mistake ends your utterance early, which you
+notice, while a stop that fails to fire leaves the mic open until the hot window
+expires. `FaceDownDetector` reports `GestureKind.FaceDown` (Z ≤ −0.85) or
+`GestureKind.Pocket` (covered and near-vertical, either way up), and **both now
+require the proximity sensor to be covered** — a phone put down or pocketed covers
+it, one flipped in mid-air doesn't, which is the false stop the requirement
+removes. The dwell keeps running while uncovered, so a phone flipped over in the
+hand fires the moment it lands rather than restarting its 700 ms on the surface.
+The pocket branch stays orientation-agnostic on purpose: narrowing it to the
+taught inverted insert would leave the mic open in a pocket entered the other way
+up. A slow entry (a recline, not a flip) additionally needs `StillDwell`.
+
+`ShouldSenseShake(isDoubleShakeEnabled, mustSenseStart, mustSenseStop, isMicOpen)`
+arms the shake detector for either side, and `Route` reads `isMicOpen` to decide
+which one a fire meant: with the mic open a shake can only mean stop. The stop
+side therefore rides the **stop** toggle rather than shake-to-talk — turning off a
+way to open the mic must not take away a way to close it — and it is `isMicOpen`,
+not `mustSenseStop`'s wider "transmitting", because a shake sensed for a
+video-only stream would route to `StartReply` and open the very mic it isn't
+there to close. In `GestureRecognizer.Process` the stop shake runs ahead of the
+proximity/upside-down guard, like the put-away detector: that guard exists to stop
+a jostle from opening a mic, not from closing one.
+
+**Screen-off (Android).** While the mic is open `ChatUI.MustKeepAwake` holds
+`KeepScreenOn`, so the display cannot time out under our own activity — which
+leaves a deliberate power-button press as the reason for an `ACTION_SCREEN_OFF`
+during a recording, and *locking the phone always stops transmission* becomes a
+one-sentence invariant. `AndroidActivitiesForegroundService` registers
+`ScreenOffReceiver` only while the notification kind is `Recording`, gated by
+`GestureUI.IsStopGestureEnabled`. It stops the mic only: unlike face-down or
+pocketing, pressing power says nothing about a camera. `KeepScreenOn` is a window
+flag, so a foreground *other* app can still time the screen out mid-reply and
+close the mic early — rare, and the safe direction to fail in. There is no iOS
+equivalent: no reliable lock event exists there.
 
 **Android headset button.** The media session's `OnMediaButtonEvent` maps
 `Keycode.Headsethook` / `Keycode.MediaPlayPause` to `HeadsetKey` and asks
@@ -626,10 +690,10 @@ devices:
 | `PttChats` | `[]` | Per-chat consent entries `(ChatId, JoinedAt)`; armed iff `JoinedAt >= Chat.PttEnabledAt`. `MaxChatCount = 3`, matching `ActiveChatsUI.MaxActiveChatCount`, which also bounds server wake fan-out per speaker; adding beyond the cap evicts the least-recently-joined entry |
 | `PttChatIds` | `[]` | Legacy mirror of `PttChats` (ids only), kept in sync for pre-epoch readers; ids present here but not in `PttChats` surface via `AllPttChats` with `JoinedAt = default`, i.e. never armed |
 | `IsFlipToTalkEnabled` | `true` | Flip-to-talk start gesture |
-| `IsDoubleShakeEnabled` | `true` | Double-shake start gesture |
+| `IsDoubleShakeEnabled` | `true` | Double-shake start gesture. The stop-side shake rides the stop toggle instead, so switching this off keeps "shake again to stop" |
 | `ShakeSensitivity` | `Medium` | Ordered so `Medium` is the zero default; firing sets nest `Low ⊆ Medium ⊆ High` |
 | `AreGesturesAlwaysOn` | `false` | Sense start gestures outside the answer window |
-| `AnswerWindow` | 15 s | How long after an incoming utterance ends (or the app opens) the hands-free reply triggers stay armed; 15/30/60 s in the UI, shown only while `AreGesturesAlwaysOn` is off. The getter normalizes a missing member (zero) to the default |
+| `AnswerWindow` | 15 s | How long after an utterance ends — either party's — the hands-free reply triggers stay armed; 15/30/60 s in the UI, shown only while `AreGesturesAlwaysOn` is off. The getter normalizes a missing member (zero) to the default |
 | `HotWindow` | 60 s | Idle duration handed to `SetRecordingChatId` for a PTT reply; 15/30/60 s in the UI, and the getter caps stored values at `PttHotWindowMax` (60 s — blobs may carry the retired 2-minute option); clamped to `PttReplyBackgroundHotWindow` (15 s) when the reply starts in background or headless |
 | `AreAudibleCuesEnabled` | `true` | Begin/end/nothing-heard tunes |
 | `IsHeadsetButtonEnabled` | `null` → `true` | Headset hook / play-pause opens a reply |
