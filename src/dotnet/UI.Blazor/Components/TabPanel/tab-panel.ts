@@ -44,7 +44,7 @@ export class TabPanel {
         if (!this.hill)
             return;
 
-        this.activeTab = this.tabs.querySelector('.btn-group-container.selected-tab');
+        this.activeTab = this.tabs.querySelector('.btn-tab-wrapper.selected-tab');
         fastRaf(() => {
             fastRaf(() => {
                 this.update();
@@ -59,7 +59,7 @@ export class TabPanel {
                 if (
                     mutation.type === 'attributes' &&
                     mutation.target instanceof HTMLElement &&
-                    mutation.target.classList.contains('btn-group-container')
+                    mutation.target.classList.contains('btn-tab-wrapper')
                 ) {
                     needsUpdate = true;
                 }
@@ -67,14 +67,14 @@ export class TabPanel {
                     // A tab button was inserted/removed (e.g. the Call tab appearing): a node added
                     // already-selected fires no attribute mutation, so track its size and reposition here.
                     mutation.addedNodes.forEach(node => {
-                        if (node instanceof HTMLElement && node.classList.contains('btn-group-container'))
+                        if (node instanceof HTMLElement && node.classList.contains('btn-tab-wrapper'))
                             this.resizeObserver?.observe(node);
                     });
                     needsUpdate = true;
                 }
             }
             if (needsUpdate) {
-                const active = this.tabs?.querySelector('.btn-group-container.selected-tab');
+                const active = this.tabs?.querySelector('.btn-tab-wrapper.selected-tab');
                 if (active) {
                     const isSelectionChanged = active !== this.activeTab;
                     this.activeTab = active;
@@ -99,7 +99,7 @@ export class TabPanel {
         });
 
         this.resizeObserver.observe(this.scrollContainer);
-        this.tabs.querySelectorAll('.btn-group-container')
+        this.tabs.querySelectorAll('.btn-tab-wrapper')
             .forEach(tab => this.resizeObserver.observe(tab));
 
         fromEvent(this.scrollContainer, 'scroll')

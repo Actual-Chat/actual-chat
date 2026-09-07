@@ -98,11 +98,11 @@ body.hoverable .contact-selector-badges > .c-contact:hover .c-remove {
     @apply justify-start;
 }
 
-.contact-selector-place-picker .tab-panel-tabs .btn-group-container {
+.contact-selector-place-picker .tab-panel-tabs .btn-tab-wrapper {
     @apply min-h-12 max-h-12;
     @apply justify-between;
 }
-.contact-selector-place-picker .btn.tab-btn {
+.contact-selector-place-picker .btn.btn-tab {
     @apply min-w-10 max-w-10 min-h-10 max-h-10;
     @apply p-0;
     @apply bg-square;

@@ -63,7 +63,7 @@
         }
         @if (canReply) {
             <MenuEntry
-                Icon="icon-reply"
+                Icon="icon-reply-2"
                 FocusOnEditor="true"
                 Text="@L.MessageMenu_Reply"
                 Click="@Reply">
@@ -116,7 +116,7 @@
         }
         @if (canForward) {
             <MenuEntry
-                Icon="icon-share"
+                Icon="icon-forward"
                 Text="@L.MessageMenu_Forward"
                 Click="@(() => SelectionUI.Forward(e.Id))">
             </MenuEntry>
@@ -153,7 +153,7 @@
                 Click="@(() => SelectionUI.CopyToClipboard())">
             </MenuEntry>
             <MenuEntry
-                Icon="icon-share"
+                Icon="icon-forward"
                 Text="@L.MessageMenu_ForwardSelection"
                 Click="@(() => SelectionUI.Forward())">
             </MenuEntry>

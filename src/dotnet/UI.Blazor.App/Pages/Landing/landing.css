@@ -223,7 +223,7 @@ body.wide.app-maui .landing .landing-header {
 body.narrow .landing .landing-header .c-btn-group {
     @apply hidden;
 }
-.landing .landing-header .btn-text {
+.landing .landing-header .landing-nav-btn {
     @apply flex-x items-center justify-center gap-x-2;
     @apply min-w-fit w-fit;
     @apply px-2;
@@ -240,7 +240,7 @@ body.narrow .landing .landing-header .c-btn-group {
 .landing .landing-header.filled .dark-title {
     @apply opacity-100;
 }
-.landing .landing-header.filled .btn-text {
+.landing .landing-header.filled .landing-nav-btn {
     @apply text-01;
     @apply ease-in-out duration-300;
     transition-property: color;

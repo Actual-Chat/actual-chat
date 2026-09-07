@@ -96,7 +96,7 @@ export class RightPanelCollapse {
         // Switching tabs re-expands the header: the freshly shown list (often shorter) shouldn't stay
         // collapsed under a header the user can no longer scroll back open.
         fromEvent(this.content, 'click', { capture: true }).pipe(
-            filter(e => (e.target instanceof Element) && e.target.closest('.tab-btn') != null),
+            filter(e => (e.target instanceof Element) && e.target.closest('.btn-tab') != null),
             takeUntil(this.disposed$),
         ).subscribe(() => this.expandForTabSwitch());
 

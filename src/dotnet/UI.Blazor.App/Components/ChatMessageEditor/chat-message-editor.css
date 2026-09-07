@@ -710,7 +710,7 @@ body.narrow .related-chat-entry:has(.c-content) {
 
 body.narrow .related-chat-entry-panel .related-chat-entry .avatar-name,
 body.narrow .related-chat-entry-panel .related-chat-entry .icon-close,
-body.narrow .related-chat-entry-panel .related-chat-entry .icon-reply,
+body.narrow .related-chat-entry-panel .related-chat-entry .icon-reply-2,
 body.narrow .related-chat-entry-panel .related-chat-entry .quote-text,
 body.narrow .related-chat-entry-panel .related-chat-entry .icon-edit {
     @apply text-post-panel-text;

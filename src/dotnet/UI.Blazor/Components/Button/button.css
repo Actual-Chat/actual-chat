@@ -9,16 +9,9 @@ body.device-ios * {
     display: none;
     border-radius: 9999px;
     inset: -0.5rem;
-    transform-origin: center center;
-    transition: transform 150ms ease;
-    transform: scale(1);
 }
 .touch-capable .button-touch-target {
     display: block;
-}
-.touch-capable .btn-h:not(.unhovered):active .button-touch-target {
-    @apply bg-hover;
-    transform: scale(1.2);
 }
 
 /* Sizes */
@@ -34,6 +27,29 @@ body.device-ios * {
     /* The sheen itself is opt-in, on the rules below that give the button a fill: a bare .btn has
        none, and a wash with nothing under it just tints whatever the button sits on. */
     --sheen-fill: var(--sheen-surface);
+    /* Press comes in instantly, release fades. The state colour lives on ::after below, so its
+       own background-color has to carry the fade; color 130ms is for the header glyph channel. */
+    transition: box-shadow 130ms ease, color 130ms ease;
+}
+.btn:active {
+    transition-duration: 0ms;
+}
+/* The state overlay: transparent at rest, tinted by the :hover/:active rules. Kept present at
+   rest (not only on state) so background-color can transition both ways. */
+.btn::after {
+    @apply content-empty absolute inset-0;
+    @apply pointer-events-none;
+    background-color: transparent;
+    transition: background-color 130ms ease;
+}
+.btn:active::after {
+    transition-duration: 0ms;
+}
+@media (prefers-reduced-motion: reduce) {
+    .btn,
+    .btn::after {
+        transition: none;
+    }
 }
 .btn.compact {
     @apply p-0;
@@ -80,12 +96,12 @@ body.device-ios * {
 }
 /* .btn-xs and .btn-sm stay on one line — the row rhythm of toolbars and tab rails depends
    on it. Every other size grows to two lines rather than losing characters.
-   .tab-btn too: a strip detects overflow only while its labels keep scrollWidth past clientWidth. */
-.btn:not(.btn-xs, .btn-sm, .tab-btn) > .btn-content {
+   .btn-tab too: a strip detects overflow only while its labels keep scrollWidth past clientWidth. */
+.btn:not(.btn-xs, .btn-sm, .btn-tab) > .btn-content {
     @apply whitespace-normal;
 }
-.btn:not(.btn-xs, .btn-sm, .tab-btn) > .btn-content:not(:has(*)),
-.btn:not(.btn-xs, .btn-sm, .tab-btn) > .btn-content > span {
+.btn:not(.btn-xs, .btn-sm, .btn-tab) > .btn-content:not(:has(*)),
+.btn:not(.btn-xs, .btn-sm, .btn-tab) > .btn-content > span {
     @apply line-clamp-2;
     @apply whitespace-normal;
 }
@@ -124,47 +140,70 @@ body.device-ios * {
     @apply sheen;
 }
 
-/* Hover, Focus, Active */
-body.hoverable .btn:hover::after {
+/* Hover, Active — one unified overlay for every variant: hover shifts the surface one step, press two.
+   Light themes darken (black over the fill); dark lightens (white), since outline and transparent
+   interiors are near-black there and a darkening wash wouldn't register. */
+body.hoverable .btn:hover:not(:active)::after {
     @apply hover-after;
-    @apply bg-after-darker;
+    @apply bg-btn-hover;
 }
-body.hoverable .btn.btn-cancel:hover::after {
+.btn:active::after {
     @apply hover-after;
-    @apply bg-hover-after-primary;
+    @apply bg-btn-active;
 }
-body.hoverable .btn.unhovered:hover::after {
+body.hoverable .btn.unhovered:hover:not(:active)::after {
     @apply hidden;
 }
-.btn:active {
-    filter: blur(0.04rem);
+
+/* Tinted wash — outline and .btn-tinted round buttons key their state to the accent instead of the
+   neutral shift: blue for default/primary, magenta for danger. Cancel keeps the neutral overlay above.
+   Theme-independent (translucent over the fill), so it reads the same in light and dark. */
+body.hoverable .btn.btn-outline:hover:not(:active)::after,
+body.hoverable .btn.btn-round.btn-tinted:hover:not(:active)::after {
+    @apply bg-btn-tint-hover;
 }
-.btn.pseudo-disabled:active,
-.btn:disabled:active {
-    filter: none;
+.btn.btn-outline:active::after,
+.btn.btn-round.btn-tinted:active::after {
+    @apply bg-btn-tint-active;
+}
+body.hoverable .btn.btn-outline.btn-danger:hover:not(:active)::after,
+body.hoverable .btn.btn-outline.btn-danger-light:hover:not(:active)::after,
+body.hoverable .btn.btn-round.btn-tinted.btn-danger:hover:not(:active)::after {
+    @apply bg-btn-tint-danger-hover;
+}
+.btn.btn-outline.btn-danger:active::after,
+.btn.btn-outline.btn-danger-light:active::after,
+.btn.btn-round.btn-tinted.btn-danger:active::after {
+    @apply bg-btn-tint-danger-active;
+}
+body.hoverable .btn.btn-outline.btn-cancel:hover:not(:active)::after {
+    @apply bg-btn-hover;
+}
+.btn.btn-outline.btn-cancel:active::after {
+    @apply bg-btn-active;
 }
 
 /* Outline Button */
 .btn.btn-outline,
 .btn.btn-outline.btn-primary {
     @apply border border-primary;
-    @apply bg-pal-blue-50-05;
+    @apply bg-outline-bg-primary;
     @apply text-primary;
     @apply no-sheen;
 }
 .btn.btn-outline.btn-danger {
     @apply border-danger;
-    @apply bg-pal-magenta-50-05;
+    @apply bg-outline-bg-danger;
     @apply text-danger;
 }
 .btn.btn-outline.btn-danger-light {
     @apply border-danger-light;
-    @apply bg-pal-magenta-50-05;
+    @apply bg-outline-bg-danger;
     @apply text-danger-light;
 }
 .btn.btn-outline.btn-cancel {
     @apply border-cancel-text;
-    @apply bg-pal-ash-50-05;
+    @apply bg-outline-bg-cancel;
     @apply text-cancel-text;
 }
 
@@ -175,24 +214,6 @@ body.hoverable .btn.unhovered:hover::after {
     @apply !text-cancel-text;
     @apply !border-cancel-text;
     @apply opacity-50;
-}
-
-/* Outline Hover */
-body.hoverable .btn.btn-outline:hover::after {
-    @apply hover-after;
-    @apply bg-hover-after-primary;
-}
-body.hoverable .btn.btn-outline.btn-danger:hover::after {
-    @apply hover-after;
-    @apply bg-hover-after-danger;
-}
-body.hoverable .btn.btn-outline.btn-danger-light:hover::after {
-    @apply hover-after;
-    @apply bg-hover-after-danger;
-}
-body.hoverable .btn.btn-outline.btn-cancel:hover::after {
-    @apply hover-after;
-    @apply bg-hover-after-cancel;
 }
 
 /* Transparent Button */
@@ -217,34 +238,6 @@ body.hoverable .btn.btn-outline.btn-cancel:hover::after {
     @apply !text-cancel-text;
     @apply !border-transparent;
     @apply opacity-50;
-}
-
-/* Transparent hover */
-body.hoverable .btn.btn-transparent:hover::after {
-    @apply hover-after;
-    @apply bg-hover-after-primary;
-}
-body.hoverable .btn.btn-transparent.btn-danger:hover::after {
-    @apply hover-after;
-    @apply bg-hover-after-danger;
-}
-body.hoverable .btn.btn-transparent.btn-cancel:hover::after {
-    @apply hover-after;
-    @apply bg-hover-after-cancel;
-}
-
-/* Transparent focus, active */
-.btn.btn-transparent:active::after {
-    @apply hover-after;
-    @apply bg-focus-after-primary;
-}
-.btn.btn-transparent.btn-danger:active::after {
-    @apply hover-after;
-    @apply bg-focus-after-danger;
-}
-.btn.btn-transparent.btn-cancel:active::after {
-    @apply hover-after;
-    @apply bg-focus-after-cancel;
 }
 
 /* Modal Button */
@@ -275,18 +268,6 @@ body.hoverable .btn.btn-transparent.btn-cancel:hover::after {
     @apply !text-cancel-text;
     @apply !border-transparent;
     @apply opacity-50;
-}
-
-/* Modal hover */
-body.hoverable .btn.btn-modal:hover::after {
-    @apply hover-after;
-    @apply bg-after-darker;
-}
-
-/* Modal focus, active */
-.btn.btn-modal:active::after {
-    @apply hover-after;
-    @apply bg-after-lighter;
 }
 
 /* Button Square and Round */
@@ -347,39 +328,51 @@ body.hoverable .btn.btn-modal:hover::after {
     @apply py-2;
 }
 
-/* Button Tile — flat: no fill, color variants only tint the hover/active ::after overlay */
-.btn.btn-tile.btn-primary,
-.btn.btn-tile.btn-danger,
-.btn.btn-tile.btn-cancel {
+/* Button Tile — two independent axes. Intent (btn-primary/danger/cancel) sets ONLY the text/icon
+   colour; fill (btn-tile-filled) sets ONLY the surface. A bare tile is transparent with default text.
+   Hover/active ride the shared ::after overlay: transparent tiles tint it to the intent (blue/magenta,
+   neutral for cancel/default), a filled tile keeps the neutral overlay so it just lifts a step. The
+   caption stays --text-03 on every intent, so a danger tile with a caption isn't magenta all over. */
+.btn.btn-tile {
+    @apply text-01;
     @apply bg-transparent;
 }
-body.hoverable .btn.btn-tile:hover::after,
-.touch-capable .btn.btn-tile:active::after,
-body.hoverable .btn.btn-tile.btn-primary:hover::after,
-.touch-capable .btn.btn-tile.btn-primary:active::after {
-    @apply hover-after;
-    @apply bg-hover-after-primary;
+.btn.btn-tile.btn-primary {
+    @apply text-primary;
 }
-body.hoverable .btn.btn-tile.btn-danger:hover::after,
-.touch-capable .btn.btn-tile.btn-danger:active::after {
-    @apply hover-after;
-    @apply bg-hover-after-danger;
+.btn.btn-tile.btn-danger {
+    @apply text-danger;
 }
-body.hoverable .btn.btn-tile.btn-cancel:hover::after,
-.touch-capable .btn.btn-tile.btn-cancel:active::after {
-    @apply hover-after;
-    @apply bg-hover-after-cancel;
+.btn.btn-tile.btn-cancel {
+    @apply text-03;
 }
-
-/* Button Square and Round Hover */
-body.hoverable .btn.btn-square:hover::after,
-.touch-capable .btn.btn-square:active::after,
-body.hoverable .btn.btn-round:hover::after,
-.touch-capable .btn.btn-round:active::after {
-    @apply hover-after;
-    @apply bg-hover-after-primary;
+.btn.btn-tile.btn-tile-filled {
+    @apply bg-btn-tile-fill;
 }
-
+body.hoverable .btn.btn-tile.btn-primary:not(.btn-tile-filled):hover:not(:active)::after {
+    @apply bg-btn-tint-hover;
+}
+.btn.btn-tile.btn-primary:not(.btn-tile-filled):active::after {
+    @apply bg-btn-tint-active;
+}
+body.hoverable .btn.btn-tile.btn-danger:not(.btn-tile-filled):hover:not(:active)::after {
+    @apply bg-btn-tint-danger-hover;
+}
+.btn.btn-tile.btn-danger:not(.btn-tile-filled):active::after {
+    @apply bg-btn-tint-danger-active;
+}
+/* Disabled stays flat - no forced bg-03; transparent keeps transparent, filled just dims. */
+.btn.btn-tile.pseudo-disabled,
+.btn.btn-tile:disabled {
+    @apply !bg-transparent;
+    @apply !text-04;
+}
+.btn.btn-tile.btn-tile-filled.pseudo-disabled,
+.btn.btn-tile.btn-tile-filled:disabled {
+    @apply !bg-btn-tile-fill;
+    @apply !text-04;
+    @apply opacity-70;
+}
 /* Button Square and Round Transparent */
 .btn.btn-square.btn-transparent,
 .btn.btn-round.btn-transparent {
@@ -392,13 +385,6 @@ body.hoverable .btn.btn-round.btn-transparent:hover,
 .touch-capable .btn.btn-round.btn-transparent:active {
     @apply text-02;
 }
-body.hoverable .btn.btn-square.btn-transparent:hover::after,
-.touch-capable .btn.btn-square.btn-transparent:active::after,
-body.hoverable .btn.btn-round.btn-transparent:hover::after,
-.touch-capable .btn.btn-round.btn-transparent:active::after {
-    @apply hover-after;
-    @apply bg-hover-after-primary;
-}
 
 /* Button Square and Round Primary */
 body.hoverable .btn.btn-square.btn-primary:hover,
@@ -408,14 +394,7 @@ body.hoverable .btn.btn-round.btn-primary:hover,
     @apply text-primary;
 }
 
-/* Button Square and Round Danger */
-body.hoverable .btn.btn-square.btn-danger:hover::after,
-.touch-capable .btn.btn-square.btn-danger:active::after,
-body.hoverable .btn.btn-round.btn-danger:hover::after,
-.touch-capable .btn.btn-round.btn-danger:active::after {
-    @apply hover-after;
-    @apply bg-hover-after-danger;
-}
+/* Button Square and Round Danger — glyph turns red; the overlay stays the neutral icon tint. */
 body.hoverable .btn.btn-square.btn-danger:hover,
 .touch-capable .btn.btn-square.btn-danger:active,
 body.hoverable .btn.btn-round.btn-danger:hover,
@@ -424,8 +403,8 @@ body.hoverable .btn.btn-round.btn-danger:hover,
 }
 
 /* Button Square and Round Unhovered */
-body.hoverable .btn.btn-square.unhovered:hover::after,
-body.hoverable .btn.btn-round.unhovered:hover::after {
+body.hoverable .btn.btn-square.unhovered:hover:not(:active)::after,
+body.hoverable .btn.btn-round.unhovered:hover:not(:active)::after {
     @apply hidden;
 }
 body.hoverable .btn.btn-square.unhovered:hover,
@@ -437,11 +416,6 @@ body.hoverable .btn.btn-square.btn-square.unhovered:hover,
 body.hoverable .btn.btn-round.btn-round.unhovered:hover {
     @apply bg-transparent;
     @apply no-sheen;
-}
-
-body.hoverable .btn.btn-square.unhovered:active,
-body.hoverable .btn.btn-round.unhovered:active {
-    filter: none;
 }
 
 /* Button Square and Round Cancel */
@@ -507,21 +481,32 @@ button.off, .btn.off {
     @apply text-round-title;
 }
 
-/* Header Button */
+/* Header Button — the only view where the glyph colour is the whole signal: no substrate, border or
+   size change in any state. Press snaps to the accent instantly, then fades over 130ms; that fade
+   tail is what makes it read on a quick touch tap without any JS hold. */
 .btn-h {
     @apply relative;
     @apply flex-none flex items-center justify-center;
     @apply text-03;
+    transition: color 130ms ease;
+}
+.btn-h:active {
+    transition-duration: 0ms;
+}
+@media (prefers-reduced-motion: reduce) {
+    .btn-h {
+        transition: none;
+    }
 }
 body.hoverable .btn-h:hover {
-    @apply text-02;
+    @apply text-01;
 }
 body.hoverable .btn-h.unhovered:hover {
     @apply text-03;
     @apply cursor-default;
 }
 .btn-h:not(:disabled):active {
-    filter: opacity(0.9) blur(0.04rem) drop-shadow(0px 0px 2px var(--gray-20-20));
+    @apply text-primary;
 }
 .btn-h > .c-content {
     @apply relative;
@@ -552,6 +537,82 @@ body.hoverable .btn-h.unhovered:hover {
 .btn-submit.pseudo-disabled,
 .btn-submit:disabled {
     @apply text-04;
+}
+
+/* Text Button - a link, not a surface: no fill, border or ::after wash in any state; only the label
+   colour shifts (light deepens, dark lightens - toward more contrast against the surface). Keyboard
+   focus is drawn globally by a11y.css (body.keyboard-focus), so this only needs a radius for that
+   ring to round; the mouse never shows it. */
+.btn.btn-text {
+    @apply bg-transparent no-sheen;
+    @apply border-0;
+    @apply px-1 min-h-0;
+    @apply rounded-lg;
+    transition: color 130ms ease;
+}
+.btn.btn-text:active {
+    transition-duration: 0ms;
+}
+.btn.btn-text::after {
+    @apply hidden;
+}
+/* Sizes shift only the type - a link has no fixed box, so every size stays height-auto. */
+.btn.btn-text,
+.btn.btn-text.btn-xxs,
+.btn.btn-text.btn-xs,
+.btn.btn-text.btn-sm,
+.btn.btn-text.btn-md,
+.btn.btn-text.btn-lg {
+    @apply min-h-0 max-h-none;
+}
+.btn.btn-text,
+.btn.btn-text.btn-md {
+    @apply text-headline-1;
+}
+.btn.btn-text.btn-xxs {
+    @apply text-caption-6;
+}
+.btn.btn-text.btn-xs {
+    @apply text-caption-3;
+}
+.btn.btn-text.btn-sm {
+    @apply text-caption-1;
+}
+.btn.btn-text.btn-lg {
+    @apply text-title-1;
+}
+.btn.btn-text,
+.btn.btn-text.btn-primary {
+    @apply text-primary;
+}
+.btn.btn-text.btn-danger {
+    @apply text-danger;
+}
+.btn.btn-text.btn-cancel {
+    @apply text-02;
+}
+body.hoverable .btn.btn-text:hover:not(:active),
+body.hoverable .btn.btn-text.btn-primary:hover:not(:active) {
+    @apply text-btn-text-primary-hover;
+}
+.btn.btn-text:active,
+.btn.btn-text.btn-primary:active {
+    @apply text-btn-text-primary-active;
+}
+body.hoverable .btn.btn-text.btn-danger:hover:not(:active) {
+    @apply text-btn-text-danger-hover;
+}
+.btn.btn-text.btn-danger:active {
+    @apply text-btn-text-danger-active;
+}
+body.hoverable .btn.btn-text.btn-cancel:hover:not(:active),
+.btn.btn-text.btn-cancel:active {
+    @apply text-01;
+}
+.btn.btn-text.pseudo-disabled,
+.btn.btn-text:disabled {
+    @apply !bg-transparent;
+    @apply !text-04;
 }
 
 /* Timer Button */

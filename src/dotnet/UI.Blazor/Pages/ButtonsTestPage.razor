@@ -4,217 +4,206 @@
 <MainHeader>Buttons</MainHeader>
 
 @{
+    var colors = new (string Label, string Cls)[] {
+        ("Default", ""),
+        ("Primary", "btn-primary"),
+        ("Danger", "btn-danger"),
+        ("Cancel", "btn-cancel"),
+    };
+    var iconColors = new (string Label, string Cls)[] {
+        ("Default", ""),
+        ("Primary", "btn-primary"),
+        ("Danger", "btn-danger"),
+        ("Cancel", "btn-cancel"),
+        ("Transparent", "btn-transparent"),
+    };
+    var sizes = new (string Label, string Cls)[] {
+        ("LG", "btn-lg"),
+        ("MD", ""),
+        ("SM", "btn-sm"),
+        ("XS", "btn-xs"),
+    };
+    var textSizes = new (string Label, string Cls)[] {
+        ("LG", "btn-lg"),
+        ("MD", ""),
+        ("SM", "btn-sm"),
+        ("XS", "btn-xs"),
+        ("XXS", "btn-xxs"),
+    };
+    var styles = new (string Label, string Cls)[] {
+        ("Solid", ""),
+        ("Outline", "btn-outline"),
+        ("Transparent", "btn-transparent"),
+        ("Modal", "btn-modal"),
+    };
+}
+
+@{
     RenderFragment buttons =
         @<text>
-            <h2>Timer buttons</h2>
-            <div class="flex-x gap-4 flex-wrap">
-                <div class="flex-y items-center justify-center gap-y-1 w-16 bg-red-400">
-                    <i class="icon-loading text-2xl"></i>
+            @foreach (var style in styles) {
+                <h2>@style.Label buttons</h2>
+                <div class="flex-y gap-y-2">
+                    @foreach (var c in colors) {
+                        <div class="flex-x items-center gap-3 flex-wrap">
+                            <span class="w-20 text-xs opacity-60">@c.Label</span>
+                            @foreach (var z in sizes) {
+                                <Button Class="@($"{style.Cls} {c.Cls} {z.Cls}")">@z.Label</Button>
+                            }
+                            <Button Class="@($"{style.Cls} {c.Cls}")" IsDisabled="true">Disabled</Button>
+                        </div>
+                    }
                 </div>
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">Default 3s</span>
-                    <TimerCloseButton Delay="3"/>
-                </div>
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">Default 5s</span>
-                    <TimerCloseButton Delay="5"/>
-                </div>
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">SM 3s</span>
-                    <TimerCloseButton Delay="3" CircleClass="btn-sm"/>
-                </div>
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">SM 5s</span>
-                    <TimerCloseButton Delay="5" CircleClass="btn-sm"/>
-                </div>
+            }
+
+            <h2>With icon &amp; title</h2>
+            <div class="flex-y gap-y-2">
+                @foreach (var c in colors) {
+                    <div class="flex-x items-center gap-3 flex-wrap">
+                        <span class="w-20 text-xs opacity-60">@c.Label</span>
+                        @foreach (var z in sizes) {
+                            <Button Class="@($"{c.Cls} {z.Cls}")">
+                                <Icon><i class="icon-at"></i></Icon>
+                                <Title>@z.Label</Title>
+                            </Button>
+                        }
+                        <Button Class="@c.Cls" IsDisabled="true">
+                            <Icon><i class="icon-at"></i></Icon>
+                            <Title>Disabled</Title>
+                        </Button>
+                    </div>
+                }
             </div>
 
+            <h2>Text buttons</h2>
+            <div class="flex-y gap-y-2">
+                @foreach (var c in colors) {
+                    <div class="flex-x items-center gap-3 flex-wrap">
+                        <span class="w-20 text-xs opacity-60">@c.Label</span>
+                        @foreach (var z in textSizes) {
+                            <Button Class="@($"btn-text {c.Cls} {z.Cls}")">@z.Label</Button>
+                        }
+                        <Button Class="@($"btn-text {c.Cls}")">
+                            <Icon><i class="icon-chevron-up"></i></Icon>
+                            <Title>Chevron</Title>
+                        </Button>
+                        <Button Class="@($"btn-text {c.Cls}")" IsDisabled="true">Disabled</Button>
+                    </div>
+                }
+            </div>
+
+            <h2>Full width</h2>
+            <Button Class="btn-primary btn-w-full mt-1">Full Width Button</Button>
+
             <h2>Square buttons</h2>
-            <div class="flex-x gap-4 flex-wrap">
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">Default</span>
-                    <ButtonSquare>1</ButtonSquare>
-                </div>
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">Primary</span>
-                    <ButtonSquare Class="btn-primary">2</ButtonSquare>
-                </div>
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">Danger SM</span>
-                    <ButtonSquare Class="btn-danger btn-sm">SM</ButtonSquare>
-                </div>
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">Cancel XS</span>
-                    <ButtonSquare Class="btn-cancel btn-xs">XS</ButtonSquare>
-                </div>
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">Transparent</span>
-                    <ButtonSquare Class="btn-transparent">B</ButtonSquare>
-                </div>
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">Unhovered</span>
-                    <ButtonSquare Class="unhovered">C</ButtonSquare>
-                </div>
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">Disabled</span>
-                    <ButtonSquare IsDisabled="true">D</ButtonSquare>
-                </div>
+            <div class="flex-y gap-y-2">
+                @foreach (var c in iconColors) {
+                    <div class="flex-x items-center gap-3 flex-wrap">
+                        <span class="w-20 text-xs opacity-60">@c.Label</span>
+                        @foreach (var z in sizes) {
+                            <ButtonSquare Class="@($"{c.Cls} {z.Cls}")"><i class="icon-close"></i></ButtonSquare>
+                        }
+                        <ButtonSquare Class="@c.Cls" IsDisabled="true"><i class="icon-close"></i></ButtonSquare>
+                    </div>
+                }
             </div>
 
             <h2>Round buttons</h2>
-            <div class="flex-x gap-4 flex-wrap">
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">Default</span>
-                    <ButtonRound>1</ButtonRound>
-                </div>
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">Primary</span>
-                    <ButtonRound Class="btn-primary">2</ButtonRound>
-                </div>
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">Danger</span>
-                    <ButtonRound Class="btn-danger">3</ButtonRound>
-                </div>
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">Cancel</span>
-                    <ButtonRound Class="btn-cancel">A</ButtonRound>
-                </div>
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">Transparent</span>
-                    <ButtonRound Class="btn-transparent">B</ButtonRound>
-                </div>
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">Unhovered</span>
-                    <ButtonRound Class="unhovered">C</ButtonRound>
-                </div>
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">Disabled</span>
-                    <ButtonRound IsDisabled="true">D</ButtonRound>
-                </div>
+            <div class="flex-y gap-y-2">
+                @foreach (var c in iconColors) {
+                    <div class="flex-x items-center gap-3 flex-wrap">
+                        <span class="w-20 text-xs opacity-60">@c.Label</span>
+                        @foreach (var z in sizes) {
+                            <ButtonRound Class="@($"{c.Cls} {z.Cls}")"><i class="icon-close"></i></ButtonRound>
+                        }
+                        <ButtonRound Class="@c.Cls" IsDisabled="true"><i class="icon-close"></i></ButtonRound>
+                    </div>
+                }
             </div>
 
             <h2>Header buttons</h2>
-            <div class="flex-x gap-4 flex-wrap">
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">Default</span>
-                    <HeaderButton>
-                        <i class="icon-close text-2xl"></i>
-                    </HeaderButton>
-                </div>
-                <div class="flex-y gap-y-1 bg-black">
-                    <span class="text-center text-xxs text-white">Bleached</span>
-                    <HeaderButton Class="bleached">B</HeaderButton>
-                </div>
-                <div class="flex-y gap-y-1">
-                    <span class="text-center text-xxs">SM</span>
-                    <HeaderButton Class="btn-sm">S</HeaderButton>
-                </div>
-                <div class="flex-y gap-y-1">
+            <div class="flex-x items-center gap-4 flex-wrap">
+                <div class="flex-y items-center gap-y-1">
                     <span class="text-center text-xxs">LG</span>
-                    <HeaderButton Class="btn-lg">L</HeaderButton>
+                    <HeaderButton Class="btn-lg"><i class="icon-close text-2xl"></i></HeaderButton>
                 </div>
-                <div class="flex-y gap-y-1">
+                <div class="flex-y items-center gap-y-1">
+                    <span class="text-center text-xxs">MD</span>
+                    <HeaderButton><i class="icon-close text-2xl"></i></HeaderButton>
+                </div>
+                <div class="flex-y items-center gap-y-1">
+                    <span class="text-center text-xxs">SM</span>
+                    <HeaderButton Class="btn-sm"><i class="icon-close text-xl"></i></HeaderButton>
+                </div>
+                <div class="flex-y items-center gap-y-1 p-1 bg-black rounded">
+                    <span class="text-center text-xxs text-white">Bleached</span>
+                    <HeaderButton Class="bleached"><i class="icon-close text-2xl"></i></HeaderButton>
+                </div>
+                <div class="flex-y items-center gap-y-1">
                     <span class="text-center text-xxs">Unhovered</span>
-                    <HeaderButton Class="unhovered">U</HeaderButton>
+                    <HeaderButton Class="unhovered"><i class="icon-close text-2xl"></i></HeaderButton>
+                </div>
+                <div class="flex-y items-center gap-y-1">
+                    <span class="text-center text-xxs">Disabled</span>
+                    <HeaderButton IsDisabled="true"><i class="icon-close text-2xl"></i></HeaderButton>
                 </div>
             </div>
 
-            <h2>Main buttons</h2>
-            <h3>Default</h3>
-            <div class="flex-wrap flex-x items-center gap-4">
-                <Button Class="btn-lg">Default LG</Button>
-                <Button Class="">Default</Button>
-                <Button Class="btn-sm">Default SM</Button>
-                <Button Class="btn-xs">Default XS</Button>
-                <Button Class="" IsDisabled="true">Disabled</Button>
-            </div>
-            <h3>Primary</h3>
-            <div class="flex-wrap flex-x items-center gap-4">
-                <Button Class="btn-primary btn-lg">Primary LG</Button>
-                <Button Class="btn-primary">Primary</Button>
-                <Button Class="btn-primary btn-sm">Primary SM</Button>
-                <Button Class="btn-primary btn-xs">Primary XS</Button>
-                <Button Class="btn-primary" IsDisabled="true">Primary Disabled</Button>
-            </div>
-            <h3>Danger</h3>
-            <div class="flex-wrap flex-x items-center gap-4">
-                <Button Class="btn-danger btn-lg">Danger LG</Button>
-                <Button Class="btn-danger">Danger</Button>
-                <Button Class="btn-danger btn-sm">Danger SM</Button>
-                <Button Class="btn-danger btn-xs">Danger XS</Button>
-                <Button Class="btn-danger" IsDisabled="true">Danger Disabled</Button>
-            </div>
-            <h3>Cancel</h3>
-            <div class="flex-wrap flex-x items-center gap-4">
-                <Button Class="btn-cancel btn-lg">Cancel LG</Button>
-                <Button Class="btn-cancel">Cancel</Button>
-                <Button Class="btn-cancel btn-sm">Cancel SM</Button>
-                <Button Class="btn-cancel btn-xs">Cancel XS</Button>
-                <Button Class="btn-cancel" IsDisabled="true">Cancel Disabled</Button>
-            </div>
-
-            <h2>Outline buttons</h2>
-            <div class="flex-wrap flex-x items-center gap-4">
-                <Button Class="btn-outline btn-lg">Default Outline</Button>
-                <Button Class="btn-outline btn-primary">Primary Outline</Button>
-                <Button Class="btn-outline btn-danger btn-sm">Danger</Button>
-                <Button Class="btn-outline btn-cancel btn-xs">Cancel</Button>
-                <Button Class="btn-outline btn-cancel" IsDisabled="true">Disabled</Button>
+            <h2>Tile buttons</h2>
+            <div class="flex-x gap-x-6 flex-wrap items-start">
+                <div class="flex-y gap-y-2 w-72">
+                    <span class="text-xs opacity-60">Transparent (intent = colour only)</span>
+                    @foreach (var c in colors) {
+                        <ButtonTile Class="@c.Cls">
+                            <Icon><i class="icon-at text-2xl"></i></Icon>
+                            <Content>@c.Label tile</Content>
+                        </ButtonTile>
+                    }
+                    <ButtonTile Class="btn-danger">
+                        <Icon><i class="icon-trash03 text-2xl"></i></Icon>
+                        <Content>
+                            <span class="c-text">Danger with caption</span>
+                            <span class="c-caption">Caption stays muted</span>
+                        </Content>
+                    </ButtonTile>
+                    <ButtonTile IsDisabled="true">
+                        <Icon><i class="icon-at text-2xl"></i></Icon>
+                        <Content>Disabled</Content>
+                    </ButtonTile>
+                </div>
+                <div class="flex-y gap-y-2 w-72">
+                    <span class="text-xs opacity-60">Filled (btn-tile-filled)</span>
+                    @foreach (var c in colors) {
+                        <ButtonTile Class="@c.Cls" Filled="true">
+                            <Icon><i class="icon-at text-2xl"></i></Icon>
+                            <Content>@c.Label tile</Content>
+                        </ButtonTile>
+                    }
+                    <ButtonTile Filled="true" IsDisabled="true">
+                        <Icon><i class="icon-at text-2xl"></i></Icon>
+                        <Content>Disabled</Content>
+                    </ButtonTile>
+                </div>
             </div>
 
-            <h3>With Icon</h3>
-            <div class="flex-wrap flex-x items-center gap-4">
-                <Button Class="btn-primary btn-lg">
-                    <Icon><i class="icon-at text-2xl"></i></Icon>
-                    <Title>Notify</Title>
-                </Button>
-                <Button Class="btn-danger">
-                    <Icon><i class="icon-at text-2xl"></i></Icon>
-                    <Title>Notify</Title>
-                </Button>
-                <Button Class="btn-cancel btn-sm">
-                    <Icon><i class="icon-at text-xl"></i></Icon>
-                    <Title>Notify</Title>
-                </Button>
-                <Button Class="btn-xs">
-                    <Icon><i class="icon-at text-lg"></i></Icon>
-                    <Title>Notify</Title>
-                </Button>
-            </div>
-
-            <Button Class="btn-primary btn-w-full mt-2">Full Width Button</Button>
-
-            <h3>Disabled buttons</h3>
-            <div class="flex-wrap flex-x items-center gap-4">
-                <Button Class="btn-primary" IsDisabled="true">Long Primary</Button>
-                <Button Class="btn-danger" IsDisabled="true">Danger</Button>
-                <Button Class="btn-cancel" IsDisabled="true">Cancel</Button>
-                <Button Class="btn-primary btn-sm" IsDisabled="true">Primary SM</Button>
-            </div>
-
-            <h3>Outline Disabled buttons</h3>
-            <div class="flex-wrap flex-x items-center gap-4">
-                <Button Class="btn-primary btn-outline" IsDisabled="true">Long Primary</Button>
-                <Button Class="btn-danger btn-outline" IsDisabled="true">Danger</Button>
-                <Button Class="btn-cancel btn-outline" IsDisabled="true">Cancel</Button>
-                <Button Class="btn-primary btn-outline btn-sm" IsDisabled="true">Primary SM</Button>
-            </div>
-
-            <h2>Transparent buttons</h2>
-            <div class="flex-wrap flex-x items-center gap-4">
-                <Button Class="btn-transparent btn-primary btn-lg">Primary LG</Button>
-                <Button Class="btn-transparent btn-danger btn-md">Danger MD</Button>
-                <Button Class="btn-transparent btn-cancel btn-sm">Cancel SM</Button>
-                <Button Class="btn-transparent btn-xs" IsDisabled="true">Disabled XS</Button>
-            </div>
-
-            <h2>Modal buttons</h2>
-            <div class="flex-wrap flex-x items-center gap-4">
-                <Button Class="btn-modal btn-lg">Default Modal LG</Button>
-                <Button Class="btn-modal btn-primary">Primary MD</Button>
-                <Button Class="btn-modal btn-danger btn-sm">Danger SM</Button>
-                <Button Class="btn-modal btn-cancel btn-xs">Cancel XS</Button>
-                <Button Class="btn-modal" IsDisabled="true">Disabled</Button>
+            <h2>Timer buttons</h2>
+            <div class="flex-x gap-4 flex-wrap">
+                <div class="flex-y items-center gap-y-1">
+                    <span class="text-center text-xxs">Default 3s</span>
+                    <TimerCloseButton Delay="3"/>
+                </div>
+                <div class="flex-y items-center gap-y-1">
+                    <span class="text-center text-xxs">Default 5s</span>
+                    <TimerCloseButton Delay="5"/>
+                </div>
+                <div class="flex-y items-center gap-y-1">
+                    <span class="text-center text-xxs">SM 3s</span>
+                    <TimerCloseButton Delay="3" CircleClass="btn-sm"/>
+                </div>
+                <div class="flex-y items-center gap-y-1">
+                    <span class="text-center text-xxs">SM 5s</span>
+                    <TimerCloseButton Delay="5" CircleClass="btn-sm"/>
+                </div>
             </div>
         </text>;
 }

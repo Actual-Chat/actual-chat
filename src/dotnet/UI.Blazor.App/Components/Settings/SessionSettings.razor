@@ -64,9 +64,9 @@
 </Tile>
 
 @if (otherSessions.Count > 0) {
-    <Button Class="btn-outline btn-danger-light btn-w-full" Click="@OnSignOutAllClick">
-        @L.Sessions_SignOutAll
-    </Button>
+    <ButtonTile Class="btn-danger" Filled="true" Click="@OnSignOutAllClick">
+        <Content>@L.Sessions_SignOutAll</Content>
+    </ButtonTile>
 }
 
 @code {
