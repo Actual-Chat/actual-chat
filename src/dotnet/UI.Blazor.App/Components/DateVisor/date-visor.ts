@@ -1,78 +1,42 @@
-// TODO: Fix ESLint errors
-/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-deprecated */
-import { fromEvent, Subject, takeUntil } from 'rxjs';
-import { debounce, PromiseSourceWithTimeout, throttle } from 'actuallab-core';
+import { debounce } from 'actuallab-core';
 
 export class DateVisor {
-    private readonly dateVisor: HTMLElement;
-    private chatView: HTMLElement;
-    private subHeader: HTMLElement;
-    private endAnchor: HTMLElement | null;
-    private isScrolling: boolean;
-    private disposed$: Subject<void> = new Subject<void>();
+    private readonly abortController = new AbortController();
 
-    static create(dateVisor: HTMLElement): DateVisor {
+    public static create(dateVisor: HTMLElement): DateVisor {
         return new DateVisor(dateVisor);
     }
 
-    constructor(dateVisor: HTMLElement) {
-        this.dateVisor = dateVisor;
-        const checkInterval = setInterval(() => {
-            this.chatView = document.querySelector('.chat-view')!;
-            this.subHeader = this.dateVisor.closest('.layout-subheader')!;
-            this.endAnchor = this.chatView ? this.chatView.querySelector('.c-end-anchor') : null;
-            if (this.chatView && this.subHeader && this.endAnchor) {
-                clearInterval(checkInterval);
-
-                fromEvent(this.chatView, 'scroll')
-                    .pipe(takeUntil(this.disposed$))
-                    .subscribe(this.onScrollHandler);
-            }
-        }, 800);
-    }
-
-    public dispose() {
-        if (this.disposed$.isStopped)
-            return;
-
-        this.disposed$.next();
-        this.disposed$.complete();
-    }
-
-    private onScrollHandler = () => {
-        this.isScrolling = true;
-        this.onScrollStopDebounced();
-        const scrollWithTimeout = new PromiseSourceWithTimeout<void>();
-        scrollWithTimeout.setTimeout(800, () => {
-            this.onScrollThrottled();
+    constructor(private readonly dateVisor: HTMLElement) {
+        document.addEventListener('scroll', this.onScroll, {
+            capture: true,
+            passive: true,
+            signal: this.abortController.signal,
         });
     }
 
-    private onScrollThrottled = throttle(() => this.onScroll(), 250, 'delayHead');
-    private onScroll() {
-        if (this.isScrolling
-            && !this.dateVisor.classList.contains('show')
-            && !this.isInViewport(this.endAnchor, this.chatView)) {
-            this.dateVisor.classList.add('show');
-        }
+    public dispose(): void {
+        this.abortController.abort();
+        this.hideDebounced.reset();
+        this.dateVisor.removeAttribute('data-scrolling');
     }
 
-    private onScrollStopDebounced = debounce(() => this.onScrollStop(), 800);
-    private onScrollStop() {
-        this.isScrolling = false;
-        this.dateVisor.classList.remove('show');
-    }
+    // Private methods
 
-    private isInViewport(anchor: HTMLElement | null, chatView: HTMLElement | null = null) {
-        if (!anchor)
-            return false;
+    private onScroll = (event: Event): void => {
+        const scroller = event.target;
+        if (!(scroller instanceof HTMLElement) || !scroller.classList.contains('chat-view')
+            || scroller.dataset.identity !== this.dateVisor.dataset.chatId)
+            return;
 
-        const rect = anchor.getBoundingClientRect();
+        this.hideDebounced();
+        queueMicrotask(() => {
+            if (this.abortController.signal.aborted)
+                return;
 
-        if (chatView) {
-            const chatRect = chatView.getBoundingClientRect();
-            return rect.top >= chatRect.top && rect.top < chatRect.bottom;
-        }
-        return false;
-    }
+            this.dateVisor.toggleAttribute('data-scrolling', !scroller.hasAttribute('data-sticky-end'));
+        });
+    };
+
+    private readonly hideDebounced = debounce(() => this.dateVisor.removeAttribute('data-scrolling'), 800);
 }

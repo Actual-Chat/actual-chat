@@ -6,7 +6,7 @@
     _lastDate = m;
 }
 
-<div @ref="Ref" class="date-visor-wrapper">
+<div @ref="Ref" class="date-visor-wrapper" data-chat-id="@Chat.Id.Value">
     @if (!m.IsNullOrEmpty()) {
         <div class="date-visor">
             @m

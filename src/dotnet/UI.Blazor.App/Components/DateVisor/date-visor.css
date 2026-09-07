@@ -1,23 +1,17 @@
 .date-visor-wrapper {
-    @apply hidden justify-center;
+    @apply flex-x justify-center;
     @apply max-h-0;
     @apply opacity-0;
     @apply bg-transparent;
-    @apply duration-500;
-    transition-property: display, opacity;
-    transition-behavior: allow-discrete;
+    @apply pointer-events-none;
+    transition: opacity 150ms;
 }
 .layout-subheader > div.date-visor-wrapper {
     @apply z-button;
     @apply mt-0;
 }
-.date-visor-wrapper.show {
-    @apply flex-x;
+.date-visor-wrapper[data-scrolling] {
     @apply opacity-100;
-    @apply delay-200;
-    @starting-style {
-        opacity: 0;
-    }
 }
 .date-visor-wrapper:empty {
     @apply hidden;
