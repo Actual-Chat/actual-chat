@@ -989,6 +989,18 @@ export class InfiniteList extends VirtualList {
         return this.endAnchorSize - this.honouredEndAnchorSize;
     }
 
+    // Where the view sits once the pinned edge has been followed, which is not where it sits mid-render:
+    // against the live position the fold is still at the chain's old end.
+    private get pinnedScrollOffset(): number {
+        const edge = this.pinnedEdge;
+        if (edge == null)
+            return this.scrollOffset;
+
+        return edge === VirtualListEdge.End
+            ? this.chainEnd + this.honouredEndAnchorSize - this.ref.clientHeight
+            : this.chainStart;
+    }
+
     private applyRenderIntent(rs: VirtualListRenderState): void {
         const scrollToKey = rs.scrollToKey;
         if (!this.isContainerRevealed && scrollToKey != null)
@@ -1607,6 +1619,7 @@ export class InfiniteList extends VirtualList {
         const maxAt = ops.reduce((acc, x, i) => x.kind !== 'add' ? i : acc, -1);
         // Walked in chain order, i.e. top to bottom: the height controller hands out its animation
         // budget in call order, and the items nearest the top are the ones worth spending it on.
+        const scrollOffset = this.pinnedScrollOffset;
         let hasParked = false;
         for (let i = minAt; i <= maxAt; i++) {
             const op = ops[i];
@@ -1614,7 +1627,7 @@ export class InfiniteList extends VirtualList {
                 continue;
 
             const index = this.indexByKey.get(op.key);
-            if (index == null || !this.isKeyOnScreen(op.key))
+            if (index == null || !this.isKeyOnScreen(op.key, scrollOffset))
                 continue;
 
             // The key was on screen a moment ago, so this is the source having dropped it and put it
@@ -2211,7 +2224,7 @@ export class InfiniteList extends VirtualList {
         UpdateViewportIntervalMs,
         'default');
 
-    private isKeyOnScreen(key: string): boolean {
+    private isKeyOnScreen(key: string, scrollOffset = this.scrollOffset): boolean {
         const index = this.indexByKey.get(key);
         if (index == null)
             return false;
@@ -2220,7 +2233,6 @@ export class InfiniteList extends VirtualList {
         if (clientHeight <= 0)
             return false;
 
-        const scrollOffset = this.scrollOffset;
         const top = this.chainStart + this.offsets[index];
         return top + this.items[index].height > scrollOffset && top < scrollOffset + clientHeight;
     }
