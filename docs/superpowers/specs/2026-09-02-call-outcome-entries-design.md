@@ -11,7 +11,7 @@ system chat entry, rendered as a card in the message list.
 (`Dialing`/`Accepted`/`Declined`/`NoAnswer`) are written to Redis as the ring
 lifecycle progresses. Both are ephemeral — they carry a TTL and exist only to
 drive the caller's transient banner. `CloseAndMaterialize`
-(`src/dotnet/Streaming.Service/Backend/LiveSessionsBackend.cs:1127`) short-circuits
+(`src/dotnet/Streaming.Service/Backend/LiveSessionsBackend.cs:1132`) short-circuits
 for calls: it dismisses lingering rings and drops the session, materializing
 nothing.
 
@@ -114,7 +114,7 @@ the author no longer resolves at all.
 
 This is a *different* reason from the one `MembersChangedEntry` has for its
 `TargetAuthorName`: there, an anonymous author is stored with
-`TargetAuthorId = null` (`ChatsBackend.cs:2026`), and the name is then the only
+`TargetAuthorId = null` (`ChatsBackend.cs:2031`), and the name is then the only
 identifying value left — which is also why that field is nullable. A caller
 always has an id, so `CallerId` is non-nullable here, and the view can compare it
 with the reader's own author without a null dance.
@@ -132,20 +132,31 @@ index order, so these stay property-initialized rather than positional.
 
 Registrations this type requires:
 
-- `src/dotnet/Api/Chat/ChatEntry.cs:16` — add `[Union(3, typeof(CallEntry))]`.
-  The concrete kinds are declared on `ChatEntry`, not only on `SystemEntry`.
-- `src/dotnet/Api/Chat/SystemEntry.cs:12` — add `[Union(2, typeof(CallEntry))]`.
-- `src/dotnet/Api/Chat/ChatEntry.cs:209` — `ChatEntryKind.Call = 3`, plus the
-  `NewEmpty` and `ChatEntryDiff(ChatEntry)` switches at lines 38 and 173.
-- `src/dotnet/Api/Chat/ChatEntry.cs:166` — `ChatEntryDiff` gains
+- `src/dotnet/Api/Chat/ChatEntry.cs:20` — add `[Union(101, typeof(CallEntry))]`.
+  The concrete kinds are declared on `ChatEntry`, not only on `SystemEntry`, and
+  **101, not 3**: tags 100..199 are the `SystemEntry` range that
+  `ChatEntry.IsSystemUnionTag` reads, and a system entry landing outside it would
+  be classified as a message when an older peer meets it as an unknown tag.
+  `UnsupportedSystemEntry` holds 100.
+- `src/dotnet/Api/Chat/SystemEntry.cs:12` — add `[Union(3, typeof(CallEntry))]`.
+  This is a separate tag space from the one above; here 0..2 are taken.
+- `src/dotnet/Api/Chat/ChatEntry.Unsupported.cs` — add
+  `[101] = new (2, 19)` to `UnionTagSinceVersions`, naming the release
+  `CallEntry` actually ships in. A guard test on the tolerance branch fails any
+  member added after tolerance that does not declare its release, so this is not
+  optional. See Compatibility for what the table drives.
+- `src/dotnet/Api/Chat/ChatEntry.cs:216` — `ChatEntryKind.Call = 3`, plus the
+  `NewEmpty` and `ChatEntryDiff(ChatEntry)` switches at lines 40 and 178. This
+  enum is model-side only and unrelated to the union tags above.
+- `src/dotnet/Api/Chat/ChatEntry.cs:173` — `ChatEntryDiff` gains
   `CallerId`, `CallerName`, `Outcome`, `InviteeIds`, `HasVideo`, all nullable.
   The diff is applied by `DiffEngine.DynamicPatch`
-  (`src/dotnet/Chat.Service/ChatsBackend.cs:1445`), which matches **by property
+  (`src/dotnet/Chat.Service/ChatsBackend.cs:1450`), which matches **by property
   name**, so these names must equal the entry's exactly. Reusing the existing
   `TargetAuthorId`/`TargetAuthorName` pair would not map.
 
 `DbChatEntry.Kind` stays 0 — it is a legacy column, always written as 0
-(`src/dotnet/Chat.Service/Db/DbChatEntry.cs:190`), unrelated to
+(`src/dotnet/Chat.Service/Db/DbChatEntry.cs:194`), unrelated to
 `ChatEntryKind`. No EF migration is needed.
 
 ### On-disk shape
@@ -167,7 +178,7 @@ a third kind needs a third property with a payload type of its own:
 - `LegacyCallOption : LegacySystemEntryOption` with `CallerId`, `CallerName`,
   `Outcome`, `InviteeIds`, `HasVideo`.
 - A `Call` property on `LegacySystemEntry`, plus arms in `DbChatEntry.ToModel`
-  (line 109) and `DbChatEntry.ToLegacySystemEntry` (line 250).
+  (line 109) and `DbChatEntry.ToLegacySystemEntry` (line 254).
 
 Two alternatives were considered and rejected. Writing the payload as its own
 JSON straight into `Content`, bypassing the envelope, leaves nothing to tell the
@@ -182,10 +193,11 @@ and has no callers. It gets deleted rather than extended — it is in a file thi
 change touches anyway, and leaving a second, diverging conversion behind is how
 the next kind ends up half-registered.
 
-Consequence worth stating plainly: a server that does not know the `Call`
-property deserializes such a row into `Option == null` and falls into
-`_ => throw StandardError.Internal("Unknown system entry option: ")`
-(`DbChatEntry.cs:119`). See Compatibility.
+A server that does not know the `Call` property deserializes such a row into
+`Option == null`. That used to throw and take out every chat holding one; since
+the tolerance work it falls to `_ => new UnsupportedSystemEntry(id, Version)`
+(`DbChatEntry.cs:121`) and the row reads back as the same placeholder the wire
+format's unknown tags produce. Nothing further is needed on the database side.
 
 ## Write path
 
@@ -198,7 +210,7 @@ two fields, appended after `IsExpandedByDefault`, which currently holds 21:
 - `[DataMember(Order = 23), Key(23)] bool HasVideo`
 
 `HasVideo` has to be stored because `StartCall` receives it as an argument
-(`LiveSessionsBackend.cs:522`) and today only forwards it to
+(`LiveSessionsBackend.cs:527`) and today only forwards it to
 `NotificationsBackend_NotifyCall` — by close time it is gone, and the call-back
 action needs it. `StartCall` sets it alongside the rest of the state.
 
@@ -209,9 +221,9 @@ Three call sites set it, each already holding the fact:
 
 | Site | Sets |
 | --- | --- |
-| `DeclineCall` (`LiveSessionsBackend.cs:614`) | `Declined` |
-| `CancelCall` (`LiveSessionsBackend.cs:641`) | `Canceled` |
-| `ExpireRings` (`LiveSessionsBackend.cs:971`) | `NoAnswer` |
+| `DeclineCall` (`LiveSessionsBackend.cs:619`) | `Declined` |
+| `CancelCall` (`LiveSessionsBackend.cs:646`) | `Canceled` |
+| `ExpireRings` (`LiveSessionsBackend.cs:976`) | `NoAnswer` |
 
 **First writer wins**: a site sets `Outcome` only while it is still `None`.
 Without that rule a caller who hangs up a moment after the invitee declined
@@ -220,7 +232,7 @@ story. All three sites already run under `_changeLocks.Lock(chatId)`, so the
 check and the write are atomic.
 
 **Emit.** The single write site is `CloseAndMaterialize`
-(`LiveSessionsBackend.cs:1127`), in its existing `state.IsCall` branch, guarded
+(`LiveSessionsBackend.cs:1132`), in its existing `state.IsCall` branch, guarded
 by:
 
 - `state.SessionStartedAt is null` — the call never latched to connected. A call
@@ -232,7 +244,7 @@ by:
 
 It then calls `ChatsBackend_ChangeEntry` with `Change.Create(new ChatEntryDiff {
 Kind = ChatEntryKind.Call, AuthorId = Bots.GetWalleId(chatId), ... })`, the same
-shape `ChatsBackend.cs:2032` uses for member changes. Wall-E authors the entry;
+shape `ChatsBackend.cs:2037` uses for member changes. Wall-E authors the entry;
 the card draws its avatars from `CallerId`/`InviteeIds`, not from the entry's
 author.
 
@@ -246,7 +258,7 @@ session is still live — but it stops every ring before that, so it isn't.
 `CloseAndMaterialize` already reads in this branch to dismiss lingering rings.
 
 `CallerName` is resolved at emit time from the caller's author, the same way
-`ChatsBackend.cs:2027` resolves a member name, with `MentionMarkup.NotAvailableName`
+`ChatsBackend.cs:2032` resolves a member name, with `MentionMarkup.NotAvailableName`
 as the fallback. See the note under Data model for what it is actually for — it
 is not the name normally displayed.
 
@@ -312,49 +324,58 @@ cover entries whose target author is absent. `CallEntry` has no such variant —
 `null` batch simply yields a duplicate sample. Harmless, and it keeps the
 samples honest about what the type can hold.
 
-## Compatibility and rollout
+## Compatibility
 
-This is the only genuinely risky part of the change, because it touches two
-contracts that older code reads.
+Adding a `[Union]` member used to be the risky part of a change like this: a peer
+that meets an unknown tag cannot tell how long the payload is, so the failure
+takes down the whole tile rather than the one entry. That is no longer this
+change's problem to solve. This branch sits on top of
+`feat/forward-compatible-unions`, which made unknown tags survivable and is the
+base commit under this work.
 
-**Old clients.** `ChatEntry` is a MessagePack union and the new kind takes tag
-3. A client build that predates the change hits an unknown union tag while
-deserializing, and the failure is not scoped to the one entry — it takes down
-whatever payload carried it, i.e. a tile of the chat. Voxt ships MAUI builds
-that live in the wild for a while, so this matters.
+What is left is to use that machinery correctly, which is one table entry.
 
-**Old servers.** As described above, a server without the `Call` option throws
-`StandardError.Internal` when it reads such a row. That window opens during a
-rolling deploy and, more importantly, during a rollback.
+**Peers with tolerance (2.19 and later).** `ForwardCompatibleUnionFormatter`
+reads the tag, classifies 101 as a system entry via
+`ChatEntry.IsSystemUnionTag` — which is why the tag must sit in 100..199 — reads
+the base prefix (`Id`, `Version`, `Flags`, `AuthorId`), skips the rest, and
+yields an `UnsupportedSystemEntry` flagged `IsUnsupported`. The entry keeps its
+identity and its place in the tile; only its content is replaced, by the
+localized "update the app" line. Nothing breaks.
 
-Rollout in two stages:
+**Peers without it (at or below `ApiConstants.LastVersionWithoutUnionTolerance`,
+`2.18.9999`).** They cannot be fixed retroactively, so the server does not send
+them what they cannot read: `IChats.GetLegacyTile` drops entries whose
+`UnionTagSinceVersions` release postdates the peer's API version, and the RPC
+layer routes such peers there off the handshake version. This is why declaring
+`[101] = new (2, 19)` is load-bearing rather than bookkeeping — an undeclared tag
+is treated as known to everyone and would reach exactly the peers it breaks. The
+guard test on the base branch fails a member that omits it.
 
-1. **Contract only.** Ship the type, both `[Union]` registrations, the legacy
-   option, the diff fields and the render path — but emit nothing. Every client
-   and server that has this build can read a `CallEntry`; none writes one.
-2. **Enable emission.** `StreamingSettings`
-   (`src/dotnet/Streaming.Service/Module/StreamingSettings.cs`) gains
-   `bool CallEntriesEnabled { get; set; }`, default `false`, checked at the emit
-   site in `CloseAndMaterialize`. It is flipped on once client adoption of the
-   stage-1 build is high enough. A plain setting is the right tool here rather
-   than a `FeatureDef` — nothing client-side needs to query it.
+The product consequence, stated plainly: a pre-2.19 client sees **nothing** where
+a missed-call entry is — a gap in the tile's lid range, the same shape a removed
+entry already produces — rather than a placeholder. That is the intended trade.
 
-The setting is removed once stage 2 has been on in production long enough that a
-rollback past stage 1 is not a consideration.
+**Old servers.** Already handled: the unknown-option arm in `DbChatEntry.ToModel`
+yields the same placeholder instead of throwing, so a rollback past this release
+degrades rows rather than breaking chats.
 
-**Verify first.** The precise failure mode of an old client on an unknown
-`ChatEntry` union tag is asserted here from how MessagePack unions work, not
-from an experiment. The first implementation task is to confirm it against a
-real pre-change client. If the failure is milder than described — say, the entry
-alone degrades — stage 2 collapses into stage 1 and the setting is unnecessary.
+No staged rollout and no feature flag. The version in the table is the only thing
+to get right, and it must name the release `CallEntry` actually ships in — if the
+branch slips a release, the number moves with it.
 
 ## Reuse
 
 **Existing abstractions this builds on:**
 
 - `SystemEntry` / `ChatEntryDiff` / `ChatsBackend_ChangeEntry` / `Bots.GetWalleId`
-  — the write path, exactly as `ChatsBackend.cs:2031` writes member changes.
+  — the write path, exactly as `ChatsBackend.cs:2036` writes member changes.
 - `LegacySystemEntry` — the on-disk wrapper; extended, not replaced.
+- The whole tolerance layer from `feat/forward-compatible-unions`:
+  `ForwardCompatibleUnionFormatter`, `UnsupportedSystemEntry`,
+  `ChatEntry.IsSystemUnionTag` / `UnionTagSinceVersions`, `IChats.GetLegacyTile`
+  and the already-tolerant `DbChatEntry.ToModel`. `CallEntry` adds one row to a
+  table and inherits every compatibility guarantee; nothing new is built here.
 - `SystemEntryMarkupBuilder` / `LocalizedSystemEntryMarkupBuilder` /
   `IStringLocalizer` + `Strings.*.json` — text.
 - `AuthorCircleGroup` and the `c-live-card` styles in `conversation.css` — the
@@ -384,8 +405,12 @@ alone degrades — stage 2 collapses into stage 1 and the setting is unnecessary
 - **Unit, outcome selection.** `LiveSessionsBackend`: decline-then-cancel keeps
   `Declined`; cancel-then-decline keeps `Canceled`; ring expiry gives `NoAnswer`.
 - **Unit, emission gate.** No entry when the call connected
-  (`SessionStartedAt is not null`), when `Outcome` is `None`, when the chat is
-  not a peer chat, or when `CallEntriesEnabled` is off.
+  (`SessionStartedAt is not null`), when `Outcome` is `None`, or when the chat is
+  not a peer chat.
+- **Unit, legacy filtering.** A tile containing a `CallEntry` comes back without
+  it through `GetLegacyTile` for a peer below 2.19, and with it at or above.
+  `LegacyTileRoutingTest` on the base branch already covers the routing; this
+  adds `CallEntry` to what it asserts.
 - **Integration, round trip.** A call that goes unanswered writes exactly one
   `CallEntry` into the peer chat; reading it back through `IChats` yields a
   `CallEntry` with the caller, invitee and video flag intact. This is also the
@@ -400,5 +425,5 @@ alone degrades — stage 2 collapses into stage 1 and the setting is unnecessary
 
 1. The wording table is an interpretation of the mockup and should be confirmed
    before the strings are translated into 20-odd languages.
-2. Whether stage 2 (the `CallEntriesEnabled` setting) is needed depends on the
-   old-client experiment described in Compatibility.
+2. The release named in `UnionTagSinceVersions[101]` — `2.19` assumes this lands
+   alongside the tolerance work. It has to be corrected if the branch slips.
