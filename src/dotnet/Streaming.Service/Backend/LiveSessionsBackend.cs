@@ -1213,7 +1213,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 // Having won the claim, this is the session's only closer: nothing retries a torn-down
                 // session, so a failed ring dismissal, entry or materialization must not also cost the
                 // participants, the invites and the invalidation that tells clients the call is over.
-                await Close(state.ChatId, cancellationToken).ConfigureAwait(false);
+                // CancellationToken.None because a revoked token (FinalizeSession forwards the summary
+                // flow's, which dies on a timeout or a shutdown) is itself one of the ways to get here,
+                // and Close would then abort on its own lock.
+                await Close(state.ChatId, CancellationToken.None).ConfigureAwait(false);
             }
             return;
         }

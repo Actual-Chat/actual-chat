@@ -110,6 +110,38 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
     }
 
     [Fact]
+    public async Task ClaimedCloseShouldTearDownEvenWhenItsTokenIsCanceled()
+    {
+        // FinalizeSession is the one close path carrying a revocable token - it comes from
+        // LiveConversationSummaryFlow, whose step token dies on a timeout or a shutdown. By then the
+        // claim that elects a single closer has already dropped the session key, so nothing retries:
+        // the teardown has to survive the very cancellation that interrupted it.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+        // Nobody is recording any more, so FinalizeSession gets past its own liveness guard.
+        await backend.SetParticipation(chatId, bob.Id, ParticipationKind.AudioListen, true, default);
+        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.AudioListen, true, default);
+
+        // act
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+        await backend.FinalizeSession(chatId, cts.Token).SilentAwait(false);
+
+        // assert - the next call in this chat starts with its caller alone, not with the ghosts of
+        // the one that was torn down
+        await backend.StartCall(chatId, bob.Id, ApiArray<AuthorId>.Empty, false, default);
+        await ComputedTest.When(async ct => {
+            var participants = await backend.ListParticipants(chatId, ct);
+            participants.Should().Equal(bob.Id);
+        }, TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
     public async Task GroupCallShouldWriteNoEntry()
     {
         // arrange
