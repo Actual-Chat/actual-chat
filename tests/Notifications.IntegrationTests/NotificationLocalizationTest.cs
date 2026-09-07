@@ -179,11 +179,15 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
 
         // act
         await Tester.SignIn(reactor);
+        var reactorAuthor = await Tester.GetOwnAuthor(chatId).Require();
         await Tester.React(entry.Id, Emojis.Love);
 
         // assert
         var l = LanguageStringLocalizer.Get(Language.Parse(expected));
-        var expectedText = l.Notification_Reaction_Format(Emojis.Love, l.EmptyEntry_YourLocation);
+        // A group chat: the banner is headlined by the chat, so the text has to name the reactor.
+        var expectedText = l.Notification_AuthorLine_Format(
+            reactorAuthor.Avatar.Name,
+            l.Notification_Reaction_Format(Emojis.Love, l.EmptyEntry_YourLocation));
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(author.Id, CancellationToken.None);
             var reaction = info.Items.OfType<ReactionNotification>().Should().ContainSingle().Subject;
