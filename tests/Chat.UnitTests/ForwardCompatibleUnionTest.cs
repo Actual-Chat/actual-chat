@@ -193,6 +193,48 @@ public class ForwardCompatibleUnionTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
+    public void ATileShouldDropEntriesThePeerCannotRead()
+    {
+        // arrange
+        var lastIntolerant = Version.Parse(ApiConstants.LastVersionWithoutUnionTolerance);
+        var text = NewTextEntry();
+        var unsupported = new UnsupportedSystemEntry(ChatEntryId.New(TestChatId, 2), 8) {
+            BeginsAt = new Moment(DateTime.UnixEpoch),
+            Flags = ChatEntryFlags.IsUnsupported,
+        };
+        var tile = new ChatTile(new Range<long>(1, 3), false, [text, unsupported]);
+
+        // act
+        var forOldPeer = tile.WithoutEntriesUnknownTo(lastIntolerant);
+        var forNewPeer = tile.WithoutEntriesUnknownTo(ApiConstants.Version);
+
+        // assert
+        forOldPeer.Entries.Should().ContainSingle().Which.Should().BeSameAs(text);
+        forOldPeer.LidTileRange.Should()
+            .Be(tile.LidTileRange, "a dropped entry leaves a gap, not a shorter tile");
+        forNewPeer.Should().BeSameAs(tile, "nothing to drop means no copy");
+    }
+
+    [Fact]
+    public void EveryTagAddedAfterToleranceShouldDeclareItsVersion()
+    {
+        // A new member that skips the table is invisible to the filtering, so a peer too old to
+        // read it gets it anyway - and fails on the whole tile, which is what this all prevents.
+
+        // act
+        var undeclared = typeof(ChatEntry).GetCustomAttributes<UnionAttribute>()
+            .Where(x => x.Key > 2 && ChatEntry.GetUnionTagSince(x.Key) is null)
+            .Select(x => $"{x.SubType.Name} (tag {x.Key})")
+            .ToList();
+
+        // assert
+        undeclared.Should().BeEmpty(
+            "every union member added after tolerance shipped must say which release it came "
+            + "in:\n{0}",
+            string.Join("\n", undeclared));
+    }
+
+    [Fact]
     public void NoMemberShouldReuseAKeyTheBaseDeclares()
     {
         // Prefix recovery reads payload slots 0..3 as the base's own. A member that took one of
