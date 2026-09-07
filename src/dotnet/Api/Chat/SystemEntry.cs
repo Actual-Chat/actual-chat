@@ -4,8 +4,8 @@ namespace ActualChat.Chat;
 
 /// <summary>
 /// Abstract base for system-generated chat entries — events such as members joining,
-/// leaving, or being notified. Concrete kinds: <see cref="MembersChangedEntry"/>,
-/// <see cref="NotifyMembersEntry"/>.
+/// leaving, or being notified, and calls. Concrete kinds: <see cref="MembersChangedEntry"/>,
+/// <see cref="NotifyMembersEntry"/>, <see cref="CallEntry"/>, <see cref="UnsupportedSystemEntry"/>.
 /// </summary>
 [RpcSerializable]
 [DataContract, MessagePackObject]
