@@ -58,7 +58,8 @@
 | `src/dotnet/Localization/Resources/Strings.*.json` | 11 keys |
 | `src/dotnet/UI.Blazor.App/Components/ChatView/Items/ChatEntryMessageView.razor` | Route `CallEntry` to `CallMessageView` |
 | `src/dotnet/UI.Blazor.App/Services/ChatUI.Tiles.cs` | Skip `Ended` |
-| `src/dotnet/Api/Chat/ChatNews.cs` | `WithoutEntryUnknownTo` |
+| `src/dotnet/Chat.Contracts/IChatsBackend.cs` | `GetLegacyNews` |
+| `src/dotnet/Chat.Service/ChatsBackend.cs` | `GetLegacyNews` — the walk back to a readable entry |
 | `src/dotnet/Api.Contracts/Chat/IChats.cs` | `GetLegacyNews` and its version bands |
 | `src/dotnet/Chat.Service/Chats.cs` | `GetLegacyNews` |
 | `src/dotnet/UI.Blazor.App/Components/ChatView/Items/Conversation/ConversationMessageHeader.razor` | Call mode |
@@ -1405,65 +1406,97 @@ git commit -m "feat(call): draw a finished call as its conversation card"
 
 The tolerance work gave `IChats.GetTile` a filtering twin, but **not** `GetNews`. `ChatNews.LastTextEntry` is a `ChatEntry?`, and `ChatNews.ToSlim` rebuilds it with `entry with { … }`, which preserves the concrete type. So a `CallEntry` reaches a pre-2.19 client through the chat list and kills the whole `ChatNews` payload on deserialization — and `CallEntry` becomes the last entry of a peer chat after every single call.
 
+The substitute is the **previous readable entry**, not `null`. `LastTextEntry` is also the chat list's primary sort key — `ChatListOrder.ByLastEventTime` orders by `LastTextEntry?.Version ?? Contact.Version` (`src/dotnet/UI.Blazor.App/Services/ChatListExt.cs:60`) — so nulling it moves the chat as well as blanking its line. Falling back to the previous entry leaves an old client's list exactly as it was before the call: same line, same position. It simply does not learn that a call happened, which is the most it can be told.
+
+That is also cheap to get right, because `ChatsBackend.GetNews` defines the last entry as nothing more than the final non-removed entry of the last tile (`src/dotnet/Chat.Service/ChatsBackend.cs:220-224`). Stepping back is stepping back through the same array with the same predicate, so the two definitions cannot drift.
+
 **Files:**
-- Modify: `src/dotnet/Api/Chat/ChatNews.cs`, `src/dotnet/Api.Contracts/Chat/IChats.cs`, `src/dotnet/Chat.Service/Chats.cs`
-- Test: `tests/Chat.UnitTests/LegacyTileRoutingTest.cs` (extend)
+- Modify: `src/dotnet/Chat.Contracts/IChatsBackend.cs`, `src/dotnet/Chat.Service/ChatsBackend.cs`, `src/dotnet/Api.Contracts/Chat/IChats.cs`, `src/dotnet/Chat.Service/Chats.cs`
+- Test: `tests/Chat.IntegrationTests/CallEntryTest.cs` (extend)
 
 **Interfaces:**
 - Consumes: `ChatEntry.IsKnownTo` and `ApiConstants.LastVersionWithoutUnionTolerance` from the base branch; `CallEntry` from Task 1.
-- Produces: `ChatNews.WithoutEntryUnknownTo(Version apiVersion)`; `IChats.GetLegacyNews`.
+- Produces: `IChatsBackend.GetLegacyNews(ChatId, CancellationToken)`; `IChats.GetLegacyNews(Session, ChatId, CancellationToken)`.
 
 - [ ] **Step 1: Write the failing test**
 
-Append to `tests/Chat.UnitTests/LegacyTileRoutingTest.cs`:
+Append to `tests/Chat.IntegrationTests/CallEntryTest.cs`:
 
 ```csharp
     [Fact]
-    public void NewsShouldDropALastEntryAnOldPeerCannotRead()
+    public async Task OldPeerNewsShouldFallBackToThePreviousReadableEntry()
     {
-        // ChatNews carries a ChatEntry to the chat list, and ToSlim keeps its concrete type -
-        // so without this an unknown tag reaches a peer that dies on it.
+        // LastTextEntry is the chat list's sort key as well as its preview line, so a call must
+        // leave an old client's list untouched rather than blank and reordered.
         // arrange
-        var chatId = ChatId.Parse("052w3sgrad");
-        var news = new ChatNews(new Range<long>(0, 10), new CallEntry(ChatEntryId.New(chatId, 9)) {
-            CallerId = AuthorId.New(chatId, 1),
-            Outcome = CallOutcome.NoAnswer,
-        });
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var text = await tester.CreateTextEntry(chatId, "before the call");
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var chatsBackend = tester.AppServices.GetRequiredService<IChatsBackend>();
 
-        // act & assert
-        news.WithoutEntryUnknownTo(new Version(2, 18)).LastTextEntry.Should().BeNull();
-        news.WithoutEntryUnknownTo(new Version(2, 19)).LastTextEntry.Should().NotBeNull();
-    }
+        // act
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.CancelCall(chatId, bob.Id, default);
 
-    [Fact]
-    public void NewsShouldKeepALastEntryEveryPeerCanRead()
-    {
-        var chatId = ChatId.Parse("052w3sgrad");
-        var news = new ChatNews(new Range<long>(0, 10), new TextEntry(ChatEntryId.New(chatId, 9)));
+        // assert
+        var news = await chatsBackend.GetNews(chatId, default);
+        news!.LastTextEntry.Should().BeOfType<CallEntry>("a current peer sees the call");
 
-        news.WithoutEntryUnknownTo(new Version(2, 18)).Should().BeSameAs(news);
+        var legacy = await chatsBackend.GetLegacyNews(chatId, default);
+        legacy!.LastTextEntry!.Id.Should().Be(text.Id, "an old peer keeps the message it could read");
+        legacy.TextEntryLidRange.Should().Be(news.TextEntryLidRange, "unread counting is unaffected");
     }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **Step 2: Run the test to verify it fails**
 
-Run: `dotnet test tests/Chat.UnitTests/Chat.UnitTests.csproj --filter FullyQualifiedName~LegacyTileRoutingTest`
-Expected: FAIL — `WithoutEntryUnknownTo` does not exist.
+Run: `dotnet test tests/Chat.IntegrationTests/Chat.IntegrationTests.csproj --filter FullyQualifiedName~OldPeerNewsShouldFallBackToThePreviousReadableEntry`
+Expected: FAIL — `GetLegacyNews` does not exist.
 
-- [ ] **Step 3: Add the filter**
+- [ ] **Step 3: Add the backend twin**
 
-In `src/dotnet/Api/Chat/ChatNews.cs`, mirroring `ChatTile.WithoutEntriesUnknownTo`:
+The walk lives next to `GetNews`, in `src/dotnet/Chat.Service/ChatsBackend.cs`, so the two share their notion of "the last entry":
 
 ```csharp
-    // The entry is dropped rather than replaced with a stand-in: the preview line is composed on
-    // the client, in the viewer's language, so a server-side substitute could only be English.
-    // A chat whose last entry a peer can't read reads as one with no preview - the same shape a
-    // removed last entry already produces.
-    public ChatNews WithoutEntryUnknownTo(Version apiVersion)
-        => LastTextEntry is { } entry && !ChatEntry.IsKnownTo(entry, apiVersion)
-            ? this with { LastTextEntry = null }
-            : this;
+    // [ComputeMethod]
+    public virtual async Task<ChatNews?> GetLegacyNews(
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var news = await GetNews(chatId, cancellationToken).ConfigureAwait(false);
+        if (news?.LastTextEntry is not { } last || ChatEntry.IsKnownTo(last, LastToleratedApiVersion))
+            return news;
+
+        // Not null: LastTextEntry is the chat list's sort key as well as its preview, so blanking
+        // it would move the chat too. The previous readable entry leaves the list as it was.
+        var lastLid = last.LocalId;
+        for (var i = 0; i < MaxLegacyNewsTiles && lastLid >= news.TextEntryLidRange.Start; i++) {
+            var idTile = EntryIdTiles.GetTile(lastLid);
+            var tile = await GetTile(chatId, idTile.Range, false, cancellationToken).ConfigureAwait(false);
+            var known = tile.Entries.LastOrDefault(e =>
+                e.LocalId <= lastLid && ChatEntry.IsKnownTo(e, LastToleratedApiVersion));
+            if (known is not null)
+                return news with { LastTextEntry = known };
+
+            lastLid = idTile.Range.Start - 1;
+        }
+        // A chat with nothing an old peer can read reads as one with no messages.
+        return news with { LastTextEntry = null };
+    }
 ```
+
+with the two constants on the class:
+
+```csharp
+    private static readonly Version LastToleratedApiVersion =
+        Version.Parse(ApiConstants.LastVersionWithoutUnionTolerance);
+    // A peer chat used only for calling would otherwise scan its whole history on every
+    // chat-list render.
+    private const int MaxLegacyNewsTiles = 4;
+```
+
+Declare it in `src/dotnet/Chat.Contracts/IChatsBackend.cs` beside `GetNews`, copying that method's attributes.
 
 - [ ] **Step 4: Route old peers to a filtering twin**
 
@@ -1490,40 +1523,38 @@ Copy the `[ComputeMethod]`/`[RemoteComputeMethod]` attributes from `GetNews` ver
 
 The `GetLegacyNews_NewUnused` entry keeps the v2.12- band resolved by declaration. `RpcMethodResolver` would otherwise settle it by the lowest-`MaxVersion`-wins rule at `RpcMethodResolver.cs:131`, which happens to give the right answer but is not something to lean on.
 
-- [ ] **Step 5: Implement it**
+- [ ] **Step 5: Implement the session-level twin**
 
-In `src/dotnet/Chat.Service/Chats.cs`, beside `GetLegacyTile`:
+In `src/dotnet/Chat.Service/Chats.cs`, beside `GetLegacyTile`. It mirrors `GetNews`, which reads through `GetFullNews` for the `CanRead` check and then slims the result:
 
 ```csharp
     // [ComputeMethod]
-    [Obsolete("2026.09: Use GetNews - this one only drops a last entry a pre-2.19 client can't read.")]
+    [Obsolete("2026.09: Use GetNews - this one only serves a last entry a pre-2.19 client can read.")]
     public virtual async Task<ChatNews?> GetLegacyNews(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
     {
-        var news = await GetNews(session, chatId, cancellationToken).ConfigureAwait(false);
-        return news?.WithoutEntryUnknownTo(LastToleratedApiVersion);
+        if (!await CanRead(session, chatId, cancellationToken).ConfigureAwait(false))
+            return null;
+
+        var news = await Backend.GetLegacyNews(chatId, cancellationToken).ConfigureAwait(false);
+        return news?.ToSlim();
     }
 ```
 
-`LastToleratedApiVersion` is the field `GetLegacyTile` already uses in this class.
-
 - [ ] **Step 6: Run the tests**
 
-Run: `dotnet test tests/Chat.UnitTests/Chat.UnitTests.csproj --filter FullyQualifiedName~LegacyTileRoutingTest`
-Expected: PASS.
-
-- [ ] **Step 7: Verify the RPC wiring starts**
-
 Run: `dotnet test tests/Chat.IntegrationTests/Chat.IntegrationTests.csproj --filter FullyQualifiedName~CallEntryTest`
-Expected: PASS. A `[LegacyName]` collision throws at service-registry build time (`RpcMethodResolver.cs:127`), so if the two bands are wrong, the host fails to start and every test in the collection fails — that is the signal to read for.
+Expected: PASS, 5 tests.
 
-- [ ] **Step 8: Commit**
+Step 6 passing is also the check that the RPC wiring is sound: a `[LegacyName]` collision throws while the service registry is built (`RpcMethodResolver.cs:127`), so wrong version bands mean the host does not start and every test in the collection fails at once. That, rather than a single assertion, is the signal to read for.
+
+- [ ] **Step 7: Commit**
 
 ```bash
-git add src/dotnet/Api/Chat/ChatNews.cs src/dotnet/Api.Contracts/Chat/IChats.cs src/dotnet/Chat.Service/Chats.cs tests/Chat.UnitTests/LegacyTileRoutingTest.cs
-git commit -m "fix(chat): keep an unreadable last entry out of an old client's chat list"
+git add src/dotnet/Chat.Contracts/IChatsBackend.cs src/dotnet/Chat.Service/ChatsBackend.cs src/dotnet/Api.Contracts/Chat/IChats.cs src/dotnet/Chat.Service/Chats.cs tests/Chat.IntegrationTests/CallEntryTest.cs
+git commit -m "fix(chat): serve an old client the last entry it can actually read"
 ```
 
 ---

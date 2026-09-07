@@ -502,13 +502,23 @@ concrete type. So a `CallEntry` would reach a pre-2.19 client through the chat
 list and take down the whole `ChatNews` payload. The gap is not created here —
 it applies to `UnsupportedSystemEntry` as well, on a rollback — but this change
 makes it routine rather than rare, because a `CallEntry` is the last entry of a
-peer chat after every call. `GetNews` therefore gains the same twin, dropping a
-last entry the peer cannot read.
+peer chat after every call. `GetNews` therefore gains the same twin.
 
-Dropped rather than replaced with a stand-in: the preview line is composed on the
-client, in the viewer's language, so anything the server substituted could only
-be English. A chat whose last entry a peer cannot read reads as one with no
-preview.
+It serves the **previous readable entry** rather than nothing. `LastTextEntry` is
+not only the preview line: it is the chat list's primary sort key, which orders by
+`LastTextEntry?.Version ?? Contact.Version`
+(`src/dotnet/UI.Blazor.App/Services/ChatListExt.cs:60`). Nulling it would blank
+the line *and* move the chat. Falling back leaves an old client's list exactly as
+it stood before the call — same line, same position; it simply never learns a
+call happened, which is the most it can be told.
+
+The fallback is also nearly free to define correctly, because
+`ChatsBackend.GetNews` treats the last entry as the final non-removed entry of the
+last tile and nothing more (`src/dotnet/Chat.Service/ChatsBackend.cs:220-224`).
+Stepping back is stepping back through the same array under the same predicate, so
+the two cannot drift apart. The walk is capped at a few tiles; a peer chat used
+only for calling then reads as one with no messages rather than scanning its whole
+history on every chat-list render.
 
 **Old servers.** Already handled: the unknown-option arm in `DbChatEntry.ToModel`
 yields the same placeholder instead of throwing, so a rollback past this release
