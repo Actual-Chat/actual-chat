@@ -15,7 +15,6 @@ export class SplashPageSkeleton extends LitElement {
         // Rendering it as open in narrow mode would also shrink the left panel via the :has() rule in side-nav.css.
         const isRightPanelOpen = this.isRightPanelVisible === 'true'
             && !document.body.classList.contains('narrow');
-        const rightPanelDataAttr = isRightPanelOpen ? 'open' : 'closed';
         return html`
             <div class="page-with-header-and-footer">
 <!--                Left Panel -->
@@ -58,10 +57,11 @@ export class SplashPageSkeleton extends LitElement {
                         <chat-view-footer-skeleton />
                     </div>
                 </div>
-<!--                Right Panel -->
-                <div class="right-panel-skeleton side-nav side-nav-right" data-side-nav='${rightPanelDataAttr}'>
+<!--                Right Panel - a closed one is off-screen anyway, so it's simply left out -->
+                ${isRightPanelOpen ? html`
+                <div class="right-panel-skeleton side-nav side-nav-right" data-side-nav="open">
                     <chat-side-panel-skeleton></chat-side-panel-skeleton>
-                </div>
+                </div>` : ''}
             </div>
         `;
     }
