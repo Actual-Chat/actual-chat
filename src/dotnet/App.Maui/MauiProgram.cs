@@ -117,6 +117,13 @@ public static partial class MauiProgram
             var app = appBuilder.Build();
             MauiStartupBreadcrumbs.Add("MauiApp built");
             StaticLog.Factory = app.Services.LoggerFactory();
+#if MACOS
+            // TODO(maui-labs): drop once the labs IDispatcher factory falls back to the application
+            // dispatcher like MAUI's own does. Labs registers it scoped with a main-thread-only
+            // factory, and InjectMauiAppServices resolves it on the thread pool; resolving it here,
+            // on the thread MAUI calls CreateMauiApp on, caches it in the root scope for that call.
+            _ = app.Services.GetRequiredService<IDispatcher>();
+#endif
 
             // Registering the factory is just storing a lambda, and a notification tap on a
             // headless process needs it, so it happens on both paths.

@@ -104,6 +104,16 @@ flowchart LR
   `WillClose` fires. First-chance only, the app still exits cleanly.
 :::
 
+### The dispatcher factory answers only on the main thread
+
+MAUI's own scoped `IDispatcher` factory falls back to the application dispatcher when it is
+resolved off the UI thread. The labs `UseMacOS` registration returns the current thread's
+dispatcher only, so a thread-pool resolve throws.
+
+| Workaround | Goes away when |
+|---|---|
+| The `#if MACOS` resolve of `IDispatcher` right after `MauiApp.Build()` in [MauiProgram.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/MauiProgram.cs), which caches the main-thread instance in the root scope before the Blazor container is built on the thread pool | the labs factory falls back to the application dispatcher like MAUI's own |
+
 ### Diagnostics
 
 | Workaround | Goes away when |
