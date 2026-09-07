@@ -86,6 +86,39 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
     }
 
     [Fact]
+    public async Task AnsweredCallInterruptedByAMessageShouldMaterializeARangeAroundItsEntry()
+    {
+        // A message written between the ring and the answer pushes VisibleStartLid (set at the latch)
+        // past EndEntryLid, which only a summary ever advances and a transcription-off call never gets.
+        // The resulting range runs backwards, and a degenerate one drops both the card and the Ended
+        // entry it anchors - the call disappears from the chat entirely.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
+
+        // act
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await tester.CreateTextEntry(chatId, "can't talk right now");
+        await backend.AcceptCall(chatId, alice.Id, default);
+        var connected = await backend.GetState(chatId, default);
+        connected.Should().NotBeNull();
+        await backend.LeaveCall(chatId, alice.Id, default);
+
+        // assert
+        var entries = await ReadCallEntries(tester, chatId);
+        entries.Should().ContainSingle();
+        entries[0].Outcome.Should().Be(CallOutcome.Ended);
+
+        var conversation = await conversations.Get(connected!.ToMaterializedConversation().Id, default);
+        conversation.Should().NotBeNull();
+        conversation!.EntryLidRange.Contains(entries[0].LocalId).Should()
+            .BeTrue("the card must cover the entry that is the call's only row");
+    }
+
+    [Fact]
     public async Task CallerHangingUpAnAnsweredCallShouldBeEndedNotCanceled()
     {
         // CancelCall is also the caller's hang-up, so a connected call reaches the close with
