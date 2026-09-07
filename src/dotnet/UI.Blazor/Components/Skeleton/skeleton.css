@@ -39,13 +39,18 @@ body.narrow .thin-left-panel-skeleton .panel-body-skeleton {
     padding-left: 0.4rem;
     padding-right: 0.5rem;
 }
+/* Widths mirror .left-panel-buttons in left-panel.css, including its wider md variant
+   next to an open right panel - otherwise the chat list shifts once the real UI lands. */
 thin-left-panel-skeleton {
     @apply flex-y items-end gap-y-1.5 md:gap-y-0;
-    @apply h-full md:w-18 lg:w-30;
-    @apply p-1 md:px-2 lg:px-4;
+    @apply h-full md:w-18 lg:w-16 xl:w-24;
+    @apply p-1 md:px-2;
     @apply bg-04;
     --button-margin-left: 0px;
     --button-margin-right: 0px;
+}
+.page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) thin-left-panel-skeleton {
+    @apply md:w-24 lg:w-16 xl:w-24;
 }
 thin-left-panel-skeleton .button {
     @apply w-10 h-10 md:w-12 md:h-12;
