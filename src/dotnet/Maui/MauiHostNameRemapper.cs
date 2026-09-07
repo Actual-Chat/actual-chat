@@ -6,7 +6,7 @@ namespace ActualChat.Maui;
 
 public sealed class MauiHostNameRemapper : HostNameRemapper
 {
-    private volatile string? _ip;
+    private string? _ip;
 
     public static void Use()
 #if ANDROID || WINDOWS
@@ -22,29 +22,37 @@ public sealed class MauiHostNameRemapper : HostNameRemapper
     private MauiHostNameRemapper()
     {
         _ip = MauiPreferences.GetHostIp(MauiSettings.Host);
-        if (_ip == null)
-            _ = ResolveAsync();
+        _ = Resolve();
     }
 
     public override string Get(string hostName)
-        => string.Equals(hostName, MauiSettings.Host, StringComparison.OrdinalIgnoreCase) && _ip is { } ip
+        => string.Equals(hostName, MauiSettings.Host, StringComparison.OrdinalIgnoreCase)
+            && Volatile.Read(ref _ip) is { } ip
             ? ip
             : hostName;
 
     // Private methods
 
-    private async Task ResolveAsync()
+    private async Task Resolve()
     {
         try {
-            var addresses = await Dns.GetHostAddressesAsync(MauiSettings.Host).ConfigureAwait(false);
-            var ipAddress = addresses.FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork)
-                ?? addresses.FirstOrDefault();
-            if (ipAddress == null)
+            var resolvedAddresses = await Dns.GetHostAddressesAsync(MauiSettings.Host).ConfigureAwait(false);
+            var ipv4Addresses = resolvedAddresses
+                .Where(a => a.AddressFamily == AddressFamily.InterNetwork)
+                .ToArray();
+            var addresses = (ipv4Addresses.Length > 0 ? ipv4Addresses : resolvedAddresses)
+                .Distinct()
+                .OrderBy(a => a.ToString())
+                .ToArray();
+            if (addresses.Length == 0)
                 return;
 
-            var ip = ipAddress.ToString();
+            var index = MauiPreferences.InstallationId.GetXxHash3().PositiveModulo(addresses.Length);
+            var ip = addresses[index].ToString();
             Interlocked.Exchange(ref _ip, ip);
             MauiPreferences.SetHostIp(MauiSettings.Host, ip);
+            // StaticLog.For<MauiHostNameRemapper>()
+            //     .LogInformation("Resolved {Host} to {IPAddress}", MauiSettings.Host, ip);
         }
 #pragma warning disable RCS1075 // Avoid catching general exception
         catch (Exception) {

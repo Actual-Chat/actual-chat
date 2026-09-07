@@ -310,9 +310,6 @@
     <!-- This also ensures debug symbols are there -->
     <DebuggerSupport>true</DebuggerSupport>
   </PropertyGroup>
-  <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
-    <AndroidEnvironment Include="android-env.txt" />
-  </ItemGroup>
 
   <!-- Android: Debug configuration.
        EmbedAssembliesIntoApk must stay True here, even though the SDK defaults it to False for Debug:

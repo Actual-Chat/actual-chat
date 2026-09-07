@@ -86,12 +86,8 @@ public static class MauiPreferences
         set => Set(MinReportableClientVersionKey, value ?? "");
     }
 
-#if MACOS
-    // MacOSDeviceIdProvider's fallback for a Mac without a hardware UUID: minted once, then
-    // persisted in the user defaults, so it lasts until those are wiped.
     public static string InstallationId
         => Get(InstallationIdKey, static () => RandomStringGenerator.Default.Next())!;
-#endif
 
     public static bool IsPttArmed {
         // Mirrors the app's armed-chat state so MainActivity can raise the PTT foreground
