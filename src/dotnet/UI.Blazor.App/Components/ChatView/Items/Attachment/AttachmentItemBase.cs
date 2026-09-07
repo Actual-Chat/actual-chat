@@ -13,7 +13,9 @@ public abstract class AttachmentItemBase : ComputedRenderStateComponent<AppUIHub
     [Parameter] public EventCallback RestartClick { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.None };
+        // Parameters are set by the time the state is created, so the first render already shows
+        // the real attachment in its not-ready look instead of a placeholder
+        => new() { InitialValue = new Model(Attachment, AttachmentPreview.NoPreview, AttachmentProgress.New) };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
@@ -26,8 +28,6 @@ public abstract class AttachmentItemBase : ComputedRenderStateComponent<AppUIHub
     // Nested types
     public record Model(Attachment Attachment, AttachmentPreview Preview, AttachmentProgress Progress)
     {
-        public static readonly Model None = new(null!, AttachmentPreview.NoPreview, AttachmentProgress.New);
-
         public bool NoAccess => Preview.State == PreviewAccessState.NoFileAccess;
 
         // Custom preview is a generated thumbnail (e.g., iOS MOV thumbnail) with content:// scheme
