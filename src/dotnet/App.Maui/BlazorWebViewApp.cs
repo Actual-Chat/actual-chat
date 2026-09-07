@@ -65,7 +65,15 @@ public class BlazorWebViewApp
             Log.LogInformation("BlazorWebViewApp start has been requested");
 
             _startupTask = Task.Run(async () => {
-                Current = await _initializeFactory().ConfigureAwait(false);
+                try {
+                    Current = await _initializeFactory().ConfigureAwait(false);
+                }
+                catch (Exception e) {
+                    // Without this the failure stays invisible and every WhenAppReady waiter -
+                    // including the WebView handler's synchronous one - hangs forever.
+                    Log.LogCritical(e, "BlazorWebViewApp start failed");
+                    _currentSource.TrySetException(e);
+                }
             });
         }
     }
