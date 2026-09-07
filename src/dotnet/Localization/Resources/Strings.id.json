@@ -1368,6 +1368,7 @@
   "SignIn_InvalidPhoneOrEmail": "Nomor telepon atau alamat email tidak valid.",
   "SignIn_VerifyPhoneText_Format": "Verifikasi nomor telepon Anda untuk melanjutkan dan agar teman bisa menemukan Anda di {0}.",
   "SignIn_VerifyEmailText_Format": "Verifikasi alamat email Anda untuk melanjutkan dan agar teman bisa menemukan Anda di {0}.",
+  "SignIn_PopupBlocked": "Browser memblokir pop-up masuk. Izinkan pop-up untuk situs ini, lalu coba lagi.",
   "JoinRequest_NotMember": "Belum jadi anggota",
   "JoinRequest_Text": "Kirim permintaan bergabung — admin akan mempertimbangkan menambahkan Anda ke Tempat ini",
   "JoinRequest_Send": "Kirim permintaan",

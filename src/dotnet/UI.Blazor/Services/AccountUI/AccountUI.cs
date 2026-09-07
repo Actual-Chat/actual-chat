@@ -1,3 +1,4 @@
+using ActualChat.Localization;
 using ActualChat.UI.Blazor.Module;
 using ActualLab.Interception;
 
@@ -140,8 +141,12 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
 
     // Protected methods
 
-    protected virtual Task SignInBackend(string schema)
-        => JS.InvokeVoidAsync($"{AuthJsClassName}.signIn", schema).AsTask();
+    protected virtual async Task SignInBackend(string schema)
+    {
+        var isStarted = await JS.InvokeAsync<bool>($"{AuthJsClassName}.signIn", StopToken, schema).ConfigureAwait(true);
+        if (!isStarted)
+            await JS.InvokeVoidAsync("alert", StopToken, L.SignIn_PopupBlocked).ConfigureAwait(true);
+    }
 
     protected virtual Task SignOutBackend()
         // No navigation here: ProcessLoginLogout reloads once OwnAccount flips to guest.

@@ -1368,6 +1368,7 @@
   "SignIn_InvalidPhoneOrEmail": "Número de teléfono o dirección de correo no válidos.",
   "SignIn_VerifyPhoneText_Format": "Verifica tu número de teléfono para continuar y que tus amigos puedan encontrarte en {0}.",
   "SignIn_VerifyEmailText_Format": "Verifica tu correo electrónico para continuar y que tus amigos puedan encontrarte en {0}.",
+  "SignIn_PopupBlocked": "El navegador bloqueó la ventana emergente de inicio de sesión. Permite las ventanas emergentes para este sitio e inténtalo de nuevo.",
   "JoinRequest_NotMember": "Aún no eres miembro",
   "JoinRequest_Text": "Envía una solicitud y los administradores valorarán añadirte al Lugar",
   "JoinRequest_Send": "Enviar solicitud",

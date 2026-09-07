@@ -1419,6 +1419,7 @@ public static class LocalizedStringsLocalizerExt
         public string SignIn_InvalidPhoneOrEmail => l["SignIn_InvalidPhoneOrEmail"].Value;
         public string SignIn_VerifyPhoneText_Format(object arg0) => l["SignIn_VerifyPhoneText_Format", arg0].Value;
         public string SignIn_VerifyEmailText_Format(object arg0) => l["SignIn_VerifyEmailText_Format", arg0].Value;
+        public string SignIn_PopupBlocked => l["SignIn_PopupBlocked"].Value;
         public string JoinRequest_NotMember => l["JoinRequest_NotMember"].Value;
         public string JoinRequest_Text => l["JoinRequest_Text"].Value;
         public string JoinRequest_Send => l["JoinRequest_Send"].Value;

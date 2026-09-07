@@ -1368,6 +1368,7 @@
   "SignIn_InvalidPhoneOrEmail": "Numero di telefono o indirizzo email non valido.",
   "SignIn_VerifyPhoneText_Format": "Verifica il tuo numero di telefono per continuare e farti trovare dai tuoi amici su {0}.",
   "SignIn_VerifyEmailText_Format": "Verifica il tuo indirizzo email per continuare e farti trovare dai tuoi amici su {0}.",
+  "SignIn_PopupBlocked": "Il browser ha bloccato il popup di accesso. Consenti i popup per questo sito e riprova.",
   "JoinRequest_NotMember": "Non sei ancora membro",
   "JoinRequest_Text": "Invia una richiesta di accesso e gli admin valuteranno di aggiungerti al Luogo",
   "JoinRequest_Send": "Invia richiesta",

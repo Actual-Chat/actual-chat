@@ -1368,6 +1368,7 @@
   "SignIn_InvalidPhoneOrEmail": "Nieprawidłowy numer telefonu lub adres e-mail.",
   "SignIn_VerifyPhoneText_Format": "Zweryfikuj swój numer telefonu, aby kontynuować i pozwolić znajomym znaleźć Cię w {0}.",
   "SignIn_VerifyEmailText_Format": "Zweryfikuj swój adres e-mail, aby kontynuować i pozwolić znajomym znaleźć Cię w {0}.",
+  "SignIn_PopupBlocked": "Przeglądarka zablokowała wyskakujące okno logowania. Zezwól na wyskakujące okna dla tej witryny i spróbuj ponownie.",
   "JoinRequest_NotMember": "Jeszcze nie uczestnik",
   "JoinRequest_Text": "Wyślij prośbę o dołączenie — administratorzy rozpatrzą dodanie Cię do Miejsca",
   "JoinRequest_Send": "Wyślij prośbę",

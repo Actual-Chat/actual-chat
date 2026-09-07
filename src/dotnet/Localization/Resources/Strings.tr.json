@@ -1368,6 +1368,7 @@
   "SignIn_InvalidPhoneOrEmail": "Telefon numarası veya e-posta adresi geçersiz.",
   "SignIn_VerifyPhoneText_Format": "Devam etmek ve arkadaşlarınızın sizi {0} uygulamasında bulabilmesi için lütfen telefon numaranızı doğrulayın.",
   "SignIn_VerifyEmailText_Format": "Devam etmek ve arkadaşlarınızın sizi {0} uygulamasında bulabilmesi için lütfen e-posta adresinizi doğrulayın.",
+  "SignIn_PopupBlocked": "Tarayıcı giriş açılır penceresini engelledi. Lütfen bu site için açılır pencerelere izin verin ve yeniden deneyin.",
   "JoinRequest_NotMember": "Henüz üye değilsiniz",
   "JoinRequest_Text": "Katılma isteği gönderin, yöneticiler sizi Mekâna eklemeyi değerlendirsin",
   "JoinRequest_Send": "İstek gönderin",
