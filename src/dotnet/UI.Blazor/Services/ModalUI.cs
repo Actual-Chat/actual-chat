@@ -27,7 +27,7 @@ public sealed class ModalUI : UIServiceBase<UIHub>, IDisposable
             StateCategories.Get(type, nameof(_activeModals)));
         _isAnyFullScreenModalActive = StateFactory.NewComputed(
             new ComputedState<bool>.Options {
-                UpdateDelayer = FixedDelayer.NoneUnsafe,
+                UpdateDelayer = FixedDelayer.YieldUnsafe,
                 Category = StateCategories.Get(type, nameof(IsAnyFullScreenModalActive)),
             },
             ComputeIsAnyFullScreenModalActive);

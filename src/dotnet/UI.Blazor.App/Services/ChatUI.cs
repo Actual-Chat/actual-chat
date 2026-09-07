@@ -110,7 +110,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _itemVisibility = StateFactory.NewComputed(
             new ComputedState<ChatViewItemVisibility>.Options {
                 InitialValue = ChatViewItemVisibility.Empty,
-                UpdateDelayer = FixedDelayer.NoneUnsafe,
+                UpdateDelayer = FixedDelayer.YieldUnsafe,
                 Category = StateCategories.Get(type, nameof(ItemVisibility)),
             },
             ComputeItemVisibility);

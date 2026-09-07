@@ -88,7 +88,7 @@ public class UploadOperations(AppUIHub hub)
                 .Capture(() => Media.GetProgress(Session, mediaId, ct2), ct2)
                 .ConfigureAwait(false);
 
-            var changes = cStatus.Changes(FixedDelayer.NoneUnsafe, ct2);
+            var changes = cStatus.Changes(FixedDelayer.YieldUnsafe, ct2);
             await foreach (var c in changes.ConfigureAwait(false)) {
                 var (status, error) = c;
                 if (error != null) {
