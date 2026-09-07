@@ -16,7 +16,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
     private IChats Chats => Hub.Chats;
     private IAccounts Accounts => Hub.Accounts;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
-    private IncomingVoiceActivityUI IncomingVoiceActivityUI => Hub.IncomingVoiceActivityUI;
+    private VoiceActivityUI VoiceActivityUI => Hub.VoiceActivityUI;
     private GestureUI GestureUI => Hub.GestureUI;
     private UrlMapper UrlMapper => Hub.UrlMapper;
     public bool IsDisposed => _isDisposed;
@@ -26,7 +26,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
         Hub = hub;
         _isMauiHost = hub.HostInfo.HostKind.IsMauiApp();
         if (_isMauiHost) {
-            IncomingVoiceActivityUI.IncomingVoiceStamped += OnIncomingVoiceStamped;
+            VoiceActivityUI.VoiceStamped += OnVoiceStamped;
             GestureUI.StartGestureReadyChanged += OnStartGestureReadyChanged;
         }
     }
@@ -35,7 +35,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
     {
         _isDisposed = true;
         if (_isMauiHost) {
-            IncomingVoiceActivityUI.IncomingVoiceStamped -= OnIncomingVoiceStamped;
+            VoiceActivityUI.VoiceStamped -= OnVoiceStamped;
             GestureUI.StartGestureReadyChanged -= OnStartGestureReadyChanged;
         }
     }
@@ -123,7 +123,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
 
     public static (ChatId ChatId, int ExtraChatCount, Moment? AnswerWindowEndsAt)? ResolveArmedChat(
         IReadOnlyList<ChatId> pttChatIds,
-        IReadOnlyDictionary<ChatId, Moment> lastIncomingVoiceAt,
+        IReadOnlyDictionary<ChatId, Moment> lastVoiceAt,
         Moment now,
         TimeSpan answerWindow)
     {
@@ -132,7 +132,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
 
         var extraChatCount = pttChatIds.Count - 1;
         var answer = GestureActivationPolicy.GetAnswerWindowChat(
-            pttChatIds, lastIncomingVoiceAt, now, answerWindow);
+            pttChatIds, lastVoiceAt, now, answerWindow);
         return answer is { } vAnswer
             ? (vAnswer.ChatId, extraChatCount, vAnswer.At + answerWindow)
             : (pttChatIds[0], extraChatCount, null);
@@ -148,7 +148,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
             _ = GetActivity(default);
     }
 
-    private void OnIncomingVoiceStamped()
+    private void OnVoiceStamped()
     {
         // The stamps are a plain dictionary, so a stamp landing or being cleared invalidates
         // nothing on its own - and the answer-window state depends on both.
@@ -165,8 +165,10 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
         // record, and while any chat is armed this keeps it (and the headset button's media session)
         // alive. On iOS it carries the PTT state the Live Activity shows. The web has neither.
         var now = Hub.Clocks.ServerClock.Now;
-        var lastIncomingVoiceAt = IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
-        var armed = ResolveArmedChat(pttChatIds, lastIncomingVoiceAt, now, answerWindow);
+        // The merged snapshot, like the gesture policy's: the notification's countdown must
+        // report the window the triggers actually run on, and your own utterance opens one too.
+        var lastVoiceAt = VoiceActivityUI.SnapshotLastVoiceAt();
+        var armed = ResolveArmedChat(pttChatIds, lastVoiceAt, now, answerWindow);
         if (armed is not { AnswerWindowEndsAt: { } endsAt })
             return armed;
 

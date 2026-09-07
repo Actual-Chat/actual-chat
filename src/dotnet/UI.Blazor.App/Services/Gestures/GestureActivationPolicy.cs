@@ -4,21 +4,21 @@ public static class GestureActivationPolicy
 {
     public static bool HasAnswerWindow(
         IReadOnlyList<ChatId> pttChatIds,
-        IReadOnlyDictionary<ChatId, Moment> lastIncomingVoiceAt,
+        IReadOnlyDictionary<ChatId, Moment> lastVoiceAt,
         Moment now,
         TimeSpan recencyWindow)
-        => GetAnswerWindowChat(pttChatIds, lastIncomingVoiceAt, now, recencyWindow) is not null;
+        => GetAnswerWindowChat(pttChatIds, lastVoiceAt, now, recencyWindow) is not null;
 
     public static (ChatId ChatId, Moment At)? GetAnswerWindowChat(
         IReadOnlyList<ChatId> pttChatIds,
-        IReadOnlyDictionary<ChatId, Moment> lastIncomingVoiceAt,
+        IReadOnlyDictionary<ChatId, Moment> lastVoiceAt,
         Moment now,
         TimeSpan recencyWindow)
     {
         var since = now - recencyWindow;
         (ChatId ChatId, Moment At)? best = null;
         foreach (var chatId in pttChatIds) {
-            if (!lastIncomingVoiceAt.TryGetValue(chatId, out var at) || at <= since)
+            if (!lastVoiceAt.TryGetValue(chatId, out var at) || at <= since)
                 continue;
             if (best is not { } vBest || at > vBest.At)
                 best = (chatId, at);
@@ -29,9 +29,8 @@ public static class GestureActivationPolicy
     public static bool ShouldSenseStartGestures(
         bool areGesturesAlwaysOn,
         bool isPracticeMode,
-        TimeSpan sinceForegrounded,
         IReadOnlyList<ChatId> pttChatIds,
-        IReadOnlyDictionary<ChatId, Moment> lastIncomingVoiceAt,
+        IReadOnlyDictionary<ChatId, Moment> lastVoiceAt,
         Moment now,
         TimeSpan recencyWindow)
     {
@@ -43,14 +42,11 @@ public static class GestureActivationPolicy
             return false;
         if (areGesturesAlwaysOn)
             return true;
-        // Opening the app arms the gestures for the same duration an incoming voice does, so
-        // "open and shake" works without waiting for the other side to speak first. Elapsed
-        // awake-time (CpuClock domain), not a ServerClock stamp: the post-resume time resync
-        // would jump a stamp-based check past the window in one tick.
-        if (sinceForegrounded <= recencyWindow)
-            return true;
 
-        return HasAnswerWindow(pttChatIds, lastIncomingVoiceAt, now, recencyWindow);
+        // Voice is the only thing that arms a start gesture. Opening the app deliberately does
+        // not: a gesture surface that's live whenever the app is open is one an ordinary jostle
+        // can fire, and the notification's Reply action already covers starting a conversation.
+        return HasAnswerWindow(pttChatIds, lastVoiceAt, now, recencyWindow);
     }
 
     public static bool IsStartGestureReady(
@@ -65,7 +61,7 @@ public static class GestureActivationPolicy
             && !isPracticeMode
             && (isFlipToTalkEnabled || isDoubleShakeEnabled);
 
-    public static bool ShouldSenseStopGesture(bool isFaceDownStopEnabled, bool isTransmitting, bool isPracticeMode)
+    public static bool ShouldSenseStopGesture(bool isStopGestureEnabled, bool isTransmitting, bool isPracticeMode)
     {
         // The playground must let the user rehearse the stop gesture even when the privacy
         // toggle is off; outside practice the toggle governs, and anything outgoing needs it:
@@ -73,18 +69,30 @@ public static class GestureActivationPolicy
         if (isPracticeMode)
             return true;
 
-        return isFaceDownStopEnabled && isTransmitting;
+        return isStopGestureEnabled && isTransmitting;
     }
 
-    public static GestureRoute Route(GestureKind kind, bool isPracticeMode)
+    public static bool ShouldSenseShake(
+        bool isDoubleShakeEnabled,
+        bool mustSenseStart,
+        bool mustSenseStop,
+        bool isMicOpen)
+        // With the mic open a shake means "stop", so it rides the stop toggle, not shake-to-talk.
+        // isMicOpen, not mustSenseStop: its video-only case would route a shake to StartReply.
+        => (isDoubleShakeEnabled && mustSenseStart) || (mustSenseStop && isMicOpen);
+
+    public static GestureRoute Route(GestureKind kind, bool isPracticeMode, bool isMicOpen)
     {
         // Practice never transmits: rehearsing a gesture in Settings must not open the mic.
         if (isPracticeMode)
             return kind == GestureKind.None ? GestureRoute.None : GestureRoute.Practice;
 
         return kind switch {
-            GestureKind.FaceDown => GestureRoute.StopReply,
-            GestureKind.FlipToTalk or GestureKind.DoubleShake => GestureRoute.StartReply,
+            GestureKind.FaceDown or GestureKind.Pocket => GestureRoute.StopReply,
+            // The same shake means the opposite thing depending on the mic: nothing else can be
+            // meant by shaking a phone that's already recording you.
+            GestureKind.DoubleShake => isMicOpen ? GestureRoute.StopReply : GestureRoute.StartReply,
+            GestureKind.FlipToTalk => GestureRoute.StartReply,
             _ => GestureRoute.None,
         };
     }

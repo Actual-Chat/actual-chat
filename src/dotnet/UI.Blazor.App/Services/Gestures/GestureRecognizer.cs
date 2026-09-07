@@ -4,14 +4,15 @@ namespace ActualChat.UI.Blazor.App.Services.Gestures;
 public sealed record GestureOptions(
     bool IsFlipToTalkEnabled,
     bool IsDoubleShakeEnabled,
-    bool IsFaceDownEnabled,
+    bool IsStopGestureEnabled,
+    bool IsMicOpen,
     ShakeSensitivity ShakeSensitivity);
 
 /// <summary>
 /// Routes samples to the enabled detectors and emits a single gesture stream.
-/// The stop gesture is evaluated first: on the mic, closing always beats opening.
-/// Start gestures are suppressed while pocketed: carried upside-down, or proximity-covered
-/// for long enough in an orientation that isn't "resting screen-up on a surface".
+/// Stop gestures are evaluated first and are never suppressed: on the mic, closing always
+/// beats opening. Start gestures are suppressed while pocketed: carried upside-down, or
+/// proximity-covered for long enough in an orientation that isn't "resting screen-up".
 /// </summary>
 public sealed class GestureRecognizer
 {
@@ -46,7 +47,7 @@ public sealed class GestureRecognizer
             lock (_lock) {
                 if (value.IsFlipToTalkEnabled != _options.IsFlipToTalkEnabled)
                     _flip.Reset();
-                if (value.IsFaceDownEnabled != _options.IsFaceDownEnabled)
+                if (value.IsStopGestureEnabled != _options.IsStopGestureEnabled)
                     _faceDown.Reset();
                 if (value.ShakeSensitivity != _options.ShakeSensitivity)
                     _shake.ChangeSensitivity(value.ShakeSensitivity);
@@ -114,8 +115,16 @@ public sealed class GestureRecognizer
             _lastSampleAt = sample.At;
 
             UpdateUpsideDownUnguarded(sample);
-            if (_options.IsFaceDownEnabled && _faceDown.Process(sample))
-                return new GestureEvent(GestureKind.FaceDown, sample.At);
+            if (_options.IsStopGestureEnabled) {
+                var putAway = _faceDown.Process(sample);
+                if (putAway != GestureKind.None)
+                    return new GestureEvent(putAway, sample.At);
+            }
+
+            // A shake with the mic open means "stop", and it runs ahead of the guard for the
+            // same reason face-down does: being pocketed is when the mic most needs closing.
+            if (_options.IsMicOpen && _options.IsDoubleShakeEnabled && _shake.Process(sample))
+                return new GestureEvent(GestureKind.DoubleShake, sample.At);
 
             _isProximitySuppressed = _proximity.IsSuppressing(sample);
             var isSuppressed = _isProximitySuppressed || _isUpsideDown;
@@ -135,7 +144,8 @@ public sealed class GestureRecognizer
             _wasSuppressed = false;
             if (_options.IsFlipToTalkEnabled && _flip.Process(sample))
                 return new GestureEvent(GestureKind.FlipToTalk, sample.At);
-            if (_options.IsDoubleShakeEnabled && _shake.Process(sample))
+            // Guarded on IsMicOpen so a stop shake isn't fed to the detector twice.
+            if (!_options.IsMicOpen && _options.IsDoubleShakeEnabled && _shake.Process(sample))
                 return new GestureEvent(GestureKind.DoubleShake, sample.At);
 
             return null;

@@ -188,7 +188,7 @@ public sealed class AppScopedServiceStarter
         services.GetRequiredService<RpcEndpointMonitor>().Start();
         _ = hub.AudioFocusUI.WarmUp();
         _ = hub.TuneUI;
-        _ = hub.IncomingVoiceActivityUI;
+        _ = hub.VoiceActivityUI;
         hub.GestureUI.Start();
     }
 

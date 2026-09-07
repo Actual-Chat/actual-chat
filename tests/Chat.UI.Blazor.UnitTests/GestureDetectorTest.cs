@@ -205,11 +205,12 @@ public class GestureDetectorTest
         // On both platforms MAUI yields Z ≈ +1 for a device lying flat face-UP
         // (Android divides raw +9.81 by gravity; iOS negates CoreMotion's -1).
         var d = new FaceDownDetector();
+        d.SetProximityCovered(true);
         // act + assert
-        d.Process(new SensorSample(At(0), 0f, 0f, 1f)).Should().BeFalse();
-        d.Process(new SensorSample(At(1200), 0f, 0f, 1f)).Should().BeFalse();
-        d.Process(new SensorSample(At(1400), 0f, 0f, -1f)).Should().BeFalse();
-        d.Process(new SensorSample(At(2300), 0f, 0f, -1f)).Should().BeTrue();
+        d.Process(new SensorSample(At(0), 0f, 0f, 1f)).Should().Be(GestureKind.None);
+        d.Process(new SensorSample(At(1200), 0f, 0f, 1f)).Should().Be(GestureKind.None);
+        d.Process(new SensorSample(At(1400), 0f, 0f, -1f)).Should().Be(GestureKind.None);
+        d.Process(new SensorSample(At(2300), 0f, 0f, -1f)).Should().Be(GestureKind.FaceDown);
     }
 
     [Fact]
@@ -220,9 +221,9 @@ public class GestureDetectorTest
         var d = new FaceDownDetector();
         d.SetProximityCovered(true);
         // act + assert
-        d.Process(FaceDown(0)).Should().BeFalse();
-        d.Process(FaceDown(400)).Should().BeFalse();
-        d.Process(FaceDown(1200)).Should().BeTrue();
+        d.Process(FaceDown(0)).Should().Be(GestureKind.None);
+        d.Process(FaceDown(400)).Should().Be(GestureKind.None);
+        d.Process(FaceDown(1200)).Should().Be(GestureKind.FaceDown);
     }
 
     [Fact]
@@ -232,51 +233,95 @@ public class GestureDetectorTest
         // touches the glass - without proximity coverage the slow path must never fire.
         var d = new FaceDownDetector();
         // act + assert
-        d.Process(FaceDown(0)).Should().BeFalse();
-        d.Process(FaceDown(400)).Should().BeFalse();
-        d.Process(FaceDown(1200)).Should().BeFalse();
-        d.Process(FaceDown(5000)).Should().BeFalse();
+        d.Process(FaceDown(0)).Should().Be(GestureKind.None);
+        d.Process(FaceDown(400)).Should().Be(GestureKind.None);
+        d.Process(FaceDown(1200)).Should().Be(GestureKind.None);
+        d.Process(FaceDown(5000)).Should().Be(GestureKind.None);
     }
 
     [Fact]
     public void FaceDownDoesNotFireOnTransientPickUp()
     {
         var d = new FaceDownDetector();
+        d.SetProximityCovered(true);
         // act + assert
-        d.Process(FaceDown(0)).Should().BeFalse();
-        d.Process(FaceDown(200)).Should().BeFalse();
-        d.Process(Portrait(400)).Should().BeFalse();
-        d.Process(FaceDown(600)).Should().BeFalse();
+        d.Process(FaceDown(0)).Should().Be(GestureKind.None);
+        d.Process(FaceDown(200)).Should().Be(GestureKind.None);
+        d.SetProximityCovered(false);
+        d.Process(Portrait(400)).Should().Be(GestureKind.None);
+        d.SetProximityCovered(true);
+        d.Process(FaceDown(600)).Should().Be(GestureKind.None);
     }
 
     [Fact]
-    public void FaceDownFiresOnCoveredAndUpright()
+    public void PocketShouldFireWhenCoveredAndUpright()
     {
         var d = new FaceDownDetector();
         d.SetProximityCovered(true);
         // act + assert
-        d.Process(Portrait(0)).Should().BeFalse();
-        d.Process(Portrait(1200)).Should().BeTrue();
+        d.Process(Portrait(0)).Should().Be(GestureKind.None);
+        d.Process(Portrait(1200)).Should().Be(GestureKind.Pocket);
     }
 
     [Fact]
-    public void FaceDownUprightAloneDoesNotFire()
+    public void PocketShouldFireWhenCoveredAndUpsideDown()
     {
+        // The taught pocket gesture - turn the phone over and slide it away. Deliberately the
+        // same branch as the upright insert above: narrowing it to inverted-only would leave
+        // the mic open in a pocket the user entered the other way up.
         var d = new FaceDownDetector();
+        d.SetProximityCovered(true);
         // act + assert
-        d.Process(Portrait(0)).Should().BeFalse();
-        d.Process(Portrait(5000)).Should().BeFalse();
+        d.Process(UpsideDown(0)).Should().Be(GestureKind.None);
+        d.Process(UpsideDown(1200)).Should().Be(GestureKind.Pocket);
     }
 
     [Fact]
-    public void FaceDownFastFlipFiresDespiteHandTremor()
+    public void PocketShouldNotFireWhenUprightAndUncovered()
     {
         var d = new FaceDownDetector();
         // act + assert
-        d.Process(FaceUp(0)).Should().BeFalse();
-        d.Process(FaceDownJittery(200)).Should().BeFalse();
-        d.Process(FaceDownJittery(400)).Should().BeFalse();
-        d.Process(FaceDownJittery(900)).Should().BeTrue();
+        d.Process(Portrait(0)).Should().Be(GestureKind.None);
+        d.Process(Portrait(5000)).Should().Be(GestureKind.None);
+    }
+
+    [Fact]
+    public void FaceDownShouldNotFireOnAFastFlipInTheAir()
+    {
+        // A flip that lands on nothing leaves the glass uncovered. It used to fire on dwell
+        // alone - the mid-air false stop the proximity requirement removes.
+        var d = new FaceDownDetector();
+        // act + assert
+        d.Process(FaceUp(0)).Should().Be(GestureKind.None);
+        d.Process(FaceDownJittery(200)).Should().Be(GestureKind.None);
+        d.Process(FaceDownJittery(400)).Should().Be(GestureKind.None);
+        d.Process(FaceDownJittery(900)).Should().Be(GestureKind.None);
+    }
+
+    [Fact]
+    public void FaceDownShouldFireOnAFastFlipOntoASurfaceDespiteHandTremor()
+    {
+        var d = new FaceDownDetector();
+        // act + assert
+        d.Process(FaceUp(0)).Should().Be(GestureKind.None);
+        d.Process(FaceDownJittery(200)).Should().Be(GestureKind.None);
+        d.SetProximityCovered(true);
+        d.Process(FaceDownJittery(400)).Should().Be(GestureKind.None);
+        d.Process(FaceDownJittery(900)).Should().Be(GestureKind.FaceDown);
+    }
+
+    [Fact]
+    public void FaceDownShouldFireAsSoonAsAHeldFlipLands()
+    {
+        // The dwell keeps running while uncovered, so a phone flipped over in the hand and
+        // then set down fires on landing instead of restarting its 700ms on the surface.
+        var d = new FaceDownDetector();
+        // act + assert
+        d.Process(FaceUp(0)).Should().Be(GestureKind.None);
+        d.Process(FaceDown(200)).Should().Be(GestureKind.None);
+        d.Process(FaceDown(2000)).Should().Be(GestureKind.None);
+        d.SetProximityCovered(true);
+        d.Process(FaceDown(2100)).Should().Be(GestureKind.FaceDown);
     }
 
     [Fact]
@@ -287,11 +332,11 @@ public class GestureDetectorTest
         // path may fire, however long the posture lasts.
         var d = new FaceDownDetector();
         // act + assert
-        d.Process(Portrait(0)).Should().BeFalse();
-        d.Process(new SensorSample(At(600), 0f, 0.98f, -0.2f)).Should().BeFalse();
-        d.Process(new SensorSample(At(900), 0f, 0.8f, -0.6f)).Should().BeFalse();
+        d.Process(Portrait(0)).Should().Be(GestureKind.None);
+        d.Process(new SensorSample(At(600), 0f, 0.98f, -0.2f)).Should().Be(GestureKind.None);
+        d.Process(new SensorSample(At(900), 0f, 0.8f, -0.6f)).Should().Be(GestureKind.None);
         for (var atMs = 1200; atMs <= 10200; atMs += 600)
-            d.Process(FaceDownJittery(atMs)).Should().BeFalse($"held overhead at {atMs}ms");
+            d.Process(FaceDownJittery(atMs)).Should().Be(GestureKind.None, $"held overhead at {atMs}ms");
     }
 
     [Fact]
@@ -301,14 +346,14 @@ public class GestureDetectorTest
         // reclined hold is the glass landing on the surface: still AND covered fires.
         var d = new FaceDownDetector();
         // act + assert
-        d.Process(Portrait(0)).Should().BeFalse();
-        d.Process(new SensorSample(At(600), 0f, 0.98f, -0.2f)).Should().BeFalse();
-        d.Process(FaceDownJittery(1200)).Should().BeFalse();
-        d.Process(FaceDownJittery(1800)).Should().BeFalse();
+        d.Process(Portrait(0)).Should().Be(GestureKind.None);
+        d.Process(new SensorSample(At(600), 0f, 0.98f, -0.2f)).Should().Be(GestureKind.None);
+        d.Process(FaceDownJittery(1200)).Should().Be(GestureKind.None);
+        d.Process(FaceDownJittery(1800)).Should().Be(GestureKind.None);
         d.SetProximityCovered(true);
-        d.Process(FaceDown(2400)).Should().BeFalse();
-        d.Process(FaceDown(3000)).Should().BeFalse();
-        d.Process(FaceDown(3600)).Should().BeTrue();
+        d.Process(FaceDown(2400)).Should().Be(GestureKind.None);
+        d.Process(FaceDown(3000)).Should().Be(GestureKind.None);
+        d.Process(FaceDown(3600)).Should().Be(GestureKind.FaceDown);
     }
 
     [Fact]
@@ -318,11 +363,11 @@ public class GestureDetectorTest
         // overhead dead-still - stillness alone must not fire while nothing covers the glass.
         var d = new FaceDownDetector();
         // act + assert
-        d.Process(Portrait(0)).Should().BeFalse();
-        d.Process(new SensorSample(At(600), 0f, 0.98f, -0.2f)).Should().BeFalse();
-        d.Process(FaceDownJittery(1200)).Should().BeFalse();
+        d.Process(Portrait(0)).Should().Be(GestureKind.None);
+        d.Process(new SensorSample(At(600), 0f, 0.98f, -0.2f)).Should().Be(GestureKind.None);
+        d.Process(FaceDownJittery(1200)).Should().Be(GestureKind.None);
         for (var atMs = 1800; atMs <= 7800; atMs += 600)
-            d.Process(FaceDown(atMs)).Should().BeFalse($"still overhead at {atMs}ms");
+            d.Process(FaceDown(atMs)).Should().Be(GestureKind.None, $"still overhead at {atMs}ms");
     }
 
     [Fact]
@@ -333,27 +378,28 @@ public class GestureDetectorTest
         var d = new FaceDownDetector();
         // act + assert
         for (var atMs = 0; atMs <= 6000; atMs += 600)
-            d.Process(FaceDownJittery(atMs)).Should().BeFalse($"held overhead at {atMs}ms");
+            d.Process(FaceDownJittery(atMs)).Should().Be(GestureKind.None, $"held overhead at {atMs}ms");
     }
 
     [Fact]
-    public void FaceDownFlipUpAndBackFiresWhileReclined()
+    public void FaceDownShouldNotFireOnFlipUpAndBackWhileReclined()
     {
-        // The escape hatch: tilting the phone up past NotFaceDownZ and flipping back within
-        // FastEntryWindow is a fast entry, so a reclined user can still stop deliberately.
+        // The old escape hatch for a reclined user - tilt up past NotFaceDownZ and flip back -
+        // is gone with the proximity requirement: nothing covers the glass overhead. Shaking is
+        // the stop gesture that works in the hand, see the recognizer's open-mic shake test.
         var d = new FaceDownDetector();
         // act + assert
         for (var atMs = 0; atMs <= 3000; atMs += 600)
-            d.Process(FaceDownJittery(atMs)).Should().BeFalse($"held overhead at {atMs}ms");
-        d.Process(Portrait(3200)).Should().BeFalse();
-        d.Process(FaceDownJittery(3400)).Should().BeFalse();
-        d.Process(FaceDownJittery(4100)).Should().BeTrue();
+            d.Process(FaceDownJittery(atMs)).Should().Be(GestureKind.None, $"held overhead at {atMs}ms");
+        d.Process(Portrait(3200)).Should().Be(GestureKind.None);
+        d.Process(FaceDownJittery(3400)).Should().Be(GestureKind.None);
+        d.Process(FaceDownJittery(4100)).Should().Be(GestureKind.None);
     }
 
     [Fact]
     public void RecognizerRoutesOnlyToEnabledDetectors()
     {
-        var options = new GestureOptions(false, true, true, ShakeSensitivity.Medium);
+        var options = new GestureOptions(false, true, true, false, ShakeSensitivity.Medium);
         var r = new GestureRecognizer(options);
         // act + assert
         r.Process(Portrait(0));
@@ -364,7 +410,7 @@ public class GestureDetectorTest
     [Fact]
     public void RecognizerStopBeatsStart()
     {
-        var options = new GestureOptions(true, true, true, ShakeSensitivity.High);
+        var options = new GestureOptions(true, true, true, false, ShakeSensitivity.High);
         var r = new GestureRecognizer(options);
         r.SetProximityCovered(true);
         // Face-down enters fast at t=200 and completes its 700ms dwell on the last sample
@@ -462,14 +508,14 @@ public class GestureDetectorTest
     [Fact]
     public void RecognizerEnableToggleResetsFaceDownDwell()
     {
-        var options = new GestureOptions(false, false, true, ShakeSensitivity.Medium);
+        var options = new GestureOptions(false, false, true, false, ShakeSensitivity.Medium);
         var r = new GestureRecognizer(options);
         r.SetProximityCovered(true);
         // act + assert
         r.Process(new SensorSample(At(0), 0f, 0f, -1f)).Should().BeNull();
         r.Process(new SensorSample(At(400), 0f, 0f, -1f)).Should().BeNull();
-        r.Options = options with { IsFaceDownEnabled = false };
-        r.Options = options with { IsFaceDownEnabled = true };
+        r.Options = options with { IsStopGestureEnabled = false };
+        r.Options = options with { IsStopGestureEnabled = true };
         r.Process(new SensorSample(At(1000), 0f, 0f, -1f)).Should().BeNull();
         // Without the reset-on-toggle fix, the stale _stillSince(0) would satisfy StillDwell
         // here (1750ms of stillness since t=0), making this sample fire.
@@ -481,7 +527,7 @@ public class GestureDetectorTest
     [Fact]
     public void RecognizerSampleGapResetsFaceDownDwell()
     {
-        var options = new GestureOptions(false, false, true, ShakeSensitivity.Medium);
+        var options = new GestureOptions(false, false, true, false, ShakeSensitivity.Medium);
         var r = new GestureRecognizer(options);
         r.SetProximityCovered(true);
         // act + assert
@@ -497,7 +543,7 @@ public class GestureDetectorTest
     [Fact]
     public void RecognizerCoveredSuppressesShake()
     {
-        var options = new GestureOptions(false, true, false, ShakeSensitivity.High);
+        var options = new GestureOptions(false, true, false, false, ShakeSensitivity.High);
         var r = new GestureRecognizer(options);
         r.SetProximityCovered(true);
         // act + assert: upright, i.e. pocket-like - a phone resting screen-up is covered by
@@ -509,7 +555,7 @@ public class GestureDetectorTest
     [Fact]
     public void RecognizerCoveredSuppressesFlip()
     {
-        var options = new GestureOptions(true, false, false, ShakeSensitivity.Medium);
+        var options = new GestureOptions(true, false, false, false, ShakeSensitivity.Medium);
         var r = new GestureRecognizer(options);
         r.SetProximityCovered(true);
         // act + assert
@@ -524,7 +570,7 @@ public class GestureDetectorTest
     {
         // Top-down pocket carry: gravity-dominated Y=-1 samples latch the guard; the walk
         // bounce (|a| far from 1g, so never gravity-dominated) cannot unlatch it.
-        var options = new GestureOptions(false, true, false, ShakeSensitivity.High);
+        var options = new GestureOptions(false, true, false, false, ShakeSensitivity.High);
         var r = new GestureRecognizer(options);
         // act + assert
         r.Process(UpsideDown(0)).Should().BeNull();
@@ -536,7 +582,7 @@ public class GestureDetectorTest
     [Fact]
     public void RecognizerUprightClearsUpsideDownLatchAndShakeFires()
     {
-        var options = new GestureOptions(false, true, false, ShakeSensitivity.High);
+        var options = new GestureOptions(false, true, false, false, ShakeSensitivity.High);
         var r = new GestureRecognizer(options);
         // act
         r.Process(UpsideDown(0));
@@ -549,21 +595,39 @@ public class GestureDetectorTest
     }
 
     [Fact]
+    public void RecognizerShouldFireAShakeWithAnOpenMicDespiteSuppression()
+    {
+        // A shake means "stop" while the mic is open, so it has to survive the pocket guard -
+        // which exists to stop a jostle from OPENING a mic, not from closing one.
+        var options = new GestureOptions(false, true, false, true, ShakeSensitivity.High);
+        var r = new GestureRecognizer(options);
+        // act
+        r.Process(UpsideDown(0));
+        r.Process(UpsideDown(200));
+        var hasFired = false;
+        foreach (var sample in Burst(1.4f, extremes: 6, startMs: 400, stepMs: 70))
+            hasFired |= r.Process(sample) is { Kind: GestureKind.DoubleShake };
+
+        // assert
+        hasFired.Should().BeTrue("the stop shake runs ahead of the pocket guard");
+    }
+
+    [Fact]
     public void RecognizerPocketStopFiresWhileStartGesturesSuppressed()
     {
-        var options = new GestureOptions(true, true, true, ShakeSensitivity.High);
+        var options = new GestureOptions(true, true, true, false, ShakeSensitivity.High);
         var r = new GestureRecognizer(options);
         r.SetProximityCovered(true);
         // act + assert
         r.Process(Portrait(0)).Should().BeNull();
         var e = r.Process(Portrait(1200));
-        e!.Value.Kind.Should().Be(GestureKind.FaceDown, "the pocket stop branch is never suppressed");
+        e!.Value.Kind.Should().Be(GestureKind.Pocket, "the pocket stop branch is never suppressed");
     }
 
     [Fact]
     public void RecognizerSustainedCoverResetsHalfBuiltFlip()
     {
-        var options = new GestureOptions(true, false, false, ShakeSensitivity.Medium);
+        var options = new GestureOptions(true, false, false, false, ShakeSensitivity.Medium);
         var r = new GestureRecognizer(options);
         // act + assert
         r.Process(Portrait(0)).Should().BeNull();
@@ -579,7 +643,7 @@ public class GestureDetectorTest
     [Fact]
     public void RecognizerCoverSpikeKeepsHalfBuiltFlip()
     {
-        var options = new GestureOptions(true, false, false, ShakeSensitivity.Medium);
+        var options = new GestureOptions(true, false, false, false, ShakeSensitivity.Medium);
         var r = new GestureRecognizer(options);
         // act + assert: under-display proximity sensors blip "near" while the phone is still,
         // and a blip that never reaches the dwell must not wipe a gesture in progress.
@@ -594,7 +658,7 @@ public class GestureDetectorTest
     [Fact]
     public void RecognizerCoverDoesNotSuppressWhileRestingScreenUp()
     {
-        var options = new GestureOptions(false, true, false, ShakeSensitivity.High);
+        var options = new GestureOptions(false, true, false, false, ShakeSensitivity.High);
         var r = new GestureRecognizer(options);
         // act: a phone flat on a desk reads "near" on some devices, but it isn't pocketed
         r.SetProximityCovered(true);
@@ -610,7 +674,7 @@ public class GestureDetectorTest
     [Fact]
     public void RecognizerSampleGapResetPreservesCoveredClearsLatch()
     {
-        var options = new GestureOptions(false, true, false, ShakeSensitivity.High);
+        var options = new GestureOptions(false, true, false, false, ShakeSensitivity.High);
         var r = new GestureRecognizer(options);
         r.SetProximityCovered(true);
         // act + assert

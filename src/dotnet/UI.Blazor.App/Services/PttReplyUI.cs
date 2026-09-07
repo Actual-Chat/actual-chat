@@ -19,7 +19,7 @@ public sealed class PttReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
-    private IncomingVoiceActivityUI IncomingVoiceActivityUI => Hub.IncomingVoiceActivityUI;
+    private VoiceActivityUI VoiceActivityUI => Hub.VoiceActivityUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ChatUI ChatUI => Hub.ChatUI;
     private IChats Chats => Hub.Chats;
@@ -51,7 +51,7 @@ public sealed class PttReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
             .ConfigureAwait(false);
         var armed = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
         var focused = ChatUI.SelectedChatId.Value;
-        var snapshot = IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
+        var snapshot = VoiceActivityUI.SnapshotLastVoiceAt();
         var target = ReplyTargetResolver.Resolve(
             armed, snapshot, focused, Clocks.ServerClock.Now,
             recencyWindow ?? settings.AnswerWindow, settings.AnswerWindow);
@@ -163,6 +163,10 @@ public sealed class PttReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
             if (await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) is null)
                 return; // Already closed - idempotent
 
+            // Before the close, which is what raises the falling edge this suppresses: a reply
+            // that heard nothing must not re-arm the triggers that opened it.
+            if (ownReply is not null && !everVoiced)
+                VoiceActivityUI.SuppressOwnVoiceWindow(ownReply.ChatId);
             await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
             if (ownReply is null) {
                 // Closing any recording is intended, but a PTT cue would be a lie about a mic PTT

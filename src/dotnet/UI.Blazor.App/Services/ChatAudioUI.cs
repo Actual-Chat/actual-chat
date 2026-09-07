@@ -31,7 +31,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ConnectivityUI ConnectivityUI => Hub.ConnectivityUI;
-    private IncomingVoiceActivityUI IncomingVoiceActivityUI => Hub.IncomingVoiceActivityUI;
+    private VoiceActivityUI VoiceActivityUI => Hub.VoiceActivityUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private IAudioInitializer AudioInitializer => Hub.AudioInitializer;
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
@@ -234,7 +234,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             return false;
 
         // Own-author-filtered: the user's own recording must not grab the listening focus
-        return await IncomingVoiceActivityUI.HasIncomingVoice(chatId, cancellationToken).ConfigureAwait(false);
+        return await VoiceActivityUI.HasIncomingVoice(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod] // Synced

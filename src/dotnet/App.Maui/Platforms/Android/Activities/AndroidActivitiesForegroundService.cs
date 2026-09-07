@@ -63,6 +63,7 @@ public sealed class AndroidActivitiesForegroundService : Service
     private static int _lastRequestedTypes;
     private string _requestId = "";
     private MediaSessionCompat? _mediaSession;
+    private ScreenOffReceiver? _screenOffReceiver;
     private string _lastTitle = "";
     private string _lastLink = "";
     private Bitmap? _lastAlbumArt;
@@ -171,6 +172,7 @@ public sealed class AndroidActivitiesForegroundService : Service
         _requestId = RandomStringGenerator.Default.Next();
         Interlocked.Exchange(ref _pendingStartCount, 0);
         Volatile.Write(ref _isStopPending, false);
+        UpdateScreenOffReceiver(false);
         ReleaseMediaSession();
         base.OnDestroy();
     }
@@ -228,6 +230,7 @@ public sealed class AndroidActivitiesForegroundService : Service
             return StartCommandResult.NotSticky;
         }
 
+        UpdateScreenOffReceiver(kind is ActivityKind.Recording);
         if (kind is ActivityKind.Uploading)
             return ShowUpload(intent, requested);
         if (kind is ActivityKind.SharingLocation)
@@ -679,6 +682,64 @@ public sealed class AndroidActivitiesForegroundService : Service
         manager.CreateNotificationChannel(quietRecordingChannel);
     }
 
+    private void UpdateScreenOffReceiver(bool isRecording)
+    {
+        if (isRecording == (_screenOffReceiver is not null))
+            return;
+
+        if (!isRecording) {
+            var receiver = _screenOffReceiver;
+            _screenOffReceiver = null;
+            try {
+                UnregisterReceiver(receiver);
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Couldn't unregister the screen-off receiver");
+            }
+            return;
+        }
+
+        try {
+            var receiver = new ScreenOffReceiver();
+            var filter = new IntentFilter(Intent.ActionScreenOff);
+            // ACTION_SCREEN_OFF is a protected system broadcast, so NotExported is what API 33+
+            // wants here - see AndroidCarConnection for the opposite, cross-UID case. The flag
+            // itself only exists from 33, and minSdk is 28.
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu)
+                RegisterReceiver(receiver, filter, ReceiverFlags.NotExported);
+            else
+#pragma warning disable CA1422
+                RegisterReceiver(receiver, filter);
+#pragma warning restore CA1422
+            _screenOffReceiver = receiver;
+        }
+        catch (Exception e) {
+            // Degrades to "the other two stop gestures still work", which is what it was before.
+            Log.LogWarning(e, "Couldn't register the screen-off receiver");
+        }
+    }
+
+    private static void TryHandleScreenOff()
+    {
+        // ChatUI holds KeepScreenOn while the mic is open, so the display can't time out under our
+        // own activity and a screen-off is a power-button press - though a foreground OTHER app
+        // can still time it out mid-reply. Mic only: power says nothing about a camera.
+        try {
+            if (AppScopeAccessor.Current is not { } services)
+                return;
+
+            var hub = services.GetRequiredService<AppUIHub>();
+            if (!hub.GestureUI.IsStopGestureEnabled)
+                return;
+
+            _ = BackgroundTask.Run(() => hub.PttReplyUI.StopReply(), Log,
+                "Screen-off reply stop failed", CancellationToken.None);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Screen-off handling failed");
+        }
+    }
+
     private static void TryHandleNotificationReply(bool isStop)
     {
         // Same shape as the headset-button path: the hold is taken synchronously inside the
@@ -800,5 +861,11 @@ public sealed class AndroidActivitiesForegroundService : Service
 
         public override void OnStop()
             => AndroidActivitiesBackend.Stop();
+    }
+
+    private sealed class ScreenOffReceiver : BroadcastReceiver
+    {
+        public override void OnReceive(Context? context, Intent? intent)
+            => TryHandleScreenOff();
     }
 }

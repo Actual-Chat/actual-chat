@@ -197,7 +197,7 @@ public static class PttSession
         // at the live edge, a copied anchor would replay the utterance from its start.
         var headlessHub = headless.Services.GetRequiredService<AppUIHub>();
         var listeningChatIds = await headlessHub.ChatAudioUI.GetListeningChatIds().ConfigureAwait(false);
-        var lastIncomingVoiceAt = headlessHub.IncomingVoiceActivityUI.SnapshotLastIncomingVoiceAt();
+        var lastIncomingVoiceAt = headlessHub.VoiceActivityUI.SnapshotLastIncomingVoiceAt();
         // The headless players stop before the WebView ones start: a gap of one buffer beats two
         // players. Listening only - a hot reply keeps recording, see below.
         await headlessHub.ChatAudioUI.ClearListeningChats().ConfigureAwait(false);
@@ -238,7 +238,7 @@ public static class PttSession
     {
         var hub = scopedServices.GetRequiredService<AppUIHub>();
         foreach (var (chatId, at) in lastIncomingVoiceAt)
-            hub.IncomingVoiceActivityUI.NoteIncomingVoice(chatId, at);
+            hub.VoiceActivityUI.NoteIncomingVoice(chatId, at);
         if (listeningChatIds.IsEmpty)
             return;
 
