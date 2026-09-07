@@ -896,10 +896,16 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             _ = GetCallState(chatId, default);
     }
 
-    private async Task SetOutcome(ChatId chatId, LiveSessionState state, CallOutcome outcome)
+    // Internal (rather than private) to be accessible from tests: every real caller of this method also
+    // unconditionally closes the call in the same operation once its outcome is the abandoning one, so the
+    // guard below can't be pinned by observing Redis state through the close - it has to be called directly.
+    internal async Task SetOutcome(ChatId chatId, LiveSessionState state, CallOutcome outcome)
     {
-        // First writer wins: a caller hanging up right after an invitee declined must not rewrite
-        // the story. Callers already hold _changeLocks, so the read and the write are atomic.
+        // First writer wins: the earliest terminal response decides the outcome, and nothing later
+        // may overwrite it - including a decline outranking another invitee's ring later timing out
+        // into NoAnswer. The decisive "no" already happened; a sibling invite's expiry afterward
+        // isn't new information about how the call went. Callers hold _changeLocks, so this read
+        // and write are atomic.
         if (state.Outcome != CallOutcome.None)
             return;
 
@@ -907,6 +913,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             Outcome = outcome,
             Version = VersionGenerator.NextVersion(state.Version),
         }).ConfigureAwait(false);
+        using (Invalidation.Begin())
+            _ = GetState(chatId, default);
     }
 
     private CallState NewCallState(LiveSessionState state, CallStatus status)

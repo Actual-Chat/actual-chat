@@ -1319,7 +1319,43 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // act — Alice declines while Carol is still ringing, so the call is not abandoned
         await backend.DeclineCall(chatId, aliceAuthor.Id, default);
 
-        // assert — read before the close drops the state
+        // assert — Carol is still ringing, so the call isn't abandoned and the state is never closed
+        var state = await backend.GetState(chatId, default);
+        state!.Outcome.Should().Be(CallOutcome.Declined);
+    }
+
+    [Fact]
+    public async Task DeclinedOutcomeShouldOutrankALaterNoAnswer()
+    {
+        // Every real caller that would record NoAnswer (ExpireRings, once the call is fully abandoned)
+        // also closes the call in the same operation, which drops the Redis state before a test could
+        // read it back - so the precedence guard is pinned by calling the guarded write directly instead
+        // of driving a real ring timeout through to its unobservable close.
+
+        // arrange — Bob rings two people; Alice declines, leaving a live, non-abandoned session
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await using var carol = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        await carol.SignInAsNew("Carol");
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        await carol.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var carolAuthor = await carol.GetOwnAuthor(chatId);
+        var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(
+            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id, carolAuthor!.Id }.ToApiArray(), false, default);
+        await backend.DeclineCall(chatId, aliceAuthor.Id, default);
+        var declined = await backend.GetState(chatId, default);
+        declined!.Outcome.Should().Be(CallOutcome.Declined);
+
+        // act — Carol's ring times out: this is the exact write ExpireRings would make if it could
+        await backend.SetOutcome(chatId, declined, CallOutcome.NoAnswer);
+
+        // assert — the earlier decline still wins
         var state = await backend.GetState(chatId, default);
         state!.Outcome.Should().Be(CallOutcome.Declined);
     }
