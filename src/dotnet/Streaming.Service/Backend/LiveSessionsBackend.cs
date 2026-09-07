@@ -1194,20 +1194,27 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             if (!await _redisScope.Remove(state.ChatId.Value).ConfigureAwait(false))
                 return;
 
-            // Stop any ring still going on an invitee's device before the session goes away.
-            var invitees = (await SafeGetInvites(state.ChatId).ConfigureAwait(false))
-                .Values.Where(i => i is not null).Select(i => i!.InviteeId).ToList();
-            if (invitees.Count > 0)
-                await DismissRing(state.RingConversationId, invitees, cancellationToken).ConfigureAwait(false);
-            if (state.ChatId.Kind == ChatKind.Peer)
-                await WriteCallEntry(state, invitees, cancellationToken).ConfigureAwait(false);
-            // A call that never connected has no conversation; one that did is materialized here, and
-            // unlike a transcript session it has no title to gate on - the card is the point.
-            if (state.SessionStartedAt is not null) {
-                var materialize = new ConversationBackend_Materialize(state.ToMaterializedConversation());
-                await Commander.Call(materialize, true, cancellationToken).ConfigureAwait(false);
+            try {
+                // Stop any ring still going on an invitee's device before the session goes away.
+                var invitees = (await SafeGetInvites(state.ChatId).ConfigureAwait(false))
+                    .Values.Where(i => i is not null).Select(i => i!.InviteeId).ToList();
+                if (invitees.Count > 0)
+                    await DismissRing(state.RingConversationId, invitees, cancellationToken).ConfigureAwait(false);
+                if (state.ChatId.Kind == ChatKind.Peer)
+                    await WriteCallEntry(state, invitees, cancellationToken).ConfigureAwait(false);
+                // A call that never connected has no conversation; one that did is materialized here,
+                // and unlike a transcript session it has no title to gate on - the card is the point.
+                if (state.SessionStartedAt is not null) {
+                    var materialize = new ConversationBackend_Materialize(state.ToMaterializedConversation());
+                    await Commander.Call(materialize, true, cancellationToken).ConfigureAwait(false);
+                }
             }
-            await Close(state.ChatId, cancellationToken).ConfigureAwait(false);
+            finally {
+                // Having won the claim, this is the session's only closer: nothing retries a torn-down
+                // session, so a failed ring dismissal, entry or materialization must not also cost the
+                // participants, the invites and the invalidation that tells clients the call is over.
+                await Close(state.ChatId, cancellationToken).ConfigureAwait(false);
+            }
             return;
         }
 
@@ -1234,7 +1241,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             return;
 
         var chatId = state.ChatId;
-        var callerId = state.Host ?? state.AuthorIds[0];
+        var callerId = state.Host ?? state.AuthorIds.FirstOrDefault();
+        if (callerId is null)
+            return;
+
         var caller = await AuthorsBackend
             .Get(chatId, callerId, RequestedAuthorKind.Full, cancellationToken)
             .ConfigureAwait(false);
