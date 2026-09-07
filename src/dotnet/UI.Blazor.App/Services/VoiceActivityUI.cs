@@ -86,6 +86,22 @@ public class VoiceActivityUI(AppUIHub hub)
     public static bool ShouldStampEnd(bool prevHadOthers, bool nowHasOthers)
         => prevHadOthers && !nowHasOthers;
 
+    public static bool ApplyOwnVoiceEnd(
+        IDictionary<ChatId, Moment> lastOwnAt,
+        ChatId chatId,
+        bool isUnheard,
+        Moment now)
+    {
+        // An unheard reply leaves any earlier stamp exactly as it was. It must not extend the
+        // window - one false gesture would keep its own window alive for another round - but
+        // it must not clear it either: the window a real utterance opened runs to its own end.
+        if (isUnheard)
+            return false;
+
+        lastOwnAt[chatId] = now;
+        return true;
+    }
+
     public static Dictionary<ChatId, Moment> MergeSnapshots(
         Dictionary<ChatId, Moment> incoming,
         IReadOnlyDictionary<ChatId, Moment> own)
@@ -228,15 +244,9 @@ public class VoiceActivityUI(AppUIHub hub)
     private void EndOwnVoice(ChatId chatId)
     {
         var wasLive = _liveOwn.TryRemove(chatId, out _);
-        // A reply that heard nothing must not re-arm the very triggers that opened it, or one
-        // false gesture keeps its own window alive for another round.
-        if (_unheardOwn.TryRemove(chatId, out _)) {
-            if (_lastOwnAt.TryRemove(chatId, out _) || wasLive)
-                VoiceStamped?.Invoke();
-            return;
-        }
-
-        _lastOwnAt[chatId] = Clocks.ServerClock.Now;
-        VoiceStamped?.Invoke();
+        var isUnheard = _unheardOwn.TryRemove(chatId, out _);
+        var hasStamped = ApplyOwnVoiceEnd(_lastOwnAt, chatId, isUnheard, Clocks.ServerClock.Now);
+        if (hasStamped || wasLive)
+            VoiceStamped?.Invoke();
     }
 }

@@ -115,4 +115,57 @@ public class VoiceActivitySnapshotTest
         merged[chatA].Should().Be(now - TimeSpan.FromSeconds(1), "you spoke last in A");
         merged[chatB].Should().Be(now - TimeSpan.FromSeconds(1), "they spoke last in B");
     }
+
+    [Fact]
+    public void AnUnheardReplyShouldNotExtendTheOwnVoiceWindow()
+    {
+        // arrange
+        var chatA = ChatId.Parse("aaaaaaaaaaaaaaaaaaaa");
+        var now = Moment.EpochStart + TimeSpan.FromDays(20_000);
+        var stamps = new Dictionary<ChatId, Moment>();
+
+        // act
+        var hasStamped = VoiceActivityUI.ApplyOwnVoiceEnd(stamps, chatA, isUnheard: true, now);
+
+        // assert
+        hasStamped.Should().BeFalse();
+        stamps.Should().BeEmpty("a reply that heard nothing must not arm the triggers that opened it");
+    }
+
+    [Fact]
+    public void AnUnheardReplyShouldNotCutShortAnEarlierWindow()
+    {
+        // The false-gesture case: you speak, which opens a window; a stray gesture inside it
+        // opens a mic that hears nothing. Suppressing that close must leave your stamp alone -
+        // clearing it would end a window a real utterance opened.
+
+        // arrange
+        var chatA = ChatId.Parse("aaaaaaaaaaaaaaaaaaaa");
+        var now = Moment.EpochStart + TimeSpan.FromDays(20_000);
+        var spokeAt = now - TimeSpan.FromSeconds(5);
+        var stamps = new Dictionary<ChatId, Moment> { [chatA] = spokeAt };
+
+        // act
+        var hasStamped = VoiceActivityUI.ApplyOwnVoiceEnd(stamps, chatA, isUnheard: true, now);
+
+        // assert
+        hasStamped.Should().BeFalse();
+        stamps[chatA].Should().Be(spokeAt, "the earlier utterance still owns its window");
+    }
+
+    [Fact]
+    public void AHeardReplyShouldStampItsEnd()
+    {
+        // arrange
+        var chatA = ChatId.Parse("aaaaaaaaaaaaaaaaaaaa");
+        var now = Moment.EpochStart + TimeSpan.FromDays(20_000);
+        var stamps = new Dictionary<ChatId, Moment> { [chatA] = now - TimeSpan.FromSeconds(30) };
+
+        // act
+        var hasStamped = VoiceActivityUI.ApplyOwnVoiceEnd(stamps, chatA, isUnheard: false, now);
+
+        // assert
+        hasStamped.Should().BeTrue();
+        stamps[chatA].Should().Be(now, "the window runs from the end of what you just said");
+    }
 }
