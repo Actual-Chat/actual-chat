@@ -23,8 +23,9 @@ tried to reach them.
 
 In scope:
 
-- Three outcomes: **no answer** (ring expired), **declined** (invitee refused),
-  **canceled** (caller hung up before anyone answered).
+- Four outcomes: **no answer** (ring expired), **declined** (invitee refused),
+  **canceled** (caller hung up before anyone answered), and **ended** (the call
+  connected and finished).
 - Peer chats only. The model carries invitees so group calls can be enabled
   later without a data migration.
 - Per-side wording: the caller and the callee read different text off the same
@@ -32,21 +33,34 @@ In scope:
 - The entry behaves like an ordinary system entry for unread/chat-list purposes
   — the same as "X has left the chat". No dedicated push notification.
 
+`Ended` earns its place now rather than later: a call with transcription off
+currently leaves **nothing** in the chat — no transcript entries, and no
+materialized conversation, because `CloseAndMaterialize` short-circuits for
+calls. Such a call is invisible after the fact.
+
 Out of scope (deliberately, and each is additive later):
 
-- A "Call ended" entry for a call that *did* connect, with its duration. The
-  `CallOutcome` enum leaves room for it.
 - Group-call entries, where several invitees resolve differently.
-- The live "Incoming call" / "Ongoing call" cards from the mockup — those are
-  live-session state, already owned by the live block.
+- The live "Incoming call" / "Ongoing call" cards from the mockup. Those are
+  live-session state and are already what the live conversation block renders:
+  once a call is answered the session latches, `SessionStartedAt` is set, and
+  `LiveSessionState.ToConversation()` surfaces it as the live card — with
+  `Conversation_VoiceOnly` when transcription is off.
 
 ## User-facing behaviour
 
-The entry renders as a card in the message list, in the same visual family as
-the live conversation card (`c-live-card` in
+A failed call and a finished one look different in the chat, and they are drawn
+by different components. This split is the single most important shape decision
+in the design, so it is stated first.
+
+### The three failed outcomes: their own card
+
+No call took place, so there is no conversation to show — only the fact of the
+attempt. These render as a small card in the message list, in the same visual
+family as the live conversation card (`c-live-card` in
 `src/dotnet/UI.Blazor.App/Components/ChatView/Items/Conversation/conversation.css`):
-an icon and a title on the first line, an optional hint on the right, and a
-meta row with the participants' avatars and the time.
+an icon and a title on the first line, an optional hint on the right, and a meta
+row with avatars and the time.
 
 Wording, by outcome and by who is reading:
 
@@ -64,9 +78,54 @@ Both readings come from one stored row: the entry carries `CallerId`, and the
 view compares it with the reader's own author in the chat
 (`Chat.Rules.Author?.Id`). No per-viewer duplication of entries.
 
-Server-composed text — the chat-list last-message preview, notifications,
-search indexing — has no reader, so it uses a neutral third-person rendering
-produced by `SystemEntryMarkupBuilder` (see Localization).
+Avatars come from `CallerId` plus `InviteeIds` — the people who were *rung*.
+There are no participants to show, because nobody joined.
+
+### `Ended`: the conversation card, in call mode
+
+A finished call keeps everything the conversation card already does — the title,
+the summary, the meta row, and **expanding to reveal the conversation's
+messages** — and gains call chrome on top: the phone icon, "Call ended", and the
+duration. It is therefore drawn by the existing conversation item
+(`ConversationMessageView` and its header/footer), not by a second component.
+Re-implementing expansion, summaries and attachments in a bespoke card would
+duplicate the most intricate view in the chat.
+
+That requires two things:
+
+- A connected call must **materialize its conversation**, which it does not do
+  today. See Write path.
+- The conversation must know it was a call, so the item can pick call chrome:
+  `Conversation.IsCall`.
+
+Everything the call chrome needs is already on `Conversation`: duration is
+`EndsAt - StartsAt`, and the avatars are `AuthorIds` — the people who actually
+took part, which for a finished call is the right set and differs from the
+invitees.
+
+The `CallEntry` with `Outcome = Ended` is therefore **not rendered in the message
+list** at all; it is skipped where `ChatUI.Tiles` builds its messages, beside the
+existing skip for an unsupported system event
+(`src/dotnet/UI.Blazor.App/Services/ChatUI.Tiles.cs:1206`). Two cards for one
+call is the failure mode being avoided.
+
+It is still written, and not merely for uniformity — see Write path for why it is
+structurally required.
+
+Both render paths take their icon and wording from one static mapping, so the
+outcome table above cannot drift between them.
+
+### Server-composed text
+
+The chat-list last-message preview, notifications and search indexing have no
+reader, so they use a neutral third-person rendering produced by
+`SystemEntryMarkupBuilder` (see Localization).
+
+One consequence, accepted deliberately: `ChatNews.LastTextEntry` is a
+`ChatEntry?` and does not exclude system entries, so after a **transcribed** call
+the chat-list preview changes from the last spoken line to the call line. This
+matches what Telegram and WhatsApp show for a call, and it is the same behaviour
+for all four outcomes.
 
 ## Data model
 
@@ -78,7 +137,7 @@ public enum CallOutcome {
     NoAnswer = 1,
     Declined = 2,
     Canceled = 3,
-    // Ended = 4 — reserved for a connected call, not emitted yet
+    Ended = 4,
 }
 
 [DataContract, MessagePackObject]
@@ -98,8 +157,23 @@ public sealed partial record CallEntry : SystemEntry
 ```
 
 `Canceled` follows .NET spelling (`OperationCanceledException`) and matches the
-mockup. `InviteeIds` is the group-call seat. `HasVideo` earns its place now: the
-call-back action needs to know which kind of call to place.
+mockup. `InviteeIds` is the group-call seat, and doubles as the avatar list for
+the three failed outcomes. `HasVideo` earns its place now: the call-back action
+needs to know which kind of call to place.
+
+One field deliberately absent: a link to the conversation. `Ended` is not
+rendered from the entry, so nothing reads a conversation through it — the
+conversation item finds its own conversation the way it always has, and the entry
+only has to be skippable. Nor is a duration field needed: `EndsAt - StartsAt` on
+the conversation is the duration, and the neutral preview text does not quote it.
+
+The enum is why this is one type rather than a record per outcome. The precedent
+is next door — `MembersChangedEntry` models "joined" and "left" as one type with
+a `HasLeft` field, not as two union members — and the cost of the alternative is
+concrete: each new outcome would burn a union tag, need its own
+`UnionTagSinceVersions` row, its own arm in `SystemEntryMarkupBuilder`, its own
+option in the database envelope, and would vanish entirely for pre-2.19 peers.
+An added enum value costs none of that.
 
 `CallerName` is **not** the name normally displayed — it is the `AuthorMention`
 fallback. `SystemEntryMarkupBuilder.Build` is synchronous and cannot look an
@@ -232,27 +306,57 @@ story. All three sites already run under `_changeLocks.Lock(chatId)`, so the
 check and the write are atomic.
 
 **Emit.** The single write site is `CloseAndMaterialize`
-(`LiveSessionsBackend.cs:1132`), in its existing `state.IsCall` branch, guarded
-by:
+(`LiveSessionsBackend.cs:1132`), in its existing `state.IsCall` branch, gated
+overall by `state.ChatId.Kind == ChatKind.Peer` — the peer-only scope, and the
+one line that opens group calls later.
 
-- `state.SessionStartedAt is null` — the call never latched to connected. A call
-  that did connect and then ended is out of scope, and would otherwise be
-  reported as canceled when the caller hangs up.
-- `state.Outcome != CallOutcome.None`.
-- `state.ChatId.Kind == ChatKind.Peer` — the peer-only scope gate. This is the
-  one line that opens group calls later.
+Inside it the branch splits on whether the call ever connected, and the split is
+decided by that fact, **not** by the `Outcome` field:
+
+| `state.SessionStartedAt` | Entry written | Also |
+| --- | --- | --- |
+| `null` (never connected) | the recorded `Outcome`, when it is not `None` | — |
+| set (connected) | `Ended` | materialize the conversation |
+
+Deciding by `SessionStartedAt` rather than by `Outcome` closes a corner that
+would otherwise bite: `CancelCall` is also how a caller hangs up a call that *did*
+connect, and it would leave `Outcome = Canceled` behind. A call that happened is
+`Ended` regardless of which button ended it. An ordinary hang-up arrives here the
+same way, through `LeaveCall` once fewer than two participants remain.
 
 It then calls `ChatsBackend_ChangeEntry` with `Change.Create(new ChatEntryDiff {
 Kind = ChatEntryKind.Call, AuthorId = Bots.GetWalleId(chatId), ... })`, the same
 shape `ChatsBackend.cs:2037` uses for member changes. Wall-E authors the entry;
-the card draws its avatars from `CallerId`/`InviteeIds`, not from the entry's
-author.
+the failed-outcome card draws its avatars from `CallerId`/`InviteeIds`, not from
+the entry's author.
 
 Emitting from `CloseAndMaterialize` rather than from the three deciding sites is
 what makes the write exactly-once: `Close` removes the Redis state under the
 same lock, so the state that carries a pending `Outcome` cannot be seen twice.
 `CancelCall` reaches close through `CloseNow`, which returns early if the
 session is still live — but it stops every ring before that, so it isn't.
+
+**Materializing a connected call.** Two conditions currently prevent it, and both
+have to move:
+
+- The `state.IsCall` branch returns before reaching the materialize call at
+  `LiveSessionsBackend.cs:1153`. A latched call must fall through to it.
+- The general branch materializes only when `!state.Title.IsNullOrEmpty()`. A
+  call with transcription off has no title by construction, so the gate has to
+  admit calls — that is exactly the case the card exists for.
+
+The conversation is `state.ToMaterializedConversation()` with `IsCall = true`.
+`Conversation` (`src/dotnet/Api/Chat/Conversation.cs`) gains that field and
+`DbConversation` the matching column — the same shape as the `IsExpandedByDefault`
+pair beside it, so one additive migration.
+
+**Why `Ended` must be written even though nothing renders it.** For a call with
+transcription off, the conversation's lid range contains **no entries at all**.
+`ChatUI.Tiles` builds its list from entries and hangs conversation headers and
+footers around them, so a conversation spanning nothing has nothing to attach to
+and would not appear. The `Ended` entry is the one entry inside that range — it
+is what the conversation card is drawn around. It also supplies unread and the
+chat-list line, which a conversation cannot: conversations are not entries.
 
 `InviteeIds` comes from `SafeGetInvites(state.ChatId)`, which
 `CloseAndMaterialize` already reads in this branch to dismiss lingering rings.
@@ -264,20 +368,46 @@ is not the name normally displayed.
 
 ## Render path
 
-`ChatEntryMessageView.razor:70` currently sends every `SystemEntry` down one
-branch that renders centered markup. A new branch above it routes `CallEntry` to
-`CallMessageView`, a new component under
+Two paths, per the split in User-facing behaviour.
+
+**The three failed outcomes.** `ChatEntryMessageView.razor:70` currently sends
+every `SystemEntry` down one branch that renders centered markup. A new branch
+above it routes `CallEntry` to `CallMessageView`, a new component under
 `src/dotnet/UI.Blazor.App/Components/ChatView/Items/Call/`.
 
 `CallMessageView` is a `ComputedStateComponent` that resolves:
 
 - whether the reader is the caller (`Chat.Rules.Author?.Id == entry.CallerId`),
-- the title, the icon and the optional hint from the table above,
+- the title, the icon and the optional hint from the shared mapping,
 - the avatars, via the existing `AuthorCircleGroup`
   (used the same way at `ConversationMessageView.razor:74`).
 
 The `Tap to call back` action calls `LiveSessionUI.StartCall(chatId, [caller],
-entry.HasVideo)`.
+entry.HasVideo, cancellationToken)` — the signature at
+`src/dotnet/UI.Blazor.App/Services/LiveSessionUI.cs:104`.
+
+**`Ended`.** Skipped where the tile is built, next to the existing skip for an
+unsupported system event (`src/dotnet/UI.Blazor.App/Services/ChatUI.Tiles.cs:1206`):
+
+```csharp
+if (e is CallEntry { Outcome: CallOutcome.Ended })
+    continue;
+```
+
+The conversation item renders it instead. `ConversationMessageView` and its
+header gain a call mode driven by `Conversation.IsCall`: the phone icon and
+"Call ended" in place of the title when there is none, and the duration
+(`EndsAt - StartsAt`) in the meta row. Everything else — expansion, summary,
+attachments, the author circles — is untouched, which is the whole point of
+routing through this component rather than a second card.
+
+**Icons.** From the existing font (`src/nodejs/fonts/svgtofont/icon.css`), no new
+glyphs: `icon-phone-missed` for a missed call, `icon-call-out` for an outgoing
+one, `icon-phone-off` for declined and canceled, `icon-phone-call` for `Ended`.
+
+**Shared mapping.** Outcome plus is-caller to icon, title and hint lives in one
+static helper both paths call, so the table in User-facing behaviour has exactly
+one implementation.
 
 The entry stays a `SystemEntry`, so everything else about it — no reactions, no
 "copy message link" in the menu, no author badge, unread and chat-list
@@ -302,13 +432,20 @@ that the author name is its own markup node and the string is what *follows* it
 | `SystemEntry_CallNoAnswer` | ` called. No answer.` |
 | `SystemEntry_CallDeclined` | ` called. Declined.` |
 | `SystemEntry_CallCanceled` | ` called. Canceled.` |
+| `SystemEntry_CallEnded` | ` called.` |
 
-**Card text** — read by `CallMessageView` through `IStringLocalizer`:
-`Call_Entry_Outgoing`, `Call_Entry_Missed`, `Call_Entry_Declined`,
-`Call_Entry_Canceled`, `Call_Entry_NoAnswer`, `Call_Entry_TapToCallBack`.
+`Ended` needs its own entry here even though the entry is never rendered in the
+list: this is the text the chat-list preview shows after a call.
 
-All nine keys go into every shipped `Strings.*.json` under
-`src/dotnet/Localization/Resources/`, following `docs/i18n.md`.
+**Card text** — read through `IStringLocalizer` by `CallMessageView`
+(`Call_Entry_Outgoing`, `Call_Entry_Missed`, `Call_Entry_Declined`,
+`Call_Entry_Canceled`, `Call_Entry_NoAnswer`, `Call_Entry_TapToCallBack`) and by
+the conversation item in call mode (`Call_Entry_Ended`).
+
+All eleven keys go into every shipped `Strings.*.json` under
+`src/dotnet/Localization/Resources/`, following `docs/i18n.md` — which means the
+hand-written catalogs, then `scripts/derive-bcms.cmd` and `scripts/derive-max.cmd`
+to regenerate the derived ones.
 
 `SystemEntryLocalizationTest` already enforces the fallback half of this: it
 fails on any `[Union]` kind missing from its `Entries()` samples, requires every
@@ -380,6 +517,10 @@ branch slips a release, the number moves with it.
   `IStringLocalizer` + `Strings.*.json` — text.
 - `AuthorCircleGroup` and the `c-live-card` styles in `conversation.css` — the
   card's avatars and chrome.
+- `ConversationMessageView` with its header and footer, plus
+  `ConversationBackend_Materialize` and `LiveSessionState.ToMaterializedConversation`
+  — the whole `Ended` card, expansion included. This is the largest piece of
+  reuse in the design and the reason `Ended` is not its own component.
 - `LiveSessionUI.StartCall` — the call-back action.
 - `LiveSessionsBackend._changeLocks` and the existing `CloseAndMaterialize`
   funnel — ordering and exactly-once emission.
@@ -393,20 +534,33 @@ branch slips a release, the number moves with it.
   no more-shared home applies.
 - `LegacyCallOption` → `src/dotnet/Api/Chat/LegacySystemEntry.cs`, beside its
   siblings.
+- `Conversation.IsCall` → the existing record and `DbConversation`, beside
+  `IsExpandedByDefault`, with one additive EF migration. Not a new abstraction:
+  a flag on a record that already carries the call's times and participants.
 - `CallMessageView` → `src/dotnet/UI.Blazor.App/Components/ChatView/Items/Call/`.
-  This one is genuinely specific to the chat message list — it depends on
-  `ChatContext`, the message-list item model and `LiveSessionUI`. Promoting it to
-  a shared project would drag those along, so local placement is right. Its
-  outcome-to-wording mapping is a static helper inside it; if group calls later
-  need the same mapping server-side, that helper moves to `CallEntry` itself.
+  Covers the three failed outcomes only. Genuinely specific to the chat message
+  list — it depends on `ChatContext`, the message-list item model and
+  `LiveSessionUI` — so local placement is right; promoting it to a shared project
+  would drag those along.
+- The outcome-to-wording mapping → its own static class in the same folder, not
+  inside `CallMessageView`: the conversation item in call mode needs the same
+  icon and title for `Ended`, and two copies of that table would drift. If group
+  calls later need it server-side, it moves next to `CallEntry`.
 
 ## Testing
 
 - **Unit, outcome selection.** `LiveSessionsBackend`: decline-then-cancel keeps
   `Declined`; cancel-then-decline keeps `Canceled`; ring expiry gives `NoAnswer`.
-- **Unit, emission gate.** No entry when the call connected
-  (`SessionStartedAt is not null`), when `Outcome` is `None`, or when the chat is
-  not a peer chat.
+- **Unit, emission gate.** No entry when `Outcome` is `None` and the call never
+  connected, or when the chat is not a peer chat.
+- **Integration, the connected call.** A peer call that is answered and then hung
+  up writes one `CallEntry` with `Outcome = Ended` and materializes a
+  conversation with `IsCall = true` — including when transcription was off, which
+  is the case both current gates reject. A caller who hangs up an *answered* call
+  gets `Ended`, not `Canceled`: this is the corner the `SessionStartedAt` split
+  exists for, so it gets its own test.
+- **UI, no double card.** A tile containing an `Ended` entry and its conversation
+  produces one card, not two — the entry is skipped in the tile builder.
 - **Unit, legacy filtering.** A tile containing a `CallEntry` comes back without
   it through `GetLegacyTile` for a peer below 2.19, and with it at or above.
   `LegacyTileRoutingTest` on the base branch already covers the routing; this
