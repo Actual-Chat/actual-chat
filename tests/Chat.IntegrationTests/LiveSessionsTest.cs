@@ -1295,4 +1295,61 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // assert
         name.Should().Be(LiveFlows.SummaryFlowName);
     }
+
+    [Fact]
+    public async Task DeclineShouldRecordDeclinedOutcome()
+    {
+        // arrange — Bob rings two people
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await using var carol = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        await carol.SignInAsNew("Carol");
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        await carol.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var carolAuthor = await carol.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(
+            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id, carolAuthor!.Id }.ToApiArray(), false, default);
+
+        // act — Alice declines while Carol is still ringing, so the call is not abandoned
+        await backend.DeclineCall(chatId, aliceAuthor.Id, default);
+
+        // assert — read before the close drops the state
+        var state = await backend.GetState(chatId, default);
+        state!.Outcome.Should().Be(CallOutcome.Declined);
+    }
+
+    [Fact]
+    public async Task StartCallShouldRememberHasVideo()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bobAuthor, aliceAuthor) = await NewTwoPartyCall(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // act
+        await backend.StartCall(chatId, bobAuthor.Id, new[] { aliceAuthor.Id }.ToApiArray(), true, default);
+
+        // assert
+        var state = await backend.GetState(chatId, default);
+        state!.HasVideo.Should().BeTrue();
+    }
+
+    private static async Task<(ChatId ChatId, AuthorFull Bob, AuthorFull Alice)> NewTwoPartyCall(
+        IWebTester tester)
+    {
+        var bob = await tester.SignInAsUniqueBob();
+        var alice = await tester.SignInAsUniqueAlice();
+        await tester.SignIn(bob);
+        ChatId chatId = PeerChatId.New(bob.Id, alice.Id);
+        var authors = tester.AppServices.GetRequiredService<IAuthorsBackend>();
+        var bobAuthor = await authors.EnsureJoined(chatId, bob.Id, default);
+        var aliceAuthor = await authors.EnsureJoined(chatId, alice.Id, default);
+        return (chatId, bobAuthor, aliceAuthor);
+    }
 }

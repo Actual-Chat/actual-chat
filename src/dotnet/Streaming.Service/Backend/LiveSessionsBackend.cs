@@ -551,6 +551,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 AuthorIds = state?.AuthorIds is { Count: > 0 } ids ? ids : [callerAuthorId],
                 Host = callerAuthorId,
                 Kind = state?.SessionStartedAt is not null ? LiveSessionKind.Call : LiveSessionKind.Dialing,
+                HasVideo = hasVideo,
                 Version = VersionGenerator.NextVersion(state?.Version ?? 0),
             };
             await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
@@ -632,9 +633,14 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             var state = await SafeGet(chatId).ConfigureAwait(false);
             conversationId = state?.RingConversationId;
             abandoned = await IsCallAbandoned(chatId).ConfigureAwait(false);
-            // Recorded before the close below drops the session that carries the caller's identity.
-            if (abandoned && state is not null)
-                await SetCallState(chatId, NewCallState(state, CallStatus.Declined)).ConfigureAwait(false);
+            if (state is not null) {
+                // CallStatus.Declined is recorded only once the call is abandoned - a decline while another
+                // invitee still rings isn't the call's final story yet. The outcome, however, is recorded on
+                // every decline regardless: first-writer-wins already covers a later accept or cancel.
+                if (abandoned)
+                    await SetCallState(chatId, NewCallState(state, CallStatus.Declined)).ConfigureAwait(false);
+                await SetOutcome(chatId, state, CallOutcome.Declined).ConfigureAwait(false);
+            }
             InvalidateState(chatId);
         }
         if (conversationId is { } cid)
@@ -668,6 +674,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             await _participants.Remove(chatId.Value, callerAuthorId.Value).ConfigureAwait(false);
             // Hanging up myself needs no status, and it must beat a decline that just landed.
             await SetCallState(chatId, null).ConfigureAwait(false);
+            await SetOutcome(chatId, state, CallOutcome.Canceled).ConfigureAwait(false);
             InvalidateState(chatId);
             InvalidateListParticipants(chatId);
             InvalidateHasRecorder(chatId);
@@ -888,6 +895,19 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             _ = GetCallState(chatId, default);
     }
 
+    private async Task SetOutcome(ChatId chatId, LiveSessionState state, CallOutcome outcome)
+    {
+        // First writer wins: a caller hanging up right after an invitee declined must not rewrite
+        // the story. Callers already hold _changeLocks, so the read and the write are atomic.
+        if (state.Outcome != CallOutcome.None)
+            return;
+
+        await _redisScope.Set(chatId.Value, state with {
+            Outcome = outcome,
+            Version = VersionGenerator.NextVersion(state.Version),
+        }).ConfigureAwait(false);
+    }
+
     private CallState NewCallState(LiveSessionState state, CallStatus status)
         => new() {
             CallerId = state.Host ?? state.AuthorIds[0],
@@ -976,8 +996,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             if ((expired.Count > 0 || wasDialing) && await IsCallAbandoned(chatId).ConfigureAwait(false)) {
                 // Only a still-dialing call gets a "no answer" - a connected one that emptied out just closes.
                 if (await SafeGet(chatId).ConfigureAwait(false) is { IsDialing: true } current
-                    && await SafeGetCallState(chatId).ConfigureAwait(false) is null or { Status: CallStatus.Dialing })
+                    && await SafeGetCallState(chatId).ConfigureAwait(false) is null or { Status: CallStatus.Dialing }) {
                     await SetCallState(chatId, NewCallState(current, CallStatus.NoAnswer)).ConfigureAwait(false);
+                    await SetOutcome(chatId, current, CallOutcome.NoAnswer).ConfigureAwait(false);
+                }
                 await CloseCall(chatId).ConfigureAwait(false);
             }
         }

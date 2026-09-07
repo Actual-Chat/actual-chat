@@ -53,6 +53,10 @@ public sealed partial record LiveSessionState
     public long ContextStartLid { get; init; }
     [DataMember(Order = 21), Key(21)]
     public bool IsExpandedByDefault { get; init; }
+    [DataMember(Order = 22), Key(22)]
+    public CallOutcome Outcome { get; init; }
+    [DataMember(Order = 23), Key(23)]
+    public bool HasVideo { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public long EffectiveVisibleStartLid => VisibleStartLid > 0 ? VisibleStartLid : StartEntryLid;
