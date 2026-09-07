@@ -1464,6 +1464,9 @@ jobs:
       # Stages the package in a pending Partner Center submission, like the
       # Play internal track and TestFlight for the other platforms. It goes to
       # certification only from promote-release.yml, once the build is tested.
+      # Only an uncommitted draft is replaced: if the previous build is still
+      # in certification this job fails and nothing new is staged — wait for
+      # it to publish, or cancel it in Partner Center, then re-run the job.
       - name: Upload to a pending Store submission
         uses: ActualLab/windows-store-action@main
         with:

@@ -236,8 +236,10 @@ jobs:
       # The release-branch run left the package in a pending submission
       # (mode: upload); this commits that submission with the release notes and
       # returns once pre-processing accepted it. Certification itself takes
-      # hours; watch it in Partner Center. A later release upload replaces the
-      # pending submission, so the commit is refused unless it holds this build.
+      # hours; watch it in Partner Center. A later release upload replaces an
+      # uncommitted pending submission, so the commit is refused unless it
+      # holds this build; a committed one is never replaced, and committing it
+      # again is refused too.
       - name: Commit the pending submission
         uses: ActualLab/windows-store-action@main
         with:

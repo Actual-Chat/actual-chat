@@ -64,10 +64,37 @@ The version is `X.Y.Z` (nbgv SimpleVersion, e.g. `2.17.246`). A staging job
 that failed or was skipped means that platform has nothing to promote — leave
 it out in step 3 and say why.
 
-**The Windows pending submission is whatever the latest release-branch run
-uploaded**: each upload replaces the previous draft. If a newer run than the
-one you picked has a green Windows upload job, that's the package Partner
-Center holds — promote Windows only if the versions match.
+**Windows: Partner Center holds one submission per app**, and it stays
+"pending" until it is published — including while it's in certification.
+Read the Windows upload job (`Upload win app package ...`) of every
+release-branch run newer than the one you picked:
+
+```bash
+gh run view <id> --repo Actual-Chat/actual-chat --log --job <jobId> | grep -E 'submission|Submission'
+```
+
+- `Packages are staged in pending submission .../submissions/<id>` — that's
+  the package the commit will send. Promote Windows only if its version
+  matches; note the submission id for step 3.
+- `Submission <id> is in status Certification` (or `PreProcessing`,
+  `Release`) and the job **failed** — an earlier build is still in
+  certification, so the newer build was **not** staged. Windows has nothing
+  new to promote until that submission publishes or is cancelled in Partner
+  Center; say so.
+- `Deleting pending submission <id>` — only possible for an uncommitted
+  draft since 2026-09-07 (`ActualLab/windows-store-action` refuses to delete a
+  committed one). In older logs it may have cancelled a build that was in
+  certification; check Partner Center.
+
+**A promote run's overall conclusion says nothing about Windows.** A run
+marked `cancelled` or `failure` (a Play or App Store job failed) may still
+have a green `Microsoft Store — commit to certification` job, and a green run
+may have skipped it (`windows=false`). Check that job, not the run:
+
+```bash
+gh run list --repo Actual-Chat/actual-chat --workflow promote-release.yml --branch release/vX.Y --json databaseId,conclusion,createdAt --limit 5
+gh run view <id> --repo Actual-Chat/actual-chat --json jobs -q '.jobs[] | select(.name | test("Microsoft Store")) | "\(.conclusion)\t\(.name)"'
+```
 
 ### 2. Check the release branch carries the workflow and the store notes
 
@@ -92,7 +119,7 @@ Ask with `AskUserQuestion` (multiSelect), listing exactly what was staged, e.g.:
 > - Android — Play internal track, version code N
 > - iOS — TestFlight X.Y.Z
 > - macOS — TestFlight X.Y.Z (Mac Catalyst)
-> - Windows — MSIX artifact / pending Store submission X.Y.Z.0
+> - Windows — pending Store submission <id>, App.Maui_X.Y.Z.0_x64.msix
 
 Don't ask for an App Store version: the workflow publishes under the build
 version (`X.Y.Z`), the same string Google Play and the Microsoft Store show, so
@@ -137,7 +164,10 @@ report per platform:
 For a failed job, quote the error and stop — don't retry blindly. The usual
 causes: build not on the internal track (wrong version), App Store version
 already waiting for review (cancel it in App Store Connect), no pending
-Microsoft Store submission (the release run's Windows upload didn't run).
+Microsoft Store submission (the release run's Windows upload didn't run), or
+the pending submission is already committed (`Submission <id> is already
+committed (status Certification)` — a previous promote run's Windows job
+succeeded even if that run as a whole shows as cancelled or failed).
 
 ### 6. Announce in the Releases chat
 
@@ -200,7 +230,13 @@ for the user to paste. Confirm with a one-liner:
 - **Skipping the tested-build question**, or pre-selecting platforms for the
   user. The only source of truth is the user's answer in this session.
 - **Promoting Windows from a stale run.** The pending submission is the last
-  uploaded package, not necessarily the one from the run you looked at.
+  uploaded package, not necessarily the one from the run you looked at — and
+  if an earlier build is still in certification, the newer upload job failed
+  and nothing new was staged.
+- **Judging Windows by a promote run's overall conclusion.** A cancelled or
+  failed promote run may still have committed Windows; a later `windows=false`
+  promote doesn't "redo" it. Read the Windows job's conclusion and the Partner
+  Center submission status.
 - **Announcing only the successes**, or announcing before a re-run settles.
   The Releases post is the record of what reached each store; a platform that
   failed or was skipped must be named as such, in the one post for the run.
