@@ -234,6 +234,20 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [ComputeMethod]
+    [Obsolete("2026.09: Use GetNews - this one only serves a last entry a pre-2.19 client can read.")]
+    public virtual async Task<ChatNews?> GetLegacyNews(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        if (!await CanRead(session, chatId, cancellationToken).ConfigureAwait(false))
+            return null;
+
+        var news = await Backend.GetLegacyNews(chatId, cancellationToken).ConfigureAwait(false);
+        return news?.ToSlim();
+    }
+
+    // [ComputeMethod]
     public virtual async Task<Author[]> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);

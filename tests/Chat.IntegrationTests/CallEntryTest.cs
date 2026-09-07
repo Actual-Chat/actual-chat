@@ -160,6 +160,32 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         (await ReadCallEntries(tester, chatId)).Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task OldPeerNewsShouldFallBackToThePreviousReadableEntry()
+    {
+        // LastTextEntry is the chat list's sort key as well as its preview line, so a call must
+        // leave an old client's list untouched rather than blank and reordered.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var text = await tester.CreateTextEntry(chatId, "before the call");
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var chatsBackend = tester.AppServices.GetRequiredService<IChatsBackend>();
+
+        // act
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.CancelCall(chatId, bob.Id, default);
+
+        // assert
+        var news = await chatsBackend.GetNews(chatId, default);
+        news!.LastTextEntry.Should().BeOfType<CallEntry>("a current peer sees the call");
+
+        var legacy = await chatsBackend.GetLegacyNews(chatId, default);
+        legacy!.LastTextEntry!.Id.Should().Be(text.Id, "an old peer keeps the message it could read");
+        legacy.TextEntryLidRange.Should().Be(news.TextEntryLidRange, "unread counting is unaffected");
+    }
+
     // Private methods
 
     private static async Task<(ChatId ChatId, AuthorFull Bob, AuthorFull Alice)> NewPeerChat(IWebTester tester)

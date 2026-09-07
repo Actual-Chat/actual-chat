@@ -19,6 +19,11 @@ namespace ActualChat.Chat;
 public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IChatsBackend
 {
     private const string CreatedChatEntryId = "CreatedChatEntryId";
+    // A peer chat used only for calling would otherwise scan its whole history on every
+    // chat-list render for old clients.
+    private const int MaxLegacyNewsTiles = 4;
+    private static readonly Version LastToleratedApiVersion =
+        Version.Parse(ApiConstants.LastVersionWithoutUnionTolerance);
     private static readonly TileLayer<long> EntryIdTiles = Constants.Chat.EntryIdTiles;
     private static readonly TileLayer<long> RangeMetaEntryIdTiles = Constants.Chat.RangeMetaEntryIdTiles;
     private static readonly Dictionary<MediaId, Media.Media> EmptyMediaMap = new ();
@@ -222,6 +227,32 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var tile = await GetTile(chatId, idTile.Range, false, cancellationToken).ConfigureAwait(false);
         var lastEntry = tile.Entries.Length != 0 ? tile.Entries[^1] : null;
         return new ChatNews(idRange, lastEntry);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ChatNews?> GetLegacyNews(
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var news = await GetNews(chatId, cancellationToken).ConfigureAwait(false);
+        if (news?.LastTextEntry is not { } last || ChatEntry.IsKnownTo(last, LastToleratedApiVersion))
+            return news;
+
+        // Not null: LastTextEntry is the chat list's sort key as well as its preview, so blanking
+        // it would move the chat too. The previous readable entry leaves the list as it was.
+        var lastLid = last.LocalId;
+        for (var i = 0; i < MaxLegacyNewsTiles && lastLid >= news.TextEntryLidRange.Start; i++) {
+            var idTile = EntryIdTiles.GetTile(lastLid);
+            var tile = await GetTile(chatId, idTile.Range, false, cancellationToken).ConfigureAwait(false);
+            var known = tile.Entries.LastOrDefault(e =>
+                e.LocalId <= lastLid && ChatEntry.IsKnownTo(e, LastToleratedApiVersion));
+            if (known is not null)
+                return news with { LastTextEntry = known };
+
+            lastLid = idTile.Range.Start - 1;
+        }
+        // A chat with nothing an old peer can read reads as one with no messages.
+        return news with { LastTextEntry = null };
     }
 
     // Note that it returns (firstId, lastId + 1) range!

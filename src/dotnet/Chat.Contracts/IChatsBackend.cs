@@ -19,6 +19,11 @@ public interface IChatsBackend : IComputeService, IBackendService
         CancellationToken cancellationToken);
 
     [ComputeMethod]
+    Task<ChatNews?> GetLegacyNews(
+        ChatId chatId,
+        CancellationToken cancellationToken);
+
+    [ComputeMethod]
     Task<AuthorRules> GetRules(
         ChatId chatId,
         PrincipalId principalId,
