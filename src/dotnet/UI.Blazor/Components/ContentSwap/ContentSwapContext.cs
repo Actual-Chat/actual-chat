@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.Components;
 
 /// <summary>
 /// Cascaded by <see cref="ContentSwapLayer"/>. A component that registers itself into an area it
-/// doesn't own must hold that registration only while <see cref="IsVisible"/> is set - a layer
+/// doesn't own must hold that registration only while <see cref="IsLayerVisible"/> is set - a layer
 /// that isn't displayed is either still building underneath the one on screen, or has already
 /// handed over to the layer that replaced it.
 /// </summary>
@@ -11,9 +11,9 @@ public sealed class ContentSwapContext
     private readonly ContentSwapContext? _parent;
     private ContentSwapLayerState _ownState;
 
-    public ContentSwapLayerState State { get; private set; }
-    public bool IsVisible => State.IsVisible();
-    public bool CanRender => State.CanRender();
+    public ContentSwapLayerState LayerState { get; private set; }
+    public bool IsLayerVisible => LayerState.IsVisible();
+    public bool IsLayerActive => LayerState.IsActive();
     public event Action? StateChanged;
 
     public ContentSwapContext(ContentSwapContext? parent = null)
@@ -54,13 +54,13 @@ public sealed class ContentSwapContext
     private void Update()
     {
         // An outer layer that is on its way out takes everything inside it along, displayed or not
-        var state = _parent is null || _parent.State == ContentSwapLayerState.Displayed
+        var state = _parent is null || _parent.LayerState == ContentSwapLayerState.Displayed
             ? _ownState
-            : _parent.State;
-        if (State == state)
+            : _parent.LayerState;
+        if (LayerState == state)
             return;
 
-        State = state;
+        LayerState = state;
         StateChanged?.Invoke();
     }
 }

@@ -5,7 +5,7 @@
         _stack.NotifyChanged();
         return;
     }
-    if (Swap is { IsVisible: false })
+    if (ContentSwapContext is { IsLayerVisible: false })
         return;
 
     Register();
@@ -13,15 +13,15 @@
 @code {
     private RenderVar<List<RenderIntoStack>>? _stack;
     [Inject] private UIHub Hub { get; init; } = null!;
-    [CascadingParameter] private ContentSwapContext? Swap { get; set; }
     [Parameter, EditorRequired] public string Name { get; set; } = "";
     [Parameter, EditorRequired] public string Key { get; set; } = "";
     [Parameter] public double Order { get; set; } = 0;
     [Parameter] public bool MustPrepend { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [CascadingParameter] private ContentSwapContext? ContentSwapContext { get; set; }
 
     public void Dispose() {
-        if (Swap is { } swap)
+        if (ContentSwapContext is { } swap)
             swap.StateChanged -= OnStateChanged;
         Unregister();
     }
@@ -29,14 +29,14 @@
     // Protected/internal methods
 
     protected override void OnInitialized() {
-        if (Swap is { } swap)
+        if (ContentSwapContext is { } swap)
             swap.StateChanged += OnStateChanged;
     }
 
     // Private methods
 
     private void OnStateChanged() {
-        if (Swap!.IsVisible)
+        if (ContentSwapContext!.IsLayerVisible)
             Register();
         else
             Unregister();

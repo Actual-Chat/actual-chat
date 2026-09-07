@@ -5,7 +5,7 @@
         _slot.NotifyChanged();
         return;
     }
-    if (Swap is { IsVisible: false })
+    if (ContentSwapContext is { IsLayerVisible: false })
         return;
 
     Register();
@@ -13,12 +13,12 @@
 @code {
     private RenderVar<List<RenderIntoSlot>>? _slot;
     [Inject] private UIHub Hub { get; init; } = null!;
-    [CascadingParameter] private ContentSwapContext? Swap { get; set; }
     [Parameter, EditorRequired] public string Name { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [CascadingParameter] private ContentSwapContext? ContentSwapContext { get; set; }
 
     public void Dispose() {
-        if (Swap is { } swap)
+        if (ContentSwapContext is { } swap)
             swap.StateChanged -= OnStateChanged;
         Unregister();
     }
@@ -26,14 +26,14 @@
     // Protected/internal methods
 
     protected override void OnInitialized() {
-        if (Swap is { } swap)
+        if (ContentSwapContext is { } swap)
             swap.StateChanged += OnStateChanged;
     }
 
     // Private methods
 
     private void OnStateChanged() {
-        if (Swap!.IsVisible)
+        if (ContentSwapContext!.IsLayerVisible)
             Register();
         else
             Unregister();
