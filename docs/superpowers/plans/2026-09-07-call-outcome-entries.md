@@ -6,7 +6,7 @@
 
 **Architecture:** One `CallEntry : SystemEntry` carrying a `CallOutcome` enum, written from the single funnel where a call session closes. The three failed outcomes render as a small card of their own; `Ended` is skipped in the message list and drawn by the existing conversation item in call mode, which requires a connected call to materialize its conversation.
 
-**Tech Stack:** .NET 9, MessagePack unions, EF Core + PostgreSQL, Blazor, xUnit + FluentAssertions.
+**Tech Stack:** .NET 11 (`net11.0`, `LangVersion=preview`, SDK pinned in `global.json`), MessagePack unions, EF Core + PostgreSQL, Blazor, xUnit + FluentAssertions.
 
 **Spec:** `docs/superpowers/specs/2026-09-02-call-outcome-entries-design.md`
 
@@ -17,6 +17,7 @@
 - **Union tags are load-bearing.** `CallEntry` takes tag **101** on `ChatEntry` (the 100..199 `SystemEntry` range that `ChatEntry.IsSystemUnionTag` reads) and tag **3** on `SystemEntry`. It must declare `[101] = new (2, 19)` in `ChatEntry.UnionTagSinceVersions`, or `IChats.GetLegacyTile` will ship it to pre-2.19 peers that cannot read it.
 - **Peer chats only.** Every emission is gated on `chatId.Kind == ChatKind.Peer`.
 - **Base record owns keys 0..19.** `CallEntry`'s own `[Key]` indices start at 20.
+- **`LangVersion` is `preview`,** and the codebase uses the `field` keyword rather than hand-written backing fields — see `DbChatEntry.BeginsAt`. Match the file you are editing.
 - **Localization:** every new key goes into all hand-written `Strings.*.json`, then `scripts/derive-bcms.cmd` and `scripts/derive-max.cmd` regenerate the derived catalogs. See `docs/i18n.md`.
 - **Branch:** `feat/call-outcome-entries`, based on `feat/forward-compatible-unions`. Do not rebase it onto `origin/dev` — the tolerance commits underneath are required.
 
