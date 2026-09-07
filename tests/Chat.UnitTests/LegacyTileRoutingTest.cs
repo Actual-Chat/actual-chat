@@ -76,6 +76,25 @@ public class LegacyTileRoutingTest(ITestOutputHelper @out) : TestBase(@out)
             .Should().Be(MethodOf(nameof(IChats.GetLegacyTile)).ReturnType);
     }
 
+    [Fact]
+    public void CallEntryShouldBeFilteredForAPreTolerancePeer()
+    {
+        // arrange
+        var chatId = ChatId.Parse("052w3sgrad");
+        var entry = new CallEntry(ChatEntryId.New(chatId, 1)) {
+            CallerId = AuthorId.New(chatId, 1),
+            Outcome = CallOutcome.NoAnswer,
+        };
+
+        // act
+        var knownToOldPeer = ChatEntry.IsKnownTo(entry, new Version(2, 18));
+        var knownToNewPeer = ChatEntry.IsKnownTo(entry, new Version(2, 19));
+
+        // assert
+        knownToOldPeer.Should().BeFalse("a peer below the release that declared this union tag can't read it");
+        knownToNewPeer.Should().BeTrue("a peer at the declared release can read the tag");
+    }
+
     // Private methods
 
     private static LegacyName? LegacyNameOf(string methodName, Version version)
