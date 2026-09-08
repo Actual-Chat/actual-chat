@@ -10,6 +10,9 @@ const ImageStates: readonly string[] = ['skeleton', 'thumbnail', 'original'];
 
 const RetryCount = 10;
 const MaxRetryDelay = 30;
+// Local files the host app serves into its WebView (MAUI previews of attachments and gallery
+// thumbnails); the scheme handler answers no CORS headers
+const LocalContentScheme = 'content://';
 
 @customElement('image-skeleton')
 export class ImageSkeleton extends LitElement {
@@ -42,7 +45,7 @@ export class ImageSkeleton extends LitElement {
     }
 
     render() {
-        const isSubDomain = this.isSubDomain(this.src);
+        const isOwnContent = this.isOwnContent(this.src);
         // Width/height attributes give the browser an intrinsic aspect-ratio
         // hint BEFORE the bitmap loads, preventing CLS. CSS w-full/h-full /
         // object-fit still drive the actual rendered size.
@@ -54,7 +57,7 @@ export class ImageSkeleton extends LitElement {
                     part='image'
                     ${ref(this._imageRef)}
                     class='image'
-                    crossorigin='${isSubDomain ? nothing : 'anonymous'}'
+                    crossorigin='${isOwnContent ? nothing : 'anonymous'}'
                     draggable='false'
                     alt=''
                     width='${w}'
@@ -67,7 +70,7 @@ export class ImageSkeleton extends LitElement {
                 <img
                     part='image-thumbnail'
                     class='image-thumbnail'
-                    crossorigin='${isSubDomain ? nothing : 'anonymous'}'
+                    crossorigin='${isOwnContent ? nothing : 'anonymous'}'
                     draggable='false'
                     alt=''
                     width='${w}'
@@ -83,7 +86,7 @@ export class ImageSkeleton extends LitElement {
                     part='image'
                     ${ref(this._imageRef)}
                     class='image'
-                    crossorigin='${isSubDomain ? nothing : 'anonymous'}'
+                    crossorigin='${isOwnContent ? nothing : 'anonymous'}'
                     draggable='false'
                     alt=''
                     width='${w}'
@@ -121,12 +124,19 @@ export class ImageSkeleton extends LitElement {
         // fetch, which re-enters here. Resuming the attempt count rather than
         // restarting it is what keeps that from becoming a delay-free fetch loop:
         // the src is reachable, so only the backoff can slow it down.
+        // A local content:// image has no network to back off from, and fetch() is neither
+        // allowed for it by the CSP nor answered with CORS headers: the <img> load is the only path.
+        if (this.src.startsWith(LocalContentScheme)) {
+            this._failedSrc = this.src;
+            return;
+        }
+
         let attempt = this._attemptsBySrc.get(this.src) ?? 0;
         this._attemptsBySrc.clear();
         this._isRetrying = true;
         this._imageState = 'skeleton';
         this.applyState();
-        const isSubDomain = this.isSubDomain(this.src);
+        const isOwnContent = this.isOwnContent(this.src);
         try {
             for (; attempt < RetryCount; attempt++) {
                 this._attemptsBySrc.set(this.src, attempt + 1);
@@ -136,7 +146,7 @@ export class ImageSkeleton extends LitElement {
                 }
                 // Blocked/offline/DNS failures reject instead of returning a non-ok
                 // response, which would otherwise skip the backoff and the fallback.
-                const response = await fetch(this.src, { mode: isSubDomain ? undefined : 'cors' })
+                const response = await fetch(this.src, { mode: isOwnContent ? undefined : 'cors' })
                     .catch(() => null);
                 const blob = response?.ok ? await response.blob().catch(() => null) : null;
                 if (!blob)
@@ -188,7 +198,8 @@ export class ImageSkeleton extends LitElement {
             this.setAttribute('data-image-state', this._imageState);
     }
 
-    private isSubDomain(url: string): boolean {
-        return url.includes(AC.prodHost);
+    // Own-host and local content:// URLs load with the page's credentials and no CORS attribute
+    private isOwnContent(url: string): boolean {
+        return url.includes(AC.prodHost) || url.startsWith(LocalContentScheme);
     }
 }
