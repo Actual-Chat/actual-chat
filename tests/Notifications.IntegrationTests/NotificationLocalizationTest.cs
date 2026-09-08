@@ -209,8 +209,8 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
         var l = LanguageStringLocalizer.Get(Language.Parse("en"));
         var composer = AppHost.Services.GetRequiredService<NotificationTextComposer>();
         var (content, _) = await composer.Compose(entry, MarkupConsumer.Notification, CancellationToken.None);
-        // The sender is the banner's headline on every platform, so a single-entry text must not
-        // repeat it: author lines belong only to coalesced banners, which hold several authors.
+        // A mention banner is headlined with the sender on every platform, so its text must not
+        // repeat it: author lines belong only to message banners, which can hold several authors.
         var expectedText = content.Render(l);
         await TestExt.When(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(mentioned.Id, CancellationToken.None);

@@ -1358,7 +1358,7 @@ public class NotificationsBackend(IServiceProvider services)
 
         var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
         var (senderName, groupTitle) = NotificationHelper.GetTitleParts(chat, changeAuthor);
-        var title = NotificationHelper.GetTitle(senderName, groupTitle);
+        var title = NotificationHelper.GetTitle(kind, senderName, groupTitle);
         var iconUrl = NotificationHelper.GetIconUrl(chat, changeAuthor, UrlMapper);
         var now = Clocks.CoarseSystemClock.Now;
         var entryLid = entryId?.LocalId ?? 0;
@@ -1384,7 +1384,7 @@ public class NotificationsBackend(IServiceProvider services)
             var userGroupTitle = groupTitleByUserId?[otherUserId] ?? groupTitle;
             var userTitle = groupTitleByUserId is null
                 ? title
-                : NotificationHelper.GetTitle(senderName, userGroupTitle);
+                : NotificationHelper.GetTitle(kind, senderName, userGroupTitle);
 
             ChatNotification notification = kind switch {
                 NotificationKind.Message => MessageNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),

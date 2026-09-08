@@ -1,3 +1,4 @@
+using ActualChat.Localization;
 using ActualChat.Testing.Host;
 using ActualChat.Uploads;
 
@@ -27,7 +28,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
 
         // assert
         var aliceNotification = await GetNotification(alice, entry.Id);
-        aliceNotification.Title.Should().Be($"Bobby @ {chat.Title}");
+        aliceNotification.Title.Should().Be(chat.Title);
         aliceNotification.SenderName.Should().Be("Bobby");
         aliceNotification.GroupTitle.Should().Be(chat.Title);
         aliceNotification.Text.Should().Be("Bobby: Ok!");
@@ -89,7 +90,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
 
         // assert
         var aliceNotification = await GetNotification(alice, entry.Id);
-        aliceNotification.Title.Should().Be("Bobby @ Design @ Voxt");
+        aliceNotification.Title.Should().Be("Design @ Voxt");
         aliceNotification.SenderName.Should().Be("Bobby");
         aliceNotification.GroupTitle.Should().Be("Design @ Voxt");
     }
@@ -113,12 +114,69 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
 
         // assert
         var aliceNotification = await GetNotification(alice, entry.Id);
-        aliceNotification.Title.Should().Be("Bobby @ Good chat");
+        aliceNotification.Title.Should().Be("Good chat");
         aliceNotification.Text.Should().Be("Bobby: Sent 1 image");
 
         var bobNotification = await GetNotification(bob, entry.Id);
         bobNotification.Title.Should().Be("Alice @ Good chat");
         bobNotification.Text.Should().Be("❤️ to your image");
+    }
+
+    [Fact]
+    public async Task ShouldTitleAMentionWithTheSender()
+    {
+        // arrange
+        var alice = await Tester.SignInAsUniqueAlice();
+        var bob = await Tester.SignInAsUniqueBob();
+        var (chatId, inviteId) = await Tester.CreateChat(false, "Mention chat");
+        await Tester.SignIn(alice);
+        await Tester.JoinChat(chatId, inviteId);
+
+        // act
+        await Tester.SignIn(bob);
+        var entry = await Tester.CreateTextEntry(chatId, $"ping @u:{alice.Id} !");
+
+        // assert
+        var composer = AppHost.Services.GetRequiredService<NotificationTextComposer>();
+        var (content, _) = await composer.Compose(entry, MarkupConsumer.Notification, CancellationToken.None);
+        var notification = await GetNotification(alice, entry.Id);
+        notification.Should().BeOfType<MentionNotification>();
+        notification.Title.Should().Be("Bobby @ Mention chat");
+        notification.SenderName.Should().Be("Bobby");
+        notification.GroupTitle.Should().Be("Mention chat");
+        notification.Text.Should().Be(content.Render(LanguageStringLocalizer.Get(Languages.English)));
+    }
+
+    [Fact]
+    public async Task ShouldTitleAnAttentionRequestWithTheSender()
+    {
+        // arrange
+        var alice = await Tester.SignInAsUniqueAlice();
+        var bob = await Tester.SignInAsUniqueBob();
+        var (chatId, inviteId) = await Tester.CreateChat(false, "Attention chat");
+        await Tester.SignIn(alice);
+        await Tester.JoinChat(chatId, inviteId);
+
+        // act
+        await Tester.SignIn(bob);
+        var entry = await Tester.CreateTextEntry(chatId, "Everyone, look here");
+        await Tester.Commander.Call(new NotificationsBackend_NotifyMembers(bob.Id, chatId, entry.LocalId));
+
+        // assert
+        // The same entry yields both banners, and only the message one is titled with the chat.
+        AttentionNotification attention = null!;
+        MessageNotification message = null!;
+        await TestExt.When(async () => {
+            var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
+            attention = info.Items.OfType<AttentionNotification>().Should().ContainSingle().Subject;
+            message = info.Items.OfType<MessageNotification>().Should().ContainSingle().Subject;
+        }, TimeSpan.FromSeconds(10));
+        attention.Title.Should().Be("Bobby @ Attention chat");
+        attention.SenderName.Should().Be("Bobby");
+        attention.GroupTitle.Should().Be("Attention chat");
+        attention.Text.Should().Be("Bobby asks for attention");
+        message.Title.Should().Be("Attention chat");
+        message.Text.Should().Be("Bobby: Everyone, look here");
     }
 
     [Fact]
@@ -220,7 +278,8 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         // Save media with user scope (for avatar pictures)
         var mediaSaver = Tester.AppServices.GetRequiredService<IMediaSaver>();
         var mediaId = MediaId.New(ownAccount.Id.Value);
-        await mediaSaver.Save(mediaId, TestImages.GetUploadedImage(TestImages.DefaultJpg), null, MediaKind.UserAvatarPicture, default);
+        await mediaSaver.Save(
+            mediaId, TestImages.GetUploadedImage(TestImages.DefaultJpg), null, MediaKind.UserAvatarPicture, default);
 
         // Create avatar with custom picture for bob
         var avatarWithPicture = await Tester.Commander.Call(new Avatars_Change {
