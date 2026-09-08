@@ -230,7 +230,23 @@ public partial class Chats(IServiceProvider services) : IChats
         if (!await CanRead(session, chatId, cancellationToken).ConfigureAwait(false))
             return null;
 
-        return await Backend.GetNews(chatId, cancellationToken).ConfigureAwait(false);
+        // The filtering backend, like GetLegacyNews below: this serves peers at or below 2.12, which
+        // are pre-2.19 too, so an entry kind they can't read is fatal to the whole ChatNews here as well.
+        return await Backend.GetLegacyNews(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    [Obsolete("2026.09: Use GetNews - this one only serves a last entry a pre-2.19 client can read.")]
+    public virtual async Task<ChatNews?> GetLegacyNews(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        if (!await CanRead(session, chatId, cancellationToken).ConfigureAwait(false))
+            return null;
+
+        var news = await Backend.GetLegacyNews(chatId, cancellationToken).ConfigureAwait(false);
+        return news?.ToSlim();
     }
 
     // [ComputeMethod]
