@@ -1091,8 +1091,6 @@
 
   "Ptt_UseOnThisDevice": "在此设备上使用按住说话",
   "Ptt_UseOnThisDeviceCaption": "关闭后，此设备不会因按住说话语音而唤醒、播放或发送。",
-  "Ptt_DeviceEnabledToast": "按住说话已在此设备上启用。",
-  "Ptt_NotOnThisDevice": "不在此设备上",
   "Ptt_ChatsTopic": "按住说话的聊天",
   "Ptt_NoPttChats": "还没有聊天使用按住说话——由聊天的所有者在聊天中开启。",
   "Ptt_AvailableTopic": "可用",

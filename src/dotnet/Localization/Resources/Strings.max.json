@@ -1278,8 +1278,6 @@
   // is a section heading on this page and a *Caption key the grey line under a toggle.
   "Ptt_UseOnThisDevice": "Използвайте Натисни и говори на това устройство",
   "Ptt_UseOnThisDeviceCaption": "Когато е изключено, това устройство няма да се събужда, възпроизвежда или предава глас с Натисни и говори.",
-  "Ptt_DeviceEnabledToast": "この端末でプッシュ・トゥ・トークが有効になりました。",
-  "Ptt_NotOnThisDevice": "Không dùng trên thiết bị này",
   "Ptt_ChatsTopic": "プッシュ・トゥ・トークのチャット",
   "Ptt_NoPttChats": "プッシュ・トゥ・トークを使っているチャットはまだありません。チャットのオーナーがチャット内で有効にします。",
   "Ptt_AvailableTopic": "Kullanılabilir",

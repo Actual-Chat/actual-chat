@@ -1091,8 +1091,6 @@
 
   "Ptt_UseOnThisDevice": "Gunakan Tekan untuk bicara di perangkat ini",
   "Ptt_UseOnThisDeviceCaption": "Saat mati, perangkat ini tidak akan bangun, memutar, atau mengirim suara Tekan untuk bicara.",
-  "Ptt_DeviceEnabledToast": "Tekan untuk bicara kini aktif di perangkat ini.",
-  "Ptt_NotOnThisDevice": "Jangan di perangkat ini",
   "Ptt_ChatsTopic": "Obrolan Tekan untuk bicara",
   "Ptt_NoPttChats": "Belum ada obrolan yang memakai Tekan untuk bicara — pemiliknya yang mengaktifkannya di obrolan itu.",
   "Ptt_AvailableTopic": "Tersedia",

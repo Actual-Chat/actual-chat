@@ -1091,8 +1091,6 @@
 
   "Ptt_UseOnThisDevice": "इस डिवाइस पर पुश टू टॉक इस्तेमाल करें",
   "Ptt_UseOnThisDeviceCaption": "बंद होने पर यह डिवाइस पुश टू टॉक आवाज़ के लिए न जागेगा, न चलाएगा, न भेजेगा।",
-  "Ptt_DeviceEnabledToast": "पुश टू टॉक अब इस डिवाइस पर सक्रिय है।",
-  "Ptt_NotOnThisDevice": "इस डिवाइस पर नहीं",
   "Ptt_ChatsTopic": "पुश टू टॉक चैट",
   "Ptt_NoPttChats": "अभी किसी चैट में पुश टू टॉक चालू नहीं है — चैट का स्वामी इसे चैट में ही चालू करता है।",
   "Ptt_AvailableTopic": "उपलब्ध",
