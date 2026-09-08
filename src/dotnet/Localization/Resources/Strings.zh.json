@@ -1485,7 +1485,7 @@
   "Call_Entry_Missed": "未接来电",
   "Call_Entry_Declined": "已拒接的通话",
   "Call_Entry_Canceled": "已取消的通话",
-  "Call_Entry_Ended": "通话已结束",
+  "Call_Entry_Ended": "通话",
   "Call_Entry_NoAnswer": "无人接听",
   "Call_Entry_TapToCallBack": "点按回拨",
   "Share_FailedToShareFiles": "文件分享失败",

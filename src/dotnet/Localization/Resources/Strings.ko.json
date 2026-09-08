@@ -1485,7 +1485,7 @@
   "Call_Entry_Missed": "부재중 전화",
   "Call_Entry_Declined": "거절된 통화",
   "Call_Entry_Canceled": "취소된 통화",
-  "Call_Entry_Ended": "통화가 종료되었습니다",
+  "Call_Entry_Ended": "통화",
   "Call_Entry_NoAnswer": "응답 없음",
   "Call_Entry_TapToCallBack": "탭하여 다시 전화하기",
   "Share_FailedToShareFiles": "파일을 공유하지 못했습니다",

@@ -1485,7 +1485,7 @@
   "Call_Entry_Missed": "Пропуштени позив",
   "Call_Entry_Declined": "Одбијени позив",
   "Call_Entry_Canceled": "Отказани позив",
-  "Call_Entry_Ended": "Позив је завршен",
+  "Call_Entry_Ended": "Позив",
   "Call_Entry_NoAnswer": "Нема одговора",
   "Call_Entry_TapToCallBack": "Додирните за повратни позив",
   "Share_FailedToShareFiles": "Фајлови се нису могли поделити",

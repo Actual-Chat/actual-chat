@@ -115,7 +115,9 @@
                 @if (!Message.HasSplitHeader) {
                     <ConversationMessageHeader
                         Conversation="@conversation"
-                        Title="@(conversation.IsCall ? TranslatedText.From(callTitle) : m.Title)"
+                        Title="@(conversation.IsCall && !hasLiveTitle
+                                 ? TranslatedText.From(callTitle)
+                                 : m.Title)"
                         Icon="@(conversation.IsCall ? callIcon : "icon-tldr")"
                         MessageCount="@messageCount"
                         StartsAt="@startsAt"

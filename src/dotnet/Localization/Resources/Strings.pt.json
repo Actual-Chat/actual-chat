@@ -1485,7 +1485,7 @@
   "Call_Entry_Missed": "Chamada perdida",
   "Call_Entry_Declined": "Chamada recusada",
   "Call_Entry_Canceled": "Chamada cancelada",
-  "Call_Entry_Ended": "Chamada encerrada",
+  "Call_Entry_Ended": "Chamada",
   "Call_Entry_NoAnswer": "Sem resposta",
   "Call_Entry_TapToCallBack": "Toque para retornar a chamada",
   "Share_FailedToShareFiles": "Não foi possível compartilhar os arquivos",
