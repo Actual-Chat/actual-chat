@@ -41,6 +41,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     private readonly RedisMultiHashMap<CallInvite> _invites;
     private readonly AsyncLockSet<ChatId> _changeLocks = new(LockReentryMode.CheckedFail);
 
+    private IAuthorsBackend AuthorsBackend { get; }
     private IChatsBackend ChatsBackend { get; }
     private IRolesBackend RolesBackend { get; }
     private ILiveAudioBackend LiveAudioBackend { get; }
@@ -52,6 +53,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     public LiveSessionsBackend(IServiceProvider services)
         : base(services, ShardScheme.LiveBackend)
     {
+        AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
         ChatsBackend = services.GetRequiredService<IChatsBackend>();
         RolesBackend = services.GetRequiredService<IRolesBackend>();
         LiveAudioBackend = services.GetRequiredService<ILiveAudioBackend>();
@@ -167,6 +169,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 continue;
             if (!AuthorId.TryParse(authorIdValue, out var authorId))
                 continue;
+
             var m = For(authorId);
             var isRecorder = IsFreshRecorder(info, cutoff);
             var isListener = info.Kind == ParticipationKind.AudioListen && info.RegisteredAt >= cutoff;
@@ -312,7 +315,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         }
 
         if (state.SessionStartedAt is null && state.AuthorIds.Count >= 2) {
-            var visibleStartLid = (await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false)).End;
+            var visibleStartLid = (await ChatsBackend
+                .GetLidRange(chatId, false, cancellationToken)
+                .ConfigureAwait(false)).End;
             state = state with {
                 // A dialing call latching here (streamed before a formal accept) becomes a connected call,
                 // never a Dialing session with SessionStartedAt set.
@@ -396,13 +401,17 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         InvalidateState(chatId);
     }
 
-    public virtual async Task MutePeer(ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken)
+    public virtual async Task MutePeer(
+        ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken)
     {
         await EnsureParticipant(chatId, targetAuthorId).ConfigureAwait(false);
         var existing = await SafeGetParticipant(chatId, targetAuthorId).ConfigureAwait(false);
         if (existing is null)
             return;
-        await _participants.Set(chatId.Value, targetAuthorId.Value, existing with { MicMuted = muted }).ConfigureAwait(false);
+
+        await _participants
+            .Set(chatId.Value, targetAuthorId.Value, existing with { MicMuted = muted })
+            .ConfigureAwait(false);
         InvalidateGet(chatId);
     }
 
@@ -538,7 +547,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
             var now = Clocks.SystemClock.Now;
             var state = await SafeGet(chatId).ConfigureAwait(false);
-            var lidRangeEnd = (await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false)).End;
+            var lidRangeEnd = (await ChatsBackend
+                .GetLidRange(chatId, false, cancellationToken)
+                .ConfigureAwait(false)).End;
             var startEntryLid = state?.StartEntryLid ?? lidRangeEnd;
             // A fresh call is Dialing: the session exists (for the Call tab and the ring) but no live
             // conversation is surfaced until someone answers, so SessionStartedAt stays null. Promoting an
@@ -551,6 +562,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 AuthorIds = state?.AuthorIds is { Count: > 0 } ids ? ids : [callerAuthorId],
                 Host = callerAuthorId,
                 Kind = state?.SessionStartedAt is not null ? LiveSessionKind.Call : LiveSessionKind.Dialing,
+                HasVideo = hasVideo,
                 Version = VersionGenerator.NextVersion(state?.Version ?? 0),
             };
             await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
@@ -594,7 +606,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             if (state is { SessionStartedAt: null }) {
                 // The first answer latches a dialing call to Connected: it's now a live conversation, so
                 // surface the block from the chat end at answer time and make it genuinely two-party.
-                var visibleStartLid = (await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false)).End;
+                var visibleStartLid = (await ChatsBackend
+                    .GetLidRange(chatId, false, cancellationToken)
+                    .ConfigureAwait(false)).End;
                 var authorIds = state.AuthorIds.Contains(inviteeAuthorId)
                     ? state.AuthorIds
                     : [..state.AuthorIds, inviteeAuthorId];
@@ -632,9 +646,15 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             var state = await SafeGet(chatId).ConfigureAwait(false);
             conversationId = state?.RingConversationId;
             abandoned = await IsCallAbandoned(chatId).ConfigureAwait(false);
-            // Recorded before the close below drops the session that carries the caller's identity.
-            if (abandoned && state is not null)
-                await SetCallState(chatId, NewCallState(state, CallStatus.Declined)).ConfigureAwait(false);
+            if (state is not null) {
+                // Recorded before the close below drops the session that carries the caller's identity.
+                // Gated on abandoned: a decline while another invitee still rings isn't the call's final story.
+                if (abandoned)
+                    await SetCallState(chatId, NewCallState(state, CallStatus.Declined)).ConfigureAwait(false);
+                // Unlike CallStatus, the outcome is recorded on every decline: first-writer-wins already
+                // covers a later accept or cancel rewriting the story.
+                await SetOutcome(chatId, state, CallOutcome.Declined).ConfigureAwait(false);
+            }
             InvalidateState(chatId);
         }
         if (conversationId is { } cid)
@@ -668,6 +688,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             await _participants.Remove(chatId.Value, callerAuthorId.Value).ConfigureAwait(false);
             // Hanging up myself needs no status, and it must beat a decline that just landed.
             await SetCallState(chatId, null).ConfigureAwait(false);
+            await SetOutcome(chatId, state, CallOutcome.Canceled).ConfigureAwait(false);
             InvalidateState(chatId);
             InvalidateListParticipants(chatId);
             InvalidateHasRecorder(chatId);
@@ -888,6 +909,27 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             _ = GetCallState(chatId, default);
     }
 
+    // Internal (rather than private) to be accessible from tests: every real caller of this method also
+    // unconditionally closes the call in the same operation once its outcome is the abandoning one, so the
+    // guard below can't be pinned by observing Redis state through the close - it has to be called directly.
+    internal async Task SetOutcome(ChatId chatId, LiveSessionState state, CallOutcome outcome)
+    {
+        // First writer wins: the earliest terminal response decides the outcome, and nothing later
+        // may overwrite it - including a decline outranking another invitee's ring later timing out
+        // into NoAnswer. The decisive "no" already happened; a sibling invite's expiry afterward
+        // isn't new information about how the call went. Callers hold _changeLocks, so this read
+        // and write are atomic.
+        if (state.Outcome != CallOutcome.None)
+            return;
+
+        await _redisScope.Set(chatId.Value, state with {
+            Outcome = outcome,
+            Version = VersionGenerator.NextVersion(state.Version),
+        }).ConfigureAwait(false);
+        using (Invalidation.Begin())
+            _ = GetState(chatId, default);
+    }
+
     private CallState NewCallState(LiveSessionState state, CallStatus status)
         => new() {
             CallerId = state.Host ?? state.AuthorIds[0],
@@ -976,8 +1018,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             if ((expired.Count > 0 || wasDialing) && await IsCallAbandoned(chatId).ConfigureAwait(false)) {
                 // Only a still-dialing call gets a "no answer" - a connected one that emptied out just closes.
                 if (await SafeGet(chatId).ConfigureAwait(false) is { IsDialing: true } current
-                    && await SafeGetCallState(chatId).ConfigureAwait(false) is null or { Status: CallStatus.Dialing })
+                    && await SafeGetCallState(chatId).ConfigureAwait(false) is null or { Status: CallStatus.Dialing }) {
                     await SetCallState(chatId, NewCallState(current, CallStatus.NoAnswer)).ConfigureAwait(false);
+                    await SetOutcome(chatId, current, CallOutcome.NoAnswer).ConfigureAwait(false);
+                }
                 await CloseCall(chatId).ConfigureAwait(false);
             }
         }
@@ -1014,6 +1058,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     {
         if (await HasFreshRecorder(chatId).ConfigureAwait(false))
             return true;
+
         var invites = await SafeGetInvites(chatId).ConfigureAwait(false);
         return invites.Values.Any(i => i is { Status: CallInviteStatus.Ringing });
     }
@@ -1051,8 +1096,16 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             return false; // already active+open or inactive+closing
 
         state = isActive
-            ? state with { IsClosing = false, ClosingAt = null, Version = VersionGenerator.NextVersion(state.Version) }
-            : state with { IsClosing = true, ClosingAt = Clocks.SystemClock.Now, Version = VersionGenerator.NextVersion(state.Version) };
+            ? state with {
+                IsClosing = false,
+                ClosingAt = null,
+                Version = VersionGenerator.NextVersion(state.Version),
+            }
+            : state with {
+                IsClosing = true,
+                ClosingAt = Clocks.SystemClock.Now,
+                Version = VersionGenerator.NextVersion(state.Version),
+            };
         await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
         InvalidateState(chatId);
         return !isActive;
@@ -1092,6 +1145,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 await StartClosingGrace(chatId).ConfigureAwait(false);
                 return;
             }
+
             await CloseAndMaterialize(state, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
@@ -1107,6 +1161,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             var state = await SafeGet(chatId).ConfigureAwait(false);
             if (state is null)
                 return;
+
             await CloseAndMaterialize(state, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
@@ -1122,6 +1177,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             var state = await SafeGet(chatId).ConfigureAwait(false);
             if (state is not { IsClosing: true })
                 return;
+
             await CloseAndMaterialize(state, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
@@ -1132,13 +1188,36 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     private async Task CloseAndMaterialize(LiveSessionState state, CancellationToken cancellationToken)
     {
         if (state.IsCall) {
-            // A voice call has no transcript to materialize - just stop any lingering rings on the
-            // invitees' devices, then drop the session.
-            var invitees = (await SafeGetInvites(state.ChatId).ConfigureAwait(false))
-                .Values.Where(i => i is not null).Select(i => i!.InviteeId).ToList();
-            if (invitees.Count > 0)
-                await DismissRing(state.RingConversationId, invitees, cancellationToken).ConfigureAwait(false);
-            await Close(state.ChatId, cancellationToken).ConfigureAwait(false);
+            // A hang-up and the ring expiry can decide the same call is over at the same moment.
+            // Dropping the session key is the atomic claim that picks one of them as the closer, so
+            // the call leaves exactly one entry behind; Close below is then a no-op for that key.
+            if (!await _redisScope.Remove(state.ChatId.Value).ConfigureAwait(false))
+                return;
+
+            try {
+                // Stop any ring still going on an invitee's device before the session goes away.
+                var invitees = (await SafeGetInvites(state.ChatId).ConfigureAwait(false))
+                    .Values.Where(i => i is not null).Select(i => i!.InviteeId).ToList();
+                if (invitees.Count > 0)
+                    await DismissRing(state.RingConversationId, invitees, cancellationToken).ConfigureAwait(false);
+                if (state.ChatId.Kind == ChatKind.Peer)
+                    await WriteCallEntry(state, invitees, cancellationToken).ConfigureAwait(false);
+                // A call that never connected has no conversation; one that did is materialized here,
+                // and unlike a transcript session it has no title to gate on - the card is the point.
+                if (state.SessionStartedAt is not null) {
+                    var materialize = new ConversationBackend_Materialize(state.ToMaterializedConversation());
+                    await Commander.Call(materialize, true, cancellationToken).ConfigureAwait(false);
+                }
+            }
+            finally {
+                // Having won the claim, this is the session's only closer: nothing retries a torn-down
+                // session, so a failed ring dismissal, entry or materialization must not also cost the
+                // participants, the invites and the invalidation that tells clients the call is over.
+                // CancellationToken.None because a revoked token (FinalizeSession forwards the summary
+                // flow's, which dies on a timeout or a shutdown) is itself one of the ways to get here,
+                // and Close would then abort on its own lock.
+                await Close(state.ChatId, CancellationToken.None).ConfigureAwait(false);
+            }
             return;
         }
 
@@ -1153,6 +1232,38 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 .Call(new ConversationBackend_Materialize(state.ToMaterializedConversation()), true, cancellationToken)
                 .ConfigureAwait(false);
         await Close(state.ChatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task WriteCallEntry(
+        LiveSessionState state, IReadOnlyList<AuthorId> invitees, CancellationToken cancellationToken)
+    {
+        // A call that connected is Ended whichever button ended it - CancelCall is also how a caller
+        // hangs up - so the outcome recorded during the ring only decides a call that never connected.
+        var outcome = state.SessionStartedAt is not null ? CallOutcome.Ended : state.Outcome;
+        if (outcome == CallOutcome.None)
+            return;
+
+        var chatId = state.ChatId;
+        var callerId = state.Host ?? state.AuthorIds.FirstOrDefault();
+        if (callerId is null)
+            return;
+
+        var caller = await AuthorsBackend
+            .Get(chatId, callerId, RequestedAuthorKind.Full, cancellationToken)
+            .ConfigureAwait(false);
+        var command = new ChatsBackend_ChangeEntry(
+            ChatEntryId.New(chatId, 0),
+            null,
+            Change.Create(new ChatEntryDiff {
+                Kind = ChatEntryKind.Call,
+                AuthorId = Constants.User.Walle.GetWalleAuthorId(chatId),
+                CallerId = callerId,
+                CallerName = caller?.Avatar.Name.NullIfEmpty() ?? MentionMarkup.NotAvailableName,
+                Outcome = outcome,
+                InviteeIds = invitees.ToApiArray(),
+                HasVideo = state.HasVideo,
+            }));
+        await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task Close(ChatId chatId, CancellationToken cancellationToken)
@@ -1179,7 +1290,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
         return Services.Queues()
             .Enqueue(
-                new NotificationsBackend_NotifyConversation(state.ConversationId, phase, content, state.EndEntryLid, state.AuthorIds),
+                new NotificationsBackend_NotifyConversation(
+                    state.ConversationId, phase, content, state.EndEntryLid, state.AuthorIds),
                 cancellationToken);
     }
 
