@@ -15,6 +15,16 @@ public sealed partial class ChatTile
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
     public ChatTile() { }
 
+    public ChatTile WithoutEntriesUnknownTo(Version apiVersion)
+    {
+        // The lid range is left as it was: a dropped entry leaves a gap, which is exactly what a
+        // peer that can't read it should see - the shape a removed entry already produces.
+        var known = Entries.Where(x => ChatEntry.IsKnownTo(x, apiVersion)).ToArray();
+        return known.Length == Entries.Length
+            ? this
+            : new ChatTile(LidTileRange, IncludesRemoved, known);
+    }
+
     public ChatTile(Range<long> lidTileRange, bool includesRemoved, ChatEntry[] entries)
     {
         var beginsAtRange = new Range<Moment>(Moment.MaxValue, Moment.MinValue);

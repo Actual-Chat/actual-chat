@@ -96,6 +96,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.Translation>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.TranslationDiff>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.UnparsedTextMarkup>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.UnsupportedSystemEntry>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.UrlMarkup>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.UserMention>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.VisualMediaItem>();
@@ -570,6 +571,9 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.UnparsedTextMarkup>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.UnparsedTextMarkup>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.UnparsedTextMarkup>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.UnsupportedSystemEntry>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.UnsupportedSystemEntry>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.UnsupportedSystemEntry>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.UrlMarkup>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.UrlMarkup>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.UrlMarkup>>>>();
@@ -1763,6 +1767,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+TranslationDiffFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+TranslationFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+UnparsedTextMarkupFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+UnsupportedSystemEntryFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+UrlMarkupFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+UrlMarkupKindFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+UserMentionFormatter, ActualChat.Api");
@@ -1982,6 +1987,7 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Chat.Translation), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.TranslationDiff), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.UnparsedTextMarkup), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.UnsupportedSystemEntry), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.UrlMarkup), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.UserMention), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.VisualMediaItem), AotTypeKind.Serializable),

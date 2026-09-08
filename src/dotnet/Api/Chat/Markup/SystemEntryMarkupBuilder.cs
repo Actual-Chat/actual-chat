@@ -18,6 +18,9 @@ public class SystemEntryMarkupBuilder
         => entry switch {
             MembersChangedEntry e => BuildMembersChanged(e),
             NotifyMembersEntry e => BuildNotifyMembers(e),
+            // A system event of a kind this build has no member for renders as nothing: a system
+            // event is low-value by construction, so "update your app" in its place is just a nag.
+            UnsupportedSystemEntry => Markup.EmptyText,
             // SystemEntryLocalizationTest fails on any [Union] kind that lands here
             _ => Markup.EmptyText,
         };

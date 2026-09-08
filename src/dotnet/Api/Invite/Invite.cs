@@ -17,8 +17,13 @@ namespace ActualChat.Invite;
 public abstract partial record Invite(
     [property: DataMember, Key(0)] Symbol Id,
     [property: DataMember, Key(1)] long Version = 0
-    ) : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
+    ) : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget, IForwardCompatibleUnion<Invite>
 {
+    static Invite? IForwardCompatibleUnion<Invite>.NewUnsupported(
+        int tag, ref MessagePackReader payload, MessagePackSerializerOptions options)
+        // An invite this build can neither render nor redeem is worth less than the list it's in.
+        => null;
+
     [DataMember, Key(2)] public string CreatedBy { get; init; } = "";
     [DataMember, Key(3)] public Moment CreatedAt { get; init; }
     [DataMember, Key(4)] public Moment ExpiresOn { get; init; }
