@@ -1,8 +1,12 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, bool>
+@inherits ComputedStateComponent<AppUIHub, CallMessageView.Model>
 @{
-    var isCaller = State.Value;
-    var (icon, title, hint, isCallBack) = CallCardFormat.Get(Entry.Outcome, isCaller, L);
+    var m = State.Value;
+    var (icon, title, hint, isCallBack) = CallCardFormat.Get(Entry.Outcome, m.IsCaller, L);
+    // An offer that would only reach the server's peer-call gate and come back as a toast is worse
+    // than no offer: the header button greys itself out on the same rule.
+    if (isCallBack && !m.CanCall)
+        hint = null;
     var avatarIds = new[] { Entry.CallerId }.Concat(Entry.InviteeIds).ToApiArray();
     var startsAt = DateTimeConverter.ToLocalTime(Entry.BeginsAt).ToString("t", DateFormatter);
 }
@@ -36,19 +40,28 @@
 
     [Parameter, EditorRequired] public CallEntry Entry { get; set; } = null!;
 
-    protected override ComputedState<bool>.Options GetStateOptions()
+    protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<bool>.Options() {
-                InitialValue = false,
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
                 Category = GetStateCategory(t),
             });
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = await Chats.Get(Session, Entry.ChatId, cancellationToken).ConfigureAwait(false);
-        return chat?.Rules.Author?.Id == Entry.CallerId;
+        var isCaller = chat?.Rules.Author?.Id == Entry.CallerId;
+        // Mirrors ChatHeaderCallButton: a peer call needs the audio-stream permission.
+        var canCall = Entry.ChatId.Kind != ChatKind.Peer || (chat?.Rules.CanWriteAudio() ?? false);
+        return new Model(isCaller, canCall);
     }
 
     private Task OnCallBack()
         => LiveSessionUI.StartCall(
             Entry.ChatId, new[] { Entry.CallerId }.ToApiArray(), Entry.HasVideo, default);
+
+    // Nested types
+
+    public sealed record Model(bool IsCaller, bool CanCall) {
+        public static readonly Model None = new(false, false);
+    }
 }
