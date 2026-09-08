@@ -85,9 +85,13 @@ public class StreamStoreCacheTest
     public async Task PublishedEntry_ExpiresAfterIdleDelay()
     {
         // After the source completes and no consumer keeps the bumper alive,
-        // the entry must self-evict within ~ExpirationDelay × 2 — closing the
-        // upstream RPC. Validates the lifetime ceiling described in the plan.
-        await using var store = new StreamStore<int> { ExpirationDelay = ShortExpiration };
+        // the entry must self-evict — closing the upstream RPC. Validates the
+        // lifetime ceiling described in the plan.
+        var whenExpiredSource = TaskCompletionSourceExt.New<StreamId>();
+        await using var store = new StreamStore<int> {
+            ExpirationDelay = ShortExpiration,
+            OnStreamExpire = id => whenExpiredSource.TrySetResult(id),
+        };
         var streamId = NewStreamId();
 
         var ch = Channel.CreateUnbounded<int>();
@@ -100,12 +104,10 @@ public class StreamStoreCacheTest
         ch.Writer.Complete();
         await (memoizer.WhenRunning ?? Task.CompletedTask).WaitAsync(TestTimeout);
 
-        // Worst-case: bumper exits up to one period late (ExpirationDelay/2)
-        // and entry expires after another ExpirationDelay. Allow 4× headroom.
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(ShortExpiration.TotalSeconds * 4);
-        while (store.Has(streamId) && DateTime.UtcNow < deadline)
-            await Task.Delay(50);
-
+        // Both loops driving eviction are ThreadPool-scheduled and can overshoot by
+        // seconds on a loaded CI box, so wait for the callback, not for a deadline.
+        var expiredStreamId = await whenExpiredSource.Task.WaitAsync(TestTimeout);
+        expiredStreamId.Should().Be(streamId);
         store.Has(streamId).Should().BeFalse("entry should expire after idle");
     }
 
