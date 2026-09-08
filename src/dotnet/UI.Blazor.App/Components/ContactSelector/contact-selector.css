@@ -1,6 +1,6 @@
 /* List */
 .contact-selector-list {
-    @apply flex-y grow;
+    @apply flex-y grow gap-px;
     @apply px-2;
     @apply overflow-y-auto custom-scrollbar;
 }
@@ -10,11 +10,14 @@
     @apply flex-none flex-x items-center gap-x-1;
     @apply h-12;
     @apply px-2;
-    @apply rounded-md;
+    @apply rounded-lg;
 }
 body.hoverable .contact-selector-list-item:hover,
 .touch-capable .contact-selector-list-item:active {
     @apply bg-hover;
+}
+.contact-selector-list-item[aria-selected="true"] {
+    @apply bg-selected;
 }
 .contact-selector-list-item,
 .contact-selector-list-item * {
@@ -99,11 +102,11 @@ body.hoverable .contact-selector-badges > .c-contact:hover .c-remove {
 }
 
 .contact-selector-place-picker .tab-panel-tabs .btn-tab-wrapper {
-    @apply min-h-12 max-h-12;
+    @apply min-h-14 max-h-14;
     @apply justify-between;
 }
 .contact-selector-place-picker .btn.btn-tab {
-    @apply min-w-10 max-w-10 min-h-10 max-h-10;
+    @apply min-w-12 max-w-12 min-h-12 max-h-12;
     @apply p-0;
     @apply bg-square;
     @apply rounded-xl md:rounded-lg;
