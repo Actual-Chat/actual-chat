@@ -40,12 +40,31 @@ public class FileAttachments : UIServiceBase<AppUIHub>
 
     public async Task<bool> TryAddFileAttachments(AttachmentList list, AttachFileInfo[] fileInfos)
     {
-        var hasAdded = false;
+        // The files are created concurrently and added in pick order: a native gallery pick loads
+        // every file in the background, and a preview may take seconds per file (macOS generates
+        // it from the loaded file), so a serial loop would show each item only after the previous one.
+        // TODO: why it started adding slowly only on macos? investigate it
+        var createTasks = new List<Task<Attachment?>>();
         foreach (var fileInfo in fileInfos) {
-            var prevHasAdded = hasAdded;
-            hasAdded = await TryAddFileAttachment(list, fileInfo);
-            if (!prevHasAdded && hasAdded)
+            if (CheckCanAdd(list, fileInfo.FileProvider.Metadata.Length, createTasks.Count) is { } e) {
+                UICommander.ShowError(e);
+                continue;
+            }
+
+            var fileProvider = fileInfo.FileProvider;
+            fileProvider.Initialize(Hub.Services);
+            createTasks.Add(TryCreateAttachment(fileProvider));
+        }
+
+        var hasAdded = false;
+        foreach (var createTask in createTasks) {
+            if (await createTask is not { } attachment)
+                continue;
+
+            await AddAttachment(list, attachment);
+            if (!hasAdded)
                 _ = TuneUI.Play(Tune.ChangeAttachments);
+            hasAdded = true;
         }
         return hasAdded;
     }
@@ -68,24 +87,12 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         return await TryAddFileAttachment(list, webFileProvider);
     }
 
-    private async Task<bool> TryAddFileAttachment(AttachmentList list, AttachFileInfo fileInfo)
-    {
-        if (CheckCanAdd(list, fileInfo.FileProvider.Metadata.Length) is { } e) {
-            UICommander.ShowError(e);
-            return false;
-        }
-
-        var fileProvider = fileInfo.FileProvider;
-        fileProvider.Initialize(Hub.Services);
-        return await TryAddFileAttachment(list, fileProvider);
-    }
-
-    private static Exception? CheckCanAdd(AttachmentList list, long length)
+    private static Exception? CheckCanAdd(AttachmentList list, long length, int pendingCount = 0)
     {
         if (length > Constants.Attachments.FileSizeLimit)
             return StandardError.Upload.FileTooBig(Constants.Attachments.FileSizeLimit);
 
-        if (list.Count >= Constants.Attachments.FileCountLimit)
+        if (list.Count + pendingCount >= Constants.Attachments.FileCountLimit)
             return StandardError.Upload.TooManyFiles(Constants.Attachments.FileCountLimit);
 
         return null;
@@ -121,9 +128,17 @@ public class FileAttachments : UIServiceBase<AppUIHub>
 
     private async Task<bool> TryAddFileAttachment(AttachmentList list, IFileProvider fileProvider)
     {
-        Attachment attachment;
+        if (await TryCreateAttachment(fileProvider) is not { } attachment)
+            return false;
+
+        await AddAttachment(list, attachment);
+        return true;
+    }
+
+    private async Task<Attachment?> TryCreateAttachment(IFileProvider fileProvider)
+    {
         try {
-            attachment = await CreateAttachment(fileProvider);
+            return await CreateAttachment(fileProvider);
         }
         catch (Exception ex) {
             await AttachmentCleanupFactory.ForFile(fileProvider)
@@ -132,14 +147,17 @@ public class FileAttachments : UIServiceBase<AppUIHub>
                 .SilentAwait();
             Log.LogError(ex, "Failed to add file attachment");
             UICommander.ShowError(StandardError.Constraint("Failed to add file attachment."));
-            return false;
+            return null;
         }
+    }
+
+    private async Task AddAttachment(AttachmentList list, Attachment attachment)
+    {
         // NOTE: Start upload immediately after adding attachments.
         attachment = await AttachmentsController.InitUploadSession(attachment, list.MediaScope);
         AttachmentsState.Register(attachment);
         AttachmentsController.ResumeUpload(attachment);
         list.Add(attachment);
-        return true;
     }
 
     private async Task<Attachment> CreateAttachment(IFileProvider fileProvider)
