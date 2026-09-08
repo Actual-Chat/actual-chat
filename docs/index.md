@@ -80,6 +80,12 @@ features:
 - [Command idempotency](./architecture/command-idempotency.md) — how `ApiCommand`'s
   client-generated `Uuid` + an in-process server filter dedup retried commands, and how
   the version-gated deserializer keeps old clients working across a rollout.
+- [Forward-compatible unions](./architecture/union-tolerance.md) — how a `[Union]` root
+  survives reading a member this build doesn't know, which roots are exempt and why, and
+  how the server keeps new entry kinds away from peers that would break on them.
+- [Call entries](./call-entries.md) — what a call leaves behind in a peer chat: the
+  outcomes, which side sees what, where the outcome is recorded versus written, and why a
+  finished call is drawn by the conversation card.
 - [App updates](./app-updates.md) — how the "Update Voxt" banner learns that a
   newer build is actually published in the user's store, per app kind, and what
   that costs the release process.
