@@ -123,7 +123,7 @@ body.narrow .settings-panel > .c-tabs .c-footer {
     @apply flex-1 flex-x;
     @apply pb-4;
     @apply custom-scrollbar;
-    @apply bg-02 md:bg-01;
+    @apply bg-01;
 }
 body.wide .settings-tab {
     padding-top: var(--safe-area-top);
@@ -269,7 +269,7 @@ body.narrow .settings-tab-content {
     @apply px-4;
     @apply w-full md:w-100;
     @apply text-title-1;
-    @apply bg-03 md:bg-01;
+    @apply bg-01;
     @apply border-b border-separator md:border-none;
 }
 body.narrow .settings-tab-header {
