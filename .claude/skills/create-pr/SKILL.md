@@ -70,8 +70,13 @@ Write the body to a file under the project's `tmp/`, never to the repo root, and
 pass a multi-KB body inline:
 
 ```bash
-gh pr create --base dev --title "type(scope): summary" --body-file tmp/pr-body.md
+gh pr create --base dev --title "type(scope): summary" --body-file tmp/pr-body.md --assignee @me
 ```
+
+- **Always assign the PR to its author** (`--assignee @me`). Verify afterwards with
+  `gh pr view <n> --json assignees`: `gh pr edit --add-assignee` can fail silently on a
+  GraphQL deprecation error, in which case fall back to the REST call
+  `gh api -X POST repos/<owner>/<repo>/issues/<n>/assignees -f 'assignees[]=<login>'`.
 
 - **Base is the repo's default branch** (`dev` on actual-chat) — confirm with
   `gh repo view --json defaultBranchRef` rather than assuming.
@@ -139,6 +144,7 @@ their own confirmation. Never fold one into this step.
 | PR created, chat never posted | Step 4 is part of the deliverable, not a follow-up |
 | Re-announcing after new commits | One post per PR; tell the user instead |
 | `gh pr create --fill` | Write a real Summary/Fix/Testing body |
+| PR left unassigned | `--assignee @me`, then verify with `gh pr view --json assignees` |
 | Body file in the repo root | Put it in `tmp/` |
 | Base branch assumed | `gh repo view --json defaultBranchRef` |
 | `Closes #N` guessed from the branch name | Only `branch.<name>.issue` counts; otherwise ask about `/track-issue` |
