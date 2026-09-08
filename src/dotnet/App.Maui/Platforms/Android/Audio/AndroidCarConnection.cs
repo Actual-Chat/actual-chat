@@ -15,9 +15,12 @@ public class AndroidCarConnection : SafeDisposableBase, ICarConnection
     private const string StateColumn = "CarConnectionState";
     private const string UpdateAction = "androidx.car.app.connection.action.CAR_CONNECTION_UPDATED";
     private const int ConnectionTypeProjection = 2;
+    private static readonly TimeSpan RecheckPeriod = TimeSpan.FromSeconds(30);
 
     private readonly ILogger _log;
+    private readonly CancellationTokenSource _disposeTokenSource = new();
     private UpdateReceiver? _receiver;
+    private int _lastKnownState;
 
     public AndroidCarConnection(ILogger<AndroidCarConnection> log)
     {
@@ -36,10 +39,17 @@ public class AndroidCarConnection : SafeDisposableBase, ICarConnection
             // tracking connects. A detector that can't register must not break recording.
             _log.LogWarning(e, "Couldn't register the car connection update receiver");
         }
+        // The broadcast is the primary signal; the recheck catches one that never arrived.
+        _ = AsyncChain.From(Recheck)
+            .Log(LogLevel.Debug, _log)
+            .RetryForever(RetryDelaySeq.Exp(3, 60), _log)
+            .CycleForever()
+            .RunIsolated(_disposeTokenSource.Token);
     }
 
     protected override void Dispose(bool disposing)
     {
+        _disposeTokenSource.Cancel();
         var receiver = _receiver;
         if (receiver == null)
             return;
@@ -58,6 +68,7 @@ public class AndroidCarConnection : SafeDisposableBase, ICarConnection
         // ReadState blocks on a cross-process content provider call, and the callers that matter
         // most - audio focus renewal, recording and playback start - are on threads where that costs.
         var state = await Task.Run(ReadState, cancellationToken).ConfigureAwait(false);
+        Volatile.Write(ref _lastKnownState, state); // Read by the recheck chain on the thread pool
         var isProjectionActive = state == ConnectionTypeProjection;
         _log.LogInformation("IsProjectionActive: provider state {State} -> {IsProjectionActive}",
             state, isProjectionActive);
@@ -75,23 +86,39 @@ public class AndroidCarConnection : SafeDisposableBase, ICarConnection
 
     private int ReadState()
     {
+        // A failed read answers with the last known state: a transient provider hiccup must
+        // not turn "projecting" into "not projecting", which is what opens a call to the car.
         try {
             var uri = Uri.Parse(ConnectionUri)!;
             using var cursor = Platform.AppContext.ContentResolver?.Query(
                 uri, [StateColumn], null, null, null);
             if (cursor == null || !cursor.MoveToNext()) {
-                _log.LogWarning("Car connection provider returned {Result}", cursor == null ? "null" : "no rows");
-                return 0;
+                var lastKnownState = Volatile.Read(ref _lastKnownState);
+                _log.LogWarning("Car connection provider returned {Result}, keeping state {State}",
+                    cursor == null ? "null" : "no rows", lastKnownState);
+                return lastKnownState;
             }
 
             var index = cursor.GetColumnIndex(StateColumn);
             return index < 0 ? 0 : cursor.GetInt(index);
         }
         catch (Exception e) {
-            // A missing or unreadable provider must never stop a recording.
-            _log.LogWarning(e, "Couldn't read the car connection state");
-            return 0;
+            var lastKnownState = Volatile.Read(ref _lastKnownState);
+            _log.LogWarning(e, "Couldn't read the car connection state, keeping state {State}", lastKnownState);
+            return lastKnownState;
         }
+    }
+
+    private async Task Recheck(CancellationToken cancellationToken)
+    {
+        await Task.Delay(RecheckPeriod, cancellationToken).ConfigureAwait(false);
+        var state = ReadState();
+        var lastKnownState = Volatile.Read(ref _lastKnownState);
+        if (state == lastKnownState)
+            return;
+
+        _log.LogInformation("Car connection recheck: state {Old} -> {New}", lastKnownState, state);
+        InvalidateProjectionState();
     }
 
     // Nested types

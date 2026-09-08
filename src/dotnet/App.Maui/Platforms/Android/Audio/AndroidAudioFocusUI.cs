@@ -88,14 +88,18 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     {
         // The route is read, never awaited, here: this runs under OperationLock.
         var carAudioRoute = Volatile.Read(ref _carAudioRoute);
-        var useCommunicationRoute = mode != AudioFocusMode.Recording
-            || carAudioRoute.Input != AudioEndpoint.Builtin;
+        // Under projection the projection link carries playback and the phone mic records, so
+        // the communication route - an HFP virtual call the car answers by muting Android Auto -
+        // is taken only when the user asked for the car microphone.
+        var useCommunicationRoute = carAudioRoute == CarAudioRoute.Default || carAudioRoute.UseCallLink;
         Log.LogInformation(
             "-> RequestAudioFocus, requested mode: '{Mode}', active handle: '{Handle}', "
             + "car route: {CarAudioRoute}, comm route: {UseCommunicationRoute}",
             mode, _handle, carAudioRoute, useCommunicationRoute);
         var success = await Task.Run(() => mode switch {
                 AudioFocusMode.Recording => _focusHelper.RequestFocusForCall(useCommunicationRoute),
+                AudioFocusMode.Playback or AudioFocusMode.Listening when carAudioRoute.UseCallLink
+                    => _focusHelper.RequestFocusForCall(true),
                 AudioFocusMode.Playback => _focusHelper.RequestFocusForPlayback(),
                 AudioFocusMode.Listening => _focusHelper.RequestFocusForListening(),
                 AudioFocusMode.Tune => _focusHelper.RequestFocusForNotification(),
