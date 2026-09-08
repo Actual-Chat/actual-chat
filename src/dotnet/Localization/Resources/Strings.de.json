@@ -644,6 +644,8 @@
   "Banner_ChatCopiedToPlace": "Dieser Chat wurde in den Place kopiert.",
   "Banner_PttAllow": "Dieser Chat ist im Push-to-Talk-Modus. Auf diesem Gerät erlauben?",
   "Banner_PttUseDevice": "Push-to-Talk ist in diesem Chat aktiv. Auf diesem Gerät verwenden?",
+  "Banner_PttMuted": "Push-to-Talk ist stummgeschaltet für",
+  "Banner_PttUnmute": "Stummschaltung aufheben",
   "Banner_Connected": "Verbunden!",
   "Banner_ConnectionLost": "Verbindung verloren.",
   "Banner_Connecting": "Verbinden...",

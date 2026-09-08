@@ -644,6 +644,8 @@
   "Banner_ChatCopiedToPlace": "Bu sohbet Mekâna kopyalandı.",
   "Banner_PttAllow": "Bu sohbet Bas-Konuş modunda. Bu cihazda izin verilsin mi?",
   "Banner_PttUseDevice": "Bu sohbette Bas-Konuş açık. Bu cihazda kullanılsın mı?",
+  "Banner_PttMuted": "Bas-Konuş şu süreyle susturuldu:",
+  "Banner_PttUnmute": "Sesi aç",
   "Banner_Connected": "Bağlandı!",
   "Banner_ConnectionLost": "Bağlantı koptu.",
   "Banner_Connecting": "Bağlanılıyor...",

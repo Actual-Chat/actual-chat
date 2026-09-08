@@ -666,6 +666,8 @@ public static class LocalizedStringsLocalizerExt
         public string Banner_ChatCopiedToPlace => l["Banner_ChatCopiedToPlace"].Value;
         public string Banner_PttAllow => l["Banner_PttAllow"].Value;
         public string Banner_PttUseDevice => l["Banner_PttUseDevice"].Value;
+        public string Banner_PttMuted => l["Banner_PttMuted"].Value;
+        public string Banner_PttUnmute => l["Banner_PttUnmute"].Value;
         public string Banner_Connected => l["Banner_Connected"].Value;
         public string Banner_ConnectionLost => l["Banner_ConnectionLost"].Value;
         public string Banner_Connecting => l["Banner_Connecting"].Value;

@@ -644,6 +644,8 @@
   "Banner_ChatCopiedToPlace": "Этот чат скопирован в Место.",
   "Banner_PttAllow": "Этот чат в режиме Push-to-Talk. Разрешить его на этом устройстве?",
   "Banner_PttUseDevice": "В этом чате включён Push-to-Talk. Использовать его на этом устройстве?",
+  "Banner_PttMuted": "Push-to-Talk заглушён ещё на",
+  "Banner_PttUnmute": "Включить звук",
   "Banner_Connected": "Соединение восстановлено!",
   "Banner_ConnectionLost": "Соединение потеряно.",
   "Banner_Connecting": "Подключение...",

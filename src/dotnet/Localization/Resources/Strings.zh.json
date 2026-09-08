@@ -644,6 +644,8 @@
   "Banner_ChatCopiedToPlace": "此聊天已复制到地点。",
   "Banner_PttAllow": "此聊天处于按住说话模式。要在此设备上允许吗？",
   "Banner_PttUseDevice": "此聊天已开启按住说话。要在此设备上使用吗？",
+  "Banner_PttMuted": "按住说话已静音，剩余",
+  "Banner_PttUnmute": "取消静音",
   "Banner_Connected": "已连接！",
   "Banner_ConnectionLost": "连接已断开。",
   "Banner_Connecting": "正在连接…",

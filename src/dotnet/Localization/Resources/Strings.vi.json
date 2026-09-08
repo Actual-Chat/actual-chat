@@ -644,6 +644,8 @@
   "Banner_ChatCopiedToPlace": "Cuộc trò chuyện này đã được sao chép vào Địa điểm.",
   "Banner_PttAllow": "Cuộc trò chuyện này đang ở chế độ Nhấn để nói. Cho phép trên thiết bị này?",
   "Banner_PttUseDevice": "Nhấn để nói đang bật trong cuộc trò chuyện này. Dùng trên thiết bị này?",
+  "Banner_PttMuted": "Nhấn để nói đang tắt tiếng trong",
+  "Banner_PttUnmute": "Bật tiếng",
   "Banner_Connected": "Đã kết nối!",
   "Banner_ConnectionLost": "Mất kết nối.",
   "Banner_Connecting": "Đang kết nối...",

@@ -54,6 +54,11 @@ public static class Ptt
         // whoever set it up didn't consent to a stranger's voice out of the speaker.
         => mode != DeviceRingerMode.Normal || isDndActive;
 
+    public static bool ShouldShowMutedBanner(PttChat? pttChat, Moment now, Moment dismissedMutedAt)
+        // Keyed to the mute, not the chat: closing the banner hides it for this mute only, and the
+        // next one - a fresh MutedAt - asks again.
+        => pttChat is { MutedAt: { } mutedAt } && pttChat.IsMutedAt(now) && mutedAt != dismissedMutedAt;
+
     public static PttJoinBannerKind GetJoinBannerKind(
         bool isArmedInChat, bool isDeviceEnabled, Moment dismissedAt, Moment enabledAt)
     {

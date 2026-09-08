@@ -644,6 +644,8 @@
   "Banner_ChatCopiedToPlace": "Tento chat byl zkopírován do Místa.",
   "Banner_PttAllow": "Tento chat je v režimu Stiskni a mluv. Povolit ho na tomto zařízení?",
   "Banner_PttUseDevice": "Stiskni a mluv je v tomto chatu zapnuto. Používat ho na tomto zařízení?",
+  "Banner_PttMuted": "Stiskni a mluv je ztlumeno na",
+  "Banner_PttUnmute": "Zrušit ztlumení",
   "Banner_Connected": "Připojeno!",
   "Banner_ConnectionLost": "Spojení přerušeno.",
   "Banner_Connecting": "Připojování...",

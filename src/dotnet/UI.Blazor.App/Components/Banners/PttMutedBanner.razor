@@ -1,0 +1,85 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Kvas
+@inherits ComputedStateComponent<AppUIHub, PttMutedBanner.Model?>
+@{
+    var m = State.Value;
+}
+
+<Banner
+    IsVisible="@(m is not null)"
+    Severity="BannerSeverity.Info"
+    ShowDismissButton="true"
+    Dismiss="@OnDismiss">
+    <Icon>
+        <i class="icon-push-to-talk text-2xl"></i>
+    </Icon>
+    <Body>
+        @L.Banner_PttMuted
+        @if (m is not null) {
+            <Countdown EndsAt="@m.MutedUntil" Clock="@Clocks.ServerClock"/>
+        }
+    </Body>
+    <Buttons>
+        <BannerButton Click="@OnUnmuteClick">@L.Banner_PttUnmute</BannerButton>
+    </Buttons>
+</Banner>
+
+@code {
+    private StoredState<PttMutedBannerUserSettings> _settings = null!;
+
+    private Chat Chat => ChatContext.Chat;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        // Device-local like the join banner's dismissal: closing it here says nothing about the
+        // phone in the other pocket.
+        var key = PttMutedBannerUserSettings.GetKey(Chat.Id);
+        _settings = StateFactory.NewKvasStored<PttMutedBannerUserSettings>(
+            new(LocalSettings, key) {
+                InitialValue = new PttMutedBannerUserSettings(),
+                Category = GetStateCategory(GetType()),
+            });
+    }
+
+    protected override ComputedState<Model?>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model?>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        // Phones only: on the web the chat list's muted badge is always in view next to the chat.
+        if (!HostInfo.HostKind.IsMauiApp() || Chat.Id.IsThread())
+            return null;
+
+        if (!_settings.WhenRead.IsCompleted)
+            await _settings.WhenRead.ConfigureAwait(false);
+
+        var settings = await _settings.Use(cancellationToken).ConfigureAwait(false);
+        var pttChats = await ChatAudioUI.GetConsentedPttChats(cancellationToken).ConfigureAwait(false);
+        var pttChat = pttChats.FirstOrDefault(c => c.ChatId == Chat.Id);
+        var now = Clocks.ServerClock.Now;
+        if (!Ptt.ShouldShowMutedBanner(pttChat, now, settings.DismissedMutedAt))
+            return null;
+
+        // The deadline itself takes the banner down; nothing else changes at that moment.
+        var mutedUntil = pttChat!.MutedUntil!.Value;
+        Computed.GetCurrent().Invalidate(mutedUntil - now + TimeSpan.FromMilliseconds(250), false);
+        return new Model(pttChat.MutedAt!.Value, mutedUntil);
+    }
+
+    private Task OnUnmuteClick()
+        => ChatAudioUI.UnmutePtt([Chat.Id], CancellationToken.None);
+
+    private void OnDismiss() {
+        if (State.Value is { } m)
+            _settings.Value = new PttMutedBannerUserSettings { DismissedMutedAt = m.MutedAt };
+    }
+
+    // Nested types
+
+    public sealed record Model(Moment MutedAt, Moment MutedUntil);
+}
