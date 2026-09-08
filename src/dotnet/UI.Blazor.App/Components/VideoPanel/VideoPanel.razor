@@ -49,10 +49,8 @@
     var recordingCls = isOwnCameraStreaming ? "recording" : "";
     var remoteStreamsCls = hasRemoteStreams || _showConnecting ? "has-remote-streams" : "";
     var firstOpenCls = _isFirstOpen ? "first-time-open" : "";
-    var audioRecordingCls = m.IsAudioRecording ? "recording" : "";
     var videoBtnCls = isOwnCameraStreaming ? "on" : "";
     var screenCastBtnCls = isOwnScreenCasting ? "on" : "screen-share-start";
-    var expandedPanelRecBtnCls = $"rec-btn {audioRecordingCls}";
     var isChatVisible = m.IsChatVisible ?? GetDefaultChatVisibility();
     var chatBtnCls = isChatVisible ? "on" : "";
     var collapsedCls = m.IsCollapsed ? "collapsed" : "";
@@ -159,18 +157,7 @@
                     <i class="icon-screen-share text-lg"></i>
                 </HeaderButton>
             }
-            <HeaderButton
-                Click="@(() => OnToggleRecordingClick(!m.IsAudioRecording))"
-                Class="@("btn-video-panel " + expandedPanelRecBtnCls)">
-                @if (m.IsAudioRecording) {
-                    <active-recording-svg
-                        size="8"
-                        isRecording="true"/>
-                } else {
-                    <i class="icon-recorder-left-half left"></i>
-                    <i class="icon-recorder-right-half right"></i>
-                }
-            </HeaderButton>
+            <RecorderToggle Chat="@Chat" Compact="true"/>
             @if (isMobileOrNarrow) {
                 @if (isOwnCameraStreaming) {
                     <HeaderButton
@@ -576,9 +563,6 @@
         else if (m.FocusedAuthorId is { } focused)
             _layoutCalculator.SetPinnedAuthor(focused);
     }
-
-    private void OnToggleRecordingClick(bool enable)
-        => _ = ChatAudioUI.SetRecordingChatId(enable ? Chat.Id : null);
 
     private void OnVideoClick(bool enable) {
         if (!enable) {

@@ -128,6 +128,12 @@ export class TooltipHost implements Disposable {
         if (!text && this.autoElement !== element)
             return;
 
+        // The same message can be requested by more than one element at once (e.g. the editor's
+        // recorder button and the video panel footer's, both live in the DOM). Anchor to the one
+        // the user can actually see, so an off-screen or overlay-covered duplicate never wins.
+        if (text && !this.canAnchor(element))
+            return;
+
         this.clearAutoHide();
         this.autoElement = text ? element : null;
         this.autoText = text;
@@ -240,7 +246,32 @@ export class TooltipHost implements Disposable {
         return placement ? placement as Placement : 'top';
     }
 
+    // An element can carry a tooltip request while being hidden (empty box) or covered by an
+    // overlay; either way it's the wrong thing to point at.
+    private canAnchor(element: HTMLElement | SVGElement): boolean {
+        if (!element.isConnected)
+            return false;
+
+        const rect = element.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0)
+            return false;
+
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        const top = document.elementFromPoint(x, y);
+        return !!top && (element.contains(top) || top.contains(element));
+    }
+
     private updatePosition(triggerRef: HTMLElement | SVGElement): void {
+        // A trigger that lost its box (hidden, unmounted from layout, mid-transition) would pin the
+        // tooltip to the top-left corner. Hold it hidden instead; autoUpdate re-runs this once the
+        // trigger has a real box again.
+        const rect = triggerRef.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) {
+            this.tooltipRef.classList.remove('show');
+            return;
+        }
+        this.tooltipRef.classList.add('show');
         const placement = this.getPlacement(triggerRef);
         void computePosition(triggerRef, this.tooltipRef, {
             placement: placement,

@@ -436,6 +436,79 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
 .video-panel .video-panel-footer > button.rec-btn i.left {
     @apply -mr-0.5;
 }
+
+/* Compact recorder toggle: reused wherever RecorderToggle must sit among the round call
+   controls (the video panel footer today) at their size and look. Anchoring its state
+   tooltip to the on-screen button is the whole point of reusing RecorderToggle here.
+   RecorderToggle's own styling is scoped to .chat-audio-panel, so the compact look is
+   recreated off the .compact marker and is intentionally context-free. */
+.recorder-wrapper.compact {
+    @apply relative flex flex-none items-center justify-center;
+    @apply w-12 h-12 top-0;
+    @apply rounded-full;
+}
+.recorder-wrapper.compact .btn.btn-round {
+    @apply absolute inset-0;
+    @apply w-12 h-12;
+    @apply rounded-full border-none text-white;
+    background: linear-gradient(180deg, var(--magenta-45) -18.32%, var(--blue-55) 132%);
+    background-size: 100% 180%;
+    background-position: center center;
+    background-repeat: no-repeat;
+    animation: bgShake 3s steps(30) infinite alternate;
+}
+.recorder-wrapper.compact.record-on .btn.btn-round,
+.recorder-wrapper.compact.record-off-to-on .btn.btn-round {
+    background: linear-gradient(180deg, var(--blue-55) -116.66%, var(--magenta-60) 66.08%);
+    background-size: auto;
+    animation: record-btn-on-pulse 2s steps(10) infinite;
+}
+.recorder-wrapper.compact .btn.btn-round::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.5px;
+    background: conic-gradient(
+        from 330deg,
+        var(--white-50) 0deg,
+        var(--white-30) 90deg,
+        var(--white-10) 180deg,
+        var(--white-30) 270deg,
+        var(--white-50) 360deg
+    );
+    -webkit-mask:
+        linear-gradient(var(--black) 0 0) content-box,
+        linear-gradient(var(--black) 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+.recorder-wrapper.compact .btn.btn-round::after {
+    @apply content-empty;
+    @apply absolute inset-0;
+    @apply pointer-events-none opacity-0;
+    border-radius: inherit;
+    box-shadow: 0 0 1rem 0 var(--magenta-60);
+}
+.recorder-wrapper.compact.record-on .btn.btn-round::after {
+    animation: record-btn-glow 1s steps(10) forwards;
+    animation-delay: var(--anim-phase, 0s);
+}
+.recorder-wrapper.compact .btn.btn-round .btn-content {
+    @apply relative flex items-center justify-center;
+    @apply w-12 h-12;
+}
+.recorder-wrapper.compact .rec-icon {
+    @apply inset-0 m-auto;
+    @apply w-12 h-12;
+}
+.recorder-wrapper.compact .rec-icon i {
+    @apply text-xl leading-5;
+}
+.recorder-wrapper.compact .rec-icon i.left {
+    @apply -mr-0.5;
+}
 .btn-video-panel.btn-h.on::before {
     background: conic-gradient(
         from 330deg,
