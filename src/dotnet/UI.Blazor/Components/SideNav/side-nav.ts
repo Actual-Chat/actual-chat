@@ -21,6 +21,13 @@ const PullBoundary = 0.333; // 33% of the screen width
 // asks for a more committed swipe than keeping one alive, so a wandering finger doesn't drop it.
 const PullStartAngleRatio = 1.428; // 1/tan(35deg)
 const PullDropAngleRatio = 0.839; // 1/tan(50deg)
+// A browser decides whether a touch scrolls on the first touchmove, and once it has started
+// scrolling nothing can call it off - preventDefault is ignored from then on, and writing scrollTop
+// doesn't touch momentum. So the pull takes the scroll only while the swipe already looks like one:
+// right direction, inside the start cone, and moving at least this fast.
+const PreventScrollMinSpeed = 1; // Screen widths per second
+const PreventScrollMinDistance = 4; // CSS pixels, so the direction is worth reading
+const PreventScrollMinDurationMs = 4; // Floor on the divisor, so the first sample can't read as huge
 const PrePullDistance1 = 10; // Normal pre-pull distance in CSS pixels
 const PrePullDistance2 = 20; // Pre-pull distance over control
 const PrePullDurationMs = 20;
@@ -187,11 +194,12 @@ class SideNavPullDetectGesture extends Gesture {
             ? DocumentEvents.capturedActive.touchStart$
             : DocumentEvents.capturedPassive.touchStart$;
 
-        return Disposables.fromSubscription(touchStartEvent.subscribe((event: TouchEvent) => { void (async () => {
+        // Runs synchronously, unlike everything else here that reads the DOM: the gesture below
+        // owns the only touchmove listener that can refuse a scroll, and a browser decides whether
+        // to scroll on the first touchmove - which can arrive before the next frame would.
+        return Disposables.fromSubscription(touchStartEvent.subscribe((event: TouchEvent) => {
             if (ScreenSize.isWide())
                 return;
-
-            await fastReadRafAsync();
 
             if (document.querySelector('.modal')) // Modal is shown
                 return;
@@ -262,7 +270,7 @@ class SideNavPullDetectGesture extends Gesture {
                 return; // The element pans on its own (e.g. an interactive map)
 
             Gestures.addActive(new SideNavPullDetectGesture(sideNav, coords, event, prePullDistance));
-        })(); }));
+        }));
     }
 
     constructor(
@@ -273,6 +281,11 @@ class SideNavPullDetectGesture extends Gesture {
     ) {
         super();
         const startedAt = performance.now();
+        const isLeft = sideNav.side == SideNavSide.Left;
+        const isOpenSign = sideNav.isOpen ? 1 : -1;
+        const openDirectionSign = isLeft ? 1 : -1;
+        const allowedDirectionSign = openDirectionSign * -isOpenSign;
+        let isScrollPrevented = false;
 
         const move = (event: TouchEvent) => {
             if (this.isDisposed)
@@ -291,15 +304,26 @@ class SideNavPullDetectGesture extends Gesture {
             }
 
             const offset = coords.sub(this.origin);
-            if (offset.length < prePullDistance || performance.now() - startedAt < PrePullDurationMs)
+            const isHorizontal = offset.isHorizontal(PullStartAngleRatio);
+            const isPullDirection = isHorizontal
+                && Math.abs(Math.sign(offset.x) - allowedDirectionSign) < 0.1;
+            const elapsedMs = performance.now() - startedAt;
+            if (isScrollPrevented) {
+                // Keep refusing it: letting one move through hands the scroll back for good
+                tryPreventDefaultForEvent(event);
+            } else if (isPullDirection && offset.length >= PreventScrollMinDistance) {
+                const speed = offset.length / Math.max(elapsedMs, PreventScrollMinDurationMs) * 1000;
+                if (speed >= ScreenSize.width * PreventScrollMinSpeed) {
+                    debugLog?.log(`SideNavPullDetectGesture[${sideNav.side}].touchMove: taking the scroll`);
+                    tryPreventDefaultForEvent(event);
+                    isScrollPrevented = true;
+                }
+            }
+
+            if (offset.length < prePullDistance || elapsedMs < PrePullDurationMs)
                 return; // Too small pull distance or too early to start the pull
 
-            const isLeft = sideNav.side == SideNavSide.Left;
-            const isOpenSign = sideNav.isOpen ? 1 : -1;
-            const openDirectionSign = isLeft ? 1 : -1;
-            const allowedDirectionSign = openDirectionSign * -isOpenSign;
-            const isHorizontal = offset.isHorizontal(PullStartAngleRatio);
-            if (!isHorizontal || Math.abs(Math.sign(offset.x) - allowedDirectionSign) > 0.1) {
+            if (!isPullDirection) {
                 // Wrong direction
                 debugLog?.log(`SideNavPullDetectGesture[${sideNav.side}].touchMove: wrong direction`);
                 this.dispose();
@@ -329,7 +353,9 @@ class SideNavPullDetectGesture extends Gesture {
                 move(e);
                 this.dispose();
             }),
-            DocumentEvents.capturedPassive.touchMove$.subscribe(e => move(e)),
+            // Active, so move() can refuse the scroll. It lives only while this gesture does, and
+            // the first clearly-vertical move disposes it, so a plain scroll pays for a move or two.
+            DocumentEvents.capturedActive.touchMove$.subscribe(e => move(e)),
             chatViewDiv
                 ? Disposables.fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(() => this.dispose()))
                 : Disposables.empty(),
