@@ -6,6 +6,7 @@ import { VirtualListRenderState } from './ts/virtual-list-render-state';
 import { Range } from './ts/range';
 import { VirtualListOverlay, VirtualListOverlayStats, VirtualListOverlayTarget } from './virtual-list-overlay';
 import { ContentSwap } from '../ContentSwap/content-swap';
+import { BrowserInfo } from '../../Services/BrowserInfo/browser-info';
 
 const { warnLog } = getLogs('VirtualList');
 
@@ -13,6 +14,10 @@ const { warnLog } = getLogs('VirtualList');
 // history is only interesting while the loads can't keep up with it, and that state is otherwise a race
 // to catch.
 const LoadDelayMs = readLoadDelay();
+
+// onRender calls in from a render batch, so under WASM - the one host where .NET shares this thread -
+// the render it triggers re-enters requestData. A macrotask breaks it, a microtask can't; 5 clears the clamp.
+const MinLoadDelayOnWasmMs = 5;
 
 // Only fires when a request never comes back at all - endRender and renderSkipped cover both normal
 // outcomes - so it is a fault backstop, not flow control.
@@ -138,8 +143,11 @@ export abstract class VirtualList implements VirtualListOverlayTarget {
         this.lastDataRequestAt = performance.now();
         this.lastSentQuery = query;
         try {
-            if (LoadDelayMs > 0)
-                await delayAsync(LoadDelayMs);
+            const loadDelayMs = BrowserInfo.hostKind === 'WasmApp'
+                ? Math.max(LoadDelayMs, MinLoadDelayOnWasmMs)
+                : LoadDelayMs;
+            if (loadDelayMs > 0)
+                await delayAsync(loadDelayMs);
 
             await this.blazorRef.invokeMethodAsync('RequestData', query);
         }

@@ -562,6 +562,16 @@ released after 2.5s and retried after 1s; `renderSkipped` from Blazor does the s
 that did not happen cannot re-evaluate the query and a list sitting on a skeleton would wait there
 forever.
 
+**The request always yields first under WASM.** `onRender` runs inside a render batch, so calling into
+.NET synchronously from `requestData` lets the resulting render re-enter `requestData` before the first
+call has returned. Where .NET shares this thread that cycle never reaches the event loop: the tab pegs
+one core with no console output, no events and no way to attach — only a `Debugger.pause` armed before
+the load gets a stack out of it. `MinLoadDelayOnWasmMs` (5ms, and `?vlloaddelay` raises it) breaks the
+cycle, and 5 clears the HTML timer-nesting clamp so the yield is a macrotask at any depth. A microtask
+does **not** work — its queue drains to empty before the event loop runs again, so the wedge is
+identical. The delay is gated on `BrowserInfo.hostKind === 'WasmApp'`: Blazor Server runs .NET on the
+server, and MAUI marshals interop across the WebView, so neither can re-enter and neither pays it.
+
 **Overscroll.** limit crossed → following (transform) → release. The ordinary path becomes engaged:
 bounce, then floor (transform) → settle (one reconciling write). iOS/WebKit instead freezes native
 momentum, transfers the exact rendered position into `translate3d`, and runs the whole return there.
