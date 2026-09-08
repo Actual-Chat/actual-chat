@@ -44,8 +44,21 @@ public class CarAudioRouteTest
         route.Output.Should().Be(expected);
     }
 
+    [Theory]
+    [InlineData(CarAudioDevice.Auto)]
+    [InlineData(CarAudioDevice.Phone)]
+    [InlineData(CarAudioDevice.Car)]
+    public void ShouldTakeTheCallLinkOnlyForTheCarMicrophone(CarAudioDevice microphone)
+    {
+        // act
+        var route = CarAudioRoute.For(true, new UserCarAudioSettings { Microphone = microphone });
+
+        // assert
+        route.UseCallLink.Should().Be(microphone == CarAudioDevice.Car);
+    }
+
     [Fact]
-    public void ShouldKeepAxesIndependent()
+    public void ShouldCarryPlaybackOverTheCallLink()
     {
         // arrange
         var settings = new UserCarAudioSettings {
@@ -57,7 +70,16 @@ public class CarAudioRouteTest
         var route = CarAudioRoute.For(true, settings);
 
         // assert
-        route.Input.Should().Be(AudioEndpoint.External, because: "the car microphone was asked for explicitly");
-        route.Output.Should().Be(AudioEndpoint.Builtin);
+        route.Should().Be(CarAudioRoute.CallLink, because: "a call is two-way on one link, so the output choice yields");
+    }
+
+    [Fact]
+    public void ShouldNeverTakeTheCallLinkWithoutProjection()
+    {
+        // act
+        var route = CarAudioRoute.For(false, new UserCarAudioSettings { Microphone = CarAudioDevice.Car });
+
+        // assert
+        route.UseCallLink.Should().BeFalse();
     }
 }
