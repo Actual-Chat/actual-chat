@@ -29,6 +29,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private MutableState<long> _shownReadEntryLid = null!;
     private bool _wasChatViewVisible = true;
     private MutableState<ChatViewNavigation?> _nextNavigation = null!;
+    // What entitles GetData to move the reader to the first unread message - see that redirect. Reactive
+    // and identity-compared like _nextNavigation, so retiring it invalidates the builds that read it.
+    private MutableState<ChatViewActivation?> _activation = null!;
     // Both are touched by GetData on the pool, by UpdateReadState's chain and by the visibility report on the
     // dispatcher: the line bookkeeping is one immutable snapshot swapped as a reference, the lid is Interlocked
     private NewMessagesLineState _newMessagesLineState = NewMessagesLineState.None;
@@ -109,6 +112,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _nextNavigation = StateFactory.NewMutable(
                 (ChatViewNavigation?)null,
                 StateCategories.Get(type, nameof(_nextNavigation)));
+            // Opening the view is itself an activation - that's what puts a chat with unread messages
+            // on its first unread one.
+            _activation = StateFactory.NewMutable(
+                (ChatViewActivation?)new ChatViewActivation(),
+                StateCategories.Get(type, nameof(_activation)));
             _shownReadEntryLid = StateFactory.NewMutable(
                 0L,
                 StateCategories.Get(type, nameof(ShownReadEntryLid)));
@@ -313,6 +321,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var lastItemVisibility = ItemVisibility.Value;
         var itemVisibility = new ChatViewItemVisibility(virtualListItemVisibility);
+        // Content is on screen, so there is nothing left for an activation to restore. Above the identity
+        // check below, because a report that repeats the previous one says that just as well.
+        if (!itemVisibility.IsEmpty && _activation is { Value: not null })
+            _activation.Value = null;
         if (itemVisibility.IsIdenticalTo(lastItemVisibility)
             && !ReferenceEquals(lastItemVisibility, ChatViewItemVisibility.Empty))
             return;
@@ -389,6 +401,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // Back on screen: unread tracking starts over
         _shownReadEntryLid.Value = ReadPosition.Value.EntryLid;
         ResetNewMessagesLineState();
+        _activation.Value = new ChatViewActivation();
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -519,6 +532,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             ?? (isFirstRender && hasViewEntry ? new ChatViewNavigation(viewEntryLid, false, false, true) : null);
         if (ReferenceEquals(nav, renderedData.NavigationState)) // Handles null case as well
             nav = null;
+        // Spent the way nav is: only a rendered result counts, so one ComputeState discards - taking the
+        // redirect with it - doesn't consume the activation.
+        var renderedActivation = (renderedData.Metadata as ChatViewMetadata)?.Activation;
+        var activation = await _activation.Use(cancellationToken).ConfigureAwait(false);
+        if (ReferenceEquals(activation, renderedActivation))
+            activation = null;
 
         var mustScrollToEntry = nav != null && ItemVisibility.Value.IsScrollRequired(nav.EntryLid);
         if (isFirstGetData)
@@ -680,8 +699,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 .FirstOrDefault(message => !message.ShouldSkipKey)
                 ?.Key.Value;
         if (firstUnreadKey != null) {
-            if (scrollToKey == null && itemVisibility.IsEmpty) {
-                // Tab resume: no explicit nav, viewport empty — scroll to first unread
+            if (scrollToKey == null && itemVisibility.IsEmpty && activation != null) {
+                // Activated with nothing on screen: put the reader on the first unread message. Gated on
+                // the activation, not on the empty visibility alone - a fling into history that outruns
+                // the loader empties the viewport the same way, and the redirect then teleports the
+                // reader back to the unread line, which empties it again on their next fling.
                 scrollToKey = firstUnreadKey;
                 scrollToKeyInTheMiddle = true;
             }
@@ -693,6 +715,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 scrollToKeyInTheMiddle = true;
             }
         }
+
+        // Content on screen spends it too, not just an accepted position: a region that flips back over
+        // a full viewport emits no report, so the retire in OnItemVisibilityChanged never runs.
+        var usedActivation = scrollToKey != null || !itemVisibility.IsEmpty ? activation : null;
 
         var buildMs = (long)buildStartedAt.Elapsed.TotalMilliseconds;
         if (buildMs > 1000)
@@ -712,7 +738,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             ScrollToKeyInTheMiddle = scrollToKeyInTheMiddle,
             NavigationState = nav ?? renderedData.NavigationState,
             ItemVisibilityState = ItemVisibility.Value,
-            Metadata = new ChatViewMetadata(chat.IsSummarized ?? false),
+            Metadata = new ChatViewMetadata(chat.IsSummarized ?? false, usedActivation ?? renderedActivation),
         };
 
         if (isFirstGetData)
@@ -720,7 +746,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 $"{items.Count} items, build={buildMs}ms, scrollToKey={scrollToKey}");
 
         // do not return new instance if data is the same to prevent re-renders
-        return !mustScrollToEntry && result.IsSimilarTo(renderedData)
+        // IsSimilarTo ignores Metadata, so a spent activation has to keep the result alive itself -
+        // dropped here, no later build could tell it apart from one that was never spent.
+        return !mustScrollToEntry && usedActivation == null && result.IsSimilarTo(renderedData)
             ? renderedData
             : result;
     }
@@ -967,7 +995,18 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     // Nested types
 
-    private sealed record ChatViewMetadata(bool IsSummarized);
+    private sealed record ChatViewMetadata(bool IsSummarized, ChatViewActivation? Activation = null);
+
+    /// <summary>
+    /// One activation of the view - opening it, or its region coming back from hidden - entitled to one
+    /// automatic move to the first unread message. It carries nothing but its identity.
+    /// </summary>
+    private sealed record ChatViewActivation
+    {
+        // This record relies on referential equality
+        public bool Equals(ChatViewActivation? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+    }
 
     private sealed record NewMessagesLineState(
         CpuTimestamp ShownAt,
