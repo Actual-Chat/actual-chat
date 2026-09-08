@@ -118,6 +118,16 @@ body.narrow .side-nav.side-nav-right[data-side-nav="open"] {
     box-shadow: none;
 }
 
+/* SideNav.setTransform toggles this while the panel sits between open and closed - i.e. for the
+   whole pull and the settle after it. These three don't change across that, so they belong here
+   rather than in the per-frame write.
+   One alpha step keeps Chromium's backdrop blur visible while the child fades. */
+body.narrow .side-nav[data-transformed] {
+    background-color: rgba(1, 1, 1, 0.004);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+}
+
 body.narrow .side-nav.side-nav-left[data-pulling],
 body.narrow .side-nav.side-nav-right[data-pulling] {
     transition: transform 50ms linear;
