@@ -1016,12 +1016,20 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             if (expired.Count > 0 && conversationId is { } cid)
                 await DismissRing(cid, expired, CancellationToken.None).ConfigureAwait(false);
             if ((expired.Count > 0 || wasDialing) && await IsCallAbandoned(chatId).ConfigureAwait(false)) {
-                // Only a still-dialing call gets a "no answer" - a connected one that emptied out just closes.
-                if (await SafeGet(chatId).ConfigureAwait(false) is { IsDialing: true } current
-                    && await SafeGetCallState(chatId).ConfigureAwait(false) is null or { Status: CallStatus.Dialing }) {
-                    await SetCallState(chatId, NewCallState(current, CallStatus.NoAnswer)).ConfigureAwait(false);
-                    await SetOutcome(chatId, current, CallOutcome.NoAnswer).ConfigureAwait(false);
+                // The lock is retaken here because SetOutcome rewrites the whole state from the snapshot
+                // read right above it: an AcceptCall latching in between would be silently reverted, and
+                // the call would close as NoAnswer with no conversation despite having connected.
+                using (Computed.BeginIsolation())
+                using (await _changeLocks.Lock(chatId, CancellationToken.None).ConfigureAwait(false)) {
+                    // Only a still-dialing call gets a "no answer" - a connected one that emptied out just closes.
+                    if (await SafeGet(chatId).ConfigureAwait(false) is { IsDialing: true } current
+                        && await SafeGetCallState(chatId).ConfigureAwait(false)
+                            is null or { Status: CallStatus.Dialing }) {
+                        await SetCallState(chatId, NewCallState(current, CallStatus.NoAnswer)).ConfigureAwait(false);
+                        await SetOutcome(chatId, current, CallOutcome.NoAnswer).ConfigureAwait(false);
+                    }
                 }
+                // Outside the lock: CloseCall reaches Close, which takes the same non-reentrant lock.
                 await CloseCall(chatId).ConfigureAwait(false);
             }
         }
@@ -1188,41 +1196,68 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     private async Task CloseAndMaterialize(LiveSessionState state, CancellationToken cancellationToken)
     {
         if (state.IsCall) {
-            // A hang-up and the ring expiry can decide the same call is over at the same moment.
-            // Dropping the session key is the atomic claim that picks one of them as the closer, so
-            // the call leaves exactly one entry behind; Close below is then a no-op for that key.
-            if (!await _redisScope.Remove(state.ChatId.Value).ConfigureAwait(false))
-                return;
+            // Dropping the session key is the atomic claim that picks one closer out of the several
+            // that can decide a call is over at once. It shares _changeLocks with every write of
+            // that key - outside the lock a straddling read-modify-write puts the key back and the
+            // call is recorded twice - and re-reads, since the caller's snapshot predates the lock.
+            using (Computed.BeginIsolation())
+            using (await _changeLocks.Lock(state.ChatId, CancellationToken.None).ConfigureAwait(false)) {
+                if (await SafeGet(state.ChatId).ConfigureAwait(false) is not { } current)
+                    return;
+
+                state = current;
+                if (!await _redisScope.Remove(state.ChatId.Value).ConfigureAwait(false))
+                    return;
+            }
 
             try {
+                // Everything below runs with CancellationToken.None for the same reason the Close in the
+                // finally does: the claim above is once-or-never, so a token revoked mid-way (FinalizeSession
+                // forwards the summary flow's, which dies on a timeout or a shutdown) would leave the call
+                // with no trace at all, and nothing retries it.
+
                 // Stop any ring still going on an invitee's device before the session goes away.
                 var invitees = (await SafeGetInvites(state.ChatId).ConfigureAwait(false))
                     .Values.Where(i => i is not null).Select(i => i!.InviteeId).ToList();
                 if (invitees.Count > 0)
-                    await DismissRing(state.RingConversationId, invitees, cancellationToken).ConfigureAwait(false);
-                if (state.ChatId.Kind == ChatKind.Peer)
-                    await WriteCallEntry(state, invitees, cancellationToken).ConfigureAwait(false);
+                    await DismissRing(state.RingConversationId, invitees, CancellationToken.None)
+                        .ConfigureAwait(false);
+                var callEntryLid = state.ChatId.Kind == ChatKind.Peer
+                    ? await WriteCallEntry(state, invitees, CancellationToken.None).ConfigureAwait(false)
+                    : null;
                 // A call that never connected has no conversation; one that did is materialized here,
                 // and unlike a transcript session it has no title to gate on - the card is the point.
                 if (state.SessionStartedAt is not null) {
+                    // Only a summary advances EndEntryLid, and a call never gets one, so the range would
+                    // otherwise end at - or before - the start it was given at the latch, taking the card
+                    // and the entry it must contain out of the chat. The call entry is the last row of a
+                    // peer call; a group call writes none, so the chat's own last id stands in, which is
+                    // the same value for a peer chat and keeps the two kinds on one rule.
+                    var lastLid = (await ChatsBackend
+                        .GetLidRange(state.ChatId, false, CancellationToken.None)
+                        .ConfigureAwait(false)).End - 1;
                     // StartsAt/EndsAt default to StartedAt (the ring, not the connect) and to
                     // LastSummaryAt, which a call never writes - so both need the real talk-time span.
                     var conversation = state.ToMaterializedConversation() with {
+                        EndEntryLid = Math.Max(state.EndEntryLid, callEntryLid ?? lastLid),
                         StartsAt = state.SessionStartedAt.Value,
                         EndsAt = Clocks.SystemClock.Now,
                     };
                     var materialize = new ConversationBackend_Materialize(conversation);
-                    await Commander.Call(materialize, true, cancellationToken).ConfigureAwait(false);
+                    await Commander.Call(materialize, true, CancellationToken.None).ConfigureAwait(false);
                 }
             }
             finally {
                 // Having won the claim, this is the session's only closer: nothing retries a torn-down
                 // session, so a failed ring dismissal, entry or materialization must not also cost the
                 // participants, the invites and the invalidation that tells clients the call is over.
-                // CancellationToken.None because a revoked token (FinalizeSession forwards the summary
-                // flow's, which dies on a timeout or a shutdown) is itself one of the ways to get here,
-                // and Close would then abort on its own lock.
-                await Close(state.ChatId, CancellationToken.None).ConfigureAwait(false);
+                try {
+                    await Close(state.ChatId, CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (Exception e) {
+                    // Swallowed so a teardown failure doesn't replace whatever the body threw.
+                    Log.LogWarning(e, "CloseAndMaterialize: Close failed for chat #{ChatId}", state.ChatId);
+                }
             }
             return;
         }
@@ -1240,19 +1275,20 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         await Close(state.ChatId, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task WriteCallEntry(
+    private async Task<long?> WriteCallEntry(
         LiveSessionState state, IReadOnlyList<AuthorId> invitees, CancellationToken cancellationToken)
     {
+        // Returns the written entry's LocalId, or null if there was nothing to write.
         // A call that connected is Ended whichever button ended it - CancelCall is also how a caller
         // hangs up - so the outcome recorded during the ring only decides a call that never connected.
         var outcome = state.SessionStartedAt is not null ? CallOutcome.Ended : state.Outcome;
         if (outcome == CallOutcome.None)
-            return;
+            return null;
 
         var chatId = state.ChatId;
         var callerId = state.Host ?? state.AuthorIds.FirstOrDefault();
         if (callerId is null)
-            return;
+            return null;
 
         var caller = await AuthorsBackend
             .Get(chatId, callerId, RequestedAuthorKind.Full, cancellationToken)
@@ -1269,7 +1305,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 InviteeIds = invitees.ToApiArray(),
                 HasVideo = state.HasVideo,
             }));
-        await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+        var entry = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+        return entry.LocalId;
     }
 
     private async Task Close(ChatId chatId, CancellationToken cancellationToken)
@@ -1277,10 +1314,14 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         using var _ = Computed.BeginIsolation();
         using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
 
+        // Everything derived from the dropped participant map is invalidated with it: HasRecorder
+        // otherwise self-heals on a delay, reading the dial-time caller as a talker after the call.
         await _redisScope.Remove(chatId.Value).ConfigureAwait(false);
         await _participants.RemoveHashMap(chatId.Value).ConfigureAwait(false);
         await _invites.RemoveHashMap(chatId.Value).ConfigureAwait(false);
         InvalidateState(chatId);
+        InvalidateHasRecorder(chatId);
+        InvalidateListParticipants(chatId);
     }
 
     private Task EnqueueLiveNotification(

@@ -10,7 +10,8 @@
 
 <ConversationMessageHeader
     Conversation="@conversation"
-    Title="@(conversation.IsCall ? TranslatedText.From(callTitle) : m.Title)"
+    @* A stand-in, not an override: nothing summarizes a call today, but a title would outrank it. *@
+    Title="@(conversation.IsCall && m.Title.Text.IsNullOrEmpty() ? TranslatedText.From(callTitle) : m.Title)"
     Icon="@(conversation.IsCall ? callIcon : "icon-tldr")"
     MessageCount="@messageCount"
     ConversationToggleClick="@ToggleShowMessage"

@@ -7,12 +7,15 @@ namespace ActualChat.Chat.UI.Blazor.UnitTests;
 public class CallCardFormatTest
 {
     [Theory]
-    [InlineData(CallOutcome.NoAnswer, true, "icon-phone-take", false)]
-    [InlineData(CallOutcome.NoAnswer, false, "icon-phone-missed", true)]
-    [InlineData(CallOutcome.Declined, true, "icon-phone-off", false)]
-    [InlineData(CallOutcome.Declined, false, "icon-phone-off", false)]
-    [InlineData(CallOutcome.Canceled, true, "icon-phone-off", false)]
-    [InlineData(CallOutcome.Canceled, false, "icon-phone-missed", true)]
+    [InlineData(CallOutcome.NoAnswer, true, "icon-call-arrow-out", false)]
+    [InlineData(CallOutcome.NoAnswer, false, "icon-call-arrow-in", true)]
+    [InlineData(CallOutcome.Declined, true, "icon-call-arrow-out", false)]
+    [InlineData(CallOutcome.Declined, false, "icon-call-arrow-in", false)]
+    [InlineData(CallOutcome.Canceled, true, "icon-call-cross", false)]
+    [InlineData(CallOutcome.Canceled, false, "icon-call-arrow-in", true)]
+    // A finished call is drawn from the conversation, which carries no caller: same card both sides.
+    [InlineData(CallOutcome.Ended, true, "icon-phone-call", false)]
+    [InlineData(CallOutcome.Ended, false, "icon-phone-call", false)]
     public void EveryCellOfTheWordingTableShouldResolve(
         CallOutcome outcome, bool isCaller, string expectedIcon, bool expectedCallBack)
     {

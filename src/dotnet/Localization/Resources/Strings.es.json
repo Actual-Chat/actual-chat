@@ -1502,7 +1502,7 @@
   "Call_Entry_Missed": "Llamada perdida",
   "Call_Entry_Declined": "Llamada rechazada",
   "Call_Entry_Canceled": "Llamada cancelada",
-  "Call_Entry_Ended": "Llamada finalizada",
+  "Call_Entry_Ended": "Llamada",
   "Call_Entry_NoAnswer": "Sin respuesta",
   "Call_Entry_TapToCallBack": "Toca para devolver la llamada",
   "Share_FailedToShareFiles": "No se pudieron compartir los archivos",

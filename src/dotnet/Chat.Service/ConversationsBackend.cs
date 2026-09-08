@@ -1,5 +1,6 @@
 ﻿using ActualChat.Chat.Db;
 using ActualChat.Chat.ML;
+using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Streaming;
 using ActualLab.Fusion.EntityFramework;
@@ -12,6 +13,7 @@ namespace ActualChat.Chat;
 /// </summary>
 public class ConversationsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IConversationsBackend
 {
+    private const int MaxCallEntries = 1000;
     private static readonly TileLayer<long> EntryIdTiles = Constants.Chat.EntryIdTiles;
     private static readonly TileLayer<long> RangeMetaEntryIdTiles = Constants.Chat.RangeMetaEntryIdTiles;
 
@@ -20,6 +22,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IConversationSummarizer ConversationSummarizer { get; } = services.GetRequiredService<IConversationSummarizer>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
     private ILiveSessionsBackend LiveSessionsBackend { get; } = services.GetRequiredService<ILiveSessionsBackend>();
+    private ChatSettings Settings { get; } = services.GetRequiredService<ChatSettings>();
 
     // [ComputeMethod]
     public virtual async Task<Conversation?> Get(ConversationId conversationId, CancellationToken cancellationToken)
@@ -385,7 +388,33 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             return null!; // Persist runs nested commands; nothing to invalidate here.
 
         // Persist the live session's already-computed summary as-is — no summarizer call.
-        return await Persist(command.Conversation, isLiveMaterialization: true, cancellationToken).ConfigureAwait(false);
+        var conversation = command.Conversation;
+        if (conversation.IsCall)
+            conversation = await SizeCallConversation(conversation, cancellationToken).ConfigureAwait(false);
+        return await Persist(conversation, isLiveMaterialization: true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<Conversation> SizeCallConversation(
+        Conversation conversation, CancellationToken cancellationToken)
+    {
+        // Nothing summarizes a call, so the two numbers the expansion tier is drawn from have to be
+        // counted here instead. A call with no transcript stays collapsed whatever the tier says:
+        // an expanded block would be empty, and the card is the whole of what there is to show.
+        var startEntryLid = conversation.Id.StartEntryLid;
+        var entries = await ChatsBackend
+            .ListNewEntries(conversation.Id.ChatId, startEntryLid - 1, MaxCallEntries, cancellationToken)
+            .ConfigureAwait(false);
+        var messages = entries
+            .Where(e => e.LocalId <= conversation.EndEntryLid && !e.Content.IsNullOrEmpty())
+            .ToList();
+        if (messages.Count == 0)
+            return conversation with { MessageCount = 0, IsExpandedByDefault = false };
+
+        var words = messages.Sum(e => e.Content.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length);
+        return conversation with {
+            MessageCount = messages.Count,
+            IsExpandedByDefault = Settings.Summarization.IsExpandedByDefault(words, messages.Count),
+        };
     }
 
     private async Task<Conversation> Persist(
