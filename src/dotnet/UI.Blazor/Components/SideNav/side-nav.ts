@@ -5,6 +5,7 @@ import { Disposable, DisposableBag, Disposables } from 'disposable';
 import { DocumentEvents, tryPreventDefaultForEvent } from 'event-handling';
 import { fromEvent } from 'rxjs';
 import { Gesture, Gestures } from 'gestures';
+import { PullAnimation } from 'pull-animation';
 import { ScrollController } from 'scroll-controller';
 import { Timeout } from 'timeout';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
@@ -15,14 +16,14 @@ import { fastRaf, fastReadRafAsync, fastWriteRafAsync } from 'fast-raf';
 
 const { debugLog } = getLogs('SideNav');
 
-const Deceleration = 0.1; // 1 = full width/second^2
 const PullBoundary = 0.333; // 33% of the screen width
 const PrePullDistance1 = 10; // Normal pre-pull distance in CSS pixels
 const PrePullDistance2 = 20; // Pre-pull distance over control
 const PrePullDurationMs = 20;
 const MinPullDurationMs = 20;
 const MaxChatViewScroll = 40;
-const MaxTransitionWaitDurationMs = 300;
+// Outlasts the longest settle PullAnimation can produce, so it only fires if frames stop coming
+const MaxSettleWaitDurationMs = 500;
 // SSB round-trips the visibility change through the server, so this has to outlast a slow
 // network - the finally below disposes before it waits, so a long bound blocks nothing
 const MaxSetVisibilityWaitDurationMs = 3000;
@@ -267,7 +268,7 @@ class SideNavPullDetectGesture extends Gesture {
         public readonly prePullDistance: number,
     ) {
         super();
-        const initialState = new MoveState(0, sideNav.isOpen ? 1 : 0);
+        const startedAt = performance.now();
 
         const move = (event: TouchEvent) => {
             if (this.isDisposed)
@@ -286,7 +287,7 @@ class SideNavPullDetectGesture extends Gesture {
             }
 
             const offset = coords.sub(this.origin);
-            if (offset.length < prePullDistance || performance.now() - initialState.startedAt < PrePullDurationMs)
+            if (offset.length < prePullDistance || performance.now() - startedAt < PrePullDurationMs)
                 return; // Too small pull distance or too early to start the pull
 
             const isLeft = sideNav.side == SideNavSide.Left;
@@ -313,7 +314,7 @@ class SideNavPullDetectGesture extends Gesture {
             if (sideNav.isPulling)
                 return;
 
-            Gestures.addActive(new SideNavPullGesture(sideNav, origin, initialState, touchStartEvent, event));
+            Gestures.addActive(new SideNavPullGesture(sideNav, origin, startedAt, touchStartEvent, event));
             this.dispose();
         };
 
@@ -332,183 +333,63 @@ class SideNavPullDetectGesture extends Gesture {
     }
 }
 
+// Owns one pull from touchstart to the end of the settle. PullAnimation carries the position;
+// this class only feeds it the finger and writes the result out once per frame, so touchmove does
+// no DOM work at all and a frame that carries no touch sample still moves the panel.
 class SideNavPullGesture extends Gesture {
-    private state: MoveState | null = null;
+    private readonly isLeft: boolean;
+    private readonly wasOpen: boolean;
+    private readonly allowedDirectionSign: number;
+    private readonly animation: PullAnimation;
+    private readonly chatViewDiv: Element | null;
+    private readonly settled = new PromiseSourceWithTimeout<void>();
     private staleTimeout: Timeout | null = null;
+    private lastCoords: Vector2D | null = null;
+    private chatViewScrollTop: number | null = null;
+    private isEnded = false;
+
     // False once endMove starts - i.e. during the settle, well before dispose()
-    public get isActive() { return this.state !== null; }
+    public get isActive() { return !this.isEnded && !this.isDisposed; }
+
     constructor(
         public readonly sideNav: SideNav,
         public readonly origin: Vector2D,
-        public readonly initialState: MoveState,
+        public readonly startedAt: number,
         public readonly touchStartEvent: TouchEvent,
         public readonly firstMoveEvent: TouchEvent,
     ) {
         super();
-        const isOpen = sideNav.isOpen;
-        const isLeft = sideNav.side == SideNavSide.Left;
-        const isOpenSign = sideNav.isOpen ? 1 : -1;
-        const openDirectionSign = isLeft ? 1 : -1;
-        const allowedDirectionSign = openDirectionSign * -isOpenSign;
-        this.state = initialState;
+        this.isLeft = sideNav.side == SideNavSide.Left;
+        this.wasOpen = sideNav.isOpen;
+        const isOpenSign = this.wasOpen ? 1 : -1;
+        const openDirectionSign = this.isLeft ? 1 : -1;
+        this.allowedDirectionSign = openDirectionSign * -isOpenSign;
+        this.animation = new PullAnimation(this.wasOpen ? 1 : 0, performance.now());
+        this.chatViewDiv = document.querySelector('.chat-view.virtual-list');
 
-        const endMove = async (event: TouchEvent | null, isCancelled: boolean): Promise<void> => {
-            if (this.state === null)
-                return;
-
-            this.staleTimeout?.dispose();
-            this.staleTimeout = null;
-            debugLog?.log(
-                `SideNavPullGesture[${sideNav.side}].endMove:`,
-                event,
-                ', isCancelled:',
-                isCancelled,
-                ', state:',
-                this.state);
-
-            tryPreventDefaultForEvent(event);
-
-            const moveDuration = performance.now() - this.state.startedAt;
-            if (event === null || event.type === 'touchstart' || moveDuration < MinPullDurationMs)
-                isCancelled = true;
-
-            const coords = getCoords(event!);
-            if (coords && !isCancelled) {
-                await move(event!);
-                if (this.state === null!) // move(event) may call endMove(..., true)
-                    return;
-            }
-
-            let mustBeOpen = isOpen;
-            if (!isCancelled && !ScreenSize.isWide())
-                mustBeOpen = this.state.terminalOpenRatio > 0.5;
-
-            debugLog?.log(`SideNavPullGesture[${sideNav.side}].endMove: ending w/ mustBeOpen:`, mustBeOpen);
-            this.state = null; // Ended
-            try {
-                await fastWriteRafAsync();
-                sideNav.isPulling = false;
-                if (sideNav.isOpen == mustBeOpen)
-                    return; // Note that we call sideNav.resetTransform() in finally { ... }
-
-                // "Pre-apply" visibility change
-                sideNav.setTransform(mustBeOpen ? 1 : 0);
-                // The settle animation starts here, ~200ms before Blazor hears about it below -
-                // the one call that can't be derived on the .NET side.
-                void sideNav.blazorRef.invokeMethodAsync('OnPullSettling');
-
-                const transitionEnded = new PromiseSourceWithTimeout<void>();
-                transitionEnded.setTimeout(MaxTransitionWaitDurationMs);
-                sideNav.element.addEventListener('transitionend', () => {
-                    transitionEnded.resolve(undefined);
-                }, { once: true });
-
-                // Wait when the changes are applied to DOM
-                await transitionEnded;
-                // A stopped WebView leaves this interop call unresolved, and setVisibility is
-                // serialized - unbounded, it would strand the finally below and with it dispose()
-                const visibilityChanged = new PromiseSourceWithTimeout<void>();
-                visibilityChanged.setTimeout(
-                    MaxSetVisibilityWaitDurationMs, () => visibilityChanged.resolve(undefined));
-                void sideNav.setVisibility(mustBeOpen)
-                    .catch(() => undefined)
-                    .then(() => visibilityChanged.resolve(undefined));
-                await visibilityChanged;
-
-                const endTime = performance.now() + MaxSetVisibilityWaitDurationMs;
-                while (sideNav.isOpen != mustBeOpen && performance.now() < endTime) {
-                    await delayAsync(50);
-                    await fastReadRafAsync();
-                }
-            } finally {
-                // Unregisters before the await, not after: rAF never fires in a backgrounded
-                // WebView, and a gesture left active blocks every later pull
-                this.dispose();
-                await fastWriteRafAsync();
-                if (!sideNav.isPulling)
-                    sideNav.setTransform(mustBeOpen ? 1 : 0);
-            }
-        };
-
-        const move = async (event: TouchEvent): Promise<void> => {
-            if (this.state === null)
-                return;
-
-            this.staleTimeout?.dispose();
-            this.staleTimeout = new Timeout(PullGestureStaleMs, () => { void endMove(null, true); });
-            if (ScreenSize.isWide()) {
-                await endMove(event, true);
-                return;
-            }
-
-            tryPreventDefaultForEvent(event);
-
-            const coords = getCoords(event);
-            const offset = coords?.sub(origin);
-            if (!coords || !offset)
-                return;
-
-            if (!offset.isHorizontal()) { // >45 deg. vertical
-                await endMove(event, true);
-                return;
-            }
-
-            fastRaf({
-                read: () => {
-                    if (this.state === null)
-                        return;
-
-                    const dx = isOpen ? offset.x : coords.x - (isLeft ? 0 : ScreenSize.width);
-                    const pdx = dx * allowedDirectionSign; // Must be positive
-                    const pullRatio = clamp(pdx / (sideNav.width + 0.01), 0, 1);
-                    const openRatio = isOpen ? 1 - pullRatio : pullRatio;
-                    this.state = new MoveState(pullRatio, openRatio, this.state);
-                },
-                write: () => {
-                    if (this.state === null)
-                        return;
-
-                    sideNav.setTransform(this.state.openRatio);
-                    // console.warn(this.state);
-                },
-            });
-        };
-
-        fastRaf({
-            read: () => { void (async () => {
-                const chatViewDiv = document.querySelector('.chat-view.virtual-list');
-                const initialChatViewScrollTop = chatViewDiv?.scrollTop ?? 0;
-                if (firstMoveEvent.type === 'touchend') {
-                    await endMove(firstMoveEvent, false);
-                } else {
-                    try {
-                        await move(firstMoveEvent);
-                    } catch (e) {
-                        await endMove(firstMoveEvent, true);
-                        throw e;
-                    }
-                    this.addDisposables(
-                        DocumentEvents.capturedActive.touchEnd$.subscribe(e => { void endMove(e, false); }),
-                        DocumentEvents.capturedActive.touchCancel$.subscribe(e => { void endMove(e, true); }),
-                        // Just in case
-                        DocumentEvents.capturedActive.touchStart$.subscribe(e => { void endMove(e, true); }),
-                        DocumentEvents.capturedActive.touchMove$.subscribe(e => { void move(e); }),
-                        chatViewDiv
-                            ? Disposables.fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(() => {
-                            // This doesn't work on Safari - i.e. it still drags the chat view while you move:
-                            // chatViewDiv.scrollTop = initialChatViewScrollTop;
-                                if (Math.abs(chatViewDiv.scrollTop - initialChatViewScrollTop) > MaxChatViewScroll)
-                                    void endMove(null, true);
-                            }))
-                            : Disposables.empty(),
-                    );
-                }
-            })(); },
-            write: () => {
-                sideNav.isPulling = true;
-                sideNav.setTransform(isOpen ? 1 : 0);
-            },
-        });
+        if (firstMoveEvent.type === 'touchend') {
+            void this.endMove(firstMoveEvent, false);
+        } else {
+            this.move(firstMoveEvent);
+            const chatViewDiv = this.chatViewDiv;
+            this.addDisposables(
+                DocumentEvents.capturedActive.touchEnd$.subscribe(e => { void this.endMove(e, false); }),
+                DocumentEvents.capturedActive.touchCancel$.subscribe(e => { void this.endMove(e, true); }),
+                // Just in case
+                DocumentEvents.capturedActive.touchStart$.subscribe(e => { void this.endMove(e, true); }),
+                DocumentEvents.capturedActive.touchMove$.subscribe(e => this.move(e)),
+                chatViewDiv
+                    ? Disposables.fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(() => {
+                    // This doesn't work on Safari - i.e. it still drags the chat view while you move:
+                    // chatViewDiv.scrollTop = this.chatViewScrollTop;
+                        if (this.chatViewScrollTop !== null
+                            && Math.abs(chatViewDiv.scrollTop - this.chatViewScrollTop) > MaxChatViewScroll)
+                            void this.endMove(null, true);
+                    }))
+                    : Disposables.empty(),
+            );
+        }
+        this.scheduleFrame();
     }
 
     public dispose() {
@@ -518,41 +399,137 @@ class SideNavPullGesture extends Gesture {
         debugLog?.log('dispose()');
         this.staleTimeout?.dispose();
         this.staleTimeout = null;
-        this.state = null;
+        this.isEnded = true;
+        this.settled.resolve(undefined);
         super.dispose();
     }
-}
 
-// Helpers
+    // Private methods
 
-class MoveState {
-    public readonly startedAt: number;
-    public readonly capturedAt: number;
-    public readonly velocity: number;
-    public readonly terminalOpenRatio: number;
-
-    constructor(
-        public readonly pullRatio: number,
-        public readonly openRatio: number,
-        public prevMoveState: MoveState | null = null,
-    ) {
-        const now = performance.now();
-        this.capturedAt = now;
-        this.startedAt = prevMoveState?.startedAt ?? now;
-        this.velocity = 0;
-        this.terminalOpenRatio = openRatio;
-        const s = prevMoveState?.prevMoveState ?? prevMoveState;
-        if (!s)
+    private move(event: TouchEvent): void {
+        if (!this.isActive)
             return;
 
-        const dt = this.capturedAt - s.capturedAt;
-        this.velocity = (openRatio - s.openRatio) / dt * 1000;
-        const decelerationTime = Math.abs(this.velocity / Deceleration);
-        const decelerationDistance = this.velocity * decelerationTime / 2; // a*t^2/2
-        this.terminalOpenRatio = openRatio + decelerationDistance;
-        s.prevMoveState = null;
-        // debugLog?.log(`MoveState: ${openRatio} + ${decelerationDistance}`,
-        //     `(v = ${this.velocity}) = ${this.terminalOpenRatio}`);
+        this.staleTimeout?.dispose();
+        this.staleTimeout = new Timeout(PullGestureStaleMs, () => { void this.endMove(null, true); });
+        if (ScreenSize.isWide()) {
+            void this.endMove(event, true);
+            return;
+        }
+
+        tryPreventDefaultForEvent(event);
+        const coords = getCoords(event);
+        if (!coords)
+            return;
+
+        if (!coords.sub(this.origin).isHorizontal()) { // >45 deg. vertical
+            void this.endMove(event, true);
+            return;
+        }
+
+        this.lastCoords = coords;
+    }
+
+    private async endMove(event: TouchEvent | null, isCancelled: boolean): Promise<void> {
+        if (this.isEnded)
+            return;
+
+        this.isEnded = true;
+        this.staleTimeout?.dispose();
+        this.staleTimeout = null;
+        const sideNav = this.sideNav;
+        debugLog?.log(`SideNavPullGesture[${sideNav.side}].endMove:`, event, ', isCancelled:', isCancelled);
+
+        tryPreventDefaultForEvent(event);
+        const moveDuration = performance.now() - this.startedAt;
+        if (event === null || event.type === 'touchstart' || moveDuration < MinPullDurationMs)
+            isCancelled = true;
+
+        const coords = event === null ? null : getCoords(event);
+        if (coords && !isCancelled) {
+            this.lastCoords = coords;
+            this.animation.setTarget(this.openRatioAt(coords));
+        }
+
+        // A cancelled pull goes back where it started; otherwise the projected rest point decides
+        const mustRevert = isCancelled || ScreenSize.isWide();
+        this.animation.release(performance.now(), mustRevert ? (this.wasOpen ? 1 : 0) : undefined);
+        const mustBeOpen = this.animation.terminalRatio > 0.5;
+        debugLog?.log(`SideNavPullGesture[${sideNav.side}].endMove: ending w/ mustBeOpen:`, mustBeOpen);
+        try {
+            // The magnet starts here, ahead of Blazor hearing about it below - the one call that
+            // can't be derived on the .NET side.
+            if (sideNav.isOpen != mustBeOpen)
+                void sideNav.blazorRef.invokeMethodAsync('OnPullSettling');
+
+            this.settled.setTimeout(MaxSettleWaitDurationMs, () => this.settled.resolve(undefined));
+            await this.settled;
+            if (sideNav.isOpen == mustBeOpen)
+                return; // Note that we call sideNav.setTransform() in finally { ... }
+
+            // A stopped WebView leaves this interop call unresolved, and setVisibility is
+            // serialized - unbounded, it would strand the finally below and with it dispose()
+            const visibilityChanged = new PromiseSourceWithTimeout<void>();
+            visibilityChanged.setTimeout(
+                MaxSetVisibilityWaitDurationMs, () => visibilityChanged.resolve(undefined));
+            void sideNav.setVisibility(mustBeOpen)
+                .catch(() => undefined)
+                .then(() => visibilityChanged.resolve(undefined));
+            await visibilityChanged;
+
+            const endTime = performance.now() + MaxSetVisibilityWaitDurationMs;
+            while (sideNav.isOpen != mustBeOpen && performance.now() < endTime) {
+                await delayAsync(50);
+                await fastReadRafAsync();
+            }
+        } finally {
+            // Unregisters before the await, not after: rAF never fires in a backgrounded
+            // WebView, and a gesture left active blocks every later pull
+            this.dispose();
+            await fastWriteRafAsync();
+            sideNav.isPulling = false;
+            sideNav.setTransform(mustBeOpen ? 1 : 0);
+        }
+    }
+
+    private scheduleFrame(): void {
+        if (this.isDisposed)
+            return;
+
+        fastRaf({ read: time => this.onFrameRead(time), write: () => this.onFrameWrite() });
+    }
+
+    private onFrameRead(time: number): void {
+        if (this.isDisposed)
+            return;
+
+        this.chatViewScrollTop ??= this.chatViewDiv?.scrollTop ?? 0;
+        if (this.animation.phase === 'follow' && this.lastCoords)
+            this.animation.setTarget(this.openRatioAt(this.lastCoords));
+        this.animation.advance(time);
+    }
+
+    private onFrameWrite(): void {
+        if (this.isDisposed)
+            return;
+
+        if (!this.sideNav.isPulling)
+            this.sideNav.isPulling = true;
+        this.sideNav.setTransform(this.animation.ratio);
+        if (this.animation.isDone)
+            this.settled.resolve(undefined);
+        else
+            this.scheduleFrame();
+    }
+
+    // Call during the RAF read phase - sideNav.width can force a layout
+    private openRatioAt(coords: Vector2D): number {
+        const dx = this.wasOpen
+            ? coords.x - this.origin.x
+            : coords.x - (this.isLeft ? 0 : ScreenSize.width);
+        const pdx = dx * this.allowedDirectionSign; // Must be positive
+        const pullRatio = clamp(pdx / (this.sideNav.width + 0.01), 0, 1);
+        return this.wasOpen ? 1 - pullRatio : pullRatio;
     }
 }
 

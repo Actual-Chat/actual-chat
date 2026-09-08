@@ -128,12 +128,10 @@ body.narrow .side-nav[data-transformed] {
     -webkit-backdrop-filter: blur(3px);
 }
 
+/* SideNavPullGesture writes the transform every frame for the whole gesture - the drag and the
+   settle after it - so any transition here would be restarted per frame and fight it. The
+   smoothing a transition used to provide is PullAnimation's job now. */
 body.narrow .side-nav.side-nav-left[data-pulling],
 body.narrow .side-nav.side-nav-right[data-pulling] {
-    transition: transform 50ms linear;
-}
-/* Restarting the transform transition on each gesture frame causes jitter on WebKit. */
-body.narrow.device-webkit .side-nav.side-nav-left[data-pulling],
-body.narrow.device-webkit .side-nav.side-nav-right[data-pulling] {
     transition: none;
 }
