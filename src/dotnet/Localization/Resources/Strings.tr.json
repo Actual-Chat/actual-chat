@@ -1502,7 +1502,7 @@
   "Call_Entry_Missed": "Cevapsız arama",
   "Call_Entry_Declined": "Reddedilen arama",
   "Call_Entry_Canceled": "İptal edilen arama",
-  "Call_Entry_Ended": "Arama sona erdi",
+  "Call_Entry_Ended": "Arama",
   "Call_Entry_NoAnswer": "Cevap yok",
   "Call_Entry_TapToCallBack": "Geri aramak için dokunun",
   "Share_FailedToShareFiles": "Dosyalar paylaşılamadı",
