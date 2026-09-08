@@ -140,6 +140,7 @@ public sealed class AppScopedServiceStarter
             _ = Hub.NotificationsPanelUI; // Touch. Auto-starts read-retention tracking on construction.
             _ = Hub.VideoQualityUI; // Touch. Constructor calls Start(); chains gate on first video activity.
             Hub.Services.GetRequiredService<ThrottledTranslations>().Start();
+            Hub.LocalSearchUI.Start();
             if (!HostInfo.IsProductionInstance)
                 Hub.Services.GetRequiredService<DebugUI>();
 

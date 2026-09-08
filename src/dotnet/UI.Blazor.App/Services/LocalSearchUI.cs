@@ -8,17 +8,21 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// authors, places and emojis. Each <c>ListXxx</c> compute method returns its natural type;
 /// <c>ListMentionCandidates</c> unions the per-category candidate lists into the mention
 /// picker's pool, and <see cref="ListDefaultMentions"/> precomputes the empty-query view.
+/// The worker prewarms that view for the selected chat, so the first "@" there opens instantly.
 /// </summary>
-public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
+public class LocalSearchUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeService
 {
     public const int DefaultViewLimit = 30;
 
+    // Long enough to keep the prewarm off the chat's own loading, short enough to beat the first "@"
+    private static readonly TimeSpan PrewarmDelay = TimeSpan.FromSeconds(1);
     private static readonly ApiArray<MentionCandidate> EmojiCandidates =
         Emojis.All.Select(ToEmojiCandidate).ToApiArray();
     // Keeps the curated catalog order, so no TopByDefaultOrder here.
     private static readonly ApiArray<MentionCandidate> TopEmojiCandidates =
         EmojiCandidates.Take(DefaultViewLimit).ToApiArray();
 
+    private ChatUI ChatUI => Hub.ChatUI;
     private IAuthors Authors => Hub.Authors;
     private IContacts Contacts => Hub.Contacts;
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
@@ -180,13 +184,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         // Cached per placeId, so the ContactInfo instances - and their lazily built
         // SearchDocuments - are reused across keystrokes instead of rebuilt per query.
         var contacts = await ListContacts(placeId, cancellationToken).ConfigureAwait(false);
-        var result = new Dictionary<ChatId, ContactInfo>(contacts.Count);
-        foreach (var contact in contacts) {
-            if (contact.Chat is not null)
-                result.Add(contact.ChatId, new ContactInfo(contact));
-        }
-
-        return result;
+        return contacts.ToDictionary(x => x.ChatId, x => new ContactInfo(x));
     }
 
     [ComputeMethod]
@@ -212,20 +210,20 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         CancellationToken cancellationToken)
     {
         var contacts = await ListContacts(null, cancellationToken).ConfigureAwait(false);
-        var result = new List<(Contact Contact, Account Account)>();
-        foreach (var contact in contacts) {
-            if (contact.Kind != ContactKind.User || contact.State == ContactState.Blocked)
-                continue;
-            var userId = contact.UserId;
-            if (userId is null || userId.IsGuest)
-                continue;
-            var account = contact.Account
-                ?? await Accounts.Get(Session, userId, cancellationToken).ConfigureAwait(false);
-            if (account is null)
-                continue;
-            result.Add((contact, account));
-        }
-        return result.ToApiArray();
+        var users = contacts
+            .Where(c => c.Kind == ContactKind.User && c.State != ContactState.Blocked && c.UserId is { IsGuest: false })
+            .ToList();
+        // One round trip for every missing account instead of a sequential RPC call per contact
+        var accounts = await users
+            .Select(c => c.Account is { } account
+                ? Task.FromResult<Account?>(account)
+                : Accounts.Get(Session, c.UserId!, cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+        return users.Zip(accounts)
+            .Where(x => x.Second is not null)
+            .Select(x => (x.First, x.Second!))
+            .ToApiArray();
     }
 
     [ComputeMethod]
@@ -234,20 +232,21 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     {
         var authorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
         var authors = await authorIds
-            .Select(id => Authors.Get(Session, chatId, id, cancellationToken))
+            .Select(GetAuthorAndAccount)
             .Collect(cancellationToken)
             .ConfigureAwait(false);
+        return authors.SkipNullItems().ToApiArray();
 
-        var result = new List<(Author Author, Account? Account)>();
-        foreach (var author in authors) {
-            if (author is null || author.HasLeft)
-                continue;
-            var account = author.IsAnonymous
-                ? null
-                : await Authors.GetAccount(Session, chatId, author.Id, cancellationToken).ConfigureAwait(false);
-            result.Add((author, account));
+        async Task<(Author Author, Account? Account)?> GetAuthorAndAccount(AuthorId authorId) {
+            var author = await Authors.Get(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
+            if (author is null || author.HasLeft || author.IsAnonymous)
+                return null;
+
+            var account = !author.IsAnonymous
+                ? await Authors.GetAccount(Session, chatId, author.Id, cancellationToken).ConfigureAwait(false)
+                : null;
+            return (author, account);
         }
-        return result.ToApiArray();
     }
 
     [ComputeMethod]
@@ -339,7 +338,31 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         return result.ToApiArray();
     }
 
+    // Protected/internal methods
+
+    protected override Task OnRun(CancellationToken cancellationToken)
+        => AsyncChain.From(PrewarmDefaultMentions)
+            .Log(LogLevel.Debug, Log)
+            .RetryForever(RetryDelaySeq.Exp(1, 60), Log)
+            .RunIsolated(cancellationToken);
+
     // Private methods
+
+    private async Task PrewarmDefaultMentions(CancellationToken cancellationToken)
+    {
+        // ListDefaultMentions' MinCacheDuration keeps the prewarmed view around even though nothing holds it.
+        var changes = ChatUI.SelectedChatId.Computed.Changes(cancellationToken);
+        await foreach (var cChatId in changes.ConfigureAwait(false)) {
+            if (cChatId.Value is not { } chatId)
+                continue;
+
+            await Task.Delay(PrewarmDelay, cancellationToken).ConfigureAwait(false);
+            if (ChatUI.SelectedChatId.Value != chatId)
+                continue;
+
+            await ListDefaultMentions(chatId, cancellationToken).ConfigureAwait(false);
+        }
+    }
 
     private async Task<FoundMention[]> BuildDefaultView(
         ChatId? chatId,
