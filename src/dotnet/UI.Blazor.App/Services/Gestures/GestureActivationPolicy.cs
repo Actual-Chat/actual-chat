@@ -81,14 +81,37 @@ public static class GestureActivationPolicy
         // isMicOpen, not mustSenseStop: its video-only case would route a shake to StartReply.
         => (isDoubleShakeEnabled && mustSenseStart) || (mustSenseStop && isMicOpen);
 
-    public static GestureRoute Route(GestureKind kind, bool isPracticeMode, bool isMicOpen)
+    public static bool ShouldSenseHush(
+        bool isHushGestureEnabled,
+        bool isPracticeMode,
+        bool hasArmedChats,
+        bool hasLiveIncoming,
+        bool hasAnswerWindow)
+        // Practice never hushes: the detectors it rehearses are the stop-gesture ones, and a live
+        // hush from the settings page would silently mute every chat. The window half keeps the
+        // gesture available for the seconds after the utterance, while the user is still reacting.
+        => isHushGestureEnabled && !isPracticeMode && hasArmedChats && (hasLiveIncoming || hasAnswerWindow);
+
+    public static GestureRoute Route(
+        GestureKind kind,
+        bool isPracticeMode,
+        bool isMicOpen,
+        bool isStopArmed,
+        bool isHushArmed)
     {
         // Practice never transmits: rehearsing a gesture in Settings must not open the mic.
         if (isPracticeMode)
             return kind == GestureKind.None ? GestureRoute.None : GestureRoute.Practice;
 
         return kind switch {
-            GestureKind.FaceDown or GestureKind.Pocket => GestureRoute.StopReply,
+            // Stop sensing is on only while something outgoing is live (mic, camera, screencast),
+            // and closing that always wins. With nothing outgoing, a face-down hushes the other
+            // side; being pocketed is never a hush - the pat is, so a wake reaching a pocketed
+            // phone doesn't hush itself.
+            GestureKind.FaceDown or GestureKind.Pocket when isStopArmed => GestureRoute.StopReply,
+            GestureKind.FaceDown => isHushArmed ? GestureRoute.Hush : GestureRoute.None,
+            GestureKind.Pocket => GestureRoute.None,
+            GestureKind.DoublePat => !isMicOpen && isHushArmed ? GestureRoute.Hush : GestureRoute.None,
             // The same shake means the opposite thing depending on the mic: nothing else can be
             // meant by shaking a phone that's already recording you.
             GestureKind.DoubleShake => isMicOpen ? GestureRoute.StopReply : GestureRoute.StartReply,
@@ -104,4 +127,5 @@ public enum GestureRoute
     Practice,
     StartReply,
     StopReply,
+    Hush,
 }

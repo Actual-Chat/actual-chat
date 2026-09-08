@@ -211,6 +211,51 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         return new DurationCountdown(remaining, mutedUntil - mutedAt);
     }
 
+    public bool IsAnyPlaying(IReadOnlyList<ChatId> chatIds)
+    {
+        // Non-computed: GestureUI's loop polls this on its own cadence instead of depending on
+        // per-chat player states.
+        foreach (var chatId in chatIds) {
+            if (GetListeningPlayerNonComputed(chatId)?.Playback.IsPlaying.Value == true)
+                return true;
+        }
+        return ReplayState.Value is { } replay
+            && chatIds.Contains(replay.ChatId)
+            && GetReplayPlayerNonComputed(replay.ChatId)?.Playback.IsPlaying.Value == true;
+    }
+
+    public async Task<List<ChatId>> HushPtt(CancellationToken cancellationToken)
+    {
+        // Situational, not chat-specific: every armed chat goes quiet. Listening stops first so
+        // the utterance ends now, and the stamp goes with it so a later flip can't open the mic.
+        var pttChatIds = await GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        if (pttChatIds.Count == 0)
+            return [];
+
+        foreach (var chatId in pttChatIds) {
+            VoiceActivityUI.ClearIncomingVoice(chatId);
+            await SetListeningState(chatId, false).ConfigureAwait(false);
+        }
+        // Otherwise StopReplay's own restore would briefly re-listen a chat hush just silenced.
+        lock (Lock)
+            _listeningChatsBeforeReplay = _listeningChatsBeforeReplay.Except(pttChatIds);
+        StopReplay();
+        var now = ServerNow;
+        var settings = await UserSettingsUI.UserPttSettings().Get(cancellationToken).ConfigureAwait(false);
+        var mutedUntil = now + settings.HushDuration;
+        // The set HushPtt reports back (for the toast's Undo) is every chat whose deadline this
+        // hush actually set or extended - WithAllPttChatsMuted also touches chats that were
+        // already muted for a shorter period, and Undo must cover those too.
+        var hushedChatIds = settings.PttChats
+            .Where(c => c.MutedUntil is not { } until || until < mutedUntil)
+            .Select(c => c.ChatId)
+            .ToList();
+        await UserSettingsUI.UserPttSettings()
+            .Update(x => x.WithAllPttChatsMuted(now, mutedUntil), cancellationToken)
+            .ConfigureAwait(false);
+        return hushedChatIds;
+    }
+
     [ComputeMethod] // Synced
     public virtual async Task<bool> IsPttEnabledOnDevice(CancellationToken cancellationToken)
     {

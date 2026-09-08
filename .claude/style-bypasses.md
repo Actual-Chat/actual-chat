@@ -167,6 +167,30 @@ edited. The reason can be as short as whose decision it was.
   `Sentry`); it is the tab title itself here, not an incidental mention, but the
   exemption's rationale (brand names aren't translated) applies identically
 
+## src/dotnet/UI.Blazor.App/Services/Gestures/GravityHighPassFilter.cs
+
+- L11 `private static readonly TimeSpan GravityTau = TimeSpan.FromMilliseconds(400);`
+  — blank line after this field, before the instance-field group — code review on
+  Task 4 asked to match `ShakeDetector.cs` (the sibling this type was extracted
+  from), which separates static fields, instance fields, and methods with a blank
+  line each; same "hook reads '0 blank lines inside types' as 'strip every blank
+  line between members'" conflict as the `AudioRecorder.cs` entry. NEEDS ALEX'S CALL
+- L13 `private (float X, float Y, float Z)? _gravity;`
+  — blank line before this field group and after it, before `Process` — same reason
+
+## src/dotnet/UI.Blazor.App/Services/Gestures/PatDetector.cs
+
+- L12 `public static readonly TimeSpan Debounce = TimeSpan.FromSeconds(1);`
+  — blank line after the static-field group, before the `Threshold` const — code
+  review on Task 4 asked to match `ShakeDetector.cs`'s member-group spacing; same
+  "0 blank lines inside types" conflict as `AudioRecorder.cs`. NEEDS ALEX'S CALL
+- L14 `public const float Threshold = 1.2f;`
+  — blank line after the const, before the instance-field group — same reason
+- L20 `private Moment _debouncedUntil;`
+  — blank line after the instance-field group, before `PeakDeviation` — same reason
+- L22 `public float PeakDeviation { get; private set; }`
+  — blank line after the property, before `Process` — same reason
+
 ## src/dotnet/UI.Blazor.App/Services/ChatUI.cs
 
 - L971 `public async Task RestoreNavbarSelectedGroup()`

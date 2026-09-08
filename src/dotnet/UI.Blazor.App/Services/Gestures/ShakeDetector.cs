@@ -9,13 +9,9 @@ public sealed class ShakeDetector(ShakeSensitivity sensitivity)
 {
     public static readonly TimeSpan ReversalWindow = TimeSpan.FromMilliseconds(500);
     public static readonly TimeSpan Debounce = TimeSpan.FromSeconds(1);
-    // Time constant of the gravity low-pass: slow enough that a shake's zero-mean oscillation
-    // barely moves the estimate, fast enough to re-settle within ~1s of an orientation change.
-    private static readonly TimeSpan GravityTau = TimeSpan.FromMilliseconds(400);
 
     private readonly List<Moment> _reversals = new();
-    private (float X, float Y, float Z)? _gravity;
-    private Moment _lastAt;
+    private readonly GravityHighPassFilter _filter = new();
     private GravityAxis _axis;
     private int _lastSign;
     private Moment _lastExtremeAt;
@@ -49,7 +45,7 @@ public sealed class ShakeDetector(ShakeSensitivity sensitivity)
 
     public bool Process(SensorSample sample)
     {
-        var (fx, fy, fz) = Filter(sample);
+        var (fx, fy, fz) = _filter.Process(sample);
         var deviation = MathF.Sqrt((fx * fx) + (fy * fy) + (fz * fz));
         PeakDeviation = MathF.Max(PeakDeviation * 0.9f, deviation);
         if (sample.At < _debouncedUntil)
@@ -107,7 +103,7 @@ public sealed class ShakeDetector(ShakeSensitivity sensitivity)
     public void Reset()
     {
         _reversals.Clear();
-        _gravity = null;
+        _filter.Reset();
         _axis = GravityAxis.None;
         _lastSign = 0;
         _debouncedUntil = default;
@@ -125,27 +121,5 @@ public sealed class ShakeDetector(ShakeSensitivity sensitivity)
         _reversals.Clear();
         _axis = GravityAxis.None;
         _lastSign = 0;
-    }
-
-    // Private methods
-
-    private (float X, float Y, float Z) Filter(SensorSample sample)
-    {
-        // The first sample seeds the estimate, so a detector born mid-motion starts neutral
-        // instead of reading its own seed as a spike.
-        if (_gravity is not { } g) {
-            _gravity = (sample.X, sample.Y, sample.Z);
-            _lastAt = sample.At;
-            return (0f, 0f, 0f);
-        }
-
-        var dt = (float)(sample.At - _lastAt).TotalSeconds;
-        _lastAt = sample.At;
-        var alpha = dt <= 0f ? 0f : dt / ((float)GravityTau.TotalSeconds + dt);
-        var gx = g.X + (alpha * (sample.X - g.X));
-        var gy = g.Y + (alpha * (sample.Y - g.Y));
-        var gz = g.Z + (alpha * (sample.Z - g.Z));
-        _gravity = (gx, gy, gz);
-        return (sample.X - gx, sample.Y - gy, sample.Z - gz);
     }
 }

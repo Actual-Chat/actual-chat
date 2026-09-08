@@ -39,6 +39,7 @@ public sealed class AndroidActivitiesForegroundService : Service
         public const string CanPause = nameof(CanPause);
         public const string AnswerWindowRemainingMs = nameof(AnswerWindowRemainingMs);
         public const string IsStartGestureReady = nameof(IsStartGestureReady);
+        public const string HushDurationMinutes = nameof(HushDurationMinutes);
         public const string UploadFileCount = nameof(UploadFileCount);
         public const string UploadBytesUploaded = nameof(UploadBytesUploaded);
         public const string UploadTotalBytes = nameof(UploadTotalBytes);
@@ -51,6 +52,7 @@ public sealed class AndroidActivitiesForegroundService : Service
     public const string ActionStop = "ACTION_STOP";
     public const string ActionReply = "ACTION_REPLY";
     public const string ActionStopTalking = "ACTION_STOP_TALKING";
+    public const string ActionHush = "ACTION_HUSH";
     private const string ChannelId = "audio_widget";
     private const string RecordingChannelId = "audio_recording";
     private const string RecordingQuietChannelId = "audio_recording_quiet";
@@ -64,11 +66,13 @@ public sealed class AndroidActivitiesForegroundService : Service
     private string _requestId = "";
     private MediaSessionCompat? _mediaSession;
     private ScreenOffReceiver? _screenOffReceiver;
+    private ScreenOnReceiver? _screenOnReceiver;
     private string _lastTitle = "";
     private string _lastLink = "";
     private Bitmap? _lastAlbumArt;
     private Android.App.Notification? _lastNotification;
     private int _lastKind = -1;
+    private int _hushDurationMinutes;
     private bool _hasMicType;
     private Action<bool>? _micCapabilityHandler;
     private Action? _micBlockedHandler;
@@ -172,7 +176,7 @@ public sealed class AndroidActivitiesForegroundService : Service
         _requestId = RandomStringGenerator.Default.Next();
         Interlocked.Exchange(ref _pendingStartCount, 0);
         Volatile.Write(ref _isStopPending, false);
-        UpdateScreenOffReceiver(false);
+        UpdateScreenReceivers(null);
         ReleaseMediaSession();
         base.OnDestroy();
     }
@@ -188,6 +192,11 @@ public sealed class AndroidActivitiesForegroundService : Service
 
         if (action is ActionReply or ActionStopTalking) {
             TryHandleNotificationReply(isStop: action == ActionStopTalking);
+            return StartCommandResult.NotSticky;
+        }
+
+        if (action == ActionHush) {
+            TryHandleHush();
             return StartCommandResult.NotSticky;
         }
 
@@ -230,7 +239,7 @@ public sealed class AndroidActivitiesForegroundService : Service
             return StartCommandResult.NotSticky;
         }
 
-        UpdateScreenOffReceiver(kind is ActivityKind.Recording);
+        UpdateScreenReceivers(kind);
         if (kind is ActivityKind.Uploading)
             return ShowUpload(intent, requested);
         if (kind is ActivityKind.SharingLocation)
@@ -289,6 +298,7 @@ public sealed class AndroidActivitiesForegroundService : Service
         _mediaSession.SetPlaybackState(playbackStateCompat);
 
         var answerWindowRemainingMs = intent.Extras!.GetLong(IntentExtras.AnswerWindowRemainingMs, 0);
+        _hushDurationMinutes = intent.Extras!.GetInt(IntentExtras.HushDurationMinutes);
         var isStartGestureReady = intent.Extras!.GetBoolean(IntentExtras.IsStartGestureReady);
         var lastRequestId = _requestId;
         ResolveBitmapAndRun(
@@ -607,8 +617,16 @@ public sealed class AndroidActivitiesForegroundService : Service
         _ = builder
             .AddAction(Android.Resource.Drawable.IcButtonSpeakNow, L.Activity_Reply,
                 GetServicePendingIntent(5, ActionReply))!
-            .AddAction(Android.Resource.Drawable.IcMenuCloseClearCancel, L.Common_Stop,
-                GetServicePendingIntent(4, ActionStop));
+            .AddAction(Android.Resource.Drawable.IcLockSilentMode, GetMuteLabel(),
+                GetServicePendingIntent(7, ActionHush));
+    }
+
+    private string GetMuteLabel()
+    {
+        var duration = _hushDurationMinutes <= 0
+            ? Constants.Audio.PttHushDurationDefault
+            : TimeSpan.FromMinutes(_hushDurationMinutes);
+        return L.Activity_MuteFor_Format(PttSessionCore.FormatDuration(L, duration));
     }
 
     private PendingIntent? GetServicePendingIntent(int requestCode, string action)
@@ -682,12 +700,18 @@ public sealed class AndroidActivitiesForegroundService : Service
         manager.CreateNotificationChannel(quietRecordingChannel);
     }
 
-    private void UpdateScreenOffReceiver(bool isRecording)
+    private void UpdateScreenReceivers(ActivityKind? kind)
     {
-        if (isRecording == (_screenOffReceiver is not null))
+        UpdateScreenOffReceiver(kind is ActivityKind.Recording);
+        UpdateScreenOnReceiver(kind is ActivityKind.Armed or ActivityKind.Listening or ActivityKind.Replaying);
+    }
+
+    private void UpdateScreenOffReceiver(bool shouldRegister)
+    {
+        if (shouldRegister == (_screenOffReceiver is not null))
             return;
 
-        if (!isRecording) {
+        if (!shouldRegister) {
             var receiver = _screenOffReceiver;
             _screenOffReceiver = null;
             try {
@@ -719,6 +743,40 @@ public sealed class AndroidActivitiesForegroundService : Service
         }
     }
 
+    private void UpdateScreenOnReceiver(bool shouldRegister)
+    {
+        if (shouldRegister == (_screenOnReceiver is not null))
+            return;
+
+        if (!shouldRegister) {
+            var receiver = _screenOnReceiver;
+            _screenOnReceiver = null;
+            try {
+                UnregisterReceiver(receiver);
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Couldn't unregister the screen-on receiver");
+            }
+            return;
+        }
+
+        try {
+            var receiver = new ScreenOnReceiver();
+            var filter = new IntentFilter(Intent.ActionScreenOn);
+            // Same protected-broadcast reasoning as the screen-off receiver above.
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu)
+                RegisterReceiver(receiver, filter, ReceiverFlags.NotExported);
+            else
+#pragma warning disable CA1422
+                RegisterReceiver(receiver, filter);
+#pragma warning restore CA1422
+            _screenOnReceiver = receiver;
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Couldn't register the screen-on receiver");
+        }
+    }
+
     private static void TryHandleScreenOff()
     {
         // ChatUI holds KeepScreenOn while the mic is open, so the display can't time out under our
@@ -737,6 +795,27 @@ public sealed class AndroidActivitiesForegroundService : Service
         }
         catch (Exception e) {
             Log.LogWarning(e, "Screen-off handling failed");
+        }
+    }
+
+    private static void TryHandleScreenOn()
+    {
+        // A pocketed phone lights up only because someone pressed power; on a desk the user is
+        // looking at it and has the UI. Single press only - a double press opens the camera.
+        try {
+            if (AppScopeAccessor.Current is not { } services)
+                return;
+
+            var hub = services.GetRequiredService<AppUIHub>();
+            if (!hub.GestureUI.IsHushArmed || !hub.GestureUI.IsPocketed)
+                return;
+
+            _ = BackgroundTask.Run(
+                () => services.GetRequiredService<PttSessionCore>().Hush(CancellationToken.None),
+                Log, "Screen-on hush failed", CancellationToken.None);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Screen-on handling failed");
         }
     }
 
@@ -767,7 +846,21 @@ public sealed class AndroidActivitiesForegroundService : Service
         }
     }
 
-    private static bool TryHandleHeadsetButton(HeadsetKey key, bool isDown, int repeatCount)
+    private static void TryHandleHush()
+    {
+        try {
+            if (AppScopeAccessor.Current is not { } services)
+                return;
+
+            var whenHandled = services.GetRequiredService<PttSessionCore>().Hush(CancellationToken.None);
+            _ = BackgroundTask.Run(() => whenHandled, Log, "Notification mute action failed", CancellationToken.None);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Notification mute action handling failed");
+        }
+    }
+
+    private static bool TryHandleHeadsetButton(HeadsetKey key, bool isDown, int repeatCount, bool isLongPress)
     {
         // Runs on the main thread: SetCallback binds its Handler to the Looper of the thread that
         // called it, which is OnStartCommand's. So this must neither block nor throw - a throw
@@ -780,8 +873,8 @@ public sealed class AndroidActivitiesForegroundService : Service
             var hub = services.GetRequiredService<AppUIHub>();
             var state = hub.GestureUI.GetHeadsetButtonState();
             var action = HeadsetButtonPolicy.Decide(
-                key, isDown, repeatCount, state.IsEnabled,
-                state.HasAnswerWindow, state.IsReplyHot, state.IsPracticeMode);
+                key, isDown, repeatCount, isLongPress, state.IsEnabled,
+                state.HasAnswerWindow, state.IsReplyHot, state.IsPracticeMode, state.HasArmedChats);
             if (action == HeadsetButtonAction.PassThrough)
                 return false;
 
@@ -789,9 +882,12 @@ public sealed class AndroidActivitiesForegroundService : Service
             // Android hands out the while-in-use exemption a background mic start needs, and it is
             // released when the trigger ends - a reply that never opened can't leave it raised.
             var replyUI = hub.PttReplyUI;
-            var whenHandled = action == HeadsetButtonAction.StopReply
-                ? replyUI.StopReply()
-                : PttMicCapability.HoldWhile(() => replyUI.RequestReply(CancellationToken.None));
+            var whenHandled = action switch {
+                HeadsetButtonAction.StopReply => replyUI.StopReply(),
+                // A hot reply ends first: hush is "I can't talk now", and that includes me.
+                HeadsetButtonAction.Hush => HushAfter(replyUI, state.IsReplyHot, services),
+                _ => PttMicCapability.HoldWhile(() => replyUI.RequestReply(CancellationToken.None)),
+            };
             _ = BackgroundTask.Run(() => whenHandled, Log, $"{action} from the headset button failed",
                 CancellationToken.None);
             return true;
@@ -800,6 +896,13 @@ public sealed class AndroidActivitiesForegroundService : Service
             Log.LogWarning(e, "Headset button handling failed");
             return false;
         }
+    }
+
+    private static async Task HushAfter(PttReplyUI replyUI, bool isReplyHot, IServiceProvider services)
+    {
+        if (isReplyHot)
+            await replyUI.StopReply().ConfigureAwait(false);
+        await services.GetRequiredService<PttSessionCore>().Hush(CancellationToken.None).ConfigureAwait(false);
     }
 
     private static KeyEvent? GetKeyEvent(Intent? mediaButtonEvent)
@@ -847,7 +950,7 @@ public sealed class AndroidActivitiesForegroundService : Service
                 return base.OnMediaButtonEvent(mediaButtonEvent);
 
             var isDown = keyEvent.Action == KeyEventActions.Down;
-            if (!TryHandleHeadsetButton(key, isDown, keyEvent.RepeatCount))
+            if (!TryHandleHeadsetButton(key, isDown, keyEvent.RepeatCount, keyEvent.IsLongPress))
                 return base.OnMediaButtonEvent(mediaButtonEvent);
 
             return true;
@@ -867,5 +970,11 @@ public sealed class AndroidActivitiesForegroundService : Service
     {
         public override void OnReceive(Context? context, Intent? intent)
             => TryHandleScreenOff();
+    }
+
+    private sealed class ScreenOnReceiver : BroadcastReceiver
+    {
+        public override void OnReceive(Context? context, Intent? intent)
+            => TryHandleScreenOn();
     }
 }

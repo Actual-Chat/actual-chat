@@ -341,6 +341,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceSettingsStartModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlacesTutorialStep>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttAnswerWindowSettings>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttHushDurationSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttJoinBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttMuteMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttPracticePanel>();
@@ -1111,6 +1112,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceSettingsStartModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlacesTutorialStep), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttAnswerWindowSettings), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PttHushDurationSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttJoinBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttMuteMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttPracticePanel), AotTypeKind.Component),

@@ -159,6 +159,9 @@ public static class PttWakeHandler
         public override void OnHeadlessTeardown()
             => HideForegroundService();
 
+        public override void OnHushed()
+            => StopHeadlessSession();
+
         public override Task OnPlaybackStarted(AppUIHub hub, ChatId chatId)
             => UpdateForegroundServiceTitle(hub, chatId);
     }

@@ -58,6 +58,36 @@ rewrite the set with `WithOnlyPttChats` must feed it `GetConsentedPttChatIds`,
 never the armed set — the armed set is missing exactly the muted chats, and
 `WithOnlyPttChats` drops whatever it doesn't get.
 
+**Hush** is the panic-button opposite of a manual mute: `PttSessionCore.Hush`
+calls `ChatAudioUI.HushPtt`, which stops listening on every armed chat (ending
+any live playback right away), clears each chat's incoming-voice stamp via
+`VoiceActivityUI.ClearIncomingVoice` so the trailing answer window closes too
+— a flip or shake right after can't reopen the mic — and then rewrites
+`PttChats` with `WithAllPttChatsMuted(now, now + HushDuration)` — the same
+`MutedAt`/`MutedUntil` fields a manual per-chat mute uses, applied to the whole
+armed set at once. Sensing is gated by `GestureActivationPolicy.ShouldSenseHush(
+isHushGestureEnabled, isPracticeMode, hasArmedChats, hasLiveIncoming,
+hasAnswerWindow)`: outside practice mode, the four substantive inputs are the
+user's toggle (`IsHushGestureEnabled`, default on), at least one armed chat,
+and either live incoming voice or a playing listening/replay player for any
+armed chat, or an open answer window, so the accelerometer/proximity feed
+only runs while a hush could plausibly do something.
+`GestureActivationPolicy.Route` sends a face-down or double-pat
+(`DoublePat`, mic closed) fire to `Hush` only when hush is armed and no stop
+gesture claimed it first — an outgoing mic/camera/screencast always wins as
+`StopReply`; a pocketing (`Pocket`) alone never hushes, only the pat does.
+Face-down is entry-only while hush is the sole reason sensing is on:
+`GestureRecognizer.Process` requires `FaceDownDetector.HasEntered`, so a phone
+already lying face down when the window opens doesn't hush; with a stop
+gesture also armed the same fire counts regardless of entry, since ending an
+outgoing stream must work however the phone got there. Two more paths reach
+the same `Hush` call: a headset button long-press (`HeadsetButtonPolicy.Decide`,
+gated on armed chats) and the screen-on-while-pocketed Android backend, plus
+the foreground-service notification's Android-only **Mute** action, labelled
+`L.Activity_MuteFor_Format` with `PttSessionCore.FormatDuration`. Outside a
+headless scope, `Hush` also raises a toast — `Ptt_HushedFor_Format` with an
+**Undo** button that unmutes every chat it just muted (`WithPttChatsUnmuted`).
+
 Between armed and hot sits the **answer window** — the period after voice
 during which a gesture, a headset press or the Apple PTT Talk button may
 open the mic without any further confirmation. `VoiceActivityUI` stamps
@@ -102,6 +132,7 @@ stateDiagram-v2
     Off --> Armed: owner enables chat PTT + author joins
     Armed --> Off: author leaves, or owner disables (epoch reset)
     Armed --> Muted: mute for 15 min / 1 h / 8 h (Active Chats badge)
+    Armed --> Muted: hush (face-down, double-pat, power, headset long-press, Mute action)
     Muted --> Armed: MutedUntil passes, or the badge is tapped
     Muted --> Off: author leaves, or owner disables
     Armed --> Armed: wake push → headless playback
@@ -761,6 +792,8 @@ devices:
 | `AreAudibleCuesEnabled` | `true` | Begin/end/nothing-heard tunes |
 | `IsHeadsetButtonEnabled` | `null` → `true` | Headset hook / play-pause opens a reply |
 | `IsPttTransmitEnabled` | `null` → `true` | Apple PTT transmission mode (`FullDuplex` vs `ListenOnly`) |
+| `HushDuration` | 15 min | How long a hush gesture mutes every armed chat; 15 min/1 h/8 h in the UI (`Constants.Audio.PttMuteDurations`). The getter normalizes a missing member (zero) to `PttHushDurationDefault` |
+| `IsHushGestureEnabled` | `null` → `true` | Face-down, double-pat and screen-on-while-pocketed hush when this is on. The headset long-press rides `IsHeadsetButtonEnabled`; the Android Mute action is always available |
 
 `WithPttChat(chatId, joinedAt)` / `WithoutPttChat(chatId)` are the
 consent/leave helpers; `WithPttChatMuted(chatId, mutedAt, mutedUntil)` /
@@ -813,7 +846,8 @@ working if the flag is later turned off; only the UI for changing it goes away.
 | `ListeningCatchUpTolerance` | 2 s | Clock-fuzz allowance between a wake's `startedAt` and the target stream's `BeginsAt` |
 | `PttReplyColdStartTimeout` | 15 s | Cold-start dead-man: no voice within this and the mic closes with the "nothing heard" cue |
 | `PttAnswerWindowDefault` | 15 s | Default for `UserPttSettings.AnswerWindow` — how long after incoming voice ends a hands-free reply may start |
-| `PttMuteDurations` | 15 min, 1 h, 8 h | The mute-for-a-period options `PttMuteMenu` offers on an Active Chats badge |
+| `PttMuteDurations` | 15 min, 1 h, 8 h | The mute-for-a-period options `PttMuteMenu` offers on an Active Chats badge, and `PttHushDurationSettings` in the PTT settings page |
+| `PttHushDurationDefault` | 15 min | Default for `UserPttSettings.HushDuration` — how long a hush gesture mutes every armed chat |
 | `PttTransmitStartupTimeout` | 8 s | Whole-boot budget for an Apple PTT transmit |
 | `PttPreRollCapacity` | 8 s | Pre-roll ring size; must stay ≤ `AppleAudioCapture`'s 10 s output buffer |
 | `PttPreRollMinDuration` | 0.4 s | Below this the pre-roll isn't drained |

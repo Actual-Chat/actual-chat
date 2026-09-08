@@ -18,6 +18,11 @@ public abstract class PttPlatform
     public virtual void OnWakeIgnored(ChatId chatId, PttWakeIgnoreReason reason)
         => OnHeadlessTeardown();
 
+    public virtual void OnHushed()
+    {
+        // A hush ended this session's reason to exist: a headless host releases what the wake grabbed.
+    }
+
     // Persisted across process restarts, so a transmit from a cold start still has an answer window.
     public virtual (ChatId ChatId, Moment At)? LastWake => null;
 

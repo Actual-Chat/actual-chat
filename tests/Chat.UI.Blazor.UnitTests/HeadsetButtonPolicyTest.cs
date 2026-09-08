@@ -30,7 +30,18 @@ public class HeadsetButtonPolicyTest
 
     [Fact]
     public void AnEmptyArmedSetLeavesTheWindowClosed()
-        => GetState(new UserPttSettings(), RecentVoiceInA, pttChatIds: []).HasAnswerWindow.Should().BeFalse();
+    {
+        // act
+        var state = GetState(new UserPttSettings(), RecentVoiceInA, pttChatIds: []);
+
+        // assert
+        state.HasAnswerWindow.Should().BeFalse();
+        state.HasArmedChats.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ArmedChatsAreReportedWhenTheSetIsNonEmpty()
+        => GetState(new UserPttSettings(), RecentVoiceInA).HasArmedChats.Should().BeTrue();
 
     [Fact]
     public void AlwaysOnGesturesNeverOpenTheWindow()
@@ -99,15 +110,15 @@ public class HeadsetButtonPolicyTest
     [InlineData(HeadsetKey.PlayPause)]
     public void StartsAReplyInsideTheWindow(HeadsetKey key)
         => HeadsetButtonPolicy
-            .Decide(key, isDown: true, repeatCount: 0, isEnabled: true,
-                hasAnswerWindow: true, isReplyHot: false, isPracticeMode: false)
+            .Decide(key, isDown: true, repeatCount: 0, isLongPress: false, isEnabled: true,
+                hasAnswerWindow: true, isReplyHot: false, isPracticeMode: false, hasArmedChats: true)
             .Should().Be(HeadsetButtonAction.StartReply);
 
     [Fact]
     public void StopsAHotReply()
         => HeadsetButtonPolicy
-            .Decide(HeadsetKey.Hook, true, 0, isEnabled: true,
-                hasAnswerWindow: true, isReplyHot: true, isPracticeMode: false)
+            .Decide(HeadsetKey.Hook, true, 0, isLongPress: false, isEnabled: true,
+                hasAnswerWindow: true, isReplyHot: true, isPracticeMode: false, hasArmedChats: true)
             .Should().Be(HeadsetButtonAction.StopReply);
 
     [Fact]
@@ -115,30 +126,30 @@ public class HeadsetButtonPolicyTest
     {
         // The window can expire mid-reply; the second press must still be able to close the mic.
         HeadsetButtonPolicy
-            .Decide(HeadsetKey.Hook, true, 0, isEnabled: true,
-                hasAnswerWindow: false, isReplyHot: true, isPracticeMode: false)
+            .Decide(HeadsetKey.Hook, true, 0, isLongPress: false, isEnabled: true,
+                hasAnswerWindow: false, isReplyHot: true, isPracticeMode: false, hasArmedChats: true)
             .Should().Be(HeadsetButtonAction.StopReply);
     }
 
     [Fact]
     public void PassesThroughOutsideTheWindow()
         => HeadsetButtonPolicy
-            .Decide(HeadsetKey.Hook, true, 0, isEnabled: true,
-                hasAnswerWindow: false, isReplyHot: false, isPracticeMode: false)
+            .Decide(HeadsetKey.Hook, true, 0, isLongPress: false, isEnabled: true,
+                hasAnswerWindow: false, isReplyHot: false, isPracticeMode: false, hasArmedChats: true)
             .Should().Be(HeadsetButtonAction.PassThrough);
 
     [Fact]
     public void PassesThroughWhenDisabled()
         => HeadsetButtonPolicy
-            .Decide(HeadsetKey.Hook, true, 0, isEnabled: false,
-                hasAnswerWindow: true, isReplyHot: false, isPracticeMode: false)
+            .Decide(HeadsetKey.Hook, true, 0, isLongPress: false, isEnabled: false,
+                hasAnswerWindow: true, isReplyHot: false, isPracticeMode: false, hasArmedChats: true)
             .Should().Be(HeadsetButtonAction.PassThrough);
 
     [Fact]
     public void PassesThroughOnAnUnknownKey()
         => HeadsetButtonPolicy
-            .Decide(HeadsetKey.Unknown, true, 0, isEnabled: true,
-                hasAnswerWindow: true, isReplyHot: false, isPracticeMode: false)
+            .Decide(HeadsetKey.Unknown, true, 0, isLongPress: false, isEnabled: true,
+                hasAnswerWindow: true, isReplyHot: false, isPracticeMode: false, hasArmedChats: true)
             .Should().Be(HeadsetButtonAction.PassThrough);
 
     [Fact]
@@ -147,23 +158,23 @@ public class HeadsetButtonPolicyTest
         // Handling both edges of one press would open the mic and immediately close it:
         // by the time ACTION_UP arrives the reply is hot, so the policy would map it to StopReply.
         HeadsetButtonPolicy
-            .Decide(HeadsetKey.Hook, isDown: false, 0, true,
-                hasAnswerWindow: true, isReplyHot: true, isPracticeMode: false)
+            .Decide(HeadsetKey.Hook, isDown: false, 0, isLongPress: false, true,
+                hasAnswerWindow: true, isReplyHot: true, isPracticeMode: false, hasArmedChats: true)
             .Should().Be(HeadsetButtonAction.PassThrough);
     }
 
     [Fact]
     public void IgnoresAutoRepeat()
         => HeadsetButtonPolicy
-            .Decide(HeadsetKey.Hook, true, repeatCount: 1, isEnabled: true,
-                hasAnswerWindow: true, isReplyHot: false, isPracticeMode: false)
+            .Decide(HeadsetKey.Hook, true, repeatCount: 1, isLongPress: false, isEnabled: true,
+                hasAnswerWindow: true, isReplyHot: false, isPracticeMode: false, hasArmedChats: true)
             .Should().Be(HeadsetButtonAction.PassThrough);
 
     [Fact]
     public void PracticeModeNeverTransmits()
         => HeadsetButtonPolicy
-            .Decide(HeadsetKey.Hook, isDown: true, repeatCount: 0, isEnabled: true,
-                hasAnswerWindow: true, isReplyHot: false, isPracticeMode: true)
+            .Decide(HeadsetKey.Hook, isDown: true, repeatCount: 0, isLongPress: false, isEnabled: true,
+                hasAnswerWindow: true, isReplyHot: false, isPracticeMode: true, hasArmedChats: true)
             .Should().Be(HeadsetButtonAction.PassThrough);
 
     [Fact]
@@ -172,10 +183,38 @@ public class HeadsetButtonPolicyTest
         // A mic opened before the panel was entered must stay closable: refusing to close it is
         // the unsafe direction, and stopping a transmission can't break the "won't transmit" promise.
         HeadsetButtonPolicy
-            .Decide(HeadsetKey.Hook, isDown: true, repeatCount: 0, isEnabled: true,
-                hasAnswerWindow: true, isReplyHot: true, isPracticeMode: true)
+            .Decide(HeadsetKey.Hook, isDown: true, repeatCount: 0, isLongPress: false, isEnabled: true,
+                hasAnswerWindow: true, isReplyHot: true, isPracticeMode: true, hasArmedChats: true)
             .Should().Be(HeadsetButtonAction.StopReply);
     }
+
+    [Fact]
+    public void ALongPressHushesWhileAChatIsArmed()
+        => HeadsetButtonPolicy
+            .Decide(HeadsetKey.Hook, isDown: true, repeatCount: 1, isLongPress: true, isEnabled: true,
+                hasAnswerWindow: false, isReplyHot: false, isPracticeMode: false, hasArmedChats: true)
+            .Should().Be(HeadsetButtonAction.Hush);
+
+    [Fact]
+    public void ALongPressPassesThroughWithNothingArmedOrInPractice()
+    {
+        // act + assert
+        HeadsetButtonPolicy
+            .Decide(HeadsetKey.Hook, true, 1, isLongPress: true, isEnabled: true,
+                hasAnswerWindow: true, isReplyHot: false, isPracticeMode: false, hasArmedChats: false)
+            .Should().Be(HeadsetButtonAction.PassThrough);
+        HeadsetButtonPolicy
+            .Decide(HeadsetKey.Hook, true, 1, isLongPress: true, isEnabled: true,
+                hasAnswerWindow: true, isReplyHot: false, isPracticeMode: true, hasArmedChats: true)
+            .Should().Be(HeadsetButtonAction.PassThrough);
+    }
+
+    [Fact]
+    public void RepeatsThatAreNotALongPressStillPassThrough()
+        => HeadsetButtonPolicy
+            .Decide(HeadsetKey.Hook, true, 3, isLongPress: false, isEnabled: true,
+                hasAnswerWindow: true, isReplyHot: false, isPracticeMode: false, hasArmedChats: true)
+            .Should().Be(HeadsetButtonAction.PassThrough);
 
     // Private methods
 
@@ -199,8 +238,10 @@ public class HeadsetButtonPolicyTest
             HeadsetKey.PlayPause,
             isDown: true,
             repeatCount: 0,
+            isLongPress: false,
             state.IsEnabled,
             state.HasAnswerWindow,
             state.IsReplyHot,
-            state.IsPracticeMode);
+            state.IsPracticeMode,
+            state.HasArmedChats);
 }

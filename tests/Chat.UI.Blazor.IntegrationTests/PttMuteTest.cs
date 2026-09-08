@@ -56,6 +56,82 @@ public sealed class PttMuteTest(ChatAppHostFixture fixture, ITestOutputHelper @o
         (await hub.ChatAudioUI.GetMutedPttChatIds(CancellationToken.None)).Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task HushShouldStopListeningCloseTheWindowAndMuteEveryArmedChat()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var chatId = await ArmPttChat(tester, hub);
+        var chatAudioUI = hub.ChatAudioUI;
+        await chatAudioUI.SetListeningState(chatId, true);
+        hub.VoiceActivityUI.NoteIncomingVoice(chatId, hub.Clocks.ServerClock.Now);
+
+        // act
+        var hushedChatIds = await chatAudioUI.HushPtt(CancellationToken.None);
+
+        // assert
+        hushedChatIds.Should().Equal(chatId);
+        (await chatAudioUI.GetListeningChatIds()).Should().NotContain(chatId);
+        hub.VoiceActivityUI.SnapshotLastIncomingVoiceAt().Should().NotContainKey(chatId, "the answer window closes");
+        (await chatAudioUI.GetMutedPttChatIds(CancellationToken.None)).Should().Equal(chatId);
+        var countdown = await chatAudioUI.GetPttMuteCountdown(chatId, CancellationToken.None);
+        countdown!.Duration.Should().Be(TimeSpan.FromMinutes(15), "HushDuration defaults to 15 minutes");
+    }
+
+    [Fact]
+    public async Task IsAnyPlayingShouldBeFalseWithNoPlayer()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var chatId = await ArmPttChat(tester, hub);
+
+        // act + assert: no listening or replay player has ever been created for this chat, so
+        // there's nothing to play - starting a real player needs the audio pipeline, out of
+        // reach for this harness.
+        hub.ChatAudioUI.IsAnyPlaying([chatId]).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task HushShouldReturnOnlyChatsWhoseDeadlineItExtended()
+    {
+        // arrange: an armed, unmuted chat keeps HushPtt past its early "nothing armed" return -
+        // the other two are already muted, one for less and one for more than HushDuration.
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var armedChatId = await ArmPttChat(tester, hub);
+        var shortMutedChatId = await ArmPttChat(tester, hub);
+        var longMutedChatId = await ArmPttChat(tester, hub);
+        var chatAudioUI = hub.ChatAudioUI;
+        var now = hub.Clocks.ServerClock.Now;
+        await hub.UserSettingsUI.UserPttSettings().Update(x => x
+            .WithPttChatMuted(shortMutedChatId, now, now + TimeSpan.FromMinutes(5))
+            .WithPttChatMuted(longMutedChatId, now, now + TimeSpan.FromHours(8)));
+
+        // act
+        var hushedChatIds = await chatAudioUI.HushPtt(CancellationToken.None);
+
+        // assert: the hush (HushDuration defaults to 15 min) newly mutes the armed chat and
+        // extends the 5-min mute past its deadline, but the 8h mute already outlasts it.
+        hushedChatIds.Should().BeEquivalentTo([armedChatId, shortMutedChatId]);
+    }
+
+    [Fact]
+    public async Task HushWithNoArmedChatShouldBeANoOp()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+
+        // act + assert
+        (await hub.ChatAudioUI.HushPtt(CancellationToken.None)).Should().BeEmpty();
+    }
+
     // Private methods
 
     private static async Task<ChatId> ArmPttChat(BlazorTester tester, AppUIHub hub)
