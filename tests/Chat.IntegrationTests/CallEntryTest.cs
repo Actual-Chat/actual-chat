@@ -54,6 +54,41 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
     }
 
     [Fact]
+    public async Task AFailedCallShouldLeaveNoLiveActivityBehind()
+    {
+        // The caller is registered as a recorder the moment they dial, so that the ring keeps the
+        // session alive. Once the call is over that registration must be gone from every signal the
+        // chat list and the call button read - otherwise a call nobody answered reads as "talking"
+        // and the button stays hidden. The banner is not part of this: it lives on its own TTL.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = (LiveSessionsBackend)tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var front = tester.AppServices.GetRequiredService<ILiveSessions>();
+        var session = tester.Session;
+
+        // act
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.DeclineCall(chatId, alice.Id, default);
+
+        // assert
+        (await backend.GetState(chatId, default)).Should().BeNull();
+        (await front.HasRecorder(session, chatId, default)).Should().BeFalse();
+        (await front.GetAudioStreamingAuthorIds(session, chatId, default)).Should().BeEmpty();
+        (await front.GetCallStatus(session, chatId, default)).Should().Be(CallStatus.Declined);
+
+        // act - the caller's own hang-up has to leave the same clean slate
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.CancelCall(chatId, bob.Id, default);
+
+        // assert
+        (await backend.GetState(chatId, default)).Should().BeNull();
+        (await front.HasRecorder(session, chatId, default)).Should().BeFalse();
+        (await front.GetAudioStreamingAuthorIds(session, chatId, default)).Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task ConcurrentClosersShouldWriteOneEntryPerCall()
     {
         // Two closers can decide the same call is over at the same instant - the caller's hang-up and

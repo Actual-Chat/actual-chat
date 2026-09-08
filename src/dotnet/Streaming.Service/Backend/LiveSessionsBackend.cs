@@ -1309,10 +1309,14 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         using var _ = Computed.BeginIsolation();
         using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
 
+        // Everything derived from the dropped participant map is invalidated with it: HasRecorder
+        // otherwise self-heals on a delay, reading the dial-time caller as a talker after the call.
         await _redisScope.Remove(chatId.Value).ConfigureAwait(false);
         await _participants.RemoveHashMap(chatId.Value).ConfigureAwait(false);
         await _invites.RemoveHashMap(chatId.Value).ConfigureAwait(false);
         InvalidateState(chatId);
+        InvalidateHasRecorder(chatId);
+        InvalidateListParticipants(chatId);
     }
 
     private Task EnqueueLiveNotification(
