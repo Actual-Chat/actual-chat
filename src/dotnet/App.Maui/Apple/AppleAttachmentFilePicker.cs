@@ -53,11 +53,19 @@ public partial class AppleAttachmentFilePicker(IServiceProvider services) : Maui
 
     private static PHPickerConfiguration GetConfiguration(string acceptTypes)
     {
-        var filter = MediaTypeExt.IsImage(acceptTypes) ? PHPickerFilter.ImagesFilter : PHPickerFilter.VideosFilter;
-        return new PHPickerConfiguration(PHPhotoLibrary.SharedPhotoLibrary) {
+        var isImage = MediaTypeExt.IsImage(acceptTypes);
+        var configuration = new PHPickerConfiguration(PHPhotoLibrary.SharedPhotoLibrary) {
             SelectionLimit = MaxSelectionCount,
-            Filter = filter,
+            Filter = isImage ? PHPickerFilter.ImagesFilter : PHPickerFilter.VideosFilter,
         };
+#if MACOS
+        // The automatic mode's H.264 rendition of an HEVC camera video has no loader on the macOS
+        // picker ("No loader block available for type public.mpeg-4"); the original loads fine,
+        // and AppleVideoTranscoder converts it at upload time, as on iOS
+        if (!isImage)
+            configuration.PreferredAssetRepresentationMode = PHPickerConfigurationAssetRepresentationMode.Current;
+#endif
+        return configuration;
     }
 
     // Nested types
