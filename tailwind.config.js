@@ -331,6 +331,7 @@ module.exports = {
         'bg-07': 'var(--background-07)',
         'bg-08': 'var(--background-08)',
         'modal': 'var(--modal-border)',
+        'modal-input': 'var(--modal-input-border)',
         'banner-default': 'var(--border-banner-default)',
         'banner-success': 'var(--border-banner-success)',
         'banner-info': 'var(--border-banner-info)',
@@ -355,6 +356,7 @@ module.exports = {
         'replay': 'var(--background-replay)',
         'recording-countdown': 'var(--background-recording-countdown)',
         'modal': 'var(--modal-background)',
+        'modal-input': 'var(--modal-input-bg)',
       },
     },
     screens: {

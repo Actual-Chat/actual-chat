@@ -23,6 +23,24 @@
 .share-modal .embedded-message-editor {
     @apply border-b-0;
 }
+
+/* Modal inputs (top search box + bottom embedded comment): matched height, 0.5rem
+   corners, and a flat fill. Theme values live in colors.css (--modal-input-*). */
+.share-modal .embedded-message-editor.transparent-editor,
+.share-modal .embedded-message-editor.transparent-editor input {
+    @apply h-10;
+}
+.share-modal .search-box input,
+.share-modal .embedded-message-editor.transparent-editor input {
+    @apply rounded-lg;
+    @apply border border-modal-input;
+    @apply bg-modal-input;
+}
+/* Keep the focus highlight — the rule above out-specifies the component's own :focus. */
+.share-modal .search-box input:focus,
+.share-modal .embedded-message-editor.transparent-editor input:focus {
+    @apply border-primary;
+}
 .share-modal .link-info {
     @apply flex-x gap-x-4;
     @apply border rounded-lg border-separator;
