@@ -7,12 +7,12 @@ namespace ActualChat.Chat.UI.Blazor.UnitTests;
 public class CallCardFormatTest
 {
     [Theory]
-    [InlineData(CallOutcome.NoAnswer, true, "icon-phone-take", false)]
-    [InlineData(CallOutcome.NoAnswer, false, "icon-phone-missed", true)]
-    [InlineData(CallOutcome.Declined, true, "icon-phone-off", false)]
-    [InlineData(CallOutcome.Declined, false, "icon-phone-off", false)]
-    [InlineData(CallOutcome.Canceled, true, "icon-phone-off", false)]
-    [InlineData(CallOutcome.Canceled, false, "icon-phone-missed", true)]
+    [InlineData(CallOutcome.NoAnswer, true, "icon-call-arrow-out", false)]
+    [InlineData(CallOutcome.NoAnswer, false, "icon-call-arrow-in", true)]
+    [InlineData(CallOutcome.Declined, true, "icon-call-arrow-out", false)]
+    [InlineData(CallOutcome.Declined, false, "icon-call-arrow-in", false)]
+    [InlineData(CallOutcome.Canceled, true, "icon-call-cross", false)]
+    [InlineData(CallOutcome.Canceled, false, "icon-call-arrow-in", true)]
     public void EveryCellOfTheWordingTableShouldResolve(
         CallOutcome outcome, bool isCaller, string expectedIcon, bool expectedCallBack)
     {

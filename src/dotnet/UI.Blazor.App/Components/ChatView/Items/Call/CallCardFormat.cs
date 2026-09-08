@@ -11,19 +11,21 @@ public static class CallCardFormat
 {
     public static (string Icon, string Title, string? Hint, bool IsCallBack) Get(
         CallOutcome outcome, bool isCaller, IStringLocalizer l)
-        // icon-call-out is the intended glyph here (ships on fix/update-ui-287, not yet merged);
-        // icon-phone-take substitutes until that lands - its own artwork already reads as "outgoing".
+        // Three glyphs, drawn from the design: the arrow carries the direction (there is no separate
+        // direction mark in the card), and the cross is reserved for a call its own caller dropped.
         => outcome switch {
             CallOutcome.NoAnswer when isCaller =>
-                ("icon-phone-take", l.Call_Entry_Outgoing, l.Call_Entry_NoAnswer, false),
+                ("icon-call-arrow-out", l.Call_Entry_Outgoing, l.Call_Entry_NoAnswer, false),
             CallOutcome.NoAnswer =>
-                ("icon-phone-missed", l.Call_Entry_Missed, l.Call_Entry_TapToCallBack, true),
+                ("icon-call-arrow-in", l.Call_Entry_Missed, l.Call_Entry_TapToCallBack, true),
+            CallOutcome.Declined when isCaller =>
+                ("icon-call-arrow-out", l.Call_Entry_Declined, null, false),
             CallOutcome.Declined =>
-                ("icon-phone-off", l.Call_Entry_Declined, null, false),
+                ("icon-call-arrow-in", l.Call_Entry_Declined, null, false),
             CallOutcome.Canceled when isCaller =>
-                ("icon-phone-off", l.Call_Entry_Canceled, null, false),
+                ("icon-call-cross", l.Call_Entry_Canceled, null, false),
             CallOutcome.Canceled =>
-                ("icon-phone-missed", l.Call_Entry_Missed, l.Call_Entry_TapToCallBack, true),
-            _ => ("icon-phone-call", l.Call_Entry_Ended, null, false),
+                ("icon-call-arrow-in", l.Call_Entry_Missed, l.Call_Entry_TapToCallBack, true),
+            _ => ("icon-call-arrow-out", l.Call_Entry_Ended, null, false),
         };
 }
