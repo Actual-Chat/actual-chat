@@ -1091,8 +1091,6 @@
 
   "Ptt_UseOnThisDevice": "Push-to-Talk auf diesem Gerät verwenden",
   "Ptt_UseOnThisDeviceCaption": "Wenn aus, weckt dieses Gerät nicht, spielt nichts ab und überträgt keine Push-to-Talk-Sprache.",
-  "Ptt_DeviceEnabledToast": "Push-to-Talk ist jetzt auf diesem Gerät aktiv.",
-  "Ptt_NotOnThisDevice": "Nicht auf diesem Gerät",
   "Ptt_ChatsTopic": "Push-to-Talk-Chats",
   "Ptt_NoPttChats": "Noch kein Chat nutzt Push-to-Talk – der Inhaber schaltet es im Chat selbst ein.",
   "Ptt_AvailableTopic": "Verfügbar",

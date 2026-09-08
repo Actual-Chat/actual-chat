@@ -1091,8 +1091,6 @@
 
   "Ptt_UseOnThisDevice": "Bu cihazda Bas-Konuş kullan",
   "Ptt_UseOnThisDeviceCaption": "Kapalıyken bu cihaz Bas-Konuş sesiyle uyanmaz, ses çalmaz ve iletmez.",
-  "Ptt_DeviceEnabledToast": "Bas-Konuş artık bu cihazda etkin.",
-  "Ptt_NotOnThisDevice": "Bu cihazda değil",
   "Ptt_ChatsTopic": "Bas-Konuş sohbetleri",
   "Ptt_NoPttChats": "Henüz hiçbir sohbet Bas-Konuş kullanmıyor - sohbetin sahibi bunu sohbetin içinde açar.",
   "Ptt_AvailableTopic": "Kullanılabilir",

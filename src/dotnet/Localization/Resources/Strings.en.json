@@ -1278,8 +1278,6 @@
   // is a section heading on this page and a *Caption key the grey line under a toggle.
   "Ptt_UseOnThisDevice": "Use Push-to-talk on this device",
   "Ptt_UseOnThisDeviceCaption": "When off, this device won't wake, play, or transmit Push-to-talk voice.",
-  "Ptt_DeviceEnabledToast": "Push-to-talk is now active on this device.",
-  "Ptt_NotOnThisDevice": "Not on this device",
   "Ptt_ChatsTopic": "Push-to-talk chats",
   "Ptt_NoPttChats": "No chat uses Push-to-talk yet - its owner turns it on in the chat itself.",
   "Ptt_AvailableTopic": "Available",

@@ -1091,8 +1091,6 @@
 
   "Ptt_UseOnThisDevice": "Používat Stiskni a mluv na tomto zařízení",
   "Ptt_UseOnThisDeviceCaption": "Když je vypnuto, toto zařízení se nebude budit, přehrávat ani vysílat hlas přes Stiskni a mluv.",
-  "Ptt_DeviceEnabledToast": "Stiskni a mluv je teď na tomto zařízení aktivní.",
-  "Ptt_NotOnThisDevice": "Ne na tomto zařízení",
   "Ptt_ChatsTopic": "Chaty v režimu Stiskni a mluv",
   "Ptt_NoPttChats": "Zatím žádný chat režim Stiskni a mluv nepoužívá — zapíná ho jeho vlastník přímo v chatu.",
   "Ptt_AvailableTopic": "Dostupné",
