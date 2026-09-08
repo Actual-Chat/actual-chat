@@ -13,6 +13,8 @@ two-user scenarios.
 For server lifecycle / rebuild concerns (stopping, restarting, reading
 build errors), see `/server-loop`. They're meant to be used together: the
 loop manages the .NET server; this skill manages the browser side.
+When subagents are involved, the main agent arbitrates access to both —
+see **Coordinating subagents** in `/server-loop`.
 
 ## TL;DR
 
@@ -134,6 +136,18 @@ Each `chrome-devtools-mcp` instance is hard-bound to one Chrome via
 session, so two independent Voxt logins → two Chromes → two MCPs. The
 `isolatedContext` parameter on `new_page` does **not** isolate cookies
 when MCP is connected to an existing Chrome — verified empirically.
+
+### One agent per Chrome
+
+The two MCPs exist to run two *users*, not two *agents*. An MCP session's
+selected page and its `take_snapshot` uids are session state shared by
+every caller, and cookies belong to the Chrome profile — so two agents on
+one MCP clobber each other's page selection and sign each other out.
+
+So when the work is split across subagents: one agent per Chrome, named
+explicitly in its prompt, and no subagent restarts the server without an
+explicit grant. The main agent arbitrates — see **Coordinating
+subagents** in `/server-loop` for the grant format and the sequencing.
 
 ### Combine the MCP with Playwright when you need richer data
 

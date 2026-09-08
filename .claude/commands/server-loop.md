@@ -13,6 +13,11 @@ For browser-side interaction (sign-in flows, debugUI helpers, multi-Chrome
 setup), see `/debug-ui` — `server-loop` and the chrome-devtools MCP rig
 are typically running together.
 
+**If any of this work is being split across subagents, read
+"Coordinating subagents" below before dispatching the first one.** The
+loop and the two Chromes are shared single-instance resources with no
+arbitration of their own.
+
 **Do NOT use `/server-start`, `/server-restart`, or `/server-stop` while
 `server-loop` is running** — the loop owns the dotnet process and will
 fight you. To restart the running .NET server, use one of:
@@ -259,6 +264,70 @@ services are wired up in `docker-compose.yml`
 in Claude as `mcp__chrome1__*` / `mcp__chrome2__*` (the older
 `mcp__chrome-devtools-{1,2}__*` names still resolve too).
 Setup details and usage live in `/debug-ui`.
+
+## Coordinating subagents
+
+`server-loop` and the two Chromes are **shared, single-instance
+resources**. Nothing in the loop or in the MCPs arbitrates access — there
+is no lease, no owner field, no per-caller isolation. So when the work is
+split across subagents, the main agent is the arbiter, and it holds that
+role for the whole session.
+
+**The rule:** at most one agent at a time may restart, rebundle or
+hard-restart the server, and each Chrome belongs to at most one agent at
+a time. The main agent grants those rights explicitly, for a bounded
+window, and takes them back before granting them again.
+
+### What collides
+
+| Resource | Why it can't be shared |
+|----------|------------------------|
+| The .NET process | Any key except `j`/`h`/`k`, plus `/health/stop` and `debugUI.stopServer()`, all stop it. One agent's restart kills the server another is mid-run on — and the second gets no signal that it happened |
+| `tmp/server-loop-rebundle`, `tmp/server-loop-hard-restart` | Global flag files with no writer identity. A hard restart purges `artifacts/{obj,bin}/App.Wasm` for everyone |
+| The six step logs | Wiped at the start of each loop iteration. A restart doesn't only interrupt the other agent's run, it destroys the evidence that run had already produced |
+| An MCP session | Selected page and `take_snapshot` uids are per-MCP-session state, not per-caller. Two agents on `chrome1` clobber each other's page selection, and a uid from one agent's snapshot resolves against the other's DOM |
+| A Chrome profile's cookies | Per profile, not per MCP session. A second `debugUI.signIn(...)` on the same Chrome signs the first agent's user out |
+
+Capacity follows from that table: **two browser-side subagents at most**
+— one on `chrome1` (:9222), one on `chrome2` (:9223) — plus, if useful, a
+third that only reads logs and touches nothing else.
+
+### How to grant a window
+
+State all four of these in the subagent's prompt:
+
+- **Which Chrome.** `mcp__chrome1__*` **or** `mcp__chrome2__*` — name it,
+  and say the other one is off-limits.
+- **Whether it may restart the server.** Default **no**. An agent that
+  may not restart also may not call `debugUI.stopServer()`, GET
+  `/health/stop`, or write `tmp/server-loop-rebundle` or
+  `tmp/server-loop-hard-restart` — those are all the same right.
+- **Which user it signs in as**, so two agents don't fight over one
+  profile's cookies.
+- **What ends the window**: the artifact it must produce. Traces, log
+  excerpts and screenshots go to files under `tmp/` at paths named in the
+  prompt, not into the reply.
+
+A subagent does not inherit this file. If it needs the rig itself —
+`debugUI` helpers, render modes, hard-reload — tell it to read
+`.claude/commands/debug-ui.md`, or paste the specific commands into its
+prompt.
+
+### Sequencing that works
+
+1. The main agent edits code and triggers one restart. No subagent is
+   running at this point.
+2. It waits for `Step 3/3 (server-run)` and a 200 from the app URL (see
+   **Reachability** below).
+3. It dispatches one or two browser agents, each pinned to its own Chrome
+   and its own test user, neither allowed to restart.
+4. They report back files; the main agent reads them.
+5. Only then the next edit and the next restart. Back to 1.
+
+Steps 3 and 4 are the only place parallelism belongs here. **A build is a
+barrier — never dispatch across one.** If a subagent finds it needs a
+code change to proceed, it says so and stops; it does not edit and
+rebuild on its own.
 
 ## Where to look
 
