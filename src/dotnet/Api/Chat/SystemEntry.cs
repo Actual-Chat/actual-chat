@@ -11,4 +11,12 @@ namespace ActualChat.Chat;
 [DataContract, MessagePackObject]
 [Union(0, typeof(MembersChangedEntry))]
 [Union(1, typeof(NotifyMembersEntry))]
-public abstract partial record SystemEntry(ChatEntryId Id, long Version = 0) : ChatEntry(Id, Version);
+[Union(2, typeof(UnsupportedSystemEntry))]
+public abstract partial record SystemEntry(ChatEntryId Id, long Version = 0)
+    : ChatEntry(Id, Version), IForwardCompatibleUnion<SystemEntry>
+{
+    static SystemEntry? IForwardCompatibleUnion<SystemEntry>.NewUnsupported(
+        int tag, ref MessagePackReader payload, MessagePackSerializerOptions options)
+        // Under this root every tag is a system entry, so ChatEntry's classification doesn't apply.
+        => (SystemEntry)NewUnsupported(true, ref payload, options);
+}

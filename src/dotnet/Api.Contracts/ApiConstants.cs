@@ -8,6 +8,10 @@ public static class ApiConstants
     public static readonly string FullVersionString = typeof(ApiConstants).Assembly.GetInformationalVersion() ?? "0.0+unknown"; // X.Y.Z+123abc
     public static readonly string DisplayVersionString = "v" + FullVersionString.Replace('+', ' ');
     public static readonly Version Version = Version.Parse(VersionString);
+
+    // The last release without ForwardCompatibleUnionFormatter. A peer at or below it treats an
+    // entry kind added later as fatal, so IChats routes it to the filtering tile methods.
+    public const string LastVersionWithoutUnionTolerance = "2.18.9999";
     // X.Y.Z, i.e. the version the stores publish - unlike Version, which is always X.Y.0
     public static readonly Version BuildVersion = VersionExt.ParseBuildVersion(FullVersionString);
 
