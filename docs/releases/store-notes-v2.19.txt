@@ -1,0 +1,8 @@
+Search your own messages, see more of Voxt in your language, and enjoy a smoother phone experience.
+• "My messages" search filter
+• Native dialogs, notifications and Live Activity localized
+• Attention pings first on the Mentions tab, in red
+• Reaction notifications name the reactor and show the emoji
+• Smoother side panel, 120 Hz on ProMotion iPhones
+• Chats you've opened before render offline
+• Scrolling fixes and dozens of small improvements
