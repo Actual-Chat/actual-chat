@@ -54,6 +54,34 @@ docker compose up -d --build --wait
 > on. Run `b` with no arguments for an interactive menu, or `b tree -o` for the
 > full command list.
 
+### Querying the databases
+
+Every service DbContext calls `UseSnakeCaseNaming()` in `OnModelCreating`
+(`Db/ModelBuilderExt.cs`), so the C# model is PascalCase but **the SQL is
+snake_case**: `[Table("Devices")]` with a `DeviceType Type` property becomes table
+`devices`, column `type`.
+
+Postgres treats quoted identifiers as case-sensitive, so a hand-written
+`SELECT "Type" FROM "Devices"` fails with *relation/column does not exist* and the
+table looks empty or missing. Always query snake_case:
+
+```sql
+SELECT type, accessed_at, user_id FROM devices;
+```
+
+Database names follow `ac_{instance_}{context}` (see `DefaultDb` in App.Server's
+`appsettings.Development.json`). So `ac_ws2_notification` is instance `ws2`,
+context `notification` — and `ac_ws2_2_notification` is a *different* instance
+`ws2_2`, not a variant of the same one. The `ShardScheme` N=12
+(`Backend/Sharding/ShardScheme.cs`) is logical command routing only: there is one
+database per (instance, context), not twelve shard databases.
+
+`psql` lives inside the infra container, not on the host:
+
+```bash
+docker exec -e PGPASSWORD=postgres actual-chat-infra-postgres-1 psql -U postgres -d <db>
+```
+
 ## Building
 
 Use the CI solution filter to exclude MAUI projects (unless you have MAUI workloads installed):
