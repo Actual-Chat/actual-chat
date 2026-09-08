@@ -58,7 +58,17 @@ public class AndroidCarConnection : SafeDisposableBase, ICarConnection
         // ReadState blocks on a cross-process content provider call, and the callers that matter
         // most - audio focus renewal, recording and playback start - are on threads where that costs.
         var state = await Task.Run(ReadState, cancellationToken).ConfigureAwait(false);
-        return state == ConnectionTypeProjection;
+        var isProjectionActive = state == ConnectionTypeProjection;
+        _log.LogInformation("IsProjectionActive: provider state {State} -> {IsProjectionActive}",
+            state, isProjectionActive);
+        return isProjectionActive;
+    }
+
+    public void InvalidateProjectionState()
+    {
+        _log.LogInformation("InvalidateProjectionState");
+        using (Invalidation.Begin())
+            _ = IsProjectionActive(default);
     }
 
     // Private methods
@@ -69,24 +79,29 @@ public class AndroidCarConnection : SafeDisposableBase, ICarConnection
             var uri = Uri.Parse(ConnectionUri)!;
             using var cursor = Platform.AppContext.ContentResolver?.Query(
                 uri, [StateColumn], null, null, null);
-            if (cursor == null || !cursor.MoveToNext())
+            if (cursor == null || !cursor.MoveToNext()) {
+                _log.LogWarning("Car connection provider returned {Result}", cursor == null ? "null" : "no rows");
                 return 0;
+            }
 
             var index = cursor.GetColumnIndex(StateColumn);
             return index < 0 ? 0 : cursor.GetInt(index);
         }
         catch (Exception e) {
             // A missing or unreadable provider must never stop a recording.
-            _log.LogDebug(e, "Couldn't read the car connection state");
+            _log.LogWarning(e, "Couldn't read the car connection state");
             return 0;
         }
     }
 
     // Nested types
 
-    private sealed class UpdateReceiver(ICarConnection owner) : BroadcastReceiver
+    private sealed class UpdateReceiver(AndroidCarConnection owner) : BroadcastReceiver
     {
         public override void OnReceive(Context? context, Intent? intent)
-            => owner.InvalidateProjectionState();
+        {
+            owner._log.LogInformation("Car connection broadcast: {Action}", intent?.Action);
+            owner.InvalidateProjectionState();
+        }
     }
 }

@@ -17,12 +17,17 @@ public partial class ChatAudioUI
         var isProjectionActive = await carConnection
             .IsProjectionActive(cancellationToken)
             .ConfigureAwait(false);
-        if (!isProjectionActive)
+        if (!isProjectionActive) {
+            Log.LogInformation("GetCarAudioRoute: projection inactive -> {Route}", CarAudioRoute.Default);
             return CarAudioRoute.Default;
+        }
 
         var settings = await UserSettingsUI.UserCarAudioSettings()
             .Get(cancellationToken)
             .ConfigureAwait(false);
-        return CarAudioRoute.For(true, settings);
+        var route = CarAudioRoute.For(true, settings);
+        Log.LogInformation("GetCarAudioRoute: projection active, mic {Microphone}, output {Output} -> {Route}",
+            settings.Microphone, settings.Output, route);
+        return route;
     }
 }
