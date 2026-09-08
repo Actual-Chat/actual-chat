@@ -137,7 +137,7 @@ Two rules on top:
 
 ### 6. Update the board, then persist the link
 
-Every mutation the skill performs is one of these five:
+Every mutation the skill performs is one of these four:
 
 ```bash
 # a. assignee (step 4)
@@ -158,7 +158,8 @@ git config "branch.$BRANCH.issue" <N>
 `item-edit` exits 0 on a wrong option id and changes nothing, so **verify**: re-run
 step 4's query and check `fieldValueByName.name` is the column you meant.
 
-**Still on `dev`?** There is no branch to write the link to. `AskUserQuestion`:
+**Still on `dev`?** Links are never stored on `dev`, `master` or `release/*`
+— a task's link belongs to the branch that will carry its PR. `AskUserQuestion`:
 **create the branch now** (first option, with the proposed name) or **stay on
 dev**. The name is `fix/<slug>` for a Bug, `feat/<slug>` for a Feature or Task,
 never `feature/…`; the slug is the title lowercased, non-alphanumerics
