@@ -644,6 +644,8 @@
   "Banner_ChatCopiedToPlace": "このチャットはプレイスにコピーされました。",
   "Banner_PttAllow": "このチャットはプッシュ・トゥ・トークモードです。この端末で許可しますか？",
   "Banner_PttUseDevice": "このチャットではプッシュ・トゥ・トークが有効です。この端末で使いますか？",
+  "Banner_PttMuted": "プッシュ・トゥ・トークはミュート中（残り",
+  "Banner_PttUnmute": "ミュート解除",
   "Banner_Connected": "接続しました!",
   "Banner_ConnectionLost": "接続が切断されました。",
   "Banner_Connecting": "接続中...",

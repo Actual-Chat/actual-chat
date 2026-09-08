@@ -644,6 +644,8 @@
   "Banner_ChatCopiedToPlace": "Овај чет је копиран у Место.",
   "Banner_PttAllow": "Овај чет је у начину Притисни и говори. Дозволити га на овом уређају?",
   "Banner_PttUseDevice": "Притисни и говори је укључен у овом чету. Користити га на овом уређају?",
+  "Banner_PttMuted": "Притисни и говори је утишан на",
+  "Banner_PttUnmute": "Укључи звук",
   "Banner_Connected": "Повезано!",
   "Banner_ConnectionLost": "Веза је прекинута.",
   "Banner_Connecting": "Повезивање...",

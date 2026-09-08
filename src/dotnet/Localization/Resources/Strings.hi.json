@@ -644,6 +644,8 @@
   "Banner_ChatCopiedToPlace": "यह चैट प्लेस में कॉपी कर दी गई है।",
   "Banner_PttAllow": "यह चैट पुश टू टॉक मोड में है। इसे इस डिवाइस पर अनुमति दें?",
   "Banner_PttUseDevice": "इस चैट में पुश टू टॉक चालू है। इसे इस डिवाइस पर इस्तेमाल करें?",
+  "Banner_PttMuted": "पुश टू टॉक इतने समय के लिए म्यूट है:",
+  "Banner_PttUnmute": "अनम्यूट करें",
   "Banner_Connected": "कनेक्ट हो गया!",
   "Banner_ConnectionLost": "कनेक्शन टूट गया।",
   "Banner_Connecting": "कनेक्ट हो रहा है...",

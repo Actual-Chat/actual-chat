@@ -644,6 +644,8 @@
   "Banner_ChatCopiedToPlace": "Ten czat został skopiowany do Miejsca.",
   "Banner_PttAllow": "Ten czat działa w trybie Naciśnij i mów. Zezwolić na tym urządzeniu?",
   "Banner_PttUseDevice": "Naciśnij i mów jest włączone w tym czacie. Używać go na tym urządzeniu?",
+  "Banner_PttMuted": "Naciśnij i mów jest wyciszone na",
+  "Banner_PttUnmute": "Wyłącz wyciszenie",
   "Banner_Connected": "Połączono!",
   "Banner_ConnectionLost": "Utracono połączenie.",
   "Banner_Connecting": "Łączenie...",

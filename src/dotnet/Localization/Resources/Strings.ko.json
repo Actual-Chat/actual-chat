@@ -644,6 +644,8 @@
   "Banner_ChatCopiedToPlace": "이 채팅이 플레이스로 복사되었습니다.",
   "Banner_PttAllow": "이 채팅은 푸시 투 토크 모드입니다. 이 기기에서 허용할까요?",
   "Banner_PttUseDevice": "이 채팅에서 푸시 투 토크가 켜져 있습니다. 이 기기에서 사용할까요?",
+  "Banner_PttMuted": "푸시 투 토크 음소거 남은 시간",
+  "Banner_PttUnmute": "음소거 해제",
   "Banner_Connected": "연결되었습니다!",
   "Banner_ConnectionLost": "연결이 끊겼습니다.",
   "Banner_Connecting": "연결 중...",

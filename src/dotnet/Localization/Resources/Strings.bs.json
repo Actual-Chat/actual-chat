@@ -644,6 +644,8 @@
   "Banner_ChatCopiedToPlace": "Ovaj chat je kopiran u Mjesto.",
   "Banner_PttAllow": "Ovaj chat je u načinu Pritisni i govori. Dozvoliti ga na ovom uređaju?",
   "Banner_PttUseDevice": "Pritisni i govori je uključen u ovom chatu. Koristiti ga na ovom uređaju?",
+  "Banner_PttMuted": "Pritisni i govori je utišan na",
+  "Banner_PttUnmute": "Uključi zvuk",
   "Banner_Connected": "Povezano!",
   "Banner_ConnectionLost": "Veza je prekinuta.",
   "Banner_Connecting": "Povezivanje...",

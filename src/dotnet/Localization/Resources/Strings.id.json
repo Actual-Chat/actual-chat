@@ -644,6 +644,8 @@
   "Banner_ChatCopiedToPlace": "Obrolan ini telah disalin ke Tempat.",
   "Banner_PttAllow": "Obrolan ini memakai mode Tekan untuk bicara. Izinkan di perangkat ini?",
   "Banner_PttUseDevice": "Tekan untuk bicara aktif di obrolan ini. Gunakan di perangkat ini?",
+  "Banner_PttMuted": "Tekan untuk bicara dibisukan selama",
+  "Banner_PttUnmute": "Bunyikan",
   "Banner_Connected": "Terhubung!",
   "Banner_ConnectionLost": "Koneksi terputus.",
   "Banner_Connecting": "Menghubungkan...",

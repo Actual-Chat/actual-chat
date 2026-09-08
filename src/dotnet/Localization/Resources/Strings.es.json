@@ -644,6 +644,8 @@
   "Banner_ChatCopiedToPlace": "Este chat se ha copiado al Lugar.",
   "Banner_PttAllow": "Este chat está en modo Pulsar para hablar. ¿Permitirlo en este dispositivo?",
   "Banner_PttUseDevice": "Pulsar para hablar está activado en este chat. ¿Usarlo en este dispositivo?",
+  "Banner_PttMuted": "Pulsar para hablar está silenciado durante",
+  "Banner_PttUnmute": "Reactivar",
   "Banner_Connected": "¡Conectado!",
   "Banner_ConnectionLost": "Se perdió la conexión.",
   "Banner_Connecting": "Conectando...",

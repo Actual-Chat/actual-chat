@@ -644,6 +644,8 @@
   "Banner_ChatCopiedToPlace": "Този чат беше копиран в Мястото.",
   "Banner_PttAllow": "Този чат е в режим Натисни и говори. Да го разрешим на това устройство?",
   "Banner_PttUseDevice": "Натисни и говори е включено в този чат. Да се използва на това устройство?",
+  "Banner_PttMuted": "Натисни и говори е заглушено за",
+  "Banner_PttUnmute": "Включи звука",
   "Banner_Connected": "Свързано!",
   "Banner_ConnectionLost": "Връзката е прекъсната.",
   "Banner_Connecting": "Свързване...",

@@ -110,7 +110,10 @@ mute lapses would be refused and never retried), and Android's
 survives the mute — restarting it from the background when the mute lapses is
 exactly what Android 12+ refuses. That notification reads "Push-to-talk muted"
 with a chronometer counting the longest mute down and a single **Unmute**
-action (`ACTION_UNMUTE` → `UnmutePtt` over every muted chat).
+action (`ACTION_UNMUTE` → `UnmutePtt` over every muted chat). Inside a muted
+chat on a phone, `PttMutedBanner` says so with a ticking countdown and an
+**Unmute** button for that chat (`Ptt.ShouldShowMutedBanner`); its dismissal is
+device-local and keyed to the mute's `MutedAt`, so the next mute asks again.
 
 Between armed and hot sits the **answer window** — the period after voice
 during which a gesture, a headset press or the Apple PTT Talk button may

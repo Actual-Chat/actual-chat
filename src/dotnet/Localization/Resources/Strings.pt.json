@@ -644,6 +644,8 @@
   "Banner_ChatCopiedToPlace": "Este chat foi copiado para o Lugar.",
   "Banner_PttAllow": "Este chat está no modo Pressione para falar. Permitir neste dispositivo?",
   "Banner_PttUseDevice": "Pressione para falar está ativo neste chat. Usar neste dispositivo?",
+  "Banner_PttMuted": "Pressione para falar está silenciado por",
+  "Banner_PttUnmute": "Reativar",
   "Banner_Connected": "Conectado!",
   "Banner_ConnectionLost": "Conexão perdida.",
   "Banner_Connecting": "Conectando...",

@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
@@ -140,6 +141,36 @@ public class PttTest
         PttReplyUI
             .ShouldReportMicFailure(hasSignal: false, TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(4))
             .Should().BeTrue();
+    }
+
+    [Fact]
+    public void MutedBannerShowsWhileTheChatIsMuted()
+    {
+        var chatId = ChatId.Parse("mutedbannerchataaaaa");
+        var mutedAt = T0 + TimeSpan.FromHours(1);
+        var muted = new PttChat(chatId, T0, mutedAt, mutedAt + TimeSpan.FromMinutes(15));
+        // act + assert
+        Ptt.ShouldShowMutedBanner(muted, mutedAt + TimeSpan.FromMinutes(5), dismissedMutedAt: default)
+            .Should().BeTrue();
+        Ptt.ShouldShowMutedBanner(muted, T0 + TimeSpan.FromHours(2), dismissedMutedAt: default)
+            .Should().BeFalse("the mute has lapsed");
+        Ptt.ShouldShowMutedBanner(new PttChat(chatId, T0), T0 + TimeSpan.FromHours(1), dismissedMutedAt: default)
+            .Should().BeFalse("armed, not muted");
+        Ptt.ShouldShowMutedBanner(null, T0 + TimeSpan.FromHours(1), dismissedMutedAt: default)
+            .Should().BeFalse("not consented at all");
+    }
+
+    [Fact]
+    public void MutedBannerDismissalCoversOnlyThatMute()
+    {
+        // A dismissal is keyed to the mute it dismissed: the next mute of the same chat re-shows.
+        var chatId = ChatId.Parse("mutedbannerchataaaaa");
+        var mutedAt = T0 + TimeSpan.FromHours(1);
+        var muted = new PttChat(chatId, T0, mutedAt, mutedAt + TimeSpan.FromMinutes(15));
+        var now = mutedAt + TimeSpan.FromMinutes(5);
+        // act + assert
+        Ptt.ShouldShowMutedBanner(muted, now, dismissedMutedAt: mutedAt).Should().BeFalse();
+        Ptt.ShouldShowMutedBanner(muted, now, dismissedMutedAt: mutedAt - TimeSpan.FromDays(1)).Should().BeTrue();
     }
 
     [Fact]
