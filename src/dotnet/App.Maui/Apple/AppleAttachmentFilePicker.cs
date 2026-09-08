@@ -2,11 +2,10 @@ using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Components;
 using Photos;
 using PhotosUI;
-using UniformTypeIdentifiers;
 
 namespace ActualChat.App.Maui;
 
-public class AppleAttachmentFilePicker(IServiceProvider services) : MauiAttachmentFilePicker(services)
+public partial class AppleAttachmentFilePicker(IServiceProvider services) : MauiAttachmentFilePicker(services)
 {
     private const int MaxSelectionCount = 10;
 
@@ -21,22 +20,14 @@ public class AppleAttachmentFilePicker(IServiceProvider services) : MauiAttachme
         return await LoadPickedFiles(pickerResults).ConfigureAwait(false);
     }
 
-    private async Task<PHPickerResult[]> PickVisualMedia(string acceptTypes)
-    {
-        var configuration = GetConfiguration(acceptTypes);
-        var tcs = TaskCompletionSourceExt.New<PHPickerResult[]>();
-        var controller = Platform.GetCurrentUIViewController();
-        if (controller is null) {
-            Log.LogWarning("Failed to open media picker: current view controller not available.");
-            tcs.TrySetResult([]);
-            return [];
-        }
-        var picker = new PHPickerViewController(configuration) {
-            Delegate = new PickerDelegate(tcs),
-        };
-        await controller.PresentViewControllerAsync(picker, true).ConfigureAwait(false);
-        return await tcs.Task.ConfigureAwait(false);
-    }
+    private Task<PHPickerResult[]> PickVisualMedia(string acceptTypes)
+        => DispatchToMainThread(() => {
+            var picker = new PHPickerViewController(GetConfiguration(acceptTypes));
+            return Present(picker);
+        });
+
+    // Platform-specific: UIKit presents the picker modally, AppKit hosts it in a sheet window
+    private partial Task<PHPickerResult[]> Present(PHPickerViewController picker);
 
     private Task<AttachFileInfo[]> LoadPickedFiles(PHPickerResult[] results)
         => DispatchToMainThread(() => {
@@ -69,12 +60,14 @@ public class AppleAttachmentFilePicker(IServiceProvider services) : MauiAttachme
         };
     }
 
-    private sealed class PickerDelegate(TaskCompletionSource<PHPickerResult[]> tcs)
+    // Nested types
+
+    private sealed class PickerDelegate(TaskCompletionSource<PHPickerResult[]> tcs, Action dismiss)
         : PHPickerViewControllerDelegate
     {
         public override void DidFinishPicking(PHPickerViewController picker, PHPickerResult[] results)
         {
-            picker.DismissViewController(true, null);
+            dismiss();
             tcs.TrySetResult(results);
         }
     }
