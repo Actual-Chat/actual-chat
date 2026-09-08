@@ -28,6 +28,7 @@ const MaxTransitionWaitDurationMs = 300;
 const MaxSetVisibilityWaitDurationMs = 3000;
 // Native history navigation can take over without dispatching the final touch event.
 const PullGestureStaleMs = 1000;
+const WidthCacheDurationMs = 1000;
 
 enum SideNavSide {
     Left,
@@ -47,10 +48,22 @@ export class SideNav extends DisposableBag {
     private readonly contentDiv: HTMLElement;
     private readonly bodyClassWhenOpen: string;
     private _isPulling = false;
+    private _isTransformed = false;
+    private _width = 0;
+    private _widthCapturedAt = 0;
     private pageWithHeaderAndFooter: HTMLElement;
 
     public readonly hasHistoryNavigationGesture: boolean;
     public get side(): SideNavSide { return this.options.side; }
+    // Cached: clientWidth forces a layout, and a pull reads it on every frame
+    public get width(): number {
+        const now = performance.now();
+        if (now - this._widthCapturedAt >= WidthCacheDurationMs) {
+            this._width = this.element.clientWidth;
+            this._widthCapturedAt = now;
+        }
+        return this._width;
+    }
     // Nullable: SideNav.left/right are cleared to null! on dispose, so only one side may be registered
     public get opposite(): SideNav | null { return this.side == SideNavSide.Left ? SideNav.right : SideNav.left; }
     public get isOpen() { return this.element.dataset.sideNav === 'open'; }
@@ -115,13 +128,16 @@ export class SideNav extends DisposableBag {
 
     // Call during RAF
     public setTransform(openRatio: number): void {
+        // The backdrop and its blur are constant for the whole gesture, so they live on
+        // [data-transformed] in CSS - what's left here is the only per-frame write there is.
         const mustTransform = !ScreenSize.isWide() && (this.isOpen ? openRatio < 1 : openRatio > 0);
+        if (mustTransform !== this._isTransformed) {
+            this._isTransformed = mustTransform;
+            this.element.toggleAttribute('data-transformed', mustTransform);
+        }
         if (!mustTransform) {
             this.element.style.transform = null!;
-            this.element.style.backgroundColor = null!;
-            this.element.style.backdropFilter = null!;
             this.contentDiv.style.opacity = null!;
-            this.element.style.removeProperty('-webkit-backdrop-filter');
             return;
         }
 
@@ -131,10 +147,6 @@ export class SideNav extends DisposableBag {
         const translateRatio = closeDirectionSign * closeRatio;
         const opacity = Math.min(1, 0.05 + Math.pow(openRatio, 0.35));
         this.element.style.transform = `translate3d(${100 * translateRatio}%, 0, 0)`;
-        this.element.style.backdropFilter = `blur(3px)`;
-        this.element.style.setProperty('-webkit-backdrop-filter', 'blur(3px)');
-        // One alpha step keeps Chromium's backdrop blur visible while the child fades.
-        this.element.style.backgroundColor = 'rgba(1, 1, 1, 0.004)';
         this.contentDiv.style.opacity = opacity.toString();
     }
 
@@ -448,7 +460,7 @@ class SideNavPullGesture extends Gesture {
 
                     const dx = isOpen ? offset.x : coords.x - (isLeft ? 0 : ScreenSize.width);
                     const pdx = dx * allowedDirectionSign; // Must be positive
-                    const pullRatio = clamp(pdx / (sideNav.element.clientWidth + 0.01), 0, 1);
+                    const pullRatio = clamp(pdx / (sideNav.width + 0.01), 0, 1);
                     const openRatio = isOpen ? 1 - pullRatio : pullRatio;
                     this.state = new MoveState(pullRatio, openRatio, this.state);
                 },
@@ -552,7 +564,9 @@ function getCoords(event?: TouchEvent): Vector2D | null {
         return null;
 
     const touch = touches[0];
-    return new Vector2D(touch.pageX, touch.pageY);
+    // clientX/Y, not pageX/Y: the panel is position: fixed, and every edge these coordinates are
+    // compared against (0, ScreenSize.width, ScreenSize.height) is in viewport space too.
+    return new Vector2D(touch.clientX, touch.clientY);
 }
 
 function getPrePullDistance(node: EventTarget): number | null {
