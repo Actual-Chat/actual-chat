@@ -6,8 +6,9 @@
 
 @if (_isGifImage) {
     <div class="gif-message-wrapper">
-        <img class="gif-message" src="@_gifSrc" alt="" loading="lazy"/>
-        <img class="gif-watermark" src="/dist/images/klipy/klipy-light-text.png" alt="KLIPY" draggable="false" aria-hidden="true"/>
+        <img class="gif-message" src="@_gifSrc" alt="" loading="lazy" @onerror="@OnGifError"/>
+        <img class="gif-watermark" src="/dist/images/klipy/klipy-light-text.png"
+             alt="KLIPY" draggable="false" aria-hidden="true"/>
     </div>
     return;
 }
@@ -50,6 +51,7 @@
     private LinkRenderMode _linkRenderMode = LinkRenderMode.Default;
     private bool _isGifImage;
     private string _gifSrc = "";
+    private string _failedGifSrc = "";
 
     private LinkPreviewUI LinkPreviewUI => Hub.LinkPreviewUI;
 
@@ -61,8 +63,10 @@
         if (Markup.Kind is UrlMarkupKind.Www && UrlMapper.IsTrustedGifUrl(url)) {
             // Route through imageproxy: hides viewer IP from origin, caches, validates content-type.
             // Falls back to plain link if proxy isn't available in this deployment.
+            // Every parameter change re-enters this method, so a src known to fail has to be
+            // remembered - otherwise the fallback below is undone and the blank row comes back.
             var proxied = UrlMapper.GifProxyUrl(url);
-            if (!proxied.IsNullOrEmpty()) {
+            if (!proxied.IsNullOrEmpty() && proxied != _failedGifSrc) {
                 _isGifImage = true;
                 _gifSrc = proxied;
             }
@@ -84,13 +88,16 @@
         }
     }
 
+    // Protected/internal methods
+
     internal static string GetHrefUrl(UrlMarkup markup)
         => markup.Kind is UrlMarkupKind.Www && markup.Url.StartsWith("www.")
             ? "https://" + markup.Url
             : markup.Url;
 
-    private LocalUrl? TryGetLocalUrl(string url)
-    {
+    // Private methods
+
+    private LocalUrl? TryGetLocalUrl(string url) {
         url = url.EnsureSuffix("/");
         if (url.StartsWith(Nav.BaseUri))
             return new LocalUrl(Nav.ToBaseRelativePath(url));
@@ -106,6 +113,15 @@
         _ = History.NavigateTo(_localUrl.Value);
     }
 
+    private void OnGifError() {
+        // The <img> carries no size and an empty alt, so a failed fetch paints nothing, and the early
+        // return above already dropped the link - a GIF-only message then renders as a blank row.
+        _failedGifSrc = _gifSrc;
+        _isGifImage = false;
+        _gifSrc = "";
+    }
+
     // Nested types
+
     private enum LinkRenderMode { Default, LinkPreview, Local }
 }
