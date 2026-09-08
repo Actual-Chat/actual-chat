@@ -1,7 +1,10 @@
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Generators;
 using ActualLab.IO;
+using AVFoundation;
+using CoreGraphics;
 using Foundation;
+using ImageIO;
 using PhotosUI;
 using UniformTypeIdentifiers;
 
@@ -9,10 +12,19 @@ namespace ActualChat.App.Maui;
 
 /// <summary>
 /// Loads files from PHPickerResult in background while allowing the picker to return immediately.
-/// Provides two-phase processing: preview (thumbnail) first, then main file.
+/// Provides two-phase processing: preview (thumbnail) first, then main file; when the picker
+/// offers no thumbnail (macOS), one is generated from the loaded file.
 /// </summary>
 public sealed class ApplePhotoGalleryFiles(IServiceProvider services) : ProcessorBase
 {
+    private const int ThumbnailMaxPixelSize = 1024;
+    private const float ThumbnailJpegQuality = 0.8f;
+    private static readonly TimeSpan VideoThumbnailTime = TimeSpan.FromSeconds(0.5);
+    private static readonly CGImageThumbnailOptions ThumbnailOptions = new() {
+        CreateThumbnailFromImageAlways = true,
+        CreateThumbnailWithTransform = true,
+        MaxPixelSize = ThumbnailMaxPixelSize,
+    };
     private static readonly FilePath AttachmentsDir = new FilePath(FileSystem.CacheDirectory) | "attachments";
     private static readonly FilePath ThumbnailDir = new FilePath(FileSystem.CacheDirectory) | "thumbnails";
     private static readonly string[] ThumbnailUTTypeIds = [
@@ -69,9 +81,7 @@ public sealed class ApplePhotoGalleryFiles(IServiceProvider services) : Processo
     /// </summary>
     public FilePreview? FindExistingThumbnail(FilePath videoPath)
     {
-        var thumbnailFileName = videoPath.FileName.ChangeExtension(".jpg");
-        var thumbnailPath = ThumbnailDir | thumbnailFileName;
-
+        var thumbnailPath = GetThumbnailPath(videoPath);
         if (!File.Exists(thumbnailPath))
             return null;
 
@@ -84,12 +94,15 @@ public sealed class ApplePhotoGalleryFiles(IServiceProvider services) : Processo
     private async Task ProcessPhotoGalleryItem(PendingItem item, CancellationToken cancellationToken)
     {
         try {
-            // Phase 1: Create preview (thumbnail)
+            // Phase 1: the picker's own thumbnail (iOS provides one, macOS doesn't)
             var preview = await CreatePreview(item.TargetPath, item.ItemProvider, cancellationToken).ConfigureAwait(false);
-            item.SetPreview(preview);
+            if (preview is not null)
+                item.SetPreview(preview);
 
             // Phase 2: Load main file
             await LoadMainFile(item, cancellationToken).ConfigureAwait(false);
+            if (preview is null)
+                item.SetPreview(await CreatePreviewFromFile(item, cancellationToken).ConfigureAwait(false));
             item.SetFileReady();
         }
         catch (Exception e) {
@@ -113,9 +126,8 @@ public sealed class ApplePhotoGalleryFiles(IServiceProvider services) : Processo
                     continue;
 
                 // Copy thumbnail to cache directory
-                var thumbnailFileName = targetPath.FileName.ChangeExtension(".jpg");
                 Directory.CreateDirectory(ThumbnailDir);
-                var thumbnailPath = ThumbnailDir | thumbnailFileName;
+                var thumbnailPath = GetThumbnailPath(targetPath);
                 await representation.Copy(thumbnailPath, cancellationToken).ConfigureAwait(false);
 
                 var size = GetImageSize(thumbnailPath);
@@ -155,6 +167,73 @@ public sealed class ApplePhotoGalleryFiles(IServiceProvider services) : Processo
             targetPath.FileName, targetPath.FileSize,
             loadStartedAt.Elapsed.ToShortString(), copyStartedAt.Elapsed.ToShortString());
     }
+
+    private async Task<FilePreview?> CreatePreviewFromFile(PendingItem item, CancellationToken cancellationToken)
+    {
+        var targetPath = item.TargetPath;
+        try {
+            var isVideo = item.ContentType.ConformsTo(UTTypes.Movie);
+            var (image, durationMs) = isVideo
+                ? await CreateVideoThumbnail(targetPath, cancellationToken).ConfigureAwait(false)
+                : (CreateImageThumbnail(targetPath), 0L);
+            if (image is null) {
+                Log.LogDebug("No preview generated for '{TargetPath}'", targetPath);
+                return null;
+            }
+
+            FilePreview preview;
+            using (image)
+                preview = SaveThumbnail(image, targetPath, durationMs);
+            Log.LogDebug("Generated preview for '{TargetPath}': {Url}", targetPath, preview.Url);
+            return preview;
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to generate preview for '{TargetPath}'", targetPath);
+            return null;
+        }
+    }
+
+    private static CGImage? CreateImageThumbnail(FilePath path)
+    {
+        using var source = CGImageSource.FromUrl(NSUrl.CreateFileUrl(path));
+        return source?.CreateThumbnail(0, ThumbnailOptions);
+    }
+
+    private static async Task<(CGImage? Image, long DurationMs)> CreateVideoThumbnail(
+        FilePath path, CancellationToken cancellationToken)
+    {
+        using var asset = AVAsset.FromUrl(NSUrl.CreateFileUrl(path));
+        await asset.LoadValuesTaskAsync(["duration"]).ConfigureAwait(false);
+        var duration = TimeSpan.FromSeconds(asset.Duration.Seconds);
+        using var generator = new AVAssetImageGenerator(asset) {
+            AppliesPreferredTrackTransform = true,
+            MaximumSize = new CGSize(ThumbnailMaxPixelSize, ThumbnailMaxPixelSize),
+        };
+        var time = duration < VideoThumbnailTime * 2 ? duration / 2 : VideoThumbnailTime;
+        var image = await generator.GenerateCGImage(time, cancellationToken).ConfigureAwait(false);
+        return (image, (long)duration.TotalMilliseconds);
+    }
+
+    private static FilePreview SaveThumbnail(CGImage image, FilePath targetPath, long durationMs)
+    {
+        Directory.CreateDirectory(ThumbnailDir);
+        var thumbnailPath = GetThumbnailPath(targetPath);
+        SaveJpeg(image, thumbnailPath);
+        var size = new Size2D((int)image.Width, (int)image.Height);
+        return new FilePreview(ContentResolver.GetFileUri(thumbnailPath), size, durationMs);
+    }
+
+    private static void SaveJpeg(CGImage image, FilePath path)
+    {
+        using var destination = CGImageDestination.Create(NSUrl.CreateFileUrl(path), UTTypes.Jpeg.Identifier, 1)
+            ?? throw StandardError.Internal($"Unable to create image destination '{path}'.");
+        destination.AddImage(image, new CGImageDestinationOptions { LossyCompressionQuality = ThumbnailJpegQuality });
+        if (!destination.Close())
+            throw StandardError.Internal($"Unable to write thumbnail '{path}'.");
+    }
+
+    private static FilePath GetThumbnailPath(FilePath targetPath)
+        => ThumbnailDir | targetPath.FileName.ChangeExtension(".jpg");
 
     private static Size2D? GetImageSize(FilePath path)
     {
