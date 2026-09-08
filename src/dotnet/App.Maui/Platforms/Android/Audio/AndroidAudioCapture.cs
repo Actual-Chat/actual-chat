@@ -27,6 +27,7 @@ public class AndroidAudioCapture(IServiceProvider services) : IAudioCapture
         // captureThread.Start() - an exception here (e.g. OperationCanceledException on a quick PTT
         // tap-and-release) must not leave an opened AudioRecord stranded with nothing to release it.
         var route = await ChatAudioUI.GetCarAudioRoute(cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("Capture: car route {Route}", route);
 
         // We'll read at least VAD frame size per push
         var frameSamples = Constants.Audio.OpusFrameLength; // 20 ms at 16 kHz = 320 samples
@@ -80,8 +81,12 @@ public class AndroidAudioCapture(IServiceProvider services) : IAudioCapture
             var audioManager = (AudioManager)Platform.AppContext.GetSystemService(Context.AudioService)!;
             var builtinMic = audioManager.GetDevices(GetDevicesTargets.Inputs)!
                 .FirstOrDefault(d => d.Type == AudioDeviceType.BuiltinMic);
-            if (builtinMic != null && !recorder.SetPreferredDevice(builtinMic))
+            if (builtinMic == null)
+                Log.LogWarning("No built-in microphone among the input devices, capture stays platform-routed");
+            else if (!recorder.SetPreferredDevice(builtinMic))
                 Log.LogWarning("Couldn't pin the capture to the built-in microphone");
+            else
+                Log.LogInformation("Capture pinned to the built-in microphone");
         }
 
         var buffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
