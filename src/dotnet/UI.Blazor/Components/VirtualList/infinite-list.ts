@@ -250,6 +250,7 @@ export class InfiniteList extends VirtualList {
     // echo from the user.
     private isFollowScheduled = false;
     private isFollowDeferred = false;
+    private isClampScheduled = false;
     private lastFollowTop: number | null = null;
     private pendingJump: Jump | null = null;
     private isAwaitingStability = false;
@@ -841,14 +842,17 @@ export class InfiniteList extends VirtualList {
         if (this.pinnedEdge != null)
             return;
 
-        // Clamping needs the real sizes, and mid-animation the DOM does not have them yet, so it waits
-        // for the settled pass instead - which an unpinned list has to book for itself. Left to the
-        // pinned path alone, a block that collapses under a view that is not at an edge got no clamp
-        // at all: the render skipped it for the animation, and nothing re-ran it afterwards.
+        // The settled pass is still booked - it owns the re-pin and the drift check - but the clamp no
+        // longer waits for it. Waiting was safe only while animations were things that end: a live
+        // transcript renews a hold every time it rewrites a message, so whenStable never resolves and
+        // the clamp deferred to it is never delivered. The limits move all the same, being built from
+        // the model, which already carries settled heights - and a free list, having no follow to
+        // answer with, sits still while they walk past it. What the user gets is a blank growing under
+        // the newest message until the position guard pays the whole of it in one frame, measured at
+        // 332px against a live transcript.
         if (this.stability.isAnimating)
             this.repinWhenStable();
-        else
-            this.scrollController.clampToLimits();
+        this.clampOrRetry();
     }
 
     // Sticky elements are clamped during layout, against the real scroll position, and the band's
@@ -1244,6 +1248,41 @@ export class InfiniteList extends VirtualList {
             && !this.scrollController.isOverscrollActive;
     }
 
+    // Whether a clamp of the list's own may land: the position is this list's to move, and nothing
+    // else already owns it - a follow or a jump already booked, or a click deliberately holding the
+    // view. The follow matters because it carries a delta measured before this would run: clamping
+    // first leaves that delta describing a distance the view no longer has, and it lands twice.
+    private get canClamp(): boolean {
+        return this.canCorrectPosition
+            && !this.isFollowScheduled
+            && this.pendingJump == null
+            && !this.hasFreshScreenAnchor()
+            && this.getFreshInteractiveAnchorKey() == null;
+    }
+
+    // A clamp the list may not make yet is retried rather than dropped: everything that blocks one -
+    // a gesture settling, an excursion, a booked correction, an anchor being held - clears on its own,
+    // and nothing re-runs the layout that produced no correction. Same rate and the same reason as the
+    // follow's retry. Costs nothing when there is nothing to clamp: clampToLimits is a no-op in band.
+    private clampOrRetry(): void {
+        if (this.canClamp) {
+            this.scrollController.clampToLimits();
+            return;
+        }
+        if (this.isClampScheduled)
+            return;
+
+        this.isClampScheduled = true;
+        fastRaf({
+            hz: FollowRetryHz,
+            write: () => {
+                this.isClampScheduled = false;
+                if (!this.isDisposed)
+                    this.clampOrRetry();
+            },
+        });
+    }
+
     private measureFollow(): number {
         const edge = this.pinnedEdge;
         if (this.isDisposed || edge == null || this.items.length === 0)
@@ -1289,8 +1328,8 @@ export class InfiniteList extends VirtualList {
     }
 
     // Anything that had to wait for the list to stop moving: the edge re-pin an animation grew away
-    // from, the clamp that needed the settled sizes, and the direction switch that would have written
-    // scrollTop mid-gesture.
+    // from, and the direction switch that would have written scrollTop mid-gesture. Not the clamp -
+    // it reads the model's settled heights, so it no longer waits for anything to settle.
     private repinWhenStable(): void {
         if (this.isAwaitingStability)
             return;
@@ -1302,11 +1341,10 @@ export class InfiniteList extends VirtualList {
                 return;
 
             this.repinEdge('settled');
-            // Not when the re-pin booked a follow for the next frame: that write is the correction, and
-            // a clamp landing first is exactly the scroll write the re-pin exists to avoid. The follow
-            // clamps into the limits itself, and the next settle runs this again.
-            if (!this.isFollowScheduled)
-                this.scrollController.clampToLimits();
+            // A follow booked for the next frame is the correction, and a clamp landing first is
+            // exactly the scroll write the re-pin exists to avoid - canClamp holds this off until that
+            // write has landed, rather than dropping it.
+            this.clampOrRetry();
             this.checkModelDrift('settled');
         });
     }
@@ -2266,22 +2304,15 @@ export class InfiniteList extends VirtualList {
         });
     }
 
-    // The standing check on where the view actually is. Every other correction runs off an event -
-    // a render, a settle, a scroll - and the case none of them covers is a block collapsing under an
-    // unpinned view: the render's clamp waits for the settled sizes, the settle it waits for is a
-    // pinned list's, and what the user is left looking at is blank, which gives them nothing to scroll
-    // with to raise the scroll event that would fix it. So this asks on its own clock instead.
+    // The standing check on where the view actually is: every other correction runs off an event, and
+    // a block collapsing under an unpinned view leaves blank that the user cannot scroll to raise one.
     private checkPosition(): void {
         if (this.isDisposed || this.items.length === 0 || !this.isInitiallyPlaced)
             return;
         // A finger, a fling, a bounce or a correction already booked all own the position, and a
         // fresh anchor means a click of the user's is deliberately holding it somewhere.
-        if (!this.canCorrectPosition
-            || this.scrollController.isOverscrollRecent(PositionGuardOverscrollQuietMs)
-            || this.pendingJump != null
-            || this.isFollowScheduled
-            || this.hasFreshScreenAnchor()
-            || this.getFreshInteractiveAnchorKey() != null)
+        if (!this.canClamp
+            || this.scrollController.isOverscrollRecent(PositionGuardOverscrollQuietMs))
             return;
 
         const clientHeight = this.ref.clientHeight;
