@@ -181,7 +181,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // File attachments
 #if ANDROID
         services.AddScoped<IAttachmentFilePicker>(c => new AndroidAttachmentFilePicker(c));
-#elif IOS || MACCATALYST
+#elif IOS || MACCATALYST || MACOS
         services.AddScoped<IAttachmentFilePicker>(c => new AppleAttachmentFilePicker(c));
         services.AddSingleton<ApplePhotoGalleryFiles>();
 #else
