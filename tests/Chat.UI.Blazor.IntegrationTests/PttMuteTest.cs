@@ -69,10 +69,10 @@ public sealed class PttMuteTest(ChatAppHostFixture fixture, ITestOutputHelper @o
         hub.VoiceActivityUI.NoteIncomingVoice(chatId, hub.Clocks.ServerClock.Now);
 
         // act
-        var hushedChatIds = await chatAudioUI.HushPtt(CancellationToken.None);
+        var priorEntries = await chatAudioUI.HushPtt(CancellationToken.None);
 
         // assert
-        hushedChatIds.Should().Equal(chatId);
+        priorEntries.Select(c => c.ChatId).Should().Equal(chatId);
         (await chatAudioUI.GetListeningChatIds()).Should().NotContain(chatId);
         hub.VoiceActivityUI.SnapshotLastIncomingVoiceAt().Should().NotContainKey(chatId, "the answer window closes");
         (await chatAudioUI.GetMutedPttChatIds(CancellationToken.None)).Should().Equal(chatId);
@@ -113,11 +113,20 @@ public sealed class PttMuteTest(ChatAppHostFixture fixture, ITestOutputHelper @o
             .WithPttChatMuted(longMutedChatId, now, now + TimeSpan.FromHours(8)));
 
         // act
-        var hushedChatIds = await chatAudioUI.HushPtt(CancellationToken.None);
+        var priorEntries = await chatAudioUI.HushPtt(CancellationToken.None);
 
         // assert: the hush (HushDuration defaults to 15 min) newly mutes the armed chat and
         // extends the 5-min mute past its deadline, but the 8h mute already outlasts it.
-        hushedChatIds.Should().BeEquivalentTo([armedChatId, shortMutedChatId]);
+        priorEntries.Select(c => c.ChatId).Should().BeEquivalentTo([armedChatId, shortMutedChatId]);
+
+        // act: undo puts both back the way they were and resumes the chat that is armed again
+        await chatAudioUI.UndoHush(priorEntries, CancellationToken.None);
+
+        // assert
+        (await chatAudioUI.GetPttChatIds(CancellationToken.None)).Should().Equal(armedChatId);
+        (await chatAudioUI.GetMutedPttChatIds(CancellationToken.None))
+            .Should().BeEquivalentTo([shortMutedChatId, longMutedChatId], "the shorter mute is restored, not cleared");
+        (await chatAudioUI.GetListeningChatIds()).Should().Contain(armedChatId);
     }
 
     [Fact]

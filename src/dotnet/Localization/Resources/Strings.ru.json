@@ -1084,6 +1084,8 @@
   "Activity_Reply": "Ответить",
   "Activity_StopTalking": "Остановить запись",
   "Activity_MuteFor_Format": "Заглушить на {0}",
+  "Activity_PttMuted": "Push-to-Talk заглушён",
+  "Activity_Unmute": "Включить звук",
   "Activity_Chats": "{0} чат|{0} чата|{0} чатов",
   "Activity_ExtraChats": "(+ {0} чат)|(+ {0} чата)|(+ {0} чатов)",
 

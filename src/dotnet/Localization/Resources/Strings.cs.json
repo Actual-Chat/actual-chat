@@ -1084,6 +1084,8 @@
   "Activity_Reply": "Odpovědět",
   "Activity_StopTalking": "Přestat mluvit",
   "Activity_MuteFor_Format": "Ztlumit na {0}",
+  "Activity_PttMuted": "Stiskni a mluv je ztlumeno",
+  "Activity_Unmute": "Zrušit ztlumení",
   "Activity_Chats": "{0} chat|{0} chaty|{0} chatů",
   "Activity_ExtraChats": "(+ {0} chat)|(+ {0} chaty)|(+ {0} chatů)",
 

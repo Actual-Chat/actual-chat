@@ -184,11 +184,11 @@ edited. The reason can be as short as whose decision it was.
   — blank line after the static-field group, before the `Threshold` const — code
   review on Task 4 asked to match `ShakeDetector.cs`'s member-group spacing; same
   "0 blank lines inside types" conflict as `AudioRecorder.cs`. NEEDS ALEX'S CALL
-- L14 `public const float Threshold = 1.2f;`
+- L15 `public const float Threshold = 1.2f;`
   — blank line after the const, before the instance-field group — same reason
-- L20 `private Moment _debouncedUntil;`
+- L21 `private Moment _debouncedUntil;`
   — blank line after the instance-field group, before `PeakDeviation` — same reason
-- L22 `public float PeakDeviation { get; private set; }`
+- L23 `public float PeakDeviation { get; private set; }`
   — blank line after the property, before `Process` — same reason
 
 ## src/dotnet/UI.Blazor.App/Services/ChatUI.cs

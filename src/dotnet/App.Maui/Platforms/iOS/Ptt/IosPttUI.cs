@@ -15,12 +15,14 @@ public class IosPttUI : UIWorkerBase<AppUIHub>
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var chatAudioUI = Hub.ChatAudioUI;
-        var cArmedChatIds = await Computed
-            .Capture(() => chatAudioUI.GetPttChatIds(cancellationToken), cancellationToken)
+        // Joined = armed or muted: a mute must keep the channel (and the APNs PTT token) - a
+        // background rejoin when it lapses is refused, and nothing would retry it.
+        var cJoinedChatIds = await Computed
+            .Capture(() => chatAudioUI.GetJoinedPttChatIds(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        // GetPttChatIds reads the whole UserPttSettings record, so its invalidation also
+        // GetJoinedPttChatIds reads the whole UserPttSettings record, so its invalidation also
         // covers IsPttTransmitEnabled - see the same note in GestureUI.TrackActivation.
-        await foreach (var change in cArmedChatIds.Changes(cancellationToken).ConfigureAwait(false)) {
+        await foreach (var change in cJoinedChatIds.Changes(cancellationToken).ConfigureAwait(false)) {
             if (change.Value.Count == 0) {
                 IosPtt.Leave();
                 continue;

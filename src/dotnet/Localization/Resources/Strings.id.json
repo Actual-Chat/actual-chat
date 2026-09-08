@@ -1084,6 +1084,8 @@
   "Activity_Reply": "Balas",
   "Activity_StopTalking": "Berhenti bicara",
   "Activity_MuteFor_Format": "Bisukan {0}",
+  "Activity_PttMuted": "Tekan untuk bicara dibisukan",
+  "Activity_Unmute": "Bunyikan",
   "Activity_Chats": "{0} obrolan",
   "Activity_ExtraChats": "(+ {0} obrolan)",
 

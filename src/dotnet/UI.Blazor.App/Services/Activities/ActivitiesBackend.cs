@@ -113,8 +113,10 @@ public class ActivitiesBackend : IDisposable
     {
         // Read on every recompute: the host mirrors it so the next launch can raise the
         // foreground service before any of this state exists.
+        // Joined, not armed: a muted chat must keep the mic-typed foreground service and the
+        // launch-time re-raise, or the lapse can't restore either from the background.
         var pttChatIds = _isAndroidHost
-            ? await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false)
+            ? await ChatAudioUI.GetJoinedPttChatIds(cancellationToken).ConfigureAwait(false)
             : [];
         var isArmed = pttChatIds.Count > 0;
         var hasEverBeenArmed = NextHasEverBeenArmed(_hasEverBeenArmed, IsArmedPersisted, isArmed);

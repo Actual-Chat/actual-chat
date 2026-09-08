@@ -40,10 +40,6 @@
     protected override Task<DurationCountdown?> ComputeState(CancellationToken cancellationToken)
         => Hub.ChatAudioUI.GetPttMuteCountdown(ChatId, cancellationToken);
 
-    private void OnUnmute() {
-        var chatId = ChatId;
-        _ = Hub.UserSettingsUI.UserPttSettings().Update(
-            x => x.WithPttChatUnmuted(chatId),
-            CancellationToken.None);
-    }
+    private void OnUnmute()
+        => _ = Hub.ChatAudioUI.UnmutePtt([ChatId], CancellationToken.None);
 }

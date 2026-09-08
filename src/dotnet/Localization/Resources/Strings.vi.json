@@ -1084,6 +1084,8 @@
   "Activity_Reply": "Trả lời",
   "Activity_StopTalking": "Ngừng nói",
   "Activity_MuteFor_Format": "Tắt tiếng {0}",
+  "Activity_PttMuted": "Nhấn để nói đã tắt tiếng",
+  "Activity_Unmute": "Bật tiếng",
   "Activity_Chats": "{0} cuộc trò chuyện",
   "Activity_ExtraChats": "(+ {0} cuộc trò chuyện)",
 

@@ -49,8 +49,11 @@ public sealed class GestureRecognizer
             lock (_lock) {
                 if (value.IsFlipToTalkEnabled != _options.IsFlipToTalkEnabled)
                     _flip.Reset();
-                if (value.IsStopGestureEnabled != _options.IsStopGestureEnabled
-                    || value.IsHushEnabled != _options.IsHushEnabled)
+                // Reset on the detector's own on/off edge, not on either flag's: a hush arming
+                // while stop sensing is already live would otherwise wipe a flip in progress.
+                var wasFaceDownRunning = _options.IsStopGestureEnabled || _options.IsHushEnabled;
+                var isFaceDownRunning = value.IsStopGestureEnabled || value.IsHushEnabled;
+                if (wasFaceDownRunning != isFaceDownRunning)
                     _faceDown.Reset();
                 if (value.IsHushEnabled != _options.IsHushEnabled)
                     _pat.Reset();

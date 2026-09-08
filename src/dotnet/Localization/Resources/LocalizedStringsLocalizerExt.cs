@@ -1125,6 +1125,8 @@ public static class LocalizedStringsLocalizerExt
         public string Activity_Reply => l["Activity_Reply"].Value;
         public string Activity_StopTalking => l["Activity_StopTalking"].Value;
         public string Activity_MuteFor_Format(object arg0) => l["Activity_MuteFor_Format", arg0].Value;
+        public string Activity_PttMuted => l["Activity_PttMuted"].Value;
+        public string Activity_Unmute => l["Activity_Unmute"].Value;
         public string Activity_Chats(long count, object arg0) => l.Plural("Activity_Chats", count, arg0);
         public string Activity_ExtraChats(long count, object arg0) => l.Plural("Activity_ExtraChats", count, arg0);
 

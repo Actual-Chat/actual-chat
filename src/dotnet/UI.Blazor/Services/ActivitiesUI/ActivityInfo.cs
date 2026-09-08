@@ -27,7 +27,13 @@ public sealed record AudioActivity(
     bool CanPause = true,
     Moment? AnswerWindowEndsAt = null,
     bool IsStartGestureReady = false,
-    TimeSpan HushDuration = default
+    TimeSpan HushDuration = default,
+    // False while nothing is armed: a Mute action that could hush nothing must not replace Stop.
+    bool CanHush = false,
+    // Set on an Armed activity that only stands for muted chats, so the notification (and the
+    // mic-typed foreground service behind it) survives the mute and can re-arm without a
+    // background service start.
+    Moment? MutedUntil = null
 ) : ActivityInfo(Kind);
 
 public sealed record LocationActivity(ActivityChatInfo Chat)

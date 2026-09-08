@@ -50,6 +50,12 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
         var pttChatIds = _isMauiHost
             ? await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false)
             : [];
+        var mutedPttChatIds = _isMauiHost
+            ? await ChatAudioUI.GetMutedPttChatIds(cancellationToken).ConfigureAwait(false)
+            : [];
+        var pttSettings = _isMauiHost
+            ? await Hub.UserSettingsUI.UserPttSettings().Get(cancellationToken).ConfigureAwait(false)
+            : null;
 
         // Priority: Recording > Replaying > Listening
         var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
@@ -94,26 +100,30 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
 
         var canPause = true;
         Moment? answerWindowEndsAt = null;
+        Moment? mutedUntil = null;
         var isStartGestureReady = false;
-        var hushDuration = _isMauiHost
-            ? await Hub.UserSettingsUI.UserPttSettings()
-                .Get(x => x.HushDuration, cancellationToken)
-                .ConfigureAwait(false)
-            : Constants.Audio.PttHushDurationDefault;
+        var hushDuration = pttSettings?.HushDuration ?? Constants.Audio.PttHushDurationDefault;
         if (kind is not { } vKind) {
-            var pttSettings = _isMauiHost
-                ? await Hub.UserSettingsUI.UserPttSettings().Get(cancellationToken).ConfigureAwait(false)
-                : null;
             var answerWindow = pttSettings?.AnswerWindow ?? Constants.Audio.PttAnswerWindowDefault;
-            if (GetArmedChat(pttChatIds, answerWindow) is not { } armed)
+            if (GetArmedChat(pttChatIds, answerWindow) is { } armed) {
+                chatId = armed.ChatId;
+                extraChatCount = armed.ExtraChatCount;
+                answerWindowEndsAt = armed.AnswerWindowEndsAt;
+                isStartGestureReady = GestureUI.IsStartGestureReady;
+            }
+            else if (mutedPttChatIds.Count != 0) {
+                // Muted chats keep the armed notification up: dropping it stops the mic-typed
+                // foreground service, and Android refuses to start one from the background when
+                // the mute lapses - gestures could not record again until the app was opened.
+                chatId = mutedPttChatIds[0];
+                extraChatCount = mutedPttChatIds.Count - 1;
+                mutedUntil = await GetLatestMutedUntil(mutedPttChatIds, cancellationToken).ConfigureAwait(false);
+            }
+            else
                 return null;
 
             // Nothing plays while merely armed, so there is no player a Pause could reach.
             vKind = ActivityKind.Armed;
-            chatId = armed.ChatId;
-            extraChatCount = armed.ExtraChatCount;
-            answerWindowEndsAt = armed.AnswerWindowEndsAt;
-            isStartGestureReady = GestureUI.IsStartGestureReady;
             canPause = false;
         }
 
@@ -122,7 +132,8 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
             chatInfo = chatInfo with { ExtraChatCount = extraChatCount };
 
         return new AudioActivity(
-            vKind, chatInfo, isPaused, canPause, answerWindowEndsAt, isStartGestureReady, hushDuration);
+            vKind, chatInfo, isPaused, canPause, answerWindowEndsAt, isStartGestureReady,
+            hushDuration, pttChatIds.Count != 0, mutedUntil);
     }
 
     public static (ChatId ChatId, int ExtraChatCount, Moment? AnswerWindowEndsAt)? ResolveArmedChat(
@@ -158,6 +169,19 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
         // nothing on its own - and the answer-window state depends on both.
         using (Invalidation.Begin())
             _ = GetActivity(default);
+    }
+
+    private async Task<Moment?> GetLatestMutedUntil(
+        IReadOnlyList<ChatId> mutedChatIds, CancellationToken cancellationToken)
+    {
+        var pttChats = await ChatAudioUI.GetConsentedPttChats(cancellationToken).ConfigureAwait(false);
+        Moment? latest = null;
+        foreach (var pttChat in pttChats) {
+            if (mutedChatIds.Contains(pttChat.ChatId) && pttChat.MutedUntil is { } until
+                && (latest is null || until > latest))
+                latest = until;
+        }
+        return latest;
     }
 
     private (ChatId ChatId, int ExtraChatCount, Moment? AnswerWindowEndsAt)? GetArmedChat(

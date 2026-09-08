@@ -252,8 +252,9 @@
 
         var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
         var isPttArmed = pttChatIds.Contains(chatId);
-        var mutedPttChatIds = await Hub.ChatAudioUI.GetMutedPttChatIds(cancellationToken).ConfigureAwait(false);
-        var isPttMuted = mutedPttChatIds.Contains(chatId);
+        // Only the Active list renders the muted badge, so only it takes the dependency.
+        var isPttMuted = listKind == ChatListKind.Active
+            && (await Hub.ChatAudioUI.GetMutedPttChatIds(cancellationToken).ConfigureAwait(false)).Contains(chatId);
         var hasOngoingCall = isPttArmed
             && await chatActivityUI.HasOngoingCall(chatId, cancellationToken).ConfigureAwait(false);
 

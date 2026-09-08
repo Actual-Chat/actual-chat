@@ -1268,6 +1268,8 @@
   "Activity_Reply": "Одговорите",
   "Activity_StopTalking": "Престаните говорити",
   "Activity_MuteFor_Format": "Заглушить на {0}",
+  "Activity_PttMuted": "プッシュ・トゥ・トークはミュート中",
+  "Activity_Unmute": "Stummschaltung aufheben",
   "Activity_Chats": "{0} cuộc trò chuyện",
   "Activity_ExtraChats": "(+ {0} cuộc trò chuyện)",
 

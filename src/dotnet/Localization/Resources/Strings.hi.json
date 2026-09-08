@@ -1084,6 +1084,8 @@
   "Activity_Reply": "जवाब दें",
   "Activity_StopTalking": "बोलना बंद करें",
   "Activity_MuteFor_Format": "{0} म्यूट",
+  "Activity_PttMuted": "पुश टू टॉक म्यूट है",
+  "Activity_Unmute": "अनम्यूट करें",
   "Activity_Chats": "{0} चैट",
   "Activity_ExtraChats": "(+ {0} चैट)",
 

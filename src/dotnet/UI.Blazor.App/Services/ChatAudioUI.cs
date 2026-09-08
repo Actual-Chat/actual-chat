@@ -171,6 +171,21 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     [ComputeMethod(MinCacheDuration = 300)] // Synced
+    public virtual async Task<List<ChatId>> GetJoinedPttChatIds(CancellationToken cancellationToken)
+    {
+        // Armed plus muted: what this device is signed up for, whether or not it may wake right
+        // now. The iOS channel and the Android armed foreground service key off this, so a mute
+        // neither leaves the channel nor drops the service - both are unrecoverable from the
+        // background once the mute lapses.
+        if (!Ptt.IsSupported(HostInfo))
+            return [];
+        if (!await IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false))
+            return [];
+
+        return await GetConsentedPttChatIds(cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod(MinCacheDuration = 300)] // Synced
     public virtual async Task<List<ChatId>> GetConsentedPttChatIds(CancellationToken cancellationToken)
     {
         var pttChats = await GetConsentedPttChats(cancellationToken).ConfigureAwait(false);
@@ -224,7 +239,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             && GetReplayPlayerNonComputed(replay.ChatId)?.Playback.IsPlaying.Value == true;
     }
 
-    public async Task<List<ChatId>> HushPtt(CancellationToken cancellationToken)
+    public async Task<List<PttChat>> HushPtt(CancellationToken cancellationToken)
     {
         // Situational, not chat-specific: every armed chat goes quiet. Listening stops first so
         // the utterance ends now, and the stamp goes with it so a later flip can't open the mic.
@@ -243,17 +258,32 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         var now = ServerNow;
         var settings = await UserSettingsUI.UserPttSettings().Get(cancellationToken).ConfigureAwait(false);
         var mutedUntil = now + settings.HushDuration;
-        // The set HushPtt reports back (for the toast's Undo) is every chat whose deadline this
-        // hush actually set or extended - WithAllPttChatsMuted also touches chats that were
-        // already muted for a shorter period, and Undo must cover those too.
-        var hushedChatIds = settings.PttChats
+        // What HushPtt reports back (for the toast's Undo) is the prior entry of every chat whose
+        // deadline this hush sets or extends - WithAllPttChatsMuted also touches chats that were
+        // already muted for a shorter period, and Undo must put those back rather than clear them.
+        var priorEntries = settings.PttChats
             .Where(c => c.MutedUntil is not { } until || until < mutedUntil)
-            .Select(c => c.ChatId)
             .ToList();
         await UserSettingsUI.UserPttSettings()
             .Update(x => x.WithAllPttChatsMuted(now, mutedUntil), cancellationToken)
             .ConfigureAwait(false);
-        return hushedChatIds;
+        return priorEntries;
+    }
+
+    public async Task UndoHush(IReadOnlyCollection<PttChat> priorEntries, CancellationToken cancellationToken)
+    {
+        await UserSettingsUI.UserPttSettings()
+            .Update(x => x.WithPttChatMutesRestored(priorEntries), cancellationToken)
+            .ConfigureAwait(false);
+        await ResumeListening(priorEntries.Select(c => c.ChatId).ToList(), cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task UnmutePtt(IReadOnlyCollection<ChatId> chatIds, CancellationToken cancellationToken)
+    {
+        await UserSettingsUI.UserPttSettings()
+            .Update(x => x.WithPttChatsUnmuted(chatIds), cancellationToken)
+            .ConfigureAwait(false);
+        await ResumeListening(chatIds, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod] // Synced
@@ -531,6 +561,18 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     // Private methods
+
+    private async Task ResumeListening(IReadOnlyCollection<ChatId> chatIds, CancellationToken cancellationToken)
+    {
+        // A hush stopped these players; lifting the mute must bring the ones it re-armed back,
+        // or the rest of the utterance the user changed their mind about is lost. Only chats the
+        // write actually re-armed: a chat put back into a shorter mute stays quiet.
+        var pttChatIds = await GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        foreach (var chatId in chatIds) {
+            if (pttChatIds.Contains(chatId))
+                await SetListeningState(chatId, true).ConfigureAwait(false);
+        }
+    }
 
     private async Task<List<ChatId>> FilterConsentedPttChatIds(bool isMuted, CancellationToken cancellationToken)
     {

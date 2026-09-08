@@ -222,6 +222,30 @@ public partial class UserPttSettingsTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
+    public void WithPttChatMutesRestoredPutsAShorterMuteBack()
+    {
+        // arrange: A was unmuted, B was muted for an hour, then a hush extended both to 8 h
+        var chatA = ChatId.Parse("hushchataaaaaaaaaaaa");
+        var chatB = ChatId.Parse("hushchatbbbbbbbbbbbb");
+        var joinedAt = Moment.EpochStart + TimeSpan.FromDays(1);
+        var now = joinedAt + TimeSpan.FromHours(1);
+        var before = new UserPttSettings()
+            .WithPttChat(chatA, joinedAt)
+            .WithPttChat(chatB, joinedAt)
+            .WithPttChatMuted(chatB, now - TimeSpan.FromMinutes(30), now + TimeSpan.FromMinutes(30));
+        var hushed = before.WithAllPttChatsMuted(now, now + TimeSpan.FromHours(8));
+
+        // act
+        var restored = hushed.WithPttChatMutesRestored(before.PttChats);
+
+        // assert
+        restored.PttChats.Should().BeEquivalentTo(before.PttChats);
+        restored.IsMutedIn(chatA, now).Should().BeFalse();
+        restored.IsMutedIn(chatB, now).Should().BeTrue();
+        restored.IsMutedIn(chatB, now + TimeSpan.FromHours(1)).Should().BeFalse("B's own 30-minute mute is back");
+    }
+
+    [Fact]
     public void WithPttChatsUnmutedClearsOnlyTheGivenChats()
     {
         // arrange

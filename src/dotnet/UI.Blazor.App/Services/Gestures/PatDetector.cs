@@ -35,6 +35,10 @@ public sealed class PatDetector
         // A completed pair fires only once MaxGap has passed without a third impulse.
         if (_secondPatAt is { } second) {
             if (isImpulse) {
+                // The same tap spread over two samples (or its rebound) is not a third pat.
+                if (at - second < MinGap)
+                    return false;
+
                 Clear();
                 _lastImpulseAt = at;
                 return false;

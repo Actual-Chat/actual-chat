@@ -265,6 +265,16 @@ public class GestureActivationPolicyTest
     }
 
     [Fact]
+    public void FaceDownNeverHushesOverAnOpenMic()
+    {
+        // Stop sensing off (privacy toggle) + mic open + hush armed: muting every chat while the mic
+        // keeps recording into one of them would be the worst of both, so nothing fires.
+        GestureActivationPolicy
+            .Route(GestureKind.FaceDown, false, isMicOpen: true, isStopArmed: false, isHushArmed: true)
+            .Should().Be(GestureRoute.None);
+    }
+
+    [Fact]
     public void PocketNeverHushesAndPatOnlyHushes()
     {
         // act + assert

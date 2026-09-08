@@ -109,7 +109,7 @@ public static class GestureActivationPolicy
             // side; being pocketed is never a hush - the pat is, so a wake reaching a pocketed
             // phone doesn't hush itself.
             GestureKind.FaceDown or GestureKind.Pocket when isStopArmed => GestureRoute.StopReply,
-            GestureKind.FaceDown => isHushArmed ? GestureRoute.Hush : GestureRoute.None,
+            GestureKind.FaceDown => !isMicOpen && isHushArmed ? GestureRoute.Hush : GestureRoute.None,
             GestureKind.Pocket => GestureRoute.None,
             GestureKind.DoublePat => !isMicOpen && isHushArmed ? GestureRoute.Hush : GestureRoute.None,
             // The same shake means the opposite thing depending on the mic: nothing else can be

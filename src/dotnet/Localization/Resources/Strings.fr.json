@@ -1084,6 +1084,8 @@
   "Activity_Reply": "Répondre",
   "Activity_StopTalking": "Arrêter de parler",
   "Activity_MuteFor_Format": "Couper {0}",
+  "Activity_PttMuted": "Push-to-Talk en sourdine",
+  "Activity_Unmute": "Réactiver",
   "Activity_Chats": "{0} discussion|{0} discussions",
   "Activity_ExtraChats": "(+ {0} discussion)|(+ {0} discussions)",
 

@@ -1084,6 +1084,8 @@
   "Activity_Reply": "답장",
   "Activity_StopTalking": "말하기 중지",
   "Activity_MuteFor_Format": "{0} 음소거",
+  "Activity_PttMuted": "푸시 투 토크 음소거됨",
+  "Activity_Unmute": "음소거 해제",
   "Activity_Chats": "채팅 {0}개",
   "Activity_ExtraChats": "(+ 채팅 {0}개)",
 

@@ -1268,6 +1268,8 @@
   "Activity_Reply": "Reply",
   "Activity_StopTalking": "Stop talking",
   "Activity_MuteFor_Format": "Mute {0}",
+  "Activity_PttMuted": "Push-to-talk muted",
+  "Activity_Unmute": "Unmute",
   "Activity_Chats": "{0} chat|{0} chats",
   "Activity_ExtraChats": "(+ {0} chat)|(+ {0} chats)",
 

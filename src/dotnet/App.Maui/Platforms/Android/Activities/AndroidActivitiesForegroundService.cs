@@ -40,6 +40,8 @@ public sealed class AndroidActivitiesForegroundService : Service
         public const string AnswerWindowRemainingMs = nameof(AnswerWindowRemainingMs);
         public const string IsStartGestureReady = nameof(IsStartGestureReady);
         public const string HushDurationMinutes = nameof(HushDurationMinutes);
+        public const string CanHush = nameof(CanHush);
+        public const string MutedRemainingMs = nameof(MutedRemainingMs);
         public const string UploadFileCount = nameof(UploadFileCount);
         public const string UploadBytesUploaded = nameof(UploadBytesUploaded);
         public const string UploadTotalBytes = nameof(UploadTotalBytes);
@@ -52,6 +54,7 @@ public sealed class AndroidActivitiesForegroundService : Service
     public const string ActionStop = "ACTION_STOP";
     public const string ActionReply = "ACTION_REPLY";
     public const string ActionStopTalking = "ACTION_STOP_TALKING";
+    public const string ActionUnmute = "ACTION_UNMUTE";
     public const string ActionHush = "ACTION_HUSH";
     private const string ChannelId = "audio_widget";
     private const string RecordingChannelId = "audio_recording";
@@ -63,6 +66,11 @@ public sealed class AndroidActivitiesForegroundService : Service
     private static int _pendingStartCount;
     private static bool _isStopPending;
     private static int _lastRequestedTypes;
+    // The power-button hush is a deliberate two-press gesture - screen on, then off again inside
+    // this window - so a call, an alarm or lift-to-wake lighting the display can't fire it.
+    private static readonly TimeSpan PowerPressWindow = TimeSpan.FromSeconds(3);
+    private static long _screenOnAtMs;
+    private static bool _wasHeadsetLongPressHandled;
     private string _requestId = "";
     private MediaSessionCompat? _mediaSession;
     private ScreenOffReceiver? _screenOffReceiver;
@@ -73,6 +81,8 @@ public sealed class AndroidActivitiesForegroundService : Service
     private Android.App.Notification? _lastNotification;
     private int _lastKind = -1;
     private int _hushDurationMinutes;
+    private bool _canHush;
+    private long _mutedRemainingMs;
     private bool _hasMicType;
     private Action<bool>? _micCapabilityHandler;
     private Action? _micBlockedHandler;
@@ -200,6 +210,11 @@ public sealed class AndroidActivitiesForegroundService : Service
             return StartCommandResult.NotSticky;
         }
 
+        if (action == ActionUnmute) {
+            TryHandleUnmute();
+            return StartCommandResult.NotSticky;
+        }
+
         if (action != ActionShow) {
             // An unknown/null action means AMS revived us without a real request (e.g. after the
             // process was killed) - there's nothing to show, and re-raising is MainActivity's job
@@ -298,7 +313,11 @@ public sealed class AndroidActivitiesForegroundService : Service
         _mediaSession.SetPlaybackState(playbackStateCompat);
 
         var answerWindowRemainingMs = intent.Extras!.GetLong(IntentExtras.AnswerWindowRemainingMs, 0);
-        _hushDurationMinutes = intent.Extras!.GetInt(IntentExtras.HushDurationMinutes);
+        // The headless wake's show carries no duration; the last one the backend sent stays.
+        if (intent.HasExtra(IntentExtras.HushDurationMinutes))
+            _hushDurationMinutes = intent.Extras!.GetInt(IntentExtras.HushDurationMinutes);
+        _canHush = intent.Extras!.GetBoolean(IntentExtras.CanHush);
+        _mutedRemainingMs = intent.Extras!.GetLong(IntentExtras.MutedRemainingMs, 0);
         var isStartGestureReady = intent.Extras!.GetBoolean(IntentExtras.IsStartGestureReady);
         var lastRequestId = _requestId;
         ResolveBitmapAndRun(
@@ -394,7 +413,7 @@ public sealed class AndroidActivitiesForegroundService : Service
         }
     }
 
-    private static string GetKindText(ActivityKind kind, bool isStartGestureReady)
+    private static string GetKindText(ActivityKind kind, bool isStartGestureReady, bool isMuted = false)
         // "Push-to-talk is on" was true but useless: it says a chat is armed, while what the user
         // needs to know is whether flipping the phone right now will do anything - and outside the
         // arming window the accelerometer is stopped, so it won't.
@@ -402,6 +421,7 @@ public sealed class AndroidActivitiesForegroundService : Service
             ActivityKind.Recording => L.Activity_Recording,
             ActivityKind.Listening => L.Activity_Listening,
             ActivityKind.Replaying => L.Activity_Replaying,
+            ActivityKind.Armed when isMuted => L.Activity_PttMuted,
             ActivityKind.Armed => isStartGestureReady
                 ? L.Activity_FlipToReply
                 : L.Activity_PttOnTapReply,
@@ -579,16 +599,21 @@ public sealed class AndroidActivitiesForegroundService : Service
         // alive regardless, which is all the headset button needs. It also lets the answer window
         // show a chronometer, which the media template doesn't render.
         if (kind is ActivityKind.Armed) {
+            var isMuted = _mutedRemainingMs > 0;
             _ = builder
                 .SetContentTitle(title)!
-                .SetContentText(GetKindText(kind, isStartGestureReady))!
+                .SetContentText(GetKindText(kind, isStartGestureReady, isMuted))!
                 .SetLargeIcon(_lastAlbumArt);
-            if (isStartGestureReady && answerWindowRemainingMs > 0)
+            // The chronometer counts the mute down while muted, the answer window otherwise.
+            var countdownMs = isMuted ? _mutedRemainingMs
+                : isStartGestureReady ? answerWindowRemainingMs
+                : 0;
+            if (countdownMs > 0)
                 _ = builder
                     .SetShowWhen(true)!
                     .SetUsesChronometer(true)!
                     .SetChronometerCountDown(true)!
-                    .SetWhen(Java.Lang.JavaSystem.CurrentTimeMillis() + answerWindowRemainingMs);
+                    .SetWhen(Java.Lang.JavaSystem.CurrentTimeMillis() + countdownMs);
             return builder.Build()!;
         }
 
@@ -613,12 +638,23 @@ public sealed class AndroidActivitiesForegroundService : Service
         }
         if (kind is not (ActivityKind.Armed or ActivityKind.Listening or ActivityKind.Replaying))
             return;
+        if (kind is ActivityKind.Armed && _mutedRemainingMs > 0) {
+            // Nothing to reply into while every armed chat is muted; the only thing to do is lift it.
+            _ = builder.AddAction(Android.Resource.Drawable.IcLockSilentMode, L.Activity_Unmute,
+                GetServicePendingIntent(8, ActionUnmute));
+            return;
+        }
 
-        _ = builder
-            .AddAction(Android.Resource.Drawable.IcButtonSpeakNow, L.Activity_Reply,
-                GetServicePendingIntent(5, ActionReply))!
-            .AddAction(Android.Resource.Drawable.IcLockSilentMode, GetMuteLabel(),
+        _ = builder.AddAction(Android.Resource.Drawable.IcButtonSpeakNow, L.Activity_Reply,
+            GetServicePendingIntent(5, ActionReply));
+        // Mute replaces Stop only where a hush has something to act on; an ordinary listen or
+        // replay with no armed chat keeps its Stop.
+        if (_canHush)
+            _ = builder.AddAction(Android.Resource.Drawable.IcLockSilentMode, GetMuteLabel(),
                 GetServicePendingIntent(7, ActionHush));
+        else
+            _ = builder.AddAction(Android.Resource.Drawable.IcMenuCloseClearCancel, L.Common_Stop,
+                GetServicePendingIntent(4, ActionStop));
     }
 
     private string GetMuteLabel()
@@ -702,78 +738,49 @@ public sealed class AndroidActivitiesForegroundService : Service
 
     private void UpdateScreenReceivers(ActivityKind? kind)
     {
-        UpdateScreenOffReceiver(kind is ActivityKind.Recording);
-        UpdateScreenOnReceiver(kind is ActivityKind.Armed or ActivityKind.Listening or ActivityKind.Replaying);
+        // Both broadcasts serve every audio state: screen-off closes an open mic and completes the
+        // two-press power hush, screen-on opens that hush's window.
+        var shouldRegister = kind is ActivityKind.Recording or ActivityKind.Armed
+            or ActivityKind.Listening or ActivityKind.Replaying;
+        UpdateReceiver(ref _screenOffReceiver, shouldRegister, Intent.ActionScreenOff, "screen-off");
+        UpdateReceiver(ref _screenOnReceiver, shouldRegister, Intent.ActionScreenOn, "screen-on");
     }
 
-    private void UpdateScreenOffReceiver(bool shouldRegister)
+    private void UpdateReceiver<T>(ref T? receiver, bool shouldRegister, string action, string name)
+        where T : BroadcastReceiver, new()
     {
-        if (shouldRegister == (_screenOffReceiver is not null))
+        if (shouldRegister == (receiver is not null))
             return;
 
         if (!shouldRegister) {
-            var receiver = _screenOffReceiver;
-            _screenOffReceiver = null;
+            var registered = receiver;
+            receiver = null;
             try {
-                UnregisterReceiver(receiver);
+                UnregisterReceiver(registered);
             }
             catch (Exception e) {
-                Log.LogWarning(e, "Couldn't unregister the screen-off receiver");
+                Log.LogWarning(e, "Couldn't unregister the {Name} receiver", name);
             }
             return;
         }
 
         try {
-            var receiver = new ScreenOffReceiver();
-            var filter = new IntentFilter(Intent.ActionScreenOff);
-            // ACTION_SCREEN_OFF is a protected system broadcast, so NotExported is what API 33+
+            var created = new T();
+            var filter = new IntentFilter(action);
+            // ACTION_SCREEN_ON/OFF are protected system broadcasts, so NotExported is what API 33+
             // wants here - see AndroidCarConnection for the opposite, cross-UID case. The flag
             // itself only exists from 33, and minSdk is 28.
             if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu)
-                RegisterReceiver(receiver, filter, ReceiverFlags.NotExported);
+                RegisterReceiver(created, filter, ReceiverFlags.NotExported);
             else
 #pragma warning disable CA1422
-                RegisterReceiver(receiver, filter);
+                RegisterReceiver(created, filter);
 #pragma warning restore CA1422
-            _screenOffReceiver = receiver;
+            receiver = created;
         }
         catch (Exception e) {
-            // Degrades to "the other two stop gestures still work", which is what it was before.
-            Log.LogWarning(e, "Couldn't register the screen-off receiver");
-        }
-    }
-
-    private void UpdateScreenOnReceiver(bool shouldRegister)
-    {
-        if (shouldRegister == (_screenOnReceiver is not null))
-            return;
-
-        if (!shouldRegister) {
-            var receiver = _screenOnReceiver;
-            _screenOnReceiver = null;
-            try {
-                UnregisterReceiver(receiver);
-            }
-            catch (Exception e) {
-                Log.LogWarning(e, "Couldn't unregister the screen-on receiver");
-            }
-            return;
-        }
-
-        try {
-            var receiver = new ScreenOnReceiver();
-            var filter = new IntentFilter(Intent.ActionScreenOn);
-            // Same protected-broadcast reasoning as the screen-off receiver above.
-            if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu)
-                RegisterReceiver(receiver, filter, ReceiverFlags.NotExported);
-            else
-#pragma warning disable CA1422
-                RegisterReceiver(receiver, filter);
-#pragma warning restore CA1422
-            _screenOnReceiver = receiver;
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "Couldn't register the screen-on receiver");
+            // Degrades to "the other stop gestures still work", which is what it was before.
+            Log.LogWarning(e, "Couldn't register the {Name} receiver", name);
         }
     }
 
@@ -787,11 +794,23 @@ public sealed class AndroidActivitiesForegroundService : Service
                 return;
 
             var hub = services.GetRequiredService<AppUIHub>();
-            if (!hub.GestureUI.IsStopGestureEnabled)
+            if (hub.GestureUI.IsStopGestureEnabled)
+                _ = BackgroundTask.Run(() => hub.PttReplyUI.StopReply(), Log,
+                    "Screen-off reply stop failed", CancellationToken.None);
+
+            // The second press of the power hush: the screen came on inside the window and is going
+            // off again by hand. A single screen-on is never enough - a call, an alarm or lift-to-
+            // wake all light the display, and a double press opens the camera before we see it.
+            var screenOnAtMs = Interlocked.Exchange(ref _screenOnAtMs, 0);
+            if (screenOnAtMs == 0
+                || Android.OS.SystemClock.ElapsedRealtime() - screenOnAtMs > PowerPressWindow.TotalMilliseconds)
+                return;
+            if (!hub.GestureUI.IsHushArmed || !hub.GestureUI.IsPocketed)
                 return;
 
-            _ = BackgroundTask.Run(() => hub.PttReplyUI.StopReply(), Log,
-                "Screen-off reply stop failed", CancellationToken.None);
+            _ = BackgroundTask.Run(
+                () => services.GetRequiredService<PttSessionCore>().Hush(CancellationToken.None),
+                Log, "Power-button hush failed", CancellationToken.None);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Screen-off handling failed");
@@ -799,25 +818,8 @@ public sealed class AndroidActivitiesForegroundService : Service
     }
 
     private static void TryHandleScreenOn()
-    {
-        // A pocketed phone lights up only because someone pressed power; on a desk the user is
-        // looking at it and has the UI. Single press only - a double press opens the camera.
-        try {
-            if (AppScopeAccessor.Current is not { } services)
-                return;
-
-            var hub = services.GetRequiredService<AppUIHub>();
-            if (!hub.GestureUI.IsHushArmed || !hub.GestureUI.IsPocketed)
-                return;
-
-            _ = BackgroundTask.Run(
-                () => services.GetRequiredService<PttSessionCore>().Hush(CancellationToken.None),
-                Log, "Screen-on hush failed", CancellationToken.None);
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "Screen-on handling failed");
-        }
-    }
+        // Only the stamp: whether this was a power press is decided by the screen-off that follows.
+        => Volatile.Write(ref _screenOnAtMs, Android.OS.SystemClock.ElapsedRealtime());
 
     private static void TryHandleNotificationReply(bool isStop)
     {
@@ -846,6 +848,23 @@ public sealed class AndroidActivitiesForegroundService : Service
         }
     }
 
+    private static void TryHandleUnmute()
+    {
+        try {
+            if (AppScopeAccessor.Current is not { } services)
+                return;
+
+            var chatAudioUI = services.GetRequiredService<AppUIHub>().ChatAudioUI;
+            _ = BackgroundTask.Run(async () => {
+                var mutedChatIds = await chatAudioUI.GetMutedPttChatIds(CancellationToken.None).ConfigureAwait(false);
+                await chatAudioUI.UnmutePtt(mutedChatIds, CancellationToken.None).ConfigureAwait(false);
+            }, Log, "Notification unmute action failed", CancellationToken.None);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Notification unmute action handling failed");
+        }
+    }
+
     private static void TryHandleHush()
     {
         try {
@@ -860,23 +879,32 @@ public sealed class AndroidActivitiesForegroundService : Service
         }
     }
 
-    private static bool TryHandleHeadsetButton(HeadsetKey key, bool isDown, int repeatCount, bool isLongPress)
+    private static bool TryHandleHeadsetButton(HeadsetKey key, bool isDown, bool isLongPress)
     {
         // Runs on the main thread: SetCallback binds its Handler to the Looper of the thread that
         // called it, which is OnStartCommand's. So this must neither block nor throw - a throw
         // would escape the media-button dispatch instead of reaching the base callback, e.g.
         // GetRequiredService on a scope that's concurrently being disposed.
         try {
+            // Read for the release, cleared by it: a long press that hushed must not also start a
+            // reply on the way up.
+            var wasLongPressHandled = Volatile.Read(ref _wasHeadsetLongPressHandled);
+            if (!isDown)
+                Volatile.Write(ref _wasHeadsetLongPressHandled, false);
             if (AppScopeAccessor.Current is not { } services)
                 return false;
 
             var hub = services.GetRequiredService<AppUIHub>();
             var state = hub.GestureUI.GetHeadsetButtonState();
             var action = HeadsetButtonPolicy.Decide(
-                key, isDown, repeatCount, isLongPress, state.IsEnabled,
+                key, isDown, isLongPress, wasLongPressHandled, state.IsEnabled,
                 state.HasAnswerWindow, state.IsReplyHot, state.IsPracticeMode, state.HasArmedChats);
             if (action == HeadsetButtonAction.PassThrough)
                 return false;
+            if (action == HeadsetButtonAction.Consume)
+                return true;
+            if (action == HeadsetButtonAction.Hush)
+                Volatile.Write(ref _wasHeadsetLongPressHandled, true);
 
             // The hold is taken synchronously inside the media-button dispatch, which is where
             // Android hands out the while-in-use exemption a background mic start needs, and it is
@@ -950,7 +978,7 @@ public sealed class AndroidActivitiesForegroundService : Service
                 return base.OnMediaButtonEvent(mediaButtonEvent);
 
             var isDown = keyEvent.Action == KeyEventActions.Down;
-            if (!TryHandleHeadsetButton(key, isDown, keyEvent.RepeatCount, keyEvent.IsLongPress))
+            if (!TryHandleHeadsetButton(key, isDown, keyEvent.IsLongPress))
                 return base.OnMediaButtonEvent(mediaButtonEvent);
 
             return true;

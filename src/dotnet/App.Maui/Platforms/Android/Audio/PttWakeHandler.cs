@@ -99,6 +99,8 @@ public static class PttWakeHandler
         intent.PutExtra(IntentExtras.ExtraChatCount, 0);
         intent.PutExtra(IntentExtras.IsPaused, false);
         intent.PutExtra(IntentExtras.CanPause, true);
+        // A wake only reaches an armed chat, so the Mute action always has something to hush.
+        intent.PutExtra(IntentExtras.CanHush, true);
         // TryStart, not StartForegroundService: the fast-fail wake below stops the service before
         // OnStartCommand can run, and only the registered start defers that stop instead of
         // letting Android kill us with ForegroundServiceDidNotStartInTimeException.

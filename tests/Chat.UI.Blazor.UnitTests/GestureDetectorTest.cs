@@ -431,6 +431,19 @@ public class GestureDetectorTest
             .Should().BeTrue();
 
     [Fact]
+    public void DoublePatFiresWhenEachPatSpansTwoSamples()
+    {
+        // At the ~50ms cadence a firm pat lands on two consecutive samples, and its rebound can
+        // cross the threshold as well; neither may read as a third impulse.
+        var samples = PocketRest(0)
+            .Concat([Pat(1000), Pat(1050), UpsideDown(1100), Pat(1300), Pat(1350)])
+            .Concat([new SensorSample(At(1400), 0f, -1f, -1.5f)])
+            .Concat(PocketRest(1450));
+        // act + assert
+        PatFired(samples).Should().BeTrue();
+    }
+
+    [Fact]
     public void SinglePatDoesNotFire()
         => PatFired(PocketRest(0).Concat([Pat(1000)]).Concat(PocketRest(1050, 2000)))
             .Should().BeFalse();

@@ -1084,6 +1084,8 @@
   "Activity_Reply": "返信",
   "Activity_StopTalking": "話すのをやめる",
   "Activity_MuteFor_Format": "{0}ミュート",
+  "Activity_PttMuted": "プッシュ・トゥ・トークはミュート中",
+  "Activity_Unmute": "ミュート解除",
   "Activity_Chats": "{0} 件のチャット",
   "Activity_ExtraChats": "(+ {0} 件のチャット)",
 

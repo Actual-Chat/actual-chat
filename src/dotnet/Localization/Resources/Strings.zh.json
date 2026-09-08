@@ -1084,6 +1084,8 @@
   "Activity_Reply": "回复",
   "Activity_StopTalking": "停止说话",
   "Activity_MuteFor_Format": "静音 {0}",
+  "Activity_PttMuted": "按住说话已静音",
+  "Activity_Unmute": "取消静音",
   "Activity_Chats": "{0} 个聊天",
   "Activity_ExtraChats": "(+ {0} 个聊天)",
 

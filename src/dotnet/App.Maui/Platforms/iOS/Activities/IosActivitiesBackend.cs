@@ -134,6 +134,7 @@ public sealed class IosActivitiesBackend : ActivitiesBackend
             ActivityKind.Recording => L.Activity_Recording,
             ActivityKind.Replaying => L.Activity_Replaying,
             ActivityKind.Listening => L.Activity_Listening,
+            ActivityKind.Armed when audio.MutedUntil is not null => L.Activity_PttMuted,
             ActivityKind.Armed => audio.IsStartGestureReady
                 ? L.Activity_FlipToReply
                 : L.Activity_PttOn,

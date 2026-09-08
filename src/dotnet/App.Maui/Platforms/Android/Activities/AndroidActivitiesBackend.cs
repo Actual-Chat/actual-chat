@@ -148,11 +148,18 @@ public class AndroidActivitiesBackend : ActivitiesBackend
             // the device wall clock, and the ServerClock stamp isn't in that domain.
             intent.PutExtra(IntentExtras.IsStartGestureReady, audio.IsStartGestureReady);
             intent.PutExtra(IntentExtras.HushDurationMinutes, (int)audio.HushDuration.TotalMinutes);
+            intent.PutExtra(IntentExtras.CanHush, audio.CanHush);
+            var now = Hub.Clocks.ServerClock.Now;
             if (audio.AnswerWindowEndsAt is { } endsAt) {
-                var remaining = endsAt - Hub.Clocks.ServerClock.Now;
+                var remaining = endsAt - now;
                 if (remaining > TimeSpan.Zero)
                     intent.PutExtra(
                         IntentExtras.AnswerWindowRemainingMs, (long)remaining.TotalMilliseconds);
+            }
+            if (audio.MutedUntil is { } mutedUntil) {
+                var remaining = mutedUntil - now;
+                if (remaining > TimeSpan.Zero)
+                    intent.PutExtra(IntentExtras.MutedRemainingMs, (long)remaining.TotalMilliseconds);
             }
             break;
         case LocationActivity location:
