@@ -233,6 +233,30 @@ public virtual async Task<Chat?> Get(ChatId chatId, CancellationToken cancellati
 public virtual async Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
 ```
 
+### Never mutate a returned result
+
+A `[ComputeMethod]` / `[RemoteComputeMethod]` result is cached, and **the same
+instance is handed to every caller**. Mutating it in place corrupts the cache for
+all consumers and produces parity-dependent bugs — right on the 1st call, wrong on
+the 2nd, right on the 3rd.
+
+```csharp
+// WRONG — corrupts the cached array for every other consumer
+var items = await Chats.GetVisualMediaPeriod(...).ConfigureAwait(false);
+Array.Reverse(items);
+
+// RIGHT — transform into a new array
+var items = await Chats.GetVisualMediaPeriod(...).ConfigureAwait(false);
+var newestFirst = items.Reverse().ToArray();
+```
+
+This is not hypothetical: `VisualMediaGallery` reversed the cached
+`VisualMediaItem[]` from `IChats.GetVisualMediaPeriod` in place, so every other
+open of the media viewer showed the gallery in reversed order — and it silently
+corrupted the right-panel grid (`ContentListPlumbing`), which reads the same
+cached instance. Never call `Array.Reverse` / `Array.Sort` or edit elements of a
+compute-method result; copy first.
+
 ### Dependency Tracking
 
 Dependencies are automatically tracked when one computed method calls another:

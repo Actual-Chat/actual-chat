@@ -228,6 +228,12 @@ Search for `<Using>` to get the full list. Avoid adding explicit usings for glob
 - **Fields and properties storing a `Lazy`/`LazySlim`**: name them `XxxLazy`
   (`_userIdResolverLazy`, `InstanceLazy`) — as with tasks, the name must say it's a
   lazy rather than the value it produces.
+- **Synchronous companion of a `[ComputeMethod]`**: suffix it `NonComputed`, not
+  `Now`/`Sync`/etc. Next to `[ComputeMethod] virtual Task<T> Foo(...)` the
+  non-reactive accessor (typically reading `MutableState.Value` or other state
+  that is never `Use`d) is `FooNonComputed`; the compute method keeps the bare
+  name. Established by `ChatAudioUI.GetListenerNonComputed` /
+  `GetReplayerNonComputed` (`UI.Blazor.App/Services/ChatAudioUI.Players.cs`).
 
 ### Braces and Formatting
 
