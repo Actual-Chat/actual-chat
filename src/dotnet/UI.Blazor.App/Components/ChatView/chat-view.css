@@ -839,8 +839,12 @@ body.narrow .chat-view.virtual-list > .c-wrapper > ul.c-virtual-container > li {
     @apply text-text-1;
 }
 
+/* Wraps where the markup under it wraps, or the two paint as a smear: `inset: 0` is the padding box,
+   and .playable-text-markup / .plain-text-markup lay their text out under `break-spaces`. */
 .temporary-container {
     @apply absolute inset-0 z-minus;
+    @apply whitespace-break-spaces;
+    padding-right: inherit;
     animation: smoothHide 0.5s ease-in forwards;
 }
 
