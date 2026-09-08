@@ -25,7 +25,6 @@
         recBtnCls += "record-on-btn";
     } else
         recBtnCls += "record-off-btn";
-    var mustKeepAwake = !m.IsRecordingHere;
     if (!hasMicrophonePermission) {
         recBtnCls = "mic-disabled";
         animatorClass = "";
@@ -41,7 +40,6 @@
     <ButtonRound
         Class="@recBtnCls"
         Click="@OnClick"
-        MustKeepAwake="@mustKeepAwake"
         PointerDownPreventDefault="true">
 
         @if (hasMicrophonePermission) {

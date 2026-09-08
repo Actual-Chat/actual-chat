@@ -10,7 +10,7 @@ import { LocalizationUI, UILanguageInfo } from 'localization-ui';
 
 const { infoLog } = getLogs('BrowserInfo');
 
-export type HostKind = 'Unknown' | 'WebServer' | 'WasmApp' | 'MauiApp';
+export type HostKind = 'Unknown' | 'Server' | 'WasmApp' | 'MauiApp';
 export type AppKind = 'Unknown' | 'Wasm' | 'Android' | 'Ios' | 'Windows' | 'MacOS';
 
 export class BrowserInfo {
@@ -22,7 +22,7 @@ export class BrowserInfo {
             ? 'MauiApp'
             : ('MONO' in window)
                 ? 'WasmApp'
-                : 'WebServer';
+                : 'Server';
     public static appKind: AppKind = 'Unknown';
     // True when the JS audio pipeline (player + recorder) is in use: every browser host, plus
     // the MAUI AppKit backend, whose WebView injects `globalThis.__useWebAudio = true` - it is
@@ -131,7 +131,7 @@ export class BrowserInfo {
     private static initBodyClasses() {
         const classList = document.body.classList;
         switch (this.hostKind) {
-        case 'WebServer':
+        case 'Server':
             classList.add('app-server');
             break;
         case 'WasmApp':

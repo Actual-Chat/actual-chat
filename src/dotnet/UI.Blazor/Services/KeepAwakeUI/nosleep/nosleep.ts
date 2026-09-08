@@ -1,153 +1,94 @@
-// TODO: fix eslint errors
-/* eslint-disable @typescript-eslint/use-unknown-in-catch-callback-variable,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call */
 import { mp4, webm } from './media';
 import { getLogs } from 'logging';
 import { AC } from 'app-constants';
 
-const { debugLog, warnLog, errorLog } = getLogs('NoSleep');
-// Detect iOS browsers < version 10
-const isOldIOS = () =>
-    typeof navigator !== 'undefined' &&
-    parseFloat(
-        (
-            (/CPU.*OS ([0-9_]{3,4})[0-9_]{0,1}|(CPU like).*AppleWebKit.*Mobile/i.exec(
-                navigator.userAgent
-            ) ?? [0, ''])[1]
-        )
-            .replace('undefined', '3_2')
-            .replace('_', '.')
-            .replace('_', '')
-    ) < 10 &&
-    !('MSStream' in window);
+const { debugLog, errorLog } = getLogs('NoSleep');
 
 export class NoSleep {
     private readonly noSleepVideo: HTMLVideoElement | null = null;
     private enabled = false;
     private wakeLock: WakeLockSentinel | null = null;
-    private noSleepTimer: number | null = null;
+
+    // Detect native Wake Lock API support (Samsung Browser supports it but cannot use it)
+    public get isNativeWakeLockSupported(): boolean {
+        return 'wakeLock' in navigator && !navigator.userAgent.includes('Samsung');
+    }
+
+    public get isEnabled(): boolean {
+        return this.enabled;
+    }
 
     constructor() {
         if (this.isNativeWakeLockSupported) {
+            // A wake lock is released whenever the page is hidden, so it has to be re-acquired on return.
             const handleVisibilityChange = () => {
                 if (this.wakeLock !== null && document.visibilityState === 'visible')
                     void this.enable();
             };
             document.addEventListener('visibilitychange', handleVisibilityChange);
             document.addEventListener('fullscreenchange', handleVisibilityChange);
-        } else if (isOldIOS()) {
-            this.noSleepTimer = null;
-        } else {
-            // Set up no sleep video element
-            this.noSleepVideo = document.createElement('video');
-
-            const noSleepVideo = this.noSleepVideo;
-            this.noSleepVideo.setAttribute('title', AC.appName);
-            this.noSleepVideo.setAttribute('playsinline', '');
-
-            this.addSourceToVideo(noSleepVideo, 'webm', webm);
-            this.addSourceToVideo(noSleepVideo, 'mp4', mp4);
-
-            // For iOS >15 video needs to be on the document to work as a wake lock
-            Object.assign(noSleepVideo.style, {
-                position: 'absolute',
-                left: '-100%',
-                top: '-100%',
-            });
-            document.querySelector('body')!.append(noSleepVideo);
-
-            noSleepVideo.addEventListener('loadedmetadata', () => {
-                if (noSleepVideo.duration <= 1) {
-                    // webm source
-                    noSleepVideo.setAttribute('loop', '');
-                } else {
-                    // mp4 source
-                    noSleepVideo.addEventListener('timeupdate', () => {
-                        if (noSleepVideo.currentTime > 0.5) {
-                            noSleepVideo.currentTime = Math.random();
-                        }
-                    });
-                }
-            });
+            return;
         }
+
+        const noSleepVideo = document.createElement('video');
+        this.noSleepVideo = noSleepVideo;
+        noSleepVideo.setAttribute('title', AC.appName);
+        noSleepVideo.setAttribute('playsinline', '');
+        this.addSourceToVideo(noSleepVideo, 'webm', webm);
+        this.addSourceToVideo(noSleepVideo, 'mp4', mp4);
+        // For iOS >15 video needs to be on the document to work as a wake lock
+        Object.assign(noSleepVideo.style, {
+            position: 'absolute',
+            left: '-100%',
+            top: '-100%',
+        });
+        document.body.append(noSleepVideo);
+
+        noSleepVideo.addEventListener('loadedmetadata', () => {
+            if (noSleepVideo.duration <= 1) { // webm source
+                noSleepVideo.setAttribute('loop', '');
+                return;
+            }
+
+            // mp4 source
+            noSleepVideo.addEventListener('timeupdate', () => {
+                if (noSleepVideo.currentTime > 0.5)
+                    noSleepVideo.currentTime = Math.random();
+            });
+        });
     }
 
-    // Detect native Wake Lock API support (Samsung Browser supports it but cannot use it)
-    public get isNativeWakeLockSupported () {
-        return 'wakeLock' in navigator &&
-            !window.navigator.userAgent.includes('Samsung');
-    }
-
-    public get isEnabled() {
-        return this.enabled;
-    }
-
-    public enable(): Promise<void> {
-        if (this.isNativeWakeLockSupported) {
-            return navigator.wakeLock
-                .request('screen')
-                .then((wakeLock) => {
-                    this.wakeLock = wakeLock;
-                    this.enabled = true;
-                    debugLog?.log('Wake Lock active.');
-                    this.wakeLock.addEventListener('release', () => {
-                        // ToDo: Potentially emit an event for the page to observe since
-                        // Wake Lock releases happen when page visibility changes.
-                        // (https://web.dev/wakelock/#wake-lock-lifecycle)
-                        debugLog?.log('Wake Lock released.');
-                    });
-                })
-                .catch(err => {
-                    this.enabled = false;
-                    errorLog?.log(`${err.name}, ${err.message}`);
-                    throw err;
-                });
-        } else if (isOldIOS()) {
-            const disableTask = this.disable();
-            warnLog?.log(`
-                NoSleep enabled for older iOS devices. This can interrupt
-                active or long-running network requests from completing successfully.
-                See https://github.com/richtr/NoSleep.js/issues/15 for more details.
-            `);
-            this.noSleepTimer = window.setInterval(() => {
-                if (!document.hidden) {
-                    window.location.href = window.location.href.split('#')[0];
-                    window.setTimeout(window.stop, 0);
-                }
-            }, 15000);
+    public async enable(): Promise<void> {
+        try {
+            if (this.isNativeWakeLockSupported) {
+                const wakeLock = await navigator.wakeLock.request('screen');
+                this.wakeLock = wakeLock;
+                debugLog?.log('enable: wake lock is active');
+                wakeLock.addEventListener('release', () => debugLog?.log('enable: wake lock is released'));
+            }
+            else
+                await this.noSleepVideo!.play();
             this.enabled = true;
-            return disableTask;
-        } else {
-            const playPromise = this.noSleepVideo!.play();
-            return playPromise
-                .then((res) => {
-                    this.enabled = true;
-                    return res;
-                })
-                .catch(err => {
-                    this.enabled = false;
-                    throw err;
-                });
+        }
+        catch (e) {
+            this.enabled = false;
+            errorLog?.log('enable: error:', e);
+            throw e;
         }
     }
 
-    public async disable() {
+    public async disable(): Promise<void> {
         if (this.isNativeWakeLockSupported) {
             if (this.wakeLock)
                 await this.wakeLock.release();
             this.wakeLock = null;
-        } else if (isOldIOS()) {
-            if (this.noSleepTimer) {
-                debugLog?.log('NoSleep now disabled for older iOS devices.');
-                window.clearInterval(this.noSleepTimer);
-                this.noSleepTimer = null;
-            }
-        } else {
-            this.noSleepVideo!.pause();
         }
+        else
+            this.noSleepVideo!.pause();
         this.enabled = false;
     }
 
-    private addSourceToVideo(element, type, dataURI) {
+    private addSourceToVideo(element: HTMLVideoElement, type: string, dataURI: string): void {
         const source = document.createElement('source');
         source.src = dataURI;
         source.type = `video/${type}`;

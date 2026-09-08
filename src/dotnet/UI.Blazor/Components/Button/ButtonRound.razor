@@ -11,7 +11,6 @@
         data-tooltip="@Tooltip"
         data-tooltip-position="@(TooltipPosition.ToPositionString())"
         data-tooltip-severity="@(TooltipSeverity.ToSeverityString())"
-        data-must-keep-awake="@MustKeepAwake.ToString()"
         @attributes="@AdditionalAttributes"
         @onpointerdown:preventDefault="@PointerDownPreventDefault"
         @onclick:stopPropagation="@StopPropagation"
@@ -34,7 +33,6 @@
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public bool IsAutofocused { get; set; }
     [Parameter] public string Tooltip { get; set; } = "";
-    [Parameter] public bool MustKeepAwake { get; set; }
     [Parameter] public FloatingPosition TooltipPosition { get; set; }
     [Parameter] public TooltipSeverity TooltipSeverity { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }

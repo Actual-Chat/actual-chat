@@ -7,7 +7,6 @@
         autofocus="@IsAutofocused"
         data-tooltip="@Tooltip"
         data-tooltip-position="@(TooltipPosition.ToPositionString())"
-        data-must-keep-awake="@MustKeepAwake.ToString()"
         @attributes="@AdditionalAttributes"
         @onclick="@Click">
     <timer-button-svg timing="@_delay" sizeClass="@CircleClass" iconColor="@TimerButtonColor"/>
@@ -24,7 +23,6 @@
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public bool IsAutofocused { get; set; }
     [Parameter] public string Tooltip { get; set; } = "";
-    [Parameter] public bool MustKeepAwake { get; set; }
     [Parameter] public FloatingPosition TooltipPosition { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
