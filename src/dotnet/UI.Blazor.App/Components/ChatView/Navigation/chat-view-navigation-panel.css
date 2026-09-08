@@ -1,0 +1,60 @@
+.chat-view-navigation-panel {
+    @apply relative z-button;
+}
+/* The column exists even with nothing to show, so it must not swallow taps on the chat below it */
+.chat-view-navigation-panel > .c-content {
+    @apply absolute bottom-3 md:bottom-0 right-3 z-10;
+    @apply flex-y items-center justify-center gap-y-2;
+    @apply pointer-events-none;
+    @apply shadow-scrollbar;
+}
+.chat-view-navigation-panel > .c-content > * {
+    @apply pointer-events-auto;
+}
+body.hoverable .chat-view-navigation-panel > .c-content {
+    @apply right-0;
+    @apply p-3 pl-8;
+}
+body.narrow:has(.audio-panel-header) .chat-view-navigation-panel > .c-content {
+    @apply bottom-18;
+}
+
+/* ── Navigate to reaction ── */
+
+.navigate-to-reaction .btn {
+    transform-origin: center center;
+}
+.navigate-to-reaction.off-to-on .btn,
+.navigate-to-reaction.off-to-on .unread-counter {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    transition: opacity 150ms ease-in-out, transform 300ms ease-in-out;
+}
+.navigate-to-reaction.on-to-off .btn,
+.navigate-to-reaction.on-to-off .unread-counter {
+    opacity: 0;
+    transform: scale(0) translateY(1rem);
+    transition: opacity 300ms ease-in-out, transform 150ms ease-in-out;
+}
+.navigate-to-reaction.off .btn,
+.navigate-to-reaction.off .unread-counter {
+    opacity: 0;
+    transform: scale(0) translateY(1rem);
+}
+.navigate-to-reaction > .c-content {
+    @apply flex-y items-center justify-center;
+}
+.navigate-to-reaction .unread-counter {
+    @apply z-10;
+    @apply -mb-2;
+    @apply text-06;
+    @apply cursor-pointer;
+}
+.navigate-to-reaction .btn.btn-round {
+    @apply rounded-full border border-modal;
+    @apply bg-modal;
+    @apply shadow-modal-wide;
+}
+.navigate-to-reaction .btn.btn-round img {
+    @apply h-6 w-6;
+}

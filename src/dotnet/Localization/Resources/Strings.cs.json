@@ -1230,6 +1230,7 @@
   "ChatView_CollapseSummary": "Sbalit shrnutí",
   "ChatView_ExpandSummary": "Rozbalit shrnutí",
   "ChatView_GoToUnread": "Přejít na nepřečtené",
+  "ChatView_GoToReaction": "Přejít na nepřečtenou reakci",
   "ChatView_GoToLastMessage": "Přejít na poslední zprávu",
   "ChatView_UnknownChat": "Neznámý chat",
   "ChatView_UnknownAuthor": "Neznámý autor",

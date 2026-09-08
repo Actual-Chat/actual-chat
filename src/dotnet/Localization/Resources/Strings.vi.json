@@ -1230,6 +1230,7 @@
   "ChatView_CollapseSummary": "Thu gọn tóm tắt",
   "ChatView_ExpandSummary": "Mở rộng tóm tắt",
   "ChatView_GoToUnread": "Đến phần chưa đọc",
+  "ChatView_GoToReaction": "Đến phản ứng chưa đọc",
   "ChatView_GoToLastMessage": "Đến tin nhắn cuối",
   "ChatView_UnknownChat": "Cuộc trò chuyện không xác định",
   "ChatView_UnknownAuthor": "Tác giả không xác định",

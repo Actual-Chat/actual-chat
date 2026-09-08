@@ -1458,6 +1458,7 @@
   "ChatView_CollapseSummary": "Collapse summary",
   "ChatView_ExpandSummary": "Expand summary",
   "ChatView_GoToUnread": "Go to the unread part",
+  "ChatView_GoToReaction": "Go to the unread reaction",
   "ChatView_GoToLastMessage": "Go to the last message",
   "ChatView_UnknownChat": "Unknown chat",
   "ChatView_UnknownAuthor": "Unknown author",

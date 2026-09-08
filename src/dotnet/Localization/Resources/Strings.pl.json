@@ -1230,6 +1230,7 @@
   "ChatView_CollapseSummary": "Zwiń podsumowanie",
   "ChatView_ExpandSummary": "Rozwiń podsumowanie",
   "ChatView_GoToUnread": "Przejdź do nieprzeczytanych",
+  "ChatView_GoToReaction": "Przejdź do nieprzeczytanej reakcji",
   "ChatView_GoToLastMessage": "Przejdź do ostatniej wiadomości",
   "ChatView_UnknownChat": "Nieznany czat",
   "ChatView_UnknownAuthor": "Nieznany autor",

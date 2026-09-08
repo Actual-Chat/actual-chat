@@ -1230,6 +1230,7 @@
   "ChatView_CollapseSummary": "Comprimi il riepilogo",
   "ChatView_ExpandSummary": "Espandi il riepilogo",
   "ChatView_GoToUnread": "Vai alla parte non letta",
+  "ChatView_GoToReaction": "Vai alla reazione non letta",
   "ChatView_GoToLastMessage": "Vai all'ultimo messaggio",
   "ChatView_UnknownChat": "Chat sconosciuta",
   "ChatView_UnknownAuthor": "Autore sconosciuto",

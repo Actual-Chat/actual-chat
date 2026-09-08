@@ -1230,6 +1230,7 @@
   "ChatView_CollapseSummary": "Свернуть сводку",
   "ChatView_ExpandSummary": "Развернуть сводку",
   "ChatView_GoToUnread": "Перейти к непрочитанному",
+  "ChatView_GoToReaction": "Перейти к непрочитанной реакции",
   "ChatView_GoToLastMessage": "Перейти к последнему сообщению",
   "ChatView_UnknownChat": "Неизвестный чат",
   "ChatView_UnknownAuthor": "Неизвестный автор",
