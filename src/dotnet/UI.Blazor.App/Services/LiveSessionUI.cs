@@ -434,7 +434,8 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         Task<T?> task)
         where T : class
     {
-        // The first read still awaits - standing in on nothing would flash a chat with no live block.
+        // Only covers a refetch in flight: with nothing to stand in on this returns the task, which
+        // ILiveSessions' ReturnDefault mode completes with null rather than parking until reconnect.
         var computed = Computed.Current;
         if (computed is null || !lastKnownValues.TryGetValue(chatId, out var lastKnown))
             return task;

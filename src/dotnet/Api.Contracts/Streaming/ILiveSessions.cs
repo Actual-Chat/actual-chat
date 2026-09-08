@@ -9,25 +9,27 @@ namespace ActualChat.Streaming;
 /// </summary>
 public interface ILiveSessions : IComputeService
 {
+    // ReturnDefault, not NoCache: live state must never come off the disk cache, but a NoCache call
+    // parks until reconnect - and "no session" is both the right offline answer and a non-blocking one.
     [ComputeMethod]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<LiveSessionState?> GetState(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<LiveSession?> Get(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<bool> HasRecorder(Session session, ChatId chatId, CancellationToken cancellationToken);
     // The signal behind the idle stop-listening / stop-recording timers. Deliberately unrelated to transcription.
     // Consolidated: a stream list change that leaves the bool alone must not be pushed to every listener.
     [ComputeMethod(ConsolidationDelay = 0.5)]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<bool> HasActivity(Session session, ChatId chatId, CancellationToken cancellationToken);
     // Who is speaking right now (VAD-gated, audio only). Consolidated because ILiveAudioStreams.List
     // rebuilds its array per register/unregister while the author set behind it rarely moves;
     // ApiArray compares that array by reference, so the comparer isn't optional.
     [ComputeMethod(ConsolidationDelay = 0.5, ConsolidationComparer = typeof(ApiArrayComparer<AuthorId>))]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<ApiArray<AuthorId>> GetAudioStreamingAuthorIds(
         Session session,
         ChatId chatId,
@@ -37,12 +39,12 @@ public interface ILiveSessions : IComputeService
     // never latched to 2+ authors. Re-measured on a fixed period rather than on chat traffic, so
     // it also paces its consumers; see LiveSessions.GetConversationStats.
     [ComputeMethod]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<ConversationStats?> GetConversationStats(Session session, ChatId chatId, CancellationToken cancellationToken);
     // Consolidated server-side, so a GetCallState or chat-rules change that leaves the status alone
     // isn't pushed to the caller. Zero delay - this is a ring/accept path.
     [ComputeMethod(ConsolidationDelay = 0)]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<CallStatus> GetCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     Task SetParticipation(
