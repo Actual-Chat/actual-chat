@@ -57,13 +57,15 @@ public sealed class MauiModule(IServiceProvider moduleServices)
         var fusion = services.AddFusion();
         fusion.AddService<IconUI>(ServiceLifetime.Scoped);
         fusion.AddService<IncomingShareSuggestions, AppleIncomingShareSuggestions>(ServiceLifetime.Scoped);
-
-        // Video transcoding
-        services.AddScoped<VideoTranscoder>(c => new AppleVideoTranscoder(c));
 #elif ANDROID
         var fusion = services.AddFusion();
         fusion.AddService<IconUI>(ServiceLifetime.Scoped);
         fusion.AddService<IncomingShareSuggestions, AndroidIncomingShareSuggestions>(ServiceLifetime.Scoped);
+#endif
+
+        // Video transcoding
+#if IOS || MACOS
+        services.AddScoped<VideoTranscoder>(c => new AppleVideoTranscoder(c));
 #endif
     }
 }
