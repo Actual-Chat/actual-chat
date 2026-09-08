@@ -54,6 +54,37 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
     }
 
     [Fact]
+    public async Task ConcurrentClosersShouldWriteOneEntryPerCall()
+    {
+        // Two closers can decide the same call is over at the same instant - the caller's hang-up and
+        // the session finalizer behind the summary flow - and both are expected to be safe. Observed
+        // failure: one call left two identical entries 18ms apart, written from different threads.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = (LiveSessionsBackend)tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // act - the offset between the two closers is swept rather than left to chance: the window
+        // is only as wide as a couple of Redis round trips, and starting both at once never lands in it.
+        var callCount = 0;
+        for (var offsetMs = 0; offsetMs <= 20; offsetMs++) {
+            callCount++;
+            await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+            var hangUp = Task.Run(async () =>
+                await backend.CancelCall(chatId, bob.Id, default).ConfigureAwait(false));
+            await Task.Delay(offsetMs);
+            var finalize = Task.Run(async () =>
+                await backend.FinalizeSession(chatId, default).ConfigureAwait(false));
+            await Task.WhenAll(hangUp, finalize);
+        }
+
+        // assert
+        var entries = await ReadCallEntries(tester, chatId);
+        entries.Should().HaveCount(callCount);
+    }
+
+    [Fact]
     public async Task AnsweredCallShouldWriteEndedAndMaterializeACallConversation()
     {
         // The case the whole Ended outcome exists for: transcription is off, so nothing else would

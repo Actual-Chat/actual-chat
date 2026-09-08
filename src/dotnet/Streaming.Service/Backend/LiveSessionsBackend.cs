@@ -1196,11 +1196,19 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     private async Task CloseAndMaterialize(LiveSessionState state, CancellationToken cancellationToken)
     {
         if (state.IsCall) {
-            // A hang-up and the ring expiry can decide the same call is over at the same moment.
-            // Dropping the session key is the atomic claim that picks one of them as the closer, so
-            // the call leaves exactly one entry behind; Close below is then a no-op for that key.
-            if (!await _redisScope.Remove(state.ChatId.Value).ConfigureAwait(false))
-                return;
+            // Dropping the session key is the atomic claim that picks one closer out of the several
+            // that can decide a call is over at once. It shares _changeLocks with every write of
+            // that key - outside the lock a straddling read-modify-write puts the key back and the
+            // call is recorded twice - and re-reads, since the caller's snapshot predates the lock.
+            using (Computed.BeginIsolation())
+            using (await _changeLocks.Lock(state.ChatId, CancellationToken.None).ConfigureAwait(false)) {
+                if (await SafeGet(state.ChatId).ConfigureAwait(false) is not { } current)
+                    return;
+
+                state = current;
+                if (!await _redisScope.Remove(state.ChatId.Value).ConfigureAwait(false))
+                    return;
+            }
 
             try {
                 // Everything below runs with CancellationToken.None for the same reason the Close in the
