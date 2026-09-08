@@ -205,10 +205,9 @@ public sealed class ApplePhotoGalleryFiles(IServiceProvider services) : Processo
         using var asset = AVAsset.FromUrl(NSUrl.CreateFileUrl(path));
         await asset.LoadValuesTaskAsync(["duration"]).ConfigureAwait(false);
         var duration = TimeSpan.FromSeconds(asset.Duration.Seconds);
-        using var generator = new AVAssetImageGenerator(asset) {
-            AppliesPreferredTrackTransform = true,
-            MaximumSize = new CGSize(ThumbnailMaxPixelSize, ThumbnailMaxPixelSize),
-        };
+        using var generator = new AVAssetImageGenerator(asset);
+        generator.AppliesPreferredTrackTransform = true;
+        generator.MaximumSize = new CGSize(ThumbnailMaxPixelSize, ThumbnailMaxPixelSize);
         var time = duration < VideoThumbnailTime * 2 ? duration / 2 : VideoThumbnailTime;
         var image = await generator.GenerateCGImage(time, cancellationToken).ConfigureAwait(false);
         return (image, (long)duration.TotalMilliseconds);
