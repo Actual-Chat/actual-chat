@@ -67,6 +67,13 @@
         throw new ArgumentOutOfRangeException();
 }
 
+@* This card is for a call that never connected; a connected one renders through its conversation card. *@
+@if (entry is CallEntry { Outcome: not CallOutcome.Ended } callEntry) {
+    <div class="@cls" data-chat-entry-id="@(entry.Id.Value)">
+        <CallMessageView Entry="@callEntry"/>
+    </div>
+    return;
+}
 @if (isSystem) {
     <div class="@cls"
          data-chat-entry-id="@(entry.Id.Value)"

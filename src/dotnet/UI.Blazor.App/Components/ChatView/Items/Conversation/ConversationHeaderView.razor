@@ -5,11 +5,13 @@
     var conversation = Header.Conversation!;
     var messageCount = conversation.MessageCount;
     var startsAt = DateTimeConverter.ToLocalTime(conversation.StartsAt);
+    var (callIcon, callTitle, _, _) = CallCardFormat.Get(CallOutcome.Ended, false, L);
 }
 
 <ConversationMessageHeader
     Conversation="@conversation"
-    Title="@m.Title"
+    Title="@(conversation.IsCall ? TranslatedText.From(callTitle) : m.Title)"
+    Icon="@(conversation.IsCall ? callIcon : "icon-tldr")"
     MessageCount="@messageCount"
     ConversationToggleClick="@ToggleShowMessage"
     StartsAt="@startsAt"

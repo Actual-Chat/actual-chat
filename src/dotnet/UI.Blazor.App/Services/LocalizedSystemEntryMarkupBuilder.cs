@@ -35,4 +35,17 @@ public sealed class LocalizedSystemEntryMarkupBuilder(IServiceProvider services)
                 new AuthorMention(MentionRef.NewAuthor(entry.TargetAuthorId), authorName),
                 new PlainTextMarkup(text));
     }
+
+    protected override Markup BuildCall(CallEntry entry)
+    {
+        var callerName = entry.CallerName.NullIfEmpty() ?? SomeoneName;
+        return new MarkupSeq(
+            new AuthorMention(MentionRef.NewAuthor(entry.CallerId), callerName),
+            new PlainTextMarkup(entry.Outcome switch {
+                CallOutcome.NoAnswer => L.SystemEntry_CallNoAnswer,
+                CallOutcome.Declined => L.SystemEntry_CallDeclined,
+                CallOutcome.Canceled => L.SystemEntry_CallCanceled,
+                _ => L.SystemEntry_CallEnded,
+            }));
+    }
 }
