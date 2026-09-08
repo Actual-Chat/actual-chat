@@ -716,9 +716,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             }
         }
 
-        // Any accepted position spends the activation, not just the unread redirect: a deep link that
-        // placed the reader leaves nothing to restore, and an armed one would redirect off it.
-        var usedActivation = scrollToKey != null ? activation : null;
+        // Content on screen spends it too, not just an accepted position: a region that flips back over
+        // a full viewport emits no report, so the retire in OnItemVisibilityChanged never runs.
+        var usedActivation = scrollToKey != null || !itemVisibility.IsEmpty ? activation : null;
 
         var buildMs = (long)buildStartedAt.Elapsed.TotalMilliseconds;
         if (buildMs > 1000)
