@@ -33,6 +33,7 @@ to `/prepare-merge`.
 | Branch has commits over the base | `git log --oneline origin/dev..HEAD` | Nothing to PR. Stop. |
 | No PR already open for it | `gh pr list --head "$(git branch --show-current)" --json url,state` | One exists → do **not** open a second, and do **not** re-announce it. Use `pr list`, not `pr view` — `pr view` errors on a branch with no upstream. |
 | Build/tests actually run | — | You may still PR, but the Testing section must say plainly what was not run. |
+| Branch is linked to its issue | `git config --get "branch.$(git branch --show-current).issue"` | Empty → ask once, via `AskUserQuestion`: run `/track-issue` now, or open the PR without an issue. Never invent a number from the branch name. |
 
 Branch names follow the commit prefixes: `feat/…`, `fix/…`, `refactor/…` — never
 `feature/…`.
@@ -81,7 +82,19 @@ gh pr create --base dev --title "type(scope): summary" --body-file tmp/pr-body.m
 - **Body shape**: `## Summary` (what was broken and why — the mechanism, not a diff
   restatement), `## Fix` (what the change does, and the invariants a reviewer must not
   break), `## Testing` (what ran, green or not, and what is still owed — device passes,
-  manual verification). Then your harness's attribution footer, if it gives you one.
+  manual verification). Then a line `Closes #<N>` with the issue from the preconditions
+  check — that is what moves the issue to Done on merge — and your harness's
+  attribution footer, if it gives you one. No linked issue → no `Closes` line.
+- **Issue still in ToDo?** The PR is proof the work is in progress. Check and move it:
+
+  ```bash
+  gh api graphql -F n=<N> -f query='query($n:Int!){ repository(owner:"Actual-Chat",name:"actual-chat"){ issue(number:$n){
+    projectItems(first:5){ nodes{ id fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue{ name } } } } } } }'
+  gh project item-edit --project-id PVT_kwDOBSwBWs4AA3Ej --id <ITEM> \
+    --field-id PVTSSF_lADOBSwBWs4AA3EjzgAc2xg --single-select-option-id 47fc9ee4   # In Progress
+  ```
+
+  Only ToDo (or Backlog) moves; In Progress and Done are left alone.
 - Say plainly what was *not* verified. "Android device-verified; iOS compiles, device
   test still owed" is the useful sentence.
 
@@ -128,6 +141,7 @@ their own confirmation. Never fold one into this step.
 | `gh pr create --fill` | Write a real Summary/Fix/Testing body |
 | Body file in the repo root | Put it in `tmp/` |
 | Base branch assumed | `gh repo view --json defaultBranchRef` |
+| `Closes #N` guessed from the branch name | Only `branch.<name>.issue` counts; otherwise ask about `/track-issue` |
 | Second PR opened for a branch that already has one | `gh pr list --head` first |
 | "All tests pass" without running them | State what ran and what is owed |
 | Pushing again after `/prepare-merge` | It already pushed; skip step 2 |

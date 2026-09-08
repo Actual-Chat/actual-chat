@@ -96,6 +96,18 @@ The only exception is when `/server-loop` is running - in this case you should t
 
 **Running the server (direct)**: Use `/server-start`, `/server-restart`, `/server-stop`. Use `--watch` flag for auto-reload.
 
+## When work on a task starts
+
+Every task maps to one GitHub issue on the org's Team project board. Run the
+`/track-issue` skill (`.claude/skills/track-issue/SKILL.md`) **before the
+first code change** of a task — right after a design or plan is approved, and
+whenever a session starts on a feature branch that has no
+`branch.<name>.issue` git config yet. It finds or files the issue, assigns it,
+sets the board column (ToDo when claimed, In Progress once code exists), and
+stores the number on the branch so `/create-pr` can add `Closes #N`. Running
+it on an already-linked branch is cheap and idempotent; do it rather than
+assuming. It never links or re-assigns anything without asking.
+
 ## Before merging a feature branch to dev
 
 When work reaches "ready for PR / merge / final review", ask the developer
