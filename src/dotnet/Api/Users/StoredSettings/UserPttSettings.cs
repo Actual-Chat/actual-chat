@@ -109,6 +109,15 @@ public sealed partial record UserPttSettings
                 : c with { MutedAt = mutedAt, MutedUntil = mutedUntil })
             .ToArray());
 
+    public UserPttSettings WithPttChatMutesRestored(IReadOnlyCollection<PttChat> priorEntries)
+        // Puts each chat's mute back the way it was before a hush touched it - unmuted, or muted
+        // for the shorter period the user had chosen - rather than clearing it outright.
+        => WithPttChats(AllPttChats
+            .Select(c => priorEntries.FirstOrDefault(p => p.ChatId == c.ChatId) is { } prior
+                ? c with { MutedAt = prior.MutedAt, MutedUntil = prior.MutedUntil }
+                : c)
+            .ToArray());
+
     public UserPttSettings WithPttChatsUnmuted(IReadOnlyCollection<ChatId> chatIds)
         => WithPttChats(AllPttChats
             .Select(c => chatIds.Contains(c.ChatId) ? c with { MutedAt = null, MutedUntil = null } : c)

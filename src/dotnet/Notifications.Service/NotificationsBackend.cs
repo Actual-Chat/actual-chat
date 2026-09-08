@@ -1252,13 +1252,17 @@ public class NotificationsBackend(IServiceProvider services)
     private async Task SendPttWake(
         UserId userId, ChatId chatId, AuthorId authorId, Moment startedAt, CancellationToken cancellationToken)
     {
-        if (!await IsArmedForPtt(userId, chatId, cancellationToken).ConfigureAwait(false)) {
+        // One settings read serves both gates: consent within the chat's enable-epoch, then the
+        // per-chat mute. Both compare against server-stamped moments.
+        var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var pttSettings = await ServerKvasBackend.ForUser(userId).UserPttSettings()
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
+        if (!pttSettings.IsArmedIn(chatId, chat?.PttEnabledAt)) {
             Log.LogInformation("PTT wake for user '{UserId}' in chat '{ChatId}': not armed", userId, chatId);
             return;
         }
-
-        var now = Clocks.SystemClock.Now;
-        if (await ServerKvasBackend.IsPttMuted(userId, chatId, now, cancellationToken).ConfigureAwait(false)) {
+        if (pttSettings.IsMutedIn(chatId, Clocks.SystemClock.Now)) {
             Log.LogInformation("PTT wake for user '{UserId}' in chat '{ChatId}': PTT muted", userId, chatId);
             return;
         }
@@ -1305,19 +1309,10 @@ public class NotificationsBackend(IServiceProvider services)
 
         if (pttDeviceIds.Count != 0) {
             // The PTT system UI needs a channel/speaker label at push time, before any RPC.
-            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
             await ApnsClient
                 .SendPttWake(chatId, startedAt, chat?.Title.NullIfEmpty() ?? "Voxt", pttDeviceIds, cancellationToken)
                 .ConfigureAwait(false);
         }
-    }
-
-    private async Task<bool> IsArmedForPtt(UserId userId, ChatId chatId, CancellationToken cancellationToken)
-    {
-        var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-        return await ServerKvasBackend
-            .IsPttArmed(userId, chatId, chat?.PttEnabledAt, cancellationToken)
-            .ConfigureAwait(false);
     }
 
     private static (ChatId? ChatId, long EntryLid) GetReadAnchor(Notification notification)

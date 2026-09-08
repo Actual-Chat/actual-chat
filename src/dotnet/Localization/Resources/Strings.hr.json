@@ -1084,6 +1084,8 @@
   "Activity_Reply": "Odgovorite",
   "Activity_StopTalking": "Prestanite govoriti",
   "Activity_MuteFor_Format": "Utišaj na {0}",
+  "Activity_PttMuted": "Pritisni i govori je utišan",
+  "Activity_Unmute": "Uključi zvuk",
   "Activity_Chats": "{0} chat|{0} chata|{0} chatova",
   "Activity_ExtraChats": "(+ {0} chat)|(+ {0} chata)|(+ {0} chatova)",
 

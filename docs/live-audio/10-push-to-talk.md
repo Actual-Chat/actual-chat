@@ -65,28 +65,52 @@ any live playback right away), clears each chat's incoming-voice stamp via
 — a flip or shake right after can't reopen the mic — and then rewrites
 `PttChats` with `WithAllPttChatsMuted(now, now + HushDuration)` — the same
 `MutedAt`/`MutedUntil` fields a manual per-chat mute uses, applied to the whole
-armed set at once. Sensing is gated by `GestureActivationPolicy.ShouldSenseHush(
-isHushGestureEnabled, isPracticeMode, hasArmedChats, hasLiveIncoming,
-hasAnswerWindow)`: outside practice mode, the four substantive inputs are the
-user's toggle (`IsHushGestureEnabled`, default on), at least one armed chat,
-and either live incoming voice or a playing listening/replay player for any
-armed chat, or an open answer window, so the accelerometer/proximity feed
-only runs while a hush could plausibly do something.
-`GestureActivationPolicy.Route` sends a face-down or double-pat
-(`DoublePat`, mic closed) fire to `Hush` only when hush is armed and no stop
-gesture claimed it first — an outgoing mic/camera/screencast always wins as
-`StopReply`; a pocketing (`Pocket`) alone never hushes, only the pat does.
-Face-down is entry-only while hush is the sole reason sensing is on:
+armed set at once. It returns the prior entries of every chat whose deadline it
+set or extended, and `ChatAudioUI.UndoHush` puts exactly those back
+(`WithPttChatMutesRestored`: a chat the user had muted for a shorter period gets
+that shorter mute back, not a clearing) and resumes listening on the chats it
+re-armed, as `UnmutePtt` does for the badge and the notification. Sensing is
+gated by `GestureActivationPolicy.ShouldSenseHush(isHushGestureEnabled,
+isPracticeMode, hasArmedChats, hasLiveIncoming, hasAnswerWindow)`: outside
+practice mode, the four substantive inputs are the user's toggle
+(`IsHushGestureEnabled`, default on), at least one armed chat, and either live
+incoming voice or a playing listening/replay player for any armed chat
+(`ChatAudioUI.IsAnyPlaying`), or an open answer window, so the
+accelerometer/proximity feed only runs while a hush could plausibly do
+something. `GestureActivationPolicy.Route` sends a face-down or double-pat
+(`DoublePat`) fire to `Hush` only when hush is armed, the mic is closed and no
+stop gesture claimed it first — an outgoing mic/camera/screencast always wins
+as `StopReply`, and with the mic open and stop sensing off nothing fires at
+all; a pocketing (`Pocket`) alone never hushes, only the pat does. Face-down is
+entry-only while hush is the sole reason sensing is on:
 `GestureRecognizer.Process` requires `FaceDownDetector.HasEntered`, so a phone
 already lying face down when the window opens doesn't hush; with a stop
 gesture also armed the same fire counts regardless of entry, since ending an
 outgoing stream must work however the phone got there. Two more paths reach
-the same `Hush` call: a headset button long-press (`HeadsetButtonPolicy.Decide`,
-gated on armed chats) and the screen-on-while-pocketed Android backend, plus
-the foreground-service notification's Android-only **Mute** action, labelled
-`L.Activity_MuteFor_Format` with `PttSessionCore.FormatDuration`. Outside a
-headless scope, `Hush` also raises a toast — `Ptt_HushedFor_Format` with an
-**Undo** button that unmutes every chat it just muted (`WithPttChatsUnmuted`).
+the same `Hush` call: a headset button long-press — `HeadsetButtonPolicy.Decide`
+now acts on a press's *release*, because Android delivers the first down edge
+before it knows the press will turn out long, and a long press hushes on its
+flagged edge and swallows its release — and the Android power-button gesture:
+the screen comes on and goes off again by hand inside `PowerPressWindow` (3 s)
+while hush is armed and the guard says pocketed. A single screen-on is never
+enough — a call, an alarm or lift-to-wake all light the display — and a double
+press opens the camera before the app sees it. The foreground-service
+notification adds an Android-only **Mute** action, labelled
+`L.Activity_MuteFor_Format` with `PttSessionCore.FormatDuration`, but only while
+a chat is armed (`AudioActivity.CanHush`); an ordinary listen or replay keeps
+its Stop. Outside a headless scope, `Hush` also raises a toast —
+`Ptt_HushedFor_Format` with an **Undo** button (`UndoHush`).
+
+**Muted keeps the session.** Both platforms key their long-lived PTT state off
+`ChatAudioUI.GetJoinedPttChatIds` — armed *or* muted, device-gated — rather
+than the armed set: iOS stays in the PTT channel (a background rejoin when the
+mute lapses would be refused and never retried), and Android's
+`ActivitiesBackend` keeps persisting "armed" and `AudioActivitySource` keeps an
+`Armed` activity up with `MutedUntil` set, so the mic-typed foreground service
+survives the mute — restarting it from the background when the mute lapses is
+exactly what Android 12+ refuses. That notification reads "Push-to-talk muted"
+with a chronometer counting the longest mute down and a single **Unmute**
+action (`ACTION_UNMUTE` → `UnmutePtt` over every muted chat).
 
 Between armed and hot sits the **answer window** — the period after voice
 during which a gesture, a headset press or the Apple PTT Talk button may

@@ -14,9 +14,10 @@ public sealed record DurationCountdown(TimeSpan Remaining, TimeSpan Duration)
 
     public bool IsUnlimited => Duration == TimeSpan.MaxValue;
     public double Fraction => IsUnlimited ? 1 : Math.Clamp(Remaining / Duration, 0, 1);
-    // Bare minutes ("14"): for a ring whose surroundings already say it's a countdown.
+
     public string GetText(IStringLocalizer l)
     {
+        // Bare minutes ("14"): for a ring whose surroundings already say it's a countdown.
         if (IsUnlimited)
             return "";
 
@@ -26,9 +27,9 @@ public sealed record DurationCountdown(TimeSpan Remaining, TimeSpan Duration)
         return GetMinutes().ToString();
     }
 
-    // Suffixed minutes ("14m"): for a badge next to counters, where a bare number reads as one.
     public string GetShortText(IStringLocalizer l)
     {
+        // Suffixed minutes ("14m"): for a badge next to counters, where a bare number reads as one.
         if (IsUnlimited)
             return "";
 

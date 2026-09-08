@@ -1084,6 +1084,8 @@
   "Activity_Reply": "Odpowiedz",
   "Activity_StopTalking": "Przestań mówić",
   "Activity_MuteFor_Format": "Wycisz na {0}",
+  "Activity_PttMuted": "Naciśnij i mów wyciszone",
+  "Activity_Unmute": "Wyłącz wyciszenie",
   "Activity_Chats": "{0} czat|{0} czaty|{0} czatów",
   "Activity_ExtraChats": "(+ {0} czat)|(+ {0} czaty)|(+ {0} czatów)",
 

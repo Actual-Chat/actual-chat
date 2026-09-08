@@ -1084,6 +1084,8 @@
   "Activity_Reply": "Yanıtlayın",
   "Activity_StopTalking": "Konuşmayı bitirin",
   "Activity_MuteFor_Format": "{0} sustur",
+  "Activity_PttMuted": "Bas-Konuş susturuldu",
+  "Activity_Unmute": "Sesi aç",
   "Activity_Chats": "{0} sohbet",
   "Activity_ExtraChats": "(+ {0} sohbet)",
 

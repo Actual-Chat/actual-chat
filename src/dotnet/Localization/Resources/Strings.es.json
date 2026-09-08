@@ -1084,6 +1084,8 @@
   "Activity_Reply": "Responder",
   "Activity_StopTalking": "Dejar de hablar",
   "Activity_MuteFor_Format": "Silenciar {0}",
+  "Activity_PttMuted": "Pulsar para hablar silenciado",
+  "Activity_Unmute": "Reactivar",
   "Activity_Chats": "{0} chat|{0} chats",
   "Activity_ExtraChats": "(+ {0} chat)|(+ {0} chats)",
 

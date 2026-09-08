@@ -100,8 +100,8 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
     public async Task Hush(CancellationToken cancellationToken)
     {
         var chatAudioUI = Hub.ChatAudioUI;
-        var hushedChatIds = await chatAudioUI.HushPtt(cancellationToken).ConfigureAwait(false);
-        if (hushedChatIds.Count == 0)
+        var priorEntries = await chatAudioUI.HushPtt(cancellationToken).ConfigureAwait(false);
+        if (priorEntries.Count == 0)
             return;
 
         // A headless scope has no UI for a toast; the badge in Active Chats is its undo surface.
@@ -120,14 +120,10 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
         return;
 
         void Undo()
-            => _ = Hub.UserSettingsUI.UserPttSettings()
-                .Update(x => x.WithPttChatsUnmuted(hushedChatIds), CancellationToken.None);
+            => _ = BackgroundTask.Run(
+                () => chatAudioUI.UndoHush(priorEntries, CancellationToken.None),
+                Log, "Hush undo failed", CancellationToken.None);
     }
-
-    public static string FormatDuration(IStringLocalizer l, TimeSpan duration)
-        => duration.TotalHours >= 1
-            ? l.Ptt_Hours_Format((long)duration.TotalHours, (int)duration.TotalHours)
-            : l.Ptt_Minutes_Format((long)duration.TotalMinutes, (int)duration.TotalMinutes);
 
     public async Task<PttReply?> Transmit(
         bool isHeadless, PttPlatform platform, CancellationToken cancellationToken)
@@ -203,6 +199,11 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
             }
             catch (OperationCanceledException) { }
         }, Log, "Audio focus watch failed", CancellationToken.None);
+
+    public static string FormatDuration(IStringLocalizer l, TimeSpan duration)
+        => duration.TotalHours >= 1
+            ? l.Ptt_Hours_Format((long)duration.TotalHours, (int)duration.TotalHours)
+            : l.Ptt_Minutes_Format((long)duration.TotalMinutes, (int)duration.TotalMinutes);
 
     // Private methods
 

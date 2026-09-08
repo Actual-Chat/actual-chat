@@ -22,31 +22,38 @@ public static class HeadsetButtonPolicy
     public static HeadsetButtonAction Decide(
         HeadsetKey key,
         bool isDown,
-        int repeatCount,
         bool isLongPress,
+        bool wasLongPressHandled,
         bool isEnabled,
         bool hasAnswerWindow,
         bool isReplyHot,
         bool isPracticeMode,
         bool hasArmedChats)
     {
-        if (!isDown || key == HeadsetKey.Unknown || !isEnabled)
+        if (key == HeadsetKey.Unknown || !isEnabled)
             return HeadsetButtonAction.PassThrough;
-        // Android flags exactly one of the auto-repeats as the long press; every other repeat is
-        // still the same press and acting on it would open the mic and immediately close it.
-        if (isLongPress)
-            return hasArmedChats && !isPracticeMode ? HeadsetButtonAction.Hush : HeadsetButtonAction.PassThrough;
-        if (repeatCount != 0)
+
+        // A short press acts on its release, not its first edge: Android delivers that edge before
+        // it knows whether the press will turn out long, and acting on it would open the mic half a
+        // second before the long press hushes. A press this policy owns swallows every edge, so the
+        // system's own play/pause handling never sees half of it.
+        var mayHush = hasArmedChats && !isPracticeMode;
+        var mayReply = isReplyHot || (!isPracticeMode && hasAnswerWindow);
+        if (!mayHush && !mayReply)
             return HeadsetButtonAction.PassThrough;
+        if (isDown)
+            return isLongPress && mayHush ? HeadsetButtonAction.Hush : HeadsetButtonAction.Consume;
+        if (wasLongPressHandled)
+            return HeadsetButtonAction.Consume;
         // A reply can outlive both the answer window and the practice panel, so closing it
         // must depend on neither: leaving a live mic open is the unsafe direction.
         if (isReplyHot)
             return HeadsetButtonAction.StopReply;
         // Rehearsing in the Settings practice panel must not transmit, whatever the window says.
         if (isPracticeMode)
-            return HeadsetButtonAction.PassThrough;
+            return HeadsetButtonAction.Consume;
 
-        return hasAnswerWindow ? HeadsetButtonAction.StartReply : HeadsetButtonAction.PassThrough;
+        return hasAnswerWindow ? HeadsetButtonAction.StartReply : HeadsetButtonAction.Consume;
     }
 }
 
@@ -60,6 +67,8 @@ public enum HeadsetKey
 public enum HeadsetButtonAction
 {
     PassThrough = 0,
+    // Swallowed without acting: an edge of a press this policy owns whose action lands on another edge.
+    Consume,
     StartReply,
     StopReply,
     Hush,
