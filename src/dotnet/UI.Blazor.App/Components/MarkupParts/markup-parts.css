@@ -106,6 +106,21 @@
     @apply max-w-64 md:max-w-96 max-h-64 md:max-h-80;
     @apply rounded-lg;
 }
+/* Nothing to size to until the bitmap arrives, so the box is held square meanwhile. Width tracks the
+   height cap per breakpoint - a wider one would be clipped back to a rectangle by max-h. */
+.gif-message:not([data-image-state="original"]) {
+    @apply w-64 md:w-80;
+    aspect-ratio: 1 / 1;
+}
+.gif-message[data-image-state="original"] {
+    @apply w-fit;
+}
+/* image-skeleton fills its host and crops by default, which is right for an avatar and wrong for a GIF. */
+.gif-message[data-image-state="original"] .image {
+    @apply w-auto h-auto;
+    @apply object-contain;
+    @apply max-w-64 md:max-w-96 max-h-64 md:max-h-80;
+}
 .gif-watermark {
     @apply absolute bottom-1 left-1;
     @apply h-3 w-auto;
