@@ -34,6 +34,12 @@ When the user types `/prepare-merge`, run this skill.
 - Working tree is clean (`git status --short` empty).
 - `git fetch origin dev` succeeded.
 
+One more check that **warns rather than aborts**: `git config --get
+"branch.$(git branch --show-current).issue"`. Empty means the branch was never
+tied to its GitHub issue, so the PR that follows will not close anything. Say
+so in one line and offer `/track-issue`; if the user declines, carry on —
+a hotfix must not be held hostage to bookkeeping.
+
 ## Steps
 
 ### 1. Safety backup
