@@ -933,6 +933,11 @@ body:not(.show-fps-overlay) .video-panel.expanded:not(.layout-equal)
 }
 .video-panel.expanded.has-video-panel-chat .video-panel-content {
     width: calc(100% - var(--video-panel-chat-width) - 0.5rem);
+    /* Trimmed to the left region, so its right edge sits mid-container where the
+       container's corner clip can't reach — round the video itself instead (left
+       corners already clipped round by the container, overflow-hidden clips the
+       square focused tile into the corners). */
+    @apply rounded-lg overflow-hidden;
 }
 
 /* ── Equal layout: split the content box into N equal regions instead of

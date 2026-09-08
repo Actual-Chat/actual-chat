@@ -142,7 +142,6 @@ body.hoverable .tab-panel-tabs .btn-tab.on:hover {
 .tab-panel-tabs .btn-tab .btn-content {
     @apply gap-x-1;
     @apply py-1 px-2;
-    @apply rounded-xl;
 }
 .tab-panel-tabs .btn-tab .btn-content.has-badge {
     @apply pr-1.5;
