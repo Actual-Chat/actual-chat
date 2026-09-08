@@ -44,6 +44,20 @@ public class MarkupFormatterTest
     }
 
     [Fact]
+    public void EmojiMentionShouldReadAsGlyph()
+    {
+        // act & assert
+        FormatEmoji(EmojiRef.New(Emojis.Clown)).Should().Be(Emojis.Clown.Symbol);
+        // A custom variant's id is a slug, so only its substitute symbol is readable
+        FormatEmoji(EmojiRef.New(Emojis.ClownGinger)).Should().Be(Emojis.ClownGinger.Symbol);
+        FormatEmoji(EmojiRef.FromText("no-such-emoji")).Should().Be(":no-such-emoji:");
+        return;
+
+        static string FormatEmoji(EmojiRef emojiRef)
+            => MarkupFormatter.ReadableUnstyled.Format(new EmojiMention(MentionRef.NewEmoji(emojiRef)));
+    }
+
+    [Fact]
     public void SpoilerShouldMaskMentionInside()
     {
         // arrange

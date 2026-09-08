@@ -691,7 +691,10 @@ public class NotificationsBackend(IServiceProvider services)
             ? $"\"{authoredText}\""
             : entryContent.Render(l);
 
-        var content = new SharedNotificationContent(l.Notification_Reaction_Format(reaction.Emoji, text));
+        // Symbol, not the emoji itself: its Id is a slug for the custom variants ("ginger-clown"),
+        // and a push banner is plain text with no picker svg to render it with.
+        var content = new SharedNotificationContent(
+            l.Notification_Reaction_Format(reaction.Emoji.Symbol, text));
         await EnqueueMessageRelatedNotifications(
             entry.ChatId, entry.Id, reactionAuthor, content,
             NotificationKind.Reaction, similarityKey, "", userIds, (reaction.Emoji, text), cancellationToken)

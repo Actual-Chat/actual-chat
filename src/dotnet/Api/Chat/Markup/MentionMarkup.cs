@@ -63,10 +63,11 @@ public abstract partial class MentionMarkup(MentionRef id, string name = "") : M
 
     private static string FormatEmojiReadable(EmojiMention em)
     {
-        // A standard unicode emoji copies as its glyph; a custom one copies as :its-id:.
+        // A known emoji reads as its glyph, including the custom variants, whose id is a slug
+        // ("ginger-clown"); an unknown one has no glyph to fall back on and reads as :its-id:.
         var text = em.EmojiRef.Text;
-        if (Emojis.BySymbol.ContainsKey(text))
-            return text;
+        if (Emojis.TryGetByIdOrSymbol(text) is { } emoji)
+            return emoji.Symbol;
 
         return ":" + text + ":";
     }
