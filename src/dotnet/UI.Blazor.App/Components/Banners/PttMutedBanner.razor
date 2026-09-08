@@ -16,7 +16,7 @@
     <Body>
         @L.Banner_PttMuted
         @if (m is not null) {
-            <Countdown EndsAt="@m.MutedUntil" Clock="@Clocks.ServerClock"/>
+            <Countdown Class="ml-1" EndsAt="@m.MutedUntil" Clock="@Clocks.ServerClock"/>
         }
     </Body>
     <Buttons>
