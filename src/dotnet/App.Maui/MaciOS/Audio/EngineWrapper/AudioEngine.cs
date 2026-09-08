@@ -1,6 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using AVFoundation;
+using Foundation;
 
 namespace ActualChat.App.Maui.Audio;
 
@@ -73,15 +75,21 @@ public sealed class AudioEngine : IDisposable
         _isRunning.DisposeSilently();
     }
 
-    public void EnsureRunning()
+    public async Task EnsureRunning(CancellationToken cancellationToken = default)
     {
-        lock (_lock) {
-            if (_isDisposed)
-                return;
+        if (TryEnsureRunning(out var error))
+            return;
 
-            EnsureEngineRunningUnsafe();
-        }
-        _isRunning.Invalidate();
+        // A PTT-joined app in the background may not activate its own session, and a player
+        // that outruns the focus acquisition is where that refusal surfaces first. Not for the
+        // recording engine - see AudioSession.TryRequestPttActivation.
+        if (Mode is not AudioFocusMode.Recording
+            && AudioSession.IsCannotInterruptOthers(error)
+            && await AudioSession.RequestPttActivation().WaitAsync(cancellationToken).ConfigureAwait(false)
+            && TryEnsureRunning(out error))
+            return;
+
+        error.Assert($"{Mode}: failed to start the engine");
     }
 
     public void Pause()
@@ -107,7 +115,7 @@ public sealed class AudioEngine : IDisposable
             if (!_isStarted)
                 return;
 
-            if (!TryEnsureEngineRunningUnsafe()) {
+            if (!TryEnsureEngineRunningUnsafe(out _)) {
                 Log.LogWarning("{Mode}.Resume: Engine failed, attempting reset", Mode);
                 ResetEngineUnsafe();
                 EnsureEngineRunningUnsafe();
@@ -138,7 +146,7 @@ public sealed class AudioEngine : IDisposable
                 if (_silentOutputNode is { } silentOutputNode)
                     engine.Connect(silentOutputNode, engine.MainMixerNode, SilentOutputFormat);
             }
-            if (!TryEnsureEngineRunningUnsafe()) {
+            if (!TryEnsureEngineRunningUnsafe(out _)) {
                 Log.LogWarning("{Mode}.Reconnect: Engine failed, attempting reset", Mode);
                 ResetEngineUnsafe();
                 EnsureEngineRunningUnsafe();
@@ -293,16 +301,25 @@ public sealed class AudioEngine : IDisposable
         node.DisposeSilently();
     }
 
+    private bool TryEnsureRunning([NotNullWhen(false)] out NSError? error)
+    {
+        bool isRunning;
+        lock (_lock) {
+            if (_isDisposed) {
+                error = null;
+                return true;
+            }
+
+            isRunning = TryEnsureEngineRunningUnsafe(out error);
+        }
+        _isRunning.Invalidate();
+        return isRunning;
+    }
+
     private void EnsureEngineRunningUnsafe()
     {
-        var engine = EngineUnsafe;
-        EnsureSilentOutputUnsafe();
-        if (!engine.Running) {
-            Log.LogInformation("{Mode}.EnsureEngineRunningUnsafe: Engine not running, starting", Mode);
-            engine.StartAndReturnError(out var nsError);
-            nsError.Assert();
-        }
-        _isStarted = true;
+        if (!TryEnsureEngineRunningUnsafe(out var error))
+            error.Assert($"{Mode}: failed to start the engine");
     }
 
     private void EnsureSilentOutputUnsafe()
@@ -318,18 +335,18 @@ public sealed class AudioEngine : IDisposable
         engine.Connect(_silentOutputNode, engine.MainMixerNode, SilentOutputFormat);
     }
 
-    private bool TryEnsureEngineRunningUnsafe()
+    private bool TryEnsureEngineRunningUnsafe([NotNullWhen(false)] out NSError? error)
     {
+        error = null;
         var engine = EngineUnsafe;
         EnsureSilentOutputUnsafe();
-        if (engine.Running)
-            return true;
-
-        Log.LogInformation("{Mode}.TryEnsureEngineRunningUnsafe: Engine not running, attempting to start", Mode);
-        if (!engine.StartAndReturnError(out var nsError)) {
-            Log.LogWarning("{Mode}.TryEnsureEngineRunningUnsafe: Failed to start: {Error}",
-                Mode, nsError.LocalizedDescription);
-            return false;
+        if (!engine.Running) {
+            Log.LogInformation("{Mode}.TryEnsureEngineRunningUnsafe: Engine not running, attempting to start", Mode);
+            if (!engine.StartAndReturnError(out error)) {
+                Log.LogWarning("{Mode}.TryEnsureEngineRunningUnsafe: Failed to start: {Error}",
+                    Mode, error.LocalizedDescription);
+                return false;
+            }
         }
         _isStarted = true;
         return true;

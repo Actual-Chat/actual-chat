@@ -55,7 +55,7 @@ public sealed class AppleAudioPlaybackEngine(
             Log,
             "Failed to decode/feed iOS audio",
             _decodeFeedCts.Token);
-        _voicePlayer.Play();
+        await _voicePlayer.Play(cancellationToken).ConfigureAwait(false);
         // After Play(), not before: starting the player is what builds the engine and moves the route.
         await hub.AudioFocusUI.EnsureOutputRoute(cancellationToken).ConfigureAwait(false);
     }
@@ -67,13 +67,13 @@ public sealed class AppleAudioPlaybackEngine(
         return Task.CompletedTask;
     }
 
-    public Task Resume(CancellationToken cancellationToken)
+    public async Task Resume(CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation("#{PlayerId}.Resume", playerId);
-        _voicePlayer.Play();
+        await _voicePlayer.Play(cancellationToken).ConfigureAwait(false);
         // Same reason as Play(): resuming restarts the engine, and a restart that lands after
         // voice processing came up needs the route restated.
-        return hub.AudioFocusUI.EnsureOutputRoute(cancellationToken);
+        await hub.AudioFocusUI.EnsureOutputRoute(cancellationToken).ConfigureAwait(false);
     }
 
     public Task End(bool abort, CancellationToken cancellationToken)

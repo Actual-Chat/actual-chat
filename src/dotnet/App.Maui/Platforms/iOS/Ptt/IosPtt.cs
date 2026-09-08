@@ -31,11 +31,14 @@ public static class IosPtt
     private static ManagerDelegate? _managerDelegate;
     private static RestorationDelegate? _restorationDelegate;
     private static volatile string _pttToken = "";
+    private static volatile string _channelTitle = ChannelName;
     private static volatile PendingWake? _pendingWake;
+    private static TaskCompletionSource<bool>? _activationSource;
     private static Transmission? _transmission;
     private static bool _isJoinRequested;
     private static bool _isStopTransmitRequested;
     private static int _isTransmitEnabled;
+    private static int _isJoined;
     private static int _isRemoteParticipantActive;
     private static int _lastWakeGeneration;
     private static ILogger Log => field ??= StaticLog.For(typeof(IosPtt));
@@ -53,6 +56,7 @@ public static class IosPtt
         // process launched by PTT never runs the WebView scope that would otherwise set it.
         Volatile.Write(ref _isTransmitEnabled, LoadIsTransmitEnabled() ? 1 : 0);
         AudioSession.SetOwnerWatchdogRecovery(OnOwnerWatchdogFired);
+        AudioSession.SetPttPlaybackHooks(IsJoined, RequestPlaybackActivation, ClearActiveParticipant);
         PTChannelManager.Create(_managerDelegate, _restorationDelegate, (manager, error) => {
             if (error is not null) {
                 Log.LogError("PTChannelManager.Create failed: {Error}", error.LocalizedDescription);
@@ -66,6 +70,7 @@ public static class IosPtt
                 _isStopTransmitRequested = false;
             }
             Log.LogInformation("PTChannelManager ready");
+            Volatile.Write(ref _isJoined, manager.ActiveChannelUuid is not null ? 1 : 0);
             // Everything requested before this point silently no-opped: EnsureJoined and
             // StopTransmitting both need the manager, and nothing else would ever re-drive them.
             if (isJoinRequested)
@@ -147,6 +152,7 @@ public static class IosPtt
 
     private static void SetDescriptorTitle(string chatTitle)
     {
+        _channelTitle = chatTitle;
         var manager = _manager;
         if (manager?.ActiveChannelUuid is null)
             return;
@@ -283,8 +289,48 @@ public static class IosPtt
         }, Log, "PTT transmit reply failed", CancellationToken.None);
     }
 
+    private static bool IsJoined()
+        // Tracked from the join/leave callbacks: ActiveChannelUuid is a round trip to the PTT
+        // daemon, and this sits on the path between a refused engine start and its retry.
+        => Volatile.Read(ref _isJoined) != 0;
+
+    private static Task<bool> RequestPlaybackActivation()
+    {
+        // Playback the app starts on its own - a stream reaching an already-listening app in the
+        // background: the framework activates the session for a set participant even there, where
+        // the app's own SetActive is refused. Released by ClearActiveParticipant once the last
+        // focus scope goes, see AudioSession.Deactivate.
+        PTChannelManager? manager;
+        TaskCompletionSource<bool> source;
+        lock (Lock) {
+            manager = _manager;
+            if (manager?.ActiveChannelUuid is null)
+                return ActualLab.Async.TaskExt.FalseTask;
+
+            source = _activationSource ??= TaskCompletionSourceExt.New<bool>();
+        }
+
+        Log.LogInformation("Asking the PTT framework to activate the audio session");
+        // This participant is the newest one: a phantom-wake clear scheduled for an older
+        // generation must not take it down mid-playback.
+        Interlocked.Increment(ref _lastWakeGeneration);
+        Volatile.Write(ref _isRemoteParticipantActive, 1);
+        manager.SetActiveRemoteParticipant(new PTParticipant(_channelTitle, null!), ChannelUuid, error => {
+            if (error is null)
+                return;
+
+            Log.LogWarning("SetActiveRemoteParticipant failed: {Error}", error.LocalizedDescription);
+            // Nothing is receiving, so a transmit ending later must hand the session to the app,
+            // not to a playback that never started.
+            Volatile.Write(ref _isRemoteParticipantActive, 0);
+            CompleteActivation(false);
+        });
+        return source.Task;
+    }
+
     private static void OnChannelLeft()
     {
+        CompleteActivation(false);
         OnTransmitEnded();
         lock (Lock)
             // A transmission that never reached StartTransmitReply has no reply task left to
@@ -393,6 +439,7 @@ public static class IosPtt
         if (abandoned is not null)
             AbandonTransmission(abandoned);
 
+        CompleteActivation(true);
         if (mustStart)
             StartTransmitReply(transmission!);
 
@@ -446,6 +493,14 @@ public static class IosPtt
 
         return transmission.IsEndPending
             || transmission.CreatedAt.Elapsed > Constants.Audio.PttTransmitStartupTimeout;
+    }
+
+    private static void CompleteActivation(bool isActivated)
+    {
+        TaskCompletionSource<bool>? source;
+        lock (Lock)
+            (source, _activationSource) = (_activationSource, null);
+        source?.TrySetResult(isActivated);
     }
 
     private static void ScheduleClearActiveParticipant(int generation)
@@ -532,12 +587,14 @@ public static class IosPtt
             PTChannelManager channelManager, NSUuid channelUuid, PTChannelJoinReason reason)
         {
             Log.LogInformation("PTT channel joined ({Reason})", reason);
+            Volatile.Write(ref _isJoined, 1);
             ApplyTransmissionMode(channelManager, channelUuid, Volatile.Read(ref _isTransmitEnabled) != 0);
         }
 
         public override void DidLeaveChannel(
             PTChannelManager channelManager, NSUuid channelUuid, PTChannelLeaveReason reason)
         {
+            Volatile.Write(ref _isJoined, 0);
             OnChannelLeft();
             // A leave can tear the session down without DidDeactivateAudioSession, and a stuck
             // PTT owner permanently disables the app's own session activation.
@@ -626,6 +683,9 @@ public static class IosPtt
 
         public override void DidDeactivateAudioSession(PTChannelManager channelManager, AVAudioSession audioSession)
         {
+            // No CompleteActivation here: this may be the previous burst's teardown landing
+            // after a fresh request was made, whose own activation is still to come. A request
+            // that never gets one is bounded by AudioSession's timeout.
             Log.LogInformation("PTT audio session deactivated");
             AudioSession.ReleaseOwner(AudioSessionRelease.Deactivated);
             Volatile.Write(ref _isRemoteParticipantActive, 0);

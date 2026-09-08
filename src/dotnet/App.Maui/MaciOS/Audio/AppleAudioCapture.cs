@@ -117,7 +117,7 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
                     Log.LogWarning("Dropped the pre-roll: format changed since it was captured");
             }
             using var _2 = engine.Input.Tap(HandleSamples);
-            engine.EnsureRunning();
+            await engine.EnsureRunning(cancellationToken).ConfigureAwait(false);
             // Voice processing activation can route audio to the earpiece — fix it
             await AudioFocusUI.EnsureOutputRoute(cancellationToken).ConfigureAwait(false);
 

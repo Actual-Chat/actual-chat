@@ -14,12 +14,18 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
     private static readonly TimeSpan OwnerWatchdogPeriod = TimeSpan.FromSeconds(30);
     // A heartbeat, not a hold - so unlike a leaked latch it can't wedge the watchdog.
     private static readonly TimeSpan PlaybackActivityTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan PttActivationTimeout = TimeSpan.FromSeconds(5);
 
     private static readonly Lock OwnerLock = new();
     private static int _owner;
     private static long _ownerChangedAt;
     private static int _isOwnerWatchdogRunning;
     private static Action? _ownerWatchdogRecovery;
+    private static Func<bool>? _isPttActivationAvailable;
+    private static Func<Task<bool>>? _pttActivationRequester;
+    private static Action? _pttPlaybackRelease;
+    private static Task<bool>? _pttActivationTask;
+    private static int _isPttReleasePending;
     private static long _playbackActivityAt;
 
     private AppUIHub Hub { get; } = hub;
@@ -41,6 +47,85 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
 
     public static void SetOwnerWatchdogRecovery(Action recovery)
         => Volatile.Write(ref _ownerWatchdogRecovery, recovery);
+
+    public static void SetPttPlaybackHooks(
+        Func<bool> isActivationAvailable, Func<Task<bool>> requestActivation, Action releaseActivation)
+    {
+        Volatile.Write(ref _isPttActivationAvailable, isActivationAvailable);
+        Volatile.Write(ref _pttActivationRequester, requestActivation);
+        Volatile.Write(ref _pttPlaybackRelease, releaseActivation);
+    }
+
+    public static Task<bool> RequestPttActivation()
+    {
+        // An app joined to its PTT channel may not activate its own session in the background -
+        // SetActive answers CannotInterruptOthers - but the framework activates it for a set
+        // participant, and reports that through DidActivateAudioSession. One request serves
+        // every caller that runs into the refusal meanwhile - including one that arrives after
+        // the activation already happened: the framework activates once per participant, so a
+        // second request would wait for a callback that never comes. A PTT owner therefore
+        // answers "active" - unless its release is still in flight, in which case the session
+        // is on its way down and only a fresh participant brings it back.
+        if (Volatile.Read(ref _pttActivationRequester) is not { } requester)
+            return ActualLab.Async.TaskExt.FalseTask;
+
+        TaskCompletionSource<bool> source;
+        lock (OwnerLock) {
+            if (_pttActivationTask is { IsCompleted: false } pending)
+                return pending;
+            if (Owner != AudioSessionOwner.App && Volatile.Read(ref _isPttReleasePending) == 0)
+                return ActualLab.Async.TaskExt.TrueTask;
+
+            source = TaskCompletionSourceExt.New<bool>();
+            _pttActivationTask = source.Task;
+        }
+        // The availability check takes the PTT lock, which SetOwner is called under - so it, like
+        // the request itself, stays outside OwnerLock.
+        if (!IsPttActivationAvailable) {
+            source.TrySetResult(false);
+            return source.Task;
+        }
+
+        _ = BackgroundTask.Run(async () => {
+            var isActivated = false;
+            try {
+                isActivated = await requester.Invoke().WaitAsync(PttActivationTimeout).ConfigureAwait(false);
+            }
+            catch (Exception e) {
+                OwnerLog.LogWarning(e, "The PTT framework didn't activate the audio session");
+            }
+            // The participant the request set would otherwise keep the framework's "receiving"
+            // state, and its flag, until the owner watchdog fires.
+            if (!isActivated && Owner == AudioSessionOwner.App)
+                ReleasePttPlayback();
+            source.TrySetResult(isActivated);
+        }, OwnerLog, "PTT activation request failed", CancellationToken.None);
+        return source.Task;
+    }
+
+    private static bool IsPttActivationAvailable
+        => Volatile.Read(ref _isPttActivationAvailable)?.Invoke() == true;
+
+    private static bool IsPttActivationPending
+        => Volatile.Read(ref _pttActivationTask) is { IsCompleted: false };
+
+    private static void ReleasePttPlayback()
+    {
+        // Never lets a throw out: the request's completion, and DeactivateUnsafe, sit behind it.
+        // The flag stays up until the owner comes back to App (DidDeactivateAudioSession), so a
+        // request landing in between asks for a fresh participant instead of trusting the owner.
+        if (Owner != AudioSessionOwner.App)
+            Volatile.Write(ref _isPttReleasePending, 1);
+        try {
+            Volatile.Read(ref _pttPlaybackRelease)?.Invoke();
+        }
+        catch (Exception e) {
+            OwnerLog.LogWarning(e, "Couldn't release the PTT playback participant");
+        }
+    }
+
+    public static bool IsCannotInterruptOthers(NSError error)
+        => (AVAudioSessionErrorCode)(long)error.Code == AVAudioSessionErrorCode.CannotInterruptOthers;
 
     public static void NotifyPlaybackActivity()
         => Volatile.Write(ref _playbackActivityAt, CpuTimestamp.Now.Value);
@@ -113,6 +198,8 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         // lock before reverting - otherwise a callback landing mid-decision is silently clobbered.
         Volatile.Write(ref _ownerChangedAt, CpuTimestamp.Now.Value);
         Volatile.Write(ref _owner, (int)owner);
+        if (owner == AudioSessionOwner.App)
+            Volatile.Write(ref _isPttReleasePending, 0);
     }
 
     private static void ArmOwnerWatchdog()
@@ -216,6 +303,9 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             return new AudioSessionSetup(isConfigured, false);
 
         if (!session.SetActive(true, out var error)) {
+            if (TryRequestPttActivation(error, mode))
+                return new AudioSessionSetup(isConfigured, false, true);
+
             Log.LogWarning("Failed to re-activate audio session: {Error}", error.LocalizedDescription);
             // Deactivate and retry
             var deactivateOptions = mode is AudioFocusMode.Tune
@@ -255,9 +345,29 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             : 0;
         session.SetActive(false, deactivateOptions).Assert("Failed to deactivate session");
         ConfigureUnsafe(session, minMode);
-        session.SetActive(true).Assert("Failed to activate session");
+        if (!session.SetActive(true, out var error)) {
+            if (TryRequestPttActivation(error, minMode))
+                return new AudioSessionSetup(true, false, true);
+
+            error.Assert("Failed to activate session");
+        }
         ApplyOutputRouteUnsafe(minMode);
         return new AudioSessionSetup(true, true);
+    }
+
+    private bool TryRequestPttActivation(NSError error, AudioFocusMode mode)
+    {
+        // Without a joined PTT channel the refusal is somebody else's non-mixable session. A
+        // recording is not asked for either: the framework would show it as an incoming receive,
+        // and the app's own mic in the background is a transmit's business, not this path's.
+        if (mode is AudioFocusMode.Recording || !IsCannotInterruptOthers(error) || !IsPttActivationAvailable)
+            return false;
+
+        Log.LogInformation(
+            "Activate({Mode}): refused as CannotInterruptOthers, asking the PTT framework to activate the session",
+            mode);
+        _ = RequestPttActivation();
+        return true;
     }
 
     private void DeactivateUnsafe()
@@ -266,9 +376,19 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         // running for as long as it's held, whether or not anything is attached to it. Measured
         // on an iPhone 13 Pro: audiomxd sits at 0.27 cores after a call with every engine
         // verifiably stopped, and is absent both before the first call and once the app exits.
-        if (!AudioSessionOwnership.MayActivate(Owner))
+        var owner = Owner;
+        if (!AudioSessionOwnership.MayActivate(owner)) {
+            // Nothing wants the session any more: a playback the framework activated goes back to
+            // it here, or the "receiving" it shows stays up until the owner watchdog fires.
+            if (owner == AudioSessionOwner.PttPlayback)
+                ReleasePttPlayback();
             return;
+        }
 
+        // A request still in flight would activate a session nothing wants any more, with no
+        // scope left to hand it back.
+        if (IsPttActivationPending)
+            ReleasePttPlayback();
         var session = AVAudioSession.SharedInstance();
         if (!session.SetActive(false, AVAudioSessionSetActiveOptions.NotifyOthersOnDeactivation, out var error))
             Log.LogWarning("Failed to deactivate audio session: {Error}", error.LocalizedDescription);
@@ -393,6 +513,10 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
 /// <summary>
 /// What a <see cref="AudioSession.Reconfigure"/> / <see cref="AudioSession.Reactivate"/> call
 /// actually achieved. Under a PTT owner the app may configure the session without being allowed
-/// to activate it, so the two have to be tracked apart.
+/// to activate it, so the two have to be tracked apart; a pending PTT activation is one the
+/// framework was asked for, to be awaited via <see cref="AudioSession.RequestPttActivation"/>.
 /// </summary>
-public readonly record struct AudioSessionSetup(bool IsConfigured, bool IsActivated);
+public readonly record struct AudioSessionSetup(
+    bool IsConfigured,
+    bool IsActivated,
+    bool IsPttActivationPending = false);

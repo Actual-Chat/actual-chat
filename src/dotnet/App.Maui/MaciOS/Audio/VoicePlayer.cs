@@ -35,10 +35,10 @@ public class VoicePlayer : IDisposable
         Node.DisposeSilently();
     }
 
-    public void Play()
+    public async Task Play(CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation("#{Id}.Play", Id);
-        Engine.EnsureRunning();
+        await Engine.EnsureRunning(cancellationToken).ConfigureAwait(false);
         Node.Play();
     }
 
