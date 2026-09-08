@@ -2,10 +2,11 @@
 
 A `UNNotificationServiceExtension` (`.appex`) that rewrites every chat push into an iOS
 **communication notification**: the chat or author avatar replaces the app icon on the banner.
-The headline stays the server's title — the sender, or `"<sender> @ <chat>"` in a group — the
-same one web and Mac show and the same shape Android's `MessagingStyle` renders (sender as the
-person, chat as the conversation). A coalesced banner names each line's author in the body,
-since one banner then holds several authors; a single-entry push doesn't repeat the sender.
+The headline stays the server's title, the same one web and Mac show: the sender in a peer chat,
+and in a group either the chat — for a message banner, whose body names each line's author,
+since one banner can hold several — or `"<sender> @ <chat>"` for a mention, reaction or
+attention push, whose body has no author line. Android renders the same parts from its own
+`MessagingStyle` slots (sender as the person, chat as the conversation).
 
 ## Why the extension has to exist
 
@@ -39,8 +40,9 @@ sender's name, giving a two-line header (sender, then chat) — and it only rend
 a conversation iOS considers a group, which nothing but `recipients.count > 1` makes it. So
 with a bare sender name as the title it silently vanished, which was issue #4305. Carrying the
 whole composed title as the display name keeps the chat name on the banner without that rule.
-(#4305 first answered this by headlining the chat and naming the sender only in the body — but
-a mention or reaction has no body author line, so those banners lost their sender.)
+(#4305 first answered this by headlining every group push with the chat and naming the sender
+only in the body — but a mention or reaction has no body author line, so those banners lost
+their sender. #4385 keeps the chat headline for message banners only.)
 
 **`conversationIdentifier` must equal `content.threadIdentifier`.** `updating(from:)` rewrites
 the thread id from the conversation id, and `AppDelegate.RemoveDeliveredNotifications` matches
@@ -142,8 +144,8 @@ What to look for:
 
 | Result | Meaning |
 |---|---|
-| Circular chat avatar, `"<sender> @ <chat>"` title, `Author: text` lines on a coalesced banner | working |
-| App icon and a `"<sender> @ <chat>"` title | either `updating(from:)` failed — check the entitlement on **both** the app and the appex — or the extension didn't run at all — check `PlugIns/VoxtNotificationService.appex` exists and is signed. The Console log (subsystem `ai.voxt.notification-service`) tells the two apart |
+| Circular chat avatar; `"<chat>"` title with `Author: text` lines on a message banner, `"<sender> @ <chat>"` on a mention or reaction | working |
+| App icon and the same title | either `updating(from:)` failed — check the entitlement on **both** the app and the appex — or the extension didn't run at all — check `PlugIns/VoxtNotificationService.appex` exists and is signed. The Console log (subsystem `ai.voxt.notification-service`) tells the two apart |
 
 The extension is a separate process, so the app's debugger session won't stop in it — attach
 to `VoxtNotificationService` explicitly, or read its `os_log` output with

@@ -31,8 +31,20 @@ public static class NotificationHelper
             _ => throw new ArgumentOutOfRangeException($"{nameof(chat)}.{nameof(chat.Kind)}", chat.Kind, null),
         };
 
-    public static string GetTitle(string senderName, string groupTitle)
-        => groupTitle.IsNullOrEmpty() ? senderName : $"{senderName} @ {groupTitle}";
+    public static string GetTitle(NotificationKind kind, string senderName, string groupTitle)
+        // A group banner of a coalescing kind names each message's author in its body (see
+        // ComposeAggregatedText), so headlining it with the sender too would name them twice - and
+        // it gets the chat headline from its very first message, or the same banner would re-title
+        // itself once a second author arrives. The other kinds have a plain body, so the sender
+        // stays in their headline.
+        => groupTitle.IsNullOrEmpty()
+            ? senderName
+            : IsCoalescing(kind)
+                ? groupTitle
+                : $"{senderName} @ {groupTitle}";
+
+    public static bool IsCoalescing(NotificationKind kind)
+        => kind is NotificationKind.Message or NotificationKind.Reply or NotificationKind.Thread;
 
     public static string GetIconUrl(Chat.Chat chat, AuthorFull author, UrlMapper urlMapper)
         // Unsized, the generator draws its 80px base, which an avatar slot on a 3x screen upscales.
@@ -60,7 +72,7 @@ public static class NotificationHelper
         if (messages.IsEmpty)
             return notification.LeadText.IsNullOrEmpty() ? notification.Text : notification.LeadText;
 
-        // One banner holds several authors, and the headline names only the newest.
+        // One banner holds several authors, and the headline names the chat (see GetTitle).
         var showAuthorNames = notification.ChatId.GetThreadOutermostParentOrSelf().Kind
             is ChatKind.Group or ChatKind.Place;
         var lines = new List<string>(messages.Count + 1);
