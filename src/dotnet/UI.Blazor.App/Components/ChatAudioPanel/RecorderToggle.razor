@@ -32,7 +32,7 @@
     }
 }
 
-<div class="recorder-wrapper @permissionClass @animatorClass @transitioningClass"
+<div class="recorder-wrapper @permissionClass @animatorClass @transitioningClass @(Compact ? "compact" : "")"
      data-tooltip="@tooltip"
      data-tooltip-position="@(FloatingPosition.Top.ToPositionString())"
      data-tooltip-severity="@(severity.ToSeverityString())"
@@ -97,6 +97,7 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter] public bool Compact { get; set; }
     private ChatId? ChatId => (ChatId?)Chat.Id;
 
     protected override void OnInitialized() {
