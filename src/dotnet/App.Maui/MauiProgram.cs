@@ -156,7 +156,10 @@ public static partial class MauiProgram
         if (Interlocked.Exchange(ref _areInteractiveServicesStarted, 1) != 0)
             return;
 
-        AppNonScopedServiceStarter.WarmupStaticServices(HostInfo);
+        // Disabled while we measure what the warmup actually buys; the guard keeps the call
+        // reachable, so trimming still sees the types it touches.
+        if (CodeKeeper.AlwaysFalse)
+            AppNonScopedServiceStarter.WarmupStaticServices(HostInfo);
         MauiStartupBreadcrumbs.Add("Static services warmed up");
         SetupBlazorViewAppPostBuildRoutine();
         LoadingUI.MarkAppBuilt();
