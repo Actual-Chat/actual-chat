@@ -752,8 +752,8 @@ holding the view somewhere. Then two tiers:
   user scrolled to, and the nearest place it puts content on screen is where scrolling itself would have
   stopped.
 
-Deliberately **not** gated on the height animations that `applyLayout`'s own clamp waits for: the limits
-are built from the model, which carries settled heights (§3.10), so the guard reads the same numbers the
+Deliberately **not** gated on height animations — and neither is `applyLayout`'s own clamp any more: the
+limits are built from the model, which carries settled heights (§3.10), so both read the same numbers the
 settled pass would. Persistence across checks is what separates a fault from a frame in transit.
 
 It is a backstop, not the mechanism: with the collapse handled where it happens (§3.9) and the settled
@@ -765,11 +765,42 @@ cases we have not found.
 `clampToLimits` always **snaps**. It early-returns while a finger is down or an excursion is open, and
 `applyLayout` skips it while the list is pinned.
 
-**Mid-animation it is deferred, not skipped.** The clamp needs the real sizes and the DOM does not have
-them yet, so `applyLayout` books the settled pass instead — which an unpinned list has to book for
-itself, `repinWhenStable` otherwise being reached only from the pinned path. Left to that path alone, a
-block collapsing under a view that is not at an edge got no clamp at all: the render skipped it for the
-animation, and nothing re-ran it afterwards.
+**Mid-animation it still clamps, and books the settled pass as well.** The settled pass owns the re-pin
+and the drift check; it does not own the clamp. Deferring the clamp to it was safe only while animations
+were things that end. A live transcript renews an animation hold on every rewrite, so `whenStable` never
+resolves and a deferred clamp is never delivered — while the limits move regardless, being built from
+the model, which already carries settled heights (§3.10). A free list has no follow to answer that with,
+so it sits still while the limits walk past it and the blank under the newest message grows, until the
+position guard pays the whole of it in one frame. `applyLayout` still books `repinWhenStable` for an
+unpinned list, which is otherwise reached only from the pinned path.
+
+**A clamp is deferred, never dropped.** All three clamp sites — the layout, the settled pass and the
+standing guard — share one predicate, `canClamp`: the position is this list's to move
+(`canCorrectPosition`), no follow and no jump is already booked, and no screen or interactive anchor is
+deliberately holding the view. The follow is in there because it carries a delta measured before the
+clamp would run: clamping first leaves that delta describing a distance the view no longer has, and the
+pair lands twice. The layout and the settled pass go through `clampOrRetry`, which re-arms at
+`FollowRetryHz` when the predicate refuses, for the same reason the follow retries — everything that
+blocks a clamp clears on its own, and nothing re-runs the layout that produced no correction. The
+standing guard needs no retry; it is already on a clock.
+
+One consequence to know before touching `canClamp`: the layout clamp used to be unconditional for an
+unpinned, non-animating list, so sharing the predicate also makes it yield to the two anchors. Collapsing
+a block from its sticky header while reading deep inside it, in a chat with nothing else moving, now waits
+for `watchScreenAnchor` to release — a blank of roughly 200ms where there was none. Under a live
+transcript the same case is still strictly better, because the old code never clamped there at all.
+
+What this does **not** fix is the size of a single correction. The model carries the settled height from
+the moment the height controller writes it, so one large shrink target is one large clamp, taken at once
+rather than a second later; the reader's row still steps. Measured on a live chat, unpinned 40px above
+the End, one 200px shrink of an item above the reader with a second item keeping animations alive:
+before, the reader's row drifted **203px up** over the transition, sat **351ms** with the view **160px**
+out of band and a blank beneath it, then snapped back in one frame; after, the upward excursion is
+**44px**, the view is never out of band (peak 0.3px, 0 frames), and the correction is a single **159px**
+frame. Continuous churn is where the difference is largest: 44% of frames out of band and a stored-up
+214px discharge, against 0 frames and no discharge. Making the correction *track* the transition rather
+than its endpoint would mean measuring the rendered shortfall per frame, which `followBy` cannot express
+— it clamps to the same model limits.
 
 Handing an out-of-band position to the return instead looked like the gentler option and was
 tried, and it produced the Android "stops at random places while you spin it" bug: `applyLayout` clamps
