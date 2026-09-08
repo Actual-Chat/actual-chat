@@ -824,7 +824,22 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             // fold and loads it back on the next render, which unloads the groups up there - and a group's
             // avatar is sticky, so it is pinned to the top line right until its group leaves the DOM.
             // Every own new entry navigates (see the entry observer), so that is once per sent message.
-            if (dataQuery.Covers(navigation.EntryLid)) {
+            // Covers reads the offsets as lid deltas, and they can't see entries created since the render
+            // this query is built from - so the message just sent reads as one lid past the end and misses.
+            // Once the tail is loaded there is nowhere else for that entry to be, hence the separate test.
+            var isAtLoadedTail = oldData.HasVeryLastItem
+                && navigation.EntryLid >= dataQuery.ExistingLidRange.End;
+            if (isAtLoadedTail) {
+                caseName += "+navigation-at-tail";
+                // A query the list issued itself carries its scroll deltas, and standing still makes
+                // EndOffset zero - which would leave the target outside the zone by a tile boundary.
+                // At the tail there is nothing past the end to load, so this only rounds the zone up.
+                dataQuery = dataQuery with {
+                    EndOffset = Math.Max(dataQuery.EndOffset, ChatUI.HalfLoadLimit),
+                    Navigation = navigation,
+                };
+            }
+            else if (dataQuery.Covers(navigation.EntryLid)) {
                 caseName += "+navigation-in-range";
                 dataQuery = dataQuery with { Navigation = navigation };
             }
