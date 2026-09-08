@@ -752,8 +752,8 @@ holding the view somewhere. Then two tiers:
   user scrolled to, and the nearest place it puts content on screen is where scrolling itself would have
   stopped.
 
-Deliberately **not** gated on the height animations that `applyLayout`'s own clamp waits for: the limits
-are built from the model, which carries settled heights (§3.10), so the guard reads the same numbers the
+Deliberately **not** gated on height animations — and neither is `applyLayout`'s own clamp any more: the
+limits are built from the model, which carries settled heights (§3.10), so both read the same numbers the
 settled pass would. Persistence across checks is what separates a fault from a frame in transit.
 
 It is a backstop, not the mechanism: with the collapse handled where it happens (§3.9) and the settled
@@ -783,6 +783,12 @@ pair lands twice. The layout and the settled pass go through `clampOrRetry`, whi
 `FollowRetryHz` when the predicate refuses, for the same reason the follow retries — everything that
 blocks a clamp clears on its own, and nothing re-runs the layout that produced no correction. The
 standing guard needs no retry; it is already on a clock.
+
+One consequence to know before touching `canClamp`: the layout clamp used to be unconditional for an
+unpinned, non-animating list, so sharing the predicate also makes it yield to the two anchors. Collapsing
+a block from its sticky header while reading deep inside it, in a chat with nothing else moving, now waits
+for `watchScreenAnchor` to release — a blank of roughly 200ms where there was none. Under a live
+transcript the same case is still strictly better, because the old code never clamped there at all.
 
 What this does **not** fix is the size of a single correction. The model carries the settled height from
 the moment the height controller writes it, so one large shrink target is one large clamp, taken at once

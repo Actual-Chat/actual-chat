@@ -1328,8 +1328,8 @@ export class InfiniteList extends VirtualList {
     }
 
     // Anything that had to wait for the list to stop moving: the edge re-pin an animation grew away
-    // from, the clamp that needed the settled sizes, and the direction switch that would have written
-    // scrollTop mid-gesture.
+    // from, and the direction switch that would have written scrollTop mid-gesture. Not the clamp -
+    // it reads the model's settled heights, so it no longer waits for anything to settle.
     private repinWhenStable(): void {
         if (this.isAwaitingStability)
             return;
@@ -2304,11 +2304,8 @@ export class InfiniteList extends VirtualList {
         });
     }
 
-    // The standing check on where the view actually is. Every other correction runs off an event -
-    // a render, a settle, a scroll - and the case none of them covers is a block collapsing under an
-    // unpinned view: the render's clamp waits for the settled sizes, the settle it waits for is a
-    // pinned list's, and what the user is left looking at is blank, which gives them nothing to scroll
-    // with to raise the scroll event that would fix it. So this asks on its own clock instead.
+    // The standing check on where the view actually is: every other correction runs off an event, and
+    // a block collapsing under an unpinned view leaves blank that the user cannot scroll to raise one.
     private checkPosition(): void {
         if (this.isDisposed || this.items.length === 0 || !this.isInitiallyPlaced)
             return;
