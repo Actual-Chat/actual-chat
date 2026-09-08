@@ -452,6 +452,8 @@
     /* Utils */
     --transparent: rgba(0, 0, 0, 0);
     --input: var(--black-05);
+    --modal-input-bg: var(--gray-50-05);
+    --modal-input-border: var(--gray-50-20);
     --online: var(--green-30);
     --away: var(--warning);
     --selected: var(--blue-50-20);
@@ -814,6 +816,8 @@
     /* Utils */
     --online: var(--green-40);
     --input: var(--ash-99-05);
+    --modal-input-bg: var(--ash-18);
+    --modal-input-border: transparent;
     --away: var(--warning);
     --selected: var(--white-10);
     --hover: var(--white-05);
@@ -1174,6 +1178,8 @@
     /* Utils */
     --transparent: rgba(0, 0, 0, 0);
     --input: var(--black-05);
+    --modal-input-bg: var(--gray-50-05);
+    --modal-input-border: var(--gray-50-20);
     --online: var(--green-30);
     --away: var(--warning);
     --selected: var(--blue-50-20);
