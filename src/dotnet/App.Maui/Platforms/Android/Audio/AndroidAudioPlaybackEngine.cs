@@ -90,6 +90,8 @@ internal sealed class AndroidAudioPlaybackEngine(
                     ? AudioUsageKind.VoiceCommunication
                     : AudioUsageKind.Media,
             };
+            Log.LogInformation("Play: id={Id}, car route {Route}, usage {Usage}, comm focus {IsCommunicationFocus}",
+                info.TrackId, route, usage, AudioFocusUI.IsCommunicationFocus);
             var attributes = new AudioAttributes.Builder()
                 .SetUsage(usage)!
                 .SetContentType(AudioContentType.Speech)!

@@ -86,11 +86,14 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
 
     protected override async Task<MauiAudioFocusHandle?> RequestAudioFocus(AudioFocusMode mode)
     {
-        Log.LogInformation("-> RequestAudioFocus, requested mode: '{Mode}', active handle: '{Handle}'", mode, _handle);
-
         // The route is read, never awaited, here: this runs under OperationLock.
+        var carAudioRoute = Volatile.Read(ref _carAudioRoute);
         var useCommunicationRoute = mode != AudioFocusMode.Recording
-            || Volatile.Read(ref _carAudioRoute).Input != AudioEndpoint.Builtin;
+            || carAudioRoute.Input != AudioEndpoint.Builtin;
+        Log.LogInformation(
+            "-> RequestAudioFocus, requested mode: '{Mode}', active handle: '{Handle}', "
+            + "car route: {CarAudioRoute}, comm route: {UseCommunicationRoute}",
+            mode, _handle, carAudioRoute, useCommunicationRoute);
         var success = await Task.Run(() => mode switch {
                 AudioFocusMode.Recording => _focusHelper.RequestFocusForCall(useCommunicationRoute),
                 AudioFocusMode.Playback => _focusHelper.RequestFocusForPlayback(),
