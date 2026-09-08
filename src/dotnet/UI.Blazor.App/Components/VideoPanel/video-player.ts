@@ -111,9 +111,8 @@ export interface RemoteStreamDiagnostics {
     bytesReceived: number;
     // Cumulative frames presented.
     presented: number;
-    // Per-tick instantaneous rates, computed at the latency-tap boundary
-    // (≈ 1 Hz) where the wall-clock dt is known. Display these directly to
-    // avoid the beat-frequency artifact from cross-cadence sampling.
+    // Per-tick instantaneous rates over the latency-tap's own sample window
+    // (≈ 1 Hz). Display these directly rather than re-deriving from the counters.
     presentedPerSec: number;
     bytesPerSec: number;
     // Per-FrameDropStage drop rates; same provenance as presentedPerSec.
@@ -212,19 +211,17 @@ export class VideoPlayer {
 
     // Diagnostics counters
     private renderFrameCount = 0;       // bumped from worker latency reports (frames presented)
-    // Mirror of worker-side PlayerStats.presented, updated on every
-    // latency-tap sample. Captured separately because `renderFrameCount`
-    // is incremented once per sample (≈ 1 Hz), so it can't drive
-    // per-second FPS readouts on its own.
+    // Mirror of worker-side PlayerStats.presented. Separate from `renderFrameCount`,
+    // which is bumped once per sample (≈ 1 Hz) and so can't drive an FPS readout.
     private presentedFrameCount = 0;
-    // Per-tick instantaneous rates computed at the latency-tap boundary
-    // where the wall-clock dt is known. Resampling cumulative counters at a
-    // different cadence creates a beat-frequency artifact — same class of
-    // bug as on the sender side; same fix applied uniformly across every
-    // cumulative counter (presented, bytesReceived, per-stage drops).
+    // Per-tick instantaneous rates over the latency-tap's own `sampledAtMs`
+    // window; dividing by main-thread arrival gaps instead inflates them.
     private presentedPerSec = 0;
     private bytesPerSec = 0;
     private readonly dropPerSec = new Map<number, number>();
+    // Shortest window a rate may be computed over. latencyTap also fires out of
+    // cadence on a rotation change, which is far too narrow to divide by.
+    private static readonly minRateWindowMs = 100;
     private lastLatencyTickMs = 0;
     private lastPresentedAtTick = 0;
     private lastBytesAtTick = 0;
@@ -239,10 +236,8 @@ export class VideoPlayer {
     private receivedKeyframeCount = 0;
     private receivedBytes = 0;
     private firstFrameReceivedTime = 0;
-    // Ring buffer of (atMs, cumulativeBytes) samples for a windowed
-    // IncomingByteRate. Cumulative-since-start would let an initial keyframe
-    // burst dominate the rate for many seconds and the receiver-side QC peak
-    // would lock the allocator into the wrong layer.
+    // Ring buffer of (atMs, cumulativeBytes) for a windowed IncomingByteRate:
+    // cumulative-since-start lets a keyframe burst lock QC into the wrong layer.
     private readonly bytesSamples: { atMs: number; bytes: number }[] = [];
     private static readonly bytesWindowMs = 3000;
     private forwardedLayerId = -1;
@@ -1402,34 +1397,32 @@ export class VideoPlayer {
         if (this.restartAttempts > 0)
             this.restartAttempts = 0;
 
-        const nowMs = performance.now();
-        if (this.lastLatencyTickMs > 0) {
-            const dt = nowMs - this.lastLatencyTickMs;
-            if (dt > 0) {
-                const scale = 1000 / dt;
-                this.presentedPerSec = Math.max(0, this.presentedFrameCount - this.lastPresentedAtTick) * scale;
-                this.bytesPerSec = Math.max(0, this.receivedBytes - this.lastBytesAtTick) * scale;
-                const framesDelta = Math.max(0,
-                    sample.playerStats.framesDecoded - this.lastFramesDecodedAtTick);
-                // Deficit must count only frames that were lost, not frames still
-                // in flight. Subtracting decoderQueueSize (in-flight) from arrived
-                // makes input and output deltas line up under bursty/jittery
-                // delivery, so a non-empty pipeline that keeps pace reads 0 — and
-                // the stale-spike-at-queue-0 artifact disappears as the queue drains.
-                const effectiveChunks =
-                    sample.playerStats.chunksReceived - sample.playerStats.decoderQueueSize;
-                const effectiveChunksDelta = Math.max(0, effectiveChunks - this.lastEffectiveChunks);
-                this.decodeDeficitTicker.tick(framesDelta, effectiveChunksDelta);
-                this.dropPerSec.clear();
-                for (const [stage, count] of sample.playerStats.dropTrace) {
-                    const prev = this.lastDropAtTick.get(stage) ?? 0;
-                    const rate = Math.max(0, count - prev) * scale;
-                    if (rate > 0) this.dropPerSec.set(stage as number, rate);
-                }
+        const tickMs = sample.sampledAtMs;
+        const dt = tickMs - this.lastLatencyTickMs;
+        if (this.lastLatencyTickMs > 0 && dt >= VideoPlayer.minRateWindowMs) {
+            const scale = 1000 / dt;
+            this.presentedPerSec = Math.max(0, this.presentedFrameCount - this.lastPresentedAtTick) * scale;
+            this.bytesPerSec = Math.max(0, this.receivedBytes - this.lastBytesAtTick) * scale;
+            const framesDelta = Math.max(0,
+                sample.playerStats.framesDecoded - this.lastFramesDecodedAtTick);
+            // Deficit must count only frames that were lost, not frames still
+            // in flight. Subtracting decoderQueueSize (in-flight) from arrived
+            // makes input and output deltas line up under bursty/jittery
+            // delivery, so a non-empty pipeline that keeps pace reads 0 — and
+            // the stale-spike-at-queue-0 artifact disappears as the queue drains.
+            const effectiveChunks =
+                sample.playerStats.chunksReceived - sample.playerStats.decoderQueueSize;
+            const effectiveChunksDelta = Math.max(0, effectiveChunks - this.lastEffectiveChunks);
+            this.decodeDeficitTicker.tick(framesDelta, effectiveChunksDelta);
+            this.dropPerSec.clear();
+            for (const [stage, count] of sample.playerStats.dropTrace) {
+                const prev = this.lastDropAtTick.get(stage) ?? 0;
+                const rate = Math.max(0, count - prev) * scale;
+                if (rate > 0) this.dropPerSec.set(stage as number, rate);
             }
         }
 
-        this.lastLatencyTickMs = nowMs;
+        this.lastLatencyTickMs = tickMs;
         this.lastPresentedAtTick = this.presentedFrameCount;
         this.lastBytesAtTick = this.receivedBytes;
         this.lastChunksReceivedAtTick = sample.playerStats.chunksReceived;

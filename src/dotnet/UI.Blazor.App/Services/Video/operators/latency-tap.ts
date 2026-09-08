@@ -6,6 +6,9 @@ import type { RotationQuarter } from 'orientation';
 const { debugLog } = getLogs('VideoPipeline');
 
 export interface LatencySample {
+    // Worker-local `performance.now()` at sample time. Rate deltas must divide by
+    // this, not by main-thread arrival times — jank compresses those to microseconds.
+    sampledAtMs: number;
     frameAgeMs: number;
     // Cross-clock approximation: sender/receiver MonotonicClocks share a Unix anchor
     // but drift independently — soft KPI, not an SLO.
@@ -61,11 +64,13 @@ export function latencyTap(opts: LatencyTapOptions): PipeOperator<DecodedFrame, 
         try {
             const nowMs = now();
             const rotationChanged = envelope.rotation !== lastReportedRotation;
-            if (!rotationChanged && nowMs - lastReportAtMs < intervalMs) return;
+            if (!rotationChanged && nowMs - lastReportAtMs < intervalMs)
+                return;
 
             lastReportAtMs = nowMs;
             lastReportedRotation = envelope.rotation;
             report({
+                sampledAtMs: nowMs,
                 frameAgeMs: nowMs - envelope.decodedAt.timeMs,
                 e2eLatencyMs: nowMs - envelope.capturedAt.timeMs,
                 capturedAtMs: envelope.capturedAt.timeMs,

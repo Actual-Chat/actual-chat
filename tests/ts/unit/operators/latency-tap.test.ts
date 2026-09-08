@@ -134,6 +134,26 @@ describe('latencyTap', () => {
         expect(samples[0].layerId).toBe(2);
     });
 
+    it('sampledAtMs carries the tap clock, so the consumer can size its rate window', async () => {
+        const stats = createEmptyPlayerStats();
+        const samples: LatencySample[] = [];
+        const nowValues = [1_000, 2_000];
+        let nowIdx = 0;
+        const items = nowValues.map((t, i) => makeEnvelope(stats, i, {
+            capturedTimeMs: t - 50,
+            decodedTimeMs: t - 5,
+        }));
+
+        const op = latencyTap({
+            intervalMs: 1_000,
+            now: () => nowValues[nowIdx++],
+            report: s => samples.push(s),
+        });
+        await drain(op(source(items)));
+
+        expect(samples.map(s => s.sampledAtMs)).toEqual(nowValues);
+    });
+
     it('default intervalMs is 1000 ms; default now is Date.now', async () => {
         const stats = createEmptyPlayerStats();
         const samples: LatencySample[] = [];
