@@ -1230,6 +1230,7 @@
   "ChatView_CollapseSummary": "सारांश संक्षिप्त करें",
   "ChatView_ExpandSummary": "सारांश विस्तृत करें",
   "ChatView_GoToUnread": "अपठित हिस्से पर जाएँ",
+  "ChatView_GoToReaction": "अपठित प्रतिक्रिया पर जाएँ",
   "ChatView_GoToLastMessage": "अंतिम संदेश पर जाएँ",
   "ChatView_UnknownChat": "अज्ञात चैट",
   "ChatView_UnknownAuthor": "अज्ञात लेखक",

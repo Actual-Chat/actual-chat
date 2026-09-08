@@ -1230,6 +1230,7 @@
   "ChatView_CollapseSummary": "要約を折りたたむ",
   "ChatView_ExpandSummary": "要約を展開",
   "ChatView_GoToUnread": "未読の位置へ移動",
+  "ChatView_GoToReaction": "未読のリアクションへ移動",
   "ChatView_GoToLastMessage": "最後のメッセージへ移動",
   "ChatView_UnknownChat": "不明なチャット",
   "ChatView_UnknownAuthor": "不明な投稿者",

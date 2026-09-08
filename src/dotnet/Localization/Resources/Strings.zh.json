@@ -1230,6 +1230,7 @@
   "ChatView_CollapseSummary": "收起摘要",
   "ChatView_ExpandSummary": "展开摘要",
   "ChatView_GoToUnread": "跳转到未读部分",
+  "ChatView_GoToReaction": "跳转到未读的表情回应",
   "ChatView_GoToLastMessage": "跳转到最新消息",
   "ChatView_UnknownChat": "未知聊天",
   "ChatView_UnknownAuthor": "未知作者",

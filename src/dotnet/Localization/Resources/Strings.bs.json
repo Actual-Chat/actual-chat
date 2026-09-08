@@ -1230,6 +1230,7 @@
   "ChatView_CollapseSummary": "Skupi sažetak",
   "ChatView_ExpandSummary": "Proširi sažetak",
   "ChatView_GoToUnread": "Idite na nepročitani dio",
+  "ChatView_GoToReaction": "Idite na nepročitanu reakciju",
   "ChatView_GoToLastMessage": "Idite na zadnju poruku",
   "ChatView_UnknownChat": "Nepoznat chat",
   "ChatView_UnknownAuthor": "Nepoznat autor",

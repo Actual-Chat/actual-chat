@@ -1277,6 +1277,7 @@ public static class LocalizedStringsLocalizerExt
         public string ChatView_CollapseSummary => l["ChatView_CollapseSummary"].Value;
         public string ChatView_ExpandSummary => l["ChatView_ExpandSummary"].Value;
         public string ChatView_GoToLastMessage => l["ChatView_GoToLastMessage"].Value;
+        public string ChatView_GoToReaction => l["ChatView_GoToReaction"].Value;
         public string ChatView_GoToUnread => l["ChatView_GoToUnread"].Value;
         public string ChatView_UnknownAuthor => l["ChatView_UnknownAuthor"].Value;
         public string ChatView_UnknownChat => l["ChatView_UnknownChat"].Value;

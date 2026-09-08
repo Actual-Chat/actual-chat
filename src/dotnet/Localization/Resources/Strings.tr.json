@@ -1230,6 +1230,7 @@
   "ChatView_CollapseSummary": "Özeti daraltın",
   "ChatView_ExpandSummary": "Özeti genişletin",
   "ChatView_GoToUnread": "Okunmamış kısma gidin",
+  "ChatView_GoToReaction": "Okunmamış tepkiye gidin",
   "ChatView_GoToLastMessage": "Son mesaja gidin",
   "ChatView_UnknownChat": "Bilinmeyen sohbet",
   "ChatView_UnknownAuthor": "Bilinmeyen yazar",

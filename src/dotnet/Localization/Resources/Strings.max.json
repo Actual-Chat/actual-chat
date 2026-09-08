@@ -1458,6 +1458,7 @@
   "ChatView_CollapseSummary": "Zusammenfassung einklappen",
   "ChatView_ExpandSummary": "Zusammenfassung ausklappen",
   "ChatView_GoToUnread": "Buka bagian yang belum dibaca",
+  "ChatView_GoToReaction": "Перейти к непрочитанной реакции",
   "ChatView_GoToLastMessage": "Перейти до останнього повідомлення",
   "ChatView_UnknownChat": "Cuộc trò chuyện không xác định",
   "ChatView_UnknownAuthor": "Tác giả không xác định",

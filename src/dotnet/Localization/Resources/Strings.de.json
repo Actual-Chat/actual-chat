@@ -1230,6 +1230,7 @@
   "ChatView_CollapseSummary": "Zusammenfassung einklappen",
   "ChatView_ExpandSummary": "Zusammenfassung ausklappen",
   "ChatView_GoToUnread": "Zum ungelesenen Teil springen",
+  "ChatView_GoToReaction": "Zur ungelesenen Reaktion springen",
   "ChatView_GoToLastMessage": "Zur letzten Nachricht springen",
   "ChatView_UnknownChat": "Unbekannter Chat",
   "ChatView_UnknownAuthor": "Unbekannter Autor",

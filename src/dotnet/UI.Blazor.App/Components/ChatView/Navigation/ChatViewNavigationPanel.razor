@@ -7,7 +7,12 @@
 @if (m.ShowSearchResultsNavigator) {
     <NavigateToNextOrPrevSearchResult />
 } else {
-    <NavigateToUnreadOrEnd />
+    <div class="chat-view-navigation-panel">
+        <div class="c-content">
+            <NavigateToUnreadReaction />
+            <NavigateToUnreadOrEnd />
+        </div>
+    </div>
 }
 
 @code {

@@ -1230,6 +1230,7 @@
   "ChatView_CollapseSummary": "Ciutkan ringkasan",
   "ChatView_ExpandSummary": "Bentangkan ringkasan",
   "ChatView_GoToUnread": "Buka bagian yang belum dibaca",
+  "ChatView_GoToReaction": "Buka reaksi yang belum dibaca",
   "ChatView_GoToLastMessage": "Buka pesan terakhir",
   "ChatView_UnknownChat": "Obrolan tidak dikenal",
   "ChatView_UnknownAuthor": "Penulis tidak dikenal",

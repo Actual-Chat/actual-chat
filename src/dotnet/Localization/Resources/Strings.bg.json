@@ -1230,6 +1230,7 @@
   "ChatView_CollapseSummary": "Свий обобщението",
   "ChatView_ExpandSummary": "Разгъни обобщението",
   "ChatView_GoToUnread": "Към непрочетената част",
+  "ChatView_GoToReaction": "Към непрочетената реакция",
   "ChatView_GoToLastMessage": "Към последното съобщение",
   "ChatView_UnknownChat": "Непознат чат",
   "ChatView_UnknownAuthor": "Непознат автор",

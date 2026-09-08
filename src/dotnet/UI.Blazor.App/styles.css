@@ -32,6 +32,7 @@
 @import './Components/ChatView/PinnedBar/pinned-bar.css';
 @import './Components/ChatView/chat-view.css';
 @import './Components/ClientUpgradeCover/client-upgrade-cover.css';
+@import './Components/ChatView/Navigation/chat-view-navigation-panel.css';
 @import './Components/ChatView/Navigation/navigate-to-unread-or-end.css';
 @import './Components/ChatView/Navigation/chat-view-search-results-navigator.css';
 @import './Components/ChatMessageEditor/chat-message-editor.css';

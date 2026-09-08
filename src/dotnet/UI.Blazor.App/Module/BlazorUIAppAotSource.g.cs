@@ -295,6 +295,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NavbarPlaceButtons>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NavigateToNextOrPrevSearchResult>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NavigateToUnreadOrEnd>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NavigateToUnreadReaction>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NewChatModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NewChatModalMembers>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NewChatModalProps>();
@@ -1067,6 +1068,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.NavbarPlaceButtons), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NavigateToNextOrPrevSearchResult), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NavigateToUnreadOrEnd), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.NavigateToUnreadReaction), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NewChatModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NewChatModalMembers), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NewChatModalProps), AotTypeKind.Component),

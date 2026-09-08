@@ -1230,6 +1230,7 @@
   "ChatView_CollapseSummary": "Réduire le résumé",
   "ChatView_ExpandSummary": "Développer le résumé",
   "ChatView_GoToUnread": "Aller à la partie non lue",
+  "ChatView_GoToReaction": "Aller à la réaction non lue",
   "ChatView_GoToLastMessage": "Aller au dernier message",
   "ChatView_UnknownChat": "Discussion inconnue",
   "ChatView_UnknownAuthor": "Auteur inconnu",

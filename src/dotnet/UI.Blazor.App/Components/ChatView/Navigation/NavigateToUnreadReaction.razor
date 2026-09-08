@@ -1,0 +1,108 @@
+@using ActualChat.Notifications
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, NavigateToUnreadReaction.Model?>
+@{
+    var m = State.Value;
+    if (m is null)
+        return;
+
+    _animator.State = m.IsVisible;
+    if (_animator.MustHideComponent || m.Target is not { } target)
+        return;
+
+    var emoji = target.LastEmoji ?? target.Emojis.LastOrDefault();
+}
+
+<div class="navigate-to-reaction @_animator.Class">
+    <div class="c-content">
+        <Badge Class="unread-counter" Click="OnClick">@m.Count.FormatK()</Badge>
+        <ButtonRound Tooltip="@L.ChatView_GoToReaction" Click="OnClick">
+            <EmojiIcon Emoji="@emoji" HasPreview="false"/>
+        </ButtonRound>
+    </div>
+</div>
+
+@code {
+    private ShowHideAnimator _animator = null!;
+
+    private Chat Chat => ChatContext.Chat;
+    private NotificationsUI NotificationsUI => Hub.NotificationsUI;
+
+    [CascadingParameter] public ChatView ChatView { get; set; } = null!;
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
+    [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
+
+    protected override void OnInitialized()
+        => _animator = new (this, TimeSpan.FromMilliseconds(300));
+
+    public override ValueTask DisposeAsync() {
+        _animator.Dispose();
+        return base.DisposeAsync();
+    }
+
+    protected override ComputedState<Model?>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model?>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Chat.Id;
+        var chatView = ChatView;
+
+        if (!await RegionVisibility.IsVisible.Use(cancellationToken).ConfigureAwait(false))
+            return null;
+
+        var reactions = await NotificationsUI.ListChatReactions(chatId, cancellationToken).ConfigureAwait(false);
+        if (reactions.Count == 0)
+            return Model.None;
+
+        await chatView.WhenInitialized.ConfigureAwait(false);
+        var itemVisibility = await chatView.ItemVisibility.Use(cancellationToken).ConfigureAwait(false);
+        var target = SelectClosest(reactions, itemVisibility);
+        if (target is null)
+            return Model.None;
+
+        return new(true, target, reactions.Count);
+    }
+
+    // A reaction whose entry is already on screen is about to be dismissed by SeenNotificationDismisser,
+    // so only the off-screen ones are worth a jump; the nearest to the viewport goes first, and the
+    // newer one wins a tie.
+    private static ReactionNotification? SelectClosest(
+        IReadOnlyList<ReactionNotification> reactions,
+        ChatViewItemVisibility itemVisibility)
+    {
+        var visibleLids = itemVisibility.VisibleMessageLids;
+        var viewportLid = itemVisibility.IsEmpty
+            ? long.MaxValue
+            : (itemVisibility.MinMessageLid + itemVisibility.MaxMessageLid) / 2;
+        return reactions
+            .Where(x => !visibleLids.Contains(x.EntryLid))
+            .OrderBy(x => Math.Abs(x.EntryLid - viewportLid))
+            .ThenByDescending(x => x.EntryLid)
+            .FirstOrDefault();
+    }
+
+    private void OnClick() {
+        if (State.Value is not { IsVisible: true, Target: { } target })
+            return;
+
+        // Dismissed here as well as by SeenNotificationDismisser, so the next click moves on
+        // even when the jump doesn't end with the entry on screen (e.g. it was deleted).
+        _ = Hub.UICommander.Run(new Notifications_Dismiss { Session = Session, NotificationId = target.Id });
+        _ = ChatView.NavigateTo(target.EntryLid, true);
+    }
+
+    // Nested types
+
+    public sealed record Model(bool IsVisible, ReactionNotification? Target, Trimmed<int> Count)
+    {
+        public static readonly Model None = new(false, null, default);
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+    }
+}
