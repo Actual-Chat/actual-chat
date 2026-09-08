@@ -18,6 +18,7 @@ export default defineConfig({
             'resilient-stream': src('resilient-stream'),
             'rpc': src('rpc'),
             'math': src('math'),
+            'pull-animation': src('pull-animation'),
             'object-pool': src('object-pool'),
             'buffers': src('buffers'),
             'app-constants': src('app-constants'),
