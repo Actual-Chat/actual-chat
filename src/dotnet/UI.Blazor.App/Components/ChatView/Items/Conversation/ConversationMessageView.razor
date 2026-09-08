@@ -17,9 +17,13 @@
     var hasLiveTitle = !m.Title.Text.IsNullOrEmpty();
     var hasDescription = !m.Description.Markup.ToReadableText().IsNullOrEmpty();
     // Exactly what GetClipboardText concatenates - with none of it there, copying yields blank lines.
+    var hasSummaryText = !m.Summary.Markup.ToReadableText().IsNullOrEmpty();
     var hasCopyText = hasLiveTitle
         || hasDescription
-        || !m.Summary.Markup.ToReadableText().IsNullOrEmpty();
+        || hasSummaryText;
+    // A call with no transcript has nothing behind either affordance: expanding reveals an empty
+    // block, and a call is never summarized, so "show details" would open onto blank space.
+    var canExpand = !conversation.IsCall || messageCount > 0;
     // The split-out header carries the title; when expanded the description + meta-row drop out, so an
     // otherwise-empty card would render as a 1rem-padded gap between the header and the first message.
     var showLiveCard = (!Message.HasSplitHeader && hasLiveTitle)
@@ -115,11 +119,12 @@
                         Icon="@(conversation.IsCall ? callIcon : "icon-tldr")"
                         MessageCount="@messageCount"
                         StartsAt="@startsAt"
+                        ShowToggle="@canExpand"
                         ConversationToggleClick="@ToggleShowMessage"/>
                 }
                 <div class="c-short">
                     <MarkupView Markup="@m.Description.Markup"/>
-                    @if (!_isOpen) {
+                    @if (!_isOpen && hasSummaryText) {
                         <span class="show-more-btn" data-vl-hold="always" @onclick="@ToggleDetails">@L.ChatView_ShowDetails</span>
                     }
                 </div>

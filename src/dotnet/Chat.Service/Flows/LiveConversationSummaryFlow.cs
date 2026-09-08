@@ -107,9 +107,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
             return;
         }
 
-        // Tier 2 (below the full-summary gate) materializes expanded; tier 3 (at/above it) materializes collapsed.
-        var isExpandedByDefault = words < Settings.Summarization.MinConversationWords
-            || entries.Count < Settings.Summarization.MinConversationEntries;
+        var isExpandedByDefault = Settings.Summarization.IsExpandedByDefault(words, entries.Count);
         await LiveSessionsBackend
             .UpdateSummary(ChatId, ToLiveSummary(summary, entries, isExpandedByDefault), cancellationToken)
             .ConfigureAwait(false);

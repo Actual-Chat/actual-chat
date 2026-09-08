@@ -1,3 +1,4 @@
+using ActualChat.Chat.Module;
 using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
@@ -149,6 +150,50 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         var conversation = await conversations.Get(connected!.ToMaterializedConversation().Id, default);
         conversation.Should().NotBeNull();
         conversation!.IsCall.Should().BeTrue();
+        // Nothing was said, so there is nothing to expand into: the card is the whole of it.
+        conversation.MessageCount.Should().Be(0);
+        conversation.IsExpandedByDefault.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ACallConversationShouldExpandByDefaultOnlyWhileItIsShort()
+    {
+        // A call is never summarized, so the tier the summary flow would have picked has to be
+        // computed at materialization instead - from the same thresholds, so the two can't drift.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
+        var settings = tester.AppServices.GetRequiredService<ChatSettings>().Summarization;
+        var longLine = string.Join(' ', Enumerable.Repeat("word", 1 + settings.MinConversationWords / 10));
+
+        // act - a short call
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+        var shortCall = await backend.GetState(chatId, default);
+        await tester.CreateTextEntry(chatId, "hi");
+        await tester.CreateTextEntry(chatId, "hi back");
+        await backend.LeaveCall(chatId, alice.Id, default);
+
+        // assert
+        var shortConversation = await conversations.Get(shortCall!.ToMaterializedConversation().Id, default);
+        shortConversation!.MessageCount.Should().Be(2);
+        shortConversation.IsExpandedByDefault.Should().BeTrue();
+
+        // act - a long one: both thresholds have to be crossed, the rule ORs them
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+        var longCall = await backend.GetState(chatId, default);
+        for (var i = 0; i < settings.MinConversationEntries; i++)
+            await tester.CreateTextEntry(chatId, longLine);
+        await backend.LeaveCall(chatId, alice.Id, default);
+
+        // assert
+        var longConversation = await conversations.Get(longCall!.ToMaterializedConversation().Id, default);
+        longConversation!.MessageCount.Should().Be(settings.MinConversationEntries);
+        longConversation.IsExpandedByDefault.Should().BeFalse();
     }
 
     [Fact]
