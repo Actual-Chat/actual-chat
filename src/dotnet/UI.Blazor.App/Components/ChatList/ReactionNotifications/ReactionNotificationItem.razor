@@ -48,6 +48,10 @@
         return chat?.Title ?? "";
     }
 
-    private void OnClick()
-        => _ = History.NavigateTo(Notification.GetChatLink());
+    private void OnClick() {
+        // Dismissed here rather than left to SeenNotificationDismisser: it clears the notification
+        // only once the reacted-to entry is actually on screen, which a tap doesn't guarantee.
+        _ = Hub.UICommander.Run(new Notifications_Dismiss { Session = Session, NotificationId = Notification.Id });
+        _ = History.NavigateTo(Notification.GetChatLink());
+    }
 }

@@ -67,9 +67,15 @@ re-shows it.
 - **Reconciliation** — `src/dotnet/UI.Blazor.App/Services/NotificationReconciler.cs`
   prunes stale and creates missing notifications from `ListActive` (prune+create
   on web/Android, prune-only on iOS).
-- **In-app feed** — none. There is no rendered component that displays the active
-  set; it surfaces only as OS notifications, the app-icon badge, and incoming-call
-  rings. `/test/notifications` dumps it as JSON for diagnostics.
+- **Clearing an `OnView` kind** — `SeenNotificationDismisser.cs` dismisses reactions
+  and attention pings once their anchor entry is on screen. It runs off both
+  `ChatUI.ItemVisibility` *and* `ListActive`: a reaction to an entry the reader is
+  already looking at changes nothing the visibility state depends on. The reactions
+  tab dismisses on tap too — a tap doesn't guarantee the entry ends up visible.
+- **In-app feed** — only the reactions tab of the notifications panel
+  (`ChatList/ReactionNotifications/`) renders part of the active set. Everything else
+  surfaces as OS notifications, the app-icon badge, and incoming-call rings.
+  `/test/notifications` dumps the whole set as JSON for diagnostics.
 
   Note what this set is *not*: unread counts on chats and places drive the navbar
   and the bell panel, and are deliberately a different calculation. `ListActive`
