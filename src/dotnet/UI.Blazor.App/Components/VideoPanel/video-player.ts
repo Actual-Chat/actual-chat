@@ -1378,13 +1378,16 @@ export class VideoPlayer {
         // this `IncomingByteRate` was always 0, VideoQualityUI verdict
         // pegged at -1, and the allocator capped every stream at L0.
         this.receivedBytes = sample.bytesReceived;
-        const nowMsForSample = performance.now();
+        // Main clock, and it has to stay that way: streamAgeMs subtracts it from performance.now().
+        const mainNowMs = performance.now();
         if (this.firstFrameReceivedTime === 0) {
-            this.firstFrameReceivedTime = nowMsForSample;
+            this.firstFrameReceivedTime = mainNowMs;
             this.placeholderEl?.classList.add('has-frame');
         }
-        this.bytesSamples.push({ atMs: nowMsForSample, bytes: this.receivedBytes });
-        const cutoff = nowMsForSample - VideoPlayer.bytesWindowMs;
+        // Tap clock, because the byte counts come from the same worker snapshot. Stamped on delivery
+        // instead, a main-thread stall evicts the window and prices ~1s of bytes over ~0.5ms.
+        this.bytesSamples.push({ atMs: sample.sampledAtMs, bytes: this.receivedBytes });
+        const cutoff = sample.sampledAtMs - VideoPlayer.bytesWindowMs;
         while (this.bytesSamples.length > 1 && this.bytesSamples[0].atMs < cutoff)
             this.bytesSamples.shift();
 
