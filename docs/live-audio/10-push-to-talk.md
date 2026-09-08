@@ -407,6 +407,43 @@ wake. An invalid payload still returns a `PTParticipant` and schedules
 `ClearActiveParticipant` after `PhantomWakeClearDelay` (5 s), or the system UI
 would show the channel as receiving forever.
 
+**Self-initiated playback.** An app joined to the channel may not activate its
+own `AVAudioSession` in the background: `SetActive(true)` answers
+`AVAudioSessionErrorCode.CannotInterruptOthers` (`'!int'`, 560557684), and so
+does `AVAudioEngine.start`. That is exactly the position of an armed app that is
+already listening when the next utterance arrives over RPC — the server skips
+active participants and dedups wakes per `PttWakeTtl`, so no push comes, yet
+the stream does. `AudioSession` therefore treats that refusal as a request:
+`ReconfigureUnsafe` / `ReactivateUnsafe` return a setup with
+`IsPttActivationPending`, and `AudioSession.RequestPttActivation` asks the
+framework through the hooks `IosPtt` registers in `Initialize`
+(`SetPttPlaybackHooks`: joined-check, request, release). The request,
+`RequestPlaybackActivation`, calls `SetActiveRemoteParticipant(new
+PTParticipant(channelTitle))` — the system activates the session for a set
+participant even in the background, Apple's stated contract for PTT apps — and
+`DidActivateAudioSession` completes it. `AppleAudioFocusUI.SetModeUnsafe`,
+`RecoverInternal` and `RebuildInternal` await it before resuming the engines,
+and `AudioEngine.EnsureRunning` retries a start refused with `'!int'` after the
+same request, because a player that outruns the focus acquisition is where the
+refusal surfaces first. Concurrent callers share one request
+(`_pttActivationTask`), bounded by `PttActivationTimeout` (5 s). The rules
+around it: no request without a joined channel (then the refusal is somebody
+else's non-mixable session and the old throw-and-retry path applies) and none
+for a `Recording` mode (the framework would show the app's own mic as an
+incoming receive; a background mic is a transmit's business); no short-circuit
+on a PTT owner, since a caller only gets here with an inactive session, which
+a `PttPlayback` owner also is while the previous burst's deactivation is in
+flight; `DidDeactivateAudioSession` never completes a request, for the same
+reason; and the request bumps the wake generation so a pending phantom-wake
+clear can't take its participant down. The release is symmetric:
+`DeactivateUnsafe`, reached when the last focus scope goes, calls the release
+hook (`ClearActiveParticipant`) whenever the owner is `PttPlayback` — or a
+request is still pending, which would otherwise activate a session nothing
+wants — and a request that ends without an activation releases too, so the
+framework's "receiving" state ends with the burst instead of lingering until
+the owner watchdog. Android needs none of this — a foreground-service app plays
+whenever it likes — which is why the silence was iOS-only.
+
 ### The background idle drop
 
 `ChatAudioUI.StateSync`'s `StopListeningWhenIdleInBackground` runs only on

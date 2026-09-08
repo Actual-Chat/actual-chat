@@ -41,7 +41,7 @@ public sealed class AppleTuneUI(UIHub hub) : MauiTuneUI(hub)
             var audioFile = audioFileLease.Resource;
 
             using var node = engine.NewPlayer(audioFile.ProcessingFormat);
-            engine.EnsureRunning();
+            await engine.EnsureRunning(cancellationToken).ConfigureAwait(false);
             node.Play();
             // A tune started while the recording engine's VoiceProcessingIO runs is a source
             // started after it, so it lands on the earpiece unless the route is restated - and
