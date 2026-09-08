@@ -35,6 +35,7 @@ public class DbConversation : IHasId<string>, IHasVersion<long>, IRequirementTar
     public string AuthorIds { get; set; } = "[]";
     public string AttachmentIds { get; set; } = "[]";
     public bool IsExpandedByDefault { get; set; }
+    public bool IsCall { get; set; }
 
     public Conversation ToModel()
     {
@@ -53,6 +54,7 @@ public class DbConversation : IHasId<string>, IHasVersion<long>, IRequirementTar
             AttachmentCount = AttachmentCount,
             AttachmentIds = attachmentIds,
             IsExpandedByDefault = IsExpandedByDefault,
+            IsCall = IsCall,
         };
     }
 
@@ -76,5 +78,6 @@ public class DbConversation : IHasId<string>, IHasVersion<long>, IRequirementTar
         AttachmentCount = model.AttachmentCount;
         AttachmentIds = JsonSerializer.Serialize(model.AttachmentIds);
         IsExpandedByDefault = model.IsExpandedByDefault;
+        IsCall = model.IsCall;
     }
 }
