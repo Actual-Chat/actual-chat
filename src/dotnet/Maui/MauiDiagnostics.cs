@@ -9,8 +9,10 @@ using Microsoft.Maui.Storage;
 using OpenTelemetry.Trace;
 using Sentry.Serilog;
 using Serilog;
+using Serilog.Core;
 using Serilog.Events;
 using Serilog.Extensions.Logging;
+using Serilog.Formatting.Display;
 using ILogger = Serilog.ILogger;
 using Tracer = ActualChat.Performance.Tracer;
 
@@ -124,6 +126,11 @@ public static class MauiDiagnostics
             fileSizeLimitBytes: LoggingExt.FileSizeLimit,
             rollOnFileSizeLimit: true,
             retainedFileCountLimit: LoggingExt.RetainedFileCountLimit);
+#if DEBUG
+        // The sandbox container's log file is TCC-protected, so scripts/run-mac.sh reads the
+        // console instead (open --stdout)
+        logging = logging.WriteTo.Sink(new ConsoleSink());
+#endif
 #endif
         return logging;
     }
@@ -201,4 +208,14 @@ public static class MauiDiagnostics
         // builder.AddFilter<SerilogLoggerProvider>(null, LogLevel.Trace);
         return builder;
     }
+
+#if MACOS && DEBUG
+    private sealed class ConsoleSink : ILogEventSink
+    {
+        private readonly MessageTemplateTextFormatter _formatter = new(LoggingExt.OutputTemplate);
+
+        public void Emit(LogEvent logEvent)
+            => _formatter.Format(logEvent, Console.Out);
+    }
+#endif
 }
