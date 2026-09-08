@@ -17,6 +17,10 @@ import { fastRaf, fastReadRafAsync, fastWriteRafAsync } from 'fast-raf';
 const { debugLog } = getLogs('SideNav');
 
 const PullBoundary = 0.333; // 33% of the screen width
+// Vector2D.isHorizontal(r) is |x| > r*|y|, so r = 1/tan(angle-from-horizontal). Starting a pull
+// asks for a more committed swipe than keeping one alive, so a wandering finger doesn't drop it.
+const PullStartAngleRatio = 1.428; // 1/tan(35deg)
+const PullDropAngleRatio = 0.839; // 1/tan(50deg)
 const PrePullDistance1 = 10; // Normal pre-pull distance in CSS pixels
 const PrePullDistance2 = 20; // Pre-pull distance over control
 const PrePullDurationMs = 20;
@@ -294,7 +298,7 @@ class SideNavPullDetectGesture extends Gesture {
             const isOpenSign = sideNav.isOpen ? 1 : -1;
             const openDirectionSign = isLeft ? 1 : -1;
             const allowedDirectionSign = openDirectionSign * -isOpenSign;
-            const isHorizontal = offset.isHorizontal(1.732); // 1/tan(30deg) = 1.732
+            const isHorizontal = offset.isHorizontal(PullStartAngleRatio);
             if (!isHorizontal || Math.abs(Math.sign(offset.x) - allowedDirectionSign) > 0.1) {
                 // Wrong direction
                 debugLog?.log(`SideNavPullDetectGesture[${sideNav.side}].touchMove: wrong direction`);
@@ -422,7 +426,7 @@ class SideNavPullGesture extends Gesture {
         if (!coords)
             return;
 
-        if (!coords.sub(this.origin).isHorizontal()) { // >45 deg. vertical
+        if (!coords.sub(this.origin).isHorizontal(PullDropAngleRatio)) {
             void this.endMove(event, true);
             return;
         }
