@@ -89,6 +89,7 @@ public class ReactionsBackend(IServiceProvider services)
                 var dbSummary = await UpsertDbSummary(emoji, false).ConfigureAwait(false);
                 if (dbSummary.Count > 0)
                     mustUpdateHasReactions = false; // Some reactions are still there
+                changeKind = ChangeKind.Remove;
             }
             else {
                 var oldEmoji = Emoji.Parse(dbReaction.Emoji);
@@ -98,10 +99,10 @@ public class ReactionsBackend(IServiceProvider services)
                 await UpsertDbSummary(oldEmoji, false).ConfigureAwait(false);
                 await UpsertDbSummary(emoji, true).ConfigureAwait(false);
                 mustUpdateHasReactions = false; // Author replaced one reaction with another
+                changeKind = ChangeKind.Update;
             }
 
             reaction = dbReaction.ToModel();
-            changeKind = ChangeKind.Update;
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

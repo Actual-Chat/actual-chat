@@ -8,6 +8,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private IWebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);
+    private FirebaseMessagingTestSink Sink => AppHost.Services.GetRequiredService<FirebaseMessagingTestSink>();
 
     [Fact]
     public async Task ShouldSendNotificationForReaction()
@@ -34,6 +35,43 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         var bobNotification = await GetNotification(bob, entry.Id);
         bobNotification.Title.Should().Be($"Alice @ {chat.Title}");
         bobNotification.Text.Should().Be("❤️ to \"Ok!\"");
+    }
+
+    [Fact]
+    public async Task ShouldNotSendNotificationWhenReactionIsRemoved()
+    {
+        // arrange
+        var bob = await Tester.SignInAsBob();
+        var alice = await Tester.SignInAsAlice();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "Reaction removal chat");
+        await Tester.InviteToChat(chat.Id, bob);
+        var deviceId = await RegisterDevice(alice.Id);
+        var entry1 = await Tester.CreateTextEntry(chat.Id, "first");
+        var entry2 = await Tester.CreateTextEntry(chat.Id, "second");
+
+        await Tester.SignIn(bob);
+        await Tester.React(entry1.Id, Emojis.Love);
+        var notification = await GetNotification(alice, entry1.Id);
+        await Commander.Call(new NotificationsBackend_Dismiss(notification.Id));
+        await TestExt.When(async () => {
+            var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
+            info.Items.Should().BeEmpty();
+        }, TimeSpan.FromSeconds(10));
+        Sink.Clear();
+
+        // act - the same emoji again removes the reaction; the reaction to entry2 is the drain sentinel
+        await Tester.React(entry1.Id, Emojis.Love);
+        await Tester.React(entry2.Id, Emojis.Love);
+
+        // assert
+        await GetNotification(alice, entry2.Id);
+        var aliceInfo = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
+        aliceInfo.Items.OfType<ReactionNotification>().Should().NotContain(n => n.EntryLid == entry1.LocalId);
+        Sink.Messages
+            .Where(m => !m.IsDismissal && m.DeviceIds.Contains(deviceId))
+            .Select(m => m.Notification)
+            .OfType<ReactionNotification>()
+            .Should().NotContain(n => n.EntryLid == entry1.LocalId);
     }
 
     [Fact]
@@ -212,6 +250,14 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         // Should use content URL for custom avatar, not generated avatar
         notification.IconUrl.Should().NotContain("api/avatars/");
         notification.IconUrl.Should().Contain("api/content/");
+    }
+
+    private async Task<Symbol> RegisterDevice(UserId userId)
+    {
+        var deviceId = new Symbol("test-device-" + userId.Value);
+        await Commander.Call(
+            new NotificationsBackend_RegisterDevice(userId, deviceId, DeviceType.WebBrowser, Symbol.Empty));
+        return deviceId;
     }
 
     private async Task<ChatNotification> GetNotification(AccountFull user, ChatEntryId entryId)
