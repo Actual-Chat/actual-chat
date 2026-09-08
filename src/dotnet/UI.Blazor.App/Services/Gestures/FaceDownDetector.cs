@@ -29,6 +29,7 @@ public sealed class FaceDownDetector
     private bool _hasFired;
 
     public string? LastFireInfo { get; private set; }
+    public bool HasEntered => _lastNotFaceDownAt is not null;
 
     public void SetProximityCovered(bool isCovered)
     {

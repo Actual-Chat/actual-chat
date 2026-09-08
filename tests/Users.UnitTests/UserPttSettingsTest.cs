@@ -190,6 +190,59 @@ public partial class UserPttSettingsTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
+    public void HushDefaultsAreSafe()
+    {
+        var settings = new UserPttSettings();
+        // act + assert
+        settings.HushDuration.Should().Be(TimeSpan.FromMinutes(15), "a blob predating the member reads zero");
+        (settings.IsHushGestureEnabled ?? true).Should().BeTrue();
+    }
+
+    [Fact]
+    public void WithAllPttChatsMutedMutesEveryConsentedChatButKeepsALaterDeadline()
+    {
+        // arrange
+        var chatA = ChatId.Parse("hushchataaaaaaaaaaaa");
+        var chatB = ChatId.Parse("hushchatbbbbbbbbbbbb");
+        var joinedAt = Moment.EpochStart + TimeSpan.FromDays(1);
+        var now = joinedAt + TimeSpan.FromHours(1);
+        var settings = new UserPttSettings()
+            .WithPttChat(chatA, joinedAt)
+            .WithPttChat(chatB, joinedAt)
+            .WithPttChatMuted(chatB, now - TimeSpan.FromMinutes(5), now + TimeSpan.FromHours(8));
+
+        // act
+        var hushed = settings.WithAllPttChatsMuted(now, now + TimeSpan.FromMinutes(15));
+
+        // assert
+        hushed.IsMutedIn(chatA, now).Should().BeTrue();
+        hushed.PttChats.Single(c => c.ChatId == chatA).MutedUntil.Should().Be(now + TimeSpan.FromMinutes(15));
+        hushed.PttChats.Single(c => c.ChatId == chatB).MutedUntil
+            .Should().Be(now + TimeSpan.FromHours(8), "a hush never shortens a longer mute");
+    }
+
+    [Fact]
+    public void WithPttChatsUnmutedClearsOnlyTheGivenChats()
+    {
+        // arrange
+        var chatA = ChatId.Parse("hushchataaaaaaaaaaaa");
+        var chatB = ChatId.Parse("hushchatbbbbbbbbbbbb");
+        var joinedAt = Moment.EpochStart + TimeSpan.FromDays(1);
+        var now = joinedAt + TimeSpan.FromHours(1);
+        var settings = new UserPttSettings()
+            .WithPttChat(chatA, joinedAt)
+            .WithPttChat(chatB, joinedAt)
+            .WithAllPttChatsMuted(now, now + TimeSpan.FromMinutes(15));
+
+        // act
+        var unmuted = settings.WithPttChatsUnmuted([chatA]);
+
+        // assert
+        unmuted.IsMutedIn(chatA, now).Should().BeFalse();
+        unmuted.IsMutedIn(chatB, now).Should().BeTrue();
+    }
+
+    [Fact]
     public void IsArmedRequiresConsentWithinTheEnableEpoch()
     {
         var enabledAt = Moment.EpochStart + TimeSpan.FromDays(1);
@@ -219,6 +272,8 @@ public partial class UserPttSettingsTest(ITestOutputHelper @out) : TestBase(@out
             AnswerWindow = TimeSpan.FromSeconds(30),
             AreAudibleCuesEnabled = false,
             IsHeadsetButtonEnabled = false,
+            HushDuration = TimeSpan.FromHours(1),
+            IsHushGestureEnabled = false,
             Origin = "test",
         };
         // act + assert
@@ -236,6 +291,8 @@ public partial class UserPttSettingsTest(ITestOutputHelper @out) : TestBase(@out
                 d.AnswerWindow.Should().Be(o.AnswerWindow);
                 d.AreAudibleCuesEnabled.Should().Be(o.AreAudibleCuesEnabled);
                 d.IsHeadsetButtonEnabled.Should().Be(o.IsHeadsetButtonEnabled);
+                d.HushDuration.Should().Be(o.HushDuration);
+                d.IsHushGestureEnabled.Should().Be(o.IsHushGestureEnabled);
             });
     }
 

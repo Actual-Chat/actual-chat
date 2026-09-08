@@ -95,12 +95,16 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
         var canPause = true;
         Moment? answerWindowEndsAt = null;
         var isStartGestureReady = false;
+        var hushDuration = _isMauiHost
+            ? await Hub.UserSettingsUI.UserPttSettings()
+                .Get(x => x.HushDuration, cancellationToken)
+                .ConfigureAwait(false)
+            : Constants.Audio.PttHushDurationDefault;
         if (kind is not { } vKind) {
-            var answerWindow = _isMauiHost
-                ? await Hub.UserSettingsUI.UserPttSettings()
-                    .Get(x => x.AnswerWindow, cancellationToken)
-                    .ConfigureAwait(false)
-                : Constants.Audio.PttAnswerWindowDefault;
+            var pttSettings = _isMauiHost
+                ? await Hub.UserSettingsUI.UserPttSettings().Get(cancellationToken).ConfigureAwait(false)
+                : null;
+            var answerWindow = pttSettings?.AnswerWindow ?? Constants.Audio.PttAnswerWindowDefault;
             if (GetArmedChat(pttChatIds, answerWindow) is not { } armed)
                 return null;
 
@@ -118,7 +122,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
             chatInfo = chatInfo with { ExtraChatCount = extraChatCount };
 
         return new AudioActivity(
-            vKind, chatInfo, isPaused, canPause, answerWindowEndsAt, isStartGestureReady);
+            vKind, chatInfo, isPaused, canPause, answerWindowEndsAt, isStartGestureReady, hushDuration);
     }
 
     public static (ChatId ChatId, int ExtraChatCount, Moment? AnswerWindowEndsAt)? ResolveArmedChat(

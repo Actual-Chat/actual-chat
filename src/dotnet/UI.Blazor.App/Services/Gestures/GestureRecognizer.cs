@@ -6,6 +6,7 @@ public sealed record GestureOptions(
     bool IsDoubleShakeEnabled,
     bool IsStopGestureEnabled,
     bool IsMicOpen,
+    bool IsHushEnabled,
     ShakeSensitivity ShakeSensitivity);
 
 /// <summary>
@@ -32,6 +33,7 @@ public sealed class GestureRecognizer
     private readonly FaceDownDetector _faceDown = new();
     private readonly ProximityGuard _proximity = new();
     private readonly ShakeDetector _shake;
+    private readonly PatDetector _pat = new();
     private GestureOptions _options;
     private Moment? _lastSampleAt;
     private bool _isProximitySuppressed;
@@ -47,8 +49,11 @@ public sealed class GestureRecognizer
             lock (_lock) {
                 if (value.IsFlipToTalkEnabled != _options.IsFlipToTalkEnabled)
                     _flip.Reset();
-                if (value.IsStopGestureEnabled != _options.IsStopGestureEnabled)
+                if (value.IsStopGestureEnabled != _options.IsStopGestureEnabled
+                    || value.IsHushEnabled != _options.IsHushEnabled)
                     _faceDown.Reset();
+                if (value.IsHushEnabled != _options.IsHushEnabled)
+                    _pat.Reset();
                 if (value.ShakeSensitivity != _options.ShakeSensitivity)
                     _shake.ChangeSensitivity(value.ShakeSensitivity);
                 if (value.IsDoubleShakeEnabled != _options.IsDoubleShakeEnabled)
@@ -62,6 +67,13 @@ public sealed class GestureRecognizer
         get {
             lock (_lock)
                 return _shake.PeakDeviation;
+        }
+    }
+
+    public float PatPeakDeviation {
+        get {
+            lock (_lock)
+                return _pat.PeakDeviation;
         }
     }
 
@@ -91,6 +103,13 @@ public sealed class GestureRecognizer
         }
     }
 
+    public bool IsGuardSuppressing {
+        get {
+            lock (_lock)
+                return _isProximitySuppressed || _isUpsideDown;
+        }
+    }
+
     public GestureRecognizer(GestureOptions options)
     {
         _options = options;
@@ -115,9 +134,15 @@ public sealed class GestureRecognizer
             _lastSampleAt = sample.At;
 
             UpdateUpsideDownUnguarded(sample);
-            if (_options.IsStopGestureEnabled) {
+            if (_options.IsStopGestureEnabled || _options.IsHushEnabled) {
                 var putAway = _faceDown.Process(sample);
-                if (putAway != GestureKind.None)
+                // With nothing outgoing the fire can only mean hush, and hush needs a transition:
+                // a phone that was already face down when sensing started is not a gesture. With
+                // stop sensing on (mic, camera or screencast live), the same fire still means
+                // StopReply, entry or not - a phone already lying face down when a video-only
+                // stream started must still be able to stop it after the still-dwell.
+                var isHushOnly = !_options.IsStopGestureEnabled;
+                if (putAway != GestureKind.None && !(isHushOnly && !_faceDown.HasEntered))
                     return new GestureEvent(putAway, sample.At);
             }
 
@@ -136,8 +161,14 @@ public sealed class GestureRecognizer
                 if (!_wasSuppressed) {
                     _flip.Reset();
                     _shake.Reset();
+                    _pat.Reset();
                 }
                 _wasSuppressed = true;
+                // Pocketed is when a pat is meaningful: start gestures are off, freeing the accelerometer.
+                // iOS has no proximity while arming, so the upside-down latch is its pocket signal.
+                if (_options.IsHushEnabled && !_options.IsMicOpen && _pat.Process(sample))
+                    return new GestureEvent(GestureKind.DoublePat, sample.At);
+
                 return null;
             }
 
@@ -186,5 +217,6 @@ public sealed class GestureRecognizer
         _flip.Reset();
         _shake.Reset();
         _faceDown.Reset();
+        _pat.Reset();
     }
 }

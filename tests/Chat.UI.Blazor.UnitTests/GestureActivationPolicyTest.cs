@@ -137,18 +137,18 @@ public class GestureActivationPolicyTest
     [Theory]
     [InlineData(GestureKind.FlipToTalk, GestureRoute.StartReply)]
     [InlineData(GestureKind.DoubleShake, GestureRoute.StartReply)]
-    [InlineData(GestureKind.FaceDown, GestureRoute.StopReply)]
-    [InlineData(GestureKind.Pocket, GestureRoute.StopReply)]
     [InlineData(GestureKind.None, GestureRoute.None)]
     public void RoutesGesturesOutsidePracticeMode(GestureKind kind, GestureRoute expected)
-        => GestureActivationPolicy.Route(kind, false, isMicOpen: false).Should().Be(expected);
+        => GestureActivationPolicy
+            .Route(kind, false, isMicOpen: false, isStopArmed: false, isHushArmed: false)
+            .Should().Be(expected);
 
     [Fact]
     public void ShakeWhileTheMicIsOpenShouldStop()
         // Nothing else can be meant by shaking a phone whose mic is already open - and it's the
         // one stop gesture that needs neither a surface nor a pocket.
         => GestureActivationPolicy
-            .Route(GestureKind.DoubleShake, false, isMicOpen: true)
+            .Route(GestureKind.DoubleShake, false, isMicOpen: true, isStopArmed: false, isHushArmed: false)
             .Should().Be(GestureRoute.StopReply);
 
     [Fact]
@@ -156,7 +156,7 @@ public class GestureActivationPolicyTest
         // Which RequestReply then no-ops on the already-hot mic: only the shake is deliberate
         // enough to be reused as a stop.
         => GestureActivationPolicy
-            .Route(GestureKind.FlipToTalk, false, isMicOpen: true)
+            .Route(GestureKind.FlipToTalk, false, isMicOpen: true, isStopArmed: false, isHushArmed: false)
             .Should().Be(GestureRoute.StartReply);
 
     [Fact]
@@ -164,7 +164,7 @@ public class GestureActivationPolicyTest
     {
         foreach (var kind in Enum.GetValues<GestureKind>())
         foreach (var isTransmitting in new[] { false, true }) {
-            var route = GestureActivationPolicy.Route(kind, true, isTransmitting);
+            var route = GestureActivationPolicy.Route(kind, true, isTransmitting, false, isHushArmed: false);
             route.Should().NotBe(GestureRoute.StartReply, $"{kind} must not open the mic in practice mode");
             route.Should().NotBe(GestureRoute.StopReply, $"{kind} must not touch the mic in practice mode");
         }
@@ -173,11 +173,15 @@ public class GestureActivationPolicyTest
     [Fact]
     public void PracticeModeRoutesRealGesturesToThePanel()
     {
-        GestureActivationPolicy.Route(GestureKind.FlipToTalk, true, false).Should().Be(GestureRoute.Practice);
-        GestureActivationPolicy.Route(GestureKind.DoubleShake, true, false).Should().Be(GestureRoute.Practice);
-        GestureActivationPolicy.Route(GestureKind.FaceDown, true, false).Should().Be(GestureRoute.Practice);
-        GestureActivationPolicy.Route(GestureKind.Pocket, true, false).Should().Be(GestureRoute.Practice);
-        GestureActivationPolicy.Route(GestureKind.None, true, false).Should().Be(GestureRoute.None);
+        GestureActivationPolicy.Route(GestureKind.FlipToTalk, true, false, false, false)
+            .Should().Be(GestureRoute.Practice);
+        GestureActivationPolicy.Route(GestureKind.DoubleShake, true, false, false, false)
+            .Should().Be(GestureRoute.Practice);
+        GestureActivationPolicy.Route(GestureKind.FaceDown, true, false, false, false)
+            .Should().Be(GestureRoute.Practice);
+        GestureActivationPolicy.Route(GestureKind.Pocket, true, false, false, false)
+            .Should().Be(GestureRoute.Practice);
+        GestureActivationPolicy.Route(GestureKind.None, true, false, false, false).Should().Be(GestureRoute.None);
     }
 
     [Fact]
@@ -214,6 +218,71 @@ public class GestureActivationPolicyTest
                 isDoubleShakeEnabled: false, mustSenseStart: true,
                 mustSenseStop: false, isMicOpen: false)
             .Should().BeFalse("shake-to-talk is off");
+    }
+
+    [Fact]
+    public void HushSensesWhileVoiceIsLiveOrTheWindowIsOpen()
+    {
+        // act + assert
+        GestureActivationPolicy
+            .ShouldSenseHush(true, false, hasArmedChats: true, hasLiveIncoming: true, hasAnswerWindow: false)
+            .Should().BeTrue();
+        GestureActivationPolicy
+            .ShouldSenseHush(true, false, hasArmedChats: true, hasLiveIncoming: false, hasAnswerWindow: true)
+            .Should().BeTrue();
+        GestureActivationPolicy
+            .ShouldSenseHush(true, false, hasArmedChats: true, hasLiveIncoming: false, hasAnswerWindow: false)
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public void HushNeedsTheToggleAndAnArmedChatAndNeverArmsInPractice()
+    {
+        // act + assert
+        GestureActivationPolicy.ShouldSenseHush(false, false, true, true, true).Should().BeFalse();
+        GestureActivationPolicy.ShouldSenseHush(true, false, false, true, true).Should().BeFalse();
+        GestureActivationPolicy.ShouldSenseHush(true, true, true, true, true)
+            .Should().BeFalse("practice rehearses the detectors, hush arming is a live-only decision");
+    }
+
+    [Fact]
+    public void FaceDownRoutesToStopReplyWhileStopSensingIsArmedElseToHush()
+    {
+        // act + assert
+        GestureActivationPolicy
+            .Route(GestureKind.FaceDown, false, isMicOpen: true, isStopArmed: true, isHushArmed: true)
+            .Should().Be(GestureRoute.StopReply);
+        // Video-only stream: mic closed, but stop sensing is still armed by the camera/screencast.
+        GestureActivationPolicy
+            .Route(GestureKind.FaceDown, false, isMicOpen: false, isStopArmed: true, isHushArmed: true)
+            .Should().Be(GestureRoute.StopReply);
+        GestureActivationPolicy
+            .Route(GestureKind.FaceDown, false, isMicOpen: false, isStopArmed: false, isHushArmed: true)
+            .Should().Be(GestureRoute.Hush);
+        GestureActivationPolicy
+            .Route(GestureKind.FaceDown, false, isMicOpen: false, isStopArmed: false, isHushArmed: false)
+            .Should().Be(GestureRoute.None);
+    }
+
+    [Fact]
+    public void PocketNeverHushesAndPatOnlyHushes()
+    {
+        // act + assert
+        GestureActivationPolicy
+            .Route(GestureKind.Pocket, false, isMicOpen: false, isStopArmed: false, isHushArmed: true)
+            .Should().Be(GestureRoute.None, "a pocketed phone hushes by pat, never by being pocketed");
+        GestureActivationPolicy
+            .Route(GestureKind.Pocket, false, isMicOpen: false, isStopArmed: true, isHushArmed: true)
+            .Should().Be(GestureRoute.StopReply);
+        GestureActivationPolicy
+            .Route(GestureKind.DoublePat, false, isMicOpen: false, isStopArmed: false, isHushArmed: true)
+            .Should().Be(GestureRoute.Hush);
+        GestureActivationPolicy
+            .Route(GestureKind.DoublePat, false, isMicOpen: true, isStopArmed: false, isHushArmed: true)
+            .Should().Be(GestureRoute.None);
+        GestureActivationPolicy
+            .Route(GestureKind.DoublePat, true, isMicOpen: false, isStopArmed: false, isHushArmed: false)
+            .Should().Be(GestureRoute.Practice);
     }
 }
 

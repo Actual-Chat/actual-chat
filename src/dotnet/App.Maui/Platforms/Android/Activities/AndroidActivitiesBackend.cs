@@ -147,6 +147,7 @@ public class AndroidActivitiesBackend : ActivitiesBackend
             // Milliseconds-from-now rather than the Moment itself: the service compares against
             // the device wall clock, and the ServerClock stamp isn't in that domain.
             intent.PutExtra(IntentExtras.IsStartGestureReady, audio.IsStartGestureReady);
+            intent.PutExtra(IntentExtras.HushDurationMinutes, (int)audio.HushDuration.TotalMinutes);
             if (audio.AnswerWindowEndsAt is { } endsAt) {
                 var remaining = endsAt - Hub.Clocks.ServerClock.Now;
                 if (remaining > TimeSpan.Zero)

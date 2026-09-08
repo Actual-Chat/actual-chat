@@ -10,4 +10,5 @@ public enum GestureKind
     DoubleShake,
     FaceDown,
     Pocket,
+    DoublePat,
 }

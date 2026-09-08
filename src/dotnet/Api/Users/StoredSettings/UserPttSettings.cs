@@ -50,6 +50,15 @@ public sealed partial record UserPttSettings
         get => field == default ? Constants.Audio.PttAnswerWindowDefault : field;
         init;
     }
+    // How long a hush gesture mutes every armed chat; zero from an old blob reads as the default.
+    [DataMember, Key(12)]
+    public TimeSpan HushDuration {
+        get => field == default ? Constants.Audio.PttHushDurationDefault : field;
+        init;
+    }
+    // Nullable, read as `?? true`: a blob predating this member reads it as default, not as `= true`.
+    [DataMember, Key(13)]
+    public bool? IsHushGestureEnabled { get; init; }
 
     // PttChats + legacy PttChatIds-only entries (surfaced with JoinedAt = default, so never armed).
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
@@ -91,6 +100,18 @@ public sealed partial record UserPttSettings
     public UserPttSettings WithPttChatUnmuted(ChatId chatId)
         => WithPttChats(AllPttChats
             .Select(c => c.ChatId == chatId ? c with { MutedAt = null, MutedUntil = null } : c)
+            .ToArray());
+
+    public UserPttSettings WithAllPttChatsMuted(Moment mutedAt, Moment mutedUntil)
+        => WithPttChats(AllPttChats
+            .Select(c => c.MutedUntil is { } until && until >= mutedUntil
+                ? c
+                : c with { MutedAt = mutedAt, MutedUntil = mutedUntil })
+            .ToArray());
+
+    public UserPttSettings WithPttChatsUnmuted(IReadOnlyCollection<ChatId> chatIds)
+        => WithPttChats(AllPttChats
+            .Select(c => chatIds.Contains(c.ChatId) ? c with { MutedAt = null, MutedUntil = null } : c)
             .ToArray());
 
     public UserPttSettings WithOnlyPttChats(IReadOnlySet<ChatId> chatIds)

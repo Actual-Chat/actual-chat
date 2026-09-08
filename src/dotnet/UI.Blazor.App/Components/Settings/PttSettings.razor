@@ -74,6 +74,18 @@
             @if (m.Settings.IsDoubleShakeEnabled) {
                 <PttShakeSensitivitySettings/>
             }
+            <TileItem Click="@OnToggleHush">
+                <Icon><i class="icon-bell-off text-2xl"></i></Icon>
+                <Content>@L.Ptt_HushGesture</Content>
+                <Caption>@L.Ptt_HushGestureCaption</Caption>
+                <Right>
+                    <Toggle IsChecked="@(m.Settings.IsHushGestureEnabled ?? true)"
+                            IsCheckedChanged="@(_ => OnToggleHush())"/>
+                </Right>
+            </TileItem>
+        }
+        @if (hasSensors || HostInfo.AppKind == AppKind.Android) {
+            <PttHushDurationSettings/>
         }
         @if (HostInfo.AppKind == AppKind.Android) {
             <TileItem Click="@OnToggleHeadsetButton">
@@ -217,6 +229,10 @@
     private Task OnToggleShake()
         => UserSettingsUI.UserPttSettings()
             .Update(x => x with { IsDoubleShakeEnabled = !x.IsDoubleShakeEnabled }, CancellationToken.None);
+
+    private Task OnToggleHush()
+        => UserSettingsUI.UserPttSettings()
+            .Update(x => x with { IsHushGestureEnabled = !(x.IsHushGestureEnabled ?? true) }, CancellationToken.None);
 
     private Task OnToggleHeadsetButton()
         => UserSettingsUI.UserPttSettings()

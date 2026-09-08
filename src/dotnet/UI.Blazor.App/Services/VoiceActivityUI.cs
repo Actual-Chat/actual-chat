@@ -38,6 +38,9 @@ public class VoiceActivityUI(AppUIHub hub)
             BuildSnapshot(_lastOwnAt, [.._liveOwn.Keys], now));
     }
 
+    public bool HasAnyLiveIncoming(IReadOnlyList<ChatId> chatIds)
+        => chatIds.Any(_liveIncoming.ContainsKey);
+
     public void NoteIncomingVoice(ChatId chatId, Moment at)
     {
         // The wake path replays an utterance that may be over already, so HasIncomingVoice never

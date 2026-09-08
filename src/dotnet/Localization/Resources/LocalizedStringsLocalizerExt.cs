@@ -1124,6 +1124,7 @@ public static class LocalizedStringsLocalizerExt
         public string Activity_PttOnTapReply => l["Activity_PttOnTapReply"].Value;
         public string Activity_Reply => l["Activity_Reply"].Value;
         public string Activity_StopTalking => l["Activity_StopTalking"].Value;
+        public string Activity_MuteFor_Format(object arg0) => l["Activity_MuteFor_Format", arg0].Value;
         public string Activity_Chats(long count, object arg0) => l.Plural("Activity_Chats", count, arg0);
         public string Activity_ExtraChats(long count, object arg0) => l.Plural("Activity_ExtraChats", count, arg0);
 
@@ -1155,6 +1156,13 @@ public static class LocalizedStringsLocalizerExt
         public string Ptt_AlwaysListenCaption => l["Ptt_AlwaysListenCaption"].Value;
         public string Ptt_AnswerWindow => l["Ptt_AnswerWindow"].Value;
         public string Ptt_AnswerWindowCaption => l["Ptt_AnswerWindowCaption"].Value;
+        public string Ptt_HushGesture => l["Ptt_HushGesture"].Value;
+        public string Ptt_HushGestureCaption => l["Ptt_HushGestureCaption"].Value;
+        public string Ptt_HushDuration => l["Ptt_HushDuration"].Value;
+        public string Ptt_HushedFor_Format(object arg0) => l["Ptt_HushedFor_Format", arg0].Value;
+        public string Ptt_Undo => l["Ptt_Undo"].Value;
+        public string Ptt_Minutes_Format(long count, object arg0) => l.Plural("Ptt_Minutes_Format", count, arg0);
+        public string Ptt_Hours_Format(long count, object arg0) => l.Plural("Ptt_Hours_Format", count, arg0);
         public string Ptt_NoMotionSensor => l["Ptt_NoMotionSensor"].Value;
         public string Ptt_LockScreenTopic => l["Ptt_LockScreenTopic"].Value;
         public string Ptt_LockScreenTalk => l["Ptt_LockScreenTalk"].Value;

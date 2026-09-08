@@ -123,6 +123,8 @@ public static partial class Constants
         public static readonly TimeSpan[] PttMuteDurations = [
             TimeSpan.FromMinutes(15), TimeSpan.FromHours(1), TimeSpan.FromHours(8),
         ];
+        // Default for UserPttSettings.HushDuration - how long a hush gesture mutes every armed chat.
+        public static readonly TimeSpan PttHushDurationDefault = TimeSpan.FromMinutes(15);
         // Apple PTT transmit: the framework chimes when it activates the session, not when our
         // recorder exists, so audio is captured natively across the gap. Capacity must stay <=
         // 10 s, which is AppleAudioCapture's outBuffer size at RecordingSampleRate.

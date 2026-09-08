@@ -15,23 +15,28 @@ public static class HeadsetButtonPolicy
         // AreGesturesAlwaysOn and practice mode, which would arm the button with nobody talking.
         var hasAnswerWindow = GestureActivationPolicy.HasAnswerWindow(
             pttChatIds, lastVoiceAt, now, recencyWindow);
-        return new(settings.IsHeadsetButtonEnabled ?? true, hasAnswerWindow, isReplyHot, isPracticeMode);
+        return new(settings.IsHeadsetButtonEnabled ?? true, hasAnswerWindow, isReplyHot, isPracticeMode,
+            pttChatIds.Count > 0);
     }
 
     public static HeadsetButtonAction Decide(
         HeadsetKey key,
         bool isDown,
         int repeatCount,
+        bool isLongPress,
         bool isEnabled,
         bool hasAnswerWindow,
         bool isReplyHot,
-        bool isPracticeMode)
+        bool isPracticeMode,
+        bool hasArmedChats)
     {
-        // One press delivers both edges plus auto-repeats; acting on more than one would
-        // open the mic and immediately close it, because the later edges see a hot reply.
-        if (!isDown || repeatCount != 0)
+        if (!isDown || key == HeadsetKey.Unknown || !isEnabled)
             return HeadsetButtonAction.PassThrough;
-        if (!isEnabled || key == HeadsetKey.Unknown)
+        // Android flags exactly one of the auto-repeats as the long press; every other repeat is
+        // still the same press and acting on it would open the mic and immediately close it.
+        if (isLongPress)
+            return hasArmedChats && !isPracticeMode ? HeadsetButtonAction.Hush : HeadsetButtonAction.PassThrough;
+        if (repeatCount != 0)
             return HeadsetButtonAction.PassThrough;
         // A reply can outlive both the answer window and the practice panel, so closing it
         // must depend on neither: leaving a live mic open is the unsafe direction.
@@ -57,10 +62,12 @@ public enum HeadsetButtonAction
     PassThrough = 0,
     StartReply,
     StopReply,
+    Hush,
 }
 
 public readonly record struct HeadsetButtonState(
     bool IsEnabled,
     bool HasAnswerWindow,
     bool IsReplyHot,
-    bool IsPracticeMode);
+    bool IsPracticeMode,
+    bool HasArmedChats);

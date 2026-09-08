@@ -1,0 +1,66 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, PttHushDurationSettings.Model>
+@{
+    var m = State.Value;
+    _formModel.Minutes = m.Minutes;
+}
+
+<Form Model="@_formModel">
+    <DataAnnotationsValidator/>
+
+    <FormBlock Class="ptt-hush-duration-settings">
+        <FormSection
+            For="() => _formModel.Minutes"
+            InputId="@_formModel.MinutesFormId"
+            IsLabelInsideInput="true"
+            Label="@L.Ptt_HushDuration"
+            IsRequired="true"
+            HideValidationMessage="true">
+            <InputSelect
+                Value="_formModel.Minutes"
+                ValueExpression="@(() => _formModel.Minutes)"
+                ValueChanged="@((int minutes) => OnMinutesChanged(minutes))">
+                @foreach (var item in Items) {
+                    <option value="@item">@GetLabel(item)</option>
+                }
+            </InputSelect>
+        </FormSection>
+    </FormBlock>
+</Form>
+
+@code {
+    private static readonly int[] Items = Constants.Audio.PttMuteDurations.Select(d => (int)d.TotalMinutes).ToArray();
+
+    private FormModel _formModel = null!;
+
+    protected override void OnInitialized()
+        => _formModel = new FormModel(ComponentIdGenerator);
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var settings = await UserSettingsUI.UserPttSettings().Get(cancellationToken).ConfigureAwait(false);
+        return new((int)settings.HushDuration.TotalMinutes);
+    }
+
+    private Task OnMinutesChanged(int minutes) {
+        _formModel.Minutes = minutes;
+        return UserSettingsUI.UserPttSettings()
+            .Update(x => x with { HushDuration = TimeSpan.FromMinutes(minutes) }, CancellationToken.None);
+    }
+
+    private string GetLabel(int minutes)
+        => PttSessionCore.FormatDuration(L, TimeSpan.FromMinutes(minutes));
+
+    // Nested types
+
+    public sealed class FormModel(ComponentIdGenerator componentIdGenerator) {
+        public int Minutes { get; set; }
+        public string MinutesFormId { get; } = componentIdGenerator.Next("ptt-hush-duration");
+    }
+
+    public sealed record Model(int Minutes) {
+        public static readonly Model None = new((int)Constants.Audio.PttHushDurationDefault.TotalMinutes);
+    }
+}

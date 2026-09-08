@@ -11,7 +11,7 @@ namespace ActualChat.UI.Blazor.App.Services.Gestures;
 public sealed class GestureUI : UIWorkerBase<AppUIHub>
 {
     private static readonly GestureOptions DisarmedOptions =
-        new(false, false, false, false, ShakeSensitivity.Medium);
+        new(false, false, false, false, false, ShakeSensitivity.Medium);
 
     private readonly GestureRecognizer _recognizer = new(DisarmedOptions);
     // Ring of the last ~5s of samples (at Constants.Audio.GestureSampleMinPeriod), logged on
@@ -22,7 +22,9 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
     private volatile bool _isPracticeMode;
     private bool _isHeadsetButtonEnabled;
     private bool _isStopGestureEnabled;
+    private bool _isHushArmed;
     private bool _hasAnswerWindow;
+    private bool _hasArmedChats;
     private bool _isStartGestureReady;
     private int _sampleCount;
     private long _lastSampleAtTicks;
@@ -39,7 +41,9 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
     public float ShakePeakDeviation => _recognizer.ShakePeakDeviation;
     public string FaceDownStatus => _recognizer.FaceDownStatus;
     public string? FaceDownLastFireInfo => _recognizer.FaceDownLastFireInfo;
+    public float PatPeakDeviation => _recognizer.PatPeakDeviation;
     public string GuardStatus => _recognizer.GuardStatus;
+    public bool IsPocketed => _recognizer.IsGuardSuppressing;
     public int SampleCount => Volatile.Read(ref _sampleCount);
     public SensorSample LastSample
         => _recentSamples[(_recentSampleIndex + _recentSamples.Length - 1) % _recentSamples.Length];
@@ -50,6 +54,8 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
     public bool IsStartGestureReady => Volatile.Read(ref _isStartGestureReady);
     // Fenced because the Android screen-off receiver reads it off any of our threads
     public bool IsStopGestureEnabled => Volatile.Read(ref _isStopGestureEnabled);
+    // Fenced because the Android screen-on receiver reads them off any of our threads
+    public bool IsHushArmed => Volatile.Read(ref _isHushArmed);
 
     public bool IsPracticeMode {
         get => _isPracticeMode;
@@ -85,7 +91,8 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
         // the native media-button handler calls this synchronously, off any of ours.
         var isEnabled = Volatile.Read(ref _isHeadsetButtonEnabled);
         var hasAnswerWindow = Volatile.Read(ref _hasAnswerWindow);
-        return new(isEnabled, hasAnswerWindow, ChatAudioUI.IsRecording(), _isPracticeMode);
+        var hasArmedChats = Volatile.Read(ref _hasArmedChats);
+        return new(isEnabled, hasAnswerWindow, ChatAudioUI.IsRecording(), _isPracticeMode, hasArmedChats);
     }
 
     protected override Task OnRun(CancellationToken cancellationToken)
@@ -166,9 +173,16 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                     isStopGestureEnabled, isTransmitting, isPracticeMode);
                 var buttonState = HeadsetButtonPolicy.GetState(
                     settings, pttChatIds, lastVoiceAt, now, recencyWindow, isMicOpen, isPracticeMode);
+                var hasLiveIncoming = VoiceActivityUI.HasAnyLiveIncoming(pttChatIds)
+                    || ChatAudioUI.IsAnyPlaying(pttChatIds);
+                var mustSenseHush = GestureActivationPolicy.ShouldSenseHush(
+                    settings.IsHushGestureEnabled ?? true, isPracticeMode,
+                    pttChatIds.Count > 0, hasLiveIncoming, buttonState.HasAnswerWindow);
+                Volatile.Write(ref _isHushArmed, mustSenseHush);
                 Volatile.Write(ref _isStopGestureEnabled, isStopGestureEnabled);
                 Volatile.Write(ref _isHeadsetButtonEnabled, buttonState.IsEnabled);
                 Volatile.Write(ref _hasAnswerWindow, buttonState.HasAnswerWindow);
+                Volatile.Write(ref _hasArmedChats, pttChatIds.Count > 0);
                 // Availability is a device fact rather than a policy one, so it's ANDed here:
                 // a host without a working accelerometer can never fire a start gesture, and
                 // promising one in the notification is the exact lie this signal exists to stop.
@@ -194,13 +208,14 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                         settings.IsDoubleShakeEnabled, mustSenseStart, mustSenseStop, isMicOpen),
                     mustSenseStop,
                     isMicOpen,
+                    mustSenseHush || isPracticeMode,
                     settings.ShakeSensitivity);
                 if (_isPracticeMode != isPracticeMode)
                     continue; // The setter raced this write and owns the disarm - re-decide
 
                 // SensorFeed's Start/Stop are idempotent, so the loop states them every iteration
                 // instead of tracking transitions the IsPracticeMode setter can silently undo.
-                if (mustSenseStart || mustSenseStop)
+                if (mustSenseStart || mustSenseStop || mustSenseHush)
                     Feed.StartAccelerometer();
                 else {
                     Feed.StopAccelerometer();
@@ -208,7 +223,8 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                 }
                 // Android only: iOS proximity monitoring blanks the screen while covered, which
                 // is unacceptable with always-on arming - iOS keeps the orientation guard only.
-                if (mustSenseStop || (mustSenseStart && OperatingSystem.IsAndroid()))
+                // The hush window is as short as a transmit, so that concern does not apply to it.
+                if (mustSenseStop || mustSenseHush || (mustSenseStart && OperatingSystem.IsAndroid()))
                     Feed.StartProximity();
                 else
                     Feed.StopProximity();
@@ -230,6 +246,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
         finally {
             Feed.StopAccelerometer();
             Feed.StopProximity();
+            Volatile.Write(ref _isHushArmed, false);
             // The sensors are down, so nothing can fire - a readiness left latched here would
             // have the notification promising a gesture for the rest of the scope's life.
             if (Volatile.Read(ref _isStartGestureReady)) {
@@ -265,14 +282,17 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
             _lastGuardStatus = guardStatus;
         }
         var isPracticeMode = _isPracticeMode;
-        var isMicOpen = _recognizer.Options.IsMicOpen;
+        var recognizerOptions = _recognizer.Options;
+        var isMicOpen = recognizerOptions.IsMicOpen;
         if (_recognizer.Process(sample) is not { } gesture)
             return;
 
         if (gesture.Kind is GestureKind.FaceDown or GestureKind.Pocket)
             Log.LogWarning("{Kind} fired: {Info}; samples: {Samples}",
                 gesture.Kind, _recognizer.FaceDownLastFireInfo, FormatRecentSamples());
-        var route = GestureActivationPolicy.Route(gesture.Kind, isPracticeMode, isMicOpen);
+        var route = GestureActivationPolicy.Route(
+            gesture.Kind, isPracticeMode, isMicOpen,
+            isStopArmed: recognizerOptions.IsStopGestureEnabled, isHushArmed: Volatile.Read(ref _isHushArmed));
         if (route == GestureRoute.None)
             return;
 
@@ -289,10 +309,12 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
         // released when the trigger ends, so a reply that never opened can't leave it raised.
         // Unbounded, like the widget and iOS PTT: a gesture explicitly asks to record, so it
         // resolves to the focused/last/single armed chat even with no recent incoming voice.
-        var whenHandled = route == GestureRoute.StartReply
-            ? PttMicCapability.HoldWhile(() => PttReplyUI.RequestReply(
-                ReplyTargetResolver.UnboundedRecencyWindow, CancellationToken.None))
-            : StopTransmitting();
+        var whenHandled = route switch {
+            GestureRoute.StartReply => PttMicCapability.HoldWhile(() => PttReplyUI.RequestReply(
+                ReplyTargetResolver.UnboundedRecencyWindow, CancellationToken.None)),
+            GestureRoute.Hush => Hub.Services.GetRequiredService<PttSessionCore>().Hush(CancellationToken.None),
+            _ => StopTransmitting(),
+        };
         _ = BackgroundTask.Run(() => whenHandled, Log, $"{gesture.Kind} handling failed", CancellationToken.None);
     }
 

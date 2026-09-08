@@ -1,4 +1,6 @@
+using ActualChat.Localization;
 using ActualChat.UI.Blazor.Services;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -12,6 +14,7 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
     private static readonly TimeSpan AudioFocusCheckPeriod = TimeSpan.FromSeconds(0.5);
     private const int AudioFocusChecks = 10;
     private readonly CancellationTokenSource _disposeCts = new();
+    private PttPlatform? _platform;
     private AppUIHub Hub { get; } = hub;
     private ILogger Log => field ??= Hub.Services.LogFor(GetType());
     public int AudioFocusDenialCount => Hub.ChatAudioUI.AudioFocusDenialCount;
@@ -26,6 +29,7 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
         bool isHeadless,
         PttPlatform platform)
     {
+        _platform = platform;
         var chatAudioUI = Hub.ChatAudioUI;
         // Second gate behind the server-side fan-out filter: a wake that reaches a device whose
         // registration is stale (or that raced a toggle) must stay inert when PTT is off here.
@@ -92,6 +96,38 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
         _ = platform.OnPlaybackStarted(Hub, chatId);
         return null;
     }
+
+    public async Task Hush(CancellationToken cancellationToken)
+    {
+        var chatAudioUI = Hub.ChatAudioUI;
+        var hushedChatIds = await chatAudioUI.HushPtt(cancellationToken).ConfigureAwait(false);
+        if (hushedChatIds.Count == 0)
+            return;
+
+        // A headless scope has no UI for a toast; the badge in Active Chats is its undo surface.
+        if (!chatAudioUI.IsPttHeadless) {
+            var duration = await Hub.UserSettingsUI.UserPttSettings()
+                .Get(x => x.HushDuration, cancellationToken)
+                .ConfigureAwait(false);
+            var l = Hub.StringLocalizer;
+            Hub.ToastUI.Show(
+                l.Ptt_HushedFor_Format(FormatDuration(l, duration)),
+                Undo,
+                l.Ptt_Undo,
+                ToastDismissDelay.Long);
+        }
+        _platform?.OnHushed();
+        return;
+
+        void Undo()
+            => _ = Hub.UserSettingsUI.UserPttSettings()
+                .Update(x => x.WithPttChatsUnmuted(hushedChatIds), CancellationToken.None);
+    }
+
+    public static string FormatDuration(IStringLocalizer l, TimeSpan duration)
+        => duration.TotalHours >= 1
+            ? l.Ptt_Hours_Format((long)duration.TotalHours, (int)duration.TotalHours)
+            : l.Ptt_Minutes_Format((long)duration.TotalMinutes, (int)duration.TotalMinutes);
 
     public async Task<PttReply?> Transmit(
         bool isHeadless, PttPlatform platform, CancellationToken cancellationToken)
