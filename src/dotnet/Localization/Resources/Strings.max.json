@@ -316,6 +316,10 @@
   "SystemEntry_MemberLeft": " さんがチャットから退出しました。",
   "SystemEntry_AttentionRequested": " さんが注目を求めています。",
   "SystemEntry_Someone": "Seseorang",
+  "SystemEntry_CallNoAnswer": " さんが発信しました。応答がありませんでした。",
+  "SystemEntry_CallDeclined": " さんが発信しました。拒否されました。",
+  "SystemEntry_CallCanceled": " さんが発信しました。キャンセルされました。",
+  "SystemEntry_CallEnded": "님이 전화를 걸었습니다.",
 
   // The bar that replaces the message editor when you cannot post: a read-only chat, a block in
   // either direction, or a chat you have not joined yet. Most of these are fragments wrapped
@@ -1780,6 +1784,13 @@
   "Call_CameraStillBlockedApp": "カメラは引き続きブロックされています。まずシステム設定でカメラへのアクセスを許可してください。",
   "Call_CameraStillBlockedWeb": "カメラは引き続きブロックされています。まずブラウザの設定でカメラへのアクセスを許可してください。",
   "Call_StartingRecording": "Démarrage de l'enregistrement...",
+  "Call_Entry_Outgoing": "Połączenie wychodzące",
+  "Call_Entry_Missed": "Nieodebrane połączenie",
+  "Call_Entry_Declined": "Отхвърлено обаждане",
+  "Call_Entry_Canceled": "キャンセルされた通話",
+  "Call_Entry_Ended": "통화가 종료되었습니다",
+  "Call_Entry_NoAnswer": "Nessuna risposta",
+  "Call_Entry_TapToCallBack": "Toque para retornar a chamada",
 
   // The text the share sheet hands to another app. In the _Format values the last placeholder
   // is the app name.

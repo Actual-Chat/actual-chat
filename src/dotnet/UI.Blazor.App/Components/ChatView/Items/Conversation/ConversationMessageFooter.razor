@@ -2,6 +2,9 @@
 @{
     var timeTotal = GetConversationTimeInfoString();
     var cls = IsSeparated ? "conversation-footer" : "conversation-footer-short";
+    var secondLine = SecondLine ?? (IsCall
+        ? LiveDuration.Format(EndsAt - StartsAt)
+        : L.Chat_Messages(MessageCount, MessageCount));
 }
 
 <div class="@cls">
@@ -18,7 +21,7 @@
                     @timeTotal
                 </div>
                 <div class="c-count c-tool">
-                    @(SecondLine ?? L.Chat_Messages(MessageCount, MessageCount))
+                    @secondLine
                 </div>
             </div>
         </div>
@@ -42,6 +45,7 @@
     [Parameter] public DateTime StartsAt { get; set; }
     [Parameter] public DateTime EndsAt { get; set; }
     [Parameter] public bool IsSeparated { get; set; }
+    [Parameter] public bool IsCall { get; set; }
     [Parameter] public string? SecondLine { get; set; }
     [Parameter] public bool ShowCopy { get; set; } = true;
     [Parameter] public EventCallback CopyToClipboardRequested { get; set; }
