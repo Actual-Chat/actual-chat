@@ -54,4 +54,37 @@ public class AudioExtTest(ITestOutputHelper @out) : TestBase(@out)
         var g = AudioExt.ApproximateGain(data, 1);
         g.Should().BeApproximately(expectedRms, 5e-3);
     }
+
+    [Fact]
+    public void Amplify_ScalesLinearly_BelowTheKnee()
+    {
+        var data = new[] { 0.1f, -0.2f, 0.05f };
+
+        AudioExt.Amplify(data, 3f);
+
+        data[0].Should().BeApproximately(0.3f, 1e-6f);
+        data[1].Should().BeApproximately(-0.6f, 1e-6f);
+        data[2].Should().BeApproximately(0.15f, 1e-6f);
+    }
+
+    [Fact]
+    public void Amplify_NeverExceedsFullScale()
+    {
+        var data = Enumerable.Range(0, 200).Select(i => (i - 100) / 100f).ToArray();
+
+        AudioExt.Amplify(data, 10f);
+
+        data.Should().OnlyContain(x => x >= -1f && x <= 1f);
+    }
+
+    [Fact]
+    public void Amplify_StaysMonotonic_AcrossTheKnee()
+    {
+        var data = Enumerable.Range(0, 1000).Select(i => i / 1000f).ToArray();
+
+        AudioExt.Amplify(data, 3.2f);
+
+        for (var i = 1; i < data.Length; i++)
+            data[i].Should().BeGreaterThanOrEqualTo(data[i - 1]);
+    }
 }

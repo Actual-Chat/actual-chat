@@ -59,6 +59,9 @@ public static partial class Constants
         public const int PcmFrameLength = PlaybackSampleRate / 1000 * OpusFrameDurationMs;
         public const int Bitrate = 32000;
         public const int Channels = 1;
+        // Raw microphone speech sits far below mastered music; a car plays projection media as
+        // is, while its call path adds phone-call amplification. ~+10 dB brings the two close.
+        public const float ProjectionMediaGain = 3.2f;
         public const int RecordingSampleRate = 16000;
         public const int PlaybackSampleRate = 48000;
 
