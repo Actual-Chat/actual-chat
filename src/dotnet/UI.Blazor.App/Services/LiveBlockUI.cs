@@ -229,7 +229,16 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         var tailFloorLid = raw is { IsLatched: true }
             ? await GetTailFloorLid(chatId, raw.VisibleStartLid, cancellationToken).ConfigureAwait(false)
             : long.MaxValue;
-        return new GovernorInputs(chatId, raw, visibility, isJoined, streamingTail.FloorLid, tailFloorLid);
+        // Read the way the header and the card read it, so the three cannot disagree on what "collapsed" is.
+        var isBlockExpanded = false;
+        if (raw is { IsLatched: true }) {
+            var conversation = await LiveSessionUI.GetConversation(chatId, cancellationToken).ConfigureAwait(false);
+            await Hub.ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(false);
+            await Hub.ChatUI.AutoExpandedConversations.Use(cancellationToken).ConfigureAwait(false);
+            isBlockExpanded = conversation != null && Hub.ChatUI.IsConversationExpanded(conversation);
+        }
+        return new GovernorInputs(
+            chatId, raw, visibility, isJoined, isBlockExpanded, streamingTail.FloorLid, tailFloorLid);
     }
 
     [ComputeMethod(ConsolidationDelay = 1)]
@@ -366,7 +375,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
 
     private async Task<Moment?> ProcessChat(ChatId chatId, GovernorInputs inputs, CancellationToken cancellationToken)
     {
-        var (_, raw, visibility, isJoined, rawStreamingFloorLid, tailFloorLid) = inputs;
+        var (_, raw, visibility, isJoined, isBlockExpanded, rawStreamingFloorLid, tailFloorLid) = inputs;
         var chatState = await GetOrCreateChatState(chatId, cancellationToken).ConfigureAwait(false);
 
         // While the viewer is attending a live session, keep a frozen template ready - the exact
@@ -398,6 +407,8 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                 chatState.IsClosed = false;
                 chatState.DissolveEndsAt = default;
                 chatState.DissolveDone = false;
+                chatState.WasBlockExpanded = false;
+                chatState.StaleVisibility = null;
                 // The fold boundary only ever advances, so the one the last session left behind would
                 // fold the restart's first entries into the card the moment they arrive.
                 chatState.State.Value = LiveBlockState.None;
@@ -433,7 +444,19 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             if (raw is { IsLatched: true }) {
                 var v = raw.VisibleStartLid;
                 // 0 means no part of the block is visible, which holds the fold where LiveFoldMath left it.
-                var minVisibleLid = visibility.ChatId == chatId && !visibility.IsEmpty
+                // Collapsed counts as invisible: the card stands in for the rows, so the typed rows showing
+                // below it say nothing about what the reader scrolled past - fed to the fold, they would
+                // swallow every spoken row by the time the block is expanded again. The report in hand at
+                // the moment of expansion is that same collapsed-render report, so it is held until the
+                // expanded render replaces it.
+                if (isBlockExpanded && !chatState.WasBlockExpanded)
+                    chatState.StaleVisibility = visibility;
+                chatState.WasBlockExpanded = isBlockExpanded;
+                var isVisibilityUsable = isBlockExpanded
+                    && !ReferenceEquals(visibility, chatState.StaleVisibility)
+                    && visibility.ChatId == chatId
+                    && !visibility.IsEmpty;
+                var minVisibleLid = isVisibilityUsable
                     ? visibility.VisibleMessageLids.Where(lid => lid >= v).DefaultIfEmpty(0).Min()
                     : 0;
                 var oldBoundary = state.FoldBoundaryLid;
@@ -509,6 +532,8 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         public FrozenTemplate? Template;
         public long RevealedBoundaryLid = long.MaxValue;
         public bool RevealScrolledInto;
+        public bool WasBlockExpanded;
+        public ChatViewItemVisibility? StaleVisibility;
     }
 
     private sealed record FrozenTemplate(
@@ -525,9 +550,10 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         LiveBlockSnapshot? Raw,
         ChatViewItemVisibility Visibility,
         bool IsJoined,
+        bool IsBlockExpanded,
         long StreamingFloorLid = long.MaxValue,
         long TailFloorLid = long.MaxValue)
     {
-        public static readonly GovernorInputs None = new(null, null, ChatViewItemVisibility.Empty, false);
+        public static readonly GovernorInputs None = new(null, null, ChatViewItemVisibility.Empty, false, false);
     }
 }
