@@ -115,7 +115,17 @@ export interface PlayerWorker extends SharedSettingsWorker {
 
     getStats(streamId: string): Promise<PlayerStats>;
 
+    getConnectionState(): Promise<PlayerWorkerConnectionState>;
+
     stop(streamId?: string): Promise<void>;
+}
+
+// State of the worker's own RPC peer (the one carrying the pulls). Reported
+// as connected until the pull API is initialized, so a cold worker never
+// reads as a dead peer.
+export interface PlayerWorkerConnectionState {
+    isConnected: boolean;
+    canConnect: boolean;
 }
 
 // Main-thread-side RPC surface. The worker calls these to notify the

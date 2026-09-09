@@ -13,12 +13,14 @@ import { type Subscription } from 'rxjs';
 import { chooseFit, isPrimaryTile, updateCollapsedIslandAspect } from '../../Services/Video/services/tile-fit';
 import type {
     PlayerWorker,
+    PlayerWorkerConnectionState,
     LatencySample,
 } from '../../Services/Video/playback/player-worker-contract';
 import { getAudioLatency, isSkipToAudioEnabled } from '../../Services/Video/audio-latency-registry';
 import type { RenderBackendKind } from '../../Services/Video/playback/render-backends';
 import type { PlayerStats } from '../../Services/Video/frame-envelopes';
 import { WedgeDetector, type WedgeDiagnosis } from '../../Services/Video/playback/wedge-detector';
+import { DeadPeerDetector } from '../../Services/Video/playback/dead-peer-detector';
 import {
     getCodecCandidates,
     selectDecoderCodec,
@@ -199,6 +201,12 @@ export class VideoPlayer {
     private connectivityHandlerConnected: { dispose(): void } | null = null;
     private traceKillRegistration: Disposable | null = null;
     private sharedSettingsRegistration: Disposable | null = null;
+    private readonly sourceCodec: string;
+    private readonly sourceWidth: number;
+    private readonly sourceHeight: number;
+    private readonly sourceCodecSettings: string;
+    private readonly deadPeerDetector = new DeadPeerDetector();
+    private workerRecreateInFlight = false;
 
     private currentAttempt: {
         readonly attemptId: number;
@@ -330,6 +338,10 @@ export class VideoPlayer {
         this.streamId = streamId;
         this.authorId = authorId;
         this.startedAtMs = startedAtMs;
+        this.sourceCodec = codec;
+        this.sourceWidth = width;
+        this.sourceHeight = height;
+        this.sourceCodecSettings = codecSettings;
         this.canvas = canvas;
         this.videoEl = videoEl;
         this.bgCanvasEl = bgCanvasEl;
@@ -465,6 +477,11 @@ export class VideoPlayer {
     private async checkLiveness(): Promise<void> {
         if (!this.playerWorker || !this.isPlaying)
             return;
+
+        this.pushConnectivityToWorker();
+        if (await this.recreateWorkerIfPeerDead())
+            return;
+
         // A paused tile's stats don't move; sampling it would just bank an
         // artificial freeze gap toward the wedge threshold once it resumes.
         if (this.getExpectedPaused()) {
@@ -501,6 +518,94 @@ export class VideoPlayer {
         this.lastWedgeDiagnosis = `${diag.kind}: frozen ${(diag.frozenMs / 1000).toFixed(1)}s; ${diag.detail}`;
         this.lastWedgeAtMs = now;
         this.onWedgeDetected(diag);
+    }
+
+    // Mirrors main-thread ConnectivityUI into the worker, which gates its own
+    // reconnect loop on it. Re-sent from every liveness poll too: a missed
+    // update would otherwise park that loop for the life of the worker.
+    private pushConnectivityToWorker(): void {
+        if (!this.playerWorker)
+            return;
+
+        void this.playerWorker.onConnectivityUpdate(
+            ConnectivityUI.isOnline,
+            ConnectivityUI.isConnected,
+            ConnectivityUI.isBlazorServer,
+            rpcNoWait);
+    }
+
+    // The worker's peer can stay down after a reconnect while the main peer is
+    // fine; every pull restart then waits on it forever and nothing surfaces
+    // an error. A fresh worker (and so a fresh peer) is the only recovery.
+    private async recreateWorkerIfPeerDead(): Promise<boolean> {
+        if (!this.playerWorker || this.workerRecreateInFlight)
+            return false;
+
+        let state: PlayerWorkerConnectionState;
+        try {
+            state = await this.playerWorker.getConnectionState();
+        } catch {
+            return false;
+        }
+        const isDead = this.deadPeerDetector.onSample({
+            isPullActive: this.workerStreamActive || this.restartLoopRunning,
+            isWorkerConnected: state.isConnected,
+            isMainConnected: ConnectivityUI.isConnected,
+        }, Date.now());
+        if (!isDead)
+            return false;
+
+        await this.recreatePlayerWorker(`worker rpc peer dead (canConnect=${state.canConnect})`);
+        return true;
+    }
+
+    private async recreatePlayerWorker(reason: string): Promise<void> {
+        this.workerRecreateInFlight = true;
+        this.pushBreadcrumb(`worker recreate: ${reason}`);
+        warnLog?.log(`[${this.streamId}] recreating player worker: ${reason}`);
+        void this.blazorRef.invokeMethodAsync('OnPlaybackStalled', `dead-peer: ${reason}`)
+            .catch((e: unknown) => warnLog?.log('OnPlaybackStalled error:', e));
+        try {
+            // The old worker owns the transferred bg canvas and it cannot be
+            // transferred twice, so the rebuilt tile plays without the blur.
+            this.workerStreamActive = false;
+            this.disposePlayerWorker();
+            this.wedgeDetector.reset();
+            this.deadPeerDetector.reset();
+            this.playerReady = this.initPlayerWorker(
+                this.sourceCodec, this.sourceWidth, this.sourceHeight, this.sourceCodecSettings);
+            await this.playerReady;
+            this.settleCurrentAttempt({ kind: 'error', error: new Error(reason) });
+        } finally {
+            this.workerRecreateInFlight = false;
+        }
+    }
+
+    private disposePlayerWorker(): void {
+        if (this.connectivityHandlerOnline) {
+            this.connectivityHandlerOnline.dispose();
+            this.connectivityHandlerOnline = null;
+        }
+        if (this.connectivityHandlerConnected) {
+            this.connectivityHandlerConnected.dispose();
+            this.connectivityHandlerConnected = null;
+        }
+        if (this.traceKillRegistration) {
+            this.traceKillRegistration.dispose();
+            this.traceKillRegistration = null;
+        }
+        if (this.sharedSettingsRegistration) {
+            this.sharedSettingsRegistration.dispose();
+            this.sharedSettingsRegistration = null;
+        }
+        if (this.playerWorker) {
+            this.playerWorker.dispose();
+            this.playerWorker = null;
+        }
+        if (this.playerWorkerInstance) {
+            this.playerWorkerInstance.terminate();
+            this.playerWorkerInstance = null;
+        }
     }
 
     // Escalation ladder (rationale: a sender republish cured the incident
@@ -674,15 +779,7 @@ export class VideoPlayer {
                 warnLog?.log('Player worker init failed:', e);
             });
 
-            // Mirror main-thread ConnectivityUI → worker connectivity.
-            const pushConnectivity = (): void => {
-                if (!this.playerWorker) return;
-                void this.playerWorker.onConnectivityUpdate(
-                    ConnectivityUI.isOnline,
-                    ConnectivityUI.isConnected,
-                    ConnectivityUI.isBlazorServer,
-                    rpcNoWait);
-            };
+            const pushConnectivity = (): void => this.pushConnectivityToWorker();
             this.connectivityHandlerOnline = ConnectivityUI.isOnlineChanged.add(pushConnectivity);
             this.connectivityHandlerConnected = ConnectivityUI.isConnectedChanged.add(pushConnectivity);
             void ConnectivityUI.whenReady.then(pushConnectivity);
@@ -1560,33 +1657,7 @@ export class VideoPlayer {
             this.workerStreamActive = false;
         }
 
-        if (this.connectivityHandlerOnline) {
-            this.connectivityHandlerOnline.dispose();
-            this.connectivityHandlerOnline = null;
-        }
-        if (this.connectivityHandlerConnected) {
-            this.connectivityHandlerConnected.dispose();
-            this.connectivityHandlerConnected = null;
-        }
-        if (this.traceKillRegistration) {
-            this.traceKillRegistration.dispose();
-            this.traceKillRegistration = null;
-        }
-        if (this.sharedSettingsRegistration) {
-            this.sharedSettingsRegistration.dispose();
-            this.sharedSettingsRegistration = null;
-        }
-
-        // Tear the worker down.
-        if (this.playerWorker) {
-            this.playerWorker.dispose();
-            this.playerWorker = null;
-        }
-        if (this.playerWorkerInstance) {
-            this.playerWorkerInstance.terminate();
-            this.playerWorkerInstance = null;
-        }
-
+        this.disposePlayerWorker();
         this.renderBackend.dispose();
 
         debugLog?.log(`VideoPlayer stopped for stream ${this.streamId}`);

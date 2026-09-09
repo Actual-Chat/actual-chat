@@ -61,6 +61,7 @@ async function runPublishSim(options: SimOptions): Promise<SimResult> {
             unregister: () => undefined,
         },
         connection: {},
+        isConnected: true,
         serializationFormat: null,
     };
     sender = new RpcStreamSender<TestFrame>(

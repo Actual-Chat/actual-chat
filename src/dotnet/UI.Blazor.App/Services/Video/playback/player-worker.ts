@@ -13,6 +13,7 @@ import { BgBlurController, bgBlurTap, type BgBlurMode } from './bg-blur-tap';
 import { sharedSettingsWorker } from 'shared-settings-worker';
 import type {
     PlayerWorker,
+    PlayerWorkerConnectionState,
     PlayerWorkerOptions,
 } from './player-worker-contract';
 
@@ -65,6 +66,7 @@ interface PlayerWorkerHooks {
     reportCodecProven?: (streamId: string, codec: string) => void;
     reportTraceKillInjected?: () => void;
     prewarmRpc?: (apiUrl: string) => void;
+    getConnectionState?: () => PlayerWorkerConnectionState;
 }
 
 let hooks: PlayerWorkerHooks | null = null;
@@ -301,6 +303,10 @@ export const playerWorkerImpl: PlayerWorker = {
             return Promise.resolve(createEmptyPlayerStats());
 
         return Promise.resolve(player.snapshotStats());
+    },
+
+    getConnectionState(): Promise<PlayerWorkerConnectionState> {
+        return Promise.resolve(hooks?.getConnectionState?.() ?? { isConnected: true, canConnect: true });
     },
 
     async stop(streamId?: string): Promise<void> {
