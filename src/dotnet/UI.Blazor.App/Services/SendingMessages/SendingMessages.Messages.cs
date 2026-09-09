@@ -54,6 +54,7 @@ partial class SendingMessages
         // NOTE(DF): we need to set the content hash to trigger ChatEntryMessageInternalView re-rendering for edited messages.
         var textHash = isNewMessage ? HashString.None : request.Text.Hash().Blake2b().ToBase64HashString(HashAlgorithm.Blake2b);
         var sendingMessage = new SendingMessage(request.Uuid,
+            request.ClientId,
             request.ChatId,
             request.LocalId,
             request.Now,

@@ -4,6 +4,9 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public record SendingMessage(
     string Uuid,
+    // Travels with the post command and comes back on the entry the server stored, which is how a
+    // loaded entry is matched back to its send. Empty for edits - they address an entry by LocalId.
+    string ClientId,
     ChatId ChatId,
     long? LocalId,
     Moment BeginsAt,

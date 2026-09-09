@@ -39,6 +39,7 @@ public class SendingMessagesDisplayTest(ChatAppHostFixture fixture, ITestOutputH
         var accessor = sendingMessages.GetSendingMessages(chat.Id);
         var sendingMessage = new SendingMessage(
             Guid.NewGuid().ToString(),
+            "",
             chat.Id,
             null,
             now,
@@ -77,6 +78,7 @@ public class SendingMessagesDisplayTest(ChatAppHostFixture fixture, ITestOutputH
         var accessor = sendingMessages.GetSendingMessages(chat.Id);
         var sendingMessage = new SendingMessage(
             Guid.NewGuid().ToString(),
+            "",
             chat.Id,
             null,
             now,
@@ -98,6 +100,51 @@ public class SendingMessagesDisplayTest(ChatAppHostFixture fixture, ITestOutputH
         await ComputedTest.When(async ct => {
             var sending = await GetSendingContents(chatUI, chat.Id, ct);
             sending.Should().BeEmpty();
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    // Same race as above, seen from the other side: confirmation may never have happened yet when the
+    // entry lands. The entry carries the send's ClientId, so its presence in the loaded range is enough
+    // to retire the optimistic copy - otherwise the copy is re-emitted at the next free lid, where it
+    // grows in and is dropped a render later.
+    [Fact]
+    public async Task ShouldDropSendingMessageWhoseEntryLoadedBeforeConfirmation()
+    {
+        // arrange: the entry is posted with a client id, and its send is never confirmed
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "sending-client-id-test");
+        var clientId = Guid.NewGuid().ToString();
+        await Tester.Commander.Call(new Chats_UpsertEntry {
+            Session = Tester.Session,
+            ChatId = chat.Id,
+            LocalId = null,
+            Text = "CLIENT_ID_RACE",
+            ClientId = clientId,
+        });
+
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var sendingMessages = Tester.ScopedAppServices.GetRequiredService<SendingMessages>();
+        var now = Tester.AppServices.Clocks().SystemClock.Now;
+
+        var accessor = sendingMessages.GetSendingMessages(chat.Id);
+        var sendingMessage = new SendingMessage(
+            Guid.NewGuid().ToString(),
+            clientId,
+            chat.Id,
+            null,
+            now,
+            "CLIENT_ID_RACE",
+            HashString.None,
+            null,
+            () => { });
+        accessor.ChatSendingMessages.AddSendingMessage(sendingMessage);
+
+        // act + assert: loading the tail retires the copy, though ConfirmMessageWasSent never ran and
+        // PostedChatEntry is still null - the entry's ClientId is what retires it
+        await ComputedTest.When(async ct => {
+            await GetSendingContents(chatUI, chat.Id, ct);
+            sendingMessage.PostedChatEntry.Should().BeNull();
+            sendingMessage.LoadedForDisplay.Should().BeTrue();
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -141,6 +188,7 @@ public class SendingMessagesDisplayTest(ChatAppHostFixture fixture, ITestOutputH
         var accessor = sendingMessages.GetSendingMessages(chat.Id);
         accessor.ChatSendingMessages.AddSendingMessage(new SendingMessage(
             Guid.NewGuid().ToString(),
+            "",
             chat.Id,
             null,
             now,

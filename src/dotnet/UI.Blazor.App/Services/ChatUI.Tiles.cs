@@ -1219,7 +1219,11 @@ public partial class ChatUI
 
         if (rangeEnd.HasValue) {
             // processing last tile
-            chatSendingMessages.ProcessLoadedEntriesRange(rangeEnd.Value);
+            var loadedClientIds = entries
+                .Where(e => !e.ClientId.IsNullOrEmpty())
+                .Select(e => e.ClientId)
+                .ToHashSet();
+            chatSendingMessages.ProcessLoadedEntriesRange(rangeEnd.Value, loadedClientIds);
             var newMessages = await chatSendingMessages.GetNewMessages(currentAuthorId!, rangeEnd.Value).ConfigureAwait(false);
             entries.AddRange(newMessages);
 
