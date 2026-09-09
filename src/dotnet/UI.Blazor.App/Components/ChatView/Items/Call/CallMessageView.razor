@@ -1,11 +1,16 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, CallMessageView.Model>
 @{
-    var m = State.Value;
-    var (icon, title, hint, isCallBack) = CallCardFormat.Get(Entry.Outcome, m.IsCaller, L);
+    // Both flags come from the already-loaded chat rather than a compute state: resolving them
+    // asynchronously painted every card as the receiving side's first, so a caller saw "Missed"
+    // before it flipped to "Canceled".
+    var rules = ChatContext.Chat.Rules;
+    var isCaller = rules.Author?.Id == Entry.CallerId;
+    // Mirrors ChatHeaderCallButton: a peer call needs the audio-stream permission.
+    var canCall = Entry.ChatId.Kind != ChatKind.Peer || rules.CanWriteAudio();
+    var (icon, title, hint, isCallBack) = CallCardFormat.Get(Entry.Outcome, isCaller, L);
     // An offer that would only reach the server's peer-call gate and come back as a toast is worse
     // than no offer: the header button greys itself out on the same rule.
-    if (isCallBack && !m.CanCall)
+    if (isCallBack && !canCall)
         hint = null;
     var startsAt = DateTimeConverter.ToLocalTime(Entry.BeginsAt);
     var now = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now.ToDateTime());
@@ -33,33 +38,15 @@
 </div>
 
 @code {
+    [Inject] protected AppUIHub Hub { get; init; } = null!;
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
+    private DateFormatter DateFormatter => Hub.DateFormatter;
+    private IStringLocalizer L => Hub.StringLocalizer;
+    private MomentClockSet Clocks => Hub.Clocks;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
-    private IChats Chats => Hub.Chats;
-
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public CallEntry Entry { get; set; } = null!;
-
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.None,
-                Category = GetStateCategory(t),
-            });
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chat = await Chats.Get(Session, Entry.ChatId, cancellationToken).ConfigureAwait(false);
-        var isCaller = chat?.Rules.Author?.Id == Entry.CallerId;
-        // Mirrors ChatHeaderCallButton: a peer call needs the audio-stream permission.
-        var canCall = Entry.ChatId.Kind != ChatKind.Peer || (chat?.Rules.CanWriteAudio() ?? false);
-        return new Model(isCaller, canCall);
-    }
-
     private Task OnCallBack()
         => LiveSessionUI.StartCall(
             Entry.ChatId, new[] { Entry.CallerId }.ToApiArray(), Entry.HasVideo, default);
-
-    // Nested types
-
-    public sealed record Model(bool IsCaller, bool CanCall) {
-        public static readonly Model None = new(false, false);
-    }
 }

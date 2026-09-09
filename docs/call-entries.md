@@ -128,7 +128,8 @@ Two consequences follow from a call never reaching the summary flow:
   conversation. A short call materializes expanded, a long one collapsed.
 - **A call with no transcript is collapsed whatever the rule says**, and its card drops both
   the expand toggle and the details link. There is nothing behind either: expanding reveals
-  an empty block, and a call is never summarized.
+  an empty block, and a call is never summarized. The footer still says "0 messages" — that
+  count is the reason the toggle is gone, so hiding it would only make the card look broken.
 
 Conversation validation is skipped for a call — it has neither the summarizer's three texts
 nor any message of its own to count.

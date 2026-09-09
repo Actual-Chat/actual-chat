@@ -125,12 +125,15 @@
                         ShowToggle="@canExpand"
                         ConversationToggleClick="@ToggleShowMessage"/>
                 }
-                <div class="c-short">
-                    <MarkupView Markup="@m.Description.Markup"/>
-                    @if (!_isOpen && hasSummaryText) {
-                        <span class="show-more-btn" data-vl-hold="always" @onclick="@ToggleDetails">@L.ChatView_ShowDetails</span>
-                    }
-                </div>
+                @* Its min-height is dead space when both are absent, which is every untranscribed call. *@
+                @if (hasDescription || hasSummaryText) {
+                    <div class="c-short">
+                        <MarkupView Markup="@m.Description.Markup"/>
+                        @if (!_isOpen && hasSummaryText) {
+                            <span class="show-more-btn" data-vl-hold="always" @onclick="@ToggleDetails">@L.ChatView_ShowDetails</span>
+                        }
+                    </div>
+                }
             </div>
             @if (_isOpen) {
                 <div class="c-long">
@@ -168,7 +171,7 @@
                 MessageCount="@messageCount"
                 StartsAt="@startsAt"
                 EndsAt="@endsAt"
-                IsCall="@conversation.IsCall"/>
+                ShowCopy="@hasCopyText"/>
         }
     }
 </div>
