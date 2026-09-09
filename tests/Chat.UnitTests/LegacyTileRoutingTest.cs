@@ -10,7 +10,8 @@ namespace ActualChat.Chat.UnitTests;
 public class LegacyTileRoutingTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private static readonly Version Boundary = Version.Parse(ApiConstants.LastVersionWithoutUnionTolerance);
-    private static readonly Version JustAfterBoundary = new (2, 19);
+    // Derived so it can't drift from the constant the way a written-out version once did.
+    private static readonly Version JustAfterBoundary = new (Boundary.Major, Boundary.Minor + 1);
 
     [Fact]
     public void AnOldPeerShouldReachTheFilteringMethod()
@@ -74,6 +75,25 @@ public class LegacyTileRoutingTest(ITestOutputHelper @out) : TestBase(@out)
             "an old peer's call is decoded against whichever method it lands on");
         MethodOf(nameof(IChats.GetTile)).ReturnType
             .Should().Be(MethodOf(nameof(IChats.GetLegacyTile)).ReturnType);
+    }
+
+    [Fact]
+    public void CallEntryShouldBeFilteredForAPreTolerancePeer()
+    {
+        // arrange
+        var chatId = ChatId.Parse("052w3sgrad");
+        var entry = new CallEntry(ChatEntryId.New(chatId, 1)) {
+            CallerId = AuthorId.New(chatId, 1),
+            Outcome = CallOutcome.NoAnswer,
+        };
+
+        // act
+        var knownToOldPeer = ChatEntry.IsKnownTo(entry, Boundary);
+        var knownToNewPeer = ChatEntry.IsKnownTo(entry, JustAfterBoundary);
+
+        // assert
+        knownToOldPeer.Should().BeFalse("a peer below the release that declared this union tag can't read it");
+        knownToNewPeer.Should().BeTrue("a peer at the declared release can read the tag");
     }
 
     // Private methods
