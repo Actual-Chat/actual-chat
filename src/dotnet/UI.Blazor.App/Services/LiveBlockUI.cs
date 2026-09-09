@@ -462,11 +462,14 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                 var oldBoundary = state.FoldBoundaryLid;
                 var boundaryLid = LiveFoldMath.Advance(
                     oldBoundary, minVisibleLid, streamingFloorLid, tailFloorLid);
-                // A reveal is a temporary peek. Latch that the viewport entered the revealed region (above
-                // the governed boundary); once the reader scrolls back down so every revealed row is above
+                // A reveal is a temporary peek. Latch that the reader scrolled up into the revealed region
+                // (above the governed boundary); once they scroll back down so every revealed row is above
                 // the viewport again, re-swallow them - the block re-compacts on return to the live tail.
+                // Pinned to the end, the revealed rows are on screen only until the next message pushes
+                // them up, and that is not the reader scrolling in - counting it would re-swallow a reveal
+                // made at the live tail within seconds, with the pill back as if nothing had been shown.
                 if (chatState.RevealedBoundaryLid != long.MaxValue && minVisibleLid != 0) {
-                    if (minVisibleLid < oldBoundary)
+                    if (minVisibleLid < oldBoundary && !visibility.IsPinnedToEnd)
                         chatState.RevealScrolledInto = true;
                     else if (chatState.RevealScrolledInto) {
                         chatState.RevealedBoundaryLid = long.MaxValue;

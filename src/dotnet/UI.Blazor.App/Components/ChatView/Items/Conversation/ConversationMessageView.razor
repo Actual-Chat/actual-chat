@@ -22,9 +22,9 @@
     // The split-out header carries the title; when expanded the description + meta-row drop out, so an
     // otherwise-empty card would render as a 1rem-padded gap between the header and the first message.
     var showLiveCard = (!Message.HasSplitHeader && hasLiveTitle)
-        || (hasDescription && !state.IsExpanded)
-        || (state.HasSummary && !state.IsExpanded)
-        || (state.IsExpanded && state.SwallowedCount > 0)
+        || (hasDescription && !Message.IsExpanded)
+        || (state.HasSummary && !Message.IsExpanded)
+        || (Message.IsExpanded && state.SwallowedCount > 0)
         || state.TailPreview is { Count: > 0 };
     // The wrapper below carries the block's tint, border and context menu, so emitting it around an
     // omitted card leaves an empty tinted bar in the chat. A live block with nothing to show renders an
@@ -52,15 +52,15 @@
                     <HeaderButton
                         Class="c-lc-expand"
                         data-vl-hold="always"
-                        data-collapse-arm="@(state.IsExpanded ? conversation.Id.Value : null)"
+                        data-collapse-arm="@(Message.IsExpanded ? conversation.Id.Value : null)"
                         Click="@ToggleShowMessage">
-                        <i class="@(state.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
+                        <i class="@(Message.IsExpanded ? "icon-collapse" : "icon-expand")"></i>
                     </HeaderButton>
                 </div>
             }
             @* Gated on the text, not hasSummary: a fold can outlive an empty description. Also collapsed-only:
                expanded reads as a plain conversation, so the description box drops out once expanded. *@
-            @if (hasDescription && !state.IsExpanded) {
+            @if (hasDescription && !Message.IsExpanded) {
                 <div class="c-lc-summary-box">
                     <div class="c-lc-summary">
                         <CascadingValue Value="@_fakeEntry" IsFixed="true">
@@ -69,7 +69,7 @@
                     </div>
                 </div>
             }
-            @if (state.HasSummary && !state.IsExpanded) {
+            @if (state.HasSummary && !Message.IsExpanded) {
                 <div class="c-lc-meta-row">
                     <AuthorCircleGroup
                         Class="c-lc-authors"
@@ -91,7 +91,7 @@
                 <Divider/>
                 <LastEntriesPreview Entries="@tailPreview" Faded="true" MustSuppressMenu="true"/>
             }
-            @if (state.IsExpanded && state.SwallowedCount > 0) {
+            @if (Message.IsExpanded && state.SwallowedCount > 0) {
                 <button
                     type="button"
                     class="c-lc-showmore"
@@ -205,7 +205,12 @@
         var conversation = Message.Conversation!;
         var chatEntryId = ChatEntryId.New(conversation.Id.ChatId, conversation.Id.StartEntryLid);
         _fakeEntry = new TextEntry(chatEntryId);
+        // The preview and the swallowed count follow the model's expansion, which arrives as a parameter,
+        // not through a dependency the state could observe.
+        var mustRecompute = _lastMessage != null && _lastMessage.IsExpanded != Message.IsExpanded;
         _lastMessage = Message;
+        if (mustRecompute)
+            _ = State.Recompute();
     }
 
     protected override async Task<ConversationLiveState> ComputeState(CancellationToken cancellationToken) {
@@ -236,12 +241,7 @@
         var hasFoldedEntries = isLive && !isVoiceOnly
             && rawLive is { SessionStartedAt: not null }
             && blockState.FoldBoundaryLid > rawLive.EffectiveVisibleStartLid;
-        // Awaited for the dependency; the values themselves are read through IsConversationExpanded below.
-        await ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(false);
-        await ChatUI.AutoExpandedConversations.Use(cancellationToken).ConfigureAwait(false);
-        // Via ChatUI so this reads the same latched default the data layer does - the record's own
-        // flag flips when a summary lands, and the two would then disagree for the session.
-        var isExpanded = ChatUI.IsConversationExpanded(conversation);
+        var isExpanded = Message.IsExpanded;
         var tailPreview = isLive && !isVoiceOnly && !isExpanded
             ? await GetTailPreview(chatId, rawLive?.EffectiveVisibleStartLid ?? 0, cancellationToken)
                 .ConfigureAwait(false)

@@ -15,6 +15,9 @@ public sealed class ConversationMessage : ChatMessage
     // Set when this card is the live block's card: the block appends its own trailing ConversationFooter,
     // so the card must not render its own - otherwise a materialized block shows the footer twice.
     public bool HasSplitFooter { get; init; }
+    // Decided by the tile builder - the same build that places (or folds) the conversation's rows - so
+    // the card's collapsed/expanded form can never disagree with what renders around it.
+    public bool IsExpanded { get; init; }
 
     public override bool Equals(ChatMessage? other)
     {
@@ -32,7 +35,8 @@ public sealed class ConversationMessage : ChatMessage
             && Date == other.Date
             && Flags == other.Flags
             && HasSplitHeader == otherConversationMessage.HasSplitHeader
-            && HasSplitFooter == otherConversationMessage.HasSplitFooter;
+            && HasSplitFooter == otherConversationMessage.HasSplitFooter
+            && IsExpanded == otherConversationMessage.IsExpanded;
     }
 
     public override int GetHashCode()
@@ -41,5 +45,6 @@ public sealed class ConversationMessage : ChatMessage
             Date,
             Flags,
             HasSplitHeader,
-            HasSplitFooter);
+            HasSplitFooter,
+            IsExpanded);
 }
