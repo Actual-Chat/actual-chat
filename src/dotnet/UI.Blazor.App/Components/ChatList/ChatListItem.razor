@@ -50,7 +50,7 @@
                         }
                         <ChatTypingIndicator ChatId="@chat.Id" IsEnabled="@(!m.CallActivity.HasLiveConversation)">
                             @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
-                                <span class="c-name">
+                                <span class="c-name" data-children="shrinkable non-shrinkable">
                                     <AuthorName
                                         AuthorId="@m.LastAuthorId"
                                         ShowDetailsOnClick="false"

@@ -57,6 +57,9 @@
     var hiddenCls = m.IsHidden ? "panel-hidden" : "";
     var expandedCls = m.IsExpanded ? "expanded" : "";
     var equalLayoutCls = m.IsEqualLayout && m.IsExpanded ? "layout-equal" : "";
+    // Same source of truth as the classes beside them, so a marker lands on the render its class does
+    var panelNames = $"{(m.IsHidden ? "" : "video-panel-shown")} {(m.IsExpanded ? "video-panel-expanded" : "")} "
+        + $"{(m.IsCollapsed ? "" : "open-video-panel")} {(m.IsCollapsed || m.IsHidden ? "" : "visible-video-panel")}";
     var videoMenuRef = MenuRef.New<VideoPanelMenu>(Chat.Id.Value, ScreenSize.IsNarrow().ToString()).ToString();
     var cameraMenuRef = MenuRef.New<CameraMenu>(CameraMenuRequester, m.SelectedCameraDeviceId ?? "").ToString();
     var layout = m.Layout;
@@ -67,7 +70,7 @@
 }
 
 <OnUIEvent TEvent="@CameraSelectedEvent" Handler="OnCameraSelectedEvent"/>
-<div @ref="Ref" class="@panelCls">
+<div @ref="Ref" class="@panelCls" data-child="@panelNames" data-children="video-panel-chat">
     <div class="c-container">
         <div class="video-panel-toolbar video-panel-header">
             <div class="header-row">
@@ -237,7 +240,7 @@
             </div>
         </div>
         @if (m.IsExpanded && isChatVisible && !ScreenSize.IsNarrow() && m.ChatContext is { } chatContext) {
-            <div class="video-panel-chat upload-drag-drop-host">
+            <div class="video-panel-chat upload-drag-drop-host" data-child="video-panel-chat">
                 <CascadingValue Value="@chatContext">
                     <ChatView @key="@chatContext.Chat.Id.Value" NavigationSlotName="@ChatNavigationSlot"/>
                     <div class="layout-subfooter">

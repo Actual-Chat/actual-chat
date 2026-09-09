@@ -128,71 +128,81 @@ describe('MutationProcessor', () => {
         expect(result).toEqual({ first: 1, second: 0, host: true, tick: '200' });
     });
 
-    it('updates nested containers after removing a match and restores classes overwritten by rendering', async () => {
+
+    it('counts a tagged child toward every declaring ancestor and releases it on removal', async () => {
         const result = await page.evaluate(async () => {
             const processor = TestModules.MutationProcessor;
-            processor.registerPresenceClasses({ container: '.box', match: '.match', className: 'has-match' });
             processor.start();
-            document.body.innerHTML = '<div id="outer" class="box"><div id="inner" class="box">'
-                + '<span class="match"></span></div></div>';
+            document.body.innerHTML = '<div id="outer" data-children="match"><div id="inner" data-children="match">'
+                + '<span data-child="match"></span></div></div>';
             await new Promise(resolve => setTimeout(resolve, 0));
+            const outer = document.getElementById('outer')!;
             const inner = document.getElementById('inner')!;
-            inner.className = 'box';
-            await new Promise(resolve => setTimeout(resolve, 0));
-            const restored = inner.classList.contains('has-match');
+            const both = outer.hasAttribute('data-has-match') && inner.hasAttribute('data-has-match');
             inner.firstElementChild!.remove();
             await new Promise(resolve => setTimeout(resolve, 0));
 
-            return { restored, remaining: document.querySelectorAll('.has-match').length };
+            return { both, remaining: document.querySelectorAll('[data-has-match]').length };
         });
-        expect(result).toEqual({ restored: true, remaining: 0 });
+        expect(result).toEqual({ both: true, remaining: 0 });
     });
 
-    it('updates scoped empty predicates when text is added or removed', async () => {
+    it('keeps the marker while any tagged child remains', async () => {
         const result = await page.evaluate(async () => {
             const processor = TestModules.MutationProcessor;
-            processor.registerPresenceClasses({
-                container: '.box', match: ':scope > .slot:empty', className: 'has-empty-slot',
-            });
             processor.start();
-            document.body.innerHTML = '<div class="box"><div class="slot"></div></div>';
+            document.body.innerHTML = '<div id="box" data-children="match">'
+                + '<span id="a" data-child="match"></span><span id="b" data-child="match"></span></div>';
             await new Promise(resolve => setTimeout(resolve, 0));
-            const box = document.querySelector('.box')!;
-            const slot = document.querySelector('.slot')!;
-            const states = [box.classList.contains('has-empty-slot')];
-            const text = document.createTextNode('content');
-            slot.appendChild(text);
+            const box = document.getElementById('box')!;
+            const states = [box.hasAttribute('data-has-match')];
+            document.getElementById('a')!.remove();
             await new Promise(resolve => setTimeout(resolve, 0));
-            states.push(box.classList.contains('has-empty-slot'));
-            text.remove();
+            states.push(box.hasAttribute('data-has-match'));
+            document.getElementById('b')!.remove();
             await new Promise(resolve => setTimeout(resolve, 0));
-            states.push(box.classList.contains('has-empty-slot'));
+            states.push(box.hasAttribute('data-has-match'));
 
             return states;
         });
-        expect(result).toEqual([true, false, true]);
+        expect(result).toEqual([true, true, false]);
+    });
+
+    it('re-binds a child when its data-child attribute changes', async () => {
+        const result = await page.evaluate(async () => {
+            const processor = TestModules.MutationProcessor;
+            processor.start();
+            document.body.innerHTML = '<div id="box" data-children="one two"><span id="c" data-child="one"></span></div>';
+            await new Promise(resolve => setTimeout(resolve, 0));
+            const box = document.getElementById('box')!;
+            const before = { one: box.hasAttribute('data-has-one'), two: box.hasAttribute('data-has-two') };
+            document.getElementById('c')!.setAttribute('data-child', 'two');
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            return { before, after: { one: box.hasAttribute('data-has-one'), two: box.hasAttribute('data-has-two') } };
+        });
+        expect(result).toEqual({ before: { one: true, two: false }, after: { one: false, two: true } });
     });
 
     it('processes DOM and script attributes created by a render script during presence updates', async () => {
         const result = await page.evaluate(async () => {
             const processor = TestModules.MutationProcessor;
             const calls: string[] = [];
-            processor.registerPresenceClasses({ container: '.box', match: '.match', className: 'has-match' });
             processor.registerRenderScript('first', () => {
                 calls.push('first');
                 const late = document.createElement('div');
-                late.className = 'box';
+                late.setAttribute('data-children', 'match');
                 late.setAttribute('data-render-script-second', '1');
-                late.innerHTML = '<span class="match"></span>';
+                late.innerHTML = '<span data-child="match"></span>';
                 document.body.appendChild(late);
             });
             processor.registerRenderScript('second', () => calls.push('second'));
-            document.body.innerHTML = '<div class="box" id="initial"></div>';
+            document.body.innerHTML = '<div data-children="match" id="initial"></div>';
             processor.start();
-            document.getElementById('initial')!.innerHTML = '<div class="match" data-render-script-first="1"></div>';
+            document.getElementById('initial')!.innerHTML = '<div data-child="match" data-render-script-first="1"></div>';
             await new Promise(resolve => setTimeout(resolve, 0));
 
-            return { calls, containers: document.querySelectorAll('.box.has-match').length };
+            return { calls, containers: document.querySelectorAll('[data-has-match]').length };
         });
         expect(result).toEqual({ calls: ['first', 'second'], containers: 2 });
     });

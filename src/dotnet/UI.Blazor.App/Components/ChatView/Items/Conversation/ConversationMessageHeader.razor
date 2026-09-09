@@ -11,6 +11,7 @@
    the header sits inside a group the list doesn't track, and collapsed it is an item whose key the
    expansion removes - so there is no key that survives either way round. *@
 <div class="@cls"
+     data-child="@(IsSeparated ? "conversation-header vl-sticky" : null)"
      data-vl-anchor="@Conversation.Id.Value"
      data-vl-render-script-collapsed-header="@(IsSeparated ? null : Conversation.Id.Value)"
      data-menu="@(MenuRef.New<ConversationMenu>(Conversation.Id.Value, IsSeparated.ToString()))">

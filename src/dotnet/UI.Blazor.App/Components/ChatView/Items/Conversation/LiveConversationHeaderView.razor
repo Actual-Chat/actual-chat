@@ -5,16 +5,22 @@
     var s = State.Value;
     var title = s.Title.IsNullOrEmpty() ? s.ParticipantsText : s.Title;
     var cls = "live-conversation-header";
-    if (s.IsDissolving)
+    // The block-level names resolve up to the .group, the item-level ones stop at the .item.expanded
+    var childNames = "live-block live-header vl-sticky";
+    if (s.IsDissolving) {
         cls += " dissolving";
+        childNames += " live-block-dissolving";
+    }
     if (!s.IsAnyoneTalking)
         cls += " quiet";
     // The tint says "you were here", so it can't be keyed on the Join button: that button comes back
     // when you leave, and leaving must not repaint the block as one you never attended.
-    if (!s.IsJoined && !s.HasOverlay)
+    if (!s.IsJoined && !s.HasOverlay) {
         cls += " unjoined";
+        childNames += " unjoined-live-block";
+    }
 }
-<div class="@cls" data-vl-anchor="@Header.Conversation!.Id.Value">
+<div class="@cls" data-child="@childNames" data-vl-anchor="@Header.Conversation!.Id.Value">
     <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
     <span class="c-lc-name">@title</span>
     @* Leaving is just "stop listening", so re-joining stays one tap away. *@

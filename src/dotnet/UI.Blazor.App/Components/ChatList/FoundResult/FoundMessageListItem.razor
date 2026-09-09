@@ -22,7 +22,7 @@
     <div class="c-content">
         <div class="c-container">
             <ChatIcon Chat="@chatState.Chat"/>
-            <div class="c-description">
+            <div class="c-description" data-children="second-line third-line non-shrinkable">
                 <div class="c-first-line">
                     <span class="c-title">
                         @chat.Title
@@ -31,14 +31,14 @@
                 </div>
                 @if (chat.Kind == ChatKind.Peer) {
                     // Peer chat message
-                    <div class="c-second-line">
+                    <div class="c-second-line" data-child="second-line">
                         <div class="c-entry">
                             <SearchMatchHighlighter Match="@m.MessageMatch"/>
                         </div>
                     </div>
                 } else if (chat.Kind == ChatKind.Group) {
                     // Group chat message
-                    <div class="c-second-line">
+                    <div class="c-second-line" data-child="second-line">
                         <span class="c-name">
                             <AuthorName
                                 AuthorId="@m.Entry.AuthorId"
@@ -46,17 +46,17 @@
                                 ShowAsOwn="true"/>
                         </span>
                     </div>
-                    <div class="c-third-line public-chat">
+                    <div class="c-third-line public-chat" data-child="third-line">
                         <SearchMatchHighlighter Match="@m.MessageMatch"/>
                     </div>
                 } else {
                     // Place chat message
                     @if (!IsPlace) {
                         // Global search
-                        <div class="c-second-line message">
+                        <div class="c-second-line message" data-child="second-line">
                             @L.Search_In <span class="c-place-title">@m.Place?.Title</span>
                         </div>
-                        <div class="c-third-line place-chat">
+                        <div class="c-third-line place-chat" data-child="third-line">
                             <span class="c-name">
                                 <AuthorName
                                     AuthorId="@m.Entry.AuthorId"
@@ -70,7 +70,7 @@
                         </div>
                     } else {
                         // Search in place
-                        <div class="c-second-line">
+                        <div class="c-second-line" data-child="second-line">
                             <span class="c-name">
                                 <AuthorName
                                     AuthorId="@m.Entry.AuthorId"
@@ -78,7 +78,7 @@
                                     ShowAsOwn="true"/>
                             </span>
                         </div>
-                        <div class="c-third-line public-chat">
+                        <div class="c-third-line public-chat" data-child="third-line">
                             <SearchMatchHighlighter Match="@m.MessageMatch"/>
                         </div>
                     }

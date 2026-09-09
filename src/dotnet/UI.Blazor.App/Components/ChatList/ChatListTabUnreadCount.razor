@@ -7,7 +7,7 @@
     var notificationMode = m.IsMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default;
 }
 
-<div class="c-badge">
+<div class="c-badge" data-child="badge">
     <UnreadCount Value="@m.Count" NotificationMode="@notificationMode" Click="OnUnreadBadgeClick"/>
 </div>
 

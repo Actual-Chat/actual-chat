@@ -27,6 +27,7 @@
 
 <div @ref="Ref"
      class="chat-activity-panel @cls"
+     data-child="@(isListening ? "listening-activity" : null)"
      role="button"
      tabindex="0"
      @onclick:preventDefault="true"

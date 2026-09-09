@@ -41,6 +41,7 @@
     var selectionEndClass = m.IsSelectionEnd ? "selection-end" : "";
     var mentionClass = m.IsOwnAuthorMentioned && !isReplyToOwnMessage ? "mention" : "";
     var showAuthorClass = showAuthorBadge ? "show-author" : "";
+    var showAuthorChild = showAuthorBadge ? "show-author" : null;
     var audioRecordingClass = isStateBadge ? "audio-recording-message" : "";
     var cls = $"{systemClass} {forwardedClass} {forwardedBorderClass} {ownMessageClass} {mentionClass} {paddingClass} {unreadBlockClass} {highlightClass} {repliedClass} {selectedClass} {selectionStartClass} {selectionEndClass} {showAuthorClass} {audioRecordingClass} message-wrapper";
 }
@@ -74,7 +75,7 @@
         <div class="chat-message">
             <div class="c-content">
                 <div class="message-content">
-                    <div class="chat-message-markup">
+                    <div class="chat-message-markup" data-children="code-block">
                         <CascadingValue Value="@entry" IsFixed="true">
                             <MarkupView Markup="@markup"/>
                         </CascadingValue>
@@ -94,6 +95,7 @@
     var menuRef = showMenu ? MenuRef.New<MessageMenu>(entry.GetClientId(m.IsOwnMessage), bool.FalseString, "", "").ToString() : null;
 }
 <div class="@cls"
+     data-child="@showAuthorChild"
      data-chat-entry-id="@(isStateBadge ? null : entry.Id.Value)"
      data-menu="@menuRef">
     <div class="chat-message group">
