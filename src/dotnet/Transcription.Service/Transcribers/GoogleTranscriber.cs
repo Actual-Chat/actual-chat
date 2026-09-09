@@ -368,11 +368,10 @@ public sealed partial class GoogleTranscriber : ITranscriber
                 return;
             }
 
+        // Only what Google detected - see DeepgramTranscriber
         var languages = Language.TryParse(result.LanguageCode, out var language)
             ? new [] {language}
             : [];
-        if (languages.Length == 0)
-            languages = [options.Language];
         state.Append(suffix, endTime, languages, mustAppendToUnstable).MakeStable(isFinal);
     }
 
