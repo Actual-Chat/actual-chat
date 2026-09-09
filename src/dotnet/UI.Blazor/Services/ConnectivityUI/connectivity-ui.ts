@@ -4,6 +4,13 @@ import { getLogs } from 'logging';
 
 const { infoLog, warnLog, errorLog } = getLogs('ConnectivityUI');
 
+const ReadyProbeCount = 3;
+const ReadyProbeIntervalMs = 700;
+const ReadyRetryIntervalMs = 1000;
+// A plain GET is rejected by RpcWebSocketServer with 400 - or 503 once ApplicationStopping fires,
+// since that check runs first, so a node on its way out can't pass for a live one.
+const ReadyProbeUrl = '/rpc/ws';
+
 export class ConnectivityUI {
     private static _isOnline = true;
     private static _isConnected = true;
@@ -134,29 +141,42 @@ export class ConnectivityUI {
                 warnLog?.log(`whenReadyToReload('${reason}'): not online yet...`);
                 continue;
             }
-            if (await check() && await check(50))
+            if (await this.isServerReady())
                 return true;
 
-            warnLog?.log(`whenReadyToReload('${reason}'): online, but can't reach the server...`);
-            await delayAsync(1000);
-        }
-
-        async function check(delayMs = 0): Promise<boolean> {
-            if (delayMs > 0)
-                await delayAsync(delayMs);
-            try {
-                const response = await fetch('/favicon_voxt.ico', { cache: 'no-store' });
-                if (response.ok)
-                    return true;
-            }
-            catch {
-                // Intended
-            }
-            return false;
+            warnLog?.log(`whenReadyToReload('${reason}'): online, but the server isn't ready yet...`);
+            await delayAsync(ReadyRetryIntervalMs);
         }
     }
 
     // Private methods
+
+    // A single successful probe means nothing here: we're called right after the connection dropped,
+    // and on a rolling deploy the node that answers it is typically the one that just dropped us and is
+    // seconds away from going down - so the server has to stay reachable across every probe.
+    private static async isServerReady(): Promise<boolean> {
+        for (let i = 0; i < ReadyProbeCount; i++) {
+            if (i > 0)
+                await delayAsync(ReadyProbeIntervalMs);
+
+            if (!await this.probe())
+                return false;
+        }
+
+        return true;
+    }
+
+    // Any answer counts as alive, including the 400 this probe expects; a 5xx or a failed fetch means
+    // either a stopping node or no backend behind the proxy - both states a reload must not land in.
+    private static async probe(): Promise<boolean> {
+        try {
+            const response = await fetch(ReadyProbeUrl, { cache: 'no-store' });
+            return response.status < 500;
+        }
+        catch {
+            return false; // Intended
+        }
+    }
 
     private static async notifyBackend(isOnline: boolean): Promise<void> {
         if (!this._backendRef)
