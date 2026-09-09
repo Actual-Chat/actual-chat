@@ -41,7 +41,6 @@ public class AndroidCarConnection : SafeDisposableBase, ICarConnection
         }
         // The broadcast is the primary signal; the recheck catches one that never arrived.
         _ = AsyncChain.From(Recheck)
-            .Log(LogLevel.Debug, _log)
             .RetryForever(RetryDelaySeq.Exp(3, 60), _log)
             .CycleForever()
             .RunIsolated(_disposeTokenSource.Token);
