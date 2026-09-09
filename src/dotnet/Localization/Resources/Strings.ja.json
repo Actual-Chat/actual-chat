@@ -842,6 +842,8 @@
   "PicCrop_Apply": "適用",
   "PicCrop_RotateLeft": "左に回転",
   "PicCrop_RotateRight": "右に回転",
+  "PicCrop_Uploading_Format": "アップロード中... {0}%",
+  "PicCrop_Processing": "処理中...",
   "PeerContact_Title": "連絡先を編集",
   "PeerContact_DisplayName": "表示名",
   "PeerContact_BlockUser": "ユーザーをブロック",

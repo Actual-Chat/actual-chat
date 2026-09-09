@@ -842,6 +842,8 @@
   "PicCrop_Apply": "Áp dụng",
   "PicCrop_RotateLeft": "Xoay trái",
   "PicCrop_RotateRight": "Xoay phải",
+  "PicCrop_Uploading_Format": "Đang tải lên... {0}%",
+  "PicCrop_Processing": "Đang xử lý...",
   "PeerContact_Title": "Chỉnh sửa liên hệ",
   "PeerContact_DisplayName": "Tên hiển thị",
   "PeerContact_BlockUser": "Chặn người dùng",

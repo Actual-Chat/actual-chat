@@ -32,6 +32,9 @@
 .pic-crop-modal .c-canvas-container > canvas:active {
     @apply cursor-grabbing;
 }
+.pic-crop-modal.saving .c-canvas-container {
+    @apply pointer-events-none;
+}
 
 /* ── Preview ── */
 
@@ -133,6 +136,13 @@
 .pic-crop-modal .c-controls .btn-round.btn-confirm {
     @apply bg-primary;
     @apply text-white;
+}
+.pic-crop-modal .c-controls .btn-round.btn-confirm .spinner {
+    @apply w-5 h-5;
+}
+.pic-crop-modal .c-controls .c-status {
+    @apply h-5;
+    @apply text-sm text-03;
 }
 .pic-crop-modal .c-controls .c-flip {
     @apply -scale-x-100;

@@ -6,7 +6,10 @@
 @implements IAsyncDisposable
 
 <DialogFrame
-    Class="@("pic-crop-modal" + (ModalModel.IsSquare ? " square" : "") + (ModalModel.HasBlur ? " has-blur" : ""))"
+    Class="@("pic-crop-modal"
+        + (ModalModel.IsSquare ? " square" : "")
+        + (ModalModel.HasBlur ? " has-blur" : "")
+        + (_isSaving ? " saving" : ""))"
     Title="@(ModalModel.HasBlur
         ? L.PicCrop_WallpaperTitle
         : ModalModel.IsSquare ? L.PicCrop_PlaceAvatarTitle : L.PicCrop_AvatarTitle)"
@@ -25,7 +28,9 @@
                 </div>
                 @if (ModalModel.ViewportAspectRatio > 0) {
                     <div class="c-preview">
-                        <canvas @ref="_previewRef" width="120" height="@((int)(120 / ModalModel.ViewportAspectRatio))"></canvas>
+                        <canvas @ref="_previewRef"
+                                width="120"
+                                height="@((int)(120 / ModalModel.ViewportAspectRatio))"></canvas>
                         <span class="c-preview-label">@L.PicCrop_Preview</span>
                     </div>
                 } else {
@@ -44,25 +49,33 @@
                 }
                 <div class="c-buttons-row">
                     <div class="c-group">
-                        <ButtonRound Class="btn-zoom-out" Tooltip="@L.PicCrop_ZoomOut">
+                        <ButtonRound Class="btn-zoom-out" Tooltip="@L.PicCrop_ZoomOut" IsDisabled="@_isSaving">
                             <i class="icon-minus-circle text-2xl"></i>
                         </ButtonRound>
-                        <ButtonRound Class="btn-zoom-in" Tooltip="@L.PicCrop_ZoomIn">
+                        <ButtonRound Class="btn-zoom-in" Tooltip="@L.PicCrop_ZoomIn" IsDisabled="@_isSaving">
                             <i class="icon-plus-circle text-2xl"></i>
                         </ButtonRound>
                     </div>
-                    <ButtonRound Class="btn-confirm" Click="@OnConfirm" Tooltip="@L.PicCrop_Apply">
-                        <i class="icon-checkmark-simple text-2xl"></i>
+                    <ButtonRound Class="btn-confirm"
+                                 Click="@OnConfirm"
+                                 Tooltip="@L.PicCrop_Apply"
+                                 IsDisabled="@_isSaving">
+                        @if (_isSaving) {
+                            <Spinner/>
+                        } else {
+                            <i class="icon-checkmark-simple text-2xl"></i>
+                        }
                     </ButtonRound>
                     <div class="c-group">
-                        <ButtonRound Class="btn-rotate-ccw" Tooltip="@L.PicCrop_RotateLeft">
+                        <ButtonRound Class="btn-rotate-ccw" Tooltip="@L.PicCrop_RotateLeft" IsDisabled="@_isSaving">
                             <i class="icon-refresh text-2xl c-flip"></i>
                         </ButtonRound>
-                        <ButtonRound Class="btn-rotate-cw" Tooltip="@L.PicCrop_RotateRight">
+                        <ButtonRound Class="btn-rotate-cw" Tooltip="@L.PicCrop_RotateRight" IsDisabled="@_isSaving">
                             <i class="icon-refresh text-2xl"></i>
                         </ButtonRound>
                     </div>
                 </div>
+                <div class="c-status">@_saveStatus</div>
             </div>
         }
     </Body>
@@ -77,7 +90,10 @@
     private ElementReference _previewRef;
     private IJSObjectReference? _jsRef;
     private DotNetObjectReference<PicCropModal>? _blazorRef;
+    private CancellationTokenSource? _saveCts;
     private bool _hasError;
+    private bool _isSaving;
+    private string _saveStatus = "";
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -99,6 +115,8 @@
     }
 
     public async ValueTask DisposeAsync() {
+        _saveCts.CancelAndDisposeSilently();
+        _saveCts = null;
         if (_jsRef is { } jsRef) {
             _jsRef = null;
             await jsRef.DisposeSilentlyAsync("dispose");
@@ -114,8 +132,15 @@
     }
 
     private async Task OnConfirm() {
+        if (_isSaving)
+            return;
+
+        _isSaving = true;
+        _saveCts = new CancellationTokenSource();
+        var cancellationToken = _saveCts.Token;
         try {
-            var exported = await _jsRef!.InvokeAsync<bool>("exportCrop").ConfigureAwait(true);
+            SetSaveStatus(L.PicCrop_Uploading_Format(0));
+            var exported = await _jsRef!.InvokeAsync<bool>("exportCrop", cancellationToken).ConfigureAwait(true);
             if (!exported) {
                 UICommander.ShowError(StandardError.Upload.CropExportFailed());
                 return;
@@ -123,35 +148,55 @@
 
             // Upload the cropped blob via the standard pipeline
             var scope = ModalModel.Scope;
-            var mediaId = await UICommander.Call(new Media_ReserveMedia { Session = Session, Scope = scope });
+            var mediaId = await UICommander.Call(
+                new Media_ReserveMedia { Session = Session, Scope = scope },
+                cancellationToken);
 
             var tag = $"FileUpload/v1/{scope}";
             var metadata = new MetadataBag()
                 .Set("FileName", "avatar-crop.png")
                 .Set("ContentType", "image/png");
-            var blobSize = await _jsRef!.InvokeAsync<long>("getCroppedBlobSize").ConfigureAwait(true);
+            var blobSize = await _jsRef!
+                .InvokeAsync<long>("getCroppedBlobSize", cancellationToken)
+                .ConfigureAwait(true);
             var uploadId = await UICommander.Call(new Uploads_Create {
                 Session = Session,
                 Length = blobSize,
                 Tag = tag,
                 Metadata = metadata,
-            });
+            }, cancellationToken);
 
             var streamSource = new WebUploadStreamSource(_jsRef!);
-            await FileUploader.Upload(streamSource, uploadId, null, CancellationToken.None);
+            var progress = new Progress<double>(p => SetSaveStatus(L.PicCrop_Uploading_Format((int)p)));
+            await FileUploader.Upload(streamSource, uploadId, progress, cancellationToken);
 
+            SetSaveStatus(L.PicCrop_Processing);
             var mediaRef = await UICommander.Call(new Media_ProcessUpload {
                 Session = Session,
                 MediaId = mediaId,
                 UploadId = uploadId,
-            });
+            }, cancellationToken);
 
             ModalModel.OnCropped?.Invoke(mediaRef);
             Modal.Close();
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            // The modal was closed while saving
+        }
         catch (Exception e) {
             UICommander.ShowError(e);
         }
+        finally {
+            _isSaving = false;
+            _saveStatus = "";
+            _saveCts.DisposeSilently();
+            _saveCts = null;
+        }
+    }
+
+    private void SetSaveStatus(string status) {
+        _saveStatus = status;
+        _ = InvokeAsync(StateHasChanged);
     }
 
     // Nested types

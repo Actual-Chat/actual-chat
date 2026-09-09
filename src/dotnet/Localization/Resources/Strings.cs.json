@@ -842,6 +842,8 @@
   "PicCrop_Apply": "Použít",
   "PicCrop_RotateLeft": "Otočit doleva",
   "PicCrop_RotateRight": "Otočit doprava",
+  "PicCrop_Uploading_Format": "Nahrávání... {0}%",
+  "PicCrop_Processing": "Zpracování...",
   "PeerContact_Title": "Upravit kontakt",
   "PeerContact_DisplayName": "Zobrazované jméno",
   "PeerContact_BlockUser": "Zablokovat uživatele",

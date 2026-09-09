@@ -842,6 +842,8 @@
   "PicCrop_Apply": "Aplicar",
   "PicCrop_RotateLeft": "Girar à esquerda",
   "PicCrop_RotateRight": "Girar à direita",
+  "PicCrop_Uploading_Format": "Enviando... {0}%",
+  "PicCrop_Processing": "Processando...",
   "PeerContact_Title": "Editar contato",
   "PeerContact_DisplayName": "Nome de exibição",
   "PeerContact_BlockUser": "Bloquear usuário",
