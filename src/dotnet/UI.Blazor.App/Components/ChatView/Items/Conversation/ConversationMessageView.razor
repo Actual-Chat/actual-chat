@@ -252,7 +252,7 @@
         // spoken rows (exactly what a viewer who never joined sees), with nothing to reveal.
         var swallowedCount = 0;
         var revealBatch = 0;
-        if (isExpanded) {
+        if (isLive && !isVoiceOnly && isExpanded) {
             swallowedCount = await LiveBlockUI.GetSwallowedCount(chatId, cancellationToken).ConfigureAwait(false);
             if (swallowedCount > 0)
                 revealBatch = Math.Min(LiveFoldMath.RevealBatchSize, swallowedCount);
