@@ -56,6 +56,7 @@ public sealed class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub
                 : [];
             _lastActiveTags = currentTags;
             _isInitialized = true;
+            Log.LogDebug("Active set changed: {ActiveCount} active, {CreateCount} new", infos.Count, createTags.Count);
             await deviceNotifications.Reconcile(infos, createTags, cancellationToken).ConfigureAwait(false);
         }
     }

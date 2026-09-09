@@ -18,7 +18,7 @@ public static partial class MauiProgram
         services.AddTransient<IDeviceTokenRetriever>(_ => new MacDeviceTokenRetriever());
         services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
         services.AddScoped<INotificationsPermission>(c => new MacOSNotificationsPermission(c.AppUIHub()));
-        services.AddScoped<IDeviceNotifications>(_ => new MacOSDeviceNotifications());
+        services.AddScoped<IDeviceNotifications>(c => new MacOSDeviceNotifications(c));
         services.AddTransient<IAppIconBadge>(_ => new MacOSAppIconBadge());
         services.AddScoped<IFileSaver>(c => new MacOSFileSaver(c.UIHub()));
     }
