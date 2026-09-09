@@ -223,11 +223,10 @@ public sealed partial class DeepgramTranscriber : ITranscriber
         var isStreamFinalized = result.FromFinalize ?? false;
         var alternative = result.Channel?.Alternatives?.FirstOrDefault();
         var suffix = alternative?.Transcript ?? "";
-        // NOTE: as for now deepgram does not support language detection in streaming mode,
-        // so we use language from options
-        var detectedLanguages = alternative?.Languages?.Select(DeepgramLanguage.FromDeepgram)
+        // Only what Deepgram detected: the configured language is a hint, and stamping it on a
+        // transcript would hide a foreign message from translation
+        var languages = alternative?.Languages?.Select(DeepgramLanguage.FromDeepgram)
             .Distinct().ToArray() ?? [];
-        var languages = detectedLanguages.Length > 0 ? detectedLanguages : [options.Language];
         var endTime = (float?)result.Duration ?? 0;
         if (isFinal) {
             if (TryParseFinal(state, result, out suffix, out var map))
