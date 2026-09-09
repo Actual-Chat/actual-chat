@@ -114,6 +114,17 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
         await RenewAudioFocus(null).ConfigureAwait(false);
     }
 
+    protected async Task RenewHeldFocus()
+    {
+        using var releaser = await OperationLock.Lock(CancellationToken.None).ConfigureAwait(false);
+        releaser.MarkLockedLocally();
+        if (_lastAudioFocusHolder is null)
+            return;
+
+        Log.LogInformation("Renewing the held audio focus ({Mode})", _lastAudioFocusHolder.Mode);
+        await RenewAudioFocus(null).ConfigureAwait(false);
+    }
+
     private async Task<AudioFocusHolder?> RenewAudioFocus(AudioFocusRequester? requester)
     {
         var temp = _lastAudioFocusHolder;
