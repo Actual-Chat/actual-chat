@@ -198,12 +198,16 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         // selecting the appropriate output device (BT headset, wired headset, or speakerphone).
         if (isCommunication)
             _audioManager.Mode = Mode.InCommunication;
-        else if (_audioManager.Mode == Mode.InCommunication && !_isCommunicationModeYielded) {
+        else if (_isCommunicationFocus) {
             // A renewal off the communication route: nothing abandons in between, so the mode
-            // and the SCO route would outlive the focus that asked for them.
-            _log.LogInformation("Leaving the communication route: restoring Mode.Normal");
+            // and the SCO route would outlive the focus that asked for them. Keyed on our own
+            // state: AudioManager.Mode read Normal here while SCO was still up on 2026-09-09.
+            // A mode yielded to a ring has nothing to come back to either, or the restore would
+            // reopen SCO under a media focus.
+            _log.LogInformation("Leaving the communication route: dropping SCO, restoring Mode.Normal");
             _deviceRouter.ClearCommunicationDevice();
             _audioManager.Mode = Mode.Normal;
+            _isCommunicationModeYielded = false;
         }
 
         var attrs = new AudioAttributes.Builder()

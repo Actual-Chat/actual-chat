@@ -19,10 +19,16 @@ public static class AndroidAudioRouteLog
             var commDevice = OperatingSystem.IsAndroidVersionAtLeast(31)
                 ? Describe(audioManager.CommunicationDevice)
                 : "n/a";
-            return $"mode={audioManager.Mode}, scoOn={audioManager.BluetoothScoOn}, commDevice={commDevice}";
+            var musicVolume = DescribeVolume(audioManager, Android.Media.Stream.Music);
+            var callVolume = DescribeVolume(audioManager, Android.Media.Stream.VoiceCall);
+            return $"mode={audioManager.Mode}, scoOn={audioManager.BluetoothScoOn}, commDevice={commDevice}, "
+                + $"musicVol={musicVolume}, callVol={callVolume}";
         }
         catch (Exception e) {
             return $"unavailable ({e.GetType().Name})";
         }
     }
+
+    private static string DescribeVolume(AudioManager audioManager, Android.Media.Stream stream)
+        => $"{audioManager.GetStreamVolume(stream)}/{audioManager.GetStreamMaxVolume(stream)}";
 }
