@@ -209,6 +209,13 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
             if (ComputedImpl.GetDependencies(computed).Any(d => d.IsInvalidated()))
                 return renderedData; // Already invalidated - a render of this data would be wasted
 
+            if (!data.IsNone && data.Count == 0 && !data.HasAllItems) {
+                // An unresolved empty window has no keys for the browser to request around.
+                // Keep the previous window and leave its query pending for a timed recompute.
+                computed.Invalidate(TimeSpan.FromSeconds(1));
+                return renderedData;
+            }
+
             isAnswered = true;
             return data;
         }

@@ -54,7 +54,8 @@ public sealed class VirtualListData<TItem>
     public bool IsSimilarTo(VirtualListData<TItem> other)
         // A separator moving changes every position after it even when the loaded items are the same
         => ReferenceEquals(this, other) ||
-            (HasVeryFirstItem == other.HasVeryFirstItem
+            (!IsNone && !other.IsNone
+            && HasVeryFirstItem == other.HasVeryFirstItem
             && HasVeryLastItem == other.HasVeryLastItem
             && ScrollToKey == other.ScrollToKey
             && (ReferenceEquals(SeparatorIndexes, other.SeparatorIndexes)
