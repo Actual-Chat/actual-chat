@@ -10,6 +10,7 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     private readonly AndroidAudioFocusHelper _focusHelper;
     private MauiAudioFocusHandle? _handle;
     private CarAudioRoute _carAudioRoute = CarAudioRoute.Default;
+    private int _isTrackingCarAudioRoute;
     public override bool IsCommunicationFocus => _focusHelper.IsCommunicationFocus;
 
     public AndroidAudioFocusUI(AppUIHub hub)
@@ -145,10 +146,34 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
 
     private async Task<CarAudioRoute> UpdateCarAudioRoute()
     {
+        EnsureCarAudioRouteTracking();
         var route = await Hub.ChatAudioUI.GetCarAudioRoute(CancellationToken.None).ConfigureAwait(false);
         // Published for RequestAudioFocus, which can't await it from under OperationLock.
         Volatile.Write(ref _carAudioRoute, route);
         return route;
+    }
+
+    private void EnsureCarAudioRouteTracking()
+    {
+        // Started lazily: the hub's ChatAudioUI is not resolvable from this constructor.
+        if (Interlocked.Exchange(ref _isTrackingCarAudioRoute, 1) != 0)
+            return;
+
+        _ = AsyncChain.From(TrackCarAudioRoute)
+            .RetryForever(RetryDelaySeq.Exp(1, 30), Log)
+            .RunIsolated(Hub.StopToken);
+    }
+
+    private async Task TrackCarAudioRoute(CancellationToken cancellationToken)
+    {
+        // A renewal - a settings change mid-session, a mode switch between scopes - never passes
+        // through TryAcquire, so it would keep the route the last acquire cached.
+        var chatAudioUI = Hub.ChatAudioUI;
+        var cRoute = await Computed
+            .Capture(() => chatAudioUI.GetCarAudioRoute(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        await foreach (var change in cRoute.Changes(cancellationToken).ConfigureAwait(false))
+            Volatile.Write(ref _carAudioRoute, change.Value);
     }
 
     private void OnFocusChanged(AudioFocus af)
