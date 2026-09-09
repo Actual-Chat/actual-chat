@@ -24,7 +24,7 @@
     var showLiveCard = (!Message.HasSplitHeader && hasLiveTitle)
         || (hasDescription && !state.IsExpanded)
         || (state.HasSummary && !state.IsExpanded)
-        || (!state.IsExpanded && state.SwallowedCount > 0)
+        || (state.IsExpanded && state.SwallowedCount > 0)
         || state.TailPreview is { Count: > 0 };
     // The wrapper below carries the block's tint, border and context menu, so emitting it around an
     // omitted card leaves an empty tinted bar in the chat. A live block with nothing to show renders an
@@ -91,7 +91,7 @@
                 <Divider/>
                 <LastEntriesPreview Entries="@tailPreview" Faded="true" MustSuppressMenu="true"/>
             }
-            @if (!state.IsExpanded && state.SwallowedCount > 0) {
+            @if (state.IsExpanded && state.SwallowedCount > 0) {
                 <button
                     type="button"
                     class="c-lc-showmore"
@@ -247,9 +247,12 @@
                 .ConfigureAwait(false)
             : null;
         var hasSummary = !translated.Title.Text.IsNullOrEmpty();
+        // Expanded is the auto-swallow mode - rows that scrolled above the viewport fold behind the card,
+        // and "show more" is the way back to them. Collapsed is the card alone, previewing the latest
+        // spoken rows (exactly what a viewer who never joined sees), with nothing to reveal.
         var swallowedCount = 0;
         var revealBatch = 0;
-        if (isJoined && !isExpanded) {
+        if (isExpanded) {
             swallowedCount = await LiveBlockUI.GetSwallowedCount(chatId, cancellationToken).ConfigureAwait(false);
             if (swallowedCount > 0)
                 revealBatch = Math.Min(LiveFoldMath.RevealBatchSize, swallowedCount);

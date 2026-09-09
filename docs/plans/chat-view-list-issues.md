@@ -452,7 +452,14 @@ lastContentKey` in every sample.
 ### F — expansion follows the block, not the viewer's call state
 
 `hiddenLiveTailRange` and the card's tail preview both follow the block's rendered
-expansion now, so collapsing works for a viewer in the call. `IsExpandedByDefault`
+expansion now, so collapsing works for a viewer in the call: a collapsed block is the
+card alone — title, description, the preview of the latest spoken rows — exactly what a
+viewer who never joined sees, with nothing to reveal. The expanded block is the
+auto-swallow mode: the governed fold (rows that scrolled above the viewport) applies
+there, behind the card's "show more". The first cut had the fold and "show more" on the
+*collapsed* block and none of it on the expanded one, so a participant saw the whole
+session unfolded and their collapse offered a "show more" that had nothing to show
+(2026-09-09, #4424). `IsExpandedByDefault`
 is latched write-once (`_knownConversationDefaultExpanded.TryAdd`), so a summary
 landing can no longer invert anyone's effective state. And the join is watched where
 the data is built: on the transition into the call the current block is expanded if
@@ -475,8 +482,9 @@ the toggle, so only a stable id can hold it.
 ### H — a collapsed live block ends where it starts
 
 `GroupExpandedConversations` takes entries into the live block only while it is
-expanded. Collapsed, the block is the header, the card and its footer, and nothing
-else; everything below is placed by the ordinary rules, with transcribed entries
-filtered and typed ones rendered as usual. The card's tail preview is restricted to
-what is actually hidden — spoken entries — so a typed message is never previewed in
-the card *and* rendered below it.
+expanded, and even then the governed fold keeps the rows above the viewport behind the
+card. Collapsed, the block is the header, the card and its footer, and nothing else;
+everything below is placed by the ordinary rules, with transcribed entries filtered and
+typed ones rendered as usual. The card's tail preview is restricted to what is
+actually hidden — spoken entries — so a typed message is never previewed in the card
+*and* rendered below it.

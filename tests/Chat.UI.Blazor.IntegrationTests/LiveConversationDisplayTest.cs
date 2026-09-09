@@ -741,9 +741,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             },
             false,
             false));
-        await CollapseJoinedLiveBlock(chatUI, chat.Id, live.ToConversation());
-        // Baseline taken once collapsed, so act 1 is compared against the state it actually acts on -
-        // and v+3/v+4 being here at all is the guard already holding the fold at the viewport top.
+        // Baseline first, so act 1 is compared against the state it actually acts on - and v+3/v+4
+        // being here at all is the guard already holding the fold at the viewport top.
         List<long> beforeLids = null!;
         await ComputedTest.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
@@ -1419,10 +1418,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task CollapsedBlockFoldsUnsummarizedRowsAboveViewport()
+    public async Task ExpandedBlockFoldsUnsummarizedRowsAboveViewport()
     {
-        // §4: the collapsed live block swallows everything above the viewport, even rows no summary
-        // has ever covered - the boundary tracks the viewport top directly, with no summary gate.
+        // §4: the expanded live block - the auto-swallow mode - swallows everything above the viewport,
+        // even rows no summary has ever covered: the boundary tracks the viewport top directly, with no
+        // summary gate.
 
         // arrange
         await Tester.SignInAsUniqueBob();
@@ -1449,7 +1449,6 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
         await chatAudioUI.SetRecordingChatId(chat.Id);   // Bob is a recorder => joined
         chatUI.SelectChatOnNavigation(chat.Id);
-        await CollapseJoinedLiveBlock(chatUI, chat.Id, live.ToConversation());
 
         // act - viewport top sits at the 6th entry: everything above it (incl. un-summarised rows) must fold
         var viewportTop = lids[5];
@@ -1650,7 +1649,6 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             var s = await liveBlockUI.GetBlockState(chat.Id, ct);
             s.FoldBoundaryLid.Should().Be(streamingLid, "the streaming entry is what stops the fold");
         }, TimeSpan.FromSeconds(15));
-        await CollapseJoinedLiveBlock(chatUI, chat.Id, live.ToConversation());
 
         // act - the reader scrolls back up onto the streaming entry, and that render is the baseline
         SetViewportTop(streamingLid);
@@ -1902,7 +1900,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task CollapsedJoinedBlockReportsSwallowedCount()
+    public async Task JoinedBlockReportsSwallowedCount()
     {
         // §7: SwallowedCount is the true message count folded in [V, effectiveBoundary) - not a lid
         // span (lids have gaps) - and it must drop to 0 once RevealMore walks the whole backlog back
@@ -2286,6 +2284,120 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             : $"renderId={overlay.RenderId}, cardLid={overlay.CardLid}, hiddenTail={overlay.HiddenTailRange}, "
                 + $"foldRange={overlay.FoldRange}, blockEnd={overlay.BlockEndLid}, "
                 + $"materialized={overlay.MaterializedId}, wasAttending={state!.WasAttending}";
+    }
+
+    [Fact]
+    public async Task ExpandedBlockAutoSwallowsAndCollapseIsTheCardOnly()
+    {
+        // The expanded live block is the auto-swallow mode: rows that scrolled above the viewport fold
+        // into the card behind "show more", the rest of the tail stays visible. A manual collapse is
+        // the card alone - title, description and the preview of the latest spoken rows - exactly what
+        // a viewer who never joined sees, with nothing to reveal. Un-collapsing is the swallow mode
+        // again, fold intact.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var chat = await CreateSettledChat("swallow-vs-collapse-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_500);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var v = live!.EffectiveVisibleStartLid;
+        var spoken = new List<long>();
+        for (var i = 0; i < 3; i++)
+            spoken.Add((await CreateSpokenEntry(chat.Id, $"spoken-{i}")).LocalId);
+        await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = spoken[^1], MessageCount = 3,
+        }, CancellationToken.None);
+        // Enough spoken rows past the summary for a full MinTailEntryCount tail below the viewport top,
+        // or the tail floor - not the viewport - would be what holds the fold back.
+        for (var i = 3; i < 3 + LiveFoldMath.MinTailEntryCount + 5; i++)
+            spoken.Add((await CreateSpokenEntry(chat.Id, $"spoken-{i}")).LocalId);
+        var typed = (await Tester.CreateTextEntry(chat.Id, "typed-0")).LocalId;
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        await chatAudioUI.SetRecordingChatId(chat.Id);   // Bob is a recorder => joined
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var liveConversation = (await liveBackend.GetState(chat.Id, CancellationToken.None))!.ToConversation();
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            chatUI.IsConversationExpanded(liveConversation).Should().BeTrue("joining expands the block");
+            var lids = LeafEntryLids(items);
+            lids.Should().NotContain(spoken.Take(3), "the summary-covered rows fold from the start");
+            lids.Should().Contain(spoken.Skip(3), "nothing else has scrolled above the viewport yet");
+        }, TimeSpan.FromSeconds(15));
+
+        // act - the reader scrolls to the live tail. The viewport top is the 10th real row from the
+        // chat end (the typed row counts), which is exactly where the tail floor sits, so the viewport
+        // is what sets the fold.
+        var viewportTop = spoken[^9];
+        chatUI.ReportItemVisibility(new ChatViewItemVisibility(
+            chat.Id,
+            spoken.TakeLast(9).Select(l => ChatMessageKey.New(ChatMessageKind.None, l)).ToHashSet(),
+            true,
+            true));
+
+        // assert - expanded auto-swallows: the rows above the viewport fold, the tail stays, inside the block
+        var folded = spoken.Where(l => l < viewportTop).ToList();
+        var tail = spoken.Where(l => l >= viewportTop).ToList();
+        await ComputedTest.When(async ct => {
+            var blockState = await liveBlockUI.GetBlockState(chat.Id, ct);
+            blockState.FoldBoundaryLid.Should().Be(viewportTop, "the fold tracks the viewport top");
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            var lids = LeafEntryLids(items);
+            lids.Should().NotContain(folded, "the expanded block swallows what scrolled above the viewport");
+            lids.Should().Contain(tail, "the swallow mode keeps the live tail on screen");
+            lids.Should().Contain(typed);
+            var block = items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle().Subject;
+            block.GetLeafMessages().OfType<ChatEntryMessage>().Select(m => m.Id)
+                .Should().Contain(tail, "the visible tail renders inside the block, under its card");
+        }, TimeSpan.FromSeconds(15));
+        (await liveBlockUI.GetSwallowedCount(chat.Id)).Should().Be(folded.Count, "that is what \"show more\" offers");
+
+        // act - a manual collapse
+        chatUI.ToggleExpandConversation(liveConversation.Id);
+
+        // assert - the card alone: every spoken row is behind it, the typed one renders below, and the
+        // preview is the latest spoken rows of all participants
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            chatUI.IsConversationExpanded(liveConversation).Should().BeFalse();
+            var lids = LeafEntryLids(items);
+            lids.Should().NotContain(spoken,
+                "collapsed is the card only - the same render a viewer who never joined gets");
+            lids.Should().Contain(typed, "typed messages are never hidden");
+            var preview = await chatUI.GetThreadPreviewEntries(chat.Id, 5, v, true, ct);
+            preview.Select(e => e.LocalId)
+                .Should().Equal(spoken.TakeLast(5), "the card previews the latest spoken rows");
+        }, TimeSpan.FromSeconds(15));
+
+        // act - un-collapse
+        chatUI.ToggleExpandConversation(liveConversation.Id);
+
+        // assert - the swallow mode again, with the same fold and the tail back on screen
+        await ComputedTest.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            chatUI.IsConversationExpanded(liveConversation).Should().BeTrue();
+            var lids = LeafEntryLids(items);
+            lids.Should().NotContain(folded, "un-collapsing does not un-swallow what was above the viewport");
+            lids.Should().Contain(tail);
+        }, TimeSpan.FromSeconds(15));
+
+        // act - "show more" walks the folded rows back into view
+        await liveBlockUI.RevealMore(chat.Id);
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var lids = LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, ct));
+            lids.Should().Contain(folded, "a reveal must actually show the rows it walked back");
+            lids.Should().Contain(tail);
+        }, TimeSpan.FromSeconds(15));
     }
 
     private static void InvalidateAmIInLiveConversation(ChatAudioUI chatAudioUI, ChatId chatId)
