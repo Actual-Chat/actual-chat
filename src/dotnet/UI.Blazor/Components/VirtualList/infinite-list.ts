@@ -29,8 +29,8 @@ const UpdateViewportIntervalMs = 64;
 const UpdateVisibilityIntervalMs = 250;
 const MaxRelayoutPasses = 4;
 const ScrollSettleMs = 200;
-// How long a wheel away from the pinned edge waits for the scroll it produces before it is forgotten.
-const WheelAwayWindowMs = 300;
+// How long a wheel waits for the scroll it produces before it is forgotten.
+const WheelWindowMs = 300;
 const SmoothScrollMs = 500;
 const EdgeEpsilon = 4;
 const VisibilityEpsilon = 4;
@@ -214,7 +214,8 @@ export class InfiniteList extends VirtualList {
     private readonly isReverse: boolean;
     private pinnedEdge: VirtualListEdge | null = null;
     private endAnchorSize = 0;
-    private wheelAwayAt = 0;
+    private lastWheelAt = 0;
+    private isLastWheelAway = false;
     private isWatchingStillness = false;
     private isAwaitingOverscrollEnd = false;
     private isNearSkeleton = false;
@@ -1775,21 +1776,20 @@ export class InfiniteList extends VirtualList {
         this.turnOffIsScrollingDebounced();
         if (!event.isTrusted)
             return;
-        // A wheel away from the pinned edge is the user's however its scroll lands - inside the guard
-        // window as often as not, while content is resizing and re-pinning - and it drops the pin
-        // outright, since the position it lands on may still read as the edge. But only on the scroll
-        // it produced: a wheel that scrolls nothing - a chat that fits on screen, a scroller nested in a
-        // message - has not left the edge, and a pin dropped there had nothing to put it back until the
-        // next render's clamp.
-        const isWheelAway = this.wheelAwayAt !== 0
-            && performance.now() - this.wheelAwayAt < WheelAwayWindowMs;
-        // Read back the controller's writes, including resize clamps. A time-only guard would
-        // also swallow user scrolling that immediately follows a correction.
-        if (!isWheelAway && !this.scrollController.isTouchActive
-            && this.scrollController.isScrollWriteEcho)
+        // A wheel is the user's however its scroll lands - on the controller's own write as often as
+        // not, while content is resizing and re-pinning, or when the controller drives the gesture - and
+        // one away from the pinned edge drops the pin outright, since the position it lands on may still
+        // read as the edge. But only on the scroll it produced: a wheel that scrolls nothing - a chat
+        // that fits on screen, a scroller nested in a message - has not left the edge, and a pin dropped
+        // there had nothing to put it back until the next render's clamp. Zero is "no wheel", not a time.
+        const isWheel = this.lastWheelAt !== 0 && performance.now() - this.lastWheelAt < WheelWindowMs;
+        const isWheelAway = isWheel && this.isLastWheelAway;
+        // Every other write of the controller's is read back, resize clamps included: a time-only guard
+        // also swallowed user scrolling that immediately followed a correction.
+        if (!isWheel && !this.scrollController.isTouchActive && this.scrollController.isScrollWriteEcho)
             return;
 
-        this.wheelAwayAt = 0;
+        this.lastWheelAt = 0;
         this.pendingJump = null;
         this.interactiveAnchor = null;
         this.releaseScreenAnchor();
@@ -1814,18 +1814,17 @@ export class InfiniteList extends VirtualList {
         this.updateVisibilityThrottled();
     };
 
-    // Includes unpinned navigation waits: controller-driven wheels can otherwise look like own writes.
-    // Act on the resulting scroll, so a wheel consumed by a nested scroller does not cancel navigation.
+    // Only noted here: onScroll acts on the scroll the wheel produces, if any - a wheel consumed by a
+    // nested scroller must neither drop the pin nor cancel a navigation still waiting to run.
     private onWheel = (event: WheelEvent): void => {
         // Momentum scrolling on mobile also arrives as wheel events; there onScroll is enough. A
         // ctrl+wheel is a pinch-zoom, which doesn't scroll the list at all.
         if (DeviceInfo.isMobile || event.ctrlKey)
             return;
 
-        const isAwayFromEdge = this.pinnedEdge == null
-            || (this.pinnedEdge === VirtualListEdge.End ? event.deltaY < 0 : event.deltaY > 0);
-        if (isAwayFromEdge)
-            this.wheelAwayAt = performance.now();
+        this.lastWheelAt = performance.now();
+        this.isLastWheelAway = this.pinnedEdge != null
+            && (this.pinnedEdge === VirtualListEdge.End ? event.deltaY < 0 : event.deltaY > 0);
     };
 
     private readonly turnOffIsScrollingDebounced = debounce(() => this.turnOffIsScrolling(), ScrollSettleMs);

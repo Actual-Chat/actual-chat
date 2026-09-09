@@ -104,6 +104,36 @@ describe('VirtualList', () => {
         expect(Math.abs(after - before)).toBeLessThanOrEqual(1);
     });
 
+    it.each([false, true])('should pin to the end reached by a trackpad while unpinned (%s)', async isAnimating => {
+        // arrange
+        const result = await page.evaluate(async isAnimating => {
+            const fixture = ListTest.createList();
+            fixture.navigate('15');
+            fixture.list['reveal']();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            if (isAnimating)
+                fixture.list['stability'].holdAnimation('delayed-height', 3000);
+            const root = fixture.root;
+            const max = fixture.list['scrollController'].getEffectiveScrollLimits().max;
+
+            // act: a precise wheel step is one wheel event followed by one scroll event
+            while (root.scrollTop < max) {
+                root.dispatchEvent(new WheelEvent('wheel', { deltaY: 60, deltaMode: 0, bubbles: true }));
+                root.scrollTop = Math.min(root.scrollTop + 60, max);
+                await ListTest.nextFrame();
+            }
+            await ListTest.nextFrame();
+            const pinnedOnArrival = fixture.list['pinnedEdge'];
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const pinnedAtSettle = fixture.list['pinnedEdge'];
+            fixture.list.dispose();
+            return { pinnedOnArrival, pinnedAtSettle };
+        }, isAnimating);
+
+        // assert
+        expect(result).toEqual({ pinnedOnArrival: 1, pinnedAtSettle: 1 });
+    });
+
     it('should retain pending navigation across a programmatic scroll correction', async () => {
         // arrange
         const target = await page.evaluate(async () => {
