@@ -1499,6 +1499,8 @@
   "Call_CameraStillBlockedWeb": "Kamera je stále blokovaná. Nejprve povolte přístup ke kameře v nastavení prohlížeče.",
   "Call_StartingRecording": "Spouštění nahrávání...",
   "Call_Entry_Outgoing": "Odchozí hovor",
+  "Call_Entry_Incoming": "Příchozí hovor",
+  "Call_Entry_Titled_Format": "{0}: {1}",
   "Call_Entry_Missed": "Zmeškaný hovor",
   "Call_Entry_Declined": "Odmítnutý hovor",
   "Call_Entry_Canceled": "Zrušený hovor",

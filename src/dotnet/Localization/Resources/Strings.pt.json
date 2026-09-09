@@ -1499,6 +1499,8 @@
   "Call_CameraStillBlockedWeb": "A câmera ainda está bloqueada. Permita o acesso à câmera nas configurações do navegador primeiro.",
   "Call_StartingRecording": "Iniciando a gravação...",
   "Call_Entry_Outgoing": "Chamada efetuada",
+  "Call_Entry_Incoming": "Chamada recebida",
+  "Call_Entry_Titled_Format": "{0}: {1}",
   "Call_Entry_Missed": "Chamada perdida",
   "Call_Entry_Declined": "Chamada recusada",
   "Call_Entry_Canceled": "Chamada cancelada",

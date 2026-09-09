@@ -1499,6 +1499,8 @@
   "Call_CameraStillBlockedWeb": "カメラは引き続きブロックされています。まずブラウザの設定でカメラへのアクセスを許可してください。",
   "Call_StartingRecording": "録音を開始しています...",
   "Call_Entry_Outgoing": "発信",
+  "Call_Entry_Incoming": "着信",
+  "Call_Entry_Titled_Format": "{0}：{1}",
   "Call_Entry_Missed": "不在着信",
   "Call_Entry_Declined": "拒否された通話",
   "Call_Entry_Canceled": "キャンセルされた通話",

@@ -31,8 +31,11 @@ public sealed partial record Conversation(
     [DataMember, Key(11)] public Symbol[] AttachmentIds { get; init; } = [];
     [DataMember, Key(12)] public ChatEntryAttachment[] Attachments { get; init; } = []; // Populated only on reads by ConversationsBackend
     [DataMember, Key(13)] public bool IsExpandedByDefault { get; init; }
-    [DataMember, Key(14)] public bool IsCall { get; init; }
-
+    // Key 14 was a stored IsCall, now derived from CallerId below. Retired, never reused.
+    // Set for a call and nothing else, which is what makes IsCall derivable from it.
+    [DataMember, Key(15)] public AuthorId? CallerId { get; init; }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public bool IsCall => CallerId is not null;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Range<long> EntryLidRange => new(Id.StartEntryLid, EndEntryLid + 1);
 
@@ -60,7 +63,7 @@ public sealed partial record ConversationDiff() : RecordDiff
     [DataMember] public int? AttachmentCount { get; init; }
     [DataMember] public Symbol[]? AttachmentIds { get; init; } = [];
     [DataMember] public bool? IsExpandedByDefault { get; init; }
-    [DataMember] public bool? IsCall { get; init; }
+    [DataMember] public AuthorId? CallerId { get; init; }
 
     public ConversationDiff(Conversation conversation) : this()
     {
@@ -75,6 +78,6 @@ public sealed partial record ConversationDiff() : RecordDiff
         AttachmentCount = conversation.AttachmentCount;
         AttachmentIds = conversation.AttachmentIds;
         IsExpandedByDefault = conversation.IsExpandedByDefault;
-        IsCall = conversation.IsCall;
+        CallerId = conversation.CallerId;
     }
 }

@@ -1499,6 +1499,8 @@
   "Call_CameraStillBlockedWeb": "Kamera je i dalje blokirana. Prvo dozvolite pristup kameri u postavkama pregledača.",
   "Call_StartingRecording": "Pokretanje snimanja...",
   "Call_Entry_Outgoing": "Odlazni poziv",
+  "Call_Entry_Incoming": "Dolazni poziv",
+  "Call_Entry_Titled_Format": "{0}: {1}",
   "Call_Entry_Missed": "Propušteni poziv",
   "Call_Entry_Declined": "Odbijeni poziv",
   "Call_Entry_Canceled": "Otkazani poziv",

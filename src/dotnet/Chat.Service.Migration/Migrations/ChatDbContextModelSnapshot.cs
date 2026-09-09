@@ -17,7 +17,7 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20260907145017_Add_Conversation_IsCall";
+    public override string LastMigrationId => "20260909115730_Add_Conversation_CallerId";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -800,6 +800,11 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                     .HasColumnName("author_ids")
                     .UseCollation("C");
 
+                b.Property<string>("CallerId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("caller_id");
+
                 b.Property<string>("ChatId")
                     .IsRequired()
                     .HasColumnType("text")
@@ -818,10 +823,6 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                 b.Property<DateTime>("EndsAt")
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("ends_at");
-
-                b.Property<bool>("IsCall")
-                    .HasColumnType("boolean")
-                    .HasColumnName("is_call");
 
                 b.Property<bool>("IsExpandedByDefault")
                     .HasColumnType("boolean")

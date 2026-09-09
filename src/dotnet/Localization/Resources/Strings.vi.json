@@ -1499,6 +1499,8 @@
   "Call_CameraStillBlockedWeb": "Máy ảnh vẫn bị chặn. Vui lòng cho phép truy cập máy ảnh trong cài đặt trình duyệt trước.",
   "Call_StartingRecording": "Đang bắt đầu ghi...",
   "Call_Entry_Outgoing": "Cuộc gọi đi",
+  "Call_Entry_Incoming": "Cuộc gọi đến",
+  "Call_Entry_Titled_Format": "{0}: {1}",
   "Call_Entry_Missed": "Cuộc gọi nhỡ",
   "Call_Entry_Declined": "Cuộc gọi đã từ chối",
   "Call_Entry_Canceled": "Cuộc gọi đã hủy",

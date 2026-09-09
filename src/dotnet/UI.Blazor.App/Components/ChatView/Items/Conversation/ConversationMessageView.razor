@@ -8,7 +8,8 @@
     var messageCount = conversation.MessageCount;
     var startsAt = DateTimeConverter.ToLocalTime(conversation.StartsAt);
     var endsAt = DateTimeConverter.ToLocalTime(conversation.EndsAt);
-    var (callIcon, callTitle, _, _) = CallCardFormat.Get(CallOutcome.Ended, false, L);
+    var (callIcon, callTitle, _, _) = CallCardFormat.Get(
+        CallOutcome.Ended, CallCardFormat.IsCaller(conversation, ChatContext), L);
     var openClass = _isOpen ? "open-details" : "closed-details";
     var detailsCls = _isOpen ? "show" : "";
     var liveClass = state.IsLive ? (state.IsJoined || state.HasOverlay ? "live joined" : "live") : "";
@@ -115,9 +116,7 @@
                 @if (!Message.HasSplitHeader) {
                     <ConversationMessageHeader
                         Conversation="@conversation"
-                        Title="@(conversation.IsCall && !hasLiveTitle
-                                 ? TranslatedText.From(callTitle)
-                                 : m.Title)"
+                        Title="@(conversation.IsCall ? CallCardFormat.Title(callTitle, m.Title, L) : m.Title)"
                         Icon="@(conversation.IsCall ? callIcon : "icon-tldr")"
                         MessageCount="@messageCount"
                         StartsAt="@startsAt"
