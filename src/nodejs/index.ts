@@ -52,6 +52,7 @@ window.blazorApp = blazorApp;
 window.Kvas = Kvas;
 
 blazorApp.initFpsOverlay();
+void window.App?.whenBlazorReady?.then(() => blazorApp.initChatEditorDebugConsole());
 blazorApp.initChatViewScroll();
 ui.initKeyboardUI();
 
