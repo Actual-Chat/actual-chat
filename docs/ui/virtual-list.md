@@ -113,9 +113,10 @@ in a later section looks loaded — most of them are.*
   consecutive animation frames in which `scrollTop` has not changed, no finger is down and no excursion
   is open. Stricter than "no scroll events", which a fling passes while it is still moving. The one
   standing intent that changes the list's coordinates — a re-centre — waits for one.
-- **guard window** — *`lastProgrammaticScrollAt`, `ProgrammaticScrollGuardMs`; `suppressUntil` in the
-  controller.* The interval after a scroll the code wrote itself, during which the resulting scroll
-  event is ignored. The list's window and the controller's are separate and differently sized.
+- **guard window** — *`suppressUntil`, `lastWrittenTop`, `isScrollWriteEcho`, all in the controller.*
+  The 300ms after a scroll the controller wrote itself — a jump, a resize clamp — during which a
+  scroll event standing on the written value is that write's echo. The list has no window of its own:
+  it asks the controller, so a scroll that has moved on since the write is the user's even inside it.
 - **position guard** — *`checkPosition`, `PositionGuardIntervalMs`.* The one correction that does not
   run off an event: a 1s check that the view is inside the band and has content on it, for the state
   where a blank viewport leaves the user nothing to scroll with (§3.6). Nothing to do with a *guard
@@ -487,7 +488,7 @@ overscroll rows are the summary of §3.7.*
 | trigger | transition | what happens | term |
 |---|---|---|---|
 | any `scroll` event | Resting → Free-scrolling | hold the scroll for 200ms and arm the settle timer — this much happens for every scroll event except the list's own follow, which is recognised by where it landed and dropped whole | `scrollTop` |
-| the same event, trusted and outside the guard window | — | additionally: drop any interactive or screen anchor, re-derive the pinned edge, queue a data query | — |
+| the same event, trusted and not the echo of a controller write | — | additionally: drop any pending jump and any interactive or screen anchor, re-derive the pinned edge, queue a data query | — |
 | 200ms with no scroll event, or `scrollend` | Free-scrolling → Resting | release the scroll hold, re-derive the pin, report visibility, query, arm the stranded check | — |
 | a scroll event past a limit, finger down | in-band → following | latch the boundary; seed `over` at the true excursion and the transform at its resisted share; each frame after: `over += Δscroll`, nudge by the resisted share | `transform` |
 | a scroll event past a limit, no finger, ordinary path | in-band → engaged | the same seed, the carry seeded from the fling's speed, then the bounce and the floor per frame | `transform` |
@@ -506,7 +507,7 @@ overscroll rows are the summary of §3.7.*
 | the same, delta past `maxOverscroll` | Pinned → Placing | a re-placement: up to three `setScrollOffset` passes, re-measuring between them because near an edge `container.top` moves with the scroll | `scrollTop` |
 | `repinEdge` called during an excursion | Pinned → awaiting overscroll end | deferred; past a boundary the measured position is not the visible one and the write would snap the bounce | — |
 | `scrollToKey` that is not the newest item | any → Placing | suppress new height animations, wait out the ones in flight, then place the item at `center` or `end` | `container.top` then `scrollTop` |
-| `scrollToKey` that *is* the newest item, end loaded | any → Pinned End | pin and re-pin, which in reverse is a follow of a few pixels or nothing at all — so a message you just posted still animates in | `scrollTop` |
+| `scrollToKey` that *is* the newest item, end loaded | any → Pinned End | drop any jump still waiting, then pin and re-pin, which in reverse is a follow of a few pixels or nothing at all — so a message you just posted still animates in | `scrollTop` |
 | the user scrolls away from the edge | Pinned → Free | `updatePinnedEdge` finds neither edge within `EdgeEpsilon` (4px); on desktop the scroll a wheel away from the edge produced clears the pin outright, even inside the guard window — but only that scroll: a wheel that scrolls nothing (a chat that fits on screen, a scroller nested in a message) leaves the pin alone | — |
 | a `data-vl-hold` control is clicked or tapped | Pinned → Free, interactive anchor set | the clicked item is what the next render holds; `keep-edge` controls leave a pinned list alone; expires after 2s | — |
 | a `data-vl-hold` control marked `data-anchor="below"` | Pinned → Free, key-addressed screen anchor set | the first content item below the control keeps its rendered position; placed only by the render that inserts content directly above that item, however many unrelated renders land first | — |
@@ -525,7 +526,9 @@ for a quiet moment), and height (`ResizeObserver` → settle delay → transitio
 
 **Render.** `MutationObserver` → `onRenderBatch` → `applyRender`. The render index attribute and the
 render-state JSON are written in different Blazor batches, so a render only counts once the JSON's own
-index matches the attribute.
+index matches the attribute — and the JSON element is observed too (child list and character data),
+because it can land in a batch of its own with nothing else in the list changing; without that, a
+render rejected as incomplete waited for an unrelated mutation to be looked at again.
 
 1. snapshot the old keys, offsets, `chainStart` and heights;
 2. `rebuildItems` — observers attached and detached, height tracking updated, dropped keys purged; a
@@ -706,28 +709,41 @@ Two guards:
 
 #### The programmatic-scroll guard
 
-Every write the list makes stamps `lastProgrammaticScrollAt`. For `ProgrammaticScrollGuardMs`
-afterwards — **250ms on mobile, 100ms elsewhere** — `onScroll` ignores what it sees: the scroll a
-re-pin just wrote is not the user moving, and reading it as one would drop the very pin that produced
-it. Scroll events the page dispatched itself (`isTrusted === false`) are dropped outright.
+The scroll a re-pin, a jump or a resize clamp just wrote is not the user moving, and reading it as one
+would drop the very pin that produced it — and, since a user scroll also cancels a jump still waiting
+for animations, the navigation the user just asked for. The list has no timer of its own for this;
+it asks the controller, whose `isScrollWriteEcho` is the one rule for both: `scrollTo` and a viewport
+resize open `suppressUntil = now + 300ms` (`ProgrammaticScrollSuppressMs`), and inside that window a
+scroll event is the write's echo only while `scrollTop` still stands on `lastWrittenTop`, the value the
+synchronous write landed on. A smooth scroll lands over many frames and records no value, so its whole
+window counts. The controller itself uses the same predicate to ignore a boundary crossing of its own
+making; its speed estimate simply pauses for the window. Scroll events the page dispatched itself
+(`isTrusted === false`) are dropped outright.
 
-`ScrollController` keeps its own, separate window: `scrollTo` and a viewport resize set
-`suppressUntil = now + 300ms` (`ProgrammaticScrollSuppressMs`), during which the controller neither
-updates its speed estimate nor treats a boundary crossing as a gesture.
+The read-back is what a time-only guard could not do: the list used to keep a separate
+`lastProgrammaticScrollAt` window (250ms on mobile, 100ms elsewhere), which missed corrections that
+bypassed `setScrollOffset` — the controller's resize clamp erased a pending navigation — and swallowed
+a user scroll that began right after a jump, so the jump it should have cancelled ran anyway. A swipe
+that begins inside the window is recognised the moment it moves the position; it used to trap the
+view at the bottom during live transcription, when a write per settle kept a window open almost
+continuously.
 
-The guard also suppresses `updatePinnedEdge`, so a user swipe that begins inside a guard window does
-not clear the pin. That used to trap the view at the bottom during live transcription, because there
-was a scroll write per settle and therefore a guard window open almost continuously.
-
-The follow writes `scrollTop` again — and deliberately does **not** open that window, because it would
+The follow writes `scrollTop` again — and deliberately does **not** open the window, because it would
 never close. It is recognised the other way instead: `followBy` reports where the write landed, and
 the next scroll event standing on that exact value is dropped whole, while the first event anywhere
-else is the user's. So the guard proper is only open after a genuine jump — opening a chat, a
-`scrollToKey`, a re-centre — where suppressing the handler is what we want. A wheel away from the edge
-remains the escape hatch on desktop: `onWheel` only notes it, and the scroll it produces inside
-`WheelAwayWindowMs` (300ms) drops the pin whatever the guard says. Noting rather than dropping is what
+else is the user's. So the window proper is only open after a genuine jump — opening a chat, a
+`scrollToKey`, a re-centre — or a resize.
+
+A wheel is the user's whatever the read-back says: a precise wheel near a limit is driven by the
+controller through `followBy`, so its scroll lands exactly on `lastWrittenTop` and would read as an
+echo. `onWheel` only notes the wheel and its direction (`lastWheelAt`, `isLastWheelAway`), and the
+scroll it produces inside `WheelWindowMs` (300ms) is treated as the user's; when the wheel was away
+from the pinned edge it also drops the pin outright, since the position it lands on may still read as
+the edge. Any other wheel re-derives the pin as a scroll normally does, so wheeling to the end of an
+unpinned chat pins it on arrival, animations or not. Noting rather than acting in `onWheel` is what
 keeps a wheel that scrolls nothing — a chat that fits on screen, a scroller nested in a message — from
-leaving the list unpinned with nothing to put the pin back until the next render's clamp.
+leaving the list unpinned, or its navigation cancelled, with nothing to put either back until the next
+render's clamp.
 
 #### Stranded recovery
 
@@ -2075,7 +2091,7 @@ controller, no model beyond arithmetic, spacers that cover the unloaded ranges e
 scrollbar, and one `scrollTop` writer.*
 
 **What it shares**, all of it in `virtual-list.ts`: the Blazor round trip (a `MutationObserver` on the
-render index and the container, the render-state JSON parsed only when its index matches the attribute,
+render index, the container and the render-state JSON, the JSON parsed only when its index matches the attribute,
 `RequestData` out, `UpdateItemVisibility` back, the request guard with its 2.5s timeout and 1s retry),
 the DOM handles (wrapper, container, both spacers), and the initial reveal.
 

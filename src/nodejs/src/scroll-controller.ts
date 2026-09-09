@@ -172,6 +172,7 @@ export class ScrollController {
         return this.isTouching;
     }
 
+    /** Whether a scroll event now would be the echo of this controller's own last write. */
     public get isScrollWriteEcho(): boolean {
         return performance.now() < this.suppressUntil
             && (this.lastWrittenTop == null
