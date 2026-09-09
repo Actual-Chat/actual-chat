@@ -26,7 +26,7 @@
 }
 
 <OnUIEvent TEvent="@CameraSelectedEvent" Handler="OnCameraSelectedEvent"/>
-<div class="chat-audio-panel">
+<div class="chat-audio-panel" data-children="audio-panel-header record-on record-on-btn">
     @if (IsNarrow && showHeader) {
         <div class="audio-panel-header" data-child="audio-panel-header">
             <div class="c-left">
@@ -147,7 +147,7 @@
             selectedCameraDeviceId);
     }
 
-    // Nested classes
+    // Nested types
 
     public sealed record Model(
         ChatAudioState? AudioState,

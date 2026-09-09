@@ -11,13 +11,13 @@
     var showTypeBadge = m.TypeFilter != SearchTypeFilter.Anything;
 }
 
-<div class="left-chat-search-input @cls @placeCls">
+<div class="left-chat-search-input @cls @placeCls" data-child="@(m.IsOpen ? "search open-search" : "search")">
     <Hotkey Keys="ctrl+f" AriaLabel="@L.Common_Search" OnTrigger="OnSearchHotkey"/>
     @if (m.IsOpen) {
         <Hotkey Keys="escape" AriaLabel="@L.Search_CloseSearch" OnTrigger="@(() => OnClick(false))"/>
     }
     <div class="c-search">
-        <div class="search-input">
+        <div class="search-input" data-children="close-btn focused-input">
             <label>
                 <TextInput
                     @ref="_inputRef"
@@ -37,18 +37,17 @@
                     data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
                     <i class="icon-options-2 text-xl"></i>
                 </HeaderButton>
-
                 <ButtonRound Click="@OnSearchButtonClick" Class="c-ai-btn search-btn btn-transparent">
                     <i class="icon-search text-xl"></i>
                 </ButtonRound>
-                <HeaderButton Click="@OnCloseClick" Class="c-close-btn">
+                <HeaderButton Click="@OnCloseClick" Class="c-close-btn" data-child="close-btn">
                     <i class="icon-close text-2xl"></i>
                 </HeaderButton>
             </label>
         </div>
     </div>
     @if (m.IsOpen && (showLocationBadge || showTypeBadge)) {
-        <div class="c-filter-badges">
+        <div class="c-filter-badges" data-child="search-badges">
             @if (showLocationBadge) {
                 <SearchFilterBadge
                     Text="@LocationBadgeText(m.LocationFilter)"
@@ -64,8 +63,8 @@
 </div>
 
 @code {
-    TextInput? _inputRef;
-    bool _hasText;
+    private TextInput? _inputRef;
+    private bool _hasText;
 
     private SearchUI SearchUI => Hub.SearchUI;
     private NavbarUI NavbarUI => Hub.NavbarUI;
@@ -99,12 +98,13 @@
         var typeFilter = await SearchUI.TypeFilter.Use(cancellationToken).ConfigureAwait(false);
         var initialText = SearchUI.Text.Value; // .Value instead of .Use() is intentional here (AY: why?)
         _hasText = !initialText.IsNullOrEmpty();
+
         return new Model(isOpen, initialText, locationFilter, typeFilter);
     }
 
     private void OnClick(bool openPanel) {
         if (!openPanel) {
-            Cancel();
+            _ = Cancel();
             // Escape and Ctrl+F close it while the input still holds focus, so clicking the field
             // again is no focus change and OnFocus - the only thing that reopens it - never fires.
             _ = _inputRef?.Blur();

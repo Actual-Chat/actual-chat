@@ -49,7 +49,7 @@ thin-left-panel-skeleton {
     --button-margin-left: 0px;
     --button-margin-right: 0px;
 }
-.page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) thin-left-panel-skeleton {
+.page-with-header-and-footer[data-has-right-panel-open] thin-left-panel-skeleton {
     @apply md:w-24 lg:w-16 xl:w-24;
 }
 thin-left-panel-skeleton .button {
@@ -108,10 +108,10 @@ body.narrow .wide-left-panel-skeleton:has(.inaccessible-place-request) {
 }
 
 /* Chat Panel Skeleton */
-.layout-body:has(.chat-panel-skeleton) {
+.layout-body[data-has-chat-panel-skeleton] {
     scrollbar-width: none;
 }
-.layout-body:has(.chat-panel-skeleton)::-webkit-scrollbar {
+.layout-body[data-has-chat-panel-skeleton]::-webkit-scrollbar {
     display: none;
 }
 .chat-panel-skeleton {

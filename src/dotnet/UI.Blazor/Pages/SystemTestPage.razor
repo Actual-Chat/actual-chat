@@ -7,7 +7,7 @@
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>System Test Page</MainHeader>
 
-<div class="test-page-wrapper">
+<div class="test-page-wrapper" data-child="test-page">
 <p>HostId: <b>@(HostId)</b></p>
 <p>App kind: <b>@(HostInfo.HostKind)</b></p>
 <p>Host roles: <b>@(HostInfo.Roles.ToDelimitedString())</b></p>

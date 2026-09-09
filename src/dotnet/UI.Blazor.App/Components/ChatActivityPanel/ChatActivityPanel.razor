@@ -15,11 +15,16 @@
     var isActive = m.IsAnyoneTalking;
     var iconMode = m.HasRemoteStreams ? "video" : "audio";
     var cls = isListening ? " listening" : "";
-    if (m.HasRemoteStreams)
+    var childNames = isListening ? "listening-activity" : "";
+    if (m.HasRemoteStreams) {
         cls += " video-streaming";
+        childNames += " video-streaming";
+    }
     // not-participating is the narrow "join muted" bordered-box affordance
     if (m.CanJoinCall)
         cls += " not-participating";
+    else
+        childNames += " participating-activity";
     if (isWatchingHere)
         cls += " watching";
     var joinButtonText = L.Call_JoinMuted;
@@ -27,7 +32,7 @@
 
 <div @ref="Ref"
      class="chat-activity-panel @cls"
-     data-child="@(isListening ? "listening-activity" : null)"
+     data-child="@(childNames.Length != 0 ? childNames : null)"
      role="button"
      tabindex="0"
      @onclick:preventDefault="true"

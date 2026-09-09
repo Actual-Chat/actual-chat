@@ -3,7 +3,8 @@
 <IsolateRerender>
     <BaseLayout>
         <Body>
-            <PageWithHeaderAndFooter @key="@Key" Class="@MiddlePanelClass" BodyClass="@BodyClass">
+            <PageWithHeaderAndFooter @key="@Key"
+                Class="@MiddlePanelClass" Child="@MiddlePanelChild" BodyClass="@BodyClass">
                 <LeftDrawer><RenderSlot Name="@LayoutSlots.MainLeftDrawer"/></LeftDrawer>
                 <Header><RenderSlot Name="@LayoutSlots.MainHeader"/></Header>
                 <SubHeader><RenderStack Name="@LayoutSlots.SubHeader"/></SubHeader>
@@ -22,5 +23,6 @@
     private static readonly object Key = new();
 
     public string MiddlePanelClass { get; set; } = "default-layout";
+    public string MiddlePanelChild { get; set; } = "";
     public string BodyClass { get; set; } = "";
 }

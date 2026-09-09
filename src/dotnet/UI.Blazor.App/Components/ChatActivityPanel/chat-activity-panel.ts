@@ -5,6 +5,9 @@ import { DocumentEvents, tryPreventDefaultForEvent } from 'event-handling';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { CompactLayout } from 'compact-layout';
 import { Disposables } from 'disposable';
+import { PresenceTracker } from 'presence-tracker';
+
+const PinnedChild = 'header-pinned';
 
 // Wrapper height (the only animated element for collapse/expand)
 const WRAPPER_HEIGHT_REM = 3.5; // h-14
@@ -146,7 +149,10 @@ export class ChatActivityPanel {
 
         // Blazor calls dispose() even when init bailed out above on a missing header
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        this.header?.classList.remove('expanded', 'collapsed', 'pinned');
+        if (this.header) {
+            this.header.classList.remove('expanded', 'collapsed', 'pinned');
+            this.setPinnedName(false);
+        }
         this.disposed$.next();
         this.disposed$.complete();
     }
@@ -192,16 +198,25 @@ export class ChatActivityPanel {
         this.isPinned = true;
         this.expand();
         this.header.classList.add('pinned');
+        this.setPinnedName(true);
     }
 
     public unpin() {
         this.isPinned = false;
         this.header.classList.remove('pinned');
+        this.setPinnedName(false);
         this.collapse();
     }
 
     public getState() { return this.state; }
     public setLockUntil(value: number) { this.lockUntil = value; }
+
+    // Private methods
+
+    // The presence name .list-view-layout counts for `pinned`.
+    private setPinnedName(isPinned: boolean): void {
+        PresenceTracker.setChild(this.header, PinnedChild, isPinned);
+    }
 }
 
 // Gesture: Drag activity panel down to expand/pin, drag up to unpin.

@@ -158,7 +158,7 @@ body.narrow .narrow-panel .post-panel .c-right-buttons .c-incut {
 body.narrow .post-panel .message-input a {
     @apply text-post-panel-text;
 }
-.ac-bubble-host:has(.ac-bubble) + .base-layout .post-panel .message-input {
+.ac-bubble-host[data-has-bubble] + .base-layout .post-panel .message-input {
     @apply pointer-events-none;
 }
 .post-panel .message-input-label {

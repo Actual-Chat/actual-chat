@@ -73,6 +73,6 @@ body.narrow .markup-editor .editor-content .editor-mention-user {
 body.narrow .markup-editor > .c-placeholder {
     @apply text-text-1;
 }
-.markup-editor:has(.editor-content.has-content) > .c-placeholder {
+.markup-editor[data-has-editor-content] > .c-placeholder {
     @apply hidden;
 }

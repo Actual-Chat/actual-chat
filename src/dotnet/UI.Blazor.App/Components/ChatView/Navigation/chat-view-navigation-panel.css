@@ -15,7 +15,7 @@ body.hoverable .chat-view-navigation-panel > .c-content {
     @apply right-0;
     @apply p-3 pl-8;
 }
-body.narrow:has(.audio-panel-header) .chat-view-navigation-panel > .c-content {
+body.narrow[data-has-audio-panel-header] .chat-view-navigation-panel > .c-content {
     @apply bottom-18;
 }
 

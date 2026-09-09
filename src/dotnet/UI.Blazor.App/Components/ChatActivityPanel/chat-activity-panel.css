@@ -182,7 +182,7 @@ body.narrow .c-film-strip {
 /* Clip the film strip poking above the header, but keep the bottom open so the
    video panel's drag handle (top: 100%) isn't cut off - overflow: hidden would
    clip both ends. */
-body.narrow .layout-header:has(.video-streaming) {
+body.narrow .layout-header[data-has-video-streaming] {
     clip-path: inset(0 0 -100vh 0);
 }
 /* Hide film strip when watching — it advertises "video is streaming", which
