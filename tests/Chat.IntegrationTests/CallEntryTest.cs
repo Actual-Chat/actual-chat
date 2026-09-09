@@ -1,3 +1,4 @@
+using ActualChat.Chat.Module;
 using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
@@ -8,6 +9,301 @@ namespace ActualChat.Chat.IntegrationTests;
 public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
+    [Fact]
+    public async Task CanceledRingShouldWriteOneCanceledEntry()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // act
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.CancelCall(chatId, bob.Id, default);
+
+        // assert
+        var caller = await tester.GetAuthor(bob.Id);
+        var entries = await ReadCallEntries(tester, chatId);
+        entries.Should().ContainSingle();
+        entries[0].Outcome.Should().Be(CallOutcome.Canceled);
+        entries[0].CallerId.Should().Be(bob.Id);
+        entries[0].CallerName.Should().Be(caller!.Avatar.Name);
+        entries[0].InviteeIds.Should().Equal(alice.Id);
+        entries[0].HasVideo.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeclinedThenCanceledCallShouldStayDeclined()
+    {
+        // The outcome is first-writer-wins: the decline is the call's story, and the caller's
+        // hang-up right after it must not rewrite that into Canceled.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // act
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.DeclineCall(chatId, alice.Id, default);
+        await backend.CancelCall(chatId, bob.Id, default);
+
+        // assert
+        var entries = await ReadCallEntries(tester, chatId);
+        entries.Should().ContainSingle();
+        entries[0].Outcome.Should().Be(CallOutcome.Declined);
+    }
+
+    [Fact]
+    public async Task AFailedCallShouldLeaveNoLiveActivityBehind()
+    {
+        // The caller is registered as a recorder the moment they dial, so that the ring keeps the
+        // session alive. Once the call is over that registration must be gone from every signal the
+        // chat list and the call button read - otherwise a call nobody answered reads as "talking"
+        // and the button stays hidden. The banner is not part of this: it lives on its own TTL.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = (LiveSessionsBackend)tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var front = tester.AppServices.GetRequiredService<ILiveSessions>();
+        var session = tester.Session;
+
+        // act
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.DeclineCall(chatId, alice.Id, default);
+
+        // assert
+        (await backend.GetState(chatId, default)).Should().BeNull();
+        (await front.HasRecorder(session, chatId, default)).Should().BeFalse();
+        (await front.GetAudioStreamingAuthorIds(session, chatId, default)).Should().BeEmpty();
+        (await front.GetCallStatus(session, chatId, default)).Should().Be(CallStatus.Declined);
+
+        // act - the caller's own hang-up has to leave the same clean slate
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.CancelCall(chatId, bob.Id, default);
+
+        // assert
+        (await backend.GetState(chatId, default)).Should().BeNull();
+        (await front.HasRecorder(session, chatId, default)).Should().BeFalse();
+        (await front.GetAudioStreamingAuthorIds(session, chatId, default)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ConcurrentClosersShouldWriteOneEntryPerCall()
+    {
+        // Two closers can decide the same call is over at the same instant - the caller's hang-up and
+        // the session finalizer behind the summary flow - and both are expected to be safe. Observed
+        // failure: one call left two identical entries 18ms apart, written from different threads.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = (LiveSessionsBackend)tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // act - the offset between the two closers is swept rather than left to chance: the window
+        // is only as wide as a couple of Redis round trips, and starting both at once never lands in it.
+        var callCount = 0;
+        for (var offsetMs = 0; offsetMs <= 20; offsetMs++) {
+            callCount++;
+            await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+            var hangUp = Task.Run(async () =>
+                await backend.CancelCall(chatId, bob.Id, default).ConfigureAwait(false));
+            await Task.Delay(offsetMs);
+            var finalize = Task.Run(async () =>
+                await backend.FinalizeSession(chatId, default).ConfigureAwait(false));
+            await Task.WhenAll(hangUp, finalize);
+        }
+
+        // assert
+        var entries = await ReadCallEntries(tester, chatId);
+        entries.Should().HaveCount(callCount);
+    }
+
+    [Fact]
+    public async Task AnsweredCallShouldWriteEndedAndMaterializeACallConversation()
+    {
+        // The case the whole Ended outcome exists for: transcription is off, so nothing else would
+        // remain in the chat once the session closes. The live state is read while the call is still
+        // connected because it names the conversation and the close drops it.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
+
+        // act
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), true, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+        var connected = await backend.GetState(chatId, default);
+        connected.Should().NotBeNull();
+        await backend.LeaveCall(chatId, alice.Id, default);
+
+        // assert
+        var entries = await ReadCallEntries(tester, chatId);
+        entries.Should().ContainSingle();
+        entries[0].Outcome.Should().Be(CallOutcome.Ended);
+        entries[0].CallerId.Should().Be(bob.Id);
+        entries[0].HasVideo.Should().BeTrue();
+
+        var conversation = await conversations.Get(connected!.ToMaterializedConversation().Id, default);
+        conversation.Should().NotBeNull();
+        conversation!.IsCall.Should().BeTrue();
+        // Nothing was said, so there is nothing to expand into: the card is the whole of it.
+        conversation.MessageCount.Should().Be(0);
+        conversation.IsExpandedByDefault.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ACallConversationShouldExpandByDefaultOnlyWhileItIsShort()
+    {
+        // A call is never summarized, so the tier the summary flow would have picked has to be
+        // computed at materialization instead - from the same thresholds, so the two can't drift.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
+        var settings = tester.AppServices.GetRequiredService<ChatSettings>().Summarization;
+        var longLine = string.Join(' ', Enumerable.Repeat("word", 1 + settings.MinConversationWords / 10));
+
+        // act - a short call
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+        var shortCall = await backend.GetState(chatId, default);
+        await tester.CreateTextEntry(chatId, "hi");
+        await tester.CreateTextEntry(chatId, "hi back");
+        await backend.LeaveCall(chatId, alice.Id, default);
+
+        // assert
+        var shortConversation = await conversations.Get(shortCall!.ToMaterializedConversation().Id, default);
+        shortConversation!.MessageCount.Should().Be(2);
+        shortConversation.IsExpandedByDefault.Should().BeTrue();
+
+        // act - a long one: both thresholds have to be crossed, the rule ORs them
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+        var longCall = await backend.GetState(chatId, default);
+        for (var i = 0; i < settings.MinConversationEntries; i++)
+            await tester.CreateTextEntry(chatId, longLine);
+        await backend.LeaveCall(chatId, alice.Id, default);
+
+        // assert
+        var longConversation = await conversations.Get(longCall!.ToMaterializedConversation().Id, default);
+        longConversation!.MessageCount.Should().Be(settings.MinConversationEntries);
+        longConversation.IsExpandedByDefault.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AnsweredCallInterruptedByAMessageShouldMaterializeARangeAroundItsEntry()
+    {
+        // A message written between the ring and the answer pushes VisibleStartLid (set at the latch)
+        // past EndEntryLid, which only a summary ever advances and a transcription-off call never gets.
+        // The resulting range runs backwards, and a degenerate one drops both the card and the Ended
+        // entry it anchors - the call disappears from the chat entirely.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
+
+        // act
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await tester.CreateTextEntry(chatId, "can't talk right now");
+        await backend.AcceptCall(chatId, alice.Id, default);
+        var connected = await backend.GetState(chatId, default);
+        connected.Should().NotBeNull();
+        await backend.LeaveCall(chatId, alice.Id, default);
+
+        // assert
+        var entries = await ReadCallEntries(tester, chatId);
+        entries.Should().ContainSingle();
+        entries[0].Outcome.Should().Be(CallOutcome.Ended);
+
+        var conversation = await conversations.Get(connected!.ToMaterializedConversation().Id, default);
+        conversation.Should().NotBeNull();
+        conversation!.EntryLidRange.Contains(entries[0].LocalId).Should()
+            .BeTrue("the card must cover the entry that is the call's only row");
+    }
+
+    [Fact]
+    public async Task CallerHangingUpAnAnsweredCallShouldBeEndedNotCanceled()
+    {
+        // CancelCall is also the caller's hang-up, so a connected call reaches the close with
+        // Canceled recorded on it. The split is decided by SessionStartedAt, not by that outcome.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // act
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+        await backend.CancelCall(chatId, bob.Id, default);
+        (await backend.GetState(chatId, default))!.Outcome.Should().Be(CallOutcome.Canceled);
+        await backend.LeaveCall(chatId, alice.Id, default);
+
+        // assert
+        var entries = await ReadCallEntries(tester, chatId);
+        entries.Should().ContainSingle();
+        entries[0].Outcome.Should().Be(CallOutcome.Ended);
+    }
+
+    [Fact]
+    public async Task ClaimedCloseShouldTearDownEvenWhenItsTokenIsCanceled()
+    {
+        // FinalizeSession is the one close path carrying a revocable token - it comes from
+        // LiveConversationSummaryFlow, whose step token dies on a timeout or a shutdown. By then the
+        // claim that elects a single closer has already dropped the session key, so nothing retries:
+        // the teardown has to survive the very cancellation that interrupted it.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+        // Nobody is recording any more, so FinalizeSession gets past its own liveness guard.
+        await backend.SetParticipation(chatId, bob.Id, ParticipationKind.AudioListen, true, default);
+        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.AudioListen, true, default);
+
+        // act
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+        await backend.FinalizeSession(chatId, cts.Token).SilentAwait(false);
+
+        // assert - the next call in this chat starts with its caller alone, not with the ghosts of
+        // the one that was torn down
+        await backend.StartCall(chatId, bob.Id, ApiArray<AuthorId>.Empty, false, default);
+        await ComputedTest.When(async ct => {
+            var participants = await backend.ListParticipants(chatId, ct);
+            participants.Should().Equal(bob.Id);
+        }, TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task GroupCallShouldWriteNoEntry()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.GetOwnAuthor(chatId);
+        author.Should().NotBeNull();
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // act
+        await backend.StartCall(chatId, author!.Id, ApiArray<AuthorId>.Empty, false, default);
+        await backend.CancelCall(chatId, author.Id, default);
+
+        // assert
+        (await ReadCallEntries(tester, chatId)).Should().BeEmpty();
+    }
+
     [Fact]
     public async Task OldPeerNewsShouldFallBackToThePreviousReadableEntry()
     {
@@ -114,4 +410,12 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         return await tester.CreateTextEntry(chatId, text);
     }
 
+    private static async Task<IReadOnlyList<CallEntry>> ReadCallEntries(IWebTester tester, ChatId chatId)
+    {
+        var chats = tester.AppServices.GetRequiredService<IChats>();
+        var entries = await chats.ReadReverse(tester.Session, chatId, default)
+            .Take(50)
+            .ToListAsync();
+        return entries.OfType<CallEntry>().ToList();
+    }
 }

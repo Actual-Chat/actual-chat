@@ -274,15 +274,18 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (newConversation.EntryLidRange.Start != originalConversation.EntryLidRange.Start)
                 throw StandardError.Constraint("EntryRange.Start can't be changed.");
 
-            // Validation
-            if (newConversation.Title.IsNullOrEmpty())
-                throw StandardError.Constraint("Conversation title cannot be empty.");
-            if (newConversation.Description.IsNullOrEmpty())
-                throw StandardError.Constraint("Conversation description cannot be empty.");
-            if (newConversation.Summary.IsNullOrEmpty())
-                throw StandardError.Constraint("Conversation summary cannot be empty.");
-            if (newConversation.MessageCount <= 0)
-                throw StandardError.Constraint("Conversation message count should be greater than zero.");
+            // Validation - a call is exempt from all of it: nothing summarizes a call, so it has
+            // neither the summarizer's three texts nor any message of its own to count.
+            if (!newConversation.IsCall) {
+                if (newConversation.Title.IsNullOrEmpty())
+                    throw StandardError.Constraint("Conversation title cannot be empty.");
+                if (newConversation.Description.IsNullOrEmpty())
+                    throw StandardError.Constraint("Conversation description cannot be empty.");
+                if (newConversation.Summary.IsNullOrEmpty())
+                    throw StandardError.Constraint("Conversation summary cannot be empty.");
+                if (newConversation.MessageCount <= 0)
+                    throw StandardError.Constraint("Conversation message count should be greater than zero.");
+            }
 
             return newConversation;
         }
