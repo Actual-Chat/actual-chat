@@ -40,14 +40,11 @@ It exists only where `window.debugUI` does — `DebugUI` is resolved only when t
 host is not a production instance (`AppScopedServiceStarter.cs`), so nothing here
 is reachable in production. It adds no code to the chat editor itself.
 
-**It drives the DOM, not the `ChatMessageEditor` JS object.** That object turned
-out to be disposed once the app switches from the server-rendered phase to
-WebAssembly, and is not recreated — the on-screen editor keeps working because
-`MarkupEditor`'s own listeners and the file picker's `change` handler stay live,
-but anything holding the `ChatMessageEditor` instance is holding a corpse. So
-`send` writes a text node and dispatches `Enter`, and `attach` sets `files` on the
-real `<input type=file>` and dispatches `change` — the two entry points that are
-demonstrably alive.
+**It drives the DOM, not the `ChatMessageEditor` JS object.** `send` writes a text
+node and dispatches `Enter`, `attach` sets `files` on the real `<input type=file>`
+and dispatches `change` — the same entry points a keystroke and a file pick use, so
+a scenario fails wherever a human would. Calling the instance's own methods would
+skip exactly the wiring most bugs live in.
 
 ## What it does not do
 

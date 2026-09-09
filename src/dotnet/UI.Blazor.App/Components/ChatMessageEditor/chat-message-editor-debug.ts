@@ -13,8 +13,7 @@ export interface DebugAttachment {
 
 // Console surface: `debugUI.fake.*` — writes a message and attaches files without a
 // human at the keyboard. It drives the DOM rather than the ChatMessageEditor instance
-// on purpose: that instance is disposed once the app switches to WebAssembly, while
-// the editor's own listeners stay live.
+// so a scenario exercises the same path a keystroke and a file pick take.
 export function initChatEditorDebugConsole(): void {
     registerDebugSurface('fake', {
         send: sendMessage,
