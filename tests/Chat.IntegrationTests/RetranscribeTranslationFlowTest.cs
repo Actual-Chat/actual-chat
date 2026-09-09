@@ -154,40 +154,6 @@ public sealed class RetranscribeTranslationCollection : ICollectionFixture<Retra
             });
 }
 
-// Deterministic translator: prefixes the source so the stored translation reveals which
-// transcript (realtime vs refined) it was derived from.
-sealed file class FakeTranslator(IServiceProvider services, string serviceKey = Constants.Translation.ServiceKey)
-    : Translator(services, serviceKey)
-{
-    public const string Prefix = "T:";
-    public static bool MustFailRealtime { get; set; }
-    private bool IsRealtime { get; } = serviceKey == Constants.Translation.RealtimeServiceKey;
-
-    public static void Reset()
-        => MustFailRealtime = false;
-
-    public override Task<string> Translate(
-        string textToTranslate,
-        Language targetLanguage,
-        TranslationResult[] context,
-        string? contextHint = null,
-        CancellationToken cancellationToken = default)
-        => MustFailRealtime && IsRealtime
-            ? Task.FromException<string>(StandardError.External("Realtime translation failed."))
-            : Task.FromResult(Prefix + textToTranslate);
-
-    public override async IAsyncEnumerable<StringDiff> Stream(
-        string textToTranslate,
-        Language targetLanguage,
-        TranslationResult[] context,
-        string? contextHint = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        await Task.CompletedTask.ConfigureAwait(false);
-        yield return StringDiff.New(Prefix + textToTranslate, "");
-    }
-}
-
 sealed file class FakeOfflineTranscriber : IOfflineTranscriber
 {
     public TranscriberInfo Info { get; } = new() {

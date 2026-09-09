@@ -23,6 +23,25 @@ public class AlphabetLanguageDetectorTest(ITestOutputHelper @out) : TestBase(@ou
     }
 
     [Theory]
+    [InlineData("Привет", "Hello", "ru-RU", true)]
+    [InlineData("Привет", "Привет!", "ru-RU", false)]
+    [InlineData("Hello", "Привет, **Bob**!", "ru-RU", false)]
+    [InlineData("Hello", "Привет", "en-US", true)]
+    [InlineData("Hola", "Hello", "en-US", false)]
+    [InlineData("Hello", "こんにちは", "ja-JP", false)]
+    [InlineData("Hello", "Hello", "ja-JP", false)]
+    [InlineData("123", "Hello", "ru-RU", false)]
+    [InlineData("Привет", "", "ru-RU", false)]
+    public void ShouldDetectScriptMismatch(string source, string translation, string targetId, bool expected)
+    {
+        // act
+        var isMismatch = AlphabetLanguageDetector.IsScriptMismatch(source, translation, Language.Parse(targetId));
+
+        // assert
+        isMismatch.Should().Be(expected);
+    }
+
+    [Theory]
     [InlineData("Hello, Привет!", "en-US", "ru-RU")]
     [InlineData("привет hello", "en-US", "ru-RU")]
     [InlineData("Hello こんにちは 你好", "en-US", "ja-JP", "zh-CN")]
