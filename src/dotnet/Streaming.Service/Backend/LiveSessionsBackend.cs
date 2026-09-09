@@ -986,7 +986,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     // sees "missed" and can hang up). Fired observation-independently from GetState's self-heal.
     // A dialing call is finalized here even when no invite is left to expire — a ring can vanish via
     // its RingTtl before this catches it, and the call must still reach an outcome rather than linger.
-    private async Task ExpireRings(ChatId chatId)
+    // Internal rather than private so a test can drive it directly, without a real ring timeout.
+    internal async Task ExpireRings(ChatId chatId)
     {
         try {
             ConversationId? conversationId = null;
@@ -1020,18 +1021,34 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 // The lock is retaken here because SetOutcome rewrites the whole state from the snapshot
                 // read right above it: an AcceptCall latching in between would be silently reverted, and
                 // the call would close as NoAnswer with no conversation despite having connected.
+                // IsCallAbandoned above reads Redis without the lock, so it can catch AcceptCall's own
+                // locked section mid-flight (invite already Accepted, participant not yet registered) and
+                // come back true for a call that fully connects a moment later. shouldClose is decided
+                // from this same fresh, locked read, so a call that got there before us keeps running
+                // instead of being torn down right after the client sees it connect.
+                var shouldClose = false;
                 using (Computed.BeginIsolation())
                 using (await _changeLocks.Lock(chatId, CancellationToken.None).ConfigureAwait(false)) {
                     // Only a still-dialing call gets a "no answer" - a connected one that emptied out just closes.
-                    if (await SafeGet(chatId).ConfigureAwait(false) is { IsDialing: true } current
+                    var freshState = await SafeGet(chatId).ConfigureAwait(false);
+                    if (freshState is { IsDialing: true } current
                         && await SafeGetCallState(chatId).ConfigureAwait(false)
                             is null or { Status: CallStatus.Dialing }) {
+                        shouldClose = true;
                         await SetCallState(chatId, NewCallState(current, CallStatus.NoAnswer)).ConfigureAwait(false);
                         await SetOutcome(chatId, current, CallOutcome.NoAnswer).ConfigureAwait(false);
                     }
+                    else if (freshState is not null)
+                        // The unlocked check above read this call as abandoned, but it wasn't - flag it
+                        // so a near-miss here is visible if this class of race ever fires for real.
+                        Log.LogWarning(
+                            "ExpireRings: abandon check for chat #{ChatId} was stale - "
+                            + "call is already {Kind} (SessionStartedAt={SessionStartedAt}), not closing",
+                            chatId, freshState.Kind, freshState.SessionStartedAt);
                 }
                 // Outside the lock: CloseCall reaches Close, which takes the same non-reentrant lock.
-                await CloseCall(chatId).ConfigureAwait(false);
+                if (shouldClose)
+                    await CloseCall(chatId).ConfigureAwait(false);
             }
         }
         catch (Exception e) when (e is not OperationCanceledException) {
