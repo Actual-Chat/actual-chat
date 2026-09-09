@@ -3,7 +3,7 @@
 @implements IAsyncDisposable
 @using ActualChat.UI.Blazor.App.Module
 
-<div @ref="Ref" id="@Id" class="@Class markup-editor">
+<div @ref="Ref" id="@Id" class="@Class markup-editor" data-children="editor-content">
     <div class="c-placeholder">@Placeholder</div>
     <div class="editor-content @ContentClass"
          enterkeyhint="enter"
@@ -145,6 +145,7 @@
     public async Task<string> ParseTextToHtml(string text) {
         if (text.IsNullOrEmpty())
             return "";
+
         var markup = MarkupParser.Parse(text);
         markup = await MentionResolver.Apply(markup, default).ConfigureAwait(false);
         return HtmlConverter.Format(markup);

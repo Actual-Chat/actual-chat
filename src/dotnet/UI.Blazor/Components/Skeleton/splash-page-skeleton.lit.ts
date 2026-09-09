@@ -12,11 +12,11 @@ export class SplashPageSkeleton extends LitElement {
 
     protected render(): unknown {
         // The app restores the stored right panel only on a wide screen - see RightPanel's constructor.
-        // Rendering it as open in narrow mode would also shrink the left panel via the :has() rule in side-nav.css.
+        // Rendering it as open in narrow mode would also shrink the left panel via right-panel-open in side-nav.css.
         const isRightPanelOpen = this.isRightPanelVisible === 'true'
             && !document.body.classList.contains('narrow');
         return html`
-            <div class="page-with-header-and-footer">
+            <div class="page-with-header-and-footer" data-children="right-panel-open chat-panel-skeleton">
 <!--                Left Panel -->
                 <div class="left-panel-skeleton side-nav side-nav-left">
                     <div class='left-panel'>
@@ -39,7 +39,7 @@ export class SplashPageSkeleton extends LitElement {
                     </div>
                 </div>
 <!--                Chat Panel -->
-                <div class="chat-panel-skeleton">
+                <div class="chat-panel-skeleton" data-child="chat-panel-skeleton">
                     <div class="chat-header-skeleton">
                         <div class="c-wrapper">
                             <div class="c-icon">
@@ -59,7 +59,8 @@ export class SplashPageSkeleton extends LitElement {
                 </div>
 <!--                Right Panel - a closed one is off-screen anyway, so it's simply left out -->
                 ${isRightPanelOpen ? html`
-                <div class="right-panel-skeleton side-nav side-nav-right" data-side-nav="open">
+                <div class="right-panel-skeleton side-nav side-nav-right"
+                     data-side-nav="open" data-child="right-panel-open">
                     <chat-side-panel-skeleton></chat-side-panel-skeleton>
                 </div>` : ''}
             </div>

@@ -1,7 +1,10 @@
 namespace ActualChat.UI.Blazor.App.Pages.Landing.Docs;
 
-public class DocsLayout : DefaultLayout
+public sealed class DocsLayout : DefaultLayout
 {
     public DocsLayout()
-        => MiddlePanelClass = "docs-layout";
+    {
+        MiddlePanelClass = "docs-layout";
+        MiddlePanelChild = "docs-layout";
+    }
 }

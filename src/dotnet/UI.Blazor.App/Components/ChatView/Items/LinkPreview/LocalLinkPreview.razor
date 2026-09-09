@@ -34,7 +34,7 @@
     var inChatSuffix = entry is null ? "" : L.LinkPreview_InChat_Suffix;
 }
 
-<div class="link-preview local-link unfocusable @cls">
+<div class="link-preview local-link unfocusable @cls" data-children="local-link-top">
     @if (showBg) {
         <div class="c-bg">
             <ChatIcon Chat="@chat" Size="SquareSize.SizeFull" IsSquare="@true" IsBlurred="@true"/>
@@ -61,16 +61,19 @@
                 AvatarKey="@place.Id.Value"/>
         }
     </div>
-    <div class="c-info">
+    <div class="c-info" data-children="local-link-top">
         @if (entry is not null) {
-            <div class="c-top">
-                @if (author != null) {
+            <div class="c-top" data-child="local-link-top">
+                @if (author is not null) {
                     <div class="c-author-header">
                         <AuthorName AuthorId="@author.Id" Class="chat-message-author-name"/>
                         <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
                     </div>
                 }
-                <a class="c-description" href="@url" @onclick:preventDefault="true" @onclick="NavigateToUrl">@entry.Content</a>
+                <a class="c-description"
+                   href="@url"
+                   @onclick:preventDefault="true"
+                   @onclick="NavigateToUrl">@entry.Content</a>
             </div>
 
             @if (entry.Attachments.Length > 0) {
@@ -97,7 +100,10 @@
                 <span>@inChatPrefix</span>
             }
             @if (user is not null) {
-                <a class="domain-link" href="@Data.LocalUrl.Value" @onclick:preventDefault="true" @onclick="NavigateToUrl">@user.Avatar.Name</a>
+                <a class="domain-link"
+                   href="@Data.LocalUrl.Value"
+                   @onclick:preventDefault="true"
+                   @onclick="NavigateToUrl">@user.Avatar.Name</a>
             } else if (chat is not null) {
                 var linkText = chat.Title;
                 if (place?.Id is not null)
@@ -105,9 +111,15 @@
 
                 var useDirectChatLink = entry is not null;
                 var chatLink = useDirectChatLink ? Links.Chat(chat.Id) : Data.LocalUrl;
-                <a class="domain-link" href="@chatLink" @onclick:preventDefault="true" @onclick="@(() => NavigateTo(chatLink))">@linkText</a>
+                <a class="domain-link"
+                   href="@chatLink"
+                   @onclick:preventDefault="true"
+                   @onclick="@(() => NavigateTo(chatLink))">@linkText</a>
             } else if (place is not null) {
-                <a class="domain-link" href="@Data.LocalUrl.Value" @onclick:preventDefault="true" @onclick="NavigateToUrl">@place.Title</a>
+                <a class="domain-link"
+                   href="@Data.LocalUrl.Value"
+                   @onclick:preventDefault="true"
+                   @onclick="NavigateToUrl">@place.Title</a>
             }
             @if (!inChatSuffix.IsNullOrEmpty()) {
                 <span>@inChatSuffix</span>

@@ -12,7 +12,8 @@
         @<div
              id="@menu.Id"
              @key="@menu.Id"
-             class="@(GetMenuCssClass(menu))">
+             class="@(GetMenuCssClass(menu))"
+             data-child="menu">
             <ul class="ac-menu-list" role="menu">
                 <DynamicComponent Type="@menu.Ref.MenuType" Parameters="@menu.Parameters"/>
             </ul>
@@ -20,7 +21,7 @@
     var menu = _menu;
 }
 
-<div class="ac-menu-host @(GetHostCssClass())" data-no-inert>
+<div class="ac-menu-host @(GetHostCssClass())" data-no-inert data-children="menu">
     <CascadingValue Value="@this" IsFixed="true">
         @if (IsOverlayVisible()) {
             <div class="ac-menu-overlay">

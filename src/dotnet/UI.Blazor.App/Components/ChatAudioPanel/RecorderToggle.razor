@@ -7,7 +7,9 @@
     _animator.State = m.IsRecordingHere;
     var hasMicrophonePermission = m.HasMicrophonePermission != false;
     var animatorClass = "record-" + _animator.Class;
-    var transitioningClass = m.IsTransitioning || m is { IsRecordingHere: true, IsConnected: false } ? "applying-changes" : "";
+    var transitioningClass = m.IsTransitioning || m is { IsRecordingHere: true, IsConnected: false }
+        ? "applying-changes"
+        : "";
     var permissionClass = hasMicrophonePermission ? "" : "mic-disabled";
     var status = m.Status;
     var tooltip = status.GetTooltip(L);
@@ -15,6 +17,7 @@
     var autoShowText = status.IsFailure ? tooltip : "";
     var recordingIconSize = ScreenSize.IsNarrow() ? 10 : 8;
     var recBtnCls = "rec-btn ";
+    var isRecordOnBtn = false;
     if (m is { IsAnyoneTalking: true, IsRecordingHere: false } && !IsListening) {
         recBtnCls += "take-phone-btn";
         animatorClass += " take-phone";
@@ -23,16 +26,26 @@
         animatorClass += " listen-only";
     } else if (m.IsRecordingHere) {
         recBtnCls += "record-on-btn";
+        isRecordOnBtn = true;
     } else
         recBtnCls += "record-off-btn";
     if (!hasMicrophonePermission) {
         recBtnCls = "mic-disabled";
         animatorClass = "";
         transitioningClass = "";
+        isRecordOnBtn = false;
     }
+    var isRecordOn = hasMicrophonePermission && _animator.Class == "on";
+    var recorderChild = (isRecordOnBtn, isRecordOn) switch {
+        (true, true) => "record-on-btn record-on",
+        (true, false) => "record-on-btn",
+        (false, true) => "record-on",
+        _ => null,
+    };
 }
 
 <div class="recorder-wrapper @permissionClass @animatorClass @transitioningClass @(Compact ? "compact" : "")"
+     data-child="@recorderChild"
      data-tooltip="@tooltip"
      data-tooltip-position="@(FloatingPosition.Top.ToPositionString())"
      data-tooltip-severity="@(severity.ToSeverityString())"
@@ -143,12 +156,14 @@
         var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
         var status = await ChatAudioUI.GetRecordingStatus(chatId, cancellationToken).ConfigureAwait(false);
         var recorderState = await AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
-        var hasMicrophonePermission = await AudioRecorder.MicrophonePermission.Cached.Use(cancellationToken).ConfigureAwait(false);
+        var hasMicrophonePermission = await AudioRecorder.MicrophonePermission.Cached
+            .Use(cancellationToken).ConfigureAwait(false);
         var isRecordingHere = recordingChatId == chatId;
         var isTransitioning =
             recordingChatId == chatId // The recorder records in this chat
             && recorderState.IsRecording != isRecordingHere; // AND it's state is not in sync with the expected one here
-        var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(false);
+        var isAnyoneTalking = await LiveStreamUI
+            .IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(false);
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
 
         return new (

@@ -541,10 +541,10 @@ body.hoverable .thread-list-item:hover {
     @apply whitespace-pre;
     @apply text-caption-1 text-pal-blue-30;
 }
-.thread-list-item .c-bottom .c-last-message .c-name:has(.non-shrinkable) {
+.thread-list-item .c-bottom .c-last-message .c-name[data-has-non-shrinkable] {
     @apply flex-none;
 }
-.thread-list-item .c-bottom .c-last-message .c-name:has(.shrinkable) {
+.thread-list-item .c-bottom .c-last-message .c-name[data-has-shrinkable] {
     @apply min-w-16;
 }
 .thread-list-item .c-bottom .c-last-message .c-colon {

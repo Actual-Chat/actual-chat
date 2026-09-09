@@ -163,7 +163,7 @@ body.narrow .message-link-preview .link-more-btn {
     @apply h-full;
 }
 /* Name-only local links (chat / place / user, no message body) center vertically. */
-.link-preview.local-link:not(:has(.c-top)) {
+.link-preview.local-link:not([data-has-local-link-top]) {
     @apply items-center;
 }
 /* Blurred chat icon background */
@@ -190,10 +190,10 @@ body.device-ios .link-preview.local-link > .c-bg {
     @apply gap-y-0.5;
     @apply pl-0 pr-2 py-1;
 }
-.link-preview.local-link .c-info:not(:has(.c-top)) {
+.link-preview.local-link .c-info:not([data-has-local-link-top]) {
     @apply justify-center;
 }
-.link-preview.local-link .c-info:not(:has(.c-top)) .c-domain {
+.link-preview.local-link .c-info:not([data-has-local-link-top]) .c-domain {
     @apply mt-0;
 }
 .link-preview.local-link .c-author-header {

@@ -805,10 +805,10 @@ body.narrow .chat-audio-panel .mobile-video-btn.btn-round i {
     @apply duration-150 ease-in-out;
     transition-property: background-color, opacity;
 }
-body.narrow .chat-message-editor:not(.narrow-panel, .text-mode) .chat-audio-panel:has(.audio-panel-header) .volume-settings-btn {
+body.narrow .chat-message-editor:not(.narrow-panel, .text-mode) .chat-audio-panel[data-has-audio-panel-header] .volume-settings-btn {
     @apply hidden;
 }
-body.narrow .chat-audio-panel:has(.record-on) .volume-settings-btn.btn.btn-round > .btn-content i {
+body.narrow .chat-audio-panel[data-has-record-on] .volume-settings-btn.btn.btn-round > .btn-content i {
     background: linear-gradient(180deg, var(--blue-55) -116.66%, var(--magenta-60) 66.08%);
     -webkit-background-clip: text;
     background-clip: text;
@@ -840,12 +840,12 @@ body.narrow .volume-settings-btn.text::before {
     @apply bg-mobile-landscape-audio-panel-button-text;
     margin: -2px;
 }
-body.narrow .chat-audio-panel:has(.record-on-btn) .volume-settings-btn.text > .c-text,
-body.narrow .chat-audio-panel:has(.record-on-btn):not(.text-mode, .narrow-panel) .volume-settings-btn.text > .c-text {
+body.narrow .chat-audio-panel[data-has-record-on-btn] .volume-settings-btn.text > .c-text,
+body.narrow .chat-audio-panel[data-has-record-on-btn]:not(.text-mode, .narrow-panel) .volume-settings-btn.text > .c-text {
     background-image: linear-gradient(to right, var(--magenta-60), 10%, white);
 }
-body.narrow .chat-audio-panel:has(.record-on-btn) .volume-settings-btn.text::before,
-body.narrow .chat-audio-panel:has(.record-on-btn):not(.text-mode, .narrow-panel) .volume-settings-btn.text::before {
+body.narrow .chat-audio-panel[data-has-record-on-btn] .volume-settings-btn.text::before,
+body.narrow .chat-audio-panel[data-has-record-on-btn]:not(.text-mode, .narrow-panel) .volume-settings-btn.text::before {
     background-image: linear-gradient(to right, var(--magenta-60), 25%, var(--mobile-landscape-audio-panel-button-text));
 }
 body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings-btn.text > .c-text {

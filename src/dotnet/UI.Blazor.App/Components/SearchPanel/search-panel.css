@@ -90,7 +90,7 @@
     @apply text-left;
     @apply bg-transparent;
 }
-.search-input:has(.c-close-btn) input {
+.search-input[data-has-close-btn] input {
     @apply pr-10;
 }
 .search-input input:focus {
@@ -106,7 +106,7 @@
 .search-input input:focus::placeholder {
     @apply text-transparent;
 }
-.search-input:has(input:focus) {
+.search-input[data-has-focused-input] {
     box-shadow: inset 0 0 0 1px theme(colors.primary);
 }
 

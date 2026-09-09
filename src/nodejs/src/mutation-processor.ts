@@ -23,7 +23,10 @@ const RenderScriptPrefix = 'data-render-script-';
 const renderScripts = new Map<string, RenderScript>();
 // What each element was last run with, so a re-render that rewrites the same value is not a re-run.
 const ranRenderScripts = new WeakMap<Element, Map<string, string>>();
-const baseObservedAttributes = ['class', 'data-side-nav', ...PresenceTracker.observedAttributes];
+// Only what this module dispatches on. 'class' and 'data-side-nav' were observed for the
+// selector-driven presence path and are dead now that markup declares presence - and 'class' in
+// particular is the app's noisiest attribute, so observing it delivered records nothing read.
+const baseObservedAttributes = [...PresenceTracker.observedAttributes];
 let observedAttributes = [...baseObservedAttributes];
 let observer: MutationObserver | null = null;
 let isEnabled = true;

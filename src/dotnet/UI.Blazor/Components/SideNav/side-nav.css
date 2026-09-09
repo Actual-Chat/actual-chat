@@ -42,7 +42,7 @@ body.device-ios .side-nav {
     @apply flex-none flex-y;
     @apply md:w-96 lg:w-96 xl:w-128;
 }
-.page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .side-nav.side-nav-left {
+.page-with-header-and-footer[data-has-right-panel-open] > .side-nav.side-nav-left {
     @apply md:w-1/2 lg:w-96 xl:w-128;
     @apply md:transition-width md:duration-200 md:ease-[cubic-bezier(0.32,0.54,0.4,0.9)] md:delay-0 lg:transition-none;
 }
@@ -102,7 +102,7 @@ body.narrow .side-nav.side-nav-right {
     @apply w-auto;
     transition: transform var(--side-nav-transition-duration) cubic-bezier(0.32, 0.54, 0.4, 0.9);
 }
-body.narrow .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .side-nav.side-nav-left {
+body.narrow .page-with-header-and-footer[data-has-right-panel-open] > .side-nav.side-nav-left {
     @apply w-auto;
 }
 body.narrow .side-nav.side-nav-right {

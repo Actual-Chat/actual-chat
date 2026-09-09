@@ -10,7 +10,7 @@
         <HeaderButton Click="@SmoothCloseSearchPanel" Class="md:hidden">
             <i class="icon-arrow-left"></i>
         </HeaderButton>
-        <div class="search-input">
+        <div class="search-input" data-children="close-btn focused-input">
             <label>
                 <TextInput
                     @ref="_inputRef"
@@ -21,7 +21,7 @@
                 </TextInput>
                 <i class="icon-search text-2xl search-icon"></i>
                 @if (ShowCloseButton) {
-                    <HeaderButton Click="SmoothCloseSearchPanel" Class="c-close-btn">
+                    <HeaderButton Click="@SmoothCloseSearchPanel" Class="c-close-btn" data-child="close-btn">
                         <i class="icon-close text-2xl"></i>
                     </HeaderButton>
                 }
@@ -34,7 +34,7 @@
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.SearchPanel.create";
 
-    TextInput? _inputRef;
+    private TextInput? _inputRef;
 
     private SearchUI SearchUI => Hub.SearchUI;
 

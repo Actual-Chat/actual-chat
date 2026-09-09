@@ -15,7 +15,7 @@
     @apply bg-04;
     @apply md:transition-[width,padding] md:duration-250 md:ease-[cubic-bezier(0.32,0.72,0,1)] lg:transition-none;
 }
-.page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) .left-panel-buttons {
+.page-with-header-and-footer[data-has-right-panel-open] .left-panel-buttons {
     @apply md:w-24 lg:w-16 xl:w-24;
 }
 .left-panel-buttons > .c-spacer {
@@ -201,17 +201,17 @@ body:not(.narrow) .left-panel-content-header.place > .c-content {
 }
 /* The search box keeps the panel's right edge, and the title truncates against it;
    the open search takes the whole row, which squeezes the title down to nothing. */
-.left-panel-content-header > .c-content:has(> .left-chat-search-input) {
+.left-panel-content-header > .c-content[data-has-search] {
     @apply justify-end;
     @apply pr-0;
 }
-.left-panel-content-header > .c-content:has(> .left-chat-search-input.open) {
+.left-panel-content-header > .c-content[data-has-open-search] {
     @apply gap-x-0;
     @apply px-0;
 }
 /* The filter badges hang below the search row, and the results now sit directly under the header
    rather than behind it - so the header has to grow past the ordinary 56px clamp to keep them apart. */
-.left-panel-content-header > .c-content:has(> .left-chat-search-input > .c-filter-badges) {
+.left-panel-content-header > .c-content[data-has-search-badges] {
     @apply max-h-none;
 }
 .left-panel-content-header > .c-content > .c-title {
@@ -221,7 +221,7 @@ body:not(.narrow) .left-panel-content-header.place > .c-content {
     @apply truncate;
     @apply text-01 text-lg font-medium;
 }
-.left-panel-content-header > .c-content:has(> .left-chat-search-input.open) > .c-title {
+.left-panel-content-header > .c-content[data-has-open-search] > .c-title {
     @apply p-0;
 }
 .left-panel-content-header .left-chat-search-input {

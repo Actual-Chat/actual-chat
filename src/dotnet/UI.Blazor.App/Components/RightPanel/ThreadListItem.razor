@@ -24,7 +24,7 @@
             @if (lastTextEntry != null) {
                 <div class="c-last-message">
                     @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
-                        <span class="c-name">
+                        <span class="c-name" data-children="shrinkable non-shrinkable">
                             <AuthorName
                                 AuthorId="@lastTextEntry.AuthorId"
                                 Class="chat-message-author-name"

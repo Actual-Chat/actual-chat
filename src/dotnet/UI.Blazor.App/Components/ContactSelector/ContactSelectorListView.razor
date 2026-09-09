@@ -8,9 +8,11 @@
 <ContentSwap
     LayerKey="@Selector.SelectedPlaceId"
     Class="c-list-swap"
+    Children="contact-list"
+    LayerChildren="contact-list"
     Effect="@_swapDirection.Wipe(Selector.SelectedPlaceIndex)">
     <ChildContent>
-        <div class="contact-selector-list" role="listbox" aria-multiselectable="true">
+        <div class="contact-selector-list" role="listbox" aria-multiselectable="true" data-child="contact-list">
             @foreach (var contact in contacts) {
                 var isSelected = selectedChatIds.Contains(contact.Id);
                 <div class="contact-selector-list-item"

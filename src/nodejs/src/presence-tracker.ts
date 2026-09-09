@@ -48,6 +48,18 @@ export const PresenceTracker = {
         scanRoot(container);
     },
 
+    // For presence no render owns - browser state such as focus, or a mode only JS knows about.
+    // Edits the token list rather than the attribute, so a second name on the element survives.
+    setChild(element: Element, name: string, isPresent: boolean): void {
+        const names = namesOf(element, ChildAttribute).filter(n => n !== name);
+        if (isPresent)
+            names.push(name);
+        if (names.length === 0)
+            element.removeAttribute(ChildAttribute);
+        else
+            element.setAttribute(ChildAttribute, names.join(' '));
+    },
+
     // The truth, recomputed from the DOM. Counting is state, and state that only ever moves by
     // deltas cannot recover from a delivery it never saw.
     verify(root: Element = document.body): { name: string; container: Element; counted: number; actual: number }[] {

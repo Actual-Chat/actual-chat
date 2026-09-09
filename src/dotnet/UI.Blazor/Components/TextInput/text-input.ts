@@ -1,4 +1,5 @@
 import { Disposable } from 'disposable';
+import { PresenceTracker } from 'presence-tracker';
 import { fromEvent, Subject, takeUntil, debounceTime, switchMap } from 'rxjs';
 
 interface TextInputOptions {
@@ -6,6 +7,10 @@ interface TextInputOptions {
     debounce: number;
     closeOnBlurSelector?: string;
 }
+
+/** Focus is browser state, so nothing renders this presence name - see presence-tracker.ts. An
+ *  enclosing `data-children="focused-input"` turns `X:has(input:focus)` into `X[data-has-focused-input]`. */
+const FocusedChild = 'focused-input';
 
 export class TextInput implements Disposable {
     private readonly disposed$: Subject<void> = new Subject<void>();
@@ -40,6 +45,14 @@ export class TextInput implements Disposable {
                     this.blazorRef.invokeMethodAsync('OnPaste', e.clipboardData?.getData('Text'))),
             ).subscribe();
 
+        this.setFocusedChild(document.activeElement === this.element);
+        fromEvent(this.element, 'focus')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(() => this.setFocusedChild(true));
+        fromEvent(this.element, 'blur')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(() => this.setFocusedChild(false));
+
         const closeOnBlurSelector = this.options.closeOnBlurSelector;
         if (closeOnBlurSelector) {
             const boundary = this.element.closest(closeOnBlurSelector);
@@ -70,6 +83,10 @@ export class TextInput implements Disposable {
 
     public blur(): void {
         this.element.blur();
+    }
+
+    private setFocusedChild(isFocused: boolean): void {
+        PresenceTracker.setChild(this.element, FocusedChild, isFocused);
     }
 
     // Called by Blazor

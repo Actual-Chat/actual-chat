@@ -26,6 +26,6 @@
     @apply drop-shadow-lg;
 }
 /* Extra margin when video panel drag handle is present */
-.list-view-layout:has(.c-drag-handle) .date-visor {
+.list-view-layout[data-has-drag-handle] .date-visor {
     @apply mt-4;
 }

@@ -14,10 +14,10 @@
     @apply overflow-hidden;
     @apply rounded-xl;
 }
-.card-item:not(:has(> .c-left)) > .c-center {
+.card-item:not([data-has-card-left]) > .c-center {
     @apply pl-1;
 }
-.card-item:not(:has(> .c-right)) > .c-center {
+.card-item:not([data-has-card-right]) > .c-center {
     @apply pr-1;
 }
 body.hoverable .card-item.hovered:hover {
