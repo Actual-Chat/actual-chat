@@ -1444,11 +1444,13 @@ public partial class ChatUI
             // closes (materializedBlockId set), the block stays frozen but renders as a completed
             // conversation: the card falls back to its own regular header instead.
             var hasSplitHeader = conversation.Id == liveBlockId && materializedBlockId == null;
+            var isExpanded = expandedConversations.Contains(conversation.Id);
             if (hasSplitHeader) {
                 var header = new LiveConversationHeader(conversation) {
                     Kind = ChatMessageKind.LiveConversationHeader,
                     Date = date,
                     PreviousMessage = prevMessage,
+                    IsExpanded = isExpanded,
                 };
                 if (prevMessage != null)
                     prevMessage.NextMessage = header;
@@ -1461,6 +1463,7 @@ public partial class ChatUI
                 PreviousMessage = prevMessage,
                 HasSplitHeader = hasSplitHeader,
                 HasSplitFooter = conversation.Id == liveBlockId,
+                IsExpanded = isExpanded,
             };
             // Can't skip adding a conversation message even if it's the same as previous message
             // Note: the same conversation can be returned by different id tiles as it spans across multiple tiles

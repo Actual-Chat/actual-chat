@@ -8,12 +8,17 @@ public sealed class LiveConversationHeader : ChatMessage
         ShouldSkipKey = true;
     }
 
+    // Decided by the tile builder - the same build that places (or folds) the block's rows - so the
+    // header can never show one state while the rows show another.
+    public bool IsExpanded { get; init; }
+
     public override bool Equals(ChatMessage? other)
         => ReferenceEquals(this, other)
             || (other is LiveConversationHeader o
                 && Conversation!.VersionEquals(o.Conversation)
-                && Kind == o.Kind && Date == o.Date && Flags == o.Flags);
+                && Kind == o.Kind && Date == o.Date && Flags == o.Flags
+                && IsExpanded == o.IsExpanded);
 
     public override int GetHashCode()
-        => HashCode.Combine(Conversation, Kind, Date, Flags);
+        => HashCode.Combine(Conversation, Kind, Date, Flags, IsExpanded);
 }
