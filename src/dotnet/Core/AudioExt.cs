@@ -4,6 +4,26 @@ namespace ActualChat;
 
 public static class AudioExt
 {
+    private const float SoftLimitKnee = 0.7f;
+
+    public static void Amplify(Span<float> pcm, float gain)
+    {
+        // Above the knee the curve bends toward 1.0 instead of clipping, so a boosted peak
+        // compresses rather than crackles.
+        const float range = 1f - SoftLimitKnee;
+        for (var i = 0; i < pcm.Length; i++) {
+            var sample = pcm[i] * gain;
+            var magnitude = MathF.Abs(sample);
+            if (magnitude <= SoftLimitKnee) {
+                pcm[i] = sample;
+                continue;
+            }
+
+            var limited = SoftLimitKnee + range * MathF.Tanh((magnitude - SoftLimitKnee) / range);
+            pcm[i] = MathF.CopySign(limited, sample);
+        }
+    }
+
     public static double ApproximateGain(ReadOnlySpan<float> monoPcm, int stride = 5)
     {
         if (monoPcm.Length == 0) return 0;

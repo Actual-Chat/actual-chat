@@ -33,6 +33,7 @@ internal sealed class AndroidAudioPlaybackEngine(
     private GCHandle _audioTrackHandle;
 
     private int _remainingPreSkip;
+    private float _gain = 1f;
     private int _fedSampleCount;
     private int _lastPlayedSampleCount;
     private int _isEnded;
@@ -91,8 +92,12 @@ internal sealed class AndroidAudioPlaybackEngine(
                     ? AudioUsageKind.VoiceCommunication
                     : AudioUsageKind.Media,
             };
-            Log.LogInformation("Play: id={Id}, car route {Route}, usage {Usage}, comm focus {IsCommunicationFocus}",
-                info.TrackId, route, usage, AudioFocusUI.IsCommunicationFocus);
+            _gain = route.Output == AudioEndpoint.External && !route.UseCallLink
+                ? Constants.Audio.ProjectionMediaGain
+                : 1f;
+            Log.LogInformation(
+                "Play: id={Id}, car route {Route}, usage {Usage}, comm focus {IsCommunicationFocus}, gain {Gain}",
+                info.TrackId, route, usage, AudioFocusUI.IsCommunicationFocus, _gain);
             var attributes = new AudioAttributes.Builder()
                 .SetUsage(usage)!
                 .SetContentType(AudioContentType.Speech)!
@@ -294,6 +299,8 @@ internal sealed class AndroidAudioPlaybackEngine(
                     }
 
                     pcm.Span.CopyTo(audioData.AsSpan(0, pcm.Length));
+                    if (_gain != 1f)
+                        AudioExt.Amplify(audioData.AsSpan(skip, playSamples), _gain);
                     var written = await audioTrack
                         .WriteAsync(audioData, skip, playSamples, WriteMode.Blocking)
                         .ConfigureAwait(false);
