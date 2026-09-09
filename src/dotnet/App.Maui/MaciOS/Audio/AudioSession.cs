@@ -124,6 +124,19 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         }
     }
 
+    public static void PrepareForTransmit()
+    {
+        // Before the framework activates the transmit session: it takes the category as it finds
+        // it, and a listening burst leaves Playback, whose input node reports no sample rate -
+        // the pre-roll and the recorder that follow both need a live input.
+        try {
+            ConfigureRecordingUnsafe(AVAudioSession.SharedInstance(), AudioSessionOwner.PttTransmit);
+        }
+        catch (Exception e) {
+            OwnerLog.LogWarning(e, "Couldn't configure the session for a PTT transmit");
+        }
+    }
+
     public static bool IsCannotInterruptOthers(NSError error)
         => (AVAudioSessionErrorCode)(long)error.Code == AVAudioSessionErrorCode.CannotInterruptOthers;
 
@@ -488,25 +501,29 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
     private void ConfigureUnsafe(AVAudioSession session, AudioFocusMode mode)
     {
         Log.LogInformation("Configure: mode={Mode}", mode);
-        if (mode is AudioFocusMode.Recording) {
-            // VoiceChat carries the PTT call's AEC under a PTT owner. VideoChat, not Default, for
-            // ours: SetVoiceProcessingEnabled replaces Default and drops DefaultToSpeaker with it.
-            var sessionMode = Owner == AudioSessionOwner.App
-                ? AVAudioSessionMode.VideoChat
-                : AVAudioSessionMode.VoiceChat;
-            session.SetCategory(AVAudioSessionCategory.PlayAndRecord,
-                    sessionMode,
-                    AVAudioSessionCategoryOptions.DefaultToSpeaker
-                    | AVAudioSessionCategoryOptions.AllowBluetooth
-                    | AVAudioSessionCategoryOptions.AllowBluetoothA2DP)
-                .Assert($"{mode}: failed to set category");
-            session.SetPreferredIOBufferDuration(Constants.Audio.OpusFrameDuration.TotalSeconds, out var error);
-            error.Assert("Failed to set preferred IO buffer duration");
-        }
+        if (mode is AudioFocusMode.Recording)
+            ConfigureRecordingUnsafe(session, Owner);
         else if (mode is AudioFocusMode.Playback or AudioFocusMode.Listening)
             session.SetCategory(AVAudioSessionCategory.Playback).Assert($"{mode}: failed to set category");
         else
             session.SetCategory(AVAudioSessionCategory.Ambient).Assert($"{mode}: failed to set category");
+    }
+
+    private static void ConfigureRecordingUnsafe(AVAudioSession session, AudioSessionOwner owner)
+    {
+        // VoiceChat carries the PTT call's AEC under a PTT owner. VideoChat, not Default, for
+        // ours: SetVoiceProcessingEnabled replaces Default and drops DefaultToSpeaker with it.
+        var sessionMode = owner == AudioSessionOwner.App
+            ? AVAudioSessionMode.VideoChat
+            : AVAudioSessionMode.VoiceChat;
+        session.SetCategory(AVAudioSessionCategory.PlayAndRecord,
+                sessionMode,
+                AVAudioSessionCategoryOptions.DefaultToSpeaker
+                | AVAudioSessionCategoryOptions.AllowBluetooth
+                | AVAudioSessionCategoryOptions.AllowBluetoothA2DP)
+            .Assert("Recording: failed to set category");
+        session.SetPreferredIOBufferDuration(Constants.Audio.OpusFrameDuration.TotalSeconds, out var error);
+        error.Assert("Failed to set preferred IO buffer duration");
     }
 }
 

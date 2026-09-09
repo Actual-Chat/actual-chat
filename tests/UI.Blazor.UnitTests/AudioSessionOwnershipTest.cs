@@ -105,10 +105,17 @@ public class AudioSessionOwnershipTest
             .Should().BeTrue();
     }
 
-    [Theory]
-    [InlineData(AudioFocusMode.Tune)]
-    [InlineData(AudioFocusMode.Playback)]
-    [InlineData(AudioFocusMode.Recording)]
-    public void ATransmitOwnerBlocksEveryConfiguration(AudioFocusMode mode)
-        => AudioSessionOwnership.MayConfigure(AudioSessionOwner.PttTransmit, mode).Should().BeFalse();
+    [Fact]
+    public void ATransmitOwnerBlocksOnlyCategoryLowering()
+    {
+        // The framework activates the transmit session with whatever category the app last set,
+        // and a listening burst leaves Playback - whose input has no sample rate - so the mic
+        // path must be allowed to raise it to PlayAndRecord.
+        AudioSessionOwnership.MayConfigure(AudioSessionOwner.PttTransmit, AudioFocusMode.Tune)
+            .Should().BeFalse();
+        AudioSessionOwnership.MayConfigure(AudioSessionOwner.PttTransmit, AudioFocusMode.Playback)
+            .Should().BeFalse();
+        AudioSessionOwnership.MayConfigure(AudioSessionOwner.PttTransmit, AudioFocusMode.Recording)
+            .Should().BeTrue("a transmit records through the app's own engine, which needs PlayAndRecord");
+    }
 }
