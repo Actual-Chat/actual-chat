@@ -130,6 +130,17 @@ internal sealed class AndroidAudioPlaybackEngine(
         }
 
         audioTrack.Play();
+        Log.LogInformation("Play: id={Id} routed to {Device}; {AudioState}",
+            info.TrackId, AndroidAudioRouteLog.Describe(audioTrack.RoutedDevice), AndroidAudioRouteLog.DescribeState());
+        audioTrack.RoutingChanged += (_, _) => {
+            try {
+                Log.LogInformation("Play: id={Id} rerouted to {Device}; {AudioState}",
+                    info.TrackId, AndroidAudioRouteLog.Describe(audioTrack.RoutedDevice), AndroidAudioRouteLog.DescribeState());
+            }
+            catch {
+                // A released track has no route left to report
+            }
+        };
         NotifyPlaying(0); // Initial report that we're ready to play
     }
 
