@@ -17,6 +17,8 @@
     "test:all": "vitest run --config vitest.config.ts && vitest run --config vitest.config.e2e.ts",
     "test:video-load": "tsx src/nodejs/app.video-load-test/index.ts",
     "test:audio-stream": "tsx src/nodejs/app.audio-stream-test/index.ts",
+    "harness": "tsx src/nodejs/app.debug-harness/index.ts",
+    "typecheck:harness": "tsc -p src/nodejs/app.debug-harness/tsconfig.json --noEmit",
     "typecheck:video-load": "tsc -p src/nodejs/app.video-load-test/tsconfig.json --noEmit",
     "lint": "eslint \"src/nodejs/**/*.ts\" \"src/dotnet/**/*.ts\"",
     "lint:all": "eslint --no-error-on-unmatched-pattern \"src/nodejs/**/*.ts\" \"src/dotnet/**/*.ts\" \"tests/ts/**/*.ts\"",
