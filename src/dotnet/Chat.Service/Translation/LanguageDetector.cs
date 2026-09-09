@@ -38,6 +38,9 @@ public class LanguageDetector(IServiceProvider services)
 
         var executionSettings = new OpenAIPromptExecutionSettings {
             Temperature = 0,
+#pragma warning disable OPENAI001 // TODO: remove once ChatReasoningEffortLevel is no longer [Experimental]
+            ReasoningEffort = OpenAI.Chat.ChatReasoningEffortLevel.None,
+#pragma warning restore OPENAI001
             ChatSystemPrompt = Prompt.Trim(),
             ResponseFormat =  ChatResponseFormat.ForJsonSchema(
                 JsonDocument.Parse(

@@ -260,7 +260,9 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
 
     private static PromptExecutionSettings CreateExecutionSettings()
         => new OpenAIPromptExecutionSettings {
-            ReasoningEffort = null,
+#pragma warning disable OPENAI001 // TODO: remove once ChatReasoningEffortLevel is no longer [Experimental]
+            ReasoningEffort = OpenAI.Chat.ChatReasoningEffortLevel.None,
+#pragma warning restore OPENAI001
             ResponseFormat = ChatResponseFormat.ForJsonSchema(
                 JsonDocument.Parse(
                     """
