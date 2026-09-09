@@ -371,8 +371,8 @@ public sealed partial class GoogleTranscriber : ITranscriber
         var languages = Language.TryParse(result.LanguageCode, out var language)
             ? new [] {language}
             : [];
-        if (languages.Length == 0)
-            languages = [options.Language];
+        if (languages.Length == 0 && options.FixedLanguage is { } fixedLanguage)
+            languages = [fixedLanguage];
         state.Append(suffix, endTime, languages, mustAppendToUnstable).MakeStable(isFinal);
     }
 
