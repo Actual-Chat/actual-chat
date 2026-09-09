@@ -7,10 +7,12 @@ namespace ActualChat.Transcription;
 // current guess for the open segment, and a committed one replaces it for good. So committed
 // segments accumulate here and the partial is appended on top of them.
 
-public sealed class ElevenLabsTranscriptBuilder
+public sealed class ElevenLabsTranscriptBuilder(Language? fixedLanguage = null)
 {
     private readonly StringBuilder _committedText = new();
-    private readonly List<Language> _languages = [];
+    // Committed segments carry a language only with detection on, so a fixed-language
+    // transcript would otherwise report none.
+    private readonly List<Language> _languages = fixedLanguage is null ? [] : [fixedLanguage];
     private LinearMap _committedMap = LinearMap.Zero;
     private float _committedEndTime;
     private string _partialText = "";

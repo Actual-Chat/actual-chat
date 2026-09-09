@@ -20,7 +20,31 @@ public static class AlphabetLanguageDetector
         return found.Count == 0 ? [] : [..found];
     }
 
+    // A translation that shares no script with its target can't be one: the model answered in
+    // another language instead of NO_TRANSLATION_NEEDED. Same-script pairs, e.g. English to
+    // Spanish, can't be told apart here and stay with the prompt.
+    public static bool IsScriptMismatch(string source, string translation, Language target)
+    {
+        if (GetScript(target) is not { } script)
+            return false;
+        if (Detect(source).Count == 0)
+            return false;
+
+        var scripts = Detect(translation);
+        return scripts.Count > 0 && !scripts.Contains(script);
+    }
+
     // Private methods
+
+    // The script a translation into the language must contain, or null when it can't be told:
+    // a script Classify doesn't know, or the CJK ideographs Chinese and Japanese share.
+    private static Language? GetScript(Language language)
+    {
+        var scripts = Detect(language.NativeName);
+        return scripts is [var script] && script != Languages.Chinese && script != Languages.Japanese
+            ? script
+            : null;
+    }
 
     private static Language? Classify(char c)
     {

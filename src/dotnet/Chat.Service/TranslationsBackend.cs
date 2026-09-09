@@ -214,6 +214,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 context,
                 GetTranslationContextHint(id.Kind),
                 cancellationToken).ConfigureAwait(false);
+            translatedText = KeepOriginalOnScriptMismatch(id, translationSource.Content, translatedText);
 
             var contentHash = translationSource.ContentHash.IsNone
                 ? ChatEntryHashExt.GetContentHashString(translationSource.Content)
@@ -273,7 +274,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                     : translationSource.ContentHash;
                 var finalizeChange = Change.Update(new TranslationDiff {
                     StreamId = null,
-                    Content = translatedTranscript.Text,
+                    Content = KeepOriginalOnScriptMismatch(id, translationSource.Content, translatedTranscript.Text),
                     SourceContentHash = contentHash,
                 });
                 var finalizeCmd = new TranslationsBackend_Change(
@@ -569,8 +570,8 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                                 lastText = text;
                             }
                         }
-                        var content = lastTranslatedTranscript.Text;
                         var sourceContent = lastTranscript.Text;
+                        var content = KeepOriginalOnScriptMismatch(translationId, sourceContent, lastTranslatedTranscript.Text);
                         var finalizeRealtime = new TranslationsBackend_Change(translationId,
                             newTranslationVersion, // Will overwrite the first version only
                             Change.Update(new TranslationDiff {
@@ -694,6 +695,15 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     // The translation rules live in the UI-text prompt file; the hint only names the kind
     private static string GetUITextTranslationHint(UITextKind kind)
         => "The input is a user-facing error or status message.";
+
+    private string KeepOriginalOnScriptMismatch(TranslationId id, string source, string translated)
+    {
+        if (!AlphabetLanguageDetector.IsScriptMismatch(source, translated, id.Language))
+            return translated;
+
+        Log.LogWarning("Translation #{Id} came back in another script, keeping the original", id);
+        return source;
+    }
 
     private async ValueTask<(ChatEntry e, Translation?)> SelectTranslationAsync(ChatEntry e, Language language, CancellationToken cancellationToken)
         => (e, await GetInternal(TranslationId.New(ChatEntryId.New(e.ChatId, e.LocalId), language), cancellationToken).ConfigureAwait(false));

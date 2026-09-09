@@ -59,7 +59,7 @@ public sealed class ElevenLabsTranscriber : ITranscriber
             await webSocket.ConnectAsync(GetUrl(options), cancellationToken).ConfigureAwait(false);
             await TranscriberHelper.WhenPushAndRead(
                     PushAudio(webSocket, audioSource, options, cts.Token),
-                    ReadTranscripts(webSocket, output, audioStreamId, cts.Token),
+                    ReadTranscripts(webSocket, output, audioStreamId, options.FixedLanguage, cts.Token),
                     cts)
                 .ConfigureAwait(false);
         }
@@ -167,9 +167,10 @@ public sealed class ElevenLabsTranscriber : ITranscriber
         ClientWebSocket webSocket,
         ChannelWriter<Transcript> output,
         string audioStreamId,
+        Language? fixedLanguage,
         CancellationToken cancellationToken)
     {
-        var builder = new ElevenLabsTranscriptBuilder();
+        var builder = new ElevenLabsTranscriptBuilder(fixedLanguage);
         var buffer = new ArraySegment<byte>(new byte[16 * 1024]);
         var message = new StringBuilder();
         var hasMessages = false;

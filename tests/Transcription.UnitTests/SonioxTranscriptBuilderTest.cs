@@ -3,6 +3,32 @@ namespace ActualChat.Transcription.UnitTests;
 public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact]
+    public void FixedLanguageShouldBeReportedWhenTokensCarryNone()
+    {
+        // arrange
+        var builder = new SonioxTranscriptBuilder(Languages.Russian);
+
+        // act
+        var transcript = builder.Update([Token("Привет", 0, 500, true)]);
+
+        // assert
+        transcript.Languages.Should().Equal(Languages.Russian);
+    }
+
+    [Fact]
+    public void DetectModeShouldReportOnlyTokenLanguages()
+    {
+        // arrange
+        var builder = new SonioxTranscriptBuilder();
+
+        // act
+        var transcript = builder.Update([Token("Hello", 0, 500, true, "en")]);
+
+        // assert
+        transcript.Languages.Should().Equal(Languages.English);
+    }
+
+    [Fact]
     public void FinalTokensAccumulate()
     {
         // arrange

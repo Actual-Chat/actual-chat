@@ -10,11 +10,13 @@ namespace ActualChat.Transcription;
 // enable_endpoint_detection also emits an "<end>" token once per finalized segment. It's a
 // structural marker rather than speech, so it's dropped before it can reach the transcript.
 
-public sealed class SonioxTranscriptBuilder
+public sealed class SonioxTranscriptBuilder(Language? fixedLanguage = null)
 {
     private const string EndpointToken = "<end>";
     private readonly StringBuilder _finalText = new();
-    private readonly List<Language> _languages = [];
+    // Tokens carry a language only with language identification on, i.e. in detect mode, so a
+    // fixed-language transcript would otherwise report none.
+    private readonly List<Language> _languages = fixedLanguage is null ? [] : [fixedLanguage];
     private LinearMap _finalMap = LinearMap.Zero;
     private float _finalEndTime;
     private string _tailText = "";

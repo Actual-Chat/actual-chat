@@ -6,6 +6,7 @@ public sealed record TranscriptionOptions
     public bool DetectLanguage { get; init; }
     public Language[] LanguageCandidates { get; init; } = [];
     public TranscriptionContext Context { get; init; } = TranscriptionContext.None;
+    public Language? FixedLanguage => DetectLanguage ? null : Language;
 
     public string[] GetLanguageHints(Func<Language, string>? toCode = null)
     {

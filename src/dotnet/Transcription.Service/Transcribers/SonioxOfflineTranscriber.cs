@@ -56,7 +56,7 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
             transcriptionId = await CreateTranscription(fileId, options, audioSource, cancellationToken)
                 .ConfigureAwait(false);
             await WaitForCompletion(transcriptionId, cancellationToken).ConfigureAwait(false);
-            return await GetTranscript(transcriptionId, cancellationToken).ConfigureAwait(false);
+            return await GetTranscript(transcriptionId, options.FixedLanguage, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "Soniox offline transcription failed");
@@ -114,14 +114,17 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
         }
     }
 
-    private async Task<Transcript?> GetTranscript(string transcriptionId, CancellationToken cancellationToken)
+    private async Task<Transcript?> GetTranscript(
+        string transcriptionId,
+        Language? fixedLanguage,
+        CancellationToken cancellationToken)
     {
         var response = await Client.GetTranscript(transcriptionId, cancellationToken).ConfigureAwait(false);
         if (response?.Tokens is not { Length: > 0 } tokens)
             return null;
 
         // The async API returns the whole transcript at once, and its tokens carry no is_final flag.
-        var builder = new SonioxTranscriptBuilder();
+        var builder = new SonioxTranscriptBuilder(fixedLanguage);
         foreach (var token in tokens)
             token.IsFinal = true;
         builder.Update(tokens);
