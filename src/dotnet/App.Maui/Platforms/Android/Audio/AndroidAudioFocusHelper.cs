@@ -198,6 +198,13 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         // selecting the appropriate output device (BT headset, wired headset, or speakerphone).
         if (isCommunication)
             _audioManager.Mode = Mode.InCommunication;
+        else if (_audioManager.Mode == Mode.InCommunication && !_isCommunicationModeYielded) {
+            // A renewal off the communication route: nothing abandons in between, so the mode
+            // and the SCO route would outlive the focus that asked for them.
+            _log.LogInformation("Leaving the communication route: restoring Mode.Normal");
+            _deviceRouter.ClearCommunicationDevice();
+            _audioManager.Mode = Mode.Normal;
+        }
 
         var attrs = new AudioAttributes.Builder()
             .SetUsage(audioUsageKind)!
@@ -243,7 +250,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
 
         // Re-route audio if we have active focus in communication mode
         // This handles: BT connected mid-recording, BT disconnected, etc.
-        if (_hasFocus && _audioManager.Mode == Mode.InCommunication)
+        if (_isCommunicationFocus)
             _ = HandleDevicesChanged();
     }
 
