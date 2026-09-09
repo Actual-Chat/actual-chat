@@ -1,7 +1,9 @@
 ﻿using ActualChat.Chat.Db;
+using ActualChat.Chat.Flows;
 using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
+using ActualChat.Flows;
 using ActualChat.Streaming;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +25,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
     private ILiveSessionsBackend LiveSessionsBackend { get; } = services.GetRequiredService<ILiveSessionsBackend>();
     private ChatSettings Settings { get; } = services.GetRequiredService<ChatSettings>();
+    private FlowHub FlowHub => field ??= Services.FlowHub();
 
     // [ComputeMethod]
     public virtual async Task<Conversation?> Get(ConversationId conversationId, CancellationToken cancellationToken)
@@ -326,12 +329,18 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var startEntryLid = entryIdRanges[0].Start;
         var endEntryLid = entryIdRanges[^1].End - 1;
         var conversationId = ConversationId.New(chatId, startEntryLid);
+        var existing = await Get(conversationId, cancellationToken).ConfigureAwait(false);
         var entriesInfo = await GetTextEntries(chatId, entryIdRanges, cancellationToken).ConfigureAwait(false);
         var entries = entriesInfo.TextEntries;
         if (entries.Count == 0) {
+            // A call's card outlives its transcript: it records that the call happened, so deleting
+            // every message must leave it standing rather than erase the call from the chat.
+            if (existing is { IsCall: true })
+                return existing;
+
             // Every entry in the range was removed - a summary of nothing must not survive, but a stale
             // command whose range predates the conversation's growth must not delete the grown one.
-            var emptyExisting = await Get(conversationId, cancellationToken).ConfigureAwait(false);
+            var emptyExisting = existing;
             if (emptyExisting is not null && emptyExisting.EndEntryLid <= endEntryLid) {
                 var removeCommand = new ConversationBackend_Change(
                     conversationId, emptyExisting.Version, Change.Remove<ConversationDiff>());
@@ -376,6 +385,9 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             AttachmentCount = entriesInfo.AttachmentCount,
             AttachmentIds = entriesInfo.Attachments.Select(c => c.Id).ToArray(),
         };
+        if (existing is { IsCall: true })
+            conversation = KeepCallShape(existing, conversation, entries);
+
         return await Persist(conversation, command.IsLiveMaterialization, cancellationToken).ConfigureAwait(false);
     }
 
@@ -389,31 +401,78 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         // Persist the live session's already-computed summary as-is — no summarizer call.
         var conversation = command.Conversation;
+        var words = 0;
         if (conversation.IsCall)
-            conversation = await SizeCallConversation(conversation, cancellationToken).ConfigureAwait(false);
-        return await Persist(conversation, isLiveMaterialization: true, cancellationToken).ConfigureAwait(false);
+            (conversation, words) = await SizeCallConversation(conversation, cancellationToken)
+                .ConfigureAwait(false);
+        var result = await Persist(conversation, isLiveMaterialization: true, cancellationToken)
+            .ConfigureAwait(false);
+        if (conversation.IsCall)
+            await ScheduleCallRefresh(result, words, cancellationToken).ConfigureAwait(false);
+        return result;
     }
 
-    private async Task<Conversation> SizeCallConversation(
+    private Task ScheduleCallRefresh(Conversation conversation, int words, CancellationToken cancellationToken)
+    {
+        // A call's live summary only ever covers matured entries, and unlike an ambient session it gets
+        // no finalizing pass - the last minutes of talk would never be summarized at all. The gate is
+        // the live flow's own, so this can't hand a title to a call that flow would have left alone.
+        var summarization = Settings.Summarization;
+        if (conversation.MessageCount < summarization.MinLiveConversationEntries
+            || words < summarization.MinLiveConversationWords)
+            return Task.CompletedTask;
+
+        return FlowHub.NewResumeEvent<ConversationRefreshFlow>(conversation.Id.Value)
+            .WithDelay(
+                Clocks.SystemClock.Now + summarization.ResummarizationDelay,
+                summarization.ChatEntrySummarizationDelayQuanta)
+            .Schedule(cancellationToken);
+    }
+
+    private async Task<(Conversation Conversation, int Words)> SizeCallConversation(
         Conversation conversation, CancellationToken cancellationToken)
     {
-        // Nothing summarizes a call, so the two numbers the expansion tier is drawn from have to be
-        // counted here instead. A call with no transcript stays collapsed whatever the tier says:
+        // Nothing summarizes a call at close, so the two numbers the expansion tier is drawn from have
+        // to be counted here instead. A call with no transcript stays collapsed whatever the tier says:
         // an expanded block would be empty, and the card is the whole of what there is to show.
         var startEntryLid = conversation.Id.StartEntryLid;
         var entries = await ChatsBackend
             .ListNewEntries(conversation.Id.ChatId, startEntryLid - 1, MaxCallEntries, cancellationToken)
             .ConfigureAwait(false);
+        // Same rule as GetTextEntries, so the count doesn't change under the reader when the refresh
+        // below recomputes it: the CallEntry closing the range is not one of the call's messages.
         var messages = entries
-            .Where(e => e.LocalId <= conversation.EndEntryLid && !e.Content.IsNullOrEmpty())
+            .Where(e => e.LocalId <= conversation.EndEntryLid && !e.IsSystemEntry)
             .ToList();
         if (messages.Count == 0)
-            return conversation with { MessageCount = 0, IsExpandedByDefault = false };
+            return (conversation with { MessageCount = 0, IsExpandedByDefault = false }, 0);
 
-        var words = messages.Sum(e => e.Content.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length);
-        return conversation with {
+        var words = messages.Sum(e => WordCount(e.Content));
+        return (conversation with {
             MessageCount = messages.Count,
             IsExpandedByDefault = Settings.Summarization.IsExpandedByDefault(words, messages.Count),
+        }, words);
+    }
+
+    private static int WordCount(string content)
+        => content.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
+
+    private Conversation KeepCallShape(
+        Conversation existing,
+        Conversation summarized,
+        IReadOnlyCollection<ChatEntrySlim> entries)
+    {
+        // The summarizer measures the transcript; the call's own shape is measured from the call. Its
+        // range has to keep covering the CallEntry that closes it, or ChatUI stops treating the entry as
+        // drawn by this card and shows it a second time as a system line - hence Max, never the
+        // summarizer's end alone. The span is talk time, which the entries' timestamps don't give.
+        var words = entries.Sum(e => WordCount(e.Content));
+        return summarized with {
+            CallerId = existing.CallerId,
+            EndEntryLid = Math.Max(existing.EndEntryLid, summarized.EndEntryLid),
+            StartsAt = existing.StartsAt,
+            EndsAt = existing.EndsAt,
+            IsExpandedByDefault = Settings.Summarization.IsExpandedByDefault(words, entries.Count),
         };
     }
 
@@ -500,6 +559,10 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var chatEntries = tiles
             .SelectMany(tile => tile.Entries)
             .Where(e => entryLidRanges.Any(r => r.Contains(e.LocalId)))
+            // A system entry stores no text - the client builds its wording - so it would reach the
+            // summarizer as a blank line, count as a message, and put Wall-E among the participants.
+            // A call's range always ends on one; an ordinary conversation can enclose one too.
+            .Where(e => !e.IsSystemEntry)
             .DistinctBy(e => e.LocalId)
             .OrderBy(e => e.LocalId)
             .ToArray();
