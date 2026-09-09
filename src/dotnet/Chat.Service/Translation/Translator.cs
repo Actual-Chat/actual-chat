@@ -200,38 +200,46 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         chatHistory.AddSystemMessage(systemMessage);
 
         // Chat-style few-shot examples would prime UI-text translations toward conversational register
-        if (context.Length == 0 && ServiceKey != Constants.Translation.UITextServiceKey) {
+        if (ServiceKey != Constants.Translation.UITextServiceKey) {
             // Provide translation examples to improve the quality of the translation
+            if (context.Length == 0) {
+                if (targetLanguage.IsAnyEnglish) {
+                    chatHistory.AddUserMessage("Хорошо.");
+                    chatHistory.AddAssistantMessage("Alright.");
+                    chatHistory.AddUserMessage("Да");
+                    chatHistory.AddAssistantMessage("Yes");
+                    chatHistory.AddUserMessage("Bien");
+                    chatHistory.AddAssistantMessage("Right");
+                }
+                if (targetLanguage.IsAnySpanish) {
+                    chatHistory.AddUserMessage("Good.");
+                    chatHistory.AddAssistantMessage("Bueno.");
+                    chatHistory.AddUserMessage("Yep");
+                    chatHistory.AddAssistantMessage("Sí");
+                    chatHistory.AddUserMessage("Right");
+                    chatHistory.AddAssistantMessage("Bien");
+                }
+                if (targetLanguage == Languages.Russian) {
+                    chatHistory.AddUserMessage("Alright.");
+                    chatHistory.AddAssistantMessage("Хорошо.");
+                    chatHistory.AddUserMessage("Yes");
+                    chatHistory.AddAssistantMessage("Да");
+                    chatHistory.AddUserMessage("Bien");
+                    chatHistory.AddAssistantMessage("Хорошо");
+                }
+            }
+            // The already-in-target-language example stays even with context: a chat full of
+            // translation pairs pulls the model into translating same-language input too, and the
+            // prompt's rule alone doesn't hold against that
             if (targetLanguage.IsAnyEnglish) {
-                chatHistory.AddUserMessage("Хорошо.");
-                chatHistory.AddAssistantMessage("Alright.");
-                chatHistory.AddUserMessage("Да");
-                chatHistory.AddAssistantMessage("Yes");
-                chatHistory.AddUserMessage("Bien");
-                chatHistory.AddAssistantMessage("Right");
-                // Example showing no translation needed when text is already in target language
                 chatHistory.AddUserMessage("Hello, how are you?");
                 chatHistory.AddAssistantMessage(Constants.Translation.NoTranslationNeededText);
             }
             if (targetLanguage.IsAnySpanish) {
-                chatHistory.AddUserMessage("Good.");
-                chatHistory.AddAssistantMessage("Bueno.");
-                chatHistory.AddUserMessage("Yep");
-                chatHistory.AddAssistantMessage("Sí");
-                chatHistory.AddUserMessage("Right");
-                chatHistory.AddAssistantMessage("Bien");
-                // Example showing no translation needed when text is already in target language
                 chatHistory.AddUserMessage("Hola, ¿cómo estás?");
                 chatHistory.AddAssistantMessage(Constants.Translation.NoTranslationNeededText);
             }
             if (targetLanguage == Languages.Russian) {
-                chatHistory.AddUserMessage("Alright.");
-                chatHistory.AddAssistantMessage("Хорошо.");
-                chatHistory.AddUserMessage("Yes");
-                chatHistory.AddAssistantMessage("Да");
-                chatHistory.AddUserMessage("Bien");
-                chatHistory.AddAssistantMessage("Хорошо");
-                // Example showing no translation needed when text is already in target language
                 chatHistory.AddUserMessage("Привет, как дела?");
                 chatHistory.AddAssistantMessage(Constants.Translation.NoTranslationNeededText);
             }
