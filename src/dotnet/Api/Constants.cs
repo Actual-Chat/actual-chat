@@ -138,6 +138,9 @@ public static partial class Constants
             public static readonly long AuthorLocalId = -1;
             public static readonly string Name =  "Wall-E";
             public static readonly string Picture = "https://api.dicebear.com/7.x/bottts/svg?seed=12";
+
+            public static AuthorId GetWalleAuthorId(ChatId chatId)
+                => AuthorId.New(chatId, AuthorLocalId);
         }
 
         public static class Sherlock
