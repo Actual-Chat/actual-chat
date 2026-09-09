@@ -38,9 +38,9 @@
             </TabPanel>
         }
         @* The place's own filter arrives a render after the switch, and the panel around it already
-           animates that - so only a tab the user picked slides. *@
+           animates that - so only a tab the user picked gets a layer of its own to slide. *@
         <ContentSwap
-            LayerKey="@_selectedTabId"
+            LayerKey="@_swapIndex"
             Class="c-list-swap"
             Effect="@_swapDirection.Swipe(GetTabIndex(_selectedTabId))"
             MustPropagateDisplay="true"
@@ -65,6 +65,7 @@
 
     private readonly ContentSwapDirection _swapDirection = new();
     private string _selectedTabId = "";
+    private int _swapIndex;
     private TabPanel? _tabPanel;
     private bool _mustShowThreadsList;
     private PlaceChatListSettings? _placeChatListSettings;
@@ -98,7 +99,11 @@
     }
 
     private void OnSelectedTabIdChanged(string? tabId) {
+        // _swapIndex rather than the tab id keys the swap: the id also settles from "" to the place's
+        // stored filter, and "All" is itself "", so an id key both over- and under-swaps
         tabId ??= "";
+        if (_tabPanel?.IsUserSelection == true)
+            _swapIndex++;
         _selectedTabId = tabId;
         _mustShowThreadsList = tabId == ThreadsTabId;
         if (!_mustShowThreadsList) { // Show ChatList
