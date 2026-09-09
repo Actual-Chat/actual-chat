@@ -57,6 +57,10 @@ public sealed partial record LiveSessionState
     public CallOutcome Outcome { get; init; }
     [DataMember(Order = 23), Key(23)]
     public bool HasVideo { get; init; }
+    // Set once when the call is dialled and never moved, unlike Host, which ReassignHost hands to
+    // another participant when the host of a group call hangs up while others stay on.
+    [DataMember(Order = 24), Key(24)]
+    public AuthorId? CallerId { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public long EffectiveVisibleStartLid => VisibleStartLid > 0 ? VisibleStartLid : StartEntryLid;
@@ -84,7 +88,7 @@ public sealed partial record LiveSessionState
             MessageCount = MessageCount,
             AuthorIds = AuthorIds,
             IsExpandedByDefault = IsExpandedByDefault,
-            IsCall = IsCall,
+            CallerId = IsCall ? CallerId ?? Host : null,
         };
 
     public Conversation ToMaterializedConversation()
@@ -98,6 +102,8 @@ public sealed partial record LiveSessionState
             MessageCount = MessageCount,
             AuthorIds = AuthorIds,
             IsExpandedByDefault = IsExpandedByDefault,
-            IsCall = IsCall,
+            // Host stands in only for a session dialled by a build that predates CallerId: without it
+            // such a call would materialize as an ordinary conversation and fail its title check.
+            CallerId = IsCall ? CallerId ?? Host : null,
         };
 }

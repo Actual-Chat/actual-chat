@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations;
 
 [DbContext(typeof(ChatDbContext))]
-[Migration("20260907145017_Add_Conversation_IsCall")]
-partial class _20260907145017_Add_Conversation_IsCall
+[Migration("20260909115730_Add_Conversation_CallerId")]
+partial class _20260909115730_Add_Conversation_CallerId
 {
     /// <inheritdoc />
     protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -798,6 +798,11 @@ partial class _20260907145017_Add_Conversation_IsCall
                     .HasColumnName("author_ids")
                     .UseCollation("C");
 
+                b.Property<string>("CallerId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("caller_id");
+
                 b.Property<string>("ChatId")
                     .IsRequired()
                     .HasColumnType("text")
@@ -816,10 +821,6 @@ partial class _20260907145017_Add_Conversation_IsCall
                 b.Property<DateTime>("EndsAt")
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("ends_at");
-
-                b.Property<bool>("IsCall")
-                    .HasColumnType("boolean")
-                    .HasColumnName("is_call");
 
                 b.Property<bool>("IsExpandedByDefault")
                     .HasColumnType("boolean")

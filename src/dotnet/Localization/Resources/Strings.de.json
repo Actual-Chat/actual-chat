@@ -1501,6 +1501,8 @@
   "Call_CameraStillBlockedWeb": "Die Kamera ist weiterhin blockiert. Erlauben Sie den Kamerazugriff zuerst in den Browsereinstellungen.",
   "Call_StartingRecording": "Aufnahme wird gestartet...",
   "Call_Entry_Outgoing": "Ausgehender Anruf",
+  "Call_Entry_Incoming": "Eingehender Anruf",
+  "Call_Entry_Titled_Format": "{0}: {1}",
   "Call_Entry_Missed": "Verpasster Anruf",
   "Call_Entry_Declined": "Abgelehnter Anruf",
   "Call_Entry_Canceled": "Abgebrochener Anruf",

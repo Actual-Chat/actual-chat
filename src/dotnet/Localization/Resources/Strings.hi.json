@@ -1501,6 +1501,8 @@
   "Call_CameraStillBlockedWeb": "कैमरा अब भी अवरुद्ध है। कृपया पहले अपने ब्राउज़र सेटिंग्स में कैमरा एक्सेस की अनुमति दें।",
   "Call_StartingRecording": "रिकॉर्डिंग शुरू हो रही है...",
   "Call_Entry_Outgoing": "आउटगोइंग कॉल",
+  "Call_Entry_Incoming": "इनकमिंग कॉल",
+  "Call_Entry_Titled_Format": "{0}: {1}",
   "Call_Entry_Missed": "मिस्ड कॉल",
   "Call_Entry_Declined": "अस्वीकृत कॉल",
   "Call_Entry_Canceled": "रद्द कॉल",

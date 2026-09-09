@@ -5,24 +5,24 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ActualChat.Chat.Migrations;
 
 /// <inheritdoc />
-public partial class _20260907145017_Add_Conversation_IsCall : Migration
+public partial class _20260909115730_Add_Conversation_CallerId : Migration
 {
     /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.AddColumn<bool>(
-            name: "is_call",
+        migrationBuilder.AddColumn<string>(
+            name: "caller_id",
             table: "conversations",
-            type: "boolean",
+            type: "text",
             nullable: false,
-            defaultValue: false);
+            defaultValue: "");
     }
 
     /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.DropColumn(
-            name: "is_call",
+            name: "caller_id",
             table: "conversations");
     }
 }
