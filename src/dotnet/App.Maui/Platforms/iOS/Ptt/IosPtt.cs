@@ -203,6 +203,7 @@ public static class IosPtt
     private static void OnTransmitBegan()
     {
         BlazorWebViewApp.EnsureStarted();
+        AudioSession.PrepareForTransmit();
         Transmission transmission;
         Transmission? superseded;
         bool isSessionActive;

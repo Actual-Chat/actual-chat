@@ -43,8 +43,10 @@ public static class AudioSessionOwnership
             AudioSessionOwner.App => true,
             // The framework configured the session for a live call. Raising it to PlayAndRecord
             // for the app's own mic is compatible with that; lowering it to Playback or Ambient
-            // is what cuts the incoming voice out.
-            AudioSessionOwner.PttPlayback => mode is AudioFocusMode.Recording,
+            // is what cuts the incoming voice out. A transmit records through the app's own
+            // engine, and the framework activated its session with whatever category the app
+            // last set - after a listening burst that's Playback, whose input has no sample rate.
+            AudioSessionOwner.PttPlayback or AudioSessionOwner.PttTransmit => mode is AudioFocusMode.Recording,
             _ => false,
         };
 }
