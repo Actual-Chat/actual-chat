@@ -10,16 +10,19 @@ public static class StringAssertionsExt
         "ами", "ими", "ел", "ен", "у", "ие", "ии", "ся", "е", "ы", "а",
     ];
 
-    private static readonly (string Word, string SimilarWord)[] Synonyms = [
-        ("требуется", "нуждается"),
-        ("разрушается", "размывается"),
-        ("уход", "обслуживание"),
+    // Words within a group count as the same word; the first one is the canonical form
+    private static readonly string[][] SimilarWordGroups = [
+        ["требуется", "нуждается"],
+        ["разрушается", "размывается"],
+        ["уход", "обслуживание"],
+        ["ты", "тебя", "тебе", "вы", "вас", "вам"],
+        ["предупреждён", "предупреждены", "предупредили"],
     ];
 
-    private static readonly Dictionary<string, string> SimilarWords =
-        Synonyms.Concat(Synonyms.Select(x => (x.SimilarWord, x.Word)))
-            .Select(x => (Stem(x.Item1), Stem(x.Item2)))
-            .ToDictionary(x => x.Item1, x => x.Item2);
+    private static readonly Dictionary<string, string> CanonicalWords = SimilarWordGroups
+        .SelectMany(group => group.Select(word => (Word: Stem(word), Canonical: Stem(group[0]))))
+        .DistinctBy(x => x.Word)
+        .ToDictionary(x => x.Word, x => x.Canonical);
 
     extension<TAssertions>(StringAssertions<TAssertions> assertions) where TAssertions : StringAssertions<TAssertions>
     {
@@ -30,10 +33,9 @@ public static class StringAssertionsExt
             params object[] becauseArgs)
         {
             var text = assertions.Subject;
-            var words = text.SplitIntoWords().Select(Stem).ToList();
-            var expectedWords = expected.SplitIntoWords().Select(Stem).ToList();
+            var words = text.SplitIntoWords().Select(Canonicalize).ToList();
+            var expectedWords = expected.SplitIntoWords().Select(Canonicalize).ToList();
             var intersectingWords = expectedWords.Intersect(words, StringComparer.OrdinalIgnoreCase).ToHashSet();
-            intersectingWords.AddRange(words.Select(SimilarWords.GetValueOrDefault).SkipNullItems());
             var similarity = (double)intersectingWords.Count / Math.Max(words.Count, expectedWords.Count);
             assertions.CurrentAssertionChain.BecauseOf(because, becauseArgs)
                 .ForCondition(similarity >= minSimilarity)
@@ -90,8 +92,14 @@ public static class StringAssertionsExt
         }
     }
 
+    private static string Canonicalize(string text)
+    {
+        var stem = Stem(text);
+        return CanonicalWords.GetValueOrDefault(stem, stem);
+    }
+
     private static string Stem(string text)
-        => text.ToLower().Replace("ё", "e", StringComparison.OrdinalIgnoreCase).TrimFirstFoundPrefix().TrimFirstFoundSuffix();
+        => text.ToLower().Replace("ё", "е", StringComparison.OrdinalIgnoreCase).TrimFirstFoundPrefix().TrimFirstFoundSuffix();
 
     private static string TrimFirstFoundPrefix(this string source)
     {
