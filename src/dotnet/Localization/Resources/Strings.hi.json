@@ -842,6 +842,8 @@
   "PicCrop_Apply": "लागू करें",
   "PicCrop_RotateLeft": "बाएँ घुमाएँ",
   "PicCrop_RotateRight": "दाएँ घुमाएँ",
+  "PicCrop_Uploading_Format": "अपलोड हो रहा है... {0}%",
+  "PicCrop_Processing": "प्रोसेस हो रहा है...",
   "PeerContact_Title": "संपर्क संपादित करें",
   "PeerContact_DisplayName": "प्रदर्शित नाम",
   "PeerContact_BlockUser": "उपयोगकर्ता को ब्लॉक करें",

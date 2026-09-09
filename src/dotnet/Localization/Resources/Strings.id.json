@@ -842,6 +842,8 @@
   "PicCrop_Apply": "Terapkan",
   "PicCrop_RotateLeft": "Putar ke kiri",
   "PicCrop_RotateRight": "Putar ke kanan",
+  "PicCrop_Uploading_Format": "Mengunggah... {0}%",
+  "PicCrop_Processing": "Memproses...",
   "PeerContact_Title": "Edit kontak",
   "PeerContact_DisplayName": "Nama tampilan",
   "PeerContact_BlockUser": "Blokir pengguna",

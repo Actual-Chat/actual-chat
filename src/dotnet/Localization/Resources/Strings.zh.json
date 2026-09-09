@@ -842,6 +842,8 @@
   "PicCrop_Apply": "应用",
   "PicCrop_RotateLeft": "向左旋转",
   "PicCrop_RotateRight": "向右旋转",
+  "PicCrop_Uploading_Format": "正在上传... {0}%",
+  "PicCrop_Processing": "正在处理...",
   "PeerContact_Title": "编辑联系人",
   "PeerContact_DisplayName": "显示名称",
   "PeerContact_BlockUser": "屏蔽用户",

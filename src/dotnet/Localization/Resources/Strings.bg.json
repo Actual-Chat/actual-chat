@@ -842,6 +842,8 @@
   "PicCrop_Apply": "Приложете",
   "PicCrop_RotateLeft": "Завъртете наляво",
   "PicCrop_RotateRight": "Завъртете надясно",
+  "PicCrop_Uploading_Format": "Качване... {0}%",
+  "PicCrop_Processing": "Обработка...",
   "PeerContact_Title": "Редактирайте контакта",
   "PeerContact_DisplayName": "Показвано име",
   "PeerContact_BlockUser": "Блокирайте потребителя",

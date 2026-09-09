@@ -842,6 +842,8 @@
   "PicCrop_Apply": "Uygulayın",
   "PicCrop_RotateLeft": "Sola döndürün",
   "PicCrop_RotateRight": "Sağa döndürün",
+  "PicCrop_Uploading_Format": "Yükleniyor... %{0}",
+  "PicCrop_Processing": "İşleniyor...",
   "PeerContact_Title": "Kişiyi düzenleyin",
   "PeerContact_DisplayName": "Görünen ad",
   "PeerContact_BlockUser": "Kullanıcıyı engelleyin",

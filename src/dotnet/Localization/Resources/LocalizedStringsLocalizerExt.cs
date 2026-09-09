@@ -881,6 +881,8 @@ public static class LocalizedStringsLocalizerExt
         public string PicCrop_Apply => l["PicCrop_Apply"].Value;
         public string PicCrop_RotateLeft => l["PicCrop_RotateLeft"].Value;
         public string PicCrop_RotateRight => l["PicCrop_RotateRight"].Value;
+        public string PicCrop_Uploading_Format(object arg0) => l["PicCrop_Uploading_Format", arg0].Value;
+        public string PicCrop_Processing => l["PicCrop_Processing"].Value;
         public string PeerContact_Title => l["PeerContact_Title"].Value;
         public string PeerContact_DisplayName => l["PeerContact_DisplayName"].Value;
         public string PeerContact_BlockUser => l["PeerContact_BlockUser"].Value;

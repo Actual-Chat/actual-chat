@@ -842,6 +842,8 @@
   "PicCrop_Apply": "Примените",
   "PicCrop_RotateLeft": "Ротирајте лијево",
   "PicCrop_RotateRight": "Ротирајте десно",
+  "PicCrop_Uploading_Format": "Отпремање... {0}%",
+  "PicCrop_Processing": "Обрада...",
   "PeerContact_Title": "Уредите контакт",
   "PeerContact_DisplayName": "Приказано име",
   "PeerContact_BlockUser": "Блокирајте корисника",

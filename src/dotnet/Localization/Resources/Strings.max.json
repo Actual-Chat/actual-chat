@@ -997,6 +997,8 @@
   "PicCrop_Apply": "Übernehmen",
   "PicCrop_RotateLeft": "Повернути ліворуч",
   "PicCrop_RotateRight": "Повернути праворуч",
+  "PicCrop_Uploading_Format": "Wird hochgeladen... {0}%",
+  "PicCrop_Processing": "प्रोसेस हो रहा है...",
   "PeerContact_Title": "Редактирайте контакта",
   "PeerContact_DisplayName": "Отображаемое имя",
   "PeerContact_BlockUser": "Заблокировать пользователя",

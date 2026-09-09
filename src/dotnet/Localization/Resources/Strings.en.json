@@ -997,6 +997,8 @@
   "PicCrop_Apply": "Apply",
   "PicCrop_RotateLeft": "Rotate left",
   "PicCrop_RotateRight": "Rotate right",
+  "PicCrop_Uploading_Format": "Uploading... {0}%",
+  "PicCrop_Processing": "Processing...",
   "PeerContact_Title": "Edit contact",
   "PeerContact_DisplayName": "Display Name",
   "PeerContact_BlockUser": "Block user",

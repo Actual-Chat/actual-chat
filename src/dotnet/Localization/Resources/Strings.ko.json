@@ -842,6 +842,8 @@
   "PicCrop_Apply": "적용",
   "PicCrop_RotateLeft": "왼쪽으로 회전",
   "PicCrop_RotateRight": "오른쪽으로 회전",
+  "PicCrop_Uploading_Format": "업로드 중... {0}%",
+  "PicCrop_Processing": "처리 중...",
   "PeerContact_Title": "연락처 편집",
   "PeerContact_DisplayName": "표시 이름",
   "PeerContact_BlockUser": "사용자 차단",
