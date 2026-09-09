@@ -204,6 +204,12 @@ body.hoverable .tile-item.clickable.item-danger:hover,
     @apply max-h-none h-auto;
     @apply whitespace-normal line-clamp-2;
 }
+/* An info row is prose, not a one-line setting label, so it wraps and grows
+   instead of truncating. */
+.info-tile-item .tile-item-body-content {
+    @apply max-h-none h-auto;
+    @apply whitespace-normal;
+}
 .tile-item-body-caption {
     @apply text-caption-6 font-normal text-03;
 }

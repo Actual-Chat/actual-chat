@@ -37,12 +37,15 @@
 
 @if (m.IsKnown && !m.HasMissing) {
     <Tile>
-        <p class="c-description">@L.Permissions_AllGranted</p>
+        <TileItem Class="info-tile-item" IsHoverable="false">
+            <Icon><i class="icon-checkmark-circle text-xl"></i></Icon>
+            <Content>@L.Permissions_AllGranted</Content>
+        </TileItem>
     </Tile>
 }
 else if (m.HasMissing && !m.IsWarningDismissed) {
     <Tile>
-        <TileItem Class="dismiss-warning-item" Click="@OnDismissWarningClick">
+        <TileItem Class="dismiss-warning-item info-tile-item" Click="@OnDismissWarningClick">
             <Icon><i class="icon-alert-circle text-2xl"></i></Icon>
             <Content>@L.Permissions_DismissWarning</Content>
         </TileItem>
