@@ -5,6 +5,7 @@ using ActualLab.IO;
 using CoreGraphics;
 using Foundation;
 using ImageIO;
+using Microsoft.Maui.Storage;
 using UniformTypeIdentifiers;
 using UserNotifications;
 
@@ -23,6 +24,8 @@ public class MacOSDeviceNotifications(IServiceProvider services) : IDeviceNotifi
     // A banner that lands seconds late is worse than an iconless one, and these are 128px
     // avatars: a slow fetch means the network is gone anyway.
     private static readonly TimeSpan IconFetchTimeout = TimeSpan.FromSeconds(5);
+    private static readonly FilePath CircleIconCacheDir
+        = new FilePath(FileSystem.CacheDirectory) | "notification-icons";
     private static readonly ILogger Log = StaticLog.For<MacOSDeviceNotifications>();
 
     private readonly SemaphoreSlim _reconcileLock = new(1, 1);
@@ -125,14 +128,19 @@ public class MacOSDeviceNotifications(IServiceProvider services) : IDeviceNotifi
         if (iconPath.IsEmpty)
             return null;
 
-        // A fresh file per post: the system moves the attached file into its own store, so the
-        // shared icon cache must keep its copy.
+        // The circle is rendered once per icon; every post hands over a fresh copy, since the
+        // system moves the attached file into its own store.
         var attachmentPath = new FilePath(Path.GetTempPath()) & $"icon-{RandomStringGenerator.Default.Next()}.png";
         try {
-            if (!WriteCircularPng(iconPath, attachmentPath)) {
-                Log.LogWarning("Icon isn't a decodable image: {IconUrl}", info.IconUrl);
-                return null;
+            var circlePath = CircleIconCacheDir | (iconPath.FileNameWithoutExtension + ".png");
+            if (!File.Exists(circlePath)) {
+                Directory.CreateDirectory(CircleIconCacheDir);
+                if (!WriteCircularPng(iconPath, circlePath)) {
+                    Log.LogWarning("Icon isn't a decodable image: {IconUrl}", info.IconUrl);
+                    return null;
+                }
             }
+            File.Copy(circlePath, attachmentPath);
 
             var options = new UNNotificationAttachmentOptions { TypeHint = UTTypes.Png.Identifier };
             var attachment = UNNotificationAttachment.FromIdentifier(
@@ -165,6 +173,7 @@ public class MacOSDeviceNotifications(IServiceProvider services) : IDeviceNotifi
 
     // The thumbnail slot is a rounded square, so the circle comes from the image itself:
     // the centered square of the source clipped to an ellipse over transparent corners.
+    // TODO(#4442): drop this once the server serves round icons - attach the cached file as is.
     private static bool WriteCircularPng(FilePath sourcePath, FilePath targetPath)
     {
         using var source = CGImageSource.FromUrl(NSUrl.CreateFileUrl(sourcePath));
