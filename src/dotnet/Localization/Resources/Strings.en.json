@@ -110,13 +110,13 @@
   "ThemeSettings_Dark": "Dark",
   "ThemeSettings_MatchSystem": "Match system theme",
 
-  "CarAudio_Microphone": "Microphone",
-  "CarAudio_MicrophoneCaption": "Uses the phone's microphone",
-  "CarAudio_Output": "Sound",
-  "CarAudio_OutputCaption": "Plays through the car speakers",
-  "CarAudio_Auto": "Auto",
-  "CarAudio_Phone": "Phone",
+  "CarAudio_Mode": "Sound and microphone",
   "CarAudio_Car": "Car",
+  "CarAudio_CarCaption": "The car's microphone and speakers, like a phone call. Music pauses while you talk.",
+  "CarAudio_CarSpeakers": "Car speakers, phone microphone",
+  "CarAudio_CarSpeakersCaption": "Music pauses while someone is talking.",
+  "CarAudio_Phone": "Phone only",
+  "CarAudio_PhoneCaption": "Sound and microphone stay on the phone.",
 
   // Settings > Voice & Transcription. These are the *spoken* languages a user's speech is
   // transcribed from - unrelated to the UI language above. ListeningLinger_* fills the

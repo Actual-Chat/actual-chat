@@ -18,59 +18,55 @@ public class CarAudioRouteTest
         route.Should().Be(CarAudioRoute.Default);
     }
 
-    [Theory]
-    [InlineData(CarAudioDevice.Auto, AudioEndpoint.Builtin)]
-    [InlineData(CarAudioDevice.Phone, AudioEndpoint.Builtin)]
-    [InlineData(CarAudioDevice.Car, AudioEndpoint.External)]
-    public void ShouldMapMicrophoneUnderProjection(CarAudioDevice setting, AudioEndpoint expected)
-    {
-        // act
-        var route = CarAudioRoute.For(true, new UserCarAudioSettings { Microphone = setting });
-
-        // assert
-        route.Input.Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData(CarAudioDevice.Auto, AudioEndpoint.External)]
-    [InlineData(CarAudioDevice.Car, AudioEndpoint.External)]
-    [InlineData(CarAudioDevice.Phone, AudioEndpoint.Builtin)]
-    public void ShouldMapOutputUnderProjection(CarAudioDevice setting, AudioEndpoint expected)
-    {
-        // act
-        var route = CarAudioRoute.For(true, new UserCarAudioSettings { Output = setting });
-
-        // assert
-        route.Output.Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData(CarAudioDevice.Auto)]
-    [InlineData(CarAudioDevice.Phone)]
-    [InlineData(CarAudioDevice.Car)]
-    public void ShouldTakeTheCallLinkOnlyForTheCarMicrophone(CarAudioDevice microphone)
-    {
-        // act
-        var route = CarAudioRoute.For(true, new UserCarAudioSettings { Microphone = microphone });
-
-        // assert
-        route.UseCallLink.Should().Be(microphone == CarAudioDevice.Car);
-    }
-
     [Fact]
-    public void ShouldCarryPlaybackOverTheCallLink()
+    public void ShouldDefaultToTheCarCall()
+    {
+        // act
+        var route = CarAudioRoute.For(true, new UserCarAudioSettings());
+
+        // assert
+        route.Should().Be(CarAudioRoute.CallLink, because: "the zero settings mean the car handles both directions");
+    }
+
+    [Theory]
+    [InlineData(CarAudioMode.Car, AudioEndpoint.External, AudioEndpoint.External, true)]
+    [InlineData(CarAudioMode.CarSpeakers, AudioEndpoint.Builtin, AudioEndpoint.External, false)]
+    [InlineData(CarAudioMode.Phone, AudioEndpoint.Builtin, AudioEndpoint.Builtin, false)]
+    public void ShouldMapModeUnderProjection(
+        CarAudioMode mode, AudioEndpoint input, AudioEndpoint output, bool useCallLink)
+    {
+        // act
+        var route = CarAudioRoute.For(true, new UserCarAudioSettings().WithCarAudioMode(mode));
+
+        // assert
+        route.Should().Be(new CarAudioRoute(input, output, useCallLink));
+    }
+
+    [Theory]
+    [InlineData(CarAudioMode.Car)]
+    [InlineData(CarAudioMode.CarSpeakers)]
+    [InlineData(CarAudioMode.Phone)]
+    public void ShouldRoundTripMode(CarAudioMode mode)
+    {
+        // act
+        var settings = new UserCarAudioSettings().WithCarAudioMode(mode);
+
+        // assert
+        settings.GetCarAudioMode().Should().Be(mode);
+    }
+
+    [Theory]
+    [InlineData(CarAudioDevice.Auto, CarAudioDevice.Auto, CarAudioMode.Car)]
+    [InlineData(CarAudioDevice.Car, CarAudioDevice.Phone, CarAudioMode.Car)]
+    [InlineData(CarAudioDevice.Phone, CarAudioDevice.Auto, CarAudioMode.CarSpeakers)]
+    [InlineData(CarAudioDevice.Phone, CarAudioDevice.Phone, CarAudioMode.Phone)]
+    public void ShouldReadStoredAxesAsMode(CarAudioDevice microphone, CarAudioDevice output, CarAudioMode expected)
     {
         // arrange
-        var settings = new UserCarAudioSettings {
-            Microphone = CarAudioDevice.Car,
-            Output = CarAudioDevice.Phone,
-        };
-
-        // act
-        var route = CarAudioRoute.For(true, settings);
+        var settings = new UserCarAudioSettings { Microphone = microphone, Output = output };
 
         // assert
-        route.Should().Be(CarAudioRoute.CallLink, because: "a call is two-way on one link, so the output choice yields");
+        settings.GetCarAudioMode().Should().Be(expected, because: "a phone-only choice needs the phone mic first");
     }
 
     [Fact]

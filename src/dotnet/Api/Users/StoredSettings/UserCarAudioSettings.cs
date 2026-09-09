@@ -20,7 +20,8 @@ public sealed partial record UserCarAudioSettings
     public CarAudioDevice Output { get; init; } = CarAudioDevice.Auto;
 }
 
-// Auto is the zero default on both axes: phone microphone, car speakers.
+// Auto is the zero default on both axes and reads as the car's call route: car microphone and
+// car speakers, the way a phone call goes.
 public enum CarAudioDevice
 {
     Auto = 0,
