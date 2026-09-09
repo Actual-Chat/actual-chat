@@ -25,6 +25,12 @@ public sealed partial record LegacySystemEntry : IUnionRecord<LegacySystemEntryO
         init => Option ??= value;
     }
 
+    [DataMember]
+    public LegacyCallOption? Call {
+        get => Option as LegacyCallOption;
+        init => Option ??= value;
+    }
+
     public static implicit operator LegacySystemEntry(LegacySystemEntryOption option)
         => new() { Option = option };
 
@@ -37,6 +43,10 @@ public sealed partial record LegacySystemEntry : IUnionRecord<LegacySystemEntryO
         },
         NotifyMembersEntry nm => new LegacySystemEntry {
             Option = new LegacyNotifyMembersOption(nm.TargetAuthorId, nm.TargetAuthorName),
+        },
+        CallEntry c => new LegacySystemEntry {
+            Option = new LegacyCallOption(
+                c.CallerId, c.CallerName, c.Outcome, c.InviteeIds.ToArray(), c.HasVideo),
         },
         _ => null,
     };
@@ -71,5 +81,26 @@ public sealed partial record LegacyNotifyMembersOption : LegacySystemEntryOption
     {
         AuthorId = authorId;
         AuthorName = authorName;
+    }
+}
+
+[DataContract]
+public sealed partial record LegacyCallOption : LegacySystemEntryOption
+{
+    [DataMember] public AuthorId CallerId { get; init; } = null!;
+    [DataMember] public string CallerName { get; init; } = "";
+    [DataMember] public CallOutcome Outcome { get; init; }
+    [DataMember] public AuthorId[] InviteeIds { get; init; } = [];
+    [DataMember] public bool HasVideo { get; init; }
+
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    public LegacyCallOption(
+        AuthorId callerId, string callerName, CallOutcome outcome, AuthorId[] inviteeIds, bool hasVideo)
+    {
+        CallerId = callerId;
+        CallerName = callerName;
+        Outcome = outcome;
+        InviteeIds = inviteeIds;
+        HasVideo = hasVideo;
     }
 }

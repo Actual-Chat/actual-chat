@@ -18,6 +18,7 @@ public abstract partial record ChatEntry : IForwardCompatibleUnion<ChatEntry>
     private static readonly FrozenDictionary<int, Version> UnionTagSinceVersions =
         new Dictionary<int, Version> {
             [100] = new (2, 20), // UnsupportedSystemEntry
+            [101] = new (2, 20), // CallEntry
         }.ToFrozenDictionary();
 
     public static bool IsSystemUnionTag(int tag)
