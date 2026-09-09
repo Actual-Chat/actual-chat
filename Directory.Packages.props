@@ -5,12 +5,12 @@
   </PropertyGroup>
   <PropertyGroup>
     <ActualLabFusionVersion>14.4.3</ActualLabFusionVersion>
-    <!-- .NET 11 is still in preview: every Microsoft.* package below shares this build number -->
-    <DotNetVersion>11.0.0-preview.7.26381.103</DotNetVersion>
+    <!-- .NET 11 is not GA yet: every Microsoft.* package below shares this build number -->
+    <DotNetVersion>11.0.0-rc.1.26425.128</DotNetVersion>
     <AspNetCoreVersion>$(DotNetVersion)</AspNetCoreVersion>
     <MicrosoftAspNetCoreVersion>2.3.10</MicrosoftAspNetCoreVersion> <!-- Weird, they have the second version -->
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
-    <!-- Trails DotNetVersion: Npgsql.EntityFrameworkCore.PostgreSQL has no preview 7 build, and its
+    <!-- Trails DotNetVersion: Npgsql.EntityFrameworkCore.PostgreSQL has no build past preview 6, and its
          preview 6 .nuspec exact-pins Microsoft.EntityFrameworkCore(.Relational) to that exact build -->
     <EntityFrameworkCoreVersion>11.0.0-preview.6.26359.118</EntityFrameworkCoreVersion>
     <EntityFrameworkCoreNpgsqlVersion>11.0.0-preview.6</EntityFrameworkCoreNpgsqlVersion>
@@ -281,7 +281,7 @@
     <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.4" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" />
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="11.0.100-preview.7.26381.103" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="11.0.100-rc.1.26425.128" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="$(EntityFrameworkCoreVersion)" />
     <PackageVersion Include="Microsoft.Playwright" Version="1.60.0" />

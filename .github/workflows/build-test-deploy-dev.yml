@@ -690,8 +690,8 @@ jobs:
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
 
-      - name: Install workloads (pinned to the .NET 11 preview 7 workload band — see #3839)
-        run: dotnet workload install maui ios maui-ios --from-rollback-file ${{github.workspace}}/.github/workloads-net11-p7.json
+      - name: Install workloads (pinned to the .NET 11 RC 1 workload band — see #3839)
+        run: dotnet workload install maui ios maui-ios --from-rollback-file ${{github.workspace}}/.github/workloads-net11-rc1.json
 
       # The Xcode projects under src/swift/ are generated from their project.yml, not
       # committed - each one's build.sh, invoked by the iOS build, fails without xcodegen.
@@ -931,8 +931,8 @@ jobs:
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
 
-      - name: Install workloads (pinned to the .NET 11 preview 7 workload band — see #3839)
-        run: dotnet workload install maui maccatalyst maui-maccatalyst --from-rollback-file ${{github.workspace}}/.github/workloads-net11-p7.json
+      - name: Install workloads (pinned to the .NET 11 RC 1 workload band — see #3839)
+        run: dotnet workload install maui maccatalyst maui-maccatalyst --from-rollback-file ${{github.workspace}}/.github/workloads-net11-rc1.json
 
       - name: Replace git+ssh://git@ to https://
         run: sed -i -E 's/git+ssh:\/\/git@/https:\/\//g' package-lock.json
@@ -1113,8 +1113,8 @@ jobs:
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
 
-      - name: Install workloads (pinned to the .NET 11 preview 7 workload band — see #3839)
-        run: dotnet workload install maui macos --from-rollback-file ${{github.workspace}}/.github/workloads-net11-p7.json
+      - name: Install workloads (pinned to the .NET 11 RC 1 workload band — see #3839)
+        run: dotnet workload install maui macos --from-rollback-file ${{github.workspace}}/.github/workloads-net11-rc1.json
 
       - name: Replace git+ssh://git@ to https://
         run: sed -i -E 's/git+ssh:\/\/git@/https:\/\//g' package-lock.json
