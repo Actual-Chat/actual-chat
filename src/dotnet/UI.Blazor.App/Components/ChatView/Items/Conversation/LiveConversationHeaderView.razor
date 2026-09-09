@@ -49,7 +49,7 @@
             t => new ComputedState<LiveConversationHeaderState>.Options() {
                 // IsJoined defaults true in the placeholder so the clickable Join button doesn't flash
                 // before the first ComputeState resolves the real join state.
-                InitialValue = new LiveConversationHeaderState(conversation.Title, "", false, false, true),
+                InitialValue = new LiveConversationHeaderState(conversation.Title, "", false, true),
                 Category = GetStateCategory(t),
             });
     }
@@ -83,11 +83,10 @@
             && rawLive is { SessionStartedAt: not null }
             && blockState.FoldBoundaryLid > rawLive.EffectiveVisibleStartLid;
         var canExpand = isLive && !isVoiceOnly && rawLive is { SessionStartedAt: not null };
-        var isExpanded = Header.IsExpanded;
         var isAnyoneTalking = isLive
             && await LiveStreamUI.IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(false);
         return new LiveConversationHeaderState(
-            translated.Title.Text, participantsText, hasFoldedEntries, isExpanded, isJoined,
+            translated.Title.Text, participantsText, hasFoldedEntries, isJoined,
             blockState.Overlay != null, blockState.Overlay?.IsDissolving ?? false, canExpand,
             isAnyoneTalking);
     }

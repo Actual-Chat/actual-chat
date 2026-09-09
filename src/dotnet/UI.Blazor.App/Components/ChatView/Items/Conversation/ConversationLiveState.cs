@@ -13,7 +13,6 @@ public sealed record ConversationLiveState(
     bool IsVoiceOnly,
     string ParticipantsText = "",
     bool HasFoldedEntries = false,
-    bool IsExpanded = false,
     IReadOnlyList<PreviewEntry>? TailPreview = null,
     bool HasSummary = false,
     int SwallowedCount = 0,

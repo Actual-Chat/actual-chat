@@ -89,14 +89,14 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         if (effectiveBoundary <= v)
             return 0;
 
+        // Bounded to the fold itself: read from the chat end, this would re-walk the whole live tail and
+        // depend on every tile of it, for every participant, on every new entry.
         var count = 0;
-        await foreach (var entry in Chats.ReadReverse(Session, chatId, cancellationToken).ConfigureAwait(false)) {
-            if (entry.LocalId >= effectiveBoundary || entry.IsSystemEntry)
-                continue;
-            if (entry.LocalId < v)
-                break;
-            count++;
-        }
+        var reader = Chats.NewEntryReader(Session, chatId);
+        var foldRange = new Range<long>(v, effectiveBoundary);
+        await foreach (var entry in reader.ReadReverse(foldRange, cancellationToken).ConfigureAwait(false))
+            if (!entry.IsSystemEntry)
+                count++;
         return count;
     }
 
@@ -119,11 +119,12 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         var revealed = v;
         using (Computed.BeginIsolation()) {
             var taken = 0;
-            await foreach (var entry in Chats.ReadReverse(Session, chatId, cancellationToken).ConfigureAwait(false)) {
-                if (entry.LocalId >= effectiveBoundary || entry.IsSystemEntry)
+            var reader = Chats.NewEntryReader(Session, chatId);
+            var foldRange = new Range<long>(v, effectiveBoundary);
+            await foreach (var entry in reader.ReadReverse(foldRange, cancellationToken).ConfigureAwait(false)) {
+                if (entry.IsSystemEntry)
                     continue;
-                if (entry.LocalId < v)
-                    break;
+
                 revealed = entry.LocalId;
                 if (++taken >= LiveFoldMath.RevealBatchSize)
                     break;
@@ -229,13 +230,15 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         var tailFloorLid = raw is { IsLatched: true }
             ? await GetTailFloorLid(chatId, raw.VisibleStartLid, cancellationToken).ConfigureAwait(false)
             : long.MaxValue;
-        // Read the way the header and the card read it, so the three cannot disagree on what "collapsed" is.
+        // Resolved from the same latch and states the tile builder resolves expansion from, so the governor
+        // and the render cannot disagree on what "collapsed" is. The snapshot already carries the id and the
+        // default; the conversation record would only add a churnier dependency.
         var isBlockExpanded = false;
         if (raw is { IsLatched: true }) {
-            var conversation = await LiveSessionUI.GetConversation(chatId, cancellationToken).ConfigureAwait(false);
             await Hub.ChatUI.ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(false);
             await Hub.ChatUI.AutoExpandedConversations.Use(cancellationToken).ConfigureAwait(false);
-            isBlockExpanded = conversation != null && Hub.ChatUI.IsConversationExpanded(conversation);
+            isBlockExpanded = Hub.ChatUI.IsConversationExpanded(
+                ConversationId.New(chatId, raw.VisibleStartLid), raw.IsExpandedByDefault);
         }
         return new GovernorInputs(
             chatId, raw, visibility, isJoined, isBlockExpanded, streamingTail.FloorLid, tailFloorLid);
@@ -289,8 +292,9 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                 && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
             // Seed the template alongside the attending latch: a join immediately followed by a leave
             // (before the governor's first iteration) must still freeze, so WasAttending never outruns
-            // the template GetBlockState needs to derive the overlay.
-            if (raw is { IsLatched: true } && isJoined)
+            // the template GetBlockState needs to derive the overlay. Built for a viewer who never joined
+            // too - RevealMore reads V from it, and their expanded block folds like anyone's.
+            if (raw is { IsLatched: true })
                 template = await BuildTemplate(chatId, raw, cancellationToken).ConfigureAwait(false);
             // The seed is the one fold end no advance produced, so the floors have to bound it here
             // instead: the governed value only ever grows, and a seed above them could never be
@@ -378,11 +382,11 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         var (_, raw, visibility, isJoined, isBlockExpanded, rawStreamingFloorLid, tailFloorLid) = inputs;
         var chatState = await GetOrCreateChatState(chatId, cancellationToken).ConfigureAwait(false);
 
-        // While the viewer is attending a live session, keep a frozen template ready - the exact
-        // descriptor GetBlockState needs to freeze the block the instant it closes. Leaving doesn't
-        // stop the refresh: the block goes on exactly as it was, so the descriptor has to go on
-        // tracking it, and only the close (raw == null) freezes what it holds.
-        var template = raw is { IsLatched: true } && (isJoined || chatState.WasAttending)
+        // While the session is live, keep a frozen template ready - the exact descriptor GetBlockState
+        // needs to freeze the block the instant it closes, and the V that RevealMore walks back from.
+        // Leaving doesn't stop the refresh: the block goes on exactly as it was, so the descriptor has
+        // to go on tracking it, and only the close (raw == null) freezes what it holds.
+        var template = raw is { IsLatched: true }
             ? await BuildTemplate(chatId, raw, cancellationToken).ConfigureAwait(false)
             : null;
         var streamingFloorLid = StreamingFloorOf(raw, rawStreamingFloorLid);
@@ -471,7 +475,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                 if (chatState.RevealedBoundaryLid != long.MaxValue && minVisibleLid != 0) {
                     if (minVisibleLid < oldBoundary && !visibility.IsPinnedToEnd)
                         chatState.RevealScrolledInto = true;
-                    else if (chatState.RevealScrolledInto) {
+                    else if (chatState.RevealScrolledInto && minVisibleLid >= oldBoundary) {
                         chatState.RevealedBoundaryLid = long.MaxValue;
                         chatState.RevealScrolledInto = false;
                         clearedReveal = true;

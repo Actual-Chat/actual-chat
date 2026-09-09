@@ -450,6 +450,11 @@ public partial class ChatUI
             // has no override - an auto-collapse nobody asked for.
             foreach (var c in conversationTiles.SelectMany(t => t))
                 _knownConversationDefaultExpanded.TryAdd(c.Id, c.IsExpandedByDefault);
+            // Latched before the snapshot below, which the join branch's override decision reads: seeded
+            // elsewhere in between (the fold governor reads the same latch), the decision and the next
+            // build's resolution would disagree, and the block would collapse itself one build later.
+            if (amInLiveConversation && liveConversation is { } joinedLiveConversation)
+                _knownConversationDefaultExpanded.TryAdd(joinedLiveConversation.Id, false);
             defaultExpanded = _knownConversationDefaultExpanded
                 .Where(kv => kv.Value)
                 .Select(kv => kv.Key)
@@ -976,11 +981,15 @@ public partial class ChatUI
             // ContextStartLid (its materialized id), not V (the live-era render id) - both identities
             // must resolve to the same governed range, or a session with pre-latch context would lose
             // its frozen tail's id-tiles after close.
+            // Once closed, an expanded block excludes nothing: its card has no "show more" any more, so a
+            // fold it kept would hide rows the reader has no way back to.
+            var isClosedExpandedBlock = materializedBlockId != null
+                && liveBlockId is { } closedBlockId && expandedConversations.Contains(closedBlockId);
             var excludedRanges = conversationIdRanges
                 .Select(r => {
                     var rangeId = ConversationId.New(chatId, r.Start);
                     if (rangeId == liveBlockId || rangeId == materializedBlockId)
-                        return liveBlockFoldRange;
+                        return isClosedExpandedBlock ? default : liveBlockFoldRange;
 
                     return expandedConversations.Contains(rangeId) ? default : r;
                 })
@@ -1173,9 +1182,12 @@ public partial class ChatUI
             // The live block folds its governed range whether expanded or not - never the whole
             // EntryLidRange, so entry V and the un-summarized tail stay loadable. Expanded is the
             // auto-swallow mode: rows that scrolled above the viewport sit behind the card's "show more".
-            // Collapsed hides the tail too (hiddenLiveTailRange), so the card stands in for it all.
+            // Collapsed hides the tail too (hiddenLiveTailRange), so the card stands in for it all. Once
+            // closed, an expanded block folds nothing: its card has no "show more" any more.
+            var isFoldingLiveBlock = liveBlockId is { } foldingBlockId
+                && (materializedBlockId == null || !expandedConversations.Contains(foldingBlockId));
             idRangesToSkip = conversations
-                .Where(c => c.Id == liveBlockId || !expandedConversations.Contains(c.Id))
+                .Where(c => (c.Id == liveBlockId && isFoldingLiveBlock) || !expandedConversations.Contains(c.Id))
                 .Select(c => c.Id == liveBlockId ? liveFoldRange : c.EntryLidRange)
                 .Where(r => !r.IsEmpty)
                 .ToArray();
@@ -1184,7 +1196,7 @@ public partial class ChatUI
             // un-summarised rows (§4) - this tile then carries no matching Conversation to substitute
             // above, and the fold would never apply. Add it explicitly so folding is never limited by
             // how far the persisted conversation record itself currently reaches.
-            if (liveBlockId is { } liveBlockConversationId
+            if (liveBlockId is { } liveBlockConversationId && isFoldingLiveBlock
                 && !liveFoldRange.IsEmpty && conversations.All(c => c.Id != liveBlockConversationId))
                 idRangesToSkip = [..idRangesToSkip, liveFoldRange];
         }
