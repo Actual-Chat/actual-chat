@@ -1,5 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.Module;
+using AppKit;
 using AVFoundation;
 using Foundation;
 using WebKit;
@@ -151,6 +152,25 @@ public partial class MauiWebView
                 _ = HandleWebNavigation(mauiWebView, uri);
             }
             return null;
+        }
+
+        public override void RunOpenPanel(
+            WKWebView webView,
+            WKOpenPanelParameters parameters,
+            WKFrameInfo frame,
+            Action<NSUrl[]> completionHandler)
+        {
+            // Unlike iOS, WebKit on macOS shows nothing for <input type=file> unless the delegate
+            // runs the panel itself; a null result is how the completion handler reports a cancel.
+            var panel = new NSOpenPanel {
+                CanChooseFiles = true,
+                CanChooseDirectories = parameters.AllowsDirectories,
+                AllowsMultipleSelection = parameters.AllowsMultipleSelection,
+            };
+            if (webView.Window is { } window)
+                panel.BeginSheet(window, result => completionHandler.Invoke(result == 1 ? panel.Urls : null!));
+            else
+                completionHandler.Invoke(panel.RunModal() == 1 ? panel.Urls : null!);
         }
 
         public override void RequestMediaCapturePermission(
