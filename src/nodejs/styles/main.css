@@ -133,8 +133,8 @@ body.narrow {
     touch-action: none;
 }
 /* Let fullscreen video panel reach the viewport edges under device cutouts */
-body.video-panel-expanded-any .safe-area-left::after,
-body.video-panel-expanded-any .safe-area-right::after {
+body[data-has-video-panel-expanded] .safe-area-left::after,
+body[data-has-video-panel-expanded] .safe-area-right::after {
     display: none;
 }
 .safe-area-bottom-overlay {
@@ -287,7 +287,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 /* A headerless page - one that carries its own heading - would otherwise get an empty bar with a
    separator under it. The box stays, because it is what reserves the top safe area; it just
    collapses to that inset and drops the separator. */
-.list-view-layout.has-headerless-page > .layout-header {
+.list-view-layout[data-has-headerless-page] > .layout-header {
     @apply border-b-0;
     min-height: var(--safe-area-top);
 }
@@ -366,8 +366,8 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply items-center;
     min-height: calc(3.5rem + var(--safe-area-top));
 }
-.list-view-layout .layout-header.has-activity-panel,
-.list-view-layout.has-listening-activity .layout-header {
+.list-view-layout .layout-header[data-has-activity-panel],
+.list-view-layout[data-has-listening-activity] .layout-header {
     @apply relative;
     @apply bg-transparent;
     @apply border-transparent;
@@ -383,18 +383,18 @@ body.narrow .list-view-layout:has(.chat-activity-panel:not(.not-participating)) 
         var(--transparent) 100%);
 }
 /* Video panel styling — no max-height, just visual treatment */
-.list-view-layout .layout-header.has-open-video-panel,
-.list-view-layout .layout-header.has-map-panel {
+.list-view-layout .layout-header[data-has-open-video-panel],
+.list-view-layout .layout-header[data-has-map-panel] {
     border: none;
 }
 /* Collapsed video panel island uses fixed positioning — no header overflow needed.
    The map panel counts too: its Call/Map switch overhangs the header into the subheader area. */
-.list-view-layout.has-open-video-panel .layout-subheader,
-.list-view-layout.has-map-panel .layout-subheader {
+.list-view-layout[data-has-open-video-panel] .layout-subheader,
+.list-view-layout[data-has-map-panel] .layout-subheader {
     @apply z-40;
 }
 /* Hideable elements (control panel buttons) */
-.list-view-layout .layout-header.has-activity-panel .hideable {
+.list-view-layout .layout-header[data-has-activity-panel] .hideable {
     transition-property: opacity, transform, max-width;
     transition-duration: 0.5s;
     transition-timing-function: ease;
@@ -447,18 +447,18 @@ body.narrow .list-view-layout .layout-header.collapsed .chat-header-title {
     border-top: 1px solid var(--violet-80-20);
 }
 /* Colorized header */
-.list-view-layout.has-listening-activity .layout-subheader {
+.list-view-layout[data-has-listening-activity] .layout-subheader {
     @apply bg-transparent;
 }
 /* Colorized footer */
-.list-view-layout.has-listening-activity .layout-subfooter:before {
+.list-view-layout[data-has-listening-activity] .layout-subfooter:before {
     @apply content-empty;
     @apply absolute z-minus inset-x-0 bottom-0;
     @apply h-40;
     @apply opacity-90;
     background: radial-gradient(100.91% 85.88% at 50% 100%, var(--footer-fog-color-1) 0%, var(--footer-fog-color-2) 100%);
 }
-body.narrow .list-view-layout.has-listening-activity .layout-subfooter:before {
+body.narrow .list-view-layout[data-has-listening-activity] .layout-subfooter:before {
     background: radial-gradient(80.91% 105.88% at 50% 100%, var(--footer-fog-color-1) 0%, var(--footer-fog-color-2) 100%);
 }
 .list-view-layout > .layout-header > .c-content {

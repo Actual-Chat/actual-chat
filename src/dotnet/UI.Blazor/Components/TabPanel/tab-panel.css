@@ -143,7 +143,7 @@ body.hoverable .tab-panel-tabs .btn-tab.on:hover {
     @apply gap-x-1;
     @apply py-1 px-2;
 }
-.tab-panel-tabs .btn-tab .btn-content.has-badge {
+.tab-panel-tabs .btn-tab .btn-content[data-has-badge] {
     @apply pr-1.5;
 }
 .tab-panel-tabs .btn-tab .btn-content .message-counter-badge {

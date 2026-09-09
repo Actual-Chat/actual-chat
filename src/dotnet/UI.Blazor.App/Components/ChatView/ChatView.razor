@@ -37,17 +37,19 @@
             foreach (var childItem in expandedConversationMessage.Items) {
                 @if (childItem is ConversationHeader or LiveConversationHeader) {
                     <div @key="@childItem.Key" class="item expanded" data-key="@childItem.Key" data-skip="true"
+                         data-children="conversation-message live-card live-footer live-header show-author conversation-header vl-sticky"
                          data-vl-h-transition="@(childItem.MustAnimateAppearance ? null : "change")">
                         @RenderChatMessage!((childItem, chatContext))
                     </div>
                 }
                 else if (childItem.IsGroup) {
-                    <div @key="@childItem.Key" class="group" >
+                    <div @key="@childItem.Key" class="group" data-children="live-block unjoined-live-block live-block-dissolving joined-live-card">
                         @RenderChatMessage!((childItem, chatContext))
                     </div>
                 }
                 else {
                     <div @key="@childItem.Key" class="item" data-key="@childItem.Key" data-skip="@childItem.ShouldSkipKey"
+                         data-children="conversation-message live-card live-footer live-header show-author conversation-header vl-sticky"
                          data-vl-h-transition="@(childItem.MustAnimateAppearance ? null : "change")">
                         @RenderChatMessage!((childItem, chatContext))
                     </div>
@@ -72,6 +74,8 @@
         DataSource="@this"
         Identity="@Chat.Id.Value"
         IsContentSwapDependency="true"
+        GroupChildren="live-block unjoined-live-block live-block-dissolving joined-live-card"
+        ItemChildren="conversation-message live-card live-footer live-header show-author conversation-header vl-sticky"
         SkipPreRenderGetDataCall="@HasUrlEntryLid"
         DefaultEdge="@VirtualListEdge.End"
         RenderDirection="@VirtualListRenderDirection.Reverse"

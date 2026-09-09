@@ -51,8 +51,8 @@ body.app-ready .virtual-list {
 body.narrow .virtual-list > .c-wrapper > ul.c-virtual-container > .c-end-anchor {
     @apply min-h-0 h-12;
 }
-body.narrow .list-view-layout.has-listening-activity .virtual-list > .c-wrapper > ul.c-virtual-container > .c-end-anchor,
-body.narrow .list-view-layout.has-audio-panel-header .virtual-list > .c-wrapper > ul.c-virtual-container > .c-end-anchor {
+body.narrow .list-view-layout[data-has-listening-activity] .virtual-list > .c-wrapper > ul.c-virtual-container > .c-end-anchor,
+body.narrow .list-view-layout[data-has-audio-panel-header] .virtual-list > .c-wrapper > ul.c-virtual-container > .c-end-anchor {
     @apply portrait:min-h-0 h-20;
 }
 
@@ -151,7 +151,7 @@ body.app-ready .virtual-list > .c-wrapper > ul.c-virtual-container {
 .virtual-list > .c-wrapper > ul.c-virtual-container .item:empty {
     @apply min-h-0;
 }
-.virtual-list > .c-wrapper > ul.c-virtual-container .item.has-show-author {
+.virtual-list > .c-wrapper > ul.c-virtual-container .item[data-has-show-author] {
     @apply min-h-14;
 }
 
@@ -181,11 +181,11 @@ body.app-ready .virtual-list > .c-wrapper > ul.c-virtual-container {
     overflow-anchor: none;
 }
 
-/* The same top padding the collapsed form carries (.item.has-conversation-message): expanding or
+/* The same top padding the collapsed form carries (.item[data-has-conversation-message]): expanding or
    collapsing swaps one of these boxes for the other, so a gap on one and not the other moves
    everything above it by that much on every toggle. The inset absorbs the padding, so the header
    still reaches the top edge when pinned instead of hanging 16px below it. */
-.virtual-list > .c-wrapper > ul.c-virtual-container .item.has-conversation-header {
+.virtual-list > .c-wrapper > ul.c-virtual-container .item[data-has-conversation-header] {
     @apply sticky z-20 pt-4;
     top: -17px;
 }

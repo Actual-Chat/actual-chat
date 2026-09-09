@@ -67,12 +67,13 @@
                 var edgeClass = (data.HasVeryFirstItem && i == 0 ? " c-first" : "")
                     + (data.HasVeryLastItem && i == items.Count - 1 ? " c-last" : "");
                 @if (item.IsGroup) {
-                    <li @key="@item.RenderKey" class="group@(edgeClass)">
+                    <li @key="@item.RenderKey" class="group@(edgeClass)" data-children="@GroupChildren.NullIfEmpty()">
                         @Item(item)
                     </li>
                 } else {
                     <li @key="@item.RenderKey"
                         class="item@(edgeClass)"
+                        data-children="@ItemChildren.NullIfEmpty()"
                         data-key="@item.Key"
                         data-skip="@item.ShouldSkipKey"
                         data-vl-size-source="@(item.HasRegularSize ? "" : null)">

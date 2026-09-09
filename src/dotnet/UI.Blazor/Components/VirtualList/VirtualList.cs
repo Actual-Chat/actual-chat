@@ -49,6 +49,10 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
     // Opt-in: most lists sit in no swap area at all. Set it where the enclosing area should hold
     // until this list has its content placed - see ContentSwap and virtual-list.ts.
     [Parameter] public bool IsContentSwapDependency { get; set; }
+    // Presence names the rendered group / item elements declare - see presence-tracker.ts. Passed in
+    // rather than hardcoded so this component keeps no vocabulary from the app that uses it.
+    [Parameter] public string GroupChildren { get; set; } = "";
+    [Parameter] public string ItemChildren { get; set; } = "";
     // NOTE: Only its value at the first SetParametersAsync matters - set it when a pending navigation
     // will issue the first query anyway, so the pre-render one would be superseded before it's rendered
     [Parameter] public bool SkipPreRenderGetDataCall { get; set; }

@@ -20,14 +20,14 @@
     <div class="c-content">
         <div class="c-container">
             <ChatIcon Chat="@chat"/>
-            <div class="c-description">
+            <div class="c-description" data-children="second-line">
                 <div class="c-first-line">
                     <span class="c-title">
                         <SearchMatchHighlighter Match="@m.TitleMatch"/>
                     </span>
                 </div>
                 @if (m.Entry != null) {
-                    <div class="c-second-line">
+                    <div class="c-second-line" data-child="second-line">
                         <div class="c-last-message">
                             <AuthorName
                                 AuthorId="@m.Entry.AuthorId"
@@ -44,7 +44,7 @@
                         </div>
                     </div>
                 } else {
-                    <div class="c-second-line bio">
+                    <div class="c-second-line bio" data-child="second-line">
                         @m.Author?.Avatar.Bio
                     </div>
                 }

@@ -14,6 +14,11 @@
     var detailsCls = _isOpen ? "show" : "";
     var liveClass = state.IsLive ? (state.IsJoined || state.HasOverlay ? "live joined" : "live") : "";
     var cls = $"conversation-message message-wrapper {openClass} {liveClass}";
+    var childNames = state.IsLive
+        ? state.IsJoined || state.HasOverlay
+            ? "conversation-message live-card joined-live-card"
+            : "conversation-message live-card"
+        : "conversation-message";
     var attachments = conversation.Attachments;
     var hasLiveTitle = !m.Title.Text.IsNullOrEmpty();
     var hasDescription = !m.Description.Markup.ToReadableText().IsNullOrEmpty();
@@ -43,6 +48,7 @@
     }
 }
 <div class="@cls"
+     data-child="@childNames"
      data-menu="@(MenuRef.New<ConversationMenu>(conversation.Id.Value, false.ToString()))">
     @if (state.IsLive) {
         var secondLine = state.IsVoiceOnly

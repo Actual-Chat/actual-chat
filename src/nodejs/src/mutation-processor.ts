@@ -4,19 +4,15 @@
 // batch is applied and before paint - so anything driven from here is both timelier and
 // cheaper than an interval, and sees JS-driven mutations no render hook would.
 //
-// Two consumers today:
-//  - presence classes, which replace `container:has(descendant)`. WebKit has no
-//    descendant-direction :has() bits, so StyleInvalidator re-runs a real match up the
-//    ancestor chain on every mutation - 6-8% of WebContent's main thread during a call.
+// Three consumers today:
+//  - presence tracking, which counts data-child elements per data-children container - see
+//    presence-tracker.ts for why markup declares it rather than CSS deriving it.
+//  - render scripts, run when a data-render-script-<name> attribute appears.
 //  - animation phase sync, which used to sweep the whole document every 200ms.
 
 import { AnimationSync } from 'animation-sync';
+import { PresenceTracker } from 'presence-tracker';
 
-export interface PresenceClassRule {
-    container: string;
-    match: string;
-    className: string;
-}
 
 // Runs when `data-render-script-<name>` appears on an element, or its value changes. The name selects
 // the script, so one element can ask for several; the value is the script's argument.
@@ -24,25 +20,15 @@ export type RenderScript = (element: HTMLElement, value: string) => void;
 
 const RenderScriptPrefix = 'data-render-script-';
 
-const rules = new Array<PresenceClassRule>();
 const renderScripts = new Map<string, RenderScript>();
 // What each element was last run with, so a re-render that rewrites the same value is not a re-run.
 const ranRenderScripts = new WeakMap<Element, Map<string, string>>();
-const baseObservedAttributes = ['class', 'data-side-nav'];
+const baseObservedAttributes = ['class', 'data-side-nav', ...PresenceTracker.observedAttributes];
 let observedAttributes = [...baseObservedAttributes];
-// Class tokens any rule's match selector can turn on. Records touching none of them cannot
-// change any predicate, which is nearly all of them - this app toggles classes constantly
-// for animation and hover state, and a full rescan per toggle is what we're avoiding.
-const matchTokens = new Set<string>();
-let containerSelector = '';
 let observer: MutationObserver | null = null;
 let isEnabled = true;
 
 export const MutationProcessor = {
-    get presenceClassRules(): readonly PresenceClassRule[] {
-        return rules;
-    },
-
     // Runtime toggle so the mechanism can be A/B'd inside one session rather than across builds
     get isEnabled(): boolean {
         return isEnabled;
@@ -54,27 +40,7 @@ export const MutationProcessor = {
 
         isEnabled = value;
         if (value)
-            updatePresenceClasses();
-        else
-            clearPresenceClasses();
-    },
-
-    // Registered at import time by the modules that own the matching CSS: the CSS applies
-    // whenever the markup exists, so registering when a component mounts would leave a
-    // window with the class missing.
-    registerPresenceClasses(...newRules: PresenceClassRule[]): void {
-        rules.push(...newRules);
-        containerSelector = [...new Set(rules.map(r => r.container))].join(',');
-        matchTokens.clear();
-        for (const rule of rules) {
-            for (const token of rule.match.match(/\.[\w-]+/g) ?? [])
-                matchTokens.add(token.slice(1));
-            // A renderer can overwrite our classes without changing any matched tokens.
-            // Watching our classes too lets us restore them on the next observer delivery.
-            matchTokens.add(rule.className);
-        }
-        if (observer)
-            updatePresenceClasses();
+            PresenceTracker.scan(document.body);
     },
 
     // Registered at import time, like presence classes: the attribute can be in the very first render.
@@ -96,7 +62,7 @@ export const MutationProcessor = {
 
         observer = new MutationObserver(onMutated);
         reobserve();
-        updatePresenceClasses();
+        PresenceTracker.scan(document.body);
         runRenderScripts(document.body);
         AnimationSync.syncAll(document);
     },
@@ -106,7 +72,7 @@ export const MutationProcessor = {
         observer = null;
     },
 
-    update: updatePresenceClasses,
+    presence: PresenceTracker,
 };
 
 // Private methods
@@ -124,49 +90,24 @@ function onMutated(records: MutationRecord[]): void {
     const roots = coalesceRoots(added);
     syncAddedAnimations(roots);
 
-    const dirty = new Set<Element>();
-    const visited = new Set<Element>();
     for (const record of records) {
         if (record.type === 'childList') {
             for (const node of record.addedNodes)
-                if (node instanceof Element)
+                if (node instanceof Element) {
                     runRenderScripts(node);
+                    PresenceTracker.scan(node);
+                }
+            for (const node of record.removedNodes)
+                if (node instanceof Element)
+                    PresenceTracker.unscan(node);
         }
+        else if (record.attributeName === 'data-child')
+            PresenceTracker.onChildChanged(record.target as Element);
+        else if (record.attributeName === 'data-children')
+            PresenceTracker.onChildrenChanged(record.target as Element);
         else if (isRenderScriptAttribute(record.attributeName))
             runRenderScriptsOn(record.target as Element);
-        if (affectsPresence(record))
-            collectAncestorContainers(record.target, dirty, visited);
     }
-    if (containerSelector)
-        for (const root of roots) {
-            if (root.matches(containerSelector))
-                dirty.add(root);
-            for (const container of root.querySelectorAll(containerSelector))
-                dirty.add(container);
-        }
-
-    // Render-script side effects must reach the next observer delivery too.
-    // Our forced class toggles settle without producing more writes.
-    if (dirty.size !== 0)
-        updateContainers(dirty);
-}
-
-function collectAncestorContainers(target: Node, dirty: Set<Element>, visited: Set<Element>): void {
-    let element = target instanceof Element ? target : target.parentElement;
-    while (element !== null && !visited.has(element)) {
-        visited.add(element);
-        if (element.matches(containerSelector))
-            dirty.add(element);
-
-        element = element.parentElement;
-    }
-}
-
-function updateContainers(containers: Set<Element>): void {
-    for (const container of containers)
-        for (const rule of rules)
-            if (container.matches(rule.container))
-                container.classList.toggle(rule.className, container.querySelector(rule.match) !== null);
 }
 
 // Phase-aligns whatever arrived, replacing the sweep that used to run every 200ms.
@@ -256,39 +197,4 @@ function runRenderScript(element: Element, name: string): void {
 
     ran.set(name, value);
     renderScripts.get(name)?.(element as HTMLElement, value);
-}
-
-function affectsPresence(record: MutationRecord): boolean {
-    if (!containerSelector)
-        return false;
-
-    if (record.type === 'attributes') {
-        if (isRenderScriptAttribute(record.attributeName))
-            return false;
-        if (record.attributeName !== 'class')
-            return true;
-
-        // A class change matters only if it added or removed a token some rule tests for.
-        const target = record.target as Element;
-        const before = new Set((record.oldValue ?? '').split(/\s+/));
-        for (const token of matchTokens)
-            if (target.classList.contains(token) !== before.has(token))
-                return true;
-
-        return false;
-    }
-
-    return record.type === 'childList';
-}
-
-function updatePresenceClasses(): void {
-    for (const rule of rules)
-        for (const container of document.querySelectorAll(rule.container))
-            container.classList.toggle(rule.className, container.querySelector(rule.match) !== null);
-}
-
-function clearPresenceClasses(): void {
-    for (const rule of rules)
-        for (const container of document.querySelectorAll(rule.container))
-            container.classList.remove(rule.className);
 }

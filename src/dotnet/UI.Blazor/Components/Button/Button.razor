@@ -10,7 +10,7 @@
     @onclick:stopPropagation="@StopPropagation"
     @onclick:preventDefault="@PreventDefault"
     @onclick="@OnClick">
-    <div class="@ContentClass btn-content" tabindex="-1">
+    <div class="@ContentClass btn-content" data-children="badge" tabindex="-1">
         @if (ChildContent is not null) {
             @ChildContent
         } else {
