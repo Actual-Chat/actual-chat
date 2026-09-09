@@ -93,7 +93,7 @@ public class Haptics(AppUIHub hub) : IDisposable
                 return engine;
             }
             catch (Exception e) {
-                Log.LogError(e, "Failed to create haptic engine");
+                Log.LogWarning(e, "Failed to create haptic engine");
                 throw;
             }
     }
