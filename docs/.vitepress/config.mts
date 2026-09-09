@@ -102,9 +102,11 @@ export default withMermaid(defineConfig({
               { text: "Project Structure", link: "/architecture/project-structure" },
               { text: "RPC Method Hashes", link: "/architecture/rpc-method-hashes" },
               { text: "Serialization", link: "/architecture/serialization" },
+              { text: "Forward-compatible unions", link: "/architecture/union-tolerance" },
               { text: "Server Clock Sync", link: "/architecture/server-clock-sync" },
               { text: "Offline Render Path", link: "/architecture/offline-render-path" },
               { text: "Notifications", link: "/notifications" },
+              { text: "Call entries", link: "/call-entries" },
             ],
           },
           {
