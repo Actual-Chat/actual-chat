@@ -731,6 +731,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
         await chatAudioUI.SetListeningState(chat.Id, true);
         chatUI.SelectChatOnNavigation(chat.Id);
+        await AwaitJoinedBlockExpansion(chatUI, chat.Id, live.ToConversation());
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
         chatUI.ReportItemVisibility(new ChatViewItemVisibility(
@@ -1449,6 +1450,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
         await chatAudioUI.SetRecordingChatId(chat.Id);   // Bob is a recorder => joined
         chatUI.SelectChatOnNavigation(chat.Id);
+        await AwaitJoinedBlockExpansion(chatUI, chat.Id, live.ToConversation());
 
         // act - viewport top sits at the 6th entry: everything above it (incl. un-summarised rows) must fold
         var viewportTop = lids[5];
@@ -1566,6 +1568,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
         await chatAudioUI.SetRecordingChatId(chat.Id);
         chatUI.SelectChatOnNavigation(chat.Id);
+        await AwaitJoinedBlockExpansion(chatUI, chat.Id, live.ToConversation());
 
         // act - the viewport top sits at the last entry, so the governor would otherwise fold everything above it
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
@@ -1633,6 +1636,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
         await chatAudioUI.SetListeningState(chat.Id, true);
         chatUI.SelectChatOnNavigation(chat.Id);
+        await AwaitJoinedBlockExpansion(chatUI, chat.Id, live.ToConversation());
 
         void SetViewportTop(long lid)
             => chatUI.ReportItemVisibility(new ChatViewItemVisibility(
@@ -1716,6 +1720,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
         await chatAudioUI.SetRecordingChatId(chat.Id);
         chatUI.SelectChatOnNavigation(chat.Id);
+        await AwaitJoinedBlockExpansion(chatUI, chat.Id, live.ToConversation());
 
         // act - viewport top sits at the last entry, so a large range folds
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
@@ -1785,6 +1790,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
         await chatAudioUI.SetRecordingChatId(chat.Id);
         chatUI.SelectChatOnNavigation(chat.Id);
+        await AwaitJoinedBlockExpansion(chatUI, chat.Id, live.ToConversation());
 
         void SetViewportTop(long lid)
             => chatUI.ReportItemVisibility(new ChatViewItemVisibility(
@@ -1859,6 +1865,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
         await chatAudioUI.SetListeningState(chat.Id, true);
         chatUI.SelectChatOnNavigation(chat.Id);
+        await AwaitJoinedBlockExpansion(chatUI, chat.Id, live.ToConversation());
 
         // act - viewport top sits at the last entry, so a large range folds
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
@@ -1946,6 +1953,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
         await chatAudioUI.SetRecordingChatId(chat.Id);
         chatUI.SelectChatOnNavigation(chat.Id);
+        await AwaitJoinedBlockExpansion(chatUI, chat.Id, live.ToConversation());
 
         // act - viewport top sits at the 6th real entry, folding the 5 real rows above it (plus the
         // interleaved system entry, which must not count towards SwallowedCount)
@@ -2325,6 +2333,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var liveConversation = (await liveBackend.GetState(chat.Id, CancellationToken.None))!.ToConversation();
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        // Typed rows below the block, counted by the tail floor like any real entry: with a full
+        // MinTailEntryCount of them the floor sits past every spoken row and only the viewport governs.
+        var typedTail = new List<long> { typed };
+        for (var i = 1; i < LiveFoldMath.MinTailEntryCount; i++)
+            typedTail.Add((await Tester.CreateTextEntry(chat.Id, $"typed-{i}")).LocalId);
         await ComputedTest.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             chatUI.IsConversationExpanded(liveConversation).Should().BeTrue("joining expands the block");
@@ -2333,9 +2346,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             lids.Should().Contain(spoken.Skip(3), "nothing else has scrolled above the viewport yet");
         }, TimeSpan.FromSeconds(15));
 
-        // act - the reader scrolls to the live tail. The viewport top is the 10th real row from the
-        // chat end (the typed row counts), which is exactly where the tail floor sits, so the viewport
-        // is what sets the fold.
+        // act - the reader scrolls to the live tail
         var viewportTop = spoken[^9];
         chatUI.ReportItemVisibility(new ChatViewItemVisibility(
             chat.Id,
@@ -2376,6 +2387,19 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             preview.Select(e => e.LocalId)
                 .Should().Equal(spoken.TakeLast(5), "the card previews the latest spoken rows");
         }, TimeSpan.FromSeconds(15));
+
+        // act - while collapsed, the only rows on screen at or past V are the typed ones below the card
+        chatUI.ReportItemVisibility(new ChatViewItemVisibility(
+            chat.Id,
+            typedTail.Select(l => ChatMessageKey.New(ChatMessageKind.None, l)).ToHashSet(),
+            true,
+            true));
+        await Task.Delay(700);
+
+        // assert - the card stands in for the rows, so what shows below it says nothing about what the
+        // reader scrolled past: the fold holds where the collapse found it
+        (await liveBlockUI.GetBlockState(chat.Id)).FoldBoundaryLid.Should().Be(viewportTop,
+            "a collapsed block must not feed its viewport to the fold");
 
         // act - un-collapse
         chatUI.ToggleExpandConversation(liveConversation.Id);
@@ -2484,9 +2508,10 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         return sb.ToString();
     }
 
-    // Joining now expands the live block, so a test about its collapsed form has to put it back - and
-    // only once the expand has landed, since a toggle that races it is undone by the expand it preceded.
-    private async Task CollapseJoinedLiveBlock(ChatUI chatUI, ChatId chatId, Conversation conversation)
+    // Joining expands the live block in the first data build, and the fold governor tracks the viewport
+    // only for an expanded block - so a test that reports visibility has to let that build land first,
+    // the way the chat view's own render always precedes its first visibility report.
+    private async Task AwaitJoinedBlockExpansion(ChatUI chatUI, ChatId chatId, Conversation conversation)
     {
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chatId, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
@@ -2494,6 +2519,15 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             await chatUI.GetChatItems(chatId, query, 0, ct);
             chatUI.IsConversationExpanded(conversation).Should().BeTrue();
         }, TimeSpan.FromSeconds(15));
+    }
+
+    // A test about the block's collapsed form has to put it back - and only once the expand has landed,
+    // since a toggle that races it is undone by the expand it preceded.
+    private async Task CollapseJoinedLiveBlock(ChatUI chatUI, ChatId chatId, Conversation conversation)
+    {
+        await AwaitJoinedBlockExpansion(chatUI, chatId, conversation);
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chatId, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
         chatUI.ToggleExpandConversation(conversation.Id);
         await ComputedTest.When(async ct => {
             await chatUI.GetChatItems(chatId, query, 0, ct);
