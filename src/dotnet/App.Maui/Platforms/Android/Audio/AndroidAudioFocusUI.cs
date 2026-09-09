@@ -172,8 +172,21 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
         var cRoute = await Computed
             .Capture(() => chatAudioUI.GetCarAudioRoute(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        await foreach (var change in cRoute.Changes(cancellationToken).ConfigureAwait(false))
-            Volatile.Write(ref _carAudioRoute, change.Value);
+        var lastRoute = Volatile.Read(ref _carAudioRoute);
+        await foreach (var change in cRoute.Changes(cancellationToken).ConfigureAwait(false)) {
+            var route = change.Value;
+            if (route == lastRoute)
+                continue;
+
+            lastRoute = route;
+            Volatile.Write(ref _carAudioRoute, route);
+            // A held focus keeps the old link - SCO, the media channel - until something renews it,
+            // which on a quiet chat is the next utterance: 17s of a muted car on 2026-09-09.
+            // A track already playing keeps the usage it was built with, so an utterance caught
+            // mid-flight finishes on the old link; the next one follows the new route.
+            if (_handle is not null)
+                await RenewHeldFocus().ConfigureAwait(false);
+        }
     }
 
     private void OnFocusChanged(AudioFocus af)
