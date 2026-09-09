@@ -24,12 +24,38 @@ public sealed record CarAudioRoute(AudioEndpoint Input, AudioEndpoint Output, bo
     {
         if (!isProjectionActive)
             return Default;
-        if (settings.Microphone == CarAudioDevice.Car)
-            return CallLink;
 
-        var output = settings.Output == CarAudioDevice.Phone
-            ? AudioEndpoint.Builtin
-            : AudioEndpoint.External;
-        return new CarAudioRoute(AudioEndpoint.Builtin, output);
+        return settings.GetCarAudioMode() switch {
+            CarAudioMode.Car => CallLink,
+            CarAudioMode.Phone => new CarAudioRoute(AudioEndpoint.Builtin, AudioEndpoint.Builtin),
+            _ => new CarAudioRoute(AudioEndpoint.Builtin, AudioEndpoint.External),
+        };
     }
+}
+
+/// <summary>
+/// The three choices the car audio page offers, projected from the two axes of
+/// <see cref="UserCarAudioSettings"/>. Car is the zero-default: the car handles both directions.
+/// </summary>
+public enum CarAudioMode
+{
+    Car = 0,
+    CarSpeakers = 1,
+    Phone = 2,
+}
+
+public static class CarAudioModeExt
+{
+    public static CarAudioMode GetCarAudioMode(this UserCarAudioSettings settings)
+        => settings.Microphone != CarAudioDevice.Phone ? CarAudioMode.Car
+            : settings.Output == CarAudioDevice.Phone ? CarAudioMode.Phone
+            : CarAudioMode.CarSpeakers;
+
+    public static UserCarAudioSettings WithCarAudioMode(this UserCarAudioSettings settings, CarAudioMode mode)
+        => mode switch {
+            CarAudioMode.Car => settings with { Microphone = CarAudioDevice.Car, Output = CarAudioDevice.Car },
+            CarAudioMode.CarSpeakers => settings with { Microphone = CarAudioDevice.Phone, Output = CarAudioDevice.Car },
+            CarAudioMode.Phone => settings with { Microphone = CarAudioDevice.Phone, Output = CarAudioDevice.Phone },
+            _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null),
+        };
 }
