@@ -969,18 +969,20 @@ public partial class ChatUI
                 .EnsureMonotonic();
 
             // A collapsed conversation excludes its whole range (a single id-tile then renders its card).
-            // The live block is the exception: its governed fold range can be narrower than its raw
-            // range (lag/viewport hold entries back), so only the governed range is excluded here too -
-            // otherwise the id tiles past the fold would never load, and the still-visible tail would
-            // have nothing to render. Once closed, the persisted conversation's range starts at
+            // The live block is the exception: it excludes its governed fold range, expanded or not -
+            // that range can be narrower than its raw range (lag/viewport hold entries back), and
+            // excluding more would leave the id tiles past the fold unloaded, so the still-visible tail
+            // would have nothing to render. Once closed, the persisted conversation's range starts at
             // ContextStartLid (its materialized id), not V (the live-era render id) - both identities
             // must resolve to the same governed range, or a session with pre-latch context would lose
             // its frozen tail's id-tiles after close.
             var excludedRanges = conversationIdRanges
-                .Where(r => !expandedConversations.Contains(ConversationId.New(chatId, r.Start)))
                 .Select(r => {
                     var rangeId = ConversationId.New(chatId, r.Start);
-                    return rangeId == liveBlockId || rangeId == materializedBlockId ? liveBlockFoldRange : r;
+                    if (rangeId == liveBlockId || rangeId == materializedBlockId)
+                        return liveBlockFoldRange;
+
+                    return expandedConversations.Contains(rangeId) ? default : r;
                 })
                 .Where(r => !r.IsEmpty)
                 .ToList();
@@ -1168,10 +1170,12 @@ public partial class ChatUI
                         .Where(c => c.Id == liveSpanId || c.EntryLidRange.IntersectWith(liveSpan).IsEmpty)
                         .ToArray();
             }
+            // The live block folds its governed range whether expanded or not - never the whole
+            // EntryLidRange, so entry V and the un-summarized tail stay loadable. Expanded is the
+            // auto-swallow mode: rows that scrolled above the viewport sit behind the card's "show more".
+            // Collapsed hides the tail too (hiddenLiveTailRange), so the card stands in for it all.
             idRangesToSkip = conversations
-                .Where(c => !expandedConversations.Contains(c.Id))
-                // The joined live block folds only its summarized range (empty pre-summary), never the whole
-                // EntryLidRange - so entry V and the un-summarized tail stay visible.
+                .Where(c => c.Id == liveBlockId || !expandedConversations.Contains(c.Id))
                 .Select(c => c.Id == liveBlockId ? liveFoldRange : c.EntryLidRange)
                 .Where(r => !r.IsEmpty)
                 .ToArray();
@@ -1180,7 +1184,7 @@ public partial class ChatUI
             // un-summarised rows (§4) - this tile then carries no matching Conversation to substitute
             // above, and the fold would never apply. Add it explicitly so folding is never limited by
             // how far the persisted conversation record itself currently reaches.
-            if (liveBlockId is { } liveBlockConversationId && !expandedConversations.Contains(liveBlockConversationId)
+            if (liveBlockId is { } liveBlockConversationId
                 && !liveFoldRange.IsEmpty && conversations.All(c => c.Id != liveBlockConversationId))
                 idRangesToSkip = [..idRangesToSkip, liveFoldRange];
         }
