@@ -84,7 +84,7 @@ public sealed class AudioEngine : IDisposable
         // that outruns the focus acquisition is where that refusal surfaces first. Not for the
         // recording engine - see AudioSession.TryRequestPttActivation.
         if (Mode is not AudioFocusMode.Recording
-            && AudioSession.IsCannotInterruptOthers(error)
+            && AudioSession.IsActivationRefused(error)
             && await AudioSession.RequestPttActivation().WaitAsync(cancellationToken).ConfigureAwait(false)
             && TryEnsureRunning(out error))
             return;

@@ -481,20 +481,30 @@ re-driven from the create callback.
 
 `IncomingPushResult` must return synchronously and fast, so it only parses the
 payload, persists the wake (`SaveLastWake`), sets the channel descriptor title,
-and either parks the wake in `_pendingWake` when
-`AudioSession.Owner == AudioSessionOwner.App` — the session is still
-App-owned, so an activation callback will follow and dispatch it then — or
-dispatches it immediately otherwise, because a session that is already
-PTT-owned gets no further activation callback to dispatch on.
+prepares the session (`AudioSession.PrepareForPttSession`: category
+`PlayAndRecord`, mode `VoiceChat` — the framework activates the session with
+whatever category it finds, and it won't activate a mixable one such as the
+`Ambient` an idle app rests in while in the background), and either parks the
+wake in `_pendingWake` when `AudioSession.Owner == AudioSessionOwner.App` — the
+session is still App-owned, so an activation callback will follow and dispatch
+it then — or dispatches it immediately otherwise, because a session that is
+already PTT-owned gets no further activation callback to dispatch on.
 `DidActivateAudioSession` → `OnAudioSessionActivated` then drains the pending
-wake. An invalid payload still returns a `PTParticipant` and schedules
+wake. A parked wake that sees no activation within `ParkedWakeTimeout` (5 s) is
+dispatched anyway: its playback is refused, and that refusal is what asks the
+framework again with a fresh participant (see *Self-initiated playback*). The
+same preparation runs at `DidBeginTransmitting` (a listening burst leaves
+`Playback`, whose input node reports no sample rate, and the pre-roll and the
+recorder both need a live input) and before a self-initiated activation. An invalid payload still returns a `PTParticipant` and schedules
 `ClearActiveParticipant` after `PhantomWakeClearDelay` (5 s), or the system UI
 would show the channel as receiving forever.
 
 **Self-initiated playback.** An app joined to the channel may not activate its
 own `AVAudioSession` in the background: `SetActive(true)` answers
-`AVAudioSessionErrorCode.CannotInterruptOthers` (`'!int'`, 560557684), and so
-does `AVAudioEngine.start`. That is exactly the position of an armed app that is
+`AVAudioSessionErrorCode.CannotInterruptOthers` (`'!int'`, 560557684) for an
+app that just went to the background, or `MissingEntitlement` (`'ent?'`,
+1701737535) for one resumed from suspension, and so does `AVAudioEngine.start`;
+`AudioSession.IsActivationRefused` covers both. That is exactly the position of an armed app that is
 already listening when the next utterance arrives over RPC — the server skips
 active participants and dedups wakes per `PttWakeTtl`, so no push comes, yet
 the stream does. `AudioSession` therefore treats that refusal as a request:

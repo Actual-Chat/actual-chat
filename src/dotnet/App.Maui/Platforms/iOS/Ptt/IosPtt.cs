@@ -25,6 +25,7 @@ public static class IosPtt
     private const string LastWakeAtKey = "Voxt.Ptt.LastWakeAt";
     private static readonly NSUuid ChannelUuid = new("f3b9a7e2-4c15-4a8e-9f2d-7b6c5d4e3f21");
     private static readonly TimeSpan PhantomWakeClearDelay = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan ParkedWakeTimeout = TimeSpan.FromSeconds(5);
 
     private static readonly Lock Lock = new();
     private static PTChannelManager? _manager;
@@ -203,7 +204,7 @@ public static class IosPtt
     private static void OnTransmitBegan()
     {
         BlazorWebViewApp.EnsureStarted();
-        AudioSession.PrepareForTransmit();
+        AudioSession.PrepareForPttSession(AudioSessionOwner.PttTransmit);
         Transmission transmission;
         Transmission? superseded;
         bool isSessionActive;
@@ -312,6 +313,7 @@ public static class IosPtt
         }
 
         Log.LogInformation("Asking the PTT framework to activate the audio session");
+        AudioSession.PrepareForPttSession(AudioSessionOwner.PttPlayback);
         // This participant is the newest one: a phantom-wake clear scheduled for an older
         // generation must not take it down mid-playback.
         Interlocked.Increment(ref _lastWakeGeneration);
@@ -465,6 +467,8 @@ public static class IosPtt
                 .DispatchToMainThread(() => UIApplication.SharedApplication.ApplicationState
                     == UIApplicationState.Active)
                 .ConfigureAwait(false);
+            Log.LogInformation("PTT wake dispatched for chat #{ChatId}, isForeground={IsForeground}, owner={Owner}",
+                chatId, isForeground, AudioSession.Owner);
             await PttSession.HandleWake(chatId, startedAt, isForeground, IosPlatform.Instance)
                 .ConfigureAwait(false);
         }, Log, "PTT wake failed", CancellationToken.None);
@@ -503,6 +507,20 @@ public static class IosPtt
             (source, _activationSource) = (_activationSource, null);
         source?.TrySetResult(isActivated);
     }
+
+    private static void ScheduleParkedWakeDispatch(PendingWake wake)
+        => _ = BackgroundTask.Run(async () => {
+            await Task.Delay(ParkedWakeTimeout).ConfigureAwait(false);
+            // No DidActivateAudioSession came: the framework couldn't activate the session for
+            // this push. The wake still runs - its playback is refused, and that refusal is what
+            // asks the framework again with a fresh participant.
+            if (Interlocked.CompareExchange(ref _pendingWake, null, wake) != wake)
+                return;
+
+            Log.LogWarning("PTT push for chat #{ChatId}: no audio session activation in {Timeout}, dispatching anyway",
+                wake.ChatId, ParkedWakeTimeout);
+            DispatchWake(wake.ChatId, wake.StartedAt);
+        }, Log, "Dispatching a parked PTT wake failed", CancellationToken.None);
 
     private static void ScheduleClearActiveParticipant(int generation)
         => _ = BackgroundTask.Run(async () => {
@@ -666,10 +684,17 @@ public static class IosPtt
             var startedAt = new Moment(epochMs * 10_000);
             SaveLastWake(vChatId, startedAt);
             SetDescriptorTitle(chatTitle);
+            AudioSession.PrepareForPttSession(AudioSessionOwner.PttPlayback);
             // No activation follows a push that lands while the session is already PTT-owned, so
             // parking the wake for OnAudioSessionActivated would drop it.
-            if (AudioSession.Owner == AudioSessionOwner.App)
-                _pendingWake = new PendingWake(vChatId, startedAt);
+            var isParked = AudioSession.Owner == AudioSessionOwner.App;
+            Log.LogInformation("PTT push received for chat #{ChatId}, owner={Owner}, parked={IsParked}",
+                vChatId, AudioSession.Owner, isParked);
+            if (isParked) {
+                var wake = new PendingWake(vChatId, startedAt);
+                _pendingWake = wake;
+                ScheduleParkedWakeDispatch(wake);
+            }
             else
                 DispatchWake(vChatId, startedAt);
 
