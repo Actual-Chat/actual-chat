@@ -99,6 +99,29 @@ public class VirtualListDataTest(ITestOutputHelper @out) : TestBase(@out)
         keyRange.Should().Be(default(Range<string>));
     }
 
+    [Fact]
+    public void FirstItemCanBeNonNullWhileLastItemIsNullWhenTrailingGroupIsAllSkipKey()
+    {
+        // arrange - a real message followed by a group with no real content (e.g. a materialized
+        // call card: header + footer, both skip-key). FirstItem and LastItem resolve independently,
+        // each walking into its own group from its own end, so this leaves FirstItem resolved and
+        // LastItem null - a caller that only null-checks FirstItem before dereferencing LastItem
+        // (as ChatView.GetChatDataQuery once did) crashes on this exact shape.
+        var header = new TestItem("101") { ShouldSkipKey = true };
+        var footer = new TestItem("102") { ShouldSkipKey = true };
+        var realItem = new TestItem("1");
+        var group = new TestGroup("100", [header, footer]);
+        var data = new VirtualListData<TestItem>([realItem, group]);
+
+        // act
+        var firstItem = data.FirstItem;
+        var lastItem = data.LastItem;
+
+        // assert
+        firstItem.Should().BeSameAs(realItem);
+        lastItem.Should().BeNull();
+    }
+
     // Nested types
 
     private class TestItem(string key) : IVirtualListItem

@@ -781,19 +781,25 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var itemVisibility = ItemVisibility.Value;
         var firstItem = oldData.FirstItem;
         var lastItem = oldData.LastItem;
+        // FirstItem and LastItem resolve independently (each walks into its own group from its own
+        // end), so a window whose only content is a group with a real leaf on one side and an
+        // all-skip-key group on the other can leave one of them null while the other isn't - e.g. a
+        // materialized call card (header/footer only) next to an ordinary message. Only trust either
+        // once both have resolved.
+        var hasOldItem = firstItem != null && lastItem != null;
         var initialLoadLimit = ChatUI.InitialLoadLimit;
         var keyRange = query.IsNone
-            ? firstItem != null
-                ? new Range<long>(firstItem.Id, lastItem!.Id + 1)
+            ? hasOldItem
+                ? new Range<long>(firstItem!.Id, lastItem!.Id + 1)
                 : chatLidRange.EnsureNonEmpty()
             : query.KeyRange.ToLongRange(true).EnsureNonEmpty();
-        var caseName = (!query.IsNone, firstItem != null) switch {
+        var caseName = (!query.IsNone, hasOldItem) switch {
             (false, false) => "no-query+no-data",
             (false, true) when oldData.HasVeryLastItem => "no-query+has-data+hasVeryLastItem",
             (false, true) => "no-query+has-data",
             _ => "has-query",
         };
-        var dataQuery = (!query.IsNone, firstItem != null) switch {
+        var dataQuery = (!query.IsNone, hasOldItem) switch {
             // Align the query params with the entry tile boundaries
 
             // No query, no data -> initial load
