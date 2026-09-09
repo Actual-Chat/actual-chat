@@ -31,41 +31,58 @@ recording is the same event seen from the app's side — the microphone produces
 nothing usable until the SCO channel has finished negotiating, which takes
 noticeably longer than a person's patience before speaking.
 
-That is the whole bug. The fix is to stop asking for a route the app doesn't
-need: a *media* focus records perfectly well from the phone's own microphone
-and never makes Android open SCO.
+That was the first half of the bug. The other half is that the mix — the
+microphone on the call link while playback goes over the projection link — is
+something the car refuses: it mutes the media channel for as long as it thinks
+a call is active. Either both directions ride the call link, or neither does.
+
+## Why the media route alone was not enough
+
+Recording from the phone microphone with a media focus keeps SCO closed, but
+the projection link has its own gatekeeper: gearhead forwards the phone's
+audio focus to the head unit and only opens the **media channel** when the
+head unit grants it. Two things went wrong there on a real car (2026-09-08/09,
+Audi head unit):
+
+- **A transient request after the PTT tune is never forwarded.** The tune asks
+  for `GAIN_TRANSIENT_MAY_DUCK`; the head unit answers with a guidance-only
+  transient. The recording or listening request that follows 10-20 ms later as
+  a media `GAIN_TRANSIENT` is dropped by gearhead as "MD already hold sufficient
+  focus". The media channel stays closed, the peer's audio is pushed down the
+  guidance channel, and the radio keeps playing ducked - straight into the
+  phone microphone. A permanent `GAIN` is forwarded even while a transient is
+  held, so under projection recording and listening on the media route take
+  `AudioFocus.Gain`; the head unit pauses the radio for the burst and resumes
+  it when the listening scope releases.
+- **A lingering virtual call mutes the media channel.** While SCO is open the
+  head unit accepts media focus and pauses the radio, yet plays nothing from
+  the projection link - it is in a call. So the app must never leave SCO open
+  under the media route: a focus renewal follows every route change, and a
+  request off the communication route restores `Mode.Normal` and clears the
+  SCO device.
+
+Both directions on the HFP link - the car's microphone and the car's speakers
+over SCO - is what every VoIP app does in a car, and the head units tested
+cooperate with it: no focus games, echo cancellation in the car's DSP, music
+paused for the duration. That is why it is the default.
 
 ## The settings
 
-The behaviour is not hardcoded, because the right answer is a property of the
-vehicle rather than of the app. A head unit's built-in microphone array can be
-genuinely better than a phone lying in a cupholder — and a driver who prefers
-it should be able to say so, and accept the screen switch that comes with it.
+The Android Auto tab offers **one choice with three values**, stored as the
+two axes of `UserCarAudioSettings` (`Microphone`, `Output`) so nothing had to
+migrate:
 
-There are **two independent axes**, three values each:
+| Choice | Stored as | Effect while projecting |
+|---|---|---|
+| **Car** (default) | `Microphone` ≠ Phone; `Output` ignored | The car's microphone and speakers over Bluetooth HFP, like a phone call. Recording, listening and replay all take a communication focus, playback tracks use `USAGE_VOICE_COMMUNICATION` so they ride the same SCO link the car opened. Music pauses while anyone talks. Some head units show their phone screen instead of navigation for the duration. |
+| **Car speakers, phone microphone** | `Microphone` = Phone, `Output` ≠ Phone | Media focus held as a permanent `GAIN`, capture pinned to the built-in mic, playback over the projection link. SCO is never opened. Music pauses while someone is talking. No echo cancellation against the car speakers. |
+| **Phone only** | `Microphone` = Phone, `Output` = Phone | Phone microphone and phone speaker; the car is not used for audio. |
 
-### Microphone — where recording is captured from
-
-| Value | Effect while projecting |
-|---|---|
-| **Auto** (default) | The phone's own microphone. The app takes a media audio focus and pins capture to the built-in mic, so SCO is never opened and the car keeps its screen. |
-| **Phone** | Identical to Auto today. It exists as an explicit choice so that a user who wants the phone microphone keeps it even if the meaning of Auto is ever revised. |
-| **Car** | The car's microphone, over Bluetooth HFP. The app asks for a communication focus, SCO opens, and the head unit may well switch to its phone screen — that is the cost of this option, not a defect. |
-
-### Sound — where playback goes
-
-| Value | Effect while projecting |
-|---|---|
-| **Auto** (default) | The car's speakers, through the projection link. |
-| **Phone** | The phone's own speaker. Playback is pinned there before any sound starts, and that pin deliberately never falls back to a Bluetooth device — which also means this branch skips the ordinary route selection entirely, since a Bluetooth pick there would raise the same virtual call the microphone side avoids. |
-| **Car** | Identical to Auto today, and exists for the same reason Phone does on the microphone axis. |
-
-### What the defaults mean
-
-Both axes default to **Auto**, and Auto is deliberately *not* "let Android
-decide" — it is a concrete pair of choices (phone microphone, car speakers)
-that happens to be the combination which avoids the bug. A user who never opens
-this tab gets the fixed behaviour.
+`CarAudioRoute.For` turns (projection active, settings) into the route:
+`UseCallLink` for Car, otherwise `Input = Builtin` with `Output = External` or
+`Builtin`. `CarAudioMode` and its `GetCarAudioMode` / `WithCarAudioMode`
+helpers are the only place the two axes and the three choices meet. The zero
+default of both axes (`Auto`) reads as Car.
 
 ### When the settings apply
 
@@ -106,10 +123,15 @@ whenever the system announces a connection change, and again whenever the app
 returns to the foreground — a car can be plugged in or unplugged while the app
 is stopped.
 
-Every failure in that detection is treated as **"not projecting"**. If the
-state cannot be read, the app behaves exactly as it did before this feature
-existed. Nothing about recording depends on the detector working; it can only
-add the car-specific handling, never take away the ordinary one.
+A failed read keeps the **last known state** rather than answering "not
+projecting": under projection, "not projecting" would mean the communication
+route, and a transient provider hiccup must not open a virtual call. A
+30-second recheck invalidates the cached state when the provider disagrees
+with it, so a missed broadcast heals itself. Every decision - the provider
+state, each recomputed route with its inputs, the comm-route choice per focus
+request, the route at capture and playback start with the track usage, and
+every settings change - is logged at Information, so a drive can be read back
+from `logcat` afterwards.
 
 ## What was measured
 
@@ -125,6 +147,14 @@ projection session active:
 
 The headset stayed connected throughout, so the SCO path was available in every
 run and was taken only when it was asked for.
+
+On 2026-09-08/09, in an Audi over USB Android Auto, two phones in one chat:
+
+| Setting | Observed |
+|---|---|
+| Car (SCO both ways) | Peer audible over the car speakers, recording from the car mic, music paused; the head unit shows no phone screen on this car |
+| Car speakers, phone mic, transient focus | Media channel never opened (`Not sending focus request to HU as MD already hold sufficient focus`), peer inaudible, radio ducked and captured by the phone mic |
+| Car speakers, phone mic, permanent `GAIN` | Head unit granted `GAIN`, `enabling stream: MEDIA`, radio paused; peer still inaudible while a virtual call from the previous mode was left open, which is the leak the renewal fix closes |
 
 ## Known gaps
 
