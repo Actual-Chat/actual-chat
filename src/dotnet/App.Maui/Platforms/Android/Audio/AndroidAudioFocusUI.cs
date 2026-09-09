@@ -96,7 +96,10 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
             "-> RequestAudioFocus, requested mode: '{Mode}', active handle: '{Handle}', "
             + "car route: {CarAudioRoute}, comm route: {UseCommunicationRoute}",
             mode, _handle, carAudioRoute, useCommunicationRoute);
+        var isProjectedMedia = carAudioRoute != CarAudioRoute.Default && !carAudioRoute.UseCallLink;
         var success = await Task.Run(() => mode switch {
+                AudioFocusMode.Recording or AudioFocusMode.Listening when isProjectedMedia
+                    => _focusHelper.RequestFocusForProjectedMedia(),
                 AudioFocusMode.Recording => _focusHelper.RequestFocusForCall(useCommunicationRoute),
                 AudioFocusMode.Playback or AudioFocusMode.Listening when carAudioRoute.UseCallLink
                     => _focusHelper.RequestFocusForCall(true),

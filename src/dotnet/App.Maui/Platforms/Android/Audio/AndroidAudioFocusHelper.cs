@@ -66,6 +66,12 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         // so whatever it pauses - music, navigation - auto-resumes once the utterance ends.
         => RequestFocus(AudioFocus.GainTransient, AudioUsageKind.Media, AudioContentType.Speech);
 
+    public Task<bool> RequestFocusForProjectedMedia()
+        // Gain, not transient: gearhead skips a transient request when the phone still holds the
+        // tune's guidance-only transient at the head unit, so the media channel never opens and
+        // playback ends up on the guidance channel over a ducked radio. A Gain is always forwarded.
+        => RequestFocus(AudioFocus.Gain, AudioUsageKind.Media, AudioContentType.Speech);
+
     public Task<bool> RequestFocusForNotification()
         => RequestFocus(
             AudioFocus.GainTransientMayDuck,
