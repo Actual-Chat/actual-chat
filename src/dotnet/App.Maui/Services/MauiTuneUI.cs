@@ -47,9 +47,21 @@ public class MauiTuneUI : TuneUI
         if (GetTuneInfo(tune) is not { } info)
             return;
 
-        var vibrateTask = Vibrate(tune, info);
+        var vibrateTask = VibrateSafely(tune, info);
         var playSoundTask = PlaySound(info.Sound);
         await Task.WhenAll(vibrateTask, playSoundTask).ConfigureAwait(false);
+    }
+
+    private async Task VibrateSafely(Tune tune, TuneInfo info)
+    {
+        // The recorder start awaits its begin tune, so a vibration that fails - CoreHaptics can't
+        // run in the background - must not take the recording down with it.
+        try {
+            await Vibrate(tune, info).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to vibrate '{Tune}'", tune);
+        }
     }
 
     // Protected methods

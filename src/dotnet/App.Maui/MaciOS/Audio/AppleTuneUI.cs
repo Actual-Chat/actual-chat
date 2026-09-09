@@ -1,4 +1,5 @@
 using ActualChat.App.Maui.Services;
+using ActualChat.Maui.Services;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
@@ -62,9 +63,14 @@ public sealed class AppleTuneUI(UIHub hub) : MauiTuneUI(hub)
         => Haptics.IsSupported;
 
     protected override Task Vibrate(Tune tune, TuneInfo info)
-        => info.Vibration.Length == 0
-            ? Task.CompletedTask
-            : BackgroundTask.Run(() => Haptics.Vibrate(tune, info.Vibration), Log, $"Failed to vibrate '{tune}'");
+    {
+        // CoreHaptics is foreground-only: in the background every engine creation fails, and a
+        // PTT reply from the lock screen would pay for that with an aborted recording start.
+        if (info.Vibration.Length == 0 || MauiBackgroundState.IsBackground.Value)
+            return Task.CompletedTask;
+
+        return BackgroundTask.Run(() => Haptics.Vibrate(tune, info.Vibration));
+    }
 #endif
 
     // Private methods
