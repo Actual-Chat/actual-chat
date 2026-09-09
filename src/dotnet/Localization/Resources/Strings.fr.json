@@ -1500,6 +1500,7 @@
   "Call_StartingRecording": "Démarrage de l'enregistrement...",
   "Call_Entry_Outgoing": "Appel sortant",
   "Call_Entry_Incoming": "Appel entrant",
+  "Call_Entry_Titled_Format": "{0}: {1}",
   "Call_Entry_Missed": "Appel manqué",
   "Call_Entry_Declined": "Appel refusé",
   "Call_Entry_Canceled": "Appel annulé",

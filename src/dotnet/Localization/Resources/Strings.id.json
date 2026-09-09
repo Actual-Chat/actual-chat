@@ -1500,6 +1500,7 @@
   "Call_StartingRecording": "Memulai perekaman...",
   "Call_Entry_Outgoing": "Panggilan keluar",
   "Call_Entry_Incoming": "Panggilan masuk",
+  "Call_Entry_Titled_Format": "{0}: {1}",
   "Call_Entry_Missed": "Panggilan tak terjawab",
   "Call_Entry_Declined": "Panggilan ditolak",
   "Call_Entry_Canceled": "Panggilan dibatalkan",

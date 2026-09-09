@@ -1500,6 +1500,7 @@
   "Call_StartingRecording": "Запуск записи...",
   "Call_Entry_Outgoing": "Исходящий звонок",
   "Call_Entry_Incoming": "Входящий звонок",
+  "Call_Entry_Titled_Format": "{0}: {1}",
   "Call_Entry_Missed": "Пропущенный звонок",
   "Call_Entry_Declined": "Отклонённый звонок",
   "Call_Entry_Canceled": "Отменённый звонок",

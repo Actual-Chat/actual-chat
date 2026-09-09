@@ -12,6 +12,13 @@ public static class CallCardFormat
     public static bool IsCaller(Conversation conversation, ChatContext chatContext)
         => conversation.CallerId == chatContext.Chat.Rules.Author?.Id;
 
+    // The direction stays on the card once a summary gives the call a title: the resummarization that
+    // writes one lands minutes after the card appears, and a label that vanishes then reads as a bug.
+    public static TranslatedText Title(string callTitle, TranslatedText summaryTitle, IStringLocalizer l)
+        => summaryTitle.Text.IsNullOrEmpty()
+            ? TranslatedText.From(callTitle)
+            : summaryTitle with { Text = l.Call_Entry_Titled_Format(callTitle, summaryTitle.Text) };
+
     public static (string Icon, string Title, string? Hint, bool IsCallBack) Get(
         CallOutcome outcome, bool isCaller, IStringLocalizer l)
         // Three glyphs, drawn from the design: the arrow carries the direction (there is no separate
