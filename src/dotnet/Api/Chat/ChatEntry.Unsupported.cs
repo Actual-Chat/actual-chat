@@ -17,8 +17,8 @@ public abstract partial record ChatEntry : IForwardCompatibleUnion<ChatEntry>
     // A peer older than that can't read the tag, so IChats.GetLegacyTile filters such entries out.
     private static readonly FrozenDictionary<int, Version> UnionTagSinceVersions =
         new Dictionary<int, Version> {
-            [100] = new (2, 19), // UnsupportedSystemEntry
-            [101] = new (2, 19), // CallEntry
+            [100] = new (2, 20), // UnsupportedSystemEntry
+            [101] = new (2, 20), // CallEntry
         }.ToFrozenDictionary();
 
     public static bool IsSystemUnionTag(int tag)

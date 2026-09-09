@@ -4,7 +4,7 @@ namespace ActualChat.Chat.UnitTests;
 
 /// <summary>
 /// The three-way <c>[LegacyName]</c> split of wire name "GetNews" across GetFullNews (v2.12-
-/// peers), GetLegacyNews (v2.13..v2.18 peers) and GetNews itself (v2.19+ peers). A wrong band
+/// peers), GetLegacyNews (v2.13..v2.19 peers) and GetNews itself (v2.20+ peers). A wrong band
 /// assignment doesn't fail the build - RpcMethodResolver's lowest-MaxVersion tie-break can mask it
 /// - so this pins the resolution by test rather than by manual review.
 /// </summary>
@@ -14,7 +14,9 @@ public class LegacyNewsRoutingTest(ITestOutputHelper @out) : TestBase(@out)
     private static readonly Version HighBoundary = Version.Parse(ApiConstants.LastVersionWithoutUnionTolerance);
     private static readonly Version APreLowBoundaryPeer = new (2, 10);
     private static readonly Version AMidBandPeer = new (2, 15);
-    private static readonly Version APostHighBoundaryPeer = new (2, 19);
+    // Derived, not written out: a hardcoded copy of the boundary is exactly what went stale once,
+    // when 2.19 shipped without the tolerant formatter and the band still called it tolerant.
+    private static readonly Version APostHighBoundaryPeer = new (HighBoundary.Major, HighBoundary.Minor + 1);
 
     [Fact]
     public void APreV212PeerShouldReachGetFullNews()

@@ -93,7 +93,7 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [ComputeMethod]
-    [Obsolete("2026.09: Use GetTile - this one only drops entry kinds a pre-2.19 client can't read.")]
+    [Obsolete("2026.09: Use GetTile - this one only drops entry kinds a pre-2.20 client can't read.")]
     public virtual async Task<ChatTile> GetLegacyTile(
         Session session,
         ChatId chatId,
@@ -231,12 +231,12 @@ public partial class Chats(IServiceProvider services) : IChats
             return null;
 
         // The filtering backend, like GetLegacyNews below: this serves peers at or below 2.12, which
-        // are pre-2.19 too, so an entry kind they can't read is fatal to the whole ChatNews here as well.
+        // are pre-2.20 too, so an entry kind they can't read is fatal to the whole ChatNews here as well.
         return await Backend.GetLegacyNews(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    [Obsolete("2026.09: Use GetNews - this one only serves a last entry a pre-2.19 client can read.")]
+    [Obsolete("2026.09: Use GetNews - this one only serves a last entry a pre-2.20 client can read.")]
     public virtual async Task<ChatNews?> GetLegacyNews(
         Session session,
         ChatId chatId,

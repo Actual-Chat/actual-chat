@@ -38,7 +38,7 @@ public interface IChats : IComputeService
     [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(MinCacheDuration = 600)]
     [LegacyName("GetLegacyNews_NewUnused", "2.12.9999")]
     [LegacyName(nameof(GetNews), ApiConstants.LastVersionWithoutUnionTolerance)]
-    [Obsolete("2026.09: Use GetNews - this one only drops a last entry a pre-2.19 client can't read.")]
+    [Obsolete("2026.09: Use GetNews - this one only drops a last entry a pre-2.20 client can't read.")]
     Task<ChatNews?> GetLegacyNews(
         Session session,
         ChatId chatId,
@@ -66,7 +66,7 @@ public interface IChats : IComputeService
 
     [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
     [LegacyName(nameof(GetTile), ApiConstants.LastVersionWithoutUnionTolerance)]
-    [Obsolete("2026.09: Use GetTile - this one only drops entry kinds a pre-2.19 client can't read.")]
+    [Obsolete("2026.09: Use GetTile - this one only drops entry kinds a pre-2.20 client can't read.")]
     Task<ChatTile> GetLegacyTile(
         Session session,
         ChatId chatId,

@@ -10,7 +10,8 @@ namespace ActualChat.Chat.UnitTests;
 public class LegacyTileRoutingTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private static readonly Version Boundary = Version.Parse(ApiConstants.LastVersionWithoutUnionTolerance);
-    private static readonly Version JustAfterBoundary = new (2, 19);
+    // Derived so it can't drift from the constant the way a written-out version once did.
+    private static readonly Version JustAfterBoundary = new (Boundary.Major, Boundary.Minor + 1);
 
     [Fact]
     public void AnOldPeerShouldReachTheFilteringMethod()
@@ -87,8 +88,8 @@ public class LegacyTileRoutingTest(ITestOutputHelper @out) : TestBase(@out)
         };
 
         // act
-        var knownToOldPeer = ChatEntry.IsKnownTo(entry, new Version(2, 18));
-        var knownToNewPeer = ChatEntry.IsKnownTo(entry, new Version(2, 19));
+        var knownToOldPeer = ChatEntry.IsKnownTo(entry, Boundary);
+        var knownToNewPeer = ChatEntry.IsKnownTo(entry, JustAfterBoundary);
 
         // assert
         knownToOldPeer.Should().BeFalse("a peer below the release that declared this union tag can't read it");

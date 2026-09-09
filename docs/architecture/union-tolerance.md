@@ -73,7 +73,7 @@ still readable, but it degrades to the wrong placeholder.
 ## Peers that predate the formatter
 
 Tolerance only helps a peer that has the formatter. Anything at or below
-`ApiConstants.LastVersionWithoutUnionTolerance` (`2.18.9999`) still dies on an unknown tag,
+`ApiConstants.LastVersionWithoutUnionTolerance` (`2.19.9999`) still dies on an unknown tag,
 and no server-side change can alter that — so the server does not send them one.
 
 Three entry points carry a `ChatEntry` to a client, each selected by the peer's handshake
@@ -81,9 +81,9 @@ version through `[LegacyName]` version bands:
 
 | Method | Serves | Filtering |
 |---|---|---|
-| `IChats.GetTile` → `GetLegacyTile` | ≤ 2.18.9999 | Drops entries whose kind postdates the peer's API version. |
-| `IChats.GetNews` → `GetLegacyNews` | 2.13 … 2.18.9999 | Substitutes the previous readable entry for an unreadable `LastTextEntry`. |
-| `IChats.GetNews` → `GetFullNews` | ≤ 2.12.9999 | The same, through the same backend: the older band is also a pre-2.19 band. |
+| `IChats.GetTile` → `GetLegacyTile` | ≤ 2.19.9999 | Drops entries whose kind postdates the peer's API version. |
+| `IChats.GetNews` → `GetLegacyNews` | 2.13 … 2.19.9999 | Substitutes the previous readable entry for an unreadable `LastTextEntry`. |
+| `IChats.GetNews` → `GetFullNews` | ≤ 2.12.9999 | The same, through the same backend: the older band is also a pre-2.20 band. |
 
 The band split on `GetNews` is a leftover from an earlier migration — `GetFullNews` returned
 the full entry where `GetNews` returns a slim one — and the resolver picks the lower band on
@@ -96,7 +96,7 @@ as known to everyone**, so omitting a row does not fail safe — it sends the ne
 exactly the peers it breaks. Declaring the row is the whole of what a new union member owes
 this mechanism.
 
-The product consequence, stated plainly: a pre-2.19 client sees **nothing** where a newer
+The product consequence, stated plainly: a pre-2.20 client sees **nothing** where a newer
 entry is — a gap in the tile's lid range, the same shape a removed entry already produces —
 rather than a placeholder.
 

@@ -52,7 +52,7 @@ public class CallEntrySerializationTest
         var tag = ChatEntry.GetUnionTag(new CallEntry())!.Value;
 
         // assert
-        ChatEntry.GetUnionTagSince(tag).Should().Be(new Version(2, 19));
+        ChatEntry.GetUnionTagSince(tag).Should().Be(new Version(2, 20));
     }
 
     [Fact]
