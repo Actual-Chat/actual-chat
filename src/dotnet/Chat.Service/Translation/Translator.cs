@@ -160,9 +160,10 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
             return new OpenAIPromptExecutionSettings {
                 Temperature = 0.1,
                 MaxTokens = maxTokens,
-                FrequencyPenalty = 0.5,
                 TopP = 0.1,
-                ReasoningEffort = null,
+#pragma warning disable OPENAI001 // TODO: remove once ChatReasoningEffortLevel is no longer [Experimental]
+                ReasoningEffort = OpenAI.Chat.ChatReasoningEffortLevel.None,
+#pragma warning restore OPENAI001
                 ResponseFormat = "text",
             };
 

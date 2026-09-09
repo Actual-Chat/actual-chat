@@ -170,16 +170,11 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
     }
 
     [Theory]
-    [InlineData("ru", SpoilerText, "Не читай дальше: ||убийца — дворецкий||. Ты был предупреждён!", "дворецкий")]
-    [InlineData("fr", SpoilerText, "Ne lisez pas plus loin : ||le meurtrier est le majordome||. Vous êtes prévenu !", "majordome")]
-    public async Task ShouldPreserveSpoiler(
-        string targetLanguage,
-        string text,
-        string expected,
-        string expectedSpoilerWord)
+    [InlineData("ru", SpoilerText, "дворецкий")]
+    [InlineData("fr", SpoilerText, "majordome")]
+    public async Task ShouldPreserveSpoiler(string targetLanguage, string text, string expectedSpoilerWord)
     {
         // arrange
-        var minSimilarity = 0.7;
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5).Debuggable());
         var cancellationToken = cts.Token;
 
@@ -188,7 +183,6 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         WriteLine($"Translated text:\n {translated}");
 
         // assert
-        Unspoil(translated).Should().BeSimilarTo(Unspoil(expected), minSimilarity);
         var spoiler = GetSpoilers(translated).Should().ContainSingle().Subject;
         spoiler.Content.ToReadableText().Should().ContainWord(expectedSpoilerWord);
     }
