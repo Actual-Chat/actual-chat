@@ -205,12 +205,12 @@
         var conversation = Message.Conversation!;
         var chatEntryId = ChatEntryId.New(conversation.Id.ChatId, conversation.Id.StartEntryLid);
         _fakeEntry = new TextEntry(chatEntryId);
-        // The preview and the swallowed count follow the model's expansion, which arrives as a parameter,
-        // not through a dependency the state could observe.
-        var mustRecompute = _lastMessage != null && _lastMessage.IsExpanded != Message.IsExpanded;
+        // Invalidated synchronously, so the render this parameter set triggers cannot pair the new flag
+        // with the old preview and swallowed count; the base recomputes on the parameter change.
+        var hasExpansionFlipped = _lastMessage != null && _lastMessage.IsExpanded != Message.IsExpanded;
         _lastMessage = Message;
-        if (mustRecompute)
-            _ = State.Recompute();
+        if (hasExpansionFlipped)
+            State.Invalidate(immediately: true);
     }
 
     protected override async Task<ConversationLiveState> ComputeState(CancellationToken cancellationToken) {
@@ -261,7 +261,7 @@
             && await LiveStreamUI.IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(false);
         return new ConversationLiveState(
             translated, isLive, isJoined, isVoiceOnly, participantsText, hasFoldedEntries,
-            isExpanded, tailPreview, hasSummary, swallowedCount, revealBatch, isAnyoneTalking,
+            tailPreview, hasSummary, swallowedCount, revealBatch, isAnyoneTalking,
             blockState.Overlay != null);
     }
 
