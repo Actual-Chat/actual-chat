@@ -385,6 +385,47 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
 
     // Private methods
 
+    [Fact]
+    public async Task ResummarizingACallShouldLeaveTheCardsOwnShapeAlone()
+    {
+        // The refresh that fills in the tail a call's live summary never reaches runs the ordinary
+        // summarizer over the conversation's range - and that range ends on the CallEntry. Left to
+        // itself the summarizer would pull the end back off that entry (which then draws itself a
+        // second time), count it as a message, list Wall-E among the speakers, and replace the call's
+        // duration with the transcript's.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
+
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+        var connected = await backend.GetState(chatId, default);
+        await tester.CreateTextEntry(chatId, "hi");
+        await tester.CreateTextEntry(chatId, "hi back");
+        await backend.LeaveCall(chatId, alice.Id, default);
+
+        var materialized = await conversations.Get(connected!.ToMaterializedConversation().Id, default);
+        materialized.Should().NotBeNull();
+        var callEntry = (await ReadCallEntries(tester, chatId)).Single();
+
+        // act
+        var refreshed = await tester.AppServices.Commander()
+            .Call(new ConversationBackend_Summarize(chatId, [materialized!.EntryLidRange]));
+
+        // assert
+        refreshed.Title.Should().NotBeNullOrWhiteSpace("the refresh exists to give the call a summary");
+        refreshed.EntryLidRange.Contains(callEntry.LocalId).Should()
+            .BeTrue("the card must keep covering the entry it stands in for");
+        refreshed.CallerId.Should().Be(bob.Id);
+        refreshed.StartsAt.Should().Be(materialized.StartsAt);
+        refreshed.EndsAt.Should().Be(materialized.EndsAt);
+        refreshed.MessageCount.Should().Be(2, "the CallEntry closing the range is not one of the messages");
+        refreshed.AuthorIds.Should().NotContain(Constants.User.Walle.GetWalleAuthorId(chatId));
+    }
+
     private static async Task<(ChatId ChatId, AuthorFull Bob, AuthorFull Alice)> NewPeerChat(IWebTester tester)
     {
         var bob = await tester.SignInAsUniqueBob();
