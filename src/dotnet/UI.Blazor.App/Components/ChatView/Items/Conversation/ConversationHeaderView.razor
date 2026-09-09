@@ -5,7 +5,8 @@
     var conversation = Header.Conversation!;
     var messageCount = conversation.MessageCount;
     var startsAt = DateTimeConverter.ToLocalTime(conversation.StartsAt);
-    var (callIcon, callTitle, _, _) = CallCardFormat.Get(CallOutcome.Ended, false, L);
+    var (callIcon, callTitle, _, _) = CallCardFormat.Get(
+        CallOutcome.Ended, CallCardFormat.IsCaller(conversation, ChatContext), L);
 }
 
 <ConversationMessageHeader

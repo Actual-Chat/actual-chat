@@ -20,7 +20,7 @@ public sealed class ConversationContentComparer : IEqualityComparer<Conversation
             && x.EndsAt == y.EndsAt
             && x.MessageCount == y.MessageCount
             && x.IsExpandedByDefault == y.IsExpandedByDefault
-            && x.IsCall == y.IsCall
+            && x.CallerId == y.CallerId
             && x.Title == y.Title
             && x.Description == y.Description
             && x.Summary == y.Summary

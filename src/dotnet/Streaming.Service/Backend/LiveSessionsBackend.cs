@@ -561,6 +561,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 VisibleStartLid = state?.VisibleStartLid ?? 0,
                 AuthorIds = state?.AuthorIds is { Count: > 0 } ids ? ids : [callerAuthorId],
                 Host = callerAuthorId,
+                CallerId = callerAuthorId,
                 Kind = state?.SessionStartedAt is not null ? LiveSessionKind.Call : LiveSessionKind.Dialing,
                 HasVideo = hasVideo,
                 Version = VersionGenerator.NextVersion(state?.Version ?? 0),
@@ -1286,7 +1287,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             return null;
 
         var chatId = state.ChatId;
-        var callerId = state.Host ?? state.AuthorIds.FirstOrDefault();
+        // Host stands in only for a call dialled by a build that predates CallerId; picking any other
+        // participant would name someone who never dialled, which is worse than recording nothing.
+        var callerId = state.CallerId ?? state.Host;
         if (callerId is null)
             return null;
 
