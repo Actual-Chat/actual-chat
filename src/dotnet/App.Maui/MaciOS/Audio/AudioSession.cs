@@ -124,21 +124,27 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         }
     }
 
-    public static void PrepareForTransmit()
+    public static void PrepareForPttSession(AudioSessionOwner owner)
     {
-        // Before the framework activates the transmit session: it takes the category as it finds
-        // it, and a listening burst leaves Playback, whose input node reports no sample rate -
-        // the pre-roll and the recorder that follow both need a live input.
+        // Before the framework activates a session, for a transmit or an incoming push alike: it
+        // takes the category as it finds it. A listening burst leaves Playback, whose input node
+        // reports no sample rate, and an idle app leaves Ambient, which is mixable and which the
+        // framework won't activate in the background at all.
         try {
-            ConfigureRecordingUnsafe(AVAudioSession.SharedInstance(), AudioSessionOwner.PttTransmit);
+            ConfigureRecordingUnsafe(AVAudioSession.SharedInstance(), owner);
+            OwnerLog.LogInformation("Session prepared for {Owner}", owner);
         }
         catch (Exception e) {
-            OwnerLog.LogWarning(e, "Couldn't configure the session for a PTT transmit");
+            OwnerLog.LogWarning(e, "Couldn't prepare the session for {Owner}", owner);
         }
     }
 
-    public static bool IsCannotInterruptOthers(NSError error)
-        => (AVAudioSessionErrorCode)(long)error.Code == AVAudioSessionErrorCode.CannotInterruptOthers;
+    public static bool IsActivationRefused(NSError error)
+        // CannotInterruptOthers ('!int') for an app that just went to the background,
+        // MissingEntitlement ('ent?') for one resumed from suspension - both mean the app may
+        // not activate its own session there and only the PTT framework can.
+        => (AVAudioSessionErrorCode)(long)error.Code
+            is AVAudioSessionErrorCode.CannotInterruptOthers or AVAudioSessionErrorCode.MissingEntitlement;
 
     public static void NotifyPlaybackActivity()
         => Volatile.Write(ref _playbackActivityAt, CpuTimestamp.Now.Value);
@@ -373,12 +379,12 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         // Without a joined PTT channel the refusal is somebody else's non-mixable session. A
         // recording is not asked for either: the framework would show it as an incoming receive,
         // and the app's own mic in the background is a transmit's business, not this path's.
-        if (mode is AudioFocusMode.Recording || !IsCannotInterruptOthers(error) || !IsPttActivationAvailable)
+        if (mode is AudioFocusMode.Recording || !IsActivationRefused(error) || !IsPttActivationAvailable)
             return false;
 
         Log.LogInformation(
-            "Activate({Mode}): refused as CannotInterruptOthers, asking the PTT framework to activate the session",
-            mode);
+            "Activate({Mode}): refused ({Error}), asking the PTT framework to activate the session",
+            mode, error.LocalizedDescription);
         _ = RequestPttActivation();
         return true;
     }
