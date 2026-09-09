@@ -9,7 +9,7 @@ public interface IConversations : IComputeService
     Task<Conversation[]> GetTile(
         Session session,
         ChatId chatId,
-        Range<long> lidTileRange,
+        Range<long> range,
         CancellationToken cancellationToken);
 
     [ComputeMethod]

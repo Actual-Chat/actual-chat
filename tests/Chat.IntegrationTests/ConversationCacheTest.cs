@@ -30,7 +30,8 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
         // arrange
         var (chatId, tileStart, live, conversations) = await StartLiveSession();
 
-        var cRangeMeta = await Computed.Capture(() => conversations.GetRangeMeta(chatId, tileStart, default));
+        var cRangeMeta = await Computed.Capture(
+            () => conversations.GetConversationRangeTile(chatId, tileStart, default));
         var cTile = await Computed.Capture(
             () => conversations.GetTile(chatId, RangeMetaEntryIdTiles.GetTile(tileStart).Range, default));
         cRangeMeta.IsConsistent().Should().BeTrue();
@@ -65,7 +66,8 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
         };
         await live.UpdateSummary(chatId, summary, default);
 
-        var cRangeMeta = await Computed.Capture(() => conversations.GetRangeMeta(chatId, tileStart, default));
+        var cRangeMeta = await Computed.Capture(
+            () => conversations.GetConversationRangeTile(chatId, tileStart, default));
         var cLiveConversation = await Computed.Capture(() => live.GetLiveConversation(chatId, default));
         cRangeMeta.IsConsistent().Should().BeTrue();
         var whenRangeMetaInvalidated = cRangeMeta.WhenInvalidated();

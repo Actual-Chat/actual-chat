@@ -340,10 +340,10 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public void ConversationRangeMeta_Basic()
+    public void ConversationRangeTile_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var meta = new ConversationRangeMeta(
+        var meta = new ConversationRangeTile(
             chatId,
             [new Range<long>(0, 100)],
             null,
@@ -351,9 +351,9 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
 
         var s = meta.PassThroughSerializers(Out);
         s.ChatId.Should().Be(meta.ChatId);
-        s.ConversationLidRanges.Should().BeEquivalentTo(meta.ConversationLidRanges);
-        s.PreviousConversationLidRange.Should().Be(meta.PreviousConversationLidRange);
-        s.NextConversationLidRange.Should().Be(meta.NextConversationLidRange);
+        s.ConversationRanges.Should().BeEquivalentTo(meta.ConversationRanges);
+        s.PreviousConversationRange.Should().Be(meta.PreviousConversationRange);
+        s.NextConversationRange.Should().Be(meta.NextConversationRange);
     }
 
     [Fact]

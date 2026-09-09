@@ -427,25 +427,29 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var conversationIdRanges = new List<Range<long>>();
         var minCount = 0;
         var entryRangeMetaTask = GetEntryRangeMeta(chatId, lidTileStart, cancellationToken);
-        var conversationRangeMetaTask = ConversationsBackend.GetRangeMeta(chatId, lidTileStart, cancellationToken);
+        var conversationRangeMetaTask = ConversationsBackend
+            .GetConversationRangeTile(chatId, lidTileStart, cancellationToken);
         await Task.WhenAll(entryRangeMetaTask, conversationRangeMetaTask).ConfigureAwait(false);
 
         var entryRangeMeta = await entryRangeMetaTask.ConfigureAwait(false);
-        var conversationRangeMeta = await conversationRangeMetaTask.ConfigureAwait(false);
+        var conversationRangeMeta = (await conversationRangeMetaTask.ConfigureAwait(false))
+            .ToFinite(chatLidRange.End, tile.Range);
         entryLidRanges.AddRange(entryRangeMeta.EntryLidRange);
-        conversationIdRanges.AddRange(conversationRangeMeta.ConversationLidRanges);
+        conversationIdRanges.AddRange(conversationRangeMeta.ConversationRanges);
         minCount += EstimateMinimumCount(entryRangeMeta, conversationRangeMeta);
         var hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || new Range<long>(startLid, endLid).Contains(chatLidRange);
 
         var previousEntryRangeMeta = entryRangeMeta;
-        var previousConversationRangeMeta = conversationRangeMeta;
+        var previousConversationTile = conversationRangeMeta;
         var nextEntryRangeMeta = entryRangeMeta;
-        var nextConversationRangeMeta = conversationRangeMeta;
+        var nextConversationTile = conversationRangeMeta;
         long previousId;
         long nextId;
         while (!hasFulfilled) {
-            previousId = Math.Max(previousEntryRangeMeta?.PreviousEntryLid ?? 0, (previousConversationRangeMeta?.PreviousConversationLidRange?.End ?? 1) - 1);
-            nextId = Math.Min(nextEntryRangeMeta?.NextEntryLid ?? long.MaxValue, nextConversationRangeMeta?.NextConversationLidRange?.Start ?? long.MaxValue);
+            previousId = Math.Max(previousEntryRangeMeta?.PreviousEntryLid ?? 0,
+                (previousConversationTile?.PreviousConversationRange?.End ?? 1) - 1);
+            nextId = Math.Min(nextEntryRangeMeta?.NextEntryLid ?? long.MaxValue,
+                nextConversationTile?.NextConversationRange?.Start ?? long.MaxValue);
             if (previousId == 0 && nextId == long.MaxValue)
                 break;
 
@@ -456,21 +460,21 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var prevEntryRangeMetaTask = previousId != 0
                 ? GetEntryRangeMeta(chatId, previousTile.Start, cancellationToken)
                 : null;
-            var prevConversationRangeMetaTask = previousId != 0
-                ? ConversationsBackend.GetRangeMeta(chatId, previousTile.Start, cancellationToken)
+            var prevConversationTileTask = previousId != 0
+                ? ConversationsBackend.GetConversationRangeTile(chatId, previousTile.Start, cancellationToken)
                 : null;
             previousEntryRangeMeta = prevEntryRangeMetaTask != null
                 ? await prevEntryRangeMetaTask.ConfigureAwait(false)
                 : null;
-            previousConversationRangeMeta = prevConversationRangeMetaTask is not null
-                ? await prevConversationRangeMetaTask.ConfigureAwait(false)
+            previousConversationTile = prevConversationTileTask is not null
+                ? (await prevConversationTileTask.ConfigureAwait(false)).ToFinite(chatLidRange.End, previousTile.Range)
                 : null;
 
-            if (previousEntryRangeMeta is not null && previousConversationRangeMeta is not null) {
+            if (previousEntryRangeMeta is not null && previousConversationTile is not null) {
                 startLid = previousTile.Start;
                 entryLidRanges = [..previousEntryRangeMeta.EntryLidRange, ..entryLidRanges];
-                conversationIdRanges = [..previousConversationRangeMeta.ConversationLidRanges, ..conversationIdRanges];
-                minCount += EstimateMinimumCount(previousEntryRangeMeta, previousConversationRangeMeta);
+                conversationIdRanges = [..previousConversationTile.ConversationRanges, ..conversationIdRanges];
+                minCount += EstimateMinimumCount(previousEntryRangeMeta, previousConversationTile);
                 hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || new Range<long>(startLid, endLid).Contains(chatLidRange);
                 if (hasFulfilled)
                     break;
@@ -485,29 +489,31 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var nextEntryRangeMetaTask = nextId != long.MaxValue
                 ? GetEntryRangeMeta(chatId, nextTile.Start, cancellationToken)
                 : null;
-            var nextConversationRangeMetaTask = nextId != long.MaxValue
-                ? ConversationsBackend.GetRangeMeta(chatId, nextTile.Start, cancellationToken)
+            var nextConversationTileTask = nextId != long.MaxValue
+                ? ConversationsBackend.GetConversationRangeTile(chatId, nextTile.Start, cancellationToken)
                 : null;
             nextEntryRangeMeta = nextEntryRangeMetaTask is not null
                 ? await nextEntryRangeMetaTask.ConfigureAwait(false)
                 : null;
-            nextConversationRangeMeta = nextConversationRangeMetaTask is not null
-                ? await nextConversationRangeMetaTask.ConfigureAwait(false)
+            nextConversationTile = nextConversationTileTask is not null
+                ? (await nextConversationTileTask.ConfigureAwait(false)).ToFinite(chatLidRange.End, nextTile.Range)
                 : null;
-            if (nextEntryRangeMeta is null || nextConversationRangeMeta is null) {
+            if (nextEntryRangeMeta is null || nextConversationTile is null) {
                 endLid = chatLidRange.End;
                 continue;
             }
 
             endLid = nextTile.End;
             entryLidRanges.AddRange(nextEntryRangeMeta.EntryLidRange);
-            conversationIdRanges.AddRange(nextConversationRangeMeta.ConversationLidRanges);
-            minCount += EstimateMinimumCount(nextEntryRangeMeta, nextConversationRangeMeta);
+            conversationIdRanges.AddRange(nextConversationTile.ConversationRanges);
+            minCount += EstimateMinimumCount(nextEntryRangeMeta, nextConversationTile);
             hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || new Range<long>(startLid, endLid).Contains(chatLidRange);
         }
 
-        previousId = Math.Max(previousEntryRangeMeta?.PreviousEntryLid ?? 0, (previousConversationRangeMeta?.PreviousConversationLidRange?.End ?? 1) - 1);
-        nextId = Math.Min(nextEntryRangeMeta?.NextEntryLid ?? long.MaxValue, nextConversationRangeMeta?.NextConversationLidRange?.Start ?? long.MaxValue);
+        previousId = Math.Max(previousEntryRangeMeta?.PreviousEntryLid ?? 0,
+            (previousConversationTile?.PreviousConversationRange?.End ?? 1) - 1);
+        nextId = Math.Min(nextEntryRangeMeta?.NextEntryLid ?? long.MaxValue,
+            nextConversationTile?.NextConversationRange?.Start ?? long.MaxValue);
         entryLidRanges.Sort((a, b) => a.Start.CompareTo(b.Start));
         conversationIdRanges.Sort((a, b) => a.Start.CompareTo(b.Start));
 
@@ -530,12 +536,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             previousId == 0 ? null : RangeMetaEntryIdTiles.GetTile(previousId).Start,
             nextId == long.MaxValue ? null : RangeMetaEntryIdTiles.GetTile(nextId).Start);
 
-        int EstimateMinimumCount(ChatEntryRangeMeta entryRangeMeta1, ConversationRangeMeta conversationRangeMeta1)
+        int EstimateMinimumCount(ChatEntryRangeMeta entryRangeMeta1, ConversationRangeTile conversationRangeMeta1)
         {
             var count = 0;
             var lastRange = new Range<long>(0, 0);
             var merged = entryRangeMeta1.EntryLidRange
-                .Merge(conversationRangeMeta1.ConversationLidRanges, (ce, co) => ce.IntersectWith(co).IsEmpty ? (int)(ce.Start - co.Start) : 0)
+                .Merge(conversationRangeMeta1.ConversationRanges,
+                    (ce, co) => ce.IntersectWith(co).IsEmpty ? (int)(ce.Start - co.Start) : 0)
                 .ToList();
 
             Range<long>? pendingRight = null; // right part of the current entryRange
@@ -2194,11 +2201,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             // A removed entry must not linger in an already-persisted summary. The range isn't passed
             // along: the flow coalesces a burst of removals and re-reads the range when it finally runs.
             var lid = entry.LocalId;
-            var idTile = RangeMetaEntryIdTiles.GetTile(lid);
+            var cidTile = RangeMetaEntryIdTiles.GetTile(lid);
             var rangeMeta = await ConversationsBackend
-                .GetRangeMeta(entry.ChatId, idTile.Range.Start, cancellationToken)
+                .GetConversationRangeTile(entry.ChatId, cidTile.Range.Start, cancellationToken)
                 .ConfigureAwait(false);
-            var conversationRange = rangeMeta.ConversationLidRanges.FirstOrDefault(r => r.Contains(lid));
+            var conversationRange = rangeMeta.ConversationRanges.FirstOrDefault(r => r.Contains(lid));
             if (conversationRange.IsEmpty)
                 return;
 

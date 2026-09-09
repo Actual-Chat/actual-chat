@@ -1,4 +1,4 @@
-﻿using ActualChat.Contacts;
+using ActualChat.Contacts;
 using ActualChat.Kvas;
 using ActualChat.Localization;
 using ActualChat.Pooling;
@@ -664,7 +664,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // manual override is excluded too: suppression dies with the visit but the override doesn't,
         // so without this an earlier visit's deliberate collapse would be undone by later range growth.
         var result = new List<ConversationId>();
-        foreach (var range in conversationLidRanges) {
+        foreach (var range in NormalizeBlockRanges(conversationLidRanges, liveBlockId, materializedBlockId)) {
             var conversationId = ConversationId.New(chatId, range.Start);
             if (conversationId == liveBlockId || conversationId == materializedBlockId)
                 continue;

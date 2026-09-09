@@ -95,8 +95,10 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
             if (OverlapsLiveSession([replyRange]))
                 continue; // The live flow owns its range; don't append replies into it.
 
-            var idRange = RangeMetaEntryIdTiles.GetTile(entryLid).Range;
-            var rangeMeta = await ConversationsBackend.GetRangeMeta(ChatId, idRange.Start, cancellationToken).ConfigureAwait(false);
+            var cidTile = RangeMetaEntryIdTiles.GetTile(entryLid);
+            var rangeMeta = await ConversationsBackend
+                .GetConversationRangeTile(ChatId, cidTile.Start, cancellationToken)
+                .ConfigureAwait(false);
             var existingConversationIds = rangeMeta.ConversationIds;
             var appendReply = new ConversationBackend_AppendReply(
                 ChatId,

@@ -132,10 +132,10 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
         var contextStart = ContextStartScanner.FindContextStartLid(preceding, anchor);
 
         // Never re-claim a persisted conversation's range: clamp to just past the one preceding the scan start.
-        var idRange = RangeMetaEntryIdTiles.GetTile(contextStart).Range;
-        var rangeMeta = await ConversationsBackend.GetRangeMeta(ChatId, idRange.Start, cancellationToken)
+        var cidTile = RangeMetaEntryIdTiles.GetTile(contextStart);
+        var rangeMeta = await ConversationsBackend.GetConversationRangeTile(ChatId, cidTile.Start, cancellationToken)
             .ConfigureAwait(false);
-        if (rangeMeta.PreviousConversationLidRange is { } prev && prev.End > contextStart)
+        if (rangeMeta.PreviousConversationRange is { } prev && prev.End > contextStart)
             contextStart = prev.End;
 
         await LiveSessionsBackend.SetContextStart(ChatId, contextStart, cancellationToken).ConfigureAwait(false);

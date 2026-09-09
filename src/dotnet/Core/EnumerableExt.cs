@@ -406,7 +406,7 @@ public static class EnumerableExt
     {
         var current = seed;
         foreach (var item in source) {
-            current = accumulator(current, item);
+            current = accumulator.Invoke(current, item);
             yield return current;
         }
     }

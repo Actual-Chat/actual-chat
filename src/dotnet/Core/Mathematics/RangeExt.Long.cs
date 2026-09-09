@@ -157,6 +157,19 @@ public static partial class RangeExt
             ? new Range<long>(range.Start, range.End + 1)
             : range;
 
+    public static IEnumerable<Range<long>> TruncateOverlaps(this IEnumerable<Range<long>> ranges)
+    {
+        var previous = default(Range<long>);
+        foreach (var current in ranges.Where(r => !r.IsEmptyOrNegative).OrderBy(r => r.Start).EnsureMonotonic()) {
+            if (!previous.IsEmpty)
+                yield return new(previous.Start, Math.Min(previous.End, current.Start));
+
+            previous = current;
+        }
+        if (!previous.IsEmpty)
+            yield return previous;
+    }
+
     public static IEnumerable<Range<long>> MergeAdjacentRanges(this IEnumerable<Range<long>> ranges)
     {
         var previous = default(Range<long>);

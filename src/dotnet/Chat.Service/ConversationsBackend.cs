@@ -1,4 +1,4 @@
-﻿using ActualChat.Chat.Db;
+using ActualChat.Chat.Db;
 using ActualChat.Chat.Flows;
 using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
@@ -57,102 +57,70 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [ComputeMethod]
-    public virtual async Task<ConversationRangeMeta> GetRangeMeta(
+    public virtual async Task<ConversationRangeTile> GetConversationRangeTile(
         ChatId chatId,
-        long idTileStart,
+        long start,
         CancellationToken cancellationToken)
     {
-        var idTile = RangeMetaEntryIdTiles.AssertIsTileStart(idTileStart);
-        var idTileRange = idTile.Range;
+        var range = RangeMetaEntryIdTiles.AssertIsTileStart(start).Range;
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var conversationRanges = await dbContext.Conversations
-            .Where(c => c.ChatId == chatId.Value && c.StartEntryLid < idTileRange.End && c.EndEntryLid >= idTileRange.Start)
+            .Where(c => c.ChatId == chatId.Value && c.StartEntryLid < range.End && c.EndEntryLid >= range.Start)
             .OrderBy(c => c.StartEntryLid)
             .Select(c => new Range<long>(c.StartEntryLid, c.EndEntryLid + 1))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var previousConversationRange = await dbContext.Conversations
-            .Where(c => c.ChatId == chatId.Value && c.EndEntryLid < idTileRange.Start)
+            .Where(c => c.ChatId == chatId.Value && c.EndEntryLid < range.Start)
             .OrderByDescending(c => c.StartEntryLid)
             .Select(c => (Range<long>?)new Range<long>(c.StartEntryLid, c.EndEntryLid + 1))
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         var nextConversationRange = await dbContext.Conversations
-            .Where(c => c.ChatId == chatId.Value && c.StartEntryLid >= idTileRange.End)
+            .Where(c => c.ChatId == chatId.Value && c.StartEntryLid >= range.End)
             .OrderBy(c => c.StartEntryLid)
             .Select(c => (Range<long>?)new Range<long>(c.StartEntryLid, c.EndEntryLid + 1))
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        // A latched live session owns [V, +inf) - it always runs to the chat's tail - so it replaces every
-        // solo-era conversation from V on (the UI swaps the regular block for the live one).
+        if (previousConversationRange is { } previous)
+            conversationRanges.Add(previous);
+        if (nextConversationRange is { } next)
+            conversationRanges.Add(next);
+
         var liveStartLid = await LiveSessionsBackend.GetVisibleStartLid(chatId, cancellationToken)
             .ConfigureAwait(false);
         if (liveStartLid is { } liveStart) {
-            // Unconditional, not just for tiles that reach past V: a conversation straddling V (V latched
-            // inside an older record - what id churn produces) is reported by every tile ending at or
-            // before V, and that record then claims the live block's rows. It renders a competing card,
-            // and its range excludes the id tiles holding those rows, so the live block loses them.
-            conversationRanges = conversationRanges.Where(r => r.End <= liveStart).ToList();
-            if (previousConversationRange is { } prev && prev.End > liveStart)
-                previousConversationRange = null;
-            if (nextConversationRange is { } next && next.End > liveStart)
-                nextConversationRange = null;
-            if (idTileRange.End > liveStart) {
-                // The emitted range still needs a finite end for the range math downstream, hence the cap
-                // at the chat's end; that read is isolated because depending on the lid range would
-                // invalidate this on every message.
-                Range<long> chatLidRange;
-                using (Computed.BeginIsolation())
-                    chatLidRange = await ChatsBackend.GetLidRange(chatId, false, cancellationToken)
-                        .ConfigureAwait(false);
-                var liveRange = new Range<long>(liveStart, Math.Max(chatLidRange.End, liveStart + 1));
-                conversationRanges = conversationRanges
-                    .Append(liveRange)
-                    .OrderBy(r => r.Start)
-                    .ToList();
-            }
+            conversationRanges.RemoveAll(r => r.Start == liveStart);
+            conversationRanges.Add(new(liveStart, long.MaxValue));
         }
 
-        return new ConversationRangeMeta(chatId,
-            conversationRanges.ToArray(),
-            previousConversationRange,
-            nextConversationRange);
+        return ConversationRangeTile.NewNormalized(chatId, range, conversationRanges);
     }
 
     // [Computed]
-    public virtual async Task<Conversation[]> GetTile(ChatId chatId, Range<long> lidTileRange, CancellationToken cancellationToken)
+    public virtual async Task<Conversation[]> GetTile(
+        ChatId chatId, Range<long> range, CancellationToken cancellationToken)
     {
-        var idTile = RangeMetaEntryIdTiles.GetTile(lidTileRange);
-        var conversationTile = await GetRangeMeta(chatId, idTile.Start, cancellationToken).ConfigureAwait(false);
+        var tile = RangeMetaEntryIdTiles.GetTile(range);
+        var conversationTile = await GetConversationRangeTile(chatId, tile.Start, cancellationToken)
+            .ConfigureAwait(false);
         var conversations = await conversationTile.ConversationIds
             .Distinct()
             .Select(cId => Get(cId, cancellationToken))
             .Collect(cancellationToken)
             .ConfigureAwait(false);
 
-        var result = conversations
-            .Where(c => c != null && !c.EntryLidRange.IntersectWith(lidTileRange).IsEmpty)
-            .OrderBy(c => c!.EntryLidRange.Start)
-            .ToList()!;
-
-        // A latched live session owns its range: drop any solo-era conversations it overlaps and inject
-        // its synthetic block instead (the UI swaps the regular block for the live one).
         var liveConversation = await LiveSessionsBackend.GetLiveConversation(chatId, cancellationToken)
             .ConfigureAwait(false);
-        if (liveConversation is not null
-            && !liveConversation.EntryLidRange.IntersectWith(lidTileRange).IsEmpty) {
-            result = result
-                .Where(c => c!.EntryLidRange.IntersectWith(liveConversation.EntryLidRange).IsEmpty)
-                .Append(liveConversation)
-                .OrderBy(c => c!.EntryLidRange.Start)
-                .ToList()!;
-        }
+        var records = conversations.SkipNullItems().Where(c => c.Id != liveConversation?.Id);
+        if (liveConversation != null)
+            records = records.Append(liveConversation);
 
-        return result.ToArray()!;
+        return conversationTile.ApplyTo(records, range);
     }
 
     // Commands
@@ -167,17 +135,19 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             var invConversation = context.Operation.Items.KeylessGet<Conversation>();
             if (invConversation != null) {
                 _ = Get(invConversation.Id, default);
-                foreach (var idTile in RangeMetaEntryIdTiles.GetCoveringTiles(invConversation.EntryLidRange))
-                    _ = GetRangeMeta(chatId, idTile.Range.Start, default);
-                var previousConversationId = context.Operation.Items.Get<long>(nameof(ConversationRangeMeta.PreviousConversationLidRange));
-                var nextConversationId = context.Operation.Items.Get<long>(nameof(ConversationRangeMeta.NextConversationLidRange));
+                foreach (var cidTile in RangeMetaEntryIdTiles.GetCoveringTiles(invConversation.EntryLidRange))
+                    _ = GetConversationRangeTile(chatId, cidTile.Range.Start, default);
+                var previousConversationId = context.Operation.Items
+                    .Get<long>(nameof(ConversationRangeTile.PreviousConversationRange));
+                var nextConversationId = context.Operation.Items
+                    .Get<long>(nameof(ConversationRangeTile.NextConversationRange));
                 if (previousConversationId != default) {
-                    var previousIdTile = RangeMetaEntryIdTiles.GetTile(previousConversationId);
-                    _ = GetRangeMeta(chatId, previousIdTile.Range.Start, default);
+                    var previousCidTile = RangeMetaEntryIdTiles.GetTile(previousConversationId);
+                    _ = GetConversationRangeTile(chatId, previousCidTile.Range.Start, default);
                 }
                 if (nextConversationId != default) {
-                    var nextIdTile = RangeMetaEntryIdTiles.GetTile(nextConversationId);
-                    _ = GetRangeMeta(chatId, nextIdTile.Range.Start, default);
+                    var nextCidTile = RangeMetaEntryIdTiles.GetTile(nextConversationId);
+                    _ = GetConversationRangeTile(chatId, nextCidTile.Range.Start, default);
                 }
             }
             return null!;
@@ -308,9 +278,10 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .ConfigureAwait(false);
 
             if (previousConversationId != 0)
-                context.Operation.Items.Set(nameof(ConversationRangeMeta.PreviousConversationLidRange), previousConversationId);
+                context.Operation.Items
+                    .Set(nameof(ConversationRangeTile.PreviousConversationRange), previousConversationId);
             if (nextConversationId != 0)
-                context.Operation.Items.Set(nameof(ConversationRangeMeta.NextConversationLidRange), nextConversationId);
+                context.Operation.Items.Set(nameof(ConversationRangeTile.NextConversationRange), nextConversationId);
         }
     }
 
@@ -498,8 +469,9 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             return null!; // This handler makes changes only via nested commands
 
         var (chatId, entryLid, replyIdRange) = command;
-        var conversationTile = RangeMetaEntryIdTiles.GetTile(entryLid);
-        var conversationRangeMeta = await GetRangeMeta(chatId, conversationTile.Range.Start, cancellationToken)
+        var cidTile = RangeMetaEntryIdTiles.GetTile(entryLid);
+        var conversationRangeMeta = await GetConversationRangeTile(
+                chatId, cidTile.Range.Start, cancellationToken)
             .ConfigureAwait(false);
         var existingConversations = conversationRangeMeta.ConversationIds;
         if (existingConversations.Length == 0) {

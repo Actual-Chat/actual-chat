@@ -60,6 +60,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.BannerStack>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Banners>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.BreakableWord>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallMessageView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CameraMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CarAudioSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivities>();
@@ -833,6 +834,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.BannerStack), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Banners), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.BreakableWord), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CallMessageView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CameraMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CarAudioSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivities), AotTypeKind.Component),

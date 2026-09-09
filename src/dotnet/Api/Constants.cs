@@ -70,7 +70,7 @@ public static partial class Constants
         // Entry fetches: the only tile IChatsBackend.GetTile and IChatEntryLanguagesBackend.GetTile accept
         public static readonly TileLayer<long> EntryIdTiles = TileLayers.Long5;
         // Range fetches: the only tile GetChatRangeMeta, GetEntryRangeMeta,
-        // IConversationsBackend.GetRangeMeta and IConversationsBackend.GetTile accept
+        // IConversationsBackend.GetConversationRangeTile and IConversationsBackend.GetTile accept
         public static readonly TileLayer<long> RangeMetaEntryIdTiles = TileLayers.Long1280;
         public static readonly TileLayer<int> ChatListIndexTiles = TileLayers.Int5;
         public static readonly TimeSpan MaxEntryDuration = TimeSpan.FromMinutes(3);

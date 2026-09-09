@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
@@ -2088,16 +2088,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task ConversationOverlappingTheLiveBlockRendersAsPlainEntries()
+    public async Task ActiveLiveBlockShouldKeepItsTailWhenALaterConversationOverlaps()
     {
-        // A regular conversation whose range runs into the live block's can't render as a block - both
-        // claim the same rows - so it degrades to plain entries. This pins the SERVER's half of that:
-        // GetRangeMeta rebuilds the ranges so an overlapping record's id never reaches the client, and
-        // ConversationRangeMeta.ConversationIds is derived from those rebuilt ranges. The client-side
-        // filter in ChatUI.Tiles.GetTile guards the straddling case instead (StartEntryLid < V <=
-        // EndEntryLid, reported by tiles ending at or before V), which needs a chat spanning more than
-        // one server id tile to reproduce - too big to build here until the tile flattening lands.
-
         // arrange
         await Tester.SignInAsUniqueBob();
         var chat = await CreateSettledChat("conversation-overlap-test");
@@ -2162,12 +2154,99 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
                 .Select(m => m.Conversation!.Id)
                 .ToList();
             cardIds.Should().NotContain(overlapping.Id,
-                "an overlapping conversation must not render as a block");
+                "the open-ended live block owns the tail, including later completed ranges");
             cardIds.Should().Contain(neighbor.Id,
                 "a conversation ending exactly where the live block starts doesn't overlap it");
             LeafEntryLids(items).Should().Contain(
-                inside.Where(e => e.LocalId >= overlapStart && e.LocalId <= overlapEnd).Select(e => e.LocalId),
-                "the overlapping conversation's entries, and the live block's own rows, still render");
+                inside.Where(e => e.LocalId > v).Select(e => e.LocalId),
+                "typed entries throughout the active live tail remain visible");
+            LeafEntryLids(items).Should().NotContain(v, "the active live block retains its governed fold");
+        }, TimeSpan.FromSeconds(20));
+    }
+
+    [Fact]
+    public async Task GrowingLiveSummaryShouldOutgrowCachedRangeMetadata()
+    {
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var chat = await CreateSettledChat("live-metadata-growth-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, AuthorId.New(chat.Id, 777_442), null,
+            true, true, CancellationToken.None);
+        var live = (await liveBackend.GetState(chat.Id, CancellationToken.None))!;
+        var backend = AppHost.Services.GetRequiredService<IConversationsBackend>();
+        var tileRange = Constants.Chat.RangeMetaEntryIdTiles.GetTile(live.EffectiveVisibleStartLid).Range;
+        var cached = await Computed.Capture(() => backend.GetConversationRangeTile(chat.Id, tileRange.Start, default));
+        ChatEntry last = null!;
+        for (var i = 0; i < 10; i++)
+            last = await Tester.CreateTextEntry(chat.Id, $"growing-live-{i}");
+
+        // act
+        await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
+            Title = "Growing", Description = "d", Summary = "s", EndEntryLid = last.LocalId, MessageCount = 10,
+        }, CancellationToken.None);
+
+        // assert
+        cached.Value.ConversationRanges.Single(r => r.Start == live.EffectiveVisibleStartLid)
+            .IsOpenEnded.Should().BeTrue();
+        cached.IsConsistent().Should().BeTrue("growing the summary does not move the open-ended boundary");
+        await ComputedTest.When(async ct => {
+            var tile = await backend.GetTile(chat.Id, tileRange, ct);
+            tile.Single(c => c.Id == live.ConversationId).EndEntryLid.Should().Be(last.LocalId);
+            var metadata = await Tester.Chats.GetChatRangeMeta(Tester.Session, chat.Id, tileRange.Start, ct);
+            metadata.ConversationLidRanges.Any(r => r.IsOpenEnded).Should().BeFalse();
+            metadata.ConversationLidRanges.Single(r => r.Start == live.EffectiveVisibleStartLid)
+                .End.Should().Be(last.LocalId + 1);
+        }, TimeSpan.FromSeconds(20));
+    }
+
+    [Fact]
+    public async Task LaterLiveBlockShouldPreserveTheCollapsedConversationPrefix()
+    {
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var chat = await CreateSettledChat("live-truncates-conversation-test");
+        var entries = new List<ChatEntry>();
+        for (var i = 0; i < 20; i++)
+            entries.Add(await Tester.CreateTextEntry(chat.Id, $"before-live-{i}"));
+        var earlier = new Conversation(ConversationId.New(chat.Id, entries[0].LocalId), 1) {
+            Title = "Earlier", Description = "d", Summary = "s", MessageCount = entries.Count,
+            EndEntryLid = entries[^1].LocalId + 10,
+            StartsAt = entries[0].BeginsAt, EndsAt = entries[^1].BeginsAt,
+        };
+        await Tester.Commander.Call(new ConversationBackend_Materialize(earlier));
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+
+        // act
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, entries[10].LocalId,
+            true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, AuthorId.New(chat.Id, 777_441), null,
+            true, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var v = live!.EffectiveVisibleStartLid;
+        var expectedLiveStart = entries[^1].LocalId + 1;
+        for (var i = 0; i < 10; i++)
+            entries.Add(await Tester.CreateTextEntry(chat.Id, $"after-live-{i}"));
+        var backend = AppHost.Services.GetRequiredService<IConversationsBackend>();
+        var tileRange = Constants.Chat.RangeMetaEntryIdTiles.GetTile(v).Range;
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var query = new ChatDataQuery(new(entries[4].LocalId, entries[25].LocalId), 0, 0);
+
+        // assert
+        v.Should().Be(expectedLiveStart);
+        await ComputedTest.When(async ct => {
+            var tile = await backend.GetTile(chat.Id, tileRange, ct);
+            tile.Single(c => c.Id == earlier.Id).EndEntryLid.Should().Be(v - 1);
+            tile.Should().Contain(c => c.Id == live.ConversationId);
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            var cards = items.Items.SelectMany(i => i.GetLeafMessages())
+                .OfType<ConversationMessage>().Select(m => m.Conversation!.Id).ToList();
+            cards.Should().Contain(earlier.Id).And.Contain(live.ConversationId);
+            cards.Should().OnlyHaveUniqueItems();
+            (await backend.Get(earlier.Id, ct))!.EndEntryLid.Should().Be(entries[^1].LocalId);
         }, TimeSpan.FromSeconds(20));
     }
 

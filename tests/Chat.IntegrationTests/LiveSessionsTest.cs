@@ -468,8 +468,8 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         var tileStart = Constants.Chat.RangeMetaEntryIdTiles.GetTile(live!.StartEntryLid).Range.Start;
 
         // assert — no live conversation block is injected for a solo streamer
-        var metaBefore = await conversations.GetRangeMeta(chatId, tileStart, default);
-        metaBefore.ConversationLidRanges.Should().NotContain(r => r.Contains(live.StartEntryLid));
+        var metaBefore = await conversations.GetConversationRangeTile(chatId, tileStart, default);
+        metaBefore.ConversationRanges.Should().NotContain(r => r.Contains(live.StartEntryLid));
 
         // act — a second distinct peer latches the session
         await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_030), null, true, true, default);
@@ -481,8 +481,8 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         var liveStartLid = latched.EffectiveVisibleStartLid;
         var liveTileStart = Constants.Chat.RangeMetaEntryIdTiles.GetTile(liveStartLid).Range.Start;
         await ComputedTest.When(async ct => {
-            var metaAfter = await conversations.GetRangeMeta(chatId, liveTileStart, ct);
-            metaAfter.ConversationLidRanges.Should().Contain(r => r.Contains(liveStartLid));
+            var metaAfter = await conversations.GetConversationRangeTile(chatId, liveTileStart, ct);
+            metaAfter.ConversationRanges.Should().Contain(r => r.Contains(liveStartLid));
         });
     }
 
@@ -1274,10 +1274,10 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
 
         // act
         var idTileStart = Constants.Chat.RangeMetaEntryIdTiles.GetTile(e0.LocalId).Range.Start;
-        var meta = await conversationsBackend.GetRangeMeta(chatId, idTileStart, default);
+        var meta = await conversationsBackend.GetConversationRangeTile(chatId, idTileStart, default);
 
         // assert — the pre-latch conversation's exact range survives; the live range no longer swallows it
-        meta.ConversationLidRanges.Should().Contain(new Range<long>(e0.LocalId, e2.LocalId + 1));
+        meta.ConversationRanges.Should().Contain(new Range<long>(e0.LocalId, e2.LocalId + 1));
     }
 
     [Fact]

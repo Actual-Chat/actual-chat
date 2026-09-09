@@ -15,11 +15,12 @@ public interface IConversationsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Conversation[]> GetTile(
         ChatId chatId,
-        Range<long> lidTileRange,
+        Range<long> range,
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ConversationRangeMeta> GetRangeMeta(ChatId chatId, long idTileStart, CancellationToken cancellationToken);
+    Task<ConversationRangeTile> GetConversationRangeTile(
+        ChatId chatId, long start, CancellationToken cancellationToken);
 
     // Commands
 
