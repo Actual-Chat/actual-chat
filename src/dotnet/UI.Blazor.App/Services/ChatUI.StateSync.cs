@@ -362,8 +362,8 @@ public partial class ChatUI
         // Every build awaits the range meta before it can place a single tile, and nothing but the
         // pointer-down prefetch ever warmed it - so a chat with its whole tail cached still couldn't
         // open offline. Same for what the tail shows around its text: authors, reactions, pins.
-        var metaTask = GetMetaIdTiles(tailRange)
-            .Select(t => Chats.GetChatRangeMeta(Session, chatId, t.Start, cancellationToken))
+        var metaTask = GetCidTiles(tailRange)
+            .Select(t => Chats.GetChatRangeTile(Session, chatId, t.Start, cancellationToken))
             .Collect(ApiConstants.Concurrency.High, cancellationToken);
         var tilesTask = PrefetchLoadZone(chatId, idTiles, chat.Chat.IsSummarized ?? false, cancellationToken);
         var pinnedTask = PrefetchPinnedEntries(chatId, cancellationToken);

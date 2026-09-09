@@ -47,15 +47,15 @@ public interface IChatsBackend : IComputeService, IBackendService
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ChatRangeMeta> GetChatRangeMeta(
+    Task<ChatRangeTile> GetChatRangeTile(
         ChatId chatId,
-        long lidTileStart,
+        long start,
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ChatEntryRangeMeta> GetEntryRangeMeta(
+    Task<ChatEntryRangeTile> GetEntryRangeTile(
         ChatId chatId,
-        long idTileStart,
+        long start,
         CancellationToken cancellationToken);
 
     [ComputeMethod]

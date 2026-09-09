@@ -48,10 +48,10 @@ public sealed class ChatUICacheTest(ChatAppHostFixture fixture, ITestOutputHelpe
 
         // The summary flow writes the live session's conversation card shortly after the latch, and that
         // write invalidates the range meta as well - so wait it out before probing what SetRules does.
-        var tileStart = ChatUI.RangeMetaEntryIdTiles.GetTile(live.EffectiveVisibleStartLid).Start;
-        var cRangeMeta = await SettledComputed.Capture(
-            () => Tester.Chats.GetChatRangeMeta(Tester.Session, chat.Id, tileStart, CancellationToken.None));
-        var whenInvalidated = cRangeMeta.WhenInvalidated(CancellationToken.None);
+        var tileStart = ChatUI.ConversationIdTiles.GetTile(live.EffectiveVisibleStartLid).Start;
+        var cRangeTile = await SettledComputed.Capture(
+            () => Tester.Chats.GetChatRangeTile(Tester.Session, chat.Id, tileStart, CancellationToken.None));
+        var whenInvalidated = cRangeTile.WhenInvalidated(CancellationToken.None);
 
         // act - rewrites the live session state, but cannot change a single rendered row
         await liveBackend.SetRules(chat.Id, new SessionRules { VideoAllowed = false }, CancellationToken.None);
@@ -63,7 +63,7 @@ public sealed class ChatUICacheTest(ChatAppHostFixture fixture, ITestOutputHelpe
     }
 
     [Fact]
-    public async Task RangeMetaSurvivesEntryContentUpdate()
+    public async Task RangeTileSurvivesEntryContentUpdate()
     {
         // arrange - mirrors the transcription pipeline: ChangeEntry Create at utterance start,
         // ChangeEntry Update at finalization
@@ -71,28 +71,28 @@ public sealed class ChatUICacheTest(ChatAppHostFixture fixture, ITestOutputHelpe
         var (chat, _) = await Tester.CreateAndGetChat(false, "chat-ui-cache-test-update");
         var streamingEntry = await Tester.CreateStreamingEntry(chat.Id, Languages.English);
         var entryLid = streamingEntry.ChatEntrySlim.Id.LocalId;
-        var tileStart = ChatUI.RangeMetaEntryIdTiles.GetTile(entryLid).Start;
-        // The backend computed, not the front GetChatRangeMeta: the latter also composes the
+        var tileStart = ChatUI.ConversationIdTiles.GetTile(entryLid).Start;
+        // The backend computed, not the front GetChatRangeTile: the latter also composes the
         // conversation range meta, which the summarizer may legitimately invalidate mid-test.
         var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();
-        var cRangeMeta = await Computed.Capture(
-            () => chatsBackend.GetEntryRangeMeta(chat.Id, tileStart, CancellationToken.None));
-        cRangeMeta.IsConsistent().Should().BeTrue();
+        var cRangeTile = await Computed.Capture(
+            () => chatsBackend.GetEntryRangeTile(chat.Id, tileStart, CancellationToken.None));
+        cRangeTile.IsConsistent().Should().BeTrue();
 
         // act - a content-only update; entry lids don't change, so the range meta can't either
         await Tester.FinalizeStreamingEntry(streamingEntry, "final transcript");
 
         // assert
-        cRangeMeta.IsConsistent().Should()
+        cRangeTile.IsConsistent().Should()
             .BeTrue("a content update cannot change lid structure, so range meta must stay cached");
 
         // positive control - a new entry does change lid structure and must invalidate it
         await Tester.CreateTextEntry(chat.Id, "next entry");
-        await cRangeMeta.WhenInvalidated(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+        await cRangeTile.WhenInvalidated(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
     }
 
     [Fact]
-    public async Task NewEntryRendersWhileRangeMetaRefetchIsInFlight()
+    public async Task NewEntryRendersWhileRangeTileRefetchIsInFlight()
     {
         // arrange - a warm build inside a computed populates ChatUI's last-known meta caches
         await Tester.SignInAsUniqueBob();

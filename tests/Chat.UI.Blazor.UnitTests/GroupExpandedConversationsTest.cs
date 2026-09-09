@@ -140,6 +140,28 @@ public class GroupExpandedConversationsTest
         result.Count.Should().Be(1);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FrozenOrMaterializedBlockShouldLeaveOptimisticTailOutside(bool isMaterialized)
+    {
+        // arrange
+        var live = NewConversation(100, 110);
+        var messages = new ChatMessage[] {
+            new ConversationMessage(live), NewMessage(150), NewMessage(200), NewMessage(long.MaxValue),
+        };
+
+        // act
+        var result = ChatUI.GroupExpandedConversations(
+            messages, live.Id, new Range<long>(100, 200), true, isMaterialized ? live.Id : null, null);
+
+        // assert
+        var block = result.OfType<ExpandedConversationMessage>().Should().ContainSingle().Subject;
+        block.Items.Select(m => m.Id).Should().Contain(150);
+        block.Items.Select(m => m.Id).Should().NotContain([200, long.MaxValue]);
+        result.Skip(1).Select(m => m.Id).Should().Equal(200, long.MaxValue);
+    }
+
     // Private methods
 
     private static Conversation NewConversation(long startEntryLid, long endEntryLid)

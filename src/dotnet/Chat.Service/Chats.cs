@@ -168,14 +168,14 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatRangeMeta> GetChatRangeMeta(
+    public virtual async Task<ChatRangeTile> GetChatRangeTile(
         Session session,
         ChatId chatId,
-        long idTileStart,
+        long start,
         CancellationToken cancellationToken)
     {
         await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetChatRangeMeta(chatId, idTileStart, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetChatRangeTile(chatId, start, cancellationToken).ConfigureAwait(false);
     }
 
     // Note that it returns (firstId, lastId + 1) range!

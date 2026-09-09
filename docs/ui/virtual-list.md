@@ -21,6 +21,10 @@ the DOM handles, and the initial reveal. Everything geometric belongs to the sub
 which keeps the scroller inside a band narrower than its own scroll range and draws an iOS-style rubber
 band past its edges. `FiniteList` has none of it.
 
+The chat-specific conversion from requested entry IDs to visible conversation/live cards is described
+in [Chat block coverage](chat-blocks.md). Its boundary normalization happens before the list receives
+the resulting items; it does not change the scroll controller.
+
 Provenance rules: anything called **measured** was measured in this repo (on a phone, on desktop
 Chrome, or on the rig in `tools/virtual-list-rig/`), anything called **derived** is arithmetic from a
 documented format, and anything unverified says so. Do not promote a guess to a measurement by writing

@@ -56,7 +56,7 @@ What breaks, with the root cause behind each symptom:
 |---|---|---|
 | R1 | A compute call whose result was **never cached** waits for the connection with no timeout (`RpcCallTimeouts.Default.Query` is `(∞, ∞)`), and so does a never-cached call that was in flight when the link dropped. | A component - or an aggregate like `ChatUI.GetChatItems` that awaits many tiles - stays *Computing* until reconnect. Skeletons forever; scroll requests that never return. |
 | R2 | `no-cache` methods on the render path are awaited. `LiveSessionUI.GetConversation` / `GetBlockSnapshot` and `LiveBlockUI.GetBlockState` all await `ILiveSessions.GetState` on the first read; `AuthorPresenceIndicator` awaits `ILiveSessions.GetAudioStreamingAuthorIds`; `ChatVideoUI.GetActiveVideoStreams` awaits `ILiveVideoStreams.List`. | **A chat opened for the first time in the process never renders offline**, however well cached its data is. Presence dots and PTT-armed rows pend. |
-| R3 | The tail prefetcher didn't warm everything the chat view needs: not `IChats.GetChatRangeMeta` (every build awaits it), not `IAuthors.Get` / `GetOwn`, not reactions, threads, or pins. *Closed by T1.4-T1.6, except threads.* | A fully prefetched chat still couldn't render cold, and when it could, authors and reactions were blank. |
+| R3 | The tail prefetcher didn't warm everything the chat view needs: not `IChats.GetChatRangeTile` (every build awaits it), not `IAuthors.Get` / `GetOwn`, not reactions, threads, or pins. *Closed by T1.4-T1.6, except threads.* | A fully prefetched chat still couldn't render cold, and when it could, authors and reactions were blank. |
 | R4 | The peer learns about a dead link late. Nothing disconnects the RPC peer when the OS says offline (the app only parks reconnects), so the serve-stale paths engage only after the ~25-35 s keep-alive timeout. | Half a minute of hangs after pulling the plug, and again after every app resume on a dead network. |
 | R5 | Failures surface as errors. `ChatUI.Get` bounds `GetNews` with a 20 s `WaitAsync` and rethrows; a component whose state holds an error re-renders, `State.Value` throws, and the nearest `ErrorBarrier` takes over. `ChatPage` maps any non-timeout exception to "chat unavailable". | Once R1 is fixed by making misses fail, every fresh-mounted component with a miss would trip a barrier unless the failure is treated as "offline, keep what you have". |
 
@@ -101,9 +101,9 @@ already does: `LiveStreamUI.GetAudioStreamingAuthorIds` (returns empty), and
 `ChatVideoUI.GetActiveVideoStreams` (returns empty) so `HasOngoingCall` really does "degrade to
 false while offline" as its comment claims. Three small edits.
 
-**T1.4 Warm what every build awaits.** *Done.* The tail prefetcher fetches `IChats.GetChatRangeMeta`
+**T1.4 Warm what every build awaits.** *Done.* The tail prefetcher fetches `IChats.GetChatRangeTile`
 for the meta tiles covering `tail.Expand(LoadLimit)`, and `PrefetchChatInfo` adds `IAuthors.GetOwn`.
-The meta-tile computation is one helper, `ChatUI.GetMetaIdTiles`, shared by the build, the
+The meta-tile computation is one helper, `ChatUI.GetCidTiles`, shared by the build, the
 pointer-down prefetch and the tail prefetch, so they cannot drift.
 
 **T1.5 Warm the tail's authors.** *Done.* After the tiles land, `PrefetchEntryDependencies` calls

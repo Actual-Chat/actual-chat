@@ -450,7 +450,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task LiveBlockShouldEnterRangeMetaOnlyAfterLatch()
+    public async Task LiveBlockShouldEnterRangeTileOnlyAfterLatch()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -465,11 +465,11 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
         var live = await backend.GetState(chatId, default);
         live.Should().NotBeNull();
-        var tileStart = Constants.Chat.RangeMetaEntryIdTiles.GetTile(live!.StartEntryLid).Range.Start;
+        var tileStart = Constants.Chat.ConversationIdTiles.GetTile(live!.StartEntryLid).Range.Start;
 
         // assert — no live conversation block is injected for a solo streamer
-        var metaBefore = await conversations.GetRangeMeta(chatId, tileStart, default);
-        metaBefore.ConversationLidRanges.Should().NotContain(r => r.Contains(live.StartEntryLid));
+        var metaBefore = await conversations.GetConversationRangeTile(chatId, tileStart, default);
+        metaBefore.ConversationRanges.Should().NotContain(r => r.Contains(live.StartEntryLid));
 
         // act — a second distinct peer latches the session
         await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_030), null, true, true, default);
@@ -479,10 +479,10 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         var latched = await backend.GetState(chatId, default);
         latched!.SessionStartedAt.Should().NotBeNull();
         var liveStartLid = latched.EffectiveVisibleStartLid;
-        var liveTileStart = Constants.Chat.RangeMetaEntryIdTiles.GetTile(liveStartLid).Range.Start;
+        var liveTileStart = Constants.Chat.ConversationIdTiles.GetTile(liveStartLid).Range.Start;
         await ComputedTest.When(async ct => {
-            var metaAfter = await conversations.GetRangeMeta(chatId, liveTileStart, ct);
-            metaAfter.ConversationLidRanges.Should().Contain(r => r.Contains(liveStartLid));
+            var metaAfter = await conversations.GetConversationRangeTile(chatId, liveTileStart, ct);
+            metaAfter.ConversationRanges.Should().Contain(r => r.Contains(liveStartLid));
         });
     }
 
@@ -501,7 +501,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // act — a single streamer
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
         var live = await backend.GetState(chatId, default);
-        var tileRange = Constants.Chat.RangeMetaEntryIdTiles.GetTile(live!.StartEntryLid).Range;
+        var tileRange = Constants.Chat.ConversationIdTiles.GetTile(live!.StartEntryLid).Range;
 
         // assert — the synthetic live block is not injected before the latch
         var tileBefore = await conversations.GetTile(chatId, tileRange, default);
@@ -1232,7 +1232,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task RangeMetaShouldKeepPreLatchConversationsVisible()
+    public async Task RangeTileShouldKeepPreLatchConversationsVisible()
     {
         // arrange — transcription starts solo at e0, a conversation is persisted over [e0, e2] before the
         // session latches (V = chat end after e3), so it sits in [StartEntryLid, VisibleStartLid).
@@ -1273,11 +1273,11 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         (await backend.GetState(chatId, default))!.SessionStartedAt.Should().NotBeNull();
 
         // act
-        var idTileStart = Constants.Chat.RangeMetaEntryIdTiles.GetTile(e0.LocalId).Range.Start;
-        var meta = await conversationsBackend.GetRangeMeta(chatId, idTileStart, default);
+        var cidTileStart = Constants.Chat.ConversationIdTiles.GetTile(e0.LocalId).Range.Start;
+        var meta = await conversationsBackend.GetConversationRangeTile(chatId, cidTileStart, default);
 
         // assert — the pre-latch conversation's exact range survives; the live range no longer swallows it
-        meta.ConversationLidRanges.Should().Contain(new Range<long>(e0.LocalId, e2.LocalId + 1));
+        meta.ConversationRanges.Should().Contain(new Range<long>(e0.LocalId, e2.LocalId + 1));
     }
 
     [Fact]
