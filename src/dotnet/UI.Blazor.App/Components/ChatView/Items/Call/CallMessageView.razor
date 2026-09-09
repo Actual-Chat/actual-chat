@@ -5,8 +5,9 @@
     // before it flipped to "Canceled".
     var rules = ChatContext.Chat.Rules;
     var isCaller = rules.Author?.Id == Entry.CallerId;
-    // Mirrors ChatHeaderCallButton: a peer call needs the audio-stream permission.
-    var canCall = Entry.ChatId.Kind != ChatKind.Peer || rules.CanWriteAudio();
+    // Mirrors ChatHeaderCallButton: calling is behind the incomplete-UI flag, and a peer call
+    // also needs the audio-stream permission.
+    var canCall = _isIncompleteUIEnabled && (Entry.ChatId.Kind != ChatKind.Peer || rules.CanWriteAudio());
     var (icon, title, hint, isCallBack) = CallCardFormat.Get(Entry.Outcome, isCaller, L);
     // An offer that would only reach the server's peer-call gate and come back as a toast is worse
     // than no offer: the header button greys itself out on the same rule.
@@ -46,6 +47,11 @@
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public CallEntry Entry { get; set; } = null!;
+    private bool _isIncompleteUIEnabled;
+
+    protected override async Task OnInitializedAsync()
+        => _isIncompleteUIEnabled = await Hub.Features.IsIncompleteUIEnabled(CancellationToken.None);
+
     private Task OnCallBack()
         => LiveSessionUI.StartCall(
             Entry.ChatId, new[] { Entry.CallerId }.ToApiArray(), Entry.HasVideo, default);
