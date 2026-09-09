@@ -78,8 +78,8 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
         return entries.ToArray();
     }
 
-    public void ProcessLoadedEntriesRange(long rangeEnd)
-        => ChatSendingMessages.ProcessLoadedEntriesRange(rangeEnd);
+    public void ProcessLoadedEntriesRange(long rangeEnd, IReadOnlySet<string> loadedClientIds)
+        => ChatSendingMessages.ProcessLoadedEntriesRange(rangeEnd, loadedClientIds);
 
     public Task<bool> IsSending(SendingMessage sendingMessage)
         => ChatSendingMessages.IsSending(sendingMessage);

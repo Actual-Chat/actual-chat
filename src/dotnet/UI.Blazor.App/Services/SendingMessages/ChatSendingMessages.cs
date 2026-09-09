@@ -74,13 +74,17 @@ public class ChatSendingMessages
             _ = _triggers.IsSending(sendingMessage);
     }
 
-    public void ProcessLoadedEntriesRange(long rangeEnd)
+    public void ProcessLoadedEntriesRange(long rangeEnd, IReadOnlySet<string> loadedClientIds)
     {
+        // PostedChatEntry lands only when the post command returns, and the entry can reach the range
+        // first - the copy then outlives it. The stored entry carries its ClientId, so that's enough.
         lock (_lock) {
             if (_newMessages.Count == 0)
                 return;
 
-            foreach (var sendingMessage in _newMessages.Where(m => m.PostedChatEntry is not null && m.PostedChatEntry.LocalId < rangeEnd)) {
+            foreach (var sendingMessage in _newMessages.Where(m
+                => (m.PostedChatEntry is not null && m.PostedChatEntry.LocalId < rangeEnd)
+                    || (!m.ClientId.IsNullOrEmpty() && loadedClientIds.Contains(m.ClientId)))) {
                 if (sendingMessage.IsCompleted)
                     sendingMessage.MarkToRemove();
                 else
