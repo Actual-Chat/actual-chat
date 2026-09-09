@@ -136,6 +136,11 @@ describe('SVG avatar upload', () => {
         const confirmBtn = cropModal.locator('.btn-confirm').first();
         await confirmBtn.waitFor({ state: 'visible', timeout: 5_000 });
         await confirmBtn.click();
+
+        // Apply switches the modal into its saving state (spinner on the button,
+        // upload/processing status) until the server returns the converted media.
+        await cropModal.locator('.btn-confirm .spinner').waitFor({ state: 'visible', timeout: 5_000 });
+        await page.screenshot({ path: screenshot('e2e', 'svg-avatar-crop-saving') });
         await cropModal.waitFor({ state: 'hidden', timeout: 15_000 });
         await page.screenshot({ path: screenshot('e2e', 'svg-avatar-uploaded') });
 
