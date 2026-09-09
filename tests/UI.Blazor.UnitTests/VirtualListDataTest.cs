@@ -5,6 +5,22 @@ namespace ActualChat.UI.Blazor.UnitTests;
 public class VirtualListDataTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact]
+    public void UnresolvedEmptyDataShouldNotBeSimilarToNone()
+    {
+        // arrange
+        var data = new VirtualListData<TestItem>([]);
+        var none = VirtualListData<TestItem>.None;
+
+        // act
+        var isSimilarToNone = data.IsSimilarTo(none);
+        var isSimilarToData = none.IsSimilarTo(data);
+
+        // assert
+        isSimilarToNone.Should().BeFalse();
+        isSimilarToData.Should().BeFalse();
+    }
+
+    [Fact]
     public void LastItemShouldResolveGroupLeafWhenGroupIsLast()
     {
         // arrange
