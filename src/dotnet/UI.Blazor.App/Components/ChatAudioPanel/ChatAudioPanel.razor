@@ -28,7 +28,7 @@
 <OnUIEvent TEvent="@CameraSelectedEvent" Handler="OnCameraSelectedEvent"/>
 <div class="chat-audio-panel">
     @if (IsNarrow && showHeader) {
-        <div class="audio-panel-header">
+        <div class="audio-panel-header" data-child="audio-panel-header">
             <div class="c-left">
                 @if (isOwnCameraRecording) {
                     <ButtonRound

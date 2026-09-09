@@ -19,7 +19,7 @@
     <div class="c-content">
         <div class="c-container">
             <ChatIcon Chat="@chat"/>
-            <div class="c-description">
+            <div class="c-description" data-children="second-line third-line">
                 <div class="c-first-line">
                     <span class="c-title">
                         <SearchMatchHighlighter Match="@m.TitleMatch"/>
@@ -29,12 +29,12 @@
                     </span>
                 </div>
                 @if (m.Place is not null && !IsPlace) {
-                    <div class="c-second-line">
+                    <div class="c-second-line" data-child="second-line">
                         @L.Search_In <span class="c-place-title">@m.Place.Title</span>
                     </div>
                 }
                 @if (!chat.Description.IsNullOrEmpty()) {
-                    <div class="c-third-line">
+                    <div class="c-third-line" data-child="third-line">
                         @chat.Description
                     </div>
                 }

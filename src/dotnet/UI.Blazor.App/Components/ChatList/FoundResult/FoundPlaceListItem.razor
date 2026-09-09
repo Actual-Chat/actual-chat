@@ -21,7 +21,7 @@
                 IsSquare="@false"
                 AvatarKind="@AvatarKind.Marble"
                 AvatarKey="@place.Id.Value"/>
-            <div class="c-description">
+            <div class="c-description" data-children="second-line">
                 <div class="c-first-line">
                     <span class="c-title">
                         <SearchMatchHighlighter Match="@m.TitleMatch"/>
@@ -30,7 +30,7 @@
                         @L.Place_Members(m.MemberCount, m.MemberCount)
                     </span>
                 </div>
-                <div class="c-second-line two-line">
+                <div class="c-second-line two-line" data-child="second-line">
                     <p class="line-clamp-2">
                         @place.Description
                     </p>

@@ -74,6 +74,9 @@ const ScreenAnchorStillFrames = 12;
 // What the consumer marks a position:sticky element with, so the list can move its sticky threshold
 // by whatever the rubber band's transform is carrying - see updateStickyItems.
 const StickyItemClass = 'vl-sticky';
+// Presence-tracked items declare stickiness through the attribute; two hand-written elements
+// (the author circle and the empty spacer) still carry the class directly.
+const StickyItemSelector = `.${StickyItemClass}, [data-has-${StickyItemClass}]`;
 // Consecutive frames the position must not move before the list acts on a standing intent - shifting
 // the chain back to the middle, or putting the render direction back. Event-based settle checks can't
 // do this: a fling delivers no events between frames and still passes them, while the position itself
@@ -910,7 +913,8 @@ export class InfiniteList extends VirtualList {
     private findStickyItems(): void {
         const known = new Map(this.stickyRefs.map(x => [x.ref, x]));
         const refs = new Array<StickyItem>();
-        for (const ref of this.containerRef.querySelectorAll<HTMLElement>(`:scope .${StickyItemClass}`)) {
+        for (const ref of this.containerRef.querySelectorAll<HTMLElement>(
+            `:scope .${StickyItemClass}, :scope [data-has-${StickyItemClass}]`)) {
             const sticky = known.get(ref) ?? { ref, top: null, bottom: null, isShifted: false };
             // A render can land in the middle of an excursion, and an element that arrives during one
             // has to be given the shift the others are already carrying.
@@ -1965,7 +1969,7 @@ export class InfiniteList extends VirtualList {
         // edge. A stuck element reports the edge it is stuck to, and no amount of moving the chain
         // changes that - so aiming at its rendered position would move the chain without moving the
         // element, over and over. Its flow position is the thing that follows.
-        const stickyRef = anchorRef.closest<HTMLElement>(`.${StickyItemClass}`);
+        const stickyRef = anchorRef.closest<HTMLElement>(StickyItemSelector);
         const position = anchorRef.style.position;
         const stickyPosition = stickyRef?.style.position ?? '';
         anchorRef.style.position = 'static';

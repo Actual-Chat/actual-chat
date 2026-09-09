@@ -8,7 +8,7 @@
     var menuRef = MenuRef.New<MessageMenu>(Entry.Id.Value, bool.FalseString, "", Markup.Code).ToString();
 }
 
-<div @ref="_rootRef" class="code-block-markup" data-menu="@menuRef">
+<div @ref="_rootRef" class="code-block-markup" data-child="code-block" data-menu="@menuRef">
     <div class="code-block-header">
         <div class="code-block-language"></div>
         <div class="code-block-actions">

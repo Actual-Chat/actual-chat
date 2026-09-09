@@ -25,7 +25,7 @@
 <OnUIEvent TEvent="@MentionButtonClickEvent" Handler="OnMentionButtonClickEvent" />
 <OnUIEvent TEvent="@EmojiButtonClickEvent" Handler="OnEmojiButtonClickEvent" />
 <OnUIEvent TEvent="@ShareLocationButtonClickEvent" Handler="OnShareLocationButtonClickEvent" />
-<div @ref="Ref" class="chat-message-editor has-safe-area-bottom">
+<div @ref="Ref" class="chat-message-editor has-safe-area-bottom" data-children="related-entry">
     <Hotkey Keys="ctrl+e" AriaLabel="@L.Shortcuts_FocusEditor" OnTrigger="OnFocusEditorRequested"/>
     <input class="attachment-web-file-picker" type="file" multiple tabindex="-1"/>
     <MentionListManager @key="@MentionListManagerKey">

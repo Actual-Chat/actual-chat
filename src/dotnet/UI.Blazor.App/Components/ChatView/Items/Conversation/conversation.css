@@ -11,13 +11,13 @@
 }
 /* The gap goes on the data-key item, the only box the list measures, and as padding, which
    getBoundingClientRect counts - a margin here escapes that box and drifts the list's geometry. */
-.virtual-list .c-virtual-container .item.has-conversation-message {
+.virtual-list .c-virtual-container .item[data-has-conversation-message] {
     @apply pt-4;
 }
 /* ...but inside a block (one carrying the split-out live header) the card follows the header flush -
    no gap between the header and the description. Covers both the joined block and the frozen/unjoined
    (left-the-call) block. */
-.virtual-list .c-virtual-container .group.has-live-block .item.has-live-card {
+.virtual-list .c-virtual-container .group[data-has-live-block] .item[data-has-live-card] {
     @apply pt-0;
 }
 /* Standalone preview card (not inside a block - never joined, no overlay) keeps its own box. */
@@ -29,7 +29,7 @@
    rounding, so a card box here would draw a second box inside the block with the title detached.
    No rounded corners left to clip, so overflow goes visible too - lets the "Show more" pill straddle
    below the card's bottom edge instead of being cut off by the base .conversation-message rule. */
-.virtual-list .c-virtual-container .group.has-live-block .conversation-message.live {
+.virtual-list .c-virtual-container .group[data-has-live-block] .conversation-message.live {
     @apply border-none rounded-none;
     background: none;
     overflow: visible;
@@ -41,23 +41,19 @@
 }
 /* The split header carries the title, so the description card drops its own top padding and butts
    right up under the header - one continuous surface, no gap. */
-.virtual-list .c-virtual-container .group.has-live-block .c-live-card {
+.virtual-list .c-virtual-container .group[data-has-live-block] .c-live-card {
     @apply pt-0;
 }
 /* A card that ends with the faded preview drops its bottom padding so the preview sits flush above
    the footer (mirrors the pt-0 that butts the card under the header) - no gap after the last row.
    Keyed on the preview itself: any collapsed block has one, attended or not. */
-.virtual-list .c-virtual-container .group.has-live-block .c-live-card:has(.last-entries-preview) {
+.virtual-list .c-virtual-container .group[data-has-live-block] .c-live-card:has(.last-entries-preview) {
     @apply pb-0;
 }
-/* When expanded, the split header carries the title so the card renders empty (no .c-live-card child).
-   The item's default min-h-6 would then leave a gap between the header and the first message - collapse
-   the empty card and its item to zero. The :not(:has(.c-live-card)) guard leaves the collapsed card
-   (which still has content) untouched. */
-.virtual-list .c-virtual-container .group.has-live-block .item.has-empty-live-card {
-    @apply min-h-0;
-}
-.virtual-list .c-virtual-container .group.has-live-block .conversation-message.live:empty {
+/* An expanded live card that renders empty used to be collapsed to zero here, but nothing has produced
+   .conversation-message.live:empty since 7538c686bc gave such a card its own .c-live-card-empty element,
+   so both rules were unreachable. Style .c-live-card-empty if the gap ever comes back. */
+.virtual-list .c-virtual-container .group[data-has-live-block] .conversation-message.live:empty {
     @apply min-h-0 mb-0;
 }
 .c-live-card .c-lc-title {
@@ -359,8 +355,8 @@ body.hoverable .conversation-attachments .image-attachment:hover {
    wrapping the sticky header, the scrollable card, the author entries, and the live footer as one box.
    The violet tint is painted by the ::before overlay below - in FRONT of the sticky header so it can
    scroll up off it; position:relative anchors that overlay. */
-.virtual-list .c-virtual-container .group.has-joined-live-card,
-.virtual-list .c-virtual-container .group.has-live-block {
+.virtual-list .c-virtual-container .group[data-has-joined-live-card],
+.virtual-list .c-virtual-container .group[data-has-live-block] {
     @apply relative;
     isolation: isolate;
     /* mx-1 matches the 4px horizontal padding on regular conversation .item wrappers, so the live
@@ -373,8 +369,8 @@ body.hoverable .conversation-attachments .image-attachment:hover {
    header item's z-20) but scrolling with the block. At rest it tints the top; as you scroll it slides up
    off the pinned opaque header, so the header occludes the transcript cleanly. pointer-events:none keeps
    the header's Join/expand buttons clickable through it. */
-.virtual-list .c-virtual-container .group.has-joined-live-card::before,
-.virtual-list .c-virtual-container .group.has-live-block::before {
+.virtual-list .c-virtual-container .group[data-has-joined-live-card]::before,
+.virtual-list .c-virtual-container .group[data-has-live-block]::before {
     @apply content-empty;
     @apply absolute inset-0 z-30;
     @apply pointer-events-none;
@@ -385,7 +381,7 @@ body.hoverable .conversation-attachments .image-attachment:hover {
 /* overflow:clip (not hidden): clips the block content to the rounded corners just like hidden, but
    without making the group a scroll container - so the live header's position:sticky still pins against
    the transcript instead of being trapped inside this group. */
-.virtual-list .c-virtual-container .group.has-live-block {
+.virtual-list .c-virtual-container .group[data-has-live-block] {
     @apply px-0;
     overflow: clip;
 }
@@ -395,7 +391,7 @@ body.hoverable .conversation-attachments .image-attachment:hover {
    carry this, since it comes back when you leave and a leaver's block keeps the joined violet tint.
    Its match set is a strict subset of the base shell rule's expanded arm, so mx-1 cascades in from
    there - only the tint is overridden here, and it wins by coming later. */
-.virtual-list .c-virtual-container .group.has-unjoined-live-block {
+.virtual-list .c-virtual-container .group[data-has-unjoined-live-block] {
     isolation: isolate;
     @apply rounded-2xl;
     background:
@@ -403,12 +399,12 @@ body.hoverable .conversation-attachments .image-attachment:hover {
         linear-gradient(var(--background-01), var(--background-01)) padding-box;
 }
 
-/* Mirrors virtual-list.css's .item.has-conversation-header rule - that one only matches the literal
+/* Mirrors virtual-list.css's .item[data-has-conversation-header] rule - that one only matches the literal
    conversation-header class, not this component's own live-conversation-header. Sticky lives on the
    header's list item - its box in the list, the header row alone (no card). A bare position:sticky on
    the inner .live-conversation-header would be confined to this same item and never pin. Transparent:
    the block's own top tint shows through, and the pinned header overlaps the content sliding under it. */
-.virtual-list .c-virtual-container .item.has-live-header {
+.virtual-list .c-virtual-container .item[data-has-live-header] {
     @apply sticky -top-px z-20;
 }
 
@@ -463,24 +459,24 @@ body.hoverable .virtual-list .c-virtual-container .live-conversation-header .c-l
 }
 /* The footer band is 0.75rem; without this its item keeps the default min-h-6, leaving ~12px of dead
    space between the last message and the rounded bottom. Collapse the item so the footer sits flush. */
-.virtual-list .c-virtual-container .group.has-live-block .item.has-live-footer {
+.virtual-list .c-virtual-container .group[data-has-live-block] .item[data-has-live-footer] {
     @apply min-h-0;
 }
 /* The unjoined block is a compact preview card that the group's own rounding already closes, so its
    footer band would just add empty space below the last preview row - collapse it to nothing. */
-.virtual-list .c-virtual-container .group.has-unjoined-live-block .live-conversation-footer {
+.virtual-list .c-virtual-container .group[data-has-unjoined-live-block] .live-conversation-footer {
     @apply h-0;
 }
 
 /* Tier-1 dissolve: a too-short session leaves no card, so its block fades + collapses its chrome
    (border, tint, header, card, footer) out while the entries stay put, then it's removed and they
    drop to plain messages. Duration is kept in sync with LiveBlockUI.DissolveDuration (300ms). */
-.virtual-list .c-virtual-container .group.has-live-block-dissolving {
+.virtual-list .c-virtual-container .group[data-has-live-block-dissolving] {
     animation: lc-dissolve-frame 300ms ease forwards;
 }
-.virtual-list .c-virtual-container .group.has-live-block-dissolving > .item.expanded,
-.virtual-list .c-virtual-container .group.has-live-block-dissolving > .item.has-live-card,
-.virtual-list .c-virtual-container .group.has-live-block-dissolving > .item.has-live-footer {
+.virtual-list .c-virtual-container .group[data-has-live-block-dissolving] > .item.expanded,
+.virtual-list .c-virtual-container .group[data-has-live-block-dissolving] > .item[data-has-live-card],
+.virtual-list .c-virtual-container .group[data-has-live-block-dissolving] > .item[data-has-live-footer] {
     overflow: hidden;
     animation: lc-dissolve-chrome 300ms ease forwards;
 }

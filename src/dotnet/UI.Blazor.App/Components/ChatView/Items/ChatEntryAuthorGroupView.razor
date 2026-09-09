@@ -21,7 +21,7 @@
     </div>
     <div class="c-group-items">
         @foreach (var item in Message.Items) {
-            <div @key="@item.Key" class="item" data-key="@item.Key">
+            <div @key="@item.Key" class="item" data-key="@item.Key" data-children="conversation-message live-card live-footer live-header show-author conversation-header vl-sticky">
                 <ChatEntryMessageView ChatContext="@ChatContext" Message="@item" ShowAuthorBadge="false"/>
             </div>
         }
