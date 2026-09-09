@@ -1499,6 +1499,7 @@
   "Call_CameraStillBlockedWeb": "Камерата все още е блокирана. Първо разрешете достъпа до камерата в настройките на браузъра.",
   "Call_StartingRecording": "Стартиране на записа...",
   "Call_Entry_Outgoing": "Изходящо обаждане",
+  "Call_Entry_Incoming": "Входящо обаждане",
   "Call_Entry_Missed": "Пропуснато обаждане",
   "Call_Entry_Declined": "Отхвърлено обаждане",
   "Call_Entry_Canceled": "Отменено обаждане",

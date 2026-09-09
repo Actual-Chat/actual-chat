@@ -8,7 +8,8 @@
     var messageCount = conversation.MessageCount;
     var startsAt = DateTimeConverter.ToLocalTime(conversation.StartsAt);
     var endsAt = DateTimeConverter.ToLocalTime(conversation.EndsAt);
-    var (callIcon, callTitle, _, _) = CallCardFormat.Get(CallOutcome.Ended, false, L);
+    var (callIcon, callTitle, _, _) = CallCardFormat.Get(
+        CallOutcome.Ended, CallCardFormat.IsCaller(conversation, ChatContext), L);
     var openClass = _isOpen ? "open-details" : "closed-details";
     var detailsCls = _isOpen ? "show" : "";
     var liveClass = state.IsLive ? (state.IsJoined || state.HasOverlay ? "live joined" : "live") : "";

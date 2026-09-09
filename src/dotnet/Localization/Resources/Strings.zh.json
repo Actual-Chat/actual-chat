@@ -1499,6 +1499,7 @@
   "Call_CameraStillBlockedWeb": "摄像头仍被阻止。请先在浏览器设置中允许摄像头访问。",
   "Call_StartingRecording": "正在开始录制...",
   "Call_Entry_Outgoing": "去电",
+  "Call_Entry_Incoming": "来电",
   "Call_Entry_Missed": "未接来电",
   "Call_Entry_Declined": "已拒接的通话",
   "Call_Entry_Canceled": "已取消的通话",

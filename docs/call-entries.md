@@ -115,8 +115,12 @@ a stale `HasRecorder` reads as someone talking in the chat list long after the c
 in the pipeline, because for a transcription-off call it is the only entry inside the
 conversation's lid range — the thing the card hangs on.
 
-The conversation itself is marked `IsCall`, which the card reads to swap in the call icon
-and label. Two consequences follow from a call never reaching the summary flow:
+The conversation carries `CallerId`, set once when the call is dialled — not at close, where
+`Host` may already have been handed to another participant by `ReassignHost`. It is the only
+stored mark of a call: `Conversation.IsCall` derives from it, and the card reads both, the
+flag to swap in the call icon and label, the caller to say which way the call went.
+
+Two consequences follow from a call never reaching the summary flow:
 
 - **It is sized at materialization instead.** `ConversationsBackend.OnMaterialize` counts
   the entries and words in the range and applies `SummarizationSettings.IsExpandedByDefault`
@@ -131,10 +135,10 @@ nor any message of its own to count.
 
 ## Localization
 
-Eleven keys, `SystemEntry_Call*` for the entry's own text and `Call_Entry_*` for the card.
-Four of the five card titles are noun phrases (*Missed call*, *Canceled call*); the finished
-call is just **Call**, because that card's subject is the conversation it holds rather than
-the moment it stopped.
+Twelve keys, `SystemEntry_Call*` for the entry's own text and `Call_Entry_*` for the card.
+Every card title is a noun phrase — *Missed call*, *Canceled call*, and for a finished one
+*Incoming call* / *Outgoing call*, which reuses the key the unanswered outgoing card already
+had. Bare **Call** is left for the outcome no arm matches: a row from a newer server.
 
 ## Compatibility
 
@@ -143,7 +147,9 @@ at 2.19+ degrades an unknown entry to a placeholder; a peer at or below `2.18.99
 served by filtering twins and never receives one; a server rolled back past the release
 reads the row as the same placeholder rather than throwing.
 
-One additive migration: `is_call` on `conversations`, `defaultValue: false`.
+One additive migration: `caller_id` on `conversations`, `defaultValue: ""`. A conversation
+written by an older build reads back with no caller and so is not a call — which is right,
+since only this build writes one.
 
 ## Known gaps
 

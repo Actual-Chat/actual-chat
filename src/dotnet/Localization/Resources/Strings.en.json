@@ -1785,6 +1785,7 @@
   "Call_CameraStillBlockedWeb": "Camera is still blocked. Please allow camera access in your browser settings first.",
   "Call_StartingRecording": "Starting recording...",
   "Call_Entry_Outgoing": "Outgoing call",
+  "Call_Entry_Incoming": "Incoming call",
   "Call_Entry_Missed": "Missed call",
   "Call_Entry_Declined": "Declined call",
   "Call_Entry_Canceled": "Canceled call",
