@@ -85,6 +85,7 @@ import {
     type RecorderWorkerCallbacks,
     type WireSafeRecorderConfig,
 } from '../../Services/Video/sender/recorder-worker-contract';
+import { CaptureStallDetector } from '../../Services/Video/sender/capture-stall-detector';
 import { consumeVideoTraceKill, registerVideoTraceKillWorker } from '../../Services/Video/video-trace-kill-control';
 import { getDownscalerMode } from '../../Services/Video/downscaler-mode';
 import { FrameDropStage } from '../../Services/Video/frame-drop-trace';
@@ -591,8 +592,7 @@ export class VideoRecorder {
 
     private recoveryAttempts = 0;
     private recoveryScheduled = false;
-    // Wallclock when foreground capture first flatlined; 0 when capture is live.
-    private captureStallSinceMs = 0;
+    private readonly captureStallDetector = new CaptureStallDetector(CAPTURE_STALL_RECOVERY_MS);
 
     static create(blazorRef: DotNet.DotNetObject, kind: number): VideoRecorder {
         return new VideoRecorder(blazorRef, kind);
@@ -2398,32 +2398,18 @@ export class VideoRecorder {
         }
     }
 
-    // Recovers a reclaimed encoder / wedged source the frame-driven path can't
-    // see: a foreground capture flatline means no frame reaches the dead
-    // encoder to throw, so force a restart. Foreground-gated to avoid churning
-    // a legitimately backgrounded idle encoder into a restart loop.
-    private detectCaptureStall(
-        stats: RecorderStats,
-        previous: RecorderStats | null,
-        nowMs: number,
-    ): void {
+    private detectCaptureStall(stats: RecorderStats, nowMs: number): void {
         const track = this.inputTrack;
-        const sourceShouldRun = this._recordingState === 'recording'
-            && !stats.isTabBackgrounded
-            && track !== null && track.readyState === 'live' && !track.muted;
-        if (!sourceShouldRun || previous === null || this.recoveryScheduled
-            || stats.framesCaptured > previous.framesCaptured) {
-            this.captureStallSinceMs = 0;
-            return;
-        }
-        if (this.captureStallSinceMs === 0) {
-            this.captureStallSinceMs = nowMs;
-            return;
-        }
-        if (nowMs - this.captureStallSinceMs >= CAPTURE_STALL_RECOVERY_MS) {
-            this.captureStallSinceMs = 0;
+        const isStalled = this.captureStallDetector.onSample({
+            isRecording: this._recordingState === 'recording',
+            isScreencast: this.currentMode === 'screen',
+            isTabBackgrounded: stats.isTabBackgrounded,
+            isTrackLive: track !== null && track.readyState === 'live' && !track.muted,
+            isRecoveryScheduled: this.recoveryScheduled,
+            framesCaptured: stats.framesCaptured,
+        }, nowMs);
+        if (isStalled)
             this.scheduleRecovery('foreground capture stalled (no frames reached the encoder)');
-        }
     }
 
     private scheduleRecovery(reason: string): void {
@@ -2771,7 +2757,7 @@ export class VideoRecorder {
         this.windowDownscaleTimeMsMax = -1;
         this.dropPerSec.clear();
         this.lastReportTickMs = 0;
-        this.captureStallSinceMs = 0;
+        this.captureStallDetector.reset();
         this.recorderHealthTimer = window.setInterval(() => {
             void this.reportRecorderStats();
         }, RECORDER_HEALTH_INTERVAL_MS);
@@ -2889,7 +2875,7 @@ export class VideoRecorder {
             }
             this.lastReportTickMs = nowMs;
 
-            this.detectCaptureStall(stats, previous, nowMs);
+            this.detectCaptureStall(stats, nowMs);
 
             // Drop trace deltas → senderFrameDropRatio. Sum only sender
             // stages (1..30). Denominator = bundles attempted = bundles
