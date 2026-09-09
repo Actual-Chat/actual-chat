@@ -143,7 +143,19 @@ public class AndroidAudioCapture(IServiceProvider services) : IAudioCapture
                 recorder!.StartRecording();
                 // startRecording() can fail without throwing - the mic is then withheld and every
                 // Read returns an error code, which used to end this loop in complete silence.
-                Log.LogInformation("Capture started: recordingState={RecordingState}", recorder.RecordingState);
+                Log.LogInformation("Capture started: recordingState={RecordingState}, input {Device}; {AudioState}",
+                    recorder.RecordingState,
+                    AndroidAudioRouteLog.Describe(recorder.RoutedDevice),
+                    AndroidAudioRouteLog.DescribeState());
+                recorder.RoutingChanged += (_, _) => {
+                    try {
+                        Log.LogInformation("Capture rerouted to {Device}; {AudioState}",
+                            AndroidAudioRouteLog.Describe(recorder.RoutedDevice), AndroidAudioRouteLog.DescribeState());
+                    }
+                    catch {
+                        // A released recorder has no route left to report
+                    }
+                };
 
                 while (!cancellationToken.IsCancellationRequested) {
                     int readCount;
