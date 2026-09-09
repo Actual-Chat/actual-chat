@@ -58,5 +58,10 @@ public class SummarizationSettings
     public FilePath SummarizeChatDigestPromptFile { get; set; } = "summarize-chat-digest.md";
     public FilePath SuggestChatThreadTitlePromptFile { get; set; } = "suggest-thread-title.md";
     public TimeSpan HttpTimeout { get; set; } = TimeSpan.FromMinutes(5);
+
+    public bool IsExpandedByDefault(int words, int entryCount)
+        // Tier 2 (below the full-summary gate) materializes expanded; tier 3 (at/above it) collapsed.
+        // Lives next to its thresholds so the summary flow and the call path can't drift apart.
+        => words < MinConversationWords || entryCount < MinConversationEntries;
 }
 

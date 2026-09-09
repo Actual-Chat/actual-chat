@@ -5,11 +5,14 @@
     var conversation = Header.Conversation!;
     var messageCount = conversation.MessageCount;
     var startsAt = DateTimeConverter.ToLocalTime(conversation.StartsAt);
+    var (callIcon, callTitle, _, _) = CallCardFormat.Get(CallOutcome.Ended, false, L);
 }
 
 <ConversationMessageHeader
     Conversation="@conversation"
-    Title="@m.Title"
+    @* A stand-in, not an override: nothing summarizes a call today, but a title would outrank it. *@
+    Title="@(conversation.IsCall && m.Title.Text.IsNullOrEmpty() ? TranslatedText.From(callTitle) : m.Title)"
+    Icon="@(conversation.IsCall ? callIcon : "icon-tldr")"
     MessageCount="@messageCount"
     ConversationToggleClick="@ToggleShowMessage"
     StartsAt="@startsAt"

@@ -8,6 +8,7 @@
     var messageCount = conversation.MessageCount;
     var startsAt = DateTimeConverter.ToLocalTime(conversation.StartsAt);
     var endsAt = DateTimeConverter.ToLocalTime(conversation.EndsAt);
+    var (callIcon, callTitle, _, _) = CallCardFormat.Get(CallOutcome.Ended, false, L);
     var openClass = _isOpen ? "open-details" : "closed-details";
     var detailsCls = _isOpen ? "show" : "";
     var liveClass = state.IsLive ? (state.IsJoined || state.HasOverlay ? "live joined" : "live") : "";
@@ -16,9 +17,13 @@
     var hasLiveTitle = !m.Title.Text.IsNullOrEmpty();
     var hasDescription = !m.Description.Markup.ToReadableText().IsNullOrEmpty();
     // Exactly what GetClipboardText concatenates - with none of it there, copying yields blank lines.
+    var hasSummaryText = !m.Summary.Markup.ToReadableText().IsNullOrEmpty();
     var hasCopyText = hasLiveTitle
         || hasDescription
-        || !m.Summary.Markup.ToReadableText().IsNullOrEmpty();
+        || hasSummaryText;
+    // A call with no transcript has nothing behind either affordance: expanding reveals an empty
+    // block, and a call is never summarized, so "show details" would open onto blank space.
+    var canExpand = !conversation.IsCall || messageCount > 0;
     // The split-out header carries the title; when expanded the description + meta-row drop out, so an
     // otherwise-empty card would render as a 1rem-padded gap between the header and the first message.
     var showLiveCard = (!Message.HasSplitHeader && hasLiveTitle)
@@ -110,17 +115,24 @@
                 @if (!Message.HasSplitHeader) {
                     <ConversationMessageHeader
                         Conversation="@conversation"
-                        Title="@m.Title"
+                        Title="@(conversation.IsCall && !hasLiveTitle
+                                 ? TranslatedText.From(callTitle)
+                                 : m.Title)"
+                        Icon="@(conversation.IsCall ? callIcon : "icon-tldr")"
                         MessageCount="@messageCount"
                         StartsAt="@startsAt"
+                        ShowToggle="@canExpand"
                         ConversationToggleClick="@ToggleShowMessage"/>
                 }
-                <div class="c-short">
-                    <MarkupView Markup="@m.Description.Markup"/>
-                    @if (!_isOpen) {
-                        <span class="show-more-btn" data-vl-hold="always" @onclick="@ToggleDetails">@L.ChatView_ShowDetails</span>
-                    }
-                </div>
+                @* Its min-height is dead space when both are absent, which is every untranscribed call. *@
+                @if (hasDescription || hasSummaryText) {
+                    <div class="c-short">
+                        <MarkupView Markup="@m.Description.Markup"/>
+                        @if (!_isOpen && hasSummaryText) {
+                            <span class="show-more-btn" data-vl-hold="always" @onclick="@ToggleDetails">@L.ChatView_ShowDetails</span>
+                        }
+                    </div>
+                }
             </div>
             @if (_isOpen) {
                 <div class="c-long">
@@ -157,7 +169,8 @@
                 Authors="@conversation.AuthorIds"
                 MessageCount="@messageCount"
                 StartsAt="@startsAt"
-                EndsAt="@endsAt"/>
+                EndsAt="@endsAt"
+                ShowCopy="@hasCopyText"/>
         }
     }
 </div>
