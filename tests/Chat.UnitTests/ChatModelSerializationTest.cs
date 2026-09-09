@@ -197,9 +197,9 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public void ChatRangeMeta_Basic()
+    public void ChatRangeTile_Basic()
     {
-        var meta = new ChatRangeMeta(
+        var meta = new ChatRangeTile(
             new Range<long>(0, 100),
             [new Range<long>(0, 50), new Range<long>(50, 100)],
             [new Range<long>(0, 25)],
@@ -210,17 +210,17 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var s = meta.PassThroughSerializers(Out);
         s.LidRange.Should().Be(meta.LidRange);
         s.EntryLidRanges.Should().BeEquivalentTo(meta.EntryLidRanges);
-        s.ConversationLidRanges.Should().BeEquivalentTo(meta.ConversationLidRanges);
+        s.ConversationRanges.Should().BeEquivalentTo(meta.ConversationRanges);
         s.MinCount.Should().Be(meta.MinCount);
         s.PreviousLidTileStart.Should().Be(meta.PreviousLidTileStart);
         s.NextLidTileStart.Should().Be(meta.NextLidTileStart);
     }
 
     [Fact]
-    public void ChatEntryRangeMeta_Basic()
+    public void ChatEntryRangeTile_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var meta = new ChatEntryRangeMeta(
+        var meta = new ChatEntryRangeTile(
             chatId,
             [new Range<long>(0, 50)],
             null,
@@ -340,10 +340,10 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public void ConversationRangeMeta_Basic()
+    public void ConversationRangeTile_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var meta = new ConversationRangeMeta(
+        var meta = new ConversationRangeTile(
             chatId,
             [new Range<long>(0, 100)],
             null,
@@ -351,9 +351,9 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
 
         var s = meta.PassThroughSerializers(Out);
         s.ChatId.Should().Be(meta.ChatId);
-        s.ConversationLidRanges.Should().BeEquivalentTo(meta.ConversationLidRanges);
-        s.PreviousConversationLidRange.Should().Be(meta.PreviousConversationLidRange);
-        s.NextConversationLidRange.Should().Be(meta.NextConversationLidRange);
+        s.ConversationRanges.Should().BeEquivalentTo(meta.ConversationRanges);
+        s.PreviousConversationRange.Should().Be(meta.PreviousConversationRange);
+        s.NextConversationRange.Should().Be(meta.NextConversationRange);
     }
 
     [Fact]

@@ -15,7 +15,7 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private static readonly TimeSpan SettleDelay = TimeSpan.FromSeconds(2);
-    private static TileLayer<long> RangeMetaEntryIdTiles => Constants.Chat.RangeMetaEntryIdTiles;
+    private static TileLayer<long> ConversationIdTiles => Constants.Chat.ConversationIdTiles;
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
 
     protected override async Task DisposeAsync()
@@ -25,17 +25,18 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
     }
 
     [Fact]
-    public async Task RangeMetaSurvivesLiveStateChangeThatCannotMoveTheBlock()
+    public async Task RangeTileSurvivesLiveStateChangeThatCannotMoveTheBlock()
     {
         // arrange
         var (chatId, tileStart, live, conversations) = await StartLiveSession();
 
-        var cRangeMeta = await Computed.Capture(() => conversations.GetRangeMeta(chatId, tileStart, default));
+        var cRangeTile = await Computed.Capture(
+            () => conversations.GetConversationRangeTile(chatId, tileStart, default));
         var cTile = await Computed.Capture(
-            () => conversations.GetTile(chatId, RangeMetaEntryIdTiles.GetTile(tileStart).Range, default));
-        cRangeMeta.IsConsistent().Should().BeTrue();
+            () => conversations.GetTile(chatId, ConversationIdTiles.GetTile(tileStart).Range, default));
+        cRangeTile.IsConsistent().Should().BeTrue();
         cTile.IsConsistent().Should().BeTrue();
-        var whenRangeMetaInvalidated = cRangeMeta.WhenInvalidated();
+        var whenRangeTileInvalidated = cRangeTile.WhenInvalidated();
         var whenTileInvalidated = cTile.WhenInvalidated();
 
         // act - SetRules invalidates GetState but cannot move the block's start or change its card
@@ -44,15 +45,15 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
         // assert
         var cState = await Computed.Capture(() => live.GetState(chatId, default));
         cState.Value!.Rules.VideoAllowed.Should().BeFalse("the probe must actually have changed the state");
-        await Task.WhenAny(whenRangeMetaInvalidated, whenTileInvalidated, Task.Delay(SettleDelay));
-        whenRangeMetaInvalidated.IsCompleted.Should()
+        await Task.WhenAny(whenRangeTileInvalidated, whenTileInvalidated, Task.Delay(SettleDelay));
+        whenRangeTileInvalidated.IsCompleted.Should()
             .BeFalse("live-session churn must not invalidate conversation ranges");
         whenTileInvalidated.IsCompleted.Should()
             .BeFalse("live-session churn must not invalidate the conversation tile");
     }
 
     [Fact]
-    public async Task RangeMetaSurvivesUnchangedSummary()
+    public async Task RangeTileSurvivesUnchangedSummary()
     {
         // arrange
         var (chatId, tileStart, live, conversations) = await StartLiveSession();
@@ -65,18 +66,19 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
         };
         await live.UpdateSummary(chatId, summary, default);
 
-        var cRangeMeta = await Computed.Capture(() => conversations.GetRangeMeta(chatId, tileStart, default));
+        var cRangeTile = await Computed.Capture(
+            () => conversations.GetConversationRangeTile(chatId, tileStart, default));
         var cLiveConversation = await Computed.Capture(() => live.GetLiveConversation(chatId, default));
-        cRangeMeta.IsConsistent().Should().BeTrue();
-        var whenRangeMetaInvalidated = cRangeMeta.WhenInvalidated();
+        cRangeTile.IsConsistent().Should().BeTrue();
+        var whenRangeTileInvalidated = cRangeTile.WhenInvalidated();
         var whenLiveConversationInvalidated = cLiveConversation.WhenInvalidated();
 
         // act - the summary flow re-runs on a schedule and usually carries the very same summary
         await live.UpdateSummary(chatId, summary, default);
 
         // assert
-        await Task.WhenAny(whenRangeMetaInvalidated, whenLiveConversationInvalidated, Task.Delay(SettleDelay));
-        whenRangeMetaInvalidated.IsCompleted.Should()
+        await Task.WhenAny(whenRangeTileInvalidated, whenLiveConversationInvalidated, Task.Delay(SettleDelay));
+        whenRangeTileInvalidated.IsCompleted.Should()
             .BeFalse("an unchanged summary must not invalidate conversation ranges");
         whenLiveConversationInvalidated.IsCompleted.Should()
             .BeFalse("an unchanged summary must not invalidate the live card");
@@ -125,6 +127,6 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
         var state = await live.GetState(chatId, default);
         state!.SessionStartedAt.Should().NotBeNull("the session must latch or these tests don't bite");
 
-        return (chatId, RangeMetaEntryIdTiles.GetTile(state.EffectiveVisibleStartLid).Start, live, conversations);
+        return (chatId, ConversationIdTiles.GetTile(state.EffectiveVisibleStartLid).Start, live, conversations);
     }
 }

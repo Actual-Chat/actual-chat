@@ -86,10 +86,11 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
-    Task<ChatRangeMeta> GetChatRangeMeta(
+    [LegacyName("GetChatRangeMeta")]
+    Task<ChatRangeTile> GetChatRangeTile(
         Session session,
         ChatId chatId,
-        long idTileStart,
+        long start,
         CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]

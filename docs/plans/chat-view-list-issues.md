@@ -52,7 +52,7 @@ does have entries:
    (`ChatUI.Tiles.cs:1058`) — the item list comes out empty while
    `TryGetIdTilesToLoad` reports no further meta tiles either
    (`ChatUI.Tiles.cs:911`). "3 online", unread 2, nothing rendered: the screenshot.
-2. **Empty range-meta.** `chatRangeMetaList.Count == 0` returns
+2. **Empty range-meta.** `chatRangeTiles.Count == 0` returns
    `ChatItems.Empty = ([], false, false)` outright (`ChatUI.Tiles.cs:505`).
 
 That single value disables every recovery path at once:
@@ -185,7 +185,7 @@ still.
 **What flips `hasVeryLastItem`** is not settled. Two candidate engines, both with a
 built-in two-phase alternation at the invalidation rate:
 
-1. **Stand-in ↔ fresh rebuild pairs.** `UseRangeMetaOrLastKnown`
+1. **Stand-in ↔ fresh rebuild pairs.** `UseRangeTileOrLastKnown`
    (`ChatUI.Tiles.cs:1537`) and `UseOrLastKnown` (`:1585`) serve last-known tiles
    while a refetch is in flight, and guarantee a follow-up rebuild from fresh
    values. If the two builds disagree about `hasMoreAfter` (`:913`), you get
@@ -407,7 +407,7 @@ re-derived.
 
 `ChatView.GetData` now refuses that flip on a build whose tail coverage came from
 serve-stale meta (`ChatItems.IsTailCoverageStale`, set when
-`UseRangeMetaOrLastKnown` served a stand-in). The loss bound is provable:
+`UseRangeTileOrLastKnown` served a stand-in). The loss bound is provable:
 suppression requires a stand-in, a stand-in requires a fresh fetch in flight, and
 `UseIfReady` guarantees that fetch's completion invalidates the computed — so a
 genuine `hasAfter` is published one cycle later, and permanent suppression is

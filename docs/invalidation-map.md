@@ -207,7 +207,7 @@ reference equality:**
 | `ChatEntry` | `ReferenceEquals` (`Api/Chat/ChatEntry.cs:130`) | same |
 | `AuthorRules` | `ReferenceEquals` (`Api/Chat/AuthorRules.cs:44`) | same |
 | `ChatTile` | plain `class`, no `Equals` override | **no** |
-| `ChatRangeMeta`, `ChatEntryRangeMeta` | record with `Range<long>[]` members → array reference equality | **no** |
+| `ChatRangeTile`, `ChatEntryRangeTile` | record with `Range<long>[]` members → array reference equality | **no** |
 | `ApiArray<T>` | `Equals(Items, other.Items)` → **array reference equality** (`ActualLab.Core/Api/ApiArray.cs:305`) | **no** |
 
 The practical rule:
@@ -313,8 +313,8 @@ The single most consequential write in the system.
 | Invalidated | Condition | Notes |
 |---|---|---|
 | `GetTile(chatId, entryTileRange, includeRemoved: true)` | always | tiles are 5 entries wide and there is only one tile size; the `includeRemoved:false` variant is composed from this one, so it invalidates through the graph rather than directly (`InvalidateTiles`, `ChatsBackend.cs:2141`) |
-| `GetEntryRangeMeta(chatId, entryTileStart)` | `Create`/`Remove`/thread-rebind only | |
-| `GetEntryRangeMeta` for previous/next tile | only if the neighbour lid falls outside the entry's own tile | |
+| `GetEntryRangeTile(chatId, entryTileStart)` | `Create`/`Remove`/thread-rebind only | |
+| `GetEntryRangeTile` for previous/next tile | only if the neighbour lid falls outside the entry's own tile | |
 | `GetMinLid(chatId)` | `Create` **and** no previous entry | i.e. only the very first entry |
 | `GetMaxLid(chatId, true)` + `GetMaxLid(chatId, false)` | `Create`, or `Update` with thread-rebind | |
 | `GetMaxLid(chatId, false)` | `Remove` | |
@@ -401,7 +401,7 @@ metadata cache. `InvalidateLiveView` is gone: `GetVisibleStartLid` /
 
 | Service | Root(s) | Trigger |
 |---|---|---|
-| `ConversationsBackend` | `Get`, `GetRangeMeta` × covering + prev + next tiles | summarization flows |
+| `ConversationsBackend` | `Get`, `GetRangeTile` × covering + prev + next tiles | summarization flows |
 | `MentionsBackend` | `GetLast(chatId, mentionRef)` for changed mentions only | message with mentions |
 | `ReactionsBackend` | `List(entryId)`, `Get(entryId, authorId)` | reaction added/removed |
 | `NotificationsBackend` | `GetUserNotificationInfo(userId)` via `ApplyHardUpdate`; `ListDevices`; `GetExplicit` | notify / handle / device registration |
@@ -427,7 +427,7 @@ invalidation, from static analysis of the whole `src/dotnet` tree.
 | `ChatsBackend.GetRules(chatId, principalId)` | **110** | `RequireCanRead`/`CanRead` gate on it in nearly every `Chats.*` / `Authors.*` / `Roles.*` / `LiveSessions.*` method |
 | `AccountsBackend.Get(userId)` | **109** | feeds `Accounts.GetOwn` → almost every session-scoped method |
 | `ContactsBackend.Get` | **88** | `Contacts.GetForChat` → `ChatUI.Get` → the whole chat list |
-| `ChatsBackend.GetMaxLid` | **28** | `GetLidRange` → `GetNews` + `GetChatRangeMeta` + `ConversationsBackend.GetRangeMeta` |
+| `ChatsBackend.GetMaxLid` | **28** | `GetLidRange` → `GetNews` + `GetChatRangeTile` + `ConversationsBackend.GetRangeTile` |
 | `ContactsBackend.ListIds` | **27** | the chat list's source of truth |
 | `ChatsBackend.GetTile` | **23** | `GetNews`, `GetFirstEntryAuthors`, `Chats.GetTile` |
 | `ChatPositionsBackend.Get` | **20** | `ChatPositions.GetOwn` + `Chats.IsEntryReadByMentionedUser` → `ChatUI.GetReadEntryLid` |
@@ -465,7 +465,7 @@ re-renders that chat's list item and recomputes every unread counter in the app.
 AuthorsBackend.GetInternal ─┐
 AccountsBackend.Get ────────┼→ ChatsBackend.GetRules ─→ Chats.GetRules
 ChatsBackend.Get ───────────┤                        ─→ Chats.{GetTile, GetNews, GetIdRange,
-RolesBackend.ListAuthorIds ─┘                             GetChatRangeMeta, GetContentPeriods, …}
+RolesBackend.ListAuthorIds ─┘                             GetChatRangeTile, GetContentPeriods, …}
                                                      ─→ Authors.*, Roles.*, Reactions.*,
                                                         LiveSessions.*, SharedLocations.*, …
 ```
@@ -499,14 +499,14 @@ rather than consolidating.
 
 2. **`Computed.BeginIsolation()` — a dependency that isn't recorded.** Reads inside
    the scope don't register a dependency, so the caller never invalidates on their
-   account. `ChatsBackend.GetChatRangeMeta` reads `GetLidRange` in isolation
+   account. `ChatsBackend.GetChatRangeTile` reads `GetLidRange` in isolation
    (`ChatsBackend.cs:393`) precisely so the warm tail's constant churn doesn't
    invalidate every page-map tile. `ChatUI.GetReadEntryLid` and `ChatUI.IsEmpty` do
    the same. **This silently breaks correctness if the isolated value must be
    fresh** — it's a deliberate staleness trade.
 
 3. **Ordering-sensitive dependency registration.** A cache-hit compute call
-   registers its dependency *synchronously, before any await*. `GetChatRangeMeta`
+   registers its dependency *synchronously, before any await*. `GetChatRangeTile`
    was recently restructured so the "next tile" tasks are only started once the
    previous side hasn't already satisfied the request (`ChatsBackend.cs:452-461`) —
    otherwise the result depended on the warm tail tile, which invalidates on every
@@ -515,7 +515,7 @@ rather than consolidating.
 
 4. **Tile granularity.** `InvalidateTiles` invalidates only the entry tile (5 entries)
    and only the `includeRemoved: true` variant; the `includeRemoved: false` variant is a
-   pure composition and invalidates through the graph. Similarly `GetEntryRangeMeta` for
+   pure composition and invalidates through the graph. Similarly `GetEntryRangeTile` for
    neighbour tiles is only invalidated when the neighbour lies outside the entry's own tile.
 
 5. **Write-side collapse.** `SetDelayBy(…, "ReadPosChanged:{user}:{chat}")`
@@ -540,8 +540,8 @@ rather than consolidating.
 ChatsBackend.OnChangeEntry(Create)
 ├─ GetTile(chat, entryTile, true)      → GetTile(…,false) → GetNews → Chats.GetNews → ChatUI.Get → ChatListUI.*
 ├─ GetMaxLid(chat, true/false)         → GetLidRange → GetNews (same tail)
-│                                                    → GetChatRangeMeta, ConversationsBackend.GetRangeMeta
-├─ GetEntryRangeMeta(chat, tile)       → GetChatRangeMeta → Chats.GetChatRangeMeta (chat view page map)
+│                                                    → GetChatRangeTile, ConversationsBackend.GetRangeTile
+├─ GetEntryRangeTile(chat, tile)       → GetChatRangeTile → Chats.GetChatRangeTile (chat view page map)
 └─ ChatEntryChangedEvent
    ├─ ContactsBackend.OnTouch (throttled) → Contact.Get [+ ListIds if it moved]
    ├─ MentionsBackend                     → GetLast(chat, mention)  → ChatUI.Get for mentioned users
@@ -1014,7 +1014,7 @@ shows `GetRules` still churning.
 | Method | Why not |
 |---|---|
 | `ChatsBackend.GetTile` | `ChatTile` is a plain class (reference equality) **and** the content genuinely changed |
-| `ChatsBackend.GetChatRangeMeta` / `GetEntryRangeMeta` | records with `Range<long>[]` members → array reference equality; never suppresses |
+| `ChatsBackend.GetChatRangeTile` / `GetEntryRangeTile` | records with `Range<long>[]` members → array reference equality; never suppresses |
 | `AuthorsBackend.ListAuthorIds` / `ListUserIds` | return `AuthorId[]` / `UserId[]`; fresh array per compute |
 | Anything returning `ApiArray<T>` built with `.ToApiArray()` | reference equality on the backing array — see §10 |
 | `ChatsBackend.GetMaxLid` | genuinely changes on every message; use tile granularity instead |
@@ -1253,7 +1253,7 @@ re-joined before resolution.
    production data (§11) gives this.
 5. **`Computed.BeginIsolation()` edges are still shown.** The static pass records the
    call; the isolation scope means no dependency is actually registered. Known
-   affected sites: `ChatsBackend.GetChatRangeMeta:393`, `ChatUI.GetReadEntryLid:237`,
+   affected sites: `ChatsBackend.GetChatRangeTile:393`, `ChatUI.GetReadEntryLid:237`,
    `ChatUI.IsEmpty:277`. Treat those edges as absent.
 6. **Structure is not frequency.** §11.4 is the cautionary tale: the static graph
    correctly identified the hubs, and the hubs turned out to be almost irrelevant to

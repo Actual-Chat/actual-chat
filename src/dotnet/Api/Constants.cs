@@ -69,9 +69,9 @@ public static partial class Constants
 
         // Entry fetches: the only tile IChatsBackend.GetTile and IChatEntryLanguagesBackend.GetTile accept
         public static readonly TileLayer<long> EntryIdTiles = TileLayers.Long5;
-        // Range fetches: the only tile GetChatRangeMeta, GetEntryRangeMeta,
-        // IConversationsBackend.GetRangeMeta and IConversationsBackend.GetTile accept
-        public static readonly TileLayer<long> RangeMetaEntryIdTiles = TileLayers.Long1280;
+        // Range fetches: the only tile GetChatRangeTile, GetEntryRangeTile,
+        // IConversationsBackend.GetConversationRangeTile and IConversationsBackend.GetTile accept
+        public static readonly TileLayer<long> ConversationIdTiles = TileLayers.Long1280;
         public static readonly TileLayer<int> ChatListIndexTiles = TileLayers.Int5;
         public static readonly TimeSpan MaxEntryDuration = TimeSpan.FromMinutes(3);
         public static readonly TimeSpan StreamingEntryFixupDelay = MaxEntryDuration + TimeSpan.FromSeconds(30);
