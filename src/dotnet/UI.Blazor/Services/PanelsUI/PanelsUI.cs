@@ -36,6 +36,7 @@ public partial class PanelsUI : UIWorkerBase<UIHub>
             return;
 
         ChatSwitchTracer.Mark("PanelsUI.HidePanels");
+        Middle.NotifyRevealPending(false);
         Left.SetIsVisible(false);
         Right.SetIsVisible(false);
     }
@@ -66,6 +67,8 @@ public partial class PanelsUI : UIWorkerBase<UIHub>
                 }
             }
 
+            // The region behind the panels is what the hide waits for, so it has to build now
+            Middle.NotifyRevealPending(true);
             // We want to make sure HidePanels() creates an additional history step,
             // otherwise "Back" from chat will hide the panel AND select the prev. chat.
             await History.WhenNavigationCompleted().ConfigureAwait(false);

@@ -13,6 +13,7 @@ public class MiddlePanel(UIHub hub) : UIServiceBase<UIHub>(hub), IComputeService
     // CpuTimestamp.Value: the earliest moment IsVisible may report false. Written on the dispatcher
     // as a side panel's visibility flips, read from the compute.
     private long _canHideAtValue;
+    private bool _isRevealPendingValue;
 
     public PanelsUI Owner => field ??= Hub.PanelsUI;
     // Latched, so a render block gating on CanRender doesn't have to await it
@@ -59,6 +60,17 @@ public class MiddlePanel(UIHub hub) : UIServiceBase<UIHub>(hub), IComputeService
         return canRender;
     }
 
+    [ComputeMethod]
+    public virtual async Task<bool> MustBuildContent(CancellationToken cancellationToken)
+    {
+        // What content behind this panel waits for, rather than IsVisible: the panels hide on the very
+        // swap that content is building, so visibility alone can't start it before the swap's backstop.
+        if (await IsVisible(cancellationToken).ConfigureAwait(false))
+            return true;
+
+        return Volatile.Read(ref _isRevealPendingValue);
+    }
+
     // ContentSwap related
 
     public void NotifyContentSwapStarted(Task whenDisplayed)
@@ -84,6 +96,17 @@ public class MiddlePanel(UIHub hub) : UIServiceBase<UIHub>(hub), IComputeService
         if (isVisible && !isSettled)
             canHideAt += PanelsUI.PanelTransitionDuration;
         Volatile.Write(ref _canHideAtValue, canHideAt.Value);
+    }
+
+    internal void NotifyRevealPending(bool isRevealPending)
+    {
+        // Set by PanelsUI for a navigation that ends in HidePanels, cleared there once it does
+        if (Volatile.Read(ref _isRevealPendingValue) == isRevealPending)
+            return;
+
+        Volatile.Write(ref _isRevealPendingValue, isRevealPending);
+        using (Invalidation.Begin())
+            _ = MustBuildContent(default);
     }
 
     internal void NotifyPullSettled()

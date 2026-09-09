@@ -54,6 +54,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private IAuthors Authors => Hub.Authors;
     private NavigationManager Nav => Hub.Nav;
     private History History => Hub.History;
+    private PanelsUI PanelsUI => Hub.PanelsUI;
     private StateFactory StateFactory => Hub.StateFactory;
     private IStringLocalizer L => Hub.StringLocalizer;
     private CancellationToken DisposeToken { get; }
@@ -502,6 +503,21 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         await WhenInitialized.ConfigureAwait(false);
         if (isFirstGetData)
             ChatSwitchTracer.Mark("ChatView.GetData#1: WhenInitialized awaited");
+
+        // Building a chat view nobody can see is what stalls the chat switch on WebKit, the code below postpones this
+        using (Computed.BeginIsolation()) {
+            var cMustBuildContent = await Computed
+                .Capture(() => PanelsUI.Middle.MustBuildContent(cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
+            if (!cMustBuildContent.Value) {
+                ChatSwitchTracer.Mark("ChatView.GetData: SUSPENDED - region stays covered", chatId);
+                // VirtualList's first GetData call passes CancellationToken.None, so LinkWith is needed
+                using var cts = cancellationToken.LinkWith(DisposeToken);
+                using (Computed.BeginIsolation())
+                    await cMustBuildContent.When(x => x, cts.Token).ConfigureAwait(false);
+                ChatSwitchTracer.Mark("ChatView.GetData: RESUMED - region will be revealed", chatId);
+            }
+        }
 
         // Update delay: we want to collect as many dependencies as possible here,
         // but don't want to delay rapid updates.
