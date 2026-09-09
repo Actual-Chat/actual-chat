@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
 
-<div class="@Class search-input">
+<div class="@Class search-input" data-children="close-btn focused-input">
     <label>
         <TextInput
             @ref="_inputRef"
@@ -12,7 +12,7 @@
         </TextInput>
         <i class="icon-search text-2xl search-icon"></i>
         @if (ShowCloseButton) {
-            <HeaderButton Click="Close" Class="c-close-btn">
+            <HeaderButton Click="Close" Class="c-close-btn" data-child="close-btn">
                 <i class="icon-close text-2xl"></i>
             </HeaderButton>
         }

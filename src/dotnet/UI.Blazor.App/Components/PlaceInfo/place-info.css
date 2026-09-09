@@ -1,4 +1,4 @@
-.page-with-header-and-footer .layout-body-wrapper > .c-container:has(.place-info) .layout-footer {
+.page-with-header-and-footer .layout-body-wrapper > .c-container[data-has-place-info] .layout-footer {
     @apply hidden;
 }
 

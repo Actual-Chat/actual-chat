@@ -4,9 +4,10 @@
 
 <SideNav
     Side="SideNavSide.Left"
+    Children="docs-left-panel"
     IsOpen="@PanelsUI.Left.IsVisible.Value"
     VisibilityChanged="@(isOpen => PanelsUI.Left.SetIsVisible(isOpen))">
-    <div class="docs-left-panel">
+    <div class="docs-left-panel" data-child="docs-left-panel">
         <div class="c-header">
             <div class="c-title-wrapper">
                 <div class="c-title">

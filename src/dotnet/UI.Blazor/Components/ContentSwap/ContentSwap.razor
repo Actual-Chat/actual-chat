@@ -14,9 +14,12 @@
 }
 
 <div @ref="_ref" class="content-swap @Class @_effectClass"
-     data-swap-hold="@_holdToken" data-swap-name="@_name" data-swap-propagate="@MustPropagateDisplay">
+     data-swap-hold="@_holdToken" data-swap-name="@_name" data-swap-propagate="@MustPropagateDisplay"
+     data-children="@Children.NullIfEmpty()">
     @foreach (var layer in Layers()) {
-        <div @key="@layer" class="c-layer @LayerClass @layer.CssClass" inert="@(layer == _outgoingLayer)">
+        <div @key="@layer" class="c-layer @LayerClass @layer.CssClass"
+             data-children="@LayerChildren.NullIfEmpty()"
+             inert="@(layer == _outgoingLayer)">
             <ContentSwapLayer Context="@layer.Context" Content="@layer.Content"/>
         </div>
     }
@@ -46,6 +49,10 @@
     [Parameter] public RenderFragment? Placeholder { get; set; }
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string LayerClass { get; set; } = "";
+    // Presence names the host / layer elements declare - see presence-tracker.ts. Passed in rather
+    // than hardcoded so this component keeps no vocabulary from the app that uses it.
+    [Parameter] public string Children { get; set; } = "";
+    [Parameter] public string LayerChildren { get; set; } = "";
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public ContentSwapEffect Effect { get; set; } = ContentSwapEffect.Fade;
     [Parameter] public TimeSpan Duration { get; set; } = TimeSpan.FromSeconds(0.5);

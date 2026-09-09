@@ -5,4 +5,4 @@
 // body is the only such element - the two host pages own its markup - and this runs at import time,
 // so the declaration is in place before MutationProcessor.start() takes its first scan.
 
-document.body.setAttribute('data-children', 'video-panel-shown video-panel-expanded');
+document.body.setAttribute('data-children', 'video-panel-shown video-panel-expanded audio-panel-header');

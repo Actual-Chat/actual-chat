@@ -4,6 +4,7 @@
 <InfiniteList
     @key="nameof(LogList)"
     Class="log-list"
+    Child="log-list"
     DataSource="@this"
     Identity="logs"
     DefaultEdge="@VirtualListEdge.End"

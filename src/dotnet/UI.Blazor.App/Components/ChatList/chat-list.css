@@ -42,12 +42,6 @@
 .navbar-chats .c-all-chats > .c-empty i {
     @apply text-5xl;
 }
-.navbar-chats .c-all-chats:has(.own-chat-list) .tab-panel-tabs {
-    @apply hidden;
-}
-.navbar-chats .c-all-chats .chat-list.own-chat-list {
-    @apply p-2;
-}
 .navbar-chats .c-all-chats > .tab-panel {
     @apply overflow-y-hidden;
     @apply flex-initial;
@@ -93,7 +87,7 @@
 body.narrow .chat-list-fab.btn.btn-round.marked-message .btn-content > i {
     transform: none;
 }
-.navbar-chats .c-active-chats:has(> .active-chats) .chat-list-fab {
+.navbar-chats .c-active-chats[data-has-active-chats] .chat-list-fab {
     @apply bottom-full -mb-7;
 }
 .navbar-chats .chat-list {
@@ -493,7 +487,7 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
 .chat-list.finite-list > .c-wrapper > ul.c-virtual-container {
     @apply flex-1;
 }
-.chat-list.finite-list > .c-wrapper > ul.c-virtual-container > .item:has(> .invite-friends-banner) {
+.chat-list.finite-list > .c-wrapper > ul.c-virtual-container > .item[data-has-invite-banner] {
     @apply flex-1 flex-y;
 }
 .invite-friends-banner {

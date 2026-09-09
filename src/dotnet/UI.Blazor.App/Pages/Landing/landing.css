@@ -1135,7 +1135,7 @@ body.narrow .docs-layout .layout-header {
 .docs-layout .layout-footer {
     @apply hidden;
 }
-body.narrow .side-nav-left:has(.docs-left-panel) {
+body.narrow .side-nav-left[data-has-docs-left-panel] {
     @apply hidden;
 }
 .docs-left-panel {
@@ -1264,10 +1264,10 @@ body.narrow .docs-subheader {
     @apply border-b-2 border-bg-04;
 }
 
-body.narrow .side-nav.side-nav-right:has(> .docs-right-panel) {
+body.narrow .side-nav.side-nav-right[data-has-docs-right-panel] {
     @apply hidden;
 }
-body.narrow .layout-body:has(> .docs-content) {
+body.narrow .layout-body[data-has-docs-content] {
     @apply px-0;
     @apply bg-01;
 }

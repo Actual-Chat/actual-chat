@@ -7,7 +7,7 @@
     RenderFragment RenderInner() =>
         @<text>
             @if (Left != null) {
-                <div class="c-left">
+                <div class="c-left" data-child="card-left">
                     @Left
                 </div>
             }
@@ -22,7 +22,7 @@
                 }
             </div>
             @if (Right != null) {
-                <div class="c-right">
+                <div class="c-right" data-child="card-right">
                     @Right
                 </div>
             }
@@ -31,6 +31,7 @@
 
 @if (isClickable) {
     <div class="@rootCls @Class"
+         data-children="card-left card-right"
          role="button"
          tabindex="0"
          @onclick="@Click"
@@ -38,7 +39,7 @@
         @RenderInner()
     </div>
 } else {
-    <div class="@rootCls @Class">
+    <div class="@rootCls @Class" data-children="card-left card-right">
         @RenderInner()
     </div>
 }

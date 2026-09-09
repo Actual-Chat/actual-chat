@@ -3,7 +3,9 @@
 @inherits ComponentBase<UIHub>
 @implements IAsyncDisposable
 
-<div @ref="ElementRef" class="@_class @Class" data-side-nav="@_attribute" inert="@(!IsOpen)">
+<div @ref="ElementRef" class="@_class @Class"
+     data-side-nav="@_attribute" data-child="@_child" data-children="@Children.NullIfEmpty()"
+     inert="@(!IsOpen)">
     @ChildContent
 </div>
 
@@ -15,10 +17,14 @@
 
     private string _class = "";
     private string _attribute = "";
+    private string? _child;
     private bool _wasOpen;
 
     [Parameter] public SideNavSide Side { get; set; } = SideNavSide.Left;
     [Parameter] public string Class { get; set; } = "";
+    // Presence names this element's content declares - see presence-tracker.ts. Passed in rather than
+    // hardcoded so this component keeps no vocabulary from the app that uses it.
+    [Parameter] public string Children { get; set; } = "";
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
     [Parameter] public EventCallback<bool> VisibilityChanged { get; set; }
@@ -38,6 +44,14 @@
         _attribute = IsOpen
             ? "open"
             : "closed";
+        // The presence name .page-with-header-and-footer counts, which is how CSS reads this panel's
+        // state without a :has() - see presence-tracker.ts.
+        _child = (Side, IsOpen) switch {
+            (SideNavSide.Left, true) => "left-panel-open",
+            (SideNavSide.Right, true) => "right-panel-open",
+            (SideNavSide.Right, false) => "right-panel-closed",
+            _ => null,
+        };
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

@@ -8,6 +8,9 @@ import { UndoStack } from './undo-stack';
 import { getLogs } from 'logging';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { fastRaf } from 'fast-raf';
+import { PresenceTracker } from 'presence-tracker';
+
+const EditorContentChild = 'editor-content';
 
 const { debugLog, errorLog } = getLogs('MarkupEditor');
 
@@ -621,10 +624,12 @@ export class MarkupEditor {
         if (hasContent) {
             classList.remove('is-empty');
             classList.add('has-content');
+            PresenceTracker.setChild(this.contentDiv, EditorContentChild, true);
         }
         else {
             classList.remove('has-content');
             classList.add('is-empty');
+            PresenceTracker.setChild(this.contentDiv, EditorContentChild, false);
         }
     }
 
