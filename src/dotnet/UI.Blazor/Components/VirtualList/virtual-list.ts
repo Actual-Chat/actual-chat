@@ -86,12 +86,12 @@ export abstract class VirtualList implements VirtualListOverlayTarget {
         this.renderIndexRef = ref.querySelector(':scope > .data.render-index')!;
         this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
 
-        // Both triggers, because Blazor applies a render in several batches and the render-state JSON
-        // is deliberately written in the last one (RenderAtDepth) - the items and the JSON can land in
-        // different batches, and only the JSON's own render index says the render is complete.
+        // Blazor can deliver the final JSON after the index and items. Its own mutation must wake
+        // a render previously rejected as incomplete; the matching indexes still gate completion.
         this.renderObserver = new MutationObserver(this.onRenderBatch);
         this.renderObserver.observe(this.renderIndexRef, { attributes: true });
         this.renderObserver.observe(this.containerRef, { childList: true, subtree: true });
+        this.renderObserver.observe(this.renderStateRef, { childList: true, characterData: true, subtree: true });
     }
 
     // Called by blazor

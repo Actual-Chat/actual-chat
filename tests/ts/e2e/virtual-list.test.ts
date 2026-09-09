@@ -5,7 +5,7 @@ import { connectBrowser, type BrowserConnection } from './helpers';
 
 declare const ListTest: typeof import('./virtual-list-fixture');
 
-describe('InfiniteList navigation', () => {
+describe('VirtualList', () => {
     let connection: BrowserConnection;
     let page: Page;
     let bundle: string;
@@ -166,5 +166,40 @@ describe('InfiniteList navigation', () => {
         // assert
         expect(result).toBeGreaterThan(0);
         expect(result).toBeLessThan(600);
+    });
+
+    it.each(['replace', 'text'])('should apply delayed render metadata after a %s update', async update => {
+        // arrange
+        const result = await page.evaluate(async update => {
+            const fixture = ListTest.createList();
+            await ListTest.nextFrame();
+            const indexRef = fixture.root.querySelector<HTMLElement>('.render-index')!;
+            const stateRef = fixture.root.querySelector('.render-state')!;
+            indexRef.dataset.renderIndex = '1';
+            await ListTest.nextFrame();
+            const incompleteIndex = fixture.list['renderState'].renderIndex;
+
+            // act
+            const json = JSON.stringify({ ...fixture.initial, renderIndex: 1, scrollToKey: '4' });
+            if (update === 'replace')
+                stateRef.textContent = json;
+            else
+                stateRef.firstChild!.nodeValue = json;
+            await ListTest.nextFrame();
+            await ListTest.nextFrame();
+            const result = {
+                incompleteIndex,
+                appliedIndex: fixture.list['renderState'].renderIndex,
+                targetTop: fixture.position('4') - fixture.root.getBoundingClientRect().top,
+            };
+            fixture.list.dispose();
+            return result;
+        }, update);
+
+        // assert
+        expect(result.incompleteIndex).toBe(0);
+        expect(result.appliedIndex).toBe(1);
+        expect(result.targetTop).toBeGreaterThanOrEqual(0);
+        expect(result.targetTop).toBeLessThan(600);
     });
 });
