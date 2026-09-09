@@ -55,8 +55,9 @@ public class AppUpdates : IAppUpdates
             Computed.GetCurrent().InvalidateSafely(announceAt - Clocks.SystemClock.Now);
             return record!.PreviousInfo;
         }
-        if (info is not null && VersionExt.ParseBuildVersion(info.Version) >= ApiConstants.BuildVersion)
-            return info; // Settled: a published release is assumed to stay published
+        var ownTrain = ApiConstants.BuildVersion.Train;
+        if (info is not null && VersionExt.ParseBuildVersion(info.Version).Train >= ownTrain)
+            return info; // Settled: the stores publish one build per train, and this one has it
 
         // The server is ahead of the store, so this kind needs probing, and this node has to
         // re-read Redis until some node settles it - nothing else tells it the record changed.

@@ -48,17 +48,25 @@ no TTL, no DB and no backend. Let `S` be the server's own build version
    release `Info` replaced. Clients behind that one keep their banner; nobody
    hears about the new one yet. Nothing needs probing while a detection is
    pending, so this returns here.
-5. Record's `Info.Version >= S` → the release is settled: return it and arm
-   nothing. A published release is assumed to stay published, so this value is
-   cached until the process is replaced by the next deploy.
-6. Otherwise the server is ahead of the store: ask the prober to work on the
+5. Record's `Info` is on `S`'s **train** (`Info.Version.Train >= S.Train`) → the
+   release is settled: return it and arm nothing. A published release is assumed
+   to stay published, so this value is cached until the process is replaced by
+   the next deploy.
+6. Otherwise the store hasn't reached this train: ask the prober to work on the
    kind, arm a re-read in `RecheckPeriod`, and return `Info`. A client older
    than that release still gets a correct banner while the newer build is in
    review.
 
+The comparison in step 5 is on `X.Y`, not `X.Y.Z`, because the stores publish
+**one build per train** while the server keeps deploying on top of it. `S` is
+`2.19.200` and the App Store serves `2.19.147`: that train is as published as it
+is ever going to get, so there is nothing left to probe for. Comparing full build
+versions would instead leave the kind unsettled for the rest of the train and
+probe every 30 minutes to learn nothing.
+
 A server deploy inside a pending hour resolves itself: once the hour is out,
-step 5 sees `Info.Version < S` and step 6 resumes probing, and the next
-detection moves the pending release into `PreviousInfo` where it belongs.
+step 5 sees `Info.Version.Train < S.Train` and step 6 resumes probing, and the
+next detection moves the pending release into `PreviousInfo` where it belongs.
 
 `AppUpdateProber` is an `ActivatedWorkerBase` singleton on the API hosts. Per due
 entry it re-reads the record (another node may have settled it), takes a
@@ -85,12 +93,30 @@ as `null`; **anything unexpected throws**, so the prober logs and retries rather
 than reporting "not published". The Play regex requires exactly one match — every
 other `X.Y.Z` on that page is review metadata.
 
+Every probe URL carries a `_=<guid>` cache buster, because the App Store lookup is
+served by Akamai with `Cache-Control: max-age=86070`. Without it a pod reads
+whatever version its edge cached the first time it probed that day, and keeps
+reading it for a full day after the release — which is what happened to v2.19.147
+on 2026-09-08: the App Store served it at 21:37 UTC, and prod was still reporting
+2.18.293 to iOS clients hours and a dozen probes later. A request-side
+`Cache-Control: no-cache` does not make Akamai revalidate; only a new cache key
+does. Play sends `no-store` and DisplayCatalog only `s-maxage=600`, so the
+parameter is redundant there, but all three stores ignore it and a probe that
+can't read a stale copy is one less thing to reason about.
+
 Two store families:
 
 - **Full-version stores** (Play, Microsoft, and the App Store under the policy
-  below): published iff the parsed store version `P >= S`. Exact, no history. A
-  store *ahead* of the server (a rollback) still moves the record forward, which
-  is right — the store build is what users can get.
+  below): published iff the parsed store version `P` is newer than the one the
+  record already holds. `S` doesn't enter into it — what the store serves is
+  exactly what a client can install, whether or not the server has moved past it.
+  Requiring `P >= S` (the original rule) meant a release was recorded only during
+  the window where the store had caught up with the running server build, so any
+  deploy on top of the release the stores got — a hotfix, or simply the next
+  train — dropped it for good: `S = 2.19.148` against an App Store serving
+  `2.19.147` reads as "nothing published", and every client on `2.18.x` is told
+  about `2.18.x`, i.e. nothing. Comparing against the record instead makes the
+  detection independent of the deploy cadence.
 - **Train-only** (an App Store record showing `2.17`): the store version can't be
   compared with `S`, so the rule is change detection on the server's train. With
   no prior record, store a baseline and announce nothing — `2.17` could be

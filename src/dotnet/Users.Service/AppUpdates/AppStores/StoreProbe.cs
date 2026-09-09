@@ -5,7 +5,7 @@ namespace ActualChat.Users.AppStores;
 
 /// <summary>
 /// Shared HTTP plumbing for the store probes: one named client, a browser-like
-/// User-Agent, and a response size cap.
+/// User-Agent, a cache-busting parameter, and a response size cap.
 /// </summary>
 public abstract class StoreProbe(IServiceProvider services) : IStoreProbe
 {
@@ -24,11 +24,19 @@ public abstract class StoreProbe(IServiceProvider services) : IStoreProbe
 
     // Protected/internal methods
 
+    // The App Store lookup is served by Akamai with a ~24h max-age,
+    // "Cache-Control: no-cache" doesn't make Akamai revalidate, so we add a cache buster.
+    internal static Uri AddCacheBuster(Uri uri)
+    {
+        var rnd = Alphabet.AlphaNumeric.Generator8.Next();
+        return new($"{uri.AbsoluteUri}{(uri.Query.IsNullOrEmpty() ? '?' : '&')}_={rnd}");
+    }
+
     protected async Task<string?> Fetch(Uri uri, CancellationToken cancellationToken)
     {
         // Returns null when the store says the app isn't there; every other failure throws
         using var client = HttpClientFactory.CreateClient(HttpClientName);
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        using var request = new HttpRequestMessage(HttpMethod.Get, AddCacheBuster(uri));
         request.Headers.TryAddWithoutValidation("User-Agent", UserAgentValue);
         request.Headers.TryAddWithoutValidation("Accept-Language", "en-US,en;q=0.9");
         using var response = await client
