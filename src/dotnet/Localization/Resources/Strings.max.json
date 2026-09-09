@@ -1786,6 +1786,7 @@
   "Call_StartingRecording": "Démarrage de l'enregistrement...",
   "Call_Entry_Outgoing": "Połączenie wychodzące",
   "Call_Entry_Incoming": "Połączenie przychodzące",
+  "Call_Entry_Titled_Format": "{0}：{1}",
   "Call_Entry_Missed": "Nieodebrane połączenie",
   "Call_Entry_Declined": "Отхвърлено обаждане",
   "Call_Entry_Canceled": "キャンセルされた通話",

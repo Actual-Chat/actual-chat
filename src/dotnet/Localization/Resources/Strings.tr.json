@@ -1500,6 +1500,7 @@
   "Call_StartingRecording": "Kayıt başlatılıyor...",
   "Call_Entry_Outgoing": "Giden arama",
   "Call_Entry_Incoming": "Gelen arama",
+  "Call_Entry_Titled_Format": "{0}: {1}",
   "Call_Entry_Missed": "Cevapsız arama",
   "Call_Entry_Declined": "Reddedilen arama",
   "Call_Entry_Canceled": "İptal edilen arama",

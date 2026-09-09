@@ -1500,6 +1500,7 @@
   "Call_StartingRecording": "Покретање снимања...",
   "Call_Entry_Outgoing": "Одлазни позив",
   "Call_Entry_Incoming": "Долазни позив",
+  "Call_Entry_Titled_Format": "{0}: {1}",
   "Call_Entry_Missed": "Пропуштени позив",
   "Call_Entry_Declined": "Одбијени позив",
   "Call_Entry_Canceled": "Отказани позив",
