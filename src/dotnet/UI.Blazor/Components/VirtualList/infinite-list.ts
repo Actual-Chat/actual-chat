@@ -29,7 +29,6 @@ const UpdateViewportIntervalMs = 64;
 const UpdateVisibilityIntervalMs = 250;
 const MaxRelayoutPasses = 4;
 const ScrollSettleMs = 200;
-const ProgrammaticScrollGuardMs = DeviceInfo.isMobile ? 250 : 100;
 // How long a wheel away from the pinned edge waits for the scroll it produces before it is forgotten.
 const WheelAwayWindowMs = 300;
 const SmoothScrollMs = 500;
@@ -215,7 +214,6 @@ export class InfiniteList extends VirtualList {
     private readonly isReverse: boolean;
     private pinnedEdge: VirtualListEdge | null = null;
     private endAnchorSize = 0;
-    private lastProgrammaticScrollAt = 0;
     private wheelAwayAt = 0;
     private isWatchingStillness = false;
     private isAwaitingOverscrollEnd = false;
@@ -599,7 +597,6 @@ export class InfiniteList extends VirtualList {
 
     // A jump to an absolute position, and the only thing that writes scrollTop outside a follow.
     private setScrollOffset(scrollOffset: number, isSmooth = false, mustClamp = true, isReanchor = false): void {
-        this.lastProgrammaticScrollAt = performance.now();
         if (isSmooth)
             this.stability.holdScroll(SmoothScrollMs);
         this.scrollController.scrollTo(this.toScrollTop(scrollOffset),
@@ -1009,6 +1006,7 @@ export class InfiniteList extends VirtualList {
         if (scrollToKey != null && this.indexByKey.has(scrollToKey)) {
             this.isInitiallyPlaced = true;
             if (scrollToKey === this.getLastContentKey() && rs.hasVeryLastItem) {
+                this.pendingJump = null;
                 this.handledScrollToKey = scrollToKey;
                 this.setPinnedEdge(VirtualListEdge.End);
                 this.repinEdge('scroll-to-last');
@@ -1783,14 +1781,16 @@ export class InfiniteList extends VirtualList {
         // it produced: a wheel that scrolls nothing - a chat that fits on screen, a scroller nested in a
         // message - has not left the edge, and a pin dropped there had nothing to put it back until the
         // next render's clamp.
-        const isWheelAway = performance.now() - this.wheelAwayAt < WheelAwayWindowMs;
-        // The scroll a re-pin or a re-centre just wrote isn't the user moving, and reading it as one
-        // would drop the very pin that produced it.
+        const isWheelAway = this.wheelAwayAt !== 0
+            && performance.now() - this.wheelAwayAt < WheelAwayWindowMs;
+        // Read back the controller's writes, including resize clamps. A time-only guard would
+        // also swallow user scrolling that immediately follows a correction.
         if (!isWheelAway && !this.scrollController.isTouchActive
-            && performance.now() - this.lastProgrammaticScrollAt < ProgrammaticScrollGuardMs)
+            && this.scrollController.isScrollWriteEcho)
             return;
 
         this.wheelAwayAt = 0;
+        this.pendingJump = null;
         this.interactiveAnchor = null;
         this.releaseScreenAnchor();
         if (isWheelAway)
@@ -1814,17 +1814,16 @@ export class InfiniteList extends VirtualList {
         this.updateVisibilityThrottled();
     };
 
-    // A wheel gesture away from the pinned edge says the user wants to leave it; onScroll acts on that
-    // when the scroll it produces arrives, whether or not that scroll lands inside the guard window.
+    // Includes unpinned navigation waits: controller-driven wheels can otherwise look like own writes.
+    // Act on the resulting scroll, so a wheel consumed by a nested scroller does not cancel navigation.
     private onWheel = (event: WheelEvent): void => {
         // Momentum scrolling on mobile also arrives as wheel events; there onScroll is enough. A
         // ctrl+wheel is a pinch-zoom, which doesn't scroll the list at all.
-        if (DeviceInfo.isMobile || event.ctrlKey || this.pinnedEdge == null)
+        if (DeviceInfo.isMobile || event.ctrlKey)
             return;
 
-        const isAwayFromEdge = this.pinnedEdge === VirtualListEdge.End
-            ? event.deltaY < 0
-            : event.deltaY > 0;
+        const isAwayFromEdge = this.pinnedEdge == null
+            || (this.pinnedEdge === VirtualListEdge.End ? event.deltaY < 0 : event.deltaY > 0);
         if (isAwayFromEdge)
             this.wheelAwayAt = performance.now();
     };

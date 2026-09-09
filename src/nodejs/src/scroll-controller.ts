@@ -172,6 +172,12 @@ export class ScrollController {
         return this.isTouching;
     }
 
+    public get isScrollWriteEcho(): boolean {
+        return performance.now() < this.suppressUntil
+            && (this.lastWrittenTop == null
+                || Math.abs(this.element.scrollTop - this.lastWrittenTop) <= FixPrecisionPx);
+    }
+
     // The content is carrying a transform: redefining the coordinates now costs a step of up to the
     // whole displacement.
     public get isOverscrollActive(): boolean {
@@ -422,9 +428,7 @@ export class ScrollController {
         // load re-anchoring under that fling re-arms it - measured at 9712px past the limit in 290ms,
         // with getViolatedBoundary answering correctly on every one of the 18 events that were dropped
         // here. Only the echo of this controller's own write is still ignored.
-        const isOwnWrite = this.lastWrittenTop == null
-            || Math.abs(scrollTop - this.lastWrittenTop) <= FixPrecisionPx;
-        if (this.phase === 'engaged' || this.momentumPhase !== 'none' || (now < this.suppressUntil && isOwnWrite))
+        if (this.phase === 'engaged' || this.momentumPhase !== 'none' || this.isScrollWriteEcho)
             return;
 
         const boundary = this.getViolatedBoundary(scrollTop);
