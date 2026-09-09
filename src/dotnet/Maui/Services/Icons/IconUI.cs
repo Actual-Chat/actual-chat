@@ -20,15 +20,7 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
         return filePath.IsEmpty ? null : new LoadedImage(filePath, kind);
     }
 
-    private (string Url, AvatarKind? Kind) GetIconUrl(IconQuery query)
-    {
-        var pictureUrl = UrlMapper.PicturePreview128Url(query.Picture);
-        return pictureUrl.IsNullOrEmpty()
-            ? (UrlMapper.AvatarUrl(query.AvatarQuery), query.AvatarQuery.Kind)
-            : (pictureUrl, null);
-    }
-
-    private Task<FilePath> FetchImage(string url, CancellationToken cancellationToken)
+    public Task<FilePath> FetchImage(string url, CancellationToken cancellationToken)
     {
         if (url.IsNullOrEmpty())
             return Task.FromResult(FilePath.Empty);
@@ -36,6 +28,16 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
         var ext = Path.GetExtension(url);
         var filePath = GetCacheFilePath(url, ext);
         return FetchToCache(url, filePath, cancellationToken);
+    }
+
+    // Private methods
+
+    private (string Url, AvatarKind? Kind) GetIconUrl(IconQuery query)
+    {
+        var pictureUrl = UrlMapper.PicturePreview128Url(query.Picture);
+        return pictureUrl.IsNullOrEmpty()
+            ? (UrlMapper.AvatarUrl(query.AvatarQuery), query.AvatarQuery.Kind)
+            : (pictureUrl, null);
     }
 
     private async Task<FilePath> FetchToCache(string url, FilePath filePath, CancellationToken cancellationToken)

@@ -61,6 +61,10 @@ public sealed class MauiModule(IServiceProvider moduleServices)
         var fusion = services.AddFusion();
         fusion.AddService<IconUI>(ServiceLifetime.Scoped);
         fusion.AddService<IncomingShareSuggestions, AndroidIncomingShareSuggestions>(ServiceLifetime.Scoped);
+#elif MACOS
+        // No share suggestions on the desktop; the icons feed the notification banners
+        var fusion = services.AddFusion();
+        fusion.AddService<IconUI>(ServiceLifetime.Scoped);
 #endif
 
         // Video transcoding
