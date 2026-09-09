@@ -247,7 +247,7 @@ export class RpcStreamSender<T> implements IRpcObject {
     // Tells the consumer this shared stream is gone, then disposes it —
     // mirrors RpcSharedStream.SendDisconnect (RpcSharedStream.cs:284-289).
     private _sendDisconnect(): void {
-        const conn = this.peer.connection;
+        const conn = this.wireConnection;
         if (conn)
             this.peer.hub.systemCallSender.disconnect(conn, this.peer.serializationFormat, [this.id.localId]);
 
@@ -257,6 +257,15 @@ export class RpcStreamSender<T> implements IRpcObject {
     /** Called by system call handler when $sys.AckEnd is received from the client. */
     onAckEnd(_hostId: string): void {
         this.disconnect();
+    }
+
+    // Gated on `isConnected`, not just `connection`: during connect and
+    // handshake `connection` is already set, and an item written then hits
+    // the wire before $sys.Handshake and kills the connection (same hazard
+    // as RpcStream._sendAck). A held item is resent from the replay buffer
+    // after the reset ack.
+    private get wireConnection(): RpcPeer['connection'] {
+        return this.peer.isConnected ? this.peer.connection : undefined;
     }
 
     /**
@@ -270,7 +279,7 @@ export class RpcStreamSender<T> implements IRpcObject {
      */
     sendItem(item: T): void {
         if (this._ended) return;
-        const conn = this.peer.connection;
+        const conn = this.wireConnection;
         if (conn) {
             this.peer.hub.systemCallSender.item(
                 conn, this.peer.serializationFormat, this.id.localId, this._nextIndex, item,
@@ -285,7 +294,7 @@ export class RpcStreamSender<T> implements IRpcObject {
     /** Send a batch of items to the client. See {@link sendItem} for disconnect semantics. */
     sendBatch(items: T[]): void {
         if (this._ended || items.length === 0) return;
-        const conn = this.peer.connection;
+        const conn = this.wireConnection;
         if (conn) {
             this.peer.hub.systemCallSender.batch(
                 conn, this.peer.serializationFormat, this.id.localId, this._nextIndex, items,
@@ -298,7 +307,7 @@ export class RpcStreamSender<T> implements IRpcObject {
     sendEnd(error?: Error | null): void {
         if (this._ended) return;
         this._ended = true;
-        const conn = this.peer.connection;
+        const conn = this.wireConnection;
         if (!conn) return;
         // .NET ExceptionInfo is a non-nullable value type, so we must always
         // emit a valid map shape (empty TypeRef+Message for the "no error" case).

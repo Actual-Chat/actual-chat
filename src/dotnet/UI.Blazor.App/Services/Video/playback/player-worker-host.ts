@@ -16,6 +16,7 @@ import {
 } from './player-worker';
 import type {
     PlayerWorkerCallbacks,
+    PlayerWorkerConnectionState,
     PlayerWorkerOptions,
 } from './player-worker-contract';
 import type { DecoderLike } from '../operators/decode';
@@ -61,6 +62,13 @@ function ensurePullApi(): void {
     Api.requireConnection('VideoPlayer');
     pullApiInitialized = true;
     infoLog?.log(`ensurePullApi: Api initialized for ${pullApiUrl}`);
+}
+
+function getConnectionState(): PlayerWorkerConnectionState {
+    if (!pullApiInitialized)
+        return { isConnected: true, canConnect: true };
+
+    return { isConnected: Api.peer.isConnected, canConnect: Api.canConnect };
 }
 
 async function getStream(streamId: string): Promise<AsyncIterable<VideoFrameDto>> {
@@ -173,6 +181,7 @@ const callbacks = rpcClientServer<PlayerWorkerCallbacks>(
 
 __setPlayerWorkerHooks({
     getStream,
+    getConnectionState,
     createDecoder,
     buildBackend,
     onTrackReady: (streamId, kind, track) => callbacks.onTrackReady(streamId, kind, track),
