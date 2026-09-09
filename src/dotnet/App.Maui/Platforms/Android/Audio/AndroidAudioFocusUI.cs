@@ -88,21 +88,17 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     {
         // The route is read, never awaited, here: this runs under OperationLock.
         var carAudioRoute = Volatile.Read(ref _carAudioRoute);
-        // Under projection the projection link carries playback and the phone mic records, so
-        // the communication route - an HFP virtual call the car answers by muting Android Auto -
-        // is taken only when the user asked for the car microphone.
-        var useCommunicationRoute = carAudioRoute == CarAudioRoute.Default || carAudioRoute.UseCallLink;
+        var kind = GetFocusRequestKind(mode, carAudioRoute);
         Log.LogInformation(
             "-> RequestAudioFocus, requested mode: '{Mode}', active handle: '{Handle}', "
-            + "car route: {CarAudioRoute}, comm route: {UseCommunicationRoute}",
-            mode, _handle, carAudioRoute, useCommunicationRoute);
-        var success = await Task.Run(() => mode switch {
-                AudioFocusMode.Recording => _focusHelper.RequestFocusForCall(useCommunicationRoute),
-                AudioFocusMode.Playback or AudioFocusMode.Listening when carAudioRoute.UseCallLink
-                    => _focusHelper.RequestFocusForCall(true),
-                AudioFocusMode.Playback => _focusHelper.RequestFocusForPlayback(),
-                AudioFocusMode.Listening => _focusHelper.RequestFocusForListening(),
-                AudioFocusMode.Tune => _focusHelper.RequestFocusForNotification(),
+            + "car route: {CarAudioRoute}, request: {Kind}",
+            mode, _handle, carAudioRoute, kind);
+        var success = await Task.Run(() => kind switch {
+                FocusRequestKind.Call => _focusHelper.RequestFocusForCall(true),
+                FocusRequestKind.ProjectedMedia => _focusHelper.RequestFocusForProjectedMedia(),
+                FocusRequestKind.Playback => _focusHelper.RequestFocusForPlayback(),
+                FocusRequestKind.Listening => _focusHelper.RequestFocusForListening(),
+                FocusRequestKind.Notification => _focusHelper.RequestFocusForNotification(),
                 _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unsupported audio focus mode"),
             }, CancellationToken.None)
             .ConfigureAwait(false);
@@ -128,6 +124,24 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     }
 
     // Private methods
+
+    private static FocusRequestKind GetFocusRequestKind(AudioFocusMode mode, CarAudioRoute route)
+    {
+        // Under projection the projection link carries playback and the phone mic records, so
+        // the communication route - an HFP virtual call the car answers by muting Android Auto -
+        // is taken only when the user asked for the car microphone.
+        var isProjecting = route != CarAudioRoute.Default;
+        return mode switch {
+            AudioFocusMode.Tune => FocusRequestKind.Notification,
+            _ when route.UseCallLink => FocusRequestKind.Call,
+            AudioFocusMode.Recording when isProjecting => FocusRequestKind.ProjectedMedia,
+            AudioFocusMode.Listening when isProjecting => FocusRequestKind.ProjectedMedia,
+            AudioFocusMode.Recording => FocusRequestKind.Call,
+            AudioFocusMode.Playback => FocusRequestKind.Playback,
+            AudioFocusMode.Listening => FocusRequestKind.Listening,
+            _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unsupported audio focus mode"),
+        };
+    }
 
     private async Task<CarAudioRoute> UpdateCarAudioRoute()
     {
@@ -156,5 +170,16 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
         // Note: Audio routing is now handled internally by AudioFocusHelper's device router
         // when devices change during active focus. This callback is kept for logging/monitoring.
         Log.LogInformation("-> OnOutputDevicesChanged. Active handle: {Handle}", _handle);
+    }
+
+    // Nested types
+
+    private enum FocusRequestKind
+    {
+        Call,
+        ProjectedMedia,
+        Playback,
+        Listening,
+        Notification,
     }
 }
