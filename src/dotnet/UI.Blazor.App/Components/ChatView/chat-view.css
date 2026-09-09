@@ -219,6 +219,11 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 .chat-message-markup.empty {
     @apply hidden;
 }
+.chat-message-unsupported {
+    @apply flex-x items-center gap-x-1.5;
+    @apply mb-0.5 pr-1.5;
+    @apply text-02 text-text-1;
+}
 .playable-text-markup,
 .plain-text-markup {
     animation: var(--text-animation, none);

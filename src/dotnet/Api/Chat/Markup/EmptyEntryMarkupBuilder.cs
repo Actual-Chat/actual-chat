@@ -17,6 +17,10 @@ public class EmptyEntryMarkupBuilder
     // only a caller that resolved one can tell a live share from a one-shot pin.
     public Markup Build(ChatEntry entry, MarkupConsumer consumer, bool isLiveLocation = false)
     {
+        // Ahead of the MessageView shortcut: an entry of a kind this build has no member for is
+        // the one case where the message view has something to say instead of nothing.
+        if (entry.IsUnsupported)
+            return new PlainTextMarkup(Unsupported);
         if (consumer is MarkupConsumer.MessageView)
             return Markup.EmptyText;
 
@@ -71,6 +75,7 @@ public class EmptyEntryMarkupBuilder
     protected virtual string SentLiveLocation => "Shared live location";
     protected virtual string YourLocation => "your location";
     protected virtual string QuoteAttachment => "Click to see the attachment";
+    protected virtual string Unsupported => "Update the app to see this message";
     protected virtual string SentImages(int count) => $"Sent {count.Format()} image{Plural(count)}";
     protected virtual string YourImages(int count) => $"your image{Plural(count)}";
     protected virtual string SentVideos(int count) => $"Sent {count.Format()} video{Plural(count)}";

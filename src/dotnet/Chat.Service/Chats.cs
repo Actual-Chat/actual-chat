@@ -10,6 +10,9 @@ namespace ActualChat.Chat;
 /// </summary>
 public partial class Chats(IServiceProvider services) : IChats
 {
+    private static readonly Version LastToleratedApiVersion =
+        Version.Parse(ApiConstants.LastVersionWithoutUnionTolerance);
+
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IAvatars Avatars { get; } = services.GetRequiredService<IAvatars>();
@@ -87,6 +90,20 @@ public partial class Chats(IServiceProvider services) : IChats
     {
         await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
         return await Backend.GetTile(chatId, lidTileRange, false, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    [Obsolete("2026.09: Use GetTile - this one only drops entry kinds a pre-2.19 client can't read.")]
+    public virtual async Task<ChatTile> GetLegacyTile(
+        Session session,
+        ChatId chatId,
+        Range<long> lidTileRange,
+        CancellationToken cancellationToken)
+    {
+        // A separate compute method rather than a per-peer projection of GetTile: Fusion's result
+        // cache isn't peer-scoped, so the filtering has to have a cache slot of its own.
+        var tile = await GetTile(session, chatId, lidTileRange, cancellationToken).ConfigureAwait(false);
+        return tile.WithoutEntriesUnknownTo(LastToleratedApiVersion);
     }
 
     public async Task<ChatTile> GetTileNonComputed(

@@ -1,5 +1,6 @@
 using ActualChat.Aot;
 using ActualChat.Internal;
+using ActualChat.Serialization.Internal;
 
 namespace ActualChat.Module;
 
@@ -22,6 +23,17 @@ public static partial class ApiModuleInitializer
         // are stored in our DB, and this option enables their legacy serialization mode.
         StringAsSymbolMemoryPackFormatterAttribute.IsEnabled = true;
 
+        // Union roots that tolerate a member this build has no tag for. The shared Formatters
+        // table covers both the keyed and the keyless resolver in one registration, and both
+        // consult it before their own resolver chains.
+        // StoredSettings is deliberately absent: tolerance alone wouldn't fix its actual bug,
+        // which is that an unreadable row is dropped on write-back.
+        RegisterForwardCompatibleUnion<ChatEntry>();
+        RegisterForwardCompatibleUnion<SystemEntry>();
+        RegisterForwardCompatibleUnion<Markup>();
+        RegisterForwardCompatibleUnion<Notifications.Notification>();
+        RegisterForwardCompatibleUnion<Invite.Invite>();
+
         // Custom MemoryPack formatters.
         // Only identifiers reachable from the two remaining MemoryPack read paths are registered:
         // legacy flow state (Core.Server/Flows/FlowData.cs) and legacy server KVAS values
@@ -42,4 +54,11 @@ public static partial class ApiModuleInitializer
         // External contact hashing
         MemoryPackFormatterProvider.Register(new StringLikeMemoryPackFormatter<ExternalContactId>());
     }
+
+    // Private methods
+
+    private static void RegisterForwardCompatibleUnion<TBase>()
+        where TBase : class, IForwardCompatibleUnion<TBase>
+        => AppMessagePackResolverSettings.Formatters[typeof(TBase)] =
+            typeof(ForwardCompatibleUnionFormatter<TBase>);
 }
