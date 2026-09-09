@@ -21,33 +21,55 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         => AppHost.Services.GetRequiredService<UsersSettings>().AppUpdates;
 
     [Fact]
-    public async Task ShouldReportNothingUntilTheStorePublishesTheBuild()
+    public async Task ShouldReportWhatTheStoreServesAndSettleOnTheTrain()
     {
         // arrange
         const AppKind appKind = AppKind.Android;
         using var __ = await NewTestSettings(appKind);
-        var probe = Probes.Script(appKind, NewResult("1.0.0"));
+        const string olderTrain = "1.0.0";
+        var probe = Probes.Script(appKind, NewResult(olderTrain));
 
         // act
-        var whileBehind = await ComputedTest.When(async ct => {
+        var behindTrain = await ComputedTest.When(async ct => {
             var info = await Service.GetLatestUpdateInfo(appKind, ct);
-            probe.CallCount.Should().BeGreaterThan(0, "an unsettled kind must be probed");
+            info!.Version.Should().Be(olderTrain);
             return info;
         }, TestTimeout);
         probe.Result = NewResult(OwnVersion.ToString());
         var published = await ComputedTest.When(async ct => {
             var info = await Service.GetLatestUpdateInfo(appKind, ct);
-            info.Should().NotBeNull();
-            return info!;
+            info!.Version.Should().Be(OwnVersion.ToString());
+            return info;
         }, TestTimeout);
         var callCountWhenSettled = probe.CallCount;
         await Task.Delay(TimeSpan.FromSeconds(2));
 
         // assert
-        whileBehind.Should().BeNull();
-        published.Version.Should().Be(OwnVersion.ToString());
+        behindTrain.Should().NotBeNull("the store build is installable whether or not the server has it");
         published.AppKind.Should().Be(appKind);
-        probe.CallCount.Should().Be(callCountWhenSettled, "a settled release is never probed again");
+        probe.CallCount.Should().Be(callCountWhenSettled, "a store that has this train is never probed again");
+    }
+
+    [Fact]
+    public async Task ShouldReportTheStoreBuildTheServerHasAlreadyMovedPast()
+    {
+        // arrange - the stores publish one build per train, and the server keeps deploying on top
+        const AppKind appKind = AppKind.Android;
+        using var __ = await NewTestSettings(appKind);
+        var storeBuild = new Version(OwnVersion.Major, OwnVersion.Minor, Math.Max(OwnVersion.Build - 1, 0))
+            .ToString();
+        Probes.Script(appKind, NewResult(storeBuild));
+
+        // act
+        var info = await ComputedTest.When(async ct => {
+            var current = await Service.GetLatestUpdateInfo(appKind, ct);
+            current.Should().NotBeNull();
+            return current!;
+        }, TestTimeout);
+
+        // assert
+        info.Version.Should().Be(storeBuild,
+            "requiring the store to reach the server's own build skips the release");
     }
 
     [Fact]

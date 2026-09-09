@@ -11,6 +11,12 @@ public static class VersionExt
     public static readonly Version Zero = new(0, 0, 0);
     private static readonly char[] TailSeparators = [' ', '+', '-'];
 
+    extension(Version version)
+    {
+        public Version Train
+            => new(version.Major, version.Minor, 0); // X.Y.0 for X.Y.Z
+    }
+
     public static Version ParseBuildVersion(string? version)
         => TryParseBuildVersion(version, out var result) ? result : Zero;
 

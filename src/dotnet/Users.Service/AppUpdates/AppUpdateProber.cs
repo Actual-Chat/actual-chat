@@ -67,7 +67,7 @@ public sealed class AppUpdateProber : ActivatedWorkerBase
     {
         var ownVersion = ApiConstants.BuildVersion;
         var record = await Store.Get(appKind, cancellationToken).ConfigureAwait(false);
-        if (record?.Info is { } info && VersionExt.ParseBuildVersion(info.Version) >= ownVersion) {
+        if (record?.Info is { } info && VersionExt.ParseBuildVersion(info.Version).Train >= ownVersion.Train) {
             Drop(appKind);
             return;
         }
@@ -97,7 +97,7 @@ public sealed class AppUpdateProber : ActivatedWorkerBase
         }
 
         var published = probeResult.BuildVersion is { } storeBuildVersion
-            ? GetPublishedFromBuildVersion(appKind, probeResult, storeBuildVersion, ownVersion, now)
+            ? GetPublishedFromBuildVersion(appKind, probeResult, storeBuildVersion, record, now)
             : GetPublishedFromTrain(appKind, probeResult, record, ownVersion, now);
         if (published is null) {
             var baseline = record is null
@@ -119,7 +119,13 @@ public sealed class AppUpdateProber : ActivatedWorkerBase
         await Store.Set(appKind, newRecord, cancellationToken).ConfigureAwait(false);
         Log.LogInformation("{AppKind} {Version} is published (store version: {StoreVersion})",
             appKind, published.Version, published.StoreVersion);
-        Drop(appKind);
+        // Detecting a release doesn't have to settle the kind: the store can be publishing a train
+        // older than the one this server runs, and that train is still to come.
+        if (VersionExt.ParseBuildVersion(published.Version).Train >= ownVersion.Train)
+            Drop(appKind);
+        else
+            Postpone(state);
+
         AppUpdates.Invalidate(appKind);
     }
 
@@ -127,11 +133,13 @@ public sealed class AppUpdateProber : ActivatedWorkerBase
         AppKind appKind,
         StoreProbeResult result,
         Version storeBuildVersion,
-        Version ownVersion,
+        AppUpdateRecord? record,
         Moment now)
-        // A store that shows the build version needs no history: it either has it or it doesn't.
-        // A store ahead of the server (a rollback) still moves the record forward, which is right.
-        => storeBuildVersion >= ownVersion
+        // A store that shows the build version is compared with the record rather than with the
+        // server: what the store serves is exactly what a client can install, whether or not the
+        // server has moved past it. Requiring it to reach the server's own build would skip a
+        // release for good the moment we deploy anything on top of the one the stores got.
+        => storeBuildVersion > VersionExt.ParseBuildVersion(record?.Info?.Version)
             ? new AppUpdateInfo(appKind, storeBuildVersion.ToString(), result.StoreVersion,
                 result.ReleasedAt ?? now, now)
             : null;
@@ -155,9 +163,7 @@ public sealed class AppUpdateProber : ActivatedWorkerBase
         if (!hasChanged)
             return null;
 
-        var storeTrain = VersionExt.ParseBuildVersion(result.StoreVersion);
-        var ownTrain = new Version(ownVersion.Major, ownVersion.Minor, 0);
-        if (new Version(storeTrain.Major, storeTrain.Minor, 0) < ownTrain)
+        if (VersionExt.ParseBuildVersion(result.StoreVersion).Train < ownVersion.Train)
             return null;
 
         return new AppUpdateInfo(

@@ -50,6 +50,33 @@ public class VersionExtTest
         parsed.Should().Be(VersionExt.Zero);
     }
 
+    [Theory]
+    [InlineData("2.17.246+2b0e2c1a3f", "2.17.0")]
+    [InlineData("2.17", "2.17.0")]
+    [InlineData("3", "3.0.0")]
+    public void TrainShouldDropTheBuildNumber(string input, string expected)
+    {
+        // act
+        var train = VersionExt.ParseBuildVersion(input).Train;
+
+        // assert
+        train.ToString().Should().Be(expected);
+    }
+
+    [Fact]
+    public void TrainsShouldCompareAcrossBuildNumbers()
+    {
+        // arrange
+        var storeBuild = VersionExt.ParseBuildVersion("2.19.147");
+        var serverBuild = VersionExt.ParseBuildVersion("2.19.200");
+        var nextTrain = VersionExt.ParseBuildVersion("2.20.1");
+
+        // assert
+        storeBuild.Should().BeLessThan(serverBuild);
+        storeBuild.Train.Should().Be(serverBuild.Train, "a store one build behind is still on this train");
+        nextTrain.Train.Should().BeGreaterThan(serverBuild.Train);
+    }
+
     [Fact]
     public void ParsedVersionsShouldCompareByBuildNumber()
     {

@@ -168,6 +168,22 @@ public sealed class StoreProbeTest
         uri.Query.Should().Contain("bigIds=9N6RWRD9FMS2").And.Contain("market=US");
     }
 
+    [Fact]
+    public void CacheBusterShouldDifferPerCallAndKeepTheOriginalQuery()
+    {
+        // arrange
+        var uri = AppleStoreProbe.GetUri("chat.actual.app");
+
+        // act
+        var first = StoreProbe.AddCacheBuster(uri);
+        var second = StoreProbe.AddCacheBuster(uri);
+
+        // assert
+        first.Query.Should().Contain("bundleId=chat.actual.app").And.Contain("country=us");
+        first.Should().NotBe(second);
+        new Uri(first.GetLeftPart(UriPartial.Path)).Should().Be(new Uri(uri.GetLeftPart(UriPartial.Path)));
+    }
+
     // Private methods
 
     private static Task<string> ReadFixture(string name)
