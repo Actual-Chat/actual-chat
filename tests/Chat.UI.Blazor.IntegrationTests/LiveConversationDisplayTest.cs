@@ -2422,6 +2422,24 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             lids.Should().Contain(folded, "a reveal must actually show the rows it walked back");
             lids.Should().Contain(tail);
         }, TimeSpan.FromSeconds(15));
+        var revealedBoundaryLid = (await liveBlockUI.GetBlockState(chat.Id)).RevealedBoundaryLid;
+
+        // act - pinned to the live tail: the revealed rows are on screen for a moment, then the stream
+        // pushes them above the viewport
+        ChatViewItemVisibility PinnedAt(IEnumerable<long> lids)
+            => new(chat.Id, lids.Select(l => ChatMessageKey.New(ChatMessageKind.None, l)).ToHashSet(), true, true);
+        chatUI.ReportItemVisibility(PinnedAt([..folded.TakeLast(3), ..tail]));
+        await Task.Delay(700);
+        for (var i = 0; i < 3; i++)
+            spoken.Add((await CreateSpokenEntry(chat.Id, $"spoken-late-{i}")).LocalId);
+        chatUI.ReportItemVisibility(PinnedAt(spoken.TakeLast(9)));
+        await Task.Delay(700);
+
+        // assert - the stream moving is not the reader returning to the tail, so the reveal holds
+        (await liveBlockUI.GetBlockState(chat.Id)).RevealedBoundaryLid.Should().Be(revealedBoundaryLid,
+            "a reveal made at the pinned tail must not be re-swallowed by the next messages");
+        LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None))
+            .Should().Contain(folded, "the revealed rows stay revealed while the reader is pinned");
     }
 
     private static void InvalidateAmIInLiveConversation(ChatAudioUI chatAudioUI, ChatId chatId)
