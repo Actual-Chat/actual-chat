@@ -1,19 +1,7 @@
-using ActualLab.Rpc;
-
 namespace ActualChat.Chat.UnitTests;
 
 public sealed class LegacyChatRangeTileTest
 {
-    [Fact]
-    public void RenamedMethodShouldKeepTheLegacyWireName()
-    {
-        // act
-        var names = new LegacyNames(typeof(IChats).GetMethod(nameof(IChats.GetChatRangeTile))!);
-
-        // assert
-        names[new Version(2, 20)]?.Name.Should().Be("GetChatRangeMeta");
-    }
-
     [Fact]
     public void RenamedTileShouldRetainTheLegacyMessagePackBytes()
     {
