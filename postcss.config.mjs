@@ -6,6 +6,7 @@ export default {
         'autoprefixer': {
             overrideBrowserslist: ['last 2 versions', '>0.2%'],
         },
+        './postcss-tw-property.js': {},
         // '@tailwindcss/postcss': {},
         ...(process.env.NODE_ENV === 'production' ? {
             'cssnano': {
