@@ -149,12 +149,20 @@ public partial class SearchUI
             .ToDictionary(x => x.First, x => x.Second.Value);
 
         async Task<IReadOnlyList<IHasSearchMatch>> FindSubgroup(SubgroupKey key) {
-            // Own people & groups are served from fast in-memory local search; global results,
-            // place-scoped results, places and messages stay on the server.
-            if (key is { Own: true, Scope: SearchScope.People or SearchScope.Groups } && criteria.PlaceId is null)
+            // Own people & groups are served from fast in-memory local search - own groups inside a place
+            // too, so a system chat is found under the name the reader sees, which only the client has.
+            // Global results, place-scoped people, places and messages stay on the server.
+            var isLocal = key.Own && key.Scope switch {
+                SearchScope.People => criteria.PlaceId is null,
+                SearchScope.Groups => true,
+                _ => false,
+            };
+            if (isLocal) {
+                var limit = criteria.DisplayLimit(key.Scope) + 1;
                 return await LocalSearch
-                    .FindContacts(key.Scope, criteria.Text, criteria.DisplayLimit(key.Scope) + 1, cancellationToken)
+                    .FindContacts(key.Scope, criteria.PlaceId, criteria.Text, limit, cancellationToken)
                     .ConfigureAwait(false);
+            }
 
             // TODO: reuse cached data for scope
             switch (key.Scope) {
