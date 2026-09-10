@@ -18,7 +18,12 @@ public partial class App : MauiWinUIApplication
         InitializeComponent();
         UnhandledException += (_, args) => {
             var e = args.Exception;
-            StaticLog.For<App>().LogError(e, "Unhandled exception");
+            // MAUI serves every app-origin request from the package folder and lets whatever
+            // OpenStreamForReadAsync throws escape as a fatal exception - see #4459.
+            if (e.StackTrace?.Contains("WinUIWebViewManager") == true)
+                args.Handled = true;
+
+            StaticLog.For<App>().LogError(e, "Unhandled exception, Handled: {Handled}", args.Handled);
         };
     }
 

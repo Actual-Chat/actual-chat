@@ -13,6 +13,8 @@ const MaxRetryDelay = 30;
 // Local files the host app serves into its WebView (MAUI previews of attachments and gallery
 // thumbnails); the scheme handler answers no CORS headers
 const LocalContentScheme = 'content://';
+/** In-memory previews (a pasted or picked attachment before it is uploaded). */
+const BlobScheme = 'blob:';
 
 @customElement('image-skeleton')
 export class ImageSkeleton extends LitElement {
@@ -115,6 +117,11 @@ export class ImageSkeleton extends LitElement {
     }
 
     private async retryImage(): Promise<void> {
+        // An empty src fires `error` having requested nothing, and fetch('') would resolve against
+        // <base href="/"> to the app origin — which crashes the MAUI Windows host (see #4459).
+        if (!this.src)
+            return;
+
         // Giving up re-assigns a src that already failed, which fires `error` again;
         // without this the component would retry that same src forever.
         if (this._isRetrying || this._failedSrc === this.src)
@@ -124,9 +131,9 @@ export class ImageSkeleton extends LitElement {
         // fetch, which re-enters here. Resuming the attempt count rather than
         // restarting it is what keeps that from becoming a delay-free fetch loop:
         // the src is reachable, so only the backoff can slow it down.
-        // A local content:// image has no network to back off from, and fetch() is neither
-        // allowed for it by the CSP nor answered with CORS headers: the <img> load is the only path.
-        if (this.src.startsWith(LocalContentScheme)) {
+        // content:// and blob: images have no network to back off from, and fetch() is neither
+        // allowed for them by the CSP nor answered with CORS headers: the <img> load is the only path.
+        if (this.src.startsWith(LocalContentScheme) || this.src.startsWith(BlobScheme)) {
             this._failedSrc = this.src;
             return;
         }
