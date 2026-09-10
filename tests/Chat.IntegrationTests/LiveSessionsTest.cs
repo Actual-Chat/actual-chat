@@ -708,6 +708,63 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task AcceptedCallWithNoConnectionShouldCloseAfterGraceWindow()
+    {
+        // The invitee accepted but never actually opened a listening or recording stream (stuck mic
+        // prompt, dead network, client bug) - nothing else would ever notice, since Kind == Call forever
+        // otherwise. EnforceCallConnectGrace is internal so the test can drive it directly instead of
+        // waiting out the real 3s delay - see AcceptCall's scheduling call for context.
+
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // act - Alice accepts but her client never streams or listens
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+        (await backend.GetState(chatId, default))!.Kind.Should().Be(LiveSessionKind.Call);
+        await backend.EnforceCallConnectGrace(chatId);
+
+        // assert - the grace window found only Bob genuinely present, so the call closes
+        (await backend.GetState(chatId, default)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task AcceptedCallWithAListenerShouldSurviveTheGraceWindow()
+    {
+        // A denied/pending mic permission must not fail the grace check: listening alone is enough
+        // presence, per the accept-flow reorder that starts it before the mic prompt resolves.
+
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // act - Alice accepts and starts listening (mic still pending/denied); Bob is already present
+        // from StartCall
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+        await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.AudioListen, true, default);
+        await backend.EnforceCallConnectGrace(chatId);
+
+        // assert - both are genuinely present, so the call survives the grace check
+        (await backend.GetState(chatId, default)).Should().NotBeNull();
+    }
+
+    [Fact]
     public async Task AcceptShouldLatchDialingCallToConnected()
     {
         // arrange — Bob dials Alice; while ringing the session is Dialing (no block: SessionStartedAt null)

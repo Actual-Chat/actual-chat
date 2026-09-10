@@ -34,6 +34,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     // How long the caller keeps being shown a resolved call status (accepted / declined / no answer),
     // once the session itself is gone.
     private static readonly TimeSpan ResolvedStateTtl = TimeSpan.FromSeconds(30);
+    // How long AcceptCall waits before checking that the invitee genuinely connected (see
+    // EnforceCallConnectGrace) - short enough that a stalled connect surfaces fast, long enough to
+    // cover the accept-flow reorder's round trip (client starts listening immediately on accept).
+    private static readonly TimeSpan CallConnectGrace = TimeSpan.FromSeconds(3);
 
     private readonly RedisScope<LiveSessionState> _redisScope;
     private readonly RedisScope<CallState> _callStates;
@@ -612,6 +616,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     public virtual async Task AcceptCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken)
     {
         ConversationId? conversationId = null;
+        var justConnected = false;
         using (Computed.BeginIsolation())
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
             var invite = await SafeGetInvite(chatId, inviteeAuthorId).ConfigureAwait(false);
@@ -622,13 +627,14 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             await _invites.Set(chatId.Value, inviteeAuthorId.Value,
                     invite with { Status = CallInviteStatus.Accepted, RespondedAt = now })
                 .ConfigureAwait(false);
-            // Answering joins the call - register now so it's two-party and stays alive before the client streams.
-            await EnsureParticipant(chatId, inviteeAuthorId).ConfigureAwait(false);
 
             var state = await SafeGet(chatId).ConfigureAwait(false);
             if (state is { SessionStartedAt: null }) {
                 // The first answer latches a dialing call to Connected: it's now a live conversation, so
                 // surface the block from the chat end at answer time and make it genuinely two-party.
+                // The invitee's own presence is NOT registered here (unlike before) - it now comes only
+                // from a real listening/recording stream, so EnforceCallConnectGrace below can actually
+                // tell "accepted" apart from "accepted and connected".
                 var visibleStartLid = (await ChatsBackend
                     .GetLidRange(chatId, false, cancellationToken)
                     .ConfigureAwait(false)).End;
@@ -645,12 +651,15 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
                 // The latch is the caller's "accepted" moment - a brief confirmation before this fades.
                 await SetCallState(chatId, NewCallState(state, CallStatus.Accepted)).ConfigureAwait(false);
+                justConnected = true;
             }
             conversationId = state?.RingConversationId;
             InvalidateState(chatId);
         }
         if (conversationId is { } cid)
             await DismissRing(cid, [inviteeAuthorId], cancellationToken).ConfigureAwait(false);
+        if (justConnected)
+            _ = ScheduleCallConnectGraceCheck(chatId);
     }
 
     public virtual async Task DeclineCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken)
@@ -858,6 +867,33 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             })
             .ConfigureAwait(false);
         InvalidateState(chatId);
+    }
+
+    private Task ScheduleCallConnectGraceCheck(ChatId chatId)
+        => BackgroundTask.Run(async () => {
+            await Task.Delay(CallConnectGrace).ConfigureAwait(false);
+            await EnforceCallConnectGrace(chatId).ConfigureAwait(false);
+        }, Log, $"Call-connect grace check failed for chat #{chatId}");
+
+    // AcceptCall schedules this once, fire-and-forget, CallConnectGrace after promoting Kind to Call.
+    // Internal so a test can drive it directly, without a real wait - mirrors ExpireRings.
+    internal async Task EnforceCallConnectGrace(ChatId chatId)
+    {
+        try {
+            var shouldClose = false;
+            using (Computed.BeginIsolation())
+            using (await _changeLocks.Lock(chatId, CancellationToken.None).ConfigureAwait(false)) {
+                var state = await SafeGet(chatId).ConfigureAwait(false);
+                if (state is { Kind: LiveSessionKind.Call }
+                    && await ParticipantCount(chatId).ConfigureAwait(false) < 2)
+                    shouldClose = true;
+            }
+            if (shouldClose)
+                await CloseCall(chatId).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "EnforceCallConnectGrace failed for chat #{ChatId}", chatId);
+        }
     }
 
     private async Task<LiveSessionState?> SafeGet(ChatId chatId)
