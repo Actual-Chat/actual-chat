@@ -4,20 +4,9 @@
 }
 
 <ul class="list-markup">
-    @for (var i = 0; i < items.Length; i++) {
-        var item = items[i];
+    @foreach (var item in items) {
         <li>
-            @if (i < items.Length - 1 && LastFragment != null) {
-                <CascadingValue TValue="RenderFragment" Value="@null">
-                    <MarkupView Markup="@item.Content"/>
-                </CascadingValue>
-            } else {
-                <MarkupView Markup="@item.Content"/>
-            }
+            <MarkupView Markup="@item.Content"/>
         </li>
     }
 </ul>
-
-@code {
-    [CascadingParameter] public RenderFragment? LastFragment { get; set; }
-}

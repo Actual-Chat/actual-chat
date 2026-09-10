@@ -63,6 +63,10 @@
     // still shows its own status — it's a separate ChatListItem render).
     var hideInlineStatus = entry.HasLocation || isGifOnly || isEmojiOnly;
 
+    // Both marks can be absent, and then there is nothing to place - no suffix node, no span.
+    var hasSuffix = m.Translation != TranslationState.None
+        || (status != ChatMessageSendingStatus.MessageStatus.Default && !hideInlineStatus);
+
     // Should be named __builder
     // ReSharper disable once VariableHidesOuterVariable UnusedParameter.Local
     RenderFragment statusFragment = (__builder) => {
@@ -125,10 +129,10 @@
             </div>
         }
         <CascadingValue Value="@entry" IsFixed="true">
-            <CascadingValue Value="@statusFragment">
+            <CascadingValue Value="@(new MarkupRenderContext(hasSuffix ? statusFragment : null))">
                 @* A lone emoji mention (the whole message is one EmojiMention) renders large. *@
                 <CascadingValue Value="@isSoleEmojiMention" Name="IsSoleEmojiMention" IsFixed="true">
-                    <MarkupView Markup="@markup"/>
+                    <MarkupView Markup="@WithSuffix(markup)"/>
                 </CascadingValue>
             </CascadingValue>
         </CascadingValue>
@@ -139,6 +143,23 @@
 </div>
 
 @code {
+    // The injected tree is memoized against the markup it came from: Markup compares by reference
+    // (ByRefParameterComparer), so handing MarkupView a fresh object every render would re-render
+    // the whole spine on every status change. The suffix node is injected whether or not there is
+    // anything to render in it, so the last leaf's component type never changes and its view keeps
+    // its instance - a PlayableTextMarkupView would otherwise be disposed and re-created, taking a
+    // JS round trip and its playback highlighting with it.
+    private Markup? _markupSource;
+    private Markup? _markupWithSuffix;
+
+    private Markup WithSuffix(Markup markup)
+    {
+        if (!ReferenceEquals(_markupSource, markup)) {
+            _markupSource = markup;
+            _markupWithSuffix = MarkupSuffixInjector.Inject(markup);
+        }
+        return _markupWithSuffix!;
+    }
     private static readonly string JSCreateMethod
         = $"{BlazorUIAppModule.ImportName}.ChatEntryMessageInternalView.create";
     private static readonly double AnimationDurationMs = Constants.Transcription.ThrottlePeriod.TotalMilliseconds;

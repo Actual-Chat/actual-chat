@@ -155,6 +155,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<HeaderMarkup, HeaderMarkupView>()
             .Add<BlockQuoteMarkup, BlockQuoteMarkupView>()
             .Add<TableMarkup, TableMarkupView>()
+            .Add<MarkupSuffix, MarkupSuffixView>()
         );
         // IModalViews
         services.AddTypeMap<IModalView>(map => map
