@@ -1,4 +1,5 @@
 using ActualChat.Flows;
+using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Module;
 using ActualChat.Queues;
@@ -12,6 +13,22 @@ public partial class GroupIndexingFlow : BatchedIndexingFlow<Chat.Chat, ChatId>,
     private IndexedDocuments IndexedDocuments => field ??= Services.GetRequiredService<IndexedDocuments>();
     private MLSearchSettings Settings => field ??= Services.GetRequiredService<MLSearchSettings>();
     private Task WhenReady => field ??= Services.GetRequiredService<OpenSearchConfigurator>().WhenReady;
+
+    // TODO: don't we have a centralized way for automatic workflow rerun on version bump in index names?
+    [DataMember(Order = 3), MemoryPackOrder(3), Key(3)]
+    public string? IndexVersion { get; set; }
+
+    protected override ValueTask<BatchIndexingResult<IndexingFlowCursor<ChatId>>> Run(
+        IndexingFlowCursor<ChatId>? cursor,
+        CancellationToken cancellationToken)
+    {
+        // A version bump creates an empty index, so the pass starts over to fill it
+        if (IndexVersion != OpenSearchNames.GroupIndexVersion) {
+            IndexVersion = OpenSearchNames.GroupIndexVersion;
+            cursor = null;
+        }
+        return base.Run(cursor, cancellationToken);
+    }
 
     protected override async Task<IReadOnlyList<Chat.Chat>> GetBatch(
         IndexingFlowCursor<ChatId>? cursor,

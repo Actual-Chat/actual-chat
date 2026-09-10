@@ -16,6 +16,7 @@ public static partial class HighlightsConverter
     private static readonly string ExternalContactNameField = nameof(IndexedUserContact.ExternalContactName).Decapitalize();
     private static readonly string UserRelationName = nameof(IndexedUser).ToLower();
     private static readonly string TitleField = nameof(Chat.Chat.Title).Decapitalize();
+    private static readonly string LocalizedTitlesField = nameof(IndexedGroup.LocalizedTitles).Decapitalize();
     private static readonly string ContentField = nameof(ChatEntry.Content).Decapitalize();
 
     [GeneratedRegex(@"[\s^\u200B]+", RegexOptions.Compiled)]
@@ -57,11 +58,17 @@ public static partial class HighlightsConverter
 
     public static SearchMatch GetSearchMatch(this IHit<IndexedGroup> hit)
     {
-        var highlight = hit.Highlight[TitleField].FirstOrDefault(x => !x.IsNullOrEmpty());
-        if (highlight.IsNullOrEmpty())
+        var score = hit.Score ?? 1.0;
+        if (GetHighlight(hit, TitleField) is { } highlight)
+            return ToSearchMatch(hit.Source.Title, highlight, score);
+        if (GetHighlight(hit, LocalizedTitlesField) is not { } localizedHighlight)
             return SearchMatch.Matchless(hit.Source.Title);
 
-        return ToSearchMatch(hit.Source.Title, highlight, hit.Score ?? 1.0);
+        // The fragment belongs to one of the array items, so the match reads in the matched language
+        var plainHighlight = localizedHighlight.Replace(PreTag, "").Replace(PostTag, "");
+        var localizedTitle = hit.Source.LocalizedTitles.FirstOrDefault(x => x.Contains(plainHighlight))
+            ?? plainHighlight;
+        return ToSearchMatch(localizedTitle, localizedHighlight, score);
     }
 
     public static SearchMatch GetSearchMatch(this IHit<IndexedPlace> hit)
@@ -121,6 +128,11 @@ public static partial class HighlightsConverter
             .ToArray();
         return new (plainHighlight, score, searchMatchParts);
     }
+
+    private static string? GetHighlight<T>(IHit<T> hit, string field) where T : class
+        => hit.Highlight.TryGetValue(field, out var highlights)
+            ? highlights.FirstOrDefault(x => !x.IsNullOrEmpty())
+            : null;
 
     private static IEnumerable<Range<int>> FindRanges(string highlightedString)
     {
