@@ -217,6 +217,82 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
     }
 
     [Fact]
+    public async Task EditShouldKeepAttachments()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        _ = await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var chats = tester.AppServices.GetRequiredService<IChats>();
+        var (chatId, _) = await tester.CreateChat(true);
+        var mediaId = await SaveTextFile(tester, chatId, "file.txt");
+        var chatEntry = await tester.Commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "Message with an attachment",
+            Attachments = [new ChatEntryAttachment { MediaId = mediaId }],
+        });
+
+        // act
+        await tester.Commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = chatEntry.LocalId,
+            Text = "Edited message with an attachment",
+        });
+
+        // assert
+        var editedEntry = await chats.GetEntry(session, chatEntry.Id);
+        editedEntry.Should().NotBeNull();
+        editedEntry.Content.Should().Be("Edited message with an attachment");
+        editedEntry.Attachments.Select(a => a.MediaId).Should().Equal(mediaId);
+    }
+
+    [Fact]
+    public async Task FinalUpsertWithNoAttachmentsLeftShouldRemoveUploadingAttachments()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        _ = await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var chats = tester.AppServices.GetRequiredService<IChats>();
+        var (chatId, _) = await tester.CreateChat(true);
+        var reservedMediaId = await tester.Commander.Call(new Media_ReserveMedia {
+            Session = session,
+            Scope = chatId.Value,
+        });
+        var chatEntry = await tester.Commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "Message whose upload failed",
+            Attachments = [new ChatEntryAttachment { MediaId = reservedMediaId }],
+            HasUploadingAttachments = true,
+        });
+        var uploadingEntry = await chats.GetEntry(session, chatEntry.Id);
+        uploadingEntry.Should().NotBeNull();
+        uploadingEntry.HasUploadingAttachments.Should().BeTrue();
+
+        // act
+        await tester.Commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = chatEntry.LocalId,
+            Text = chatEntry.Content,
+            Attachments = [],
+            HasUploadingAttachments = false,
+        });
+
+        // assert
+        var finalEntry = await chats.GetEntry(session, chatEntry.Id);
+        finalEntry.Should().NotBeNull();
+        finalEntry.Content.Should().Be("Message whose upload failed");
+        finalEntry.Attachments.Should().BeEmpty("the only attachment was removed before its upload");
+        finalEntry.HasUploadingAttachments.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task PostWhileCaughtUpAdvancesReadPosition()
     {
         // arrange

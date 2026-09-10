@@ -1397,7 +1397,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     Version = VersionGenerator.NextVersion(dbEntry.Version),
                 };
                 entry = await PrepareTextEntryForSave(entry, oldEntry, cancellationToken).ConfigureAwait(false);
-                var hasAttachments = update.Attachments is { Length: > 0 } || dbEntry.HasAttachments;
+                var hasAttachments = update.Attachments is { } newAttachments
+                    ? newAttachments.Length > 0
+                    : dbEntry.HasAttachments;
                 dbEntry.UpdateFrom(entry);
                 dbEntry.HasAttachments = hasAttachments;
                 boundToThreadHasChanged = existingChatEntry.IsThread ^ entry.IsThread
@@ -1457,14 +1459,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         ChatEntryAttachment[]? attachmentsProto = null;
         if (change.IsCreate(out var create) && create.Attachments is { Length: > 0 } attachments1)
             attachmentsProto = attachments1;
-        if (change.IsUpdate(out var update1) && update1.Attachments is { Length: > 0 } attachments2)
+        // On update a non-null list replaces the attachments, so an empty one removes them all
+        if (change.IsUpdate(out var update1) && update1.Attachments is { } attachments2)
             attachmentsProto = attachments2;
 
-        if (attachmentsProto is not null) {
-            if (change.Kind is ChangeKind.Update) {
-                var removeAttachmentsCmd = new ChatsBackend_RemoveAttachments(chatEntryId);
-                await Commander.Call(removeAttachmentsCmd, cancellationToken).ConfigureAwait(false);
-            }
+        if (attachmentsProto is not null && change.Kind is ChangeKind.Update) {
+            var removeAttachmentsCmd = new ChatsBackend_RemoveAttachments(chatEntryId);
+            await Commander.Call(removeAttachmentsCmd, cancellationToken).ConfigureAwait(false);
+        }
+        if (attachmentsProto is { Length: > 0 }) {
             var newAttachments = attachmentsProto
                 .Select((x, i) => new ChatEntryAttachment {
                     EntryId = chatEntryId,
@@ -2256,8 +2259,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         // Remove: ChatEntry doesn't carry HasAttachments, and oldEntry is loaded without
         // attachments, so we don't know if the entry being removed had any. Schedule
         // defensively — the media flow's delete-by-entryId is a no-op when no rows match.
-        // Update never empties attachments (only replaces with a non-empty list), so the
-        // current entry.Attachments alone is sufficient there.
+        // An update that empties the attachments goes through OnRemoveAttachments, which resumes
+        // the media flow itself, so the current entry.Attachments alone is sufficient there.
         var hasOrHadAttachments = entry.Attachments.Length > 0
             || kind == ChangeKind.Remove;
 
