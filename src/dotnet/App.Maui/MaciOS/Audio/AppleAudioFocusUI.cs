@@ -122,9 +122,8 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     {
         using var cts = cancellationToken.LinkWith(StopToken);
         using var _1 = await _lock.Lock(cts.Token).ConfigureAwait(false);
-        if (_activeScopes.IsEmpty)
-            return;
-
+        // No scope check: a PTT playback's engine starts before its listening scope arrives, and
+        // the route is the session category's business, not the scopes'.
         await AudioSession.ApplyOutputRoute(_activeScopes.GetMode()).ConfigureAwait(false);
     }
 
@@ -249,6 +248,10 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         var isActivated = await AudioSession.RequestPttActivation().ConfigureAwait(false);
         Log.LogInformation("SetMode: {Mode} - the PTT framework {Result} the session",
             mode, isActivated ? "activated" : "didn't activate");
+        // The pending path returned before the route was applied, and the framework's session
+        // starts on the receiver.
+        if (isActivated)
+            await AudioSession.ApplyOutputRoute(mode).ConfigureAwait(false);
         return setup with { IsActivated = isActivated, IsPttActivationPending = false };
     }
 

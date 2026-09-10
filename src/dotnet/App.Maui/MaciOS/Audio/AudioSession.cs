@@ -318,8 +318,10 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         var isConfigured = AudioSessionOwnership.MayConfigure(owner, mode);
         if (isConfigured)
             ConfigureUnsafe(session, mode);
-        if (!AudioSessionOwnership.MayActivate(owner))
+        if (!AudioSessionOwnership.MayActivate(owner)) {
+            ApplyOutputRouteUnsafe(mode);
             return new AudioSessionSetup(isConfigured, false);
+        }
 
         if (!session.SetActive(true, out var error)) {
             if (TryRequestPttActivation(error, mode))
@@ -349,13 +351,11 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         var owner = Owner;
         if (!AudioSessionOwnership.MayActivate(owner)) {
             var isConfigured = AudioSessionOwnership.MayConfigure(owner, minMode);
-            if (isConfigured) {
-                // The framework's session is already active, and SetCategory on an active session
-                // is what lets an in-app recording get PlayAndRecord during a live wake playback.
+            // The framework's session is already active, and SetCategory on an active session
+            // is what lets an in-app recording get PlayAndRecord during a live wake playback.
+            if (isConfigured)
                 ConfigureUnsafe(session, minMode);
-                ApplyOutputRouteUnsafe(minMode);
-            }
-
+            ApplyOutputRouteUnsafe(minMode);
             return new AudioSessionSetup(isConfigured, false);
         }
 
@@ -415,14 +415,14 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
 
     private void ApplyOutputRouteUnsafe(AudioFocusMode mode, bool mustDropOverride = false)
     {
-        if (!AudioSessionOwnership.MayConfigure(Owner, mode))
-            return;
         // PlayAndRecord is the only category with a route to pick: Playback and Ambient always
-        // reach the speaker, and an override on either is rejected. See ConfigureUnsafe.
-        if (mode is not AudioFocusMode.Recording)
+        // reach the speaker, and an override on either is rejected. The category decides, not
+        // the mode or the owner: a session the PTT framework activated is PlayAndRecord whatever
+        // the app plays on it, and it lands on the receiver until the app overrides the port.
+        var session = AVAudioSession.SharedInstance();
+        if (session.Category != AVAudioSession.CategoryPlayAndRecord)
             return;
 
-        var session = AVAudioSession.SharedInstance();
         // CurrentRoute reports the speaker while our own override holds it there, which hides a
         // device that just arrived and would outrank it - the override has to go before the read.
         if (mustDropOverride)
