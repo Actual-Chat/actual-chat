@@ -264,17 +264,36 @@ body.narrow .dialog-buttons {
 
 .dialog-body input:not([type='checkbox']):not(.dialog-unstyled) {
     @apply p-1 px-2;
-    @apply border outline-none;
+    @apply outline-none;
+}
+/* Flat, themed inputs across every modal: 0.5rem corners and a flat --modal-input fill.
+   The search box and comment editor opt out of the rule above via .dialog-unstyled, so they
+   are matched here by class; the .modal-frame scope keeps their look outside modals intact. */
+.modal-frame .search-box input,
+.modal-frame .embedded-message-editor input,
+.dialog-body input:not([type='checkbox']):not(.dialog-unstyled) {
+    @apply rounded-lg;
+    @apply border border-modal-input;
+    @apply bg-modal-input;
 }
 .dialog-body input:not([type='checkbox']):not(.dialog-unstyled).invalid {
     @apply border-danger;
 }
+.modal-frame .search-box input:focus,
+.modal-frame .embedded-message-editor input:focus,
 .dialog-body input:focus:not(.dialog-unstyled) {
     @apply outline-none border-primary;
+}
+.dialog-body input:focus:not(.dialog-unstyled) {
     @apply ring-1 ring-primary;
 }
 .dialog-body input:not([type='checkbox']):not(.dialog-unstyled).invalid:focus {
     @apply border-danger;
+}
+/* A transparent comment editor matches the search box height, so a modal's top and bottom align. */
+.modal-frame .embedded-message-editor.transparent-editor,
+.modal-frame .embedded-message-editor.transparent-editor input {
+    @apply h-10;
 }
 
 /* Fullscreen Modal */

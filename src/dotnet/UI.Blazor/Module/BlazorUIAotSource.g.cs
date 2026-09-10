@@ -132,7 +132,6 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.RoundProgress>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ScreenSizeProvider>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.SearchBox>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.SearchBoxNew>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.SearchMatchHighlighter>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.SegmentedSwitch>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.SendJoinPlaceRequestWidget>();
@@ -662,7 +661,6 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.RoundProgress), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ScreenSizeProvider), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.SearchBox), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.Components.SearchBoxNew), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.SearchMatchHighlighter), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.SegmentedSwitch), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.SendJoinPlaceRequestWidget), AotTypeKind.Component),

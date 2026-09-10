@@ -14,29 +14,33 @@
 }
 
 <DialogFrame
-    Class="share-incoming-modal"
+    Class="share-incoming-modal fixed-height"
     HasCloseButton="true"
     Title="@L.IncomingShare_Title"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
     <Body>
-        <ContactSelector
-            @ref="@_contactSelectorRef"
-            Changed="StateHasChanged"
-            ChatListPreOrder="@ChatListPreOrder.ChatList"
-            SearchQuery="@_searchQuery">
-            <SearchBoxNew
-                Placeholder="@L.Share_WhoToShareWith"
-                MaxLength="@Constants.Chat.MaxSearchFilterLength"
-                TextChanged="@OnFilter"/>
-            <ContactSelectorPlacePicker/>
-            <ContactSelectorListView/>
-        </ContactSelector>
+        <FormBlock Class="with-contact-list">
+            <ContactSelector
+                @ref="@_contactSelectorRef"
+                Changed="StateHasChanged"
+                ChatListPreOrder="@ChatListPreOrder.ChatList"
+                SearchQuery="@_searchQuery">
+                <SearchBox
+                    Placeholder="@L.Share_WhoToShareWith"
+                    MaxLength="@Constants.Chat.MaxSearchFilterLength"
+                    TextChanged="@OnFilter"/>
+                <ContactSelectorPlacePicker/>
+                <ContactSelectorListView/>
+            </ContactSelector>
+        </FormBlock>
     </Body>
     <Footer>
         @if (showCommentEditor) {
             <EmbeddedMessageEditor
                 Text="@_comment"
+                IsTransparent="@true"
                 Placeholder="@L.Share_AddComment"
+                PlaceholderIcon="icon-message-ellipse"
                 TextChanged="OnCommentChanged"/>
         }
     </Footer>
