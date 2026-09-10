@@ -2,7 +2,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IDisposable
 
-<ErrorBoundary @ref="_errorBoundary">
+<ErrorBarrierBoundary @ref="_errorBoundary" Activated="OnActivated">
     <ChildContent>
         @{
             _childContentRenderedAt = CpuNow;
@@ -10,26 +10,18 @@
         @ChildContent
     </ChildContent>
     <ErrorContent>
-        @{
-            var now = CpuNow;
-            if (now - _childContentRenderedAt < SameFailurePeriod)
-                _errorCount++;
-            else
-                _errorCount = 1;
-            Log.LogError(context, "ErrorBarrier {Name} activated, error count = {ErrorCount}", Name, _errorCount);
-        }
         <ErrorBarrierError
             Barrier="@this"
             Kind="@Kind"
             ErrorCount="@_errorCount"
             MustAutoReload="@MustAutoReload"/>
     </ErrorContent>
-</ErrorBoundary>
+</ErrorBarrierBoundary>
 
 @code {
     private static readonly TimeSpan SameFailurePeriod = TimeSpan.FromSeconds(3);
 
-    private ErrorBoundary? _errorBoundary;
+    private ErrorBarrierBoundary? _errorBoundary;
     private Moment _childContentRenderedAt;
     private int _errorCount;
     private bool _arePanelsHidden;
@@ -70,5 +62,14 @@
 
         _arePanelsHidden = true;
         PanelsUI.HidePanels();
+    }
+
+    // Private methods
+
+    private void OnActivated(Exception error) {
+        _errorCount = CpuNow - _childContentRenderedAt < SameFailurePeriod
+            ? _errorCount + 1
+            : 1;
+        Log.LogError(error, "ErrorBarrier {Name} activated, error count = {ErrorCount}", Name, _errorCount);
     }
 }
