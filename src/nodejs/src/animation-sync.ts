@@ -16,7 +16,20 @@
 // Only stepped animations benefit. A continuous one changes every frame no
 // matter its phase, so `sync` warns rather than pretending to help.
 
+import { fastRaf } from 'fast-raf';
+
+
 const defaultTickMs = 100;
+// What collecting the animations may cost before the sweep is spaced out at all. Measured on
+// a 4275-element page: 0.2ms healthy, against 137ms for the population that wedged the app.
+const thresholdMs = 5;
+// Share of wall time a sweep past the threshold may take: it then sleeps cost/ratio before
+// trying again, so the share stays flat however bad the population gets.
+const maxDutyRatio = 0.03;
+// Ceiling on that spacing: even a hopeless population is retried once a minute.
+const minScheduleHz = 1 / 60;
+// Samples averaged. Short, so it reacts within a few sweeps in both directions.
+const costWindow = 4;
 // Every tick has to be a multiple of this, or two animations can never share an
 // instant. `fastRaf10` schedules onto the same grid.
 export const animationGridMs = 100;
@@ -71,6 +84,11 @@ const animationSelectors: readonly string[] = [
     'image-skeleton[data-image-state="skeleton"]', // skeleton shimmer
 ];
 
+// An element's pending phase: the delay to publish, or null when nothing is animating yet,
+// plus the tick it was resolved against. Split from the write so a caller inside a frame can
+// read in its read phase and commit in its write phase.
+type PhaseWrite = [HTMLElement, string | null, number];
+
 export class AnimationSync {
     // Explicit opt-in for elements with no class in the registry - notably nodes
     // inside a shadow root, which are often bare <path>/<rect>. Bare is a complete
@@ -105,18 +123,19 @@ export class AnimationSync {
     public static syncMany(elements: Iterable<HTMLElement>): number {
         // Read every phase before writing any, so a batch cannot interleave
         // style reads and writes.
-        const writes = new Array<[HTMLElement, string | null, number]>();
-        for (const element of elements)
-            writes.push(AnimationSync.phaseOf(element));
+        const writes = AnimationSync.costMs > thresholdMs
+            ? AnimationSync.markOnly(elements)
+            : AnimationSync.readPhases(elements);
         for (const [element, delay, tickMs] of writes)
             AnimationSync.commit(element, delay, tickMs);
         return writes.length;
     }
 
-    // Single-element form for JS-created nodes. The element must already be in a
-    // document or shadow tree, since the animation is read from computed style.
+    /** Single-element form for one JS-created node, which must already be in a document or
+     *  shadow tree. Never in a loop: each call sorts the whole tree scope - syncMany sorts once. */
     public static sync(element: HTMLElement): void {
-        const [, delay, tickMs] = AnimationSync.phaseOf(element);
+        const running = AnimationSync.runningByTarget([element]);
+        const [, delay, tickMs] = AnimationSync.phaseOf(element, running);
         AnimationSync.commit(element, delay, tickMs);
     }
 
@@ -124,15 +143,118 @@ export class AnimationSync {
     // resolved while carrying no animation gets picked up when a class change later
     // gives it one. Also covers a re-add: the stale delay from the previous cycle is
     // still on the element, so leaving it alone would resume in an arbitrary phase.
-    public static syncStarted(element: HTMLElement): void {
+    //
+    // Deferred to the frame rather than done here, because this path carries far more
+    // than it reads like: an element added by a render has a pending animation whose
+    // startTime is still null when MutationProcessor sweeps it, so it yields no phase
+    // there and is aligned from here instead. Phasing each event on its own cost one
+    // document-wide collection per element - 50 elements measured 51 against 2 batched.
+    public static scheduleStarted(element: HTMLElement): void {
         const isManaged = element.hasAttribute(AnimationSync.syncedAttribute)
             || element.hasAttribute(AnimationSync.attribute)
             || AnimationSync.isRegistered(element);
-        if (isManaged)
-            AnimationSync.sync(element);
+        if (!isManaged)
+            return;
+
+        AnimationSync.started.add(element);
+        // The collection is a read and the phase is a write, so each goes in the frame's
+        // matching half - a write between two reads is the inversion fast-raf exists to
+        // prevent, and every element committed here dirties an inherited custom property.
+        fastRaf({
+            read: AnimationSync.readStarted,
+            write: AnimationSync.commitStarted,
+            key: 'animation-sync-started',
+            hz: AnimationSync.scheduleHz(),
+        });
+    }
+
+    public static cancelStarted(): void {
+        AnimationSync.started.clear();
+        AnimationSync.startedWrites = [];
     }
 
     // Private methods
+
+    private static readonly started = new Set<HTMLElement>();
+    private static startedWrites: readonly PhaseWrite[] = [];
+    private static readonly costs: number[] = [];
+    private static costMs = 0;
+    private static lastCollected = 0;
+    private static hasReportedCost = false;
+    private static throttleHz: number | undefined = undefined;
+    private static readonly readStarted = (): void => {
+        const elements = [...AnimationSync.started];
+        AnimationSync.started.clear();
+        AnimationSync.startedWrites = AnimationSync.readPhases(elements);
+    };
+    private static readonly commitStarted = (): void => {
+        const writes = AnimationSync.startedWrites;
+        AnimationSync.startedWrites = [];
+        for (const [element, delay, tickMs] of writes)
+            AnimationSync.commit(element, delay, tickMs);
+    };
+
+    /** Materialized because the lookup and the phase loop both walk it; a per-element catch
+     *  because fast-raf does not guard its loops - a throw would drop the frame's other writes. */
+    private static readPhases(elements: Iterable<HTMLElement>): PhaseWrite[] {
+        const targets = [...elements];
+        const running = AnimationSync.runningByTarget(targets);
+        return targets.map(element => {
+            try {
+                return AnimationSync.phaseOf(element, running);
+            } catch (error) {
+                AnimationSync.warn(element, `could not be phased: ${error as string}`);
+                return [element, null, defaultTickMs] as PhaseWrite;
+            }
+        });
+    }
+
+    /** Over budget this path stops collecting and only marks, leaving the phase to the
+     *  throttled flush - which is also the one probe that can see the cost come back down. */
+    private static markOnly(elements: Iterable<HTMLElement>): PhaseWrite[] {
+        return [...elements].map(element => [element, null, AnimationSync.declared(element)[0]]);
+    }
+
+    /** Mean rather than last, so one slow frame cannot pin the rate down and one fast one
+     *  cannot lift it back before the population has actually shrunk. */
+    private static observeCost(elapsedMs: number, collected: number): void {
+        AnimationSync.costs.push(elapsedMs);
+        if (AnimationSync.costs.length > costWindow)
+            AnimationSync.costs.shift();
+
+        const total = AnimationSync.costs.reduce((sum, cost) => sum + cost, 0);
+        AnimationSync.costMs = total / AnimationSync.costs.length;
+        AnimationSync.updateSchedule();
+        if (AnimationSync.throttleHz === undefined || AnimationSync.hasReportedCost)
+            return;
+
+        AnimationSync.hasReportedCost = true;
+        console.warn(`AnimationSync: collecting ${collected} animations averages `
+            + `${AnimationSync.costMs.toFixed(1)}ms, over the ${thresholdMs}ms threshold - phase `
+            + `alignment is now spaced to ${(1000 / AnimationSync.throttleHz).toFixed(0)}ms `
+            + `to hold it under ${(maxDutyRatio * 100).toFixed(0)}% of the time.`);
+    }
+
+    /** Held constant while throttled, and re-rated only on a large move: fast-raf buckets by
+     *  rate, so a rate that drifted every sweep would arm a second bucket beside the first. */
+    private static updateSchedule(): void {
+        if (AnimationSync.costMs <= thresholdMs) {
+            AnimationSync.throttleHz = undefined;
+            return;
+        }
+
+        // Sleep cost/ratio before retrying, which is the rate that holds the share at the budget.
+        const hz = Math.max(minScheduleHz, 1000 * maxDutyRatio / AnimationSync.costMs);
+        const current = AnimationSync.throttleHz;
+        if (current === undefined || hz > current * 2 || hz < current / 2)
+            AnimationSync.throttleHz = hz;
+    }
+
+    /** undefined means the next frame. Above the budget the flush is spaced so that
+     *  cost/period stays inside it, which is hz = 1000 / (10 * cost). */
+    private static scheduleHz(): number | undefined {
+        return AnimationSync.throttleHz;
+    }
 
     // A null delay means nothing is animating yet, which is normal - the element is still
     // marked resolved so sweeps skip it, and `animationstart` re-phases it once one begins.
@@ -159,10 +281,13 @@ export class AnimationSync {
     // animation has offset 0 and keeps the delay it has. That is what makes re-syncing safe,
     // and it removes the need to fold an authored stagger in - the stagger is already part
     // of startTime + delay, so it survives on its own.
-    private static phaseOf(element: HTMLElement): [HTMLElement, string | null, number] {
+    private static phaseOf(
+        element: HTMLElement,
+        running: Map<Element, Animation[]>,
+    ): PhaseWrite {
         const [tickMs, pseudo] = AnimationSync.declared(element);
         AnimationSync.validate(element, getComputedStyle(element, pseudo ?? null), pseudo);
-        const animation = AnimationSync.animationOf(element, pseudo);
+        const animation = AnimationSync.animationOf(element, pseudo, running);
         if (animation === undefined)
             return [element, null, tickMs];
 
@@ -175,19 +300,63 @@ export class AnimationSync {
         return [element, `${(delay - offset).toFixed(0)}ms`, tickMs];
     }
 
-    private static animationOf(element: HTMLElement, pseudo: string | undefined): Animation | undefined {
-        // subtree:true is what surfaces the pseudo-element animations; the target filter
-        // then drops the descendants it also brings in.
-        const animations = element.getAnimations({ subtree: true }).filter(a => {
-            const effect = a.effect instanceof KeyframeEffect ? a.effect : null;
-            return a.playState === 'running'
-                && effect?.target === element
-                && (effect.pseudoElement ?? undefined) === pseudo;
-        });
+    private static animationOf(
+        element: HTMLElement,
+        pseudo: string | undefined,
+        running: Map<Element, Animation[]>,
+    ): Animation | undefined {
+        const animations = (running.get(element) ?? []).filter(a =>
+            a.effect instanceof KeyframeEffect
+            && (a.effect.pseudoElement ?? undefined) === pseudo);
         // A one-shot running alongside the loop - a fade-in, say - has no phase worth fixing,
         // and on a shared element it would otherwise be the one that got aligned.
         return animations.find(a => a.effect?.getComputedTiming().iterations === Infinity)
             ?? animations[0];
+    }
+
+    // One call per tree scope, not per element: getAnimations() collects and sorts every
+    // animation in the scope before filtering by target, so calling it per element costs
+    // O(elements x animations log animations) - 4448 animations made one call 137ms, and a
+    // 50-element batch 6.9s against 134ms for this. Shadow roots need their own call;
+    // document.getAnimations() does not cross into them.
+    private static runningByTarget(elements: readonly HTMLElement[]): Map<Element, Animation[]> {
+        const roots = new Set<Document | ShadowRoot>();
+        for (const element of elements) {
+            const root = element.getRootNode();
+            if (root instanceof Document || root instanceof ShadowRoot)
+                roots.add(root);
+        }
+
+        const byTarget = new Map<Element, Animation[]>();
+        let collected = 0;
+        const startedAt = performance.now();
+        for (const root of roots) {
+            const all = root.getAnimations();
+            collected += all.length;
+            for (const animation of all) {
+                if (animation.playState !== 'running')
+                    continue;
+                if (!(animation.effect instanceof KeyframeEffect))
+                    continue;
+
+                const target = animation.effect.target;
+                if (target === null)
+                    continue;
+
+                const animations = byTarget.get(target);
+                if (animations === undefined)
+                    byTarget.set(target, [animation]);
+                else
+                    animations.push(animation);
+            }
+        }
+        AnimationSync.lastCollected = collected;
+        // Only a sweep that actually collected says anything about the cost: an empty batch
+        // would otherwise feed zeroes into the average and un-trip the breaker on an artifact.
+        if (roots.size !== 0)
+            AnimationSync.observeCost(performance.now() - startedAt, collected);
+
+        return byTarget;
     }
 
     // An authored stagger needs no check any more: the phase is corrected from the
@@ -315,7 +484,7 @@ export class AnimationSweeper {
         // inside a shadow root, and the host is not the element that animates.
         const target = e.composedPath()[0];
         if (target instanceof Element)
-            AnimationSync.syncStarted(target as HTMLElement);
+            AnimationSync.scheduleStarted(target as HTMLElement);
     };
 
     public static start(): void {
@@ -330,5 +499,6 @@ export class AnimationSweeper {
 
     public static stop(): void {
         document.removeEventListener('animationstart', AnimationSweeper.animationStartListener);
+        AnimationSync.cancelStarted();
     }
 }

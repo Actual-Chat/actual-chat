@@ -6,6 +6,7 @@ import { connectBrowser, type BrowserConnection } from './helpers';
 declare const TestModules: {
     MutationProcessor: typeof import('../../../src/nodejs/src/mutation-processor').MutationProcessor;
     AnimationSync: typeof import('../../../src/nodejs/src/animation-sync').AnimationSync;
+    AnimationSweeper: typeof import('../../../src/nodejs/src/animation-sync').AnimationSweeper;
 };
 
 describe('MutationProcessor', () => {
@@ -17,7 +18,7 @@ describe('MutationProcessor', () => {
         const result = await build({
             stdin: {
                 contents: `export { MutationProcessor } from './src/nodejs/src/mutation-processor';
-                    export { AnimationSync } from './src/nodejs/src/animation-sync';`,
+                    export { AnimationSync, AnimationSweeper } from './src/nodejs/src/animation-sync';`,
                 resolveDir: process.cwd(),
             },
             bundle: true,
@@ -128,6 +129,174 @@ describe('MutationProcessor', () => {
         expect(result).toEqual({ first: 1, second: 0, host: true, tick: '200' });
     });
 
+    // getAnimations() sorts every animation in the tree scope before filtering by target, so
+    // one call per element is what made a batch quadratic - see AnimationSync.runningByTarget.
+    it('collects animations once per tree scope rather than once per synced element', async () => {
+        const result = await page.evaluate(() => {
+            const counts = { element: 0, scope: 0 };
+            // Read through the descriptors: a bare `Element.prototype.getAnimations` is an
+            // unbound method reference. The casts on the results are because `call` is typed
+            // to return `any` without strictBindCallApply.
+            const elementGet = Object.getOwnPropertyDescriptor(Element.prototype, 'getAnimations')
+                ?.value as (this: Element, options?: GetAnimationsOptions) => Animation[];
+            const documentGet = Object.getOwnPropertyDescriptor(Document.prototype, 'getAnimations')
+                ?.value as (this: Document) => Animation[];
+            Element.prototype.getAnimations = function (options?: GetAnimationsOptions): Animation[] {
+                counts.element++;
+
+                return elementGet.call(this, options) as Animation[];
+            };
+            Document.prototype.getAnimations = function (): Animation[] {
+                counts.scope++;
+
+                return documentGet.call(this) as Animation[];
+            };
+            const parent = document.createElement('div');
+            for (let i = 0; i < 20; i++) {
+                const element = document.createElement('div');
+                element.setAttribute('data-anim-sync', '');
+                parent.appendChild(element);
+            }
+            document.body.appendChild(parent);
+            const synced = TestModules.AnimationSync.syncAll(parent);
+            Element.prototype.getAnimations = elementGet;
+            Document.prototype.getAnimations = documentGet;
+
+            return { synced, ...counts };
+        });
+        expect(result).toEqual({ synced: 20, element: 0, scope: 1 });
+    });
+
+    // A rendered element's animation is still pending when MutationProcessor sweeps it, so it is
+    // phased a frame later from animationstart. Unbatched that was one collection per element:
+    // 100 for 50 elements before batching syncMany, 51 after, 2 once the sweeper batches too.
+    it('phases a rendered batch with two animation collections, not one per element', async () => {
+        const result = await page.evaluate(async () => {
+            const counts = { element: 0, scope: 0 };
+            const elementGet = Object.getOwnPropertyDescriptor(Element.prototype, 'getAnimations')
+                ?.value as (this: Element, options?: GetAnimationsOptions) => Animation[];
+            const documentGet = Object.getOwnPropertyDescriptor(Document.prototype, 'getAnimations')
+                ?.value as (this: Document) => Animation[];
+            Element.prototype.getAnimations = function (options?: GetAnimationsOptions): Animation[] {
+                counts.element++;
+
+                return elementGet.call(this, options) as Animation[];
+            };
+            Document.prototype.getAnimations = function (): Animation[] {
+                counts.scope++;
+
+                return documentGet.call(this) as Animation[];
+            };
+            const style = document.createElement('style');
+            style.textContent = `@keyframes test-pulse { from { opacity: 1 } to { opacity: 0.5 } }
+                .animate-pulse { animation: test-pulse 2s steps(20) infinite; }`;
+            document.head.appendChild(style);
+            TestModules.MutationProcessor.start();
+            TestModules.AnimationSweeper.start();
+            const parent = document.createElement('div');
+            for (let i = 0; i < 50; i++) {
+                const element = document.createElement('div');
+                element.className = 'animate-pulse';
+                parent.appendChild(element);
+            }
+            document.body.appendChild(parent);
+            await new Promise(resolve => setTimeout(resolve, 0));
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            await new Promise(resolve => setTimeout(resolve, 50));
+            TestModules.AnimationSweeper.stop();
+            Element.prototype.getAnimations = elementGet;
+            Document.prototype.getAnimations = documentGet;
+
+            return {
+                scopeCalls: counts.scope,
+                elementCalls: counts.element,
+                phased: document.querySelectorAll('[style*="--anim-phase"]').length,
+            };
+        });
+        expect(result).toEqual({ scopeCalls: 2, elementCalls: 0, phased: 50 });
+    });
+
+    // The module exists to save render cost, so it must not be able to cost more than it saves.
+    it('throttles itself when a sweep exceeds its time budget', async () => {
+        const result = await page.evaluate(async () => {
+            const warnings: string[] = [];
+            const realWarn = console.warn;
+            console.warn = (...args: unknown[]) => void warnings.push(String(args[0]));
+            const style = document.createElement('style');
+            style.textContent = `@keyframes test-throttle { from { opacity: 1 } to { opacity: 0.5 } }
+                .animate-pulse { animation: test-throttle 1s steps(10) infinite; }`;
+            document.head.appendChild(style);
+            let calls = 0;
+            let isSlow = false;
+            const documentGet = Object.getOwnPropertyDescriptor(Document.prototype, 'getAnimations')
+                ?.value as (this: Document) => Animation[];
+            Document.prototype.getAnimations = function (): Animation[] {
+                calls++;
+                if (isSlow) {
+                    const startedAt = performance.now();
+                    while (performance.now() - startedAt < 30) { /* burn the budget */ }
+                }
+
+                return documentGet.call(this) as Animation[];
+            };
+            TestModules.MutationProcessor.start();
+            TestModules.AnimationSweeper.start();
+            const addRows = async (count: number): Promise<void> => {
+                for (let i = 0; i < count; i++) {
+                    const parent = document.createElement('div');
+                    for (let j = 0; j < 2; j++) {
+                        const element = document.createElement('div');
+                        element.className = 'animate-pulse';
+                        parent.appendChild(element);
+                    }
+                    document.body.appendChild(parent);
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+                }
+            };
+            await addRows(5);
+            const cheapFrom = calls;
+            await addRows(30);
+            const cheapCalls = calls - cheapFrom;
+            isSlow = true;
+            await addRows(4);
+            const slowFrom = calls;
+            await addRows(30);
+            const slowCalls = calls - slowFrom;
+            Document.prototype.getAnimations = documentGet;
+            console.warn = realWarn;
+
+            return { cheapCalls, slowCalls, warned: warnings.filter(w => w.includes('threshold')).length };
+        });
+        expect(result.cheapCalls).toBeGreaterThan(10);
+        expect(result.slowCalls * 3).toBeLessThan(result.cheapCalls);
+        expect(result.warned).toBe(1);
+    });
+
+    it('phases an animation that runs on a pseudo-element', async () => {
+        const result = await page.evaluate(async () => {
+            const style = document.createElement('style');
+            style.textContent = `@keyframes test-fade { from { opacity: 1 } to { opacity: 0.5 } }
+                .test-pseudo::before { content: ''; display: block; width: 4px; height: 4px;
+                    animation-name: test-fade; animation-duration: 2s;
+                    animation-timing-function: steps(20); animation-iteration-count: infinite;
+                    animation-delay: var(--anim-phase, 0s); }`;
+            document.head.appendChild(style);
+            const element = document.createElement('div');
+            element.className = 'test-pseudo';
+            element.setAttribute('data-anim-sync', '::before');
+            document.body.appendChild(element);
+            // startTime stays null until the animation is ready, and a null one yields no phase.
+            await Promise.all(document.getAnimations().map(a => a.ready));
+            TestModules.AnimationSync.sync(element);
+
+            return {
+                phase: element.style.getPropertyValue('--anim-phase'),
+                tick: element.getAttribute('data-anim-synced'),
+            };
+        });
+        expect(result.tick).toBe('100');
+        expect(result.phase).toMatch(/^-?\d+ms$/);
+    });
 
     it('counts a tagged child toward every declaring ancestor and releases it on removal', async () => {
         const result = await page.evaluate(async () => {
