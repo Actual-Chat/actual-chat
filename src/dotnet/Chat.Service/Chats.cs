@@ -497,10 +497,13 @@ public partial class Chats(IServiceProvider services) : IChats
             if (repliedEntryLid.IsSome(out var v) && textEntry.RepliedEntryLid != v)
                 throw StandardError.Constraint("Replied entry Id cannot be changed.");
 
+            // A text edit sends no attachments and must keep them, while the upsert completing an upload
+            // sends what got uploaded - there an empty list means every attachment was dropped.
+            var isUploadCompletion = textEntry.HasUploadingAttachments && !command.HasUploadingAttachments;
             var diff = new ChatEntryDiff {
                 Content = text,
                 RepliedEntryLid = repliedEntryLid,
-                Attachments = command.Attachments,
+                Attachments = attachments.Length > 0 || isUploadCompletion ? attachments : null,
             };
 
             if (textEntry.HasAudio) {
