@@ -396,29 +396,13 @@ ul.list-markup li::before {
 .header-markup-3 {
     color: var(--header-markup-color-3);
 }
-/* NOTE(AY): Why font-weight lives on descendant <span>, not on .header-markup itself:
-   .chat-message-markup span applies text-text-1, which carries font-weight:400
-   baked in (see tailwind.config.js). That rule sets font-weight directly on the
-   span, so an inherited weight from the .header-markup parent loses.
-   Why two selectors per level:
-   - The .chat-message-markup-prefixed selector raises specificity above
-     `.chat-message-markup span` so it wins inside chat messages.
-   - The bare `.header-markup-N span` selector covers headers rendered outside
-     a chat message (previews, editor, search results) where the prefixed rule
-     wouldn't match.
-  The real reason: Andrey wrote a CSS rule for ".chat-message-markup span",
-  which should never exist in the first place. And now we have to deal with it.
-*/
-.chat-message-markup .header-markup-1 span,
-.header-markup-1 span {
+.header-markup-1 {
     @apply font-black;
 }
-.chat-message-markup .header-markup-2 span,
-.header-markup-2 span {
+.header-markup-2 {
     @apply font-bold;
 }
-.chat-message-markup .header-markup-3 span,
-.header-markup-3 span {
+.header-markup-3 {
     @apply font-medium;
 }
 

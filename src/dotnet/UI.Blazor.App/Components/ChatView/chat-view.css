@@ -266,12 +266,9 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     100% { filter: blur(0px); }
 }
 
+
 .chat-message-markup span {
-    @apply text-text-1;
     -webkit-line-break: after-white-space;
-}
-.chat-message-markup strong span {
-    @apply font-bold;
 }
 
 .chat-message-markup .c-streaming-ellipsis {

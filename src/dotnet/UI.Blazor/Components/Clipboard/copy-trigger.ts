@@ -1,7 +1,12 @@
 import { fromEvent, Subject, takeUntil, switchMap, tap, delay } from 'rxjs';
 import { getLogs } from 'logging';
+import { getOrInheritData } from 'dom-helpers';
+import { DocumentEvents } from 'event-handling';
 
 const { errorLog } = getLogs('CopyTrigger');
+
+const CopiedClass = 'copied';
+const CopiedHintDuration = 3000;
 
 export class CopyTrigger {
     private readonly triggerElementRef: HTMLElement;
@@ -81,3 +86,39 @@ export class CopyTrigger {
             errorLog?.log('showAsCopied: failed to dispatch mouseover');
     }
 }
+
+// Delegated copy: any element carrying data-copy-text copies it on click, with no component,
+// wrapper element or JS object of its own. Inline code spans use this rather than a CopyTrigger
+// each - a markup-heavy chat renders hundreds of them, and one CopyTrigger per span costs a
+// wrapper element, a component, an ElementReference and an interop round trip on every render.
+// The tooltip needs nothing here: tooltip-host reads data-tooltip off the nearest ancestor too.
+function onDelegatedCopyClick(event: MouseEvent): void {
+    const [element, copyText] = getOrInheritData(event.target, 'copyText');
+    if (!element || !copyText || element.classList.contains(CopiedClass))
+        return;
+
+    void navigator.clipboard.writeText(copyText)
+        .then(() => showCopied(element))
+        .catch((e: unknown) => errorLog?.log('onDelegatedCopyClick: failed to write to clipboard', e));
+}
+
+function showCopied(element: HTMLElement | SVGElement): void {
+    const tooltip = element.getAttribute('data-tooltip');
+    element.classList.add(CopiedClass);
+    redrawTooltip(element, 'Copied');
+    setTimeout(() => {
+        element.classList.remove(CopiedClass);
+        if (tooltip !== null)
+            redrawTooltip(element, tooltip);
+    }, CopiedHintDuration);
+}
+
+function redrawTooltip(element: HTMLElement | SVGElement, text: string): void {
+    if (!element.hasAttribute('data-tooltip'))
+        return;
+
+    element.setAttribute('data-tooltip', text);
+    element.dispatchEvent(new Event('mouseover', { bubbles: true }));
+}
+
+DocumentEvents.active.click$.subscribe(onDelegatedCopyClick);
