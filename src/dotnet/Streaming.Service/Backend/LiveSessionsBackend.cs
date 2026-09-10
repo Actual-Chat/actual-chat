@@ -350,6 +350,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         CancellationToken cancellationToken)
     {
         bool emptiedByLeave;
+        var shouldCloseAsCall = false;
         var startedClosing = false;
         using (Computed.BeginIsolation())
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
@@ -367,8 +368,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 await _redisScope.Refresh(chatId.Value).ConfigureAwait(false);
             }
             else {
-                // Only remove if the stored kind matches - _participants holds one record per author,
-                // so unconditional removal would delete a still-active stream's registration.
+                // Kind-guarded: a stream ending must only clear the registration it itself owns. Two
+                // independent streams for the same author (e.g. a recorder stopping while a separate
+                // listening stream stays open) would otherwise let the ending one delete the record the
+                // still-open one relies on - _participants holds one record per author, not per kind.
                 var existing = await SafeGetParticipant(chatId, authorId).ConfigureAwait(false);
                 if (existing is { } info && info.Kind == kind)
                     await _participants.Remove(chatId.Value, authorId.Value).ConfigureAwait(false);
@@ -376,16 +379,28 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             InvalidateListParticipants(chatId);
             InvalidateHasRecorder(chatId);
             InvalidateGet(chatId);
-            emptiedByLeave = !isActive && !await IsSessionLive(chatId).ConfigureAwait(false);
+            // A Call needs >= 2 genuinely present participants - LeaveCall already enforces this for an
+            // explicit hang-up; this is the same rule for a presence drop with no LeaveCall behind it (a
+            // connection that just died). Scoped to Call: Dialing keeps its own ExpireRings path, and
+            // Ambient has no such invariant (solo dictation is legitimate).
+            if (!isActive) {
+                var state = await SafeGet(chatId).ConfigureAwait(false);
+                if (state is { Kind: LiveSessionKind.Call } && await ParticipantCount(chatId).ConfigureAwait(false) < 2)
+                    shouldCloseAsCall = true;
+            }
             // A join/heartbeat, or a leave with someone still streaming, just re-evaluates liveness; the
             // grace there is the safety net for crashed/stale clients. A leave that stops the last stream
             // closes it outright below - no waiting on the grace or on a UI observer. EvaluateLiveness only
             // marks a still-populated session closing (recoverable if a recorder returns), so a transient
             // not-live blip never tears down a live recording - unlike an unconditional CloseNow here would.
-            if (!emptiedByLeave)
+            var isLive = await IsSessionLive(chatId).ConfigureAwait(false);
+            emptiedByLeave = !isActive && !shouldCloseAsCall && !isLive;
+            if (!emptiedByLeave && !shouldCloseAsCall)
                 startedClosing = await EvaluateLiveness(chatId).ConfigureAwait(false);
         }
-        if (emptiedByLeave)
+        if (shouldCloseAsCall)
+            await CloseCall(chatId).ConfigureAwait(false);
+        else if (emptiedByLeave)
             await CloseNow(chatId).ConfigureAwait(false);
         else if (startedClosing)
             // The last recorder stayed on as a listener: no stream left to trip CloseNow, but the session is

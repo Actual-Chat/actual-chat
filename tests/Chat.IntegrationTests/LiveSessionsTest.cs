@@ -1433,6 +1433,68 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         state!.HasVideo.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task PresenceDropBelowTwoShouldCloseTheCall()
+    {
+        // The mid-call symmetric-hangup path: SetParticipation is what the connection-lifetime hooks
+        // (LiveAudioStreams, AudioStreamingBackend) call when a stream's connection actually drops, so
+        // it must enforce the same ">= 2" invariant LeaveCall already does for an explicit hang-up.
+
+        // arrange - Bob calls Alice; both connect as listeners (simplest way to reach 2 real participants)
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(
+            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+        await backend.SetParticipation(
+            chatId, bobAuthor.Id, ParticipationKind.AudioListen, true, default);
+        await backend.SetParticipation(
+            chatId, aliceAuthor.Id, ParticipationKind.AudioListen, true, default);
+
+        // act - Alice's listening stream drops (connection lost) - the same call SetParticipation(false) makes
+        await backend.SetParticipation(
+            chatId, aliceAuthor.Id, ParticipationKind.AudioListen, false, default);
+
+        // assert - the call closes at once, same as an explicit LeaveCall would
+        (await backend.GetState(chatId, default)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task PresenceDropOnAnAmbientSessionShouldNotCloseIt()
+    {
+        // The new invariant is scoped to Kind == Call only - an Ambient live conversation losing a
+        // listener while a recorder stays on must keep running exactly as before.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var authors = tester.AppServices.GetRequiredService<IAuthors>();
+        var author = await authors.GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
+        var listenerId = AuthorId.New(chatId, 777_050);
+        await backend.SetParticipation(
+            chatId, listenerId, ParticipationKind.AudioListen, true, default);
+
+        // act - the listener leaves; the recorder is still streaming
+        await backend.SetParticipation(
+            chatId, listenerId, ParticipationKind.AudioListen, false, default);
+
+        // assert - unaffected: still live, not closing
+        var live = await backend.GetState(chatId, default);
+        live.Should().NotBeNull();
+        live!.IsClosing.Should().BeFalse();
+    }
+
     private static async Task<(ChatId ChatId, AuthorFull Bob, AuthorFull Alice)> NewTwoPartyCall(
         IWebTester tester)
     {
