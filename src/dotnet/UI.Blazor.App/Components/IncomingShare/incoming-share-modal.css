@@ -6,41 +6,33 @@
     @apply mx-0;
 }
 .share-incoming-modal .dialog-body {
-    @apply p-0;
+    @apply overflow-y-hidden;
+}
+.share-incoming-modal .form-block {
+    @apply py-0;
+    @apply overflow-y-hidden;
 }
 .share-incoming-modal .dialog-footer {
-    @apply p-0;
-}
-.share-incoming-modal .contact-selector-place-picker {
-    @apply pt-2;
-}
-.share-incoming-modal .contact-selector-list {
-    @apply pt-2;
+    @apply gap-y-2;
+    @apply py-2;
 }
 .narrow .share-incoming-modal .contact-selector-list {
     @apply pb-0;
 }
-
-.share-incoming-modal .search-box-new input {
-    @apply rounded-none;
-}
 .share-incoming-modal .embedded-message-editor {
     @apply border-b-0;
+}
+.share-incoming-modal .form-block.with-contact-list .search-box {
+    @apply px-4;
 }
 
 .share-incoming-modal .dialog-buttons {
     @apply -flex-x;
-    @apply px-4 pt-2;
+    @apply px-4 pt-0;
 }
 .share-incoming-modal .dialog-buttons > * {
     @apply flex-1 max-w-none;
 }
 .btn-share-action.hidden {
     display: none;
-}
-.share-externally-button {
-    @apply flex-x;
-}
-.share-externally-button .btn {
-    @apply flex-1;
 }
