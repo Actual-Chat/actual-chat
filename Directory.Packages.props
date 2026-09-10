@@ -190,6 +190,7 @@
     <PackageVersion Include="Microsoft.JSInterop" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.JSInterop.WebAssembly" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.AI.DirectML" Version="1.15.4" />
+    <PackageVersion Include="Microsoft.Windows.AI.MachineLearning" Version="2.1.74" />
     <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.26.0" />
     <PackageVersion Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.24.4" />
     <PackageVersion Include="Microsoft.ML.OnnxRuntime.Managed" Version="1.26.0" />

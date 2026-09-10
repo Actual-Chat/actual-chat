@@ -218,9 +218,13 @@
 <!--      <ExcludeAssets>runtime</ExcludeAssets>-->
 <!--    </PackageReference>-->
     <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" />
-    <!-- Exclude DirectML.dll from this package - it's already in MsixContent via Windows App SDK.
-         Must block build/buildTransitive because the package uses custom targets, not runtimes/ layout. -->
+    <!-- Neither DirectML.dll nor Windows ML's onnxruntime.dll may be app-local: the ONNX DirectML runtime
+         above already ships onnxruntime.dll, and a second copy fails MSIX packaging (APPX1101). Both packages
+         are transitive; a direct reference is how NuGet lets us drop their native assets. Build assets go
+         too: Microsoft.AI.DirectML copies via custom targets rather than the runtimes/ layout, and the
+         Windows ML targets are validation-only and reject TargetPlatformMinVersion 17763. -->
     <PackageReference Include="Microsoft.AI.DirectML" ExcludeAssets="build;buildTransitive;native" />
+    <PackageReference Include="Microsoft.Windows.AI.MachineLearning" ExcludeAssets="build;buildTransitive;native" />
     <PackageReference Include="NAudio" />
     <PackageReference Include="OpusSharp.Core" />
     <PackageReference Include="OpusSharp.Natives" />
