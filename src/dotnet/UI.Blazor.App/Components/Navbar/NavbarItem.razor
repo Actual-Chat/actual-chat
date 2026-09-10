@@ -4,6 +4,11 @@
 @{
     _isCurrent = CalculateIsCurrent();
     var activeClass = (IsSelected ?? _isCurrent) ? "active" : "inactive";
+    // Bound only where there is something to run: an EventCallback with no delegate renders no
+    // handler at all, which is what every item that doesn't opt into Click used to get.
+    var clickHandler = _isCurrent || Click.HasDelegate
+        ? EventCallback.Factory.Create(this, OnClick)
+        : EventCallback.Empty;
     var dataAttributes = _isCurrent
         ? new Dictionary<string, object>()
         : new() {
@@ -20,7 +25,7 @@
             @ChildContent
         </div>
     } else {
-        <div class="navbar-item-content" @attributes="@dataAttributes" @onclick=@(_isCurrent ? EventCallback.Factory.Create(this, OnCurrentClick) : EventCallback.Empty )>
+        <div class="navbar-item-content" @attributes="@dataAttributes" @onclick="@clickHandler">
             @ChildContent
         </div>
     }
@@ -40,6 +45,9 @@
     [Parameter] public string ReplaceOnPrefixExcept { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Ending { get; set; }
+    // Runs in addition to the navigation the JS data-href handler performs, on every click - the
+    // current-URL one included, where there is no navigation to piggyback on.
+    [Parameter] public EventCallback Click { get; set; }
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object> Attributes { get; set; } = new();
 
@@ -57,11 +65,14 @@
             StateHasChanged();
     }
 
-    private void OnCurrentClick() {
-        // Navigation doesn't happen when we click on the current URL,
-        // but we still need to pretend it is happening.
-        PanelsUI.HidePanels();
-        _ = TuneUI.Play(Tune.SelectNavbarItem);
+    private Task OnClick() {
+        if (_isCurrent) {
+            // Navigation doesn't happen when we click on the current URL,
+            // but we still need to pretend it is happening.
+            PanelsUI.HidePanels();
+            _ = TuneUI.Play(Tune.SelectNavbarItem);
+        }
+        return Click.InvokeAsync();
     }
 
     private bool CalculateIsCurrent()

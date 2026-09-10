@@ -1185,6 +1185,7 @@
   "Notification_VoiceChatStarted": "वॉइस चैट शुरू हुई",
   "Notification_VoiceChatStartedBy": "{0} ने वॉइस चैट शुरू की",
   "Notification_NamesAndMore": "{0} और {1} अन्य",
+  "Notification_SenderAndMore": "{0} और {1} अन्य",
   "Notification_EarlierMessages": "+{0} पुराना संदेश|+{0} पुराने संदेश",
   "Notification_AuthorLine_Format": "{0}: {1}",
   "Notification_ThreadCreated_Format": "थ्रेड '{0}' बनाया गया",

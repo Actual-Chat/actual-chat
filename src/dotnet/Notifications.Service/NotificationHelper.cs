@@ -87,4 +87,62 @@ public static class NotificationHelper
                 : m.Text);
         return string.Join('\n', lines);
     }
+
+    public static ReactionNotification ComposeReaction(ReactionNotification notification, IStringLocalizer l)
+    {
+        // One reactor with one emoji is exactly what the send path already composed - which is also
+        // every peer chat, where reactions are one per author and your own never notify. Returning
+        // the same instance then lets the caller skip the update; a blob written before SenderName
+        // and QuotedText existed keeps whichever half it can't recompose.
+        var otherCount = notification.AuthorIds.Count - 1;
+        var emojis = GetCurrentEmojis(notification);
+        var mustRetitle = otherCount > 0 && !notification.SenderName.IsNullOrEmpty();
+        var mustRewrite = emojis.Count > 1 && !notification.QuotedText.IsNullOrEmpty();
+        if (!mustRetitle && !mustRewrite)
+            return notification;
+
+        // Always recomposed from SenderName, which is why nothing here writes back to it: a merge
+        // can carry an existing notification's copy forward, and the count would be appended twice.
+        var displaySenderName = mustRetitle
+            ? l.Notification_SenderAndMore(otherCount, notification.SenderName, otherCount)
+            : "";
+        return notification with {
+            DisplaySenderName = displaySenderName,
+            Title = mustRetitle
+                ? GetTitle(NotificationKind.Reaction, displaySenderName, notification.GroupTitle)
+                : notification.Title,
+            Text = mustRewrite
+                ? l.Notification_Reaction_Format(ComposeEmojiRun(emojis), notification.QuotedText)
+                : notification.Text,
+        };
+    }
+
+    // Private methods
+
+    private static IReadOnlyList<Emoji> GetCurrentEmojis(ReactionNotification notification)
+    {
+        // Emojis accumulates with dedup and never drops one, so a reactor who switched emoji leaves
+        // their old one behind - and a removed reaction doesn't notify at all. There can't be more
+        // current emoji than reactors and the stale ones are the oldest, so the newest that many are
+        // the closest the stored state gets to what the message carries now.
+        var emojis = notification.Emojis;
+        if (emojis.Count <= 1)
+            return emojis;
+
+        // LastEmoji, not the last arrival: switching to one already in the set appends nothing, so
+        // arrival order would drop the newest reaction and keep the stale one it replaced.
+        var newest = notification.LastEmoji ?? emojis[^1];
+        var rest = emojis.Where(x => x != newest).ToList();
+        var restCount = Math.Min(rest.Count, Math.Max(1, notification.AuthorIds.Count) - 1);
+        var result = rest.Skip(rest.Count - Math.Max(0, restCount)).ToList();
+        result.Add(newest);
+        return result;
+    }
+
+    private static string ComposeEmojiRun(IReadOnlyList<Emoji> emojis)
+    {
+        var shownCount = Math.Min(emojis.Count, Constants.Notification.MaxShownReactionEmojis);
+        var run = string.Concat(emojis.Take(shownCount).Select(x => x.Symbol));
+        return emojis.Count > shownCount ? run + "…" : run;
+    }
 }

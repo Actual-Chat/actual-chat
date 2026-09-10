@@ -1,3 +1,4 @@
+@using ActualChat.Notifications
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedRenderStateComponent<AppUIHub, ChatListItem.Model>
 @{
@@ -24,7 +25,8 @@
 }
 
 <NavbarItem
-    Url="@($"/chat/{chat.Id}")"
+    Url="@(m.NavTarget is { } navTarget ? Links.Chat(navTarget.EntryId).Value : $"/chat/{chat.Id}")"
+    Click="@(NotificationsFilterId.IsEmpty ? default : EventCallback.Factory.Create(this, OnClick))"
     ReplaceOnPrefix="/chat/"
     IsSelected="@(m.IsSelected && listKind != ChatListKind.Active)"
     Class="@navbarItemCls"
@@ -181,6 +183,9 @@
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool IsLastItemInBlock { get; set; }
     [Parameter] public bool IsFirstItem { get; set; }
+    // The notifications-panel tab this row belongs to; empty everywhere else. Binds the row to
+    // one notification at a time - see Model.NavTarget.
+    [Parameter] public Symbol NotificationsFilterId { get; set; }
 
     // protected override void OnInitialized() {
     //     DebugLog?.LogDebug("OnInitialized: {ListKind} #{Index}", ListKind, Index);
@@ -216,12 +221,21 @@
         var chatId = chat.Id;
         var isLastItemInBlock = IsLastItemInBlock;
         var isFirstItem = IsFirstItem;
+        var notificationsFilterId = NotificationsFilterId;
         var ownAuthor = chat.Rules.Author;
         var ownAuthorId = ownAuthor?.Id;
         DebugLog?.LogDebug("-> ComputeState: {ListKind} #{ChatTitle}", listKind, chatTitle);
         var chatStateTask = ChatUI.GetState(chatId, false, cancellationToken);
         var previewTask = ChatUI.GetPreview(chatId, cancellationToken);
         var unreadStateTask = ChatUI.GetUnreadState(chatId, cancellationToken);
+        // The Mentions tab means own-mentions and attention pings - reactions lift a chat onto the
+        // other tabs instead, so a row there must not bind to one (see ChatListUI.ListUnorderedForDisplay).
+        var navTargetTask = notificationsFilterId.IsEmpty
+            ? null
+            : Hub.NotificationsUI.GetNavigationTarget(
+                chatId,
+                notificationsFilterId != ChatListFilter.UnreadMentions.Id,
+                cancellationToken);
         var chatState = await chatStateTask.ConfigureAwait(false);
         var preview = await previewTask.ConfigureAwait(false);
         var unreadState = await unreadStateTask.ConfigureAwait(false);
@@ -257,6 +271,13 @@
             && (await Hub.ChatAudioUI.GetMutedPttChatIds(cancellationToken).ConfigureAwait(false)).Contains(chatId);
         var hasOngoingCall = isPttArmed
             && await chatActivityUI.HasOngoingCall(chatId, cancellationToken).ConfigureAwait(false);
+        // Deliberately outside the IsReadingTail gate GetUnreadState applies: the row you just
+        // tapped into is exactly the one that still has to show what's left to walk to. A reaction
+        // waits behind unread messages though - those are what the row is in the list for, and the
+        // walk reaches the reaction as soon as they're read.
+        var navTarget = navTargetTask is null ? null : await navTargetTask.ConfigureAwait(false);
+        if (navTarget is { Kind: ActualChat.NotificationKind.Reaction } && unreadState.Count > 0)
+            navTarget = null;
 
         return new() {
             ListKind = listKind,
@@ -265,10 +286,17 @@
             CallActivity = callActivity,
             NotificationMode = chatInfo.ChatUserSettings.NotificationMode,
             IsSelected = chatState.IsSelected,
-            UnreadCount = unreadState.Count,
-            HasUnreadOwnMention = unreadState.HasOwnMention,
-            HasAttention = unreadState.HasAttention,
-            ReactionEmoji = unreadState.ReactionEmoji,
+            // A bound row shows what its tap leads to, so the plain unread count steps aside -
+            // otherwise it would hide a reaction's emoji, which is the whole point of the badge here.
+            UnreadCount = navTarget is null ? unreadState.Count : default,
+            HasUnreadOwnMention = navTarget is null
+                ? unreadState.HasOwnMention
+                : navTarget.Kind == ActualChat.NotificationKind.Mention,
+            HasAttention = navTarget is null
+                ? unreadState.HasAttention
+                : navTarget.Kind == ActualChat.NotificationKind.Attention,
+            ReactionEmoji = navTarget is null ? unreadState.ReactionEmoji : navTarget.Emoji,
+            NavTarget = navTarget,
             LastTextEntry = lastEntry,
             LastTextEntryText = preview.Text,
             LastTextEntryIcons = lastTextEntryIcons,
@@ -281,6 +309,21 @@
             LastThread = preview.Thread,
             LastThreadCreator = preview.ThreadCreator,
         };
+    }
+
+    private void OnClick() {
+        if (_renderedModel?.NavTarget is not { } navTarget)
+            return;
+
+        // OnRead kinds are left alone: a requested dismissal advances the chat's read position to
+        // the notification's anchor (see NotificationsBackend.GetReadAdvances), and jumping to a
+        // mention must not declare everything before it read. Reading it there clears it anyway.
+        // The OnView ones are dismissed here as well as by SeenNotificationDismisser, so the next
+        // tap moves on even when the jump doesn't end with the entry on screen.
+        if (navTarget.DismissMode != NotificationDismissMode.OnView)
+            return;
+
+        _ = Hub.UICommander.Run(new Notifications_Dismiss { Session = Session, NotificationId = navTarget.Id });
     }
 
     private async Task<bool> IsUnreadByOthers(
@@ -381,6 +424,9 @@
         public bool IsPttArmed { get; init; }
         public bool IsPttMuted { get; init; }
         public bool HasOngoingCall { get; init; }
+        // The notification this row is bound to in the notifications panel: the one its tap jumps
+        // to and the one its badge shows. Null everywhere else, and once the chat's are all walked.
+        public ChatNotificationTarget? NavTarget { get; init; }
         public Chat? LastThread { get; init; }
         public Author? LastThreadCreator { get; init; }
         public Moment LastBeginsAt => LastThread?.CreatedAt ?? LastTextEntry?.BeginsAt ?? Moment.EpochStart;

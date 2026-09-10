@@ -5,8 +5,9 @@ namespace ActualChat.Notifications.IntegrationTests;
 // Notifications are array-form MessagePack, so a slot below the chain's max key that a member
 // didn't exist for yet is written as nil, and a member above it is simply absent. v2.18 added
 // keys 9..12 to ReactionNotification (nil in every v2.17 row) and 21..22 to ChatNotification
-// (absent in v2.17 rows). The Legacy* records mirror the v2.17 layout, so the tests produce
-// exactly the bytes v2.17 pods wrote and v2.17 clients still read.
+// (absent in v2.17 rows); v2.20 added key 13 to ReactionNotification. The Legacy* records mirror
+// the v2.17 layout, so the tests produce exactly the bytes v2.17 pods wrote and v2.17 clients
+// still read.
 public sealed class NotificationCompatibilityTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private static readonly UserId TestUserId = UserId.New();
@@ -119,6 +120,7 @@ public sealed class NotificationCompatibilityTest(ITestOutputHelper @out) : Test
         reaction.QuotedText.Should().Be("hello");
         reaction.LastEmoji.Should().Be(Emojis.Party);
         reaction.SenderName.Should().Be("Bob");
+        reaction.DisplaySenderName.Should().Be("Bob +1 more");
         reaction.GroupTitle.Should().Be("The actual one");
     }
 
@@ -210,6 +212,7 @@ public sealed class NotificationCompatibilityTest(ITestOutputHelper @out) : Test
             Emojis = ApiArray.New(Emojis.Awesome, Emojis.Party),
             QuotedText = "hello",
             LastEmoji = Emojis.Party,
+            DisplaySenderName = "Bob +1 more",
         };
 
     private static MessageNotification NewCurrentMessage()

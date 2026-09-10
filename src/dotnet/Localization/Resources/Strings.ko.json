@@ -1185,6 +1185,7 @@
   "Notification_VoiceChatStarted": "음성 채팅이 시작되었습니다",
   "Notification_VoiceChatStartedBy": "{0}님이 음성 채팅을 시작했습니다",
   "Notification_NamesAndMore": "{0} 외 {1}명",
+  "Notification_SenderAndMore": "{0} 외 {1}명",
   "Notification_EarlierMessages": "이전 메시지 +{0}개",
   "Notification_AuthorLine_Format": "{0}: {1}",
   "Notification_ThreadCreated_Format": "'{0}' 스레드가 생성되었습니다",

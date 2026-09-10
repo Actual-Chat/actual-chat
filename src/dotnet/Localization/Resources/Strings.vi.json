@@ -1185,6 +1185,7 @@
   "Notification_VoiceChatStarted": "Trò chuyện thoại đã bắt đầu",
   "Notification_VoiceChatStartedBy": "{0} đã bắt đầu trò chuyện thoại",
   "Notification_NamesAndMore": "{0} và {1} người khác",
+  "Notification_SenderAndMore": "{0} và {1} người khác",
   "Notification_EarlierMessages": "+{0} tin nhắn trước đó",
   "Notification_AuthorLine_Format": "{0}: {1}",
   "Notification_ThreadCreated_Format": "Đã tạo chủ đề '{0}'",

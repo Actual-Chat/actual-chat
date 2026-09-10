@@ -1185,6 +1185,7 @@
   "Notification_VoiceChatStarted": "Chat vocale avviata",
   "Notification_VoiceChatStartedBy": "{0} ha avviato una chat vocale|{0} hanno avviato una chat vocale",
   "Notification_NamesAndMore": "{0} e {1} altro|{0} e {1} altri",
+  "Notification_SenderAndMore": "{0} +{1}",
   "Notification_EarlierMessages": "+{0} messaggio precedente|+{0} messaggi precedenti",
   "Notification_AuthorLine_Format": "{0}: {1}",
   "Notification_ThreadCreated_Format": "Il thread '{0}' è stato creato",

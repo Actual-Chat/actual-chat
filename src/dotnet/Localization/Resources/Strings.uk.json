@@ -1185,6 +1185,7 @@
   "Notification_VoiceChatStarted": "Голосовий чат розпочався",
   "Notification_VoiceChatStartedBy": "{0} починає голосовий чат|{0} починають голосовий чат|{0} починають голосовий чат",
   "Notification_NamesAndMore": "{0} і ще {1}",
+  "Notification_SenderAndMore": "{0} і ще {1}",
   "Notification_EarlierMessages": "+{0} попереднє повідомлення|+{0} попередні повідомлення|+{0} попередніх повідомлень",
   "Notification_AuthorLine_Format": "{0}: {1}",
   "Notification_ThreadCreated_Format": "Створено тред «{0}»",

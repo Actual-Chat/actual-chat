@@ -54,4 +54,30 @@ public static class NotificationExt
 
         return notification.GetChatId() is { } chatId ? Links.Chat(chatId) : Links.Chats;
     }
+
+    public static string GetSenderName(this ChatNotification notification)
+        // The sender line a client renders. Android's MessagingStyle hides Title, naming its Person
+        // from this instead - so a merged reaction's reactor count has to ride here too.
+        => notification is ReactionNotification { DisplaySenderName.Length: > 0 } reaction
+            ? reaction.DisplaySenderName
+            : notification.SenderName;
+
+    public static ApiArray<ChatEntryNotification> ListNavigable(this ApiArray<Notification> active, ChatId chatId)
+        // The order the notifications panel walks a chat's entry-anchored notifications in: ping,
+        // mention, reaction, each oldest entry first. Coalescing kinds anchor where a plain chat link lands.
+        => active
+            .OfType<ChatEntryNotification>()
+            .Where(x => x.ChatId == chatId)
+            .OrderBy(x => GetNavigationOrder(x.Kind))
+            .ThenBy(x => x.EntryLid)
+            .ToApiArray();
+
+    // Private methods
+
+    private static int GetNavigationOrder(NotificationKind kind)
+        => kind switch {
+            NotificationKind.Attention => 0,
+            NotificationKind.Mention => 1,
+            _ => 2,
+        };
 }

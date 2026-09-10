@@ -49,10 +49,11 @@
                         <ReactionNotificationList/>
                     } else {
                         <ChatList
-                            @key="@ChatList.GetKey(null, false, _settings)"
+                            @key="@ChatList.GetKey(null, false, _settings, _settings.FilterId)"
                             PlaceId="@null"
                             UsePlaceChatListSettings="@false"
-                            Settings="@_settings"/>
+                            Settings="@_settings"
+                            NotificationsFilterId="@_settings.FilterId"/>
                     }
                 </ChildContent>
             </ContentSwap>

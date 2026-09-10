@@ -1185,6 +1185,7 @@
   "Notification_VoiceChatStarted": "Гласовни чет је почео",
   "Notification_VoiceChatStartedBy": "{0} покреће гласовни чет|{0} покрећу гласовни чет|{0} покрећу гласовни чет",
   "Notification_NamesAndMore": "{0} и још {1}",
+  "Notification_SenderAndMore": "{0} и још {1}",
   "Notification_EarlierMessages": "+{0} ранија порука|+{0} раније поруке|+{0} ранијих порука",
   "Notification_AuthorLine_Format": "{0}: {1}",
   "Notification_ThreadCreated_Format": "Нит „{0}“ је креирана",

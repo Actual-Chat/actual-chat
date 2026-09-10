@@ -23,6 +23,26 @@ public class NotificationsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComp
             .ToApiArray();
     }
 
+    // Projected to a value-compared record, not handed out as the notification: a Notification's
+    // ApiArray members compare by reference, so an unchanged one would re-render every bound row.
+    [ComputeMethod(ConsolidationDelay = 0.3)]
+    public virtual async Task<ChatNotificationTarget?> GetNavigationTarget(
+        ChatId chatId, bool includeReactions, CancellationToken cancellationToken = default)
+    {
+        var active = await Notifications.ListActive(Session, cancellationToken).ConfigureAwait(false);
+        var target = active
+            .ListNavigable(chatId)
+            .FirstOrDefault(x => includeReactions || x.Kind != NotificationKind.Reaction);
+        if (target is null)
+            return null;
+
+        // LastEmoji is null on notifications persisted before it existed; the accumulated set is the fallback.
+        var emoji = target is ReactionNotification reaction
+            ? reaction.LastEmoji ?? reaction.Emojis.LastOrDefault()
+            : null;
+        return new ChatNotificationTarget(target.Id, target.Kind, target.DismissMode, target.EntryId, emoji);
+    }
+
     [ComputeMethod]
     public virtual async Task<ChatReactionState> GetReactionState(
         ChatId chatId, CancellationToken cancellationToken = default)
@@ -84,3 +104,14 @@ public class NotificationsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComp
 }
 
 public readonly record struct ChatReactionState(Emoji? Emoji, Moment SentAt);
+
+/// <summary>
+/// The notification a notifications-panel row is bound to: enough of it to link, badge and
+/// dismiss it, and value-compared throughout.
+/// </summary>
+public sealed record ChatNotificationTarget(
+    NotificationId Id,
+    NotificationKind Kind,
+    NotificationDismissMode DismissMode,
+    ChatEntryId EntryId,
+    Emoji? Emoji);

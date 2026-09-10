@@ -1185,6 +1185,7 @@
   "Notification_VoiceChatStarted": "Sesli sohbet başladı",
   "Notification_VoiceChatStartedBy": "{0} sesli sohbet başlattı",
   "Notification_NamesAndMore": "{0} ve {1} kişi daha",
+  "Notification_SenderAndMore": "{0} ve {1} kişi daha",
   "Notification_EarlierMessages": "+{0} önceki mesaj",
   "Notification_AuthorLine_Format": "{0}: {1}",
   "Notification_ThreadCreated_Format": "'{0}' konusu oluşturuldu",

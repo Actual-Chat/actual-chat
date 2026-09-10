@@ -1185,6 +1185,7 @@
   "Notification_VoiceChatStarted": "Glasovni chat je počeo",
   "Notification_VoiceChatStartedBy": "{0} pokreće glasovni chat|{0} pokreću glasovni chat|{0} pokreću glasovni chat",
   "Notification_NamesAndMore": "{0} i još {1}",
+  "Notification_SenderAndMore": "{0} i još {1}",
   "Notification_EarlierMessages": "+{0} ranija poruka|+{0} ranije poruke|+{0} ranijih poruka",
   "Notification_AuthorLine_Format": "{0}: {1}",
   "Notification_ThreadCreated_Format": "Nit „{0}“ je kreirana",

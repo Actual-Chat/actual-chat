@@ -1185,6 +1185,7 @@
   "Notification_VoiceChatStarted": "Chat de voz iniciado",
   "Notification_VoiceChatStartedBy": "{0} iniciou um chat de voz|{0} iniciaram um chat de voz",
   "Notification_NamesAndMore": "{0} e mais {1}",
+  "Notification_SenderAndMore": "{0} e mais {1}",
   "Notification_EarlierMessages": "+{0} mensagem anterior|+{0} mensagens anteriores",
   "Notification_AuthorLine_Format": "{0}: {1}",
   "Notification_ThreadCreated_Format": "O tópico '{0}' foi criado",
