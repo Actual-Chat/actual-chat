@@ -29,7 +29,9 @@ public static class MarkupSuffixInjector
         }
         case ParagraphMarkup paragraph:
             return new ParagraphMarkup(Append(paragraph.Content));
-        case HeaderMarkup header:
+        // An empty header renders a <br/> to keep its line height, and that branch tests for a
+        // TextMarkup - so descending into one would cost it the line. Pair it instead.
+        case HeaderMarkup header when header.Content is not TextMarkup { Text.Length: 0 }:
             return new HeaderMarkup(header.Level, Append(header.Content));
         case BlockQuoteMarkup blockQuote:
             return new BlockQuoteMarkup(Append(blockQuote.Content));
