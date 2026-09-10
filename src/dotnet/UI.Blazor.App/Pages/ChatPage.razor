@@ -77,9 +77,13 @@
             <chat-view-skeleton count="15" class="chat-view-skeleton-list no-scrollbar"/>
             <ContentSwapDisplay/>
         } else if (chatContext is not null) {
-            <CascadingValue Value="@chatContext">
-                <ChatView @key="@chatKey"/>
-            </CascadingValue>
+            @* Keeps a failing transcript item from taking down the page along with the header, footer and
+               right panel it renders into layout slots *@
+            <ErrorBarrier Name="ChatView" Kind="@ErrorBarrierKind.Full" MustHidePanels="@true">
+                <CascadingValue Value="@chatContext">
+                    <ChatView @key="@chatKey"/>
+                </CascadingValue>
+            </ErrorBarrier>
         } else if (m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
             <InaccessiblePlace ShowSignIn="@account.IsGuestOrNull()"/>
             <ContentSwapDisplay/>

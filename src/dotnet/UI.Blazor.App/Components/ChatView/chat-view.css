@@ -3,6 +3,11 @@
 .chat-view-swap {
     @apply w-full h-full min-h-0;
 }
+/* The ChatView barrier in ChatPage: a swap layer is a plain block, so the barrier's own flex centering
+   has nothing to fill without an explicit height */
+.chat-view-swap > .c-layer > .error-barrier {
+    @apply h-full;
+}
 
 .message-wrapper {
     @apply relative;
