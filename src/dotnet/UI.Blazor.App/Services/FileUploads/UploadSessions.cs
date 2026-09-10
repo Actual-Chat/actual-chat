@@ -30,7 +30,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
         var now = _uploadOperations.Now();
         var snapshot = UploadSession.NewUploadSnapshot(fileProvider, metadata, now, mediaScope);
-        var session = new UploadSession(snapshot, _uploadOperations, _storage);
+        var session = NewSession(snapshot);
         // Register in memory before persisting, so cleanup never reclaims it before the caller references it.
         _sessions[session.SessionId] = new SessionRef(session);
         await _repo.Save(snapshot).ConfigureAwait(false);
@@ -53,7 +53,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             return null;
 
         snapshot.FileProvider.Initialize(Hub.Services);
-        var session = new UploadSession(snapshot, _uploadOperations, _storage);
+        var session = NewSession(snapshot);
         _sessions[sessionId] = new SessionRef(session);
         SetProgress(sessionId, GetProgressFromSnapshot(snapshot));
         return session;
@@ -115,6 +115,21 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         Log.LogDebug("Deleted stale session '{SessionId}' ('{FileName}')", sessionId, fileProvider.Metadata.FileName);
     }
 
+    private UploadSession NewSession(UploadSessionSnapshot snapshot)
+    {
+        var session = new UploadSession(snapshot, _uploadOperations, _storage);
+        session.Failed += OnSessionFailed;
+        return session;
+    }
+
+    private void OnSessionFailed(object? sender, Exception error)
+    {
+        // Other failures leave a restart button on the attachment, so its "Error" is enough;
+        // an empty file has nothing to restart, and without this the user never learns why.
+        if (error is UploadFileEmptyException)
+            UICommander.ShowError(error);
+    }
+
     private void ReleaseSessionInternal(UploadSession session)
     {
         Log.LogDebug("Releasing reference for session '{SessionId}' ('{FileName}')", session.SessionId, session.FileProvider.Metadata.FileName);
@@ -170,6 +185,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
         return new UploadSessionProgress(uploadStage, progress) {
             IsFailed = s.IsFailed,
+            IsUnrecoverable = s.IsUnrecoverable,
             TotalBytes = s.FileProvider.Metadata.Length,
         };
     }

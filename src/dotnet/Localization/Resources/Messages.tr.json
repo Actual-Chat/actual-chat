@@ -114,6 +114,7 @@
   "Error_CropExportFailed": "Kırpılan görsel dışa aktarılamadı.",
   "Error_FileTooBig_Format": "Dosya çok büyük. En büyük dosya boyutu: {size}.",
   "Error_TooManyFiles_Format": "Çok fazla dosya. İzin verilen en fazla sayı {count}.",
+  "Error_FileEmpty": "Dosya boş veya artık kullanılamıyor.",
 
   // Invites
   "Error_InviteAlreadyUsed": "Bu davet bağlantısı zaten kullanılmış.",

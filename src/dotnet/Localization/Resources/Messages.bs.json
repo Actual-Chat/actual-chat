@@ -122,6 +122,7 @@
   "Error_CropExportFailed": "Izrezana slika se nije mogla izvesti.",
   "Error_FileTooBig_Format": "Fajl je prevelik. Najveća veličina fajla: {size}.",
   "Error_TooManyFiles_Format": "Previše fajlova. Najveći dozvoljeni broj je {count}.",
+  "Error_FileEmpty": "Fajl je prazan ili više nije dostupan.",
 
   // Invites
   "Error_InviteAlreadyUsed": "Link pozivnice je već iskorišten.",

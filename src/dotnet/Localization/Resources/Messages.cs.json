@@ -122,6 +122,7 @@
   "Error_CropExportFailed": "Nepodařilo se exportovat oříznutý obrázek.",
   "Error_FileTooBig_Format": "Soubor je příliš velký. Maximální velikost: {size}.",
   "Error_TooManyFiles_Format": "Příliš mnoho souborů. Maximální povolený počet je {count}.",
+  "Error_FileEmpty": "Soubor je prázdný nebo už není dostupný.",
 
   // Invites
   "Error_InviteAlreadyUsed": "Odkaz s pozvánkou už byl použit.",

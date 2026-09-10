@@ -114,6 +114,7 @@
   "Error_CropExportFailed": "Échec de l'exportation de l'image recadrée.",
   "Error_FileTooBig_Format": "Le fichier est trop volumineux. Taille maximale : {size}.",
   "Error_TooManyFiles_Format": "Trop de fichiers. Le nombre maximal autorisé est {count}.",
+  "Error_FileEmpty": "Le fichier est vide ou n’est plus disponible.",
 
   // Invites
   "Error_InviteAlreadyUsed": "Ce lien d’invitation a déjà été utilisé.",

@@ -42,8 +42,8 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
     public async Task RestartUpload(Attachment attachment)
     {
         var progress = await AttachmentsState.GetProgress(attachment.Id, default).ConfigureAwait(false);
-        if (!progress.IsFailed)
-            throw new InvalidOperationException("Can't restart. Upload is not failed");
+        if (!progress.CanRestart)
+            throw new InvalidOperationException("Can't restart. Upload is not failed or can't succeed");
         var previewState = await AttachmentsState.GetPreview(attachment.Id, default).ConfigureAwait(false);
         if (previewState.State is PreviewAccessState.NoFileAccess)
             throw new InvalidOperationException("Can't restart. No access to file");

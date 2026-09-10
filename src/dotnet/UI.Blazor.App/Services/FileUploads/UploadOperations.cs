@@ -44,6 +44,10 @@ public class UploadOperations(AppUIHub hub)
         var snapshot = snapshotAccessor.Get();
         var fileProvider = snapshot.FileProvider;
         await fileProvider.WhenFileStreamReady().WaitAsync(cancellationToken).ConfigureAwait(false);
+        // Only now the length is known everywhere: a native gallery pick reports 0 until the file loads
+        if (source.Metadata.Length <= 0)
+            throw StandardError.Upload.FileEmpty();
+
         await GetOrRegisterUpload(source, snapshotAccessor, cancellationToken).ConfigureAwait(false); // Ensure upload id is registered
         progress ??= new Progress<double>(_ => { });
         var uploadOperation = new FileUploadOperation(StartUpload);

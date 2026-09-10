@@ -71,6 +71,12 @@ public class FileAttachments : UIServiceBase<AppUIHub>
 
     private async Task<bool> TryAddWebFileAttachment(AttachmentList list, int id, string fileName, string fileType, long size)
     {
+        // A browser knows a File's size upfront, and 0 there is what a paste of an image whose
+        // clipboard data is already gone yields; the server can't create an upload for it either.
+        if (size <= 0) {
+            UICommander.ShowError(StandardError.Upload.FileEmpty());
+            return false;
+        }
         if (CheckCanAdd(list, size) is { } e) {
             UICommander.ShowError(e);
             return false;
