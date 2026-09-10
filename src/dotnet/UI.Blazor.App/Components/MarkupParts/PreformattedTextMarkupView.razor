@@ -4,17 +4,19 @@
     var m = State.Value;
 }
 
-<CopyTrigger Class="!contents" Tooltip="@L.Markup_ClickToCopy" CopyText="@m.MarkupText">
-    <code class="preformatted-text-markup">
-        @if (m.SearchMatch.IsMatch) {
-            <SearchMatchHighlighter
-                Match="m.SearchMatch"
-                HighlightedClass="highlight"/>
-        } else {
-            @m.MarkupText
-        }
-    </code>
-</CopyTrigger>
+@* Delegated copy rather than a CopyTrigger - see copy-trigger.ts. A chat can render hundreds of
+   these, and a component + wrapper element each is what that costs. *@
+<code class="preformatted-text-markup"
+      data-copy-text="@m.MarkupText"
+      data-tooltip="@L.Markup_ClickToCopy">
+    @if (m.SearchMatch.IsMatch) {
+        <SearchMatchHighlighter
+            Match="m.SearchMatch"
+            HighlightedClass="highlight"/>
+    } else {
+        @m.MarkupText
+    }
+</code>
 
 @code {
     protected override ComputedState<Model>.Options GetStateOptions()

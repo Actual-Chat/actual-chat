@@ -2,6 +2,8 @@
     @apply top-1;
     @apply pl-1;
 }
+/* .markup-suffix supplies the gap itself, so the marker must not add its own on top. */
+.markup-suffix .translation-marker,
 .playable-text-markup .translation-marker,
 .plain-text-markup .translation-marker {
     @apply pl-0;
@@ -17,7 +19,7 @@
     @apply max-w-48 h-5;
     @apply px-1.5;
     @apply rounded-full bg-mention-other;
-    @apply text-mention-other-text font-medium;
+    @apply text-mention-other-text font-normal;
     @apply select-none;
 }
 .mention-markup.dim {
@@ -36,7 +38,7 @@
     @apply max-w-none h-auto;
     @apply px-0;
     @apply bg-transparent;
-    @apply text-primary font-medium;
+    @apply text-primary font-normal;
     @apply no-underline hover:underline;
 }
 .mention-markup.mention-markup-chat > div {
@@ -158,10 +160,6 @@
 }
 .playable-text-markup > span {
     @apply inline;
-}
-.playable-text-markup > span.last-word {
-    @apply inline;
-    white-space: nowrap;
 }
 
 .playable-text-markup .highlight {
@@ -373,8 +371,7 @@ ul.list-markup li::before {
    to what follows. MarkupSeqView drops the blank lines around a header, so `# H` looks the
    same whether or not the author left them.
    No white-space:break-spaces here: .plain-text-markup already has it, and on the container
-   it would also preserve the source indentation PlainTextMarkupView emits between its head
-   and last-word spans, indenting a wrapped header. */
+   it would preserve the source indentation between markup views, indenting a wrapped header. */
 .header-markup {
     --header-markup-gap: 0.75lh;
     word-break: break-word;
@@ -396,29 +393,13 @@ ul.list-markup li::before {
 .header-markup-3 {
     color: var(--header-markup-color-3);
 }
-/* NOTE(AY): Why font-weight lives on descendant <span>, not on .header-markup itself:
-   .chat-message-markup span applies text-text-1, which carries font-weight:400
-   baked in (see tailwind.config.js). That rule sets font-weight directly on the
-   span, so an inherited weight from the .header-markup parent loses.
-   Why two selectors per level:
-   - The .chat-message-markup-prefixed selector raises specificity above
-     `.chat-message-markup span` so it wins inside chat messages.
-   - The bare `.header-markup-N span` selector covers headers rendered outside
-     a chat message (previews, editor, search results) where the prefixed rule
-     wouldn't match.
-  The real reason: Andrey wrote a CSS rule for ".chat-message-markup span",
-  which should never exist in the first place. And now we have to deal with it.
-*/
-.chat-message-markup .header-markup-1 span,
-.header-markup-1 span {
+.header-markup-1 {
     @apply font-black;
 }
-.chat-message-markup .header-markup-2 span,
-.header-markup-2 span {
+.header-markup-2 {
     @apply font-bold;
 }
-.chat-message-markup .header-markup-3 span,
-.header-markup-3 span {
+.header-markup-3 {
     @apply font-medium;
 }
 
@@ -462,4 +443,13 @@ ul.list-markup li::before {
 .chat-message-markup .table-markup th span,
 .table-markup th span {
     @apply font-medium;
+}
+
+/* The trailing marks - sending status, translation. MarkupSuffixView emits no whitespace before
+   this span, so the only gap is the padding and there is no break opportunity between the last
+   word and the marks: they can never wrap onto a line of their own. */
+.markup-suffix {
+    @apply inline;
+    padding-left: 0.25rem;
+    white-space: nowrap;
 }

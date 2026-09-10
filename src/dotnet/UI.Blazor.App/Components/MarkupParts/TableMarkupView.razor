@@ -33,13 +33,6 @@
 </div>
 
 @code {
-    [CascadingParameter] public RenderFragment? LastFragment { get; set; }
     private RenderFragment RenderCell(TableCellMarkup cell, bool isLastCell)
-        // Only the very last cell may render LastFragment - otherwise the entry's status
-        // fragment (timestamp, delivery mark) would repeat in every cell of the table.
-        => isLastCell || LastFragment == null
-            ? @<MarkupView Markup="@cell.Content"/>
-            : @<CascadingValue TValue="RenderFragment" Value="@null">
-                  <MarkupView Markup="@cell.Content"/>
-              </CascadingValue>;
+        => @<MarkupView Markup="@cell.Content"/>;
 }

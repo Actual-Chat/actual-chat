@@ -1,0 +1,10 @@
+@inherits MarkupViewBase<MarkupSuffix>
+
+@if (Context?.Suffix is { } suffix) {
+    @* No whitespace before this span: the gap is padding, so there is no break opportunity between
+       the text and the marks and they can never wrap onto a line of their own. *@<span class="markup-suffix">@suffix</span>
+}
+
+@code {
+    [CascadingParameter] public MarkupRenderContext? Context { get; set; }
+}

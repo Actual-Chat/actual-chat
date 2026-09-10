@@ -77,8 +77,8 @@ describe('preformatted text markup copy-on-click', () => {
     it('copies the preformatted text to the clipboard on click', async () => {
         const code = page.locator(`code.preformatted-text-markup:has-text("${preformattedText}")`).first();
         await code.click();
-        // CopyTrigger adds `.copied` to its wrapper for 3s after a successful copy.
-        await page.locator('.copy-trigger.copied').first()
+        // The delegated copy handler adds `.copied` to the clicked element for 3s after a copy.
+        await page.locator('code.preformatted-text-markup.copied').first()
             .waitFor({ state: 'visible', timeout: 5_000 })
             .catch(() => { /* hint may auto-clear before we observe it */ });
 

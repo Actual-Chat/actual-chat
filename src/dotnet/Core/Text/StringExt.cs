@@ -17,9 +17,6 @@ public static partial class StringExt
     [GeneratedRegex(@"(?<line>[^\r\n]*)\r?\n", RegexOptions.ExplicitCapture)]
     private static partial Regex NewLineRegexFactory();
 
-    [GeneratedRegex(@"\s*(\S+)\s*$")]
-    private static partial Regex LastWordRegexFactory();
-
     [GeneratedRegex(@"([a-z0-9])([A-Z])|([A-Z])([A-Z][a-z])")]
     private static partial Regex KebabCaseRegexFactory();
 
@@ -28,7 +25,6 @@ public static partial class StringExt
     private static readonly Regex CamelCaseRegex = CamelCaseRegexFactory();
     private static readonly Regex NewLineRegex = NewLineRegexFactory();
 #pragma warning restore MA0023
-    private static readonly Regex LastWordRegex = LastWordRegexFactory();
     private static readonly Regex KebabCaseRegex = KebabCaseRegexFactory();
 
     public static string RequireNonEmpty(this string? source, [CallerArgumentExpression(nameof(source))] string name = "")
@@ -233,20 +229,6 @@ public static partial class StringExt
         => WebUtility.HtmlDecode(input);
     public static string HtmlDecode(this Symbol input)
         => WebUtility.HtmlDecode(input);
-
-    public static (string Head, string? Last) SplitLastWord(this string text)
-    {
-        if (text.IsNullOrEmpty())
-            return ("", null);
-
-        var match = LastWordRegex.Match(text);
-        if (!match.Success)
-            return (text, null);
-
-        var lastWord = match.Groups[1].Value;
-        var prefix = text[..match.Index];
-        return (prefix, lastWord);
-    }
 
     // ParseXxx
 
