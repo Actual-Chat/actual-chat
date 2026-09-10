@@ -2,7 +2,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ActualLab.IO;
-using Xunit.DependencyInjection;
 using Xunit.DependencyInjection.Logging;
 
 namespace ActualChat.Testing;
@@ -20,14 +19,9 @@ public class DefaultStartup
             cfg.AddJsonFile("testsettings.local.json", true, false);
             cfg.AddEnvironmentVariables();
         })
-        .ConfigureLogging(log => log.SetMinimumLevel(LogLevel.Trace));
-
-    public void Configure(ILoggerFactory loggerFactory, ITestOutputHelperAccessor accessor)
-#pragma warning disable CS0618
-#pragma warning disable CA2000 // Call Dispose
-        => loggerFactory.AddProvider(new XunitTestOutputLoggerProvider(accessor, (s, level) => true));
-#pragma warning restore CA2000
-#pragma warning restore CS0618
+        .ConfigureLogging(log => log
+            .SetMinimumLevel(LogLevel.Trace)
+            .AddXunitOutput(options => options.Filter = (_, _) => true));
 
     public virtual void ConfigureServices(IServiceCollection services, HostBuilderContext ctx)
         => services.TryAddSingleton(c => c.LogFor("")); // Default ILogger w/o a category

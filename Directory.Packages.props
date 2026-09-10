@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>14.4.3</ActualLabFusionVersion>
+    <ActualLabFusionVersion>14.4.11</ActualLabFusionVersion>
     <!-- .NET 11 is not GA yet: every Microsoft.* package below shares this build number -->
     <DotNetVersion>11.0.0-rc.1.26425.128</DotNetVersion>
     <AspNetCoreVersion>$(DotNetVersion)</AspNetCoreVersion>
@@ -22,7 +22,7 @@
     <!-- 3.1 is the floor on .NET 11: earlier versions read MulticastDelegate._invocationList via
          UnsafeAccessor, and preview 7 replaced that field, so a multi-handler event inside
          StackExchange.Redis throws MissingFieldException on a thread pool thread and kills the process -->
-    <RedisVersion>3.1.13</RedisVersion>
+    <RedisVersion>3.1.31</RedisVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.15.3</OpenTelemetryVersion>
     <OpenTelemetryInstrumentationAspNetCoreVersion>1.15.1</OpenTelemetryInstrumentationAspNetCoreVersion>
@@ -275,7 +275,7 @@
     <PackageVersion Include="System.Management" Version="$(DotNetVersion)" />
     <PackageVersion Include="Crayon" Version="2.0.69" />
     <!-- Build / test time only -->
-    <PackageVersion Include="AwesomeAssertions" Version="9.4.0" />
+    <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="bunit" Version="2.7.2" />
     <PackageVersion Include="FlakyTest.XUnit" Version="2.4.10" />

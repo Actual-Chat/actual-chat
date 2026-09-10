@@ -9,6 +9,7 @@ import type { RpcPeer } from '../../../src/nodejs/src/actuallab-rpc/rpc-peer';
 
 function createSender(isConnected: boolean) {
     const sent: string[] = [];
+    const connection = {};
     const peerStub = {
         hub: {
             hubId: 'test-host',
@@ -23,8 +24,9 @@ function createSender(isConnected: boolean) {
             nextId: () => 1,
             unregister: () => undefined,
         },
-        connection: {},
+        connection,
         isConnected,
+        wireConnection: isConnected ? connection : undefined,
         serializationFormat: null,
     };
     const sender = new RpcStreamSender<number>(

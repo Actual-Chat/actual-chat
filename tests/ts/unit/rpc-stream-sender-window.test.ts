@@ -40,6 +40,7 @@ async function runPublishSim(options: SimOptions): Promise<SimResult> {
         if (ackIndex % options.ackPeriod === 0)
             setTimeout(() => sender.onAck(ackIndex, ''), options.rttMs);
     };
+    const connection = {};
     const peerStub = {
         hub: {
             hubId: 'test-host',
@@ -60,8 +61,9 @@ async function runPublishSim(options: SimOptions): Promise<SimResult> {
             nextId: () => 1,
             unregister: () => undefined,
         },
-        connection: {},
+        connection,
         isConnected: true,
+        wireConnection: connection,
         serializationFormat: null,
     };
     sender = new RpcStreamSender<TestFrame>(
