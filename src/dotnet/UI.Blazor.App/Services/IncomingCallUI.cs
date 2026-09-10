@@ -381,8 +381,10 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (chatId is null)
             return false;
 
+        // CallStatus and the session Kind that commits _inCallChatId invalidate independently over RPC -
+        // Accepted can land here before Kind == Call does, so it still counts as "dialing" too.
         var callStatus = await LiveSessionUI.GetCallStatus(chatId, cancellationToken).ConfigureAwait(false);
-        return callStatus == CallStatus.Dialing;
+        return callStatus is CallStatus.Dialing or CallStatus.Accepted;
     }
 
     [ComputeMethod]
@@ -442,10 +444,10 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (await IsRingingOrInCall(id, cancellationToken).ConfigureAwait(false))
             return id;
 
-        // My own outgoing call, still dialing (before PrepareForegroundCall commits it to InCall) -
-        // show the same full-screen call view with a "Dialing..." status instead of nothing.
+        // My own outgoing call, still dialing or just accepted (before PrepareForegroundCall commits it
+        // to InCall - see IsForegroundDialingActive) - keep the "Dialing..." view up instead of nothing.
         var callStatus = await LiveSessionUI.GetCallStatus(id, cancellationToken).ConfigureAwait(false);
-        return callStatus == CallStatus.Dialing ? id : null;
+        return callStatus is CallStatus.Dialing or CallStatus.Accepted ? id : null;
     }
 
     private async Task<bool> IsStillInCall(ChatId chatId, CancellationToken cancellationToken)
