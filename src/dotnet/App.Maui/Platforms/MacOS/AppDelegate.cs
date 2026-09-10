@@ -21,6 +21,9 @@ public class AppDelegate : MacOSMauiApplication
         UNUserNotificationCenter.Current.Delegate = MacOSNotificationDelegate.Instance;
     }
 
+    public override bool ApplicationShouldHandleReopen(NSApplication sender, bool hasVisibleWindows)
+        => hasVisibleWindows || !WindowConfigurator.TryShowWindow();
+
     public override void OpenUrls(NSApplication application, NSUrl[] urls)
     {
         foreach (var url in urls)

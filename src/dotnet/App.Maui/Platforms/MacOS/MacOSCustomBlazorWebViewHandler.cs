@@ -1,3 +1,4 @@
+using CoreFoundation;
 using CoreGraphics;
 using Foundation;
 using Microsoft.Maui.Platforms.MacOS.Handlers;
@@ -62,7 +63,7 @@ public sealed class MacOSCustomBlazorWebViewHandler : BlazorWebViewHandler
         // no sound even though the pipeline runs.
         config.MediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypes.None;
 
-        var webView = new LayoutInvalidatingWKWebView(CGRect.Empty, config);
+        var webView = new PatchedWKWebView(CGRect.Empty, config);
         config.Preferences.SetValueForKey(NSObject.FromObject(true), new NSString("developerExtrasEnabled"));
         webView.SetValueForKey(NSObject.FromObject(false), new NSString("drawsBackground"));
         if (OperatingSystem.IsMacOSVersionAtLeast(13, 3))
@@ -78,7 +79,7 @@ public sealed class MacOSCustomBlazorWebViewHandler : BlazorWebViewHandler
 
     // Nested types
 
-    private sealed class LayoutInvalidatingWKWebView(CGRect frame, WKWebViewConfiguration configuration)
+    private sealed class PatchedWKWebView(CGRect frame, WKWebViewConfiguration configuration)
         : WKWebView(frame, configuration)
     {
         public override void ViewDidMoveToSuperview()
@@ -88,9 +89,19 @@ public sealed class MacOSCustomBlazorWebViewHandler : BlazorWebViewHandler
             // The labs ContentPageHandler adds page content without invalidating layout, so a
             // WebView attached after the first layout pass keeps a zero frame forever - our
             // MainPage attaches it only once BlazorWebViewApp is ready, long past that pass.
-            // TODO(maui-labs): delete this subclass once the labs ContentPageHandler invalidates layout.
+            // TODO(maui-labs): delete this override once the labs ContentPageHandler invalidates layout.
             if (Superview is { } superview)
                 superview.NeedsLayout = true;
+        }
+
+        public override void ViewDidMoveToWindow()
+        {
+            base.ViewDidMoveToWindow();
+
+            // The labs handler installs its titlebar drag overlay from a KVO observer of this very
+            // window change, so the reorder must run after the current pass.
+            if (Window is { } window)
+                DispatchQueue.MainQueue.DispatchAsync(() => WindowConfigurator.KeepTitlebarAboveContent(window));
         }
     }
 }
