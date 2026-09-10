@@ -17,7 +17,7 @@ public class UploadSessionsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), I
     public virtual Task<ImmutableArray<string>> GetActiveSessionIds(CancellationToken cancellationToken)
     {
         var ids = _progresses
-            .Where(kv => IsActiveStage(kv.Value.Stage))
+            .Where(kv => IsActive(kv.Value))
             .Select(kv => kv.Key)
             .ToImmutableArray();
         return Task.FromResult(ids);
@@ -25,9 +25,9 @@ public class UploadSessionsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), I
 
     public void SetProgress(string sessionId, UploadSessionProgress progress)
     {
-        var wasActive = IsActiveStage(_progresses.GetValueOrDefault(sessionId)?.Stage);
+        var wasActive = IsActive(_progresses.GetValueOrDefault(sessionId));
         _progresses[sessionId] = progress;
-        var isActive = IsActiveStage(progress.Stage);
+        var isActive = IsActive(progress);
         using (Invalidation.Begin()) {
             _ = GetProgress(sessionId, default);
             if (wasActive != isActive)
@@ -37,7 +37,7 @@ public class UploadSessionsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), I
 
     public void Remove(string sessionId)
     {
-        var wasActive = IsActiveStage(_progresses.GetValueOrDefault(sessionId)?.Stage);
+        var wasActive = IsActive(_progresses.GetValueOrDefault(sessionId));
         _progresses.TryRemove(sessionId, out _);
         using (Invalidation.Begin()) {
             _ = GetProgress(sessionId, default);
@@ -46,6 +46,7 @@ public class UploadSessionsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), I
         }
     }
 
-    private static bool IsActiveStage(UploadStage? stage)
-        => stage is UploadStage.Uploading or UploadStage.ServerProcessing;
+    // A failed session keeps its stage but is waiting for a restart, not uploading
+    private static bool IsActive(UploadSessionProgress? progress)
+        => progress is { IsFailed: false, Stage: UploadStage.Uploading or UploadStage.ServerProcessing };
 }
