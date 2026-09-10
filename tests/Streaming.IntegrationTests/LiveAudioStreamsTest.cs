@@ -206,6 +206,54 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
     }
 
     [Fact(Timeout = 60_000)]
+    public async Task GetListeningStreamShouldTrackListenerPresence()
+    {
+        // arrange
+        var appHost = AppHost;
+        var services = appHost.Services;
+        var commander = services.Commander();
+        var session = Session.New();
+        await appHost.SignIn(session, new AccountFull("Bobby"));
+
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "GetListeningStreamPresenceTest",
+                    Kind = ChatKind.Group,
+                },
+            },
+        });
+        chat.Require();
+
+        var liveAudioStreams = services.GetRequiredService<ILiveAudioStreams>();
+        var liveSessionsBackend = services.GetRequiredService<ILiveSessionsBackend>();
+        var authors = services.GetRequiredService<IAuthors>();
+        var author = await authors.GetOwn(session, chat.Id, default);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+
+        // act - open the listening stream and start consuming it
+        var stream = await liveAudioStreams.GetListeningStream(session, chat.Id, default, cts.Token);
+        var consumeTask = BackgroundTask.Run(async () => {
+            await foreach (var _ in stream.WithCancellation(cts.Token)) { }
+        }, cts.Token);
+
+        // assert - presence is registered while the stream is open
+        await ComputedTest.When(async ct =>
+            (await liveSessionsBackend.ListParticipants(chat.Id, ct)).Should().Contain(author!.Id));
+
+        // act - the caller stops consuming (cancellation unwinds the async iterator's finally block)
+        await cts.CancelAsync();
+        await consumeTask.SilentAwait(false);
+
+        // assert - presence goes with it, not with the 90s ParticipantStaleness backstop
+        await ComputedTest.When(async ct =>
+            (await liveSessionsBackend.ListParticipants(chat.Id, ct)).Should().NotContain(author!.Id));
+    }
+
+    [Fact(Timeout = 60_000)]
     public async Task SkipToLiveSkipsWhatTheProducerAlreadyProduced()
     {
         // arrange

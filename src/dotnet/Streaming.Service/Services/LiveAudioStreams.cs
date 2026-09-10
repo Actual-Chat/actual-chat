@@ -23,6 +23,8 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     private IAudioStreamingBackend Backend => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private RemoteAudioStreamCache RemoteAudioCache => field ??= Services.GetRequiredService<RemoteAudioStreamCache>();
+    private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
+    private ILiveSessionsBackend LiveSessionsBackend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     // [ComputeMethod]
@@ -172,8 +174,11 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         chat.Rules.Require(ChatPermissions.ReadAudio);
 
         Log.LogInformation("GetListeningStream: chat '{ChatId}', catchUpFrom={CatchUpFrom}", chatId, catchUpFrom);
+        var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (author != null)
+            await SetListenerPresence(chatId, author.Id, true, cancellationToken).ConfigureAwait(false);
         var muxer = new ListeningStreamMuxer(Services, session, chatId, catchUpFrom);
-        var stream = ToLiveAsyncEnumerable(muxer, muxer.Output, cancellationToken);
+        var stream = ToLiveAsyncEnumerable(muxer, muxer.Output, chatId, author?.Id, cancellationToken);
         return StandardRpcStream.NewAudioDelivery(stream, allowReconnect: false);
     }
 
@@ -211,6 +216,22 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         => Task.CompletedTask;
 
     // Private methods
+
+    private async Task SetListenerPresence(
+        ChatId chatId,
+        AuthorId authorId,
+        bool isActive,
+        CancellationToken cancellationToken)
+    {
+        try {
+            await LiveSessionsBackend
+                .SetParticipation(chatId, authorId, ParticipationKind.AudioListen, isActive, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to update listener presence for chat #{ChatId}", chatId);
+        }
+    }
 
     private async Task<bool> IsTextOnly(StreamId streamId, CancellationToken cancellationToken)
     {
@@ -287,9 +308,11 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         }
     }
 
-    private static async IAsyncEnumerable<MuxedAudioStreamItem> ToLiveAsyncEnumerable(
+    private async IAsyncEnumerable<MuxedAudioStreamItem> ToLiveAsyncEnumerable(
         ListeningStreamMuxer muxer,
         ChannelReader<MuxedAudioStreamItem> reader,
+        ChatId chatId,
+        AuthorId? authorId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         try {
@@ -298,6 +321,8 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         }
         finally {
             await muxer.DisposeAsync().ConfigureAwait(false);
+            if (authorId is { } id)
+                await SetListenerPresence(chatId, id, false, CancellationToken.None).ConfigureAwait(false);
         }
     }
 
