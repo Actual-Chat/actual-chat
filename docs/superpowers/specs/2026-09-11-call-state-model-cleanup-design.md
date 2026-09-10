@@ -94,15 +94,8 @@ invitee accepted." Added `Active`, `Canceled`, `Ended` so `CallStatus` alone
 tells the whole story of a call in progress, rather than splitting it with
 `LiveSessionState.Outcome`.
 
-`CallState` itself is unchanged in shape:
-
-```csharp
-public sealed partial record CallState {
-    public AuthorId CallerId { get; init; }
-    public CallStatus Status { get; init; }
-    public Moment ChangedAt { get; init; }
-}
-```
+`CallState`'s shape changes to add a few facts the recompute below needs —
+see "Participant presence drives `Active`/`Ended`" for the full record.
 
 #### `CallStatus` is recomputed, never set directly by an action
 
@@ -120,21 +113,26 @@ private async Task RecomputeCallStatus(ChatId chatId, LiveSessionState state, Ca
 {
     if (!state.IsCall) return;
 
-    var invites = await SafeGetInvites(chatId).ConfigureAwait(false);
-    var activeCount = await ParticipantCount(chatId).ConfigureAwait(false);
-    var callerCanceled = /* see open item below */;
-    var status = Derive(state, invites.Values, activeCount, callerCanceled);
-    await SetCallState(chatId, NewCallState(state, status)).ConfigureAwait(false);
+    var callState = await SafeGetCallState(chatId).ConfigureAwait(false);
+    var invites = (await SafeGetInvites(chatId).ConfigureAwait(false)).Values;
+    var status = Derive(callState, invites);
+    await SetCallState(chatId, NewCallState(state, status, callState)).ConfigureAwait(false);
 }
 
-private static CallStatus Derive(
-    LiveSessionState state, IReadOnlyCollection<CallInvite?> invites, int activeCount, bool callerCanceled)
+private static CallStatus Derive(CallState? callState, IReadOnlyCollection<CallInvite?> invites)
 {
+    var everActive = callState?.CallerActiveAt is not null
+        || invites.Any(i => i?.ActiveAt is not null);
+    var activeCount = (callState?.CallerActiveAt is not null && callState.CallerEndedAt is null ? 1 : 0)
+        + invites.Count(i => i is { Status: CallInviteStatus.Active });
+
     if (activeCount >= 2)
         return CallStatus.Active;
-    if (callerCanceled)
+    if (everActive)
+        return CallStatus.Ended;   // was Active, now isn't - however it wound down, it's Ended
+    if (callState?.CanceledAt is not null)   // explicit CancelCall, distinct from CallerEndedAt (presence loss)
         return CallStatus.Canceled;
-    if (invites.Any(i => i is { Status: CallInviteStatus.Accepted or CallInviteStatus.Active }))
+    if (invites.Any(i => i is { Status: CallInviteStatus.Accepted }))
         return CallStatus.Connecting;
     if (invites.Any(i => i is { Status: CallInviteStatus.Declined }))
         return CallStatus.Declined;
@@ -144,18 +142,14 @@ private static CallStatus Derive(
 }
 ```
 
-Once the call has been genuinely `Active` at least once, its eventual
-terminal status is always `Ended`, regardless of how it winds down — this
-mirrors the already-existing rule "a call that connected is Ended whichever
-button ended it." `RecomputeCallStatus` needs to know "was this call ever
-Active" to apply that rule once `activeCount` drops back below 2 — see the
-open item below.
+No `ParticipantCount(chatId)`/`_participants` read anywhere in `Derive` —
+`activeCount` is a sum over the same `Active`-status facts `SetParticipation`
+already maintains per the section above, not a fresh presence query.
 
 Called after every fact-recording step: `AcceptCall`, `DeclineCall`,
-`ExpireRings` (an invite becoming `Missed`), and after any presence-count
-change that could cross the `>= 2` threshold in either direction (the same
-places `EnforceCallConnectGrace` and `SetParticipation`'s `shouldCloseAsCall`
-path already touch).
+`ExpireRings` (an invite becoming `Missed`), and — per the section above —
+every `SetParticipation` activate/deactivate call that touches this call's
+caller or an invitee.
 
 ### `CallOutcome` — unchanged
 
@@ -208,9 +202,10 @@ public enum CallInviteStatus {
     New = 0,        // sentinel — the invite record exists but nothing has happened to it yet
     Ringing = 1,
     Accepted = 2,
-    Active = 3,     // this invitee is now a genuinely present participant (>= 1 fresh stream/heartbeat)
+    Active = 3,     // this invitee is now a genuinely present participant
     Declined = 4,
     Missed = 5,     // never answered — timed out, or the caller canceled/the call ended while still ringing
+    Ended = 6,      // was Active, then this invitee's presence deactivated — terminal, see below
 }
 ```
 
@@ -221,9 +216,10 @@ In practice `StartCall` still creates the invite directly with `Status =
 Ringing`, so `New` is mostly a hygiene fix for the enum's default, not a
 state invitees are expected to visibly pass through.
 
-`Active` is new. It requires a new timestamp field on `CallInvite`, set the
-first time this invitee is confirmed as a genuine participant (mirrors
-`ParticipationInfo.RegisteredAt`'s role, scoped to this invite):
+`Active`/`Ended` are new — see "Participant presence drives `Active`/`Ended`"
+below for exactly what sets them; they are not derived from `Accepted`/time,
+only from a genuine presence signal. Both need timestamp fields on
+`CallInvite`:
 
 ```csharp
 public sealed partial record CallInvite {
@@ -232,6 +228,7 @@ public sealed partial record CallInvite {
     public Moment RingingAt { get; init; }
     public Moment? RespondedAt { get; init; }
     public Moment? ActiveAt { get; init; }        // new
+    public Moment? EndedAt { get; init; }         // new
     public RingAck? Ack { get; init; }             // new, see below
     public Moment? AckAt { get; init; }            // new
 }
@@ -241,6 +238,65 @@ public sealed partial record CallInvite {
 "the caller canceled while I was still ringing" (both already end up here
 today via `ExpireRings`/`CancelCall`). Splitting it was considered and
 rejected: nothing currently reads that distinction per-invitee.
+
+#### Participant presence drives `Active`/`Ended` — never raw presence counts
+
+`CallStatus`/`Derive` (above) must never call `ParticipantCount(chatId)` or
+otherwise read `_participants`/`ParticipationInfo` directly. Instead,
+presence *events* (the same activate/deactivate transitions
+`SetParticipation` already produces) drive the specific invitee's or
+caller's own status, and `Derive` only ever counts **those** facts:
+
+- **Activation** (`SetParticipation(chatId, authorId, kind, isActive: true,
+  ...)` for an `authorId` that is this call's caller or an invitee): sets
+  `CallInvite.Status = Active` / `ActiveAt = now` for that invitee (if not
+  already `Active` — see below), or the equivalent caller-side fact
+  (`CallState.CallerActiveAt`, see below). This is also the single place
+  that promotes an invitee straight from `Ringing` to `Active` if their
+  stream registers before/without a formal `Accepted` in between. A
+  repeat activation while already `Active` (the ordinary 45s heartbeat
+  from `RunParticipationSync`) is an **idempotent no-op**, not logged —
+  only a repeat arriving *after* a terminal status is the off-nominal case
+  (see the valid-from table below).
+- **Deactivation** (`SetParticipation(..., isActive: false, ...)`, or the
+  presence-staleness path that already calls it): sets `Status = Ended` /
+  `EndedAt = now` for that participant — but **only** if they were
+  currently `Active`. This is a ratchet: **reactivation is impossible**.
+  If a later activation signal arrives for a participant already `Ended`
+  (or `Declined`/`Missed`/`Canceled`/`NoAnswer`) for this call, it is not
+  applied — log it as an off-nominal condition (attempted activation +
+  current terminal status) via the same mechanism as the Signal
+  Validation section below, and no-op.
+
+`CallState` gains the caller-side equivalent of `CallInvite`'s `ActiveAt`/
+`EndedAt` (the caller has no separate per-invite record, so these live
+directly on `CallState`):
+
+```csharp
+public sealed partial record CallState {
+    public AuthorId CallerId { get; init; }
+    public CallStatus Status { get; init; }
+    public Moment ChangedAt { get; init; }
+    public Moment? CallerActiveAt { get; init; }   // new — presence: caller became genuinely active
+    public Moment? CallerEndedAt { get; init; }    // new — presence: caller's presence deactivated (ratchet)
+    public Moment? CanceledAt { get; init; }       // new — explicit CancelCall, distinct from the above
+}
+```
+
+`CanceledAt` is deliberately a separate fact from `CallerEndedAt`: the
+whole reason this session distinguishes deliberate departure from passive
+absence (`LeaveCall`'s removal, `SetParticipation`'s kind-guard, etc.)
+applies here too — a crash must never read as `Canceled`. `CanceledAt` is
+set only by `CancelCall` itself; `CallerEndedAt` only by a genuine presence
+deactivation. `Derive` checks `CanceledAt` only in the branch where the
+call was never `Active` — once `everActive` is true, `Ended` always wins
+regardless of `CanceledAt`, matching "a call that connected is Ended
+whichever button ended it."
+
+This is what makes `CallerStatus`'s `Ended` value (already in the earlier
+table) and the "was this call ever Active" rule for `Derive`'s terminal
+branch (open item, below) both fall out for free: "ever active" is simply
+`CallerActiveAt is not null || invites.Any(i => i.ActiveAt is not null)`.
 
 ### Client-ack (`RingAck`) — new, purely informational
 
@@ -294,15 +350,23 @@ Valid-from table:
 | `DeclineCall` (invitee) | `CallInviteStatus.Ringing` |
 | `ConfirmRing` (invitee) | `CallInviteStatus.Ringing` |
 | `CancelCall` (caller) | `CallStatus.Dialing` or `CallStatus.Connecting` (not yet `Active` — hanging up an `Active` call goes through the ordinary presence path, not `CancelCall`) |
+| presence *activation* (invitee) | `Ringing`, `Accepted`, or already `Active` (heartbeat — idempotent, not logged either way) |
+| presence *activation* (caller) | any status before a terminal one — i.e. `CanceledAt is null` and not already `Ended`/`NoAnswer`/`Declined` overall; already-`Active` is an idempotent heartbeat, same as invitee |
+| presence *deactivation* (invitee/caller) | only meaningful from `Active` — a deactivation for a participant not currently `Active` has nothing to do (already covered by `SetParticipation`'s own kind-guard, no separate log needed here) |
 
 An invalid signal still no-ops (same observable behavior as today) —
 this only adds the log line, it doesn't change what happens on a
 legitimate race (e.g. a client retries `AcceptCall` after a dropped
 response — the retry arrives to find `Status` already `Accepted`, logs a
-warning, and no-ops, exactly as it silently does today). Worth
-factoring into one small shared helper (something like
+warning, and no-ops, exactly as it silently does today). The presence-
+activation row is the important new case: a participant already `Ended`
+(or `Declined`/`Missed`/`Canceled`/`NoAnswer`) whose stream reactivates is
+never resurrected — logged as off-nominal and dropped, per "Participant
+presence drives `Active`/`Ended`" above.
+
+Worth factoring into one small shared helper (something like
 `EnsureValidTransition(chatId, authorId, expected, actual, signalName)`)
-rather than four separate log call sites — left for the plan.
+rather than repeating the same log call at every site — left for the plan.
 
 ## Call sites affected (backend)
 
@@ -318,7 +382,8 @@ All in `LiveSessionsBackend.cs`, from the current `LiveSessionKind.Dialing`/
 | `AcceptCall` (~659) | writes `CallInviteStatus.Accepted` on the invite (already does, via `_invites.Set`), then calls `RecomputeCallStatus` instead of `SetCallState(..., CallStatus.Accepted)` directly |
 | `DeclineCall` (~691) | writes `CallInviteStatus.Declined`, then `RecomputeCallStatus` instead of `SetCallState(..., CallStatus.Declined)` directly |
 | `EnforceCallConnectGrace` | on success or failure, calls `RecomputeCallStatus` instead of only closing on failure — success needs to *advance* the status (to `Active`) too, which recompute does for free once `activeCount >= 2` |
-| `SetParticipation`'s `shouldCloseAsCall` path | when the drop is *not* a close (count stays >= 2), no explicit `CallStatus` write needed — `RecomputeCallStatus` after any presence-count change naturally keeps reporting `Active` |
+| `SetParticipation` (isActive: true, for this call's caller/an invitee) | writes `CallInvite.Status = Active`/`ActiveAt` (or `CallState.CallerActiveAt`) per "Participant presence drives `Active`/`Ended`", validated against the valid-from table, then `RecomputeCallStatus` |
+| `SetParticipation` (isActive: false, same) | writes `Status = Ended`/`EndedAt` (or `CallerEndedAt`) only if currently `Active` (ratchet), then `RecomputeCallStatus` — this is also where `shouldCloseAsCall`'s existing `ParticipantCount < 2` close-decision lives; see open item on whether it switches to the same facts |
 | `ExpireRings` (~1072-1077) | writes `CallInviteStatus.Missed` per expired invite (already does), then `RecomputeCallStatus` instead of the direct `SetCallState(..., CallStatus.NoAnswer)` |
 | `CancelCall` | records the caller's explicit cancel as a fact (see open item below), then `RecomputeCallStatus` — replaces today's direct `SetCallState(chatId, null)` |
 | `NewCallState`'s TTL helper (~980) | `status == CallStatus.Dialing ? DialingStateTtl : ResolvedStateTtl` — extend to treat `Connecting`/`Active` as non-resolved (short TTL only makes sense pre-connect; a resolved status should get `ResolvedStateTtl` even from `Active`→terminal) |
@@ -329,19 +394,13 @@ This list is a map for the implementation plan, not exhaustive line edits —
 
 ## Open items for the plan (not decided here)
 
-1. **Where does "the caller explicitly canceled" live as a fact?**
-   `RecomputeCallStatus` needs a `callerCanceled` input distinct from "the
-   caller's presence just disappeared" (a crash must never read as
-   `Canceled` — the whole point of this session's earlier fixes was
-   telling deliberate departure apart from passive absence). Candidates:
-   a `CanceledAt: Moment?` field on `CallState` itself (set by `CancelCall`
-   right before calling recompute, read back by recompute the same tick);
-   or a transient in-memory flag threaded through the one call. Also
-   replaces today's `SetCallState(chatId, null)` — decide whether
-   `CallState` should instead be *kept* with `Status = Canceled` and
-   `ResolvedStateTtl`, so the caller's own client reads back a real
-   `Canceled` rather than an instant `None`/absence. Needs a look at
-   `OutgoingCallBanner`/`IncomingCallOverLockView`'s current handling of
+1. **`CancelCall`'s `SetCallState(chatId, null)` replacement** — the fact
+   (`CanceledAt`) and the recompute logic are now settled (`Derive` reads
+   `CanceledAt` directly). Still open: should `CallState` be *kept* after
+   `CancelCall` (with `Status = Canceled`, `ResolvedStateTtl`) so the
+   caller's own client reads back a real `Canceled` rather than an instant
+   `None`/absence, instead of clearing it outright as today? Needs a look
+   at `OutgoingCallBanner`/`IncomingCallOverLockView`'s current handling of
    `CallStatus.None` before deciding.
 2. **`ConfirmRing`'s call site on the client** — needs a client-side hook
    that fires the instant a ring push/RPC lands (before any user
@@ -349,13 +408,24 @@ This list is a map for the implementation plan, not exhaustive line edits —
    "is `_inCallChatId`/its future replacement already set for another
    chat"). This is client work, sequenced after the server model lands.
 3. **`OnStreamRegistered`'s edge case** (a still-`Dialing` call latching
-   because a stream registered before a formal accept, ~line 323) — likely
-   resolved for free by also calling `RecomputeCallStatus` there (it's a
-   presence-count change like any other), but `AuthorIds.Count` (what this
-   code path checks) and `ParticipantCount`/genuine-presence staleness
-   (what `RecomputeCallStatus` would check) are two different countings
-   today — confirm they agree here before relying on it.
-4. **`Derive`'s "was this call ever Active" rule** — reuse
-   `state.SessionStartedAt is not null`, or add a dedicated flag. Needed so
-   a call that reached `Active` and then loses its last participant is
-   recomputed as `Ended`, not `NoAnswer`/`Declined`.
+   because a stream registered before a formal accept, ~line 323) calls
+   `EnsureParticipant` directly, not `SetParticipation` — so it wouldn't
+   naturally trigger the new activation tracking (`CallInvite.Status =
+   Active` / `CallerActiveAt`) the way a normal accept-then-stream flow
+   does. Decide whether this path also needs to record the same
+   activation fact for whichever author's stream just registered, or
+   whether it's rare/harmless enough to leave as a known gap (the call
+   would latch and work, just under-report `CallStatus`/`CallerStatus`
+   until the next real `SetParticipation` call catches it up).
+4. **Does `EnforceCallConnectGrace`/`SetParticipation`'s `shouldCloseAsCall`
+   close-decision itself also switch off `ParticipantCount(chatId)`, or
+   only `CallStatus`'s computation does?** This spec bans `ParticipantCount`
+   from `Derive` specifically; it does not by itself require rewiring the
+   already-shipped, tested close-decision logic (Task 3/4 earlier this
+   session) to read `activeCount` from the new per-participant facts
+   instead. Doing so would make "how many are active" a true single source
+   of truth end to end, at the cost of touching tested code from this same
+   branch. Recommend doing it (the two numbers should never legitimately
+   disagree, and carrying two parallel counts risks exactly the kind of
+   drift this whole cleanup exists to remove) — confirm before the plan
+   commits to touching `shouldCloseAsCall`/`EnforceCallConnectGrace`.
