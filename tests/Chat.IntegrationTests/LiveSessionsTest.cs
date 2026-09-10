@@ -987,6 +987,36 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task CallStateShouldInvalidateWheneverStateDoes()
+    {
+        // Regression test for the root cause behind 9e0b87186c: GetCallState used to invalidate
+        // completely independently of GetState/Kind, so an RPC client's two subscriptions could
+        // observe them out of order. GetCallState now depends on GetState, so any invalidation of
+        // the session state also invalidates the call state - even one that never touches CallState.
+
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        var cCallState = await Computed.Capture(() => backend.GetCallState(chatId, default));
+        cCallState.Value!.Status.Should().Be(CallStatus.Dialing);
+
+        // act - SetRules never touches CallState at all, only LiveSessionState
+        await backend.SetRules(chatId, new SessionRules { VoiceModeOverride = Users.VoiceMode.JustText }, default);
+
+        // assert - GetCallState still invalidates, because it now depends on GetState
+        await cCallState.WhenInvalidated(default).WaitAsync(TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
     public async Task CancelCallShouldEndTheCall()
     {
         // arrange

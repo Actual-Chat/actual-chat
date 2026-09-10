@@ -240,7 +240,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     {
         // Captured before the awaits below — see GetState.
         var computed = Computed.GetCurrent();
-        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
+        // Depend on GetState so CallState and Kind invalidate together over RPC instead of drifting
+        // independently - this used to race (9e0b87186c): Accepted could land before Kind == Call did.
+        await GetState(chatId, cancellationToken).ConfigureAwait(false);
 
         var callState = await SafeGetCallState(chatId).ConfigureAwait(false);
         if (callState is null)
