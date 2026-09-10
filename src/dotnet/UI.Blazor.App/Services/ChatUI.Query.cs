@@ -33,7 +33,8 @@ public partial class ChatUI
             .EnsureMonotonic();
         var collapsedBlocks = blocks.Where(b => !b.IsExpanded).ToList();
         // Coverage includes the whole live block; only its governed fold may exclude entry tiles.
-        var excludedRanges = blocks.Where(b => !b.IsExpanded || (b.Id == liveBlockId && b.IsLive))
+        var excludedRanges = blocks.Where(b => !b.IsExpanded
+                || (b.Id == liveBlockId && conversationView.MaterializedBlockId == null))
             .Select(b => b.Id == liveBlockId ? liveBlockFoldRange.IntersectWith(b.EntryLidRange) : b.EntryLidRange)
             .Where(r => !r.IsEmpty)
             .ToList();

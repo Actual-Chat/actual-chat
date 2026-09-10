@@ -6,12 +6,14 @@ public sealed class ChatBlockProjectionTest
 {
     private static readonly ChatId TestChatId = ChatId.Parse("the-actual-one");
 
-    [Fact]
-    public void CompletedBlockShouldUseMetadataCoverageAndCollapseAfterItsMessages()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CompletedBlockShouldUseMetadataCoverageAndCollapseAfterItsMessages(bool isExpanded)
     {
         // arrange
         var conversation = NewConversation(100, 119);
-        var expanded = ImmutableHashSet.Create(conversation.Id);
+        var expanded = isExpanded ? ImmutableHashSet.Create(conversation.Id) : ImmutableHashSet<ConversationId>.Empty;
         var view = NewView() with { ExpandedConversations = expanded };
 
         // act
@@ -20,9 +22,11 @@ public sealed class ChatBlockProjectionTest
         // assert
         var block = blocks.Should().ContainSingle().Subject;
         block.EntryLidRange.Should().Be(new Range<long>(100, 200));
-        block.IsExpanded.Should().BeTrue();
-        block.IsLive.Should().BeFalse();
-        block.CollapsedAt.Should().BeGreaterThan(conversation.EndsAt);
+        block.IsExpanded.Should().Be(isExpanded);
+        if (isExpanded)
+            block.CollapsedAt.Should().BeNull();
+        else
+            block.CollapsedAt.Should().Be(conversation.EndsAt + TimeSpan.FromTicks(1));
     }
 
     [Fact]
@@ -43,9 +47,8 @@ public sealed class ChatBlockProjectionTest
         blocks.Select(b => b.Id).Should().Equal(preceding.Id, overlapping.Id, live.Id);
         blocks[1].EntryLidRange.Should().Be(new Range<long>(90, 100));
         blocks[2].EntryLidRange.Should().Be(new Range<long>(100, 250));
-        blocks[2].IsLive.Should().BeTrue();
         blocks[2].IsExpanded.Should().BeFalse();
-        blocks[2].CollapsedAt.Should().BeLessThanOrEqualTo(live.StartsAt);
+        blocks[2].CollapsedAt.Should().Be(live.StartsAt);
         var meta = new ChatRangeTile(new(0, 1280), [new(50, 250)],
             [preceding.EntryLidRange, overlapping.EntryLidRange, live.EntryLidRange], 0, null, null);
         ChatUI.TryGetIdTilesToLoad(view, blocks,
@@ -53,8 +56,10 @@ public sealed class ChatBlockProjectionTest
         tiles.Should().Contain(new Range<long>(100, 105));
     }
 
-    [Fact]
-    public void MaterializedBlockShouldKeepItsRenderIdentityAndExpansion()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MaterializedBlockShouldKeepItsRenderIdentityAndExpansion(bool isExpanded)
     {
         // arrange
         var materialized = NewConversation(90, 249);
@@ -62,7 +67,9 @@ public sealed class ChatBlockProjectionTest
         var view = NewView() with {
             LiveBlockConversationId = renderId,
             MaterializedBlockId = materialized.Id,
-            ExpandedConversations = ImmutableHashSet.Create(renderId),
+            ExpandedConversations = isExpanded
+                ? ImmutableHashSet.Create(renderId)
+                : ImmutableHashSet<ConversationId>.Empty,
         };
 
         // act
@@ -72,10 +79,61 @@ public sealed class ChatBlockProjectionTest
         // assert
         var block = blocks.Should().ContainSingle().Subject;
         block.Id.Should().Be(renderId);
-        block.IsLive.Should().BeFalse();
-        block.IsExpanded.Should().BeTrue();
-        block.CollapsedAt.Should().BeGreaterThan(materialized.EndsAt);
+        block.IsExpanded.Should().Be(isExpanded);
+        if (isExpanded)
+            block.CollapsedAt.Should().BeNull();
+        else
+            block.CollapsedAt.Should().Be(materialized.EndsAt + TimeSpan.FromTicks(1));
         block.EntryLidRange.Should().Be(new Range<long>(100, 250));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DissolvingBlockShouldKeepItsEarlyCollapseCutoff(bool isExpanded)
+    {
+        // arrange
+        var conversation = NewConversation(100, 149);
+        var view = NewView() with {
+            LiveBlockConversationId = conversation.Id,
+            DissolvingConversation = conversation,
+            ExpandedConversations = isExpanded
+                ? ImmutableHashSet.Create(conversation.Id)
+                : ImmutableHashSet<ConversationId>.Empty,
+        };
+
+        // act
+        var blocks = ChatUI.BuildChatBlocks(TestChatId, [], [], view, null, new(100, 150));
+
+        // assert
+        var block = blocks.Should().ContainSingle().Subject;
+        block.Id.Should().Be(conversation.Id);
+        block.IsExpanded.Should().Be(isExpanded);
+        if (isExpanded)
+            block.CollapsedAt.Should().BeNull();
+        else
+            block.CollapsedAt.Should().Be(conversation.StartsAt);
+        block.EntryLidRange.Should().Be(new Range<long>(100, 150));
+    }
+
+    [Fact]
+    public void ExpandedLiveBlockShouldHaveNoCollapseCutoff()
+    {
+        // arrange
+        var live = NewConversation(100, 149);
+        var view = NewView() with {
+            LiveBlockConversationId = live.Id,
+            ExpandedConversations = ImmutableHashSet.Create(live.Id),
+        };
+
+        // act
+        var blocks = ChatUI.BuildChatBlocks(TestChatId, [], [], view, live, new(100, 200));
+
+        // assert
+        var block = blocks.Should().ContainSingle().Subject;
+        block.IsExpanded.Should().BeTrue();
+        block.CollapsedAt.Should().BeNull();
+        block.EntryLidRange.Should().Be(new Range<long>(100, 200));
     }
 
     [Fact]

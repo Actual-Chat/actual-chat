@@ -15,7 +15,7 @@
         cls += " quiet";
     // The tint says "you were here", so it can't be keyed on the Join button: that button comes back
     // when you leave, and leaving must not repaint the block as one you never attended.
-    if (!s.IsJoined && !s.HasOverlay) {
+    if (!s.IsJoined && !s.HasAttended) {
         cls += " unjoined";
         childNames += " unjoined-live-block";
     }
@@ -55,7 +55,7 @@
             t => new ComputedState<LiveConversationHeaderState>.Options() {
                 // IsJoined defaults true in the placeholder so the clickable Join button doesn't flash
                 // before the first ComputeState resolves the real join state.
-                InitialValue = new LiveConversationHeaderState(conversation.Title, "", false, true),
+                InitialValue = new LiveConversationHeaderState(conversation.Title, "", true),
                 Category = GetStateCategory(t),
             });
     }
@@ -67,14 +67,12 @@
 
         var translatedTask = ConversationUI.GetTranslatedConversation(conversation, cancellationToken);
         var liveTask = LiveSessionUI.GetConversation(chatId, cancellationToken);
-        var rawLiveTask = LiveSessionUI.GetState(chatId, cancellationToken);
-        var blockStateTask = LiveBlockUI.GetBlockState(chatId, cancellationToken);
+        var blockTask = LiveBlockUI.GetBlock(chatId, cancellationToken);
         var translated = await translatedTask.ConfigureAwait(false);
         var live = await liveTask.ConfigureAwait(false);
-        var rawLive = await rawLiveTask.ConfigureAwait(false);
-        var blockState = await blockStateTask.ConfigureAwait(false);
+        var block = await blockTask.ConfigureAwait(false);
         var isLive = live != null && live.Id == conversation.Id;
-        var isDissolving = blockState.Overlay?.IsDissolving ?? false;
+        var isDissolving = block is ClosedLiveBlock { IsDissolving: true };
         // The rest stay conditional: asking them when there is no live session would add dependencies
         // that recompute this header for sessions it doesn't show
         var isJoined = isLive
@@ -86,15 +84,12 @@
                 .GetText(Authors, L, Hub.Session, chatId, conversation.AuthorIds, cancellationToken)
                 .ConfigureAwait(false)
             : "";
-        var hasFoldedEntries = isLive && !isVoiceOnly
-            && rawLive is { SessionStartedAt: not null }
-            && blockState.FoldBoundaryLid > rawLive.EffectiveVisibleStartLid;
-        var canExpand = isLive && !isVoiceOnly && rawLive is { SessionStartedAt: not null };
+        var canExpand = isLive && !isVoiceOnly && block is not ClosedLiveBlock;
         var isAnyoneTalking = isLive
             && await LiveStreamUI.IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(false);
         return new LiveConversationHeaderState(
-            translated.Title.Text, participantsText, hasFoldedEntries, isJoined,
-            blockState.Overlay != null, isDissolving, canExpand,
+            translated.Title.Text, participantsText, isJoined,
+            block?.HasAttended ?? false, isDissolving, canExpand,
             isAnyoneTalking);
     }
 

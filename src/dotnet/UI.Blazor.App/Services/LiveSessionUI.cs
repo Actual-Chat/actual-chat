@@ -27,7 +27,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
 
     private readonly ConcurrentDictionary<ChatId, CancellationTokenSource> _callWatches = new();
     private readonly ConcurrentDictionary<ChatId, Conversation?> _lastConversations = new();
-    private readonly ConcurrentDictionary<ChatId, LiveBlockSnapshot?> _lastBlockSnapshots = new();
+    private readonly ConcurrentDictionary<ChatId, LiveBlockState?> _lastBlockStates = new();
     private readonly Lock _ringbackLock = new();
     private object? _ringbackOwner;
 
@@ -51,14 +51,14 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     }
 
     [ComputeMethod(ConsolidationDelay = 0)]
-    public virtual async Task<LiveBlockSnapshot?> GetBlockSnapshot(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<LiveBlockState?> GetBlockState(ChatId chatId, CancellationToken cancellationToken)
     {
         // Consolidated at the SOURCE deliberately: everything downstream of AmIInLiveConversation has to
         // stay immediately reactive, so the churn has to be absorbed here rather than on their outputs.
         var state = await LiveSessions.GetState(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return _lastBlockSnapshots[chatId] = state is null
+        return _lastBlockStates[chatId] = state is null
             ? null
-            : new LiveBlockSnapshot(
+            : new LiveBlockState(
                 state.SessionStartedAt is not null,
                 state.EffectiveVisibleStartLid,
                 state.ContextStartLid,
@@ -71,8 +71,8 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     public Task<Conversation?> UseConversationOrLastKnown(ChatId chatId, Task<Conversation?> conversationTask)
         => UseOrLastKnown(_lastConversations, chatId, conversationTask);
 
-    public Task<LiveBlockSnapshot?> UseSnapshotOrLastKnown(ChatId chatId, Task<LiveBlockSnapshot?> snapshotTask)
-        => UseOrLastKnown(_lastBlockSnapshots, chatId, snapshotTask);
+    public Task<LiveBlockState?> UseBlockStateOrLastKnown(ChatId chatId, Task<LiveBlockState?> blockStateTask)
+        => UseOrLastKnown(_lastBlockStates, chatId, blockStateTask);
 
     [ComputeMethod]
     public virtual Task<LiveSessionState?> GetState(ChatId chatId, CancellationToken cancellationToken)
@@ -262,8 +262,8 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     // Protected/internal methods
 
     // It's internal to be accessible from tests
-    internal LiveBlockSnapshot? GetLastKnownBlockSnapshot(ChatId chatId)
-        => _lastBlockSnapshots.GetValueOrDefault(chatId);
+    internal LiveBlockState? GetLastKnownBlockState(ChatId chatId)
+        => _lastBlockStates.GetValueOrDefault(chatId);
 
     [ComputeMethod]
     protected virtual async Task<ChatId?> GetMutedRecordingChat(CancellationToken cancellationToken)
@@ -449,7 +449,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
 /// <see cref="LiveSessionState"/> - participants, rules, ring state, activity - can churn without
 /// invalidating them.
 /// </summary>
-public sealed record LiveBlockSnapshot(
+public sealed record LiveBlockState(
     bool IsLatched,
     long VisibleStartLid,
     long ContextStartLid,

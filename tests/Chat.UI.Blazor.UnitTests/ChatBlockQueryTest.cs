@@ -222,7 +222,6 @@ public sealed class ChatBlockQueryTest
         => ranges.Select(r => {
             var id = ConversationId.New(TestChatId, r.Start);
             return new ChatBlock(new(id) { EndEntryLid = r.End - 1 }, r,
-                view.ExpandedConversations.Contains(id),
-                id == view.LiveBlockConversationId && view.MaterializedBlockId == null);
+                view.ExpandedConversations.Contains(id) ? null : Moment.EpochStart);
         }).ToArray();
 }

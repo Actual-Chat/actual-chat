@@ -76,7 +76,7 @@ public partial class ChatUI
             if (!byId.TryGetValue(id, out var conversation))
                 continue;
 
-            blocks.Add(new(conversation, range, view.ExpandedConversations.Contains(id), false));
+            blocks.Add(new(conversation, range, GetCollapsedAt(conversation)));
         }
 
         var blockConversation = view.MaterializedBlockId is { } materializedId
@@ -85,8 +85,7 @@ public partial class ChatUI
         if (view.LiveBlockConversationId is { } renderId && blockConversation != null && !liveBlockRange.IsEmpty) {
             if (blockConversation.Id != renderId)
                 blockConversation = blockConversation with { Id = renderId };
-            blocks.Add(new(blockConversation, liveBlockRange,
-                view.ExpandedConversations.Contains(renderId), view.MaterializedBlockId == null));
+            blocks.Add(new(blockConversation, liveBlockRange, GetCollapsedAt(blockConversation)));
         }
 
         var byStart = blocks.ToDictionary(b => b.EntryLidRange.Start);
@@ -101,6 +100,18 @@ public partial class ChatUI
                 Conversation = byStart[r.Start].Conversation with { EndEntryLid = r.End - 1 },
             })
             .ToList();
+
+        Moment? GetCollapsedAt(Conversation conversation) {
+            // Compatibility cutoffs only: collapse actions do not record their actual time yet.
+            if (view.ExpandedConversations.Contains(conversation.Id))
+                return null;
+            if (conversation.Id == view.LiveBlockConversationId && view.MaterializedBlockId == null)
+                return conversation.StartsAt;
+
+            return conversation.EndsAt == Moment.MaxValue
+                ? Moment.MaxValue
+                : conversation.EndsAt + TimeSpan.FromTicks(1);
+        }
     }
 
     // Private methods

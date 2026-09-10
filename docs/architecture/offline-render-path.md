@@ -195,7 +195,7 @@ whole build, and with it every scroll request until the peer reconnects.
 | `IChats.GetChatRangeTile(session, chatId, metaTileStart)` × meta tiles covering the load zone ± `LoadLimit` | cached | Every build. `UseRangeTileOrLastKnown` stands in only after a first successful read. | T (around the tail), D |
 | `IConversations.GetTile(session, chatId, metaTileRange)` × meta tiles | cached | Every build, unconditionally | T |
 | `IChats.GetTile(session, chatId, idTileRange)` × id tiles (+1 preceding) | cached | Every tile in the zone, plus a speculative second copy for the adjacent zone | T (last 100 entries only) |
-| `ILiveSessions.GetState(session, chatId)` via `LiveSessionUI.GetConversation`, `LiveSessionUI.GetBlockSnapshot` and `LiveBlockUI.GetBlockState` | **no-cache** | Every build. `UseConversationOrLastKnown` / `UseSnapshotOrLastKnown` **await the first read** - a chat opened for the first time in this process never renders offline. | n/a |
+| `ILiveSessions.GetState(session, chatId)` via `LiveSessionUI.GetConversation`, `LiveSessionUI.GetBlockState` and `LiveBlockUI.GetBlock` | **no-cache** | Every build. `UseConversationOrLastKnown` / `UseBlockStateOrLastKnown` **await the first read** - a chat opened for the first time in this process never renders offline. | n/a |
 | `IChats.GetIdRange` + `IChats.GetTile` scan (`ChatUI.IsEmpty`) | cached | Only when a build yields no items | T |
 
 ### Chat view: per rendered message
