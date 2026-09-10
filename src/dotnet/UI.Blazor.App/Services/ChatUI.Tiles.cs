@@ -956,7 +956,8 @@ public partial class ChatUI
         var liveBlock = blocks.FirstOrDefault(b => b.Id == liveBlockId);
         // Fetch coverage stays finite; active grouping also owns optimistic sends and the long.MaxValue placeholder.
         // Frozen and materialized blocks must not absorb entries from after their boundary.
-        var liveBlockRange = liveBlock is { IsLive: true } && overlay == null
+        var liveBlockRange = liveBlock is { IsLive: true }
+            && (overlay == null || overlay is { MaterializedId: null, BlockEndLid: long.MaxValue })
             ? new Range<long>(liveBlock.EntryLidRange.Start, long.MaxValue)
             : liveBlock?.EntryLidRange ?? default;
         // Expanded is not the only form that renders rows: a closed block that kept its card hides

@@ -20,8 +20,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await base.DisposeAsync();
     }
 
-    [Fact]
-    public async Task ExpandedLiveBlockShouldKeepOptimisticTailBeforeItsFooter()
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ExpandedLiveBlockShouldKeepOptimisticTailBeforeItsFooter(bool mustLeave, bool isRecording)
     {
         // arrange
         await Tester.SignInAsUniqueBob();
@@ -39,6 +42,18 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await chatAudioUI.SetListeningState(chat.Id, true);
         InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
         await AwaitJoinedBlockExpansion(chatUI, chat.Id, live.ToConversation());
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        if (mustLeave) {
+            await chatAudioUI.SetListeningState(chat.Id, false);
+            InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
+            await ComputedTest.When(async ct => {
+                var overlay = (await liveBlockUI.GetBlockState(chat.Id, ct)).Overlay;
+                overlay.Should().NotBeNull();
+                overlay!.MaterializedId.Should().BeNull();
+                overlay.BlockEndLid.Should().Be(long.MaxValue);
+            }, TimeSpan.FromSeconds(10));
+        }
+
         var sendingMessages = Tester.ScopedAppServices.GetRequiredService<SendingMessages>();
         var pending = sendingMessages.GetSendingMessages(chat.Id).ChatSendingMessages;
         var now = Tester.AppServices.Clocks().SystemClock.Now;
@@ -48,26 +63,37 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
                 $"pending-{i}", HashString.None, null, () => { }));
         var recorder = Tester.ScopedAppServices.GetRequiredService<AudioRecorder>();
         var recorderState = (MutableState<AudioRecorderState>)recorder.State;
-        recorderState.Set(new AudioRecorderState(chat.Id));
+        if (isRecording)
+            recorderState.Set(new AudioRecorderState(chat.Id));
 
         // act
         try {
             var range = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
             var query = new ChatDataQuery(range, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+            var expectedIds = isRecording
+                ? new[] { range.End, range.End + 1, long.MaxValue }
+                : new[] { range.End, range.End + 1 };
             await ComputedTest.When(async ct => {
                 var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+                if (mustLeave) {
+                    var overlay = (await liveBlockUI.GetBlockState(chat.Id, ct)).Overlay;
+                    overlay.Should().NotBeNull();
+                    overlay!.MaterializedId.Should().BeNull();
+                    overlay.BlockEndLid.Should().Be(long.MaxValue);
+                }
+
                 var block = items.Items.OfType<ExpandedConversationMessage>()
                     .Single(b => b.Conversation!.Id == live.ConversationId);
                 var tail = items.Items.SelectMany(i => i.GetLeafMessages())
                     .OfType<ChatEntryMessage>().Where(m => m.Entry.SendingTag != null).ToList();
 
                 // assert
-                tail.Select(m => m.Id).Should().Equal(range.End, range.End + 1, long.MaxValue);
+                tail.Select(m => m.Id).Should().Equal(expectedIds);
                 tail.Should().OnlyContain(m => m.Conversation == null,
                     "optimistic items are placed by grouping coverage, not conversation tags");
                 block.Items.SelectMany(i => i.GetLeafMessages()).OfType<ChatEntryMessage>()
                     .Where(m => m.Entry.SendingTag != null).Select(m => m.Id)
-                    .Should().Equal(range.End, range.End + 1, long.MaxValue);
+                    .Should().Equal(expectedIds, Dump(items));
                 block.Items[^1].Should().BeOfType<LiveConversationFooter>();
             }, TimeSpan.FromSeconds(10));
         }
