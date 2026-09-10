@@ -19,7 +19,7 @@
     @apply max-w-48 h-5;
     @apply px-1.5;
     @apply rounded-full bg-mention-other;
-    @apply text-mention-other-text font-medium;
+    @apply text-mention-other-text font-normal;
     @apply select-none;
 }
 .mention-markup.dim {
@@ -38,7 +38,7 @@
     @apply max-w-none h-auto;
     @apply px-0;
     @apply bg-transparent;
-    @apply text-primary font-medium;
+    @apply text-primary font-normal;
     @apply no-underline hover:underline;
 }
 .mention-markup.mention-markup-chat > div {
