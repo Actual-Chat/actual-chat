@@ -128,6 +128,7 @@ else {
     private IAuthors Authors => Hub.Authors;
     private ChatListUI ChatListUI => Hub.ChatListUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
     protected override void OnInitialized()
         => _selectedInvitees = StateFactory.NewMutable(ImmutableHashSet<AuthorId>.Empty);
@@ -238,7 +239,12 @@ else {
     private Task Cancel()
         => Run(_chatId, id => LiveSessionUI.CancelCall(id, default));
     private Task Stop()
-        => Run(_chatId, id => LiveSessionUI.LeaveCall(id, default));
+        // LeaveCall is gone - hanging up now goes through the same SetParticipation path as the chat
+        // header's hang-up button, via ChatAudioUI's recording/listening state.
+        => Run(_chatId, async id => {
+            await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(true);
+            await ChatAudioUI.SetListeningState(id, false).ConfigureAwait(true);
+        });
 
     private async Task Run(ChatId? chatId, Func<ChatId, Task> action) {
         if (chatId is not { } id)

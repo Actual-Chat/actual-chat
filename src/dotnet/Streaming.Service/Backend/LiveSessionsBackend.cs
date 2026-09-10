@@ -383,14 +383,20 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             InvalidateListParticipants(chatId);
             InvalidateHasRecorder(chatId);
             InvalidateGet(chatId);
-            // A Call needs >= 2 genuinely present participants - LeaveCall already enforces this for an
-            // explicit hang-up; this is the same rule for a presence drop with no LeaveCall behind it (a
-            // connection that just died). Scoped to Call: Dialing keeps its own ExpireRings path, and
-            // Ambient has no such invariant (solo dictation is legitimate).
+            // A Call needs >= 2 genuinely present participants, whether the departure was an explicit
+            // hang-up or a connection that just died - both reach this the same way. Scoped to Call:
+            // Dialing keeps its own ExpireRings path, and Ambient has no such invariant (solo dictation
+            // is legitimate).
             if (!isActive) {
                 var state = await SafeGet(chatId).ConfigureAwait(false);
-                if (state is { Kind: LiveSessionKind.Call } && await ParticipantCount(chatId).ConfigureAwait(false) < 2)
-                    shouldCloseAsCall = true;
+                if (state is { Kind: LiveSessionKind.Call } callState) {
+                    if (await ParticipantCount(chatId).ConfigureAwait(false) < 2)
+                        shouldCloseAsCall = true;
+                    else if (callState.Host == authorId)
+                        // The host left but the call goes on - without this the host slot would keep
+                        // pointing at someone who already left.
+                        await ReassignHost(chatId, callState, cancellationToken).ConfigureAwait(false);
+                }
             }
             // A join/heartbeat, or a leave with someone still streaming, just re-evaluates liveness; the
             // grace there is the safety net for crashed/stale clients. A leave that stops the last stream
@@ -732,32 +738,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
     public virtual Task DismissCallStatus(ChatId chatId, CancellationToken cancellationToken)
         => SetCallState(chatId, null);
-
-    public virtual async Task LeaveCall(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
-    {
-        // A participant hangs up. A call needs at least two people, so once fewer than two remain it is
-        // over - close it (which also stops any lingering rings) rather than leaving someone on alone.
-        bool close;
-        using (Computed.BeginIsolation())
-        using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
-            var state = await SafeGet(chatId).ConfigureAwait(false);
-            if (state is null)
-                return;
-
-            await _participants.Remove(chatId.Value, authorId.Value).ConfigureAwait(false);
-            InvalidateListParticipants(chatId);
-            InvalidateHasRecorder(chatId);
-            InvalidateGet(chatId);
-            close = await ParticipantCount(chatId).ConfigureAwait(false) < 2;
-            if (!close) {
-                if (state.Host == authorId)
-                    await ReassignHost(chatId, state, cancellationToken).ConfigureAwait(false);
-                await EvaluateLiveness(chatId).ConfigureAwait(false);
-            }
-        }
-        if (close)
-            await CloseCall(chatId).ConfigureAwait(false);
-    }
 
     // Legacy methods
 

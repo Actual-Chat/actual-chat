@@ -759,29 +759,19 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             _foregroundRawChatId.Value = null;
     }
 
-    // Stops local audio and leaves the call mechanics-wise, with no screen-specific side effect - the
-    // desktop plain-chat view has no call screen to close, so this is all it needs on hang-up.
+    // Stops local audio, with no screen-specific side effect - the desktop plain-chat view has no call
+    // screen to close, so this is all it needs on hang-up. Leaving the call server-side follows from
+    // this via the same SetParticipation path as any other presence change - see RunParticipationSync.
     private async Task HangUpQuietly(ChatId chatId)
     {
         if (_inCallChatId.Value == chatId)
             _inCallChatId.Value = null;
         await StopCallAudio(chatId).ConfigureAwait(true);
-        await LeaveCallQuietly(chatId).ConfigureAwait(true);
     }
 
     private async Task StopCallAudio(ChatId chatId)
     {
         await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(true);
         await ChatAudioUI.SetListeningState(chatId, false).ConfigureAwait(true);
-    }
-
-    private async Task LeaveCallQuietly(ChatId chatId)
-    {
-        try {
-            await LiveSessionUI.LeaveCall(chatId, default).ConfigureAwait(true);
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "LeaveCall failed for chat #{ChatId}", chatId);
-        }
     }
 }

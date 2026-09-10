@@ -150,9 +150,6 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     public Task DismissCallStatus(ChatId chatId, CancellationToken cancellationToken)
         => LiveSessions.DismissCallStatus(Session, chatId, cancellationToken);
 
-    public Task LeaveCall(ChatId chatId, CancellationToken cancellationToken)
-        => LiveSessions.LeaveCall(Session, chatId, cancellationToken);
-
     [ComputeMethod]
     public virtual async Task<bool> AmIInLiveConversation(ChatId chatId, CancellationToken cancellationToken)
     {

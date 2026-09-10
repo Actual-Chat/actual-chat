@@ -1156,30 +1156,6 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task LeaveCallShouldEndCallBelowTwo()
-    {
-        // arrange
-        await using var bob = AppHost.NewBlazorTester(Out);
-        await using var alice = AppHost.NewBlazorTester(Out);
-        await bob.SignInAsUniqueBob();
-        await alice.SignInAsUniqueAlice();
-        var (chatId, inviteId) = await bob.CreateChat(false);
-        await alice.JoinChat(chatId, inviteId);
-        var bobAuthor = await bob.GetOwnAuthor(chatId);
-        var aliceAuthor = await alice.GetOwnAuthor(chatId);
-        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
-        await backend.StartCall(
-            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
-        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
-
-        // act — one of the two participants hangs up
-        await backend.LeaveCall(chatId, aliceAuthor.Id, default);
-
-        // assert — a call needs two, so dropping below that closes it
-        (await backend.GetState(chatId, default)).Should().BeNull();
-    }
-
-    [Fact]
     public async Task StartCallShouldPromoteExistingSession()
     {
         // arrange — an ambient live session is already running when a call starts
@@ -1496,8 +1472,8 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     public async Task PresenceDropBelowTwoShouldCloseTheCall()
     {
         // The mid-call symmetric-hangup path: SetParticipation is what the connection-lifetime hooks
-        // (LiveAudioStreams, AudioStreamingBackend) call when a stream's connection actually drops, so
-        // it must enforce the same ">= 2" invariant LeaveCall already does for an explicit hang-up.
+        // (LiveAudioStreams, AudioStreamingBackend) call when a stream's connection drops, and it's also
+        // what an explicit hang-up goes through - either way it must enforce the ">= 2" invariant.
 
         // arrange - Bob records (stays live), Alice listens then drops. This isolates the new
         // shouldCloseAsCall path: the old emptiedByLeave wouldn't fire, but the >=2 check does.

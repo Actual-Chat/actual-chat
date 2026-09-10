@@ -244,11 +244,11 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
             await Backend.CancelCall(chatId, authorId, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task LeaveCall(Session session, ChatId chatId, CancellationToken cancellationToken)
-    {
-        if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
-            await Backend.LeaveCall(chatId, authorId, cancellationToken).ConfigureAwait(false);
-    }
+    public Task LeaveCall(Session session, ChatId chatId, CancellationToken cancellationToken)
+        // Hanging up now goes through the same SetParticipation path as any other presence change -
+        // see ChatAudioUI.SetRecordingChatId / SetListeningState and LiveSessionUI.RunParticipationSync.
+        => throw StandardError.NotSupported<ILiveSessions>(
+            $"{nameof(LeaveCall)} is obsolete and no longer available.");
 
     // Protected methods
 
