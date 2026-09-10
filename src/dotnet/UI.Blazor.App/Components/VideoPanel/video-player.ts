@@ -37,7 +37,7 @@ import { pickRenderBackendKind } from './render-backend-selection';
 import type { BgBlurMode } from '../../Services/Video/playback/bg-blur-tap';
 import { readBgBlurOverride } from '../../Services/Video/playback/bg-blur-override';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
-import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
+import { ConnectivityUI, type ConnectivityPublisher } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import { AC, VIDEO } from 'app-constants';
 import { RunningEMA } from 'math';
 
@@ -197,8 +197,7 @@ export class VideoPlayer {
      *  callback. Used so `stop()` can issue `worker.stop(streamId)`
      *  without races. */
     private workerStreamActive = false;
-    private connectivityHandlerOnline: { dispose(): void } | null = null;
-    private connectivityHandlerConnected: { dispose(): void } | null = null;
+    private connectivityPublisher: ConnectivityPublisher | null = null;
     private traceKillRegistration: Disposable | null = null;
     private sharedSettingsRegistration: Disposable | null = null;
     private readonly sourceCodec: string;
@@ -478,7 +477,6 @@ export class VideoPlayer {
         if (!this.playerWorker || !this.isPlaying)
             return;
 
-        this.pushConnectivityToWorker();
         if (await this.recreateWorkerIfPeerDead())
             return;
 
@@ -518,20 +516,6 @@ export class VideoPlayer {
         this.lastWedgeDiagnosis = `${diag.kind}: frozen ${(diag.frozenMs / 1000).toFixed(1)}s; ${diag.detail}`;
         this.lastWedgeAtMs = now;
         this.onWedgeDetected(diag);
-    }
-
-    // Mirrors main-thread ConnectivityUI into the worker, which gates its own
-    // reconnect loop on it. Re-sent from every liveness poll too: a missed
-    // update would otherwise park that loop for the life of the worker.
-    private pushConnectivityToWorker(): void {
-        if (!this.playerWorker)
-            return;
-
-        void this.playerWorker.onConnectivityUpdate(
-            ConnectivityUI.isOnline,
-            ConnectivityUI.isConnected,
-            ConnectivityUI.isBlazorServer,
-            rpcNoWait);
     }
 
     // The worker's peer can stay down after a reconnect while the main peer is
@@ -582,13 +566,9 @@ export class VideoPlayer {
     }
 
     private disposePlayerWorker(): void {
-        if (this.connectivityHandlerOnline) {
-            this.connectivityHandlerOnline.dispose();
-            this.connectivityHandlerOnline = null;
-        }
-        if (this.connectivityHandlerConnected) {
-            this.connectivityHandlerConnected.dispose();
-            this.connectivityHandlerConnected = null;
+        if (this.connectivityPublisher) {
+            this.connectivityPublisher.dispose();
+            this.connectivityPublisher = null;
         }
         if (this.traceKillRegistration) {
             this.traceKillRegistration.dispose();
@@ -779,10 +759,8 @@ export class VideoPlayer {
                 warnLog?.log('Player worker init failed:', e);
             });
 
-            const pushConnectivity = (): void => this.pushConnectivityToWorker();
-            this.connectivityHandlerOnline = ConnectivityUI.isOnlineChanged.add(pushConnectivity);
-            this.connectivityHandlerConnected = ConnectivityUI.isConnectedChanged.add(pushConnectivity);
-            void ConnectivityUI.whenReady.then(pushConnectivity);
+            this.connectivityPublisher = ConnectivityUI.publishTo((isOnline, isConnected, isBlazorServer) =>
+                this.playerWorker?.onConnectivityUpdate(isOnline, isConnected, isBlazorServer, rpcNoWait));
 
             // Wire focused-state changes on the mstg backend. The worker no
             // longer paints the bg canvas, so the focused hook becomes a no-op
