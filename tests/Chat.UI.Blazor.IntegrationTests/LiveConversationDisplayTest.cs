@@ -5,6 +5,7 @@ using ActualChat.Streaming;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
+using ActualLab.Fusion.Blazor;
 using Bunit;
 using Microsoft.AspNetCore.Components.Rendering;
 
@@ -49,10 +50,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             await chatAudioUI.SetListeningState(chat.Id, false);
             InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
             await ComputedTest.When(async ct => {
-                var overlay = (await liveBlockUI.GetBlockState(chat.Id, ct)).Overlay;
-                overlay.Should().NotBeNull();
-                overlay!.MaterializedId.Should().BeNull();
-                overlay.BlockEndLid.Should().Be(long.MaxValue);
+                var liveSessionUI = Tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
+                (await liveSessionUI.AmIInLiveConversation(chat.Id, ct)).Should().BeFalse();
+                var block = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+                block.Should().BeOfType<OpenLiveBlock>();
+                block.HasAttended.Should().BeTrue();
             }, TimeSpan.FromSeconds(10));
         }
 
@@ -78,10 +80,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             await ComputedTest.When(async ct => {
                 var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
                 if (mustLeave) {
-                    var overlay = (await liveBlockUI.GetBlockState(chat.Id, ct)).Overlay;
-                    overlay.Should().NotBeNull();
-                    overlay!.MaterializedId.Should().BeNull();
-                    overlay.BlockEndLid.Should().Be(long.MaxValue);
+                    var openBlock = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+                    openBlock.Should().BeOfType<OpenLiveBlock>();
+                    openBlock.HasAttended.Should().BeTrue();
                 }
 
                 var block = items.Items.OfType<ExpandedConversationMessage>()
@@ -266,11 +267,12 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // act
         var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
-        var blockState = await liveBlockUI.GetBlockState(chat.Id, CancellationToken.None);
+        var blockState = (await liveBlockUI.GetBlock(chat.Id, CancellationToken.None)).Require();
 
         // assert
-        blockState.FoldBoundaryLid.Should().Be(v + 3);
-        blockState.Overlay.Should().BeNull();
+        blockState.FoldEndLid.Should().Be(v + 3);
+        blockState.Should().BeOfType<OpenLiveBlock>();
+        blockState.HasAttended.Should().BeFalse();
     }
 
     [Fact]
@@ -317,11 +319,14 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await chatAudioUI.SetListeningState(chat.Id, false);
         InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
 
-        // assert - wait for the governor to actually latch the leave overlay, not just for a render
+        // assert - wait for attendance to be retained after leaving, not just for a render
         // that still coincidentally looks unchanged before the leave propagates
         await ComputedTest.When(async ct => {
-            var blockState = await liveBlockUI.GetBlockState(chat.Id, ct);
-            blockState.Overlay.Should().NotBeNull();
+            var liveSessionUI = Tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
+            (await liveSessionUI.AmIInLiveConversation(chat.Id, ct)).Should().BeFalse();
+            var blockState = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            blockState.Should().BeOfType<OpenLiveBlock>();
+            blockState.HasAttended.Should().BeTrue();
         }, TimeSpan.FromSeconds(10));
         await ComputedTest.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
@@ -469,11 +474,14 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await chatAudioUI.SetListeningState(chat.Id, false);
         InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
         var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
-        // Wait for the governor to actually latch the leave overlay - a render that still
+        // Wait for attendance to be retained after leaving - a render that still
         // coincidentally looks unchanged before the leave propagates would snapshot too early.
         await ComputedTest.When(async ct => {
-            var blockState = await liveBlockUI.GetBlockState(chat.Id, ct);
-            blockState.Overlay.Should().NotBeNull();
+            var liveSessionUI = Tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
+            (await liveSessionUI.AmIInLiveConversation(chat.Id, ct)).Should().BeFalse();
+            var blockState = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            blockState.Should().BeOfType<OpenLiveBlock>();
+            blockState.HasAttended.Should().BeTrue();
         }, TimeSpan.FromSeconds(10));
         List<long> frozenLeafLids = null!;
         await ComputedTest.When(async ct => {
@@ -657,8 +665,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     [Fact]
     public async Task ToggleAfterCloseCollapsesBlock()
     {
-        // Once closed, the reader can still manually collapse the frozen block - it just dismisses
-        // the overlay rather than acting as an ordinary expand/collapse toggle.
+        // Dismissing a retained closed block must also collapse its materialized conversation.
 
         // arrange
         await Tester.SignInAsUniqueBob();
@@ -702,11 +709,16 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             var block = items.Items.OfType<ExpandedConversationMessage>().Single();
             blockConversationId = block.Conversation!.Id;
         }, TimeSpan.FromSeconds(15));
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        var closedBlock = await Computed.Capture(() => liveBlockUI.GetBlock(chat.Id, CancellationToken.None));
+        closedBlock.Value.Should().BeOfType<ClosedLiveBlock>();
 
         // act
         chatUI.ToggleExpandConversation(blockConversationId);
 
         // assert
+        closedBlock.IsConsistent().Should().BeFalse("dismissal changes the block even when its fold does not move");
+        (await liveBlockUI.GetBlock(chat.Id)).Should().BeNull();
         await ComputedTest.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             items.Items.OfType<ExpandedConversationMessage>().Should().BeEmpty();
@@ -715,9 +727,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task ToggleAfterOverlayDismissExpandsBlockAgain()
+    public async Task ToggleAfterClosedBlockDismissExpandsBlockAgain()
     {
-        // The first toggle on a closed block dismisses the frozen overlay; every toggle after that
+        // The first toggle dismisses the retained closed block; every toggle after that
         // must act as an ordinary expand/collapse - a dead expand button here is a regression.
 
         // arrange
@@ -763,7 +775,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             blockConversationId = block.Conversation!.Id;
         }, TimeSpan.FromSeconds(15));
 
-        // act - first toggle dismisses the overlay and collapses the materialized block
+        // act - dismiss the retained block and collapse its materialized conversation
         chatUI.ToggleExpandConversation(blockConversationId);
         ConversationId materializedId = null!;
         await ComputedTest.When(async ct => {
@@ -868,12 +880,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task LeaveFreezesReactivelyWithoutWaitingForGovernor()
+    public async Task LeaveInvalidatesBlockWithoutWaitingForGovernor()
     {
-        // Determinism: the freeze must be a reactive function of "am I still attending this block",
-        // not an async governor write that lands a beat later - otherwise a hang-up can flash a
-        // collapsed frame before the overlay latches. Prove GetBlockState goes stale from the leave
-        // signal alone, before the governor has had a turn to write anything.
+        // Leaving must invalidate GetBlock directly, without relying on a later governor write.
 
         // arrange
         await Tester.SignInAsUniqueBob();
@@ -901,15 +910,16 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
         await chatAudioUI.SetListeningState(chat.Id, true);
         chatUI.SelectChatOnNavigation(chat.Id);
-        // Let the governor latch the joined state and the attending latch first.
+        // Establish attendance before leaving.
         await ComputedTest.When(async ct => {
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.Overlay.Should().BeNull();
-            s.WasAttending.Should().BeTrue();
+            var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            s.Should().BeOfType<OpenLiveBlock>();
+            s.HasAttended.Should().BeTrue();
         }, TimeSpan.FromSeconds(10));
 
-        var computed = await Computed.Capture(() => liveBlockUI.GetBlockState(chat.Id, CancellationToken.None));
-        computed.Value.Overlay.Should().BeNull();
+        var computed = await Computed.Capture(() => liveBlockUI.GetBlock(chat.Id, CancellationToken.None));
+        computed.Value.Should().BeOfType<OpenLiveBlock>();
+        computed.Value!.HasAttended.Should().BeTrue();
 
         // act - hang up, then invalidate the leave signal source synchronously. The governor loop
         // reacts to the same invalidation, but only asynchronously; we do NOT yield to it before the
@@ -918,18 +928,19 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         using (Invalidation.Begin())
             _ = chatAudioUI.GetState(chat.Id);
 
-        // assert - GetBlockState is already stale purely from the leave signal (it depends on it
-        // reactively). Checked synchronously: the governor cannot have run yet. This is the actual
-        // determinism guarantee - the freeze reacts to leaving directly, not via the governor's write.
+        // Assert immediately, without another await that would let the governor catch up.
         computed.IsConsistent().Should().BeFalse(
-            "the freeze must react to leaving directly, not wait for the governor's async write");
+            "the block must react to leaving directly, not wait for the governor's async write");
 
-        // and the recomputed state carries the freeze overlay (re-invalidate each poll to defeat the
+        // The recomputed open block retains attendance (re-invalidate each poll to defeat the
         // non-reactive ChatAudioUI.GetState lag - see InvalidateAmIInLiveConversation).
         await ComputedTest.When(async ct => {
             InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.Overlay.Should().NotBeNull();
+            var liveSessionUI = Tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
+            (await liveSessionUI.AmIInLiveConversation(chat.Id, ct)).Should().BeFalse();
+            var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            s.Should().BeOfType<OpenLiveBlock>();
+            s.HasAttended.Should().BeTrue();
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -1315,8 +1326,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SelectChatOnNavigation(chat.Id);
         // Let the governor latch WasAttending + the template (HadSummary == false).
         await ComputedTest.When(async ct => {
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.WasAttending.Should().BeTrue();
+            var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            s.Should().BeOfType<OpenLiveBlock>();
+            s.HasAttended.Should().BeTrue();
         }, TimeSpan.FromSeconds(10));
 
         await AwaitJoinedBlockExpansion(chatUI, chat.Id, live!.ToConversation());
@@ -1331,7 +1343,14 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             .Add(x => x.Header, beforeBlock.Items.OfType<LiveConversationHeader>().Single())
             .Add(x => x.ChatContext, new ChatContext(
                 Tester.ScopedAppServices.GetRequiredService<AppUIHub>(), chat)));
-        header.WaitForAssertion(() => header.Find(".c-lc-name").TextContent.Should().NotBeNullOrEmpty());
+        var headerState = ((IStatefulComponent<LiveConversationHeaderState>)header.Instance).State;
+        header.WaitForAssertion(() => {
+            // The initial placeholder is not the participant title this test must preserve on close.
+            headerState.IsInitial(out var state).Should().BeFalse();
+            var title = state.Title.NullIfEmpty() ?? state.ParticipantsText;
+            title.Should().NotBeNullOrEmpty();
+            header.Find(".c-lc-name").TextContent.Should().Be(title);
+        });
         var beforeTitle = header.Find(".c-lc-name").TextContent;
 
         // act - tier-1 close (never summarized)
@@ -1341,11 +1360,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // assert - the block is held, dissolving, rather than dropping to null immediately
         await ComputedTest.When(async ct => {
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.Overlay.Should().NotBeNull("a tier-1 close dissolves the block before removing it");
-            s.Overlay!.IsDissolving.Should().BeTrue();
-            s.Overlay.MaterializedId.Should().BeNull();
-            s.Overlay.BlockEndLid.Should().BeLessThan(long.MaxValue);
+            var block = (await liveBlockUI.GetBlock(chat.Id, ct)) as ClosedLiveBlock;
+            block.Should().NotBeNull("a tier-1 close dissolves the block before removing it");
+            block!.IsDissolving.Should().BeTrue();
+            block.MaterializedId.Should().BeNull();
+            block.EndLid.Should().BeLessThan(long.MaxValue);
             (await liveSessionUI.GetConversation(chat.Id, ct)).Should().BeNull();
         }, TimeSpan.FromSeconds(3));
         if (mustSkipTile)
@@ -1357,17 +1376,17 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var expectedLids = LeafEntryLids(before).Append(afterClose.LocalId).ToList();
         for (var sample = 0; sample < 10; sample++) {
             await Task.Delay(TimeSpan.FromMilliseconds(50));
-            var overlay = (await liveBlockUI.GetBlockState(chat.Id, CancellationToken.None)).Overlay;
-            overlay.Should().NotBeNull();
-            overlay!.IsDissolving.Should().BeTrue();
-            overlay.MaterializedId.Should().BeNull();
-            overlay.BlockEndLid.Should().BeLessThan(long.MaxValue);
+            var closedBlock = (await liveBlockUI.GetBlock(chat.Id, CancellationToken.None)) as ClosedLiveBlock;
+            closedBlock.Should().NotBeNull();
+            closedBlock!.IsDissolving.Should().BeTrue();
+            closedBlock.MaterializedId.Should().BeNull();
+            closedBlock.EndLid.Should().BeLessThan(long.MaxValue);
             var items = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None)
                 .WaitAsync(TimeSpan.FromSeconds(5));
             LeafEntryLids(items).Should().Equal(expectedLids);
             var block = items.Items.OfType<ExpandedConversationMessage>()
                 .Should().ContainSingle(
-                    $"sample {sample}, overlay {overlay}: the header must remain to dissolve: " + Dump(items))
+                    $"sample {sample}, block {closedBlock}: the header must remain to dissolve: " + Dump(items))
                 .Subject;
             ((IVirtualListItem)block).RenderKey.Should().Be(((IVirtualListItem)beforeBlock).RenderKey);
             block.Items.OfType<LiveConversationHeader>().Should().ContainSingle();
@@ -1380,7 +1399,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             });
         }
         await ComputedTest.When(async ct => {
-            (await liveBlockUI.GetBlockState(chat.Id, ct)).Overlay.Should().BeNull();
+            (await liveBlockUI.GetBlock(chat.Id, ct)).Should().BeNull();
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct).WaitAsync(TimeSpan.FromSeconds(5));
             items.Items.OfType<ExpandedConversationMessage>().Should().BeEmpty();
             LeafEntryLids(items).Should().Equal(expectedLids);
@@ -1613,8 +1632,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // top, so un-summarised rows above it are swallowed too
         var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
         await ComputedTest.When(async ct => {
-            var blockState = await liveBlockUI.GetBlockState(chat.Id, ct);
-            blockState.FoldBoundaryLid.Should().BeGreaterThanOrEqualTo(viewportTop,
+            var blockState = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            blockState.FoldEndLid.Should().BeGreaterThanOrEqualTo(viewportTop,
                 "the boundary tracks the viewport top, folding un-summarised rows above it");
         }, TimeSpan.FromSeconds(15));
 
@@ -1731,8 +1750,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await ComputedTest.When(async ct => {
             var streamingTail = await chatUI.GetStreamingTail(chat.Id, author.Id, ct);
             streamingTail.FloorLid.Should().Be(streamingLid);
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.FoldBoundaryLid.Should().BeLessThanOrEqualTo(streamingLid,
+            var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            s.FoldEndLid.Should().BeLessThanOrEqualTo(streamingLid,
                 "a still-transcribing entry must stay outside the fold");
         }, TimeSpan.FromSeconds(15));
 
@@ -1745,8 +1764,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await ComputedTest.When(async ct => {
             var streamingTail = await chatUI.GetStreamingTail(chat.Id, author.Id, ct);
             streamingTail.FloorLid.Should().Be(long.MaxValue);
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.FoldBoundaryLid.Should().BeGreaterThan(streamingLid,
+            var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            s.FoldEndLid.Should().BeGreaterThan(streamingLid,
                 "closing the transcript releases the fold");
         }, TimeSpan.FromSeconds(15));
     }
@@ -1799,8 +1818,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         SetViewportTop(idRange.End - 1);
         await ComputedTest.When(async ct => {
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.FoldBoundaryLid.Should().Be(streamingLid, "the streaming entry is what stops the fold");
+            var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            s.FoldEndLid.Should().Be(streamingLid, "the streaming entry is what stops the fold");
         }, TimeSpan.FromSeconds(15));
 
         // act - the reader scrolls back up onto the streaming entry, and that render is the baseline
@@ -1808,8 +1827,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
         List<long> beforeLeaveLids = null!;
         await ComputedTest.When(async ct => {
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.FoldBoundaryLid.Should().Be(streamingLid, "the streaming entry still stops the fold");
+            var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            s.FoldEndLid.Should().Be(streamingLid, "the streaming entry still stops the fold");
             beforeLeaveLids = LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, ct));
         }, TimeSpan.FromSeconds(15));
 
@@ -1817,8 +1836,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await chatAudioUI.SetListeningState(chat.Id, false);
         InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
         await ComputedTest.When(async ct => {
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.Overlay.Should().NotBeNull("the overlay is what marks this viewer as having been there");
+            var liveSessionUI = Tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
+            (await liveSessionUI.AmIInLiveConversation(chat.Id, ct)).Should().BeFalse();
+            var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            s.Should().BeOfType<OpenLiveBlock>();
+            s.HasAttended.Should().BeTrue();
         }, TimeSpan.FromSeconds(10));
 
         // assert - leaving is only "stop listening": same fold, same rows
@@ -1835,8 +1857,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // assert - the lapse may only let the fold reach the viewport top, which is the streaming row
         // itself, so nothing the reader had is swallowed
         await Task.Delay(500);
-        var afterLapse = await liveBlockUI.GetBlockState(chat.Id, CancellationToken.None);
-        afterLapse.FoldBoundaryLid.Should().BeLessThanOrEqualTo(streamingLid,
+        var afterLapse = (await liveBlockUI.GetBlock(chat.Id, CancellationToken.None)).Require();
+        afterLapse.FoldEndLid.Should().BeLessThanOrEqualTo(streamingLid,
             "a lapsing floor must not push the fold past the reader's viewport top");
         LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None))
             .Should().Equal(beforeLeaveLids, "closing the transcript must not re-fold the block");
@@ -1882,9 +1904,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         long foldedBoundary = 0;
         await ComputedTest.When(async ct => {
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.FoldBoundaryLid.Should().BeGreaterThan(v + 5);
-            foldedBoundary = s.FoldBoundaryLid;
+            var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            s.FoldEndLid.Should().BeGreaterThan(v + 5);
+            foldedBoundary = s.FoldEndLid;
         }, TimeSpan.FromSeconds(15));
 
         // act - reveal one batch
@@ -1892,22 +1914,22 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // assert - the effective fold boundary retreats below where the governor had it
         await ComputedTest.When(async ct => {
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            Math.Min(s.FoldBoundaryLid, s.RevealedBoundaryLid).Should().BeLessThan(foldedBoundary,
+            var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            s.FoldEndLid.Should().BeLessThan(foldedBoundary,
                 "revealing a batch retreats the effective fold boundary");
         }, TimeSpan.FromSeconds(10));
 
         // assert - it survives a further governor advance (viewport unchanged, so nothing pushes it back up)
         await Task.Delay(500);
-        var afterReveal = await liveBlockUI.GetBlockState(chat.Id, CancellationToken.None);
-        Math.Min(afterReveal.FoldBoundaryLid, afterReveal.RevealedBoundaryLid).Should().BeLessThan(foldedBoundary,
+        var afterReveal = (await liveBlockUI.GetBlock(chat.Id, CancellationToken.None)).Require();
+        afterReveal.FoldEndLid.Should().BeLessThan(foldedBoundary,
             "the revealed boundary persists across governor re-evaluation");
 
         // act - reset clears the reveal
         liveBlockUI.ResetReveal(chat.Id);
         await ComputedTest.When(async ct => {
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.RevealedBoundaryLid.Should().Be(long.MaxValue, "reset clears the reveal");
+            var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            s.FoldEndLid.Should().BeGreaterThanOrEqualTo(foldedBoundary, "reset restores the governed fold");
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -1954,42 +1976,40 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         SetViewportTop(tailTop);
         long boundary = 0;
         await ComputedTest.When(async ct => {
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.FoldBoundaryLid.Should().BeGreaterThan(v + 5);
-            boundary = s.FoldBoundaryLid;
+            var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            s.FoldEndLid.Should().BeGreaterThan(v + 5);
+            boundary = s.FoldEndLid;
         }, TimeSpan.FromSeconds(15));
 
         // reveal a batch
         await liveBlockUI.RevealMore(chat.Id);
         long revealed = 0;
         await ComputedTest.When(async ct => {
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.RevealedBoundaryLid.Should().BeLessThan(boundary, "reveal retreats below the boundary");
-            revealed = s.RevealedBoundaryLid;
+            var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            s.FoldEndLid.Should().BeLessThan(boundary, "reveal retreats below the boundary");
+            revealed = s.FoldEndLid;
         }, TimeSpan.FromSeconds(10));
 
         // scroll UP into the revealed region: the reveal must persist (only the latch flips here)
         SetViewportTop(revealed);
         await Task.Delay(500);
-        var whileReading = await liveBlockUI.GetBlockState(chat.Id, CancellationToken.None);
-        whileReading.RevealedBoundaryLid.Should().Be(revealed,
+        var whileReading = (await liveBlockUI.GetBlock(chat.Id, CancellationToken.None)).Require();
+        whileReading.FoldEndLid.Should().Be(revealed,
             "the reveal persists while the reader is inside the revealed region");
 
-        // scroll back DOWN to the live tail: every revealed row is now above the viewport -> re-swallow
-        SetViewportTop(tailTop);
+        // Reset the reveal without advancing the governed fold, which cannot notify consumers itself.
+        SetViewportTop(boundary);
         await ComputedTest.When(async ct => {
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.RevealedBoundaryLid.Should().Be(long.MaxValue,
-                "returning to the live tail re-swallows the revealed batch");
+            var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            s.FoldEndLid.Should().Be(boundary,
+                "returning to the governed boundary re-swallows the revealed batch without moving the fold");
         }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]
-    public async Task RevealMoreSurvivesLeaveFreeze()
+    public async Task RevealMoreSurvivesLeaving()
     {
-        // §7 cross-task fix: a revealed batch must survive the freeze on leave/close - DeriveOverlay
-        // must use the reveal-aware effective boundary, not the raw monotonic FoldBoundaryLid, or
-        // leaving re-folds the rows the reader just revealed (a content shrink right under them).
+        // Leaving must not fold away the rows the reader just revealed.
 
         // arrange
         await Tester.SignInAsUniqueBob();
@@ -2005,7 +2025,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
         }, CancellationToken.None);
         // Enough that one reveal batch leaves rows still folded: revealing the whole backlog would
-        // collapse FoldRange to the empty range, and the freeze would have nothing to preserve.
+        // empty FoldRange, leaving no folded boundary to compare after leaving.
         for (var i = 0; i < 40; i++)
             await Tester.CreateTextEntry(chat.Id, $"m-{i}");
 
@@ -2027,31 +2047,33 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         long foldedBoundary = 0;
         await ComputedTest.When(async ct => {
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.FoldBoundaryLid.Should().BeGreaterThan(v + 5);
-            foldedBoundary = s.FoldBoundaryLid;
+            var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            s.FoldEndLid.Should().BeGreaterThan(v + 5);
+            foldedBoundary = s.FoldEndLid;
         }, TimeSpan.FromSeconds(15));
 
         // act - reveal one batch, retreating the effective boundary below the raw governed one
         await liveBlockUI.RevealMore(chat.Id);
         long revealedEffectiveBoundary = 0;
         await ComputedTest.When(async ct => {
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            revealedEffectiveBoundary = Math.Min(s.FoldBoundaryLid, s.RevealedBoundaryLid);
+            var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            revealedEffectiveBoundary = s.FoldEndLid;
             revealedEffectiveBoundary.Should().BeLessThan(foldedBoundary);
         }, TimeSpan.FromSeconds(10));
 
-        // act - leave: hang up, which freezes the block via the overlay
+        // act - leave while the session continues
         await chatAudioUI.SetListeningState(chat.Id, false);
         InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
 
-        // assert - the frozen overlay's FoldRange must end at the reveal-aware effective boundary,
-        // not the full monotonic FoldBoundaryLid the governor had reached before the reveal
+        // assert - leaving preserves the effective boundary established by the reveal
         await ComputedTest.When(async ct => {
-            var s = await liveBlockUI.GetBlockState(chat.Id, ct);
-            s.Overlay.Should().NotBeNull();
-            s.Overlay!.FoldRange.End.Should().Be(revealedEffectiveBoundary,
-                "the freeze must preserve what the reader had revealed, not re-fold it back under them");
+            var liveSessionUI = Tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
+            (await liveSessionUI.AmIInLiveConversation(chat.Id, ct)).Should().BeFalse();
+            var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            s.Should().BeOfType<OpenLiveBlock>();
+            s.HasAttended.Should().BeTrue();
+            s.FoldRange.End.Should().Be(revealedEffectiveBoundary,
+                "leaving must preserve what the reader had revealed, not re-fold it back under them");
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -2130,7 +2152,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task ShouldRememberTheLastKnownBlockSnapshot()
+    public async Task ShouldRememberTheLastKnownBlockState()
     {
         // The stand-in a non-waiting caller falls back to: if it stays empty, the live block would
         // collapse to "no session" on every rebuild that outruns the remote read.
@@ -2146,12 +2168,12 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var liveSessionUI = Tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
 
         // act
-        var snapshot = await liveSessionUI.GetBlockSnapshot(chat.Id, CancellationToken.None);
+        var snapshot = await liveSessionUI.GetBlockState(chat.Id, CancellationToken.None);
 
         // assert
         snapshot.Should().NotBeNull();
         snapshot!.IsLatched.Should().BeTrue("two registered streams latch the session");
-        liveSessionUI.GetLastKnownBlockSnapshot(chat.Id)
+        liveSessionUI.GetLastKnownBlockState(chat.Id)
             .Should().Be(snapshot, "the computed read must leave a stand-in behind");
     }
 
@@ -2201,18 +2223,26 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
         var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
         await ComputedTest.When(async ct => {
-            var blockState = await liveBlockUI.GetBlockState(chat.Id, ct);
-            blockState.Overlay.Should().NotBeNull();
+            var liveSessionUI = Tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
+            (await liveSessionUI.AmIInLiveConversation(chat.Id, ct)).Should().BeFalse();
+            var blockState = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            blockState.HasAttended.Should().BeTrue();
         }, TimeSpan.FromSeconds(10));
-        var afterStop = await liveBlockUI.GetBlockState(chat.Id, CancellationToken.None);
+        var afterStop = (await liveBlockUI.GetBlock(chat.Id, CancellationToken.None)).Require();
         var stateAfterStop = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        Out.WriteLine($"after stop: overlay={Describe(afterStop)}");
-        Out.WriteLine($"after stop: session={(stateAfterStop == null ? "<null>" : $"v={stateAfterStop.EffectiveVisibleStartLid}, isClosing={stateAfterStop.IsClosing}, authors={stateAfterStop.AuthorIds.Count}, end={stateAfterStop.EndEntryLid}")}");
+        Out.WriteLine($"after stop: block={Describe(afterStop)}");
+        Out.WriteLine(stateAfterStop == null
+            ? "after stop: session=<null>"
+            : $"after stop: session=v={stateAfterStop.EffectiveVisibleStartLid}, isClosing={stateAfterStop.IsClosing}, "
+                + $"authors={stateAfterStop.AuthorIds.Count}, end={stateAfterStop.EndEntryLid}");
 
         // act - one of them starts talking again, and says something
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var restarted = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        Out.WriteLine($"after restart: session={(restarted == null ? "<null>" : $"v={restarted.EffectiveVisibleStartLid}, isClosing={restarted.IsClosing}, authors={restarted.AuthorIds.Count}, end={restarted.EndEntryLid}")}");
+        Out.WriteLine(restarted == null
+            ? "after restart: session=<null>"
+            : $"after restart: session=v={restarted.EffectiveVisibleStartLid}, isClosing={restarted.IsClosing}, "
+                + $"authors={restarted.AuthorIds.Count}, end={restarted.EndEntryLid}");
         var spoken = new List<ChatEntry>();
         for (var i = 0; i < 3; i++)
             spoken.Add(await CreateSpokenEntry(chat.Id, $"second-{i}"));
@@ -2221,14 +2251,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             typed.Add(await Tester.CreateTextEntry(chat.Id, $"typed after restart {i}"));
         await Task.Delay(2000);
 
-        // assert - the block must not still be frozen against the session that ended. A viewer who is
-        // not attending never sees a live block's entries, by design; what they do see is the card's
-        // tail preview, and ConversationMessageView gates that on there being no overlay. Left frozen,
-        // the card shows nothing of what is being said, and its hidden tail runs to long.MaxValue - so
-        // the restart's transcript only surfaces once the conversation ends and materializes.
-        var afterRestart = await liveBlockUI.GetBlockState(chat.Id, CancellationToken.None);
-        Out.WriteLine($"after restart: overlay={Describe(afterRestart)}");
-        afterRestart.Overlay.Should().BeNull();
+        // A viewer who left the old call must see the new call's collapsed card and typed messages.
+        var afterRestart = (await liveBlockUI.GetBlock(chat.Id, CancellationToken.None)).Require();
+        Out.WriteLine($"after restart: block={Describe(afterRestart)}");
+        afterRestart.Should().BeOfType<OpenLiveBlock>();
+        afterRestart.HasAttended.Should().BeFalse();
         var finalItems = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
         var finalLids = LeafEntryLids(finalItems);
         Out.WriteLine($"spoken lids: {string.Join(", ", spoken.Select(e => e.Id.LocalId))}");
@@ -2512,15 +2539,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             EntryIds = [entryId],
         });
 
-    private static string Describe(LiveBlockState? state)
-    {
-        var overlay = state?.Overlay;
-        return overlay == null
-            ? "<null>"
-            : $"renderId={overlay.RenderId}, cardLid={overlay.CardLid}, hiddenTail={overlay.HiddenTailRange}, "
-                + $"foldRange={overlay.FoldRange}, blockEnd={overlay.BlockEndLid}, "
-                + $"materialized={overlay.MaterializedId}, wasAttending={state!.WasAttending}";
-    }
+    private static string Describe(LiveBlock? block) => block?.ToString() ?? "<null>";
 
     [Fact]
     public async Task ExpandedBlockAutoSwallowsAndCollapseIsTheCardOnly()
@@ -2586,8 +2605,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var folded = spoken.Where(l => l < viewportTop).ToList();
         var tail = spoken.Where(l => l >= viewportTop).ToList();
         await ComputedTest.When(async ct => {
-            var blockState = await liveBlockUI.GetBlockState(chat.Id, ct);
-            blockState.FoldBoundaryLid.Should().Be(viewportTop, "the fold tracks the viewport top");
+            var blockState = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            blockState.FoldEndLid.Should().Be(viewportTop, "the fold tracks the viewport top");
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             var lids = LeafEntryLids(items);
             lids.Should().NotContain(folded, "the expanded block swallows what scrolled above the viewport");
@@ -2626,7 +2645,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // assert - the card stands in for the rows, so what shows below it says nothing about what the
         // reader scrolled past: the fold holds where the collapse found it
-        (await liveBlockUI.GetBlockState(chat.Id)).FoldBoundaryLid.Should().Be(viewportTop,
+        (await liveBlockUI.GetBlock(chat.Id)).Require().FoldEndLid.Should().Be(viewportTop,
             "a collapsed block must not feed its viewport to the fold");
 
         // act - un-collapse
@@ -2650,7 +2669,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             lids.Should().Contain(folded, "a reveal must actually show the rows it walked back");
             lids.Should().Contain(tail);
         }, TimeSpan.FromSeconds(15));
-        var revealedBoundaryLid = (await liveBlockUI.GetBlockState(chat.Id)).RevealedBoundaryLid;
+        var revealedBoundaryLid = (await liveBlockUI.GetBlock(chat.Id)).Require().FoldEndLid;
 
         // act - pinned to the live tail: the revealed rows are on screen for a moment, then the stream
         // pushes them above the viewport
@@ -2664,7 +2683,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await Task.Delay(700);
 
         // assert - the stream moving is not the reader returning to the tail, so the reveal holds
-        (await liveBlockUI.GetBlockState(chat.Id)).RevealedBoundaryLid.Should().Be(revealedBoundaryLid,
+        (await liveBlockUI.GetBlock(chat.Id)).Require().FoldEndLid.Should().Be(revealedBoundaryLid,
             "a reveal made at the pinned tail must not be re-swallowed by the next messages");
         LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None))
             .Should().Contain(folded, "the revealed rows stay revealed while the reader is pinned");

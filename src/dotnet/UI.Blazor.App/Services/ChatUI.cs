@@ -493,13 +493,11 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public void ToggleExpandConversation(ConversationId conversationId)
     {
-        // A closed live-block overlay intercepts its own toggle: collapsing it is "dismiss the
-        // frozen view", not an expansion override on the overlay's render id.
-        if (Hub.LiveBlockUI.TryCollapseOverlay(conversationId))
+        // Dismissing a closed block switches back to its persisted conversation's expansion state.
+        if (Hub.LiveBlockUI.TryDismissClosedBlock(conversationId))
             return;
 
-        // ResetReveal takes LiveBlockUI's lock, so it stays outside this one - a ChatUI -> LiveBlockUI
-        // lock edge would invert the one TryCollapseOverlay acquires in the other direction.
+        // ResetReveal also updates live-block state; do it outside this lock.
         lock (Lock) {
             var isAutoExpanded = SuppressAutoExpansion(conversationId);
             var overrides = _conversationExpansionOverrides.Value;
@@ -635,7 +633,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     internal bool SuppressAutoExpansion(ConversationId conversationId)
     {
         // Returns whether an auto-expansion was dropped - for the toggle, that removal IS the collapse.
-        // Called on its own for ids whose IsExpandedByDefault isn't knowable: a frozen block's render id
+        // Called on its own for ids whose IsExpandedByDefault isn't knowable: a closed block's render id
         // has no conversation behind it once materialized, so normalizing its override would expand it.
         lock (Lock) {
             _suppressedAutoExpansions[conversationId] = default;
@@ -660,7 +658,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     {
         // A conversation that appeared (or grew) over rows the user has actually seen this visit must
         // not swallow them in place; it auto-expands until the user leaves the chat. Live/materialized
-        // block ids are excluded - the live overlay machinery owns their expansion. An id carrying a
+        // block ids are excluded - the live block lifecycle owns their expansion. An id carrying a
         // manual override is excluded too: suppression dies with the visit but the override doesn't,
         // so without this an earlier visit's deliberate collapse would be undone by later range growth.
         var result = new List<ConversationId>();

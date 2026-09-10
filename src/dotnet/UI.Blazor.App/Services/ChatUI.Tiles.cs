@@ -181,12 +181,11 @@ public partial class ChatUI
         // Everything GetChatItemsInternal issues before its first await, in the same order
         var chatTask = Chats.Get(Session, chatId, cancellationToken);
         var liveConversationTask = Hub.LiveSessionUI.GetConversation(chatId, cancellationToken);
-        var rawLiveTask = Hub.LiveSessionUI.GetBlockSnapshot(chatId, cancellationToken);
-        var blockStateTask = Hub.LiveBlockUI.GetBlockState(chatId, cancellationToken);
+        var liveBlockTask = Hub.LiveBlockUI.GetBlock(chatId, cancellationToken);
         var chatLidRangeTask = Chats.GetIdRange(Session, chatId, cancellationToken);
         var readPositionTask = ChatPositions.GetOwn(Session, chatId, ChatPositionKind.Read, cancellationToken);
         var pending = new List<Task> {
-            chatTask, liveConversationTask, rawLiveTask, blockStateTask, chatLidRangeTask, readPositionTask,
+            chatTask, liveConversationTask, liveBlockTask, chatLidRangeTask, readPositionTask,
         };
         try {
             // The anchor is read from the cached ChatInfo rather than awaited, because on a cold chat
@@ -303,7 +302,8 @@ public partial class ChatUI
         bool isPrefetch,
         CancellationToken cancellationToken)
     {
-        // DebugLog?.LogDebug("GetTiles: {ChatId} {IdRange} {ShownReadyEntryLid}", chatId, dataQuery, shownReadyEntryLid);
+        // DebugLog?.LogDebug("GetTiles: {ChatId} {IdRange} {ShownReadyEntryLid}",
+        //     chatId, dataQuery, shownReadyEntryLid);
         // NOTE: Changing what this requests? Review Prefetch - it warms these same calls in advance, and only
         // helps while its arguments still match the ones below.
         var startedAt = CpuTimestamp.Now;
@@ -319,8 +319,7 @@ public partial class ChatUI
         // per rebuild - a full second on a 200ms+ link, which is invisible on Blazor Server.
         var chatTask = Chats.Get(Session, chatId, cancellationToken);
         var liveConversationTask = Hub.LiveSessionUI.GetConversation(chatId, cancellationToken);
-        var rawLiveTask = Hub.LiveSessionUI.GetBlockSnapshot(chatId, cancellationToken);
-        var blockStateTask = Hub.LiveBlockUI.GetBlockState(chatId, cancellationToken);
+        var liveBlockTask = Hub.LiveBlockUI.GetBlock(chatId, cancellationToken);
         var cidTiles = GetCidTiles(dataQuery.ExistingLidRange);
         var chatRangeTilesTask = cidTiles
             .Select(cidTile
@@ -355,7 +354,7 @@ public partial class ChatUI
         if (chat == null) {
             // Everything above is already in flight, so bailing out here would leave those tasks unobserved.
             _ = Task.WhenAll(
-                    liveConversationTask, rawLiveTask, blockStateTask,
+                    liveConversationTask, liveBlockTask,
                     chatRangeTilesTask, conversationTilesTask, chatLidRangeTask)
                 .SilentAwait(false);
             return ChatItems.Empty;
@@ -371,38 +370,11 @@ public partial class ChatUI
         var amInLiveConversation = liveConversation != null
             && await Hub.LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
         var amInLiveAt = CpuTimestamp.Now;
-        var rawLive = await Hub.LiveSessionUI
-            .UseSnapshotOrLastKnown(chatId, rawLiveTask)
-            .ConfigureAwait(false);
-        var snapshotAt = CpuTimestamp.Now;
-        var blockState = await blockStateTask.ConfigureAwait(false);
-        var overlay = blockState.Overlay;
-
-        // The governed boundary replaces the raw fold end: it tracks the viewer's viewport top,
-        // monotonically, so un-summarised rows above the viewport fold too (LiveBlockUI owns this).
-        // No EndEntryLid cap here - FoldBoundaryLid is itself the monotonic max of real visible
-        // message lids, so it never exceeds the loaded entries. RevealedBoundaryLid pins the
-        // *effective* boundary below the monotonic one once the reader asks for more (§7), so
-        // revealed rows stay visible even as the governor keeps advancing.
-        var effectiveFoldBoundaryLid = Math.Min(blockState.FoldBoundaryLid, blockState.RevealedBoundaryLid);
-        var liveFoldRange = rawLive is { IsLatched: true }
-            && effectiveFoldBoundaryLid > rawLive.VisibleStartLid
-                ? new Range<long>(rawLive.VisibleStartLid, effectiveFoldBoundaryLid)
-                : default;
-
-        ConversationId? liveBlockId;
-        Range<long> liveBlockFoldRange;
-        ConversationId? materializedBlockId = null;
-        if (overlay != null) {
-            liveBlockId = overlay.RenderId;
-            liveBlockFoldRange = overlay.FoldRange;
-            materializedBlockId = overlay.MaterializedId;
-        }
-        else {
-            // The live block uses the same shell joined or not; only the tint + header affordance differ.
-            liveBlockId = liveConversation?.Id;
-            liveBlockFoldRange = liveFoldRange;
-        }
+        var liveBlock = await liveBlockTask.ConfigureAwait(false);
+        var closedBlock = liveBlock as ClosedLiveBlock;
+        var liveBlockId = liveBlock?.ConversationId;
+        var liveBlockFoldRange = liveBlock?.FoldRange ?? default;
+        var materializedBlockId = closedBlock?.MaterializedId;
 
         // A non-joined viewer sees the block's summary card only — never its live entries. The card
         // collapses [V, foldEnd) and this range hides everything from there on, so the two together
@@ -412,8 +384,8 @@ public partial class ChatUI
         // EndEntryLid would leak the entries in [foldEnd, EndEntryLid+1). Pre-first-summary the fold
         // range is empty, so hide from V onward. Hiding the wider range is harmless - a non-joined
         // viewer has no visible live entries to keep.
-        var hiddenLiveTailRange = overlay != null
-            ? overlay.HiddenTailRange
+        var hiddenLiveTailRange = closedBlock != null
+            ? closedBlock.HiddenTailRange
             : liveConversation is { } liveConv && !amInLiveConversation
                 ? new Range<long>(
                     liveBlockFoldRange.IsEmpty
@@ -435,11 +407,11 @@ public partial class ChatUI
         var chatRangeTiles = lastKnownRangeTiles
             ?? (await chatRangeTilesTask.ConfigureAwait(false))
                 .OrderBy(m => m.LidRange.Start)
-                .ThenByDescending(m => m.LidRange.Size()) // ChatRangeTile can be overlapping, so we need to keep the largest
+                .ThenByDescending(m => m.LidRange.Size()) // Overlapping ChatRangeTiles keep the largest.
                 .EnsureMonotonic(Comparer<ChatRangeTile>.Create((a, b) => a.LidRange.Start.CompareTo(b.LidRange.Start)))
                 .ToList();
 
-        var dissolvingConversation = overlay?.DissolvingConversation;
+        var dissolvingConversation = closedBlock?.DissolvingConversation;
         var showConversations = (chat.IsSummarized ?? false)
             || liveConversation != null || dissolvingConversation != null;
 
@@ -642,7 +614,7 @@ public partial class ChatUI
         var blockRange = liveBlockId is { } coverageId
             ? new Range<long>(coverageId.StartEntryLid,
                 Math.Max(coverageId.StartEntryLid + 1,
-                    Math.Min(overlay?.BlockEndLid ?? chatLidRange.End, chatLidRange.End)))
+                    Math.Min(closedBlock?.EndLid ?? chatLidRange.End, chatLidRange.End)))
             : default;
         var knownConversations = conversationTiles.SelectMany(t => t)
             .DistinctBy(c => c.Id).ToDictionary(c => c.Id);
@@ -932,16 +904,14 @@ public partial class ChatUI
             var chatMs = (long)(chatAt - startedAt).TotalMilliseconds;
             var conversationMs = (long)(conversationAt - chatAt).TotalMilliseconds;
             var amInLiveMs = (long)(amInLiveAt - conversationAt).TotalMilliseconds;
-            var snapshotMs = (long)(snapshotAt - amInLiveAt).TotalMilliseconds;
-            var blockStateMs = (long)(liveAt - snapshotAt).TotalMilliseconds;
+            var blockMs = (long)(liveAt - amInLiveAt).TotalMilliseconds;
             if (!wasBackgrounded) {
                 RecordPhase(totalMs, "total");
                 RecordPhase(liveMs, "live");
                 RecordPhase(chatMs, "live.chat");
                 RecordPhase(conversationMs, "live.conversation");
                 RecordPhase(amInLiveMs, "live.am-in-live");
-                RecordPhase(snapshotMs, "live.snapshot");
-                RecordPhase(blockStateMs, "live.block-state");
+                RecordPhase(blockMs, "live.block");
                 RecordPhase(metaMs, "meta");
                 RecordPhase(loadMs, "load");
                 RecordPhase(buildMs, "build");
@@ -950,15 +920,15 @@ public partial class ChatUI
             // there, and Sentry drops Activity tags (it stores no AC.* span attribute at all).
             ChatSwitchTracer.Mark("ChatUI.GetChatItems: phases",
                 $"total={totalMs} (live={liveMs} [chat={chatMs} conv={conversationMs} amInLive={amInLiveMs} "
-                + $"snapshot={snapshotMs} blockState={blockStateMs}], meta={metaMs}, load={loadMs}, build={buildMs})");
+                + $"block={blockMs}], meta={metaMs}, load={loadMs}, build={buildMs})");
             if (totalMs > SlowBuildMs && !wasBackgrounded)
                 Log.LogWarning(
                     "GetChatItems: {ChatId} took {TotalMs}ms (live {LiveMs} = chat {ChatMs} "
-                    + "+ conversation {ConversationMs} + amInLive {AmInLiveMs} + snapshot {SnapshotMs} "
-                    + "+ blockState {BlockStateMs}, meta {MetaMs}, load {LoadMs}, build {BuildMs}) "
+                    + "+ conversation {ConversationMs} + amInLive {AmInLiveMs} "
+                    + "+ block {BlockMs}, meta {MetaMs}, load {LoadMs}, build {BuildMs}) "
                     + "for {DataQuery}",
                     chatId, totalMs, liveMs, chatMs, conversationMs, amInLiveMs,
-                    snapshotMs, blockStateMs, metaMs, loadMs, buildMs, dataQuery.Format());
+                    blockMs, metaMs, loadMs, buildMs, dataQuery.Format());
             else
                 DebugLog?.LogDebug(
                     "GetChatItems: {ChatId} took {TotalMs}ms "
@@ -971,13 +941,12 @@ public partial class ChatUI
         if (expandedConversations.Count == 0 && liveBlockId == null)
             return new ChatItems(groupedItems, hasMoreBefore, hasMoreAfter, lastKnownRangeTiles != null);
 
-        var liveBlock = blocks.FirstOrDefault(b => b.Id == liveBlockId);
+        var projectedLiveBlock = blocks.FirstOrDefault(b => b.Id == liveBlockId);
         // Fetch coverage stays finite; active grouping also owns optimistic sends and the long.MaxValue placeholder.
-        // Frozen and materialized blocks must not absorb entries from after their boundary.
-        var liveBlockRange = liveBlock is { IsLive: true }
-            && (overlay == null || overlay is { MaterializedId: null, BlockEndLid: long.MaxValue })
-            ? new Range<long>(liveBlock.EntryLidRange.Start, long.MaxValue)
-            : liveBlock?.EntryLidRange ?? default;
+        // Closed blocks must not absorb entries from after their boundary.
+        var liveBlockRange = liveBlock is OpenLiveBlock && projectedLiveBlock != null
+            ? new Range<long>(projectedLiveBlock.EntryLidRange.Start, long.MaxValue)
+            : projectedLiveBlock?.EntryLidRange ?? default;
         // Expanded is not the only form that renders rows: a closed block that kept its card hides
         // nothing, and those rows belong inside the block rather than loose under its footer. Only a
         // live block that is both collapsed and hiding absorbs nothing.
@@ -988,7 +957,7 @@ public partial class ChatUI
         return new ChatItems(groupedTiles, hasMoreBefore, hasMoreAfter, lastKnownRangeTiles != null);
     }
 
-    // NOTE: Please don't add excessive computed dependencies without real reason - it might rerender whole chat view content
+    // Extra computed dependencies here can rerender the whole chat view.
     [ComputeMethod(MinCacheDuration = 30, InvalidationDelay = 0.1)]
     protected virtual async Task<VirtualListTile<ChatMessage>> GetTile(
         ChatId chatId,
@@ -1009,9 +978,9 @@ public partial class ChatUI
             liveBlockId, liveFoldRange, materializedBlockId) = conversationView;
 
         var chatSendingMessages = chatSendingMessagesWrapper.Value;
+        // Include the preceding item to render the block start correctly, then discard it.
         var requestedIdRange = prevMessage == null
-            ? lidRange.MoveStart(-EntryIdTiles
-                .TileSize) // to request previous item of requested range to properly render block star - we will drop it off
+            ? lidRange.MoveStart(-EntryIdTiles.TileSize)
             : lidRange;
         var idRangesToSkip = Array.Empty<Range<long>>();
         var conversations = Array.Empty<Conversation>();
@@ -1089,10 +1058,12 @@ public partial class ChatUI
                 .Select(e => e.ClientId)
                 .ToHashSet();
             chatSendingMessages.ProcessLoadedEntriesRange(rangeEnd.Value, loadedClientIds);
-            var newMessages = await chatSendingMessages.GetNewMessages(currentAuthorId!, rangeEnd.Value).ConfigureAwait(false);
+            var newMessages = await chatSendingMessages.GetNewMessages(currentAuthorId!, rangeEnd.Value)
+                .ConfigureAwait(false);
             entries.AddRange(newMessages);
 
-            var audioRecordingEntry = await GetAudioRecordingEntry(chatId, currentAuthorId!, cancellationToken).ConfigureAwait(false);
+            var audioRecordingEntry = await GetAudioRecordingEntry(chatId, currentAuthorId!, cancellationToken)
+                .ConfigureAwait(false);
             if (audioRecordingEntry is not null) {
                 // Hide "Transcribing..." when a real transcription entry already exists
                 // (i.e., the last entry from this author is streaming content).
@@ -1484,7 +1455,7 @@ public partial class ChatUI
 
         // Index of each conversation's last item. A Conversation-less item before it is an interruption
         // *inside* that conversation, not its end - which is the one question the lid ranges below can't
-        // answer reliably: a frozen BlockEndLid, or an entry not yet part of the conversation, falls
+        // answer reliably: a closed block's captured end, or an entry not yet part of the conversation, falls
         // outside them, ends the block, and lets the items after it open a second one.
         var lastIndexById = new Dictionary<ConversationId, int>();
         for (var i = 0; i < messages.Count; i++)
@@ -1496,8 +1467,7 @@ public partial class ChatUI
             var conversation = itemConversations[i];
             var isLiveBlock = liveBlockId != null && blockConversation?.Id == liveBlockId;
             // A Conversation-less item is held by its lid alone, so the live block's range must cover the
-            // conversation as well: the frozen BlockEndLid stops at the summary that was live when the
-            // viewer left, and a later summary stretches the conversation past it.
+            // conversation as well: a later summary can extend past the closed block's captured end.
             var blockRange = blockConversation == null
                 ? default
                 : isLiveBlock
@@ -1515,7 +1485,7 @@ public partial class ChatUI
                     : takesEntries
                         && (i < lastIndexById.GetValueOrDefault(blockConversation.Id, -1)
                             // Range.Contains excludes End, so a still-live [V, ∞) range needs the open-ended
-                            // form - a closed block carries a real BlockEndLid and uses Contains as usual.
+                            // form - a closed block carries a finite end and uses Contains as usual.
                             // Keeps the frozen tail past the conversation's last item inside the block.
                             || (blockRange.End == long.MaxValue
                                 ? item.Id >= blockRange.Start
@@ -1637,7 +1607,8 @@ public partial class ChatUI
                     .Collect(ApiConstants.Concurrency.High, cancellationToken)
                 : Task.CompletedTask;
             var prefetchChatInfoTask = PrefetchChatInfo(chatId, cancellationToken);
-            await Task.WhenAll(prefetchEntriesTask, prefetchConversationsTask, prefetchChatInfoTask).ConfigureAwait(false);
+            await Task.WhenAll(prefetchEntriesTask, prefetchConversationsTask, prefetchChatInfoTask)
+                .ConfigureAwait(false);
             return await prefetchEntriesTask.ConfigureAwait(false);
         }, cancellationToken);
 

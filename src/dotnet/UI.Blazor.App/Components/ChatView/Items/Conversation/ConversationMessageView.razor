@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Live
 @inherits ComputedStateComponent<AppUIHub, ConversationLiveState>
 @{
     var state = State.Value;
@@ -12,10 +11,10 @@
         CallOutcome.Ended, CallCardFormat.IsCaller(conversation, ChatContext), L);
     var openClass = _isOpen ? "open-details" : "closed-details";
     var detailsCls = _isOpen ? "show" : "";
-    var liveClass = state.IsLive ? (state.IsJoined || state.HasOverlay ? "live joined" : "live") : "";
+    var liveClass = state.IsLive ? (state.HasAttended ? "live joined" : "live") : "";
     var cls = $"conversation-message message-wrapper {openClass} {liveClass}";
     var childNames = state.IsLive
-        ? state.IsJoined || state.HasOverlay
+        ? state.HasAttended
             ? "conversation-message live-card joined-live-card"
             : "conversation-message live-card"
         : "conversation-message";
@@ -55,7 +54,6 @@
             ? L.Conversation_VoiceOnly
             : L.Chat_Messages(messageCount, messageCount);
         var startedAt = L.Conversation_StartedAt_Format(startsAt.ToString("t", DateFormatter));
-        var hasFoldedEntries = state.HasFoldedEntries;
         <div class="@(state.IsAnyoneTalking ? "c-live-card" : "c-live-card quiet")">
             @if (!Message.HasSplitHeader && hasLiveTitle) {
                 <div class="c-lc-title">
@@ -134,7 +132,8 @@
                     <div class="c-short">
                         <MarkupView Markup="@m.Description.Markup"/>
                         @if (!_isOpen && hasSummaryText) {
-                            <span class="show-more-btn" data-vl-hold="always" @onclick="@ToggleDetails">@L.ChatView_ShowDetails</span>
+                            <span class="show-more-btn" data-vl-hold="always"
+                                @onclick="@ToggleDetails">@L.ChatView_ShowDetails</span>
                         }
                     </div>
                 }
@@ -186,7 +185,6 @@
     private ChatEntry _fakeEntry = null!;
 
     private ChatUI ChatUI => Hub.ChatUI;
-    private IAuthors Authors => Hub.Authors;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private LiveBlockUI LiveBlockUI => Hub.LiveBlockUI;
@@ -211,7 +209,7 @@
             TranslatedMarkup.From(summaryMarkup));
         return ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<ConversationLiveState>.Options() {
-                InitialValue = new ConversationLiveState(translated, false, false, false),
+                InitialValue = new ConversationLiveState(translated, false, false),
                 Category = GetStateCategory(t),
             });
     }
@@ -238,49 +236,32 @@
 
         var translatedTask = ConversationUI.GetTranslatedConversation(conversation, cancellationToken);
         var liveTask = LiveSessionUI.GetConversation(chatId, cancellationToken);
-        var rawLiveTask = LiveSessionUI.GetState(chatId, cancellationToken);
-        var blockStateTask = LiveBlockUI.GetBlockState(chatId, cancellationToken);
+        var blockTask = LiveBlockUI.GetBlock(chatId, cancellationToken);
         var translated = await translatedTask.ConfigureAwait(false);
         var live = await liveTask.ConfigureAwait(false);
-        var rawLive = await rawLiveTask.ConfigureAwait(false);
-        var blockState = await blockStateTask.ConfigureAwait(false);
+        var block = await blockTask.ConfigureAwait(false);
         var isLive = live != null && live.Id == conversation.Id;
+        var hasAttended = block?.HasAttended ?? false;
         // The rest stay conditional: asking them when there is no live session would add dependencies
         // that recompute this card for sessions it doesn't show
-        var isJoined = isLive
-            && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
         var isVoiceOnly = isLive
             && !await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(false);
-        var participantsText = isLive
-            ? await ConversationParticipantsFormatter
-                .GetText(Authors, L, Hub.Session, chatId, conversation.AuthorIds, cancellationToken)
-                .ConfigureAwait(false)
-            : "";
-        var hasFoldedEntries = isLive && !isVoiceOnly
-            && rawLive is { SessionStartedAt: not null }
-            && blockState.FoldBoundaryLid > rawLive.EffectiveVisibleStartLid;
         var isExpanded = Message.IsExpanded;
         var tailPreview = isLive && !isVoiceOnly && !isExpanded
-            ? await GetTailPreview(chatId, rawLive?.EffectiveVisibleStartLid ?? 0, cancellationToken)
+            ? await GetTailPreview(chatId, conversation.Id.StartEntryLid, cancellationToken)
                 .ConfigureAwait(false)
             : null;
-        var hasSummary = !translated.Title.Text.IsNullOrEmpty();
         // Expanded is the auto-swallow mode - rows that scrolled above the viewport fold behind the card,
         // and "show more" is the way back to them. Collapsed is the card alone, previewing the latest
         // spoken rows (exactly what a viewer who never joined sees), with nothing to reveal.
         var swallowedCount = 0;
-        var revealBatch = 0;
-        if (isLive && !isVoiceOnly && isExpanded) {
+        if (isLive && !isVoiceOnly && isExpanded)
             swallowedCount = await LiveBlockUI.GetSwallowedCount(chatId, cancellationToken).ConfigureAwait(false);
-            if (swallowedCount > 0)
-                revealBatch = Math.Min(LiveFoldMath.RevealBatchSize, swallowedCount);
-        }
         var isAnyoneTalking = isLive
             && await LiveStreamUI.IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(false);
         return new ConversationLiveState(
-            translated, isLive, isJoined, isVoiceOnly, participantsText, hasFoldedEntries,
-            tailPreview, hasSummary, swallowedCount, revealBatch, isAnyoneTalking,
-            blockState.Overlay != null);
+            translated, isLive, isVoiceOnly, tailPreview, swallowedCount, isAnyoneTalking,
+            hasAttended);
     }
 
     private async Task<IReadOnlyList<PreviewEntry>> GetTailPreview(
