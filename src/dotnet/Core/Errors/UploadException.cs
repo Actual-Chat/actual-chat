@@ -14,6 +14,8 @@ public static partial class StandardError
             => Constraint($"File is too big. Max file size: {FileSizeFormatter.Format(maxSizeBytes)}.");
         public static Exception TooManyFiles(int maxCount)
             => Constraint($"Too many files. Max allowed number is {maxCount}.");
+        public static Exception FileEmpty()
+            => new UploadFileEmptyException("File is empty or no longer available.");
         public static Exception CropExportFailed()
             => Constraint("Failed to export cropped image.");
     }
@@ -50,6 +52,17 @@ public class OffsetConflictException : UploadException
     public OffsetConflictException() : base() { }
     public OffsetConflictException(string? message) : base(message) { }
     public OffsetConflictException(string? message, Exception? innerException) : base(message, innerException) { }
+}
+
+/// <summary>
+/// Exception thrown when the file to upload is empty, so retrying the upload can't help.
+/// </summary>
+[Serializable]
+public class UploadFileEmptyException : UploadException
+{
+    public UploadFileEmptyException() : base() { }
+    public UploadFileEmptyException(string? message) : base(message) { }
+    public UploadFileEmptyException(string? message, Exception? innerException) : base(message, innerException) { }
 }
 
 /// <summary>

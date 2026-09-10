@@ -64,6 +64,33 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
     }
 
     [Fact]
+    public async Task EmptyFileShouldFailWithoutCreatingUpload()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var fileProvider = new DataFileProvider([], "empty.txt", "text/plain");
+        var uploadOperations = new UploadOperations(hub);
+        var snapshot = UploadSession.NewUploadSnapshot(
+            fileProvider, new MetadataBag(), uploadOperations.Now(), "empty-test");
+        var uploadSession = new UploadSession(snapshot, uploadOperations, storage: null);
+
+        // act
+        uploadSession.Resume();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        while (!uploadSession.IsCompleted && !uploadSession.IsFailed)
+            await Task.Delay(100, cts.Token);
+
+        // assert
+        uploadSession.IsFailed.Should().BeTrue();
+        uploadSession.LastError.Should().BeOfType<UploadFileEmptyException>();
+        uploadSession.IsUnrecoverable.Should().BeTrue();
+        uploadSession.UploadId.Should().BeNull("an upload of 0 bytes must not reach the server");
+        uploadSession.Resume().Should().BeFalse("restarting can't make the file any longer");
+    }
+
+    [Fact]
     public async Task ShouldRestoreUploadSessionFromRepo()
     {
         await using var appHost = await NewAppHost("restore-session", options => options with {

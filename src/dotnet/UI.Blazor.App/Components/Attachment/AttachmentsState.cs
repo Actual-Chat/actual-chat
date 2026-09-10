@@ -69,6 +69,7 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
             IsInProgress = !isReady && !isFailed,
             IsReady = isReady,
             IsFailed = isFailed,
+            CanRestart = isFailed && !uploadProgress.IsUnrecoverable,
             UploadProgress = uploadedBytes,
             UploadSize = totalBytes,
         };

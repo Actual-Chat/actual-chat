@@ -38,7 +38,7 @@
                         <RoundProgress Class="attachment-upload-ring" Fraction="@(percent / 100d)" title="@progress.Details">
                             <span class="c-percent">@percent%</span>
                         </RoundProgress>
-                    } else if (progress.IsFailed && !m.NoAccess && RestartClick.HasDelegate) {
+                    } else if (progress.CanRestart && !m.NoAccess && RestartClick.HasDelegate) {
                         <span class="reload-icon-wrapper">
                             <ButtonRound Click="@RestartClick" Class="btn-sm">
                                 <i class="icon-sync text-2xl"></i>

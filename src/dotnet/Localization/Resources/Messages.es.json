@@ -114,6 +114,7 @@
   "Error_CropExportFailed": "No se pudo exportar la imagen recortada.",
   "Error_FileTooBig_Format": "El archivo es demasiado grande. Tamaño máximo: {size}.",
   "Error_TooManyFiles_Format": "Demasiados archivos. El número máximo permitido es {count}.",
+  "Error_FileEmpty": "El archivo está vacío o ya no está disponible.",
 
   // Invites
   "Error_InviteAlreadyUsed": "Este enlace de invitación ya se ha usado.",

@@ -122,6 +122,7 @@
   "Error_CropExportFailed": "Nie udało się wyeksportować przyciętego obrazu.",
   "Error_FileTooBig_Format": "Plik jest za duży. Maksymalny rozmiar pliku: {size}.",
   "Error_TooManyFiles_Format": "Za dużo plików. Maksymalna dozwolona liczba to {count}.",
+  "Error_FileEmpty": "Plik jest pusty lub nie jest już dostępny.",
 
   // Invites
   "Error_InviteAlreadyUsed": "Ten link zapraszający został już wykorzystany.",

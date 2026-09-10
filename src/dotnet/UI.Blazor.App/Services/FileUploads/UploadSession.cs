@@ -20,6 +20,7 @@ public class UploadSession
 
     public event EventHandler<double>? UploadProgressChanged;
     public event EventHandler<double>? ServerProcessingProgressChanged;
+    public event EventHandler<Exception>? Failed;
 
     private readonly Func<UploadSessionSnapshot, bool, CancellationToken, Task>? _storage;
     private readonly SemaphoreSlim _stateLock = new(1, 1);
@@ -64,6 +65,7 @@ public class UploadSession
     public UploadId? UploadId => _snapshot.UploadId;
     public UploadSessionState CurrentState => _snapshot.CurrentState;
     public bool IsFailed => _snapshot.IsFailed;
+    public bool IsUnrecoverable => _snapshot.IsUnrecoverable;
     public Exception? LastError { get; private set; }
     [MemberNotNullWhen(true, nameof(MediaRef))]
     public bool IsCompleted => CurrentState == UploadSessionState.Completed;
@@ -78,7 +80,7 @@ public class UploadSession
         if (CurrentState == UploadSessionState.Cancelled)
             throw new InvalidOperationException("Upload session is cancelled. Can't resume.");
 
-        if (CurrentState == UploadSessionState.Completed)
+        if (CurrentState == UploadSessionState.Completed || IsUnrecoverable)
             return false;
 
         if (Interlocked.CompareExchange(ref _isRunning, 1, 0) != 0)
@@ -241,7 +243,10 @@ public class UploadSession
         Log.LogError(ex, "Upload '{SessionId}' session for file '{FileName}' failed on step '{Step}'",
             SessionId, FileProvider.Metadata.FileName, _snapshot.CurrentState.ToString());
         LastError = ex;
-        await UpdateState(s => s with { IsFailed = true }, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var isUnrecoverable = ex is UploadFileEmptyException;
+        await UpdateState(s => s with { IsFailed = true, IsUnrecoverable = isUnrecoverable },
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+        Failed?.Invoke(this, ex);
     }
 
     private async Task UpdateState(

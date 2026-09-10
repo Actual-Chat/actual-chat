@@ -122,6 +122,7 @@
   "Error_CropExportFailed": "Изрязаното изображение не можа да бъде експортирано.",
   "Error_FileTooBig_Format": "Файлът е твърде голям. Максимален размер: {size}.",
   "Error_TooManyFiles_Format": "Твърде много файлове. Максималният разрешен брой е {count}.",
+  "Error_FileEmpty": "Файлът е празен или вече не е достъпен.",
 
   // Invites
   "Error_InviteAlreadyUsed": "Линкът за покана вече е използван.",
