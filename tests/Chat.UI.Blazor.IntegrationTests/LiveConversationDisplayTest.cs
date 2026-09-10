@@ -5,6 +5,8 @@ using ActualChat.Streaming;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
+using Bunit;
+using Microsoft.AspNetCore.Components.Rendering;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
@@ -1276,8 +1278,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             .Should().BeEmpty("a thread start below the loaded range must not be emitted");
     }
 
-    [Fact]
-    public async Task TierOneCloseDissolvesBeforeVanishing()
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task UnsummarizedBlockShouldRemainUntilDissolveEnds(bool isSummarized, bool mustSkipTile)
     {
         // A too-short (never-summarized) session leaves no card behind, but it must not vanish in one
         // frame - the block is held briefly as "dissolving" so it can fade + collapse out.
@@ -1285,6 +1290,12 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // arrange - a joined live session that never gets a summary
         await Tester.SignInAsUniqueBob();
         var chat = await CreateSettledChat("tier1-dissolve-test");
+        await Tester.Commander.Call(new Chats_Change {
+            Session = Tester.Session,
+            ChatId = chat.Id,
+            ExpectedVersion = null,
+            Change = Change.Update(new ChatDiff { IsSummarized = isSummarized }),
+        });
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_210);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
@@ -1298,7 +1309,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
         var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
         var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
-        liveBlockUI.DissolveDuration = TimeSpan.FromSeconds(10);
+        liveBlockUI.DissolveDuration = TimeSpan.FromSeconds(5);
         await chatAudioUI.SetListeningState(chat.Id, true);
         InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
         chatUI.SelectChatOnNavigation(chat.Id);
@@ -1307,6 +1318,21 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             var s = await liveBlockUI.GetBlockState(chat.Id, ct);
             s.WasAttending.Should().BeTrue();
         }, TimeSpan.FromSeconds(10));
+
+        await AwaitJoinedBlockExpansion(chatUI, chat.Id, live!.ToConversation());
+        var range = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(range, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        var before = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
+        var beforeBlock = before.Items.OfType<ExpandedConversationMessage>().Single();
+        beforeBlock.Items.OfType<LiveConversationHeader>().Should().ContainSingle();
+        var liveSessionUI = Tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
+        Tester.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var header = Tester.Render<LiveConversationHeaderView>(p => p
+            .Add(x => x.Header, beforeBlock.Items.OfType<LiveConversationHeader>().Single())
+            .Add(x => x.ChatContext, new ChatContext(
+                Tester.ScopedAppServices.GetRequiredService<AppUIHub>(), chat)));
+        header.WaitForAssertion(() => header.Find(".c-lc-name").TextContent.Should().NotBeNullOrEmpty());
+        var beforeTitle = header.Find(".c-lc-name").TextContent;
 
         // act - tier-1 close (never summarized)
         await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
@@ -1318,7 +1344,47 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             var s = await liveBlockUI.GetBlockState(chat.Id, ct);
             s.Overlay.Should().NotBeNull("a tier-1 close dissolves the block before removing it");
             s.Overlay!.IsDissolving.Should().BeTrue();
-        }, TimeSpan.FromSeconds(10));
+            s.Overlay.MaterializedId.Should().BeNull();
+            s.Overlay.BlockEndLid.Should().BeLessThan(long.MaxValue);
+            (await liveSessionUI.GetConversation(chat.Id, ct)).Should().BeNull();
+        }, TimeSpan.FromSeconds(3));
+        if (mustSkipTile)
+            for (var i = 0; i < 2 * ChatUI.EntryIdTiles.TileSize; i++) {
+                var removedEntry = await Tester.CreateTextEntry(chat.Id, $"removed-{i}");
+                await Tester.RemoveTextEntry(removedEntry.Id);
+            }
+        var afterClose = await Tester.CreateTextEntry(chat.Id, "after-close");
+        var expectedLids = LeafEntryLids(before).Append(afterClose.LocalId).ToList();
+        for (var sample = 0; sample < 10; sample++) {
+            await Task.Delay(TimeSpan.FromMilliseconds(50));
+            var overlay = (await liveBlockUI.GetBlockState(chat.Id, CancellationToken.None)).Overlay;
+            overlay.Should().NotBeNull();
+            overlay!.IsDissolving.Should().BeTrue();
+            overlay.MaterializedId.Should().BeNull();
+            overlay.BlockEndLid.Should().BeLessThan(long.MaxValue);
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None)
+                .WaitAsync(TimeSpan.FromSeconds(5));
+            LeafEntryLids(items).Should().Equal(expectedLids);
+            var block = items.Items.OfType<ExpandedConversationMessage>()
+                .Should().ContainSingle(
+                    $"sample {sample}, overlay {overlay}: the header must remain to dissolve: " + Dump(items))
+                .Subject;
+            ((IVirtualListItem)block).RenderKey.Should().Be(((IVirtualListItem)beforeBlock).RenderKey);
+            block.Items.OfType<LiveConversationHeader>().Should().ContainSingle();
+            block.Items.SelectMany(i => i.GetLeafMessages()).OfType<ChatEntryMessage>()
+                .Should().NotContain(m => m.Id == afterClose.LocalId);
+            header.WaitForAssertion(() => {
+                header.FindAll(".live-conversation-header.dissolving").Should().ContainSingle();
+                header.Find(".c-lc-name").TextContent.Should().Be(beforeTitle);
+                header.FindAll(".c-lc-join").Should().BeEmpty();
+            });
+        }
+        await ComputedTest.When(async ct => {
+            (await liveBlockUI.GetBlockState(chat.Id, ct)).Overlay.Should().BeNull();
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct).WaitAsync(TimeSpan.FromSeconds(5));
+            items.Items.OfType<ExpandedConversationMessage>().Should().BeEmpty();
+            LeafEntryLids(items).Should().Equal(expectedLids);
+        }, TimeSpan.FromSeconds(5));
     }
 
     [Fact]

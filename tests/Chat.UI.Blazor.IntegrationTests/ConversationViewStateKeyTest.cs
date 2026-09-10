@@ -10,6 +10,29 @@ namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 public sealed class ConversationViewStateKeyTest
 {
     [Fact]
+    public void DissolvingConversationShouldRekeyOnlyOverlappingTiles()
+    {
+        // arrange
+        var id = ConversationId.New(ChatId.Parse("the-actual-one"), 100);
+        var conversation = new Conversation(id) { EndEntryLid = 119 };
+        var state = new ConversationViewState(true, ImmutableHashSet.Create(id), default, id, default, null);
+        var dissolving = state with { DissolvingConversation = conversation };
+
+        // act
+        var near = dissolving.NarrowTo(new Range<long>(110, 115));
+        var far = dissolving.NarrowTo(new Range<long>(120, 125));
+        var rebuilt = dissolving with { ExpandedConversations = ImmutableHashSet.Create(id) };
+
+        // assert
+        near.Should().NotBe(state, "retaining or releasing the descriptor must invalidate cached cards");
+        near.DissolvingConversation.Should().BeSameAs(conversation);
+        far.Should().Be(state);
+        far.GetHashCode().Should().Be(state.GetHashCode());
+        rebuilt.Should().Be(dissolving);
+        rebuilt.GetHashCode().Should().Be(dissolving.GetHashCode());
+    }
+
+    [Fact]
     public void StructurallyIdenticalStatesMustBeEqual()
     {
         // arrange
