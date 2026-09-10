@@ -44,7 +44,7 @@ import { DeviceInfo } from 'device-info';
 import { ScreenOrientation } from 'orientation';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
-import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
+import { ConnectivityUI, type ConnectivityPublisher } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import { SharedSettings } from 'shared-settings';
 import { SharedSettingsWorkerSync } from 'shared-settings-worker';
 import { EncodeDeficitTicker } from '../../Services/Video/throughput-deficit-ticker';
@@ -577,7 +577,7 @@ export class VideoRecorder {
 
     // Connectivity / disconnect-api wiring (kept identical to legacy).
     private _disconnectApiHandler: (() => void) | null = null;
-    private _connectivityHandler: (() => void) | null = null;
+    private _connectivityPublisher: ConnectivityPublisher | null = null;
     private _sharedSettingsRegistration: Disposable | null = null;
     private _traceKillRegistration: Disposable | null = null;
     private recorderHealthTimer: number | null = null;
@@ -602,21 +602,10 @@ export class VideoRecorder {
         this.blazorRef = blazorRef;
         this.register(kind);
 
-        // Subscribe to connectivity changes once per VideoRecorder
-        // lifetime — handlers reference `this.worker` lazily so a
-        // worker recycle (stop+start) doesn't need re-subscription.
-        // Same leak shape as the legacy `VideoPipeline` (which never
-        // removed these), but since the active-recorder registry is
-        // bounded the leak is bounded too.
-        this._connectivityHandler = (): void => {
-            void this.worker?.onConnectivityUpdate(
-                ConnectivityUI.isOnline,
-                ConnectivityUI.isConnected,
-                ConnectivityUI.isBlazorServer);
-        };
-        ConnectivityUI.isOnlineChanged.add(this._connectivityHandler);
-        ConnectivityUI.isConnectedChanged.add(this._connectivityHandler);
-        void ConnectivityUI.whenReady.then(this._connectivityHandler);
+        // One publisher per VideoRecorder lifetime; it reads `this.worker`
+        // lazily, so a worker recycle (stop+start) needs no re-subscription.
+        this._connectivityPublisher = ConnectivityUI.publishTo((isOnline, isConnected, isBlazorServer) =>
+            this.worker?.onConnectivityUpdate(isOnline, isConnected, isBlazorServer));
     }
 
     // ---- Public methods called from Blazor (preserved surface) -----------
@@ -1989,15 +1978,8 @@ export class VideoRecorder {
             this.tearDownWorker();
         }
 
-        // The connectivity handler stays subscribed past dispose
-        // (the legacy `VideoPipeline` doesn't unsubscribe either —
-        // `EventHandlerSet.remove(...)` takes the `EventHandler<T>`
-        // wrapper returned from `.add(...)`, and we discard it). It
-        // becomes a dead-letter no-op once `this.worker` is null,
-        // and the bounded active-recorder lifecycle keeps the leak
-        // bounded. TODO(phase 7+): tighten this once the registry
-        // grows churn pressure.
-        this._connectivityHandler = null;
+        this._connectivityPublisher?.dispose();
+        this._connectivityPublisher = null;
 
         this.resetDemandState();
         this.isSpeaking = false;
@@ -2061,10 +2043,7 @@ export class VideoRecorder {
         );
         this._traceKillRegistration = registerVideoTraceKillWorker('recording', this.worker);
 
-        // Push current connectivity to the freshly-created worker
-        // (the long-lived listeners installed in the constructor only
-        // fire on transitions, so we need a one-shot push here).
-        this._connectivityHandler?.();
+        this._connectivityPublisher?.publish();
 
         this._disconnectApiHandler = () => void this.worker?.disconnectApi();
         Api.onDisconnectRequested(WorkerKind.VideoCapture).add(this._disconnectApiHandler);

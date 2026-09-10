@@ -1,5 +1,6 @@
 import { EventHandlerSet } from 'event-handling';
 import { delayAsync, PromiseSource, PromiseSourceWithTimeout } from 'actuallab-core';
+import { Disposable } from 'disposable';
 import { getLogs } from 'logging';
 
 const { infoLog, warnLog, errorLog } = getLogs('ConnectivityUI');
@@ -10,6 +11,14 @@ const ReadyRetryIntervalMs = 1000;
 // A plain GET is rejected by RpcWebSocketServer with 400 - or 503 once ApplicationStopping fires,
 // since that check runs first, so a node on its way out can't pass for a live one.
 const ReadyProbeUrl = '/rpc/ws';
+const PublishPeriodMs = 5000;
+
+export type ConnectivityPublishTarget =
+    (isOnline: boolean, isConnected: boolean, isBlazorServer: boolean) => Promise<void> | void;
+
+export interface ConnectivityPublisher extends Disposable {
+    publish(): void;
+}
 
 export class ConnectivityUI {
     private static _isOnline = true;
@@ -129,6 +138,38 @@ export class ConnectivityUI {
         finally {
             handler.dispose();
         }
+    }
+
+    /** Mirrors the state into another realm (a worker): on every change, once
+     *  ready, and every `periodMs` regardless. The periodic push is the point:
+     *  a change push is fire-and-forget across a worker boundary, and a copy
+     *  that misses one stays wrong until the next change, which may never come. */
+    public static publishTo(target: ConnectivityPublishTarget, periodMs = PublishPeriodMs): ConnectivityPublisher {
+        let isDisposed = false;
+        const publish = (): void => {
+            if (isDisposed)
+                return;
+
+            try {
+                void Promise.resolve(target(this._isOnline, this._isConnected, this._isBlazorServer))
+                    .catch((e: unknown) => warnLog?.log('publishTo: push failed', e));
+            } catch (e) {
+                warnLog?.log('publishTo: push failed', e);
+            }
+        };
+        const onlineHandler = this.isOnlineChanged.add(publish);
+        const connectedHandler = this.isConnectedChanged.add(publish);
+        const timer = setInterval(publish, periodMs);
+        void this.whenReady.then(publish);
+        return {
+            publish,
+            dispose(): void {
+                isDisposed = true;
+                onlineHandler.dispose();
+                connectedHandler.dispose();
+                clearInterval(timer);
+            },
+        };
     }
 
     public static async whenReadyToReload(reason: string): Promise<boolean> {

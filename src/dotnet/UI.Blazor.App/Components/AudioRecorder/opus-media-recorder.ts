@@ -7,7 +7,7 @@ import { catchErrors, delayAsync, delayAsyncWith, PromiseSource, ResolvedPromise
 import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
-import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
+import { ConnectivityUI, type ConnectivityPublisher } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import { DebugUI } from '../../../UI.Blazor/Services/DebugUI/debug-ui';
 import { Api, WorkerKind } from 'api';
 import { audioContextSource, recordingAudioContextSource, AppAudioContext, AudioContextRef, AudioContextAction } from '../../Services/audio-context-source';
@@ -213,6 +213,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
     public stream: MediaStream | null = null;
     private heartbeatTimerId: ReturnType<typeof setInterval> | undefined;
     private heartbeatSuspendedUntil = 0;
+    private connectivityPublisher: ConnectivityPublisher | null = null;
 
     private get isRecording(): boolean {
         return !!(this.stream && this.state === 'recording');
@@ -369,18 +370,10 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
         SharedSettingsWorkerSync.register(this.encoderWorker);
 
-        const updateWorkerConnectivityUI = () => {
-            void this.encoderWorker?.onConnectivityUpdate(
-                ConnectivityUI.isOnline,
-                ConnectivityUI.isConnected,
-                ConnectivityUI.isBlazorServer,
-                rpcNoWait)
-        }
-        ConnectivityUI.isOnlineChanged.add(updateWorkerConnectivityUI);
-        ConnectivityUI.isConnectedChanged.add(updateWorkerConnectivityUI);
+        this.connectivityPublisher?.dispose();
+        this.connectivityPublisher = ConnectivityUI.publishTo((isOnline, isConnected, isBlazorServer) =>
+            this.encoderWorker?.onConnectivityUpdate(isOnline, isConnected, isBlazorServer, rpcNoWait));
         await ConnectivityUI.whenReady;
-        void this.encoderWorker.onConnectivityUpdate(
-            ConnectivityUI.isOnline, ConnectivityUI.isConnected, ConnectivityUI.isBlazorServer, rpcNoWait);
 
         await this.vadWorker.create(
             AC,
@@ -498,6 +491,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
     public async terminate(): Promise<void> {
         this.stopHeartbeat();
+        this.connectivityPublisher?.dispose();
+        this.connectivityPublisher = null;
         await this.encoderWorker?.stop();
         await this.vadWorker?.reset();
         this.recordingAction?.dispose();

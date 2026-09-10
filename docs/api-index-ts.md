@@ -148,7 +148,7 @@ See also: [C# Full API Index](api-index-full.md), [Condensed API Index](api-inde
 - `SessionTokenProvider` (type) - Function providing session tokens.
 - `ApiConnectivityUI` (interface) - Connectivity status from .NET side.
 - `ApiInitOptions` (interface) - Initialization options for API.
-- `ApiReconnectDelayer` (class) - Manages API reconnection backoff.
+- `ApiReconnectDelayer` (class) - Reconnect backoff; parks while no scope requires a connection, slows to a probe while the .NET-connectivity hint says offline.
 - `SystemPropertiesDef` (const) - RPC service definition for system properties.
 - `ServerApiInfoDto` (interface) - DTO for server API information.
 - `SystemPropertiesClient` (interface) - Client for system properties RPC.

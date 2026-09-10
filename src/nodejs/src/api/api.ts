@@ -20,15 +20,18 @@
 //     `register(hub)` — including modules listed via `deps`.
 //
 // Connectivity gating:
-//   The peer is allowed to attempt a connection only when `canConnect` is
-//   true, derived from two signals:
+//   Two signals feed the peer's reconnect delayer (`ApiReconnectDelayer`):
 //     - `requiresConnection` — at least one scope has been requested via
 //       `requireConnection(scope)` and not yet released. Workers typically
 //       have a single scope; the main thread refcounts multiple VideoPlayers.
+//       While false, the peer's run loop parks and opens no WebSocket.
 //     - `isDotNetRpcConnected` — the .NET-side rpc is connected (pushed in
 //       from ConnectivityUI on the main thread, from WorkerConnectivityUI
-//       on workers). If .NET can't reach the server, neither can we.
-//   The three states are exposed as getters plus matching
+//       on workers). A hint only: while false, reconnect attempts are spaced
+//       out to a slow probe rather than stopped, so a stale copy of the
+//       main-thread state can't strand a worker's peer.
+//   `canConnect` = `requiresConnection && isDotNetRpcConnected` is exposed
+//   for diagnostics. All three are getters plus matching
 //   `*Changed: EventHandlerSet<boolean>` events.
 
 import { EventHandlerSet } from 'actuallab-core';
@@ -177,7 +180,7 @@ export class Api {
     /** Fires when `isDotNetRpcConnected` flips. */
     static readonly isDotNetRpcConnectedChanged = new EventHandlerSet<boolean>();
     /** Fires when `canConnect` (= `requiresConnection && isDotNetRpcConnected`)
-     *  flips. Drives the internal reconnect-delayer gate. */
+     *  flips. */
     static readonly canConnectChanged = new EventHandlerSet<boolean>();
 
     /** Initialize or extend the shared RpcHub. Later calls may add modules and
@@ -250,13 +253,15 @@ export class Api {
             return;
 
         Api._isDotNetRpcConnected = value;
+        Api._delayer.setIsOnline(value);
         Api.isDotNetRpcConnectedChanged.trigger(value);
         Api._recomputeCanConnect();
     }
 
-    /** Derived: `requiresConnection && isDotNetRpcConnected`. While false, the
-     *  peer's run loop parks on the reconnect delayer and does not open a
-     *  WebSocket. Already-open connections are NOT torn down by this flag. */
+    /** Derived: `requiresConnection && isDotNetRpcConnected` — whether the
+     *  peer is expected to be connected right now. Diagnostics only; the
+     *  reconnect delayer takes the two inputs separately (see the module
+     *  header). Already-open connections are NOT torn down by this flag. */
     static get canConnect(): boolean {
         return Api._canConnect;
     }
@@ -297,6 +302,7 @@ export class Api {
         const wasEmpty = Api._scopes.size === 0;
         Api._scopes.add(scope);
         if (wasEmpty) {
+            Api._delayer.setIsRequired(true);
             Api.requiresConnectionChanged.trigger(true);
             Api._recomputeCanConnect();
         }
@@ -309,6 +315,7 @@ export class Api {
             return;
 
         if (Api._scopes.size === 0) {
+            Api._delayer.setIsRequired(false);
             Api.requiresConnectionChanged.trigger(false);
             Api._recomputeCanConnect();
         }
@@ -383,6 +390,5 @@ export class Api {
 
         Api._canConnect = value;
         Api.canConnectChanged.trigger(value);
-        Api._delayer.setAllowed(value);
     }
 }

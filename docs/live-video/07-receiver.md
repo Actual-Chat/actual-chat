@@ -196,15 +196,20 @@ The MSTG render backend on the main thread runs a watchdog that retries
 `<video>.play()` on stalls and falls back to canvas if `<video>` is stuck
 for a configurable period (`render-backend-mstg.ts`).
 
-`video-player.ts` also polls the worker's own RPC peer on every liveness
-tick (`getConnectionState`, 2 s) and re-pushes main-thread connectivity to
-it, since the worker gates its reconnect loop on that signal. A peer that
-stays down for 15 s while the main-thread peer is connected is treated as
-dead — the state a parked or stopped worker reconnect loop leaves behind,
-where every pull restart waits on a connection that never comes — and the
-whole worker is rebuilt with a fresh peer (`DeadPeerDetector`,
-`recreatePlayerWorker`). The rebuilt tile loses its background blur: the
-bg canvas was transferred to the old worker and cannot be transferred again.
+The worker's own RPC peer reconnects on its own evidence. Main-thread
+connectivity reaches it through `ConnectivityUI.publishTo` — on every change
+and every 5 s regardless, so a push lost across the worker boundary is
+corrected by the next one — but the worker's `ApiReconnectDelayer` treats
+that signal as a hint: while it says offline, reconnect attempts are spaced
+to a 15 s probe rather than stopped. Only "no scope requires a connection"
+parks the loop.
+
+`video-player.ts` still polls the worker's peer on every liveness tick
+(`getConnectionState`, 2 s). A peer that stays down for 15 s while the
+main-thread peer is connected is treated as dead and the whole worker is
+rebuilt with a fresh peer (`DeadPeerDetector`, `recreatePlayerWorker`). The
+rebuilt tile loses its background blur: the bg canvas was transferred to the
+old worker and cannot be transferred again.
 
 ### Rotation-aware presentation
 
