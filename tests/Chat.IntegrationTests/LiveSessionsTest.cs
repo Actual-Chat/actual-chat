@@ -84,13 +84,13 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
             (await backend.ListParticipants(chatId, ct)).Contains(authorId).Should().BeTrue());
 
         // act — an explicit leave
-        await backend.SetParticipation(chatId, authorId, ParticipationKind.AudioListen, false, default);
+        await backend.SetParticipation(chatId, authorId, ParticipationKind.Record, false, default);
 
         // assert — it removes them
         await ComputedTest.When(async ct =>
             (await backend.ListParticipants(chatId, ct)).Contains(authorId).Should().BeFalse());
 
-        // act — a re-join
+        // act — a re-join as a listener
         await backend.SetParticipation(chatId, authorId, ParticipationKind.AudioListen, true, default);
 
         // assert — they are back
@@ -565,6 +565,33 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
 
         // assert — the now-empty call closes outright
         (await backend.GetState(chatId, default)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SetParticipationRemovalShouldNotStompANewerKind()
+    {
+        // A recorder stream ending must not blow away a concurrently-open listening registration for
+        // the same author - _participants stores one record per author, keyed by chatId+authorId, so
+        // an unconditional Remove from the ending Record registration would also delete the still-live
+        // AudioListen one if nothing guards it.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
+
+        // act - the author is upgraded to listening (their recording stream is being replaced), then
+        // the OLD recording stream's own teardown fires its removal after the fact
+        await backend.SetParticipation(chatId, author.Id, ParticipationKind.AudioListen, true, default);
+        await backend.SetParticipation(chatId, author.Id, ParticipationKind.Record, false, default);
+
+        // assert - the listening registration survives; only a same-kind removal may clear it
+        await ComputedTest.When(async ct =>
+            (await backend.ListParticipants(chatId, ct)).Should().Contain(author.Id));
     }
 
     [Fact]

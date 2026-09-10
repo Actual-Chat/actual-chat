@@ -366,8 +366,13 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 // silently expires mid-call and the next stream rebuilds it as a brand-new session.
                 await _redisScope.Refresh(chatId.Value).ConfigureAwait(false);
             }
-            else
-                await _participants.Remove(chatId.Value, authorId.Value).ConfigureAwait(false);
+            else {
+                // Only remove if the stored kind matches - _participants holds one record per author,
+                // so unconditional removal would delete a still-active stream's registration.
+                var existing = await SafeGetParticipant(chatId, authorId).ConfigureAwait(false);
+                if (existing is { } info && info.Kind == kind)
+                    await _participants.Remove(chatId.Value, authorId.Value).ConfigureAwait(false);
+            }
             InvalidateListParticipants(chatId);
             InvalidateHasRecorder(chatId);
             InvalidateGet(chatId);
