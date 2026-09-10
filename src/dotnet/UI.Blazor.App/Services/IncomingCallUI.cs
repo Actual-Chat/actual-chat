@@ -218,13 +218,12 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             if (!isOverLockScreen && !showsForegroundCall)
                 await Hub.History.NavigateTo(Links.Chat(chatId)).ConfigureAwait(true);
             if (canStartAudio) {
+                // Listen unconditionally first; pending OS mic prompt won't gate EnforceCallConnectGrace check.
+                // Mirrors LiveSessionUI.JoinAnsweredCall's already-correct ordering.
+                await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(true);
                 var micPermission = Hub.AudioRecorder.MicrophonePermission;
                 if (await micPermission.CheckOrRequest(CancellationToken.None).ConfigureAwait(true))
                     await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(true);
-                else {
-                    // Mic denied: still join the call as a listener.
-                    await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(true);
-                }
             }
             if (showsForegroundCall)
                 _foregroundRawChatId.Value = chatId;
