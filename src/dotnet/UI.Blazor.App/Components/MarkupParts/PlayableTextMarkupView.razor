@@ -10,14 +10,7 @@
 
 <span @ref="Ref" class="@containerCls @colorCls">
     @if (m.Map == null) {
-        if (Markup.Words.Length <= 1 || LastFragment == null)
-            @Markup.Text
-        else {
-            var lastWord = Markup.Words[^1];
-            var firstPart = Markup.Text[..lastWord.TextRange.Start];
-            @firstPart
-            <span class="last-word"><BreakableWord Text="@lastWord.Value"/> @LastFragment</span>
-        }
+        @Markup.Text
     } else {
         var wordCount = Markup.Words.Length;
         RenderFragment<int> renderWord = i =>
@@ -39,9 +32,6 @@
                     @renderWord(i)
                 }</span>
             }
-        }
-        if (LastFragment != null) {
-            <span class="last-word">@(" ")@LastFragment</span>
         }
     }
 </span>

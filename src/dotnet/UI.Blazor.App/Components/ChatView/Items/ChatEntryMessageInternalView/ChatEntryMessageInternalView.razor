@@ -63,6 +63,10 @@
     // still shows its own status — it's a separate ChatListItem render).
     var hideInlineStatus = entry.HasLocation || isGifOnly || isEmojiOnly;
 
+    // Both marks can be absent, and then there is nothing to place - no suffix node, no span.
+    var hasSuffix = m.Translation != TranslationState.None
+        || (status != ChatMessageSendingStatus.MessageStatus.Default && !hideInlineStatus);
+
     // Should be named __builder
     // ReSharper disable once VariableHidesOuterVariable UnusedParameter.Local
     RenderFragment statusFragment = (__builder) => {
@@ -125,10 +129,10 @@
             </div>
         }
         <CascadingValue Value="@entry" IsFixed="true">
-            <CascadingValue Value="@statusFragment">
+            <CascadingValue Value="@(new MarkupRenderContext(hasSuffix ? statusFragment : null))">
                 @* A lone emoji mention (the whole message is one EmojiMention) renders large. *@
                 <CascadingValue Value="@isSoleEmojiMention" Name="IsSoleEmojiMention" IsFixed="true">
-                    <MarkupView Markup="@markup"/>
+                    <MarkupView Markup="@(hasSuffix ? MarkupSuffixInjector.Inject(markup) : markup)"/>
                 </CascadingValue>
             </CascadingValue>
         </CascadingValue>
