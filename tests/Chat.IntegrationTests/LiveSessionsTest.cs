@@ -1440,7 +1440,8 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // (LiveAudioStreams, AudioStreamingBackend) call when a stream's connection actually drops, so
         // it must enforce the same ">= 2" invariant LeaveCall already does for an explicit hang-up.
 
-        // arrange - Bob calls Alice; both connect as listeners (simplest way to reach 2 real participants)
+        // arrange - Bob records (stays live), Alice listens then drops. This isolates the new
+        // shouldCloseAsCall path: the old emptiedByLeave wouldn't fire, but the >=2 check does.
         await using var bob = AppHost.NewBlazorTester(Out);
         await using var alice = AppHost.NewBlazorTester(Out);
         await bob.SignInAsUniqueBob();
@@ -1454,15 +1455,16 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
             chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
         await backend.AcceptCall(chatId, aliceAuthor.Id, default);
         await backend.SetParticipation(
-            chatId, bobAuthor.Id, ParticipationKind.AudioListen, true, default);
+            chatId, bobAuthor.Id, ParticipationKind.Record, true, default);
         await backend.SetParticipation(
             chatId, aliceAuthor.Id, ParticipationKind.AudioListen, true, default);
 
-        // act - Alice's listening stream drops (connection lost) - the same call SetParticipation(false) makes
+        // act - Alice's listening stream drops (connection lost), leaving Bob as the sole participant
         await backend.SetParticipation(
             chatId, aliceAuthor.Id, ParticipationKind.AudioListen, false, default);
 
-        // assert - the call closes at once, same as an explicit LeaveCall would
+        // assert - the call closes on the new shouldCloseAsCall path since ParticipantCount drops
+        // below 2, regardless of IsSessionLive (which would still be true due to Bob recording)
         (await backend.GetState(chatId, default)).Should().BeNull();
     }
 
