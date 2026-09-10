@@ -692,8 +692,10 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.StartCall(
             chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
 
-        // act — Alice answers
+        // act — Alice answers and starts listening (this is what actually registers her presence now
+        // that GetListeningStream owns AudioListen participation, not AcceptCall itself)
         await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+        await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.AudioListen, true, default);
 
         // assert — the invite is accepted and Alice is now a participant
         var live = await backend.Get(chatId, default);
