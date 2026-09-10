@@ -1185,6 +1185,7 @@
   "Notification_VoiceChatStarted": "Obrolan suara dimulai",
   "Notification_VoiceChatStartedBy": "{0} memulai obrolan suara",
   "Notification_NamesAndMore": "{0} dan {1} lainnya",
+  "Notification_SenderAndMore": "{0} dan {1} lainnya",
   "Notification_EarlierMessages": "+{0} pesan sebelumnya",
   "Notification_AuthorLine_Format": "{0}: {1}",
   "Notification_ThreadCreated_Format": "Utas “{0}” telah dibuat",

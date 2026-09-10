@@ -32,6 +32,11 @@ public sealed partial record ReactionNotification(NotificationId Id, long Versio
     public string QuotedText { get; init => field = value ?? ""; } = "";
     [DataMember(Order = 12), Key(12)]
     public Emoji? LastEmoji { get; init; }
+    // SenderName plus a count of the other reactors, empty until there are two. Kept beside
+    // SenderName rather than overwriting it - see NotificationHelper.ComposeReaction.
+    [DataMember(Order = 13), Key(13)]
+    [MessagePackFormatter(typeof(NonNullableMessagePackStringFormatter))]
+    public string DisplaySenderName { get; init => field = value ?? ""; } = "";
 
     public static ReactionNotification New(UserId userId, ChatEntryId entryId, AuthorId? authorId = null)
         // AuthorIds/Emojis are left empty here and filled at the send site: ApiArray is

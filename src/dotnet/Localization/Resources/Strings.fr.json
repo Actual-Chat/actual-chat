@@ -1185,6 +1185,7 @@
   "Notification_VoiceChatStarted": "Discussion vocale démarrée",
   "Notification_VoiceChatStartedBy": "{0} a démarré une discussion vocale|{0} ont démarré une discussion vocale",
   "Notification_NamesAndMore": "{0} et {1} autre|{0} et {1} autres",
+  "Notification_SenderAndMore": "{0} +{1}",
   "Notification_EarlierMessages": "+{0} message précédent|+{0} messages précédents",
   "Notification_AuthorLine_Format": "{0} : {1}",
   "Notification_ThreadCreated_Format": "Le fil '{0}' a été créé",

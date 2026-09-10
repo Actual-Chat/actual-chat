@@ -137,6 +137,74 @@ public sealed class NotificationsUIProjectionTest(ITestOutputHelper @out) : Test
     }
 
     [Fact]
+    public async Task NavigationTargetShouldPreferAPingOverAMentionOverAReaction()
+    {
+        // arrange
+        var reaction = NewReaction(9, Moment.EpochStart + TimeSpan.FromSeconds(1));
+        var mention = MentionNotification.New(TestUserId, ChatEntryId.New(ChatA, 4));
+        var ping = NewAttention(ChatA, 7, Moment.EpochStart);
+        await using var scope = NewScope(reaction, mention, ping);
+        var notificationsUI = scope.ServiceProvider.GetRequiredService<NotificationsUI>();
+
+        // act
+        var target = await notificationsUI.GetNavigationTarget(ChatA, includeReactions: true);
+
+        // assert
+        target!.Id.Should().Be(ping.Id, "a ping is the only ringer among the three");
+    }
+
+    [Fact]
+    public async Task NavigationTargetShouldWalkOneKindForward()
+    {
+        // arrange
+        var later = MentionNotification.New(TestUserId, ChatEntryId.New(ChatA, 8));
+        var earlier = MentionNotification.New(TestUserId, ChatEntryId.New(ChatA, 4));
+        await using var scope = NewScope(later, earlier);
+        var notificationsUI = scope.ServiceProvider.GetRequiredService<NotificationsUI>();
+
+        // act
+        var target = await notificationsUI.GetNavigationTarget(ChatA, includeReactions: true);
+
+        // assert
+        target!.EntryId.LocalId.Should().Be(4, "the walk moves forward through the chat");
+    }
+
+    [Fact]
+    public async Task NavigationTargetShouldSkipOtherChatsAndChatCoalescingKinds()
+    {
+        // arrange - a message notification anchors at the first unread entry, which is where the
+        // row's plain chat link already lands
+        var message = MessageNotification.New(TestUserId, ChatA, 2, AuthorId.New(ChatA, 1));
+        var otherChatMention = MentionNotification.New(TestUserId, ChatEntryId.New(ChatB, 5));
+        var mention = MentionNotification.New(TestUserId, ChatEntryId.New(ChatA, 3));
+        await using var scope = NewScope(message, otherChatMention, mention);
+        var notificationsUI = scope.ServiceProvider.GetRequiredService<NotificationsUI>();
+
+        // act
+        var target = await notificationsUI.GetNavigationTarget(ChatA, includeReactions: true);
+
+        // assert
+        target!.Id.Should().Be(mention.Id);
+    }
+
+    [Fact]
+    public async Task NavigationTargetShouldSkipReactionsForTheMentionsTab()
+    {
+        // arrange
+        var reaction = NewReaction(9, Moment.EpochStart) with { Emojis = ApiArray.New(Emojis.Awesome) };
+        await using var scope = NewScope(reaction);
+        var notificationsUI = scope.ServiceProvider.GetRequiredService<NotificationsUI>();
+
+        // act
+        var withReactions = await notificationsUI.GetNavigationTarget(ChatA, includeReactions: true);
+        var withoutReactions = await notificationsUI.GetNavigationTarget(ChatA, includeReactions: false);
+
+        // assert
+        withReactions!.Emoji.Should().Be(Emojis.Awesome);
+        withoutReactions.Should().BeNull("reactions lift a chat onto the other tabs, not this one");
+    }
+
+    [Fact]
     public async Task AttentionAtShouldBeNullForChatWithoutPings()
     {
         // arrange

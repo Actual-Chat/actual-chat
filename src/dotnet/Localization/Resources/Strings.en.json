@@ -1393,6 +1393,9 @@
   "Notification_VoiceChatStarted": "Voice chat started",
   "Notification_VoiceChatStartedBy": "{0} started a voice chat",
   "Notification_NamesAndMore": "{0} and {1} more",
+  // Trails the newest sender in a banner title, so it competes with the chat title for the
+  // width the OS gives that one line - keep it as short as the language allows.
+  "Notification_SenderAndMore": "{0} +{1} more",
   "Notification_EarlierMessages": "+{0} earlier message|+{0} earlier messages",
   "Notification_AuthorLine_Format": "{0}: {1}",
   "Notification_ThreadCreated_Format": "Thread '{0}' has been created",

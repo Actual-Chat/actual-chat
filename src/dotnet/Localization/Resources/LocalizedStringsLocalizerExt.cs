@@ -1224,6 +1224,8 @@ public static class LocalizedStringsLocalizerExt
             => l.Plural("Notification_VoiceChatStartedBy", count, arg0);
         public string Notification_NamesAndMore(long count, object arg0, object arg1)
             => l.Plural("Notification_NamesAndMore", count, arg0, arg1);
+        public string Notification_SenderAndMore(long count, object arg0, object arg1)
+            => l.Plural("Notification_SenderAndMore", count, arg0, arg1);
         public string Notification_EarlierMessages(long count, object arg0)
             => l.Plural("Notification_EarlierMessages", count, arg0);
         public string Notification_AuthorLine_Format(object arg0, object arg1)

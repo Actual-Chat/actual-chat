@@ -1185,6 +1185,7 @@
   "Notification_VoiceChatStarted": "Hlasový chat byl zahájen",
   "Notification_VoiceChatStartedBy": "{0} zahajuje hlasový chat|{0} zahajují hlasový chat|{0} zahajují hlasový chat",
   "Notification_NamesAndMore": "{0} a {1} další|{0} a {1} další|{0} a {1} dalších",
+  "Notification_SenderAndMore": "{0} +{1}",
   "Notification_EarlierMessages": "+{0} starší zpráva|+{0} starší zprávy|+{0} starších zpráv",
   "Notification_AuthorLine_Format": "{0}: {1}",
   "Notification_ThreadCreated_Format": "Vlákno „{0}“ bylo vytvořeno",

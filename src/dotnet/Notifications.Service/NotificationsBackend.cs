@@ -1852,6 +1852,15 @@ public class NotificationsBackend(IServiceProvider services)
             foreach (var id in changedIds) {
                 var item = current.Items.First(n => n.Id == id);
                 if (item is not ChatEntryRelatedNotification related) {
+                    // A reaction coalesces per entry rather than per chat, so it isn't beep-policed -
+                    // but its title and body still have to catch up with the reactors the merge added.
+                    if (item is ReactionNotification reaction) {
+                        var recomposed = NotificationHelper.ComposeReaction(reaction, l);
+                        if (!ReferenceEquals(recomposed, reaction))
+                            current = current with {
+                                Items = current.Items.WithUpdate(n => n.Id == id, _ => recomposed),
+                            };
+                    }
                     var isRinger = item.Kind is NotificationKind.Attention or NotificationKind.IncomingCall;
                     silentById[id] = !isRinger && committed.Items.Any(n => n.Id == id);
                     continue;

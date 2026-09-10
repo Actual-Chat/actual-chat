@@ -103,8 +103,8 @@ public class FirebaseMessagingClient(
             data.Add(Constants.Notification.MessageDataKeys.ActiveVersion, info.Version.ToString());
         }
         // Common data, so these ride inside the 4KB APNs budget - hence omitted when empty.
-        if (chatNotification is not null && !chatNotification.SenderName.IsNullOrEmpty()) {
-            data.Add(Constants.Notification.MessageDataKeys.SenderName, chatNotification.SenderName);
+        if (chatNotification?.GetSenderName() is { Length: > 0 } senderName) {
+            data.Add(Constants.Notification.MessageDataKeys.SenderName, senderName);
             if (!chatNotification.GroupTitle.IsNullOrEmpty())
                 data.Add(Constants.Notification.MessageDataKeys.GroupTitle, chatNotification.GroupTitle);
         }

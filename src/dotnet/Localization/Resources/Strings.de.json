@@ -1185,6 +1185,7 @@
   "Notification_VoiceChatStarted": "Sprachchat gestartet",
   "Notification_VoiceChatStartedBy": "{0} hat einen Sprachchat gestartet|{0} haben einen Sprachchat gestartet",
   "Notification_NamesAndMore": "{0} und {1} weiterer|{0} und {1} weitere",
+  "Notification_SenderAndMore": "{0} +{1}",
   "Notification_EarlierMessages": "+{0} frühere Nachricht|+{0} frühere Nachrichten",
   "Notification_AuthorLine_Format": "{0}: {1}",
   "Notification_ThreadCreated_Format": "Thread '{0}' wurde erstellt",

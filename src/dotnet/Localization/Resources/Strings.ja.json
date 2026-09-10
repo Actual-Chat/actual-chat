@@ -1185,6 +1185,7 @@
   "Notification_VoiceChatStarted": "音声チャットが開始されました",
   "Notification_VoiceChatStartedBy": "{0} さんが音声チャットを開始しました",
   "Notification_NamesAndMore": "{0}、他 {1} 人",
+  "Notification_SenderAndMore": "{0}、他 {1} 人",
   "Notification_EarlierMessages": "+{0} 件の以前のメッセージ",
   "Notification_AuthorLine_Format": "{0}：{1}",
   "Notification_ThreadCreated_Format": "スレッド「{0}」が作成されました",

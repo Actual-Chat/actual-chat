@@ -8,6 +8,8 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
     private static readonly ChatId TestChatId = ChatId.Parse("the-actual-one");
     private static readonly UserId TestUserId = UserId.New();
     private static readonly LanguageStringLocalizer English = LanguageStringLocalizer.Get(Languages.English);
+    private static readonly ChatEntryId TestEntryId = ChatEntryId.New(TestChatId, 100);
+    private static readonly string QuotedText = "\"ship it\"";
 
     [Fact]
     public void ShouldBeepFirstAlertAlways()
@@ -665,6 +667,124 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
         info.WithoutBeepMemory(many[^1].Id).BeepMemories.Should().HaveCount(Constants.Notification.MaxBeepMemories - 1);
     }
 
+    [Fact]
+    public void MergedReactionShouldCountTheOtherReactorsInItsTitle()
+    {
+        // arrange
+        var alice = NewReaction(Emojis.Awesome, "Alice");
+        var bob = NewReaction(Emojis.Party, "Bob", secondsLater: 1);
+        var nina = NewReaction(Emojis.Cool, "Nina", secondsLater: 2);
+
+        // act
+        var merged = (ReactionNotification)nina.MergeWith(bob.MergeWith(alice));
+        var composed = NotificationHelper.ComposeReaction(merged, English);
+
+        // assert
+        composed.Title.Should().Be("Nina +2 more @ Team", "the newest reactor headlines the banner");
+        composed.Text.Should().Be("🤩🥳😎 to \"ship it\"");
+        composed.GetSenderName().Should().Be("Nina +2 more",
+            "Android's MessagingStyle hides Title and names its Person from the sender");
+        composed.SenderName.Should().Be("Nina", "recomposing from an already-composed name would double the count");
+        NotificationHelper.ComposeReaction(composed, English).Title.Should().Be(composed.Title);
+    }
+
+    [Fact]
+    public void MergedReactionShouldEllipsizePastThreeEmojis()
+    {
+        // arrange
+        var emojis = new[] { Emojis.Awesome, Emojis.Party, Emojis.Cool, Emojis.Nerd };
+        var merged = emojis
+            .Select((emoji, i) => NewReaction(emoji, $"R{i}", secondsLater: i))
+            .Aggregate((Notification?)null, (existing, incoming) => incoming.MergeWith(existing));
+
+        // act
+        var composed = NotificationHelper.ComposeReaction((ReactionNotification)merged!, English);
+
+        // assert
+        composed.Title.Should().Be("R3 +3 more @ Team");
+        composed.Text.Should().Be("🤩🥳😎… to \"ship it\"");
+    }
+
+    [Fact]
+    public void ReactionShouldNotShowMoreEmojisThanItHasReactors()
+    {
+        // arrange - a reactor switching emoji leaves the old one in Emojis (a removal doesn't
+        // notify at all), so the stored set outgrows what the message actually carries
+        var first = NewReaction(Emojis.Awesome, "Alice");
+        var switched = NewReaction(Emojis.Party, "Alice", secondsLater: 1) with {
+            AuthorIds = first.AuthorIds,
+        };
+
+        // act
+        var merged = (ReactionNotification)switched.MergeWith(first);
+        var composed = NotificationHelper.ComposeReaction(merged, English);
+
+        // assert
+        merged.Emojis.Should().HaveCount(2, "the merge accumulates and never drops one");
+        composed.Should().BeSameAs(merged, "one reactor still means one emoji to show");
+        composed.Text.Should().Be("🥳 to \"ship it\"", "the newest emoji is the current one");
+    }
+
+    [Fact]
+    public void ReactionShouldKeepTheNewestEmojiWhenAReactorSwitchesToOneAlreadyThere()
+    {
+        // arrange - Alice 🤩, Bob 🥳, Alice switches to 😎, then Bob switches to 🤩. Bob's switch
+        // appends nothing (🤩 is already in the set), so arrival order alone would show 🥳😎 -
+        // dropping what Bob actually reacted with and keeping the one Alice replaced.
+        var alice = AuthorId.New(TestChatId, 1);
+        var bob = AuthorId.New(TestChatId, 2);
+        var merged = new[] {
+                (alice, Emojis.Awesome),
+                (bob, Emojis.Party),
+                (alice, Emojis.Cool),
+                (bob, Emojis.Awesome),
+            }
+            .Select((x, i) => NewReaction(x.Item2, $"R{i}", secondsLater: i) with {
+                AuthorIds = new[] { x.Item1 }.ToApiArray(),
+            })
+            .Aggregate((Notification?)null, (existing, incoming) => incoming.MergeWith(existing));
+
+        // act
+        var composed = NotificationHelper.ComposeReaction((ReactionNotification)merged!, English);
+
+        // assert
+        ((ReactionNotification)merged!).Emojis.Should().HaveCount(3);
+        composed.Text.Should().Be("😎🤩 to \"ship it\"", "Alice is 😎 and Bob is 🤩");
+    }
+
+    [Fact]
+    public void SingleReactionShouldComposeToTheSameInstance()
+    {
+        // arrange - one reactor with one emoji is every peer chat, and the send path already
+        // composed exactly this
+        var alice = NewReaction(Emojis.Awesome, "Alice");
+
+        // act
+        var composed = NotificationHelper.ComposeReaction(alice, English);
+
+        // assert
+        composed.Should().BeSameAs(alice);
+        composed.GetSenderName().Should().Be("Alice", "there is nobody else to count");
+    }
+
+    [Fact]
+    public void MergedReactionShouldKeepWhatALegacyBlobCannotRecompose()
+    {
+        // arrange - keys 21/22 (SenderName, GroupTitle) and 11 (QuotedText) are nil in rows
+        // written before they existed
+        var alice = NewReaction(Emojis.Awesome, "Alice") with { SenderName = "", QuotedText = "" };
+        var bob = NewReaction(Emojis.Party, "Bob", secondsLater: 1) with { SenderName = "", QuotedText = "" };
+
+        // act
+        var merged = (ReactionNotification)bob.MergeWith(alice);
+        var composed = NotificationHelper.ComposeReaction(merged, English);
+
+        // assert
+        composed.Should().BeSameAs(merged);
+        composed.Title.Should().Be("Bob @ Team");
+        composed.Text.Should().Be("🥳 to \"ship it\"");
+    }
+
     private static MessageNotification NewSpoken(
         long entryLid, AuthorId authorId, string text, string beepGroup)
         => NewMessage(entryLid, authorId, text) with { BeepGroup = beepGroup };
@@ -682,4 +802,20 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
             LeadText = text,
             LeadCount = 1,
         };
+
+    private static ReactionNotification NewReaction(Emoji emoji, string authorName, int secondsLater = 0)
+    {
+        var authorId = AuthorId.New(TestChatId, secondsLater + 1);
+        return ReactionNotification.New(TestUserId, TestEntryId, authorId) with {
+            Title = $"{authorName} @ Team",
+            SenderName = authorName,
+            GroupTitle = "Team",
+            Text = English.Notification_Reaction_Format(emoji.Symbol, QuotedText),
+            AuthorIds = new[] { authorId }.ToApiArray(),
+            Emojis = new[] { emoji }.ToApiArray(),
+            LastEmoji = emoji,
+            QuotedText = QuotedText,
+            SentAt = Moment.EpochStart + TimeSpan.FromSeconds(secondsLater),
+        };
+    }
 }

@@ -440,6 +440,8 @@ public static partial class Constants
         // Past this many distinct reactors a reaction notification stops changing - and so stops
         // re-pushing - because further reactors would only move a number the row already shows.
         public const int MaxReactionAuthors = 5;
+        // Distinct emoji spelled out in a reaction notification's body before the ellipsis.
+        public const int MaxShownReactionEmojis = 3;
 
         public static readonly TimeSpan EntryWaitTimeout = TimeSpan.FromSeconds(0.5);
         public static readonly TimeSpan ActiveDevicePeriod = TimeSpan.FromDays(30);

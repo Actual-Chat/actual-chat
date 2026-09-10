@@ -1185,6 +1185,7 @@
   "Notification_VoiceChatStarted": "Czat głosowy rozpoczęty",
   "Notification_VoiceChatStartedBy": "{0} rozpoczyna czat głosowy|{0} rozpoczynają czat głosowy|{0} rozpoczynają czat głosowy",
   "Notification_NamesAndMore": "{0} i {1} inny|{0} i {1} inne|{0} i {1} innych",
+  "Notification_SenderAndMore": "{0} +{1}",
   "Notification_EarlierMessages": "+{0} wcześniejsza wiadomość|+{0} wcześniejsze wiadomości|+{0} wcześniejszych wiadomości",
   "Notification_AuthorLine_Format": "{0}: {1}",
   "Notification_ThreadCreated_Format": "Utworzono wątek „{0}”",

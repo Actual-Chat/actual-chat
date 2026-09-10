@@ -47,6 +47,31 @@ in an in-memory soft buffer and drain as one batched push (a busy chat costs
 ~1 DB write + 1 push per window). `IsDormant` per user is the hard cap for
 non-readers — dormant users cost zero work until any engagement clears it.
 
+**Composing what a merged banner says.** The reconcile pass that decides alerting also
+recomposes the text of everything the merge changed, because only there is the recipient's
+localizer in hand. A coalescing chat notification gets a transcript of its window, oldest
+message first — the order they have in the chat — with the messages that fell out of the
+window counted on the line above it. A reaction coalesces per entry instead, so its body
+lists the emoji it accumulated (up to `MaxShownReactionEmojis`, then `…`) and its *sender*
+carries the reactor count: `"Dima +2 more @ Team"`, the newest reactor plus the others. One
+reactor with one emoji composes exactly what the send path already wrote, which is also every
+peer chat — reactions are one per author per entry (`DbReaction.Id` is `(entryId, authorId)`)
+and your own never notify, so a peer chat's reactor count is always 1.
+
+Two details that are easy to get wrong there:
+
+- **The count rides on `ReactionNotification.DisplaySenderName`, not only in `Title`.** Android
+  renders a chat banner with `MessagingStyle`, which hides the content title and names its
+  `Person` from the sender — so a count that lived only in `Title` would be invisible on Android.
+  `NotificationExt.GetSenderName` is what the push payload and the client reconciler both read.
+  `SenderName` itself stays the raw newest reactor: a merge can carry an existing notification's
+  copy of it forward (two reactions in one coarse-clock tick already do), and recomposing from an
+  already-composed value would append the count twice.
+- **`Emojis` accumulates and never drops one.** A reactor who switches emoji leaves the old one
+  behind, and a removal doesn't notify at all — so the stored set outgrows what the message
+  actually carries. There can't be more current emoji than reactors and the stale ones are the
+  oldest, so the body shows only the newest `AuthorIds.Count` of them.
+
 **Alerting.** Every change pushes; only some pushes alert. `IsSilent` carries
 that, and `NotificationBeepPolicy` decides it: a spoken message alerts when its
 speaker changes and then at most once per `VoiceReAlertInterval` (10 min), so a
@@ -81,6 +106,31 @@ re-shows it.
   and the bell panel, and are deliberately a different calculation. `ListActive`
   drives the app-icon badge and the OS-level surfaces. Two concepts, one source of
   truth each — not two sources for one thing.
+- **One row, one notification at a time** — the panel's other tabs list chats, not
+  notifications, so a chat holding several gets one row. `NotificationExt.ListNavigable`
+  orders that chat's entry-anchored notifications — ping, then mention, then reaction,
+  oldest entry first within a kind — and `NotificationsUI.GetNavigationTarget` projects the
+  head of that list down to a value-compared `ChatNotificationTarget` (a `Notification`'s
+  `ApiArray` members compare by *reference*, so handing one to a row's model would re-render
+  every row on every active-set change). `ChatListItem` binds to it: its link is that
+  notification's entry rather than the chat, and its badge shows that notification's symbol.
+  Tapping dismisses an `OnView` target (the `NavigateToUnreadReaction` pattern: a tap doesn't
+  guarantee the entry ends up on screen) and the row rebinds to the next, so repeated taps
+  walk the chat's notifications.
+
+  Three rules the binding follows:
+
+  - An `OnRead` target (a mention) is *not* dismissed on tap. A requested dismissal advances the
+    read position to the notification's anchor (`GetReadAdvances`), and jumping to a mention must
+    not declare everything before it read. Reading it there clears it anyway.
+  - A **reaction waits behind unread messages** — those are what the row is in the list for, and
+    the walk reaches the reaction as soon as they are read. A ping or a mention doesn't wait; its
+    `@` already outranks the count in `UnreadCount`.
+  - The **Mentions tab never binds to a reaction**: that tab means own-mentions and attention
+    pings, and reactions lift a chat onto the other tabs instead (`ListUnorderedForDisplay`).
+
+  The badge deliberately ignores the `IsReadingTail` gate `ChatUI.GetUnreadState` applies: the
+  row you just tapped into is the one that still has to show what's left.
 - **Banner rendering** — Android builds its own banner from the data message
   (`Platforms/Android/Notifications/NotificationHelper.cs`, `MessagingStyle` with
   the avatar as the sender's icon). iOS renders `aps.alert` itself, and

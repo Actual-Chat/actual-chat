@@ -46,6 +46,20 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
     }
 
     [Fact]
+    public void MergedReactionTitleShouldCountTheOthersInRussian()
+    {
+        // arrange
+        var alice = NewReaction(Emojis.Awesome, "Алиса");
+        var boris = NewReaction(Emojis.Party, "Борис", secondsLater: 1);
+
+        // act
+        var composed = NotificationHelper.ComposeReaction((ReactionNotification)boris.MergeWith(alice), Russian);
+
+        // assert
+        composed.Title.Should().Be("Борис и ещё 1 @ Команда");
+    }
+
+    [Fact]
     public void VoiceChatStartedTextShouldBeGenericWithoutNames()
         => NotificationHelper.GetVoiceChatStartedText([], Russian)
             .Should().Be(Russian.Notification_VoiceChatStarted);
@@ -416,6 +430,21 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
 
     private static string[] NewNames(int count)
         => Enumerable.Range(0, count).Select(i => $"Участник{i}").ToArray();
+
+    private static ReactionNotification NewReaction(Emoji emoji, string authorName, int secondsLater = 0)
+    {
+        var authorId = AuthorId.New(TestChatId, secondsLater + 1);
+        return ReactionNotification.New(TestUserId, ChatEntryId.New(TestChatId, 100), authorId) with {
+            Title = $"{authorName} @ Команда",
+            SenderName = authorName,
+            GroupTitle = "Команда",
+            AuthorIds = new[] { authorId }.ToApiArray(),
+            Emojis = new[] { emoji }.ToApiArray(),
+            LastEmoji = emoji,
+            QuotedText = "«за дело»",
+            SentAt = Moment.EpochStart + TimeSpan.FromSeconds(secondsLater),
+        };
+    }
 
     private static MessageNotification NewAggregated(int shownCount, int moreCount, int authorCount = 1)
     {

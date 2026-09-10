@@ -1185,6 +1185,7 @@
   "Notification_VoiceChatStarted": "语音聊天已开始",
   "Notification_VoiceChatStartedBy": "{0} 发起了语音聊天",
   "Notification_NamesAndMore": "{0} 和其他 {1} 人",
+  "Notification_SenderAndMore": "{0} 和其他 {1} 人",
   "Notification_EarlierMessages": "+{0} 条更早的消息",
   "Notification_AuthorLine_Format": "{0}：{1}",
   "Notification_ThreadCreated_Format": "话题“{0}”已创建",
