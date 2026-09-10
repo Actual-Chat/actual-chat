@@ -331,6 +331,9 @@
   "Editor_SendAsFile": "作为文件发送",
   "Editor_KeepAsText": "保留为文本",
   "Editor_DropFilesToAttach": "拖放文件以添加附件",
+  "Editor_QualityOriginal": "原图",
+  "Editor_QualityFullSize": "原始尺寸",
+  "Editor_QualityAppliesToPhotos": "适用于 {0} 张照片",
 
   "Alert_Alert_Format": "紧急通知 {0}",
   "Alert_TargetEveryone": "所有人",

@@ -1,0 +1,55 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Events
+@inherits Menu<AppUIHub>
+
+@{
+    var m = MenuModels.Get(_selectorId);
+}
+@if (m != null) {
+    <div class="min-w-48">
+        @if (m.ScopeText is { } scopeText) {
+            <div class="mqs-hint">@scopeText</div>
+        }
+        @foreach (var opt in m.Options) {
+            var isSelected = opt.Preset == m.CurrentPreset;
+            <button class="mqs-item @(isSelected ? "selected" : "")" @onclick="() => SelectPreset(opt.Preset)">
+                <span class="mqs-item-body">
+                    <span class="mqs-item-label">@opt.Label</span>
+                    <span class="mqs-item-spec">@opt.Spec</span>
+                </span>
+                <span class="mqs-item-size">@opt.Size</span>
+            </button>
+        }
+    </div>
+}
+
+@code {
+    private string _selectorId = "";
+
+    protected override void OnParametersSet() {
+        if (Arguments is not [var id])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+        _selectorId = id;
+    }
+
+    private async Task SelectPreset(ImageQualityPreset preset) {
+        await UIEventHub.Publish(new ImageQualityPresetSelectedEvent(_selectorId, preset));
+        await Host.Hide();
+    }
+
+    public static class MenuModels
+    {
+        private static readonly ConcurrentDictionary<string, Model> Registry = new();
+
+        public static void Register(string id, Model model) => Registry[id] = model;
+        public static Model? Get(string id) => Registry.GetValueOrDefault(id);
+        public static void Remove(string id) => Registry.TryRemove(id, out _);
+    }
+
+    public record Model(
+        ImageQualityPreset CurrentPreset,
+        OptionModel[] Options,
+        string? ScopeText);
+
+    public record OptionModel(ImageQualityPreset Preset, string Label, string Spec, string Size);
+}

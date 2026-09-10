@@ -40,31 +40,12 @@ public class FileAttachments : UIServiceBase<AppUIHub>
 
     public async Task<bool> TryAddFileAttachments(AttachmentList list, AttachFileInfo[] fileInfos)
     {
-        // The files are created concurrently and added in pick order: a native gallery pick loads
-        // every file in the background, and a preview may take seconds per file (macOS generates
-        // it from the loaded file), so a serial loop would show each item only after the previous one.
-        // TODO: why it started adding slowly only on macos? investigate it
-        var createTasks = new List<Task<Attachment?>>();
-        foreach (var fileInfo in fileInfos) {
-            if (CheckCanAdd(list, fileInfo.FileProvider.Metadata.Length, createTasks.Count) is { } e) {
-                UICommander.ShowError(e);
-                continue;
-            }
-
-            var fileProvider = fileInfo.FileProvider;
-            fileProvider.Initialize(Hub.Services);
-            createTasks.Add(TryCreateAttachment(fileProvider));
-        }
-
         var hasAdded = false;
-        foreach (var createTask in createTasks) {
-            if (await createTask is not { } attachment)
-                continue;
-
-            await AddAttachment(list, attachment);
-            if (!hasAdded)
+        foreach (var fileInfo in fileInfos) {
+            var prevHasAdded = hasAdded;
+            hasAdded = await TryAddFileAttachment(list, fileInfo);
+            if (!prevHasAdded && hasAdded)
                 _ = TuneUI.Play(Tune.ChangeAttachments);
-            hasAdded = true;
         }
         return hasAdded;
     }
@@ -93,12 +74,24 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         return await TryAddFileAttachment(list, webFileProvider);
     }
 
-    private static Exception? CheckCanAdd(AttachmentList list, long length, int pendingCount = 0)
+    private async Task<bool> TryAddFileAttachment(AttachmentList list, AttachFileInfo fileInfo)
+    {
+        if (CheckCanAdd(list, fileInfo.FileProvider.Metadata.Length) is { } e) {
+            UICommander.ShowError(e);
+            return false;
+        }
+
+        var fileProvider = fileInfo.FileProvider;
+        fileProvider.Initialize(Hub.Services);
+        return await TryAddFileAttachment(list, fileProvider);
+    }
+
+    private static Exception? CheckCanAdd(AttachmentList list, long length)
     {
         if (length > Constants.Attachments.FileSizeLimit)
             return StandardError.Upload.FileTooBig(Constants.Attachments.FileSizeLimit);
 
-        if (list.Count + pendingCount >= Constants.Attachments.FileCountLimit)
+        if (list.Count >= Constants.Attachments.FileCountLimit)
             return StandardError.Upload.TooManyFiles(Constants.Attachments.FileCountLimit);
 
         return null;
@@ -134,17 +127,9 @@ public class FileAttachments : UIServiceBase<AppUIHub>
 
     private async Task<bool> TryAddFileAttachment(AttachmentList list, IFileProvider fileProvider)
     {
-        if (await TryCreateAttachment(fileProvider) is not { } attachment)
-            return false;
-
-        await AddAttachment(list, attachment);
-        return true;
-    }
-
-    private async Task<Attachment?> TryCreateAttachment(IFileProvider fileProvider)
-    {
+        Attachment attachment;
         try {
-            return await CreateAttachment(fileProvider);
+            attachment = await CreateAttachment(fileProvider);
         }
         catch (Exception ex) {
             await AttachmentCleanupFactory.ForFile(fileProvider)
@@ -153,17 +138,88 @@ public class FileAttachments : UIServiceBase<AppUIHub>
                 .SilentAwait();
             Log.LogError(ex, "Failed to add file attachment");
             UICommander.ShowError(StandardError.Constraint("Failed to add file attachment."));
-            return null;
+            return false;
+        }
+        // Defer upload for resizable images to allow quality selection.
+        if (attachment.IsResizableImage) {
+            attachment = attachment with { IsUploadPending = true, OriginalLength = attachment.Length };
+            if (attachment is SourceAttachment source)
+                AttachmentsState.SetPreview(attachment.Id, AttachmentPreview.From(source.Preview));
+            list.Add(attachment);
+            _ = EstimateAndUpdateLength(list, attachment);
+            return true;
+        }
+        // NOTE: Start upload immediately after adding non-image attachments.
+        attachment = await StartUpload(attachment, list);
+        list.Add(attachment);
+        return true;
+    }
+
+    public async Task ConfirmImageQuality(AttachmentList list, Attachment attachment, ImageQualityPreset preset)
+    {
+        if (!attachment.IsUploadPending)
+            return;
+
+        var maxDimension = (int)preset;
+        if (attachment.FileProvider is WebFileProvider webFileProvider
+            && (attachment.Width > maxDimension || attachment.Height > maxDimension)) {
+            var result = await webFileProvider.ResizeImage(maxDimension).ConfigureAwait(true);
+            var newAttachment = attachment with {
+                Length = result.Size,
+                Size = new Size2D(result.Width, result.Height),
+                IsUploadPending = false,
+                SelectedQuality = preset,
+            };
+            list.Replace(attachment, newAttachment);
+            attachment = newAttachment;
+        }
+        else {
+            var newAttachment = attachment with {
+                IsUploadPending = false,
+                SelectedQuality = preset,
+            };
+            list.Replace(attachment, newAttachment);
+            attachment = newAttachment;
+        }
+
+        attachment = await StartUpload(attachment, list);
+        list.Replace(list.Items.First(a => a.Id == attachment.Id), attachment);
+    }
+
+    public async Task ApplyQualityAndStartUploads(AttachmentList list)
+    {
+        var preset = list.GlobalQuality;
+        foreach (var a in list.Items.Where(a => a.IsUploadPending).ToList())
+            await ConfirmImageQuality(list, a, preset);
+    }
+
+    private async Task EstimateAndUpdateLength(AttachmentList list, Attachment attachment)
+    {
+        if (attachment.FileProvider is not WebFileProvider webFileProvider)
+            return;
+
+        try {
+            var presets = new ImageResizePreset[] {
+                new((int)ImageQualityPreset.FullHD),
+                new((int)ImageQualityPreset.HD),
+                new((int)ImageQualityPreset.SD),
+            };
+            var results = await webFileProvider.EstimateResizedSizes(presets).ConfigureAwait(true);
+            var current = list.Items.FirstOrDefault(a => a.Id == attachment.Id);
+            if (current is { IsUploadPending: true } && results.Length == 3)
+                list.Replace(current, current with { EstimatedSizes = [..results] });
+        }
+        catch {
+            // Estimation failed — keep original length.
         }
     }
 
-    private async Task AddAttachment(AttachmentList list, Attachment attachment)
+    private async Task<Attachment> StartUpload(Attachment attachment, AttachmentList list)
     {
-        // NOTE: Start upload immediately after adding attachments.
         attachment = await AttachmentsController.InitUploadSession(attachment, list.MediaScope);
         AttachmentsState.Register(attachment);
         AttachmentsController.ResumeUpload(attachment);
-        list.Add(attachment);
+        return attachment;
     }
 
     private async Task<Attachment> CreateAttachment(IFileProvider fileProvider)

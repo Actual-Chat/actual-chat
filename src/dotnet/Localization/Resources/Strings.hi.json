@@ -331,6 +331,9 @@
   "Editor_SendAsFile": "फ़ाइल के रूप में भेजें",
   "Editor_KeepAsText": "टेक्स्ट ही रहने दें",
   "Editor_DropFilesToAttach": "अटैच करने के लिए फ़ाइलें छोड़ें",
+  "Editor_QualityOriginal": "ओरिजिनल",
+  "Editor_QualityFullSize": "पूरा आकार",
+  "Editor_QualityAppliesToPhotos": "{0} फ़ोटो पर लागू|{0} फ़ोटो पर लागू",
 
   "Alert_Alert_Format": "{0} को अलर्ट करें",
   "Alert_TargetEveryone": "सभी",

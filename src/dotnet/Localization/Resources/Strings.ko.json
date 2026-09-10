@@ -331,6 +331,9 @@
   "Editor_SendAsFile": "파일로 보내기",
   "Editor_KeepAsText": "텍스트로 두기",
   "Editor_DropFilesToAttach": "첨부하려면 파일을 놓으세요",
+  "Editor_QualityOriginal": "원본",
+  "Editor_QualityFullSize": "원본 크기",
+  "Editor_QualityAppliesToPhotos": "{0}장의 사진에 적용",
 
   "Alert_Alert_Format": "{0}에게 긴급 알림",
   "Alert_TargetEveryone": "모두",

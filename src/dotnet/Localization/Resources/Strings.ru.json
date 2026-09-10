@@ -331,6 +331,9 @@
   "Editor_SendAsFile": "Отправить файлом",
   "Editor_KeepAsText": "Оставить текстом",
   "Editor_DropFilesToAttach": "Отпустите файлы, чтобы прикрепить",
+  "Editor_QualityOriginal": "Оригинал",
+  "Editor_QualityFullSize": "Полный размер",
+  "Editor_QualityAppliesToPhotos": "Применяется к {0} фото|Применяется к {0} фото|Применяется к {0} фото",
 
   "Alert_Alert_Format": "Срочное уведомление: {0}",
   "Alert_TargetEveryone": "всем",

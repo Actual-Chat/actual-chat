@@ -331,6 +331,9 @@
   "Editor_SendAsFile": "ファイルとして送信",
   "Editor_KeepAsText": "テキストのままにする",
   "Editor_DropFilesToAttach": "添付するファイルをドロップしてください",
+  "Editor_QualityOriginal": "オリジナル",
+  "Editor_QualityFullSize": "フルサイズ",
+  "Editor_QualityAppliesToPhotos": "{0} 枚の写真に適用",
 
   "Alert_Alert_Format": "{0} に緊急通知",
   "Alert_TargetEveryone": "全員",

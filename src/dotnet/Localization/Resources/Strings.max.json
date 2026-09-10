@@ -416,6 +416,9 @@
   "Editor_SendAsFile": "Dosya olarak gönderin",
   "Editor_KeepAsText": "テキストのままにする",
   "Editor_DropFilesToAttach": "添付するファイルをドロップしてください",
+  "Editor_QualityOriginal": "Original",
+  "Editor_QualityFullSize": "Full size",
+  "Editor_QualityAppliesToPhotos": "Applies to {0} photo|Applies to {0} photos",
 
   // "Alert" is the notify-everyone action in the message editor. An alert is loud and behaves
   // like an incoming call, which is why this whole group reads as a warning - keep one word for

@@ -331,6 +331,9 @@
   "Editor_SendAsFile": "Gửi dưới dạng tệp",
   "Editor_KeepAsText": "Giữ làm văn bản",
   "Editor_DropFilesToAttach": "Thả tệp để đính kèm",
+  "Editor_QualityOriginal": "Gốc",
+  "Editor_QualityFullSize": "Kích thước đầy đủ",
+  "Editor_QualityAppliesToPhotos": "Áp dụng cho {0} ảnh",
 
   "Alert_Alert_Format": "Báo động cho {0}",
   "Alert_TargetEveryone": "mọi người",
