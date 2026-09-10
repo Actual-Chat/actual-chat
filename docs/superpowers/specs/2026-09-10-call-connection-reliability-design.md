@@ -109,6 +109,36 @@ This directly closes the "chisто слушающий" gap the user raised, and 
 both presence kinds a symmetrical, immediate on/off signal instead of a
 polling window.
 
+## Root-causing today's race: couple `GetCallState` to `GetState`
+
+Today's already-shipped fix (`IsForegroundDialingActive`/
+`ComputeForegroundCallChatId` treating `Accepted` like `Dialing`) is
+defensive — it papers over the symptom. The actual root cause: `CallState`
+(`_callStates`, its own Redis key, its own TTL) and `LiveSessionState`
+(`_redisScope`) are two independently-invalidated `[ComputeMethod]`s —
+`GetCallState` (`LiveSessionsBackend.cs:239`) reads Redis directly and
+self-invalidates purely on its own TTL expiry, with **no** Fusion
+dependency on `GetState`/`Kind` at all. `AcceptCall` writes both under the
+same lock, but they still reach RPC clients as two unrelated invalidation
+notifications with no ordering guarantee between them.
+
+**Fix:** make `GetCallState` call `await GetState(chatId, cancellationToken)`
+as part of its body (even just to read `state?.Kind`/`SessionStartedAt` for
+a sanity check), so Fusion's dependency graph makes `GetCallState`'s
+computed depend on `GetState`'s. Any invalidation of `GetState` (including
+the `AcceptCall` promotion to `Kind = Call`) then transitively invalidates
+`GetCallState` too, instead of the two drifting independently. This is a
+small, low-risk, purely-internal change (no wire/schema impact) and it is
+the mechanical fix for the exact race class `9e0b87186c` patched around —
+it should ship as part of this work, ahead of (and independent from) the
+headcount-enforcement mechanism below.
+
+Not in scope here: collapsing `LiveSessionKind.Dialing` into a phase of
+`Call` (`Dialing -> Accepting -> Talking -> Ended`) — a real modeling
+simplification (removes the `Kind is Call or Dialing` idiom across ~14
+call sites, client included) but orthogonal to reliability and larger in
+surface. Deferred to a separate follow-up spec.
+
 ## Detection mechanism: three paths, one existing + two new
 
 Scoped to `state.Kind == LiveSessionKind.Call` only (`Dialing` keeps its
