@@ -58,7 +58,8 @@ members. WebKit accepts extra URL scheme handlers only before the WKWebView exis
 |---|---|
 | [MacOSCustomBlazorWebViewHandler.CreatePlatformView](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/MacOSCustomBlazorWebViewHandler.cs) replays the base handler's three config lines (`webwindowinterop` message handler, Blazor init script, `app://` scheme handler) and adds `content://`, autoplay and `__useWebAudio` | the labs handler raises `BlazorWebViewInitializing`; the config then moves back to `MauiWebView.MaciOS.OnInitializing` |
 | [LabsBlazorWebViewHandlerExt](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/LabsBlazorWebViewHandlerExt.cs) reaches the private `BlazorInitScript`, `WebViewScriptMessageHandler`, `SchemeHandler` and `MessageReceived` by reflection, failing fast on a rename | same as above |
-| `LayoutInvalidatingWKWebView` in the same file sets `Superview.NeedsLayout` on attach, because the labs `ContentPageHandler` adds content without invalidating layout and a late-attached WebView keeps a zero frame | the labs page handler invalidates layout |
+| `PatchedWKWebView` in the same file sets `Superview.NeedsLayout` on attach, because the labs `ContentPageHandler` adds content without invalidating layout and a late-attached WebView keeps a zero frame | the labs page handler invalidates layout |
+| The same subclass calls [WindowConfigurator.KeepTitlebarAboveContent](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/WindowConfigurator.cs) once it has a window: the labs handler installs a titlebar-wide drag overlay above the titlebar itself, so clicks on the traffic lights started a window drag until the first full-screen round trip put the titlebar back on top | `TitlebarDragOverlayView.HitTest` skips the standard window buttons |
 | The `#if MACOS` branch in [MauiWebView.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/WebView/MauiWebView.cs) builds the view without event subscriptions | `MacOSBlazorWebView` gets the three events |
 | [MauiWebView.MacOS.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/WebView/MauiWebView.MacOS.cs) attaches its own `WKNavigationDelegate` and `WKUIDelegate` as the stand-in for `UrlLoading` | same |
 
@@ -99,9 +100,10 @@ flowchart LR
 - The statics patch runs twice (from `Main` and from `AddMacOSEssentials`), and each run calls
   `VersionTracking.Track()` on a fresh instance, so `IsFirstLaunchForCurrentVersion` reads
   false even on a genuine first launch. Voxt does not use `VersionTracking`.
-- Closing the window logs a burst of `InvalidOperationException: VirtualView cannot be null here`
-  from the labs `WindowHandler.OnWindowClosed`: the handler is already disconnected when
-  `WillClose` fires. First-chance only, the app still exits cleanly.
+- A real window close (the red button only hides the window, see below) logs a burst of
+  `InvalidOperationException: VirtualView cannot be null here` from the labs
+  `WindowHandler.OnWindowClosed`: the handler is already disconnected when `WillClose` fires.
+  First-chance only, the app still exits cleanly.
 :::
 
 ### The dispatcher factory answers only on the main thread
@@ -145,6 +147,13 @@ markers:
 
 ## Behaviour worth knowing
 
+- **The red button and Cmd+W hide the window; the app keeps running.** Same policy as the
+  Windows app: while `App.MustMinimizeOnQuit` holds, [WindowConfigurator](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/WindowConfigurator.cs)
+  answers `windowShouldClose` with an `orderOut`, and a Dock click brings the same window back
+  through `applicationShouldHandleReopen`. The labs backend has neither: its window closes for
+  good and nothing reopens it, which left a windowless process in the Dock. The background
+  state follows focus and window visibility, so a hidden or minimized window stops auto-reading
+  chats. Cmd+Q quits as usual.
 - **Sign-in** uses the Windows-style flow: the default browser plus a `voxt-dev://` callback
   registered in `Info.plist` (a prod-flavour build needs `voxt` there). `ASWebAuthenticationSession` was tried and dropped, its
   handoff stalls in Chromium browsers and its ephemeral session forces a separate Google login.

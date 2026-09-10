@@ -1,7 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Maui.Services;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
 using Microsoft.Maui.LifecycleEvents;
@@ -24,10 +23,8 @@ public static partial class MauiProgram
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
-        // Focus is the desktop's "is the user looking" signal: without it the app counts as
-        // foreground forever, so an open chat keeps auto-reading incoming messages - which
-        // also suppresses their notifications (the server hides read ones).
         => events.AddMacOS(macOS => macOS
-            .DidBecomeActive(_ => MauiBackgroundState.Set(false))
-            .DidResignActive(_ => MauiBackgroundState.Set(true)));
+            .DidFinishLaunching(_ => WindowConfigurator.Configure())
+            .DidBecomeActive(_ => WindowConfigurator.UpdateBackgroundState())
+            .DidResignActive(_ => WindowConfigurator.UpdateBackgroundState()));
 }
