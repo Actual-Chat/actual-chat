@@ -2,6 +2,8 @@
     @apply top-1;
     @apply pl-1;
 }
+/* .markup-suffix supplies the gap itself, so the marker must not add its own on top. */
+.markup-suffix .translation-marker,
 .playable-text-markup .translation-marker,
 .plain-text-markup .translation-marker {
     @apply pl-0;
