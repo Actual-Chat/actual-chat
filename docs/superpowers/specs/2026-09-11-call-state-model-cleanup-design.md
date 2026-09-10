@@ -272,6 +272,38 @@ The backend method just writes `Ack`/`AckAt` onto the matching `CallInvite`
 (no-op if the invite isn't `Ringing`/doesn't exist) and invalidates state —
 no lock-then-branch dance is needed since nothing downstream reacts to it.
 
+## Signal validation
+
+Every RPC that represents an explicit signal from a participant
+(`AcceptCall`, `DeclineCall`, `CancelCall`, `ConfirmRing`) must check that
+the signal is a valid transition **from the participant's current status**
+before applying it. Today this exists only as a silent guard (e.g.
+`AcceptCall`/`DeclineCall` already do `if (invite is not { Status: Ringing
+}) return;`) — invalid/out-of-order signals (a double accept, a decline
+after already accepted, a client that missed a state change and cancels
+twice) currently vanish with no trace. This spec makes the check explicit
+everywhere and logs a warning — attempted action + the status it was
+attempted against — instead of a bare no-op, for the same "can we tell
+what actually happened" reason `RingAck` exists.
+
+Valid-from table:
+
+| Signal | Valid only when current status is |
+|---|---|
+| `AcceptCall` (invitee) | `CallInviteStatus.Ringing` |
+| `DeclineCall` (invitee) | `CallInviteStatus.Ringing` |
+| `ConfirmRing` (invitee) | `CallInviteStatus.Ringing` |
+| `CancelCall` (caller) | `CallStatus.Dialing` or `CallStatus.Connecting` (not yet `Active` — hanging up an `Active` call goes through the ordinary presence path, not `CancelCall`) |
+
+An invalid signal still no-ops (same observable behavior as today) —
+this only adds the log line, it doesn't change what happens on a
+legitimate race (e.g. a client retries `AcceptCall` after a dropped
+response — the retry arrives to find `Status` already `Accepted`, logs a
+warning, and no-ops, exactly as it silently does today). Worth
+factoring into one small shared helper (something like
+`EnsureValidTransition(chatId, authorId, expected, actual, signalName)`)
+rather than four separate log call sites — left for the plan.
+
 ## Call sites affected (backend)
 
 All in `LiveSessionsBackend.cs`, from the current `LiveSessionKind.Dialing`/
