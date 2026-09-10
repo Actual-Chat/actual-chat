@@ -29,7 +29,7 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
         var text = NotificationHelper.ComposeAggregatedText(notification, Russian);
 
         // assert
-        text.Should().EndWith(expectedTail, "the plural key must pick Russian's form for {0}", moreCount);
+        text.Should().StartWith(expectedTail, "the plural key must pick Russian's form for {0}", moreCount);
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
         var text = NotificationHelper.ComposeAggregatedText(notification, Russian);
 
         // assert
-        text.Should().Be("Борис: сообщение 1\nАлиса: сообщение 0");
+        text.Should().Be("Алиса: сообщение 0\nБорис: сообщение 1");
     }
 
     [Fact]

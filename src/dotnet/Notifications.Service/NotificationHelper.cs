@@ -76,17 +76,15 @@ public static class NotificationHelper
         var showAuthorNames = notification.ChatId.GetThreadOutermostParentOrSelf().Kind
             is ChatKind.Group or ChatKind.Place;
         var lines = new List<string>(messages.Count + 1);
-        // Newest first: collapsed banners show only the first line(s), and that must be the
-        // latest message, not the oldest unread one.
-        for (var i = messages.Count - 1; i >= 0; i--) {
-            var m = messages[i];
-            lines.Add(showAuthorNames && !m.AuthorName.IsNullOrEmpty()
-                ? l.Notification_AuthorLine_Format(m.AuthorName, m.Text)
-                : m.Text);
-        }
+        // Oldest -> newest, i.e. the order the messages have in the chat, so the banner reads as a
+        // transcript excerpt - which puts the count of the ones that fell out of the window on top.
         var moreCount = notification.UnreadCount - messages.Count;
         if (moreCount > 0)
             lines.Add(l.Notification_EarlierMessages(moreCount, moreCount));
+        foreach (var m in messages)
+            lines.Add(showAuthorNames && !m.AuthorName.IsNullOrEmpty()
+                ? l.Notification_AuthorLine_Format(m.AuthorName, m.Text)
+                : m.Text);
         return string.Join('\n', lines);
     }
 }

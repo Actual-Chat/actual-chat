@@ -212,7 +212,7 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
-    public void AggregatedTextIsNewestFirstWithAuthorPrefixesInGroupChat()
+    public void AggregatedTextIsInChatOrderWithAuthorPrefixesInGroupChat()
     {
         var author1 = AuthorId.New(TestChatId, 1);
         var author2 = AuthorId.New(TestChatId, 2);
@@ -222,7 +222,7 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
         var merged = (MessageNotification)second.MergeWith(first);
 
         NotificationHelper.ComposeAggregatedText(merged, English)
-            .Should().Be("Bob: I fixed the flaky test\nAlice: who takes the release?");
+            .Should().Be("Alice: who takes the release?\nBob: I fixed the flaky test");
     }
 
     [Fact]
@@ -243,7 +243,7 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
 
         var merged = (MessageNotification)second.MergeWith(first);
 
-        NotificationHelper.ComposeAggregatedText(merged, English).Should().Be("second\nfirst");
+        NotificationHelper.ComposeAggregatedText(merged, English).Should().Be("first\nsecond");
     }
 
     [Fact]
@@ -257,8 +257,8 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
 
         var text = NotificationHelper.ComposeAggregatedText(merged, English);
 
-        text.Should().StartWith("Alice: m105");
-        text.Should().EndWith("+1 earlier message");
+        text.Should().StartWith("+1 earlier message");
+        text.Should().EndWith("Alice: m105");
         merged.UnreadCount.Should().Be(6);
     }
 
