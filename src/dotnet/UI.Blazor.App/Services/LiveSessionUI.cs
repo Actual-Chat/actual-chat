@@ -447,6 +447,10 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             if (hasMic)
                 await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(false);
         }
+        catch {
+            IncomingCallUI.CancelPreparedCall(chatId);
+            throw;
+        }
         finally {
             IncomingCallUI.ShowForegroundCall(chatId);
         }

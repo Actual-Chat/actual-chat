@@ -23,26 +23,23 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     private readonly Lock _ringingLock = new();
     private readonly MutableState<ImmutableList<ChatId>> _ringingChatIds;
-    // The chat whose call surfaced over the lock screen; stays set through Accept (so the in-call
-    // screen shows over the keyguard) until the user unlocks (GoToChat), hangs up, or the call ends.
-    private readonly MutableState<ChatId?> _overLockChatId;
-    // Held true across the Accept transition (ring ended, audio not yet started) so the over-lock
-    // session doesn't momentarily read as ended and tear the screen down mid-accept.
-    private readonly MutableState<bool> _isAccepting;
-    // Same full-screen in-call view, shown in a narrow foreground layout instead of over the lock screen.
-    private readonly MutableState<ChatId?> _foregroundCallChatId;
-    // _isAccepting's counterpart for _foregroundCallChatId - same race, same fix.
-    private readonly MutableState<bool> _isAcceptingForeground;
+    // Call mechanics state, the other half of Ringing above: the one chat I'm actively joined to
+    // (only one at a time). Set the instant a join is committed, not once audio has started.
+    private readonly MutableState<ChatId?> _inCallChatId;
+    // Ring-time-only signal: OnRing sets it when the device is locked. Left stale once the ring/call
+    // it names ends - OverLockChatId's derivation stops matching it by then either way.
+    private readonly MutableState<ChatId?> _overLockRingChatId;
+    // The raw candidate ForegroundCallChatId derives from; set at the same call sites as before.
+    private readonly MutableState<ChatId?> _foregroundRawChatId;
+    // OverLockChatId/ForegroundCallChatId: a presentation layer derived from the mechanics state
+    // above (Ringing/InCall) plus Wide/Narrow and the over-lock signal, not independent state.
+    private readonly ComputedState<ChatId?> _overLockChatId;
+    private readonly ComputedState<ChatId?> _foregroundCallChatId;
     // The ring collapsed into the draggable island (foreground only); its modal is closed while set.
     private readonly MutableState<ChatId?> _collapsedChatId;
     // The ring whose ringtone the user silenced; the ring itself keeps going.
     private readonly MutableState<ChatId?> _mutedRingChatId;
-    private bool _overLockWasActive;
     private int _ringGeneration;
-
-    // Long enough for a purely local Fusion recompute to settle - unlike over-lock, nothing here
-    // forces a cross-process RPC round trip that would otherwise give the graph a natural pause.
-    private static readonly TimeSpan ForegroundCallGraceDelay = TimeSpan.FromMilliseconds(300);
 
     public IState<ChatId?> OverLockChatId => _overLockChatId;
     public IState<ChatId?> ForegroundCallChatId => _foregroundCallChatId;
@@ -62,18 +59,29 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _ringingChatIds = StateFactory.NewMutable(
             ImmutableList<ChatId>.Empty,
             StateCategories.Get(GetType(), "RingingChatIds"));
-        _overLockChatId = StateFactory.NewMutable(
+        _inCallChatId = StateFactory.NewMutable(
             (ChatId?)null,
-            StateCategories.Get(GetType(), "OverLockChatId"));
-        _foregroundCallChatId = StateFactory.NewMutable(
+            StateCategories.Get(GetType(), "InCallChatId"));
+        _overLockRingChatId = StateFactory.NewMutable(
             (ChatId?)null,
-            StateCategories.Get(GetType(), "ForegroundCallChatId"));
-        _isAccepting = StateFactory.NewMutable(
-            false,
-            StateCategories.Get(GetType(), "IsAccepting"));
-        _isAcceptingForeground = StateFactory.NewMutable(
-            false,
-            StateCategories.Get(GetType(), "IsAcceptingForeground"));
+            StateCategories.Get(GetType(), "OverLockRingChatId"));
+        _foregroundRawChatId = StateFactory.NewMutable(
+            (ChatId?)null,
+            StateCategories.Get(GetType(), "ForegroundRawChatId"));
+        _overLockChatId = StateFactory.NewComputed<ChatId?>(
+            new ComputedState<ChatId?>.Options {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = StateCategories.Get(GetType(), "OverLockChatId"),
+            },
+            ComputeOverLockChatId);
+        _foregroundCallChatId = StateFactory.NewComputed<ChatId?>(
+            new ComputedState<ChatId?>.Options {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = StateCategories.Get(GetType(), "ForegroundCallChatId"),
+            },
+            ComputeForegroundCallChatId);
+        Hub.RegisterDisposable(_overLockChatId);
+        Hub.RegisterDisposable(_foregroundCallChatId);
         _collapsedChatId = StateFactory.NewMutable(
             (ChatId?)null,
             StateCategories.Get(GetType(), "CollapsedChatId"));
@@ -97,10 +105,8 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             if (!chatIds.Contains(chatId))
                 _ringingChatIds.Value = chatIds.Add(chatId);
         }
-        if (showOverLockScreen) {
-            Volatile.Write(ref _overLockWasActive, false); // Publication: the teardown loop polls it
-            _overLockChatId.Value = chatId;
-        }
+        if (showOverLockScreen)
+            _overLockRingChatId.Value = chatId;
     }
 
     // Called by the over-lock call screen after it has rendered. The render callback fires before the
@@ -174,7 +180,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public async Task Accept(ChatId chatId)
     {
-        var isOverLockScreen = _overLockChatId.Value == chatId;
+        var isOverLockScreen = _overLockRingChatId.Value == chatId;
         var call = await GetRingingCall(chatId, default).ConfigureAwait(true);
         EndRing(chatId);
         if (call is null) {
@@ -187,27 +193,20 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // into the chat; DismissForegroundCall/HangUpForegroundCall (or its own auto-teardown) opens
         // the chat once it closes.
         var showsForegroundCall = !isOverLockScreen && Hub.BrowserInfo.ScreenSize.Value.IsNarrow();
-        // Hold the session "active" until audio starts, so the transition (ring ended, recording not
-        // yet on) doesn't read as ended and tear the screen down before ChatAudioUI/Fusion catch up -
-        // set before the RPC below so it's already visible once _foregroundCallChatId invalidates.
-        if (isOverLockScreen)
-            _isAccepting.Value = true;
-        else if (showsForegroundCall)
-            _isAcceptingForeground.Value = true;
+        // Commit to InCall right away, before the accept RPC even starts - screen visibility, derived
+        // from this, must not blink off between "ring ended" and "audio started".
+        _inCallChatId.Value = chatId;
         try {
             await LiveSessionUI.AcceptCall(chatId, default).ConfigureAwait(true);
         }
         catch (Exception e) {
-            _isAccepting.Value = false;
-            _isAcceptingForeground.Value = false;
+            _inCallChatId.Value = null;
             _ = Bridge?.OnCallHandled(false);
             Log.LogWarning(e, "AcceptCall failed for chat #{ChatId}", chatId);
             Hub.ToastUI.Show(L.Call_Ended, "icon-phone", ToastDismissDelay.Short);
             return;
         }
 
-        // Anything failing past this point must still release the accepting flags: otherwise the
-        // call screen reads as active forever and can never be torn down.
         try {
             // Accept over the lock screen keeps the call activity visible over the keyguard and starts
             // audio without unlocking: the mic FGS is allowed because the activity (shown via
@@ -228,20 +227,24 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 }
             }
             if (showsForegroundCall)
-                _foregroundCallChatId.Value = chatId;
+                _foregroundRawChatId.Value = chatId;
         }
-        finally {
-            _isAccepting.Value = false;
-            ClearAcceptingForegroundEventually();
+        catch {
+            _inCallChatId.Value = null;
+            throw;
         }
     }
 
-    // Called before LiveSessionUI.JoinAnsweredCall starts audio for my own answered outgoing call -
-    // same _isAcceptingForeground bridge as Accept, guarding the same race.
+    // Called before LiveSessionUI.JoinAnsweredCall starts audio - commits to InCall immediately,
+    // mirroring Accept(), so the gap between "answered" and "audio started" is never visible.
     public void PrepareForegroundCall(ChatId chatId)
+        => _inCallChatId.Value = chatId;
+
+    // CancelPreparedCall undoes PrepareForegroundCall if starting the call's audio then failed.
+    public void CancelPreparedCall(ChatId chatId)
     {
-        if (Hub.BrowserInfo.ScreenSize.Value.IsNarrow())
-            _isAcceptingForeground.Value = true;
+        if (_inCallChatId.Value == chatId)
+            _inCallChatId.Value = null;
     }
 
     // Called once my own outgoing call is answered (LiveSessionUI.JoinAnsweredCall), after audio has
@@ -249,17 +252,15 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public void ShowForegroundCall(ChatId chatId)
     {
         if (Hub.BrowserInfo.ScreenSize.Value.IsNarrow())
-            _foregroundCallChatId.Value = chatId;
-        ClearAcceptingForegroundEventually();
+            _foregroundRawChatId.Value = chatId;
     }
 
     // Shows the full-screen call view for my own outgoing call while it's still dialing (narrow only),
-    // so the caller sees "Dialing..." instead of nothing. It flows straight into the in-call view once
-    // JoinAnsweredCall sets the same _foregroundCallChatId; IsForegroundCallActive keeps it up meanwhile.
+    // so the caller sees "Dialing..." instead of nothing; PrepareForegroundCall flows it into InCall.
     public void ShowOutgoingCall(ChatId chatId)
     {
         if (Hub.BrowserInfo.ScreenSize.Value.IsNarrow())
-            _foregroundCallChatId.Value = chatId;
+            _foregroundRawChatId.Value = chatId;
     }
 
     // Hangs up my own still-dialing outgoing call from the full-screen view.
@@ -276,7 +277,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public async Task Decline(ChatId chatId)
     {
-        var isOverLockScreen = _overLockChatId.Value == chatId;
+        var isOverLockScreen = _overLockRingChatId.Value == chatId;
         ClearOverLock();
         EndRing(chatId);
         if (isOverLockScreen)
@@ -345,8 +346,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     {
         ClearOverLock();
         Bridge?.MoveBehindLockScreen();
-        await StopCallAudio(chatId).ConfigureAwait(true);
-        await LeaveCallQuietly(chatId).ConfigureAwait(true);
+        await HangUpQuietly(chatId).ConfigureAwait(true);
     }
 
     // From the foreground in-call screen (narrow layout, not over the lock screen): just closes the
@@ -360,49 +360,48 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public async Task HangUpForegroundCall(ChatId chatId)
     {
         ClearForegroundCall(chatId);
-        await StopCallAudio(chatId).ConfigureAwait(true);
-        await LeaveCallQuietly(chatId).ConfigureAwait(true);
+        await HangUpQuietly(chatId).ConfigureAwait(true);
         await Hub.History.NavigateTo(Links.Chat(chatId)).ConfigureAwait(true);
     }
 
     [ComputeMethod]
-    protected virtual async Task<bool> IsOverLockSessionActive(CancellationToken cancellationToken)
+    protected virtual async Task<bool> IsOverLockRingActive(CancellationToken cancellationToken)
     {
-        var chatId = await _overLockChatId.Use(cancellationToken).ConfigureAwait(false);
+        var chatId = await _overLockRingChatId.Use(cancellationToken).ConfigureAwait(false);
         if (chatId is null)
             return false;
 
-        if (await _isAccepting.Use(cancellationToken).ConfigureAwait(false))
-            return true;
-
-        if (await GetRingingCall(chatId, cancellationToken).ConfigureAwait(false) is not null)
-            return true;
-
-        var inCall = await IsStillInCall(chatId, cancellationToken).ConfigureAwait(false);
-        CallDebugLog?.LogInformation(
-            "CALL_TRACE: IsOverLockSessionActive #{ChatId} → inCall={InCall} (ring not confirmed)",
-            chatId, inCall);
-        return inCall;
+        return await GetRingingCall(chatId, cancellationToken).ConfigureAwait(false) is not null;
     }
 
     [ComputeMethod]
-    protected virtual async Task<bool> IsForegroundCallActive(CancellationToken cancellationToken)
+    protected virtual async Task<bool> IsForegroundDialingActive(CancellationToken cancellationToken)
     {
-        var chatId = await _foregroundCallChatId.Use(cancellationToken).ConfigureAwait(false);
+        var chatId = await _foregroundRawChatId.Use(cancellationToken).ConfigureAwait(false);
         if (chatId is null)
             return false;
 
-        if (await _isAcceptingForeground.Use(cancellationToken).ConfigureAwait(false))
-            return true;
-
-        // My own outgoing call keeps the screen up while it's still dialing; once it's answered the
-        // accepting-foreground grace above and IsStillInCall below take over, and a declined/unanswered
-        // call drops out of Dialing so the screen tears down.
         var callStatus = await LiveSessionUI.GetCallStatus(chatId, cancellationToken).ConfigureAwait(false);
-        if (callStatus == CallStatus.Dialing)
-            return true;
+        return callStatus == CallStatus.Dialing;
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<bool> IsInCallStillLive(CancellationToken cancellationToken)
+    {
+        var chatId = await _inCallChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (chatId is null)
+            return false;
 
         return await IsStillInCall(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<bool> IsRingingOrInCall(ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (await GetRingingCall(chatId, cancellationToken).ConfigureAwait(false) is not null)
+            return true;
+
+        return await _inCallChatId.Use(cancellationToken).ConfigureAwait(false) == chatId;
     }
 
     protected override Task OnRun(CancellationToken cancellationToken)
@@ -417,11 +416,37 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 .Log(LogLevel.Debug, Log).RetryForever(retryDelays, Log).Run(cancellationToken),
             AsyncChain.From(ResetForegroundCallScreen)
                 .Log(LogLevel.Debug, Log).RetryForever(retryDelays, Log).Run(cancellationToken),
+            AsyncChain.From(ResetActiveCall)
+                .Log(LogLevel.Debug, Log).RetryForever(retryDelays, Log).Run(cancellationToken),
             AsyncChain.From(SyncIncomingCallModal)
                 .Log(LogLevel.Debug, Log).RetryForever(retryDelays, Log).Run(cancellationToken));
     }
 
     // Private methods
+
+    private async Task<ChatId?> ComputeOverLockChatId(CancellationToken cancellationToken)
+    {
+        var chatId = await _overLockRingChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (chatId is not { } id)
+            return null;
+
+        return await IsRingingOrInCall(id, cancellationToken).ConfigureAwait(false) ? id : null;
+    }
+
+    private async Task<ChatId?> ComputeForegroundCallChatId(CancellationToken cancellationToken)
+    {
+        var chatId = await _foregroundRawChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (chatId is not { } id)
+            return null;
+
+        if (await IsRingingOrInCall(id, cancellationToken).ConfigureAwait(false))
+            return id;
+
+        // My own outgoing call, still dialing (before PrepareForegroundCall commits it to InCall) -
+        // show the same full-screen call view with a "Dialing..." status instead of nothing.
+        var callStatus = await LiveSessionUI.GetCallStatus(id, cancellationToken).ConfigureAwait(false);
+        return callStatus == CallStatus.Dialing ? id : null;
+    }
 
     private async Task<bool> IsStillInCall(ChatId chatId, CancellationToken cancellationToken)
     {
@@ -627,22 +652,72 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     private async Task ResetOverLockScreen(CancellationToken cancellationToken)
     {
-        // Tears down the over-lock screen once its session ends without the user unlocking (cancelled
-        // ring, timeout, remote hang-up): closes the screen and sends the app behind the lock screen.
-        // Guarded by _overLockWasActive so the cold-start load window (ring not yet confirmed) doesn't
-        // fire early. The accept transition can't misfire here because _isAccepting keeps the session
-        // active until audio starts. Direct exits (Decline/HangUp/GoToChat) clear the flag themselves.
-        var cActive = await Computed
-            .Capture(() => IsOverLockSessionActive(cancellationToken), cancellationToken)
+        // Tears down the over-lock screen when its ring ends unaccepted; a real accept also drops out
+        // of GetRingingCall, but the _inCallChatId check below excludes that - ResetActiveCall's job.
+        var cRingActive = await Computed
+            .Capture(() => IsOverLockRingActive(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
+        var wasActive = false;
+        while (!cancellationToken.IsCancellationRequested) {
+            var chatId = _overLockRingChatId.Value;
+            if (cRingActive.Value)
+                wasActive = true;
+            else if (wasActive && chatId is not null && _inCallChatId.Value != chatId) {
+                wasActive = false;
+                CallDebugLog?.LogInformation(
+                    "CALL_TRACE: ResetOverLockScreen teardown #{ChatId} (ring ended without accept)", chatId);
+                ClearOverLock();
+                Bridge?.MoveBehindLockScreen();
+            }
+            else
+                wasActive = false;
+
+            await cRingActive.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+            cRingActive = await cRingActive.Update(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task ResetForegroundCallScreen(CancellationToken cancellationToken)
+    {
+        // ResetOverLockScreen's counterpart for the narrow foreground screen's own phase with no
+        // ring/native signal behind it: dialing out. InCall's teardown is ResetActiveCall's job.
+        var cDialingActive = await Computed
+            .Capture(() => IsForegroundDialingActive(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        var wasActive = false;
+        while (!cancellationToken.IsCancellationRequested) {
+            var chatId = _foregroundRawChatId.Value;
+            if (cDialingActive.Value)
+                wasActive = true;
+            else if (wasActive && chatId is not null && _inCallChatId.Value != chatId) {
+                wasActive = false;
+                CallDebugLog?.LogInformation(
+                    "CALL_TRACE: ResetForegroundCallScreen teardown #{ChatId} (dialing ended unanswered)", chatId);
+                _ = Hub.Dispatcher.InvokeAsync(() => HangUpForegroundCall(chatId));
+            }
+            else
+                wasActive = false;
+
+            await cDialingActive.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+            cDialingActive = await cDialingActive.Update(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task ResetActiveCall(CancellationToken cancellationToken)
+    {
+        // Ends a call mechanics-wise once the remaining side's session stops reporting Kind == Call,
+        // regardless of which screen (if any) shows it - including the plain desktop header, previously uncovered.
+        var cActive = await Computed
+            .Capture(() => IsInCallStillLive(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        var wasActive = false;
         while (!cancellationToken.IsCancellationRequested) {
             if (cActive.Value)
-                Volatile.Write(ref _overLockWasActive, true);
-            else if (Volatile.Read(ref _overLockWasActive) && _overLockChatId.Value is { } chatId) {
-                CallDebugLog?.LogInformation(
-                    "CALL_TRACE: ResetOverLockScreen teardown #{ChatId} (session ended, was active)",
-                    chatId);
-                await HangUp(chatId).ConfigureAwait(false);
+                wasActive = true;
+            else if (wasActive && _inCallChatId.Value is { } chatId) {
+                wasActive = false;
+                CallDebugLog?.LogInformation("CALL_TRACE: ResetActiveCall teardown #{ChatId}", chatId);
+                _ = Hub.Dispatcher.InvokeAsync(() => TeardownInCall(chatId));
             }
 
             await cActive.WhenInvalidated(cancellationToken).ConfigureAwait(false);
@@ -650,21 +725,14 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
     }
 
-    private async Task ResetForegroundCallScreen(CancellationToken cancellationToken)
+    private Task TeardownInCall(ChatId chatId)
     {
-        // ResetOverLockScreen's counterpart for the narrow-layout foreground screen.
-        var cActive = await Computed
-            .Capture(() => IsForegroundCallActive(cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        while (!cancellationToken.IsCancellationRequested) {
-            if (!cActive.Value && _foregroundCallChatId.Value is { } chatId) {
-                CallDebugLog?.LogInformation("CALL_TRACE: ResetForegroundCallScreen teardown #{ChatId}", chatId);
-                _ = Hub.Dispatcher.InvokeAsync(() => HangUpForegroundCall(chatId));
-            }
+        if (_overLockRingChatId.Value == chatId)
+            return HangUp(chatId);
 
-            await cActive.WhenInvalidated(cancellationToken).ConfigureAwait(false);
-            cActive = await cActive.Update(cancellationToken).ConfigureAwait(false);
-        }
+        return _foregroundRawChatId.Value == chatId
+            ? HangUpForegroundCall(chatId)
+            : HangUpQuietly(chatId);
     }
 
     private void EndRing(ChatId chatId)
@@ -682,24 +750,23 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     private void ClearOverLock()
-    {
-        Volatile.Write(ref _overLockWasActive, false); // Publication: the teardown loop polls it
-        _isAccepting.Value = false;
-        _overLockChatId.Value = null;
-    }
+        => _overLockRingChatId.Value = null;
 
     private void ClearForegroundCall(ChatId chatId)
     {
-        if (_foregroundCallChatId.Value == chatId)
-            _foregroundCallChatId.Value = null;
+        if (_foregroundRawChatId.Value == chatId)
+            _foregroundRawChatId.Value = null;
     }
 
-    private void ClearAcceptingForegroundEventually()
-        => _ = BackgroundTask.Run(async () => {
-            await Clocks.CpuClock.Delay(ForegroundCallGraceDelay, CancellationToken.None)
-                .ConfigureAwait(false);
-            _isAcceptingForeground.Value = false;
-        }, Log, "ClearAcceptingForegroundEventually failed", CancellationToken.None);
+    // Stops local audio and leaves the call mechanics-wise, with no screen-specific side effect - the
+    // desktop plain-chat view has no call screen to close, so this is all it needs on hang-up.
+    private async Task HangUpQuietly(ChatId chatId)
+    {
+        if (_inCallChatId.Value == chatId)
+            _inCallChatId.Value = null;
+        await StopCallAudio(chatId).ConfigureAwait(true);
+        await LeaveCallQuietly(chatId).ConfigureAwait(true);
+    }
 
     private async Task StopCallAudio(ChatId chatId)
     {
