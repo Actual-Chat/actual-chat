@@ -15,8 +15,7 @@ public class VirtualListRecoveryTest
         var recovered = new VirtualListData<TestItem>([new("11")]);
         var source = new TestDataSource(initial, new([]), recovered);
         var cut = context.Render<TestList>(p => p
-            .Add(x => x.DataSource, source)
-            .Add(x => x.SkipPreRenderGetDataCall, true));
+            .Add(x => x.DataSource, source));
         cut.WaitForAssertion(() => cut.Markup.Should().Be("10"));
         var query = new VirtualListDataQuery(new("10", "10"), default, new(0, 20));
 
@@ -41,8 +40,7 @@ public class VirtualListRecoveryTest
 
         // act
         var cut = context.Render<TestList>(p => p
-            .Add(x => x.DataSource, source)
-            .Add(x => x.SkipPreRenderGetDataCall, true));
+            .Add(x => x.DataSource, source));
 
         // assert
         cut.WaitForAssertion(() => cut.Instance.CurrentData.Should().BeSameAs(recovered), TimeSpan.FromSeconds(3));
@@ -63,8 +61,7 @@ public class VirtualListRecoveryTest
             : new([]) { HasVeryFirstItem = true, HasVeryLastItem = true };
         var source = new TestDataSource(initial, empty);
         var cut = context.Render<TestList>(p => p
-            .Add(x => x.DataSource, source)
-            .Add(x => x.SkipPreRenderGetDataCall, true));
+            .Add(x => x.DataSource, source));
         cut.WaitForAssertion(() => cut.Markup.Should().Be("10"));
 
         // act
@@ -87,8 +84,7 @@ public class VirtualListRecoveryTest
         var recovered = new VirtualListData<TestItem>([new("30")]);
         var source = new TestDataSource(initial, new([]), recovered);
         var cut = context.Render<TestList>(p => p
-            .Add(x => x.DataSource, source)
-            .Add(x => x.SkipPreRenderGetDataCall, true));
+            .Add(x => x.DataSource, source));
         cut.WaitForAssertion(() => cut.Markup.Should().Be("10"));
         var oldQuery = new VirtualListDataQuery(new("10", "10"), default, new(0, 20));
         var newQuery = new VirtualListDataQuery(new("30", "30"), default, new(0, 20));

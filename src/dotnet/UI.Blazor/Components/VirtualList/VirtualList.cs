@@ -13,12 +13,6 @@ namespace ActualChat.UI.Blazor.Components;
 public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, VirtualListData<TItem>>, IVirtualListBackend
     where TItem : class, IVirtualListItem
 {
-    // Long enough that a warm first load always uses it (1.5-8ms measured), short enough that a cold one
-    // (1114ms at app start) falls back to skeletons instead of holding the whole list blank
-    // ReSharper disable once StaticMemberInGenericType
-    private static readonly TimeSpan InitialDataTimeout = TimeSpan.FromSeconds(0.3);
-
-    private VirtualListData<TItem>? _initialData;
     private VirtualListDataQuery _pendingQuery = VirtualListDataQuery.None;
 
     private ILogger Log => field ??= Hub.LogFor(GetType());
@@ -55,9 +49,6 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
     [Parameter] public string Child { get; set; } = "";
     [Parameter] public string GroupChildren { get; set; } = "";
     [Parameter] public string ItemChildren { get; set; } = "";
-    // NOTE: Only its value at the first SetParametersAsync matters - set it when a pending navigation
-    // will issue the first query anyway, so the pre-render one would be superseded before it's rendered
-    [Parameter] public bool SkipPreRenderGetDataCall { get; set; }
     [Parameter] public double ExpandMultiplier { get; set; } = 2;
     // This event is intentionally Action vs EventCallback, coz normally it shouldn't
     // trigger StateHasChanged on parent component.
@@ -121,32 +112,8 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
     public override async Task SetParametersAsync(ParameterView parameters)
     {
         parameters.SetParameterProperties(this);
-        // NOTE: Hub (and other injected services) aren't available yet in the first SetParametersAsync,
-        // so we can't use Hub.IsPrerendering here. RendererInfo is set before SetParametersAsync and is
-        // per-circuit: IsInteractive is false during prerender SSR, true once the list is interactive.
-        var shouldSetInitialData = RendererInfo.IsInteractive && RenderIndex == 0 && !SkipPreRenderGetDataCall;
-        if (shouldSetInitialData) {
-            ChatSwitchTracer.Mark("VirtualList: initial GetData -> in (BLOCKS FIRST RENDER)", Identity);
-            try {
-                _initialData = await DataSource
-                    .GetData(VirtualListDataQuery.None, VirtualListData<TItem>.None, CancellationToken.None)
-                    .WaitAsync(InitialDataTimeout);
-                ChatSwitchTracer.Mark("VirtualList: initial GetData <- out", Identity);
-            }
-            catch (TimeoutException) {
-                // NOTE: The abandoned call is left running rather than cancelled - it warms exactly what
-                // the follow-up GetData needs, so what it costs from here is the item building, not the
-                // round trips. Rendering skeletons now beats holding the list blank until it lands.
-                _initialData = null;
-                ChatSwitchTracer.Mark("VirtualList: initial GetData TIMED OUT - skeletons", Identity);
-            }
-        }
-        else
-            _initialData = null;
-
-        // Always here rather than left to the base: its init flow calls StateHasChanged before it creates
-        // the State, and the await above puts that call outside any render batch, so the render runs inline
-        // and the next StateHasChanged reaches ShouldRender - which needs the State - with none
+        // Before the base rather than left to it: its init flow calls StateHasChanged before it creates
+        // the State, and that render can reach ShouldRender - which needs the State - with none
         if (ReferenceEquals(State, null)) {
             var (state, stateOptions) = CreateState();
             SetState(state, stateOptions);
@@ -191,11 +158,10 @@ public abstract class VirtualList<TItem> : ComputedStateComponent<UIHub, Virtual
 
     protected override ComputedState<VirtualListData<TItem>>.Options GetStateOptions()
     {
-        var initialData = _initialData ?? VirtualListData<TItem>.None;
         return new ComputedState<VirtualListData<TItem>>.Options {
-            InitialValue = initialData,
+            InitialValue = VirtualListData<TItem>.None,
             UpdateDelayer = FixedDelayer.NextTick,
-            TryComputeSynchronously = false, // Intended here, _initialData covers that better
+            TryComputeSynchronously = false, // The list renders its skeletons until the first GetData lands
             Category = GetStateCategory(GetType()),
         };
     }
