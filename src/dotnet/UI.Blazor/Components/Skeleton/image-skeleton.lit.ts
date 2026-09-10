@@ -21,6 +21,8 @@ export class ImageSkeleton extends LitElement {
     private _imageRef: Ref<HTMLImageElement> = createRef();
     private _imageState: ImageState = 'none';
     private _isRetrying = false;
+    // Retries stop once the element is detached; the <img> won't report that failure again on re-attach.
+    private _isRetryInterrupted = false;
     // The src whose retries were exhausted; tracked by value so a new src retries.
     private _failedSrc: string | null = null;
     // Attempts already spent on the current src, so a decode failure after a
@@ -44,6 +46,10 @@ export class ImageSkeleton extends LitElement {
         if (this._imageState === 'none' && ImageStates.includes(this.initialState))
             this._imageState = this.initialState as ImageState;
         this.applyState();
+        if (this._isRetryInterrupted) {
+            this._isRetryInterrupted = false;
+            this.reloadImage();
+        }
     }
 
     render() {
@@ -146,11 +152,16 @@ export class ImageSkeleton extends LitElement {
         const isOwnContent = this.isOwnContent(this.src);
         try {
             for (; attempt < RetryCount; attempt++) {
-                this._attemptsBySrc.set(this.src, attempt + 1);
                 if (attempt >= 1) {
                     const delay = Math.min(MaxRetryDelay, Math.pow(2, attempt - 1));
                     await delayAsync(delay * 1000);
                 }
+                if (!this.isConnected) {
+                    this._isRetryInterrupted = true;
+                    return;
+                }
+
+                this._attemptsBySrc.set(this.src, attempt + 1);
                 // Blocked/offline/DNS failures reject instead of returning a non-ok
                 // response, which would otherwise skip the backoff and the fallback.
                 const response = await fetch(this.src, { mode: isOwnContent ? undefined : 'cors' })
