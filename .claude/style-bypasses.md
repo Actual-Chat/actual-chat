@@ -250,10 +250,3 @@ edited. The reason can be as short as whose decision it was.
   — space between `new` and `(` — this is the repo's own convention, not a
   deviation: `new (` appears throughout (AudioSource.cs:33, OggOpusWriter.cs:12,
   ShareUIExt.cs), and neither CODING_STYLE.md nor this file mandates `new(`
-
-## src/dotnet/Streaming.Service/Backend/LiveSessionsBackend.cs
-
-- L245-246 `// Depend on GetState so CallState and Kind invalidate together over RPC instead of drifting / // independently - this used to race (9e0b87186c): Accepted could land before Kind == Call did.`
-  — comment longer than 2 lines — required: this 3-line comment is part of the
-  exact code specified in the task brief (Task 1: "Couple GetCallState's invalidation
-  to GetState's"), which was reviewed and approved before implementation
