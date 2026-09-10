@@ -24,6 +24,8 @@ public sealed record ConversationViewState(
     Range<long> LiveFoldRange,
     ConversationId? MaterializedBlockId)
 {
+    public Conversation? DissolvingConversation { get; init; }
+
     public bool Equals(ConversationViewState? other)
     {
         // Hand-written because this record is a ChatUI.GetTile compute-method argument - it IS the tile
@@ -41,6 +43,7 @@ public sealed record ConversationViewState(
             && LiveBlockConversationId == other.LiveBlockConversationId
             && LiveFoldRange == other.LiveFoldRange
             && MaterializedBlockId == other.MaterializedBlockId
+            && Equals(DissolvingConversation, other.DissolvingConversation)
             && ExpandedConversations.SetEquals(other.ExpandedConversations);
     }
 
@@ -54,12 +57,18 @@ public sealed record ConversationViewState(
             ? default
             : HiddenLiveTailRange;
         var liveFoldRange = LiveFoldRange.IntersectWith(scope).IsEmpty ? default : LiveFoldRange;
-        if (hiddenLiveTailRange == HiddenLiveTailRange && liveFoldRange == LiveFoldRange)
+        var dissolvingConversation = DissolvingConversation is { } conversation
+            && !conversation.EntryLidRange.Overlaps(scope)
+            ? null
+            : DissolvingConversation;
+        if (hiddenLiveTailRange == HiddenLiveTailRange && liveFoldRange == LiveFoldRange
+            && Equals(dissolvingConversation, DissolvingConversation))
             return this;
 
         return this with {
             HiddenLiveTailRange = hiddenLiveTailRange,
             LiveFoldRange = liveFoldRange,
+            DissolvingConversation = dissolvingConversation,
         };
     }
 
@@ -70,6 +79,7 @@ public sealed record ConversationViewState(
             LiveBlockConversationId,
             LiveFoldRange,
             MaterializedBlockId,
+            DissolvingConversation,
             ExpandedConversations.Count);
         foreach (var conversationId in ExpandedConversations)
             hash ^= conversationId.GetHashCode(); // XOR - the set has no order
@@ -429,7 +439,9 @@ public partial class ChatUI
                 .EnsureMonotonic(Comparer<ChatRangeTile>.Create((a, b) => a.LidRange.Start.CompareTo(b.LidRange.Start)))
                 .ToList();
 
-        var showConversations = (chat.IsSummarized ?? false) || liveConversation != null;
+        var dissolvingConversation = overlay?.DissolvingConversation;
+        var showConversations = (chat.IsSummarized ?? false)
+            || liveConversation != null || dissolvingConversation != null;
 
         // Effective expansion = each conversation's IsExpandedByDefault flipped by a local override, so
         // expandedConversations below is the resolved "render expanded" set, not the raw override set.
@@ -624,7 +636,9 @@ public partial class ChatUI
         var metaAt = CpuTimestamp.Now;
         var conversationView = new ConversationViewState(
             showConversations, expandedConversations, hiddenLiveTailRange,
-            liveBlockId, liveBlockFoldRange, materializedBlockId);
+            liveBlockId, liveBlockFoldRange, materializedBlockId) {
+            DissolvingConversation = dissolvingConversation,
+        };
         var blockRange = liveBlockId is { } coverageId
             ? new Range<long>(coverageId.StartEntryLid,
                 Math.Max(coverageId.StartEntryLid + 1,
@@ -702,11 +716,15 @@ public partial class ChatUI
             else if (shownReadyEntryLid >= idTile.End - 1)
                 lastReadEntryLid = long.MaxValue;
             var isLastTile = tileIndex == tailTileIndex;
+            // Deleted-entry gaps can put the preceding message farther back than the adjacent tile.
+            var tileScope = new Range<long>(
+                Math.Min(idTile.Start - EntryIdTiles.TileSize, prevMessage?.Id ?? idTile.Start),
+                idTile.End);
             var tile = await GetTile(
                     chatId,
                     chat.Rules.Author?.Id,
                     idTile,
-                    conversationView.NarrowTo(idTile.MoveStart(-EntryIdTiles.TileSize)),
+                    conversationView.NarrowTo(tileScope),
                     prevMessage,
                     lastReadEntryLid,
                     isLastTile ? chatLidRange.End : null,
@@ -1144,6 +1162,11 @@ public partial class ChatUI
                 // pre-latch group can't swallow the block's tail entries.
                 if (liveBlockId is { } jlId && entry.LocalId >= jlId.StartEntryLid
                     && (prevEntry == null || prevEntry.LocalId < jlId.StartEntryLid))
+                    isBlockStart = true;
+                // An author group must not pull post-close messages into the dissolving block.
+                if (conversationView.DissolvingConversation is { EndEntryLid: var lastDissolvingLid }
+                    && entry.LocalId > lastDissolvingLid
+                    && (prevEntry == null || prevEntry.LocalId <= lastDissolvingLid))
                     isBlockStart = true;
                 // A same-author message that switches kind (transcribed vs not) starts a new block,
                 // so its author header signals the kind change.

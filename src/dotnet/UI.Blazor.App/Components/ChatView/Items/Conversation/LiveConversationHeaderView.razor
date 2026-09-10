@@ -24,7 +24,7 @@
     <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
     <span class="c-lc-name">@title</span>
     @* Leaving is just "stop listening", so re-joining stays one tap away. *@
-    @if (!s.IsJoined) {
+    @if (!s.IsJoined && !s.IsDissolving) {
         <button type="button" class="c-lc-join btn btn-sm btn-transparent" @onclick="@Join">@L.Call_Join</button>
     }
     @if (s.CanExpand) {
@@ -74,13 +74,14 @@
         var rawLive = await rawLiveTask.ConfigureAwait(false);
         var blockState = await blockStateTask.ConfigureAwait(false);
         var isLive = live != null && live.Id == conversation.Id;
+        var isDissolving = blockState.Overlay?.IsDissolving ?? false;
         // The rest stay conditional: asking them when there is no live session would add dependencies
         // that recompute this header for sessions it doesn't show
         var isJoined = isLive
             && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
         var isVoiceOnly = isLive
             && !await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(false);
-        var participantsText = isLive
+        var participantsText = isLive || isDissolving
             ? await ConversationParticipantsFormatter
                 .GetText(Authors, L, Hub.Session, chatId, conversation.AuthorIds, cancellationToken)
                 .ConfigureAwait(false)
@@ -93,7 +94,7 @@
             && await LiveStreamUI.IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(false);
         return new LiveConversationHeaderState(
             translated.Title.Text, participantsText, hasFoldedEntries, isJoined,
-            blockState.Overlay != null, blockState.Overlay?.IsDissolving ?? false, canExpand,
+            blockState.Overlay != null, isDissolving, canExpand,
             isAnyoneTalking);
     }
 

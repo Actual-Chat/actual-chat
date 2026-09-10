@@ -20,6 +20,10 @@ public partial class ChatUI
         // Keeps the live render ID after materialization, preferring the persisted record. Retains live coverage
         // when stale metadata has clipped the persisted record before that ID.
         var records = conversations.ToList();
+        if (view.DissolvingConversation is { } dissolvingConversation) {
+            records.RemoveAll(c => c.Id == dissolvingConversation.Id);
+            records.Add(dissolvingConversation);
+        }
         if (view.MaterializedBlockId is not { } materializedId || view.LiveBlockConversationId is not { } renderId
             || records.All(c => c.Id != materializedId))
             return records.ToArray();
@@ -77,7 +81,7 @@ public partial class ChatUI
 
         var blockConversation = view.MaterializedBlockId is { } materializedId
             ? byId.GetValueOrDefault(materializedId)
-            : liveConversation;
+            : view.DissolvingConversation ?? liveConversation;
         if (view.LiveBlockConversationId is { } renderId && blockConversation != null && !liveBlockRange.IsEmpty) {
             if (blockConversation.Id != renderId)
                 blockConversation = blockConversation with { Id = renderId };

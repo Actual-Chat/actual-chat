@@ -16,7 +16,10 @@ public sealed record LiveBlockOverlay(
     long BlockEndLid,
     ConversationId? MaterializedId,
     bool IsExpandedByDefault,
-    bool IsDissolving = false);
+    bool IsDissolving = false)
+{
+    public Conversation? DissolvingConversation { get; init; }
+}
 
 /// <summary>
 /// The live block's fold state. <see cref="FoldBoundaryLid"/> is the governed fold end, already
@@ -190,7 +193,9 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                 : chatState.DissolveDone
                     ? null
                     : new LiveBlockOverlay(t.LiveRenderId, t.V, FoldRangeOf(t.V, foldBoundaryLid),
-                        new Range<long>(t.TailStart, long.MaxValue), t.TailStart, null, false, IsDissolving: true);
+                        new Range<long>(t.TailStart, long.MaxValue), t.TailStart, null, false, IsDissolving: true) {
+                        DissolvingConversation = t.DissolvingConversation,
+                    };
 
         if (!amInLive)
             // Leave, session still live: the block goes on exactly as it was - same fold, same
@@ -322,17 +327,32 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
     private async Task<FrozenTemplate> BuildTemplate(ChatId chatId, LiveBlockSnapshot raw, CancellationToken cancellationToken)
     {
         Range<long> chatIdRange;
-        using (Computed.BeginIsolation())
-            chatIdRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
+        Conversation? conversation;
+        using (Computed.BeginIsolation()) {
+            var rangeTask = Chats.GetIdRange(Session, chatId, cancellationToken);
+            var conversationTask = raw.HasSummary ? null : LiveSessionUI.GetConversation(chatId, cancellationToken);
+            chatIdRange = await rangeTask.ConfigureAwait(false);
+            conversation = conversationTask == null ? null : await conversationTask.ConfigureAwait(false);
+        }
         var v = raw.VisibleStartLid;
+        var renderId = ConversationId.New(chatId, v);
+        // A close may reach the conversation read before its snapshot; keep the descriptor already shown.
+        if (conversation == null && !raw.HasSummary)
+            lock (Lock)
+                if (_chatStates.TryGetValue(chatId, out var state) && state.Template?.LiveRenderId == renderId)
+                    conversation = state.Template.DissolvingConversation;
+
         return new FrozenTemplate(
             v,
             chatIdRange.End,
             raw.EndEntryLid + 1,
-            ConversationId.New(chatId, v),
+            renderId,
             ConversationId.New(chatId, raw.ContextStartLid > 0 ? raw.ContextStartLid : v),
             raw.IsExpandedByDefault,
-            raw.HasSummary);
+            raw.HasSummary,
+            conversation?.Id == renderId
+                ? conversation with { EndEntryLid = Math.Max(v, chatIdRange.End - 1) }
+                : null);
     }
 
     private static long GetRawFoldEndLid(LiveBlockSnapshot? raw)
@@ -438,8 +458,10 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             if (isTierOneClose) {
                 if (chatState.DissolveEndsAt == default)
                     chatState.DissolveEndsAt = Clocks.ServerClock.Now + DissolveDuration;
-                if (!chatState.DissolveDone && Clocks.ServerClock.Now >= chatState.DissolveEndsAt)
+                if (!chatState.DissolveDone && Clocks.ServerClock.Now >= chatState.DissolveEndsAt) {
                     chatState.DissolveDone = true;
+                    chatState.Template = chatState.Template! with { DissolvingConversation = null };
+                }
                 if (!chatState.DissolveDone)
                     wakeAt = chatState.DissolveEndsAt;
             }
@@ -550,7 +572,8 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         ConversationId LiveRenderId,
         ConversationId MaterializedId,
         bool IsExpandedByDefault,
-        bool HadSummary);
+        bool HadSummary,
+        Conversation? DissolvingConversation);
 
     protected sealed record GovernorInputs(
         ChatId? ChatId,

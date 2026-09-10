@@ -71,9 +71,10 @@ open-ended range it retains the record's actual end instead of copying the senti
 coverage. Cached open-ended metadata remains valid as the live summary grows, so the previous
 `WithLiveRange` refresh workaround is unnecessary. The UI bounds active block coverage by its current
 chat/overlay snapshot before expanding fetch boundaries; no fetch enumerates an open-ended range.
-Grouping an active, unfrozen block separately uses an open-ended range so pending sends at or beyond
-the chat end and the `long.MaxValue` transcription placeholder stay before its footer. Frozen and
-materialized grouping remains bounded. Grouping coverage must not be reused for entry fetching.
+Grouping an active block separately uses an open-ended range so pending sends at or beyond
+the chat end and the `long.MaxValue` transcription placeholder stay before its footer. This includes
+a viewer who left while the session continues: their overlay has no materialized ID and an unbounded
+end. Closed and materialized grouping remains bounded. Grouping coverage must not be reused for entry fetching.
 Active live folding and transcript filtering are not truncated by later completed ranges. Materialized
 block filtering still stops at a later block's start, including when that record is unavailable.
 Navigation expansion, automatic expansion over witnessed messages, and witness filtering use the same
@@ -82,6 +83,24 @@ truncated ranges, so a stale old conversation cannot expand merely because the v
 These are read projections only. Stored IDs, summaries, timestamps, counts, and conversation creation
 or replacement commands are unchanged. In particular, the existing write path can still delete
 overlapping persisted records; revisiting those building rules is separate work.
+
+## Unsummarized close and dissolve
+
+An attended session that closes without a summary has no persisted replacement conversation.
+`LiveBlockUI` retains a `Conversation` descriptor in its existing frozen template before closure,
+bounded to that snapshot's chat end. The short dissolve overlay exposes this descriptor until its
+timer expires. The record is released from the template when the dissolve finishes.
+
+Both `BuildChatBlocks` and the per-tile card builder use the retained descriptor, even if chat
+summarization is disabled. A range alone cannot restore a missing card or header. This also keeps
+the header's dissolve marker available after the server stops returning the live conversation.
+During this interval its participant title remains visible and it offers no Join action.
+
+`ConversationViewState` carries the descriptor in its tile cache key so entering and leaving dissolve
+rebuild the relevant tiles. `NarrowTo` removes it from unrelated tiles. Its reference remains stable
+through the dissolve interval. The tile scope includes the actual preceding message, which may be
+farther back than the adjacent tile when entries were deleted. Author groups split at the descriptor's
+finite end, keeping subsequent messages outside the block even when they come from the same author.
 
 ## Wire compatibility
 
