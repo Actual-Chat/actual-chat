@@ -364,10 +364,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                             .Size(query.Limit)
                             .Query(qq => qq.Bool(ConfigureQuery))
                             .IgnoreUnavailable()
-                            .Highlight(h => h
-                                .Fields(f => f.Field(x => x.Title), f => f.Field(x => x.LocalizedTitles))
-                                .PreTags(HighlightsConverter.PreTag)
-                                .PostTags(HighlightsConverter.PostTag))
+                            .Highlight(h => h.Fields(f => f.Field(x => x.Title)).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag))
                             .Log(OpenSearchClient, OpenSearchDebugLog, "Group", OpenSearchNames.GroupIndexName),
                     cancellationToken)
                 .Assert(Log)
@@ -381,11 +378,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
         BoolQueryDescriptor<IndexedGroup> ConfigureQuery(BoolQueryDescriptor<IndexedGroup> descriptor)
             => descriptor
-                .Must(q => q.MultiMatch(p => p
-                        .Query(query.Criteria)
-                        .Fields(f => f.Field(x => x.Title).Field(x => x.LocalizedTitles))
-                        .Type(TextQueryType.BoolPrefix)
-                        .Operator(Operator.And)),
+                .Must(q => q.MatchBoolPrefix(p => p.Query(query.Criteria).Field(x => x.Title).Operator(Operator.And)),
                     query.MustFilterByPlace
                         ? q => q.Term(t => t.Field(x => x.PlaceId).Value(query.PlaceId.Value))
                         : null,

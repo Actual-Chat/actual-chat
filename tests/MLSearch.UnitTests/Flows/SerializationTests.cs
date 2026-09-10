@@ -40,7 +40,6 @@ public class GroupIndexingFlowSerializationTest(ITestOutputHelper @out)
     : FlowSerializationTestBase<GroupIndexingFlow>(@out)
 {
     protected override GroupIndexingFlow CreatePopulated() => new() {
-        IndexVersion = "v-test",
         Cursor = new IndexingFlowCursor<ChatId>(ChatId.Parse("the-actual-one"), 42),
         LastRunAt = new Moment(new DateTime(2026, 4, 16, 12, 0, 0, DateTimeKind.Utc)),
         LastReadiness = "test-suspension",

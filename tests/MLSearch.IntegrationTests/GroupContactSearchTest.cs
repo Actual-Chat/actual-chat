@@ -148,50 +148,9 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
-    [Fact]
-    public async Task ShouldFindSystemChatsByLocalizedTitle()
-    {
-        // arrange
-        var bob = await Tester.SignInAsUniqueBob();
-        var notesChat = await CreateSystemChat(Constants.Chat.System.Notes);
-        var familyChat = await CreateSystemChat(Constants.Chat.System.Family);
-
-        // act, assert
-        var searchResults = await FindExact("Заметки", true, 1);
-        searchResults.Should().BeEquivalentTo(
-            [bob.Id.BuildSearchResult(notesChat.Id, "Заметки", "", [(0, 7)])],
-            o => o.ExcludingRank());
-
-        searchResults = await FindExact("Семья", true, 1);
-        searchResults.Should().BeEquivalentTo(
-            [bob.Id.BuildSearchResult(familyChat.Id, "Семья", "", [(0, 5)])],
-            o => o.ExcludingRank());
-
-        searchResults = await FindExact("notes", true, 1);
-        searchResults.Should().BeEquivalentTo([bob.BuildSearchResult(notesChat, [(0, 5)])], o => o.ExcludingRank());
-    }
-
-    private Task<Chat.Chat> CreateSystemChat(Constants.Chat.SystemChat systemChat)
-        => Tester.Commander.Call(new Chats_Change {
-            Session = Tester.Session,
-            ChatId = default,
-            ExpectedVersion = null,
-            Change = new() {
-                Create = new ChatDiff {
-                    Title = systemChat.DefaultTitle,
-                    Kind = ChatKind.Group,
-                    IsPublic = false,
-                    SystemTag = systemChat.Tag,
-                },
-            },
-        }).Require();
-
     private Task<FoundContact[]> Find(string criteria, bool own, PlaceId? placeId, int expectedCount)
-        => FindExact($"{IsolationKey} {criteria}", own, expectedCount, placeId);
-
-    private Task<FoundContact[]> FindExact(string criteria, bool own, int expectedCount, PlaceId? placeId = null)
         => TestsExt.When(async () => {
-                var groups = await Tester.FindGroups(criteria, own, placeId, 50);
+                var groups = await Tester.FindGroups($"{IsolationKey} {criteria}", own, placeId, 50);
                 groups.Should().HaveCount(expectedCount);
                 return groups;
             },

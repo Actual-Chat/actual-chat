@@ -56,15 +56,19 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
 
     public async Task<IReadOnlyList<FoundContact>> FindContacts(
         SearchScope scope,
+        PlaceId? placeId,
         string criteria,
         int limit,
         CancellationToken cancellationToken)
     {
+        // People are place-independent here: a place-scoped people search stays on the server
         if (limit <= 0)
             return [];
 
         var candidates = scope switch {
             SearchScope.People => await ListUserContactCandidates(cancellationToken).ConfigureAwait(false),
+            SearchScope.Groups when placeId is { } id
+                => await ListPlaceChatContactCandidates(id, cancellationToken).ConfigureAwait(false),
             SearchScope.Groups => await ListChatContactCandidates(cancellationToken).ConfigureAwait(false),
             _ => [],
         };
@@ -297,6 +301,23 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
 
             var title = chat.Title;
             result.Add(new ContactCandidate(ContactId.NewChat(ownerId, groupChatId), title, new SearchDocument(title)));
+        }
+        return result.ToApiArray();
+    }
+
+    [ComputeMethod]
+    public virtual async Task<ApiArray<ContactCandidate>> ListPlaceChatContactCandidates(
+        PlaceId placeId, CancellationToken cancellationToken)
+    {
+        var ownUserId = await GetOwnUserId(cancellationToken).ConfigureAwait(false);
+        if (ownUserId is not { } ownerId)
+            return [];
+
+        var chats = await ListPlaceChats(placeId, cancellationToken).ConfigureAwait(false);
+        var result = new List<ContactCandidate>(chats.Count);
+        foreach (var chat in chats) {
+            var title = chat.Title;
+            result.Add(new ContactCandidate(ContactId.NewAny(ownerId, chat.Id), title, new SearchDocument(title)));
         }
         return result.ToApiArray();
     }

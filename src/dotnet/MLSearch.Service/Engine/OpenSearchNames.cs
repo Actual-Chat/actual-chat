@@ -4,7 +4,7 @@ internal sealed class OpenSearchNames
 {
     public const string EntryIndexVersion = "v4";
     public const string UserIndexVersion = "v6";
-    public const string GroupIndexVersion = "v6";
+    public const string GroupIndexVersion = "v5";
     public const string PlaceIndexVersion = "v3";
 
     public const string TestPrefix = "test";

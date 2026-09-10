@@ -40,22 +40,4 @@ public static class ChatTitleLocalizerExt
             return null;
         }
     }
-
-    extension(Chat.Chat chat)
-    {
-        public string[] GetLocalizedSystemChatTitles()
-        {
-            // English excluded: the search index carries these beside the stored title, so a query in
-            // any UI language finds the chat, and one in English keeps matching the title itself.
-            if (chat.SystemDefaultTitle is null)
-                return [];
-
-            return Languages.AllUI
-                .Select(language => LanguageStringLocalizer.Get(language).GetSystemChatTitle(chat))
-                .SkipNullItems()
-                .Where(title => title != chat.Title)
-                .Distinct()
-                .ToArray();
-        }
-    }
 }

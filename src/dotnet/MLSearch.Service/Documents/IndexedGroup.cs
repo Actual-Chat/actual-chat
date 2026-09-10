@@ -5,6 +5,5 @@ public sealed record IndexedGroup : IHasId<ChatId>, IHasRoutingKey<ChatId>, IReq
     public required ChatId Id { get; init; }
     public PlaceId? PlaceId { get; init; }
     public string Title { get; init; } = "";
-    public string[] LocalizedTitles { get; init; } = [];
     public bool IsPublic { get; init; }
 }

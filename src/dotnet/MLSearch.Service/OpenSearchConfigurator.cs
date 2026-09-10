@@ -164,8 +164,7 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
             => m.Properties(pp
                 => pp.Keyword(p => p.Name(x => x.Id))
                     .Keyword(p => p.Name(x => x.PlaceId))
-                    .Text(p => p.Name(x => x.Title))
-                    .Text(p => p.Name(x => x.LocalizedTitles))))
+                    .Text(p => p.Name(x => x.Title))))
             .Settings(s => s.RefreshInterval(Settings.RefreshInterval));
 
     private ICreateIndexRequest ConfigurePlaceContactIndex(CreateIndexDescriptor index)
