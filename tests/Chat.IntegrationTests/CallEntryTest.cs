@@ -243,6 +243,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         // act
         await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
         await backend.AcceptCall(chatId, alice.Id, default);
+        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, true, default);
         await backend.CancelCall(chatId, bob.Id, default);
         (await backend.GetState(chatId, default))!.Outcome.Should().Be(CallOutcome.Canceled);
         await backend.LeaveCall(chatId, alice.Id, default);
