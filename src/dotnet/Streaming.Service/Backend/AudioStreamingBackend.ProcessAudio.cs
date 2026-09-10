@@ -223,19 +223,6 @@ public partial class AudioStreamingBackend
                     await LiveAudioBackend
                         .Unregister(chatId, openSegment.StreamId.Value, CancellationToken.None)
                         .ConfigureAwait(false);
-                    // Connection-lifetime presence: this recorder's stream just ended, so their
-                    // participation record should go with it instead of lingering for up to
-                    // ParticipantStaleness (90s) - mirrors the registration OnStreamRegistered made above.
-                    if (mustStreamVoice || isSummarized)
-                        try {
-                            await LiveSessionsBackend
-                                .SetParticipation(
-                                    chatId, author.Id, ParticipationKind.Record, false, CancellationToken.None)
-                                .ConfigureAwait(false);
-                        }
-                        catch (Exception e) when (e is not OperationCanceledException) {
-                            Log.LogWarning(e, "Failed to clear recorder presence for chat #{ChatId}", chatId);
-                        }
                 }
 
                 if (mustStreamVoice && mustTranscribe) {

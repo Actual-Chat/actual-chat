@@ -254,51 +254,6 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
     }
 
     [Fact(Timeout = 60_000)]
-    public async Task ProcessAudioEndingShouldClearRecorderPresence()
-    {
-        // arrange
-        var appHost = AppHost;
-        var services = appHost.Services;
-        var commander = services.Commander();
-        var session = Session.New();
-        await appHost.SignIn(session, new AccountFull("Bobby"));
-
-        var chat = await commander.Call(new Chats_Change {
-            Session = session,
-            ChatId = default,
-            ExpectedVersion = null,
-            Change = new() {
-                Create = new ChatDiff {
-                    Title = "ProcessAudioPresenceTest",
-                    Kind = ChatKind.Group,
-                },
-            },
-        });
-        chat.Require();
-        await services.UserSettingsUI(session)
-            .ChatUserSettings(chat.Id)
-            .Set(new ChatUserSettings { VoiceMode = VoiceMode.JustVoice }, CancellationToken.None);
-
-        var backend = services.GetRequiredService<IAudioStreamingBackend>();
-        var liveSessionsBackend = services.GetRequiredService<ILiveSessionsBackend>();
-        var authors = services.GetRequiredService<IAuthors>();
-        var record = new AudioRecord(
-            StreamId.New(services.MeshWatcher().ThisNode.Ref),
-            session,
-            chat.Id,
-            SystemClock.Instance.Now.EpochOffset.TotalSeconds,
-            null);
-
-        // act - the stream runs to completion naturally (GetFrames yields 25 frames, then ends)
-        await backend.ProcessAudio(record, 0, new RpcStream<AudioFrame>(GetFrames()), CancellationToken.None);
-
-        // assert - the recorder's presence must not linger for the full 90s ParticipantStaleness window
-        var author = await authors.GetOwn(session, chat.Id, default);
-        await ComputedTest.When(async ct =>
-            (await liveSessionsBackend.ListParticipants(chat.Id, ct)).Should().NotContain(author!.Id));
-    }
-
-    [Fact(Timeout = 60_000)]
     public async Task SkipToLiveSkipsWhatTheProducerAlreadyProduced()
     {
         // arrange
