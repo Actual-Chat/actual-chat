@@ -303,6 +303,7 @@
   "ChatWelcome_PublicLink": "Herkese açık bağlantı",
 
   "MessageMenu_Reply": "Yanıtlayın",
+  "MessageMenu_Quote": "Alıntılayın",
   "MessageMenu_CopyText": "Metni kopyalayın",
   "MessageMenu_CopyLink": "Bağlantıyı kopyalayın",
   "MessageMenu_CopyCode": "Kodu kopyalayın",
