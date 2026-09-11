@@ -422,7 +422,13 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.TextMessagePanelBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ThreadList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ThreadListItem>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ThreadListMenu>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ThreadListTabUnreadCount>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ThreadMenu>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ThreadMenuCopyLink>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ThreadMenuCopyThread>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ThreadMenuFollow>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ThreadMenuMute>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ThreadMessageView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.TimeZoneStep>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.TranscriptReplayTutorialStep>();
@@ -1197,7 +1203,13 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.TextMessagePanelBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ThreadList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ThreadListItem), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ThreadListMenu), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ThreadListTabUnreadCount), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ThreadMenu), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ThreadMenuCopyLink), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ThreadMenuCopyThread), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ThreadMenuFollow), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ThreadMenuMute), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ThreadMessageView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.TimeZoneStep), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.TranscriptReplayTutorialStep), AotTypeKind.Component),
