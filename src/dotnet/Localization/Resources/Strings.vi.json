@@ -308,6 +308,10 @@
 
   "ThreadMenu_GoToThread": "Đến chủ đề",
   "ThreadMenu_CopyThread": "Sao chép chủ đề",
+  "ThreadMenu_Mute": "Tắt tiếng",
+  "ThreadMenu_Unmute": "Bật tiếng",
+  "ThreadMenu_GoToStartMessage": "Đến tin nhắn gốc",
+  "ThreadMenu_CopyThreadLink": "Sao chép liên kết chủ đề",
 
   "LocationMessage_Live": "Vị trí trực tiếp",
   "LocationMessage_Static": "Vị trí",

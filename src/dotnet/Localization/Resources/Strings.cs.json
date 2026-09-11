@@ -308,6 +308,10 @@
 
   "ThreadMenu_GoToThread": "Přejít na vlákno",
   "ThreadMenu_CopyThread": "Kopírovat vlákno",
+  "ThreadMenu_Mute": "Ztlumit",
+  "ThreadMenu_Unmute": "Zrušit ztlumení",
+  "ThreadMenu_GoToStartMessage": "Přejít na úvodní zprávu",
+  "ThreadMenu_CopyThreadLink": "Kopírovat odkaz na vlákno",
 
   "LocationMessage_Live": "Poloha živě",
   "LocationMessage_Static": "Poloha",

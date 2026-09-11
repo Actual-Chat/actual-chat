@@ -329,6 +329,10 @@ public static class LocalizedStringsLocalizerExt
 
         public string ThreadMenu_GoToThread => l["ThreadMenu_GoToThread"].Value;
         public string ThreadMenu_CopyThread => l["ThreadMenu_CopyThread"].Value;
+        public string ThreadMenu_Mute => l["ThreadMenu_Mute"].Value;
+        public string ThreadMenu_Unmute => l["ThreadMenu_Unmute"].Value;
+        public string ThreadMenu_GoToStartMessage => l["ThreadMenu_GoToStartMessage"].Value;
+        public string ThreadMenu_CopyThreadLink => l["ThreadMenu_CopyThreadLink"].Value;
 
         public string LocationMessage_Live => l["LocationMessage_Live"].Value;
         public string LocationMessage_Static => l["LocationMessage_Static"].Value;

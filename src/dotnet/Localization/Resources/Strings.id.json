@@ -308,6 +308,10 @@
 
   "ThreadMenu_GoToThread": "Buka utas",
   "ThreadMenu_CopyThread": "Salin utas",
+  "ThreadMenu_Mute": "Bisukan",
+  "ThreadMenu_Unmute": "Bunyikan",
+  "ThreadMenu_GoToStartMessage": "Buka pesan awal",
+  "ThreadMenu_CopyThreadLink": "Salin tautan utas",
 
   "LocationMessage_Live": "Lokasi langsung",
   "LocationMessage_Static": "Lokasi",

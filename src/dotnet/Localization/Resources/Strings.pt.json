@@ -308,6 +308,10 @@
 
   "ThreadMenu_GoToThread": "Ir para o tópico",
   "ThreadMenu_CopyThread": "Copiar tópico",
+  "ThreadMenu_Mute": "Silenciar",
+  "ThreadMenu_Unmute": "Reativar",
+  "ThreadMenu_GoToStartMessage": "Ir para a mensagem inicial",
+  "ThreadMenu_CopyThreadLink": "Copiar link do tópico",
 
   "LocationMessage_Live": "Localização em tempo real",
   "LocationMessage_Static": "Localização",

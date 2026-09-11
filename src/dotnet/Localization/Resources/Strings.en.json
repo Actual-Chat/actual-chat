@@ -386,9 +386,13 @@
   "ConversationMenu_CopySummary": "Copy summary",
   "ConversationMenu_CopySummaryLink": "Copy summary link",
 
-  // The context menu of a thread card in the transcript.
+  // The context menu of a thread: its card in the transcript and its row in a thread list.
   "ThreadMenu_GoToThread": "Go to thread",
   "ThreadMenu_CopyThread": "Copy thread",
+  "ThreadMenu_Mute": "Mute",
+  "ThreadMenu_Unmute": "Unmute",
+  "ThreadMenu_GoToStartMessage": "Go to start message",
+  "ThreadMenu_CopyThreadLink": "Copy thread link",
 
   // A location posted into a chat. LocationMessage_Place is the plain geographic word for a pin
   // on a map - NOT the product term Place, which docs/i18n.md rules on separately.

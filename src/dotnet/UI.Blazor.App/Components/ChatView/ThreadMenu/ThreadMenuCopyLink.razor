@@ -1,0 +1,16 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase<AppUIHub>
+@{
+    var threadLink = Links.Chat(ThreadChatId).ToAbsolute(UrlMapper);
+}
+
+<CopyTrigger Tooltip="" CopyText="@threadLink" Class="ac-menu-item !p-0">
+    <MenuEntry
+        Icon="icon-link-2"
+        Text="@L.ThreadMenu_CopyThreadLink">
+    </MenuEntry>
+</CopyTrigger>
+
+@code {
+    [Parameter, EditorRequired] public ThreadChatId ThreadChatId { get; set; } = null!;
+}

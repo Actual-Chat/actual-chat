@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using StringBuilderExt = ActualLab.Text.StringBuilderExt
 @inherits ComputedMenuBase<AppUIHub, ThreadMenu.Model>
 @{
     var m = State.Value;
@@ -7,6 +6,7 @@
         return;
 
     var entry = m.Entry;
+    var threadChatId = m.ThreadChatId;
     var messageLink = Links.Chat(entry.Id).ToAbsolute(UrlMapper);
     var canCopyMessageLink = !entry.IsSystemEntry;
 }
@@ -17,6 +17,8 @@
         Text="@L.ThreadMenu_GoToThread"
         Click="@(OnGoToTheThread)">
     </MenuEntry>
+    <ThreadMenuFollow ThreadChatId="@threadChatId" IsFollowing="@m.IsFollowing"/>
+    <ThreadMenuMute ThreadChatId="@threadChatId" NotificationMode="@m.NotificationMode"/>
     @if (canCopyMessageLink) {
         <CopyTrigger Tooltip="" CopyText="@messageLink" Class="ac-menu-item !p-0">
             <MenuEntry
@@ -25,11 +27,8 @@
             </MenuEntry>
         </CopyTrigger>
     }
-    <MenuEntry
-        Icon="icon-copy"
-        Text="@L.ThreadMenu_CopyThread"
-        Click="@OnCopyToClipboardRequested">
-    </MenuEntry>
+    <ThreadMenuCopyLink ThreadChatId="@threadChatId"/>
+    <ThreadMenuCopyThread ThreadChatId="@threadChatId" Title="@(_title ?? m.Chat.Title)"/>
     @if (m.EnableIncompleteUI) {
         <MenuEntry
             Icon="icon-reply-2"
@@ -63,8 +62,8 @@
     private string? _title;
 
     private IChats Chats => Hub.Chats;
+    private IChatThreads ChatThreads => Hub.ChatThreads;
     private ChatUI ChatUI => Hub.ChatUI;
-    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
 
     protected override void OnParametersSet() {
         if (Arguments is not [var sEntryId, var sChatId, var title ])
@@ -97,10 +96,17 @@
         if (chat == null)
             return Model.None;
 
+        var isFollowing = await ChatThreads.GetThreadFollowStatus(Session, threadChatId, cancellationToken)
+            .ConfigureAwait(false);
+        var settings = await UserSettingsUI.ChatUserSettings(threadChatId).Get(cancellationToken)
+            .ConfigureAwait(false);
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new() {
             Entry = entry,
             Chat = chat,
+            ThreadChatId = threadChatId,
+            IsFollowing = isFollowing,
+            NotificationMode = settings.NotificationMode,
             EnableIncompleteUI = enableIncompleteUI,
         };
     }
@@ -109,19 +115,6 @@
         await WhenClosed;
         var m = State.Value;
         _ = History.NavigateTo(Links.Chat(m.Chat.Id));
-    }
-
-    private async Task OnCopyToClipboardRequested() {
-        var text = GetText();
-        await ClipboardUI.WriteText(text).ConfigureAwait(false);
-    }
-
-    private string GetText() {
-        var m = State.Value;
-        return L.Share_ThreadText_Format(
-            _title ?? m.Chat.Title,
-            CoreConstants.AppName,
-            UrlMapper.ToAbsolute(Links.Chat(m.Chat.Id)));
     }
 
     private void Reply() {}
@@ -139,6 +132,9 @@
 
         public ChatEntry Entry { get; init; } = null!;
         public Chat Chat { get; init; } = null!;
+        public ThreadChatId ThreadChatId { get; init; } = null!;
+        public bool IsFollowing { get; init; }
+        public ChatNotificationMode NotificationMode { get; init; }
         public bool EnableIncompleteUI { get; init; }
     }
 }
