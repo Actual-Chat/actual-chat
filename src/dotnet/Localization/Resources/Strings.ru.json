@@ -307,7 +307,7 @@
   "ConversationMenu_CopySummaryLink": "Копировать ссылку на резюме",
 
   "ThreadMenu_GoToThread": "Перейти к треду",
-  "ThreadMenu_CopyThread": "Копировать тред",
+  "ThreadMenu_CopyThread": "Копировать название и ссылку",
   "ThreadMenu_Mute": "Отключить уведомления",
   "ThreadMenu_Unmute": "Включить уведомления",
   "ThreadMenu_GoToStartMessage": "Перейти к исходному сообщению",

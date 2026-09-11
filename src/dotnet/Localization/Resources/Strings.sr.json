@@ -307,7 +307,7 @@
   "ConversationMenu_CopySummaryLink": "Копирајте линк сажетка",
 
   "ThreadMenu_GoToThread": "Идите на нит",
-  "ThreadMenu_CopyThread": "Копирајте нит",
+  "ThreadMenu_CopyThread": "Копирајте наслов и линк",
   "ThreadMenu_Mute": "Утишај",
   "ThreadMenu_Unmute": "Укини утишавање",
   "ThreadMenu_GoToStartMessage": "Идите на почетну поруку",

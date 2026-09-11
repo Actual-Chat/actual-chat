@@ -307,7 +307,7 @@
   "ConversationMenu_CopySummaryLink": "Copiar link do resumo",
 
   "ThreadMenu_GoToThread": "Ir para o tópico",
-  "ThreadMenu_CopyThread": "Copiar tópico",
+  "ThreadMenu_CopyThread": "Copiar título e link",
   "ThreadMenu_Mute": "Silenciar",
   "ThreadMenu_Unmute": "Reativar",
   "ThreadMenu_GoToStartMessage": "Ir para a mensagem inicial",

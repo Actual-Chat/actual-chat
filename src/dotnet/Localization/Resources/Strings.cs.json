@@ -307,7 +307,7 @@
   "ConversationMenu_CopySummaryLink": "Kopírovat odkaz na shrnutí",
 
   "ThreadMenu_GoToThread": "Přejít na vlákno",
-  "ThreadMenu_CopyThread": "Kopírovat vlákno",
+  "ThreadMenu_CopyThread": "Kopírovat název a odkaz",
   "ThreadMenu_Mute": "Ztlumit",
   "ThreadMenu_Unmute": "Zrušit ztlumení",
   "ThreadMenu_GoToStartMessage": "Přejít na úvodní zprávu",

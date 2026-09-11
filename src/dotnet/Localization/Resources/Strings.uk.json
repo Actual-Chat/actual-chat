@@ -307,7 +307,7 @@
   "ConversationMenu_CopySummaryLink": "Копіювати посилання на стислий виклад",
 
   "ThreadMenu_GoToThread": "Перейти до треду",
-  "ThreadMenu_CopyThread": "Копіювати тред",
+  "ThreadMenu_CopyThread": "Копіювати назву та посилання",
   "ThreadMenu_Mute": "Вимкнути сповіщення",
   "ThreadMenu_Unmute": "Увімкнути сповіщення",
   "ThreadMenu_GoToStartMessage": "Перейти до вихідного повідомлення",

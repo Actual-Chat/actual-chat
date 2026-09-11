@@ -307,7 +307,7 @@
   "ConversationMenu_CopySummaryLink": "Kopirajte link sažetka",
 
   "ThreadMenu_GoToThread": "Idite na nit",
-  "ThreadMenu_CopyThread": "Kopirajte nit",
+  "ThreadMenu_CopyThread": "Kopirajte naslov i link",
   "ThreadMenu_Mute": "Utišaj",
   "ThreadMenu_Unmute": "Ukini utišavanje",
   "ThreadMenu_GoToStartMessage": "Idite na početnu poruku",
