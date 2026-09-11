@@ -162,9 +162,9 @@ markers:
   chat header and the right panel run to the top edge. In narrow mode the chat header and full-screen
   modals put their back button in that corner, so there the titlebar joins `--safe-area-top` the way
   the notch does on iOS; the left and right panels keep the Telegram layout. Elements marked
-  `data-window-drag` (the
-  navbar column, the layout header) move the window on a press that moves and follow the system
-  double-click setting; plain clicks on them keep working. In full screen the inset drops to 0 and
+  `data-window-drag` (the navbar column, the layout header, the left and right panel headers) move
+  the window on a press that moves and follow the system double-click setting; plain clicks on them
+  keep working. In full screen the inset drops to 0 and
   the titlebar slides over the page when the pointer reaches the top.
 - **Sign-in** uses the Windows-style flow: the default browser plus a `voxt-dev://` callback
   registered in `Info.plist` (a prod-flavour build needs `voxt` there). `ASWebAuthenticationSession` was tried and dropped, its
