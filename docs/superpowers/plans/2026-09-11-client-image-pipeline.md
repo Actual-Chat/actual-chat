@@ -3851,7 +3851,7 @@ Repeat Step 2 with a HEIC photo: Safari decodes it, so 4K produces a JPEG.
 
 - Android device: pick a JPEG and a Samsung/Xiaomi HEIC from the gallery; both upload as JPEG ≤3840 px with the correct orientation. Kill the app mid-upload, reopen: the upload resumes from the processed file.
 - iPhone (`ios-run` skill): pick a HEIC and a Live Photo; both upload as JPEG. `Original with EXIF` uploads the HEIC unchanged.
-- Windows app: pick a large JPEG with the file picker; confirm processing works (Task 1's WebView2 registration) and that the processed file under `%LOCALAPPDATA%\...\cache\processed-images` is deleted after the message is sent or the attachment is removed.
+- Windows app: first confirm the app starts and renders at all (Task 1's WebView2 custom-scheme registration changes environment creation; a rejected registration is a startup failure, not a fallback — if so, drop the registration and switch Windows to a same-origin path or `DotNetStreamReference`). Then pick a large JPEG with the file picker; confirm processing works (Task 1's WebView2 registration) and that the processed file under `%LOCALAPPDATA%\...\cache\processed-images` is deleted after the message is sent or the attachment is removed.
 
 - [ ] **Step 5: Docs**
 
