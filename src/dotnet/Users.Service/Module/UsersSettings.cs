@@ -40,6 +40,14 @@ public sealed class UsersSettings
     // reports Sec-Fetch-Site: none. Turn this off if some platform turns out not to.
     public bool IsMauiAuthFetchSiteCheckEnabled { get; set; } = true;
     public AccountStatus NewAccountStatus { get; set; } = AccountStatus.Active;
+    // Null = on everywhere except production; set explicitly to override
+    public bool? IsPasskeyAuthEnabled { get; set; }
+    // Empty = the public host of HostInfo.BaseUrl
+    public string PasskeyRpId { get; set; } = "";
+    // ';'-separated; empty = the origin of HostInfo.BaseUrl. Android app origins look like
+    // android:apk-key-hash:<base64url(sha256(signing cert))>
+    public string PasskeyOrigins { get; set; } = "";
+    public TimeSpan PasskeyChallengeLifetime { get; set; } = TimeSpan.FromMinutes(2);
     public TimeSpan TotpCodeLifetime { get; set; } = TimeSpan.FromMinutes(15);
     public int TotpMaxAttemptCount { get; set; } = 5;
     public TimeSpan TotpUIThrottling => TotpCodeLifetime.Clamp(TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1));

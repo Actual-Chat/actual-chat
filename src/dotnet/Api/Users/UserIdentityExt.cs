@@ -122,6 +122,9 @@ public static class UserIdentityExt
     public static UserIdentity NewEmailIdentity(Email email)
         => new(AuthSchema.Email, email.Value);
 
+    public static UserIdentity NewPasskeyIdentity(string credentialId)
+        => new(AuthSchema.Passkey, credentialId);
+
     public static UserIdentity NewPhoneIdentity(Phone phone)
         => new(AuthSchema.Phone, phone.Value);
 

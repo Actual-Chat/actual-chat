@@ -144,6 +144,7 @@
     <PackageVersion Include="DotNetEnv" Version="3.2.0" />
     <PackageVersion Include="EFCore.CheckConstraints" Version="$(EntityFrameworkCoreCheckConstraintsVersion)" />
     <PackageVersion Include="FFMpegCore" Version="5.4.0" />
+    <PackageVersion Include="Fido2" Version="4.0.0" />
     <PackageVersion Include="FirebaseAdmin" Version="3.5.0" />
     <PackageVersion Include="Google.Api.Gax" Version="4.14.0" />
     <PackageVersion Include="Google.Api.Gax.Rest" Version="4.14.0" />
@@ -224,6 +225,7 @@
     <PackageVersion Include="StackExchange.Redis" Version="$(RedisVersion)" />
     <PackageVersion Include="Svg.Skia" Version="5.0.0" />
     <PackageVersion Include="System.Collections.Immutable" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="System.Formats.Cbor" Version="10.0.0" />
     <PackageVersion Include="System.Net.WebSockets" Version="4.3.0" />
     <PackageVersion Include="System.Net.Http.Json" Version="$(SystemNetHttpJsonVersion)" />
     <PackageVersion Include="System.Threading.Channels" Version="$(AspNetCoreVersion)" />
