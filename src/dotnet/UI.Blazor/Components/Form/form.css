@@ -182,6 +182,24 @@ form .form-section {
     @apply text-03;
 }
 
+/* Inline validation error inside the field box (replaces the label while invalid) */
+.form-section-content.label-inside-input.has-inline-error .form-section-label {
+    @apply hidden;
+}
+.form-section-inline-error {
+    @apply absolute top-1 left-4 right-8 z-10;
+    @apply line-clamp-2;
+    @apply text-right;
+    @apply text-caption-6 font-normal leading-3.5 text-danger;
+    @apply pointer-events-none;
+}
+.form-section-error-icon {
+    @apply absolute top-1/2 right-3;
+    @apply text-lg text-danger;
+    @apply pointer-events-none;
+    @apply -translate-y-1/2;
+}
+
 .form .tile-item {
     @apply min-h-10;
     @apply h-auto;
