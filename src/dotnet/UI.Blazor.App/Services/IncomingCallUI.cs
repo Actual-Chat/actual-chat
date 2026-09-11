@@ -521,9 +521,15 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             .Capture(() => GetIncomingCall(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var isRinging = false;
+        ChatId? ackedChatId = null;
         try {
             while (!cancellationToken.IsCancellationRequested) {
                 var call = cCall.Value;
+                if (call?.ChatId != ackedChatId) {
+                    ackedChatId = call?.ChatId;
+                    if (ackedChatId is { } chatId)
+                        _ = ConfirmRing(chatId);
+                }
                 if (call is not null != isRinging) {
                     isRinging = call is not null;
                     if (isRinging)
@@ -649,6 +655,17 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             .Where(c => c.IsListening || c.IsRecording)
             .Select(c => c.ChatId)
             .ToList();
+
+    private async Task ConfirmRing(ChatId chatId)
+    {
+        // Telemetry only (see RingAck), so it's fire-and-forget: a slow or failed ack never holds up the ring.
+        try {
+            await LiveSessionUI.ConfirmRing(chatId, RingAck.Ringing, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "ConfirmRing #{ChatId} failed", chatId);
+        }
+    }
 
     private async Task PlayWebRingtone(bool mustStart)
     {
