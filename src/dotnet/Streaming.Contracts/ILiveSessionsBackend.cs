@@ -68,6 +68,7 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     // Callee methods
     Task AcceptCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken);
     Task DeclineCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken);
+    Task ConfirmRing(ChatId chatId, AuthorId inviteeAuthorId, RingAck ack, CancellationToken cancellationToken);
 
     // Legacy methods
 

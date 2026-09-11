@@ -71,6 +71,7 @@ public interface ILiveSessions : IComputeService
     // Callee methods
     Task AcceptCall(Session session, ChatId chatId, CancellationToken cancellationToken);
     Task DeclineCall(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task ConfirmRing(Session session, ChatId chatId, RingAck ack, CancellationToken cancellationToken);
     // Obsolete: hanging up now goes through SetParticipation (see ChatAudioUI/LiveSessionUI). Kept as a
     // throwing stub rather than removed, in case a stale client build still calls it.
     Task LeaveCall(Session session, ChatId chatId, CancellationToken cancellationToken);

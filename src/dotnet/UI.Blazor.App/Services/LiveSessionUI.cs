@@ -137,6 +137,9 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     public Task DeclineCall(ChatId chatId, CancellationToken cancellationToken)
         => LiveSessions.DeclineCall(Session, chatId, cancellationToken);
 
+    public Task ConfirmRing(ChatId chatId, RingAck ack, CancellationToken cancellationToken)
+        => LiveSessions.ConfirmRing(Session, chatId, ack, cancellationToken);
+
     public Task CancelCall(ChatId chatId, CancellationToken cancellationToken)
     {
         StopCallWatch(chatId);

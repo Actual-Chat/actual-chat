@@ -1960,6 +1960,60 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         status.Should().Be(CallInviteStatus.Active);
     }
 
+    [Fact]
+    public async Task ConfirmRingRecordsAckOnTheInvite()
+    {
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // act
+        await backend.ConfirmRing(chatId, aliceAuthor.Id, RingAck.Ringing, default);
+
+        // assert
+        var live = await backend.Get(chatId, default);
+        var invite = live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id);
+        invite.Ack.Should().Be(RingAck.Ringing);
+        invite.AckAt.Should().NotBeNull();
+
+        // assert - does not change the invite's own business status or the call's aggregate status
+        invite.Status.Should().Be(CallInviteStatus.Ringing);
+        (await backend.GetCallState(chatId, default))!.Status.Should().Be(CallStatus.Dialing);
+    }
+
+    [Fact]
+    public async Task ConfirmRingIsANoOpOnceAlreadyResponded()
+    {
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // act - a late ack arrives after Alice already accepted
+        await backend.ConfirmRing(chatId, aliceAuthor.Id, RingAck.Busy, default);
+
+        // assert - ignored, invite unchanged
+        var live = await backend.Get(chatId, default);
+        var invite = live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id);
+        invite.Ack.Should().BeNull();
+    }
+
     private static async Task WaitForParticipantPresence(
         ILiveSessionsBackend backend, ChatId chatId, AuthorId authorId, bool isPresent)
     {

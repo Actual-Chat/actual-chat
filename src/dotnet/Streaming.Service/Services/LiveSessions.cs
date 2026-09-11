@@ -238,6 +238,12 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
             await Backend.DeclineCall(chatId, authorId, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task ConfirmRing(Session session, ChatId chatId, RingAck ack, CancellationToken cancellationToken)
+    {
+        if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
+            await Backend.ConfirmRing(chatId, authorId, ack, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task CancelCall(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)

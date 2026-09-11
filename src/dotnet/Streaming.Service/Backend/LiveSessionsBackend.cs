@@ -706,6 +706,23 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             await CloseCall(chatId).ConfigureAwait(false);
     }
 
+    public virtual async Task ConfirmRing(
+        ChatId chatId, AuthorId inviteeAuthorId, RingAck ack, CancellationToken cancellationToken)
+    {
+        using (Computed.BeginIsolation())
+        using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
+            var invite = await SafeGetInvite(chatId, inviteeAuthorId).ConfigureAwait(false);
+            if (!EnsureValidTransition(chatId, inviteeAuthorId, nameof(ConfirmRing),
+                    invite?.Status ?? CallInviteStatus.New, invite is { Status: CallInviteStatus.Ringing }))
+                return;
+
+            await _invites.Set(chatId.Value, inviteeAuthorId.Value,
+                    invite! with { Ack = ack, AckAt = Clocks.SystemClock.Now })
+                .ConfigureAwait(false);
+            InvalidateGet(chatId);
+        }
+    }
+
     public virtual async Task CancelCall(ChatId chatId, AuthorId callerAuthorId, CancellationToken cancellationToken)
     {
         // The caller hangs up: stop every still-ringing invitee, drop the caller, then close if empty.
