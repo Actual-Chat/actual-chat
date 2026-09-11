@@ -22,13 +22,16 @@ export class ImageProcessor {
         // The worker runs jobs one at a time, so a job's deadline includes the jobs queued ahead of it
         const timeout: RpcTimeout = { type: 'rpc-timeout', timeoutMs: PROCESS_TIMEOUT_MS * (this._pendingCount + 1) };
         this._pendingCount++;
+        const client = this.getClient();
         try {
-            return await this.getClient().process(blob, request, timeout);
+            return await client.process(blob, request, timeout);
         }
         catch (e) {
             // A worker killed for memory (e.g. decoding a huge photo) never raises `error` in
             // Chromium/WebKit - the pending call just times out, so that's the crash signal here.
-            if (e instanceof TimeoutError)
+            // Only reset for the client this call was made on: a stale timeout from a job queued
+            // on an already-replaced worker must not tear down the healthy replacement.
+            if (e instanceof TimeoutError && this._client === client)
                 this.reset();
 
             throw e;
