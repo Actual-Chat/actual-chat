@@ -563,10 +563,14 @@ the difference, but only if the gap is worth a render (half a viewport) or a ske
 visible. At a known edge the zone is clamped one way only: there is nothing further out to ask for,
 but the zone moving inwards must still be able to drop what it left behind, or a long read through
 history ends up holding thousands of items. The edge item itself is held longer than the zone —
-`EdgeReachScreens` (12) screens from the viewport — because dropping it is what makes the edge unknown:
-the limit on that side then moves out by `MaxOverscrollScreens`, and a fling back runs past the content
-into blank until the edge reloads, then snaps to it (#4427). Twelve because one Mac trackpad flick was
-measured at 7.8 screens, and six — the first setting — let exactly that flick drop the edge again.
+`MacOSEdgeReachScreens` (12) screens from the viewport on macOS, `EdgeReachScreens` (3) elsewhere, and
+never less than `expandMultiplier` — because dropping it is what makes the edge unknown: the limit on
+that side then moves out by `MaxOverscrollScreens`, and a fling back runs past the content into blank
+until the edge reloads, then snaps to it (#4427). Twelve because one Mac trackpad flick was measured at
+7.8 screens, and six — the first setting — let exactly that flick drop the edge again. Other platforms
+stay at 3 because twelve is not free: in Chrome it doubled what the list holds near the end (82 → 171
+items, 1,575 → 3,552 DOM nodes on desktop), and a message arriving in the chat drops the held edge
+anyway, since the rebuild it triggers re-centres the window on the visible range.
 Move counts are rounded to 5 so a drifting viewport does
 not produce a new query every frame. A query identical to the last one is dropped, except while a
 skeleton is on screen, where it is retried once a second. A request that never produces a render is
