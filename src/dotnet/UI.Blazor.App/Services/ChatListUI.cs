@@ -29,9 +29,9 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     private IContacts Contacts => Hub.Contacts;
     private IAuthors Authors => Hub.Authors;
     private IPlaces Places => Hub.Places;
+    private IChatThreads ChatThreads => Hub.ChatThreads;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatUI ChatUI => Hub.ChatUI;
-    private IChatThreads ChatThreads => Hub.ChatThreads;
     private SearchUI SearchUI => Hub.SearchUI;
     private NotificationsPanelUI NotificationsPanelUI => Hub.NotificationsPanelUI;
     private NotificationsUI NotificationsUI => Hub.NotificationsUI;
