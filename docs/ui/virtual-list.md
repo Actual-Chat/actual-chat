@@ -1131,6 +1131,19 @@ The claim is therefore made blind and given back later: once a decisive delta sh
 the edge behind — past `WheelOwnScreens` (2) screens from either limit — one event goes uncancelled and
 the compositor scrolls the rest of it, which it does better than the main thread can.
 
+**Desktop WebKit is the exception: every precise gesture is driven whole**, from its first event to its
+last, whatever its distance from a limit (`mustOwnWholeWheelGesture`, `?vlwheelall=0|1`). A gesture
+given back there cannot be stopped at a limit later: its remaining events arrive uncancelable, Safari
+scrolls them off the main thread, and nothing ends the inertia — `killMomentum` is off on WebKit
+(§3.7), and a rubber band over it was measured absorbing 16073px of native travel past the end, a
+disagreement with the compositor on every frame. The case that reaches a limit that way is ordinary on
+a trackpad: a flick up and a flick back are one gesture (no `MotionGapMs` gap), so the flick back
+arrives after the hand-back and runs into the end uncancelable. Snapped per event, that was a step out
+and home every frame for the length of the inertial tail, measured at 438px (#4427). The hand-back
+itself also showed once as a 216px one-frame step, the compositor resuming from where it last was.
+Driving the whole gesture costs a `scrollTop` write per wheel event on the main thread, at ~16ms frames
+in the same measurements.
+
 Notched wheels are deliberately never driven. They don't shake at an edge, and a click at a time is an
 animation the browser owns; `isPreciseWheel` separates them by `wheelDeltaY` being a whole multiple of
 `WheelClickDelta` (120). A finger's own momentum reaches some engines as wheel events too, so a gesture
