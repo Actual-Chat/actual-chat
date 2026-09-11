@@ -63,6 +63,9 @@ body.no-select {
     --safe-area-bottom: env(safe-area-inset-bottom, 0px);
     --safe-area-left: env(safe-area-inset-left, 0px);
     --safe-area-right: env(safe-area-inset-right, 0px);
+    /* Height of the native titlebar the page extends under (the AppKit host sets it); only the
+       navbar column reserves it, for the traffic lights - everything else runs to the top edge. */
+    --titlebar-inset: 0px;
 }
 /* Mode-specific safe area insets: resolve to 0px when the current mode doesn't match */
 body.wide {
