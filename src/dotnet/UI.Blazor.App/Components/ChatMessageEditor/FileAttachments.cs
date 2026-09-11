@@ -226,7 +226,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         };
         SetSourcePreview(attachment);
         list.Add(attachment);
-        _ = StartImageProcessing(list, attachment.Id, list.ImageQuality, null);
+        _ = StartImageProcessing(list, attachment.Id, list.ImageQuality, null, isReprocess: false);
     }
 
     private async Task Reprocess(AttachmentList list, AttachmentId id, ImageQualityPreset preset)
@@ -238,17 +238,18 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             previous.CancellationTokenSource.CancelAndDisposeSilently();
             previousTask = previous.Task;
         }
-        await StartImageProcessing(list, id, preset, previousTask);
+        await StartImageProcessing(list, id, preset, previousTask, isReprocess: true);
     }
 
     private Task StartImageProcessing(
         AttachmentList list,
         AttachmentId id,
         ImageQualityPreset preset,
-        Task? previousTask)
+        Task? previousTask,
+        bool isReprocess)
     {
         var cancellationTokenSource = new CancellationTokenSource();
-        var task = ProcessImageAndUpload(list, id, preset, previousTask, cancellationTokenSource.Token);
+        var task = ProcessImageAndUpload(list, id, preset, previousTask, isReprocess, cancellationTokenSource.Token);
         var processing = new ImageProcessing(cancellationTokenSource, task);
         _imageProcessings[id] = processing;
         _ = task.ContinueWith(
@@ -266,6 +267,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         AttachmentId id,
         ImageQualityPreset preset,
         Task? previousTask,
+        bool isReprocess,
         CancellationToken cancellationToken)
     {
         try {
@@ -274,7 +276,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             if (list.Items.FirstOrDefault(a => a.Id == id) is not { Source: { } source } pending)
                 return;
 
-            if (previousTask is not null)
+            if (isReprocess)
                 ReleaseForReprocessing(list, pending, source);
 
             var result = await ImageAttachmentProcessor

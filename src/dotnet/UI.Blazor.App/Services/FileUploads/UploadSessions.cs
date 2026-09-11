@@ -78,8 +78,11 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
     public void ReleaseReference(string sessionId, bool cancel = true, bool mustKeepFile = false)
     {
-        if (!_sessions.TryGetValue(sessionId, out var sessionRef))
-            throw new InvalidOperationException($"Session {sessionId} not found");
+        // A cleanup racing this call may have released and deleted the session already
+        if (!_sessions.TryGetValue(sessionId, out var sessionRef)) {
+            Log.LogDebug("Session '{SessionId}' is already released", sessionId);
+            return;
+        }
 
         var newCount = Interlocked.Decrement(ref sessionRef.ReferenceCount);
         if (newCount != 0)
