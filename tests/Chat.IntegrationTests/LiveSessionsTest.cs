@@ -1,6 +1,8 @@
 using ActualChat.Live;
 using ActualChat.Streaming;
+using ActualChat.Streaming.Module;
 using ActualChat.Testing.Host;
+using Microsoft.JSInterop;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -96,6 +98,40 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // assert — they are back
         await ComputedTest.When(async ct =>
             (await backend.ListParticipants(chatId, ct)).Contains(authorId).Should().BeTrue());
+    }
+
+    [Fact]
+    public async Task ParticipationShouldBeReleasedWhenThePeerDisconnects()
+    {
+        // arrange - a real RPC client, so the server has a peer to watch
+        await using var host = await NewAppHost("live-peer-gone", o => o with {
+            ConfigureHost = (_, cfg) =>
+                cfg.AddInMemory<StreamingSettings>((x => x.ParticipationDisconnectGrace, "00:00:01")),
+        });
+        var tester = host.NewWebClientTester(Out,
+            services => services.AddSingleton(Mock.Of<IJSRuntime>(MockBehavior.Strict)));
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = host.Services.GetRequiredService<ILiveSessionsBackend>();
+        var liveSessions = tester.ClientServices.GetRequiredService<ILiveSessions>();
+
+        // act - the client claims a listening participation over RPC
+        await liveSessions.SetParticipation(session, chatId, ParticipationKind.AudioListen, true, default);
+
+        // assert
+        await ComputedTest.When(async ct =>
+            (await backend.ListParticipants(chatId, ct)).Contains(author!.Id).Should().BeTrue());
+
+        // act - the client vanishes without a leave (a killed app sends none)
+        await tester.DisposeAsync();
+
+        // assert - released after the disconnect grace, not after the 90s staleness
+        await ComputedTest.When(async ct =>
+            (await backend.ListParticipants(chatId, ct)).Contains(author!.Id).Should().BeFalse(
+                "a gone peer must not keep its author present, or its PTT wakes stay suppressed"),
+            TimeSpan.FromSeconds(20));
     }
 
     [Fact]

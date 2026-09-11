@@ -194,13 +194,19 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             .ConfigureAwait(false);
         var current = new Dictionary<ChatId, ParticipationKind>();
         var lastHeartbeatAt = Clocks.CpuClock.Now;
+        var isConnected = Hub.ConnectivityUI.IsConnected;
+        var wasConnected = isConnected.Value;
         try {
             while (!cancellationToken.IsCancellationRequested) {
+                // A reconnect re-sends everything: the server drops a peer's participations
+                // once it stays disconnected past its grace, and the next heartbeat is up to 45s away.
+                var isReconnected = isConnected.Value && !wasConnected;
+                wasConnected = isConnected.Value;
                 // ValueOrDefault is null only when the computed errored; skipping the pass keeps
                 // the reported participations until a recompute succeeds, where .Value would throw.
                 if (cParticipations.ValueOrDefault is { } next) {
                     var now = Clocks.CpuClock.Now;
-                    var isHeartbeat = now - lastHeartbeatAt >= HeartbeatInterval;
+                    var isHeartbeat = isReconnected || now - lastHeartbeatAt >= HeartbeatInterval;
                     if (isHeartbeat)
                         lastHeartbeatAt = now;
 
@@ -218,7 +224,8 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
                 using var cts = cancellationToken.CreateLinkedTokenSource();
                 var whenInvalidated = cParticipations.WhenInvalidated(cts.Token);
                 var whenHeartbeat = Clocks.CpuClock.Delay(HeartbeatInterval, cts.Token);
-                await Task.WhenAny(whenInvalidated, whenHeartbeat).ConfigureAwait(false);
+                var whenConnectivityChanged = isConnected.Computed.WhenInvalidated(cts.Token);
+                await Task.WhenAny(whenInvalidated, whenHeartbeat, whenConnectivityChanged).ConfigureAwait(false);
                 cts.CancelAndDisposeSilently();
                 cParticipations = await cParticipations.Update(cancellationToken).ConfigureAwait(false);
             }
