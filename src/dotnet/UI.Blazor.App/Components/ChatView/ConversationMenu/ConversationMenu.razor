@@ -16,7 +16,7 @@
         Class="important-item"
         Click="@(ToggleShowMessage)">
     </MenuEntry>
-    @if (m.IsOwner) {
+    @if (m.CanReSummarize) {
         <MenuEntry
             Icon="icon-resummarize"
             Text="@L.ConversationMenu_ReSummarize"
@@ -28,37 +28,6 @@
         Text="@L.ConversationMenu_CopySummary"
         Click="@OnCopyToClipboardRequested">
     </MenuEntry>
-    @if (m.EnableIncompleteUI) {
-        <MenuEntry
-            Icon="icon-reply-2"
-            FocusOnEditor="true"
-            Text="@L.MessageMenu_Reply"
-            Click="@Reply">
-        </MenuEntry>
-        <CopyTrigger Tooltip="" CopyText="" Class="ac-menu-item !p-0">
-            <MenuEntry
-                Icon="icon-copy"
-                Text="@L.ConversationMenu_CopySummaryLink">
-            </MenuEntry>
-        </CopyTrigger>
-        <MenuEntry
-            Icon="icon-forward"
-            Text="@L.MessageMenu_Forward"
-            Click="@Forward">
-        </MenuEntry>
-        <MenuEntry
-            Class="warning-item"
-            Icon="icon-trash03"
-            Text="@L.Common_Delete"
-            Click="@Delete">
-        </MenuEntry>
-        <MenuEntrySeparator/>
-        <MenuEntry
-            Icon="icon-select"
-            Text="@L.MessageMenu_Select"
-            Click="@Select">
-        </MenuEntry>
-    }
 </div>
 
 @code {
@@ -92,15 +61,16 @@
         if (conversation == null)
             return Model.None;
 
-        var chatId = conversationId.ChatId;
-        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var isOwner = chat != null && (chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer);
-
-        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        // Production never shows Re-summarize, so the owner check stays conditional - asking for the
+        // chat there would add a dependency that recomputes this menu for nothing.
+        var canReSummarize = false;
+        if (!HostInfo.IsProductionInstance) {
+            var chat = await Chats.Get(Session, conversationId.ChatId, cancellationToken).ConfigureAwait(false);
+            canReSummarize = chat != null && (chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer);
+        }
         return new() {
             Conversation = conversation,
-            IsOwner = isOwner,
-            EnableIncompleteUI = enableIncompleteUI,
+            CanReSummarize = canReSummarize,
         };
     }
 
@@ -113,18 +83,11 @@
     private async Task OnCopyToClipboardRequested() {
         var cancellationToken = CancellationToken.None;
         var m = State.Value;
-        var translatedConversation = await ConversationUI.GetTranslatedConversation(m.Conversation, cancellationToken);
+        var translatedConversation = await ConversationUI
+            .GetTranslatedConversation(m.Conversation, cancellationToken);
         var text = await ConversationUI.GetClipboardText(translatedConversation, cancellationToken);
         await ClipboardUI.WriteText(text).ConfigureAwait(false);
     }
-
-    private void Reply() {}
-
-    private void Forward() {}
-
-    private void Delete() {}
-
-    private void Select() {}
 
     // Nested types
 
@@ -132,7 +95,6 @@
         public static readonly Model None = new();
 
         public Conversation Conversation { get; init; } = null!;
-        public bool IsOwner { get; init; }
-        public bool EnableIncompleteUI { get; init; }
+        public bool CanReSummarize { get; init; }
     }
 }
