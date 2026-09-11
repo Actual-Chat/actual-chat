@@ -82,7 +82,11 @@ function filterJpegSegment(marker: number, segment: Uint8Array, payload: Uint8Ar
         return segment;
     if (startsWith(payload, 0, EXIF_HEADER)) {
         const orientation = readExifOrientation(payload.subarray(EXIF_HEADER.length));
-        return orientation > 1 ? createOrientationExifSegment(orientation) : null;
+        if (orientation <= 1)
+            return null;
+
+        const minimal = createOrientationExifSegment(orientation);
+        return segment.length === minimal.length && startsWith(segment, 0, minimal) ? segment : minimal;
     }
 
     const isHdrXmp = readAscii(payload, 0, XMP_HEADER.length) === XMP_HEADER && indexOfAscii(payload, 'hdrgm') >= 0;

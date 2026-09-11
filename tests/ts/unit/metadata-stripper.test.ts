@@ -52,6 +52,15 @@ describe('stripImageMetadata: JPEG', () => {
         expect(Array.from(result.subarray(38))).toEqual([...DQT, ...SCAN]);
     });
 
+    it('should return the same instance when re-stripping an already-minimal Orientation segment', () => {
+        const input = new Uint8Array([...SOI, ...jpegSegment(0xE1, exifPayload(6)), ...DQT, ...SCAN]);
+        const stripped = stripImageMetadata(input, 'jpeg');
+
+        const result = stripImageMetadata(stripped, 'jpeg');
+
+        expect(result).toBe(stripped);
+    });
+
     it('should keep Ultra HDR XMP', () => {
         const input = new Uint8Array([...SOI, ...XMP_HDR, ...COM, ...DQT, ...SCAN]);
 
