@@ -1,0 +1,8 @@
+Android Auto gets a real audio setup, and the chat view got a deep polish pass.
+• Android Auto: Car / Phone / Auto audio choice
+• Jump straight to unread reactions
+• Live conversation blocks fold and reveal more predictably
+• Mac: pick photos from the Photos app
+• Flat, themed inputs across all dialogs
+• Group notification banners headlined with the chat
+• Smoother scrolling and dozens of small fixes
