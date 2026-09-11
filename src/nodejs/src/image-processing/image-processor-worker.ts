@@ -151,6 +151,7 @@ async function encodeJpeg(canvas: OffscreenCanvas, image: ImageData): Promise<Bl
 function getEncoder(): Promise<JpegliEncoder | null> {
     whenEncoderLoaded ??= JpegliEncoder.load(jpegliBaseUrl).catch((e: unknown) => {
         errorLog?.log('getEncoder: jpegli failed to load, falling back to canvas:', e);
+        whenEncoderLoaded = null;
         return null;
     });
     return whenEncoderLoaded;

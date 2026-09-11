@@ -2,6 +2,7 @@ import { rpcClient, RpcTimeout } from 'rpc';
 import { Disposable } from 'disposable';
 import { getLogs } from 'logging';
 import { Versioning } from 'versioning';
+import { TimeoutError } from 'actuallab-core';
 import type { ImageProcessorWorker, ImageProcessRequest, ImageProcessResult } from './image-processing-contracts';
 
 const { errorLog } = getLogs('ImageProcessor');
@@ -23,6 +24,14 @@ export class ImageProcessor {
         this._pendingCount++;
         try {
             return await this.getClient().process(blob, request, timeout);
+        }
+        catch (e) {
+            // A worker killed for memory (e.g. decoding a huge photo) never raises `error` in
+            // Chromium/WebKit - the pending call just times out, so that's the crash signal here.
+            if (e instanceof TimeoutError)
+                this.reset();
+
+            throw e;
         }
         finally {
             this._pendingCount--;
