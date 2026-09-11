@@ -21,8 +21,8 @@ export class ImageProcessor {
         const blob = typeof source === 'string' ? await fetchBlob(source) : source;
         // The worker runs jobs one at a time, so a job's deadline includes the jobs queued ahead of it
         const timeout: RpcTimeout = { type: 'rpc-timeout', timeoutMs: PROCESS_TIMEOUT_MS * (this._pendingCount + 1) };
-        this._pendingCount++;
         const client = this.getClient();
+        this._pendingCount++;
         try {
             return await client.process(blob, request, timeout);
         }

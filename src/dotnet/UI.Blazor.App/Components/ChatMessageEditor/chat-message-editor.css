@@ -376,8 +376,7 @@ body.narrow .attachment-list-wrapper {
     @apply border-none rounded-t-2xl;
     @apply bg-post-panel;
 }
-.chat-message-editor:not(.narrow-panel) .attachment-list-wrapper .close-keyboard-btn,
-.chat-message-editor:not(.narrow-panel) .attachment-list-wrapper .remove-all-btn {
+.chat-message-editor:not(.narrow-panel) .attachment-list-wrapper .close-keyboard-btn {
     @apply hidden;
 }
 .attachment-list-wrapper .close-keyboard-btn {

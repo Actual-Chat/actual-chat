@@ -14,16 +14,12 @@ public static class AndroidHeifDecoder
 {
     private static readonly FilePath DecodedDirectory = MauiProcessedImageStore.RootDirectory | "decoded";
 
-    public static bool IsHeif(string uri)
-    {
-        var mimeType = Platform.AppContext.ContentResolver!.GetType(Uri.Parse(uri)!);
-        return mimeType is "image/heic" or "image/heif"
-            || uri.EndsWith(".heic", StringComparison.OrdinalIgnoreCase)
-            || uri.EndsWith(".heif", StringComparison.OrdinalIgnoreCase);
-    }
+    public static Task<string?> TryDecodeToJpeg(string uri, int maxSize, CancellationToken cancellationToken)
+        // Returns null when the URI isn't HEIF; the check is a binder call, so it runs off the dispatcher too
+        => Task.Run<string?>(() => {
+            if (!IsHeif(uri))
+                return null;
 
-    public static Task<string> DecodeToJpeg(string uri, int maxSize, CancellationToken cancellationToken)
-        => Task.Run(() => {
             var source = ImageDecoder.CreateSource(Platform.AppContext.ContentResolver!, Uri.Parse(uri)!);
             using var bitmap = ImageDecoder.DecodeBitmap(source, new TargetSizeListener(maxSize));
             cancellationToken.ThrowIfCancellationRequested();
@@ -34,6 +30,14 @@ public static class AndroidHeifDecoder
                 bitmap.Compress(Bitmap.CompressFormat.Jpeg!, 100, output);
             return Uri.FromFile(new Java.IO.File(filePath.Value))!.ToString()!;
         }, cancellationToken);
+
+    // Private methods
+
+    private static bool IsHeif(string uri)
+        // ContentResolver.GetType returns null for "file://" URIs, which is what the extensions cover
+        => Platform.AppContext.ContentResolver!.GetType(Uri.Parse(uri)!) is "image/heic" or "image/heif"
+            || uri.EndsWith(".heic", StringComparison.OrdinalIgnoreCase)
+            || uri.EndsWith(".heif", StringComparison.OrdinalIgnoreCase);
 
     // Nested types
 

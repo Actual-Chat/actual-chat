@@ -241,6 +241,8 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 
 ### Media Processing
 - `IUploadProcessor` — processes uploaded files
+- `AttachmentImageUploadProcessor` — stores a client-prepared attachment image as-is: reads its size and strips metadata
+- `ImageMetadataStripper` — lossless EXIF/XMP/IPTC/text metadata removal from JPEG, PNG and WebP
 - `IMediaProcessor` — processes media content
 - `IContentSaver` — saves content to blob storage
 
@@ -331,6 +333,10 @@ Resolving *which* language a given user reads is `UserLocalizers`
 ### Message Sending
 - `SendingMessages` — manages message sending with retry logic
 - `AttachmentsController` — attachment management
+- `ImageAttachmentProcessor` — runs an attachment image through the JS image processor (resize, jpegli, metadata strip)
+- `ImageQualityPreset` — the quality presets the attachment editor offers (4K, 1080p, Original, Original with EXIF)
+- `ImageProcessRequest` / `ProcessedImage` — what the JS image processor is asked for and what it returns
+- `IProcessedImageStore` — stores a processed attachment image as a local file; implemented by the MAUI host
 
 ### Components
 - `ChatView` — main chat view component
@@ -422,6 +428,8 @@ Standalone iOS share-extension app:
 - `MauiShare` — platform share dialogs
 - `MauiNotifications` — push notification registration
 - `MauiLoadingUI` — loading milestone tracking
+- `MauiProcessedImageStore` — saves a processed attachment image into the cache directory
+- `AndroidHeifDecoder` — decodes HEIC/HEIF photos natively, since Android WebView can't
 
 ### Permissions
 - `MauiMicrophonePermissionHandler` — microphone permission

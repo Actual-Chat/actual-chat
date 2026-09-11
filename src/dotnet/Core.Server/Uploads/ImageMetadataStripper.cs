@@ -51,7 +51,8 @@ public static class ImageMetadataStripper
             }
 
             var end = offset + 2 + BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(offset + 2));
-            if (end > data.Length)
+            // A length field below 2 makes the segment shorter than its own header
+            if (end > data.Length || end - offset < 4)
                 return data;
 
             var segment = data.AsSpan(offset, end - offset);

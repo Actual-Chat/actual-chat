@@ -10,7 +10,8 @@ public sealed class MauiProcessedImageStore(IServiceProvider services) : IProces
     public async Task<MauiFileProvider> Save(Stream content, FileMetadata metadata, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(RootDirectory);
-        var filePath = RootDirectory | ((FilePath)metadata.FileName).ToUnique();
+        // FileName, not the path: an Android DISPLAY_NAME may carry directory parts
+        var filePath = RootDirectory | ((FilePath)metadata.FileName).FileName.ToUnique();
         try {
             var file = File.Create(filePath);
             await using (file.ConfigureAwait(false))

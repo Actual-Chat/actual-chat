@@ -33,8 +33,9 @@
     }
 
     private async Task SelectPreset(ImageQualityPreset preset) {
-        await UIEventHub.Publish(new ImageQualityPresetSelectedEvent(_selectorId, preset));
+        // Publish awaits its handlers, so the menu is hidden first
         await Host.Hide();
+        await UIEventHub.Publish(new ImageQualityPresetSelectedEvent(_selectorId, preset));
     }
 
     public static class MenuModels

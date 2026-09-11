@@ -183,8 +183,21 @@ public class WebFileProviderInternal : IWebFileProviderInternal
         await TaskExt.NeverEnding(_cancellationToken).ConfigureAwait(false);
     }
 
-    public ValueTask<ProcessedWebImage> ProcessImage(ImageProcessRequest request, CancellationToken cancellationToken)
-        => _jsRef.InvokeAsync<ProcessedWebImage>("processImage", cancellationToken, request);
+    public async ValueTask<ProcessedWebImage> ProcessImage(
+        ImageProcessRequest request,
+        CancellationToken cancellationToken)
+    {
+        // The worker has no per-job cancellation, so cancellationToken isn't passed to JS: the job
+        // completes anyway, and abandoning its result would leak the processed blob for good
+        var image = await _jsRef
+            .InvokeAsync<ProcessedWebImage>("processImage", CancellationToken.None, request)
+            .ConfigureAwait(false);
+        if (!cancellationToken.IsCancellationRequested)
+            return image;
+
+        await image.FileProvider.DisposeSilentlyAsync().ConfigureAwait(false);
+        throw new OperationCanceledException(cancellationToken);
+    }
 
     public async ValueTask DisposeAsync()
     {

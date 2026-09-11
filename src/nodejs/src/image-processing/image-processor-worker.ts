@@ -3,7 +3,7 @@ import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { chooseEncoding } from './image-encoding-policy';
 import { getImageMimeType, isAnimatedImage, readImageDimensions, sniffImageFormat } from './image-format';
-import { fitWithin } from './image-geometry';
+import { fitWithin, type ImageSize } from './image-geometry';
 import { JpegliEncoder } from './jpegli-encoder';
 import { stripImageMetadata } from './metadata-stripper';
 import type {
@@ -98,9 +98,11 @@ async function reencode(
     context.imageSmoothingQuality = 'high';
     context.drawImage(bitmap, 0, 0, size.width, size.height);
     const image = context.getImageData(0, 0, size.width, size.height);
-    if (hasTransparentPixels(image.data)) {
+    const isUnscaled = size.width === bitmap.width && size.height === bitmap.height;
+    if (canHaveAlpha(format) && hasTransparentPixels(image.data)) {
         const png = await canvas.convertToBlob({ type: 'image/png' });
-        return {
+        const kept = isUnscaled && format === 'png' ? tryKeepSource(source, bytes, format, spec, size, png.size) : null;
+        return kept ?? {
             kind: spec.kind,
             blob: png,
             mimeType: 'image/png',
@@ -111,16 +113,8 @@ async function reencode(
     }
 
     const jpeg = await encodeJpeg(canvas, image);
-    const isUnscaledJpeg = format === 'jpeg' && size.width === bitmap.width && size.height === bitmap.height;
-    if (isUnscaledJpeg) {
-        const stripped = stripImageMetadata(bytes, format);
-        if (stripped.length <= jpeg.size) {
-            const isSource = stripped === bytes;
-            const blob = isSource ? source : new Blob([stripped as BlobPart], { type: 'image/jpeg' });
-            return { kind: spec.kind, blob, mimeType: 'image/jpeg', width: size.width, height: size.height, isSource };
-        }
-    }
-    return {
+    const kept = isUnscaled && format === 'jpeg' ? tryKeepSource(source, bytes, format, spec, size, jpeg.size) : null;
+    return kept ?? {
         kind: spec.kind,
         blob: jpeg,
         mimeType: 'image/jpeg',
@@ -128,6 +122,25 @@ async function reencode(
         height: size.height,
         isSource: false,
     };
+}
+
+/** The stripped source of an unscaled image, when re-encoding it didn't pay off; null otherwise. */
+function tryKeepSource(
+    source: Blob,
+    bytes: Uint8Array,
+    format: ImageFormat,
+    spec: ImageOutputSpec,
+    size: ImageSize,
+    encodedSize: number,
+): ImageOutput | null {
+    const stripped = stripImageMetadata(bytes, format);
+    if (stripped.length > encodedSize)
+        return null;
+
+    const mimeType = getImageMimeType(format);
+    const isSource = stripped === bytes;
+    const blob = isSource ? source : new Blob([stripped as BlobPart], { type: mimeType });
+    return { kind: spec.kind, blob, mimeType, width: size.width, height: size.height, isSource };
 }
 
 async function encodeJpeg(canvas: OffscreenCanvas, image: ImageData): Promise<Blob> {
@@ -155,6 +168,10 @@ function getEncoder(): Promise<JpegliEncoder | null> {
         return null;
     });
     return whenEncoderLoaded;
+}
+
+function canHaveAlpha(format: ImageFormat): boolean {
+    return format !== 'jpeg' && format !== 'bmp';
 }
 
 function hasTransparentPixels(rgba: Uint8ClampedArray): boolean {

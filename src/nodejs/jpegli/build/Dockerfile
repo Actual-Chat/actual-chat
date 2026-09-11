@@ -1,6 +1,6 @@
 # Reproducible jpegli -> WebAssembly build.
-#   docker build -o dist .
-# Produces dist/{scalar,simd}/jpegli.{js,wasm}, dist/BUILD_INFO.txt
+#   docker build -o ../dist-tmp .
+# Produces {scalar,simd}/jpegli.{js,wasm} and BUILD_INFO.txt in the output directory
 ARG EMSDK_TAG=6.0.9
 FROM emscripten/emsdk:${EMSDK_TAG} AS build
 ARG JPEGLI_COMMIT=031a0077f5799a6041004267fc12b956c1f52a20

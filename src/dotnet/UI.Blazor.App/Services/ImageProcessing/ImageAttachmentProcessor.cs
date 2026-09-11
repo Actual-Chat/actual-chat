@@ -57,7 +57,7 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
         var provider = new WebFileProvider {
             Metadata = CreateMetadata(source.Metadata, image),
             WebFileProviderInternal = new WebFileProviderInternal(
-                image.FileProvider, image.PreviewUrl, false, Task.FromResult(true)),
+                image.FileProvider, null, false, Task.FromResult(true)),
         };
         provider.Initialize(Services);
         return CreateResult(provider, image, sourceSize, preset);
@@ -71,13 +71,18 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         var url = await source.GetContentUrl(preset.GetMaxSize(), cancellationToken).ConfigureAwait(false);
+        // The worker has no per-job cancellation, so cancellationToken isn't passed to JS: the job
+        // completes anyway, and abandoning its stream reference would leak the processed blob for good
         var image = await JS
-            .InvokeAsync<ProcessedStreamImage>(JSProcessUrlMethod, cancellationToken, url, request)
+            .InvokeAsync<ProcessedStreamImage>(JSProcessUrlMethod, CancellationToken.None, url, request)
             .ConfigureAwait(false);
-        if (image.IsSource || image.Stream is null)
+        if (image.IsSource || image.Stream is null) {
+            cancellationToken.ThrowIfCancellationRequested();
             return CreateResult(null, image, sourceSize, preset);
+        }
 
         await using var __ = image.Stream.ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
         var stream = await image.Stream
             .OpenReadStreamAsync(Constants.Attachments.FileSizeLimit, cancellationToken)
             .ConfigureAwait(false);

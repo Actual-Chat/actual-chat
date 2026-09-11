@@ -100,6 +100,18 @@ public class ImageMetadataStripperTest
     }
 
     [Fact]
+    public void JpegShouldReturnInputInstanceWhenASegmentIsShorterThanItsHeader()
+    {
+        // arrange
+        var zeroLength = Concat(Soi, [0xFF, 0xE1, 0x00, 0x00], Dqt, Scan);
+        var oneLength = Concat(Soi, [0xFF, 0xE1, 0x00, 0x01], Dqt, Scan);
+
+        // act & assert
+        ImageMetadataStripper.Strip(zeroLength).Should().BeSameAs(zeroLength);
+        ImageMetadataStripper.Strip(oneLength).Should().BeSameAs(oneLength);
+    }
+
+    [Fact]
     public void PngShouldLoseTextTimeAndExifChunks()
     {
         // arrange

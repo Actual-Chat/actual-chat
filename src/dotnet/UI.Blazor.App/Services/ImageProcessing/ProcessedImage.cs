@@ -13,7 +13,6 @@ public record ProcessedImage
 public sealed record ProcessedWebImage : ProcessedImage
 {
     public IJSObjectReference? FileProvider { get; init; }
-    public string PreviewUrl { get; init; } = "";
 }
 
 public sealed record ProcessedStreamImage : ProcessedImage

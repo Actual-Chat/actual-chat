@@ -84,6 +84,14 @@ describe('stripImageMetadata: JPEG', () => {
         expect(stripImageMetadata(clean, 'jpeg')).toBe(clean);
         expect(stripImageMetadata(truncated, 'jpeg')).toBe(truncated);
     });
+
+    it('should return the input instance when a segment is shorter than its header', () => {
+        const zeroLength = new Uint8Array([...SOI, 0xFF, 0xE1, 0x00, 0x00, ...DQT, ...SCAN]);
+        const oneLength = new Uint8Array([...SOI, 0xFF, 0xE1, 0x00, 0x01, ...DQT, ...SCAN]);
+
+        expect(stripImageMetadata(zeroLength, 'jpeg')).toBe(zeroLength);
+        expect(stripImageMetadata(oneLength, 'jpeg')).toBe(oneLength);
+    });
 });
 
 describe('stripImageMetadata: PNG', () => {

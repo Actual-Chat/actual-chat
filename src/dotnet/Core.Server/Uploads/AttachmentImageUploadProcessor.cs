@@ -22,7 +22,9 @@ public sealed class AttachmentImageUploadProcessor(IServiceProvider services) : 
     public async Task<ProcessedFile> Process(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
     {
         progress?.Report(0);
-        var imageInfo = await Identify(upload, cancellationToken).ConfigureAwait(false);
+        // A strippable upload is read once here: every Open() is another full download from blob storage
+        var mustStrip = !upload.KeepMetadata && upload.Length <= MaxStrippableLength;
+        var (imageInfo, data) = await Read(upload, mustStrip, cancellationToken).ConfigureAwait(false);
         if (imageInfo is null)
             return new ProcessedFile(upload.AsBinaryFile(), null);
 
@@ -31,12 +33,12 @@ public sealed class AttachmentImageUploadProcessor(IServiceProvider services) : 
         var size = GetDisplaySize(imageInfo);
         if (upload.KeepMetadata)
             return new ProcessedFile(upload, size);
-        if (upload.Length > MaxStrippableLength) {
-            Log.LogWarning("'{FileName}' is too large to strip metadata ({Length} bytes)", upload.FileName, upload.Length);
+        if (data is null) {
+            Log.LogWarning("'{FileName}' is too large to strip metadata ({Length} bytes)",
+                upload.FileName, upload.Length);
             return new ProcessedFile(upload, size);
         }
 
-        var data = await ReadAll(upload, cancellationToken).ConfigureAwait(false);
         var stripped = ImageMetadataStripper.Strip(data);
         if (ReferenceEquals(stripped, data))
             return new ProcessedFile(upload, size);
@@ -49,16 +51,29 @@ public sealed class AttachmentImageUploadProcessor(IServiceProvider services) : 
 
     // Private methods
 
-    private async Task<ImageInfo?> Identify(UploadedFile upload, CancellationToken cancellationToken)
+    private async Task<(ImageInfo? ImageInfo, byte[]? Data)> Read(
+        UploadedFile upload,
+        bool mustStrip,
+        CancellationToken cancellationToken)
     {
         try {
             var stream = await upload.Open().ConfigureAwait(false);
             await using var _ = stream.ConfigureAwait(false);
-            return await Image.IdentifyAsync(ImageLimits.DecoderOptions, stream, cancellationToken).ConfigureAwait(false);
+            if (!mustStrip) {
+                var streamed = await Image
+                    .IdentifyAsync(ImageLimits.DecoderOptions, stream, cancellationToken)
+                    .ConfigureAwait(false);
+                return (streamed, null);
+            }
+
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+            var data = buffer.ToArray();
+            return (Image.Identify(ImageLimits.DecoderOptions, data), data);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to extract image info from '{FileName}'", upload.FileName);
-            return null;
+            return (null, null);
         }
     }
 
@@ -71,14 +86,5 @@ public sealed class AttachmentImageUploadProcessor(IServiceProvider services) : 
         return orientation is >= 5 and <= 8
             ? new Size2D(imageInfo.Height, imageInfo.Width)
             : new Size2D(imageInfo.Width, imageInfo.Height);
-    }
-
-    private static async Task<byte[]> ReadAll(UploadedFile upload, CancellationToken cancellationToken)
-    {
-        var stream = await upload.Open().ConfigureAwait(false);
-        await using var _ = stream.ConfigureAwait(false);
-        using var buffer = new MemoryStream();
-        await stream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
-        return buffer.ToArray();
     }
 }

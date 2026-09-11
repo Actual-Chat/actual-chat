@@ -10,7 +10,9 @@ public sealed class AttachmentCleanupCollection
 {
     private readonly List<AttachmentCleanup> _items = new ();
 
-    public IEnumerable<AttachmentCleanup> Items => _items;
+    public IEnumerable<AttachmentCleanup> Items
+        // A snapshot: the cleanups run on a background task while the dispatcher may still mutate the list
+        => _items.ToArray();
 
     public void Add(AttachmentCleanup item)
         => _items.Add(item);

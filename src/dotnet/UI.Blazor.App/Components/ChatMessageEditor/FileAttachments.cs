@@ -73,17 +73,18 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         return hasAdded;
     }
 
-    public async Task SetImageQuality(AttachmentList list, ImageQualityPreset preset)
+    public Task SetImageQuality(AttachmentList list, ImageQualityPreset preset)
     {
+        // Returns as soon as the reprocessing is started: Send awaits it via WhenImagesProcessed,
+        // and the caller is a menu that must not stay open for the whole batch
         if (list.ImageQuality == preset)
-            return;
+            return Task.CompletedTask;
 
         list.SetImageQuality(preset);
-        var reprocessTasks = list.Items
-            .Where(a => a.Source is not null)
-            .Select(a => Reprocess(list, a.Id, preset))
-            .ToList();
-        await Task.WhenAll(reprocessTasks);
+        foreach (var attachment in list.Items.Where(a => a.Source is not null).ToList())
+            _ = Reprocess(list, attachment.Id, preset);
+
+        return Task.CompletedTask;
     }
 
     public async Task WhenImagesProcessed(AttachmentList list)

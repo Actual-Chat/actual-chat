@@ -18,6 +18,11 @@ interface CreateWebFileProviderResult {
     fileProvider : any;
 }
 
+interface ProcessedWebImage extends ProcessedImageInfo {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fileProvider : any;
+}
+
 export class WebFileProviders
 {
     public static createFromFileId(fileId : number) : CreateWebFileProviderResult | null
@@ -154,19 +159,17 @@ export class WebFileProvider implements IUploadStreamSource {
 
     /** Processes this file and wraps the result in a new, in-memory provider with no file
      *  handle: an upload of a processed image can't resume from the original file after reload. */
-    public async processImage(request: ImageProcessRequest): Promise<ProcessedImageInfo & CreateWebFileProviderResult>
+    public async processImage(request: ImageProcessRequest): Promise<ProcessedWebImage>
     {
         const result = await ImageProcessor.process(this.getBlob(), request);
         const main = getMainOutput(result);
         if (main.isSource)
-            return { ...getProcessedImageInfo(result), previewUrl: '', fileProvider: null };
+            return { ...getProcessedImageInfo(result), fileProvider: null };
 
+        // No preview URL: the attachment keeps showing the source's preview, so creating one
+        // here would only leak an object URL until the provider is disposed
         const provider = new WebFileProvider('', null, main.blob, null);
-        return {
-            ...getProcessedImageInfo(result),
-            previewUrl: provider.createPreviewUrl(),
-            fileProvider: DotNet.createJSObjectReference(provider),
-        };
+        return { ...getProcessedImageInfo(result), fileProvider: DotNet.createJSObjectReference(provider) };
     }
 
     public async clearForRemoving() : Promise<void>

@@ -62,6 +62,13 @@ describe('readImageDimensions', () => {
         expect(readImageDimensions(jpeg, 'jpeg')).toEqual({ width: 4000, height: 3000 });
     });
 
+    it('should skip fill bytes before the JPEG SOF segment', () => {
+        const jpeg = bytesOf([0xFF, 0xD8], [0xFF, 0xE0, 0x00, 0x04, 0, 0], [0xFF, 0xFF],
+            [0xFF, 0xC2, 0x00, 0x0B, 8, 0x0B, 0xB8, 0x0F, 0xA0, 3, 0, 0, 0]);
+
+        expect(readImageDimensions(jpeg, 'jpeg')).toEqual({ width: 4000, height: 3000 });
+    });
+
     it('should read PNG dimensions from IHDR', () => {
         const png = bytesOf(PNG_SIGNATURE, pngChunk('IHDR', [...u32be(8192), ...u32be(6144), 8, 6, 0, 0, 0]));
 

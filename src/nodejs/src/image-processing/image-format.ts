@@ -69,15 +69,27 @@ export function getImageMimeType(format: ImageFormat): string {
 // Private methods
 
 function readJpegDimensions(bytes: Uint8Array): ImageSize | null {
+    // Same marker walk as stripJpeg in metadata-stripper.ts
     let offset = 2;
-    while (offset + 9 <= bytes.length && bytes[offset] === 0xFF) {
+    while (offset + 4 <= bytes.length) {
+        if (bytes[offset] !== 0xFF)
+            return null;
+
         const marker = bytes[offset + 1];
+        if (marker === 0xDA || marker === 0xD9)
+            return null;
+        // Fill bytes, TEM and restart markers carry no length field
+        if (marker === 0xFF || marker === 0x01 || (marker >= 0xD0 && marker <= 0xD7)) {
+            offset += marker === 0xFF ? 1 : 2;
+            continue;
+        }
+
         const isStartOfFrame =
             marker >= 0xC0 && marker <= 0xCF && marker !== 0xC4 && marker !== 0xC8 && marker !== 0xCC;
         if (isStartOfFrame)
-            return { width: readUint16BE(bytes, offset + 7), height: readUint16BE(bytes, offset + 5) };
-        if (marker === 0xDA)
-            return null;
+            return offset + 9 <= bytes.length
+                ? { width: readUint16BE(bytes, offset + 7), height: readUint16BE(bytes, offset + 5) }
+                : null;
 
         offset += 2 + readUint16BE(bytes, offset + 2);
     }

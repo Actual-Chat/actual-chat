@@ -20,7 +20,7 @@
         ? $"aspect-ratio: {((float)w / h).ToString(CultureInfo.InvariantCulture)}"
         : null;
 }
-<li class="attachment-wrapper @(isFailed ? "attachment-failed" : "")" @onclick="OnClick">
+<li class="attachment-wrapper @(isFailed ? "attachment-failed" : "")">
     <div class="c-content">
         <div class="attachment-item">
             <ButtonSquare Click="@RemoveClick" Class="remove-attachment-btn btn-danger btn-sm">
