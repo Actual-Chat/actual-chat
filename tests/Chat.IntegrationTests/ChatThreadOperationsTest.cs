@@ -62,6 +62,42 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
     }
 
     [Fact]
+    public async Task StarterShouldFollowThreadStartedOnAnotherUsersMessage()
+    {
+        // arrange
+        var appHost = AppHost;
+        await using var bobTester = appHost.NewBlazorTester(Out);
+        await bobTester.SignInAsUniqueBob();
+        await using var aliceTester = appHost.NewBlazorTester(Out);
+        await aliceTester.SignInAsUniqueAlice();
+        CancellationToken cancellationToken = default;
+
+        var (parentChatId, inviteId) = await bobTester.CreateChat(false);
+        await aliceTester.JoinChat(parentChatId, inviteId);
+        var aliceEntries = await InsertEntries(
+            aliceTester.Commander, aliceTester.Session, parentChatId, ["Start a thread here"], cancellationToken);
+
+        // act
+        var bobChats = bobTester.AppServices.GetRequiredService<IChats>();
+        var threadChat = await CreateThreadChat(
+            bobTester.Commander, bobChats, bobTester.Session, parentChatId, "Thread#1",
+            [aliceEntries[0].Id], cancellationToken);
+
+        // assert
+        var threadChatId = (ThreadChatId)threadChat.Id;
+        var bobChatThreads = bobTester.AppServices.GetRequiredService<IChatThreads>();
+        var aliceChatThreads = aliceTester.AppServices.GetRequiredService<IChatThreads>();
+        await TestExt.When(async () => {
+            var isBobFollowing = await bobChatThreads
+                .GetThreadFollowStatus(bobTester.Session, threadChatId, cancellationToken);
+            isBobFollowing.Should().BeTrue("the starter follows a thread even when its start message isn't theirs");
+            var isAliceFollowing = await aliceChatThreads
+                .GetThreadFollowStatus(aliceTester.Session, threadChatId, cancellationToken);
+            isAliceFollowing.Should().BeTrue("the start message's author follows the thread");
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public async Task CreateChildThread()
     {
         var appHost = AppHost;
