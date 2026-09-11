@@ -94,10 +94,12 @@ function getColors(): string {
     if (!storage)
         return '';
 
+    // MauiThemeHandler.ThemeColors reads these by position, and the native apps store the string, so a
+    // new color goes last
     const style = getComputedStyle(document.body);
-    const headerColor = style.getPropertyValue('--background-01');
-    const postPanelColor = style.getPropertyValue('--post-panel');
-    return normalizeColor(headerColor) + ';' + normalizeColor(postPanelColor);
+    return ['--background-01', '--post-panel', '--background-04', '--text-01']
+        .map(name => normalizeColor(style.getPropertyValue(name)))
+        .join(';');
 }
 
 function normalizeColor(hexColor: string): string {
