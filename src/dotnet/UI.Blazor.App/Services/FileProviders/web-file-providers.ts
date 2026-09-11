@@ -6,6 +6,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { NullableJSObjectReference } from 'UI.Blazor/JSRuntime/nullable-js-object-reference';
 import { AttachmentWebFilePickerRegistry } from '../../Components/ChatMessageEditor/attachment-web-file-picker';
 import type { IUploadStreamSource } from '../../../UI.Blazor/Services/FileUploads/web-uploads';
+import { ImageProcessor } from 'image-processing/image-processor';
+import type { ImageProcessRequest } from 'image-processing/image-processing-contracts';
+import { getMainOutput, getProcessedImageInfo, ProcessedImageInfo } from './image-processing-interop';
 
 const { errorLog } = getLogs('WebFileProvider');
 
@@ -149,65 +152,21 @@ export class WebFileProvider implements IUploadStreamSource {
         return this.resolvedFile!;
     }
 
-    public async replaceBlob(maxDimension: number, quality: number) : Promise<ImageResizeResult>
+    /** Processes this file and wraps the result in a new, in-memory provider with no file
+     *  handle: an upload of a processed image can't resume from the original file after reload. */
+    public async processImage(request: ImageProcessRequest): Promise<ProcessedImageInfo & CreateWebFileProviderResult>
     {
-        const blob = this.getBlob();
-        const bitmap = await createImageBitmap(blob);
-        const { width: origW, height: origH } = bitmap;
+        const result = await ImageProcessor.process(this.getBlob(), request);
+        const main = getMainOutput(result);
+        if (main.isSource)
+            return { ...getProcessedImageInfo(result), previewUrl: '', fileProvider: null };
 
-        let width = origW;
-        let height = origH;
-        if (width > maxDimension || height > maxDimension) {
-            if (width >= height) {
-                height = Math.round(height * maxDimension / width);
-                width = maxDimension;
-            } else {
-                width = Math.round(width * maxDimension / height);
-                height = maxDimension;
-            }
-        }
-
-        const mimeType = blob.type === 'image/png' ? 'image/png' : 'image/jpeg';
-        const newBlob = await canvasToBlob(bitmap, width, height, mimeType, quality);
-        bitmap.close();
-
-        this.revokePreviewUrl();
-        this.resolvedFile = newBlob;
-
-        return { size: newBlob.size, width, height };
-    }
-
-    public async estimateResizedSizes(presets: ImageResizePreset[]) : Promise<ImageResizeResult[]>
-    {
-        const blob = this.getBlob();
-        const bitmap = await createImageBitmap(blob);
-        const { width: origW, height: origH } = bitmap;
-        const mimeType = blob.type === 'image/png' ? 'image/png' : 'image/jpeg';
-        const quality = 0.85;
-        const results: ImageResizeResult[] = [];
-
-        for (const preset of presets) {
-            if (preset.maxDimension <= 0 || (origW <= preset.maxDimension && origH <= preset.maxDimension)) {
-                results.push({ size: blob.size, width: origW, height: origH });
-                continue;
-            }
-
-            let width = origW;
-            let height = origH;
-            if (width >= height) {
-                height = Math.round(height * preset.maxDimension / width);
-                width = preset.maxDimension;
-            } else {
-                width = Math.round(width * preset.maxDimension / height);
-                height = preset.maxDimension;
-            }
-
-            const resizedBlob = await canvasToBlob(bitmap, width, height, mimeType, quality);
-            results.push({ size: resizedBlob.size, width, height });
-        }
-
-        bitmap.close();
-        return results;
+        const provider = new WebFileProvider('', null, main.blob, null);
+        return {
+            ...getProcessedImageInfo(result),
+            previewUrl: provider.createPreviewUrl(),
+            fileProvider: DotNet.createJSObjectReference(provider),
+        };
     }
 
     public async clearForRemoving() : Promise<void>
@@ -235,36 +194,4 @@ export class WebFileProvider implements IUploadStreamSource {
         URL.revokeObjectURL(this.previewUrl);
         this.previewUrl = null;
     }
-}
-
-function canvasToBlob(
-    source: ImageBitmap,
-    width: number,
-    height: number,
-    mimeType: string,
-    quality: number,
-) : Promise<Blob>
-{
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(source, 0, 0, width, height);
-    return new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(
-            blob => blob ? resolve(blob) : reject(new Error('toBlob returned null')),
-            mimeType,
-            quality,
-        );
-    });
-}
-
-export interface ImageResizePreset {
-    maxDimension: number;
-}
-
-export interface ImageResizeResult {
-    size: number;
-    width: number;
-    height: number;
 }
