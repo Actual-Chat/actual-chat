@@ -1,9 +1,6 @@
 .modal-frame.own-account-editor-modal .dialog-body {
     @apply overflow-y-auto custom-scrollbar;
 }
-.own-account-editor-modal section.form-section-alias .copy-to-clipboard {
-    @apply -mr-3;
-}
 .own-account-editor-modal .delete-account-tile i {
     @apply text-xl text-danger;
 }
