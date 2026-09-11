@@ -1747,11 +1747,11 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.SetParticipation(chatId, boosterId, ParticipationKind.Record, true, default);
 
         // act - Alice's presence genuinely registers. GetConsolidatedParticipants carries a real 200ms
-        // ConsolidationDelay before an outside observer sees a presence change land, so give it a moment
-        // to settle rather than read a still-stale consolidated snapshot (same idea as
+        // ConsolidationDelay before an outside observer sees a presence change land, so poll for it to
+        // settle rather than read a still-stale consolidated snapshot (same idea as
         // ExpireRingsRecomputesStatusToNoAnswer's real ring-timeout wait, just a much shorter window).
         await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, true, default);
-        await Task.Delay(300);
+        await WaitForParticipantPresence(backend, chatId, aliceAuthor.Id, isPresent: true);
         var state = await backend.GetState(chatId, default);
         await backend.SyncCallParticipantActivity(chatId, state!, default);
 
@@ -1761,7 +1761,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
 
         // act - Alice's presence deactivates
         await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, false, default);
-        await Task.Delay(300);
+        await WaitForParticipantPresence(backend, chatId, aliceAuthor.Id, isPresent: false);
         state = await backend.GetState(chatId, default);
         await backend.SyncCallParticipantActivity(chatId, state!, default);
 
@@ -1786,22 +1786,22 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
         await backend.AcceptCall(chatId, aliceAuthor.Id, default);
         // See SyncMarksInviteeActiveThenEndedFromRealPresence - keeps overall presence >= 2 once Alice
-        // drops, and the delays let GetConsolidatedParticipants' real 200ms ConsolidationDelay settle
-        // before each read, instead of asserting on a still-stale consolidated snapshot.
+        // drops, and polling for each presence change to land lets GetConsolidatedParticipants' real
+        // 200ms ConsolidationDelay settle, instead of asserting on a still-stale consolidated snapshot.
         var boosterId = AuthorId.New(chatId, 999_001);
         await backend.SetParticipation(chatId, boosterId, ParticipationKind.Record, true, default);
         await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, true, default);
-        await Task.Delay(300);
+        await WaitForParticipantPresence(backend, chatId, aliceAuthor.Id, isPresent: true);
         var state = await backend.GetState(chatId, default);
         await backend.SyncCallParticipantActivity(chatId, state!, default);
         await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, false, default);
-        await Task.Delay(300);
+        await WaitForParticipantPresence(backend, chatId, aliceAuthor.Id, isPresent: false);
         state = await backend.GetState(chatId, default);
         await backend.SyncCallParticipantActivity(chatId, state!, default);
 
         // act - Alice's presence somehow comes back (e.g. a stray late heartbeat)
         await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, true, default);
-        await Task.Delay(300);
+        await WaitForParticipantPresence(backend, chatId, aliceAuthor.Id, isPresent: true);
         state = await backend.GetState(chatId, default);
         await backend.SyncCallParticipantActivity(chatId, state!, default);
 
@@ -1841,6 +1841,42 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task SyncDoesNotEndAStillDialingCallWithAnUnrelatedBystanderFresh()
+    {
+        // Regression guard for a roster-scope bug: an unrelated fresh participant - present in the same
+        // chat for a reason that has nothing to do with this call (an already-latched Ambient session,
+        // or just another member's own stream) - must not satisfy the >= 2 gate on its own. Only fresh
+        // members of THIS call's own roster (the caller and its invitees) may count toward it.
+
+        // arrange - Bob rings Alice; Carol is independently fresh in the same chat, unrelated to the ring
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await using var carol = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        await carol.SignInAsNew("Carol");
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        await carol.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var carolAuthor = await carol.GetOwnAuthor(chatId);
+        var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // act - Carol streams for a reason unrelated to the ring (she was never invited to this call);
+        // nobody has answered Bob's ring yet
+        await backend.SetParticipation(chatId, carolAuthor!.Id, ParticipationKind.Record, true, default);
+        await WaitForParticipantPresence(backend, chatId, carolAuthor.Id, isPresent: true);
+        var state = await backend.GetState(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, state!, default);
+
+        // assert - still Dialing: Carol's unrelated presence must not satisfy the roster-scoped gate
+        var callState = await backend.GetCallState(chatId, default);
+        callState!.Status.Should().Be(CallStatus.Dialing);
+    }
+
+    [Fact]
     public async Task GetStateSelfHealSyncsCallParticipantActivity()
     {
         // arrange
@@ -1871,6 +1907,19 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
 
         // assert
         status.Should().Be(CallInviteStatus.Active);
+    }
+
+    private static async Task WaitForParticipantPresence(
+        ILiveSessionsBackend backend, ChatId chatId, AuthorId authorId, bool isPresent)
+    {
+        // GetConsolidatedParticipants carries a real ~200ms ConsolidationDelay before an outside
+        // observer sees a presence change land - poll rather than assert on a still-stale snapshot.
+        for (var attempt = 0; attempt < 30; attempt++) {
+            var participants = await backend.ListParticipants(chatId, default);
+            if (participants.Contains(authorId) == isPresent)
+                return;
+            await Task.Delay(100);
+        }
     }
 
     private static async Task<(ChatId ChatId, AuthorFull Bob, AuthorFull Alice)> NewTwoPartyCall(

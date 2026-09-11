@@ -894,40 +894,68 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         if (!state.IsCall)
             return;
 
-        bool changed;
-        using (Computed.BeginIsolation())
-        using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
-            // Read once the lock is held (mirrors EnforceCallConnectGrace), not before: GetState's self-
-            // heal fires a new Sync on every tick, so several can be queued on this same chat's lock at
-            // once - reading freshness before the lock would let a stale snapshot from an earlier, slower
-            // tick win the write race and revert a just-applied Ended back to Active.
-            var freshAuthorIds = (await GetConsolidatedParticipants(chatId, cancellationToken).ConfigureAwait(false))
-                .ToHashSet();
-            changed = await SyncCallerActivity(chatId, freshAuthorIds).ConfigureAwait(false);
-            changed |= await SyncInviteeActivity(chatId, freshAuthorIds).ConfigureAwait(false);
+        try {
+            using (Computed.BeginIsolation())
+            using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
+                // Re-read under the lock instead of trusting the pre-lock `state` parameter: a
+                // concurrent CancelCall/DeclineCall/Close may have already torn the call down, and
+                // RecomputeCallStatus below must not resurrect a status for a call that no longer exists.
+                var freshState = await SafeGet(chatId).ConfigureAwait(false);
+                if (freshState is not { IsCall: true })
+                    return;
+
+                // Read once the lock is held (mirrors EnforceCallConnectGrace), not before: GetState's
+                // self-heal fires a new Sync on every tick, so several can be queued on this same chat's
+                // lock at once - reading freshness before the lock would let a stale snapshot from an
+                // earlier, slower tick win the write race and revert a just-applied Ended back to Active.
+                var freshAuthorIds = (await GetConsolidatedParticipants(chatId, cancellationToken)
+                    .ConfigureAwait(false))
+                    .ToHashSet();
+                var invites = await SafeGetInvites(chatId).ConfigureAwait(false);
+                var callerId = freshState.CallerId ?? freshState.Host;
+                // Gate the "become Active" transitions on how many of THIS call's own roster (the
+                // caller plus its own invitees) are fresh - not the chat-wide fresh count, which an
+                // unrelated bystander (an already-latched Ambient session, or someone else's unrelated
+                // stream in the same chat) could satisfy on its own and flip CallerActiveAt before
+                // anyone in this call has actually answered.
+                var callRosterFreshCount = (freshAuthorIds.Contains(callerId) ? 1 : 0)
+                    + invites.Values.Count(i => i is not null && freshAuthorIds.Contains(i.InviteeId));
+
+                var changed = await SyncCallerActivity(
+                        chatId, freshState, callerId, freshAuthorIds, callRosterFreshCount)
+                    .ConfigureAwait(false);
+                changed |= await SyncInviteeActivity(chatId, invites, freshAuthorIds, callRosterFreshCount)
+                    .ConfigureAwait(false);
+                if (changed)
+                    await RecomputeCallStatus(chatId, freshState, cancellationToken).ConfigureAwait(false);
+            }
         }
-        if (changed)
-            await RecomputeCallStatus(chatId, state, cancellationToken).ConfigureAwait(false);
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "SyncCallParticipantActivity failed for chat #{ChatId}", chatId);
+        }
     }
 
     // Caller must hold the change lock.
-    private async Task<bool> SyncCallerActivity(ChatId chatId, HashSet<AuthorId> freshAuthorIds)
+    private async Task<bool> SyncCallerActivity(
+        ChatId chatId,
+        LiveSessionState state,
+        AuthorId callerId,
+        HashSet<AuthorId> freshAuthorIds,
+        int callRosterFreshCount)
     {
-        var state = await SafeGet(chatId).ConfigureAwait(false);
-        if (state is null)
-            return false;
-
-        var callerId = state.CallerId ?? state.Host;
         var callState = await SafeGetCallState(chatId).ConfigureAwait(false);
         var isFresh = freshAuthorIds.Contains(callerId);
         var wasActive = callState is { CallerActiveAt: not null, CallerEndedAt: null };
-        var isTerminal = callState?.CanceledAt is not null;
+        // CallerEndedAt is a ratchet too, same as the invitee side's Declined/Missed/Ended check below -
+        // once the caller has been marked ended, a later fresh reading must not flip them back to Active.
+        var isTerminal = callState is { CanceledAt: not null } or { CallerEndedAt: not null };
 
-        // Gated on >= 2 fresh participants, not the caller alone: the caller is fresh from the moment
-        // they dial (StartCall registers them), so without this a still-ringing call would flip
-        // CallerActiveAt on the first self-heal tick, and Derive would see a lone active party and
-        // report the whole call Ended before anyone even answered.
-        if (isFresh && freshAuthorIds.Count >= 2 && !wasActive && !isTerminal) {
+        // Gated on >= 2 fresh participants from THIS CALL's own roster (see callRosterFreshCount above),
+        // not the caller alone: the caller is fresh from the moment they dial (StartCall registers
+        // them), so without this a still-ringing call would flip CallerActiveAt on the first self-heal
+        // tick, and Derive would see a lone active party and report the whole call Ended before anyone
+        // even answered.
+        if (isFresh && callRosterFreshCount >= 2 && !wasActive && !isTerminal) {
             await SetCallState(chatId, (callState ?? NewCallState(state, CallStatus.Dialing)) with {
                 CallerActiveAt = callState?.CallerActiveAt ?? Clocks.SystemClock.Now,
             }).ConfigureAwait(false);
@@ -946,10 +974,13 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     }
 
     // Caller must hold the change lock.
-    private async Task<bool> SyncInviteeActivity(ChatId chatId, HashSet<AuthorId> freshAuthorIds)
+    private async Task<bool> SyncInviteeActivity(
+        ChatId chatId,
+        Dictionary<string, CallInvite?> invites,
+        HashSet<AuthorId> freshAuthorIds,
+        int callRosterFreshCount)
     {
         var changed = false;
-        var invites = await SafeGetInvites(chatId).ConfigureAwait(false);
         foreach (var (authorIdValue, invite) in invites) {
             if (invite is null || !AuthorId.TryParse(authorIdValue, out var authorId))
                 continue;
@@ -957,10 +988,11 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             var isFresh = freshAuthorIds.Contains(authorId);
             var now = Clocks.SystemClock.Now;
             switch (invite.Status) {
-                // See SyncCallerActivity - the >= 2 gate keeps a lone fresh invitee (nobody else fresh
-                // yet, or the caller already gone) from being promoted to Active on its own.
+                // See SyncCallParticipantActivity - callRosterFreshCount (not the chat-wide fresh count)
+                // keeps a lone fresh invitee (nobody else from this call's own roster fresh yet, or the
+                // caller already gone) from being promoted to Active on its own.
                 case CallInviteStatus.Ringing or CallInviteStatus.Accepted
-                    when isFresh && freshAuthorIds.Count >= 2:
+                    when isFresh && callRosterFreshCount >= 2:
                     await _invites.Set(chatId.Value, authorIdValue,
                             invite with { Status = CallInviteStatus.Active, ActiveAt = now })
                         .ConfigureAwait(false);
