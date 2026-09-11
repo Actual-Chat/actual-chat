@@ -98,9 +98,11 @@ internal static partial class WindowConfigurator
         PushTitlebarInset();
     }
 
-    // Injected at document start too, so a reload reserves the strip from its first paint
+    // Injected at document start too, so a reload reserves the strip from its first paint; the class
+    // marks the host for the styles that depend on the titlebar being there rather than on its height
     public static string GetTitlebarInsetScript()
-        => $"document.documentElement.style.setProperty('--titlebar-inset', '{GetTitlebarInset():0.##}px')";
+        => "document.documentElement.classList.add('native-titlebar');"
+            + $"document.documentElement.style.setProperty('--titlebar-inset', '{GetTitlebarInset():0.##}px')";
 
     // Private methods
 
