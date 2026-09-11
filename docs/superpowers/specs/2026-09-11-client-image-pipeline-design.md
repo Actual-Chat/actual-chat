@@ -210,3 +210,49 @@ preservation; server HEIC decode; JPEG XL; link preview / avatar / chat icon pip
   - The C# metadata stripper goes to `ActualChat.Core.Server` (`Uploads/`), next to
     `ImageLimits`; it has no UI dependencies.
   - `ImageAttachmentProcessor` stays in `UI.Blazor.App` (depends on attachments).
+
+## Implementation notes
+
+Deviations from the design, decided during implementation:
+
+- No per-preset result cache: switching the preset always reprocesses the source
+  (about 0.3-0.5 s per photo) instead of keeping each preset's output alive, to
+  keep cleanup simple.
+- The menu's 4K and 1080p size estimates come from the same worker call that
+  processes the selected preset (each call also encodes an estimate for the other
+  size), rather than a separate pass.
+- Original and Original w/ EXIF re-encode (instead of hiding) a source whose long
+  side exceeds 7680 px, downscaling to that size; the worker reads dimensions from
+  the file header without a full decode. The server's chat-attachment pixel cap
+  was raised to 7680² (~59 MP) to match; other image paths keep the 50 MP cap.
+- Windows local content URLs use a WebView2 custom-scheme registration (`content`
+  scheme, allowed origin `https://0.0.0.1`) instead of a same-origin
+  `/in/content/` path, because MAUI's own resource handler would otherwise race
+  with an extensionless same-origin path.
+- `ImageQualityPreset` values aren't pixel sizes; the pixel size comes from an
+  extension method, `GetMaxSize()`.
+- The worker has no per-job cancellation: a superseded job still runs to
+  completion and its result is discarded. Because jobs are serialized, each
+  call's RPC deadline is `30_000 ms × (jobs already pending + 1)`.
+
+Known gaps and follow-ups:
+
+- A HEIC/HEIF file picked with the Original preset stays a plain file attachment,
+  because the server doesn't decode HEVC.
+- `IncomingShareUI.SendFiles`'s multi-chat / more-than-10-files share path
+  bypasses the pipeline, so those photos upload at full resolution and the
+  server no longer resizes them.
+- Stored chat image attachments keep their EXIF Orientation tag, since the server
+  no longer re-encodes them; any future server-side decoder of attachments
+  (thumbnails, vision, previews) must apply auto-orientation itself.
+- On Android, HEIC/HEIF is decoded natively into an sRGB bitmap with no ICC
+  profile, so wide-gamut (Display P3) photos lose some saturation on that path.
+  Display P3 preservation was already out of scope.
+- `AttachmentCleanupCollection.Items` returns the live list while
+  `AttachmentsController.CleanupAttachmentResources` iterates it on a background
+  task and `RemoveByKind` mutates it on the UI thread; the fix is
+  `Items => _items.ToArray()`. Pre-existing shape, left as is.
+- Runtime verification on Chrome, Safari, Android, iOS and the Windows app is
+  still outstanding (plan Task 13 Steps 2-4).
+- The Apple targets were compile-checked only (iOS simulator and Mac Catalyst,
+  0 C# errors); no Apple device build or run.
