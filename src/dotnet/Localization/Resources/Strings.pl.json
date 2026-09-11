@@ -308,6 +308,10 @@
 
   "ThreadMenu_GoToThread": "Przejdź do wątku",
   "ThreadMenu_CopyThread": "Kopiuj wątek",
+  "ThreadMenu_Mute": "Wycisz",
+  "ThreadMenu_Unmute": "Wyłącz wyciszenie",
+  "ThreadMenu_GoToStartMessage": "Przejdź do wiadomości początkowej",
+  "ThreadMenu_CopyThreadLink": "Kopiuj link do wątku",
 
   "LocationMessage_Live": "Lokalizacja na żywo",
   "LocationMessage_Static": "Lokalizacja",

@@ -308,6 +308,10 @@
 
   "ThreadMenu_GoToThread": "Идите на нит",
   "ThreadMenu_CopyThread": "Копирајте нит",
+  "ThreadMenu_Mute": "Утишај",
+  "ThreadMenu_Unmute": "Укини утишавање",
+  "ThreadMenu_GoToStartMessage": "Идите на почетну поруку",
+  "ThreadMenu_CopyThreadLink": "Копирајте линк нити",
 
   "LocationMessage_Live": "Локација уживо",
   "LocationMessage_Static": "Локација",

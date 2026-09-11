@@ -308,6 +308,10 @@
 
   "ThreadMenu_GoToThread": "Idite na nit",
   "ThreadMenu_CopyThread": "Kopirajte nit",
+  "ThreadMenu_Mute": "Utišaj",
+  "ThreadMenu_Unmute": "Ukini utišavanje",
+  "ThreadMenu_GoToStartMessage": "Idite na početnu poruku",
+  "ThreadMenu_CopyThreadLink": "Kopirajte link niti",
 
   "LocationMessage_Live": "Lokacija uživo",
   "LocationMessage_Static": "Lokacija",
