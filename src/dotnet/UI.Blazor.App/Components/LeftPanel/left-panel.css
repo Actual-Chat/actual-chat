@@ -18,6 +18,20 @@
 .page-with-header-and-footer[data-has-right-panel-open] .left-panel-buttons {
     @apply md:w-24 lg:w-16 xl:w-24;
 }
+/* Under the AppKit titlebar the column also holds the traffic lights: the buttons line up under
+   them (the cluster is centred 39px from the window edge, where a 48px square lands at the end of
+   a 64px button after the 4px padding), and the column is twice that, so the square has the same
+   room on both sides. */
+html.native-titlebar .left-panel-buttons,
+html.native-titlebar .page-with-header-and-footer[data-has-right-panel-open] .left-panel-buttons {
+    @apply md:w-[4.875rem];
+}
+html.native-titlebar .left-panel-buttons > .c-spacer {
+    @apply md:hidden;
+}
+html.native-titlebar .left-panel-buttons .navbar-button {
+    @apply xl:w-16;
+}
 .left-panel-buttons > .c-spacer {
     @apply hidden md:flex grow;
     @apply h-full;

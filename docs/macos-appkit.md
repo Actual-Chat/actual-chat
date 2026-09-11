@@ -157,8 +157,9 @@ markers:
   chats. Cmd+Q quits as usual.
 - **The web UI extends under the titlebar**, the way Telegram's does. The labs window is a
   full-size-content-view with a transparent titlebar and no title; only the navbar column reserves
-  the titlebar height (`--titlebar-inset`, the corner with the traffic lights), the chat list, the
-  chat header and the right panel run to the top edge. Elements marked `data-window-drag` (the
+  the titlebar height (`--titlebar-inset`, the corner with the traffic lights) and lines its buttons
+  up under them (the `native-titlebar` class on `html`), the chat list, the chat header and the
+  right panel run to the top edge. Elements marked `data-window-drag` (the
   navbar column, the layout header) move the window on a press that moves and follow the system
   double-click setting; plain clicks on them keep working. In full screen the inset drops to 0 and
   the titlebar slides over the page when the pointer reaches the top.
