@@ -13,6 +13,8 @@
                                    <ChatListTabUnreadCount
                                        PlaceChatListSettings="@_placeChatListSettings"
                                        ChatListFilter="@filter"/>
+                               } else if (id == ThreadsTabId) {
+                                   <ThreadListTabUnreadCount PlaceId="@PlaceId"/>
                                }
                            </text>,
         };
