@@ -387,7 +387,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             if (!isActive) {
                 var state = await SafeGet(chatId).ConfigureAwait(false);
                 if (state is { Kind: LiveSessionKind.Call } callState) {
-                    if (await ParticipantCount(chatId).ConfigureAwait(false) < 2)
+                    if ((await GetConsolidatedParticipants(chatId, cancellationToken).ConfigureAwait(false)).Count < 2)
                         shouldCloseAsCall = true;
                     else if (callState.Host == authorId)
                         // The host left but the call goes on - without this the host slot would keep
@@ -861,9 +861,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             using (Computed.BeginIsolation())
             using (await _changeLocks.Lock(chatId, CancellationToken.None).ConfigureAwait(false)) {
                 var state = await SafeGet(chatId).ConfigureAwait(false);
-                if (state is { Kind: LiveSessionKind.Call }
-                    && await ParticipantCount(chatId).ConfigureAwait(false) < 2)
-                    shouldClose = true;
+                if (state is { Kind: LiveSessionKind.Call }) {
+                    var participants = await GetConsolidatedParticipants(
+                        chatId, CancellationToken.None).ConfigureAwait(false);
+                    if (participants.Count < 2)
+                        shouldClose = true;
+                }
             }
             if (shouldClose)
                 await CloseCall(chatId).ConfigureAwait(false);
@@ -1124,13 +1127,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         return invites.Values.Any(i => i is { Status: CallInviteStatus.Ringing });
     }
 
-    private async Task<int> ParticipantCount(ChatId chatId)
-    {
-        var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
-        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
-        return participants.Values.Count(p => IsFreshParticipant(p, cutoff));
-    }
-
     private async Task<bool> IsCallAbandoned(ChatId chatId)
     {
         // No invite is still ringing and nobody joined (only the caller, if that): the call can't become
@@ -1139,7 +1135,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         if (invites.Values.Any(i => i is { Status: CallInviteStatus.Ringing }))
             return false;
 
-        return await ParticipantCount(chatId).ConfigureAwait(false) < 2;
+        var participants = await GetConsolidatedParticipants(
+            chatId, CancellationToken.None).ConfigureAwait(false);
+        return participants.Count < 2;
     }
 
     // Caller must hold the change lock + Computed.BeginIsolation().
