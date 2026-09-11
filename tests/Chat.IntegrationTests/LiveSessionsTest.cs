@@ -1560,8 +1560,8 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.SetParticipation(
             chatId, aliceAuthor.Id, ParticipationKind.AudioListen, false, default);
 
-        // assert - the call closes on the new shouldCloseAsCall path since ParticipantCount drops
-        // below 2, regardless of IsSessionLive (which would still be true due to Bob recording)
+        // assert - the call closes on the new shouldCloseAsCall path since GetConsolidatedParticipants
+        // drops below 2, regardless of IsSessionLive (which would still be true due to Bob recording)
         (await backend.GetState(chatId, default)).Should().BeNull();
     }
 
@@ -1925,6 +1925,90 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // assert - still Dialing: Carol's unrelated presence must not satisfy the roster-scoped gate
         var callState = await backend.GetCallState(chatId, default);
         callState!.Status.Should().Be(CallStatus.Dialing);
+    }
+
+    [Fact]
+    public async Task AlreadyPresentInviteeShouldNotAutoAcceptTheRing()
+    {
+        // Regression guard: GetMyParticipations registers AudioListen for ANY active chat where
+        // chat.IsListening is true, independent of any call/ring state - so an invitee who already
+        // has ambient listening toggled on for the chat is "fresh" in GetConsolidatedParticipants
+        // before she ever answers. Without gating the Ringing case on the call having already
+        // latched, that pre-existing, unrelated presence alone would flip her still-unanswered
+        // invite straight to Active, and the call would wedge with no way for either side to end it.
+
+        // arrange - Alice already has ambient presence in the chat (mirrors what GetMyParticipations
+        // would have registered for chat.IsListening) before Bob ever rings her
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.SetParticipation(chatId, aliceAuthor!.Id, ParticipationKind.AudioListen, true, default);
+        await WaitForParticipantPresence(backend, chatId, aliceAuthor.Id, isPresent: true);
+
+        // act - Bob rings Alice, then a presence-sync tick runs (as GetState's self-heal would). Wait
+        // for Bob's own presence (registered by StartCall's EnsureParticipant) to clear
+        // GetConsolidatedParticipants' ConsolidationDelay first - otherwise callRosterFreshCount would
+        // read < 2 regardless of the fix under test, making the assertion below a false positive.
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor.Id }.ToApiArray(), false, default);
+        await WaitForParticipantPresence(backend, chatId, bobAuthor.Id, isPresent: true);
+        var state = await backend.GetState(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, state!, default);
+
+        // assert - still Ringing: her pre-existing, unrelated presence must not silently answer for her
+        var live = await backend.Get(chatId, default);
+        live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Ringing);
+
+        // act - Alice genuinely accepts
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // assert - accepting still works, and the call latches
+        var accepted = await backend.Get(chatId, default);
+        accepted!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Accepted);
+        (await backend.GetState(chatId, default))!.SessionStartedAt.Should().NotBeNull();
+
+        // act - a further presence-sync tick, now that the call has latched and she's still present
+        state = await backend.GetState(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, state!, default);
+
+        // assert - promoted to Active now that she's genuinely present on a latched call
+        var final = await backend.Get(chatId, default);
+        final!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Active);
+    }
+
+    [Fact]
+    public async Task ExpireRingsOnZeroInviteeCallRecomputesStatusToNoAnswer()
+    {
+        // Regression guard: Derive falls back to CallStatus.Dialing when there are no invite records
+        // at all (invites.Count == 0) - reachable via a StartCall with zero effective invitees, or
+        // every invite's RingTtl lapsing before ExpireRings' own staleness check catches it. Without
+        // an explicit NoAnswer override, the abandon-check block would close the session while
+        // leaving CallState stuck at Dialing, visible to the caller for up to DialingStateTtl after
+        // the session itself is gone.
+
+        // arrange - Bob starts a call with no invitees at all. Deliberately not observed via GetState
+        // or GetCallState before the act below - either one fires GetState's own self-heal (this call
+        // qualifies as IsDialing with no fresh ring), which would race a second, concurrent ExpireRings
+        // against the one driven directly below, through the same non-reentrant per-chat lock.
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        var (chatId, _) = await bob.CreateChat(false);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, Array.Empty<AuthorId>().ToApiArray(), false, default);
+
+        // act - drive the abandon-check directly: nobody was ever rung, and only the caller is present
+        await backend.ExpireRings(chatId);
+
+        // assert - the session is torn down, but CallState explains why: NoAnswer, not stuck at Dialing
+        (await backend.GetState(chatId, default)).Should().BeNull();
+        var callState = await backend.GetCallState(chatId, default);
+        callState!.Status.Should().Be(CallStatus.NoAnswer);
     }
 
     [Fact]

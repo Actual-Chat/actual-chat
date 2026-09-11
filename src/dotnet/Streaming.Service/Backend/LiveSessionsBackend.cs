@@ -28,8 +28,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     private static readonly TimeSpan RecordingCloseGrace = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan RingTimeout = Constants.Call.RingTimeout;
     private static readonly TimeSpan RingTtl = Constants.Call.RingTtl;
-    // How long a dialing call state lingers with no observer before its Redis key lapses - it covers
-    // the ring plus a backstop; a terminal transition overwrites it sooner.
+    // How long an in-progress (Dialing/Connecting/Active) call state lingers with no observer before
+    // its Redis key lapses; a terminal transition overwrites it sooner.
     private static readonly TimeSpan DialingStateTtl = TimeSpan.FromSeconds(60);
     // How long the caller keeps being shown a resolved call status (accepted / declined / no answer),
     // once the session itself is gone.
@@ -949,7 +949,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 var changed = await SyncCallerActivity(
                         chatId, freshState, callerId, freshAuthorIds, callRosterFreshCount)
                     .ConfigureAwait(false);
-                changed |= await SyncInviteeActivity(chatId, invites, freshAuthorIds, callRosterFreshCount)
+                changed |= await SyncInviteeActivity(
+                        chatId, invites, freshAuthorIds, callRosterFreshCount, freshState.IsDialing)
                     .ConfigureAwait(false);
                 if (changed)
                     await RecomputeCallStatus(chatId, freshState, cancellationToken).ConfigureAwait(false);
@@ -1003,7 +1004,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         ChatId chatId,
         Dictionary<string, CallInvite?> invites,
         HashSet<AuthorId> freshAuthorIds,
-        int callRosterFreshCount)
+        int callRosterFreshCount,
+        bool isDialing)
     {
         var changed = false;
         foreach (var (authorIdValue, invite) in invites) {
@@ -1015,9 +1017,13 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             switch (invite.Status) {
                 // See SyncCallParticipantActivity - callRosterFreshCount (not the chat-wide fresh count)
                 // keeps a lone fresh invitee (nobody else from this call's own roster fresh yet, or the
-                // caller already gone) from being promoted to Active on its own.
-                case CallInviteStatus.Ringing or CallInviteStatus.Accepted
-                    when isFresh && callRosterFreshCount >= 2:
+                // caller already gone) from being promoted to Active on its own. A still-Ringing invite
+                // additionally needs the call to have latched already (!isDialing): otherwise an invitee
+                // who merely has ambient ("already present for another reason") presence in the chat
+                // would have their still-unanswered ring silently auto-answered - an Accepted invite has
+                // no such condition, since accepting is itself the latch.
+                case CallInviteStatus.Ringing when isFresh && callRosterFreshCount >= 2 && !isDialing:
+                case CallInviteStatus.Accepted when isFresh && callRosterFreshCount >= 2:
                     await _invites.Set(chatId.Value, authorIdValue,
                             invite with { Status = CallInviteStatus.Active, ActiveAt = now })
                         .ConfigureAwait(false);
@@ -1136,7 +1142,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
     private CallState NewCallState(LiveSessionState state, CallStatus status, CallState? previous = null)
         => new() {
-            CallerId = state.Host ?? state.AuthorIds[0],
+            CallerId = state.CallerId ?? state.Host ?? state.AuthorIds[0],
             Status = status,
             ChangedAt = Clocks.SystemClock.Now,
             CallerActiveAt = previous?.CallerActiveAt,
@@ -1198,7 +1204,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     }
 
     private static TimeSpan CallStateTtl(CallStatus status)
-        => status == CallStatus.Dialing ? DialingStateTtl : ResolvedStateTtl;
+        => status is CallStatus.Dialing or CallStatus.Connecting or CallStatus.Active
+            ? DialingStateTtl
+            : ResolvedStateTtl;
 
     private async Task<CallInvite?> SafeGetInvite(ChatId chatId, AuthorId inviteeAuthorId)
     {
@@ -1295,6 +1303,14 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                             is null or { Status: CallStatus.Dialing }) {
                         shouldClose = true;
                         await RecomputeCallStatus(chatId, current, CancellationToken.None).ConfigureAwait(false);
+                        // Derive falls back to Dialing when there are no invite facts to work with
+                        // (e.g. a zero-invitee StartCall, or every invite already vanished via its own
+                        // RingTtl) - this is the call being closed as abandoned, so that generic
+                        // fallback must not leave CallState stuck at Dialing past the session's own close.
+                        var recomputed = await SafeGetCallState(chatId).ConfigureAwait(false);
+                        if (recomputed is { Status: CallStatus.Dialing })
+                            await SetCallState(chatId, NewCallState(current, CallStatus.NoAnswer, recomputed))
+                                .ConfigureAwait(false);
                         await SetOutcome(chatId, current, CallOutcome.NoAnswer).ConfigureAwait(false);
                     }
                     else if (freshState is not null)
