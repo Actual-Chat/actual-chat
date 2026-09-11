@@ -565,11 +565,14 @@ public partial class ChatUI
                 // diff is a one-shot signal: an update lost here leaves an expanded conversation blank
                 lock (Lock) {
                     var lastExpansions = GetLastExpansions(chatId);
-                    changedIds = overrides.SymmetricExcept(lastExpansions.Overrides)
-                        .Union(autoExpanded.SymmetricExcept(lastExpansions.AutoExpanded))
-                        .OrderBy(c => c.StartEntryLid)
-                        .ToList();
-                    _lastExpansions[chatId] = new ExpansionSnapshot(overrides, autoExpanded);
+                    // Every chat switch wipes the auto set, so an earlier visit's snapshot would report that wipe
+                    // as a collapse and widen the window on return - for rows ExpandToCollapsedBlocks loads anyway.
+                    var lastAutoExpanded = lastExpansions.AutoExpansionEpoch == autoExpansionEpoch
+                        ? lastExpansions.AutoExpanded
+                        : ImmutableHashSet<ConversationId>.Empty;
+                    changedIds = GetChangedExpansions(
+                        chatId, overrides, autoExpanded, lastExpansions.Overrides, lastAutoExpanded);
+                    _lastExpansions[chatId] = new ExpansionSnapshot(overrides, autoExpanded, autoExpansionEpoch);
                 }
                 if (changedIds.FirstOrDefault() is { } toggledId)
                     // Extend the data query to cover the toggled conversation's entries. It must extend,
@@ -1840,10 +1843,12 @@ public partial class ChatUI
 
     private sealed record ExpansionSnapshot(
         IImmutableSet<ConversationId> Overrides,
-        IImmutableSet<ConversationId> AutoExpanded)
+        IImmutableSet<ConversationId> AutoExpanded,
+        int AutoExpansionEpoch)
     {
         public static readonly ExpansionSnapshot None = new(
             ImmutableHashSet<ConversationId>.Empty,
-            ImmutableHashSet<ConversationId>.Empty);
+            ImmutableHashSet<ConversationId>.Empty,
+            -1);
     }
 }
