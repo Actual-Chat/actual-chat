@@ -380,8 +380,8 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (chatId is null)
             return false;
 
-        // CallStatus and the session Kind that commits _inCallChatId invalidate independently over RPC -
-        // Dialing can land here before Kind == Call does, so it still counts as "dialing" too.
+        // CallerStatus folds the server's Connecting into Dialing, so an already-accepted-but-
+        // not-yet-confirmed-live call still reads as dialing here, before Kind == Call commits.
         var callStatus = await LiveSessionUI.GetCallStatus(chatId, cancellationToken).ConfigureAwait(false);
         return callStatus == CallerStatus.Dialing;
     }

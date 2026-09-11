@@ -259,11 +259,10 @@
         // same full-screen call view with a "Dialing..." status instead of nothing.
         var callStatus = await LiveSessionUI.GetCallStatus(id, cancellationToken).ConfigureAwait(false);
         if (callStatus == CallerStatus.Dialing) {
-            DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → Outgoing ({Status})",
-                id, callStatus);
+            DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → Outgoing", id);
             return new() {
                 Chat = chat, Phase = CallPhase.InCall,
-                IsDialing = callStatus == CallerStatus.Dialing,
+                IsDialing = true,
                 IsRecording = isRecording, IsOverLock = isOverLock,
             };
         }

@@ -10,7 +10,7 @@
 }
 
 <Banner
-    IsVisible="@(status is not null)"
+    IsVisible="@(status is not null && Text(status).Length != 0)"
     Class="outgoing-call-banner"
     ShowDismissButton="true"
     DismissTooltip="@(status == CallerStatus.Dialing ? L.Banner_CancelCall : L.Common_Close)"
@@ -49,7 +49,9 @@
             ? LiveSessionUI.CancelCall(Chat.Id, CancellationToken.None)
             : LiveSessionUI.DismissCallStatus(Chat.Id, CancellationToken.None);
 
-    private string Text(CallerStatus? status) => status switch {
+    // It's internal so IsVisible's "does this status have display text" check is unit-testable
+    // without rendering the whole component (Ended/Canceled fall through to "" untouched by L).
+    internal string Text(CallerStatus? status) => status switch {
         CallerStatus.Dialing => L.Banner_CallDialing,
         CallerStatus.Active => L.Banner_CallAccepted,
         CallerStatus.NoAnswer => L.Banner_CallNoAnswer,
