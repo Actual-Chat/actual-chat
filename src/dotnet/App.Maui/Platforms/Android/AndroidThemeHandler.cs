@@ -10,13 +10,13 @@ public class AndroidThemeHandler : MauiThemeHandler
     [UnconditionalSuppressMessage("Trimming",
         "CA1422: Call site is reachable on Android >= v.X, obsolete on >= v.Y",
         Justification = "Fine for Window.SetNavigationBarColor")]
-    protected override bool Apply(string topBarColor, string bottomBarColor, Theme? theme)
+    protected override bool Apply(ThemeColors colors, Theme? theme)
     {
         // Call base for status bar handling via CommunityToolkit and background color
-        if (!base.Apply(topBarColor, bottomBarColor, theme))
+        if (!base.Apply(colors, theme))
             return false;
 
-        SetBarsAppearance(topBarColor, bottomBarColor);
+        SetBarsAppearance(colors.TopBar, colors.BottomBar);
         return true;
     }
 

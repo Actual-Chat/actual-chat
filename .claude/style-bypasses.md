@@ -244,6 +244,13 @@ edited. The reason can be as short as whose decision it was.
   for legacy KVAS reads, and MemoryPack's generator rejects a partially annotated
   object outright (MEMPACK025), so a new member cannot opt out of `MemoryPackOrder`
 
+## src/dotnet/App.Maui/MauiThemeHandler.cs
+
+- L95 `protected virtual void ApplyStatusBar(ThemeColors colors, Theme? theme)`
+  — blank line between two multi-line methods — same "0 blank lines inside types" read
+  as "strip every blank line between members" as the `AudioRecorder.cs` entry; every
+  other method pair in this file is separated the same way. NEEDS ALEX'S CALL
+
 ## src/dotnet/UI.Blazor.App/Components/Share/ShareQrModal.razor
 
 - L48-49 `new (ShowTabId, L.ShareQr_TabShow),`
