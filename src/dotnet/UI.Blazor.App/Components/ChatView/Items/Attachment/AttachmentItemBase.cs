@@ -11,6 +11,7 @@ public abstract class AttachmentItemBase : ComputedRenderStateComponent<AppUIHub
     [Parameter, EditorRequired] public Attachment Attachment { get; set; } = null!;
     [Parameter] public EventCallback RemoveClick { get; set; }
     [Parameter] public EventCallback RestartClick { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = new Model(Attachment, AttachmentPreview.NoPreview, AttachmentProgress.New) };

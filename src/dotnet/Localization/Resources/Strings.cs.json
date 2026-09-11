@@ -331,6 +331,9 @@
   "Editor_SendAsFile": "Odeslat jako soubor",
   "Editor_KeepAsText": "Ponechat jako text",
   "Editor_DropFilesToAttach": "Přetáhněte sem soubory pro přiložení",
+  "Editor_QualityOriginal": "Original",
+  "Editor_QualityFullSize": "Plná velikost",
+  "Editor_QualityAppliesToPhotos": "Platí pro {0} fotografii|Platí pro {0} fotografie|Platí pro {0} fotografií",
 
   "Alert_Alert_Format": "Upozornit {0}",
   "Alert_TargetEveryone": "všechny",

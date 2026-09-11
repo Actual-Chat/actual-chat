@@ -331,6 +331,9 @@
   "Editor_SendAsFile": "Пошаљите као фајл",
   "Editor_KeepAsText": "Оставите као текст",
   "Editor_DropFilesToAttach": "Пустите фајлове да их приложите",
+  "Editor_QualityOriginal": "Original",
+  "Editor_QualityFullSize": "Пун величина",
+  "Editor_QualityAppliesToPhotos": "Примјењује се на {0} фотографију|Примјењује се на {0} фотографије|Примјењује се на {0} фотографија",
 
   "Alert_Alert_Format": "Упозори {0}",
   "Alert_TargetEveryone": "све",

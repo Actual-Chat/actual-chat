@@ -331,6 +331,9 @@
   "Editor_SendAsFile": "Als Datei senden",
   "Editor_KeepAsText": "Als Text behalten",
   "Editor_DropFilesToAttach": "Dateien ablegen, um sie anzuhängen",
+  "Editor_QualityOriginal": "Original",
+  "Editor_QualityFullSize": "Volle Größe",
+  "Editor_QualityAppliesToPhotos": "Gilt für {0} Foto|Gilt für {0} Fotos",
 
   "Alert_Alert_Format": "{0} dringend benachrichtigen",
   "Alert_TargetEveryone": "alle",

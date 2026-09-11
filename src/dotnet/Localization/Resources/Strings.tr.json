@@ -331,6 +331,9 @@
   "Editor_SendAsFile": "Dosya olarak gönderin",
   "Editor_KeepAsText": "Metin olarak bırakın",
   "Editor_DropFilesToAttach": "Eklemek için dosyaları bırakın",
+  "Editor_QualityOriginal": "Orijinal",
+  "Editor_QualityFullSize": "Tam boyut",
+  "Editor_QualityAppliesToPhotos": "{0} fotoğrafa uygulanır",
 
   "Alert_Alert_Format": "{0} için acil bildirim",
   "Alert_TargetEveryone": "herkes",

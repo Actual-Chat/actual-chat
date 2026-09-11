@@ -331,6 +331,9 @@
   "Editor_SendAsFile": "Invia come file",
   "Editor_KeepAsText": "Tieni come testo",
   "Editor_DropFilesToAttach": "Rilascia i file per allegarli",
+  "Editor_QualityOriginal": "Originale",
+  "Editor_QualityFullSize": "Dimensione intera",
+  "Editor_QualityAppliesToPhotos": "Si applica a {0} foto|Si applica a {0} foto",
 
   "Alert_Alert_Format": "Avvisa {0}",
   "Alert_TargetEveryone": "tutti",

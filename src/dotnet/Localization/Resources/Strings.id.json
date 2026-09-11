@@ -331,6 +331,9 @@
   "Editor_SendAsFile": "Kirim sebagai file",
   "Editor_KeepAsText": "Biarkan sebagai teks",
   "Editor_DropFilesToAttach": "Lepaskan file untuk melampirkan",
+  "Editor_QualityOriginal": "Original",
+  "Editor_QualityFullSize": "Ukuran penuh",
+  "Editor_QualityAppliesToPhotos": "Berlaku untuk {0} foto",
 
   "Alert_Alert_Format": "Beri peringatan ke {0}",
   "Alert_TargetEveryone": "semua orang",

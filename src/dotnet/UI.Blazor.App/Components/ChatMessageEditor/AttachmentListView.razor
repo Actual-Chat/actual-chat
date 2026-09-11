@@ -1,30 +1,31 @@
 @inherits ComponentBase<AppUIHub>
 @implements IDisposable
 @namespace ActualChat.UI.Blazor.App.Components
-@{
-    var attachments = Attachments;
-}
 
-@if (attachments.Count > 0) {
+@if (Attachments.Count > 0) {
     <div class="attachment-list-wrapper">
         <div class="c-btn-group">
-            <span class="c-count">@L.Editor_Files(attachments.Count, attachments.Count)</span>
-            <Button Class="attachment-list-btn btn-danger btn-transparent unhovered c-remove btn-sm" Click="_ => Clear()">
-                @L.Editor_RemoveAll
-            </Button>
+            <span class="c-count">@CountLabel</span>
+            <div class="c-actions">
+                @if (Attachments.HasCompressibleAttachments) {
+                    <ImageQualitySelector
+                        Attachments="@Attachments"
+                        OnPresetChanged="@OnPresetChanged"/>
+                }
+                <ButtonRound Class="c-remove-btn" Click="_ => Clear()">
+                    <i class="icon-trash03 text-xl text-danger"></i>
+                </ButtonRound>
+            </div>
         </div>
-        <HeaderButton Class="remove-all-btn" Click="_ => Clear()">
-            <i class="icon-trash03 text-xl text-danger"></i>
-        </HeaderButton>
         <ul class="attachment-list custom-scrollbar-x">
-            @foreach (var attachment in attachments.Items) {
+            @foreach (var attachment in Attachments.Items) {
                 <AttachmentItem
                     @key="attachment.Id"
                     Attachment="@attachment"
                     RestartClick="@(() => OnRestartClick(attachment))"
                     RemoveClick="@(() => OnRemoveClick(attachment))"/>
             }
-            @if (attachments.Count < 10) {
+            @if (Attachments.Count < 10) {
                 <li class="attachment-wrapper last-element">
                     <ButtonRound Class="add-attachment" Click="@OnAddClick">
                         <i class="icon-plus text-2xl"></i>
@@ -45,6 +46,14 @@
     [Parameter] public AttachmentListHolder AttachmentListHolder { get; set; } = null!;
 
     private AttachmentList Attachments => _holder!.Attachments;
+
+    private string CountLabel {
+        get {
+            var count = Attachments.Count;
+            var total = Attachments.Items.Sum(a => a.Length);
+            return $"{L.Editor_Files(count, count)} · {FormatSize(total)}";
+        }
+    }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AttachmentListView))]
     public AttachmentListView() { }
@@ -74,4 +83,28 @@
 
     private Task OnRestartClick(Attachment attachment)
         => Attachments.Restart(attachment);
+
+    private void OnPresetChanged(ImageQualityPreset preset) {
+        Attachments.SetGlobalQuality(preset);
+        foreach (var attachment in Attachments.Items.Where(a => a.IsResizableImage && a.IsUploadPending).ToList()) {
+            var originalLength = attachment.OriginalLength > 0 ? attachment.OriginalLength : attachment.Length;
+            var newLength = preset switch {
+                ImageQualityPreset.FullHD when attachment.EstimatedSizes?.Length >= 1
+                    => Math.Min(attachment.EstimatedSizes.Value[0].Size, originalLength),
+                ImageQualityPreset.HD when attachment.EstimatedSizes?.Length >= 2
+                    => Math.Min(attachment.EstimatedSizes.Value[1].Size, originalLength),
+                ImageQualityPreset.SD when attachment.EstimatedSizes?.Length >= 3
+                    => Math.Min(attachment.EstimatedSizes.Value[2].Size, originalLength),
+                _ => originalLength,
+            };
+            if (newLength > 0 && newLength != attachment.Length)
+                Attachments.Replace(attachment, attachment with { Length = newLength, SelectedQuality = preset });
+        }
+    }
+
+    private static string FormatSize(long bytes) => bytes switch {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:F0} KB",
+        _ => $"{bytes / (1024.0 * 1024.0):F1} MB",
+    };
 }
