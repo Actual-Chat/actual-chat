@@ -562,7 +562,11 @@ screen, or the `retainedItemCount` (5) items nearest the viewport centre when no
 the difference, but only if the gap is worth a render (half a viewport) or a skeleton is already
 visible. At a known edge the zone is clamped one way only: there is nothing further out to ask for,
 but the zone moving inwards must still be able to drop what it left behind, or a long read through
-history ends up holding thousands of items. Move counts are rounded to 5 so a drifting viewport does
+history ends up holding thousands of items. The edge item itself is held longer than the zone —
+`EdgeReachScreens` (6) screens from the viewport — because dropping it is what makes the edge unknown:
+the limit on that side then moves out by `MaxOverscrollScreens`, and a fling back (one Mac trackpad
+flick covers three screens) runs past the content into blank until the edge reloads, then snaps to it
+(#4427). Move counts are rounded to 5 so a drifting viewport does
 not produce a new query every frame. A query identical to the last one is dropped, except while a
 skeleton is on screen, where it is retried once a second. A request that never produces a render is
 released after 2.5s and retried after 1s; `renderSkipped` from Blazor does the same, because a render
