@@ -1589,5 +1589,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "请在地点设置中编辑成员",
   "ChatSettings_LeaveChatAndDelete": "退出并删除聊天",
 
-  "PlaceSettings_LeavePlaceAndDelete": "退出并删除地点"
+  "PlaceSettings_LeavePlaceAndDelete": "退出并删除地点",
+  "Call_OutgoingTo": "Outgoing call to ",
+  "Call_Outgoing": "Outgoing call"
 }

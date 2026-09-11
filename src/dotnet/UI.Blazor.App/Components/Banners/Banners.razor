@@ -7,12 +7,8 @@
 
 @* Urgent, actionable banners stay full-size above the stack *@
 <ReconnectBanner/>
-@* Incoming calls surface as a modal (IncomingCallUI.SyncIncomingCallModal), not a banner. *@
-@if (chat is not null) {
-    <NoComponent @key="Chat">
-        <OutgoingCallBanner/>
-    </NoComponent>
-}
+@* Incoming and outgoing calls surface as modals (IncomingCallUI.SyncIncomingCallModal,
+   IncomingCallUI.ShowOutgoingCall), not banners. *@
 @foreach (var banner in m.Banners.Take(MaxCount)) {
     @banner.View
 }

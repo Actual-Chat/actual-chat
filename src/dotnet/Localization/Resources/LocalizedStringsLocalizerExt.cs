@@ -967,6 +967,7 @@ public static class LocalizedStringsLocalizerExt
         public string Common_Today => l["Common_Today"].Value;
         public string Common_Yesterday => l["Common_Yesterday"].Value;
         public string Call_IncomingFrom => l["Call_IncomingFrom"].Value;
+        public string Call_OutgoingTo => l["Call_OutgoingTo"].Value;
         public string Call_Message => l["Call_Message"].Value;
         public string Call_AppIncomingTitle => l["Call_AppIncomingTitle"].Value;
         public string Call_Mute => l["Call_Mute"].Value;
@@ -1544,6 +1545,7 @@ public static class LocalizedStringsLocalizerExt
         public string Call_DetectingLanguage => l["Call_DetectingLanguage"].Value;
         public string Call_Incoming => l["Call_Incoming"].Value;
         public string Call_IncomingVideo => l["Call_IncomingVideo"].Value;
+        public string Call_Outgoing => l["Call_Outgoing"].Value;
         public string Call_InCall => l["Call_InCall"].Value;
         public string Call_JoinVideo => l["Call_JoinVideo"].Value;
         public string Call_VideoPreview => l["Call_VideoPreview"].Value;

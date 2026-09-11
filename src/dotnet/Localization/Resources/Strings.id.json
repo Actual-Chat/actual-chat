@@ -1589,5 +1589,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Kelola anggota di pengaturan Tempat",
   "ChatSettings_LeaveChatAndDelete": "Keluar dari obrolan & hapus",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Keluar dari Tempat & hapus"
+  "PlaceSettings_LeavePlaceAndDelete": "Keluar dari Tempat & hapus",
+  "Call_OutgoingTo": "Outgoing call to ",
+  "Call_Outgoing": "Outgoing call"
 }

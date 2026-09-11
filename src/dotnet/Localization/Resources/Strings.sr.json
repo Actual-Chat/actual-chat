@@ -1589,5 +1589,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Чланове уређујете у поставкама Места",
   "ChatSettings_LeaveChatAndDelete": "Напустите чет и обриши",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Напустите Место и обриши"
+  "PlaceSettings_LeavePlaceAndDelete": "Напустите Место и обриши",
+  "Call_OutgoingTo": "Outgoing call to ",
+  "Call_Outgoing": "Outgoing call"
 }

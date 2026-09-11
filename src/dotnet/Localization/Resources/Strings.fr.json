@@ -1589,5 +1589,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Utilisez les paramètres du Lieu pour modifier les membres",
   "ChatSettings_LeaveChatAndDelete": "Quitter la discussion et la supprimer",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Quitter le Lieu et le supprimer"
+  "PlaceSettings_LeavePlaceAndDelete": "Quitter le Lieu et le supprimer",
+  "Call_OutgoingTo": "Outgoing call to ",
+  "Call_Outgoing": "Outgoing call"
 }

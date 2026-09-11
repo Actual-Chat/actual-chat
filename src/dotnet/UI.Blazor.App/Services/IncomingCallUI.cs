@@ -37,6 +37,9 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private readonly ComputedState<ChatId?> _foregroundCallChatId;
     // The ring collapsed into the draggable island (foreground only); its modal is closed while set.
     private readonly MutableState<ChatId?> _collapsedChatId;
+    // My own outgoing call, collapsed into the draggable island (wide screens only); its modal is
+    // closed while set - the outgoing-call counterpart of _collapsedChatId above.
+    private readonly MutableState<ChatId?> _collapsedOutgoingChatId;
     // The ring whose ringtone the user silenced; the ring itself keeps going.
     private readonly MutableState<ChatId?> _mutedRingChatId;
     private int _ringGeneration;
@@ -44,6 +47,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public IState<ChatId?> OverLockChatId => _overLockChatId;
     public IState<ChatId?> ForegroundCallChatId => _foregroundCallChatId;
     public IState<ChatId?> CollapsedChatId => _collapsedChatId;
+    public IState<ChatId?> CollapsedOutgoingChatId => _collapsedOutgoingChatId;
     public IState<ChatId?> MutedRingChatId => _mutedRingChatId;
 
     private IIncomingCallsBridge? Bridge { get; }
@@ -85,6 +89,9 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _collapsedChatId = StateFactory.NewMutable(
             (ChatId?)null,
             StateCategories.Get(GetType(), "CollapsedChatId"));
+        _collapsedOutgoingChatId = StateFactory.NewMutable(
+            (ChatId?)null,
+            StateCategories.Get(GetType(), "CollapsedOutgoingChatId"));
         _mutedRingChatId = StateFactory.NewMutable(
             (ChatId?)null,
             StateCategories.Get(GetType(), "MutedRingChatId"));
@@ -254,12 +261,52 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             _foregroundRawChatId.Value = chatId;
     }
 
-    // Shows the full-screen call view for my own outgoing call while it's still dialing (narrow only),
-    // so the caller sees "Dialing..." instead of nothing; PrepareForegroundCall flows it into InCall.
+    // Shows the outgoing-call UI while still dialing: the full-screen view on narrow screens
+    // (PrepareForegroundCall flows it into InCall), or the OutgoingCallModal on wide screens.
     public void ShowOutgoingCall(ChatId chatId)
     {
-        if (Hub.BrowserInfo.ScreenSize.Value.IsNarrow())
+        // A prior call to this same chat may have left this collapsed - without clearing it here,
+        // this fresh dial would inherit that flag and jump straight to the island.
+        if (_collapsedOutgoingChatId.Value == chatId)
+            _collapsedOutgoingChatId.Value = null;
+
+        if (Hub.BrowserInfo.ScreenSize.Value.IsNarrow()) {
             _foregroundRawChatId.Value = chatId;
+            return;
+        }
+
+        ShowOutgoingCallModal(chatId);
+    }
+
+    // Collapses the outgoing-call modal into the draggable island. The call keeps dialing - the
+    // island's hang-up still works and a tap on it re-opens the modal.
+    public void CollapseOutgoing(ChatId chatId)
+        => _collapsedOutgoingChatId.Value = chatId;
+
+    public void ExpandOutgoing(ChatId chatId)
+    {
+        if (_collapsedOutgoingChatId.Value != chatId)
+            return;
+
+        // Closing the modal (an explicit hang-up or collapsing itself) disposes that component
+        // instance - clearing the flag alone won't bring it back, so re-show it here. If dialing has
+        // since ended, the fresh instance's own ComputeState closes it right back (see its "resolved
+        // close" branch).
+        _collapsedOutgoingChatId.Value = null;
+        ShowOutgoingCallModal(chatId);
+    }
+
+    // ModalUI.Show needs the Blazor dispatcher; callers can be background watch loops
+    // (LiveSessionUI.WatchOutgoingCall) or a UI event handler already on the dispatcher.
+    private void ShowOutgoingCallModal(ChatId chatId)
+        => _ = Hub.Dispatcher.InvokeAsync(() => Hub.ModalUI.Show(new OutgoingCallModal.Model(chatId)));
+
+    // Called once dialing ends (answered, no answer, declined, or canceled) so a later call to the
+    // same chat doesn't inherit a stale "collapsed" flag and jump straight to the island.
+    public void EndOutgoingCall(ChatId chatId)
+    {
+        if (_collapsedOutgoingChatId.Value == chatId)
+            _collapsedOutgoingChatId.Value = null;
     }
 
     // Hangs up my own still-dialing outgoing call from the full-screen view.

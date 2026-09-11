@@ -1901,5 +1901,7 @@
   "ChatSettings_LeaveChatAndDelete": "Quitter la discussion et la supprimer",
 
   // The destructive action at the bottom of place settings.
-  "PlaceSettings_LeavePlaceAndDelete": "Напуснете Мястото и изтрий"
+  "PlaceSettings_LeavePlaceAndDelete": "Напуснете Мястото и изтрий",
+  "Call_OutgoingTo": "Outgoing call to ",
+  "Call_Outgoing": "Outgoing call"
 }
