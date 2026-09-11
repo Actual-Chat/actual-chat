@@ -56,6 +56,11 @@ public sealed class MacOSCustomBlazorWebViewHandler : BlazorWebViewHandler
         // content://files/<key> previews of local files (attachments, gallery thumbnails) - what
         // MauiWebView.MaciOS registers from BlazorWebViewInitializing on iOS and Catalyst.
         config.SetUrlSchemeHandler(ContentSchemeHandler.Instance, "content");
+        // The page extends under the titlebar: it reserves the traffic lights' corner and moves the
+        // window from its own drag regions - see WindowConfigurator.ExtendContentUnderTitlebar
+        config.UserContentController.AddUserScript(new WKUserScript(
+            new NSString(WindowConfigurator.GetTitlebarInsetScript()), WKUserScriptInjectionTime.AtDocumentStart, true));
+        config.UserContentController.AddScriptMessageHandler(WindowConfigurator.WindowDragHandler, "windowDrag");
         config.Preferences.JavaScriptCanOpenWindowsAutomatically = true;
         config.UpgradeKnownHostsToHttps = true;
         // Same as the iOS/Catalyst WebView: without this WebKit's autoplay policy keeps the
@@ -98,10 +103,13 @@ public sealed class MacOSCustomBlazorWebViewHandler : BlazorWebViewHandler
         {
             base.ViewDidMoveToWindow();
 
-            // The labs handler installs its titlebar drag overlay from a KVO observer of this very
-            // window change, so the reorder must run after the current pass.
+            // The labs handler installs its titlebar drag overlay and content insets from KVO
+            // observers of this very window change, so both fixes must run after the current pass.
             if (Window is { } window)
-                DispatchQueue.MainQueue.DispatchAsync(() => WindowConfigurator.KeepTitlebarAboveContent(window));
+                DispatchQueue.MainQueue.DispatchAsync(() => {
+                    WindowConfigurator.RemoveTitlebarDragOverlay(window);
+                    WindowConfigurator.ExtendContentUnderTitlebar(this);
+                });
         }
     }
 }
