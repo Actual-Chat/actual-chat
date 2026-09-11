@@ -3,7 +3,7 @@ using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 
-namespace ActualChat.Users.Passkey;
+namespace ActualChat.Users.Passkeys;
 
 public class PasskeysBackend(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IPasskeysBackend
 {
