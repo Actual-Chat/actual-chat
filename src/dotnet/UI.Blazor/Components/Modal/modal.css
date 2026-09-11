@@ -73,6 +73,11 @@ body.narrow .modal-frame.modal-sm {
     max-height: 80vh;
     bottom: calc(4vh + var(--safe-area-bottom));
 }
+/* modal-sm already floats above the home indicator via the bottom offset above,
+   so its inner padding-bottom must drop the safe-area term to avoid a double gap. */
+body.narrow .modal-frame.modal-sm:not(.full-bleed) {
+    @apply pb-4;
+}
 
 .narrow .narrow-view__modal__position-bottom {
     @apply absolute bottom-0;
