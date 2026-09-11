@@ -96,6 +96,11 @@ const ScreenAnchorRenderTtlMs = 10_000;
 // that the query built from there asks for a window the data can't reach, so nothing would ever come
 // to meet the view.
 const MaxOverscrollScreens = 3;
+// How far from the viewport a known edge stays loaded, in screens. The load zone alone drops the edge
+// item as soon as it is two screens away, and with it the knowledge that the edge is there: the limit
+// on that side moves out by MaxOverscrollScreens, and a fling back runs past the content into blank
+// until the edge reloads, then snaps to it. One Mac trackpad flick was measured at 7.8 screens.
+const EdgeReachScreens = 12;
 // Past twice the allowance the blank is not something scrolling can produce - the view and its chain
 // have come apart, and only a re-pin brings them back.
 const StrandedGapFactor = 2;
@@ -445,12 +450,16 @@ export class InfiniteList extends VirtualList {
         // Clamped one way only at a known edge: there is nothing further out to ask for, but the zone
         // moving inwards still has to be able to drop what it has left behind. Clamping both ways makes
         // every query at that edge extend-only, and a long read through history then ends up holding
-        // thousands of items.
+        // thousands of items. The edge itself is held for as long as a fling can reach it, because
+        // dropping it is what makes the edge unknown - see EdgeReachScreens.
+        const edgeReach = viewport.size * EdgeReachScreens;
+        const startZone = rs.hasVeryFirstItem && viewport.start - loaded.start <= edgeReach ? edgeReach : zone;
+        const endZone = rs.hasVeryLastItem && loaded.end - viewport.end <= edgeReach ? edgeReach : zone;
         let loadStart = rs.hasVeryFirstItem
-            ? Math.max(viewport.start - zone, loaded.start)
+            ? Math.max(viewport.start - startZone, loaded.start)
             : viewport.start - zone;
         let loadEnd = rs.hasVeryLastItem
-            ? Math.min(viewport.end + zone, loaded.end)
+            ? Math.min(viewport.end + endZone, loaded.end)
             : viewport.end + zone;
         // Anything on screen has to stay loaded, whatever the zone says: unloading a visible item would
         // drop the anchor the next render holds the view by.
