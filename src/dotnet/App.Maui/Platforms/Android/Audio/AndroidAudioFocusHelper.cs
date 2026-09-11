@@ -10,6 +10,8 @@ namespace ActualChat.App.Maui.Audio;
 /// </summary>
 public sealed class AndroidAudioFocusHelper : IDisposable
 {
+    private static readonly TimeSpan SessionCarryOver = TimeSpan.FromSeconds(3);
+
     private readonly AudioManager _audioManager;
     private readonly AudioFocusChangeListener _audioFocusChangeListener;
     private readonly DeviceCallback _deviceCallback;
@@ -19,6 +21,10 @@ public sealed class AndroidAudioFocusHelper : IDisposable
     private bool _hasFocus;
     private bool _isCommunicationFocus;
     private bool _isCommunicationModeYielded;
+    private bool _isSilentStart;
+    // _hasFocus minus the focus we lost to another app - i.e. is the session we measured still ours
+    private bool _isFocusSessionOpen;
+    private CpuTimestamp _sessionEndedAt = CpuTimestamp.Now - TimeSpan.FromHours(1);
     public bool IsCommunicationFocus => _isCommunicationFocus;
 
     public event Action<AudioFocus>? OnFocusChanged;
@@ -64,6 +70,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
     public Task<bool> RequestFocusForListening()
         // Transient, not Gain: this focus lives only while someone's speech is actually playing,
         // so whatever it pauses - music, navigation - auto-resumes once the utterance ends.
+        // ResolveGain still escalates it to a permanent gain when nothing was playing to resume.
         => RequestFocus(AudioFocus.GainTransient, AudioUsageKind.Media, AudioContentType.Speech);
 
     public Task<bool> RequestFocusForProjectedMedia()
@@ -72,11 +79,15 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         // playback ends up on the guidance channel over a ducked radio. A Gain is always forwarded.
         => RequestFocus(AudioFocus.Gain, AudioUsageKind.Media, AudioContentType.Speech);
 
-    public Task<bool> RequestFocusForNotification()
+    public Task<bool> RequestFocusForNotification(bool isProjectionActive)
+        // Under projection the tune must keep its transient gain: gearhead answers it with a
+        // guidance-only focus, and what a permanent one does to the media request that follows
+        // 10-20 ms later is untested - see docs/live-audio/11-android-auto.md.
         => RequestFocus(
             AudioFocus.GainTransientMayDuck,
             AudioUsageKind.AssistanceSonification,
-            AudioContentType.Sonification);
+            AudioContentType.Sonification,
+            canEscalateGain: !isProjectionActive);
 
     public async Task WarmUpAudioMode(bool isProjectionActive)
     {
@@ -163,10 +174,12 @@ public sealed class AndroidAudioFocusHelper : IDisposable
             return;
 
         _log.LogInformation("Abandon audio focus");
+        _sessionEndedAt = CpuTimestamp.Now;
         _deviceRouter.ClearCommunicationDevice();
         _audioManager.AbandonAudioFocusRequest(_focusRequest);
         _audioManager.Mode = Mode.Normal;
         _hasFocus = false;
+        Volatile.Write(ref _isFocusSessionOpen, false);
         _isCommunicationFocus = false;
     }
 
@@ -188,9 +201,12 @@ public sealed class AndroidAudioFocusHelper : IDisposable
     private async Task<bool> RequestFocus(
         AudioFocus audioFocus,
         AudioUsageKind audioUsageKind,
-        AudioContentType audioContentType)
+        AudioContentType audioContentType,
+        bool canEscalateGain = true)
     {
         LogAudioState();
+        // Resolved ahead of the mode change below, which is what the silence check reads.
+        var gain = ResolveGain(audioFocus, canEscalateGain);
         var isCommunication = audioUsageKind == AudioUsageKind.VoiceCommunication;
 
         // For voice communication, we need to set Mode.InCommunication to enable proper audio routing.
@@ -215,15 +231,21 @@ public sealed class AndroidAudioFocusHelper : IDisposable
             .SetContentType(audioContentType)!
             .Build()!;
 
-        _focusRequest = new AudioFocusRequestClass.Builder(audioFocus)
+        _focusRequest = new AudioFocusRequestClass.Builder(gain)
             .SetAudioAttributes(attrs)
             .SetOnAudioFocusChangeListener(_audioFocusChangeListener)
             .Build()!;
 
+        // Published before the request: a loss landing on the listener thread while it runs must
+        // win, or the renewal that follows would skip the fresh measurement the loss calls for.
+        Volatile.Write(ref _isFocusSessionOpen, true);
         var result = _audioManager.RequestAudioFocus(_focusRequest);
         _hasFocus = result == AudioFocusRequest.Granted;
         _isCommunicationFocus = _hasFocus && isCommunication;
-        _log.LogInformation("Requested audio focus for '{Usage}', granted = {Result}", audioUsageKind, _hasFocus);
+        if (!_hasFocus)
+            Volatile.Write(ref _isFocusSessionOpen, false);
+        _log.LogInformation("Requested audio focus for '{Usage}' ({Gain}), granted = {Result}",
+            audioUsageKind, gain, _hasFocus);
         if (isCommunication && !_hasFocus) {
             // The mode was raised before the request, and a denial - the normal answer during a
             // real phone call, which is exactly when a PTT wake arrives - used to leave it on
@@ -241,9 +263,50 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         return _hasFocus;
     }
 
+    private AudioFocus ResolveGain(AudioFocus gain, bool canEscalateGain)
+    {
+        // Measured once per focus session: our own playback counts as active audio, so a renewal
+        // mid-utterance would answer differently than the acquire that opened the session.
+        if (!Volatile.Read(ref _isFocusSessionOpen))
+            Volatile.Write(ref _isSilentStart, IsSilentStart());
+
+        if (!canEscalateGain || gain == AudioFocus.Gain)
+            return gain;
+
+        // Abandoning a transient focus hands an AUDIOFOCUS_GAIN back to the app that held it before
+        // us, and media apps resume on it even when the user paused them long before our session
+        // began - so a session that started in silence asks for a permanent gain instead, which
+        // evicts that app with an AUDIOFOCUS_LOSS and leaves nothing to resume. The begin tune,
+        // which opens the session a recording rides on, is what evicts it in that flow.
+        return Volatile.Read(ref _isSilentStart) ? AudioFocus.Gain : gain;
+    }
+
+    private bool IsSilentStart()
+    {
+        // Our sessions run back to back - the begin tune hands over to recording, listening
+        // re-acquires per utterance - and in such a gap the app we just handed the gain back to is
+        // spinning its player up while nothing has started playing yet. Either reading is the same
+        // mistake, so across a short gap the previous session's answer stands instead.
+        if (_sessionEndedAt.Elapsed < SessionCarryOver)
+            return Volatile.Read(ref _isSilentStart);
+
+        // IsMusicActive sees STREAM_MUSIC only, so a mode other than Normal - another app's VoIP
+        // call, a ringtone - stands in for the streams it cannot report.
+        return !_audioManager.IsMusicActive && _audioManager.Mode == Mode.Normal;
+    }
+
     private void OnAudioFocusChange(AudioFocus focusChange)
     {
         _log.LogInformation("Audio focus change: {FocusChange}", focusChange);
+        // Another app owns the audio from here on, so the session we measured is over and its
+        // verdict with it - whatever took the focus is the audio the next session must preserve,
+        // including across the carry-over window. A transient loss - a ring, a nav prompt - keeps
+        // both, since our session resumes once the interruption ends.
+        if (focusChange == AudioFocus.Loss) {
+            Volatile.Write(ref _isFocusSessionOpen, false);
+            Volatile.Write(ref _isSilentStart, false);
+        }
+
         OnFocusChanged?.Invoke(focusChange);
     }
 

@@ -99,7 +99,8 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
                 FocusRequestKind.ProjectedMedia => _focusHelper.RequestFocusForProjectedMedia(),
                 FocusRequestKind.Playback => _focusHelper.RequestFocusForPlayback(),
                 FocusRequestKind.Listening => _focusHelper.RequestFocusForListening(),
-                FocusRequestKind.Notification => _focusHelper.RequestFocusForNotification(),
+                FocusRequestKind.Notification =>
+                    _focusHelper.RequestFocusForNotification(carAudioRoute != CarAudioRoute.Default),
                 _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unsupported audio focus mode"),
             }, CancellationToken.None)
             .ConfigureAwait(false);
