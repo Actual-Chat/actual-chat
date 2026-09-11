@@ -23,6 +23,10 @@ export abstract class GeneratedAvatar extends LitElement {
         // Observe the sized parent (.c-content); the host itself may be inline.
         this.resizeObserver.observe(this.parentElement ?? this);
         GeneratedAvatar.scheduleMeasure(this);
+        // A move (e.g. a keyed Blazor reorder) drops the SvgCache listener in disconnectedCallback, and
+        // re-measuring to the same bucket doesn't re-render, so an avatar mid-raster would stay a skeleton.
+        if (this.hasUpdated)
+            this.requestUpdate();
     }
 
     disconnectedCallback() {
