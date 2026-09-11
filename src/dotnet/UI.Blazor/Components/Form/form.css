@@ -160,7 +160,8 @@ form .form-section {
 .form .form-section-content.label-inside-input input:not([type='checkbox']):not(.dialog-unstyled),
 .form .form-section-content.label-inside-input select {
     @apply p-0;
-    @apply border-none outline-none;
+    @apply rounded-none border-none outline-none;
+    @apply bg-transparent;
     @apply custom-scrollbar;
 }
 .form .form-section-content.label-inside-input input:not([type='checkbox']):not(.dialog-unstyled).invalid,
