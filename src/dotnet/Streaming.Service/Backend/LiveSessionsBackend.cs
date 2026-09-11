@@ -653,7 +653,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 };
                 await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
                 // The latch is the caller's "accepted" moment - a brief confirmation before this fades.
-                await SetCallState(chatId, NewCallState(state, CallStatus.Connecting)).ConfigureAwait(false);
+                await RecomputeCallStatus(chatId, state, cancellationToken).ConfigureAwait(false);
                 justConnected = true;
             }
             conversationId = state?.RingConversationId;
@@ -685,7 +685,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 // Recorded before the close below drops the session that carries the caller's identity.
                 // Gated on abandoned: a decline while another invitee still rings isn't the call's final story.
                 if (abandoned)
-                    await SetCallState(chatId, NewCallState(state, CallStatus.Declined)).ConfigureAwait(false);
+                    await RecomputeCallStatus(chatId, state, cancellationToken).ConfigureAwait(false);
                 // Unlike CallStatus, the outcome is recorded on every decline: first-writer-wins already
                 // covers a later accept or cancel rewriting the story.
                 await SetOutcome(chatId, state, CallOutcome.Declined).ConfigureAwait(false);
@@ -862,10 +862,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             using (await _changeLocks.Lock(chatId, CancellationToken.None).ConfigureAwait(false)) {
                 var state = await SafeGet(chatId).ConfigureAwait(false);
                 if (state is { Kind: LiveSessionKind.Call }) {
-                    var participants = await GetConsolidatedParticipants(
-                        chatId, CancellationToken.None).ConfigureAwait(false);
+                    var participants = await GetConsolidatedParticipants(chatId, CancellationToken.None)
+                        .ConfigureAwait(false);
                     if (participants.Count < 2)
                         shouldClose = true;
+                    else
+                        await RecomputeCallStatus(chatId, state, CancellationToken.None).ConfigureAwait(false);
                 }
             }
             if (shouldClose)
@@ -1115,7 +1117,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                         && await SafeGetCallState(chatId).ConfigureAwait(false)
                             is null or { Status: CallStatus.Dialing }) {
                         shouldClose = true;
-                        await SetCallState(chatId, NewCallState(current, CallStatus.NoAnswer)).ConfigureAwait(false);
+                        await RecomputeCallStatus(chatId, current, CancellationToken.None).ConfigureAwait(false);
                         await SetOutcome(chatId, current, CallOutcome.NoAnswer).ConfigureAwait(false);
                     }
                     else if (freshState is not null)

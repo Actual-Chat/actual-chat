@@ -1537,6 +1537,95 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task AcceptCallRecomputesStatusToConnecting()
+    {
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // act
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // assert
+        var callState = await backend.GetCallState(chatId, default);
+        callState!.Status.Should().Be(CallStatus.Connecting);
+    }
+
+    [Fact]
+    public async Task ExpireRingsRecomputesStatusToNoAnswer()
+    {
+        // This drives a genuine ring timeout (RingTimeout = Constants.Call.RingTimeout = 20s) rather
+        // than calling ExpireRings before the ring is actually stale - there's no clock-injection seam
+        // for this backend's Redis-timestamp-based timeout, so the real ~21s wait is the honest way to
+        // exercise the abandon-check block's RecomputeCallStatus call end-to-end.
+
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // act - wait past the real ring timeout, then drive the expiry check
+        await Task.Delay(TimeSpan.FromSeconds(21));
+        await backend.ExpireRings(chatId);
+
+        // assert - the call is fully abandoned (nobody ever answered), so RecomputeCallStatus inside
+        // ExpireRings' abandon-check block lands NoAnswer - the session itself is gone (CloseCall),
+        // but the caller-facing CallState survives to explain why
+        (await backend.GetState(chatId, default)).Should().BeNull();
+        var callState = await backend.GetCallState(chatId, default);
+        callState!.Status.Should().Be(CallStatus.NoAnswer);
+    }
+
+    [Fact]
+    public async Task SecondInviteeAcceptingDoesNotErrorOrRegressStatus()
+    {
+        // AcceptCall's RecomputeCallStatus call only runs on the first accept - the branch is gated on
+        // SessionStartedAt being null, which the first accept's latch already clears - so this does NOT
+        // prove multi-invite fact-folding (that needs SyncCallParticipantActivity, which is Task 5's
+        // job). What this guards: a second accept in an already-connected group call must not throw
+        // and must not regress CallStatus back toward Dialing.
+
+        // arrange - a group call: Owner calls Moderator and Member
+        await using var owner = AppHost.NewBlazorTester(Out);
+        await using var member1 = AppHost.NewBlazorTester(Out);
+        await using var member2 = AppHost.NewBlazorTester(Out);
+        await owner.SignInAsUniqueBob();
+        await member1.SignInAsUniqueAlice();
+        await member2.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await owner.CreateChat(false);
+        var member1Author = await member1.JoinChat(chatId, inviteId);
+        var member2Author = await member2.JoinChat(chatId, inviteId);
+        var ownerAuthor = await owner.GetOwnAuthor(chatId);
+        var backend = owner.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var invitees = new[] { member1Author.Id, member2Author.Id }.ToApiArray();
+        await backend.StartCall(chatId, ownerAuthor!.Id, invitees, false, default);
+
+        // act
+        await backend.AcceptCall(chatId, member1Author.Id, default);
+        Func<Task> secondAccept = () => backend.AcceptCall(chatId, member2Author.Id, default);
+
+        // assert - the second accept doesn't throw, and status hasn't regressed to Dialing
+        await secondAccept.Should().NotThrowAsync();
+        var callState = await backend.GetCallState(chatId, default);
+        callState!.Status.Should().Be(CallStatus.Connecting);
+    }
+
+    [Fact]
     public void DeriveReturnsDialingWithNoFactsYet()
     {
         var status = LiveSessionsBackend.Derive(callState: null, invites: []);
