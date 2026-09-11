@@ -37,6 +37,12 @@ async function copyAssets() {
         recursive: true,
         filter: (src) => path.extname(src) !== '.md',
     });
+    // jpegli WASM encoder: fetched at runtime by image-processing/jpegli-encoder.ts,
+    // never bundled. See src/nodejs/jpegli/README.md.
+    await fs.promises.cp('./src/nodejs/jpegli', `${outputPath}/jpegli`, {
+        recursive: true,
+        filter: (src) => path.extname(src) !== '.md' && path.basename(src) !== 'build',
+    });
     await fs.promises.cp('./resources/sounds/converted', `${outputPath}/sounds`, {
         recursive: true,
         filter: (src) => {
