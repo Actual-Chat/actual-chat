@@ -96,6 +96,9 @@ public partial class WebFileProvider : IFileProvider
     public Task WhenFileStreamReady()
         => DemandWebFileProviderInternal().WhenFileStreamReady();
 
+    public ValueTask<ProcessedWebImage> ProcessImage(ImageProcessRequest request, CancellationToken cancellationToken)
+        => DemandWebFileProviderInternal().ProcessImage(request, cancellationToken);
+
     public async Task<ImageResizeResult> ResizeImage(int maxDimension, double quality = 0.85)
     {
         var result = await DemandWebFileProviderInternal().ReplaceBlob(maxDimension, quality).ConfigureAwait(false);
@@ -135,6 +138,7 @@ public interface IWebFileProviderInternal : IAsyncDisposable
     ValueTask<string> SaveFileHandleToDb();
     Task<bool> WhenUserConsentGranted();
     Task WhenFileStreamReady();
+    ValueTask<ProcessedWebImage> ProcessImage(ImageProcessRequest request, CancellationToken cancellationToken);
     Task ClearForRemoving();
     WebUploadStreamSource GetUploadStreamSource();
     ValueTask<ImageResizeResult> ReplaceBlob(int maxDimension, double quality);
@@ -201,6 +205,9 @@ public class WebFileProviderInternal : IWebFileProviderInternal
         await TaskExt.NeverEnding(_cancellationToken).ConfigureAwait(false);
     }
 
+    public ValueTask<ProcessedWebImage> ProcessImage(ImageProcessRequest request, CancellationToken cancellationToken)
+        => _jsRef.InvokeAsync<ProcessedWebImage>("processImage", cancellationToken, request);
+
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
@@ -230,6 +237,9 @@ public class NoFileAccessWebFileProviderInternal(IJSRuntime jsRuntime, string fi
         => throw new NotSupportedException();
 
     public Task WhenFileStreamReady()
+        => throw new NotSupportedException();
+
+    public ValueTask<ProcessedWebImage> ProcessImage(ImageProcessRequest request, CancellationToken cancellationToken)
         => throw new NotSupportedException();
 
     public ValueTask<ImageResizeResult> ReplaceBlob(int maxDimension, double quality)
