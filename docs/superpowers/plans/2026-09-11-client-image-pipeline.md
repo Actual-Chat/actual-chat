@@ -15,7 +15,7 @@
 - Read `docs/CODING_STYLE.md` before writing C#/TS. No `Async` suffix; mixed brace style; control-flow statements on their own line followed by a blank line; no new `///` on members; comments only for non-obvious things.
 - Presets: `Uhd4K` (max 3840 px, default), `FullHd` (max 1920 px), `Original` (no re-encode, metadata stripped), `OriginalWithExif` (byte-exact, `KeepMetadata=true`). Both Original presets re-encode an image whose long side exceeds `Constants.Attachments.MaxImageSize` = 7680 down to 7680 px.
 - jpegli settings: distance `1.9`, subsampling `420`, progressive level `2`. Canvas fallback quality: `0.50` on WebKit, `0.75` elsewhere.
-- Worker RPC timeout: `30_000` ms; the worker processes one image at a time.
+- Worker RPC timeout: `30_000` ms per job, multiplied by (jobs already pending + 1); the worker processes one image at a time.
 - jpegli source: google/jpegli `031a0077f5799a6041004267fc12b956c1f52a20`, Emscripten `6.0.9`, no threads.
 - Metadata strip rules (TS and C# identical): JPEG drops APP1 EXIF (re-adds a minimal EXIF with only Orientation when it is not 1), APP1 XMP unless it contains `hdrgm`, other APP1, APP13, COM; keeps APP2 (ICC, MPF) and every segment after the MPF segment, and everything from SOS to the end of file. PNG drops `eXIf`, `tEXt`, `iTXt`, `zTXt`, `tIME`. WebP drops `EXIF` and `XMP ` chunks and clears VP8X flags `0x08` and `0x04`. Everything else is returned unchanged.
 - Server: chat attachments get no resize and no re-encode; link previews, avatars and chat icons keep current processing.
@@ -29,6 +29,7 @@
 3. **Original presets re-encode images whose long side exceeds 8K (7680 px) down to 7680 px** instead of hiding the Original options. The worker reads dimensions from the file header (JPEG SOF, PNG IHDR, WebP VP8/VP8L/VP8X, HEIF/AVIF `ispe`) without decoding, so `Original with EXIF` also goes through the worker; a file that comes out unchanged isn't copied (`isSource`). The server's chat-attachment pixel limit becomes 7680² (~59 MP) so a square 8K image is accepted; other image paths keep 50 MP.
 4. **Windows content URLs use a WebView2 custom-scheme registration** (`content` scheme, allowed origin `https://0.0.0.1`) instead of a same-origin `/in/content/` path: MAUI's own `WebResourceRequested` handler answers app-origin paths without an extension with `index.html`, which would race with ours. Task 1 verifies it.
 5. **`ImageQualityPreset` values are not pixel sizes**; `GetMaxSize()` is an extension method.
+6. **No per-job cancellation in the worker.** A cancelled or superseded job still runs to completion and its result is discarded; because jobs are serialized, each call's RPC deadline is `30_000 ms × (jobs already pending + 1)`.
 
 ## File Map
 
@@ -279,7 +280,7 @@ git commit -m "build(image-processing): vendor jpegli WebAssembly encoder"
 - Test: `tests/ts/unit/image-format.test.ts`, `tests/ts/unit/image-geometry.test.ts`, `tests/ts/unit/image-encoding-policy.test.ts`
 
 **Interfaces:**
-- Produces (contracts): `ImageFormat`, `ImageOutputKind = 'main' | 'estimate'`, `ImageOutputCodec = 'auto' | 'passthrough'`, `ImageOutputSpec { kind; maxSize: number | null; codec; stripMetadata: boolean; maxPassthroughSize: number | null }`, `ImageProcessRequest { outputs: ImageOutputSpec[] }`, `ImageOutput { kind; blob: Blob; mimeType: string; width: number; height: number; isSource: boolean }`, `ImageProcessResult { format: ImageFormat; outputs: ImageOutput[] }`, `ImageProcessorWorker { init(jpegliBaseUrl: string): Promise<void>; process(source: Blob, request: ImageProcessRequest): Promise<ImageProcessResult> }`.
+- Produces (contracts): `ImageFormat`, `ImageOutputKind = 'main' | 'estimate'`, `ImageOutputCodec = 'auto' | 'passthrough'`, `ImageOutputSpec { kind; maxSize: number | null; codec; stripMetadata: boolean; maxPassthroughSize: number | null }`, `ImageProcessRequest { outputs: ImageOutputSpec[] }`, `ImageOutput { kind; blob: Blob; mimeType: string; width: number; height: number; isSource: boolean }`, `ImageProcessResult { format: ImageFormat; outputs: ImageOutput[] }`, `ImageProcessorWorker { init(jpegliBaseUrl: string): Promise<void>; process(source: Blob, request: ImageProcessRequest, timeout?: RpcTimeout): Promise<ImageProcessResult> }`.
 - Produces (bytes): `readAscii(bytes, offset, length): string`, `readUint16BE/readUint16LE/readUint32BE/readUint32LE(bytes, offset): number`, `writeUint32LE(bytes, offset, value): void`, `startsWith(bytes, offset, prefix: ArrayLike<number>): boolean`, `indexOfAscii(bytes, text): number`, `concatBytes(parts: Uint8Array[]): Uint8Array`.
 - Produces: `sniffImageFormat(bytes: Uint8Array): ImageFormat`, `isAnimatedImage(bytes, format): boolean`, `readImageDimensions(bytes, format): ImageSize | null` (header only, no decode; pre-orientation), `getImageMimeType(format): string`, `fitWithin(width, height, maxSize: number | null): ImageSize`, `chooseEncoding(format, isAnimated, codec, isOversized): 'passthrough' | 'reencode'`.
 
@@ -453,6 +454,8 @@ Expected: FAIL - modules not found.
 - [ ] **Step 4: Write the contracts** (`image-processing-contracts.ts`)
 
 ```ts
+import type { RpcTimeout } from 'rpc';
+
 export type ImageFormat = 'jpeg' | 'png' | 'webp' | 'gif' | 'bmp' | 'heif' | 'avif' | 'svg' | 'unknown';
 export type ImageOutputKind = 'main' | 'estimate';
 export type ImageOutputCodec = 'auto' | 'passthrough';
@@ -488,7 +491,8 @@ export interface ImageProcessResult {
 
 export interface ImageProcessorWorker {
     init(jpegliBaseUrl: string): Promise<void>;
-    process(source: Blob, request: ImageProcessRequest): Promise<ImageProcessResult>;
+    /** `timeout` is consumed by the RPC client, the worker never receives it. */
+    process(source: Blob, request: ImageProcessRequest, timeout?: RpcTimeout): Promise<ImageProcessResult>;
 }
 ```
 
@@ -1104,6 +1108,7 @@ git commit -m "feat(image-processing): lossless JPEG/PNG/WebP metadata stripper"
 
 **Files:**
 - Create: `src/nodejs/src/image-processing/jpegli-encoder.ts`
+- Modify: `src/nodejs/src/logging.ts:150,270` (log scopes for this task and Task 6)
 - Test: `tests/ts/unit/jpegli-encoder.test.ts`
 
 **Interfaces:**
@@ -1178,6 +1183,25 @@ describe('JpegliEncoder', () => {
 
 Run: `npx vitest run --config vitest.config.ts tests/ts/unit/jpegli-encoder.test.ts`
 Expected: FAIL - module not found.
+
+- [ ] **Step 3a: Register the log scopes** (`src/nodejs/src/logging.ts`)
+
+`getLogs` only accepts members of the closed `LogScope` union, and `defaults` must list every member. Replace the union's last member line `    | 'WebFileProvider';` with:
+
+```ts
+    | 'WebFileProvider'
+    | 'ImageProcessor'
+    | 'ImageProcessorWorker'
+    | 'JpegliEncoder';
+```
+
+and add after `    WebFileProvider: LogLevel.Warn,` in `defaults`:
+
+```ts
+    ImageProcessor: LogLevel.Warn,
+    ImageProcessorWorker: LogLevel.Warn,
+    JpegliEncoder: LogLevel.Info,
+```
 
 - [ ] **Step 3: Write the encoder** (`src/nodejs/src/image-processing/jpegli-encoder.ts`)
 
@@ -1488,7 +1512,7 @@ bootstrapWorker(() => import('./image-processor-worker'));
 - [ ] **Step 3: Write the main-thread entry point** (`image-processor.ts`)
 
 ```ts
-import { rpcClient } from 'rpc';
+import { rpcClient, RpcTimeout } from 'rpc';
 import { Disposable } from 'disposable';
 import { getLogs } from 'logging';
 import { Versioning } from 'versioning';
@@ -1502,12 +1526,21 @@ const PROCESS_TIMEOUT_MS = 30_000;
 export class ImageProcessor {
     private static _worker: Worker | null = null;
     private static _client: (ImageProcessorWorker & Disposable) | null = null;
+    private static _pendingCount = 0;
 
     /** A string source is fetched here rather than in the worker: WebViews handle
      *  custom-scheme requests from workers inconsistently. */
     public static async process(source: Blob | string, request: ImageProcessRequest): Promise<ImageProcessResult> {
         const blob = typeof source === 'string' ? await fetchBlob(source) : source;
-        return await this.getClient().process(blob, request);
+        // The worker runs jobs one at a time, so a job's deadline includes the jobs queued ahead of it
+        const timeout: RpcTimeout = { type: 'rpc-timeout', timeoutMs: PROCESS_TIMEOUT_MS * (this._pendingCount + 1) };
+        this._pendingCount++;
+        try {
+            return await this.getClient().process(blob, request, timeout);
+        }
+        finally {
+            this._pendingCount--;
+        }
     }
 
     // Private methods
@@ -3055,7 +3088,7 @@ Replaces PR #4472's "defer upload until Send" flow: images are processed right a
 - Modify: `src/dotnet/UI.Blazor.App/Components/Attachment/Attachment.cs`, `AttachmentCleanup.cs`
 - Modify: `src/dotnet/UI.Blazor.App/Components/ChatMessageEditor/AttachmentList.cs`, `FileAttachments.cs`, `AttachmentListView.razor`, `AttachmentItem.razor:13`, `ImageQualitySelector.razor`, `ImageQualityMenu.razor`, `ChatMessageEditor.razor`
 - Modify: `src/dotnet/UI.Blazor.App/Events/ImageQualityPresetSelectedEvent.cs`
-- Modify: `src/dotnet/UI.Blazor.App/Services/FileUploads/UploadSessions.cs:79-92,133-154,199-207`
+- Modify: `src/dotnet/UI.Blazor.App/Services/FileUploads/UploadSessions.cs:79-92,133-154,199-207`, `src/dotnet/UI.Blazor.App/Services/FileUploads/UploadOperations.cs:135-162`
 - Modify: `src/dotnet/UI.Blazor.App/Services/FileProviders/WebFileProvider.cs`
 - Modify: `src/dotnet/Localization/Resources/LocalizedStringsLocalizerExt.cs:357-359`, `src/dotnet/Localization/Resources/Strings.{bg,bs,cs,de,en,es,fr,hi,id,it,ja,ko,pl,pt,ru,tr,uk,vi,zh}.json`
 
@@ -3208,6 +3241,38 @@ Keep `Replace`. Add a blank line after `throw StandardError.Internal("Attachment
         DeleteFile(transcodedFilePath);
         await _repo.Delete(sessionId).ConfigureAwait(false);
         UploadSessionsState.Remove(sessionId);
+    }
+```
+
+- [ ] **Step 4b: Forward `KeepMetadata` to the server upload** (`UploadOperations.cs`)
+
+The server reads `Upload.KeepMetadata` from `Uploads_Create.Metadata`, which `RegisterUploadId` builds from the upload source only; the session's `MetadataBag` (where `Attachment.GetMetadataForUploadSession` puts the flag) never reaches it. In `GetOrRegisterUpload`, pass the snapshot's metadata:
+
+```csharp
+        uploadId = await RegisterUploadId(source.Metadata, snapshot.Metadata, cancellationToken).ConfigureAwait(false);
+```
+
+and replace `RegisterUploadId` with:
+
+```csharp
+    private async Task<UploadId> RegisterUploadId(
+        UploadSourceMetadata sourceMetadata,
+        MetadataBag sessionMetadata,
+        CancellationToken cancellationToken)
+    {
+        var length = sourceMetadata.Length;
+        var metadata = new MetadataBag()
+            .Set(nameof(ActualChat.Media.Media.FileName), sourceMetadata.FileName.Value)
+            .Set(nameof(ActualChat.Media.Media.ContentType), sourceMetadata.ContentType);
+        // The server decides whether to strip metadata from the upload itself, not from the reserved media
+        if (sessionMetadata[nameof(ActualChat.Media.Upload.KeepMetadata)] is true)
+            metadata = metadata.Set(nameof(ActualChat.Media.Upload.KeepMetadata), true);
+        return await Commander.Call(new Uploads_Create {
+            Session = Session,
+            Length = length,
+            Tag = "",
+            Metadata = metadata,
+        }, cancellationToken).ConfigureAwait(false);
     }
 ```
 
@@ -3424,7 +3489,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         };
         SetSourcePreview(attachment);
         list.Add(attachment);
-        StartImageProcessing(list, attachment.Id, list.ImageQuality);
+        _ = StartImageProcessing(list, attachment.Id, list.ImageQuality);
     }
 
     private async Task Reprocess(AttachmentList list, AttachmentId id, ImageQualityPreset preset)
@@ -3446,15 +3511,23 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         var reset = attachment with { UploadSessionId = "", IsProcessing = true };
         list.Replace(attachment, reset);
         SetSourcePreview(reset);
-        StartImageProcessing(list, id, preset);
-        await _imageProcessings[id].Task;
+        await StartImageProcessing(list, id, preset);
     }
 
-    private void StartImageProcessing(AttachmentList list, AttachmentId id, ImageQualityPreset preset)
+    private Task StartImageProcessing(AttachmentList list, AttachmentId id, ImageQualityPreset preset)
     {
         var cancellationTokenSource = new CancellationTokenSource();
         var task = ProcessImageAndUpload(list, id, preset, cancellationTokenSource.Token);
-        _imageProcessings[id] = new ImageProcessing(cancellationTokenSource, task);
+        var processing = new ImageProcessing(cancellationTokenSource, task);
+        _imageProcessings[id] = processing;
+        _ = task.ContinueWith(
+            _ => {
+                // Reprocess removes (and disposes) a superseded entry itself
+                if (_imageProcessings.TryRemove(new KeyValuePair<AttachmentId, ImageProcessing>(id, processing)))
+                    cancellationTokenSource.Dispose();
+            },
+            TaskScheduler.Default);
+        return task;
     }
 
     private async Task ProcessImageAndUpload(
@@ -3492,6 +3565,14 @@ public class FileAttachments : UIServiceBase<AppUIHub>
                 };
             processed = processed with { IsProcessing = false, SelectedQuality = preset };
             processed = await StartUpload(processed, list.MediaScope);
+            if (list.Items.FirstOrDefault(a => a.Id == id) != attachment) {
+                // Removed while its upload session was being created: release what StartUpload registered
+                AttachmentsState.Unregister(id);
+                var isSourceUpload = ReferenceEquals(processed.FileProvider, source.FileProvider);
+                UploadSessions.ReleaseReference(processed.UploadSessionId, mustKeepFile: isSourceUpload);
+                return;
+            }
+
             list.Replace(attachment, processed);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
@@ -3789,7 +3870,7 @@ and under `UI.Blazor.App`:
 - `ImageProcessingInterop` (class) - Blazor entry point to `ImageProcessor` for local content URLs.
 ```
 
-Append an "Implementation notes" section to the spec listing the five deviations from this plan's header.
+Append an "Implementation notes" section to the spec listing the six deviations from this plan's header, plus two known gaps: a HEIC/HEIF picked with an Original preset stays a file attachment (the server doesn't decode HEVC), and `IncomingShareUI.SendFiles`' multi-chat / more-than-10-files share path bypasses the pipeline, so those photos upload at full resolution and the server no longer resizes them.
 
 - [ ] **Step 6: Commit**
 
