@@ -26,6 +26,8 @@ public static class AndroidHeifDecoder
         => Task.Run(() => {
             var source = ImageDecoder.CreateSource(Platform.AppContext.ContentResolver!, Uri.Parse(uri)!);
             using var bitmap = ImageDecoder.DecodeBitmap(source, new TargetSizeListener(maxSize));
+            cancellationToken.ThrowIfCancellationRequested();
+
             Directory.CreateDirectory(DecodedDirectory);
             var filePath = DecodedDirectory | $"{RandomStringGenerator.Default.Next(12)}.jpg";
             using (var output = File.Create(filePath))

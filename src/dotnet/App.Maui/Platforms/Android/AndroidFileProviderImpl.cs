@@ -11,9 +11,9 @@ public class AndroidFileProviderImpl : IMauiFileProviderImpl
         AndroidFilePermissionsKeeper.Register(uri, this);
     }
 
+    private string? _decodedUri;
     private AndroidContentDownloader Downloader { get; }
     private string Uri { get; }
-    private string? _decodedUri;
 
     public Task WhenFileStreamReady()
         => Task.CompletedTask;
