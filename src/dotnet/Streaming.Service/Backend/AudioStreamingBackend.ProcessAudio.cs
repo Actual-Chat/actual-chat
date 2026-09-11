@@ -138,6 +138,9 @@ public partial class AudioStreamingBackend
             SourceBeginsAt = sourceBeginsAt,
             Format = audio.Format,
             IsTextOnly = !mustStreamVoice,
+            Languages = languages.ChatLanguage is { } chatLanguage
+                ? new ApiArray<Language>([chatLanguage])
+                : languages.UserSettings.ListSpoken().ToApiArray(),
         };
         await LiveAudioBackend.Register(chatId, streamInfo, cancellationToken).ConfigureAwait(false);
 
