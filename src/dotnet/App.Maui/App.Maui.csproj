@@ -163,6 +163,8 @@
     <PackageReference Include="libphonenumber-csharp" />
     <PackageReference Include="Microsoft.Maui.Controls" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" />
+    <!-- WebView.Maui rc.1 pulls Components.WebView preview.7: its blazor.webview.js breaks rc.1 <Virtualize> -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView" />
     <!-- This seems weird, but w/o this line MSBuild concludes the version is 1.0.0! -->
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
     <PackageReference Include="Plugin.Maui.Audio" />
