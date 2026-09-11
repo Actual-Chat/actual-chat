@@ -5,6 +5,7 @@ using SixLabors.ImageSharp.Formats.Bmp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Formats.Webp;
+using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace ActualChat.Testing;
@@ -37,6 +38,18 @@ public static class TestImages
     public static byte[] CreateJpeg(int width, int height)
     {
         using var image = new Image<Rgba32>(width, height);
+        using var ms = new MemoryStream();
+        image.Save(ms, new JpegEncoder());
+        return ms.ToArray();
+    }
+
+    public static byte[] CreateJpegWithExif(int width, int height, ushort orientation)
+    {
+        using var image = new Image<Rgba32>(width, height);
+        var exif = new ExifProfile();
+        exif.SetValue(ExifTag.Orientation, orientation);
+        exif.SetValue(ExifTag.Software, "GPSSECRET");
+        image.Metadata.ExifProfile = exif;
         using var ms = new MemoryStream();
         image.Save(ms, new JpegEncoder());
         return ms.ToArray();

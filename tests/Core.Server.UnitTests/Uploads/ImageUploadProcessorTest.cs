@@ -23,10 +23,10 @@ public class ImageUploadProcessorTest : IDisposable
     }
 
     [Theory]
-    [InlineData("image/jpeg", MediaKind.ChatEntryAttachment, true)]
+    [InlineData("image/jpeg", MediaKind.ChatEntryAttachment, false)] // chat attachment → AttachmentImageUploadProcessor
     [InlineData("image/png", MediaKind.LinkPreviewPicture, true)]
     [InlineData("image/webp", MediaKind.LinkPreviewPicture, true)]
-    [InlineData("image/avif", MediaKind.ChatEntryAttachment, true)]
+    [InlineData("image/avif", MediaKind.Unknown, true)]
     [InlineData("image/jpeg", MediaKind.Unknown, true)]
     [InlineData("image/jpeg", MediaKind.ChatPicture, false)] // icon → IconUploadProcessor
     [InlineData("image/png", MediaKind.UserPicture, false)] // icon → IconUploadProcessor

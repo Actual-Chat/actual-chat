@@ -10,6 +10,7 @@ namespace ActualChat.Uploads;
 public abstract record UploadedFile(FilePath FileName, string ContentType)
 {
     public abstract long Length { get; init; }
+    public bool KeepMetadata { get; init; }
     public abstract Task<Stream> Open();
 
     public async Task<T> Process<T>(Func<Stream, Task<T>> processor)

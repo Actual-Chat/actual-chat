@@ -184,6 +184,9 @@ public static partial class Constants
         public const int FileSizeLimit = 500 * 1024 * 1024;
         public const int AvatarPictureFileSizeLimit = 50 * 1024 * 1024;
         public const int FileCountLimit = 10;
+        // 8K: the client re-encodes a longer side down to it, even for "Original"
+        public const int MaxImageSize = 7680;
+        public const long MaxImagePixelCount = (long)MaxImageSize * MaxImageSize;
 
         /// <summary>HTML accept attribute value for avatar picture file inputs.</summary>
         public static readonly string AvatarPictureAccept = string.Join(',',

@@ -32,6 +32,12 @@ public sealed partial record Upload : IHasId<UploadId>, IHasMetadata, IRequireme
         init => this.SetMetadataValue(value);
     }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public bool KeepMetadata {
+        get => this.GetMetadataValue(false);
+        init => this.SetMetadataValue(value);
+    }
+
     public Upload(UploadId id, UserId userId, long? length, string tag, MetadataBag metadata)
     {
         Id = id;
