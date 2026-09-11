@@ -141,6 +141,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             LocalId = entry.LocalId,
             Text = entry.Text,
             RepliedEntryLid = entry.RepliedEntryLid,
+            QuotedText = entry.QuotedText,
             AttachmentUploads = uploads,
             ExistingMedia = entry.ExistingMedia,
             ClientId = entry.ClientId,
@@ -573,6 +574,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
         } = "";
         public Option<long?> RepliedEntryLid { get; init; }
+        public string? QuotedText { get; init; }
         public AttachmentUploads? AttachmentUploads { get; init; }
         public IReadOnlyList<MediaRef> ExistingMedia { get; init; } = [];
         public string ClientId { get; init; } = "";
