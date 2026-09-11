@@ -135,6 +135,47 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task ParticipationShouldSurviveWhileAnotherPeerOfTheSameAccountHoldsIt()
+    {
+        // arrange - two devices of one account, both listening
+        await using var host = await NewAppHost("live-peer-twin", o => o with {
+            ConfigureHost = (_, cfg) =>
+                cfg.AddInMemory<StreamingSettings>((x => x.ParticipationDisconnectGrace, "00:00:01")),
+        });
+        var phone = host.NewWebClientTester(Out,
+            services => services.AddSingleton(Mock.Of<IJSRuntime>(MockBehavior.Strict)));
+        var account = await phone.SignInAsUniqueBob();
+        var (chatId, _) = await phone.CreateChat(true);
+        var author = await phone.AppServices.GetRequiredService<IAuthors>().GetOwn(phone.Session, chatId, default);
+        var laptop = host.NewWebClientTester(Out,
+            services => services.AddSingleton(Mock.Of<IJSRuntime>(MockBehavior.Strict)));
+        await laptop.SignIn(account);
+        var backend = host.Services.GetRequiredService<ILiveSessionsBackend>();
+        await phone.ClientServices.GetRequiredService<ILiveSessions>()
+            .SetParticipation(phone.Session, chatId, ParticipationKind.AudioListen, true, default);
+        await laptop.ClientServices.GetRequiredService<ILiveSessions>()
+            .SetParticipation(laptop.Session, chatId, ParticipationKind.AudioListen, true, default);
+        await ComputedTest.When(async ct =>
+            (await backend.ListParticipants(chatId, ct)).Contains(author!.Id).Should().BeTrue());
+
+        // act - the phone vanishes, the laptop keeps listening
+        await phone.DisposeAsync();
+
+        // assert - well past the grace, the author is still present
+        await Task.Delay(TimeSpan.FromSeconds(4));
+        (await backend.ListParticipants(chatId, default)).Contains(author!.Id).Should().BeTrue(
+            "the laptop still holds this author's participation");
+
+        // act - the laptop vanishes too
+        await laptop.DisposeAsync();
+
+        // assert
+        await ComputedTest.When(async ct =>
+            (await backend.ListParticipants(chatId, ct)).Contains(author!.Id).Should().BeFalse(),
+            TimeSpan.FromSeconds(20));
+    }
+
+    [Fact]
     public async Task ExplicitLeaveShouldCloseImmediately()
     {
         // arrange

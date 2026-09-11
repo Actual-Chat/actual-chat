@@ -125,9 +125,9 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
             return;
 
         var authorId = chat.Rules.Author!.Id;
-        await Backend.SetParticipation(chatId, authorId, kind, isActive, cancellationToken).ConfigureAwait(false);
-        if (RpcInboundContext.Current?.Peer is { } peer)
-            PeerParticipations.Set(peer, chatId, authorId, kind, isActive);
+        var peer = RpcInboundContext.Current?.Peer;
+        await PeerParticipations.SetParticipation(peer, chatId, authorId, kind, isActive, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public async Task SetRules(Session session, ChatId chatId, SessionRules rules, CancellationToken cancellationToken)
