@@ -1536,6 +1536,98 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         live!.IsClosing.Should().BeFalse();
     }
 
+    [Fact]
+    public void DeriveReturnsDialingWithNoFactsYet()
+    {
+        var status = LiveSessionsBackend.Derive(callState: null, invites: []);
+        status.Should().Be(CallStatus.Dialing);
+    }
+
+    [Fact]
+    public void DeriveReturnsConnectingWhenAnInviteeAccepted()
+    {
+        var chatId = ChatId.Parse(GroupChatId.New().Value);
+        var invite = new CallInvite {
+            InviteeId = AuthorId.New(chatId, 1),
+            Status = CallInviteStatus.Accepted
+        };
+        var status = LiveSessionsBackend.Derive(callState: null, invites: [invite]);
+        status.Should().Be(CallStatus.Connecting);
+    }
+
+    [Fact]
+    public void DeriveReturnsActiveWhenTwoAreGenuinelyPresent()
+    {
+        var chatId = ChatId.Parse(GroupChatId.New().Value);
+        var callState = new CallState {
+            CallerId = AuthorId.New(chatId, 1),
+            CallerActiveAt = Moment.Now
+        };
+        var invite = new CallInvite {
+            InviteeId = AuthorId.New(chatId, 2),
+            Status = CallInviteStatus.Active
+        };
+        var status = LiveSessionsBackend.Derive(callState, invites: [invite]);
+        status.Should().Be(CallStatus.Active);
+    }
+
+    [Fact]
+    public void DeriveReturnsEndedOnceItWasActiveEvenIfNoLongerActive()
+    {
+        var chatId = ChatId.Parse(GroupChatId.New().Value);
+        var callState = new CallState {
+            CallerId = AuthorId.New(chatId, 1),
+            CallerActiveAt = Moment.Now - TimeSpan.FromMinutes(1),
+            CallerEndedAt = Moment.Now,
+        };
+        var invite = new CallInvite {
+            InviteeId = AuthorId.New(chatId, 2),
+            Status = CallInviteStatus.Ended
+        };
+        var status = LiveSessionsBackend.Derive(callState, invites: [invite]);
+        status.Should().Be(CallStatus.Ended);
+    }
+
+    [Fact]
+    public void DeriveReturnsCanceledWhenCallerCanceledBeforeEverConnecting()
+    {
+        var chatId = ChatId.Parse(GroupChatId.New().Value);
+        var callState = new CallState {
+            CallerId = AuthorId.New(chatId, 1),
+            CanceledAt = Moment.Now
+        };
+        var status = LiveSessionsBackend.Derive(callState, invites: []);
+        status.Should().Be(CallStatus.Canceled);
+    }
+
+    [Fact]
+    public void DeriveReturnsDeclinedWhenAnInviteeDeclinedAndNoneEverAccepted()
+    {
+        var chatId = ChatId.Parse(GroupChatId.New().Value);
+        var invite = new CallInvite {
+            InviteeId = AuthorId.New(chatId, 1),
+            Status = CallInviteStatus.Declined
+        };
+        var status = LiveSessionsBackend.Derive(callState: null, invites: [invite]);
+        status.Should().Be(CallStatus.Declined);
+    }
+
+    [Fact]
+    public void DeriveReturnsNoAnswerWhenEveryInviteeMissed()
+    {
+        var chatId = ChatId.Parse(GroupChatId.New().Value);
+        var invite1 = new CallInvite {
+            InviteeId = AuthorId.New(chatId, 1),
+            Status = CallInviteStatus.Missed
+        };
+        var invite2 = new CallInvite {
+            InviteeId = AuthorId.New(chatId, 2),
+            Status = CallInviteStatus.Missed
+        };
+        var status = LiveSessionsBackend.Derive(callState: null, invites: [invite1, invite2]);
+        status.Should().Be(CallStatus.NoAnswer);
+    }
+
     private static async Task<(ChatId ChatId, AuthorFull Bob, AuthorFull Alice)> NewTwoPartyCall(
         IWebTester tester)
     {

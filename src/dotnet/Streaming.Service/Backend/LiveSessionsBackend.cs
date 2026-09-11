@@ -969,12 +969,54 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             _ = GetState(chatId, default);
     }
 
-    private CallState NewCallState(LiveSessionState state, CallStatus status)
+    private CallState NewCallState(LiveSessionState state, CallStatus status, CallState? previous = null)
         => new() {
             CallerId = state.Host ?? state.AuthorIds[0],
             Status = status,
             ChangedAt = Clocks.SystemClock.Now,
+            CallerActiveAt = previous?.CallerActiveAt,
+            CallerEndedAt = previous?.CallerEndedAt,
+            CanceledAt = previous?.CanceledAt,
         };
+
+    internal static CallStatus Derive(CallState? callState, IReadOnlyCollection<CallInvite?> invites)
+    {
+        var everActive = callState?.CallerActiveAt is not null
+            || invites.Any(i => i?.ActiveAt is not null);
+        var activeCount = (callState?.CallerActiveAt is not null && callState.CallerEndedAt is null
+                ? 1
+                : 0)
+            + invites.Count(i => i is { Status: CallInviteStatus.Active });
+
+        if (activeCount >= 2)
+            return CallStatus.Active;
+        if (everActive)
+            return CallStatus.Ended;
+        if (callState?.CanceledAt is not null)
+            return CallStatus.Canceled;
+        if (invites.Any(i => i is { Status: CallInviteStatus.Accepted }))
+            return CallStatus.Connecting;
+        if (invites.Any(i => i is { Status: CallInviteStatus.Declined }))
+            return CallStatus.Declined;
+        if (invites.Count > 0 && invites.All(i => i is { Status: CallInviteStatus.Missed }))
+            return CallStatus.NoAnswer;
+        return CallStatus.Dialing;
+    }
+
+    private async Task RecomputeCallStatus(
+        ChatId chatId, LiveSessionState state, CancellationToken cancellationToken)
+    {
+        if (!state.IsCall)
+            return;
+
+        var callState = await SafeGetCallState(chatId).ConfigureAwait(false);
+        var invites = (await SafeGetInvites(chatId).ConfigureAwait(false)).Values;
+        var status = Derive(callState, invites);
+        if (callState is null && status == CallStatus.Dialing)
+            return;
+        await SetCallState(
+            chatId, NewCallState(state, status, callState)).ConfigureAwait(false);
+    }
 
     private static TimeSpan CallStateTtl(CallStatus status)
         => status == CallStatus.Dialing ? DialingStateTtl : ResolvedStateTtl;
