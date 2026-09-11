@@ -308,6 +308,10 @@
 
   "ThreadMenu_GoToThread": "前往话题",
   "ThreadMenu_CopyThread": "复制话题",
+  "ThreadMenu_Mute": "静音",
+  "ThreadMenu_Unmute": "取消静音",
+  "ThreadMenu_GoToStartMessage": "跳转到起始消息",
+  "ThreadMenu_CopyThreadLink": "复制话题链接",
 
   "LocationMessage_Live": "实时位置",
   "LocationMessage_Static": "位置",

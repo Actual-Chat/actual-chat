@@ -308,6 +308,10 @@
 
   "ThreadMenu_GoToThread": "Zum Thread",
   "ThreadMenu_CopyThread": "Thread kopieren",
+  "ThreadMenu_Mute": "Stummschalten",
+  "ThreadMenu_Unmute": "Stummschaltung aufheben",
+  "ThreadMenu_GoToStartMessage": "Zur Startnachricht springen",
+  "ThreadMenu_CopyThreadLink": "Thread-Link kopieren",
 
   "LocationMessage_Live": "Live-Standort",
   "LocationMessage_Static": "Standort",

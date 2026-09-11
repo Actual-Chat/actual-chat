@@ -308,6 +308,10 @@
 
   "ThreadMenu_GoToThread": "スレッドへ移動",
   "ThreadMenu_CopyThread": "スレッドをコピー",
+  "ThreadMenu_Mute": "ミュート",
+  "ThreadMenu_Unmute": "ミュート解除",
+  "ThreadMenu_GoToStartMessage": "最初のメッセージに移動",
+  "ThreadMenu_CopyThreadLink": "スレッドのリンクをコピー",
 
   "LocationMessage_Live": "リアルタイムの位置情報",
   "LocationMessage_Static": "位置情報",

@@ -386,9 +386,13 @@
   "ConversationMenu_CopySummary": "Zusammenfassung kopieren",
   "ConversationMenu_CopySummaryLink": "Копіювати посилання на стислий виклад",
 
-  // The context menu of a thread card in the transcript.
+  // The context menu of a thread: its card in the transcript and its row in a thread list.
   "ThreadMenu_GoToThread": "Перейти до треду",
   "ThreadMenu_CopyThread": "Копирайте нишката",
+  "ThreadMenu_Mute": "Отключить уведомления",
+  "ThreadMenu_Unmute": "Stummschaltung aufheben",
+  "ThreadMenu_GoToStartMessage": "Перейти до вихідного повідомлення",
+  "ThreadMenu_CopyThreadLink": "Копирайте линка към нишката",
 
   // A location posted into a chat. LocationMessage_Place is the plain geographic word for a pin
   // on a map - NOT the product term Place, which docs/i18n.md rules on separately.

@@ -308,6 +308,10 @@
 
   "ThreadMenu_GoToThread": "थ्रेड पर जाएँ",
   "ThreadMenu_CopyThread": "थ्रेड कॉपी करें",
+  "ThreadMenu_Mute": "म्यूट करें",
+  "ThreadMenu_Unmute": "अनम्यूट करें",
+  "ThreadMenu_GoToStartMessage": "शुरुआती संदेश पर जाएँ",
+  "ThreadMenu_CopyThreadLink": "थ्रेड का लिंक कॉपी करें",
 
   "LocationMessage_Live": "लाइव लोकेशन",
   "LocationMessage_Static": "लोकेशन",

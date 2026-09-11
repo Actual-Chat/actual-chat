@@ -308,6 +308,10 @@
 
   "ThreadMenu_GoToThread": "Aller au fil",
   "ThreadMenu_CopyThread": "Copier le fil",
+  "ThreadMenu_Mute": "Mettre en sourdine",
+  "ThreadMenu_Unmute": "Réactiver",
+  "ThreadMenu_GoToStartMessage": "Aller au message initial",
+  "ThreadMenu_CopyThreadLink": "Copier le lien du fil",
 
   "LocationMessage_Live": "Position en direct",
   "LocationMessage_Static": "Position",

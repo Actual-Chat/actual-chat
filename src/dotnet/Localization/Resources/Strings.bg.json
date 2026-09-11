@@ -308,6 +308,10 @@
 
   "ThreadMenu_GoToThread": "Към нишката",
   "ThreadMenu_CopyThread": "Копирайте нишката",
+  "ThreadMenu_Mute": "Заглуши",
+  "ThreadMenu_Unmute": "Премахни заглушаването",
+  "ThreadMenu_GoToStartMessage": "Към началното съобщение",
+  "ThreadMenu_CopyThreadLink": "Копирайте линка към нишката",
 
   "LocationMessage_Live": "Местоположение на живо",
   "LocationMessage_Static": "Местоположение",
