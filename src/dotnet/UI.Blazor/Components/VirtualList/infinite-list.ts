@@ -96,11 +96,13 @@ const ScreenAnchorRenderTtlMs = 10_000;
 // that the query built from there asks for a window the data can't reach, so nothing would ever come
 // to meet the view.
 const MaxOverscrollScreens = 3;
-// How far from the viewport a known edge stays loaded, in screens. The load zone alone drops the edge
-// item as soon as it is two screens away, and with it the knowledge that the edge is there: the limit
-// on that side moves out by MaxOverscrollScreens, and a fling back runs past the content into blank
-// until the edge reloads, then snaps to it. One Mac trackpad flick was measured at 7.8 screens.
-const EdgeReachScreens = 12;
+// How far from the viewport a known edge stays loaded, in screens, and never less than the load zone. The
+// load zone alone drops the edge item as soon as it is two screens away, and with it the knowledge that
+// the edge is there: the limit on that side moves out by MaxOverscrollScreens, and a fling back runs past
+// the content into blank until the edge reloads, then snaps to it. One Mac trackpad flick was measured at
+// 7.8 screens; holding that much everywhere doubled the items rendered near the end, so only macOS does.
+const EdgeReachScreens = 3;
+const MacOSEdgeReachScreens = 12;
 // Past twice the allowance the blank is not something scrolling can produce - the view and its chain
 // have come apart, and only a re-pin brings them back.
 const StrandedGapFactor = 2;
@@ -452,7 +454,9 @@ export class InfiniteList extends VirtualList {
         // every query at that edge extend-only, and a long read through history then ends up holding
         // thousands of items. The edge itself is held for as long as a fling can reach it, because
         // dropping it is what makes the edge unknown - see EdgeReachScreens.
-        const edgeReach = viewport.size * EdgeReachScreens;
+        const edgeReach = viewport.size * Math.max(
+            DeviceInfo.isMacOS ? MacOSEdgeReachScreens : EdgeReachScreens,
+            this.expandMultiplier);
         const startZone = rs.hasVeryFirstItem && viewport.start - loaded.start <= edgeReach ? edgeReach : zone;
         const endZone = rs.hasVeryLastItem && loaded.end - viewport.end <= edgeReach ? edgeReach : zone;
         let loadStart = rs.hasVeryFirstItem
