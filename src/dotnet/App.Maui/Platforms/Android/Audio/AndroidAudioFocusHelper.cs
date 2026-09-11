@@ -10,7 +10,7 @@ namespace ActualChat.App.Maui.Audio;
 /// </summary>
 public sealed class AndroidAudioFocusHelper : IDisposable
 {
-    private static readonly TimeSpan NonSilenceMemory = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan SessionCarryOver = TimeSpan.FromSeconds(3);
 
     private readonly AudioManager _audioManager;
     private readonly AudioFocusChangeListener _audioFocusChangeListener;
@@ -24,7 +24,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
     private bool _isSilentStart;
     // _hasFocus minus the focus we lost to another app - i.e. is the session we measured still ours
     private bool _isFocusSessionOpen;
-    private CpuTimestamp _lastNonSilentAt = CpuTimestamp.Now - TimeSpan.FromHours(1);
+    private CpuTimestamp _sessionEndedAt = CpuTimestamp.Now - TimeSpan.FromHours(1);
     public bool IsCommunicationFocus => _isCommunicationFocus;
 
     public event Action<AudioFocus>? OnFocusChanged;
@@ -170,10 +170,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
             return;
 
         _log.LogInformation("Abandon audio focus");
-        if (!_isSilentStart)
-            // Whatever this session interrupted is about to resume on the gain we hand back, and it
-            // needs a moment to start playing - IsSilentStart must not read that gap as silence.
-            _lastNonSilentAt = CpuTimestamp.Now;
+        _sessionEndedAt = CpuTimestamp.Now;
         _deviceRouter.ClearCommunicationDevice();
         _audioManager.AbandonAudioFocusRequest(_focusRequest);
         _audioManager.Mode = Mode.Normal;
@@ -234,10 +231,14 @@ public sealed class AndroidAudioFocusHelper : IDisposable
             .SetOnAudioFocusChangeListener(_audioFocusChangeListener)
             .Build()!;
 
+        // Published before the request: a loss landing on the listener thread while it runs must
+        // win, or the renewal that follows would skip the fresh measurement the loss calls for.
+        Volatile.Write(ref _isFocusSessionOpen, true);
         var result = _audioManager.RequestAudioFocus(_focusRequest);
         _hasFocus = result == AudioFocusRequest.Granted;
         _isCommunicationFocus = _hasFocus && isCommunication;
-        Volatile.Write(ref _isFocusSessionOpen, _hasFocus);
+        if (!_hasFocus)
+            Volatile.Write(ref _isFocusSessionOpen, false);
         _log.LogInformation("Requested audio focus for '{Usage}' ({Gain}), granted = {Result}",
             audioUsageKind, gain, _hasFocus);
         if (isCommunication && !_hasFocus) {
@@ -281,17 +282,16 @@ public sealed class AndroidAudioFocusHelper : IDisposable
 
     private bool IsSilentStart()
     {
+        // Our sessions run back to back - the begin tune hands over to recording, listening
+        // re-acquires per utterance - and in such a gap the app we just handed the gain back to is
+        // spinning its player up while nothing has started playing yet. Either reading is the same
+        // mistake, so across a short gap the previous session's answer stands instead.
+        if (_sessionEndedAt.Elapsed < SessionCarryOver)
+            return _isSilentStart;
+
         // IsMusicActive sees STREAM_MUSIC only, so a mode other than Normal - another app's VoIP
         // call, a ringtone - stands in for the streams it cannot report.
-        if (_audioManager.IsMusicActive || _audioManager.Mode != Mode.Normal) {
-            _lastNonSilentAt = CpuTimestamp.Now;
-            return false;
-        }
-
-        // Listening abandons its focus between utterances, and the app we hand the gain back to
-        // takes a moment to start playing again - silence just after audio we did hear is that
-        // resume gap, not evidence that nothing is playing.
-        return _lastNonSilentAt.Elapsed >= NonSilenceMemory;
+        return !_audioManager.IsMusicActive && _audioManager.Mode == Mode.Normal;
     }
 
     private void OnAudioFocusChange(AudioFocus focusChange)

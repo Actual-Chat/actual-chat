@@ -371,13 +371,15 @@ projected-media route for a permanent `GAIN`, the tune for
 on it even when the user had paused them long before - so
 `AndroidAudioFocusHelper.ResolveGain` escalates a transient request to a
 permanent `GAIN` when nothing was playing as the focus session started.
-"Nothing" is `isMusicActive == false` with the audio mode at `Normal` (which
-stands in for the streams `isMusicActive` cannot see) and no audio heard - or
-handed back - in the previous few seconds: listening releases its focus between
-utterances, and the app it wakes takes a moment to start playing again. The
-answer is measured once per focus session, since our own playback counts as
-active audio. The tune is excepted: what a permanent gain does to the head unit
-is untested, and it needs no escalation anyway - see
+"Nothing" is `isMusicActive == false` with the audio mode at `Normal`, which
+stands in for the streams `isMusicActive` cannot see - another app's VoIP call,
+a ringtone. The answer is measured once per focus session, since our own
+playback counts as active audio, and it carries over a short gap between two of
+our sessions: the begin tune hands over to recording and listening re-acquires
+per utterance, and in that gap the app we just handed the gain back to is
+spinning its player up while nothing is playing yet - so a fresh reading is
+wrong whichever way it lands. The tune is excepted: what a permanent gain does
+to the head unit is untested, and it needs no escalation anyway - see
 [`11-android-auto.md`](11-android-auto.md).
 
 iOS uses MAUI-side audio session APIs in the iOS app; on the web this
