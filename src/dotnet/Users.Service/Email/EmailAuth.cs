@@ -76,6 +76,8 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 
         if (Constants.Auth.TestAgent.IsTestAgentEmail(email) && IsTestAgentEmailTotpHost(HostInfo))
             return NextSendAt();
+        if (GetPredefinedTotpPrefix(email) is not null)
+            return NextSendAt();
 
         await CaptchaProofs
             .Require(session, command.CaptchaToken, command.CaptchaAction, purpose, cancellationToken)
@@ -133,7 +135,9 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var session = command.Session;
         var email = command.Email;
         var totp = command.Totp;
-        if (!await ValidateCode(session, email.Value, totp, TotpPurpose.SignInEmail, cancellationToken).ConfigureAwait(false))
+        var isValid = await ValidateCode(session, email.Value, totp, TotpPurpose.SignInEmail, cancellationToken)
+            .ConfigureAwait(false);
+        if (!isValid)
             return false;
 
         var identities = new ApiMap<UserIdentity, string>().WithEmailIdentity(email, out var emailIdentity);
@@ -153,7 +157,9 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var session = command.Session;
         var email = command.Email;
         var totp = command.Token;
-        if (!await ValidateCode(session, email.Value, totp, TotpPurpose.VerifyEmail, cancellationToken).ConfigureAwait(false))
+        var isValid = await ValidateCode(session, email.Value, totp, TotpPurpose.VerifyEmail, cancellationToken)
+            .ConfigureAwait(false);
+        if (!isValid)
             return false;
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -185,6 +191,25 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             || Constants.Hosts.IsLocalDev(baseUri.Host);
     }
 
+    internal static bool IsPredefinedTotpHost(HostInfo hostInfo)
+        => hostInfo.IsTested || hostInfo.BaseUrlKind is BaseUrlKind.Development or BaseUrlKind.Local;
+
+    internal static string? GetPredefinedTotpPrefix(IReadOnlyDictionary<string, int> predefinedTotps, string email)
+    {
+        // The <prefix>@actual.chat mailbox itself isn't matched: only <prefix>+<suffix>@actual.chat is
+        var emailSuffix = Constants.Team.EmailSuffix;
+        if (predefinedTotps.Count == 0 || !email.EndsWith(emailSuffix, StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var localPart = email[..^emailSuffix.Length];
+        var plusIndex = localPart.IndexOf('+');
+        if (plusIndex <= 0 || plusIndex == localPart.Length - 1)
+            return null;
+
+        var prefix = localPart[..plusIndex].ToLower();
+        return predefinedTotps.ContainsKey(prefix) ? prefix : null;
+    }
+
     // Private methods
 
     private async Task<bool> ValidateCode(
@@ -194,10 +219,15 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         TotpPurpose purpose,
         CancellationToken cancellationToken)
     {
+        var predefinedTotpPrefix = GetPredefinedTotpPrefix(email);
+        // All suffixes of a predefined prefix share one budget, otherwise each new suffix would reset it
+        var target = predefinedTotpPrefix is null
+            ? email
+            : $"{predefinedTotpPrefix}+*{Constants.Team.EmailSuffix}";
         var method = $"{nameof(EmailAuth)}.{purpose}";
         var identities = new RateLimitIdentity[2];
         var identityCount = 0;
-        identities[identityCount++] = new RateLimitIdentity(RateLimitIdentityKind.Target, $"{purpose}:{email}");
+        identities[identityCount++] = new RateLimitIdentity(RateLimitIdentityKind.Target, $"{purpose}:{target}");
         if (RateLimitIdentity.ForIP(RpcInboundContext.Current.GetRemoteIPAddress()) is { } ipIdentity)
             identities[identityCount++] = ipIdentity;
         await RateLimitPolicy
@@ -208,9 +238,16 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             && Constants.Auth.TestAgent.IsTestAgentEmail(email)
             && IsTestAgentEmailTotpHost(HostInfo))
             return true;
+        if (predefinedTotpPrefix is not null)
+            return totp == UsersSettings.PredefinedEmailTotps[predefinedTotpPrefix];
 
         return await TotpCodes.Validate(purpose, email, session, totp, cancellationToken).ConfigureAwait(false);
     }
+
+    private string? GetPredefinedTotpPrefix(string email)
+        => IsPredefinedTotpHost(HostInfo)
+            ? GetPredefinedTotpPrefix(UsersSettings.PredefinedEmailTotps, email)
+            : null;
 
     private async Task<bool> IsThrottled(Session session, string email, CancellationToken cancellationToken)
     {
