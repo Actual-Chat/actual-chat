@@ -67,6 +67,7 @@ export type LogScope =
     | 'ScreenSize'
     | 'ServiceWorker'
     | 'SessionTokens'
+    | 'SvgCache'
     | 'TimerQueue'
     | 'UndoStack'
     | 'Versioning'
@@ -186,6 +187,7 @@ const defaults: Record<LogScope, LogLevel> = {
     ScreenSize: LogLevel.Warn,
     ServiceWorker: LogLevel.Warn,
     SessionTokens: LogLevel.Warn,
+    SvgCache: LogLevel.Warn,
     TimerQueue: LogLevel.Warn,
     UndoStack: LogLevel.Warn,
     Versioning: LogLevel.Warn,
