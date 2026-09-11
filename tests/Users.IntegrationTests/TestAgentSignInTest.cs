@@ -37,8 +37,8 @@ public class TestAgentSignInTest(AppHostFixture fixture, ITestOutputHelper @out)
         var predefinedTotps = ImmutableDictionary<string, int>.Empty;
 
         // act
-        var isAdminOnLocal = AccountsBackend.IsAdmin(account, true, predefinedTotps);
-        var isAdminElsewhere = AccountsBackend.IsAdmin(account, false, predefinedTotps);
+        var isAdminOnLocal = AccountsBackend.IsAdmin(account, true, predefinedTotps, predefinedTotps);
+        var isAdminElsewhere = AccountsBackend.IsAdmin(account, false, predefinedTotps, predefinedTotps);
 
         // assert
         isAdminOnLocal.Should().BeTrue();

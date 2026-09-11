@@ -32,6 +32,9 @@ public sealed class UsersSettings
     public string BlockedPhonePrefixes { get; set; } = "";
     public string SkipTelegramPhonePrefixes { get; set; } = "";
     public IReadOnlyDictionary<string, int> PredefinedTotps { get; set; } = ImmutableDictionary<string, int>.Empty;
+    // Keys are the lowercase <prefix> of <prefix>+<suffix>@actual.chat.
+    // Unlike PredefinedTotps, these are never honored on production.
+    public IReadOnlyDictionary<string, int> PredefinedEmailTotps { get; set; } = ImmutableDictionary<string, int>.Empty;
     public AppUpdateSettings AppUpdates { get; set; } = new();
     // A kill switch: MauiAuthController.Start assumes every browser component the app can reach
     // reports Sec-Fetch-Site: none. Turn this off if some platform turns out not to.

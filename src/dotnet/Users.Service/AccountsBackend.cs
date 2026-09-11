@@ -4,6 +4,7 @@ using ActualChat.Db;
 using ActualChat.Flows;
 using ActualChat.Security;
 using ActualChat.Users.Db;
+using ActualChat.Users.Email;
 using ActualChat.Users.Flows;
 using ActualChat.Users.Module;
 using ActualLab.Fusion.EntityFramework;
@@ -495,12 +496,16 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     // Protected/internal methods
 
     internal bool IsAdmin(AccountFull account)
-        => IsAdmin(account, HostInfo.BaseUrlKind == BaseUrlKind.Local, UsersSettings.PredefinedTotps);
+        => IsAdmin(account,
+            HostInfo.BaseUrlKind == BaseUrlKind.Local,
+            UsersSettings.PredefinedTotps,
+            UsersSettings.PredefinedEmailTotps);
 
     internal static bool IsAdmin(
         AccountFull account,
         bool areTestAgentsAdmins,
-        IReadOnlyDictionary<string, int> predefinedTotps)
+        IReadOnlyDictionary<string, int> predefinedTotps,
+        IReadOnlyDictionary<string, int> predefinedEmailTotps)
     {
         // TODO(AY): Remove the check relying on test/internal auth providers in the production code
         if (account.Identities.HasInternalIdentity() && account.Id == Constants.User.Admin.UserId)
@@ -513,6 +518,13 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         }
 
         var emails = account.Identities.GetEmails();
+        // Emails with a predefined TOTP sign in with a shared code, so they're never admins either,
+        // even though they're on the team email domain
+        foreach (var email in emails) {
+            if (EmailAuth.GetPredefinedTotpPrefix(predefinedEmailTotps, email) is not null)
+                return false;
+        }
+
         foreach (var email in emails) {
             if (email.IsNullOrEmpty() || !MailAddress.TryCreate(email, out var emailAddress))
                 continue;

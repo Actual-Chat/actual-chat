@@ -65,6 +65,19 @@ For automated testing and AI agent authentication, special test accounts are ava
 
 Phone authentication supports predefined TOTP codes configured via `UsersSettings.PredefinedTotps`. These are typically set via environment variables for specific test phone numbers.
 
+### Email Auth NPC Accounts
+
+`UsersSettings.PredefinedEmailTotps` maps a lowercase prefix to a static code for every
+`<prefix>+<suffix>@actual.chat` address, e.g. `UsersSettings__PredefinedEmailTotps__npc=123123`
+makes `npc+promo@actual.chat` sign in with `123123` and no email sent. Set it only in the deployment
+environment, never in `appsettings*.json` — the repository is public.
+
+**Restrictions:**
+- Honored on `dev.voxt.ai` and local dev domains only; never on production, unlike `PredefinedTotps`.
+- The `<prefix>@actual.chat` mailbox itself isn't matched, and an empty suffix isn't either.
+- All suffixes of a prefix share one code-validation rate-limit budget.
+- Such accounts are never admins, even though `actual.chat` is the team email domain.
+
 ### Programmatic Test Sign-In
 
 For integration tests, use the `TestAuthExt` helper methods:
