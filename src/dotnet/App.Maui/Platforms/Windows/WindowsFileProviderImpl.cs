@@ -21,4 +21,7 @@ public class WindowsFileProviderImpl(FilePath filePath) : IMauiFileProviderImpl
 
     public Task<Stream?> OpenRead()
         => Task.FromResult<Stream?>(FileInfo.Exists ? FileInfo.OpenRead() : null);
+
+    public Task<string> GetContentUrl(int? decodeMaxSize, CancellationToken cancellationToken)
+        => Task.FromResult(ContentResolver.GetFileUri(filePath));
 }

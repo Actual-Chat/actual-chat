@@ -62,6 +62,9 @@ public partial class MauiFileProvider : IFileProvider
         }
     }
 
+    public Task<string> GetContentUrl(int? decodeMaxSize, CancellationToken cancellationToken)
+        => Impl.GetContentUrl(decodeMaxSize, cancellationToken);
+
     public Task<bool> WhenUserConsentGranted()
         => Task.FromResult(true);
 
@@ -84,4 +87,5 @@ public interface IMauiFileProviderImpl
     Task PrepareForSaving();
     Task ClearBeforeRemoving();
     Task<Stream?> OpenRead();
+    Task<string> GetContentUrl(int? decodeMaxSize, CancellationToken cancellationToken);
 }

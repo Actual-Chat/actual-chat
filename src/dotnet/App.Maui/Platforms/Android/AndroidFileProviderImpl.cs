@@ -43,4 +43,7 @@ public class AndroidFileProviderImpl : IMauiFileProviderImpl
         var (stream, _) = Downloader.OpenInputStream(Uri);
         return Task.FromResult(stream);
     }
+
+    public Task<string> GetContentUrl(int? decodeMaxSize, CancellationToken cancellationToken)
+        => Task.FromResult(AndroidContentDownloader.CreateWebRequestUri(Uri));
 }

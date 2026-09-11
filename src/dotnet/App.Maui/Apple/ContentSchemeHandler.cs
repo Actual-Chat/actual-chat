@@ -34,9 +34,11 @@ internal sealed class ContentSchemeHandler : NSObject, IWKUrlSchemeHandler
             var fileInfo = new FileInfo(filePath);
             // Use an HTTP-like response (incl. Content-Type) to ensure WKWebView can properly decode
             // and render images/videos for custom schemes.
+            // fetch() from the app://0.0.0.1 page is cross-origin for this scheme
             var headers = new NSDictionary(
                 new NSString("Content-Type"), new NSString(contentType),
-                new NSString("Content-Length"), new NSString(fileInfo.Length.ToString()));
+                new NSString("Content-Length"), new NSString(fileInfo.Length.ToString()),
+                new NSString("Access-Control-Allow-Origin"), new NSString("*"));
             var response = new NSHttpUrlResponse(urlSchemeTask.Request!.Url!, 200, "HTTP/1.1", headers);
             urlSchemeTask.DidReceiveResponse(response);
 
