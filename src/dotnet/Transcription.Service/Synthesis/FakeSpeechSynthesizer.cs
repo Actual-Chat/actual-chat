@@ -18,16 +18,35 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
     {
         var pcm = Channel.CreateUnbounded<byte[]>();
         using var pump = new OpusFramePump(Clocks.CpuClock);
-        var pumpTask = pump.Run(pcm.Reader, output, cancellationToken);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        await TranscriberHelper.WhenPushAndRead(
+                Push(text, pcm.Writer, cts.Token),
+                pump.Run(pcm.Reader, output, cts.Token),
+                cts)
+            .ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private static async Task Push(
+        ChannelReader<string> text,
+        ChannelWriter<byte[]> pcm,
+        CancellationToken cancellationToken)
+    {
+        Exception? error = null;
         try {
             await foreach (var chunk in text.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
                 var frameCount = Math.Max(1, chunk.Length / 4);
-                pcm.Writer.TryWrite(new byte[OpusFramePump.FrameByteLength * frameCount]);
+                await pcm.WriteAsync(new byte[OpusFramePump.FrameByteLength * frameCount], cancellationToken)
+                    .ConfigureAwait(false);
             }
         }
-        finally {
-            pcm.Writer.TryComplete();
+        catch (Exception e) {
+            error = e;
+            throw;
         }
-        await pumpTask.ConfigureAwait(false);
+        finally {
+            pcm.TryComplete(error);
+        }
     }
 }
