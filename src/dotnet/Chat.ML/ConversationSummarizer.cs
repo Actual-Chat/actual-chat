@@ -6,6 +6,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
+using Microsoft.SemanticKernel.Services;
 using HttpOperationException = Microsoft.SemanticKernel.HttpOperationException;
 
 namespace ActualChat.Chat.ML;
@@ -64,7 +65,7 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
         var language = await GetMostCommonLanguage(chatId, chatEntries, cancellationToken).ConfigureAwait(false);
         var discussion = await ChatDialogFormatter.EntriesToText(chatEntries, _chatDialogFormatterOptions).ConfigureAwait(false);
         var authorMap = await BuildAuthorMap(authorIds).ConfigureAwait(false);
-        var executionSettings = CreateExecutionSettings();
+        var executionSettings = CreateExecutionSettings(Completion.GetModelId());
         var chatHistory = await BuildRequest(language, authorMap, discussion, cancellationToken).ConfigureAwait(false);
         string? result;
         try {
@@ -258,11 +259,9 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
         return true;
     }
 
-    private static PromptExecutionSettings CreateExecutionSettings()
+    private static PromptExecutionSettings CreateExecutionSettings(string? modelId)
         => new OpenAIPromptExecutionSettings {
-#pragma warning disable OPENAI001 // TODO: remove once ChatReasoningEffortLevel is no longer [Experimental]
-            ReasoningEffort = OpenAI.Chat.ChatReasoningEffortLevel.None,
-#pragma warning restore OPENAI001
+            ReasoningEffort = OpenAIModels.GetLowestReasoningEffort(modelId),
             ResponseFormat = ChatResponseFormat.ForJsonSchema(
                 JsonDocument.Parse(
                     """

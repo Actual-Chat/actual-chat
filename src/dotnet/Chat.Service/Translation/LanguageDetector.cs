@@ -1,9 +1,11 @@
+using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Module;
 using Microsoft.Extensions.AI;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
+using Microsoft.SemanticKernel.Services;
 
 namespace ActualChat.Chat;
 
@@ -38,9 +40,7 @@ public class LanguageDetector(IServiceProvider services)
 
         var executionSettings = new OpenAIPromptExecutionSettings {
             Temperature = 0,
-#pragma warning disable OPENAI001 // TODO: remove once ChatReasoningEffortLevel is no longer [Experimental]
-            ReasoningEffort = OpenAI.Chat.ChatReasoningEffortLevel.None,
-#pragma warning restore OPENAI001
+            ReasoningEffort = OpenAIModels.GetLowestReasoningEffort(Completion.GetModelId()),
             ChatSystemPrompt = Prompt.Trim(),
             ResponseFormat =  ChatResponseFormat.ForJsonSchema(
                 JsonDocument.Parse(

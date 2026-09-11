@@ -10,6 +10,7 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.Google;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
+using Microsoft.SemanticKernel.Services;
 
 namespace ActualChat.Chat;
 
@@ -161,9 +162,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
                 Temperature = 0.1,
                 MaxTokens = maxTokens,
                 TopP = 0.1,
-#pragma warning disable OPENAI001 // TODO: remove once ChatReasoningEffortLevel is no longer [Experimental]
-                ReasoningEffort = OpenAI.Chat.ChatReasoningEffortLevel.None,
-#pragma warning restore OPENAI001
+                ReasoningEffort = OpenAIModels.GetLowestReasoningEffort(Completion.GetModelId()),
                 ResponseFormat = "text",
             };
 
