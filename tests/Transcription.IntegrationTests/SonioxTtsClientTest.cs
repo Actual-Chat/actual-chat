@@ -36,11 +36,11 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         var totalBytes = chunks.Sum(c => (long)c.Length);
         WriteLine($"{chunks.Count} chunks, {totalBytes / (double)BytesPerSecond:F1}s of audio");
         totalBytes.Should().BeGreaterThan(BytesPerSecond, "two sentences are well over a second of speech");
-        client.StreamCount.Should().Be(1);
+        client.StreamCount.Should().Be(2, "each text chunk opens and closes its own stream");
     }
 
     [Fact]
-    public async Task TtsShouldRollOverPastMaxStreamDuration()
+    public async Task TtsShouldOpenOneStreamPerChunk()
     {
         // arrange
         var services = CreateServices();
@@ -49,30 +49,48 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
             return;
         }
 
-        var client = new SonioxTtsClient(services, new SonioxTtsClient.Options {
-            MaxStreamDuration = TimeSpan.FromSeconds(1),
-        });
+        var client = new SonioxTtsClient(services);
         var text = Channel.CreateUnbounded<string>();
         var pcm = Channel.CreateUnbounded<byte[]>();
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        text.Writer.TryWrite("The quick brown fox jumps over the lazy dog near the riverbank.");
+        text.Writer.TryWrite("A second, unrelated sentence follows right after the first one.");
+        text.Writer.Complete();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
         // act
-        var runTask = client.Run("test", "en", "Adrian", text.Reader, pcm.Writer, cts.Token);
-        var drainTask = pcm.Reader.ReadAllAsync().Select(c => (long)c.Length).SumAsync().AsTask();
-        for (var i = 0; i < 3; i++) {
-            text.Writer.TryWrite($"Sentence number {i + 1} is long enough to take a couple of seconds to say out loud.");
-            // Rollover is decided on the audio already generated, so give each sentence time to land
-            await Task.Delay(TimeSpan.FromSeconds(4));
-        }
-        text.Writer.Complete();
-        await runTask;
-        var totalBytes = await drainTask;
+        await client.Run("test", "en", "Adrian", text.Reader, pcm.Writer, cts.Token);
+        var chunks = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
+        var totalBytes = chunks.Sum(c => (long)c.Length);
         WriteLine($"{client.StreamCount} streams, {totalBytes / (double)BytesPerSecond:F1}s of audio");
-        client.StreamCount.Should().BeGreaterThanOrEqualTo(2,
-            "every sentence exceeds the 1s cap, so the second one must open a new stream");
-        totalBytes.Should().BeGreaterThan(3 * BytesPerSecond);
+        client.StreamCount.Should().Be(2, "each of the two chunks opens its own stream");
+        totalBytes.Should().BeGreaterThan(BytesPerSecond, "two sentences are well over a second of speech");
+    }
+
+    [Fact]
+    public async Task TtsShouldEndCleanlyWithNoText()
+    {
+        // arrange
+        var services = CreateServices();
+        if (services.GetRequiredService<CoreServerSettings>().SonioxKey.IsNullOrEmpty()) {
+            WriteLine("CoreSettings__SonioxKey is not set - skipping.");
+            return;
+        }
+
+        var client = new SonioxTtsClient(services);
+        var text = Channel.CreateUnbounded<string>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
+        text.Writer.Complete();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+
+        // act
+        await client.Run("test", "en", "Adrian", text.Reader, pcm.Writer, cts.Token);
+        var chunks = await pcm.Reader.ReadAllAsync().ToListAsync();
+
+        // assert
+        chunks.Should().BeEmpty("no text was ever sent, so no stream should have opened");
+        client.StreamCount.Should().Be(0);
     }
 
     private IServiceProvider CreateServices()

@@ -7,33 +7,27 @@ namespace ActualChat.Transcription;
 
 /// <summary>
 /// One real-time session of Soniox's <c>tts-rt</c> WebSocket API: text chunks in, 48 kHz PCM out.
-/// A session spans several Soniox streams, each capped at <see cref="Options.MaxStreamDuration"/>.
+/// Each chunk gets its own stream, opened and closed around just that chunk - Soniox holds
+/// synthesis until it sees <c>text_end</c>, and 408s a stream left open with no more text coming.
 /// </summary>
-public sealed class SonioxTtsClient(IServiceProvider services, SonioxTtsClient.Options? options = null)
+public sealed class SonioxTtsClient(IServiceProvider services)
 {
-    public sealed record Options
-    {
-        public TimeSpan MaxStreamDuration { get; init; } = TtsMaxStreamDuration;
-    }
-
     private const string Url = "wss://tts-rt.soniox.com/tts-websocket";
     private const string Model = "tts-rt-v2";
     private const string PcmFormat = "pcm_s16le";
     private const int SampleRate = 48_000;
-    private const int BytesPerSecond = SampleRate * sizeof(short);
     private static readonly JsonSerializerOptions JsonOptions = new() {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
     private static readonly byte[] KeepAlivePayload = """{"keep_alive":true}"""u8.ToArray();
 
-    private readonly ConcurrentDictionary<string, StreamState> _streams = new();
-    private string? _finalStreamId;
+    private readonly ConcurrentDictionary<string, TaskCompletionSource> _whenStreamTerminated = new();
+    private readonly TaskCompletionSource _whenDone = TaskCompletionSourceExt.New();
 
     private CoreServerSettings CoreServerSettings { get; } = services.GetRequiredService<CoreServerSettings>();
     private MomentClockSet Clocks { get; } = services.Clocks();
     private ILogger Log { get; } = services.LogFor<SonioxTtsClient>();
 
-    public Options Settings { get; } = options ?? new();
     public int StreamCount { get; private set; }
 
     public async Task Run(
@@ -85,23 +79,19 @@ public sealed class SonioxTtsClient(IServiceProvider services, SonioxTtsClient.O
         ChannelReader<string> text,
         CancellationToken cancellationToken)
     {
-        // The first stream opens before any text exists: the config has to reach the server within
-        // ~10s of connecting, and the first translated sentence can take longer than that.
-        var streamId = await StartStream(sender, config, cancellationToken).ConfigureAwait(false);
         await foreach (var chunk in text.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
             if (chunk.IsNullOrWhiteSpace())
                 continue;
 
-            if (_streams[streamId].GeneratedDuration >= Settings.MaxStreamDuration) {
-                await EndStream(sender, streamId, cancellationToken).ConfigureAwait(false);
-                streamId = await StartStream(sender, config, cancellationToken).ConfigureAwait(false);
-            }
-            await Send(sender, new { text = chunk, text_end = false, stream_id = streamId }, cancellationToken)
+            var streamId = await StartStream(sender, config, cancellationToken).ConfigureAwait(false);
+            await Send(sender, new { text = chunk, text_end = true, stream_id = streamId }, cancellationToken)
                 .ConfigureAwait(false);
+            await _whenStreamTerminated[streamId].Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            _whenStreamTerminated.TryRemove(streamId, out _);
         }
 
-        Volatile.Write(ref _finalStreamId, streamId);
-        await EndStream(sender, streamId, cancellationToken).ConfigureAwait(false);
+        // No more chunks are coming - ReadAudio would otherwise wait forever for the next message.
+        _whenDone.TrySetResult();
     }
 
     private async Task<string> StartStream(
@@ -110,7 +100,7 @@ public sealed class SonioxTtsClient(IServiceProvider services, SonioxTtsClient.O
         CancellationToken cancellationToken)
     {
         var streamId = $"{config.SessionId}-{++StreamCount}";
-        _streams[streamId] = new StreamState();
+        _whenStreamTerminated[streamId] = TaskCompletionSourceExt.New();
         var message = new Dictionary<string, object?> {
             ["api_key"] = config.ApiKey,
             ["model"] = Model,
@@ -122,13 +112,6 @@ public sealed class SonioxTtsClient(IServiceProvider services, SonioxTtsClient.O
         };
         await Send(sender, message, cancellationToken).ConfigureAwait(false);
         return streamId;
-    }
-
-    private async Task EndStream(SonioxSocketSender sender, string streamId, CancellationToken cancellationToken)
-    {
-        await Send(sender, new { text = "", text_end = true, stream_id = streamId }, cancellationToken)
-            .ConfigureAwait(false);
-        await _streams[streamId].WhenTerminated.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static Task Send(SonioxSocketSender sender, object message, CancellationToken cancellationToken)
@@ -158,19 +141,19 @@ public sealed class SonioxTtsClient(IServiceProvider services, SonioxTtsClient.O
         CancellationToken cancellationToken)
     {
         var buffer = new ArraySegment<byte>(new byte[64 * 1024]);
-        var message = new StringBuilder();
         while (webSocket.State == WebSocketState.Open) {
-            message.Clear();
-            WebSocketReceiveResult result;
-            do {
-                result = await webSocket.ReceiveAsync(buffer, cancellationToken).ConfigureAwait(false);
-                if (result.MessageType == WebSocketMessageType.Close)
-                    return;
+            var receiveTask = ReceiveMessage(webSocket, buffer, cancellationToken);
+            var completedTask = await Task.WhenAny(receiveTask, _whenDone.Task).ConfigureAwait(false);
+            if (completedTask == _whenDone.Task && !receiveTask.IsCompleted) {
+                _ = receiveTask.SilentAwait(false);
+                return;
+            }
 
-                message.Append(Encoding.UTF8.GetString(buffer.Array!, 0, result.Count));
-            } while (!result.EndOfMessage);
+            var message = await receiveTask.ConfigureAwait(false);
+            if (message == null)
+                return;
 
-            var response = JsonSerializer.Deserialize<SonioxTtsResponse>(message.ToString(), JsonOptions);
+            var response = JsonSerializer.Deserialize<SonioxTtsResponse>(message, JsonOptions);
             if (response == null)
                 continue;
             if (response.ErrorCode is { } errorCode)
@@ -178,28 +161,31 @@ public sealed class SonioxTtsClient(IServiceProvider services, SonioxTtsClient.O
                     $"Soniox TTS error {errorCode} for #{sessionId}: {response.ErrorMessage}");
 
             var streamId = response.StreamId ?? "";
-            if (!response.Audio.IsNullOrEmpty()) {
-                var bytes = Convert.FromBase64String(response.Audio);
-                if (_streams.TryGetValue(streamId, out var state))
-                    state.GeneratedDuration += TimeSpan.FromSeconds(bytes.Length / (double)BytesPerSecond);
-                await pcm.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
-            }
-            if (response.Terminated) {
-                if (_streams.TryGetValue(streamId, out var state))
-                    state.WhenTerminated.TrySetResult();
-                if (streamId == Volatile.Read(ref _finalStreamId))
-                    return;
-            }
+            if (!response.Audio.IsNullOrEmpty())
+                await pcm.WriteAsync(Convert.FromBase64String(response.Audio), cancellationToken).ConfigureAwait(false);
+            if (response.Terminated && _whenStreamTerminated.TryGetValue(streamId, out var whenTerminated))
+                whenTerminated.TrySetResult();
         }
+    }
+
+    private static async Task<string?> ReceiveMessage(
+        ClientWebSocket webSocket,
+        ArraySegment<byte> buffer,
+        CancellationToken cancellationToken)
+    {
+        var message = new StringBuilder();
+        WebSocketReceiveResult result;
+        do {
+            result = await webSocket.ReceiveAsync(buffer, cancellationToken).ConfigureAwait(false);
+            if (result.MessageType == WebSocketMessageType.Close)
+                return null;
+
+            message.Append(Encoding.UTF8.GetString(buffer.Array!, 0, result.Count));
+        } while (!result.EndOfMessage);
+        return message.ToString();
     }
 
     // Nested types
 
     private sealed record StreamConfig(string SessionId, string ApiKey, string Language, string Voice);
-
-    private sealed class StreamState
-    {
-        public TaskCompletionSource WhenTerminated { get; } = TaskCompletionSourceExt.New();
-        public TimeSpan GeneratedDuration { get; set; }
-    }
 }
