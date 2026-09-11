@@ -22,7 +22,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IExternalContactsBackend ExternalContactsBackend => field ??= Services.GetRequiredService<IExternalContactsBackend>();
-    private IRolesBackend RolesBackend => field ??= Services.GetRequiredService<IRolesBackend>();
     private IDbEntityResolver<string, DbContact> DbContactResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbContact>>();
     private IMeshLocks GreetLocks => field ??= Services.MeshLocks().WithKeyPrefix(nameof(GreetLocks));
     public RedisDb<ContactsDbContext> RedisDb => field ??= Services.GetRequiredService<RedisDb<ContactsDbContext>>();
@@ -848,32 +847,11 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             return; // It just spawns other commands, so nothing to do here
 
         var (chat, oldChat, changeKind) = eventCommand;
-        if (chat.Id.IsThread(out var threadChatId)) {
-            if (changeKind is ChangeKind.Remove) {
-                // TODO: implement remove thread contacts
-                // var command = new ContactsBackend_RemoveChatContacts(chat.Id);
-                // await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
-            }
-            else if (changeKind is ChangeKind.Create) {
-                // Create a thread contact for the thread starter.
-                var ownerRole = await RolesBackend
-                    .GetSystem(chat.Id, SystemRole.Owner, cancellationToken)
-                    .Require()
-                    .ConfigureAwait(false);
-
-                var authorIds = await RolesBackend.ListAuthorIds(chat.Id, ownerRole.Id, cancellationToken).ConfigureAwait(false);
-                foreach (var authorId in authorIds) {
-                    var author = await AuthorsBackend
-                        .Get(authorId.ChatId, authorId, RequestedAuthorKind.Full, cancellationToken)
-                        .ConfigureAwait(false);
-                    if (author is null)
-                        continue;
-
-                    await EnsureThreadContactExits(author.UserId, threadChatId, cancellationToken).ConfigureAwait(false);
-                }
-            }
+        // Thread contacts are created elsewhere: the starter's by ChatThreads.OnStart (threads have no
+        // roles to find an owner in), everyone else's when they post or get mentioned.
+        // TODO: remove thread contacts when a thread is removed
+        if (chat.Id.IsThread())
             return;
-        }
 
         if (changeKind == ChangeKind.Remove) {
             var command = new ContactsBackend_RemoveChatContacts(chat.Id);
