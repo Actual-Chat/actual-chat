@@ -31,6 +31,7 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     private IPlaces Places => Hub.Places;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatUI ChatUI => Hub.ChatUI;
+    private IChatThreads ChatThreads => Hub.ChatThreads;
     private SearchUI SearchUI => Hub.SearchUI;
     private NotificationsPanelUI NotificationsPanelUI => Hub.NotificationsPanelUI;
     private NotificationsUI NotificationsUI => Hub.NotificationsUI;
@@ -135,6 +136,29 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     {
         var chatById = await ListUnordered(placeId, filter, cancellationToken).ConfigureAwait(false);
         return await ComputeGatedUnreadChatCount(chatById, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<IReadOnlyList<ChatInfo>> ListThreads(
+        PlaceId? placeId, CancellationToken cancellationToken = default)
+    {
+        var threadIds = await ChatThreads.ListIdsForPlace(Session, placeId, cancellationToken).ConfigureAwait(false);
+        var threads = (await threadIds
+            .Select(id => ChatUI.Get(id, cancellationToken))
+            .CollectResults(ApiConstants.Concurrency.High, cancellationToken)
+            .ConfigureAwait(false)
+            ).Select(x => x.ValueOrDefault)
+            .SkipNullItems();
+        return threads.ToList();
+    }
+
+    [ComputeMethod(InvalidationDelay = 0.6)]
+    public virtual async Task<Trimmed<int>> GetUnreadThreadCount(
+        PlaceId? placeId, bool mustBeUnmuted, CancellationToken cancellationToken = default)
+    {
+        var threads = await ListThreads(placeId, cancellationToken).ConfigureAwait(false);
+        var threadById = threads.ToDictionary(x => x.Id);
+        return await ComputeGatedUnreadChatCount(threadById, mustBeUnmuted, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
@@ -515,12 +539,13 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         // Only the selected chat's badge can be gated off (IsReadingTail short-circuits on
         // IsSelected), so fold the raw per-chat counts and override that single chat - a
         // per-chat GetUnreadState fan-out would re-register O(N) dependencies per recompute.
+        // In a thread list that chat is the selected thread itself rather than its parent.
         var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         var gatedChatId = selectedChatId?.GetThreadOutermostParentOrSelf() ?? default;
         var count = 0;
         foreach (var (chatId, chatInfo) in chatById) {
             bool hasUnread;
-            if (chatId == gatedChatId) {
+            if (chatId == gatedChatId || chatId == selectedChatId) {
                 var unreadState = await ChatUI.GetUnreadState(chatId, cancellationToken).ConfigureAwait(false);
                 hasUnread = mustBeUnmuted ? unreadState.HasUnmutedUnread : unreadState.Count > 0;
             }
