@@ -77,6 +77,7 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
         if (image.IsSource || image.Stream is null)
             return CreateResult(null, image, sourceSize, preset);
 
+        await using var __ = image.Stream.ConfigureAwait(false);
         var stream = await image.Stream
             .OpenReadStreamAsync(Constants.Attachments.FileSizeLimit, cancellationToken)
             .ConfigureAwait(false);
