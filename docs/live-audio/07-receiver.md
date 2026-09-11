@@ -363,6 +363,23 @@ audio is short, voice-gated, and rarely overlapping.
   from a phone call into a live conversation that resumed unattended is worse
   than a toggle.
 
+On Android the gain type follows the mode: recording and listening ask for
+`GAIN_TRANSIENT` so that music and navigation resume in the gaps, replay and the
+projected-media route for a permanent `GAIN`, the tune for
+`GAIN_TRANSIENT_MAY_DUCK`. Abandoning a transient focus hands an
+`AUDIOFOCUS_GAIN` back to the app that held it before us, and media apps resume
+on it even when the user had paused them long before - so
+`AndroidAudioFocusHelper.ResolveGain` escalates a transient request to a
+permanent `GAIN` when nothing was playing as the focus session started.
+"Nothing" is `isMusicActive == false` with the audio mode at `Normal` (which
+stands in for the streams `isMusicActive` cannot see) and no audio heard - or
+handed back - in the previous few seconds: listening releases its focus between
+utterances, and the app it wakes takes a moment to start playing again. The
+answer is measured once per focus session, since our own playback counts as
+active audio. The tune is excepted: what a permanent gain does to the head unit
+is untested, and it needs no escalation anyway - see
+[`11-android-auto.md`](11-android-auto.md).
+
 iOS uses MAUI-side audio session APIs in the iOS app; on the web this
 collapses to "always have focus".
 
