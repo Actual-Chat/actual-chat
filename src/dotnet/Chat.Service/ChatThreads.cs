@@ -193,6 +193,12 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
                     IsPublic = false,
                 });
                 threadChat = await Commander.Call(new ChatsBackend_Change(threadChatId, null, chatChange, OwnerId:ownerId), cancellationToken).ConfigureAwait(false);
+                // Only followers get a thread's notifications. The start entry's author follows via
+                // ContactsBackend.OnChatEntryChangedEvent, but that's who wrote it, not who started the thread.
+                var starterContactId = ContactId.NewAny(ownerId, threadChatId);
+                var followCommand = new ContactsBackend_ChangeThreadContact(
+                    starterContactId, null, Change.Create(new ThreadContact(starterContactId)));
+                await Commander.Call(followCommand, cancellationToken).ConfigureAwait(false);
             }
             var chatId = threadChat.Id;
 

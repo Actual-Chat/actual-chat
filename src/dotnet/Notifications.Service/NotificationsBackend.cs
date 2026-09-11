@@ -864,11 +864,26 @@ public class NotificationsBackend(IServiceProvider services)
         // The mode != Muted superset; ImportantOnly users must survive until the split below.
         var userIds = await ListSubscribedUserIds(chatId, NotificationImportance.Important, cancellationToken)
             .ConfigureAwait(false);
+        var mentionedUserIds = await GetMentionedUserIds(chatId, mentionIds, cancellationToken).ConfigureAwait(false);
+        var mentionableUserIds = userIds;
+        if (mentionedUserIds.Count > 0 && chatId.IsThread(out var threadChatId)) {
+            // A thread notifies only its followers, but a mention must reach whoever it names: being mentioned
+            // is what makes them follow, and that follow is created by another event chain racing this one.
+            var parentUserIds = await ListSubscribedUserIds(
+                threadChatId.ParentChatId, NotificationImportance.Important, cancellationToken)
+                .ConfigureAwait(false);
+            mentionableUserIds = await FilterByNotificationMode(
+                parentUserIds.Where(mentionedUserIds.Contains).ToList(),
+                chatId, NotificationImportance.Important, cancellationToken)
+                .ConfigureAwait(false);
+        }
         // Don't interrupt users who are actively in this chat's live call — they're present.
         if (live is { SessionStartedAt: not null }) {
             var active = await GetActiveParticipantUserIds(chatId, cancellationToken).ConfigureAwait(false);
-            if (active.Count != 0)
+            if (active.Count != 0) {
                 userIds = userIds.Where(x => !active.Contains(x)).ToList();
+                mentionableUserIds = mentionableUserIds.Where(x => !active.Contains(x)).ToList();
+            }
         }
 
         // The voice context the beep policy groups by. A latched session's own utterances never
@@ -882,8 +897,7 @@ public class NotificationsBackend(IServiceProvider services)
         // ImportantOnly, individually per entry); everyone else gets the plain coalescing Message
         // notification (Default mode only). Mentions are per-entry, so they alert once on their
         // own and never need the voice grouping.
-        var mentionedUserIds = await GetMentionedUserIds(chatId, mentionIds, cancellationToken).ConfigureAwait(false);
-        var mentioned = userIds.Where(mentionedUserIds.Contains).ToList();
+        var mentioned = mentionableUserIds.Where(mentionedUserIds.Contains).ToList();
         if (mentioned.Count > 0)
             await EnqueueMessageRelatedNotifications(
                 chatId, entryId, author, content, NotificationKind.Mention,
@@ -907,20 +921,23 @@ public class NotificationsBackend(IServiceProvider services)
     {
         var userIds = new HashSet<UserId>();
         var mentionedAuthorIds = new List<AuthorId>();
+        // A thread has no authors of its own - its author ids share local ids with its outermost parent's,
+        // and mentions made in a thread may carry either form
+        var authorChatId = chatId.GetThreadOutermostParentOrSelf();
         foreach (var mention in mentionIds)
             switch (mention.Target) {
             case UserId userId:
                 userIds.Add(userId);
                 break;
-            case AuthorId authorId:
-                mentionedAuthorIds.Add(authorId);
+            case AuthorId authorId when authorId.ChatId.GetThreadOutermostParentOrSelf() == authorChatId:
+                mentionedAuthorIds.Add(AuthorId.New(authorChatId, authorId.LocalId));
                 break;
             }
         if (mentionedAuthorIds.Count == 0)
             return userIds;
 
         var mentionedUserIds = await AuthorsBackend
-            .ListUserIds(chatId, mentionedAuthorIds, RequestedAuthorKind.Full, cancellationToken)
+            .ListUserIds(authorChatId, mentionedAuthorIds, RequestedAuthorKind.Full, cancellationToken)
             .ConfigureAwait(false);
         userIds.AddRange(mentionedUserIds);
         return userIds;
