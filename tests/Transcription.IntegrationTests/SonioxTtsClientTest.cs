@@ -40,7 +40,7 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
     }
 
     [Fact]
-    public async Task TtsShouldOpenOneStreamPerChunk()
+    public async Task TtsShouldSpeakAChunkThatArrivesLate()
     {
         // arrange
         var services = CreateServices();
@@ -52,20 +52,21 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         var client = new SonioxTtsClient(services);
         var text = Channel.CreateUnbounded<string>();
         var pcm = Channel.CreateUnbounded<byte[]>();
-        text.Writer.TryWrite("The quick brown fox jumps over the lazy dog near the riverbank.");
-        text.Writer.TryWrite("A second, unrelated sentence follows right after the first one.");
-        text.Writer.Complete();
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(40));
 
         // act
-        await client.Run("test", "en", "Adrian", text.Reader, pcm.Writer, cts.Token);
+        var runTask = client.Run("test", "en", "Adrian", text.Reader, pcm.Writer, cts.Token);
+        await Task.Delay(TimeSpan.FromSeconds(12), cts.Token);
+        text.Writer.TryWrite("This chunk arrives well after a shared connection would have gone idle.");
+        text.Writer.Complete();
+        await runTask;
         var chunks = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
         var totalBytes = chunks.Sum(c => (long)c.Length);
         WriteLine($"{client.StreamCount} streams, {totalBytes / (double)BytesPerSecond:F1}s of audio");
-        client.StreamCount.Should().Be(2, "each of the two chunks opens its own stream");
-        totalBytes.Should().BeGreaterThan(BytesPerSecond, "two sentences are well over a second of speech");
+        totalBytes.Should().BeGreaterThan(BytesPerSecond / 2, "a chunk arriving late should still speak normally");
+        client.StreamCount.Should().Be(1, "the single chunk opens exactly one connection and stream");
     }
 
     [Fact]

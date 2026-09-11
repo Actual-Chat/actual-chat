@@ -85,5 +85,6 @@ public sealed class SonioxTtsResponse
     [JsonPropertyName("audio_end")] public bool AudioEnd { get; set; }
     [JsonPropertyName("terminated")] public bool Terminated { get; set; }
     [JsonPropertyName("error_code")] public int? ErrorCode { get; set; }
+    [JsonPropertyName("error_type")] public string? ErrorType { get; set; }
     [JsonPropertyName("error_message")] public string? ErrorMessage { get; set; }
 }
