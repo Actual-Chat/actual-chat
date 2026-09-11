@@ -15,6 +15,7 @@
     if (isInvalid) {
         cls += " invalid";
     }
+    var renderInlineError = IsLabelInsideInput && isInvalid && ValidationMessage is null && !HideValidationMessage;
 }
 
 <section data-control-id="@InputId" class="form-section @cls">
@@ -28,7 +29,7 @@
             @ChildContent
         </div>
     } else {
-        <div class="@ContentClass form-section-content label-inside-input">
+        <div class="@ContentClass form-section-content label-inside-input @(renderInlineError ? "has-inline-error" : "")">
             <div class="c-left">
                 @if (!Label.IsNullOrEmpty()) {
                     <div class="@LabelClass form-section-label">
@@ -38,12 +39,18 @@
                 @ChildContent
             </div>
             @Right
+            @if (renderInlineError) {
+                <div class="form-section-inline-error" role="alert">
+                    <LocalizedMessage Text="@messages.First()" FieldLabel="@Label"/>
+                </div>
+                <i class="form-section-error-icon icon-alert-circle" aria-hidden="true"></i>
+            }
         </div>
     }
     @if (ValidationMessage is not null) {
         @ValidationMessage(Label)
     }
-    else @if (!HideValidationMessage) {
+    else @if (!HideValidationMessage && !IsLabelInsideInput) {
         var validationCls = isInvalid ? "invalid" : "";
         <div class="form-section-validation @validationCls">
             @if (isInvalid) {
