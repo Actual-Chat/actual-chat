@@ -63,29 +63,3 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
     @apply self-center;
     width: calc(100% - 1rem);
 }
-
-/* ── Incoming call banner ── */
-
-.incoming-call-banner .c-texts {
-    @apply flex-x items-center justify-start;
-    @apply cursor-pointer;
-}
-.incoming-call-banner .avatar-badge .c-content {
-    @apply p-0;
-}
-
-/* ── Outgoing-call banner ── */
-
-.banner.outgoing-call-banner {
-    @apply h-auto min-h-12;
-    @apply my-1;
-}
-.outgoing-call-banner .c-icon {
-    @apply text-01;
-}
-.outgoing-call-banner .banner-body {
-    @apply flex-x items-center justify-center;
-}
-.outgoing-call-banner .c-text {
-    @apply text-caption-1 text-01;
-}
