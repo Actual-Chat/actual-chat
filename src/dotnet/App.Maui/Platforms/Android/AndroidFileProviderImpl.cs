@@ -13,6 +13,7 @@ public class AndroidFileProviderImpl : IMauiFileProviderImpl
 
     private AndroidContentDownloader Downloader { get; }
     private string Uri { get; }
+    private string? _decodedUri;
 
     public Task WhenFileStreamReady()
         => Task.CompletedTask;
@@ -34,7 +35,8 @@ public class AndroidFileProviderImpl : IMauiFileProviderImpl
     public Task ClearBeforeRemoving()
     {
         AndroidFilePermissionsKeeper.ReleaseReadPermission(Uri, this);
-        AndroidContentDownloader.DeleteCachedShareFile(Uri);
+        AndroidContentDownloader.DeleteCachedFile(Uri);
+        DeleteDecodedFile();
         return Task.CompletedTask;
     }
 
@@ -44,6 +46,24 @@ public class AndroidFileProviderImpl : IMauiFileProviderImpl
         return Task.FromResult(stream);
     }
 
-    public Task<string> GetContentUrl(int? decodeMaxSize, CancellationToken cancellationToken)
-        => Task.FromResult(AndroidContentDownloader.CreateWebRequestUri(Uri));
+    public async Task<string> GetContentUrl(int? decodeMaxSize, CancellationToken cancellationToken)
+    {
+        if (decodeMaxSize is not { } maxSize || !AndroidHeifDecoder.IsHeif(Uri))
+            return AndroidContentDownloader.CreateWebRequestUri(Uri);
+
+        DeleteDecodedFile();
+        _decodedUri = await AndroidHeifDecoder.DecodeToJpeg(Uri, maxSize, cancellationToken).ConfigureAwait(false);
+        return AndroidContentDownloader.CreateWebRequestUri(_decodedUri);
+    }
+
+    // Private methods
+
+    private void DeleteDecodedFile()
+    {
+        if (_decodedUri is null)
+            return;
+
+        AndroidContentDownloader.DeleteCachedFile(_decodedUri);
+        _decodedUri = null;
+    }
 }

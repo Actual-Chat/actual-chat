@@ -188,6 +188,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<IAttachmentFilePicker>(c => new MauiAttachmentFilePicker(c));
 #endif
         services.AddScoped<IMauiFileProviderImplFactory>(c => new MauiFileProviderImplFactory(c));
+        services.AddScoped<IProcessedImageStore>(c => new MauiProcessedImageStore(c));
 
         // Test Page
 #if ANDROID
