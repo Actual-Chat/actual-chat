@@ -1211,6 +1211,8 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         var state = await backend.GetState(chatId, default);
         state!.Kind.Should().Be(LiveSessionKind.Call);
         state.SessionStartedAt.Should().Be(startedAt);
+        // an already-latched session isn't newly Dialing, so no CallState should be written for it
+        (await backend.GetCallState(chatId, default)).Should().BeNull();
     }
 
     [Fact]

@@ -596,7 +596,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 Version = VersionGenerator.NextVersion(state?.Version ?? 0),
             };
             await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
-            await SetCallState(chatId, NewCallState(state, CallStatus.Dialing)).ConfigureAwait(false);
+            // Dialing status only for a fresh call; promoting an already-connected session isn't "calling".
+            await SetCallState(chatId, state.IsDialing ? NewCallState(state, CallStatus.Dialing) : null)
+                .ConfigureAwait(false);
             conversationId = state.RingConversationId;
             await EnsureParticipant(chatId, callerAuthorId).ConfigureAwait(false);
             foreach (var invitee in invitees)
