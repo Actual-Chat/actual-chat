@@ -288,6 +288,10 @@ public static partial class Constants
             // is needed to flush the tail - and padding is billed as stream time.
             public static readonly TimeSpan SilentPrefixDuration = TimeSpan.Zero;
             public static readonly TimeSpan SilentSuffixDuration = TimeSpan.Zero;
+            // TTS: the server closes an idle connection after 20-30s without a message
+            public static readonly TimeSpan TtsKeepAlivePeriod = TimeSpan.FromSeconds(15);
+            // TTS caps one stream at 2 minutes of generated audio; text in flight lands in the gap
+            public static readonly TimeSpan TtsMaxStreamDuration = TimeSpan.FromSeconds(90);
         }
 
         public static class ElevenLabs
