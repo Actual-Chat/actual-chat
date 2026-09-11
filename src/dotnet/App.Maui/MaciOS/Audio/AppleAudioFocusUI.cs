@@ -354,6 +354,11 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
 
     private async Task HandleRouteChange(AVAudioSessionRouteChangeReason reason)
     {
+        // Our own port override is a route change too; re-applying on it clears and restates the
+        // override, which raises the next one - a loop of route flaps under a starting engine.
+        if (reason is AVAudioSessionRouteChangeReason.Override)
+            return;
+
         bool shouldRecover;
         using (await _lock.Lock(StopToken).ConfigureAwait(false)) {
             if (_activeScopes.IsEmpty)

@@ -60,8 +60,8 @@
                 <Right>
                     @if (!_copyAliasFormatString.IsNullOrEmpty() && !_aliasTextBoxRef.Id.IsNullOrEmpty()) {
                         <CopyToClipboard
-                            IsSquare="true"
-                            ButtonClass="btn-transparent btn-sm"
+                            Kind="CopyButtonKind.Header"
+                            ButtonClass="btn-sm"
                             Text=""
                             CopyTextSourceRef="@_aliasTextBoxRef"
                             CopyTextFormatString="@_copyAliasFormatString"/>
@@ -113,7 +113,7 @@
                 </Right>
             </FormSection>
 
-            @if (phone != null && !isPhoneVerified) {
+            @if (_formRef.IsValid && phone != null && !isPhoneVerified) {
                 <PhoneVerifier Phone="@phone" Class="my-3"/>
             }
         </FormBlock>

@@ -316,8 +316,8 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         var session = AVAudioSession.SharedInstance();
         var owner = Owner;
         var isConfigured = AudioSessionOwnership.MayConfigure(owner, mode);
-        if (isConfigured)
-            ConfigureUnsafe(session, mode);
+        if (isConfigured && !TryConfigureUnsafe(session, mode))
+            return new AudioSessionSetup(false, false, true);
         if (!AudioSessionOwnership.MayActivate(owner)) {
             ApplyOutputRouteUnsafe(mode);
             return new AudioSessionSetup(isConfigured, false);
@@ -353,8 +353,8 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             var isConfigured = AudioSessionOwnership.MayConfigure(owner, minMode);
             // The framework's session is already active, and SetCategory on an active session
             // is what lets an in-app recording get PlayAndRecord during a live wake playback.
-            if (isConfigured)
-                ConfigureUnsafe(session, minMode);
+            if (isConfigured && !TryConfigureUnsafe(session, minMode))
+                return new AudioSessionSetup(false, false, true);
             ApplyOutputRouteUnsafe(minMode);
             return new AudioSessionSetup(isConfigured, false);
         }
@@ -363,7 +363,8 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             ? AVAudioSessionSetActiveOptions.NotifyOthersOnDeactivation
             : 0;
         session.SetActive(false, deactivateOptions).Assert("Failed to deactivate session");
-        ConfigureUnsafe(session, minMode);
+        if (!TryConfigureUnsafe(session, minMode))
+            return new AudioSessionSetup(false, false, true);
         if (!session.SetActive(true, out var error)) {
             if (TryRequestPttActivation(error, minMode))
                 return new AudioSessionSetup(true, false, true);
@@ -372,6 +373,21 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         }
         ApplyOutputRouteUnsafe(minMode);
         return new AudioSessionSetup(true, true);
+    }
+
+    private bool TryConfigureUnsafe(AVAudioSession session, AudioFocusMode mode)
+    {
+        // SetCategory is refused on the same terms as SetActive - a PTT-joined app in the
+        // background just after the framework let its session go - and the answer is the same:
+        // ask the framework, which configures on the way in.
+        try {
+            ConfigureUnsafe(session, mode);
+            return true;
+        }
+        catch (Exception e) when (e.InnerException is NSErrorException { Error: { } nsError }
+            && TryRequestPttActivation(nsError, mode)) {
+            return false;
+        }
     }
 
     private bool TryRequestPttActivation(NSError error, AudioFocusMode mode)

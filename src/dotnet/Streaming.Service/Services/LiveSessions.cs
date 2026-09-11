@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Live;
+using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Streaming.Services;
 
@@ -20,6 +21,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private ILiveVideoBackend LiveVideoBackend => field ??= Services.GetRequiredService<ILiveVideoBackend>();
     private ILiveSessionsBackend Backend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
+    private PeerParticipations PeerParticipations => field ??= Services.GetRequiredService<PeerParticipations>();
     private IAudioStreamingBackend AudioStreamingBackend
         => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
 
@@ -123,7 +125,9 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
             return;
 
         var authorId = chat.Rules.Author!.Id;
-        await Backend.SetParticipation(chatId, authorId, kind, isActive, cancellationToken).ConfigureAwait(false);
+        var peer = RpcInboundContext.Current?.Peer;
+        await PeerParticipations.SetParticipation(peer, chatId, authorId, kind, isActive, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public async Task SetRules(Session session, ChatId chatId, SessionRules rules, CancellationToken cancellationToken)
