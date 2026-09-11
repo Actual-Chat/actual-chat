@@ -571,9 +571,8 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     private async Task SyncIncomingCallModal(CancellationToken cancellationToken)
     {
-        // The foreground incoming call surfaces as a modal (design), not the old top banner. It's skipped
-        // while the ring is over the lock screen or collapsed into the island (see GetModalCall). The modal
-        // closes itself when GetModalCall drops to null; the per-chat guard stops it re-popping.
+        // Skipped while the ring is over the lock screen or collapsed into the island (see GetModalCall).
+        // The modal closes itself when GetModalCall drops to null; the per-chat guard stops it re-popping.
         var cCall = await Computed
             .Capture(() => GetModalCall(cancellationToken), cancellationToken)
             .ConfigureAwait(false);

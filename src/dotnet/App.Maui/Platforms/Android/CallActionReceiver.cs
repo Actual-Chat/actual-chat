@@ -22,7 +22,7 @@ public class CallActionReceiver : BroadcastReceiver
         IncomingCallNotifications.Dismiss(chatId);
 
         // App alive: decline through the live Blazor scope — the same RPC client (and connection)
-        // the in-app banner uses. It also ends the in-app ring. The root container this receiver
+        // the in-app call UI uses. It also ends the in-app ring. The root container this receiver
         // resolves from may lack the Fusion client stack, so it can't be relied on while alive.
         if (AppServicesAccessor.TryGetScopedServices(out _)) {
             _ = AppServicesAccessor.DispatchToBlazor(

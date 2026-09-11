@@ -659,11 +659,6 @@
   "DemandInteraction_Updating": "Оновлення...",
   "DemandInteraction_Continue_Format": "Продовжити — {0}?",
   "Banner_ReadyToRestart_Format": "{0} готовий перезапуститися в оптимізованому режимі",
-  "Banner_CallDialing": "Ви телефонуєте…",
-  "Banner_CallAccepted": "Дзвінок прийнято",
-  "Banner_CallDeclined": "Дзвінок відхилено",
-  "Banner_CallNoAnswer": "Немає відповіді",
-  "Banner_CancelCall": "Скасувати дзвінок",
 
   "Bubble_Counter_Format": "{0} з {1}",
   "Bubble_ChatListTabsTitle": "Чати та контакти",

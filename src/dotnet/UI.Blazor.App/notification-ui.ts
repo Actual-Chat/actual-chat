@@ -209,7 +209,7 @@ export class NotificationUI {
         });
     }
 
-    // An incoming-call push (foreground FCM) registers the ring in Blazor so the in-app banner shows.
+    // An incoming-call push (foreground FCM) registers the ring in Blazor so the in-app call modal shows.
     private static async onIncomingCallPush(data: Record<string, string> | undefined): Promise<void> {
         if (data?.kind !== 'IncomingCall' || !data.chatId)
             return;

@@ -182,7 +182,7 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
 
     private static void ClearForegroundCallRings(IReadOnlyList<string> dismissedTags)
     {
-        // A foreground ring lives in the in-app banner/ringer, not a system notification, so a
+        // A foreground ring lives in the in-app call UI/ringer, not a system notification, so a
         // cancel/decline/timeout dismissal must reach IncomingCallUI directly — the reactive
         // live-session computed (NoCache) would otherwise clear the ring only on its slow self-heal.
         if (!(AndroidUtils.IsAppForeground() ?? false) || !TryGetScopedServices(out _))
@@ -214,7 +214,7 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
         var isForeground = AndroidUtils.IsAppForeground();
         DebugLog?.LogInformation("CALL_TRACE: HandleIncomingCall push #{ChatId}, scopeAlive={ScopeAlive}, foreground={Foreground}",
             chatId, scopeAlive, isForeground);
-        // Foreground + unlocked: the in-app banner and ringer own the ring, so the system CallStyle
+        // Foreground + unlocked: the in-app call UI and ringer own the ring, so the system CallStyle
         // notification would only stack a heads-up banner over them. Show it just when the app is
         // backgrounded, killed, or locked - where its full-screen intent is the only way to reach the user.
         if (scopeAlive && isForeground == true) {
@@ -226,7 +226,7 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
 
         // The system notification (silent channel) surfaces the Blazor app over the lock screen / in
         // the background via its full-screen intent. Whenever the Blazor scope is alive we also register
-        // the ring so the in-app banner + ringer run.
+        // the ring so the in-app call UI + ringer run.
         IncomingCallNotifications.Show(data);
         if (scopeAlive)
             _ = DispatchToBlazor(

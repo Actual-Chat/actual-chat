@@ -659,11 +659,6 @@
   "DemandInteraction_Updating": "अपडेट हो रहा है...",
   "DemandInteraction_Continue_Format": "{0} जारी रखें?",
   "Banner_ReadyToRestart_Format": "{0} अनुकूलित मोड में पुनः आरंभ होने के लिए तैयार है",
-  "Banner_CallDialing": "आप कॉल कर रहे हैं…",
-  "Banner_CallAccepted": "कॉल स्वीकार की गई",
-  "Banner_CallDeclined": "कॉल अस्वीकार की गई",
-  "Banner_CallNoAnswer": "कोई उत्तर नहीं",
-  "Banner_CancelCall": "कॉल रद्द करें",
 
   "Bubble_Counter_Format": "{1} में से {0}",
   "Bubble_ChatListTabsTitle": "चैट और संपर्क",

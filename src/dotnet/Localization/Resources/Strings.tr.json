@@ -659,11 +659,6 @@
   "DemandInteraction_Updating": "Güncelleniyor...",
   "DemandInteraction_Continue_Format": "{0} devam edilsin mi?",
   "Banner_ReadyToRestart_Format": "{0} optimize modda yeniden başlatılmaya hazır",
-  "Banner_CallDialing": "Arıyorsunuz…",
-  "Banner_CallAccepted": "Arama kabul edildi",
-  "Banner_CallDeclined": "Arama reddedildi",
-  "Banner_CallNoAnswer": "Yanıt yok",
-  "Banner_CancelCall": "Aramayı iptal edin",
 
   "Bubble_Counter_Format": "{0} / {1}",
   "Bubble_ChatListTabsTitle": "Sohbetler ve kişiler",

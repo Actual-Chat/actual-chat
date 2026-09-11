@@ -682,11 +682,6 @@ public static class LocalizedStringsLocalizerExt
         public string DemandInteraction_Continue_Format(object arg0)
             => l["DemandInteraction_Continue_Format", arg0].Value;
         public string Banner_ReadyToRestart_Format(object arg0) => l["Banner_ReadyToRestart_Format", arg0].Value;
-        public string Banner_CallDialing => l["Banner_CallDialing"].Value;
-        public string Banner_CallAccepted => l["Banner_CallAccepted"].Value;
-        public string Banner_CallDeclined => l["Banner_CallDeclined"].Value;
-        public string Banner_CallNoAnswer => l["Banner_CallNoAnswer"].Value;
-        public string Banner_CancelCall => l["Banner_CancelCall"].Value;
 
         public string Bubble_Counter_Format(object arg0, object arg1) => l["Bubble_Counter_Format", arg0, arg1].Value;
         public string Bubble_ChatListTabsTitle => l["Bubble_ChatListTabsTitle"].Value;

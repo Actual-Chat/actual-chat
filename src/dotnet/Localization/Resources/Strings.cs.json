@@ -659,11 +659,6 @@
   "DemandInteraction_Updating": "Aktualizace...",
   "DemandInteraction_Continue_Format": "Pokračovat — {0}?",
   "Banner_ReadyToRestart_Format": "{0} je připraven k restartu v optimalizovaném režimu",
-  "Banner_CallDialing": "Voláte…",
-  "Banner_CallAccepted": "Hovor přijat",
-  "Banner_CallDeclined": "Hovor odmítnut",
-  "Banner_CallNoAnswer": "Nikdo nezvedá",
-  "Banner_CancelCall": "Zrušit hovor",
 
   "Bubble_Counter_Format": "{0} z {1}",
   "Bubble_ChatListTabsTitle": "Chaty a kontakty",

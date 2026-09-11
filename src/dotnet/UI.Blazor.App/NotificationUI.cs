@@ -88,7 +88,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
     }
 
     // Web counterpart of the Android FCM path: an incoming-call push (foreground onMessage or the
-    // service worker for an open background tab) registers the ring so the in-app banner appears.
+    // service worker for an open background tab) registers the ring so the in-app call modal appears.
     [JSInvokable]
     public void OnIncomingCall(string sChatId)
     {

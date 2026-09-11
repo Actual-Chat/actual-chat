@@ -659,11 +659,6 @@
   "DemandInteraction_Updating": "正在更新…",
   "DemandInteraction_Continue_Format": "继续 {0}？",
   "Banner_ReadyToRestart_Format": "{0} 已可在优化模式下重启",
-  "Banner_CallDialing": "正在呼叫…",
-  "Banner_CallAccepted": "通话已接听",
-  "Banner_CallDeclined": "通话已拒接",
-  "Banner_CallNoAnswer": "无人接听",
-  "Banner_CancelCall": "取消呼叫",
 
   "Bubble_Counter_Format": "第 {0} / {1} 条",
   "Bubble_ChatListTabsTitle": "聊天与联系人",

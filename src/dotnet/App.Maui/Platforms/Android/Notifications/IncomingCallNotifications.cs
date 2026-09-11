@@ -141,9 +141,9 @@ public static class IncomingCallNotifications
             return;
         }
 
-        // Opened from the call notification: register the ring so the in-app banner + looping ringer
+        // Opened from the call notification: register the ring so the in-app call UI + looping ringer
         // take over once the app is up. The full-screen-intent path (over the lock screen / screen
-        // off) additionally shows the full-screen call modal; a plain tap only shows the banner.
+        // off) shows the full-screen call view instead of the modal; a plain tap shows the modal.
         var overLockScreen = intent.GetBooleanExtra(FullScreenExtraKey, false);
         DebugLog?.LogInformation("CALL_TRACE: HandleViewIntent → dispatch OnRing #{ChatId}, overLockScreen={OverLockScreen}",
             chatId, overLockScreen);

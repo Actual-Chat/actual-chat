@@ -659,11 +659,6 @@
   "DemandInteraction_Updating": "Обновление...",
   "DemandInteraction_Continue_Format": "Продолжить — {0}?",
   "Banner_ReadyToRestart_Format": "{0} готов перезапуститься в оптимизированном режиме",
-  "Banner_CallDialing": "Вы звоните…",
-  "Banner_CallAccepted": "Звонок принят",
-  "Banner_CallDeclined": "Звонок отклонён",
-  "Banner_CallNoAnswer": "Нет ответа",
-  "Banner_CancelCall": "Отменить звонок",
 
   "Bubble_Counter_Format": "{0} из {1}",
   "Bubble_ChatListTabsTitle": "Чаты и контакты",

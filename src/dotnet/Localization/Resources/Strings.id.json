@@ -659,11 +659,6 @@
   "DemandInteraction_Updating": "Memperbarui...",
   "DemandInteraction_Continue_Format": "Lanjutkan {0}?",
   "Banner_ReadyToRestart_Format": "{0} siap dimulai ulang dalam mode teroptimasi",
-  "Banner_CallDialing": "Anda sedang memanggil…",
-  "Banner_CallAccepted": "Panggilan diterima",
-  "Banner_CallDeclined": "Panggilan ditolak",
-  "Banner_CallNoAnswer": "Tidak dijawab",
-  "Banner_CancelCall": "Batalkan panggilan",
 
   "Bubble_Counter_Format": "{0} dari {1}",
   "Bubble_ChatListTabsTitle": "Obrolan dan kontak",

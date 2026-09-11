@@ -659,11 +659,6 @@
   "DemandInteraction_Updating": "更新中...",
   "DemandInteraction_Continue_Format": "{0} を続けますか?",
   "Banner_ReadyToRestart_Format": "{0} は最適化モードで再起動できます",
-  "Banner_CallDialing": "発信中…",
-  "Banner_CallAccepted": "通話に応答しました",
-  "Banner_CallDeclined": "通話が拒否されました",
-  "Banner_CallNoAnswer": "応答なし",
-  "Banner_CancelCall": "発信をキャンセル",
 
   "Bubble_Counter_Format": "{1} 件中 {0} 件目",
   "Bubble_ChatListTabsTitle": "チャットと連絡先",

@@ -659,11 +659,6 @@
   "DemandInteraction_Updating": "Ажурирање...",
   "DemandInteraction_Continue_Format": "Наставити — {0}?",
   "Banner_ReadyToRestart_Format": "{0} је спреман за поновно покретање у оптимизираном начину",
-  "Banner_CallDialing": "Зовете…",
-  "Banner_CallAccepted": "Позив прихваћен",
-  "Banner_CallDeclined": "Позив одбијен",
-  "Banner_CallNoAnswer": "Нема одговора",
-  "Banner_CancelCall": "Откажите позив",
 
   "Bubble_Counter_Format": "{0} од {1}",
   "Bubble_ChatListTabsTitle": "Четови и контакти",

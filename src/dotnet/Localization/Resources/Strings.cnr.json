@@ -659,11 +659,6 @@
   "DemandInteraction_Updating": "Ažuriranje...",
   "DemandInteraction_Continue_Format": "Nastaviti — {0}?",
   "Banner_ReadyToRestart_Format": "{0} je spreman za ponovno pokretanje u optimiziranom načinu",
-  "Banner_CallDialing": "Zovete…",
-  "Banner_CallAccepted": "Poziv prihvaćen",
-  "Banner_CallDeclined": "Poziv odbijen",
-  "Banner_CallNoAnswer": "Nema odgovora",
-  "Banner_CancelCall": "Otkažite poziv",
 
   "Bubble_Counter_Format": "{0} od {1}",
   "Bubble_ChatListTabsTitle": "Chatovi i kontakti",

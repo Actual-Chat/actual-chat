@@ -659,11 +659,6 @@
   "DemandInteraction_Updating": "Đang cập nhật...",
   "DemandInteraction_Continue_Format": "Tiếp tục {0}?",
   "Banner_ReadyToRestart_Format": "{0} đã sẵn sàng khởi động lại ở chế độ tối ưu",
-  "Banner_CallDialing": "Bạn đang gọi…",
-  "Banner_CallAccepted": "Cuộc gọi đã được chấp nhận",
-  "Banner_CallDeclined": "Cuộc gọi bị từ chối",
-  "Banner_CallNoAnswer": "Không có trả lời",
-  "Banner_CancelCall": "Hủy cuộc gọi",
 
   "Bubble_Counter_Format": "{0} trên {1}",
   "Bubble_ChatListTabsTitle": "Trò chuyện và danh bạ",

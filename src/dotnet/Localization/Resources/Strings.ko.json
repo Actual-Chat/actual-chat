@@ -659,11 +659,6 @@
   "DemandInteraction_Updating": "업데이트 중...",
   "DemandInteraction_Continue_Format": "{0}을(를) 계속할까요?",
   "Banner_ReadyToRestart_Format": "{0}을(를) 최적화 모드로 다시 시작할 수 있습니다",
-  "Banner_CallDialing": "전화 거는 중…",
-  "Banner_CallAccepted": "통화 수락됨",
-  "Banner_CallDeclined": "통화 거절됨",
-  "Banner_CallNoAnswer": "응답 없음",
-  "Banner_CancelCall": "통화 취소",
 
   "Bubble_Counter_Format": "{1}개 중 {0}번째",
   "Bubble_ChatListTabsTitle": "채팅과 연락처",

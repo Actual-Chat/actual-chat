@@ -796,11 +796,6 @@
   "DemandInteraction_Updating": "Updating...",
   "DemandInteraction_Continue_Format": "Continue {0}?",
   "Banner_ReadyToRestart_Format": "{0} is ready to restart in the optimized mode",
-  "Banner_CallDialing": "You are calling…",
-  "Banner_CallAccepted": "Call accepted",
-  "Banner_CallDeclined": "Call declined",
-  "Banner_CallNoAnswer": "No answer",
-  "Banner_CancelCall": "Cancel call",
 
   // "Bubbles" are the coach-mark tooltips of the first-run walk-through: shown once, then
   // dismissed. Bubble_Counter_Format is the "3 of 7" step counter. Each is a title plus a short

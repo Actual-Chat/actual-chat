@@ -143,7 +143,7 @@ onBackgroundMessage(messaging, async payload => {
                     notification.close();
             }
         }
-        // A cancelled/declined/timed-out call: route it to any open tab so the in-app ring banner
+        // A cancelled/declined/timed-out call: route it to any open tab so the in-app call modal
         // clears at once over the same channel that delivered the ring, instead of waiting on the
         // reactive live-session self-heal. Mirrors Android's ClearForegroundCallRings.
         const callTagPrefix = 'call-'; // Must match Constants.Notification.CallTagPrefix (no AppConstants in a SW)
@@ -159,8 +159,8 @@ onBackgroundMessage(messaging, async payload => {
         }
         return;
     }
-    // Incoming call: ring any open tab (in-app banner via OnRing) and show an OS notification so a
-    // backgrounded/closed app still rings. The banner's own Accept/Decline take over once focused.
+    // Incoming call: ring any open tab (in-app call modal via OnRing) and show an OS notification so a
+    // backgrounded/closed app still rings. The modal's own Accept/Decline take over once focused.
     if (data.kind === 'IncomingCall' && data.chatId) {
         const windowClients = await sw.clients.matchAll({ type: 'window' });
         for (const client of windowClients)

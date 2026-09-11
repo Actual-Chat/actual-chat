@@ -659,11 +659,6 @@
   "DemandInteraction_Updating": "Wird aktualisiert...",
   "DemandInteraction_Continue_Format": "{0} fortsetzen?",
   "Banner_ReadyToRestart_Format": "{0} kann jetzt im optimierten Modus neu starten",
-  "Banner_CallDialing": "Sie rufen an…",
-  "Banner_CallAccepted": "Anruf angenommen",
-  "Banner_CallDeclined": "Anruf abgelehnt",
-  "Banner_CallNoAnswer": "Keine Antwort",
-  "Banner_CancelCall": "Anruf abbrechen",
 
   "Bubble_Counter_Format": "{0} von {1}",
   "Bubble_ChatListTabsTitle": "Chats und Kontakte",
