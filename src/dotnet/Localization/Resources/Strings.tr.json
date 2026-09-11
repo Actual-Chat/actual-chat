@@ -307,7 +307,7 @@
   "ConversationMenu_CopySummaryLink": "Özet bağlantısını kopyalayın",
 
   "ThreadMenu_GoToThread": "Konuya gidin",
-  "ThreadMenu_CopyThread": "Konuyu kopyalayın",
+  "ThreadMenu_CopyThread": "Başlığı ve bağlantıyı kopyalayın",
   "ThreadMenu_Mute": "Sessize al",
   "ThreadMenu_Unmute": "Sessizden çıkar",
   "ThreadMenu_GoToStartMessage": "Başlangıç mesajına gidin",

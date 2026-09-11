@@ -388,7 +388,7 @@
 
   // The context menu of a thread: its card in the transcript and its row in a thread list.
   "ThreadMenu_GoToThread": "Go to thread",
-  "ThreadMenu_CopyThread": "Copy thread",
+  "ThreadMenu_CopyThread": "Copy title and link",
   "ThreadMenu_Mute": "Mute",
   "ThreadMenu_Unmute": "Unmute",
   "ThreadMenu_GoToStartMessage": "Go to start message",

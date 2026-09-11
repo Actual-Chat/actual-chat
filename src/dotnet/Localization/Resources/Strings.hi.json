@@ -307,7 +307,7 @@
   "ConversationMenu_CopySummaryLink": "सारांश का लिंक कॉपी करें",
 
   "ThreadMenu_GoToThread": "थ्रेड पर जाएँ",
-  "ThreadMenu_CopyThread": "थ्रेड कॉपी करें",
+  "ThreadMenu_CopyThread": "शीर्षक और लिंक कॉपी करें",
   "ThreadMenu_Mute": "म्यूट करें",
   "ThreadMenu_Unmute": "अनम्यूट करें",
   "ThreadMenu_GoToStartMessage": "शुरुआती संदेश पर जाएँ",

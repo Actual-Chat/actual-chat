@@ -307,7 +307,7 @@
   "ConversationMenu_CopySummaryLink": "Sao chép liên kết bản tóm tắt",
 
   "ThreadMenu_GoToThread": "Đến chủ đề",
-  "ThreadMenu_CopyThread": "Sao chép chủ đề",
+  "ThreadMenu_CopyThread": "Sao chép tiêu đề và liên kết",
   "ThreadMenu_Mute": "Tắt tiếng",
   "ThreadMenu_Unmute": "Bật tiếng",
   "ThreadMenu_GoToStartMessage": "Đến tin nhắn gốc",

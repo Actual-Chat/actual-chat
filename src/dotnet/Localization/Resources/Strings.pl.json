@@ -307,7 +307,7 @@
   "ConversationMenu_CopySummaryLink": "Kopiuj link do podsumowania",
 
   "ThreadMenu_GoToThread": "Przejdź do wątku",
-  "ThreadMenu_CopyThread": "Kopiuj wątek",
+  "ThreadMenu_CopyThread": "Kopiuj tytuł i link",
   "ThreadMenu_Mute": "Wycisz",
   "ThreadMenu_Unmute": "Wyłącz wyciszenie",
   "ThreadMenu_GoToStartMessage": "Przejdź do wiadomości początkowej",

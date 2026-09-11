@@ -307,7 +307,7 @@
   "ConversationMenu_CopySummaryLink": "Copier le lien du résumé",
 
   "ThreadMenu_GoToThread": "Aller au fil",
-  "ThreadMenu_CopyThread": "Copier le fil",
+  "ThreadMenu_CopyThread": "Copier le titre et le lien",
   "ThreadMenu_Mute": "Mettre en sourdine",
   "ThreadMenu_Unmute": "Réactiver",
   "ThreadMenu_GoToStartMessage": "Aller au message initial",

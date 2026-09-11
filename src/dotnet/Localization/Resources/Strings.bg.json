@@ -307,7 +307,7 @@
   "ConversationMenu_CopySummaryLink": "Копирайте линка към обобщението",
 
   "ThreadMenu_GoToThread": "Към нишката",
-  "ThreadMenu_CopyThread": "Копирайте нишката",
+  "ThreadMenu_CopyThread": "Копирайте заглавието и връзката",
   "ThreadMenu_Mute": "Заглуши",
   "ThreadMenu_Unmute": "Премахни заглушаването",
   "ThreadMenu_GoToStartMessage": "Към началното съобщение",

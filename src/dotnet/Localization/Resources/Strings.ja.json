@@ -307,7 +307,7 @@
   "ConversationMenu_CopySummaryLink": "要約のリンクをコピー",
 
   "ThreadMenu_GoToThread": "スレッドへ移動",
-  "ThreadMenu_CopyThread": "スレッドをコピー",
+  "ThreadMenu_CopyThread": "タイトルとリンクをコピー",
   "ThreadMenu_Mute": "ミュート",
   "ThreadMenu_Unmute": "ミュート解除",
   "ThreadMenu_GoToStartMessage": "最初のメッセージに移動",

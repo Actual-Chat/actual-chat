@@ -388,7 +388,7 @@
 
   // The context menu of a thread: its card in the transcript and its row in a thread list.
   "ThreadMenu_GoToThread": "Перейти до треду",
-  "ThreadMenu_CopyThread": "Копирайте нишката",
+  "ThreadMenu_CopyThread": "Копирайте заглавието и връзката",
   "ThreadMenu_Mute": "Отключить уведомления",
   "ThreadMenu_Unmute": "Stummschaltung aufheben",
   "ThreadMenu_GoToStartMessage": "Перейти до вихідного повідомлення",

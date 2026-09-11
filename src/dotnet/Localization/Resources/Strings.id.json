@@ -307,7 +307,7 @@
   "ConversationMenu_CopySummaryLink": "Salin tautan ringkasan",
 
   "ThreadMenu_GoToThread": "Buka utas",
-  "ThreadMenu_CopyThread": "Salin utas",
+  "ThreadMenu_CopyThread": "Salin judul dan tautan",
   "ThreadMenu_Mute": "Bisukan",
   "ThreadMenu_Unmute": "Bunyikan",
   "ThreadMenu_GoToStartMessage": "Buka pesan awal",

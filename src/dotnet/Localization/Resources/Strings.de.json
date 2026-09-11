@@ -307,7 +307,7 @@
   "ConversationMenu_CopySummaryLink": "Link zur Zusammenfassung kopieren",
 
   "ThreadMenu_GoToThread": "Zum Thread",
-  "ThreadMenu_CopyThread": "Thread kopieren",
+  "ThreadMenu_CopyThread": "Titel und Link kopieren",
   "ThreadMenu_Mute": "Stummschalten",
   "ThreadMenu_Unmute": "Stummschaltung aufheben",
   "ThreadMenu_GoToStartMessage": "Zur Startnachricht springen",
