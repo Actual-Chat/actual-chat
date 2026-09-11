@@ -269,6 +269,7 @@
   "ChatWelcome_PublicLink": "Link público",
 
   "MessageMenu_Reply": "Responder",
+  "MessageMenu_Quote": "Citar",
   "MessageMenu_CopyText": "Copiar texto",
   "MessageMenu_CopyLink": "Copiar link",
   "MessageMenu_CopyCode": "Copiar código",

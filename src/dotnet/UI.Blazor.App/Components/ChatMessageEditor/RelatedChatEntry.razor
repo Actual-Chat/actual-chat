@@ -51,14 +51,16 @@
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public RelatedEntryKind Kind { get; set; }
     [Parameter, EditorRequired] public bool IsOwn { get; set; }
+    [Parameter] public string? QuotedText { get; set; }
 
     // Shortcuts
     private ChatId ChatId => Entry.ChatId;
 
     protected override void OnParametersSet() {
         _chatMarkupHub = ChatMarkupHubFactory[ChatId];
-        var markup = _chatMarkupHub.GetMarkup(Entry, MarkupConsumer.QuoteView);
-        _text = markup.ToReadableText(MarkupConsumer.QuoteView);
+        _text = QuotedText.IsNullOrEmpty()
+            ? _chatMarkupHub.GetMarkup(Entry, MarkupConsumer.QuoteView).ToReadableText(MarkupConsumer.QuoteView)
+            : QuotedText;
     }
 
     private void OnQuoteClick()

@@ -170,7 +170,10 @@
             }
             <div class="message-content">
                 @if (isReply) {
-                    <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
+                    <ChatMessageQuote
+                        Entry="@m.RepliedEntry"
+                        IsOwn="@isReplyToOwnMessage"
+                        QuotedText="@entry.QuotedText"/>
                 }
                 @if (message.Kind is ChatMessageKind.AudioRecordingMessage) {
                     <StreamingEntryBadge ChatId="@ChatId" IsVoiceActive="@false" IsLanguageKnown="@false"/>

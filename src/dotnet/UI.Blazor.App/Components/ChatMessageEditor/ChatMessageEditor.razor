@@ -235,7 +235,8 @@
                 if (relatedChatEntry is not null) {
                     if (relatedChatEntry.Kind == RelatedEntryKind.Reply) {
                         uploads = await SendingMessages.Upload([..attachmentListSnapshot.Attachments.Items], Chat.Id.Value);
-                        cmd = SendMessageRequest.ReplyMessage(Chat.Id, relatedChatEntry.EntryId, text, uploads);
+                        cmd = SendMessageRequest.ReplyMessage(
+                            Chat.Id, relatedChatEntry.EntryId, text, uploads, relatedChatEntry.QuotedText);
                     } else if (relatedChatEntry.Kind == RelatedEntryKind.Edit) {
                         cmd = SendMessageRequest.EditMessage(relatedChatEntry.EntryId, text);
                     } else {
@@ -434,7 +435,8 @@
 
         SendMessageRequest cmd;
         if (relatedChatEntry is { Kind: RelatedEntryKind.Reply })
-            cmd = SendMessageRequest.ReplyMessage(Chat.Id, relatedChatEntry.EntryId, text);
+            cmd = SendMessageRequest.ReplyMessage(
+                Chat.Id, relatedChatEntry.EntryId, text, quotedText: relatedChatEntry.QuotedText);
         else
             cmd = SendMessageRequest.NewMessage(Chat.Id, text);
         await SendingMessages.Send(cmd, CancellationToken.None).ConfigureAwait(true);

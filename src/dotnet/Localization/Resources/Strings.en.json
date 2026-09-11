@@ -347,6 +347,7 @@
   // The context menu on a message, and the same menu opened on an attachment, a file, an audio
   // file or a link preview.
   "MessageMenu_Reply": "Reply",
+  "MessageMenu_Quote": "Quote",
   "MessageMenu_CopyText": "Copy text",
   "MessageMenu_CopyLink": "Copy link",
   "MessageMenu_CopyCode": "Copy code",

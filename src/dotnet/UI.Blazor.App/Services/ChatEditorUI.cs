@@ -36,6 +36,12 @@ public partial class ChatEditorUI : UIWorkerBase<AppUIHub>, IComputeService, INo
         return ShowRelatedEntry(new RelatedEntryRef(kind, entryRef), focusOnEditor, updateUI);
     }
 
+    public Task ShowQuote(ChatEntryId entryId, string quotedText, bool focusOnEditor, bool updateUI = true)
+        => ShowRelatedEntry(
+            new RelatedEntryRef(RelatedEntryKind.Reply, new EntryRef(entryId), quotedText),
+            focusOnEditor,
+            updateUI);
+
     public async Task ShowRelatedEntry(RelatedEntryRef relatedEntryRef, bool focusOnEditor, bool updateUI = true)
     {
         lock (_lock) {

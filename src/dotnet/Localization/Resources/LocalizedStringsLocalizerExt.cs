@@ -290,6 +290,7 @@ public static class LocalizedStringsLocalizerExt
         public string ChatWelcome_PublicLink => l["ChatWelcome_PublicLink"].Value;
 
         public string MessageMenu_Reply => l["MessageMenu_Reply"].Value;
+        public string MessageMenu_Quote => l["MessageMenu_Quote"].Value;
         public string MessageMenu_CopyText => l["MessageMenu_CopyText"].Value;
         public string MessageMenu_CopyLink => l["MessageMenu_CopyLink"].Value;
         public string MessageMenu_CopyCode => l["MessageMenu_CopyCode"].Value;

@@ -81,6 +81,7 @@ public static partial class Constants
         public static readonly TimeSpan ReadingGracePeriod = TimeSpan.FromMinutes(3);
         // 2x the editor's large-paste threshold, which is per paste rather than per message
         public const int MaxEntryTextLength = 64 * 1024;
+        public const int MaxQuotedTextLength = 1024;
         public const int NonContactPeerMessageLimit = 2;
         public const int ReactionFirstAuthorIdsLimit = 10;
         public const int MaxSearchFilterLength = 100;

@@ -11,6 +11,7 @@
     var canEdit = CanWrite && IsOwnEntry && isTextEntry && !isForwarded && !hasSelection;
     var messageLink = Links.Chat(e.Id).ToAbsolute(UrlMapper);
     var canReply = !e.IsContentStreaming && CanWrite && !IsSystem;
+    var canQuote = canReply && !SelectedText.IsNullOrEmpty();
     var canCopyText = isTextEntry && !e.Content.IsNullOrEmpty();
     var canCopyLink = !ClickedLinkUrl.IsNullOrEmpty();
     var canCopyCode = !ClickedCode.IsNullOrEmpty();
@@ -59,6 +60,14 @@
                 FocusOnEditor="true"
                 Text="@L.Common_Edit"
                 Click="@(() => ChatEditorUI.Edit(e))">
+            </MenuEntry>
+        }
+        @if (canQuote) {
+            <MenuEntry
+                Icon="icon-quote"
+                FocusOnEditor="true"
+                Text="@L.MessageMenu_Quote"
+                Click="@Quote">
             </MenuEntry>
         }
         @if (canReply) {
@@ -205,9 +214,13 @@
     [Parameter, EditorRequired] public bool CanWrite { get; set; }
     [Parameter, EditorRequired] public bool CanPin { get; set; }
     [Parameter, EditorRequired] public bool IsPinned { get; set; }
+    [Parameter, EditorRequired] public string? SelectedText { get; set; }
 
     private Task Reply()
         => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, ChatEntry.Id, focusOnEditor: true);
+
+    private Task Quote()
+        => ChatEditorUI.ShowQuote(ChatEntry.Id, SelectedText!, focusOnEditor: true);
 
     private Task Pin()
         => IsPinned ? ChatPinsUI.Unpin(ChatEntry.Id) : ChatPinsUI.Pin(ChatEntry.Id);

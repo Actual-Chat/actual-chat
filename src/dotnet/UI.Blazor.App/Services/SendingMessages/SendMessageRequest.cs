@@ -8,6 +8,7 @@ public sealed class SendMessageRequest
     public required string Text { get; init; }
     public long? LocalId { get; private set;  }
     public Option<long?> RepliedEntryLid { get; private set; }
+    public string? QuotedText { get; private set; }
     public FilesUploadHandle? Uploads { get; private set; }
     public IReadOnlyList<MediaRef> ExistingMedia { get; private set; } = [];
     public AfterSendMessageHandler? AfterSendMessageHandler { get; private set; }
@@ -33,7 +34,12 @@ public sealed class SendMessageRequest
             Text = newText,
         };
 
-    public static SendMessageRequest ReplyMessage(ChatId chatId, ChatEntryId relatedMessageId, string text, FilesUploadHandle? uploads = null)
+    public static SendMessageRequest ReplyMessage(
+        ChatId chatId,
+        ChatEntryId relatedMessageId,
+        string text,
+        FilesUploadHandle? uploads = null,
+        string? quotedText = null)
     {
         if (relatedMessageId.ChatId != chatId)
             throw new ArgumentException("Related message must be in the same chat", nameof(relatedMessageId));
@@ -41,6 +47,7 @@ public sealed class SendMessageRequest
         return new SendMessageRequest {
             ChatId = chatId,
             RepliedEntryLid = relatedMessageId.LocalId,
+            QuotedText = quotedText,
             Text = text,
             Uploads = uploads,
         };

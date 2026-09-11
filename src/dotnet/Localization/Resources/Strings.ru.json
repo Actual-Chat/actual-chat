@@ -269,6 +269,7 @@
   "ChatWelcome_PublicLink": "Публичная ссылка",
 
   "MessageMenu_Reply": "Ответить",
+  "MessageMenu_Quote": "Цитировать",
   "MessageMenu_CopyText": "Копировать текст",
   "MessageMenu_CopyLink": "Копировать ссылку",
   "MessageMenu_CopyCode": "Копировать код",

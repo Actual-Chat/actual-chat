@@ -269,6 +269,7 @@
   "ChatWelcome_PublicLink": "公開リンク",
 
   "MessageMenu_Reply": "返信",
+  "MessageMenu_Quote": "引用",
   "MessageMenu_CopyText": "テキストをコピー",
   "MessageMenu_CopyLink": "リンクをコピー",
   "MessageMenu_CopyCode": "コードをコピー",

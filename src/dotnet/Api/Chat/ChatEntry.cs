@@ -57,6 +57,9 @@ public abstract partial record ChatEntry(
     [DataMember(Order = 8), Key(8)] public string ContentStreamId { get; init; } = "";
     // Reply
     [DataMember(Order = 9), Key(9)] public long? RepliedEntryLid { get; init; }
+    [DataMember(Order = 18), Key(18)] public string? QuotedText {
+        get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
+    }
     // Forward
     [DataMember(Order = 10), Key(10)] public ChatEntryForwarded? Forwarded { get; init; }
     // Audio
@@ -155,6 +158,9 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
     [DataMember] public Option<ChatEntryAudio?> Audio { get; init; }
     [DataMember] public Option<ChatEntryForwarded?> Forwarded { get; init; }
     [DataMember] public Option<long?> RepliedEntryLid { get; init; }
+    [DataMember] public string? QuotedText {
+        get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
+    }
     [DataMember] public ChatEntryAttachment[]? Attachments { get; init; }
     [DataMember] public SharedLocationId? LocationId { get; init; }
     [DataMember] public LinkPreviewMode? LinkPreviewMode { get; init; }
@@ -182,6 +188,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
         ContentStreamId = entry.ContentStreamId;
         Audio = entry.Audio;
         RepliedEntryLid = entry.RepliedEntryLid;
+        QuotedText = entry.QuotedText;
         Forwarded = entry.Forwarded;
         Attachments = entry.Attachments;
         LocationId = entry.LocationId;

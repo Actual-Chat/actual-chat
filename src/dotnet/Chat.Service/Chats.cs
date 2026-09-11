@@ -433,6 +433,8 @@ public partial class Chats(IServiceProvider services) : IChats
             (command.Session, command.ChatId, command.LocalId, command.Text, command.RepliedEntryLid);
         ThrowIfPlaceRootChat(chatId);
         text.RequireMaxLength(Constants.Chat.MaxEntryTextLength);
+        var quotedText = command.QuotedText?.Trim().NullIfEmpty();
+        quotedText?.RequireMaxLength(Constants.Chat.MaxQuotedTextLength);
 
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
@@ -463,6 +465,8 @@ public partial class Chats(IServiceProvider services) : IChats
                 throw StandardError.Constraint("Forwarded messages cannot be edited.");
             if (repliedEntryLid.IsSome(out var v) && textEntry.RepliedEntryLid != v)
                 throw StandardError.Constraint("Replied entry Id cannot be changed.");
+            if (quotedText is not null && !string.Equals(quotedText, textEntry.QuotedText, StringComparison.Ordinal))
+                throw StandardError.Constraint("Quoted text cannot be changed.");
 
             var diff = new ChatEntryDiff {
                 Content = text,
@@ -524,6 +528,9 @@ public partial class Chats(IServiceProvider services) : IChats
             if (commandResult != null)
                 return commandResult;
 
+            if (quotedText is not null && !(repliedEntryLid.IsSome(out var repliedLid) && repliedLid is not null))
+                throw StandardError.Constraint("Quoted text requires a replied entry.");
+
             SharedLocation? location = null;
             if (command.LocationId is { } locationId) {
                 location = await SharedLocationsBackend.Get(locationId, cancellationToken).ConfigureAwait(false);
@@ -551,6 +558,7 @@ public partial class Chats(IServiceProvider services) : IChats
                     AuthorId = author.Id,
                     Content = content,
                     RepliedEntryLid = repliedEntryLid,
+                    QuotedText = quotedText,
                     Forwarded = command.Forwarded,
                     Attachments = attachments.Length == 0 ? null : attachments,
                     LocationId = command.LocationId,

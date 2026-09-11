@@ -154,6 +154,107 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
     }
 
     [Fact]
+    public async Task QuoteReplyMessage()
+    {
+        // arrange
+        var appHost = AppHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        _ = await tester.SignInAsBob();
+        var session = tester.Session;
+        var commander = tester.Commander;
+        var chats = tester.AppServices.GetRequiredService<IChats>();
+        var (chatId, _) = await tester.CreateChat(true);
+        var cmd = new Chats_UpsertEntry { Session = session, ChatId = chatId, LocalId = null, Text = "Hello, world!" };
+        var chatEntry = await commander.Call(cmd);
+
+        // act
+        var cmd2 = new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "Reply",
+            RepliedEntryLid = chatEntry.LocalId,
+            QuotedText = " world ",
+        };
+        var replyChatEntry = await commander.Call(cmd2);
+        var storedReplyChatEntry = await chats.GetEntry(session, replyChatEntry.Id, CancellationToken.None);
+
+        // assert
+        replyChatEntry.RepliedEntryLid.Should().Be(chatEntry.LocalId);
+        replyChatEntry.QuotedText.Should().Be("world");
+        storedReplyChatEntry.Should().NotBeNull();
+        storedReplyChatEntry.QuotedText.Should().Be("world");
+    }
+
+    [Fact]
+    public async Task RejectsQuoteWithoutReply()
+    {
+        // arrange
+        var appHost = AppHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        _ = await tester.SignInAsBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var cmd = new Chats_UpsertEntry {
+            Session = tester.Session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "No reply here",
+            QuotedText = "orphan quote",
+        };
+
+        // act
+        var error = await Record.ExceptionAsync(() => tester.Commander.Call(cmd));
+
+        // assert
+        error.Should().BeOfType<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task EditKeepsQuote()
+    {
+        // arrange
+        var appHost = AppHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        _ = await tester.SignInAsBob();
+        var session = tester.Session;
+        var commander = tester.Commander;
+        var (chatId, _) = await tester.CreateChat(true);
+        var cmd = new Chats_UpsertEntry { Session = session, ChatId = chatId, LocalId = null, Text = "Hello!" };
+        var chatEntry = await commander.Call(cmd);
+        var cmd2 = new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "Reply",
+            RepliedEntryLid = chatEntry.LocalId,
+            QuotedText = "Hello",
+        };
+        var replyChatEntry = await commander.Call(cmd2);
+
+        // act
+        var cmd3 = new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = replyChatEntry.LocalId,
+            Text = "EditedReply",
+        };
+        var editedReplyChatEntry = await commander.Call(cmd3);
+        var cmd4 = new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = replyChatEntry.LocalId,
+            Text = "EditedAgain",
+            QuotedText = "Hell",
+        };
+        var error = await Record.ExceptionAsync(() => commander.Call(cmd4));
+
+        // assert
+        editedReplyChatEntry.Content.Should().Be(cmd3.Text);
+        editedReplyChatEntry.QuotedText.Should().Be("Hello");
+        error.Should().BeOfType<InvalidOperationException>();
+    }
+
+    [Fact]
     public async Task UpdateAttachments()
     {
         // arrange

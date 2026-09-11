@@ -269,6 +269,7 @@
   "ChatWelcome_PublicLink": "公开链接",
 
   "MessageMenu_Reply": "回复",
+  "MessageMenu_Quote": "引用",
   "MessageMenu_CopyText": "复制文本",
   "MessageMenu_CopyLink": "复制链接",
   "MessageMenu_CopyCode": "复制代码",

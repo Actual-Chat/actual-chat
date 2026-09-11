@@ -347,6 +347,7 @@
   // The context menu on a message, and the same menu opened on an attachment, a file, an audio
   // file or a link preview.
   "MessageMenu_Reply": "Одговорите",
+  "MessageMenu_Quote": "Цитировать",
   "MessageMenu_CopyText": "テキストをコピー",
   "MessageMenu_CopyLink": "Копіювати посилання",
   "MessageMenu_CopyCode": "Копирайте кода",

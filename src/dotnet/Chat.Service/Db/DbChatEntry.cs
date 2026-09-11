@@ -34,6 +34,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool IsRemoved { get; set; }
     public string AuthorId { get; set; } = null!;
     public long? RepliedChatEntryId { get; set; }
+    public string? QuotedText { get; set; }
     public bool IsSystemEntry { get; set; }
     public bool IsThreadStartEntry { get; set; }
     public bool IsThreadEntry { get; set; }
@@ -134,6 +135,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Audio = audio,
             LocationId = SharedLocationId.ParseNullable(LocationId),
             RepliedEntryLid = RepliedChatEntryId,
+            QuotedText = QuotedText,
             Forwarded = BuildForwarded(),
             Attachments = attachmentsArray,
             LinkPreviewIds = linkPreviewIds,
@@ -202,6 +204,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         HasReactions = model.HasReactions;
         ContentStreamId = model.ContentStreamId;
         RepliedChatEntryId = model.RepliedEntryLid;
+        QuotedText = model.QuotedText.NullIfEmpty();
         if (model.Forwarded is { } forwarded) {
             ForwardedChatEntryId = forwarded.ChatEntryId?.Value;
             ForwardedAuthorId = forwarded.AuthorId?.Value;

@@ -7,7 +7,7 @@
 }
 
 <div class="related-chat-entry-panel">
-    <RelatedChatEntry Entry="@m.Entry" Kind="@m.Kind" IsOwn="@m.IsOwn"/>
+    <RelatedChatEntry Entry="@m.Entry" Kind="@m.Kind" IsOwn="@m.IsOwn" QuotedText="@m.QuotedText"/>
 </div>
 
 @code {
@@ -23,7 +23,7 @@
 
         var entryRef = vRelatedChatEntry.EntryRef;
         if (entryRef.ChatEntry is not null)
-            return new Model(entryRef.ChatEntry, vRelatedChatEntry.Kind, true);
+            return new Model(entryRef.ChatEntry, vRelatedChatEntry.Kind, true, vRelatedChatEntry.QuotedText);
 
         var entryId = vRelatedChatEntry.EntryId;
         var chatId = entryId.ChatId;
@@ -33,7 +33,7 @@
             return null;
 
         entry = await SendingMessages.GetSendingMessages(chatId).GetSelfOrEdited(entry).ConfigureAwait(false);
-        return new (entry, vRelatedChatEntry.Kind, ownAuthor?.Id == entry.AuthorId);
+        return new (entry, vRelatedChatEntry.Kind, ownAuthor?.Id == entry.AuthorId, vRelatedChatEntry.QuotedText);
     }
 
     // Nested types
@@ -41,5 +41,6 @@
     public sealed record Model(
         ChatEntry Entry,
         RelatedEntryKind Kind,
-        bool IsOwn);
+        bool IsOwn,
+        string? QuotedText);
 }

@@ -215,6 +215,9 @@ public sealed partial record Chats_UpsertEntry : ApiCommand<ChatEntry>, ISanitiz
     [DataMember(Order = 8), Key(8)] public string ClientId { get; init; } = "";
     [DataMember(Order = 9), Key(9)] public ChatEntryForwarded? Forwarded { get; init; }
     [DataMember(Order = 10), Key(10)] public SharedLocationId? LocationId { get; init; }
+    [DataMember(Order = 11), Key(11)] public string? QuotedText {
+        get => Sanitizer.MaybeSanitize<Sanitizers.PrefixAndLengthHint>(field); init;
+    }
 }
 
 [DataContract, MessagePackObject]

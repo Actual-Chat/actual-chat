@@ -46,6 +46,8 @@
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
+    public MenuSelection? Selection => _menu?.Selection;
+
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MenuHost))]
     public MenuHost() { }
 
@@ -101,12 +103,19 @@
     // JS interface
 
     [JSInvokable]
-    public Task OnShowRequest(string id, string menuRefValue, bool isHoverMenu) {
+    public Task OnShowRequest(
+        string id, string menuRefValue, bool isHoverMenu,
+        string selectedText, string selectionOwnerMenuRefValue) {
         if (_menu?.Id == id)
             return Task.CompletedTask;
 
         _jsMenuId = id;
         var menuRef = MenuRef.Parse(menuRefValue);
+        var selection = !selectedText.IsNullOrEmpty()
+            && !selectionOwnerMenuRefValue.IsNullOrEmpty()
+            && MenuRef.TryParse(selectionOwnerMenuRefValue, out var selectionOwnerMenuRef)
+            ? new MenuSelection(selectedText, selectionOwnerMenuRef)
+            : null;
         var menu = new MenuModel(
             id,
             menuRef,
@@ -114,7 +123,8 @@
                 { nameof(IMenu.Id), id },
                 { nameof(IMenu.Arguments), menuRef.Arguments },
             },
-            isHoverMenu);
+            isHoverMenu,
+            selection);
 
         _menu = menu;
         if (!menu.IsHoverMenu)
@@ -197,5 +207,6 @@
         string Id,
         MenuRef Ref,
         Dictionary<string, object> Parameters,
-        bool IsHoverMenu);
+        bool IsHoverMenu,
+        MenuSelection? Selection);
 }

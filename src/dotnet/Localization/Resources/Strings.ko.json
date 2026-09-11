@@ -269,6 +269,7 @@
   "ChatWelcome_PublicLink": "공개 링크",
 
   "MessageMenu_Reply": "답장",
+  "MessageMenu_Quote": "인용",
   "MessageMenu_CopyText": "텍스트 복사",
   "MessageMenu_CopyLink": "링크 복사",
   "MessageMenu_CopyCode": "코드 복사",

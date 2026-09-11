@@ -87,6 +87,24 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     }
 
     [Fact]
+    public void Chats_UpsertEntry_WithQuote()
+    {
+        var cmd = new Chats_UpsertEntry {
+            Session = TestSession,
+            ChatId = TestChatId,
+            LocalId = null,
+            Text = "Reply text",
+            RepliedEntryLid = Option.Some<long?>(5),
+            QuotedText = "quoted fragment",
+        };
+        cmd.AssertPassesThroughSerializers(
+            (deserialized, original) => {
+                deserialized.RepliedEntryLid.Should().Be(original.RepliedEntryLid);
+                deserialized.QuotedText.Should().Be(original.QuotedText);
+            }, Out);
+    }
+
+    [Fact]
     public void Chats_Change_Create()
     {
         var diff = new ChatDiff { Title = "New Chat", IsPublic = true };

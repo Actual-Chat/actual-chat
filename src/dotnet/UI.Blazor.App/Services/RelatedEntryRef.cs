@@ -9,7 +9,8 @@ public enum RelatedEntryKind
 [DataContract, MessagePackObject]
 public sealed partial record RelatedEntryRef(
     [property: DataMember, Key(0)] RelatedEntryKind Kind,
-    [property: DataMember, Key(1)] EntryRef EntryRef)
+    [property: DataMember, Key(1)] EntryRef EntryRef,
+    [property: DataMember, Key(2)] string? QuotedText = null)
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatEntryId EntryId => EntryRef.EntryId;

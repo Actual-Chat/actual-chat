@@ -162,6 +162,11 @@ account.
   markup renders styled instead of literal.
 - [Speech render performance](./speech-render-perf.md) — next-tier CPU/GPU
   reductions during recording (R1–R3 shipped, R4–R7 open; desktop holds 60 fps).
+- [Quote selected text](./quote-selected-text.md) — a **Quote** item in the
+  message context menu that replies with only the selected fragment: `MenuHost`
+  captures the selection and its owning `data-menu` before the menu opens, and a
+  new `ChatEntry.QuotedText` carries the fragment through the send pipeline into
+  the reply block (#4274).
 
 ### Accounts and security
 

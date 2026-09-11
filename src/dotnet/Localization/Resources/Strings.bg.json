@@ -269,6 +269,7 @@
   "ChatWelcome_PublicLink": "Публичен линк",
 
   "MessageMenu_Reply": "Отговорете",
+  "MessageMenu_Quote": "Цитирайте",
   "MessageMenu_CopyText": "Копирайте текста",
   "MessageMenu_CopyLink": "Копирайте линка",
   "MessageMenu_CopyCode": "Копирайте кода",

@@ -61,6 +61,7 @@ partial class SendingMessages
             LocalId = request.LocalId,
             Text = request.Text,
             RepliedEntryLid = request.RepliedEntryLid,
+            QuotedText = request.QuotedText,
             ClientId = request.ClientId,
             Attachments = attachments,
             HasUploadingAttachments = request.AttachmentUploads is not null,

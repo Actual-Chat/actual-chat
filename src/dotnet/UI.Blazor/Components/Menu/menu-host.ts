@@ -13,7 +13,7 @@ import {
 import { Disposable } from 'disposable';
 import { getSafeAreaPadding } from 'safe-area';
 import { DocumentEvents, stopEvent } from 'event-handling';
-import { getOrInheritData } from 'dom-helpers';
+import { getOrInheritData, getSelectionOwner } from 'dom-helpers';
 import { delayAsync } from 'actuallab-core';
 import { nextTick } from 'timeout';
 import { Vector2D } from 'math';
@@ -41,6 +41,15 @@ interface Menu {
     historyStepId: string | null;
     menuElement: HTMLElement | null;
     focused: boolean;
+    selection: MenuSelection | null;
+}
+
+// The text selected when a non-hover menu opened, and the data-menu owner it was clamped to.
+// Captured before show(): unselect() clears the selection on mobile, and a menu item click
+// collapses it on desktop.
+interface MenuSelection {
+    text: string;
+    ownerMenuRef: string;
 }
 
 export class MenuHost implements Disposable {
@@ -160,6 +169,7 @@ export class MenuHost implements Disposable {
             historyStepId: null,
             menuElement: null,
             focused: false,
+            selection: null,
         };
     }
 
@@ -180,7 +190,8 @@ export class MenuHost implements Disposable {
             throw new Error(`${logScope}.show: menu == null.`);
 
         this.menu = menu;
-        void this.blazorRef.invokeMethodAsync('OnShowRequest', menu.id, menu.menuRef, menu.isHoverMenu);
+        void this.blazorRef.invokeMethodAsync('OnShowRequest',
+            menu.id, menu.menuRef, menu.isHoverMenu, menu.selection?.text ?? '', menu.selection?.ownerMenuRef ?? '');
         this.removeMessageMark(this.currentMenuRef);
         this.currentMenuRef = menu.menuRef;
         this.addMessageMark(this.currentMenuRef);
@@ -404,6 +415,7 @@ export class MenuHost implements Disposable {
             ? new Vector2D(event.clientX, event.clientY)
             : null;
         const menu = this.create(menuRef, false, triggerElement, null, position);
+        menu.selection = getMenuSelection();
         if (this.isShown(menu)) {
             debugLog?.log(`onClick: already shown. Setting position.`);
             // Is it the second click on the same button that triggered the menu?
@@ -459,6 +471,12 @@ let _nextId = 1;
 const nextId = () => 'menu:' + (_nextId++).toString();
 
 const menuViewportGap = 5;
+
+function getMenuSelection(): MenuSelection | null {
+    const [owner, text] = getSelectionOwner('menu');
+    const ownerMenuRef = owner?.dataset.menu;
+    return ownerMenuRef ? { text, ownerMenuRef } : null;
+}
 
 function getPlacementFromAttributes(triggerElement: HTMLElement): Placement | null {
     const placement = triggerElement.dataset.menuPlacement;

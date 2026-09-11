@@ -65,6 +65,7 @@ partial class SendingMessages
             LocalId = cmd.LocalId,
             Text = cmd.Text,
             RepliedEntryLid = cmd.RepliedEntryLid,
+            QuotedText = cmd.QuotedText,
             AttachFileRequests = attachEntries,
             ExistingMedia = cmd.ExistingMedia.ToArray(),
             ClientId = clientId,
