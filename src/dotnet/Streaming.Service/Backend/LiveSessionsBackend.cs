@@ -113,6 +113,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         if (!state.IsClosing && !await IsSessionLive(chatId).ConfigureAwait(false))
             _ = StartClosingGrace(chatId);
 
+        // Real hang-up or crash: GetConsolidatedParticipants' own staleness self-heal (SelfHealDelay,
+        // ParticipantStaleness) re-triggers this on every observed tick, so a dropped stream eventually
+        // surfaces as Active/Ended even with no explicit SetParticipation(false) ever landing.
+        if (state.IsCall)
+            _ = SyncCallParticipantActivity(chatId, state, CancellationToken.None);
+
         // Prompt ring timeout while this session is observed (the self-heal below re-runs GetState);
         // the RingTtl field expiry in Redis is the backstop when no one observes. A dialing call whose
         // ring has already lapsed (or vanished via RingTtl) is finalized too, so it can't linger unanswered.
@@ -876,6 +882,106 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "EnforceCallConnectGrace failed for chat #{ChatId}", chatId);
         }
+    }
+
+    // Drives CallInviteStatus.Active/Ended (and the caller-side equivalent on CallState) from genuine
+    // presence, via the same GetConsolidatedParticipants Ambient sessions already use - never from a
+    // raw participant count, and never written inline from SetParticipation, which has no way to detect
+    // a silent crash. Internal so a test can drive it directly, without a real self-heal wait.
+    internal async Task SyncCallParticipantActivity(
+        ChatId chatId, LiveSessionState state, CancellationToken cancellationToken)
+    {
+        if (!state.IsCall)
+            return;
+
+        bool changed;
+        using (Computed.BeginIsolation())
+        using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
+            // Read once the lock is held (mirrors EnforceCallConnectGrace), not before: GetState's self-
+            // heal fires a new Sync on every tick, so several can be queued on this same chat's lock at
+            // once - reading freshness before the lock would let a stale snapshot from an earlier, slower
+            // tick win the write race and revert a just-applied Ended back to Active.
+            var freshAuthorIds = (await GetConsolidatedParticipants(chatId, cancellationToken).ConfigureAwait(false))
+                .ToHashSet();
+            changed = await SyncCallerActivity(chatId, freshAuthorIds).ConfigureAwait(false);
+            changed |= await SyncInviteeActivity(chatId, freshAuthorIds).ConfigureAwait(false);
+        }
+        if (changed)
+            await RecomputeCallStatus(chatId, state, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Caller must hold the change lock.
+    private async Task<bool> SyncCallerActivity(ChatId chatId, HashSet<AuthorId> freshAuthorIds)
+    {
+        var state = await SafeGet(chatId).ConfigureAwait(false);
+        if (state is null)
+            return false;
+
+        var callerId = state.CallerId ?? state.Host;
+        var callState = await SafeGetCallState(chatId).ConfigureAwait(false);
+        var isFresh = freshAuthorIds.Contains(callerId);
+        var wasActive = callState is { CallerActiveAt: not null, CallerEndedAt: null };
+        var isTerminal = callState?.CanceledAt is not null;
+
+        // Gated on >= 2 fresh participants, not the caller alone: the caller is fresh from the moment
+        // they dial (StartCall registers them), so without this a still-ringing call would flip
+        // CallerActiveAt on the first self-heal tick, and Derive would see a lone active party and
+        // report the whole call Ended before anyone even answered.
+        if (isFresh && freshAuthorIds.Count >= 2 && !wasActive && !isTerminal) {
+            await SetCallState(chatId, (callState ?? NewCallState(state, CallStatus.Dialing)) with {
+                CallerActiveAt = callState?.CallerActiveAt ?? Clocks.SystemClock.Now,
+            }).ConfigureAwait(false);
+            return true;
+        }
+        if (!isFresh && wasActive) {
+            await SetCallState(chatId, callState! with { CallerEndedAt = Clocks.SystemClock.Now })
+                .ConfigureAwait(false);
+            return true;
+        }
+        if (isFresh && isTerminal)
+            Log.LogWarning(
+                "SyncCallParticipantActivity: caller #{AuthorId} of chat #{ChatId} reactivated after "
+                + "a terminal status - ignored", callerId, chatId);
+        return false;
+    }
+
+    // Caller must hold the change lock.
+    private async Task<bool> SyncInviteeActivity(ChatId chatId, HashSet<AuthorId> freshAuthorIds)
+    {
+        var changed = false;
+        var invites = await SafeGetInvites(chatId).ConfigureAwait(false);
+        foreach (var (authorIdValue, invite) in invites) {
+            if (invite is null || !AuthorId.TryParse(authorIdValue, out var authorId))
+                continue;
+
+            var isFresh = freshAuthorIds.Contains(authorId);
+            var now = Clocks.SystemClock.Now;
+            switch (invite.Status) {
+                // See SyncCallerActivity - the >= 2 gate keeps a lone fresh invitee (nobody else fresh
+                // yet, or the caller already gone) from being promoted to Active on its own.
+                case CallInviteStatus.Ringing or CallInviteStatus.Accepted
+                    when isFresh && freshAuthorIds.Count >= 2:
+                    await _invites.Set(chatId.Value, authorIdValue,
+                            invite with { Status = CallInviteStatus.Active, ActiveAt = now })
+                        .ConfigureAwait(false);
+                    changed = true;
+                    break;
+                case CallInviteStatus.Active when !isFresh:
+                    await _invites.Set(chatId.Value, authorIdValue,
+                            invite with { Status = CallInviteStatus.Ended, EndedAt = now })
+                        .ConfigureAwait(false);
+                    changed = true;
+                    break;
+                case CallInviteStatus.Declined or CallInviteStatus.Missed or CallInviteStatus.Ended when isFresh:
+                    Log.LogWarning(
+                        "SyncCallParticipantActivity: invitee #{AuthorId} of chat #{ChatId} reactivated "
+                        + "after status {Status} - ignored", authorId, chatId, invite.Status);
+                    break;
+            }
+        }
+        if (changed)
+            InvalidateGet(chatId);
+        return changed;
     }
 
     private async Task<LiveSessionState?> SafeGet(ChatId chatId)

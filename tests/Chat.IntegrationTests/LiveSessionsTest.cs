@@ -697,10 +697,17 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.AcceptCall(chatId, aliceAuthor.Id, default);
         await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.AudioListen, true, default);
 
-        // assert — the invite is accepted and Alice is now a participant
-        var live = await backend.Get(chatId, default);
-        live!.Invites.Should().ContainSingle(i =>
-            i.InviteeId == aliceAuthor.Id && i.Status == CallInviteStatus.Accepted);
+        // assert — genuine presence promotes the invite straight to Active (SyncCallParticipantActivity,
+        // driven by GetState's self-heal) rather than leaving it at merely-accepted. Poll briefly: the
+        // self-heal is fire-and-forget, and GetConsolidatedParticipants needs its own ~200ms to settle.
+        var status = CallInviteStatus.New;
+        for (var attempt = 0; attempt < 30 && status != CallInviteStatus.Active; attempt++) {
+            var polled = await backend.Get(chatId, default);
+            status = polled!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status;
+            if (status != CallInviteStatus.Active)
+                await Task.Delay(100);
+        }
+        status.Should().Be(CallInviteStatus.Active);
         (await backend.ListParticipants(chatId, default)).Should().Contain(aliceAuthor.Id);
         // the answer latches the dialing call to Connected: block now surfaced
         var state = await backend.GetState(chatId, default);
@@ -1715,6 +1722,155 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         };
         var status = LiveSessionsBackend.Derive(callState: null, invites: [invite1, invite2]);
         status.Should().Be(CallStatus.NoAnswer);
+    }
+
+    [Fact]
+    public async Task SyncMarksInviteeActiveThenEndedFromRealPresence()
+    {
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+        // A third, uninvited stream keeps overall presence at >= 2 once Alice's own drops - this isolates
+        // the per-invite Active/Ended transition under test from the unrelated ">=2 participants" whole-
+        // call-close invariant (PresenceDropBelowTwoShouldCloseTheCall), which would otherwise tear the
+        // call down the moment Alice's presence deactivates below.
+        var boosterId = AuthorId.New(chatId, 999_001);
+        await backend.SetParticipation(chatId, boosterId, ParticipationKind.Record, true, default);
+
+        // act - Alice's presence genuinely registers. GetConsolidatedParticipants carries a real 200ms
+        // ConsolidationDelay before an outside observer sees a presence change land, so give it a moment
+        // to settle rather than read a still-stale consolidated snapshot (same idea as
+        // ExpireRingsRecomputesStatusToNoAnswer's real ring-timeout wait, just a much shorter window).
+        await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, true, default);
+        await Task.Delay(300);
+        var state = await backend.GetState(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, state!, default);
+
+        // assert - promoted straight to Active, not stuck at Accepted
+        var live = await backend.Get(chatId, default);
+        live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Active);
+
+        // act - Alice's presence deactivates
+        await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, false, default);
+        await Task.Delay(300);
+        state = await backend.GetState(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, state!, default);
+
+        // assert - Ended, not reverted to Accepted or left at Active
+        live = await backend.Get(chatId, default);
+        live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Ended);
+    }
+
+    [Fact]
+    public async Task SyncNeverReactivatesAnEndedInvitee()
+    {
+        // arrange - same setup as above, driven straight to Ended
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+        // See SyncMarksInviteeActiveThenEndedFromRealPresence - keeps overall presence >= 2 once Alice
+        // drops, and the delays let GetConsolidatedParticipants' real 200ms ConsolidationDelay settle
+        // before each read, instead of asserting on a still-stale consolidated snapshot.
+        var boosterId = AuthorId.New(chatId, 999_001);
+        await backend.SetParticipation(chatId, boosterId, ParticipationKind.Record, true, default);
+        await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, true, default);
+        await Task.Delay(300);
+        var state = await backend.GetState(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, state!, default);
+        await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, false, default);
+        await Task.Delay(300);
+        state = await backend.GetState(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, state!, default);
+
+        // act - Alice's presence somehow comes back (e.g. a stray late heartbeat)
+        await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, true, default);
+        await Task.Delay(300);
+        state = await backend.GetState(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, state!, default);
+
+        // assert - stays Ended, not resurrected to Active
+        var live = await backend.Get(chatId, default);
+        live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Ended);
+    }
+
+    [Fact]
+    public async Task SyncDoesNotEndAStillDialingCall()
+    {
+        // Regression guard: EnsureParticipant registers the caller as a fresh participant the moment
+        // they dial (StartCall), well before anyone answers. Without SyncCallerActivity's >= 2 fresh-
+        // participants gate, the very first self-heal tick would flip CallerActiveAt on the caller alone,
+        // and Derive would then see a lone-ever-active party and report the whole call Ended before the
+        // invitee even had a chance to pick up.
+
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // act - nobody has answered yet; drive the sync directly, as GetState's self-heal would
+        var state = await backend.GetState(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, state!, default);
+
+        // assert - still Dialing, not prematurely Ended
+        var callState = await backend.GetCallState(chatId, default);
+        callState!.Status.Should().Be(CallStatus.Dialing);
+    }
+
+    [Fact]
+    public async Task GetStateSelfHealSyncsCallParticipantActivity()
+    {
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+        await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, true, default);
+
+        // act - GetState's own self-heal should pick this up without any direct sync call; the sync it
+        // fires is fire-and-forget (matching ExpireRings), so poll briefly rather than assert right after
+        // a single GetState call, which would race the background task.
+        var status = CallInviteStatus.New;
+        for (var attempt = 0; attempt < 50 && status != CallInviteStatus.Active; attempt++) {
+            await backend.GetState(chatId, default);
+            var live = await backend.Get(chatId, default);
+            status = live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status;
+            if (status != CallInviteStatus.Active)
+                await Task.Delay(100);
+        }
+
+        // assert
+        status.Should().Be(CallInviteStatus.Active);
     }
 
     private static async Task<(ChatId ChatId, AuthorFull Bob, AuthorFull Alice)> NewTwoPartyCall(
