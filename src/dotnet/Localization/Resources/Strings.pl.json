@@ -274,6 +274,7 @@
   "ChatWelcome_PublicLink": "Publiczny link",
 
   "MessageMenu_Reply": "Odpowiedz",
+  "MessageMenu_Quote": "Cytuj",
   "MessageMenu_CopyText": "Kopiuj tekst",
   "MessageMenu_CopyLink": "Kopiuj link",
   "MessageMenu_CopyCode": "Kopiuj kod",
