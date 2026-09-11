@@ -77,7 +77,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         (await backend.GetState(chatId, default)).Should().BeNull();
         (await front.HasRecorder(session, chatId, default)).Should().BeFalse();
         (await front.GetAudioStreamingAuthorIds(session, chatId, default)).Should().BeEmpty();
-        (await front.GetCallStatus(session, chatId, default)).Should().Be(CallStatus.Declined);
+        (await front.GetCallStatus(session, chatId, default)).Should().Be(CallerStatus.NoAnswer);
 
         // act - the caller's own hang-up has to leave the same clean slate
         await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);

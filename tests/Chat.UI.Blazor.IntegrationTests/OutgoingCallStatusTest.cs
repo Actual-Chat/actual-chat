@@ -35,15 +35,16 @@ public sealed class OutgoingCallStatusTest(ChatAppHostFixture fixture, ITestOutp
         await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
         var cStatus = await Computed.Capture(
             () => liveSessionUI.GetCallStatus(chatId, CancellationToken.None));
-        cStatus.Value.Should().Be(CallStatus.Dialing);
+        cStatus.Value.Should().Be(CallerStatus.Dialing);
 
         // act — Alice declines
         await backend.DeclineCall(chatId, aliceAuthor.Id, default);
 
-        // assert — the client compute flips Dialing → Declined on its own, without a fresh Capture
+        // assert — the client compute flips Dialing → NoAnswer on its own, without a fresh Capture
+        // (CallerStatus doesn't distinguish "declined" from "timed out" - both read the same to the caller)
         await ComputedTest.When(async ct => {
             var status = await liveSessionUI.GetCallStatus(chatId, ct);
-            status.Should().Be(CallStatus.Declined);
+            status.Should().Be(CallerStatus.NoAnswer);
         }, TimeSpan.FromSeconds(10));
     }
 }

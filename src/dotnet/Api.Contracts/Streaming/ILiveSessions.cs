@@ -45,7 +45,7 @@ public interface ILiveSessions : IComputeService
     // isn't pushed to the caller. Zero delay - this is a ring/accept path.
     [ComputeMethod(ConsolidationDelay = 0)]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
-    Task<CallStatus> GetCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<CallerStatus?> GetCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     Task SetParticipation(
         Session session,

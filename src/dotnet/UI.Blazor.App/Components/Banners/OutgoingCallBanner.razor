@@ -6,14 +6,14 @@
     if (!m.EnableIncompleteUI)
         return;
 
-    var status = m.CallStatus;
+    var status = m.CallerStatus;
 }
 
 <Banner
-    IsVisible="@(status != CallStatus.None)"
+    IsVisible="@(status is not null)"
     Class="outgoing-call-banner"
     ShowDismissButton="true"
-    DismissTooltip="@(status == CallStatus.Dialing ? L.Banner_CancelCall : L.Common_Close)"
+    DismissTooltip="@(status == CallerStatus.Dialing ? L.Banner_CancelCall : L.Common_Close)"
     Dismiss="@OnClose">
     <Icon><i class="@Icon(status) c-icon"></i></Icon>
     <Body>
@@ -45,28 +45,26 @@
     }
 
     private Task OnClose()
-        => State.Value.CallStatus == CallStatus.Dialing
+        => State.Value.CallerStatus == CallerStatus.Dialing
             ? LiveSessionUI.CancelCall(Chat.Id, CancellationToken.None)
             : LiveSessionUI.DismissCallStatus(Chat.Id, CancellationToken.None);
 
-    private string Text(CallStatus status) => status switch {
-        CallStatus.Dialing => L.Banner_CallDialing,
-        CallStatus.Connecting => L.Banner_CallAccepted,
-        CallStatus.Declined => L.Banner_CallDeclined,
-        CallStatus.NoAnswer => L.Banner_CallNoAnswer,
+    private string Text(CallerStatus? status) => status switch {
+        CallerStatus.Dialing => L.Banner_CallDialing,
+        CallerStatus.Active => L.Banner_CallAccepted,
+        CallerStatus.NoAnswer => L.Banner_CallNoAnswer,
         _ => "",
     };
 
-    private static string Icon(CallStatus status) => status switch {
-        CallStatus.Connecting => "icon-phone-call",
-        CallStatus.Declined => "icon-phone-hang-up",
-        CallStatus.NoAnswer => "icon-phone-missed",
+    private static string Icon(CallerStatus? status) => status switch {
+        CallerStatus.Active => "icon-phone-call",
+        CallerStatus.NoAnswer => "icon-phone-missed",
         _ => "icon-phone-call",
     };
 
     // Nested types
 
-    public sealed record Model(bool EnableIncompleteUI, CallStatus CallStatus) {
-        public static readonly Model None = new(false, CallStatus.None);
+    public sealed record Model(bool EnableIncompleteUI, CallerStatus? CallerStatus) {
+        public static readonly Model None = new(false, null);
     }
 }

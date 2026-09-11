@@ -147,7 +147,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     }
 
     [ComputeMethod]
-    public virtual Task<CallStatus> GetCallStatus(ChatId chatId, CancellationToken cancellationToken)
+    public virtual Task<CallerStatus?> GetCallStatus(ChatId chatId, CancellationToken cancellationToken)
         => LiveSessions.GetCallStatus(Session, chatId, cancellationToken);
 
     public Task DismissCallStatus(ChatId chatId, CancellationToken cancellationToken)

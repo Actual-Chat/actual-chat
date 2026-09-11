@@ -92,21 +92,29 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     }
 
     // [ComputeMethod]
-    public virtual async Task<CallStatus> GetCallStatus(
+    public virtual async Task<CallerStatus?> GetCallStatus(
         Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
         var callState = await Backend.GetCallState(chatId, cancellationToken).ConfigureAwait(false);
         // Only the caller sees the status of their outgoing call.
-        return callState is not null && callState.CallerId == chat.Rules.Author?.Id
-            ? callState.Status
-            : CallStatus.None;
+        if (callState is null || callState.CallerId != chat.Rules.Author?.Id)
+            return null;
+        return callState.Status switch {
+            CallStatus.Connecting => CallerStatus.Dialing,
+            CallStatus.Declined => CallerStatus.NoAnswer,
+            CallStatus.Active => CallerStatus.Active,
+            CallStatus.Canceled => CallerStatus.Canceled,
+            CallStatus.NoAnswer => CallerStatus.NoAnswer,
+            CallStatus.Ended => CallerStatus.Ended,
+            _ => CallerStatus.Dialing,   // Dialing (None can't reach here - callState is null then)
+        };
     }
 
     public async Task DismissCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        if (await GetCallStatus(session, chatId, cancellationToken).ConfigureAwait(false) != CallStatus.None)
+        if (await GetCallStatus(session, chatId, cancellationToken).ConfigureAwait(false) is not null)
             await Backend.DismissCallStatus(chatId, cancellationToken).ConfigureAwait(false);
     }
 

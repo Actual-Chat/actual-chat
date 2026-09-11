@@ -1045,8 +1045,8 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // assert — the session-scoped facade (what the UI calls) shows it to Bob and hides it from Alice
         var bobSessions = bob.AppServices.GetRequiredService<ILiveSessions>();
         var aliceSessions = alice.AppServices.GetRequiredService<ILiveSessions>();
-        (await bobSessions.GetCallStatus(bob.Session, chatId, default)).Should().Be(CallStatus.Declined);
-        (await aliceSessions.GetCallStatus(alice.Session, chatId, default)).Should().Be(CallStatus.None);
+        (await bobSessions.GetCallStatus(bob.Session, chatId, default)).Should().Be(CallerStatus.NoAnswer);
+        (await aliceSessions.GetCallStatus(alice.Session, chatId, default)).Should().BeNull();
     }
 
     [Fact]
@@ -1067,15 +1067,15 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // capture on the session-scoped facade — exactly what the client's banner subscribes to over RPC
         var sessions = bob.AppServices.GetRequiredService<ILiveSessions>();
         var cStatus = await Computed.Capture(() => sessions.GetCallStatus(bob.Session, chatId, default));
-        cStatus.Value.Should().Be(CallStatus.Dialing);
+        cStatus.Value.Should().Be(CallerStatus.Dialing);
 
         // act — Alice declines
         await backend.DeclineCall(chatId, aliceAuthor.Id, default);
 
-        // assert — the captured computed flips Dialing → Declined on its own, without a fresh Capture
+        // assert — the captured computed flips Dialing → NoAnswer on its own, without a fresh Capture
         await ComputedTest.When(async ct => {
             var status = await sessions.GetCallStatus(bob.Session, chatId, ct);
-            status.Should().Be(CallStatus.Declined);
+            status.Should().Be(CallerStatus.NoAnswer);
         }, TimeSpan.FromSeconds(5));
     }
 
