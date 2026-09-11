@@ -68,6 +68,45 @@ public class OpusFramePumpTest
     }
 
     [Fact]
+    public async Task PumpShouldNotLoseSamplesAcrossOddLengthChunkBoundary()
+    {
+        // arrange
+        using var pump = new OpusFramePump(MomentClockSet.Default.CpuClock);
+        var pcm = Channel.CreateUnbounded<byte[]>();
+        var frames = Channel.CreateUnbounded<AudioFrame>();
+        pcm.Writer.TryWrite(new byte[OpusFramePump.FrameByteLength + 1]);
+        pcm.Writer.TryWrite(new byte[OpusFramePump.FrameByteLength - 1]);
+        pcm.Writer.Complete();
+
+        // act
+        await pump.Run(pcm.Reader, frames.Writer, CancellationToken.None);
+        var result = await frames.Reader.ReadAllAsync().ToListAsync();
+
+        // assert
+        result.Should().HaveCount(2, "an odd-length chunk boundary must not drop or shift a sample");
+    }
+
+    [Fact]
+    public async Task PumpShouldTerminateOnALoneTrailingByte()
+    {
+        // arrange
+        using var pump = new OpusFramePump(MomentClockSet.Default.CpuClock);
+        var pcm = Channel.CreateUnbounded<byte[]>();
+        var frames = Channel.CreateUnbounded<AudioFrame>();
+        pcm.Writer.TryWrite(new byte[1]);
+        pcm.Writer.Complete();
+
+        // act
+        await pump.Run(pcm.Reader, frames.Writer, CancellationToken.None);
+        var result = await frames.Reader.ReadAllAsync().ToListAsync();
+
+        // assert
+        result.Count.Should().BeLessThanOrEqualTo(2,
+            "an unpairable single byte contributes no sample of its own, so the run terminates " +
+            "after at most one extra silence frame instead of looping forever");
+    }
+
+    [Fact]
     public async Task PumpShouldPropagateTheProducersError()
     {
         // arrange

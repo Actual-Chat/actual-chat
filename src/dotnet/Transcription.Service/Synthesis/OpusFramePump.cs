@@ -44,8 +44,6 @@ public sealed class OpusFramePump : IDisposable
             var startedAt = Clock.Now;
             var frameIndex = 0;
             while (true) {
-                // Completion is read before the drain, so a chunk written right before Complete()
-                // is always drained by the pass that observes the completion.
                 var isInputCompleted = pcm.Completion.IsCompleted;
                 while (pcm.TryRead(out var chunk))
                     _buffer.Append(chunk);
@@ -116,10 +114,17 @@ public sealed class OpusFramePump : IDisposable
                 return false;
 
             var takeLength = Math.Min(length, FrameByteLength);
-            var takeSampleCount = takeLength / sizeof(short);
-            MemoryMarshal.Cast<byte, short>(_bytes.AsSpan(_start, takeLength)).CopyTo(frame);
+            var isDrainingTheBuffer = takeLength == length;
+            var pairedLength = takeLength - takeLength % 2;
+            if (pairedLength == 0 && !isDrainingTheBuffer)
+                return false;
+
+            var takeSampleCount = pairedLength / sizeof(short);
+            MemoryMarshal.Cast<byte, short>(_bytes.AsSpan(_start, pairedLength)).CopyTo(frame);
             Array.Clear(frame, takeSampleCount, frame.Length - takeSampleCount);
-            _start += takeLength;
+            // A lone trailing byte waits for the next Append to pair up with, unless this call
+            // drains the buffer for good, in which case there is no next Append coming for it.
+            _start += isDrainingTheBuffer ? takeLength : pairedLength;
             if (_start == _end)
                 _start = _end = 0;
             return true;
