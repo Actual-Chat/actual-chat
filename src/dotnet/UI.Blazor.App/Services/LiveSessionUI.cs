@@ -353,7 +353,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
                 .ConfigureAwait(false);
             while (!cancellationToken.IsCancellationRequested) {
                 var live = computed.Value;
-                if (live is { Kind: LiveSessionKind.Dialing }) {
+                if (live is { Kind: LiveSessionKind.Call, Conversation: null }) {
                     isDialing = true;
                     // The caller hears the ringback for as long as the call is dialing; the exits that
                     // don't stop it themselves (timeout, cancel) unwind through the finally.

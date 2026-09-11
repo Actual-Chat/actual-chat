@@ -325,9 +325,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 .GetLidRange(chatId, false, cancellationToken)
                 .ConfigureAwait(false)).End;
             state = state with {
-                // A dialing call latching here (streamed before a formal accept) becomes a connected call,
-                // never a Dialing session with SessionStartedAt set.
-                Kind = state.Kind == LiveSessionKind.Dialing ? LiveSessionKind.Call : state.Kind,
                 SessionStartedAt = now,
                 VisibleStartLid = visibleStartLid,
                 Version = VersionGenerator.NextVersion(state.Version),
@@ -594,14 +591,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 AuthorIds = state?.AuthorIds is { Count: > 0 } ids ? ids : [callerAuthorId],
                 Host = callerAuthorId,
                 CallerId = callerAuthorId,
-                Kind = state?.SessionStartedAt is not null ? LiveSessionKind.Call : LiveSessionKind.Dialing,
+                Kind = LiveSessionKind.Call,
                 HasVideo = hasVideo,
                 Version = VersionGenerator.NextVersion(state?.Version ?? 0),
             };
             await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
-            // Dialing status only for a fresh call; promoting an already-connected session isn't "calling".
-            await SetCallState(chatId, state.IsDialing ? NewCallState(state, CallStatus.Dialing) : null)
-                .ConfigureAwait(false);
+            await SetCallState(chatId, NewCallState(state, CallStatus.Dialing)).ConfigureAwait(false);
             conversationId = state.RingConversationId;
             await EnsureParticipant(chatId, callerAuthorId).ConfigureAwait(false);
             foreach (var invitee in invitees)
@@ -656,7 +651,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 };
                 await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
                 // The latch is the caller's "accepted" moment - a brief confirmation before this fades.
-                await SetCallState(chatId, NewCallState(state, CallStatus.Accepted)).ConfigureAwait(false);
+                await SetCallState(chatId, NewCallState(state, CallStatus.Connecting)).ConfigureAwait(false);
                 justConnected = true;
             }
             conversationId = state?.RingConversationId;

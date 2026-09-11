@@ -51,14 +51,14 @@
 
     private string Text(CallStatus status) => status switch {
         CallStatus.Dialing => L.Banner_CallDialing,
-        CallStatus.Accepted => L.Banner_CallAccepted,
+        CallStatus.Connecting => L.Banner_CallAccepted,
         CallStatus.Declined => L.Banner_CallDeclined,
         CallStatus.NoAnswer => L.Banner_CallNoAnswer,
         _ => "",
     };
 
     private static string Icon(CallStatus status) => status switch {
-        CallStatus.Accepted => "icon-phone-call",
+        CallStatus.Connecting => "icon-phone-call",
         CallStatus.Declined => "icon-phone-hang-up",
         CallStatus.NoAnswer => "icon-phone-missed",
         _ => "icon-phone-call",

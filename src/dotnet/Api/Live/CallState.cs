@@ -4,9 +4,12 @@ public enum CallStatus
 {
     None = 0,
     Dialing = 1,
-    Accepted = 2,
-    Declined = 3,
+    Connecting = 2,
+    Active = 3,
     NoAnswer = 4,
+    Declined = 5,
+    Canceled = 6,
+    Ended = 7,
 }
 
 /// <summary>
@@ -23,4 +26,10 @@ public sealed partial record CallState
     public CallStatus Status { get; init; }
     [DataMember(Order = 2), Key(2)]
     public Moment ChangedAt { get; init; }
+    [DataMember(Order = 3), Key(3)]
+    public Moment? CallerActiveAt { get; init; }
+    [DataMember(Order = 4), Key(4)]
+    public Moment? CallerEndedAt { get; init; }
+    [DataMember(Order = 5), Key(5)]
+    public Moment? CanceledAt { get; init; }
 }

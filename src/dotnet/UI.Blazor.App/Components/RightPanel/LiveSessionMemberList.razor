@@ -24,7 +24,7 @@
     @if (!State.IsInitial(out _)) {
         <ContentSwapDisplay/>
     }
-    @if (live.Kind == LiveSessionKind.Dialing) {
+    @if (live.Kind == LiveSessionKind.Call && live.Conversation is null) {
         <div class="c-dialing">@L.Call_Dialing</div>
     }
     <div class="c-rules">

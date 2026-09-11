@@ -52,7 +52,7 @@ public class IncomingCallUITest
         => new() {
             ChatId = TestChatId,
             Host = Host,
-            Kind = LiveSessionKind.Dialing,
+            Kind = LiveSessionKind.Call,
             Invites = invites,
         };
 }

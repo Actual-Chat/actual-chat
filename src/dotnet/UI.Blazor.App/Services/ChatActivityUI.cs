@@ -54,7 +54,7 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         // Dialing registers its caller as a recorder right away, so they'd read as a live participant
         // and surface "1 · live" before anyone answers. Skipping just them keeps the tile silent for a
         // plain ring while anyone else active in the chat - unrelated to the call - still counts.
-        var isDialing = liveSession?.Kind == LiveSessionKind.Dialing;
+        var isDialing = liveSession is { Kind: LiveSessionKind.Call, Conversation: null };
         var dialingHost = isDialing ? liveSession!.Host : default;
         // Count only members actually present now — the Host/Owner group survives a leave, so a
         // Group-based count would keep an exited host; a closing session can also report none left.

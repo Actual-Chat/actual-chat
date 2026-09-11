@@ -666,7 +666,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // is surfaced yet, so SessionStartedAt stays null until someone answers.
         var state = await backend.GetState(chatId, default);
         state.Should().NotBeNull();
-        state!.Kind.Should().Be(LiveSessionKind.Dialing);
+        state!.Kind.Should().Be(LiveSessionKind.Call);
         state.SessionStartedAt.Should().BeNull();
         // the Call tab still gets a projection while dialing, with the ring visible and no conversation
         var live = await backend.Get(chatId, default);
@@ -936,7 +936,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // assert — the caller is briefly told the call was accepted
         var callState = await backend.GetCallState(chatId, default);
         callState.Should().NotBeNull();
-        callState!.Status.Should().Be(CallStatus.Accepted);
+        callState!.Status.Should().Be(CallStatus.Connecting);
     }
 
     [Fact]
@@ -1143,7 +1143,9 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.StartCall(
             chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
-        (await backend.GetState(chatId, default))!.Kind.Should().Be(LiveSessionKind.Dialing);
+        var dialingState = await backend.GetState(chatId, default);
+        dialingState!.Kind.Should().Be(LiveSessionKind.Call);
+        dialingState.SessionStartedAt.Should().BeNull();
 
         // act — both parties stream (no explicit AcceptCall)
         await backend.OnStreamRegistered(chatId, bobAuthor.Id, null, false, true, default);
@@ -1177,7 +1179,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // assert — promoting an unlatched (solo) ambient session gives a Dialing call: ring/close paths
         // apply (via IsCall) but no block is surfaced until someone answers.
         var state = await backend.GetState(chatId, default);
-        state!.Kind.Should().Be(LiveSessionKind.Dialing);
+        state!.Kind.Should().Be(LiveSessionKind.Call);
         state.SessionStartedAt.Should().BeNull();
         state.Host.Should().Be(bobAuthor.Id);
     }

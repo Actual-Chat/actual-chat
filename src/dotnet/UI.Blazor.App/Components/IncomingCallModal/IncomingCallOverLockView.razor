@@ -258,7 +258,7 @@
         // My own outgoing call, still dialing (or just answered, before my audio has started): show the
         // same full-screen call view with a "Dialing..." status instead of nothing.
         var callStatus = await LiveSessionUI.GetCallStatus(id, cancellationToken).ConfigureAwait(false);
-        if (callStatus is CallStatus.Dialing or CallStatus.Accepted) {
+        if (callStatus is CallStatus.Dialing or CallStatus.Connecting) {
             DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → Outgoing ({Status})",
                 id, callStatus);
             return new() {

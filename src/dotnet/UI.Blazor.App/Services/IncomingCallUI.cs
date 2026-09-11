@@ -166,7 +166,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     {
         // An incoming ring is the Dialing phase; once someone answers it's promoted to Call and is
         // no longer an incoming call.
-        if (live is not { Kind: LiveSessionKind.Dialing })
+        if (live is not { Kind: LiveSessionKind.Call, Conversation: null })
             return null;
         if (live.Host == ownAuthorId)
             return null;
@@ -383,7 +383,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // CallStatus and the session Kind that commits _inCallChatId invalidate independently over RPC -
         // Accepted can land here before Kind == Call does, so it still counts as "dialing" too.
         var callStatus = await LiveSessionUI.GetCallStatus(chatId, cancellationToken).ConfigureAwait(false);
-        return callStatus is CallStatus.Dialing or CallStatus.Accepted;
+        return callStatus is CallStatus.Dialing or CallStatus.Connecting;
     }
 
     [ComputeMethod]
@@ -446,7 +446,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // My own outgoing call, still dialing or just accepted (before PrepareForegroundCall commits it
         // to InCall - see IsForegroundDialingActive) - keep the "Dialing..." view up instead of nothing.
         var callStatus = await LiveSessionUI.GetCallStatus(id, cancellationToken).ConfigureAwait(false);
-        return callStatus is CallStatus.Dialing or CallStatus.Accepted ? id : null;
+        return callStatus is CallStatus.Dialing or CallStatus.Connecting ? id : null;
     }
 
     private async Task<bool> IsStillInCall(ChatId chatId, CancellationToken cancellationToken)
