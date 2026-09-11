@@ -147,7 +147,10 @@ export type LogScope =
     | 'QrScanView'
     | 'VisualMediaViewer'
     | 'WebAuth'
-    | 'WebFileProvider';
+    | 'WebFileProvider'
+    | 'ImageProcessor'
+    | 'ImageProcessorWorker'
+    | 'JpegliEncoder';
 
 const defaults: Record<LogScope, LogLevel> = {
     default: LogLevel.Warn,
@@ -268,6 +271,9 @@ const defaults: Record<LogScope, LogLevel> = {
     VisualMediaViewer: LogLevel.Warn,
     WebAuth: LogLevel.Warn,
     WebFileProvider: LogLevel.Warn,
+    ImageProcessor: LogLevel.Warn,
+    ImageProcessorWorker: LogLevel.Warn,
+    JpegliEncoder: LogLevel.Info,
 };
 
 export const getLogs = createLogProvider<LogScope>('', defaults);
