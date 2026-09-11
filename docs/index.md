@@ -83,7 +83,10 @@ features:
 - [Forward-compatible unions](./architecture/union-tolerance.md) — how a `[Union]` root
   survives reading a member this build doesn't know, which roots are exempt and why, and
   how the server keeps new entry kinds away from peers that would break on them.
-- [Call entries](./call-entries.md) — what a call leaves behind in a peer chat: the
+- [Incoming call flow](./calls/incoming-call-flow.md) — how a ring travels from `StartCall`
+  through the notification pipeline to every platform's client, why the push is only a hint,
+  and what accept, decline, cancel and timeout each do on both sides.
+- [Call entries](./calls/call-entries.md) — what a call leaves behind in a peer chat: the
   outcomes, which side sees what, where the outcome is recorded versus written, and why a
   finished call is drawn by the conversation card.
 - [App updates](./app-updates.md) — how the "Update Voxt" banner learns that a

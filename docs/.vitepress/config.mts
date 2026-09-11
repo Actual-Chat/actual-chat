@@ -106,7 +106,14 @@ export default withMermaid(defineConfig({
               { text: "Server Clock Sync", link: "/architecture/server-clock-sync" },
               { text: "Offline Render Path", link: "/architecture/offline-render-path" },
               { text: "Notifications", link: "/notifications" },
-              { text: "Call entries", link: "/call-entries" },
+            ],
+          },
+          {
+            text: "Calls",
+            collapsed: true,
+            items: [
+              { text: "Incoming call flow", link: "/calls/incoming-call-flow" },
+              { text: "Call entries", link: "/calls/call-entries" },
             ],
           },
           {
