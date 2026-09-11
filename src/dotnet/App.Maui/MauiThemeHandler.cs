@@ -12,6 +12,8 @@ public class MauiThemeHandler
     public static readonly MauiThemeHandler Instance =
 #if ANDROID
         new AndroidThemeHandler();
+#elif WINDOWS
+        new WindowsThemeHandler();
 #else
         new();
 #endif
@@ -23,14 +25,9 @@ public class MauiThemeHandler
 
     protected ILogger Log => _log ??= StaticLog.Factory.CreateLogger(GetType());
 
-    public string TopBarColor {
-        get {
-            // --background-01 (see getColors in theme.ts), restored from preferences in the ctor,
-            // so it's known before the web app loads.
-            var items = _colors.Split(';');
-            return items[0].Trim();
-        }
-    }
+    public ThemeColors CurrentColors
+        // Restored from preferences in the ctor, so they're known before the web app loads
+        => ThemeColors.Parse(_colors);
 
     protected MauiThemeHandler()
     {
@@ -73,15 +70,7 @@ public class MauiThemeHandler
                 return;
 
             try {
-                var items = colors.Split(";");
-                var topBarColor = colors;
-                var bottomBarColor = colors;
-                if (items.Length >= 2) {
-                    topBarColor = items[0].Trim();
-                    bottomBarColor = items[1].Trim();
-                }
-
-                if (Apply(topBarColor, bottomBarColor, theme))
+                if (Apply(ThemeColors.Parse(colors), theme))
                     _appliedColors = colors;
             }
             catch (Exception e) {
@@ -90,7 +79,7 @@ public class MauiThemeHandler
         });
     }
 
-    protected virtual bool Apply(string topBarColor, string bottomBarColor, Theme? theme)
+    protected virtual bool Apply(ThemeColors colors, Theme? theme)
     {
  #pragma warning disable CA1826
         var mainPage = App.Current.Windows.FirstOrDefault()?.Page;
@@ -98,6 +87,13 @@ public class MauiThemeHandler
         if (mainPage == null)
             return false;
 
+        ApplyStatusBar(colors, theme);
+        mainPage.BackgroundColor = Color.FromArgb(colors.BottomBar);
+        return true;
+    }
+
+    protected virtual void ApplyStatusBar(ThemeColors colors, Theme? theme)
+    {
         var style = theme switch {
             Theme.Light => StatusBarStyle.DarkContent,
             Theme.Ash => StatusBarStyle.DarkContent,
@@ -109,12 +105,27 @@ public class MauiThemeHandler
         if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Q)
             StatusBar.SetColor(Colors.Transparent);
         else
-            StatusBar.SetColor(Color.FromArgb(topBarColor));
+            StatusBar.SetColor(Color.FromArgb(colors.TopBar));
 #else
         StatusBar.SetColor(Colors.Transparent);
 #endif
         StatusBar.SetStyle(style);
-        mainPage.BackgroundColor = Color.FromArgb(bottomBarColor);
-        return true;
+    }
+
+    // Nested types
+
+    public sealed record ThemeColors(string TopBar, string BottomBar, string Navbar, string Text)
+    {
+        public static ThemeColors Parse(string colors)
+        {
+            // The order is set by getColors in theme.ts. Colors stored by an older version stop after
+            // BottomBar, and a single color used to stand for both bars.
+            var items = colors.Split(';');
+            var topBar = items[0].Trim();
+            return new ThemeColors(topBar, GetItem(1, topBar), GetItem(2, topBar), GetItem(3, ""));
+
+            string GetItem(int index, string defaultValue)
+                => index < items.Length ? items[index].Trim() : defaultValue;
+        }
     }
 }

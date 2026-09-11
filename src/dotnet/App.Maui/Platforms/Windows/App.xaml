@@ -4,5 +4,41 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:maui="using:Microsoft.Maui"
     xmlns:local="using:ActualChat.App.Maui.WinUI">
-
+    <maui:MauiWinUIApplication.Resources>
+        <!-- MAUI picks MauiAppTitleBarTemplate over its default title strip (WindowRootViewStyle.xaml in
+             dotnet/maui), which is transparent and dims the title in an inactive window. This one is a single
+             color: WindowConfigurator.UpdateTitleBar sets both brushes to the theme's navbar and text colors. -->
+        <SolidColorBrush x:Key="VoxtTitleBarBackgroundBrush" Color="#28282E"/>
+        <SolidColorBrush x:Key="VoxtTitleBarForegroundBrush" Color="#F5F5FC"/>
+        <DataTemplate x:Key="MauiAppTitleBarTemplate">
+            <Grid Background="{StaticResource VoxtTitleBarBackgroundBrush}">
+                <Grid Margin="{Binding WindowTitleMargin}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Image
+                        x:Name="AppFontIcon"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Source="Square44x44Logo.png"
+                        Visibility="{Binding WindowTitleIconVisibility}"
+                        Width="16"
+                        Height="16"
+                        Margin="8,0,0,0"/>
+                    <TextBlock
+                        x:Name="AppTitle"
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Margin="16,0,0,0"
+                        MinWidth="48"
+                        Text="{Binding WindowTitle}"
+                        Foreground="{StaticResource VoxtTitleBarForegroundBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        TextTrimming="CharacterEllipsis"
+                        TextWrapping="NoWrap"/>
+                </Grid>
+            </Grid>
+        </DataTemplate>
+    </maui:MauiWinUIApplication.Resources>
 </maui:MauiWinUIApplication>

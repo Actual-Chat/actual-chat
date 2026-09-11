@@ -173,7 +173,7 @@ public static class WindowsSplashScreen
         // The theme background, so the splash, the WebView and the app all show the same color and the
         // transition is invisible. There's no stored theme on a first run - fall back to the dark theme's
         // --background-01 rather than the splash color, which blinks against every theme.
-        var color = MauiThemeHandler.Instance.TopBarColor;
+        var color = MauiThemeHandler.Instance.CurrentColors.TopBar;
         return color.IsNullOrEmpty() ? DefaultBackgroundColor : Color.FromArgb(color);
     }
 
