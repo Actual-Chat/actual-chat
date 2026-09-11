@@ -2518,9 +2518,9 @@ The new `ImageQualityPreset` lives in `ActualChat.UI.Blazor.App.Services`. The P
 - Produces:
   - `enum ImageQualityPreset { Uhd4K = 0, FullHd, Original, OriginalWithExif }`; extensions `GetMaxSize(): int?` (null for the Original presets), `ToRequest(): ImageProcessRequest`.
   - `record ImageProcessRequest(ImageOutputSpec[] Outputs)`, `record ImageOutputSpec(string Kind, int? MaxSize, string Codec, bool StripMetadata, int? MaxPassthroughSize = null)` with `Main(int)`, `Estimate(int)`, `Original(bool stripMetadata)`.
-  - `record ImageSizeEstimate(long Uhd4KLength, long FullHdLength)`, `record ImageProcessingResult(IFileProvider FileProvider, Size2D Size, ImageSizeEstimate? SizeEstimate)`.
+  - `record ImageSizeEstimate(long Uhd4KLength, long FullHdLength)`, `record ImageProcessingResult(IFileProvider? FileProvider, Size2D Size, ImageSizeEstimate? SizeEstimate)` (`FileProvider` is `null` when the output is the unchanged source).
   - `interface IProcessedImageStore { Task<MauiFileProvider> Save(Stream content, FileMetadata metadata, CancellationToken cancellationToken); }` (implemented in Task 11).
-  - `ImageAttachmentProcessor.Process(IFileProvider source, Size2D sourceSize, ImageQualityPreset preset, CancellationToken cancellationToken): Task<ImageProcessingResult?>` - `null` means "upload the source as-is": the output is the unchanged source, the provider type is unsupported, or processing failed (logged).
+  - `ImageAttachmentProcessor.Process(IFileProvider source, Size2D sourceSize, ImageQualityPreset preset, CancellationToken cancellationToken): Task<ImageProcessingResult?>` - `null` means the provider type is unsupported or processing failed (logged); a result with a `null` `FileProvider` means the output is the unchanged source (upload the source as-is) while still carrying `SizeEstimate`.
   - `WebFileProvider.ProcessImage(ImageProcessRequest request, CancellationToken cancellationToken): ValueTask<ProcessedWebImage>`.
 
 - [ ] **Step 1: Write the failing test** (`tests/Chat.UI.Blazor.UnitTests/ImageQualityPresetTest.cs`)
@@ -2672,7 +2672,7 @@ public sealed record ProcessedStreamImage : ProcessedImage
     public IJSStreamReference? Stream { get; init; }
 }
 
-public sealed record ImageProcessingResult(IFileProvider FileProvider, Size2D Size, ImageSizeEstimate? SizeEstimate);
+public sealed record ImageProcessingResult(IFileProvider? FileProvider, Size2D Size, ImageSizeEstimate? SizeEstimate);
 ```
 
 `IProcessedImageStore.cs`:
@@ -2767,7 +2767,7 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
 
     // Private methods
 
-    private async Task<ImageProcessingResult?> ProcessWeb(
+    private async Task<ImageProcessingResult> ProcessWeb(
         WebFileProvider source,
         ImageProcessRequest request,
         Size2D sourceSize,
@@ -2776,7 +2776,7 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
     {
         var image = await source.ProcessImage(request, cancellationToken).ConfigureAwait(false);
         if (image.IsSource || image.FileProvider is null)
-            return null;
+            return CreateResult(null, image, sourceSize, preset);
 
         var provider = new WebFileProvider {
             Metadata = CreateMetadata(source.Metadata, image),
@@ -2787,7 +2787,7 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
         return CreateResult(provider, image, sourceSize, preset);
     }
 
-    private async Task<ImageProcessingResult?> ProcessMaui(
+    private async Task<ImageProcessingResult> ProcessMaui(
         MauiFileProvider source,
         ImageProcessRequest request,
         Size2D sourceSize,
@@ -2799,7 +2799,7 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
             .InvokeAsync<ProcessedStreamImage>(JSProcessUrlMethod, cancellationToken, url, request)
             .ConfigureAwait(false);
         if (image.IsSource || image.Stream is null)
-            return null;
+            return CreateResult(null, image, sourceSize, preset);
 
         var stream = await image.Stream
             .OpenReadStreamAsync(Constants.Attachments.FileSizeLimit, cancellationToken)
@@ -2828,7 +2828,7 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
     }
 
     private static ImageProcessingResult CreateResult(
-        IFileProvider provider,
+        IFileProvider? provider,
         ProcessedImage image,
         Size2D sourceSize,
         ImageQualityPreset preset)
@@ -3542,18 +3542,20 @@ public class FileAttachments : UIServiceBase<AppUIHub>
 
             var result = await ImageAttachmentProcessor.Process(source.FileProvider, source.Size, preset, cancellationToken);
             if (cancellationToken.IsCancellationRequested || list.Items.FirstOrDefault(a => a.Id == id) is not { } attachment) {
-                if (result is not null)
-                    await result.FileProvider.ClearForRemoving();
+                // Only a processed file is ours to delete; a null provider means the source itself
+                if (result?.FileProvider is { } processedFileProvider)
+                    await processedFileProvider.ClearForRemoving();
                 return;
             }
 
-            var processed = result is null
+            var processed = result?.FileProvider is null
                 ? attachment with {
                     FileProvider = source.FileProvider,
                     FileName = source.FileName,
                     FileType = source.FileType,
                     Length = source.Length,
                     Size = source.Size,
+                    SizeEstimate = result?.SizeEstimate ?? attachment.SizeEstimate,
                 }
                 : attachment with {
                     FileProvider = result.FileProvider,
