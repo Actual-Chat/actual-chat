@@ -12,7 +12,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
     private UploadSessionsState UploadSessionsState => Hub.UploadSessionsState;
 
-    public UploadSessions(AppUIHub hub) :base(hub)
+    public UploadSessions(AppUIHub hub) : base(hub)
     {
         _repo = hub.Services.GetRequiredService<IUploadSessionRepo>();
         _uploadOperations = new UploadOperations(hub);
@@ -76,7 +76,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         Interlocked.Increment(ref sessionRef.ReferenceCount);
     }
 
-    public void ReleaseReference(string sessionId, bool cancel = true)
+    public void ReleaseReference(string sessionId, bool cancel = true, bool mustKeepFile = false)
     {
         if (!_sessions.TryGetValue(sessionId, out var sessionRef))
             throw new InvalidOperationException($"Session {sessionId} not found");
@@ -88,7 +88,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         if (!cancel)
             return;
 
-        ReleaseSessionInternal(sessionRef.Session);
+        ReleaseSessionInternal(sessionRef.Session, mustKeepFile);
     }
 
     public async Task DeleteStaleSession(string sessionId)
@@ -130,17 +130,19 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             UICommander.ShowError(error);
     }
 
-    private void ReleaseSessionInternal(UploadSession session)
+    private void ReleaseSessionInternal(UploadSession session, bool mustKeepFile = false)
     {
-        Log.LogDebug("Releasing reference for session '{SessionId}' ('{FileName}')", session.SessionId, session.FileProvider.Metadata.FileName);
+        Log.LogDebug("Releasing reference for session '{SessionId}' ('{FileName}')",
+            session.SessionId,
+            session.FileProvider.Metadata.FileName);
         var completed = session.Cancel();
-        _ = BackgroundTask.Run( async () => {
+        _ = BackgroundTask.Run(async () => {
             await completed.WaitAsync(TimeSpan.FromSeconds(30)).SilentAwait(false);
-            await DeleteSessionInternal(session).ConfigureAwait(false);
+            await DeleteSessionInternal(session, mustKeepFile).ConfigureAwait(false);
         });
     }
 
-    private async Task DeleteSessionInternal(UploadSession session)
+    private async Task DeleteSessionInternal(UploadSession session, bool mustKeepFile)
     {
         var sessionId = session.SessionId;
         _sessions.TryRemove(sessionId, out _);
@@ -149,7 +151,8 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             sessionId,
             fileProvider,
             session.TranscodedFilePath,
-            session.UploadId).ConfigureAwait(false);
+            session.UploadId,
+            mustKeepFile).ConfigureAwait(false);
         Log.LogDebug("Deleted session '{SessionId}' ('{FileName}')", sessionId, fileProvider.Metadata.FileName);
     }
 
@@ -196,11 +199,17 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     private bool CheckIfActive(string sessionId)
         => _sessions.ContainsKey(sessionId);
 
-    private async Task DeleteSessionResources(string sessionId, IFileProvider fileProvider, string? transcodedFilePath, UploadId? uploadId)
+    private async Task DeleteSessionResources(
+        string sessionId,
+        IFileProvider fileProvider,
+        string? transcodedFilePath,
+        UploadId? uploadId,
+        bool mustKeepFile = false)
     {
         if (uploadId is not null)
             await _uploadOperations.RemoveUpload(uploadId, CancellationToken.None).ConfigureAwait(false);
-        await fileProvider.ClearForRemoving().ConfigureAwait(false);
+        if (!mustKeepFile)
+            await fileProvider.ClearForRemoving().ConfigureAwait(false);
         DeleteFile(transcodedFilePath);
         await _repo.Delete(sessionId).ConfigureAwait(false);
         UploadSessionsState.Remove(sessionId);
@@ -215,9 +224,9 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     }
 
     // Nested types
-    private class SessionRef(UploadSession session)
+    private sealed class SessionRef(UploadSession session)
     {
-        public UploadSession Session { get; } = session;
         public long ReferenceCount;
+        public UploadSession Session { get; } = session;
     }
 }

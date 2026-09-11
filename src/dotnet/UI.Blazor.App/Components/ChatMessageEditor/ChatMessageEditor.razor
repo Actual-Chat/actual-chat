@@ -15,7 +15,8 @@
         @<AttachmentListView
              @key="AttachmentListKey"
              AttachmentListHolder="@_attachmentListHolder"
-             OnAddClick="@(() => OnAttachClick(""))"/>;
+             OnAddClick="@(() => OnAttachClick(""))"
+             OnImageQualityChanged="@OnImageQualityChanged"/>;
 }
 
 <OnUIEvent TEvent="@FocusChatMessageEditorEvent" Handler="OnFocusChatMessageEditorEvent" />
@@ -220,8 +221,8 @@
         text ??= await MarkupEditorRef.GetText();
         text = text.Trim();
 
-        // Apply selected quality and start pending uploads before sending.
-        await FileAttachments.ApplyQualityAndStartUploads(_attachmentListHolder.Attachments);
+        // Uploads of photos start only once they're resized and re-encoded
+        await FileAttachments.WhenImagesProcessed(_attachmentListHolder.Attachments);
 
         var attachmentListSnapshot = _attachmentListHolder.PopSnapshot();
         if (text.IsNullOrEmpty() && attachmentListSnapshot.Attachments.Count == 0) {
@@ -375,6 +376,9 @@
 
     private Task OnAttachFilesPicked(AttachFileInfo[] fileInfos)
         => FileAttachments.TryAddFileAttachments(_attachmentListHolder.Attachments, fileInfos);
+
+    private Task OnImageQualityChanged(ImageQualityPreset preset)
+        => FileAttachments.SetImageQuality(_attachmentListHolder.Attachments, preset);
 
     // UIEventHub event handlers
 

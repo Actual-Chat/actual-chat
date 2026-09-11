@@ -416,9 +416,11 @@
   "Editor_SendAsFile": "Dosya olarak gönderin",
   "Editor_KeepAsText": "テキストのままにする",
   "Editor_DropFilesToAttach": "添付するファイルをドロップしてください",
-  "Editor_QualityOriginal": "Original",
-  "Editor_QualityFullSize": "Full size",
-  "Editor_QualityAppliesToPhotos": "Applies to {0} photo|Applies to {0} photos",
+  "Editor_QualityOriginal": "オリジナル",
+  "Editor_QualityFullSize": "Kích thước đầy đủ",
+  "Editor_QualityAppliesToPhotos": "Примјењује се на {0} фотографије",
+  "Editor_QualityOriginalWithExif": "オリジナル（EXIF付き）",
+  "Editor_QualityKeepsMetadata": "Conserve la position et les données de l'appareil photo",
 
   // "Alert" is the notify-everyone action in the message editor. An alert is loud and behaves
   // like an incoming call, which is why this whole group reads as a warning - keep one word for

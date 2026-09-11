@@ -2,11 +2,11 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public enum AttachmentCleanupKind { File, UploadSession, PersistedPostMessageRequest }
+public enum AttachmentCleanupKind { File, UploadSession, PersistedPostMessageRequest, SourceFile }
 
-public record AttachmentCleanup(AttachmentCleanupKind Kind, Func<Task> Cleanup);
+public sealed record AttachmentCleanup(AttachmentCleanupKind Kind, Func<Task> Cleanup);
 
-public class AttachmentCleanupCollection
+public sealed class AttachmentCleanupCollection
 {
     private readonly List<AttachmentCleanup> _items = new ();
 
@@ -23,6 +23,10 @@ public static class AttachmentCleanupFactory
 {
     public static AttachmentCleanup ForFile(IFileProvider fileProvider)
         => new (AttachmentCleanupKind.File, fileProvider.ClearForRemoving);
+
+    public static AttachmentCleanup ForSourceFile(IFileProvider fileProvider)
+        // Unlike ForFile, InitUploadSession doesn't replace it: the source outlives the processed file's session
+        => new (AttachmentCleanupKind.SourceFile, fileProvider.ClearForRemoving);
 
     public static AttachmentCleanup ForUploadSession(UploadSessions uploadSessions, string uploadSessionId)
         => new (AttachmentCleanupKind.UploadSession,

@@ -7,11 +7,9 @@
         <div class="c-btn-group">
             <span class="c-count">@CountLabel</span>
             <div class="c-actions">
-                @if (Attachments.HasCompressibleAttachments) {
-                    <ImageQualitySelector
-                        Attachments="@Attachments"
-                        OnPresetChanged="@OnPresetChanged"/>
-                }
+                <ImageQualitySelector
+                    Attachments="@Attachments"
+                    OnPresetChanged="@OnImageQualityChanged"/>
                 <ButtonRound Class="c-remove-btn" Click="_ => Clear()">
                     <i class="icon-trash03 text-xl text-danger"></i>
                 </ButtonRound>
@@ -43,6 +41,7 @@
     private AttachmentListHolder? _holder;
 
     [Parameter] public EventCallback OnAddClick { get; set; }
+    [Parameter] public EventCallback<ImageQualityPreset> OnImageQualityChanged { get; set; }
     [Parameter] public AttachmentListHolder AttachmentListHolder { get; set; } = null!;
 
     private AttachmentList Attachments => _holder!.Attachments;
@@ -51,7 +50,7 @@
         get {
             var count = Attachments.Count;
             var total = Attachments.Items.Sum(a => a.Length);
-            return $"{L.Editor_Files(count, count)} · {FormatSize(total)}";
+            return $"{L.Editor_Files(count, count)} · {FileSizeFormatter.Format(total)}";
         }
     }
 
@@ -83,28 +82,4 @@
 
     private Task OnRestartClick(Attachment attachment)
         => Attachments.Restart(attachment);
-
-    private void OnPresetChanged(ImageQualityPreset preset) {
-        Attachments.SetGlobalQuality(preset);
-        foreach (var attachment in Attachments.Items.Where(a => a.IsResizableImage && a.IsUploadPending).ToList()) {
-            var originalLength = attachment.OriginalLength > 0 ? attachment.OriginalLength : attachment.Length;
-            var newLength = preset switch {
-                ImageQualityPreset.FullHD when attachment.EstimatedSizes?.Length >= 1
-                    => Math.Min(attachment.EstimatedSizes.Value[0].Size, originalLength),
-                ImageQualityPreset.HD when attachment.EstimatedSizes?.Length >= 2
-                    => Math.Min(attachment.EstimatedSizes.Value[1].Size, originalLength),
-                ImageQualityPreset.SD when attachment.EstimatedSizes?.Length >= 3
-                    => Math.Min(attachment.EstimatedSizes.Value[2].Size, originalLength),
-                _ => originalLength,
-            };
-            if (newLength > 0 && newLength != attachment.Length)
-                Attachments.Replace(attachment, attachment with { Length = newLength, SelectedQuality = preset });
-        }
-    }
-
-    private static string FormatSize(long bytes) => bytes switch {
-        < 1024 => $"{bytes} B",
-        < 1024 * 1024 => $"{bytes / 1024.0:F0} KB",
-        _ => $"{bytes / (1024.0 * 1024.0):F1} MB",
-    };
 }

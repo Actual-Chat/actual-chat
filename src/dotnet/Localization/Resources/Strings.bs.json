@@ -334,6 +334,8 @@
   "Editor_QualityOriginal": "Original",
   "Editor_QualityFullSize": "Puna veličina",
   "Editor_QualityAppliesToPhotos": "Primjenjuje se na {0} fotografiju|Primjenjuje se na {0} fotografije|Primjenjuje se na {0} fotografija",
+  "Editor_QualityOriginalWithExif": "Original s EXIF-om",
+  "Editor_QualityKeepsMetadata": "Zadržava lokaciju i podatke kamere",
 
   "Alert_Alert_Format": "Upozori {0}",
   "Alert_TargetEveryone": "sve",

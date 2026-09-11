@@ -334,6 +334,8 @@
   "Editor_QualityOriginal": "Original",
   "Editor_QualityFullSize": "Taille originale",
   "Editor_QualityAppliesToPhotos": "S'applique à {0} photo|S'applique à {0} photos",
+  "Editor_QualityOriginalWithExif": "Original avec EXIF",
+  "Editor_QualityKeepsMetadata": "Conserve la position et les données de l'appareil photo",
 
   "Alert_Alert_Format": "Alerter {0}",
   "Alert_TargetEveryone": "tout le monde",

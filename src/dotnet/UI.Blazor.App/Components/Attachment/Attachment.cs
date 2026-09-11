@@ -1,15 +1,6 @@
-using System.Collections.Immutable;
 using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
-
-public enum ImageQualityPreset
-{
-    Original = int.MaxValue,
-    FullHD = 1920,
-    HD = 1280,
-    SD = 854,
-}
 
 public record Attachment(string FileName, string FileType, long Length, Size2D Size)
 {
@@ -21,17 +12,21 @@ public record Attachment(string FileName, string FileType, long Length, Size2D S
     public IFileProvider? FileProvider { get; init; }
     public string UploadSessionId { get; init; } = "";
     public AttachmentCleanupCollection Cleanups { get; } = new ();
+    // Set for processable images: what the attachment is re-processed from when the preset changes
+    public AttachmentSource? Source { get; init; }
+    public bool IsProcessing { get; init; }
+    public ImageQualityPreset SelectedQuality { get; init; }
+    public ImageSizeEstimate? SizeEstimate { get; init; }
 
     public bool IsSupportedImage => MediaTypeExt.IsSupportedImage(FileType);
     public bool IsSupportedVideo => MediaTypeExt.IsSupportedVideo(FileType);
-    public bool IsResizableImage => IsSupportedImage && !MediaTypeExt.IsGif(FileType) && !MediaTypeExt.IsSvg(FileType);
-    public bool IsUploadPending { get; init; }
-    public ImageQualityPreset SelectedQuality { get; init; } = ImageQualityPreset.Original;
-    public long OriginalLength { get; init; }
-    public ImmutableArray<ImageResizeResult>? EstimatedSizes { get; init; }
+    public bool IsProcessableImage
+        => IsSupportedImage && !MediaTypeExt.IsGif(FileType) && !MediaTypeExt.IsSvg(FileType);
 
     public string DemandUploadSessionId()
-        => !UploadSessionId.IsNullOrEmpty() ? UploadSessionId : throw new InvalidOperationException("Upload session not assigned");
+        => !UploadSessionId.IsNullOrEmpty()
+            ? UploadSessionId
+            : throw new InvalidOperationException("Upload session not assigned");
 
     public MetadataBag GetMetadataForUploadSession()
     {
@@ -43,9 +38,18 @@ public record Attachment(string FileName, string FileType, long Length, Size2D S
             metadata = metadata
                 .Set(nameof(Media.Media.Width), Size.Width)
                 .Set(nameof(Media.Media.Height), Size.Height);
+        if (Source is not null && SelectedQuality == ImageQualityPreset.OriginalWithExif)
+            metadata = metadata.Set(nameof(Media.Upload.KeepMetadata), true);
         return metadata;
     }
 }
 
 public sealed record SourceAttachment(string FileName, string FileType, long Length, FilePreview? Preview)
     : Attachment(FileName, FileType, Length, Preview?.Dimensions ?? default);
+
+public sealed record AttachmentSource(
+    IFileProvider FileProvider,
+    string FileName,
+    string FileType,
+    long Length,
+    Size2D Size);

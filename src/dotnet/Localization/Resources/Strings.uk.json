@@ -334,6 +334,8 @@
   "Editor_QualityOriginal": "Оригінал",
   "Editor_QualityFullSize": "Повний розмір",
   "Editor_QualityAppliesToPhotos": "Застосовується до {0} фото|Застосовується до {0} фото|Застосовується до {0} фото",
+  "Editor_QualityOriginalWithExif": "Оригінал з EXIF",
+  "Editor_QualityKeepsMetadata": "Зберігає геопозицію та дані камери",
 
   "Alert_Alert_Format": "Термінове сповіщення: {0}",
   "Alert_TargetEveryone": "усім",

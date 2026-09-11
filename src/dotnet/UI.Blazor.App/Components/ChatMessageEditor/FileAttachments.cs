@@ -8,9 +8,13 @@ public class FileAttachments : UIServiceBase<AppUIHub>
 {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.WebFileProviders.createFromFileId";
 
+    private readonly ConcurrentDictionary<AttachmentId, ImageProcessing> _imageProcessings = new();
+
     private AttachmentsController AttachmentsController { get; }
     private AttachmentsState AttachmentsState { get; }
     private FilePreviews FilePreviews { get; }
+    private ImageAttachmentProcessor ImageAttachmentProcessor { get; }
+    private UploadSessions UploadSessions => Hub.UploadSessions;
     public ChatId ChatId { get; }
 
     public FileAttachments(AppUIHub hub, ChatId chatId) : base(hub)
@@ -18,6 +22,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         AttachmentsController = Hub.Services.GetRequiredService<AttachmentsController>();
         AttachmentsState = Hub.AttachmentsState;
         FilePreviews = Hub.Services.GetRequiredService<FilePreviews>();
+        ImageAttachmentProcessor = Hub.Services.GetRequiredService<ImageAttachmentProcessor>();
         ChatId = chatId;
     }
 
@@ -40,17 +45,59 @@ public class FileAttachments : UIServiceBase<AppUIHub>
 
     public async Task<bool> TryAddFileAttachments(AttachmentList list, AttachFileInfo[] fileInfos)
     {
-        var hasAdded = false;
+        // The files are created concurrently and added in pick order: a native gallery pick loads
+        // every file in the background, and a preview may take seconds per file (macOS generates
+        // it from the loaded file), so a serial loop would show each item only after the previous one.
+        var createTasks = new List<Task<Attachment?>>();
         foreach (var fileInfo in fileInfos) {
-            var prevHasAdded = hasAdded;
-            hasAdded = await TryAddFileAttachment(list, fileInfo);
-            if (!prevHasAdded && hasAdded)
+            if (CheckCanAdd(list, fileInfo.FileProvider.Metadata.Length, createTasks.Count) is { } e) {
+                UICommander.ShowError(e);
+                continue;
+            }
+
+            var fileProvider = fileInfo.FileProvider;
+            fileProvider.Initialize(Hub.Services);
+            createTasks.Add(TryCreateAttachment(fileProvider));
+        }
+
+        var hasAdded = false;
+        foreach (var createTask in createTasks) {
+            if (await createTask is not { } attachment)
+                continue;
+
+            await AddAttachment(list, attachment);
+            if (!hasAdded)
                 _ = TuneUI.Play(Tune.ChangeAttachments);
+            hasAdded = true;
         }
         return hasAdded;
     }
 
-    private async Task<bool> TryAddWebFileAttachment(AttachmentList list, int id, string fileName, string fileType, long size)
+    public async Task SetImageQuality(AttachmentList list, ImageQualityPreset preset)
+    {
+        if (list.ImageQuality == preset)
+            return;
+
+        list.SetImageQuality(preset);
+        var reprocessTasks = list.Items
+            .Where(a => a.Source is not null)
+            .Select(a => Reprocess(list, a.Id, preset))
+            .ToList();
+        await Task.WhenAll(reprocessTasks);
+    }
+
+    public Task WhenImagesProcessed(AttachmentList list)
+        => Task.WhenAll(list.Items.Select(
+            a => _imageProcessings.TryGetValue(a.Id, out var p) ? p.Task : Task.CompletedTask));
+
+    // Private methods
+
+    private async Task<bool> TryAddWebFileAttachment(
+        AttachmentList list,
+        int id,
+        string fileName,
+        string fileType,
+        long size)
     {
         // A browser knows a File's size upfront, and 0 there is what a paste of an image whose
         // clipboard data is already gone yields; the server can't create an upload for it either.
@@ -62,6 +109,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             UICommander.ShowError(e);
             return false;
         }
+
         // Browser's File System Access API may return empty MIME type for some files (e.g., MOV).
         // Fall back to detecting from file extension.
         if (fileType.IsNullOrEmpty())
@@ -71,27 +119,19 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             return false;
 
         webFileProvider.Initialize(Hub.Services);
-        return await TryAddFileAttachment(list, webFileProvider);
-    }
-
-    private async Task<bool> TryAddFileAttachment(AttachmentList list, AttachFileInfo fileInfo)
-    {
-        if (CheckCanAdd(list, fileInfo.FileProvider.Metadata.Length) is { } e) {
-            UICommander.ShowError(e);
+        if (await TryCreateAttachment(webFileProvider) is not { } attachment)
             return false;
-        }
 
-        var fileProvider = fileInfo.FileProvider;
-        fileProvider.Initialize(Hub.Services);
-        return await TryAddFileAttachment(list, fileProvider);
+        await AddAttachment(list, attachment);
+        return true;
     }
 
-    private static Exception? CheckCanAdd(AttachmentList list, long length)
+    private static Exception? CheckCanAdd(AttachmentList list, long length, int pendingCount = 0)
     {
         if (length > Constants.Attachments.FileSizeLimit)
             return StandardError.Upload.FileTooBig(Constants.Attachments.FileSizeLimit);
 
-        if (list.Count >= Constants.Attachments.FileCountLimit)
+        if (list.Count + pendingCount >= Constants.Attachments.FileCountLimit)
             return StandardError.Upload.TooManyFiles(Constants.Attachments.FileCountLimit);
 
         return null;
@@ -125,11 +165,10 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         return webFileProvider;
     }
 
-    private async Task<bool> TryAddFileAttachment(AttachmentList list, IFileProvider fileProvider)
+    private async Task<Attachment?> TryCreateAttachment(IFileProvider fileProvider)
     {
-        Attachment attachment;
         try {
-            attachment = await CreateAttachment(fileProvider);
+            return await CreateAttachment(fileProvider);
         }
         catch (Exception ex) {
             await AttachmentCleanupFactory.ForFile(fileProvider)
@@ -138,88 +177,8 @@ public class FileAttachments : UIServiceBase<AppUIHub>
                 .SilentAwait();
             Log.LogError(ex, "Failed to add file attachment");
             UICommander.ShowError(StandardError.Constraint("Failed to add file attachment."));
-            return false;
+            return null;
         }
-        // Defer upload for resizable images to allow quality selection.
-        if (attachment.IsResizableImage) {
-            attachment = attachment with { IsUploadPending = true, OriginalLength = attachment.Length };
-            if (attachment is SourceAttachment source)
-                AttachmentsState.SetPreview(attachment.Id, AttachmentPreview.From(source.Preview));
-            list.Add(attachment);
-            _ = EstimateAndUpdateLength(list, attachment);
-            return true;
-        }
-        // NOTE: Start upload immediately after adding non-image attachments.
-        attachment = await StartUpload(attachment, list);
-        list.Add(attachment);
-        return true;
-    }
-
-    public async Task ConfirmImageQuality(AttachmentList list, Attachment attachment, ImageQualityPreset preset)
-    {
-        if (!attachment.IsUploadPending)
-            return;
-
-        var maxDimension = (int)preset;
-        if (attachment.FileProvider is WebFileProvider webFileProvider
-            && (attachment.Width > maxDimension || attachment.Height > maxDimension)) {
-            var result = await webFileProvider.ResizeImage(maxDimension).ConfigureAwait(true);
-            var newAttachment = attachment with {
-                Length = result.Size,
-                Size = new Size2D(result.Width, result.Height),
-                IsUploadPending = false,
-                SelectedQuality = preset,
-            };
-            list.Replace(attachment, newAttachment);
-            attachment = newAttachment;
-        }
-        else {
-            var newAttachment = attachment with {
-                IsUploadPending = false,
-                SelectedQuality = preset,
-            };
-            list.Replace(attachment, newAttachment);
-            attachment = newAttachment;
-        }
-
-        attachment = await StartUpload(attachment, list);
-        list.Replace(list.Items.First(a => a.Id == attachment.Id), attachment);
-    }
-
-    public async Task ApplyQualityAndStartUploads(AttachmentList list)
-    {
-        var preset = list.GlobalQuality;
-        foreach (var a in list.Items.Where(a => a.IsUploadPending).ToList())
-            await ConfirmImageQuality(list, a, preset);
-    }
-
-    private async Task EstimateAndUpdateLength(AttachmentList list, Attachment attachment)
-    {
-        if (attachment.FileProvider is not WebFileProvider webFileProvider)
-            return;
-
-        try {
-            var presets = new ImageResizePreset[] {
-                new((int)ImageQualityPreset.FullHD),
-                new((int)ImageQualityPreset.HD),
-                new((int)ImageQualityPreset.SD),
-            };
-            var results = await webFileProvider.EstimateResizedSizes(presets).ConfigureAwait(true);
-            var current = list.Items.FirstOrDefault(a => a.Id == attachment.Id);
-            if (current is { IsUploadPending: true } && results.Length == 3)
-                list.Replace(current, current with { EstimatedSizes = [..results] });
-        }
-        catch {
-            // Estimation failed — keep original length.
-        }
-    }
-
-    private async Task<Attachment> StartUpload(Attachment attachment, AttachmentList list)
-    {
-        attachment = await AttachmentsController.InitUploadSession(attachment, list.MediaScope);
-        AttachmentsState.Register(attachment);
-        AttachmentsController.ResumeUpload(attachment);
-        return attachment;
     }
 
     private async Task<Attachment> CreateAttachment(IFileProvider fileProvider)
@@ -238,19 +197,143 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         return attachment;
     }
 
-    private static bool IsImagePreviewUrl(string? previewUrl)
+    private async Task AddAttachment(AttachmentList list, Attachment attachment)
     {
-        if (previewUrl.IsNullOrEmpty())
-            return false;
+        if (!attachment.IsProcessableImage) {
+            list.Add(await StartUpload(attachment, list.MediaScope));
+            return;
+        }
 
-        var decodedUrl = Uri.UnescapeDataString(previewUrl);
-        var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp" };
-        return imageExtensions.Any(ext => decodedUrl.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
+        var fileProvider = attachment.FileProvider!;
+        attachment.Cleanups.RemoveByKind(AttachmentCleanupKind.File);
+        attachment.Cleanups.Add(AttachmentCleanupFactory.ForSourceFile(fileProvider));
+        attachment = attachment with {
+            Source = new AttachmentSource(
+                fileProvider, attachment.FileName, attachment.FileType, attachment.Length, attachment.Size),
+            IsProcessing = true,
+        };
+        SetSourcePreview(attachment);
+        list.Add(attachment);
+        _ = StartImageProcessing(list, attachment.Id, list.ImageQuality);
     }
+
+    private async Task Reprocess(AttachmentList list, AttachmentId id, ImageQualityPreset preset)
+    {
+        if (_imageProcessings.TryRemove(id, out var previous)) {
+            previous.CancellationTokenSource.CancelAndDisposeSilently();
+            await previous.Task.SilentAwait();
+        }
+        if (list.Items.FirstOrDefault(a => a.Id == id) is not { Source: { } source } attachment)
+            return;
+
+        if (!attachment.UploadSessionId.IsNullOrEmpty()) {
+            AttachmentsState.Unregister(id);
+            attachment.Cleanups.RemoveByKind(AttachmentCleanupKind.UploadSession);
+            // The source is processed again below, so its file must survive the released session
+            var isSourceUpload = ReferenceEquals(attachment.FileProvider, source.FileProvider);
+            UploadSessions.ReleaseReference(attachment.UploadSessionId, mustKeepFile: isSourceUpload);
+        }
+        var reset = attachment with { UploadSessionId = "", IsProcessing = true };
+        list.Replace(attachment, reset);
+        SetSourcePreview(reset);
+        await StartImageProcessing(list, id, preset);
+    }
+
+    private Task StartImageProcessing(AttachmentList list, AttachmentId id, ImageQualityPreset preset)
+    {
+        var cancellationTokenSource = new CancellationTokenSource();
+        var task = ProcessImageAndUpload(list, id, preset, cancellationTokenSource.Token);
+        var processing = new ImageProcessing(cancellationTokenSource, task);
+        _imageProcessings[id] = processing;
+        _ = task.ContinueWith(
+            _ => {
+                // Reprocess removes (and disposes) a superseded entry itself
+                if (_imageProcessings.TryRemove(new KeyValuePair<AttachmentId, ImageProcessing>(id, processing)))
+                    cancellationTokenSource.Dispose();
+            },
+            TaskScheduler.Default);
+        return task;
+    }
+
+    private async Task ProcessImageAndUpload(
+        AttachmentList list,
+        AttachmentId id,
+        ImageQualityPreset preset,
+        CancellationToken cancellationToken)
+    {
+        try {
+            if (list.Items.FirstOrDefault(a => a.Id == id) is not { Source: { } source })
+                return;
+
+            var result = await ImageAttachmentProcessor
+                .Process(source.FileProvider, source.Size, preset, cancellationToken);
+            var current = list.Items.FirstOrDefault(a => a.Id == id);
+            if (cancellationToken.IsCancellationRequested || current is not { } attachment) {
+                // Only a processed file is ours to delete; a null provider means the source itself
+                if (result?.FileProvider is { } processedFileProvider)
+                    await processedFileProvider.ClearForRemoving();
+                return;
+            }
+
+            var processed = result?.FileProvider is null
+                ? attachment with {
+                    FileProvider = source.FileProvider,
+                    FileName = source.FileName,
+                    FileType = source.FileType,
+                    Length = source.Length,
+                    Size = source.Size,
+                    SizeEstimate = result?.SizeEstimate ?? attachment.SizeEstimate,
+                }
+                : attachment with {
+                    FileProvider = result.FileProvider,
+                    FileName = result.FileProvider.Metadata.FileName,
+                    FileType = result.FileProvider.Metadata.FileType,
+                    Length = result.FileProvider.Metadata.Length,
+                    Size = result.Size,
+                    SizeEstimate = result.SizeEstimate ?? attachment.SizeEstimate,
+                };
+            processed = processed with { IsProcessing = false, SelectedQuality = preset };
+            processed = await StartUpload(processed, list.MediaScope);
+            if (list.Items.FirstOrDefault(a => a.Id == id) != attachment) {
+                // Removed while its upload session was being created: release what StartUpload registered
+                AttachmentsState.Unregister(id);
+                var isSourceUpload = ReferenceEquals(processed.FileProvider, source.FileProvider);
+                UploadSessions.ReleaseReference(processed.UploadSessionId, mustKeepFile: isSourceUpload);
+                return;
+            }
+
+            list.Replace(attachment, processed);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            // A newer preset took over
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to process or upload attachment '{AttachmentId}'", id);
+            UICommander.ShowError(StandardError.Constraint("Failed to add file attachment."));
+        }
+    }
+
+    private async Task<Attachment> StartUpload(Attachment attachment, string mediaScope)
+    {
+        attachment = await AttachmentsController.InitUploadSession(attachment, mediaScope);
+        AttachmentsState.Register(attachment);
+        AttachmentsController.ResumeUpload(attachment);
+        return attachment;
+    }
+
+    private void SetSourcePreview(Attachment attachment)
+    {
+        if (attachment is SourceAttachment sourceAttachment)
+            AttachmentsState.SetPreview(attachment.Id, AttachmentPreview.From(sourceAttachment.Preview));
+    }
+
+    // Nested types
 
     private struct CreateWebFileProviderResult
     {
         public string PreviewUrl { get; init; }
         public IJSObjectReference FileProvider { get; init; }
     }
+
+    private sealed record ImageProcessing(CancellationTokenSource CancellationTokenSource, Task Task);
 }

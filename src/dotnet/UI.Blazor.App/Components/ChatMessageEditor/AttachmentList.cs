@@ -1,22 +1,22 @@
+using ActualChat.UI.Blazor.App.Services;
+
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class AttachmentList : IAttachmentList
+public sealed class AttachmentList : IAttachmentList
 {
     private ImmutableList<Attachment> _attachments = ImmutableList<Attachment>.Empty;
     private IAttachmentListEventsListener? _listener;
 
     public int Count => _attachments.Count;
     public IEnumerable<Attachment> Items => _attachments;
-    public ImageQualityPreset GlobalQuality { get; private set; } = ImageQualityPreset.Original;
-    public bool HasCompressibleAttachments => _attachments.Any(a => a.IsResizableImage);
-    public int CompressibleCount => _attachments.Count(a => a.IsResizableImage);
-    public long NonCompressibleTotalLength => _attachments.Where(a => !a.IsResizableImage).Sum(a => a.Length);
+    public ImageQualityPreset ImageQuality { get; private set; }
+    public bool HasProcessableImages => _attachments.Any(a => a.Source is not null);
     public event EventHandler? Changed;
-
     public string MediaScope { get; init; } = "";
 
-    public void SetGlobalQuality(ImageQualityPreset preset) {
-        GlobalQuality = preset;
+    public void SetImageQuality(ImageQualityPreset preset)
+    {
+        ImageQuality = preset;
         RaiseChanged();
     }
 
@@ -31,11 +31,13 @@ public class AttachmentList : IAttachmentList
         var index = _attachments.IndexOf(oldAttachment);
         if (index < 0)
             throw StandardError.Internal("Attachment not found.");
+
         _attachments = _attachments.SetItem(index, newAttachment);
         RaiseChanged();
     }
 
-    public async Task Remove(Attachment attachment) {
+    public async Task Remove(Attachment attachment)
+    {
         EnsureBelongsToList(attachment);
         _attachments = _attachments.Remove(attachment);
         RaiseChanged();
@@ -52,6 +54,7 @@ public class AttachmentList : IAttachmentList
     {
         if (_attachments.IsEmpty)
             return;
+
         var clone = _attachments.ToArray();
         _attachments = _attachments.Clear();
         await RaiseAttachmentsRemoved(clone);
@@ -62,8 +65,11 @@ public class AttachmentList : IAttachmentList
     {
         if (_listener != null && _listener != listener)
             throw StandardError.Constraint("Already subscribed.");
+
         _listener = listener;
     }
+
+    // Private methods
 
     private void EnsureBelongsToList(Attachment attachment)
     {

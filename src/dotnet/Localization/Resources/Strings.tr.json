@@ -334,6 +334,8 @@
   "Editor_QualityOriginal": "Orijinal",
   "Editor_QualityFullSize": "Tam boyut",
   "Editor_QualityAppliesToPhotos": "{0} fotoğrafa uygulanır",
+  "Editor_QualityOriginalWithExif": "EXIF ile orijinal",
+  "Editor_QualityKeepsMetadata": "Konum ve kamera bilgilerini korur",
 
   "Alert_Alert_Format": "{0} için acil bildirim",
   "Alert_TargetEveryone": "herkes",

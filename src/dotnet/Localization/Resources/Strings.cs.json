@@ -334,6 +334,8 @@
   "Editor_QualityOriginal": "Original",
   "Editor_QualityFullSize": "Plná velikost",
   "Editor_QualityAppliesToPhotos": "Platí pro {0} fotografii|Platí pro {0} fotografie|Platí pro {0} fotografií",
+  "Editor_QualityOriginalWithExif": "Originál s EXIF",
+  "Editor_QualityKeepsMetadata": "Zachová polohu a údaje fotoaparátu",
 
   "Alert_Alert_Format": "Upozornit {0}",
   "Alert_TargetEveryone": "všechny",

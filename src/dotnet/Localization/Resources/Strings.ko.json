@@ -334,6 +334,8 @@
   "Editor_QualityOriginal": "원본",
   "Editor_QualityFullSize": "원본 크기",
   "Editor_QualityAppliesToPhotos": "{0}장의 사진에 적용",
+  "Editor_QualityOriginalWithExif": "원본(EXIF 포함)",
+  "Editor_QualityKeepsMetadata": "위치 및 카메라 정보 유지",
 
   "Alert_Alert_Format": "{0}에게 긴급 알림",
   "Alert_TargetEveryone": "모두",

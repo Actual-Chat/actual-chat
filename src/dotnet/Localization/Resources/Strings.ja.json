@@ -334,6 +334,8 @@
   "Editor_QualityOriginal": "オリジナル",
   "Editor_QualityFullSize": "フルサイズ",
   "Editor_QualityAppliesToPhotos": "{0} 枚の写真に適用",
+  "Editor_QualityOriginalWithExif": "オリジナル（EXIF付き）",
+  "Editor_QualityKeepsMetadata": "位置情報とカメラ情報を保持します",
 
   "Alert_Alert_Format": "{0} に緊急通知",
   "Alert_TargetEveryone": "全員",

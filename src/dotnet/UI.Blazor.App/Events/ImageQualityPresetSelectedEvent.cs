@@ -1,4 +1,4 @@
-using ActualChat.UI.Blazor.App.Components;
+using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Events;
 
