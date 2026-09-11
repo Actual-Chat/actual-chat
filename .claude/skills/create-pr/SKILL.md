@@ -110,23 +110,28 @@ the Voxt place: `s-pmMsV1UVKG-gz3ymbh6n3`. If the RoboKitty MCP is not wired up 
 setup, stop and tell the user the PR is open but unannounced — do not treat the PR as
 done.
 
-The message posts under **your own account**, so write it in your voice:
+The announcement is the title and the link, nothing more:
 
 ```
-PR #4378 — feat(ptt): make gestures reply-only and widen the stop surface
-https://github.com/Actual-Chat/actual-chat/pull/4378
-
-Narrows where PTT gestures can OPEN the mic and widens where they can CLOSE it.
-Opening the app no longer arms flip/shake — only voice does; face-down and pocket
-now both require the proximity sensor covered, which kills the mid-air false stop.
-
-Tests 811 unit + 105 integration green; verified on device (CPH2747).
+PR #4494 — fix(threads): notifications, Threads-tab unread badge, mention picker and back button
+https://github.com/Actual-Chat/actual-chat/pull/4494
 ```
 
-Title line, URL, blank line, then a few lines of what changed, what specifically needs
-a reviewer's eyes (security-relevant commits, subtle invariants), and the test status.
-Voxt renders GitHub-flavored Markdown — use real markup, but relative links resolve to
-nothing, so link absolute or just name the file.
+A reviewer decides from the title whether to open the PR; everything else lives in its
+body. Add **at most one short line** under the URL, and only when a reviewer would
+otherwise miss something that matters before merge — a changed contract, an open
+question for the team, the one path the fix targets that nobody has run:
+
+```
+PR #4495 — fix(pooling): stop SharedResourcePool.Rent from retrying a failed factory forever
+https://github.com/Actual-Chat/actual-chat/pull/4495
+Callers now get the factory error instead of a silent retry.
+```
+
+No mechanism, no file list, no test counts — that is the PR's Summary/Fix/Testing, and
+restating it in chat is exactly what the team asked to stop: a long post gets skimmed,
+and its first sentence can read as a change nobody agreed to. Mark drafts as
+`PR #N (draft) — …`.
 
 **One post per PR, ever.** No "added a second commit", no revised summaries, no
 re-posting after a push. The chat is a review queue, not a changelog — a follow-up post
@@ -143,6 +148,7 @@ their own confirmation. Never fold one into this step.
 |---|---|
 | PR created, chat never posted | Step 4 is part of the deliverable, not a follow-up |
 | Re-announcing after new commits | One post per PR; tell the user instead |
+| Announcement retells the PR body | Title + link; one extra line at most |
 | `gh pr create --fill` | Write a real Summary/Fix/Testing body |
 | PR left unassigned | `--assignee @me`, then verify with `gh pr view --json assignees` |
 | Body file in the repo root | Put it in `tmp/` |
