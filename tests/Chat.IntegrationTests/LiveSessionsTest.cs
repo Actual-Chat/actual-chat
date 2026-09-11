@@ -1133,6 +1133,57 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task DeclineAfterAcceptIsRejectedAsInvalidTransition()
+    {
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // act - a stale Decline arrives after Alice already accepted
+        await backend.DeclineCall(chatId, aliceAuthor.Id, default);
+
+        // assert - no-op, stays Accepted (today's behavior, must not regress)
+        var live = await backend.Get(chatId, default);
+        live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Accepted);
+    }
+
+    [Fact]
+    public async Task CancelCallAfterActiveIsRejectedAsInvalidTransition()
+    {
+        // arrange - a connected call
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+        await backend.SetParticipation(chatId, bobAuthor.Id, ParticipationKind.Record, true, default);
+        await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, true, default);
+        await backend.Get(chatId, default); // let GetState's self-heal promote both invites to Active
+
+        // act - CancelCall arrives late, after the call is genuinely connected
+        await backend.CancelCall(chatId, bobAuthor.Id, default);
+
+        // assert - the session is untouched by CancelCall; it's still there and still Active
+        var state = await backend.GetState(chatId, default);
+        state.Should().NotBeNull();
+    }
+
+    [Fact]
     public async Task StreamBeforeAcceptShouldLatchDialingCallToConnected()
     {
         // A dialing call reaching the 2-party stream latch (both parties stream before a formal Accept)

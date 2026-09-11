@@ -629,12 +629,13 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         using (Computed.BeginIsolation())
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
             var invite = await SafeGetInvite(chatId, inviteeAuthorId).ConfigureAwait(false);
-            if (invite is not { Status: CallInviteStatus.Ringing })
+            if (!EnsureValidTransition(chatId, inviteeAuthorId, nameof(AcceptCall),
+                    invite?.Status ?? CallInviteStatus.New, invite is { Status: CallInviteStatus.Ringing }))
                 return;
 
             var now = Clocks.SystemClock.Now;
             await _invites.Set(chatId.Value, inviteeAuthorId.Value,
-                    invite with { Status = CallInviteStatus.Accepted, RespondedAt = now })
+                    invite! with { Status = CallInviteStatus.Accepted, RespondedAt = now })
                 .ConfigureAwait(false);
 
             var state = await SafeGet(chatId).ConfigureAwait(false);
@@ -678,11 +679,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         using (Computed.BeginIsolation())
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
             var invite = await SafeGetInvite(chatId, inviteeAuthorId).ConfigureAwait(false);
-            if (invite is not { Status: CallInviteStatus.Ringing })
+            if (!EnsureValidTransition(chatId, inviteeAuthorId, nameof(DeclineCall),
+                    invite?.Status ?? CallInviteStatus.New, invite is { Status: CallInviteStatus.Ringing }))
                 return;
 
             await _invites.Set(chatId.Value, inviteeAuthorId.Value,
-                    invite with { Status = CallInviteStatus.Declined, RespondedAt = Clocks.SystemClock.Now })
+                    invite! with { Status = CallInviteStatus.Declined, RespondedAt = Clocks.SystemClock.Now })
                 .ConfigureAwait(false);
             var state = await SafeGet(chatId).ConfigureAwait(false);
             conversationId = state?.RingConversationId;
@@ -713,6 +715,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
             var state = await SafeGet(chatId).ConfigureAwait(false);
             if (state is null)
+                return;
+
+            var callState = await SafeGetCallState(chatId).ConfigureAwait(false);
+            var isValidStatus = callState is null or { Status: CallStatus.Dialing or CallStatus.Connecting };
+            if (!EnsureValidTransition(chatId, callerAuthorId, nameof(CancelCall),
+                    callState?.Status ?? CallStatus.None, isValidStatus))
                 return;
 
             conversationId = state.RingConversationId;
@@ -1156,6 +1164,20 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             return;
         await SetCallState(
             chatId, NewCallState(state, status, callState)).ConfigureAwait(false);
+    }
+
+    private bool EnsureValidTransition<TStatus>(
+        ChatId chatId, AuthorId authorId, string signalName,
+        TStatus currentStatus, bool isValid)
+        where TStatus : Enum
+    {
+        if (isValid)
+            return true;
+
+        Log.LogWarning(
+            "{SignalName} rejected for chat #{ChatId}, author #{AuthorId}: not valid from status {CurrentStatus}",
+            signalName, chatId, authorId, currentStatus);
+        return false;
     }
 
     private static TimeSpan CallStateTtl(CallStatus status)
