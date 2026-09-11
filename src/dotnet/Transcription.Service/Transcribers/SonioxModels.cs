@@ -77,3 +77,13 @@ public sealed class SonioxFileList
     [JsonPropertyName("files")] public SonioxFile[]? Files { get; set; }
     [JsonPropertyName("next_page_cursor")] public string? NextPageCursor { get; set; }
 }
+
+public sealed class SonioxTtsResponse
+{
+    [JsonPropertyName("stream_id")] public string? StreamId { get; set; }
+    [JsonPropertyName("audio")] public string? Audio { get; set; }
+    [JsonPropertyName("audio_end")] public bool AudioEnd { get; set; }
+    [JsonPropertyName("terminated")] public bool Terminated { get; set; }
+    [JsonPropertyName("error_code")] public int? ErrorCode { get; set; }
+    [JsonPropertyName("error_message")] public string? ErrorMessage { get; set; }
+}
