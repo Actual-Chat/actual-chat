@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Read `docs/CODING_STYLE.md` before writing C#/TS. No `Async` suffix; mixed brace style; control-flow statements on their own line followed by a blank line; no new `///` on members; comments only for non-obvious things.
-- Presets: `Uhd4K` (max 3840 px, default), `FullHd` (max 1920 px), `Original` (no re-encode, metadata stripped), `OriginalWithExif` (byte-exact, `KeepMetadata=true`).
+- Presets: `Uhd4K` (max 3840 px, default), `FullHd` (max 1920 px), `Original` (no re-encode, metadata stripped), `OriginalWithExif` (byte-exact, `KeepMetadata=true`). Both Original presets re-encode an image whose long side exceeds `Constants.Attachments.MaxImageSize` = 7680 down to 7680 px.
 - jpegli settings: distance `1.9`, subsampling `420`, progressive level `2`. Canvas fallback quality: `0.50` on WebKit, `0.75` elsewhere.
 - Worker RPC timeout: `30_000` ms; the worker processes one image at a time.
 - jpegli source: google/jpegli `031a0077f5799a6041004267fc12b956c1f52a20`, Emscripten `6.0.9`, no threads.
@@ -26,7 +26,7 @@
 
 1. **No per-preset result cache.** Changing the preset re-processes from the source (0.3-0.5 s per photo). Keeping processed files per preset alive would complicate cleanup for little gain.
 2. **Menu sizes come from the same worker call.** Processing with `4K` also encodes a `1080p` "estimate" output (and vice versa) from the same decode, so both sizes are known without a separate pass when the menu opens.
-3. **No "hide Original above 50 MP" rule.** The client doesn't decode for passthrough, so it doesn't know pixel counts; the server's existing pixel limit rejects such uploads with an error.
+3. **Original presets re-encode images whose long side exceeds 8K (7680 px) down to 7680 px** instead of hiding the Original options. The worker reads dimensions from the file header (JPEG SOF, PNG IHDR, WebP VP8/VP8L/VP8X, HEIF/AVIF `ispe`) without decoding, so `Original with EXIF` also goes through the worker; a file that comes out unchanged isn't copied (`isSource`). The server's chat-attachment pixel limit becomes 7680² (~59 MP) so a square 8K image is accepted; other image paths keep 50 MP.
 4. **Windows content URLs use a WebView2 custom-scheme registration** (`content` scheme, allowed origin `https://0.0.0.1`) instead of a same-origin `/in/content/` path: MAUI's own `WebResourceRequested` handler answers app-origin paths without an extension with `index.html`, which would race with ours. Task 1 verifies it.
 5. **`ImageQualityPreset` values are not pixel sizes**; `GetMaxSize()` is an extension method.
 
@@ -279,9 +279,9 @@ git commit -m "build(image-processing): vendor jpegli WebAssembly encoder"
 - Test: `tests/ts/unit/image-format.test.ts`, `tests/ts/unit/image-geometry.test.ts`, `tests/ts/unit/image-encoding-policy.test.ts`
 
 **Interfaces:**
-- Produces (contracts): `ImageFormat`, `ImageOutputKind = 'main' | 'estimate'`, `ImageOutputCodec = 'auto' | 'passthrough'`, `ImageOutputSpec { kind; maxSize: number | null; codec; stripMetadata: boolean }`, `ImageProcessRequest { outputs: ImageOutputSpec[] }`, `ImageOutput { kind; blob: Blob; mimeType: string; width: number; height: number }`, `ImageProcessResult { format: ImageFormat; outputs: ImageOutput[] }`, `ImageProcessorWorker { init(jpegliBaseUrl: string): Promise<void>; process(source: Blob, request: ImageProcessRequest): Promise<ImageProcessResult> }`.
+- Produces (contracts): `ImageFormat`, `ImageOutputKind = 'main' | 'estimate'`, `ImageOutputCodec = 'auto' | 'passthrough'`, `ImageOutputSpec { kind; maxSize: number | null; codec; stripMetadata: boolean; maxPassthroughSize: number | null }`, `ImageProcessRequest { outputs: ImageOutputSpec[] }`, `ImageOutput { kind; blob: Blob; mimeType: string; width: number; height: number; isSource: boolean }`, `ImageProcessResult { format: ImageFormat; outputs: ImageOutput[] }`, `ImageProcessorWorker { init(jpegliBaseUrl: string): Promise<void>; process(source: Blob, request: ImageProcessRequest): Promise<ImageProcessResult> }`.
 - Produces (bytes): `readAscii(bytes, offset, length): string`, `readUint16BE/readUint16LE/readUint32BE/readUint32LE(bytes, offset): number`, `writeUint32LE(bytes, offset, value): void`, `startsWith(bytes, offset, prefix: ArrayLike<number>): boolean`, `indexOfAscii(bytes, text): number`, `concatBytes(parts: Uint8Array[]): Uint8Array`.
-- Produces: `sniffImageFormat(bytes: Uint8Array): ImageFormat`, `isAnimatedImage(bytes, format): boolean`, `getImageMimeType(format): string`, `fitWithin(width, height, maxSize: number | null): ImageSize`, `chooseEncoding(format, isAnimated, codec): 'passthrough' | 'reencode'`.
+- Produces: `sniffImageFormat(bytes: Uint8Array): ImageFormat`, `isAnimatedImage(bytes, format): boolean`, `readImageDimensions(bytes, format): ImageSize | null` (header only, no decode; pre-orientation), `getImageMimeType(format): string`, `fitWithin(width, height, maxSize: number | null): ImageSize`, `chooseEncoding(format, isAnimated, codec, isOversized): 'passthrough' | 'reencode'`.
 
 - [ ] **Step 1: Add vitest aliases** (`vitest.config.ts`, after the `async-processor` alias)
 
@@ -303,7 +303,7 @@ git commit -m "build(image-processing): vendor jpegli WebAssembly encoder"
 
 ```ts
 import { describe, it, expect } from 'vitest';
-import { getImageMimeType, isAnimatedImage, sniffImageFormat } from 'image-processing/image-format';
+import { getImageMimeType, isAnimatedImage, readImageDimensions, sniffImageFormat } from 'image-processing/image-format';
 
 const ascii = (text: string): number[] => Array.from(text, c => c.charCodeAt(0));
 const bytesOf = (...parts: number[][]): Uint8Array => new Uint8Array(parts.flat());
@@ -349,6 +349,40 @@ describe('isAnimatedImage', () => {
     });
 });
 
+describe('readImageDimensions', () => {
+    it('should read JPEG dimensions from the SOF segment', () => {
+        const jpeg = bytesOf([0xFF, 0xD8], [0xFF, 0xE0, 0x00, 0x04, 0, 0], [0xFF, 0xC2, 0x00, 0x0B, 8, 0x0B, 0xB8, 0x0F, 0xA0, 3, 0, 0, 0]);
+
+        expect(readImageDimensions(jpeg, 'jpeg')).toEqual({ width: 4000, height: 3000 });
+    });
+
+    it('should read PNG dimensions from IHDR', () => {
+        const png = bytesOf(PNG_SIGNATURE, pngChunk('IHDR', [...u32be(8192), ...u32be(6144), 8, 6, 0, 0, 0]));
+
+        expect(readImageDimensions(png, 'png')).toEqual({ width: 8192, height: 6144 });
+    });
+
+    it('should read extended WebP dimensions from VP8X', () => {
+        const width = 9999;
+        const height = 4999;
+        const webp = bytesOf(ascii('RIFF'), [0, 0, 0, 0], ascii('WEBPVP8X'), [10, 0, 0, 0], [0, 0, 0, 0],
+            [width & 0xFF, (width >> 8) & 0xFF, width >> 16], [height & 0xFF, (height >> 8) & 0xFF, height >> 16]);
+
+        expect(readImageDimensions(webp, 'webp')).toEqual({ width: 10000, height: 5000 });
+    });
+
+    it('should read the largest HEIF ispe box', () => {
+        const ispe = (w: number, h: number): number[] => [...u32be(20), ...ascii('ispe'), 0, 0, 0, 0, ...u32be(w), ...u32be(h)];
+        const heif = bytesOf(u32be(16), ascii('ftypheic'), [0, 0, 0, 0], ispe(512, 512), ispe(16320, 12240));
+
+        expect(readImageDimensions(heif, 'heif')).toEqual({ width: 16320, height: 12240 });
+    });
+
+    it('should return null for formats it does not read', () => {
+        expect(readImageDimensions(bytesOf(ascii('GIF89a')), 'gif')).toBeNull();
+    });
+});
+
 describe('getImageMimeType', () => {
     it('should map formats to MIME types', () => {
         expect(getImageMimeType('jpeg')).toBe('image/jpeg');
@@ -389,18 +423,24 @@ import { chooseEncoding } from 'image-processing/image-encoding-policy';
 
 describe('chooseEncoding', () => {
     it('should pass through when requested or animated', () => {
-        expect(chooseEncoding('jpeg', false, 'passthrough')).toBe('passthrough');
-        expect(chooseEncoding('webp', true, 'auto')).toBe('passthrough');
+        expect(chooseEncoding('jpeg', false, 'passthrough', false)).toBe('passthrough');
+        expect(chooseEncoding('webp', true, 'auto', false)).toBe('passthrough');
+    });
+
+    it('should re-encode an oversized passthrough image unless it must never be re-encoded', () => {
+        expect(chooseEncoding('heif', false, 'passthrough', true)).toBe('reencode');
+        expect(chooseEncoding('webp', true, 'passthrough', true)).toBe('passthrough');
+        expect(chooseEncoding('gif', false, 'passthrough', true)).toBe('passthrough');
     });
 
     it('should pass through formats that must not be re-encoded', () => {
         for (const format of ['gif', 'svg', 'unknown'] as const)
-            expect(chooseEncoding(format, false, 'auto')).toBe('passthrough');
+            expect(chooseEncoding(format, false, 'auto', false)).toBe('passthrough');
     });
 
     it('should re-encode decodable still images', () => {
         for (const format of ['jpeg', 'png', 'webp', 'bmp', 'heif', 'avif'] as const)
-            expect(chooseEncoding(format, false, 'auto')).toBe('reencode');
+            expect(chooseEncoding(format, false, 'auto', false)).toBe('reencode');
     });
 });
 ```
@@ -422,6 +462,8 @@ export interface ImageOutputSpec {
     maxSize: number | null;
     codec: ImageOutputCodec;
     stripMetadata: boolean;
+    /** A passthrough output of an image whose long side exceeds this is re-encoded within maxSize instead. */
+    maxPassthroughSize: number | null;
 }
 
 export interface ImageProcessRequest {
@@ -435,6 +477,8 @@ export interface ImageOutput {
     /** 0 for a passthrough output: the image isn't decoded then. */
     width: number;
     height: number;
+    /** True when blob is the source itself, i.e. nothing had to change. */
+    isSource: boolean;
 }
 
 export interface ImageProcessResult {
@@ -519,7 +563,8 @@ export function concatBytes(parts: Uint8Array[]): Uint8Array {
 
 ```ts
 import type { ImageFormat } from './image-processing-contracts';
-import { readAscii, readUint32BE, startsWith } from './image-bytes';
+import type { ImageSize } from './image-geometry';
+import { readAscii, readUint16BE, readUint16LE, readUint32BE, readUint32LE, startsWith } from './image-bytes';
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 const HEIF_BRANDS = new Set(['heic', 'heix', 'hevc', 'hevx', 'heif', 'heim', 'heis', 'mif1', 'msf1']);
@@ -564,11 +609,76 @@ export function isAnimatedImage(bytes: Uint8Array, format: ImageFormat): boolean
     return false;
 }
 
+/** Reads the stored (pre-orientation) dimensions from the header without decoding the image. */
+export function readImageDimensions(bytes: Uint8Array, format: ImageFormat): ImageSize | null {
+    switch (format) {
+    case 'jpeg':
+        return readJpegDimensions(bytes);
+    case 'png':
+        return bytes.length >= 24 ? { width: readUint32BE(bytes, 16), height: readUint32BE(bytes, 20) } : null;
+    case 'webp':
+        return readWebpDimensions(bytes);
+    case 'heif':
+    case 'avif':
+        return readLargestIspeDimensions(bytes);
+    default:
+        return null;
+    }
+}
+
 export function getImageMimeType(format: ImageFormat): string {
     return MIME_TYPES[format];
 }
 
 // Private methods
+
+function readJpegDimensions(bytes: Uint8Array): ImageSize | null {
+    let offset = 2;
+    while (offset + 9 <= bytes.length && bytes[offset] === 0xFF) {
+        const marker = bytes[offset + 1];
+        const isStartOfFrame = marker >= 0xC0 && marker <= 0xCF && marker !== 0xC4 && marker !== 0xC8 && marker !== 0xCC;
+        if (isStartOfFrame)
+            return { width: readUint16BE(bytes, offset + 7), height: readUint16BE(bytes, offset + 5) };
+        if (marker === 0xDA)
+            return null;
+
+        offset += 2 + readUint16BE(bytes, offset + 2);
+    }
+    return null;
+}
+
+function readWebpDimensions(bytes: Uint8Array): ImageSize | null {
+    const chunk = readAscii(bytes, 12, 4);
+    if (chunk === 'VP8X' && bytes.length >= 30)
+        return { width: 1 + readUint24LE(bytes, 24), height: 1 + readUint24LE(bytes, 27) };
+    if (chunk === 'VP8 ' && bytes.length >= 30)
+        return { width: readUint16LE(bytes, 26) & 0x3FFF, height: readUint16LE(bytes, 28) & 0x3FFF };
+    if (chunk === 'VP8L' && bytes.length >= 25) {
+        const bits = readUint32LE(bytes, 21);
+        return { width: (bits & 0x3FFF) + 1, height: ((bits >>> 14) & 0x3FFF) + 1 };
+    }
+
+    return null;
+}
+
+function readLargestIspeDimensions(bytes: Uint8Array): ImageSize | null {
+    // Every image item - grid tiles, thumbnails, the primary image - has an 'ispe'; the largest is the full image
+    let result: ImageSize | null = null;
+    for (let offset = 4; offset + 16 <= bytes.length; offset++) {
+        if (bytes[offset] !== 0x69 || readAscii(bytes, offset, 4) !== 'ispe')
+            continue;
+
+        const width = readUint32BE(bytes, offset + 8);
+        const height = readUint32BE(bytes, offset + 12);
+        if (!result || width * height > result.width * result.height)
+            result = { width, height };
+    }
+    return result;
+}
+
+function readUint24LE(bytes: Uint8Array, offset: number): number {
+    return bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16);
+}
 
 function getIsoBaseMediaFormat(bytes: Uint8Array): ImageFormat {
     const boxEnd = Math.min(readUint32BE(bytes, 0), bytes.length);
@@ -634,18 +744,16 @@ import type { ImageFormat, ImageOutputCodec } from './image-processing-contracts
 
 export type ImageEncoding = 'passthrough' | 'reencode';
 
-export function chooseEncoding(format: ImageFormat, isAnimated: boolean, codec: ImageOutputCodec): ImageEncoding {
-    if (codec === 'passthrough' || isAnimated)
+export function chooseEncoding(
+    format: ImageFormat,
+    isAnimated: boolean,
+    codec: ImageOutputCodec,
+    isOversized: boolean,
+): ImageEncoding {
+    if (isAnimated || format === 'gif' || format === 'svg' || format === 'unknown')
         return 'passthrough';
 
-    switch (format) {
-    case 'gif':
-    case 'svg':
-    case 'unknown':
-        return 'passthrough';
-    default:
-        return 'reencode';
-    }
+    return codec === 'auto' || isOversized ? 'reencode' : 'passthrough';
 }
 ```
 
@@ -1198,7 +1306,7 @@ git commit -m "feat(image-processing): jpegli WASM encoder wrapper"
 
 **Interfaces:**
 - Consumes: Tasks 3-5 (`sniffImageFormat`, `isAnimatedImage`, `getImageMimeType`, `fitWithin`, `chooseEncoding`, `stripImageMetadata`, `JpegliEncoder`), `rpcServer`/`rpcClient` (`rpc`), `bootstrapWorker` (`worker-bootstrap`), `Versioning.mapPath` (`versioning`), `DeviceInfo` (`device-info`).
-- Produces: `class ImageProcessor { static process(source: Blob | string, request: ImageProcessRequest): Promise<ImageProcessResult> }`. For a `string` source the URL is fetched on the main thread. Outputs come back in request order; a re-encoded opaque image is `image/jpeg`, a transparent one `image/png`; passthrough outputs have `width = height = 0`.
+- Produces: `class ImageProcessor { static process(source: Blob | string, request: ImageProcessRequest): Promise<ImageProcessResult> }`. For a `string` source the URL is fetched on the main thread. Outputs come back in request order; a re-encoded opaque image is `image/jpeg`, a transparent one `image/png`; passthrough outputs have `width = height = 0`. A passthrough spec whose image has a longer side than `maxPassthroughSize` (read from the header) is re-encoded within `maxSize`. `isSource` marks an output that is the unchanged source `Blob`.
 
 - [ ] **Step 1: Write the worker** (`image-processor-worker.ts`)
 
@@ -1207,7 +1315,7 @@ import { rpcServer } from 'rpc';
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { chooseEncoding } from './image-encoding-policy';
-import { getImageMimeType, isAnimatedImage, sniffImageFormat } from './image-format';
+import { getImageMimeType, isAnimatedImage, readImageDimensions, sniffImageFormat } from './image-format';
 import { fitWithin } from './image-geometry';
 import { JpegliEncoder } from './jpegli-encoder';
 import { stripImageMetadata } from './metadata-stripper';
@@ -1253,17 +1361,20 @@ async function processImage(source: Blob, request: ImageProcessRequest): Promise
     const bytes = new Uint8Array(await source.arrayBuffer());
     const format = sniffImageFormat(bytes);
     const isAnimated = isAnimatedImage(bytes, format);
+    const dimensions = readImageDimensions(bytes, format);
+    const longSide = dimensions ? Math.max(dimensions.width, dimensions.height) : 0;
     const outputs: ImageOutput[] = [];
     let bitmap: ImageBitmap | null = null;
     try {
         for (const spec of request.outputs) {
-            if (chooseEncoding(format, isAnimated, spec.codec) === 'passthrough') {
-                outputs.push(createPassthroughOutput(bytes, format, spec));
+            const isOversized = spec.maxPassthroughSize !== null && longSide > spec.maxPassthroughSize;
+            if (chooseEncoding(format, isAnimated, spec.codec, isOversized) === 'passthrough') {
+                outputs.push(createPassthroughOutput(source, bytes, format, spec));
                 continue;
             }
 
             bitmap ??= await createImageBitmap(source);
-            outputs.push(await reencode(bitmap, bytes, format, spec));
+            outputs.push(await reencode(bitmap, source, bytes, format, spec));
         }
         debugLog?.log(`processImage: ${format}, ${outputs.length} output(s) in ${Math.round(performance.now() - startedAt)}ms`);
         return { format, outputs };
@@ -1273,14 +1384,22 @@ async function processImage(source: Blob, request: ImageProcessRequest): Promise
     }
 }
 
-function createPassthroughOutput(bytes: Uint8Array, format: ImageFormat, spec: ImageOutputSpec): ImageOutput {
+function createPassthroughOutput(
+    source: Blob,
+    bytes: Uint8Array,
+    format: ImageFormat,
+    spec: ImageOutputSpec,
+): ImageOutput {
     const data = spec.stripMetadata ? stripImageMetadata(bytes, format) : bytes;
     const mimeType = getImageMimeType(format);
-    return { kind: spec.kind, blob: new Blob([data], { type: mimeType }), mimeType, width: 0, height: 0 };
+    const isSource = data === bytes;
+    const blob = isSource ? source : new Blob([data], { type: mimeType });
+    return { kind: spec.kind, blob, mimeType, width: 0, height: 0, isSource };
 }
 
 async function reencode(
     bitmap: ImageBitmap,
+    source: Blob,
     bytes: Uint8Array,
     format: ImageFormat,
     spec: ImageOutputSpec,
@@ -1293,23 +1412,34 @@ async function reencode(
     const image = context.getImageData(0, 0, size.width, size.height);
     if (hasTransparentPixels(image.data)) {
         const png = await canvas.convertToBlob({ type: 'image/png' });
-        return { kind: spec.kind, blob: png, mimeType: 'image/png', width: size.width, height: size.height };
+        return {
+            kind: spec.kind,
+            blob: png,
+            mimeType: 'image/png',
+            width: size.width,
+            height: size.height,
+            isSource: false,
+        };
     }
 
     const jpeg = await encodeJpeg(canvas, image);
     const isUnscaledJpeg = format === 'jpeg' && size.width === bitmap.width && size.height === bitmap.height;
     if (isUnscaledJpeg) {
         const stripped = stripImageMetadata(bytes, format);
-        if (stripped.length <= jpeg.size)
-            return {
-                kind: spec.kind,
-                blob: new Blob([stripped], { type: 'image/jpeg' }),
-                mimeType: 'image/jpeg',
-                width: size.width,
-                height: size.height,
-            };
+        if (stripped.length <= jpeg.size) {
+            const isSource = stripped === bytes;
+            const blob = isSource ? source : new Blob([stripped], { type: 'image/jpeg' });
+            return { kind: spec.kind, blob, mimeType: 'image/jpeg', width: size.width, height: size.height, isSource };
+        }
     }
-    return { kind: spec.kind, blob: jpeg, mimeType: 'image/jpeg', width: size.width, height: size.height };
+    return {
+        kind: spec.kind,
+        blob: jpeg,
+        mimeType: 'image/jpeg',
+        width: size.width,
+        height: size.height,
+        isSource: false,
+    };
 }
 
 async function encodeJpeg(canvas: OffscreenCanvas, image: ImageData): Promise<Blob> {
@@ -1446,7 +1576,7 @@ git commit -m "feat(image-processing): image processor worker with jpegli and ca
 - Produces (called from C# in Task 10):
   - `blazorApp.ImageProcessingInterop.processUrl(url: string, request: ImageProcessRequest): Promise<ProcessedStreamImage>` where `ProcessedStreamImage = ProcessedImageInfo & { stream: JSStreamReference }`.
   - JS `WebFileProvider.processImage(request): Promise<ProcessedWebImage>` where `ProcessedWebImage = ProcessedImageInfo & { fileProvider: JSObjectReference; previewUrl: string }`.
-  - `ProcessedImageInfo { mimeType: string; width: number; height: number; size: number; estimateSizes: number[] }` - `width`/`height`/`size`/`mimeType` describe the `main` output; `estimateSizes` lists the byte sizes of `estimate` outputs in request order.
+  - `ProcessedImageInfo { mimeType: string; width: number; height: number; size: number; estimateSizes: number[]; isSource: boolean }` - `width`/`height`/`size`/`mimeType` describe the `main` output; `estimateSizes` lists the byte sizes of `estimate` outputs in request order. When `isSource` is true the main output is the unchanged source: `stream` / `fileProvider` are `null` and nothing is copied.
 
 - [ ] **Step 1: Write the interop module** (`image-processing-interop.ts`)
 
@@ -1460,6 +1590,7 @@ export interface ProcessedImageInfo {
     height: number;
     size: number;
     estimateSizes: number[];
+    isSource: boolean;
 }
 
 export interface ProcessedStreamImage extends ProcessedImageInfo {
@@ -1471,7 +1602,8 @@ export class ImageProcessingInterop {
     public static async processUrl(url: string, request: ImageProcessRequest): Promise<ProcessedStreamImage> {
         const result = await ImageProcessor.process(url, request);
         const main = getMainOutput(result);
-        return { ...getProcessedImageInfo(result), stream: DotNet.createJSStreamReference(main.blob) };
+        const stream = main.isSource ? null : DotNet.createJSStreamReference(main.blob);
+        return { ...getProcessedImageInfo(result), stream };
     }
 }
 
@@ -1491,6 +1623,7 @@ export function getProcessedImageInfo(result: ImageProcessResult): ProcessedImag
         height: main.height,
         size: main.blob.size,
         estimateSizes: result.outputs.filter(o => o.kind === 'estimate').map(o => o.blob.size),
+        isSource: main.isSource,
     };
 }
 ```
@@ -1512,7 +1645,11 @@ Add after `getBlob()`:
      *  handle: an upload of a processed image can't resume from the original file after reload. */
     public async processImage(request: ImageProcessRequest): Promise<ProcessedImageInfo & CreateWebFileProviderResult> {
         const result = await ImageProcessor.process(this.getBlob(), request);
-        const provider = new WebFileProvider('', null, getMainOutput(result).blob, null);
+        const main = getMainOutput(result);
+        if (main.isSource)
+            return { ...getProcessedImageInfo(result), previewUrl: '', fileProvider: null };
+
+        const provider = new WebFileProvider('', null, main.blob, null);
         return {
             ...getProcessedImageInfo(result),
             previewUrl: provider.createPreviewUrl(),
@@ -1940,13 +2077,13 @@ git commit -m "feat(uploads): lossless server-side image metadata stripper"
 
 **Files:**
 - Create: `src/dotnet/Core.Server/Uploads/AttachmentImageUploadProcessor.cs`
-- Modify: `src/dotnet/Core.Server/Uploads/UploadedFile.cs:10-13`, `src/dotnet/Api/Media/Upload.cs:29-33`, `src/dotnet/Media.Service/UploadsBackend.cs:321-337`, `src/dotnet/Core.Server/Uploads/ImageUploadProcessor.cs:10-15`, `src/dotnet/Core.Server/Module/CoreServerModule.cs:47-48`
+- Modify: `src/dotnet/Api/Constants.cs:184-186`, `src/dotnet/Core.Server/Uploads/ImageLimits.cs:27-38`, `src/dotnet/Core.Server/Uploads/UploadedFile.cs:10-13`, `src/dotnet/Api/Media/Upload.cs:29-33`, `src/dotnet/Media.Service/UploadsBackend.cs:321-337`, `src/dotnet/Core.Server/Uploads/ImageUploadProcessor.cs:10-15`, `src/dotnet/Core.Server/Module/CoreServerModule.cs:47-48`
 - Modify: `tests/Testing/TestImages/TestImages.cs`, `tests/Core.Server.UnitTests/Uploads/ImageUploadProcessorTest.cs:26-37`
 - Test: `tests/Core.Server.UnitTests/Uploads/AttachmentImageUploadProcessorTest.cs`, `tests/Media.UnitTests/UploadTest.cs`
 
 **Interfaces:**
 - Consumes: `ImageMetadataStripper.Strip` (Task 8), `ImageLimits` (existing).
-- Produces: `UploadedFile.KeepMetadata { get; init; }`; `Upload.KeepMetadata` (metadata key `"KeepMetadata"`, used by the client in Task 12); `AttachmentImageUploadProcessor` handles `image/*` except GIF/SVG for `MediaKind.ChatEntryAttachment`.
+- Produces: `Constants.Attachments.MaxImageSize` (7680) and `Constants.Attachments.MaxImagePixelCount` (7680²); `UploadedFile.KeepMetadata { get; init; }`; `Upload.KeepMetadata` (metadata key `"KeepMetadata"`, used by the client in Task 12); `AttachmentImageUploadProcessor` handles `image/*` except GIF/SVG for `MediaKind.ChatEntryAttachment`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -2068,6 +2205,19 @@ public class AttachmentImageUploadProcessorTest : IDisposable
     }
 
     [Fact]
+    public async Task ShouldAcceptSquare8KImage()
+    {
+        // arrange
+        var upload = TestImages.CreateUploadedFile("square.png", "image/png", TestImages.CreatePngHeader(7680, 7680));
+
+        // act
+        var result = await Process(upload);
+
+        // assert
+        result.Size.Should().Be(new Size2D(7680, 7680), "above ImageLimits.MaxPixelCount, but within the 8K bound");
+    }
+
+    [Fact]
     public async Task ShouldStoreUndecodableImageAsBinary()
     {
         // arrange
@@ -2137,7 +2287,25 @@ In `ImageUploadProcessorTest.ShouldSupportExpectedContentTypes`, change the two 
 Run: `dotnet test tests/Core.Server.UnitTests --filter "FullyQualifiedName~AttachmentImageUploadProcessorTest|FullyQualifiedName~ImageUploadProcessorTest"` and `dotnet test tests/Media.UnitTests --filter "FullyQualifiedName~UploadTest"`
 Expected: FAIL - `AttachmentImageUploadProcessor`, `UploadedFile.KeepMetadata` and `Upload.KeepMetadata` don't exist.
 
-- [ ] **Step 3: Add `KeepMetadata`**
+- [ ] **Step 3: Add the 8K bound and `KeepMetadata`**
+
+`Constants.cs` - in `Attachments`, after `FileCountLimit`:
+
+```csharp
+        // 8K: the client re-encodes a longer side down to it, even for "Original"
+        public const int MaxImageSize = 7680;
+        public const long MaxImagePixelCount = (long)MaxImageSize * MaxImageSize;
+```
+
+`ImageLimits.cs` - let a caller raise the pixel limit (the rest of the method stays as is):
+
+```csharp
+    public static ImageInfo RequireWithinLimits(this ImageInfo imageInfo, long maxPixelCount = MaxPixelCount)
+    {
+        var pixelCount = (long)imageInfo.Width * imageInfo.Height;
+        if (pixelCount > maxPixelCount)
+            throw StandardError.Constraint($"Image is too big: {imageInfo.Width}x{imageInfo.Height}.");
+```
 
 `UploadedFile.cs` - in the record body, after `Length`:
 
@@ -2212,7 +2380,8 @@ public sealed class AttachmentImageUploadProcessor(IServiceProvider services) : 
         if (imageInfo is null)
             return new ProcessedFile(upload.AsBinaryFile(), null);
 
-        imageInfo.RequireWithinLimits();
+        // Nothing is decoded here, so the bound is the client's 8K limit rather than the decode limit
+        imageInfo.RequireWithinLimits(Constants.Attachments.MaxImagePixelCount);
         var size = GetDisplaySize(imageInfo);
         if (upload.KeepMetadata)
             return new ProcessedFile(upload, size);
@@ -2314,11 +2483,11 @@ The new `ImageQualityPreset` lives in `ActualChat.UI.Blazor.App.Services`. The P
 **Interfaces:**
 - Consumes: `MauiFileProvider.GetContentUrl` (Task 1), `blazorApp.ImageProcessingInterop.processUrl` and JS `WebFileProvider.processImage` (Task 7).
 - Produces:
-  - `enum ImageQualityPreset { Uhd4K = 0, FullHd, Original, OriginalWithExif }`; extensions `GetMaxSize(): int?`, `IsReencoding(): bool`, `ToRequest(): ImageProcessRequest?` (null for `OriginalWithExif`).
-  - `record ImageProcessRequest(ImageOutputSpec[] Outputs)`, `record ImageOutputSpec(string Kind, int? MaxSize, string Codec, bool StripMetadata)` with `Main(int)`, `Estimate(int)`, `StrippedOriginal`.
+  - `enum ImageQualityPreset { Uhd4K = 0, FullHd, Original, OriginalWithExif }`; extensions `GetMaxSize(): int?` (null for the Original presets), `ToRequest(): ImageProcessRequest`.
+  - `record ImageProcessRequest(ImageOutputSpec[] Outputs)`, `record ImageOutputSpec(string Kind, int? MaxSize, string Codec, bool StripMetadata, int? MaxPassthroughSize = null)` with `Main(int)`, `Estimate(int)`, `Original(bool stripMetadata)`.
   - `record ImageSizeEstimate(long Uhd4KLength, long FullHdLength)`, `record ImageProcessingResult(IFileProvider FileProvider, Size2D Size, ImageSizeEstimate? SizeEstimate)`.
   - `interface IProcessedImageStore { Task<MauiFileProvider> Save(Stream content, FileMetadata metadata, CancellationToken cancellationToken); }` (implemented in Task 11).
-  - `ImageAttachmentProcessor.Process(IFileProvider source, Size2D sourceSize, ImageQualityPreset preset, CancellationToken cancellationToken): Task<ImageProcessingResult?>` - `null` means "upload the source as-is" (`OriginalWithExif`, unsupported provider, or a processing failure, which is logged).
+  - `ImageAttachmentProcessor.Process(IFileProvider source, Size2D sourceSize, ImageQualityPreset preset, CancellationToken cancellationToken): Task<ImageProcessingResult?>` - `null` means "upload the source as-is": the output is the unchanged source, the provider type is unsupported, or processing failed (logged).
   - `WebFileProvider.ProcessImage(ImageProcessRequest request, CancellationToken cancellationToken): ValueTask<ProcessedWebImage>`.
 
 - [ ] **Step 1: Write the failing test** (`tests/Chat.UI.Blazor.UnitTests/ImageQualityPresetTest.cs`)
@@ -2344,11 +2513,15 @@ public sealed class ImageQualityPresetTest
     }
 
     [Fact]
-    public void OriginalPresetsShouldNotReencode()
+    public void OriginalPresetsShouldPassFilesThroughUnlessAbove8K()
     {
-        // act & assert
-        ImageQualityPreset.Original.ToRequest()!.Outputs.Should().Equal(ImageOutputSpec.StrippedOriginal);
-        ImageQualityPreset.OriginalWithExif.ToRequest().Should().BeNull();
+        // act
+        var original = ImageQualityPreset.Original.ToRequest().Outputs.Single();
+        var originalWithExif = ImageQualityPreset.OriginalWithExif.ToRequest().Outputs.Single();
+
+        // assert
+        original.Should().Be(new ImageOutputSpec("main", 7680, "passthrough", true, 7680));
+        originalWithExif.Should().Be(new ImageOutputSpec("main", 7680, "passthrough", false, 7680));
         ImageQualityPreset.Original.GetMaxSize().Should().BeNull();
         ImageQualityPreset.Uhd4K.GetMaxSize().Should().Be(3840);
     }
@@ -2363,7 +2536,7 @@ public sealed class ImageQualityPresetTest
 
         // assert
         json.Should().Be(
-            """{"outputs":[{"kind":"main","maxSize":1920,"codec":"auto","stripMetadata":true},{"kind":"estimate","maxSize":3840,"codec":"auto","stripMetadata":true}]}""");
+            """{"outputs":[{"kind":"main","maxSize":1920,"codec":"auto","stripMetadata":true,"maxPassthroughSize":null},{"kind":"estimate","maxSize":3840,"codec":"auto","stripMetadata":true,"maxPassthroughSize":null}]}""");
     }
 
     [Fact]
@@ -2401,16 +2574,13 @@ public static class ImageQualityPresetExt
             _ => null,
         };
 
-    public static bool IsReencoding(this ImageQualityPreset preset)
-        => preset is ImageQualityPreset.Uhd4K or ImageQualityPreset.FullHd;
-
-    public static ImageProcessRequest? ToRequest(this ImageQualityPreset preset)
+    public static ImageProcessRequest ToRequest(this ImageQualityPreset preset)
         // Re-encoding presets also encode the other size from the same decode, so the menu can show it
         => preset switch {
             ImageQualityPreset.Uhd4K => new([ImageOutputSpec.Main(3840), ImageOutputSpec.Estimate(1920)]),
             ImageQualityPreset.FullHd => new([ImageOutputSpec.Main(1920), ImageOutputSpec.Estimate(3840)]),
-            ImageQualityPreset.Original => new([ImageOutputSpec.StrippedOriginal]),
-            _ => null,
+            ImageQualityPreset.Original => new([ImageOutputSpec.Original(stripMetadata: true)]),
+            _ => new([ImageOutputSpec.Original(stripMetadata: false)]),
         };
 }
 ```
@@ -2422,15 +2592,22 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed record ImageProcessRequest(ImageOutputSpec[] Outputs);
 
-public sealed record ImageOutputSpec(string Kind, int? MaxSize, string Codec, bool StripMetadata)
+public sealed record ImageOutputSpec(
+    string Kind,
+    int? MaxSize,
+    string Codec,
+    bool StripMetadata,
+    int? MaxPassthroughSize = null)
 {
-    public static ImageOutputSpec StrippedOriginal { get; } = new("main", null, "passthrough", true);
-
     public static ImageOutputSpec Main(int maxSize)
         => new("main", maxSize, "auto", true);
 
     public static ImageOutputSpec Estimate(int maxSize)
         => new("estimate", maxSize, "auto", true);
+
+    public static ImageOutputSpec Original(bool stripMetadata)
+        // A longer side than 8K is re-encoded down to 8K even for "Original"
+        => new("main", Constants.Attachments.MaxImageSize, "passthrough", stripMetadata, Constants.Attachments.MaxImageSize);
 }
 
 public sealed record ImageSizeEstimate(long Uhd4KLength, long FullHdLength);
@@ -2448,17 +2625,18 @@ public record ProcessedImage
     public int Height { get; init; }
     public long Size { get; init; }
     public long[] EstimateSizes { get; init; } = [];
+    public bool IsSource { get; init; }
 }
 
 public sealed record ProcessedWebImage : ProcessedImage
 {
-    public IJSObjectReference FileProvider { get; init; } = null!;
+    public IJSObjectReference? FileProvider { get; init; }
     public string PreviewUrl { get; init; } = "";
 }
 
 public sealed record ProcessedStreamImage : ProcessedImage
 {
-    public IJSStreamReference Stream { get; init; } = null!;
+    public IJSStreamReference? Stream { get; init; }
 }
 
 public sealed record ImageProcessingResult(IFileProvider FileProvider, Size2D Size, ImageSizeEstimate? SizeEstimate);
@@ -2536,9 +2714,7 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
         ImageQualityPreset preset,
         CancellationToken cancellationToken)
     {
-        if (preset.ToRequest() is not { } request)
-            return null;
-
+        var request = preset.ToRequest();
         try {
             return source switch {
                 WebFileProvider webSource
@@ -2558,7 +2734,7 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
 
     // Private methods
 
-    private async Task<ImageProcessingResult> ProcessWeb(
+    private async Task<ImageProcessingResult?> ProcessWeb(
         WebFileProvider source,
         ImageProcessRequest request,
         Size2D sourceSize,
@@ -2566,8 +2742,11 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         var image = await source.ProcessImage(request, cancellationToken).ConfigureAwait(false);
+        if (image.IsSource || image.FileProvider is null)
+            return null;
+
         var provider = new WebFileProvider {
-            Metadata = CreateMetadata(source.Metadata, image, preset),
+            Metadata = CreateMetadata(source.Metadata, image),
             WebFileProviderInternal = new WebFileProviderInternal(
                 image.FileProvider, image.PreviewUrl, false, Task.FromResult(true)),
         };
@@ -2575,7 +2754,7 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
         return CreateResult(provider, image, sourceSize, preset);
     }
 
-    private async Task<ImageProcessingResult> ProcessMaui(
+    private async Task<ImageProcessingResult?> ProcessMaui(
         MauiFileProvider source,
         ImageProcessRequest request,
         Size2D sourceSize,
@@ -2586,23 +2765,26 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
         var image = await JS
             .InvokeAsync<ProcessedStreamImage>(JSProcessUrlMethod, cancellationToken, url, request)
             .ConfigureAwait(false);
+        if (image.IsSource || image.Stream is null)
+            return null;
+
         var stream = await image.Stream
             .OpenReadStreamAsync(Constants.Attachments.FileSizeLimit, cancellationToken)
             .ConfigureAwait(false);
         await using var _ = stream.ConfigureAwait(false);
-        var metadata = CreateMetadata(source.Metadata, image, preset);
+        var metadata = CreateMetadata(source.Metadata, image);
         var provider = await ProcessedImageStore.Save(stream, metadata, cancellationToken).ConfigureAwait(false);
         return CreateResult(provider, image, sourceSize, preset);
     }
 
-    private static FileMetadata CreateMetadata(FileMetadata source, ProcessedImage image, ImageQualityPreset preset)
+    private static FileMetadata CreateMetadata(FileMetadata source, ProcessedImage image)
     {
         var extension = image.MimeType switch {
             "image/jpeg" => ".jpg",
             "image/png" => ".png",
             _ => null,
         };
-        if (!preset.IsReencoding() || extension is null)
+        if (extension is null)
             return new FileMetadata { FileName = source.FileName, FileType = source.FileType, Length = image.Size };
 
         return new FileMetadata {
