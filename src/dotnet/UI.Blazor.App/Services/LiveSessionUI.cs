@@ -196,19 +196,23 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         var lastHeartbeatAt = Clocks.CpuClock.Now;
         var isConnected = Hub.ConnectivityUI.IsConnected;
         var wasConnected = isConnected.Value;
+        var isResendPending = false;
         try {
             while (!cancellationToken.IsCancellationRequested) {
                 // A reconnect re-sends everything: the server drops a peer's participations
                 // once it stays disconnected past its grace, and the next heartbeat is up to 45s away.
-                var isReconnected = isConnected.Value && !wasConnected;
+                // The resend stays pending until a pass actually sends, so an errored computed doesn't eat it.
+                isResendPending |= isConnected.Value && !wasConnected;
                 wasConnected = isConnected.Value;
                 // ValueOrDefault is null only when the computed errored; skipping the pass keeps
                 // the reported participations until a recompute succeeds, where .Value would throw.
                 if (cParticipations.ValueOrDefault is { } next) {
                     var now = Clocks.CpuClock.Now;
-                    var isHeartbeat = isReconnected || now - lastHeartbeatAt >= HeartbeatInterval;
-                    if (isHeartbeat)
+                    var isHeartbeat = isResendPending || now - lastHeartbeatAt >= HeartbeatInterval;
+                    if (isHeartbeat) {
                         lastHeartbeatAt = now;
+                        isResendPending = false;
+                    }
 
                     foreach (var chatId in current.Keys.Except(next.Keys).ToList()) {
                         await SetParticipation(chatId, current[chatId], false, cancellationToken).ConfigureAwait(false);
