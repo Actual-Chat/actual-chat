@@ -38,12 +38,16 @@
                 }
                 @ChildContent
             </div>
-            @Right
+            @if (Right is not null) {
+                <div class="form-section-right">@Right</div>
+            }
             @if (renderInlineError) {
                 <div class="form-section-inline-error" role="alert">
                     <LocalizedMessage Text="@messages.First()" FieldLabel="@Label"/>
                 </div>
-                <i class="form-section-error-icon icon-alert-circle" aria-hidden="true"></i>
+                @if (Right is null) {
+                    <i class="form-section-error-icon icon-alert-circle" aria-hidden="true"></i>
+                }
             }
         </div>
     }
