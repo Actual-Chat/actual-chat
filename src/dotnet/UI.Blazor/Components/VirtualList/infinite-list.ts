@@ -98,9 +98,9 @@ const ScreenAnchorRenderTtlMs = 10_000;
 const MaxOverscrollScreens = 3;
 // How far from the viewport a known edge stays loaded, in screens. The load zone alone drops the edge
 // item as soon as it is two screens away, and with it the knowledge that the edge is there: the limit
-// on that side moves out by MaxOverscrollScreens, and a fling back - one Mac trackpad flick covers
-// three screens - runs past the content into blank until the edge reloads, then snaps to it.
-const EdgeReachScreens = 6;
+// on that side moves out by MaxOverscrollScreens, and a fling back runs past the content into blank
+// until the edge reloads, then snaps to it. One Mac trackpad flick was measured at 7.8 screens.
+const EdgeReachScreens = 12;
 // Past twice the allowance the blank is not something scrolling can produce - the view and its chain
 // have come apart, and only a re-pin brings them back.
 const StrandedGapFactor = 2;
