@@ -308,6 +308,10 @@
 
   "ThreadMenu_GoToThread": "스레드로 이동",
   "ThreadMenu_CopyThread": "스레드 복사",
+  "ThreadMenu_Mute": "음소거",
+  "ThreadMenu_Unmute": "음소거 해제",
+  "ThreadMenu_GoToStartMessage": "시작 메시지로 이동",
+  "ThreadMenu_CopyThreadLink": "스레드 링크 복사",
 
   "LocationMessage_Live": "실시간 위치",
   "LocationMessage_Static": "위치",

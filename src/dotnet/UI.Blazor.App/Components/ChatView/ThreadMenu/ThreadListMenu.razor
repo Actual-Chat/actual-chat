@@ -1,0 +1,72 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedMenuBase<AppUIHub, ThreadListMenu.Model>
+@{
+    var m = State.Value;
+    if (m == Model.None)
+        return;
+
+    var threadChatId = m.ThreadChatId;
+}
+
+<ThreadMenuFollow ThreadChatId="@threadChatId" IsFollowing="@m.IsFollowing"/>
+<ThreadMenuMute ThreadChatId="@threadChatId" NotificationMode="@m.NotificationMode"/>
+<MenuEntry
+    Icon="icon-message-ellipse"
+    Text="@L.ThreadMenu_GoToStartMessage"
+    Click="@OnGoToStartMessage">
+</MenuEntry>
+<ThreadMenuCopyLink ThreadChatId="@threadChatId"/>
+<ThreadMenuCopyThread ThreadChatId="@threadChatId" Title="@m.Title"/>
+
+@code {
+    private ThreadChatId _threadChatId = null!;
+
+    private IChats Chats => Hub.Chats;
+    private IChatThreads ChatThreads => Hub.ChatThreads;
+
+    protected override void OnParametersSet() {
+        if (Arguments is not [var sThreadChatId])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _threadChatId = ThreadChatId.Parse(sThreadChatId);
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var threadChatId = _threadChatId;
+        var chat = await Chats.Get(Session, threadChatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return Model.None;
+
+        var isFollowing = await ChatThreads.GetThreadFollowStatus(Session, threadChatId, cancellationToken)
+            .ConfigureAwait(false);
+        var settings = await UserSettingsUI.ChatUserSettings(threadChatId).Get(cancellationToken)
+            .ConfigureAwait(false);
+        return new() {
+            ThreadChatId = threadChatId,
+            Title = chat.Title,
+            IsFollowing = isFollowing,
+            NotificationMode = settings.NotificationMode,
+        };
+    }
+
+    private Task OnGoToStartMessage()
+        => NavigateTo(Links.Chat(_threadChatId.ParentChatId, _threadChatId.ThreadId));
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public ThreadChatId ThreadChatId { get; init; } = null!;
+        public string Title { get; init; } = "";
+        public bool IsFollowing { get; init; }
+        public ChatNotificationMode NotificationMode { get; init; }
+    }
+}

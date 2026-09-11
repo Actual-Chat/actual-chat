@@ -1,0 +1,27 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase<AppUIHub>
+@{
+    var isMuted = NotificationMode == ChatNotificationMode.Muted;
+}
+
+<MenuEntry
+    Icon="@(isMuted ? "icon-bell" : "icon-bell-off")"
+    Text="@(isMuted ? L.ThreadMenu_Unmute : L.ThreadMenu_Mute)"
+    Click="@OnClick">
+</MenuEntry>
+
+@code {
+    [Parameter, EditorRequired] public ThreadChatId ThreadChatId { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatNotificationMode NotificationMode { get; set; }
+
+    private Task OnClick() {
+        // Two-state, like a peer chat's bell: ImportantOnly counts as not muted
+        var threadChatId = ThreadChatId;
+        var mode = NotificationMode == ChatNotificationMode.Muted
+            ? ChatNotificationMode.Default
+            : ChatNotificationMode.Muted;
+        return UICommander.RunLocal(ct
+            => UserSettingsUI.ChatUserSettings(threadChatId)
+                .Update(x => x with { NotificationMode = mode }, ct));
+    }
+}

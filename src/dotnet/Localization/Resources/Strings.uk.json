@@ -308,6 +308,10 @@
 
   "ThreadMenu_GoToThread": "Перейти до треду",
   "ThreadMenu_CopyThread": "Копіювати тред",
+  "ThreadMenu_Mute": "Вимкнути сповіщення",
+  "ThreadMenu_Unmute": "Увімкнути сповіщення",
+  "ThreadMenu_GoToStartMessage": "Перейти до вихідного повідомлення",
+  "ThreadMenu_CopyThreadLink": "Копіювати посилання на тред",
 
   "LocationMessage_Live": "Трансляція геопозиції",
   "LocationMessage_Static": "Геопозиція",
