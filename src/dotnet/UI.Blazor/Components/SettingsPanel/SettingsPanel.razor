@@ -127,10 +127,14 @@
         var selectable = tabs.Where(x => x.Content != null).ToList();
         if (selectable.Count == 0)
             return null;
-        if (selectedTabId is null || lastTabs.All(x => x.Id != selectedTabId))
+        if (selectedTabId is null)
             return selectable[0].Id;
+        // Checked before the lastTabs lookup: on the first pass lastTabs is empty,
+        // and DefaultTabId must survive it.
         if (selectable.Any(x => x.Id == selectedTabId))
             return selectedTabId;
+        if (lastTabs.All(x => x.Id != selectedTabId))
+            return selectable[0].Id;
 
         // The selected tab is gone: take the nearest survivor after it in the order it had,
         // and fall back to the last tab if everything after it went away too.
