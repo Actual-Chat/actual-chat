@@ -681,6 +681,20 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         return result;
     }
 
+    internal static List<ConversationId> GetChangedExpansions(
+        ChatId chatId,
+        IImmutableSet<ConversationId> overrides,
+        IImmutableSet<ConversationId> autoExpanded,
+        IImmutableSet<ConversationId> lastOverrides,
+        IImmutableSet<ConversationId> lastAutoExpanded)
+        // Both sets span every chat, while the snapshots are per chat: a change made in another chat must not
+        // count here, or that conversation's lid widens this chat's load window by thousands of entries.
+        => overrides.SymmetricExcept(lastOverrides)
+            .Union(autoExpanded.SymmetricExcept(lastAutoExpanded))
+            .Where(c => c.ChatId == chatId)
+            .OrderBy(c => c.StartEntryLid)
+            .ToList();
+
     // Private methods
 
     private async Task<ChatViewItemVisibility> ComputeItemVisibility(CancellationToken cancellationToken)
