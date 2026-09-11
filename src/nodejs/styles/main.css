@@ -63,9 +63,22 @@ body.no-select {
     --safe-area-bottom: env(safe-area-inset-bottom, 0px);
     --safe-area-left: env(safe-area-inset-left, 0px);
     --safe-area-right: env(safe-area-inset-right, 0px);
-    /* Height of the native titlebar the page extends under (the AppKit host sets it); only the
-       navbar column reserves it, for the traffic lights - everything else runs to the top edge. */
+    /* Height of the native titlebar the page extends under (the AppKit host sets it); in wide mode
+       only the navbar column reserves it, for the traffic lights - everything else runs to the top
+       edge. */
     --titlebar-inset: 0px;
+}
+/* In narrow mode the chat header and full-screen modals put their back button in the top-left
+   corner, so there the titlebar joins the top inset the way the notch does. The left panel opts
+   out (its navbar column lays itself out around the traffic lights), and so does the right panel:
+   its only control up there is the close button at the far right. */
+html.native-titlebar body.narrow {
+    --safe-area-top: calc(env(safe-area-inset-top, 0px) + var(--titlebar-inset));
+}
+html.native-titlebar body.narrow .left-panel,
+html.native-titlebar body.narrow .chat-side-panel {
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-top-narrow: env(safe-area-inset-top, 0px);
 }
 /* Mode-specific safe area insets: resolve to 0px when the current mode doesn't match */
 body.wide {
