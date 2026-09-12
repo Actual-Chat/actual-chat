@@ -79,6 +79,7 @@ export type LogScope =
     | 'KeepAwakeUI'
     | 'LanguageUI'
     | 'NotificationUI'
+    | 'Passkeys'
     | 'TuneUI'
     | 'UserActivityUI'
     | 'VibrationUI'
@@ -198,6 +199,7 @@ const defaults: Record<LogScope, LogLevel> = {
     KeepAwakeUI: LogLevel.Warn,
     LanguageUI: LogLevel.Warn,
     NotificationUI: LogLevel.Warn,
+    Passkeys: LogLevel.Warn,
     TuneUI: LogLevel.Warn,
     UserActivityUI: LogLevel.Warn,
     VibrationUI: LogLevel.Warn,
