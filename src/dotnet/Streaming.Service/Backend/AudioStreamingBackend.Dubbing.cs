@@ -10,6 +10,8 @@ public partial class AudioStreamingBackend
 
     private ISpeechSynthesizer? SpeechSynthesizer => field ??= Services.GetService<ISpeechSynthesizer>();
 
+    // Private methods
+
     // Starts the dub of dubStreamId's base stream into dubStreamId.Language unless it's running or
     // decided already. True means the dub stream is published; false means serve the original.
     private async Task<bool> EnsureDub(StreamId dubStreamId, CancellationToken cancellationToken)
@@ -59,12 +61,18 @@ public partial class AudioStreamingBackend
         Task? synthesizeTask = null;
         Exception? error = null;
         try {
-            var sourceMemoizer = await _transcriptStreams
-                .GetMemoizer(sourceStreamId, true, cancellationToken)
-                .ConfigureAwait(false);
-            var translatedMemoizer = await GetOrStartTranslation(dubStreamId, cancellationToken).ConfigureAwait(false);
-            if (sourceMemoizer == null || translatedMemoizer == null) {
+            var sourceMemoizer = await WaitForSourceTranscript(sourceStreamId, cancellationToken).ConfigureAwait(false);
+            if (sourceMemoizer == null) {
                 Log.LogWarning("RunDub: #{StreamId} - no transcript to dub", dubStreamId);
+                // A miss isn't a decision: drop the entry so the next GetAudio retries instead of inheriting it
+                _dubs.TryRemove(dubStreamId, out _);
+                return;
+            }
+
+            var translatedMemoizer = await GetOrStartTranslation(dubStreamId, cancellationToken).ConfigureAwait(false);
+            if (translatedMemoizer == null) {
+                Log.LogWarning("RunDub: #{StreamId} - no translation to dub", dubStreamId);
+                _dubs.TryRemove(dubStreamId, out _);
                 return;
             }
 
@@ -147,7 +155,7 @@ public partial class AudioStreamingBackend
                 if (chainKey != null)
                     _dubChains.TryRemove(new KeyValuePair<string, Task>(chainKey, whenDoneSource.Task));
             }
-        }, Log, $"Dub #{dubStreamId} failed", cancellationToken);
+        }, Log, $"Dub #{dubStreamId} failed");
     }
 
     private Task ChainDub(StreamId dubStreamId, out TaskCompletionSource whenDoneSource, out string? chainKey)
@@ -161,6 +169,21 @@ public partial class AudioStreamingBackend
         var previousDubTask = _dubChains.GetValueOrDefault(chainKey) ?? Task.CompletedTask;
         _dubChains[chainKey] = whenDoneSource.Task;
         return previousDubTask;
+    }
+
+    private async Task<AsyncMemoizer<TranscriptDiff>?> WaitForSourceTranscript(
+        StreamId sourceStreamId,
+        CancellationToken cancellationToken)
+    {
+        // The source transcript is published on the first STT result, which can trail the audio by
+        // more than ShareWaitDelay, so keep waiting for as long as the audio itself is live.
+        while (true) {
+            var memoizer = await _transcriptStreams
+                .GetMemoizer(sourceStreamId, true, cancellationToken)
+                .ConfigureAwait(false);
+            if (memoizer != null || !_audioStreams.Has(sourceStreamId))
+                return memoizer;
+        }
     }
 
     private void ForgetDubs(StreamId streamId)

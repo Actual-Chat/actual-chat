@@ -30,6 +30,7 @@ public class DubbingTest(DubbingCollection.AppHostFixture fixture, ITestOutputHe
             ct);
         source.Writer.TryWrite(Stable("Hello there, how are you doing today?") - Transcript.Empty);
         translated.Writer.TryWrite(Stable("Привет, как у тебя сегодня дела?") - Transcript.Empty);
+        await WhenTranscriptPublished(backend, dubId, ct);
 
         // act
         var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
@@ -72,6 +73,7 @@ public class DubbingTest(DubbingCollection.AppHostFixture fixture, ITestOutputHe
         var text = Stable("Hello there, how are you doing today?", Languages.English);
         source.Writer.TryWrite(text - Transcript.Empty);
         translated.Writer.TryWrite(text - Transcript.Empty);
+        await WhenTranscriptPublished(backend, dubId, ct);
 
         // act
         var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
@@ -83,6 +85,71 @@ public class DubbingTest(DubbingCollection.AppHostFixture fixture, ITestOutputHe
         translated.Writer.Complete();
         await pushSourceTask.SilentAwait(false);
         await pushTranslatedTask.SilentAwait(false);
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task GetAudioShouldRetryAfterANoTranscriptMiss()
+    {
+        // arrange
+        var services = AppHost.Services;
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var sourceId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
+        var dubId = StreamId.New(sourceId, Languages.Russian);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(50));
+        var ct = cts.Token;
+
+        // act - nothing is pushed yet, so the dub worker misses the source transcript
+        var missedStream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+
+        // assert
+        missedStream.Should().BeNull("there is no transcript to dub yet");
+
+        // arrange
+        var source = Channel.CreateUnbounded<TranscriptDiff>();
+        var translated = Channel.CreateUnbounded<TranscriptDiff>();
+        var pushSourceTask = BackgroundTask.Run(
+            () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
+            ct);
+        var pushTranslatedTask = BackgroundTask.Run(
+            () => backend.PushTranscript(dubId, new RpcStream<TranscriptDiff>(translated.Reader.ReadAllAsync(ct)), ct),
+            ct);
+        source.Writer.TryWrite(Stable("Hello there, how are you doing today?") - Transcript.Empty);
+        translated.Writer.TryWrite(Stable("Привет, как у тебя сегодня дела?") - Transcript.Empty);
+        await WhenTranscriptPublished(backend, dubId, ct);
+
+        // act
+        var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+
+        // assert
+        stream.Should().NotBeNull("a miss must not be remembered as a decision");
+        var frames = new List<AudioFrame>();
+        await foreach (var frame in stream!.WithCancellation(ct)) {
+            frames.Add(frame);
+            if (frames.Count >= 3)
+                break;
+        }
+        frames[0].Offset.Should().Be(TimeSpan.FromMilliseconds(-1), "the first frame is the stream header");
+        frames.Skip(1).Select(f => f.Offset).Should().Equal(TimeSpan.Zero, Constants.Audio.OpusFrameDuration);
+
+        source.Writer.Complete();
+        translated.Writer.Complete();
+        await pushSourceTask.SilentAwait(false);
+        await pushTranslatedTask.SilentAwait(false);
+    }
+
+    // Private methods
+
+    private static async Task WhenTranscriptPublished(
+        IAudioStreamingBackend backend,
+        StreamId streamId,
+        CancellationToken cancellationToken)
+    {
+        var cTranscript = await Computed.Capture(
+            () => backend.GetTranscriptSnapshot(streamId, cancellationToken),
+            cancellationToken);
+        await cTranscript
+            .When(x => x != null, cancellationToken)
+            .WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
     }
 
     private static Transcript Stable(string text, params Language[] languages)
