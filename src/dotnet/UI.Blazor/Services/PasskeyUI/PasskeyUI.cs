@@ -35,6 +35,10 @@ public class PasskeyUI(UIHub hub) : UIServiceBase<UIHub>(hub), IComputeService
         catch (PasskeyCancelledException) {
             return false;
         }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            UICommander.ShowError(e);
+            return false;
+        }
 
         var (_, error) = await UICommander
             .Run(new PasskeyAuth_CompleteSignIn { Session = Session, AssertionJson = assertionJson }, cancellationToken)
@@ -55,6 +59,10 @@ public class PasskeyUI(UIHub hub) : UIServiceBase<UIHub>(hub), IComputeService
             attestationJson = await Client.Create(optionsJson, cancellationToken).ConfigureAwait(false);
         }
         catch (PasskeyCancelledException) {
+            return null;
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            UICommander.ShowError(e);
             return null;
         }
 
@@ -81,7 +89,14 @@ public class PasskeyUI(UIHub hub) : UIServiceBase<UIHub>(hub), IComputeService
 
     private Task<bool> IsClientAvailable(CancellationToken cancellationToken)
     {
-        // Cached per scope: the answer is a property of the device, not of the moment
+        // The JS interop this needs isn't available yet during prerendering, so don't probe -
+        // and don't cache the guess, since the real answer still has to be probed once we're live.
+        if (IsPrerendering)
+            return Task.FromResult(false);
+
+        // Cached per scope once the probe completes without throwing: the answer is a property
+        // of the device, not of the moment. A probe that throws (e.g. run before the circuit is
+        // interactive) is not cached, so the next CanUse() call retries it instead of sticking.
         var whenAvailable = _whenClientAvailable;
         if (whenAvailable is { IsCompletedSuccessfully: true })
             return whenAvailable;
@@ -94,6 +109,7 @@ public class PasskeyUI(UIHub hub) : UIServiceBase<UIHub>(hub), IComputeService
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                 Log.LogWarning(e, "IsClientAvailable: probe failed");
+                _whenClientAvailable = null;
                 return false;
             }
         }
