@@ -64,4 +64,20 @@ public sealed class UsersSettings
     // anything outside 30s..1h and refunds the fee for a message it couldn't deliver within the ttl.
     public TimeSpan TelegramGatewayMessageTtl
         => (TelegramGatewayTtl ?? TotpCodeLifetime).Clamp(TimeSpan.FromSeconds(30), TimeSpan.FromHours(1));
+
+    public string GetPasskeyRpId(HostInfo hostInfo)
+        => PasskeyRpId.IsNullOrEmpty()
+            ? hostInfo.BaseUrl.EnsureSuffix("/").ToUri().Host
+            : PasskeyRpId;
+
+    public HashSet<string> GetPasskeyOrigins(HostInfo hostInfo)
+    {
+        var origins = PasskeyOrigins
+            .Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet();
+        if (origins.Count == 0)
+            origins.Add(hostInfo.BaseUrl.EnsureSuffix("/").ToUri().GetLeftPart(UriPartial.Authority));
+
+        return origins;
+    }
 }
