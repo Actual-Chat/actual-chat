@@ -40,6 +40,7 @@
             <PermissionsStep/>
             <LanguagesStep/>
             <DataCollectionStep IsConfigured="m.IsDataCollectionConfigured"/>
+            <PasskeyStep IsRequired="m.ShowPasskeyStep"/>
             @* <CreateChatsStep/> *@ @* Disabled *@
         </Steps>
         <Header>
@@ -87,7 +88,7 @@
                         <Button
                             Class="btn-primary"
                             Click="@(() => OnNext(stepper))">
-                            @if (stepper.CurrentStep is PhoneStep or EmailStep or DataCollectionStep) {
+                            @if (stepper.CurrentStep is PhoneStep or EmailStep or DataCollectionStep or PasskeyStep) {
                                 <span>@stepper.NextTitle</span>
                             } else if (stepper.IsLastStep) {
                                 <span>@L.Onboarding_StartMessaging</span>
@@ -107,6 +108,7 @@
 
 @code {
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -115,9 +117,11 @@
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var isDataCollectionConfigured = await DataCollectionSettingsUI.IsConfigured(cancellationToken)
             .ConfigureAwait(false);
+        var showPasskeyStep = await OnboardingUI.ShouldShowPasskeyStep(cancellationToken).ConfigureAwait(false);
         return new() {
             AccountFull = account,
             IsDataCollectionConfigured = isDataCollectionConfigured,
+            ShowPasskeyStep = showPasskeyStep,
         };
     }
 
@@ -149,6 +153,7 @@
     public sealed record ViewModel {
         public AccountFull AccountFull { get; init; } = null!;
         public bool IsDataCollectionConfigured { get; init; }
+        public bool ShowPasskeyStep { get; init; }
     }
 
     public sealed record Model : IOptionallyClosable {

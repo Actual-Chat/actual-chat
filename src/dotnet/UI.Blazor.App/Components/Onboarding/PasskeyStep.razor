@@ -1,0 +1,36 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits SimpleStep<AppUIHub>;
+
+@if (CurrentStep != this) {
+    return;
+}
+
+<div class="passkey-step">
+    <p class="step-title">@L.Onboarding_PasskeyTitle</p>
+    <p class="step-subtitle">@L.Onboarding_PasskeyText</p>
+</div>
+
+@code {
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
+    private PasskeyUI PasskeyUI => Hub.PasskeyUI;
+
+    [Parameter, EditorRequired] public bool IsRequired { get; set; }
+
+    public override bool CanSkip => true;
+    public override string SkipTitle => L.Onboarding_NotNow;
+    public override string NextTitle => L.Onboarding_CreatePasskey;
+    public override bool IsCompleted => !IsRequired;
+
+    protected override Task<bool> Validate()
+        => Task.FromResult(true);
+
+    protected override async Task<bool> Save() {
+        var passkey = await PasskeyUI.Register();
+        return passkey != null;
+    }
+
+    protected override ValueTask OnSkip() {
+        OnboardingUI.SnoozePasskeyStep();
+        return ValueTask.CompletedTask;
+    }
+}

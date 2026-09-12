@@ -8,11 +8,14 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
 {
+    private const int MaxPasskeyNudgeCount = 3;
+    private static readonly TimeSpan PasskeyNudgeInterval = TimeSpan.FromDays(7);
     private static readonly SemaphoreSlim Lock = new (1);
     private CancellationTokenSource? _lastTryShowCts;
     private ModalRef? _lastModalRef;
 
     private LoadingUI LoadingUI => Hub.LoadingUI;
+    private PasskeyUI PasskeyUI => Hub.PasskeyUI;
 
     public SyncedState<UserOnboardingSettings> UserSettings { get; init; }
     public new StoredState<LocalOnboardingSettings> LocalSettings { get; init; }
@@ -83,6 +86,35 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
     public void UpdateLocalSettings(LocalOnboardingSettings value)
         => LocalSettings.Set(value);
 
+    // Not a compute method: OnboardingUI is a plain scoped service (services.AddScoped in
+    // BlazorUIAppModule), and the answer is only needed at the moment the modal opens
+    public async Task<bool> ShouldShowPasskeyStep(CancellationToken cancellationToken)
+    {
+        if (!await PasskeyUI.CanUse(cancellationToken).ConfigureAwait(false))
+            return false;
+
+        var passkeys = await PasskeyUI.ListOwn(cancellationToken).ConfigureAwait(false);
+        if (passkeys.Count > 0)
+            return false;
+
+        await LocalSettings.WhenRead.ConfigureAwait(false);
+        var local = LocalSettings.Value;
+        if (local.PasskeyNudgeCount >= MaxPasskeyNudgeCount)
+            return false;
+
+        return local.PasskeyNudgeLastAt == default
+            || Clocks.SystemClock.Now - local.PasskeyNudgeLastAt > PasskeyNudgeInterval;
+    }
+
+    public void SnoozePasskeyStep()
+    {
+        var local = LocalSettings.Value;
+        UpdateLocalSettings(local with {
+            PasskeyNudgeCount = local.PasskeyNudgeCount + 1,
+            PasskeyNudgeLastAt = Clocks.SystemClock.Now,
+        });
+    }
+
     // Private methods
 
     private async Task<bool> ShouldBeShown(CancellationToken cancellationToken)
@@ -103,6 +135,9 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
         await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         if (UserSettings.Value.HasUncompletedSteps())
+            return true;
+
+        if (await ShouldShowPasskeyStep(cancellationToken).ConfigureAwait(false))
             return true;
 
         if (!LocalSettings.Value.IsPermissionsStepCompleted) {
