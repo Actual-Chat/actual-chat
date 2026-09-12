@@ -17,7 +17,11 @@ reply on the mobile apps, but every frame it produces or consumes still travels
 the capture → publish → fan-out → playback path described in docs 02–07. The
 **Android Auto** layer ([doc 11](./11-android-auto.md)) is narrower still: it
 leaves the path alone and only chooses which physical microphone and speaker
-sit at its ends while the phone projects into a car.
+sit at its ends while the phone projects into a car. **Voice dubbing**
+([doc 12](./12-dubbing.md)) is a derived stream: the owner node of a live
+stream `S` synthesises `S~lang` from its translated transcript, and the
+listening muxer serves that id instead of `S` to listeners who asked for
+it — the fan-out and the receiver are untouched.
 
 ## Reading order
 
@@ -34,6 +38,7 @@ sit at its ends while the phone projects into a car.
 | 9 | [09-glossary.md](./09-glossary.md) | Glossary of types, files, and abbreviations |
 | 10 | [10-push-to-talk.md](./10-push-to-talk.md) | PTT: wake push, headless playback, PTT reply, heard receipts |
 | 11 | [11-android-auto.md](./11-android-auto.md) | Car projection: why recording took over the car's screen, and the microphone / sound settings that control it |
+| 12 | [12-dubbing.md](./12-dubbing.md) | Voice dubbing: `GetAudio(S~lang)` → `DubStabilizer` → Soniox TTS → `OpusFramePump`; muxer substitution; the translated-voice settings |
 
 For the design-intent vs. current-shape discussion of buffering and A/V
 sync — that's in
@@ -130,6 +135,7 @@ a shared opus-decoder worker, and play back through a single
 | Streaming service (server) | `src/dotnet/Streaming.Service/Services/{LiveAudioStreams,LiveStreamMuxer,ReplayStreamMuxer,AudioSegmentSaver}.cs` |
 | Backend audio | `src/dotnet/Streaming.Service/Backend/{AudioStreamingBackend,LiveAudioBackend}.cs`, `AudioStreamingBackend.ProcessAudio.cs` |
 | Transcribers | `src/dotnet/Streaming.Service/Services/Transcribers/` |
+| Dubbing | `src/dotnet/Streaming.Service/Backend/AudioStreamingBackend.Dubbing.cs`, `Streaming.Service/Audio/DubStabilizer.cs`, `Transcription.Service/Synthesis/`, `Transcription.Service/Transcribers/SonioxTtsClient.cs` |
 | Wire types | `src/dotnet/Api/Audio/{AudioFrame,AudioFormat,ActualOpusStream*}.cs`, `src/dotnet/Api/Live/Live*.cs` |
 | Container converters | `src/dotnet/Api/Audio/{ActualOpus,Ogg,WebM}StreamConverter.cs`, `Api/Audio/Ogg/`, `Api/Audio/WebM/` |
 | VAD | `src/dotnet/Core.Audio/{Onnx,Noop}VoiceActivityDetector.cs`, `…/AudioRecorder/workers/audio-vad*.ts`, `vad_batched.ort` |
