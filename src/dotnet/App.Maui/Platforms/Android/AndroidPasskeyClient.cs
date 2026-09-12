@@ -17,8 +17,7 @@ public sealed class AndroidPasskeyClient(IServiceProvider services) : IPasskeyCl
 
     public Task<bool> IsAvailable(CancellationToken cancellationToken)
     {
-        // A host-overridden build talks to a server whose origin allow-list doesn't know this
-        // build's signing key, so the ceremony would fail at verification anyway.
+        // Native flows don't work with a host override, see NativeGoogleAuth
         if (MauiSettings.IsHostOverridden)
             return Task.FromResult(false);
 
@@ -33,7 +32,8 @@ public sealed class AndroidPasskeyClient(IServiceProvider services) : IPasskeyCl
         using var signal = new CancellationSignal();
         using var _ = cancellationToken.Register(signal.Cancel);
         Manager.CreateCredentialAsync(MainActivity.Current, request, signal, Executor, callback);
-        var response = await callback.WhenCompleted.ConfigureAwait(false);
+        // A cancelled signal makes the provider return without calling back, hence WaitAsync
+        var response = await callback.WhenCompleted.WaitAsync(cancellationToken).ConfigureAwait(false);
         return response.RegistrationResponseJson;
     }
 
@@ -46,7 +46,7 @@ public sealed class AndroidPasskeyClient(IServiceProvider services) : IPasskeyCl
         using var signal = new CancellationSignal();
         using var _ = cancellationToken.Register(signal.Cancel);
         Manager.GetCredentialAsync(MainActivity.Current, request, signal, Executor, callback);
-        var response = await callback.WhenCompleted.ConfigureAwait(false);
+        var response = await callback.WhenCompleted.WaitAsync(cancellationToken).ConfigureAwait(false);
         if (response.Credential is not PublicKeyCredential credential)
             throw StandardError.External($"Unexpected credential type: {response.Credential.Type}.");
 
@@ -64,18 +64,34 @@ public sealed class AndroidPasskeyClient(IServiceProvider services) : IPasskeyCl
 
         public void OnResult(Java.Lang.Object? result)
         {
-            if (result?.JavaCast<TResponse>() is { } response)
-                _source.TrySetResult(response);
-            else
-                _source.TrySetException(StandardError.External("Passkey ceremony returned nothing."));
+            try {
+                if (result?.JavaCast<TResponse>() is { } response)
+                    _source.TrySetResult(response);
+                else
+                    _source.TrySetException(StandardError.External("Passkey ceremony returned nothing."));
+            }
+            catch (Exception e) {
+                _source.TrySetException(e);
+            }
         }
 
         public void OnError(Java.Lang.Object? error)
         {
+            try {
+                _source.TrySetException(ToException(error));
+            }
+            catch (Exception e) {
+                _source.TrySetException(e);
+            }
+        }
+
+        // Private methods
+
+        private static Exception ToException(Java.Lang.Object? error)
             // Throwable isn't a Java.Lang.Object on the .NET side, so the callback's argument
             // arrives as a plain wrapper and has to be re-cast to reach the bound exception type.
             // The DOM errors are what a cancelled biometric prompt surfaces as, like on the web.
-            var exception = error?.JavaCast<Java.Lang.Throwable>() switch {
+            => error?.JavaCast<Java.Lang.Throwable>() switch {
                 GetCredentialCancellationException or CreateCredentialCancellationException or NoCredentialException
                     => new PasskeyCancelledException(),
                 GetPublicKeyCredentialDomException { DomError: NotAllowedError or AbortError }
@@ -85,7 +101,5 @@ public sealed class AndroidPasskeyClient(IServiceProvider services) : IPasskeyCl
                 { } throwable => StandardError.External(throwable.Message.NullIfEmpty() ?? throwable.ToString()),
                 null => StandardError.External("Passkey ceremony failed."),
             };
-            _source.TrySetException(exception);
-        }
     }
 }
