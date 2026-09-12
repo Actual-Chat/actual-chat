@@ -1,6 +1,7 @@
 /**
- * WebAuthn JSON (RFC 9052 base64url fields) ↔ the ArrayBuffer-based browser API. Uses the
- * built-in parse/toJSON when the browser has them and falls back to a manual conversion.
+ * WebAuthn Level 3 JSON (base64url-encoded byte fields) ↔ the ArrayBuffer-based browser API.
+ * Uses `parseCreationOptionsFromJSON`/`parseRequestOptionsFromJSON`/`toJSON()` when the
+ * browser has them, falling back to a manual conversion otherwise.
  */
 
 type Json = Record<string, unknown>;
