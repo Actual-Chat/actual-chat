@@ -46,12 +46,15 @@ public sealed class ChatListeningPlayer : ChatPlayer
         var streamProcessor = new ListeningStreamProcessor(
             Hub.Services, Session, ChatId,
             ChatAudioUI.GetListeningCatchUp(ChatId),
-            cancellationToken.CreateLinkedTokenSource());
+            cancellationToken.CreateLinkedTokenSource()) {
+            DubLanguageProvider = ct => Hub.TranslationUI.GetDubLanguage(ChatId, ct),
+        };
         await using var _ = streamProcessor.ConfigureAwait(false);
 
         streamProcessor.StreamStarted +=
             (info, _, frames) => OnStreamStarted(playback, state, info, frames, cancellationToken);
         StartSleepWatcher(streamProcessor, cancellationToken);
+        StartDubLanguageWatcher(streamProcessor, cancellationToken);
         await streamProcessor.Run().ConfigureAwait(false);
     }
 
@@ -79,6 +82,35 @@ public sealed class ChatListeningPlayer : ChatPlayer
             }
 
             Log.LogInformation("Re-subscribing to #{ChatId} after sleep", ChatId);
+            streamProcessor.Break();
+        }
+    }
+
+    private void StartDubLanguageWatcher(
+        ListeningStreamProcessor streamProcessor,
+        CancellationToken cancellationToken)
+        => _ = BackgroundTask.Run(
+            () => ResubscribeOnDubLanguageChange(streamProcessor, cancellationToken),
+            Log,
+            $"Dub language watcher failed for #{ChatId}",
+            cancellationToken);
+
+    private async Task ResubscribeOnDubLanguageChange(
+        ListeningStreamProcessor streamProcessor,
+        CancellationToken cancellationToken)
+    {
+        var computed = await Computed
+            .Capture(() => Hub.TranslationUI.GetDubLanguage(ChatId, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        while (true) {
+            await computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+            var previous = computed.Value;
+            computed = await computed.Update(cancellationToken).ConfigureAwait(false);
+            if (Equals(computed.Value, previous))
+                continue;
+
+            Log.LogInformation("Re-subscribing to #{ChatId}: dub language {Old} -> {New}",
+                ChatId, previous, computed.Value);
             streamProcessor.Break();
         }
     }
