@@ -121,6 +121,18 @@ Canvas may be used where it genuinely produces WebP, verified by sniffing the ou
 magic bytes — WebKit's canvas silently substitutes PNG, which would otherwise ship
 5 KB placeholders to iOS users.
 
+**Container.** The stored blob is not a WebP file. It is:
+
+| Byte | Meaning |
+|---|---|
+| 0 | Format mark. `1` = header-stripped lossy WebP, long side 64. Other values are reserved, so the encoding can change later without touching stored rows — the decoder branches on this byte. |
+| 1 | The side that is not 64, as a signed value: positive = horizontal (width = value, height = 64), negative = vertical (height = \|value\|, width = 64). `64` means square. |
+| 2.. | The VP8 bitstream, with the 20-byte `RIFF`/`WEBP`/`VP8 ` wrapper removed and rebuilt at decode time from the payload length. |
+
+The long side is always encoded at exactly 64 px, upscaling sources smaller than that,
+so the container never needs to express a second dimension. Byte 1 also lets the
+renderer reserve the right aspect ratio before decoding anything.
+
 **Storage.** Base64 in the media row's metadata bag, set at reservation time alongside
 the dimensions the client already sends. The bag is an opaque JSON column, so this
 needs no migration, no new DTO field and no serializer changes; the bag's schema
