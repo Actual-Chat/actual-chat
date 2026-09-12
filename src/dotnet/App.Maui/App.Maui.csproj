@@ -173,12 +173,17 @@
     <PackageReference Include="Xamarin.AndroidX.Core" />
     <PackageReference Include="Xamarin.AndroidX.Collection" />
     <PackageReference Include="Xamarin.AndroidX.Collection.Ktx" />
+    <PackageReference Include="Xamarin.AndroidX.Credentials" />
+    <PackageReference Include="Xamarin.AndroidX.Credentials.PlayServicesAuth" />
     <PackageReference Include="Xamarin.AndroidX.Fragment.Ktx" />
     <PackageReference Include="Xamarin.AndroidX.Lifecycle.Common.Java8" />
     <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData" />
     <PackageReference Include="Xamarin.AndroidX.Lifecycle.Process" />
     <PackageReference Include="Xamarin.AndroidX.Lifecycle.Runtime" />
     <PackageReference Include="Xamarin.AndroidX.Media" />
+    <!-- Work.Runtime 2.11 still asks for Tracing.Ktx 1.3, which can't sit on the Tracing 2.0
+         that Fragment 1.9 (via Credentials.PlayServicesAuth) brings -->
+    <PackageReference Include="Xamarin.AndroidX.Tracing.Tracing.Ktx" />
     <PackageReference Include="Xamarin.AndroidX.Work.Runtime" />
     <PackageReference Include="Plugin.Firebase.Analytics" />
     <PackageReference Include="Xamarin.Firebase.Analytics" />

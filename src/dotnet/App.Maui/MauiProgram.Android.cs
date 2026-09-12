@@ -45,6 +45,7 @@ public static partial class MauiProgram
         services.AddScoped<IRecordingPermissionRequester>(_ => new AndroidRecordingPermissionRequester());
         services.AddScoped<BatteryOptimizationHandler>(c => new AndroidBatteryOptimizationHandler(c.AppUIHub()));
         services.AddSingleton(c => new NativeGoogleAuth(c));
+        services.AddScoped<IPasskeyClient>(c => new AndroidPasskeyClient(c));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
         services.AddScoped<IMauiLogAccessor>(c => new AndroidLogAccessor(c));
         services.AddScoped<IAudioCapture>(c => new AndroidAudioCapture(c));
