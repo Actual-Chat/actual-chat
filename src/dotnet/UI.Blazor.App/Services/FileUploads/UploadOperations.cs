@@ -31,7 +31,12 @@ public sealed class UploadOperations(AppUIHub hub)
             .Set(nameof(ActualChat.Media.Media.ContentType), fileMetadata.FileType)
             .Set(nameof(ActualChat.Media.Media.Length), fileMetadata.Length);
         var mediaScope = snapshot.MediaScope.NullIfEmpty() ?? MediaId.NewScope();
-        var command = new Media_ReserveMedia { Session = Session, Scope = mediaScope, Metadata = metadata };
+        var command = new Media_ReserveMedia {
+            Session = Session,
+            Scope = mediaScope,
+            Metadata = metadata,
+            Kind = MediaKind.ChatEntryAttachment,
+        };
         var mediaId = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         return mediaId;
     }
