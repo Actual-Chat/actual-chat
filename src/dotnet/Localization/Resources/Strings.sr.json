@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 секунди",
   "ListeningLinger_10Seconds": "10 секунди",
   "ListeningLinger_30Seconds": "30 секунди",
+  "Transcription_TranslatedVoiceTopic": "Преведени глас",
+  "Transcription_TranslatedVoice": "Слушајте изговорени превод",
+  "Transcription_TranslatedVoiceCaption": "У живим разговорима, говорници других језика се замјењују изговореним преводом на ваш језик",
   "Transcription_LanguageDetected_Format": "Откривени језик транскрипције за чет „{0}“ је {1}.",
 
   "Sessions_CurrentSession": "Тренутна сесија",
@@ -1483,6 +1486,7 @@
   "Call_RecordingTurnedOffByHost": "Домаћин је искључио снимање",
   "Call_MakeHost": "Поставите за домаћина",
   "Call_Join": "Придружите се",
+  "LiveConversation_TranslatedVoice": "Преведени глас",
   "Call_JoinMuted": "Придружите се утишан",
   "Call_VideoOff": "Видео је искључен за овај позив",
   "Call_UnavailableInChat": "Недоступно у овом чету",

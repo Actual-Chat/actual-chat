@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 секунд",
   "ListeningLinger_10Seconds": "10 секунд",
   "ListeningLinger_30Seconds": "30 секунд",
+  "Transcription_TranslatedVoiceTopic": "Переведённый голос",
+  "Transcription_TranslatedVoice": "Слушать перевод голосом",
+  "Transcription_TranslatedVoiceCaption": "В живых разговорах речь на других языках заменяется озвученным переводом на ваш язык",
   "Transcription_LanguageDetected_Format": "Определённый язык расшифровки для чата «{0}» — {1}.",
 
   "Sessions_CurrentSession": "Текущая сессия",
@@ -1483,6 +1486,7 @@
   "Call_RecordingTurnedOffByHost": "Ведущий отключил запись",
   "Call_MakeHost": "Сделать ведущим",
   "Call_Join": "Войти",
+  "LiveConversation_TranslatedVoice": "Переведённый голос",
   "Call_JoinMuted": "Войти без звука",
   "Call_VideoOff": "Видео отключено для этого звонка",
   "Call_UnavailableInChat": "Недоступно в этом чате",

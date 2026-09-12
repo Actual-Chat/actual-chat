@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5초",
   "ListeningLinger_10Seconds": "10초",
   "ListeningLinger_30Seconds": "30초",
+  "Transcription_TranslatedVoiceTopic": "번역 음성",
+  "Transcription_TranslatedVoice": "번역을 음성으로 듣기",
+  "Transcription_TranslatedVoiceCaption": "실시간 대화에서 다른 언어를 사용하는 화자는 사용자의 언어로 통역된 음성으로 대체됩니다",
   "Transcription_LanguageDetected_Format": "채팅 '{0}'에서 감지된 전사 언어는 {1}입니다.",
 
   "Sessions_CurrentSession": "현재 세션",
@@ -1483,6 +1486,7 @@
   "Call_RecordingTurnedOffByHost": "호스트가 녹음을 껐습니다",
   "Call_MakeHost": "호스트로 지정",
   "Call_Join": "참여",
+  "LiveConversation_TranslatedVoice": "번역 음성",
   "Call_JoinMuted": "음소거로 참여",
   "Call_VideoOff": "이 통화에서는 영상이 꺼져 있습니다",
   "Call_UnavailableInChat": "이 채팅에서는 사용할 수 없음",

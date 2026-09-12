@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 sekund",
   "ListeningLinger_10Seconds": "10 sekund",
   "ListeningLinger_30Seconds": "30 sekund",
+  "Transcription_TranslatedVoiceTopic": "Přeložený hlas",
+  "Transcription_TranslatedVoice": "Poslouchat mluvený překlad",
+  "Transcription_TranslatedVoiceCaption": "V živých konverzacích jsou mluvčí jiných jazyků nahrazeni mluveným překladem do vašeho jazyka",
   "Transcription_LanguageDetected_Format": "Zjištěný jazyk přepisu pro chat „{0}“ je {1}.",
 
   "Sessions_CurrentSession": "Aktuální relace",
@@ -1483,6 +1486,7 @@
   "Call_RecordingTurnedOffByHost": "Nahrávání vypnul hostitel",
   "Call_MakeHost": "Nastavit jako hostitele",
   "Call_Join": "Připojit se",
+  "LiveConversation_TranslatedVoice": "Přeložený hlas",
   "Call_JoinMuted": "Připojit se ztlumeně",
   "Call_VideoOff": "Video je pro tento hovor vypnuté",
   "Call_UnavailableInChat": "V tomto chatu není dostupné",

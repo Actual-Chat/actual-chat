@@ -117,6 +117,9 @@ public static class LocalizedStringsLocalizerExt
         public string ListeningLinger_5Seconds => l["ListeningLinger_5Seconds"].Value;
         public string ListeningLinger_10Seconds => l["ListeningLinger_10Seconds"].Value;
         public string ListeningLinger_30Seconds => l["ListeningLinger_30Seconds"].Value;
+        public string Transcription_TranslatedVoiceTopic => l["Transcription_TranslatedVoiceTopic"].Value;
+        public string Transcription_TranslatedVoice => l["Transcription_TranslatedVoice"].Value;
+        public string Transcription_TranslatedVoiceCaption => l["Transcription_TranslatedVoiceCaption"].Value;
         public string Transcription_MicrophoneTopic => l["Transcription_MicrophoneTopic"].Value;
         public string Transcription_FaceDownStop => l["Transcription_FaceDownStop"].Value;
         public string Transcription_FaceDownStopCaption => l["Transcription_FaceDownStopCaption"].Value;
@@ -1562,6 +1565,7 @@ public static class LocalizedStringsLocalizerExt
         public string Call_Entry_NoAnswer => l["Call_Entry_NoAnswer"].Value;
         public string Call_Entry_TapToCallBack => l["Call_Entry_TapToCallBack"].Value;
         public string Call_Join => l["Call_Join"].Value;
+        public string LiveConversation_TranslatedVoice => l["LiveConversation_TranslatedVoice"].Value;
         public string Call_JoinMuted => l["Call_JoinMuted"].Value;
         public string Call_ShareScreen => l["Call_ShareScreen"].Value;
         public string Call_StopScreenShare => l["Call_StopScreenShare"].Value;

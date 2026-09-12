@@ -136,6 +136,9 @@
   "ListeningLinger_5Seconds": "5 Sekunden",
   "ListeningLinger_10Seconds": "10 Sekunden",
   "ListeningLinger_30Seconds": "30 Sekunden",
+  "Transcription_TranslatedVoiceTopic": "Переведённый голос",
+  "Transcription_TranslatedVoice": "Dengarkan terjemahan yang diucapkan",
+  "Transcription_TranslatedVoiceCaption": "Dans les conversations en direct, les personnes parlant d'autres langues sont remplacées par une traduction parlée dans votre langue",
   "Transcription_LanguageDetected_Format": "La langue de transcription détectée pour la discussion « {0} » est {1}.",
 
   // Settings > Sessions - the signed-in devices and the sign-out actions.
@@ -1771,6 +1774,8 @@
   // becoming a member of anything. Languages that distinguish the two (ru, uk)
   // must use the "enter" verb here and keep Common_Join for membership.
   "Call_Join": "Присъединете се",
+  // The label on a live-session card when the speaker's voice is replaced by a spoken translation.
+  "LiveConversation_TranslatedVoice": "Переведённый голос",
   "Call_JoinMuted": "Присъединете се заглушен",
   "Call_VideoOff": "El vídeo está desactivado en esta llamada",
   "Call_UnavailableInChat": "Không khả dụng trong cuộc trò chuyện này",

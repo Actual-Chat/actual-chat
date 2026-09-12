@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 Sekunden",
   "ListeningLinger_10Seconds": "10 Sekunden",
   "ListeningLinger_30Seconds": "30 Sekunden",
+  "Transcription_TranslatedVoiceTopic": "Übersetzte Stimme",
+  "Transcription_TranslatedVoice": "Übersetzungen anhören",
+  "Transcription_TranslatedVoiceCaption": "In Live-Gesprächen werden Sprecher anderer Sprachen durch eine gesprochene Übersetzung in Ihre Sprache ersetzt",
   "Transcription_LanguageDetected_Format": "Erkannte Transkriptionssprache für den Chat „{0}“: {1}.",
 
   "Sessions_CurrentSession": "Aktuelle Sitzung",
@@ -1483,6 +1486,7 @@
   "Call_RecordingTurnedOffByHost": "Aufnahme vom Host deaktiviert",
   "Call_MakeHost": "Zum Host machen",
   "Call_Join": "Beitreten",
+  "LiveConversation_TranslatedVoice": "Übersetzte Stimme",
   "Call_JoinMuted": "Stumm beitreten",
   "Call_VideoOff": "Video ist für diesen Anruf deaktiviert",
   "Call_UnavailableInChat": "In diesem Chat nicht verfügbar",

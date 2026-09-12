@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 秒",
   "ListeningLinger_10Seconds": "10 秒",
   "ListeningLinger_30Seconds": "30 秒",
+  "Transcription_TranslatedVoiceTopic": "翻译语音",
+  "Transcription_TranslatedVoice": "收听语音翻译",
+  "Transcription_TranslatedVoiceCaption": "在实时对话中，讲其他语言的人会被替换为用您的语言朗读的翻译",
   "Transcription_LanguageDetected_Format": "聊天“{0}”检测到的转录语言为 {1}。",
 
   "Sessions_CurrentSession": "当前会话",
@@ -1483,6 +1486,7 @@
   "Call_RecordingTurnedOffByHost": "主持人已关闭录音",
   "Call_MakeHost": "设为主持人",
   "Call_Join": "加入",
+  "LiveConversation_TranslatedVoice": "翻译语音",
   "Call_JoinMuted": "静音加入",
   "Call_VideoOff": "此通话已关闭视频",
   "Call_UnavailableInChat": "此聊天中不可用",

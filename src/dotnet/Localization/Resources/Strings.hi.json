@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 सेकंड",
   "ListeningLinger_10Seconds": "10 सेकंड",
   "ListeningLinger_30Seconds": "30 सेकंड",
+  "Transcription_TranslatedVoiceTopic": "अनूदित आवाज़",
+  "Transcription_TranslatedVoice": "अनुवाद सुनें",
+  "Transcription_TranslatedVoiceCaption": "लाइव बातचीत में, अन्य भाषाएँ बोलने वालों की जगह आपकी भाषा में बोला गया अनुवाद सुनाया जाता है",
   "Transcription_LanguageDetected_Format": "चैट '{0}' के लिए पहचानी गई ट्रांसक्रिप्शन भाषा {1} है।",
 
   "Sessions_CurrentSession": "वर्तमान सत्र",
@@ -1483,6 +1486,7 @@
   "Call_RecordingTurnedOffByHost": "होस्ट ने रिकॉर्डिंग बंद कर दी",
   "Call_MakeHost": "होस्ट बनाएँ",
   "Call_Join": "शामिल हों",
+  "LiveConversation_TranslatedVoice": "अनूदित आवाज़",
   "Call_JoinMuted": "म्यूट होकर शामिल हों",
   "Call_VideoOff": "इस कॉल के लिए वीडियो बंद है",
   "Call_UnavailableInChat": "इस चैट में उपलब्ध नहीं",

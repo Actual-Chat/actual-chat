@@ -136,6 +136,9 @@
   "ListeningLinger_5Seconds": "5 seconds",
   "ListeningLinger_10Seconds": "10 seconds",
   "ListeningLinger_30Seconds": "30 seconds",
+  "Transcription_TranslatedVoiceTopic": "Translated Voice",
+  "Transcription_TranslatedVoice": "Hear translations spoken",
+  "Transcription_TranslatedVoiceCaption": "In live conversations, speakers of other languages are replaced by a spoken translation in your language",
   "Transcription_LanguageDetected_Format": "Detected transcription language for chat '{0}' is {1}.",
 
   // Settings > Sessions - the signed-in devices and the sign-out actions.
@@ -1771,6 +1774,8 @@
   // becoming a member of anything. Languages that distinguish the two (ru, uk)
   // must use the "enter" verb here and keep Common_Join for membership.
   "Call_Join": "Join",
+  // The label on a live-session card when the speaker's voice is replaced by a spoken translation.
+  "LiveConversation_TranslatedVoice": "Translated voice",
   "Call_JoinMuted": "Join muted",
   "Call_VideoOff": "Video is off for this call",
   "Call_UnavailableInChat": "Unavailable in this chat",

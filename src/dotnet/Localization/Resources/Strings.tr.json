@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 saniye",
   "ListeningLinger_10Seconds": "10 saniye",
   "ListeningLinger_30Seconds": "30 saniye",
+  "Transcription_TranslatedVoiceTopic": "Çevrilmiş Ses",
+  "Transcription_TranslatedVoice": "Çevirileri sesli dinle",
+  "Transcription_TranslatedVoiceCaption": "Canlı görüşmelerde, diğer dilleri konuşan kişilerin sesi, dilinize sesli çeviriyle değiştirilir",
   "Transcription_LanguageDetected_Format": "'{0}' sohbeti için algılanan deşifre dili: {1}.",
 
   "Sessions_CurrentSession": "Mevcut Oturum",
@@ -1483,6 +1486,7 @@
   "Call_RecordingTurnedOffByHost": "Kayıt, oturum sahibi tarafından kapatıldı",
   "Call_MakeHost": "Sunucu yapın",
   "Call_Join": "Katılın",
+  "LiveConversation_TranslatedVoice": "Çevrilmiş ses",
   "Call_JoinMuted": "Sessiz katılın",
   "Call_VideoOff": "Bu görüşmede video kapalı",
   "Call_UnavailableInChat": "Bu sohbette kullanılamıyor",

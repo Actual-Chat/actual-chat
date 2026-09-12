@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 giây",
   "ListeningLinger_10Seconds": "10 giây",
   "ListeningLinger_30Seconds": "30 giây",
+  "Transcription_TranslatedVoiceTopic": "Giọng nói đã dịch",
+  "Transcription_TranslatedVoice": "Nghe bản dịch bằng giọng nói",
+  "Transcription_TranslatedVoiceCaption": "Trong các cuộc trò chuyện trực tiếp, người nói ngôn ngữ khác sẽ được thay bằng bản dịch được đọc bằng ngôn ngữ của bạn",
   "Transcription_LanguageDetected_Format": "Ngôn ngữ phiên âm được phát hiện cho cuộc trò chuyện \"{0}\" là {1}.",
 
   "Sessions_CurrentSession": "Phiên hiện tại",
@@ -1483,6 +1486,7 @@
   "Call_RecordingTurnedOffByHost": "Chủ phòng đã tắt ghi âm",
   "Call_MakeHost": "Đặt làm chủ trì",
   "Call_Join": "Tham gia",
+  "LiveConversation_TranslatedVoice": "Giọng nói đã dịch",
   "Call_JoinMuted": "Tham gia khi tắt tiếng",
   "Call_VideoOff": "Video đã tắt cho cuộc gọi này",
   "Call_UnavailableInChat": "Không khả dụng trong cuộc trò chuyện này",

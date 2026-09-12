@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 秒",
   "ListeningLinger_10Seconds": "10 秒",
   "ListeningLinger_30Seconds": "30 秒",
+  "Transcription_TranslatedVoiceTopic": "翻訳音声",
+  "Transcription_TranslatedVoice": "翻訳を音声で聞く",
+  "Transcription_TranslatedVoiceCaption": "ライブ会話では、他の言語の話者があなたの言語に翻訳された音声に置き換えられます",
   "Transcription_LanguageDetected_Format": "チャット「{0}」で検出された文字起こしの言語は {1} です。",
 
   "Sessions_CurrentSession": "現在のセッション",
@@ -1483,6 +1486,7 @@
   "Call_RecordingTurnedOffByHost": "ホストが録音をオフにしました",
   "Call_MakeHost": "ホストにする",
   "Call_Join": "参加",
+  "LiveConversation_TranslatedVoice": "翻訳音声",
   "Call_JoinMuted": "ミュートで参加",
   "Call_VideoOff": "この通話では動画がオフです",
   "Call_UnavailableInChat": "このチャットでは利用できません",
