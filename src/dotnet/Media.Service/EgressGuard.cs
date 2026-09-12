@@ -86,6 +86,10 @@ public class EgressGuard(HostInfo hostInfo, MediaSettings settings, ILogger<Egre
         if (address.AddressFamily is not (AddressFamily.InterNetwork or AddressFamily.InterNetworkV6))
             return false;
 
+        // A dual-mode socket reports an IPv4 peer as ::ffff:a.b.c.d, which every IPv4 rule below would miss
+        if (address.IsIPv4MappedToIPv6)
+            address = address.MapToIPv4();
+
         if (IPAddress.IsLoopback(address))
             return false;
 
