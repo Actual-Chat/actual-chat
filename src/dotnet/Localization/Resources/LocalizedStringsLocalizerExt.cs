@@ -47,6 +47,7 @@ public static class LocalizedStringsLocalizerExt
         public string Settings_Application => l["Settings_Application"].Value;
         public string Settings_Permissions => l["Settings_Permissions"].Value;
         public string Settings_Sessions => l["Settings_Sessions"].Value;
+        public string Settings_Passkeys => l["Settings_Passkeys"].Value;
         public string Settings_ApiKeys => l["Settings_ApiKeys"].Value;
         public string Settings_Documents => l["Settings_Documents"].Value;
         public string Settings_DeveloperTools => l["Settings_DeveloperTools"].Value;
@@ -134,6 +135,24 @@ public static class LocalizedStringsLocalizerExt
         public string Sessions_SignOutAll => l["Sessions_SignOutAll"].Value;
         public string Sessions_SignOutAllConfirm => l["Sessions_SignOutAllConfirm"].Value;
         public string Sessions_SignOutAllTitle => l["Sessions_SignOutAllTitle"].Value;
+
+        public string Passkeys_Intro => l["Passkeys_Intro"].Value;
+        public string Passkeys_Add => l["Passkeys_Add"].Value;
+        public string Passkeys_Unavailable => l["Passkeys_Unavailable"].Value;
+        public string Passkeys_YourPasskeys => l["Passkeys_YourPasskeys"].Value;
+        public string Passkeys_NotSetUp => l["Passkeys_NotSetUp"].Value;
+        public string Passkeys_Count(long count, object arg0) => l.Plural("Passkeys_Count", count, arg0);
+        public string Passkeys_Synced => l["Passkeys_Synced"].Value;
+        public string Passkeys_ThisDeviceOnly => l["Passkeys_ThisDeviceOnly"].Value;
+        public string Passkeys_Added_Format(object arg0) => l["Passkeys_Added_Format", arg0].Value;
+        public string Passkeys_LastUsed_Format(object arg0) => l["Passkeys_LastUsed_Format", arg0].Value;
+        public string Passkeys_NeverUsed => l["Passkeys_NeverUsed"].Value;
+        public string Passkeys_Rename => l["Passkeys_Rename"].Value;
+        public string Passkeys_RenameTitle => l["Passkeys_RenameTitle"].Value;
+        public string Passkeys_Name => l["Passkeys_Name"].Value;
+        public string Passkeys_Delete => l["Passkeys_Delete"].Value;
+        public string Passkeys_DeleteConfirm_Format(object arg0) => l["Passkeys_DeleteConfirm_Format", arg0].Value;
+        public string Passkeys_Added => l["Passkeys_Added"].Value;
 
         public string ApiKeys_CreateApiKey => l["ApiKeys_CreateApiKey"].Value;
         public string ApiKeys_YourApiKeys => l["ApiKeys_YourApiKeys"].Value;
@@ -787,6 +806,10 @@ public static class LocalizedStringsLocalizerExt
         public string Onboarding_NameAndAvatar => l["Onboarding_NameAndAvatar"].Value;
         public string Onboarding_GenerateAvatar => l["Onboarding_GenerateAvatar"].Value;
         public string Onboarding_UploadPhoto => l["Onboarding_UploadPhoto"].Value;
+        public string Onboarding_PasskeyTitle => l["Onboarding_PasskeyTitle"].Value;
+        public string Onboarding_PasskeyText => l["Onboarding_PasskeyText"].Value;
+        public string Onboarding_CreatePasskey => l["Onboarding_CreatePasskey"].Value;
+        public string Onboarding_NotNow => l["Onboarding_NotNow"].Value;
         public string Permission_Microphone => l["Permission_Microphone"].Value;
         public string Permission_MicrophoneRationale_Format(object arg0)
             => l["Permission_MicrophoneRationale_Format", arg0].Value;
@@ -1448,6 +1471,7 @@ public static class LocalizedStringsLocalizerExt
         public string SignIn_VerifyPhoneText_Format(object arg0) => l["SignIn_VerifyPhoneText_Format", arg0].Value;
         public string SignIn_VerifyEmailText_Format(object arg0) => l["SignIn_VerifyEmailText_Format", arg0].Value;
         public string SignIn_PopupBlocked => l["SignIn_PopupBlocked"].Value;
+        public string SignIn_SignInWithPasskey => l["SignIn_SignInWithPasskey"].Value;
         public string JoinRequest_NotMember => l["JoinRequest_NotMember"].Value;
         public string JoinRequest_Text => l["JoinRequest_Text"].Value;
         public string JoinRequest_Send => l["JoinRequest_Send"].Value;

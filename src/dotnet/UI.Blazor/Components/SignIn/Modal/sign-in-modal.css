@@ -10,6 +10,9 @@
 .sign-in > img {
     @apply h-8 w-8;
 }
+.sign-in-modal .sign-in-passkey .icon-key {
+    @apply text-2xl;
+}
 
 .sign-in.btn .btn-content {
     @apply text-headline-1;

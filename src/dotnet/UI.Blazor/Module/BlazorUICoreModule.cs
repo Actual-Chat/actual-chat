@@ -155,6 +155,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped<DeltaText>();
         fusion.AddService<AccountUI>(ServiceLifetime.Scoped);
         fusion.AddService<TotpUI>(ServiceLifetime.Scoped);
+        fusion.AddService<PasskeyUI>(ServiceLifetime.Scoped);
         services.AddScoped<IPasskeyClient>(c => new WebPasskeyClient(c.UIHub()));
         fusion.AddService<LogUI>(ServiceLifetime.Scoped);
         fusion.AddService<AppUpdateUI>(ServiceLifetime.Scoped);
