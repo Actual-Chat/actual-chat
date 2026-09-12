@@ -147,7 +147,7 @@
     <PackageVersion Include="DotNetEnv" Version="3.2.0" />
     <PackageVersion Include="EFCore.CheckConstraints" Version="$(EntityFrameworkCoreCheckConstraintsVersion)" />
     <PackageVersion Include="FFMpegCore" Version="5.4.0" />
-    <PackageVersion Include="Fido2" Version="4.0.0" />
+    <PackageVersion Include="Fido2" Version="4.0.1" />
     <PackageVersion Include="FirebaseAdmin" Version="3.5.0" />
     <PackageVersion Include="Google.Api.Gax" Version="4.14.0" />
     <PackageVersion Include="Google.Api.Gax.Rest" Version="4.14.0" />
