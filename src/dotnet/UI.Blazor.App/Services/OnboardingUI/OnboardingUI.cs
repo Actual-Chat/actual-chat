@@ -97,13 +97,12 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
         if (passkeys.Count > 0)
             return false;
 
-        await LocalSettings.WhenRead.ConfigureAwait(false);
+        await WhenLocalSettingsRead.ConfigureAwait(false);
         var local = LocalSettings.Value;
         if (local.PasskeyNudgeCount >= MaxPasskeyNudgeCount)
             return false;
 
-        return local.PasskeyNudgeLastAt == default
-            || Clocks.SystemClock.Now - local.PasskeyNudgeLastAt > PasskeyNudgeInterval;
+        return Clocks.SystemClock.Now - local.PasskeyNudgeLastAt > PasskeyNudgeInterval;
     }
 
     public void SnoozePasskeyStep()
@@ -183,6 +182,7 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
             LocalSettings.Set(new LocalOnboardingSettings {
                 IsPermissionsStepCompleted = true,
                 AreCookiesAccepted = true,
+                PasskeyNudgeCount = MaxPasskeyNudgeCount,
             });
             // Close the onboarding modal if it's open
             _lastModalRef?.Close(true);
