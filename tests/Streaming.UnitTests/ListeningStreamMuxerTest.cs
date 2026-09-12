@@ -165,6 +165,45 @@ public class ListeningStreamMuxerTest
         skipTo.Should().Be(TimeSpan.Zero);
     }
 
+    [Fact]
+    public void MustDubShouldRequireASpeakerWhoDoesNotSpeakTheListenersLanguage()
+    {
+        var russianSpeaker = StreamInfo(Author1, "s", Now()) with {
+            Languages = new ApiArray<Language>([Languages.Russian]),
+        };
+        var bilingual = StreamInfo(Author1, "s", Now()) with {
+            Languages = new ApiArray<Language>([Languages.Russian, Language.Parse("en-US")]),
+        };
+        var unknown = StreamInfo(Author1, "s", Now());
+
+        ListeningStreamMuxer.MustDub(russianSpeaker, Languages.English).Should().BeTrue();
+        ListeningStreamMuxer.MustDub(russianSpeaker, Languages.Russian).Should().BeFalse();
+        ListeningStreamMuxer.MustDub(bilingual, Language.Parse("en-GB")).Should().BeFalse("English variants match");
+        ListeningStreamMuxer.MustDub(russianSpeaker, null).Should().BeFalse("no dub language requested");
+        ListeningStreamMuxer.MustDub(unknown, Languages.English).Should().BeFalse(
+            "a stream from an older server carries no languages, and guessing would hold audio for nothing");
+    }
+
+    [Fact]
+    public void TryRegisterShouldNotMergeDubbedStreamsOfTheSameAuthor()
+    {
+        var h = new MuxerHarness();
+        var cts1 = new CancellationTokenSource();
+        var cts2 = new CancellationTokenSource();
+        var t1 = Now();
+        var t2 = t1 + TimeSpan.FromSeconds(5);
+
+        h.Register(Author1, "stream-1", t1, cts1, isDubbed: true).Should().BeTrue();
+        h.Register(Author1, "stream-2", t2, cts2, isDubbed: true).Should().BeTrue();
+
+        cts1.IsCancellationRequested.Should().BeFalse(
+            "a dub outlives its source by the translation lag plus the spoken length, so the next "
+            + "utterance must not cut it; the backend serializes dubs per author instead");
+        h.HasById("stream-1").Should().BeTrue();
+        h.HasById("stream-2").Should().BeTrue();
+        h.GetActiveStreamId(Author1).Should().BeNull("dubbed entries stay out of the per-author map");
+    }
+
     private static Moment Now() => new(DateTime.UtcNow);
 
     private static LiveAudioStreamInfo StreamInfo(AuthorId authorId, string streamId, Moment beginsAt)
@@ -230,7 +269,8 @@ public class ListeningStreamMuxerTest
                 logBackingField.SetValue(_muxer, services.GetRequiredService<ILoggerFactory>().CreateLogger<ListeningStreamMuxer>());
         }
 
-        public bool Register(AuthorId authorId, string streamId, Moment beginsAt, CancellationTokenSource cts)
+        public bool Register(
+            AuthorId authorId, string streamId, Moment beginsAt, CancellationTokenSource cts, bool isDubbed = false)
         {
             var streamInfo = new LiveAudioStreamInfo {
                 ChatId = TestChatId,
@@ -239,6 +279,7 @@ public class ListeningStreamMuxerTest
                 BeginsAt = beginsAt,
             };
             var entry = Activator.CreateInstance(StreamEntryType, 0, streamInfo, cts)!;
+            StreamEntryType.GetProperty("IsDubbed")!.SetValue(entry, isDubbed);
             return (bool)TryRegisterMethod.Invoke(_muxer, [entry])!;
         }
 

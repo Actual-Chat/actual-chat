@@ -1,3 +1,4 @@
+using ActualChat.Audio;
 using ActualChat.Live;
 using ActualLab.Rpc;
 
@@ -29,6 +30,8 @@ public sealed class ListeningStreamMuxer : WorkerBase
     private Session Session { get; }
     private ChatId ChatId { get; }
     private Moment CatchUpFrom { get; }
+    private Language? DubLanguage { get; }
+    private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILiveAudioStreams LiveAudioStreams => field ??= Services.GetRequiredService<ILiveAudioStreams>();
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private ILogger Log => field ??= Services.LogFor(GetType());
@@ -36,12 +39,14 @@ public sealed class ListeningStreamMuxer : WorkerBase
     public ChannelReader<MuxedAudioStreamItem> Output => _output.Reader;
 
     public ListeningStreamMuxer(
-        IServiceProvider services, Session session, ChatId chatId, Moment catchUpFrom = default)
+        IServiceProvider services, Session session, ChatId chatId, Moment catchUpFrom = default,
+        Language? dubLanguage = null)
     {
         Services = services;
         Session = session;
         ChatId = chatId;
         CatchUpFrom = catchUpFrom;
+        DubLanguage = dubLanguage;
         _output = ChannelExt.Create<MuxedAudioStreamItem>(ChannelExt.UnboundedFanInOptions);
         _ = Run(); // Start immediately
     }
@@ -59,6 +64,10 @@ public sealed class ListeningStreamMuxer : WorkerBase
         => streamInfo.IsCatchUpTarget(catchUpFrom) || !isPreexisting
             ? TimeSpan.Zero
             : Constants.Audio.SkipToLive;
+
+    // internal for tests
+    internal static bool MustDub(LiveAudioStreamInfo streamInfo, Language? dubLanguage)
+        => dubLanguage != null && streamInfo.Languages.Count > 0 && !streamInfo.MaySpeak(dubLanguage);
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -106,6 +115,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
                                 cancellationToken.CreateLinkedTokenSource()) {
                                 IsPreexisting = isColdSnapshot
                                     || _resumedStreamIds.ContainsKey(streamInfo.StreamId),
+                                IsDubbed = MustDub(streamInfo, DubLanguage),
                             };
                             Log.LogDebug(
                                 "Starting stream #{StreamIndex} for {AuthorId} stream #{StreamId}",
@@ -162,9 +172,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
                 return; // See `finally` block below
 
             var skipTo = GetSkipTo(streamEntry.IsPreexisting, streamInfo, CatchUpFrom);
-            var rpcStream = await LiveAudioStreams
-                .GetStream(Session, streamId, skipTo, streamStopToken)
-                .ConfigureAwait(false);
+            var (rpcStream, startInfo) = await GetStream(streamEntry, skipTo, streamStopToken).ConfigureAwait(false);
             if (rpcStream == null) {
                 Log.LogWarning("ProcessStream: Stream #{StreamId} not found", streamId);
                 mustRetry = true;
@@ -175,7 +183,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
                 if (frameCount == 0) {
                     var startItem = new MuxedAudioStreamStart() {
                         StreamIndex = streamIndex,
-                        StreamInfo = streamInfo,
+                        StreamInfo = startInfo,
                     };
                     await _output.Writer.WriteAsync(startItem, streamStopToken).ConfigureAwait(false);
                     isStartEmitted = true;
@@ -290,9 +298,40 @@ public sealed class ListeningStreamMuxer : WorkerBase
 
     // Per-author stream management
 
+    private async Task<(RpcStream<AudioFrame>? Stream, LiveAudioStreamInfo StartInfo)> GetStream(
+        StreamEntry entry,
+        TimeSpan skipTo,
+        CancellationToken cancellationToken)
+    {
+        var streamInfo = entry.StreamInfo;
+        if (entry.IsDubbed) {
+            var dubStreamId = StreamId.New(StreamId.Parse(streamInfo.StreamId), DubLanguage!).Value;
+            var dub = await LiveAudioStreams
+                .GetStream(Session, dubStreamId, skipTo, cancellationToken)
+                .ConfigureAwait(false);
+            if (dub != null) {
+                // The dub's own timeline: lag metrics and the idle cue must not see the translation delay
+                var now = Clocks.ServerClock.Now;
+                return (dub, streamInfo with { DubLanguage = DubLanguage, BeginsAt = now, SourceBeginsAt = now });
+            }
+
+            Log.LogInformation("GetStream: no {Language} dub for #{StreamId}, serving the original",
+                DubLanguage, streamInfo.StreamId);
+        }
+        var original = await LiveAudioStreams
+            .GetStream(Session, streamInfo.StreamId, skipTo, cancellationToken)
+            .ConfigureAwait(false);
+        return (original, streamInfo);
+    }
+
     private bool TryRegister(StreamEntry entry)
     {
         _streamById[entry.StreamId] = entry;
+        // A dub outlives its source by the translation lag plus the spoken length, so the author's
+        // next utterance must not evict it; the backend serializes an author's dubs instead.
+        if (entry.IsDubbed)
+            return true;
+
         return ReferenceEquals(entry, _streamByAuthor.AddOrUpdate(
             entry.AuthorId,
             _ => entry,
@@ -349,6 +388,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
         // Per-entry rather than per-muxer: a pre-start retry re-runs ProcessStream up to
         // MaxPreStartRetryCount times, and each retry must still ask for the live edge.
         public bool IsPreexisting { get; init; }
+        public bool IsDubbed { get; init; }
         public string StreamId => StreamInfo.StreamId;
         public AuthorId AuthorId => StreamInfo.AuthorId;
         public Moment BeginsAt => StreamInfo.BeginsAt;
