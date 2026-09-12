@@ -168,9 +168,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
         var shouldRetry = false;
         var mustResume = false;
         try {
-            if (!TryRegister(streamEntry))
-                return; // See `finally` block below
-
+            _streamById[streamId] = streamEntry;
             var skipTo = GetSkipTo(streamEntry.IsPreexisting, streamInfo, CatchUpFrom);
             var (rpcStream, startInfo) = await GetStream(streamEntry, skipTo, streamStopToken).ConfigureAwait(false);
             if (rpcStream == null) {
@@ -179,22 +177,34 @@ public sealed class ListeningStreamMuxer : WorkerBase
                 return;
             }
 
+            var isDub = startInfo.DubLanguage != null;
+            if (!TryRegister(streamEntry, isDub))
+                return; // See `finally` block below
+
+            AudioFrame? heldHeader = null;
             await foreach (var frame in rpcStream.ConfigureAwait(false)) {
+                if (isDub && frameCount == 0 && frame.Offset < TimeSpan.Zero) {
+                    // A dub's header is published seconds before its first data frame, and the
+                    // start item's BeginsAt must stamp the audio, not the header
+                    heldHeader = frame;
+                    continue;
+                }
+
                 if (frameCount == 0) {
+                    if (isDub) {
+                        var now = Clocks.ServerClock.Now;
+                        startInfo = startInfo with { BeginsAt = now, SourceBeginsAt = now };
+                    }
                     var startItem = new MuxedAudioStreamStart() {
                         StreamIndex = streamIndex,
                         StreamInfo = startInfo,
                     };
                     await _output.Writer.WriteAsync(startItem, streamStopToken).ConfigureAwait(false);
                     isStartEmitted = true;
+                    if (heldHeader != null)
+                        await EmitFrame(heldHeader).ConfigureAwait(false);
                 }
-                var audioFrame = new MuxedAudioFrame {
-                    StreamIndex = streamIndex,
-                    Data = frame.Data,
-                    Offset = frame.Offset,
-                };
-                frameCount++;
-                await _output.Writer.WriteAsync(audioFrame, streamStopToken).ConfigureAwait(false);
+                await EmitFrame(frame).ConfigureAwait(false);
             }
             Log.LogInformation(
                 "Stream #{StreamIndex} for {AuthorId} completed, {FrameCount} frames emitted",
@@ -284,6 +294,16 @@ public sealed class ListeningStreamMuxer : WorkerBase
         }
         return;
 
+        async ValueTask EmitFrame(AudioFrame frame) {
+            var audioFrame = new MuxedAudioFrame {
+                StreamIndex = streamIndex,
+                Data = frame.Data,
+                Offset = frame.Offset,
+            };
+            frameCount++;
+            await _output.Writer.WriteAsync(audioFrame, streamStopToken).ConfigureAwait(false);
+        }
+
         async ValueTask EmitEndSafe() {
             if (!isStartEmitted || cancellationToken.IsCancellationRequested)
                 return;
@@ -309,13 +329,11 @@ public sealed class ListeningStreamMuxer : WorkerBase
             var dub = await LiveAudioStreams
                 .GetStream(Session, dubStreamId, skipTo, cancellationToken)
                 .ConfigureAwait(false);
-            if (dub != null) {
-                // The dub's own timeline: lag metrics and the idle cue must not see the translation delay
-                var now = Clocks.ServerClock.Now;
-                return (dub, streamInfo with { DubLanguage = DubLanguage, BeginsAt = now, SourceBeginsAt = now });
-            }
+            // ProcessStream re-stamps BeginsAt/SourceBeginsAt when the dub's first data frame arrives
+            if (dub != null)
+                return (dub, streamInfo with { DubLanguage = DubLanguage });
 
-            Log.LogInformation("GetStream: no {Language} dub for #{StreamId}, serving the original",
+            Log.LogDebug("GetStream: no {Language} dub for #{StreamId}, serving the original",
                 DubLanguage, streamInfo.StreamId);
         }
         var original = await LiveAudioStreams
@@ -324,12 +342,12 @@ public sealed class ListeningStreamMuxer : WorkerBase
         return (original, streamInfo);
     }
 
-    private bool TryRegister(StreamEntry entry)
+    // Called after GetStream: a dubbed entry that fell back to the original must still merge
+    private bool TryRegister(StreamEntry entry, bool isDub)
     {
-        _streamById[entry.StreamId] = entry;
         // A dub outlives its source by the translation lag plus the spoken length, so the author's
         // next utterance must not evict it; the backend serializes an author's dubs instead.
-        if (entry.IsDubbed)
+        if (isDub)
             return true;
 
         return ReferenceEquals(entry, _streamByAuthor.AddOrUpdate(
