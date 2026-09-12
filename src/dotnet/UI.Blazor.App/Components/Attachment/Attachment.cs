@@ -1,6 +1,15 @@
+using System.Collections.Immutable;
 using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
+
+public enum ImageQualityPreset
+{
+    Original = int.MaxValue,
+    FullHD = 1920,
+    HD = 1280,
+    SD = 854,
+}
 
 public record Attachment(string FileName, string FileType, long Length, Size2D Size)
 {
@@ -15,6 +24,11 @@ public record Attachment(string FileName, string FileType, long Length, Size2D S
 
     public bool IsSupportedImage => MediaTypeExt.IsSupportedImage(FileType);
     public bool IsSupportedVideo => MediaTypeExt.IsSupportedVideo(FileType);
+    public bool IsResizableImage => IsSupportedImage && !MediaTypeExt.IsGif(FileType) && !MediaTypeExt.IsSvg(FileType);
+    public bool IsUploadPending { get; init; }
+    public ImageQualityPreset SelectedQuality { get; init; } = ImageQualityPreset.Original;
+    public long OriginalLength { get; init; }
+    public ImmutableArray<ImageResizeResult>? EstimatedSizes { get; init; }
 
     public string DemandUploadSessionId()
         => !UploadSessionId.IsNullOrEmpty() ? UploadSessionId : throw new InvalidOperationException("Upload session not assigned");

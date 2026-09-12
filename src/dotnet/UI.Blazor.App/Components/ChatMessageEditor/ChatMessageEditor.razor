@@ -220,6 +220,9 @@
         text ??= await MarkupEditorRef.GetText();
         text = text.Trim();
 
+        // Apply selected quality and start pending uploads before sending.
+        await FileAttachments.ApplyQualityAndStartUploads(_attachmentListHolder.Attachments);
+
         var attachmentListSnapshot = _attachmentListHolder.PopSnapshot();
         if (text.IsNullOrEmpty() && attachmentListSnapshot.Attachments.Count == 0) {
             await attachmentListSnapshot.DisposeAsync();

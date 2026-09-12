@@ -1,0 +1,131 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Events
+@inherits ComponentBase<AppUIHub>
+@implements IDisposable
+
+<OnUIEvent TEvent="ImageQualityPresetSelectedEvent" Handler="@OnPresetSelectedEvent"/>
+
+@if (_hasCompressible && _options.Length > 1) {
+    <div class="mqs-wrapper">
+        <button class="mqs-chip"
+                data-menu="@(MenuRef.New<ImageQualityMenu>(_selectorId).ToString())"
+                data-menu-trigger="@MenuTrigger.Primary">
+            <span class="mqs-chip-label">@CurrentLabel</span>
+            <i class="icon-chevron-up text-lg"></i>
+        </button>
+    </div>
+}
+
+@code {
+    private static readonly QualityOption[] AllOptions = [
+        new(ImageQualityPreset.Original, "Original", "Full size"),
+        new(ImageQualityPreset.FullHD, "1080p", "1920 px"),
+        new(ImageQualityPreset.HD, "720p", "1280 px"),
+        new(ImageQualityPreset.SD, "480p", "854 px"),
+    ];
+
+    private string _selectorId = Guid.NewGuid().ToString("N");
+    private bool _hasCompressible;
+    private bool _hasMixed;
+    private ImageQualityPreset _currentPreset = ImageQualityPreset.Original;
+    private long _nonCompressibleLength;
+    private QualityOption[] _options = AllOptions;
+
+    [Parameter, EditorRequired] public AttachmentList Attachments { get; set; } = null!;
+    [Parameter] public EventCallback<ImageQualityPreset> OnPresetChanged { get; set; }
+
+    private string CurrentLabel => _currentPreset switch {
+        ImageQualityPreset.FullHD => "1080p",
+        ImageQualityPreset.HD => "720p",
+        ImageQualityPreset.SD => "480p",
+        _ => L.Editor_QualityOriginal,
+    };
+
+    private string ScopeText {
+        get {
+            var photos = Attachments.Items.Count(a => a.IsResizableImage);
+            return L.Editor_QualityAppliesToPhotos(photos, photos);
+        }
+    }
+
+    public void Dispose() {
+        Attachments.Changed -= OnAttachmentsChanged;
+        ImageQualityMenu.MenuModels.Remove(_selectorId);
+    }
+
+    protected override void OnParametersSet() {
+        Attachments.Changed -= OnAttachmentsChanged;
+        Attachments.Changed += OnAttachmentsChanged;
+        Refresh();
+    }
+
+    private void OnAttachmentsChanged(object? sender, EventArgs e) {
+        Refresh();
+        StateHasChanged();
+    }
+
+    private void Refresh() {
+        _currentPreset = Attachments.GlobalQuality;
+        _hasCompressible = Attachments.HasCompressibleAttachments;
+        _nonCompressibleLength = Attachments.NonCompressibleTotalLength;
+        _hasMixed = _nonCompressibleLength > 0 && Attachments.CompressibleCount > 0;
+
+        var items = Attachments.Items.ToList();
+        var originalTotal = items.Sum(a => a.OriginalLength > 0 ? a.OriginalLength : a.Length);
+        var fullHdCompressible = items
+            .Where(a => a.IsResizableImage)
+            .Sum(a => Math.Min(
+                a.EstimatedSizes is { } s1 && s1.Length >= 1 ? s1[0].Size : OriginalSize(a),
+                OriginalSize(a)));
+        var hdCompressible = items
+            .Where(a => a.IsResizableImage)
+            .Sum(a => Math.Min(
+                a.EstimatedSizes is { } s2 && s2.Length >= 2 ? s2[1].Size : OriginalSize(a),
+                OriginalSize(a)));
+        var sdCompressible = items
+            .Where(a => a.IsResizableImage)
+            .Sum(a => Math.Min(
+                a.EstimatedSizes is { } s3 && s3.Length >= 3 ? s3[2].Size : OriginalSize(a),
+                OriginalSize(a)));
+
+        var allSized = new[] {
+            AllOptions[0] with { TotalSize = originalTotal },
+            AllOptions[1] with { TotalSize = fullHdCompressible + _nonCompressibleLength },
+            AllOptions[2] with { TotalSize = hdCompressible + _nonCompressibleLength },
+            AllOptions[3] with { TotalSize = sdCompressible + _nonCompressibleLength },
+        };
+        // Show a compressed preset only if it actually saves space vs Original.
+        _options = [allSized[0], ..allSized[1..].Where(o => o.TotalSize < originalTotal)];
+
+        var menuOptions = new ImageQualityMenu.OptionModel[_options.Length];
+        for (int i = 0; i < _options.Length; i++) {
+            var opt = _options[i];
+            var label = opt.Preset == ImageQualityPreset.Original ? L.Editor_QualityOriginal : opt.Label;
+            var spec = opt.Preset == ImageQualityPreset.Original ? L.Editor_QualityFullSize : opt.Spec;
+            menuOptions[i] = new ImageQualityMenu.OptionModel(opt.Preset, label, spec, FormatSize(opt.TotalSize));
+        }
+        var scopeText = _hasMixed ? ScopeText : null;
+        ImageQualityMenu.MenuModels.Register(_selectorId, new ImageQualityMenu.Model(
+            _currentPreset, menuOptions, scopeText));
+    }
+
+    private async Task OnPresetSelectedEvent(ImageQualityPresetSelectedEvent @event, CancellationToken _) {
+        if (@event.SelectorId != _selectorId)
+            return;
+        await OnPresetChanged.InvokeAsync(@event.Preset);
+        Refresh();
+        StateHasChanged();
+    }
+
+    private static long OriginalSize(Attachment a)
+        => a.OriginalLength > 0 ? a.OriginalLength : a.Length;
+
+    private static string FormatSize(long bytes) => bytes switch {
+        <= 0 => "—",
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:F0} KB",
+        _ => $"{bytes / (1024.0 * 1024.0):F1} MB",
+    };
+
+    private record QualityOption(ImageQualityPreset Preset, string Label, string Spec, long TotalSize = 0);
+}

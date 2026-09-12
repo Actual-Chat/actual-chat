@@ -10,7 +10,7 @@
     var previewUrl = m.Preview.PreviewUrl;
     var isUploading = progress.IsInProgress;
     var isFailed = progress.IsFailed;
-    var plugClass = progress.IsReady ? "" : "blurred-plug";
+    var plugClass = progress.IsReady || attachment.IsUploadPending ? "" : "blurred-plug";
     var isFile = !(attachment.IsSupportedImage || m.HasCustomPreview || attachment.IsSupportedVideo);
     var percent = (int)Math.Round(Math.Clamp(progress.Progress, 0, 100));
     var w = attachment.Size.Width;
@@ -20,7 +20,7 @@
         ? $"aspect-ratio: {((float)w / h).ToString(CultureInfo.InvariantCulture)}"
         : null;
 }
-<li class="attachment-wrapper @(isFailed ? "attachment-failed" : "")">
+<li class="attachment-wrapper @(isFailed ? "attachment-failed" : "")" @onclick="OnClick">
     <div class="c-content">
         <div class="attachment-item">
             <ButtonSquare Click="@RemoveClick" Class="remove-attachment-btn btn-danger btn-sm">

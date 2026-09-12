@@ -7,13 +7,31 @@ public class AttachmentList : IAttachmentList
 
     public int Count => _attachments.Count;
     public IEnumerable<Attachment> Items => _attachments;
+    public ImageQualityPreset GlobalQuality { get; private set; } = ImageQualityPreset.Original;
+    public bool HasCompressibleAttachments => _attachments.Any(a => a.IsResizableImage);
+    public int CompressibleCount => _attachments.Count(a => a.IsResizableImage);
+    public long NonCompressibleTotalLength => _attachments.Where(a => !a.IsResizableImage).Sum(a => a.Length);
     public event EventHandler? Changed;
 
     public string MediaScope { get; init; } = "";
 
+    public void SetGlobalQuality(ImageQualityPreset preset) {
+        GlobalQuality = preset;
+        RaiseChanged();
+    }
+
     public void Add(Attachment attachment)
     {
         _attachments = _attachments.Add(attachment);
+        RaiseChanged();
+    }
+
+    public void Replace(Attachment oldAttachment, Attachment newAttachment)
+    {
+        var index = _attachments.IndexOf(oldAttachment);
+        if (index < 0)
+            throw StandardError.Internal("Attachment not found.");
+        _attachments = _attachments.SetItem(index, newAttachment);
         RaiseChanged();
     }
 
