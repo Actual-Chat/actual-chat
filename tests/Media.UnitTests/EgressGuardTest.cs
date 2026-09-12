@@ -195,6 +195,18 @@ public class EgressGuardTest
         result.Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData("104.18.8.73", true)]
+    [InlineData("::ffff:104.18.8.73", true)] // How a dual-mode socket reports the address above
+    [InlineData("::ffff:127.0.0.1", false)]
+    [InlineData("::ffff:10.0.0.1", false)]
+    [InlineData("::ffff:169.254.0.1", false)]
+    public void NormalizesIPv4MappedAddress(string address, bool isAllowed)
+    {
+        var result = _sut.IsAllowedAddress("api.example", IPAddress.Parse(address));
+        result.Should().Be(isAllowed);
+    }
+
     [Fact]
     public async Task DomainDenyListBlocksMatchingHost()
     {
