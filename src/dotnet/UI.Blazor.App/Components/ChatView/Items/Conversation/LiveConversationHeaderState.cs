@@ -7,4 +7,6 @@ public sealed record LiveConversationHeaderState(
     bool HasAttended = false,
     bool IsDissolving = false,
     bool CanExpand = false,
-    bool IsAnyoneTalking = false);
+    bool IsAnyoneTalking = false,
+    bool IsTranslatedVoiceAvailable = false,
+    bool IsTranslatedVoiceOn = false);
