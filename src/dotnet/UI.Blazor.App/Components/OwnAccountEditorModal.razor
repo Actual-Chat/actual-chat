@@ -118,28 +118,16 @@
             }
         </FormBlock>
         <FormBlock>
-            <Card>
-                <ButtonTile Class="btn-danger delete-account-tile" Click="@OnDeleteAccountClick">
-                    <Icon>
-                        <i class="icon-trash03"></i>
-                    </Icon>
-                    <Content>
-                        <div class="c-text">
-                            @L.AccountEditor_DeleteAccount
-                        </div>
-                    </Content>
-                </ButtonTile>
-            </Card>
+            <ButtonTile Class="btn-danger" Filled="true" Click="@OnDeleteAccountClick">
+                <Icon>
+                    <i class="icon-trash03 text-xl text-danger"></i>
+                </Icon>
+                <Content>@L.AccountEditor_DeleteAccount</Content>
+            </ButtonTile>
         </FormBlock>
         </Body>
         <Buttons>
             <FormButtons>
-                <Button
-                    Type="@ButtonType.Button"
-                    Class="btn-modal"
-                    Click="OnCancel">
-                    @L.Common_Cancel
-                </Button>
                 <Button
                     Type="@ButtonType.Submit"
                     Class="btn-modal btn-primary"
@@ -213,9 +201,6 @@
         _form.CopyToBase();
         Modal.Close();
     }
-
-    private void OnCancel()
-        => Modal.Close();
 
     private async Task OnPhoneChanged(string? value) {
         var newValue = value ?? "";

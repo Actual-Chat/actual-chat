@@ -1,9 +1,6 @@
 .add-member-modal-content .dialog-body {
     @apply flex-y gap-y-2;
 }
-.add-member-modal-content .dialog-buttons {
-    @apply md:pt-2;
-}
 .c-contact-list {
     @apply flex-y grow;
     @apply overflow-y-auto custom-scrollbar;

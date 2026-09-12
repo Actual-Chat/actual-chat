@@ -13,8 +13,7 @@
     @apply overflow-y-hidden;
 }
 .share-incoming-modal .dialog-footer {
-    @apply gap-y-2;
-    @apply py-2;
+    @apply pt-2;
 }
 .narrow .share-incoming-modal .contact-selector-list {
     @apply pb-0;
@@ -28,7 +27,7 @@
 
 .share-incoming-modal .dialog-buttons {
     @apply -flex-x;
-    @apply px-4 pt-0;
+    @apply pt-0;
 }
 .share-incoming-modal .dialog-buttons > * {
     @apply flex-1 max-w-none;

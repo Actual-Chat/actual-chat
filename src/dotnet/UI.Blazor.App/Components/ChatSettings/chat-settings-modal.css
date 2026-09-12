@@ -54,8 +54,8 @@ body.narrow .edit-settings-modal.narrow-view__modal__position-stretch:has(.chat-
     @apply hidden;
 }
 
-.edit-settings-modal .dialog-buttons {
-    @apply pt-4;
+.edit-settings-modal .dialog-footer {
+    @apply md:pt-2;
 }
 .edit-settings-modal .dialog-buttons .btn-group {
     @apply flex-1;
@@ -63,6 +63,9 @@ body.narrow .edit-settings-modal.narrow-view__modal__position-stretch:has(.chat-
 }
 
 .edit-settings-modal .form-block.with-input-radio {
+    @apply px-2;
+}
+.edit-settings-modal .form-block.chat-type-toggles {
     @apply px-2;
 }
 .edit-settings-modal .form-block.with-input-radio .tile-item {
@@ -123,7 +126,7 @@ body.hoverable .chat-settings-container .tile-item:hover {
     @apply my-auto;
 }
 
-.form .field-allow-guest .tile-item-body-caption label {
+.form .field-allow-guest .tile-item-body-caption {
     @apply text-danger;
 }
 

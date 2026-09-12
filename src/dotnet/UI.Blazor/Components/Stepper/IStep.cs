@@ -3,6 +3,7 @@ namespace ActualChat.UI.Blazor.Components;
 public interface IStep
 {
     public bool CanSkip { get; }
+    public bool CanReturnTo { get; }
     public bool IsCompleted { get; }
     public string SkipTitle { get; }
     public string NextTitle { get; }

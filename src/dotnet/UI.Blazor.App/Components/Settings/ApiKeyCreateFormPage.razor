@@ -37,7 +37,6 @@
     protected override void OnInitialized() {
         Context.Title = L.ApiKeyCreate_Title;
         Context.Buttons = [
-            DialogButtonInfo.CreateCancelButton(L),
             DialogButtonInfo.CreateSubmitButton(L.ApiKeyCreate_Create, OnCreate),
         ];
     }

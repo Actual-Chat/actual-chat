@@ -23,6 +23,7 @@
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
 
     public override bool CanSkip => true;
+    public override bool CanReturnTo => false;
 
     public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsTranscriptionTutorialStepCompleted;
 

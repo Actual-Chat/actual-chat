@@ -32,12 +32,6 @@
     </Body>
     <Buttons>
         <Button
-            Type="@ButtonType.Button"
-            Class="btn-modal"
-            Click="@(() => Modal.Close())">
-            @L.Common_Cancel
-        </Button>
-        <Button
             Type="@ButtonType.Submit"
             Class="btn-modal btn-primary"
             IsDisabled="@(!canSubmit)"

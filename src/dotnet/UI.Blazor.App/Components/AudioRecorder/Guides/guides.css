@@ -8,13 +8,6 @@
     @apply overflow-y-auto;
 }
 
-/* .form-block contributes no vertical padding here, so the entire gap above the
-   buttons comes from this rule - and unlike padding inside the scrolling body,
-   it stays put instead of scrolling out of view. */
-.guide-modal .dialog-buttons {
-    @apply pt-2;
-}
-
 .guide-modal .c-hero {
     @apply overflow-hidden;
     @apply rounded-lg;
