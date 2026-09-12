@@ -1,9 +1,9 @@
 import { rpcServer } from 'rpc';
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
-import { chooseEncoding } from './image-encoding-policy';
+import { canHaveAlpha, chooseEncoding, tryKeepSource } from './image-encoding-policy';
 import { getImageMimeType, isAnimatedImage, readImageDimensions, sniffImageFormat } from './image-format';
-import { fitWithin, type ImageSize } from './image-geometry';
+import { fitWithin } from './image-geometry';
 import { JpegliEncoder } from './jpegli-encoder';
 import { stripImageMetadata } from './metadata-stripper';
 import type {
@@ -101,7 +101,9 @@ async function reencode(
     const isUnscaled = size.width === bitmap.width && size.height === bitmap.height;
     if (canHaveAlpha(format) && hasTransparentPixels(image.data)) {
         const png = await canvas.convertToBlob({ type: 'image/png' });
-        const kept = isUnscaled && format === 'png' ? tryKeepSource(source, bytes, format, spec, size, png.size) : null;
+        const kept = isUnscaled && format === 'png'
+            ? tryKeepSource(source, bytes, format, spec, size, png.size)
+            : null;
         return kept ?? {
             kind: spec.kind,
             blob: png,
@@ -122,25 +124,6 @@ async function reencode(
         height: size.height,
         isSource: false,
     };
-}
-
-/** The stripped source of an unscaled image, when re-encoding it didn't pay off; null otherwise. */
-function tryKeepSource(
-    source: Blob,
-    bytes: Uint8Array,
-    format: ImageFormat,
-    spec: ImageOutputSpec,
-    size: ImageSize,
-    encodedSize: number,
-): ImageOutput | null {
-    const stripped = stripImageMetadata(bytes, format);
-    if (stripped.length > encodedSize)
-        return null;
-
-    const mimeType = getImageMimeType(format);
-    const isSource = stripped === bytes;
-    const blob = isSource ? source : new Blob([stripped as BlobPart], { type: mimeType });
-    return { kind: spec.kind, blob, mimeType, width: size.width, height: size.height, isSource };
 }
 
 async function encodeJpeg(canvas: OffscreenCanvas, image: ImageData): Promise<Blob> {
@@ -168,10 +151,6 @@ function getEncoder(): Promise<JpegliEncoder | null> {
         return null;
     });
     return whenEncoderLoaded;
-}
-
-function canHaveAlpha(format: ImageFormat): boolean {
-    return format !== 'jpeg' && format !== 'bmp';
 }
 
 function hasTransparentPixels(rgba: Uint8ClampedArray): boolean {

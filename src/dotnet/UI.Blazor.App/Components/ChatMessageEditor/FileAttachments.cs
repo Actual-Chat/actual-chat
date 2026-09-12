@@ -82,7 +82,9 @@ public class FileAttachments : UIServiceBase<AppUIHub>
 
         list.SetImageQuality(preset);
         foreach (var attachment in list.Items.Where(a => a.Source is not null).ToList())
-            _ = Reprocess(list, attachment.Id, preset);
+            _ = Reprocess(list, attachment.Id, preset)
+                .WithErrorLog(Log, "Failed to reprocess attachment '{AttachmentId}'", attachment.Id)
+                .SilentAwait();
 
         return Task.CompletedTask;
     }
@@ -227,7 +229,9 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         };
         SetSourcePreview(attachment);
         list.Add(attachment);
-        _ = StartImageProcessing(list, attachment.Id, list.ImageQuality, null, isReprocess: false);
+        _ = StartImageProcessing(list, attachment.Id, list.ImageQuality, null, isReprocess: false)
+            .WithErrorLog(Log, "Failed to process attachment '{AttachmentId}'", attachment.Id)
+            .SilentAwait();
     }
 
     private async Task Reprocess(AttachmentList list, AttachmentId id, ImageQualityPreset preset)
