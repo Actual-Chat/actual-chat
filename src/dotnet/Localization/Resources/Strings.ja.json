@@ -1486,7 +1486,6 @@
   "Call_RecordingTurnedOffByHost": "ホストが録音をオフにしました",
   "Call_MakeHost": "ホストにする",
   "Call_Join": "参加",
-  "LiveConversation_TranslatedVoice": "翻訳音声",
   "Call_JoinMuted": "ミュートで参加",
   "Call_VideoOff": "この通話では動画がオフです",
   "Call_UnavailableInChat": "このチャットでは利用できません",
@@ -1514,6 +1513,9 @@
   "Call_Entry_Ended": "通話",
   "Call_Entry_NoAnswer": "応答なし",
   "Call_Entry_TapToCallBack": "タップして折り返す",
+
+  "LiveConversation_TranslatedVoice": "翻訳音声",
+
   "Share_FailedToShareFiles": "ファイルを共有できませんでした",
   "Share_PrivateChatJoinLink": "非公開チャットの参加リンクを共有",
   "Share_PrivatePlaceJoinLink": "非公開プレイスの参加リンクを共有",

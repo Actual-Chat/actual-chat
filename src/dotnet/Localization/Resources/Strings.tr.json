@@ -1486,7 +1486,6 @@
   "Call_RecordingTurnedOffByHost": "Kayıt, oturum sahibi tarafından kapatıldı",
   "Call_MakeHost": "Sunucu yapın",
   "Call_Join": "Katılın",
-  "LiveConversation_TranslatedVoice": "Çevrilmiş ses",
   "Call_JoinMuted": "Sessiz katılın",
   "Call_VideoOff": "Bu görüşmede video kapalı",
   "Call_UnavailableInChat": "Bu sohbette kullanılamıyor",
@@ -1514,6 +1513,9 @@
   "Call_Entry_Ended": "Arama",
   "Call_Entry_NoAnswer": "Cevap yok",
   "Call_Entry_TapToCallBack": "Geri aramak için dokunun",
+
+  "LiveConversation_TranslatedVoice": "Çevrilmiş ses",
+
   "Share_FailedToShareFiles": "Dosyalar paylaşılamadı",
   "Share_PrivateChatJoinLink": "Özel sohbete katılma bağlantısını paylaşın",
   "Share_PrivatePlaceJoinLink": "Özel Mekâna katılma bağlantısını paylaşın",

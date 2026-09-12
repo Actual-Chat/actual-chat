@@ -1486,7 +1486,6 @@
   "Call_RecordingTurnedOffByHost": "Nagrywanie wyłączone przez prowadzącego",
   "Call_MakeHost": "Ustaw jako prowadzącego",
   "Call_Join": "Dołącz",
-  "LiveConversation_TranslatedVoice": "Przetłumaczony głos",
   "Call_JoinMuted": "Dołącz wyciszony",
   "Call_VideoOff": "Wideo jest wyłączone w tej rozmowie",
   "Call_UnavailableInChat": "Niedostępne w tym czacie",
@@ -1514,6 +1513,9 @@
   "Call_Entry_Ended": "Połączenie",
   "Call_Entry_NoAnswer": "Brak odpowiedzi",
   "Call_Entry_TapToCallBack": "Dotknij, aby oddzwonić",
+
+  "LiveConversation_TranslatedVoice": "Przetłumaczony głos",
+
   "Share_FailedToShareFiles": "Nie udało się udostępnić plików",
   "Share_PrivateChatJoinLink": "Udostępnij link do zamkniętego czatu",
   "Share_PrivatePlaceJoinLink": "Udostępnij link do zamkniętego Miejsca",

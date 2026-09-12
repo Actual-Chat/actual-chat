@@ -1486,7 +1486,6 @@
   "Call_RecordingTurnedOffByHost": "Ведучий вимкнув запис",
   "Call_MakeHost": "Зробити ведучим",
   "Call_Join": "Увійти",
-  "LiveConversation_TranslatedVoice": "Перекладений голос",
   "Call_JoinMuted": "Увійти без звуку",
   "Call_VideoOff": "Відео вимкнено для цього дзвінка",
   "Call_UnavailableInChat": "Недоступно в цьому чаті",
@@ -1514,6 +1513,9 @@
   "Call_Entry_Ended": "Дзвінок",
   "Call_Entry_NoAnswer": "Немає відповіді",
   "Call_Entry_TapToCallBack": "Натисніть, щоб передзвонити",
+
+  "LiveConversation_TranslatedVoice": "Перекладений голос",
+
   "Share_FailedToShareFiles": "Не вдалося поділитися файлами",
   "Share_PrivateChatJoinLink": "Поділитися посиланням на закритий чат",
   "Share_PrivatePlaceJoinLink": "Поділитися посиланням на закрите Місце",

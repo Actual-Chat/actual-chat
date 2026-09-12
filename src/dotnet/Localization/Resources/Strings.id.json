@@ -1486,7 +1486,6 @@
   "Call_RecordingTurnedOffByHost": "Perekaman dimatikan oleh tuan rumah",
   "Call_MakeHost": "Jadikan tuan rumah",
   "Call_Join": "Gabung",
-  "LiveConversation_TranslatedVoice": "Suara terjemahan",
   "Call_JoinMuted": "Gabung dalam keadaan bisu",
   "Call_VideoOff": "Video nonaktif untuk panggilan ini",
   "Call_UnavailableInChat": "Tidak tersedia di obrolan ini",
@@ -1514,6 +1513,9 @@
   "Call_Entry_Ended": "Panggilan",
   "Call_Entry_NoAnswer": "Tidak dijawab",
   "Call_Entry_TapToCallBack": "Ketuk untuk menelepon balik",
+
+  "LiveConversation_TranslatedVoice": "Suara terjemahan",
+
   "Share_FailedToShareFiles": "Gagal membagikan file",
   "Share_PrivateChatJoinLink": "Bagikan tautan gabung obrolan tertutup",
   "Share_PrivatePlaceJoinLink": "Bagikan tautan gabung Tempat tertutup",

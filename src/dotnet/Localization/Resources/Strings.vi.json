@@ -1486,7 +1486,6 @@
   "Call_RecordingTurnedOffByHost": "Chủ phòng đã tắt ghi âm",
   "Call_MakeHost": "Đặt làm chủ trì",
   "Call_Join": "Tham gia",
-  "LiveConversation_TranslatedVoice": "Giọng nói đã dịch",
   "Call_JoinMuted": "Tham gia khi tắt tiếng",
   "Call_VideoOff": "Video đã tắt cho cuộc gọi này",
   "Call_UnavailableInChat": "Không khả dụng trong cuộc trò chuyện này",
@@ -1514,6 +1513,9 @@
   "Call_Entry_Ended": "Cuộc gọi",
   "Call_Entry_NoAnswer": "Không trả lời",
   "Call_Entry_TapToCallBack": "Nhấn để gọi lại",
+
+  "LiveConversation_TranslatedVoice": "Giọng nói đã dịch",
+
   "Share_FailedToShareFiles": "Không thể chia sẻ tệp",
   "Share_PrivateChatJoinLink": "Chia sẻ liên kết tham gia cuộc trò chuyện riêng tư",
   "Share_PrivatePlaceJoinLink": "Chia sẻ liên kết tham gia Địa điểm riêng tư",

@@ -1486,7 +1486,6 @@
   "Call_RecordingTurnedOffByHost": "Enregistrement désactivé par l'hôte",
   "Call_MakeHost": "Définir comme hôte",
   "Call_Join": "Rejoindre",
-  "LiveConversation_TranslatedVoice": "Voix traduite",
   "Call_JoinMuted": "Rejoindre en silencieux",
   "Call_VideoOff": "La vidéo est désactivée pour cet appel",
   "Call_UnavailableInChat": "Indisponible dans cette discussion",
@@ -1514,6 +1513,9 @@
   "Call_Entry_Ended": "Appel",
   "Call_Entry_NoAnswer": "Sans réponse",
   "Call_Entry_TapToCallBack": "Appuyez pour rappeler",
+
+  "LiveConversation_TranslatedVoice": "Voix traduite",
+
   "Share_FailedToShareFiles": "Impossible de partager les fichiers",
   "Share_PrivateChatJoinLink": "Partager le lien d'accès à la discussion privée",
   "Share_PrivatePlaceJoinLink": "Partager le lien d'accès au Lieu privé",

@@ -1486,7 +1486,6 @@
   "Call_RecordingTurnedOffByHost": "Domaćin je isključio snimanje",
   "Call_MakeHost": "Postavite za domaćina",
   "Call_Join": "Pridružite se",
-  "LiveConversation_TranslatedVoice": "Prevedeni glas",
   "Call_JoinMuted": "Pridružite se utišan",
   "Call_VideoOff": "Video je isključen za ovaj poziv",
   "Call_UnavailableInChat": "Nedostupno u ovom chatu",
@@ -1514,6 +1513,9 @@
   "Call_Entry_Ended": "Poziv",
   "Call_Entry_NoAnswer": "Nema odgovora",
   "Call_Entry_TapToCallBack": "Dodirnite za povratni poziv",
+
+  "LiveConversation_TranslatedVoice": "Prevedeni glas",
+
   "Share_FailedToShareFiles": "Datoteke se nisu mogli podijeliti",
   "Share_PrivateChatJoinLink": "Podijelite link za pridruživanje zatvorenom chatu",
   "Share_PrivatePlaceJoinLink": "Podijelite link za pridruživanje zatvorenom Mjestu",

@@ -1486,7 +1486,6 @@
   "Call_RecordingTurnedOffByHost": "호스트가 녹음을 껐습니다",
   "Call_MakeHost": "호스트로 지정",
   "Call_Join": "참여",
-  "LiveConversation_TranslatedVoice": "번역 음성",
   "Call_JoinMuted": "음소거로 참여",
   "Call_VideoOff": "이 통화에서는 영상이 꺼져 있습니다",
   "Call_UnavailableInChat": "이 채팅에서는 사용할 수 없음",
@@ -1514,6 +1513,9 @@
   "Call_Entry_Ended": "통화",
   "Call_Entry_NoAnswer": "응답 없음",
   "Call_Entry_TapToCallBack": "탭하여 다시 전화하기",
+
+  "LiveConversation_TranslatedVoice": "번역 음성",
+
   "Share_FailedToShareFiles": "파일을 공유하지 못했습니다",
   "Share_PrivateChatJoinLink": "비공개 채팅 참여 링크 공유",
   "Share_PrivatePlaceJoinLink": "비공개 플레이스 참여 링크 공유",

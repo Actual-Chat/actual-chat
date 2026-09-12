@@ -1486,7 +1486,6 @@
   "Call_RecordingTurnedOffByHost": "主持人已关闭录音",
   "Call_MakeHost": "设为主持人",
   "Call_Join": "加入",
-  "LiveConversation_TranslatedVoice": "翻译语音",
   "Call_JoinMuted": "静音加入",
   "Call_VideoOff": "此通话已关闭视频",
   "Call_UnavailableInChat": "此聊天中不可用",
@@ -1514,6 +1513,9 @@
   "Call_Entry_Ended": "通话",
   "Call_Entry_NoAnswer": "无人接听",
   "Call_Entry_TapToCallBack": "点按回拨",
+
+  "LiveConversation_TranslatedVoice": "翻译语音",
+
   "Share_FailedToShareFiles": "文件分享失败",
   "Share_PrivateChatJoinLink": "分享私密聊天的加入链接",
   "Share_PrivatePlaceJoinLink": "分享私密地点的加入链接",
