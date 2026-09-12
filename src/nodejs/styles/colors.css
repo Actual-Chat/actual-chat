@@ -506,6 +506,9 @@
     --place-header-text: var(--white);
     --tile: var(--white);
     --highlighted: var(--blue-50-30);
+    --contact-selector-badge: var(--highlighted);
+    --contact-selector-badge-hover: var(--magenta-95);
+    --contact-selector-badge-active: var(--magenta-90);
     --conversation-gradient-01: var(--indigo-40-10);
     --conversation-gradient-02: var(--indigo-40-02);
     --author-name: var(--blue-30);
@@ -820,6 +823,8 @@
     --modal-input-border: transparent;
     --away: var(--warning);
     --selected: var(--white-10);
+    --contact-selector-badge-hover: var(--magenta-20);
+    --contact-selector-badge-active: var(--magenta-30);
     --hover: var(--white-05);
     --separator: var(--ash-26);
     --nav-separator: var(--ash-26);

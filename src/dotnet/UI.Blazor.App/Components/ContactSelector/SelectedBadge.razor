@@ -1,0 +1,13 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="c-contact" role="button" tabindex="0" @onclick="@(_ => OnRemove.InvokeAsync())">
+    @Icon
+    <div class="c-name">@Name</div>
+    <i class="icon-close c-close"></i>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? Icon { get; set; }
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public EventCallback OnRemove { get; set; }
+}
