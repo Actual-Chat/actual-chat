@@ -30,7 +30,7 @@ public sealed partial class DubStabilizer
             return null;
 
         var text = translated.Text;
-        var prefixLength = text.StartsWith(SentText) ? SentText.Length : CommonPrefixLength(text, SentText);
+        var prefixLength = text.StartsWith(SentText) ? SentText.Length : text.GetCommonPrefixLength(SentText);
         var chunk = text[prefixLength..];
         if (chunk.IsNullOrWhiteSpace())
             return null;
@@ -62,13 +62,4 @@ public sealed partial class DubStabilizer
 
     private static string Normalize(string text)
         => WhitespaceRegex.Replace(text, " ").Trim().ToLower();
-
-    private static int CommonPrefixLength(string x, string y)
-    {
-        var length = Math.Min(x.Length, y.Length);
-        var i = 0;
-        while (i < length && x[i] == y[i])
-            i++;
-        return i;
-    }
 }

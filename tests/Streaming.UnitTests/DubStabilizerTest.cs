@@ -50,33 +50,58 @@ public class DubStabilizerTest
 
     [Fact]
     public void DecideShouldSayNoDubWhenTheSourceIsAlreadyInTheTargetLanguage()
-        => DubStabilizer
-            .Decide(Stable("Hello there, how are you?", Languages.English), Unstable(""), Language.Parse("en-GB"))
-            .Should().Be(DubDecision.NoDub);
+    {
+        // act
+        var decision = DubStabilizer
+            .Decide(Stable("Hello there, how are you?", Languages.English), Unstable(""), Language.Parse("en-GB"));
+
+        // assert
+        decision.Should().Be(DubDecision.NoDub);
+    }
 
     [Fact]
     public void DecideShouldSayDubWhenTheSourceLanguageDiffers()
-        => DubStabilizer
-            .Decide(Stable("Привет, как у тебя дела?", Languages.Russian), Unstable(""), Languages.English)
-            .Should().Be(DubDecision.Dub);
+    {
+        // act
+        var decision = DubStabilizer
+            .Decide(Stable("Привет, как у тебя дела?", Languages.Russian), Unstable(""), Languages.English);
+
+        // assert
+        decision.Should().Be(DubDecision.Dub);
+    }
 
     [Fact]
     public void DecideShouldWaitForEnoughTextBeforeTrustingTheLanguage()
-        => DubStabilizer
-            .Decide(Stable("Hi", Languages.English), Unstable(""), Languages.English)
-            .Should().Be(DubDecision.Undecided);
+    {
+        // act
+        var decision = DubStabilizer
+            .Decide(Stable("Hi", Languages.English), Unstable(""), Languages.English);
+
+        // assert
+        decision.Should().Be(DubDecision.Undecided);
+    }
 
     [Fact]
     public void DecideShouldSayNoDubWhenTheTranslationRepeatsTheSource()
-        => DubStabilizer
-            .Decide(Unstable("Hello there, how are you doing"), Stable("Hello there, how are you"), Languages.English)
-            .Should().Be(DubDecision.NoDub, "the translator hands the text back verbatim when no translation is needed");
+    {
+        // act
+        var decision = DubStabilizer
+            .Decide(Unstable("Hello there, how are you doing"), Stable("Hello there, how are you"), Languages.English);
+
+        // assert
+        decision.Should().Be(DubDecision.NoDub, "the translator hands the text back verbatim when no translation is needed");
+    }
 
     [Fact]
     public void DecideShouldSayDubWhenTheTranslationDiffers()
-        => DubStabilizer
-            .Decide(Unstable("Привет, как у тебя сегодня дела"), Stable("Hello, how are you today"), Languages.English)
-            .Should().Be(DubDecision.Dub);
+    {
+        // act
+        var decision = DubStabilizer
+            .Decide(Unstable("Привет, как у тебя сегодня дела"), Stable("Hello, how are you today"), Languages.English);
+
+        // assert
+        decision.Should().Be(DubDecision.Dub);
+    }
 
     [Fact]
     public void DecideShouldStayUndecidedWhileTheTranslationIsUnstableOrShort()
