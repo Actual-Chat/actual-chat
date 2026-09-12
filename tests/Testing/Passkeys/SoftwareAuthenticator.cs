@@ -26,6 +26,8 @@ public sealed class SoftwareAuthenticator(string rpId, string origin) : IDisposa
     public string CredentialId => Base64Url(_credentialId);
     public byte[]? UserHandle { get; private set; }
     public uint SignCount { get; set; }
+    // When set, every response carries this counter verbatim instead of the incremented SignCount
+    public uint? FixedSignCount { get; set; }
     public bool IsBackupEligible { get; init; } = true;
     public bool IsBackedUp { get; init; } = true;
     public string Origin { get; set; } = origin;
@@ -102,7 +104,7 @@ public sealed class SoftwareAuthenticator(string rpId, string origin) : IDisposa
         if (withCredential)
             flags |= FlagAttestedCredentialData;
 
-        var counter = ++SignCount;
+        var counter = FixedSignCount ?? ++SignCount;
         var buffer = new List<byte>(SHA256.HashData(Encoding.UTF8.GetBytes(RpId)));
         buffer.Add(flags);
         buffer.AddRange([(byte)(counter >> 24), (byte)(counter >> 16), (byte)(counter >> 8), (byte)counter]);

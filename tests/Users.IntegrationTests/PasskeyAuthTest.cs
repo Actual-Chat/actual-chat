@@ -14,6 +14,7 @@ public class PasskeyAuthTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     private IPasskeyAuth PasskeyAuth => AppHost.Services.GetRequiredService<IPasskeyAuth>();
     private IAccounts Accounts => AppHost.Services.GetRequiredService<IAccounts>();
+    private IPasskeysBackend PasskeysBackend => AppHost.Services.GetRequiredService<IPasskeysBackend>();
 
     [Fact]
     public async Task IsEnabledShouldBeTrueOutsideProduction()
@@ -96,6 +97,29 @@ public class PasskeyAuthTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
+    public async Task CompleteRegistrationShouldRefuseAnotherAccountOnTheSameSession()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var alice = await tester.SignInAsUniqueAlice();
+        using var authenticator = new SoftwareAuthenticator(RpId, Origin);
+        var options = await Commander.Call(new PasskeyAuth_BeginRegistration { Session = tester.Session });
+        var attestation = authenticator.CreateAttestationJson(options);
+        var bob = await tester.SignInAsUniqueBob(); // Sign-out + sign-in keeps the session id
+        bob.Id.Should().NotBe(alice.Id);
+
+        // act
+        var act = () => Commander.Call(
+            new PasskeyAuth_CompleteRegistration { Session = tester.Session, AttestationJson = attestation });
+
+        // assert
+        await act.Should().ThrowAsync<UnauthorizedAccessException>("the challenge was issued for Alice, not Bob")
+            .WithMessage("*another account*");
+        (await PasskeysBackend.List(bob.Id, default)).Should().BeEmpty("Alice's user handle must not land on Bob");
+        (await PasskeysBackend.List(alice.Id, default)).Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task SignInShouldRejectWrongOrigin()
     {
         // arrange
@@ -137,6 +161,34 @@ public class PasskeyAuthTest(AppHostFixture fixture, ITestOutputHelper @out)
         // assert
         await act.Should()
             .ThrowAsync<UnauthorizedAccessException>("a counter that doesn't advance signals a cloned key");
+    }
+
+    [Fact]
+    public async Task SignInShouldRejectZeroCounterAfterNonZeroOne()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueAlice();
+        using var authenticator = new SoftwareAuthenticator(RpId, Origin);
+        var passkey = await Register(tester.Session, authenticator);
+        (await SignIn(await NewSession(), authenticator)).Should().BeTrue();
+        var storedBefore = await ComputedTest.When(async ct => {
+            var stored = await PasskeysBackend.Get(account.Id, passkey.Id, ct);
+            stored!.SignCount.Should().Be(authenticator.SignCount, "the first sign-in persists the counter");
+            return stored;
+        });
+        authenticator.FixedSignCount = 0; // Fido2NetLib skips its counter check for a literal zero
+        var replaySession = await NewSession();
+
+        // act
+        var act = () => SignIn(replaySession, authenticator);
+
+        // assert
+        await act.Should().ThrowAsync<UnauthorizedAccessException>("a zero counter after a nonzero one is a clone");
+        (await Accounts.GetOwn(replaySession, default)).IsGuest.Should().BeTrue();
+        var storedAfter = await PasskeysBackend.Get(account.Id, passkey.Id, default);
+        storedAfter!.SignCount.Should()
+            .Be(storedBefore!.SignCount, "a rejected assertion must not erase the counter");
     }
 
     [Fact]

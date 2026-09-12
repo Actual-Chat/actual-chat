@@ -22,12 +22,14 @@ public class PasskeysBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Commander.Call(new PasskeysBackend_Change(account.Id, credential.Id, Change.Create(credential)));
 
         // assert
-        var listed = await Backend.List(account.Id, default);
-        listed.Should().ContainSingle(x => x.Id == credential.Id);
         var identity = UserIdentityExt.NewPasskeyIdentity(credential.Id);
-        (await AccountsBackend.GetIdByUserIdentity(identity, default)).Should().Be(account.Id);
-        var full = await AccountsBackend.Get(account.Id, default);
-        full!.Identities.Keys.Should().Contain(identity, "the passkey must be an account identity");
+        await ComputedTest.When(async ct => {
+            var listed = await Backend.List(account.Id, ct);
+            listed.Should().ContainSingle(x => x.Id == credential.Id);
+            (await AccountsBackend.GetIdByUserIdentity(identity, ct)).Should().Be(account.Id);
+            var full = await AccountsBackend.Get(account.Id, ct);
+            full!.Identities.Keys.Should().Contain(identity, "the passkey must be an account identity");
+        });
     }
 
     [Fact]
@@ -43,10 +45,12 @@ public class PasskeysBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Commander.Call(new PasskeysBackend_Change(account.Id, credential.Id, Change.Remove<PasskeyCredential>()));
 
         // assert
-        (await Backend.Get(account.Id, credential.Id, default)).Should().BeNull();
-        (await Backend.List(account.Id, default)).Should().BeEmpty();
         var identity = UserIdentityExt.NewPasskeyIdentity(credential.Id);
-        (await AccountsBackend.GetIdByUserIdentity(identity, default)).Should().BeNull();
+        await ComputedTest.When(async ct => {
+            (await Backend.Get(account.Id, credential.Id, ct)).Should().BeNull();
+            (await Backend.List(account.Id, ct)).Should().BeEmpty();
+            (await AccountsBackend.GetIdByUserIdentity(identity, ct)).Should().BeNull();
+        });
     }
 
     [Fact]
@@ -63,11 +67,13 @@ public class PasskeysBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Commander.Call(new PasskeysBackend_Change(account.Id, credential.Id, Change.Update(updated)));
 
         // assert
-        var stored = await Backend.Get(account.Id, credential.Id, default);
-        stored.Should().NotBeNull();
-        stored!.SignCount.Should().Be(7);
-        stored.Name.Should().Be("Laptop");
-        stored.IsBackedUp.Should().BeTrue();
+        await ComputedTest.When(async ct => {
+            var stored = await Backend.Get(account.Id, credential.Id, ct);
+            stored.Should().NotBeNull();
+            stored!.SignCount.Should().Be(7);
+            stored.Name.Should().Be("Laptop");
+            stored.IsBackedUp.Should().BeTrue();
+        });
     }
 
     [Fact]

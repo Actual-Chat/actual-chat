@@ -17,6 +17,7 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
 {
     private const string CreateChallengeKeyPrefix = ".PasskeyChallenge:create:";
     private const string GetChallengeKeyPrefix = ".PasskeyChallenge:get:";
+    private const string VerificationFailedMessage = "This passkey couldn't be verified. Please try again.";
     private const int UserHandleLength = 32;
 
     private UsersSettings Settings { get; }
@@ -93,7 +94,8 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
             AttestationPreference = AttestationConveyancePreference.None,
         });
         var json = options.ToJson();
-        var pending = new PendingRegistration(json, command.Name.IsNullOrWhiteSpace() ? null : command.Name.Trim());
+        var name = command.Name.IsNullOrWhiteSpace() ? null : command.Name.Trim();
+        var pending = new PendingRegistration(account.Id, json, name);
         await StoreChallenge(CreateChallengeKeyPrefix, session, JsonSerializer.Serialize(pending), cancellationToken)
             .ConfigureAwait(false);
         return json;
@@ -116,6 +118,9 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
         var pendingJson = await ConsumeChallenge(CreateChallengeKeyPrefix, session, cancellationToken)
             .ConfigureAwait(false);
         var pending = Deserialize<PendingRegistration>(pendingJson);
+        if (pending.AccountId != account.Id)
+            throw StandardError.Unauthorized("This passkey request was started for another account.");
+
         var options = CredentialCreateOptions.FromJson(pending.OptionsJson);
         var attestation = Deserialize<AuthenticatorAttestationRawResponse>(command.AttestationJson);
         RegisteredPublicKeyCredential registered;
@@ -132,7 +137,7 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
         }
         catch (Fido2VerificationException e) {
             Log.LogWarning(e, "Passkey registration failed: {Code}", e.Code);
-            throw StandardError.Unauthorized("This passkey couldn't be verified. Please try again.");
+            throw StandardError.Unauthorized(VerificationFailedMessage);
         }
 
         var transports = string.Join(',', (registered.Transports ?? []).Select(x => x.ToString().ToLower()));
@@ -208,11 +213,17 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
         }
         catch (Fido2VerificationException e) {
             Log.LogWarning(e, "Passkey sign-in failed: {Code}", e.Code);
-            throw StandardError.Unauthorized("This passkey couldn't be verified. Please try again.");
+            throw StandardError.Unauthorized(VerificationFailedMessage);
+        }
+        // Fido2NetLib skips the counter check when the assertion carries 0, but WebAuthn §7.2 step 21
+        // rejects that once the stored counter is nonzero - and 0 must never overwrite a real counter
+        if (stored.SignCount > 0 && verified.SignCount == 0) {
+            Log.LogWarning("Passkey sign-in failed: zero counter for {CredentialId}", credentialId);
+            throw StandardError.Unauthorized(VerificationFailedMessage);
         }
 
         var used = stored with {
-            SignCount = verified.SignCount,
+            SignCount = Math.Max(stored.SignCount, verified.SignCount),
             IsBackedUp = verified.IsBackedUp,
             LastUsedAt = Clocks.SystemClock.Now,
         };
@@ -328,6 +339,7 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
 
     // Nested types
 
-    // The name is taken at BeginRegistration, so it rides along with the challenge until completion
-    private sealed record PendingRegistration(string OptionsJson, string? Name);
+    // The account and name are fixed at BeginRegistration and ride along with the challenge: the session
+    // may sign in as someone else before completion, and the options were built for the original account
+    private sealed record PendingRegistration(UserId AccountId, string OptionsJson, string? Name);
 }
