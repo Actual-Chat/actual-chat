@@ -280,6 +280,14 @@ Do NOT write Tailwind utility classes directly in `.razor` markup. Instead, assi
 <Button Class="@(_isActive ? "btn-primary" : "btn-secondary")" />
 ```
 
+## Spacing
+
+Space between and inside components follows one rule: **a component owns its
+inset (padding); a container owns the gap between its children; margins are the
+exception.** The full rule set — the six spacing primitives, the 4px scale, and
+worked examples — is [Spacing: inset, gap, margins](./spacing.md). Read it
+before adding `padding` / `margin` / `gap` to a shared class.
+
 ## Colors
 
 Every color must have a name in `colors.css` and a class in `tailwind.config.js`.

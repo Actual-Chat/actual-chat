@@ -13,6 +13,10 @@ the three UI surfaces complex enough to need a document of their own.
 - [Component guidelines](./components.md) — file structure for `.razor` / `.css` /
   `.ts` triples, CSS naming and the `@apply` rules, `ComputedStateComponent`
   patterns, JS interop, animation performance.
+- [Spacing: inset, gap, margins](./spacing.md) — who owns the space between and
+  inside components (padding vs. `gap` vs. margin), the six spacing primitives,
+  the 4px scale, and the modal worked example (footer owns its inset; the last
+  region owns the bottom safe area).
 - [Threads in the UI](./threading.md) — what runs on the Blazor dispatcher and
   what on the thread pool (every `ComputeState` does), the read-safe /
   dispatcher-mutation contract for scoped `XxxUI` services, and the rules for
@@ -20,6 +24,10 @@ the three UI surfaces complex enough to need a document of their own.
 
 ## Components
 
+- [Modals](./modals.md) — the one modal component (`DialogFrame`): the three-region
+  anatomy (header / body / footer with buttons inside the footer), the
+  `Presentation` / `Size` / `HeaderMode` / `BodyVariant` enums, keyboard and
+  safe-area behavior, and the in-place migration plan.
 - [The virtual list](./virtual-list.md) — the complete specification of
   `InfiniteList` (the chat transcript) and `FiniteList` (the sidebar): vocabulary,
   invariants, the state machine, the overscroll model, and the browser/device
