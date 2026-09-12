@@ -36,4 +36,6 @@ public sealed partial record ChatUserSettings : StoredSettings
     [DataMember, MemoryPackOrder(6), Key(5), LegacyLanguageFormatter(true)]
     public Language? TranslationTargetLanguage { get; init; }
     [DataMember, MemoryPackOrder(7), Key(6)] public bool? IsTranslationSubHeaderVisible { get; init; }
+    // null = follow UserLanguageSettings.IsTranslatedVoiceEnabled
+    [DataMember, MemoryPackOrder(9), Key(8)] public bool? IsTranslatedVoiceEnabled { get; init; }
 }
