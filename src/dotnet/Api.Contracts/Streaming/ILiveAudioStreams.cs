@@ -33,6 +33,14 @@ public interface ILiveAudioStreams : IComputeService
         Moment catchUpFrom,
         CancellationToken cancellationToken);
 
+    // dubLanguage: speakers who don't speak it are served dubbed into it (see ListeningStreamMuxer)
+    Task<RpcStream<MuxedAudioStreamItem>> GetListeningStream(
+        Session session,
+        ChatId chatId,
+        Moment catchUpFrom,
+        Language? dubLanguage,
+        CancellationToken cancellationToken);
+
     Task<RpcStream<MuxedAudioStreamItem>> GetReplayStream(
         Session session,
         ChatId chatId,

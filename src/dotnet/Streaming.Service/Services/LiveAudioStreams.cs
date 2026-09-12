@@ -161,18 +161,27 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
+    public Task<RpcStream<MuxedAudioStreamItem>> GetListeningStream(
+        Session session,
+        ChatId chatId,
+        Moment catchUpFrom,
+        CancellationToken cancellationToken)
+        => GetListeningStream(session, chatId, catchUpFrom, null, cancellationToken);
+
     public async Task<RpcStream<MuxedAudioStreamItem>> GetListeningStream(
         Session session,
         ChatId chatId,
         Moment catchUpFrom,
+        Language? dubLanguage,
         CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
         chat.Rules.Require(ChatPermissions.ReadAudio);
 
-        Log.LogInformation("GetListeningStream: chat '{ChatId}', catchUpFrom={CatchUpFrom}", chatId, catchUpFrom);
-        var muxer = new ListeningStreamMuxer(Services, session, chatId, catchUpFrom);
+        Log.LogInformation("GetListeningStream: chat '{ChatId}', catchUpFrom={CatchUpFrom}, dub={DubLanguage}",
+            chatId, catchUpFrom, dubLanguage);
+        var muxer = new ListeningStreamMuxer(Services, session, chatId, catchUpFrom, dubLanguage);
         var stream = ToLiveAsyncEnumerable(muxer, muxer.Output, cancellationToken);
         return StandardRpcStream.NewAudioDelivery(stream, allowReconnect: false);
     }
